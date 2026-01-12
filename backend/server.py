@@ -1004,10 +1004,316 @@ async def update_user(user_id: str, data: UserUpdate, admin: dict = Depends(get_
     updated = await db.users.find_one({"id": user_id}, {"_id": 0, "password": 0})
     return {"message": "User updated", "user": updated}
 
+# ==================== ADMIN BOT SYSTEM ====================
+
+# Default bot names (German names)
+DEFAULT_BOT_NAMES = [
+    "Maria K.", "Thomas M.", "Sandra W.", "Michael B.", "Julia H.",
+    "Stefan R.", "Anna S.", "Christian P.", "Lisa M.", "Markus F.",
+    "Nina L.", "Daniel K.", "Laura B.", "Tobias G.", "Sarah N.",
+    "Florian W.", "Katharina S.", "Maximilian H.", "Jennifer R.", "Patrick M."
+]
+
+@api_router.post("/admin/bots")
+async def create_bot(data: BotCreate, admin: dict = Depends(get_admin_user)):
+    """Create a new bid bot"""
+    bot = {
+        "id": str(uuid.uuid4()),
+        "name": data.name,
+        "is_active": True,
+        "total_bids_placed": 0,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_by": admin["id"]
+    }
+    await db.bots.insert_one(bot)
+    return {"message": "Bot created", "bot": {**bot, "_id": None}}
+
+@api_router.get("/admin/bots")
+async def get_all_bots(admin: dict = Depends(get_admin_user)):
+    """Get all bots"""
+    bots = await db.bots.find({}, {"_id": 0}).sort("created_at", -1).to_list(100)
+    return bots
+
+@api_router.delete("/admin/bots/{bot_id}")
+async def delete_bot(bot_id: str, admin: dict = Depends(get_admin_user)):
+    """Delete a bot"""
+    result = await db.bots.delete_one({"id": bot_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Bot not found")
+    return {"message": "Bot deleted"}
+
+@api_router.post("/admin/bots/seed")
+async def seed_bots(admin: dict = Depends(get_admin_user)):
+    """Create default bots"""
+    created = 0
+    for name in DEFAULT_BOT_NAMES:
+        existing = await db.bots.find_one({"name": name})
+        if not existing:
+            bot = {
+                "id": str(uuid.uuid4()),
+                "name": name,
+                "is_active": True,
+                "total_bids_placed": 0,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "created_by": admin["id"]
+            }
+            await db.bots.insert_one(bot)
+            created += 1
+    return {"message": f"{created} bots created", "total": len(DEFAULT_BOT_NAMES)}
+
+@api_router.post("/admin/bots/bid")
+async def bot_place_bid(data: BotBidRequest, admin: dict = Depends(get_admin_user)):
+    """Make a bot place a single bid on an auction"""
+    # Verify bot exists
+    bot = await db.bots.find_one({"id": data.bot_id}, {"_id": 0})
+    if not bot:
+        raise HTTPException(status_code=404, detail="Bot not found")
+    
+    # Verify auction exists and is active
+    auction = await db.auctions.find_one({"id": data.auction_id}, {"_id": 0})
+    if not auction:
+        raise HTTPException(status_code=404, detail="Auction not found")
+    if auction["status"] != "active":
+        raise HTTPException(status_code=400, detail="Auction is not active")
+    
+    # Place bot bid
+    new_price = auction["current_price"] + auction["bid_increment"]
+    new_end_time = datetime.now(timezone.utc) + timedelta(seconds=15)
+    
+    await db.auctions.update_one(
+        {"id": data.auction_id},
+        {
+            "$set": {
+                "current_price": new_price,
+                "end_time": new_end_time.isoformat(),
+                "last_bidder_id": f"bot_{bot['id']}",
+                "last_bidder_name": bot["name"]
+            },
+            "$inc": {"total_bids": 1},
+            "$push": {
+                "bid_history": {
+                    "user_id": f"bot_{bot['id']}",
+                    "user_name": bot["name"],
+                    "price": new_price,
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "is_bot": True
+                }
+            }
+        }
+    )
+    
+    # Update bot stats
+    await db.bots.update_one(
+        {"id": bot["id"]},
+        {"$inc": {"total_bids_placed": 1}}
+    )
+    
+    return {
+        "message": f"Bot '{bot['name']}' placed bid",
+        "new_price": new_price,
+        "bot_name": bot["name"]
+    }
+
+@api_router.post("/admin/bots/auto-bid")
+async def bot_auto_bid(data: BotBidRequest, admin: dict = Depends(get_admin_user)):
+    """Start automatic bot bidding to reach target price"""
+    import asyncio
+    
+    # Verify bot exists
+    bot = await db.bots.find_one({"id": data.bot_id}, {"_id": 0})
+    if not bot:
+        raise HTTPException(status_code=404, detail="Bot not found")
+    
+    # Verify auction exists
+    auction = await db.auctions.find_one({"id": data.auction_id}, {"_id": 0})
+    if not auction:
+        raise HTTPException(status_code=404, detail="Auction not found")
+    
+    if not data.target_price and not data.num_bids:
+        raise HTTPException(status_code=400, detail="Either target_price or num_bids must be specified")
+    
+    # Calculate number of bids needed
+    if data.target_price:
+        current = auction["current_price"]
+        increment = auction["bid_increment"]
+        num_bids = int((data.target_price - current) / increment)
+    else:
+        num_bids = data.num_bids
+    
+    if num_bids <= 0:
+        raise HTTPException(status_code=400, detail="Target price already reached or invalid")
+    
+    # Get all bots for rotation
+    all_bots = await db.bots.find({"is_active": True}, {"_id": 0}).to_list(100)
+    if not all_bots:
+        all_bots = [bot]
+    
+    # Create bot bid task record
+    task_id = str(uuid.uuid4())
+    task = {
+        "id": task_id,
+        "auction_id": data.auction_id,
+        "target_price": data.target_price,
+        "num_bids": num_bids,
+        "bids_placed": 0,
+        "status": "running",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_by": admin["id"]
+    }
+    await db.bot_tasks.insert_one(task)
+    
+    return {
+        "message": f"Bot auto-bidding started",
+        "task_id": task_id,
+        "planned_bids": num_bids,
+        "target_price": data.target_price
+    }
+
+@api_router.post("/admin/bots/execute-bids")
+async def execute_bot_bids(auction_id: str, num_bids: int = 5, admin: dict = Depends(get_admin_user)):
+    """Execute multiple bot bids immediately with random bot rotation"""
+    import random
+    
+    # Get auction
+    auction = await db.auctions.find_one({"id": auction_id}, {"_id": 0})
+    if not auction:
+        raise HTTPException(status_code=404, detail="Auction not found")
+    if auction["status"] != "active":
+        raise HTTPException(status_code=400, detail="Auction is not active")
+    
+    # Get all active bots
+    bots = await db.bots.find({"is_active": True}, {"_id": 0}).to_list(100)
+    if not bots:
+        raise HTTPException(status_code=400, detail="No active bots. Create bots first.")
+    
+    current_price = auction["current_price"]
+    increment = auction["bid_increment"]
+    bids_placed = 0
+    
+    for i in range(num_bids):
+        # Select random bot (avoid same bot twice in a row)
+        bot = random.choice(bots)
+        
+        new_price = current_price + increment
+        new_end_time = datetime.now(timezone.utc) + timedelta(seconds=15)
+        
+        await db.auctions.update_one(
+            {"id": auction_id},
+            {
+                "$set": {
+                    "current_price": new_price,
+                    "end_time": new_end_time.isoformat(),
+                    "last_bidder_id": f"bot_{bot['id']}",
+                    "last_bidder_name": bot["name"]
+                },
+                "$inc": {"total_bids": 1},
+                "$push": {
+                    "bid_history": {
+                        "user_id": f"bot_{bot['id']}",
+                        "user_name": bot["name"],
+                        "price": new_price,
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                        "is_bot": True
+                    }
+                }
+            }
+        )
+        
+        await db.bots.update_one(
+            {"id": bot["id"]},
+            {"$inc": {"total_bids_placed": 1}}
+        )
+        
+        current_price = new_price
+        bids_placed += 1
+    
+    return {
+        "message": f"{bids_placed} bot bids placed",
+        "new_price": current_price,
+        "bids_placed": bids_placed
+    }
+
+@api_router.post("/admin/bots/bid-to-price")
+async def bot_bid_to_price(auction_id: str, target_price: float, admin: dict = Depends(get_admin_user)):
+    """Make bots bid until target price is reached"""
+    import random
+    
+    # Get auction
+    auction = await db.auctions.find_one({"id": auction_id}, {"_id": 0})
+    if not auction:
+        raise HTTPException(status_code=404, detail="Auction not found")
+    if auction["status"] != "active":
+        raise HTTPException(status_code=400, detail="Auction is not active")
+    
+    if target_price <= auction["current_price"]:
+        raise HTTPException(status_code=400, detail="Target price must be higher than current price")
+    
+    # Get all active bots
+    bots = await db.bots.find({"is_active": True}, {"_id": 0}).to_list(100)
+    if not bots:
+        raise HTTPException(status_code=400, detail="No active bots. Create bots first.")
+    
+    current_price = auction["current_price"]
+    increment = auction["bid_increment"]
+    bids_placed = 0
+    last_bot = None
+    
+    while current_price < target_price:
+        # Select random bot (avoid same bot twice in a row if possible)
+        available_bots = [b for b in bots if b["id"] != (last_bot["id"] if last_bot else None)]
+        if not available_bots:
+            available_bots = bots
+        bot = random.choice(available_bots)
+        last_bot = bot
+        
+        new_price = round(current_price + increment, 2)
+        new_end_time = datetime.now(timezone.utc) + timedelta(seconds=15)
+        
+        await db.auctions.update_one(
+            {"id": auction_id},
+            {
+                "$set": {
+                    "current_price": new_price,
+                    "end_time": new_end_time.isoformat(),
+                    "last_bidder_id": f"bot_{bot['id']}",
+                    "last_bidder_name": bot["name"]
+                },
+                "$inc": {"total_bids": 1},
+                "$push": {
+                    "bid_history": {
+                        "user_id": f"bot_{bot['id']}",
+                        "user_name": bot["name"],
+                        "price": new_price,
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                        "is_bot": True
+                    }
+                }
+            }
+        )
+        
+        await db.bots.update_one(
+            {"id": bot["id"]},
+            {"$inc": {"total_bids_placed": 1}}
+        )
+        
+        current_price = new_price
+        bids_placed += 1
+        
+        # Safety limit
+        if bids_placed >= 1000:
+            break
+    
+    return {
+        "message": f"Price increased to €{current_price:.2f}",
+        "final_price": current_price,
+        "bids_placed": bids_placed,
+        "target_reached": current_price >= target_price
+    }
+
 # Root endpoint
 @api_router.get("/")
 async def root():
-    return {"message": "BidBlitz Auction API", "version": "2.0.0"}
+    return {"message": "BidBlitz Auction API", "version": "2.1.0"}
 
 # Include the router
 app.include_router(api_router)
