@@ -45,6 +45,7 @@ class UserCreate(BaseModel):
     email: EmailStr
     password: str
     name: str
+    source: Optional[str] = None  # Where user came from (google, facebook, direct, etc.)
 
 class UserLogin(BaseModel):
     email: EmailStr
