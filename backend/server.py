@@ -490,10 +490,15 @@ async def get_checkout_status(session_id: str, http_request: Request, user: dict
             {"$set": {"status": "complete", "payment_status": "paid"}}
         )
         
-        # Add bids to user
+        # Add bids to user AND update total deposits
         await db.users.update_one(
             {"id": transaction["user_id"]},
-            {"$inc": {"bids_balance": transaction["bids"]}}
+            {
+                "$inc": {
+                    "bids_balance": transaction["bids"],
+                    "total_deposits": transaction["amount"]
+                }
+            }
         )
         
         return {"status": "complete", "payment_status": "paid", "bids_added": transaction["bids"]}
