@@ -110,6 +110,37 @@ class CheckoutRequest(BaseModel):
     package_id: str
     origin_url: str
 
+# ==================== NEW MODELS ====================
+
+class VoucherCreate(BaseModel):
+    code: str
+    bids: int
+    max_uses: int = 1
+    expires_at: Optional[str] = None  # ISO datetime string
+
+class VoucherRedeem(BaseModel):
+    code: str
+
+class AutobidderCreate(BaseModel):
+    auction_id: str
+    max_price: float  # Maximum price the user is willing to pay
+
+class ProductUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    image_url: Optional[str] = None
+    retail_price: Optional[float] = None
+    category: Optional[str] = None
+
+class AuctionUpdate(BaseModel):
+    duration_seconds: Optional[int] = None  # Extend auction time
+    status: Optional[str] = None
+
+class UserUpdate(BaseModel):
+    name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    bids_balance: Optional[int] = None
+
 # Fixed bid packages (server-side only)
 BID_PACKAGES = {
     "starter": BidPackage(id="starter", name="Starter Pack", bids=50, price=30.00),
