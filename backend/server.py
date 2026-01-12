@@ -546,6 +546,17 @@ async def stripe_webhook(request: Request):
 @api_router.get("/admin/users", response_model=List[dict])
 async def get_all_users(admin: dict = Depends(get_admin_user)):
     users = await db.users.find({}, {"_id": 0, "password": 0}).to_list(1000)
+    
+    # Add deposit totals from payment_transactions for each user
+    for user in users:
+        # Get total deposits from paid transactions
+        pipeline = [
+            {"$match": {"user_id": user["id"], "payment_status": "paid"}},
+            {"$group": {"_id": None, "total": {"$sum": "$amount"}}}
+        ]
+        result = await db.payment_transactions.aggregate(pipeline).to_list(1)
+        user["total_deposits"] = result[0]["total"] if result else user.get("total_deposits", 0)
+    
     return users
 
 @api_router.put("/admin/users/{user_id}/toggle-admin")
@@ -557,6 +568,20 @@ async def toggle_admin(user_id: str, admin: dict = Depends(get_admin_user)):
     new_status = not user.get("is_admin", False)
     await db.users.update_one({"id": user_id}, {"$set": {"is_admin": new_status}})
     return {"message": f"Admin status set to {new_status}"}
+
+@api_router.put("/admin/users/{user_id}/toggle-block")
+async def toggle_block_user(user_id: str, admin: dict = Depends(get_admin_user)):
+    user = await db.users.find_one({"id": user_id}, {"_id": 0})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Prevent blocking yourself
+    if user_id == admin["id"]:
+        raise HTTPException(status_code=400, detail="Cannot block yourself")
+    
+    new_status = not user.get("is_blocked", False)
+    await db.users.update_one({"id": user_id}, {"$set": {"is_blocked": new_status}})
+    return {"message": f"User blocked status set to {new_status}", "is_blocked": new_status}
 
 @api_router.put("/admin/users/{user_id}/add-bids")
 async def add_bids_to_user(user_id: str, bids: int, admin: dict = Depends(get_admin_user)):
