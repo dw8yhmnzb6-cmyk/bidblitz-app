@@ -47,6 +47,27 @@ export const translations = {
       registerNow: "Registrieren Sie sich jetzt und erhalten Sie 10 kostenlose Gebote zum Starten!",
       freeRegister: "Kostenlos registrieren"
     },
+    // Vouchers
+    voucher: {
+      title: "Gutschein einlösen",
+      placeholder: "Gutscheincode eingeben",
+      redeem: "Einlösen",
+      success: "Gutschein eingelöst!",
+      bidsAdded: "Gebote gutgeschrieben"
+    },
+    // Autobidder
+    autobidder: {
+      title: "Autobidder",
+      description: "Lassen Sie automatisch bieten bis zu Ihrem Limit",
+      maxPrice: "Maximaler Preis (€)",
+      activate: "Autobidder aktivieren",
+      active: "Aktiv",
+      inactive: "Inaktiv",
+      bidsPlaced: "Gebote platziert",
+      noAutobidders: "Keine aktiven Autobidder",
+      delete: "Löschen",
+      toggle: "Ein/Aus"
+    },
     // Auctions
     auctions: {
       title: "Alle Auktionen",
