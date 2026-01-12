@@ -528,7 +528,12 @@ async def stripe_webhook(request: Request):
                 )
                 await db.users.update_one(
                     {"id": transaction["user_id"]},
-                    {"$inc": {"bids_balance": transaction["bids"]}}
+                    {
+                        "$inc": {
+                            "bids_balance": transaction["bids"],
+                            "total_deposits": transaction["amount"]
+                        }
+                    }
                 )
         
         return {"status": "ok"}
