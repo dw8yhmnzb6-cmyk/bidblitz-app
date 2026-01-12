@@ -396,11 +396,18 @@ async def place_bid(auction_id: str, user: dict = Depends(get_current_user)):
                     "user_id": user["id"],
                     "user_name": user["name"],
                     "price": new_price,
-                    "timestamp": datetime.now(timezone.utc).isoformat()
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "is_autobid": False
                 }
             }
         }
     )
+    
+    # Trigger autobidders (in background)
+    try:
+        await process_autobidders(auction_id, user["id"])
+    except Exception as e:
+        logger.error(f"Autobidder error: {e}")
     
     return {
         "message": "Bid placed successfully",
