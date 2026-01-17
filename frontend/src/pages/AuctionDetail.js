@@ -26,6 +26,9 @@ export default function AuctionDetail() {
   const [maxPrice, setMaxPrice] = useState('');
   const [settingAutobidder, setSettingAutobidder] = useState(false);
 
+  // Timer for scheduled auctions
+  const [startTimeLeft, setStartTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+
   useEffect(() => {
     fetchAuction();
     const interval = setInterval(fetchAuction, 3000);
@@ -51,13 +54,35 @@ export default function AuctionDetail() {
       return { hours, minutes, seconds };
     };
 
+    const calculateStartTimeLeft = () => {
+      if (!auction.start_time || auction.status !== 'scheduled') {
+        return { days: 0, hours: 0, minutes: 0, seconds: 0 };
+      }
+      const startTime = new Date(auction.start_time);
+      const now = new Date();
+      const diff = startTime - now;
+
+      if (diff <= 0) {
+        return { days: 0, hours: 0, minutes: 0, seconds: 0 };
+      }
+
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+      return { days, hours, minutes, seconds };
+    };
+
     const timer = setInterval(() => {
       const newTime = calculateTimeLeft();
       setTimeLeft(newTime);
       setIsUrgent(newTime.hours === 0 && newTime.minutes === 0 && newTime.seconds <= 10);
+      setStartTimeLeft(calculateStartTimeLeft());
     }, 1000);
 
     setTimeLeft(calculateTimeLeft());
+    setStartTimeLeft(calculateStartTimeLeft());
 
     return () => clearInterval(timer);
   }, [auction]);
