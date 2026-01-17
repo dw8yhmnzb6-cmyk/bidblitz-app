@@ -1059,6 +1059,9 @@ export default function Admin() {
                                   <Button size="sm" variant="ghost" className="text-[#F59E0B] hover:bg-[#F59E0B]/10" onClick={() => handleEndAuction(auction.id)} title="Beenden"><Square className="w-4 h-4" /></Button>
                                 </>
                               )}
+                              {auction.status === 'ended' && (
+                                <Button size="sm" variant="ghost" className="text-[#10B981] hover:bg-[#10B981]/10" onClick={() => handleRestartAuction(auction.id)} title="Neu starten"><Play className="w-4 h-4" /></Button>
+                              )}
                               <Button size="sm" variant="ghost" className="text-[#EF4444] hover:bg-[#EF4444]/10" onClick={() => handleDeleteAuction(auction.id)}><Trash2 className="w-4 h-4" /></Button>
                             </div>
                           </td>
