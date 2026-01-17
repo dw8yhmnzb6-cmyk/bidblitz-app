@@ -322,21 +322,47 @@ async def create_auction(auction: AuctionCreate, admin: dict = Depends(get_admin
         raise HTTPException(status_code=404, detail="Product not found")
     
     auction_id = str(uuid.uuid4())
-    end_time = datetime.now(timezone.utc) + timedelta(seconds=auction.duration_seconds)
+    now = datetime.now(timezone.utc)
+    
+    # Determine start_time and end_time
+    if auction.start_time and auction.end_time:
+        # Scheduled auction with explicit start and end times
+        start_time = datetime.fromisoformat(auction.start_time.replace('Z', '+00:00'))
+        end_time = datetime.fromisoformat(auction.end_time.replace('Z', '+00:00'))
+        # Status is 'scheduled' if start_time is in the future, otherwise 'active'
+        status = "scheduled" if start_time > now else "active"
+    elif auction.start_time:
+        # Scheduled start with duration
+        start_time = datetime.fromisoformat(auction.start_time.replace('Z', '+00:00'))
+        duration = auction.duration_seconds or 300  # Default 5 minutes
+        end_time = start_time + timedelta(seconds=duration)
+        status = "scheduled" if start_time > now else "active"
+    elif auction.end_time:
+        # Immediate start with explicit end time
+        start_time = now
+        end_time = datetime.fromisoformat(auction.end_time.replace('Z', '+00:00'))
+        status = "active"
+    else:
+        # Traditional: immediate start with duration
+        start_time = now
+        duration = auction.duration_seconds or 300
+        end_time = now + timedelta(seconds=duration)
+        status = "active"
     
     doc = {
         "id": auction_id,
         "product_id": auction.product_id,
         "current_price": auction.starting_price,
         "bid_increment": auction.bid_increment,
+        "start_time": start_time.isoformat(),
         "end_time": end_time.isoformat(),
-        "status": "active",
+        "status": status,
         "winner_id": None,
         "winner_name": None,
         "total_bids": 0,
         "last_bidder_id": None,
         "last_bidder_name": None,
-        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_at": now.isoformat(),
         "bid_history": []
     }
     await db.auctions.insert_one(doc)
