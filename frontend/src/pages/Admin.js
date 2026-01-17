@@ -11,17 +11,34 @@ import {
   LayoutDashboard, Package, Gavel, Users, Plus, Trash2, 
   Settings, BarChart3, Zap, RefreshCw, Square, UserPlus,
   Ban, CheckCircle, DollarSign, Globe, Ticket, Edit, X, Save,
-  Bot, Play, Target, Calendar, Clock
+  Bot, Play, Target, Calendar, Clock, TrendingUp, Activity
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { 
+  BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, AreaChart
+} from 'recharts';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+
+// Chart Colors
+const CHART_COLORS = {
+  primary: '#FFD700',
+  secondary: '#FF4D4D',
+  tertiary: '#06B6D4',
+  success: '#10B981',
+  purple: '#7C3AED',
+  orange: '#F59E0B'
+};
+
+const PIE_COLORS = ['#10B981', '#F59E0B', '#94A3B8'];
 
 export default function Admin() {
   const { token, isAdmin } = useAuth();
   const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [stats, setStats] = useState(null);
+  const [detailedStats, setDetailedStats] = useState(null);
   const [products, setProducts] = useState([]);
   const [auctions, setAuctions] = useState([]);
   const [users, setUsers] = useState([]);
