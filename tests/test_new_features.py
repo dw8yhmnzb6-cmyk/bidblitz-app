@@ -166,9 +166,17 @@ class TestUserProfileManagement:
         assert "detail" in data
         print(f"Wrong password handled: {data['detail']}")
     
-    def test_change_password_success(self, customer_token):
+    def test_change_password_success(self):
         """Test successful password change"""
-        headers = {"Authorization": f"Bearer {customer_token}"}
+        # Get fresh token
+        response = requests.post(f"{BASE_URL}/api/auth/login", json={
+            "email": CUSTOMER_EMAIL,
+            "password": CUSTOMER_PASSWORD
+        })
+        if response.status_code != 200:
+            pytest.skip("Customer login failed")
+        token = response.json().get("token")
+        headers = {"Authorization": f"Bearer {token}"}
         
         # Change password
         response = requests.put(f"{BASE_URL}/api/user/change-password", json={
