@@ -20,7 +20,7 @@ CUSTOMER_EMAIL = "kunde@bidblitz.de"
 CUSTOMER_PASSWORD = "Kunde123!"
 
 # Test auction ID - use the newly created active auction
-TEST_AUCTION_ID = "6effc833-994b-4810-9f7d-08d7cd414245"
+TEST_AUCTION_ID = "9c106ba8-bb6f-4df6-bb4c-8c4edafc53ed"
 
 
 class TestWebSocketConnection:
