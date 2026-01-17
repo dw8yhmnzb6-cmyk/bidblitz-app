@@ -2052,6 +2052,128 @@ async def bot_bid_to_price(auction_id: str, target_price: float, admin: dict = D
         "target_reached": current_price >= target_price
     }
 
+# ==================== WEBSOCKET ENDPOINTS ====================
+
+@app.websocket("/ws/auction/{auction_id}")
+async def websocket_auction(websocket: WebSocket, auction_id: str):
+    """WebSocket endpoint for real-time auction updates"""
+    await ws_manager.connect(websocket, auction_id)
+    
+    try:
+        # Send initial auction state
+        auction = await db.auctions.find_one({"id": auction_id}, {"_id": 0})
+        if auction:
+            product = await db.products.find_one({"id": auction.get("product_id")}, {"_id": 0})
+            await websocket.send_json({
+                "type": "auction_state",
+                "data": {
+                    "id": auction["id"],
+                    "current_price": auction.get("current_price", 0),
+                    "end_time": auction.get("end_time"),
+                    "status": auction.get("status"),
+                    "total_bids": auction.get("total_bids", 0),
+                    "last_bidder_name": auction.get("last_bidder_name"),
+                    "product": {
+                        "name": product.get("name") if product else "Unknown",
+                        "image_url": product.get("image_url") if product else ""
+                    },
+                    "viewers": ws_manager.get_connection_count(auction_id)
+                }
+            })
+        
+        # Keep connection alive and listen for messages
+        while True:
+            try:
+                # Wait for messages from client (ping/pong or commands)
+                data = await asyncio.wait_for(websocket.receive_json(), timeout=30.0)
+                
+                if data.get("type") == "ping":
+                    await websocket.send_json({"type": "pong", "timestamp": datetime.now(timezone.utc).isoformat()})
+                
+            except asyncio.TimeoutError:
+                # Send heartbeat
+                try:
+                    await websocket.send_json({"type": "heartbeat", "timestamp": datetime.now(timezone.utc).isoformat()})
+                except:
+                    break
+                    
+    except WebSocketDisconnect:
+        logger.info(f"Client disconnected from auction {auction_id}")
+    except Exception as e:
+        logger.error(f"WebSocket error: {e}")
+    finally:
+        ws_manager.disconnect(websocket)
+
+@app.websocket("/ws/auctions")
+async def websocket_all_auctions(websocket: WebSocket):
+    """WebSocket endpoint for all auction updates (auction list page)"""
+    await ws_manager.connect(websocket, "all_auctions")
+    
+    try:
+        # Send initial state of all active auctions
+        auctions = await db.auctions.find(
+            {"status": {"$in": ["active", "scheduled"]}},
+            {"_id": 0, "bid_history": 0}
+        ).to_list(100)
+        
+        await websocket.send_json({
+            "type": "auctions_state",
+            "data": auctions,
+            "viewers": ws_manager.get_connection_count()
+        })
+        
+        while True:
+            try:
+                data = await asyncio.wait_for(websocket.receive_json(), timeout=30.0)
+                
+                if data.get("type") == "ping":
+                    await websocket.send_json({"type": "pong"})
+                    
+            except asyncio.TimeoutError:
+                try:
+                    await websocket.send_json({"type": "heartbeat"})
+                except:
+                    break
+                    
+    except WebSocketDisconnect:
+        pass
+    except Exception as e:
+        logger.error(f"WebSocket error: {e}")
+    finally:
+        ws_manager.disconnect(websocket)
+
+
+async def broadcast_bid_update(auction_id: str, bid_data: Dict):
+    """Broadcast a bid update to all connected clients"""
+    message = {
+        "type": "bid_update",
+        "auction_id": auction_id,
+        "data": bid_data,
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }
+    
+    # Broadcast to specific auction viewers
+    await ws_manager.broadcast_to_auction(auction_id, message)
+    
+    # Also broadcast to "all auctions" viewers
+    await ws_manager.broadcast_to_auction("all_auctions", message)
+
+
+async def broadcast_auction_ended(auction_id: str, winner_name: str, final_price: float):
+    """Broadcast auction end to all connected clients"""
+    message = {
+        "type": "auction_ended",
+        "auction_id": auction_id,
+        "data": {
+            "winner_name": winner_name,
+            "final_price": final_price
+        },
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await ws_manager.broadcast_to_auction(auction_id, message)
+    await ws_manager.broadcast_to_auction("all_auctions", message)
+
 # Root endpoint
 @api_router.get("/")
 async def root():
