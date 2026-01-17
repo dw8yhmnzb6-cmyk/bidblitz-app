@@ -106,6 +106,8 @@ function AppContent() {
       
       <Footer />
       
+      <CookieConsent />
+      
       <Toaster 
         position="top-right"
         toastOptions={{
