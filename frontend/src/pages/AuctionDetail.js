@@ -194,6 +194,10 @@ export default function AuctionDetail() {
                 <div className="absolute top-4 right-4 px-4 py-2 rounded-full bg-[#EF4444] text-white font-bold">
                   {t('auctions.ended')}
                 </div>
+              ) : isScheduled ? (
+                <div className="absolute top-4 right-4 px-4 py-2 rounded-full bg-[#F59E0B] text-white font-bold">
+                  Geplant
+                </div>
               ) : (
                 <div className="absolute top-4 right-4 px-4 py-2 rounded-full bg-[#10B981] text-white font-bold animate-pulse">
                   ● {t('auctions.live')}
