@@ -158,15 +158,18 @@ Penny-Auktion-Website ähnlich dealdash.com mit Kunden-App und Admin-Panel.
 - [x] Admin Zahlungsübersicht & Logs
 - [x] Cookie-Consent
 - [x] Design-Anpassung
+- [x] **Admin Dashboard Charts (17.01.2026)** - Recharts: Umsatz, Gebote, Nutzer, Auktionsstatus, Top-Produkte
+- [x] **Sicherheitsfix: API-Key in .env** (17.01.2026)
+- [x] **Datenpersistenz: In-Memory → MongoDB** (17.01.2026)
 
 ### P1 (High Priority)
-- [ ] E-Mail-Benachrichtigungen (Gewinner, Passwort-Reset)
+- [x] E-Mail-Benachrichtigungen (Gewinner, Passwort-Reset) - Resend Integration
 - [ ] WebSockets für Echtzeit-Updates
 - [ ] "Sofort Kaufen" Feature
 - [ ] Gebotsverlauf auf Auktionsseite
 
 ### P2 (Medium Priority)
-- [ ] Admin-Statistiken & Berichte (Charts)
+- [x] Admin-Statistiken & Berichte (Charts) ✅
 - [ ] Kategorien-Filter auf Auktionsseite
 - [ ] Gewinner-Galerie (Social Proof)
 - [ ] Referral-System
@@ -186,15 +189,18 @@ Penny-Auktion-Website ähnlich dealdash.com mit Kunden-App und Admin-Panel.
 
 ## Test Reports
 - `/app/test_reports/iteration_1.json` - Neue Features Tests (22 bestanden)
+- `/app/test_reports/iteration_2.json` - Admin Dashboard Charts Tests (11 bestanden)
 - `/app/test_reports/pytest/pytest_results.xml` - Auktions-Scheduling Tests
 - `/app/tests/test_new_features.py` - Test-Suite für neue Features
 - `/app/tests/test_auction_scheduling.py` - Test-Suite für Scheduling
+- `/app/tests/test_admin_dashboard_charts.py` - Test-Suite für Admin Charts
 
 ---
 
 ## Mocked APIs
 - **E-Mail-Versand**: Passwort-Reset-Code wird in API-Response (demo_code) zurückgegeben
 - **Stripe**: Test-Key vorhanden, Platzhalter-Endpoints
+- **Admin Payments/Logs**: Mock-Daten für Demo
 
 ---
 
