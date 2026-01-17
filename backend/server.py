@@ -113,6 +113,27 @@ class CheckoutRequest(BaseModel):
     package_id: str
     origin_url: str
 
+# Password Reset Models
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+class VerifyResetCodeRequest(BaseModel):
+    email: EmailStr
+    code: str
+
+class ResetPasswordRequest(BaseModel):
+    email: EmailStr
+    code: str
+    new_password: str
+
+class UpdateProfileRequest(BaseModel):
+    name: Optional[str] = None
+    email: Optional[EmailStr] = None
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+
 # ==================== NEW MODELS ====================
 
 class VoucherCreate(BaseModel):
