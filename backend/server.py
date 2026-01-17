@@ -79,7 +79,9 @@ class AuctionCreate(BaseModel):
     product_id: str
     starting_price: float
     bid_increment: float
-    duration_seconds: int
+    duration_seconds: Optional[int] = None  # Optional if start_time and end_time are provided
+    start_time: Optional[str] = None  # ISO datetime string for scheduled start
+    end_time: Optional[str] = None  # ISO datetime string for scheduled end
 
 class AuctionResponse(BaseModel):
     id: str
@@ -87,6 +89,7 @@ class AuctionResponse(BaseModel):
     product: Optional[Dict[str, Any]] = None
     current_price: float
     bid_increment: float
+    start_time: Optional[str] = None
     end_time: str
     status: str
     winner_id: Optional[str] = None
@@ -135,6 +138,8 @@ class ProductUpdate(BaseModel):
 class AuctionUpdate(BaseModel):
     duration_seconds: Optional[int] = None  # Extend auction time
     status: Optional[str] = None
+    start_time: Optional[str] = None  # ISO datetime string
+    end_time: Optional[str] = None  # ISO datetime string
 
 class UserUpdate(BaseModel):
     name: Optional[str] = None
