@@ -263,13 +263,43 @@ export default function AuctionDetail() {
             </div>
 
             {/* Timer */}
-            <div className={`glass-card p-6 rounded-xl ${isUrgent && !isEnded ? 'glow-urgency' : ''}`}>
+            <div className={`glass-card p-6 rounded-xl ${isUrgent && !isEnded && !isScheduled ? 'glow-urgency' : ''}`}>
               <div className="flex items-center gap-3 mb-4">
-                <Timer className={`w-6 h-6 ${isUrgent && !isEnded ? 'text-[#EF4444]' : 'text-[#06B6D4]'}`} />
-                <span className="text-[#94A3B8]">Verbleibende Zeit</span>
+                <Timer className={`w-6 h-6 ${isScheduled ? 'text-[#F59E0B]' : isUrgent && !isEnded ? 'text-[#EF4444]' : 'text-[#06B6D4]'}`} />
+                <span className="text-[#94A3B8]">
+                  {isScheduled ? 'Startet in' : 'Verbleibende Zeit'}
+                </span>
               </div>
               {isEnded ? (
                 <p className="text-3xl font-bold text-[#EF4444] font-mono">AUKTION {t('auctions.ended').toUpperCase()}</p>
+              ) : isScheduled ? (
+                <div>
+                  <div className="flex gap-4 mb-4">
+                    {startTimeLeft.days > 0 && (
+                      <div className="text-center">
+                        <div className="text-4xl font-bold font-mono text-[#F59E0B]">
+                          {formatTime(startTimeLeft.days)}
+                        </div>
+                        <div className="text-[#94A3B8] text-sm">Tage</div>
+                      </div>
+                    )}
+                    {[
+                      { value: startTimeLeft.hours, label: 'Std' },
+                      { value: startTimeLeft.minutes, label: 'Min' },
+                      { value: startTimeLeft.seconds, label: 'Sek' }
+                    ].map((item, index) => (
+                      <div key={index} className="text-center">
+                        <div className="text-4xl font-bold font-mono text-[#F59E0B]">
+                          {formatTime(item.value)}
+                        </div>
+                        <div className="text-[#94A3B8] text-sm">{item.label}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-[#94A3B8] text-sm">
+                    Startet am: {auction.start_time && new Date(auction.start_time).toLocaleString('de-DE', {dateStyle: 'medium', timeStyle: 'short'})}
+                  </p>
+                </div>
               ) : (
                 <div className="flex gap-4">
                   {[
