@@ -77,6 +77,27 @@ function AppContent() {
             <Admin />
           </ProtectedRoute>
         } />
+        {/* Public Legal Pages */}
+        <Route path="/impressum" element={<Impressum />} />
+        <Route path="/datenschutz" element={<Datenschutz />} />
+        <Route path="/agb" element={<AGB />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        {/* Protected User Pages */}
+        <Route path="/profile" element={
+          <ProtectedRoute>
+            <Profile />
+          </ProtectedRoute>
+        } />
+        <Route path="/bid-history" element={
+          <ProtectedRoute>
+            <BidHistory />
+          </ProtectedRoute>
+        } />
+        <Route path="/purchases" element={
+          <ProtectedRoute>
+            <Purchases />
+          </ProtectedRoute>
+        } />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       
