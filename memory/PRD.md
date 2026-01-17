@@ -190,10 +190,12 @@ Penny-Auktion-Website ähnlich dealdash.com mit Kunden-App und Admin-Panel.
 ## Test Reports
 - `/app/test_reports/iteration_1.json` - Neue Features Tests (22 bestanden)
 - `/app/test_reports/iteration_2.json` - Admin Dashboard Charts Tests (11 bestanden)
+- `/app/test_reports/iteration_3.json` - WebSocket Real-time Tests (13 bestanden)
 - `/app/test_reports/pytest/pytest_results.xml` - Auktions-Scheduling Tests
 - `/app/tests/test_new_features.py` - Test-Suite für neue Features
 - `/app/tests/test_auction_scheduling.py` - Test-Suite für Scheduling
 - `/app/tests/test_admin_dashboard_charts.py` - Test-Suite für Admin Charts
+- `/app/tests/test_websocket_realtime.py` - Test-Suite für WebSocket-Echtzeit
 
 ---
 
