@@ -3,10 +3,11 @@ import { useParams, Link } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
+import { useAuctionWebSocket } from '../hooks/useAuctionWebSocket';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
-import { Timer, Users, Zap, ArrowLeft, Trophy, Tag, Package, Bot } from 'lucide-react';
+import { Timer, Users, Zap, ArrowLeft, Trophy, Tag, Package, Bot, Wifi, WifiOff, Eye } from 'lucide-react';
 import { toast } from 'sonner';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -29,11 +30,52 @@ export default function AuctionDetail() {
   // Timer for scheduled auctions
   const [startTimeLeft, setStartTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
 
+  // WebSocket connection
+  const { 
+    isConnected, 
+    auctionData, 
+    viewerCount, 
+    bidNotification 
+  } = useAuctionWebSocket(id);
+
+  // Update auction from WebSocket data
+  useEffect(() => {
+    if (auctionData && !Array.isArray(auctionData)) {
+      setAuction(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          current_price: auctionData.current_price ?? prev.current_price,
+          end_time: auctionData.end_time ?? prev.end_time,
+          status: auctionData.status ?? prev.status,
+          total_bids: auctionData.total_bids ?? prev.total_bids,
+          last_bidder_name: auctionData.last_bidder_name ?? prev.last_bidder_name,
+          winner_name: auctionData.winner_name ?? prev.winner_name
+        };
+      });
+    }
+  }, [auctionData]);
+
+  // Show bid notification toast
+  useEffect(() => {
+    if (bidNotification) {
+      toast.info(bidNotification.message, {
+        description: `Neuer Preis: €${bidNotification.price?.toFixed(2)}`,
+        duration: 2000
+      });
+    }
+  }, [bidNotification]);
+
   useEffect(() => {
     fetchAuction();
-    const interval = setInterval(fetchAuction, 3000);
+    // Fallback polling only if WebSocket is not connected
+    const interval = setInterval(() => {
+      if (!isConnected) {
+        fetchAuction();
+      }
+    }, 5000);
     return () => clearInterval(interval);
-  }, [id]);
+  }, [id, isConnected]);
 
   useEffect(() => {
     if (!auction) return;
