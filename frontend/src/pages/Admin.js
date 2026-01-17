@@ -598,39 +598,128 @@ export default function Admin() {
               <h1 className="text-2xl font-bold text-white">{t('admin.manageAuctions')}</h1>
               <div className="glass-card rounded-xl p-6">
                 <h3 className="text-lg font-bold text-white mb-4">{t('admin.newAuction')}</h3>
-                <form onSubmit={handleCreateAuction} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label className="text-white">{t('admin.product')}</Label>
-                    <Select value={newAuction.product_id} onValueChange={(value) => setNewAuction({...newAuction, product_id: value})}>
-                      <SelectTrigger className="bg-[#181824] border-white/10 text-white"><SelectValue placeholder={t('admin.selectProduct')} /></SelectTrigger>
-                      <SelectContent className="bg-[#181824] border-white/10">
-                        {products.map((product) => (<SelectItem key={product.id} value={product.id} className="text-white hover:bg-white/10">{product.name} (€{product.retail_price})</SelectItem>))}
-                      </SelectContent>
-                    </Select>
+                <form onSubmit={handleCreateAuction} className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-white">{t('admin.product')}</Label>
+                      <Select value={newAuction.product_id} onValueChange={(value) => setNewAuction({...newAuction, product_id: value})}>
+                        <SelectTrigger className="bg-[#181824] border-white/10 text-white"><SelectValue placeholder={t('admin.selectProduct')} /></SelectTrigger>
+                        <SelectContent className="bg-[#181824] border-white/10">
+                          {products.map((product) => (<SelectItem key={product.id} value={product.id} className="text-white hover:bg-white/10">{product.name} (€{product.retail_price})</SelectItem>))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-white">{t('admin.startPrice')}</Label>
+                      <Input type="number" step="0.01" value={newAuction.starting_price} onChange={(e) => setNewAuction({...newAuction, starting_price: e.target.value})} required className="bg-[#181824] border-white/10 text-white" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-white">{t('admin.bidIncrement')}</Label>
+                      <Input type="number" step="0.01" value={newAuction.bid_increment} onChange={(e) => setNewAuction({...newAuction, bid_increment: e.target.value})} required className="bg-[#181824] border-white/10 text-white" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-white">Zeitplanung</Label>
+                      <Select value={newAuction.scheduling_mode} onValueChange={(value) => setNewAuction({...newAuction, scheduling_mode: value})}>
+                        <SelectTrigger className="bg-[#181824] border-white/10 text-white"><SelectValue /></SelectTrigger>
+                        <SelectContent className="bg-[#181824] border-white/10">
+                          <SelectItem value="immediate" className="text-white hover:bg-white/10">Sofort starten</SelectItem>
+                          <SelectItem value="scheduled" className="text-white hover:bg-white/10">Geplanter Start</SelectItem>
+                          <SelectItem value="custom" className="text-white hover:bg-white/10">Benutzerdefiniert (Start & Ende)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label className="text-white">{t('admin.startPrice')}</Label>
-                    <Input type="number" step="0.01" value={newAuction.starting_price} onChange={(e) => setNewAuction({...newAuction, starting_price: e.target.value})} required className="bg-[#181824] border-white/10 text-white" />
+
+                  {/* Scheduling Options */}
+                  <div className="p-4 rounded-lg bg-[#181824] space-y-4">
+                    <div className="flex items-center gap-2 text-[#06B6D4]">
+                      <Calendar className="w-5 h-5" />
+                      <span className="font-medium">Zeiteinstellungen</span>
+                    </div>
+
+                    {newAuction.scheduling_mode === 'immediate' && (
+                      <div className="space-y-2">
+                        <Label className="text-white">{t('admin.duration')}</Label>
+                        <Select value={newAuction.duration_seconds} onValueChange={(value) => setNewAuction({...newAuction, duration_seconds: value})}>
+                          <SelectTrigger className="bg-[#0F0F16] border-white/10 text-white"><SelectValue /></SelectTrigger>
+                          <SelectContent className="bg-[#181824] border-white/10">
+                            <SelectItem value="60" className="text-white hover:bg-white/10">1 Minute</SelectItem>
+                            <SelectItem value="300" className="text-white hover:bg-white/10">5 Minuten</SelectItem>
+                            <SelectItem value="600" className="text-white hover:bg-white/10">10 Minuten</SelectItem>
+                            <SelectItem value="1800" className="text-white hover:bg-white/10">30 Minuten</SelectItem>
+                            <SelectItem value="3600" className="text-white hover:bg-white/10">1 Stunde</SelectItem>
+                            <SelectItem value="86400" className="text-white hover:bg-white/10">24 Stunden</SelectItem>
+                            <SelectItem value="604800" className="text-white hover:bg-white/10">7 Tage</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <p className="text-[#94A3B8] text-sm">Die Auktion startet sofort nach dem Erstellen.</p>
+                      </div>
+                    )}
+
+                    {newAuction.scheduling_mode === 'scheduled' && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label className="text-white flex items-center gap-2">
+                            <Clock className="w-4 h-4" /> Startzeit
+                          </Label>
+                          <Input 
+                            type="datetime-local" 
+                            value={newAuction.start_time} 
+                            onChange={(e) => setNewAuction({...newAuction, start_time: e.target.value})} 
+                            required
+                            className="bg-[#0F0F16] border-white/10 text-white" 
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-white">{t('admin.duration')}</Label>
+                          <Select value={newAuction.duration_seconds} onValueChange={(value) => setNewAuction({...newAuction, duration_seconds: value})}>
+                            <SelectTrigger className="bg-[#0F0F16] border-white/10 text-white"><SelectValue /></SelectTrigger>
+                            <SelectContent className="bg-[#181824] border-white/10">
+                              <SelectItem value="60" className="text-white hover:bg-white/10">1 Minute</SelectItem>
+                              <SelectItem value="300" className="text-white hover:bg-white/10">5 Minuten</SelectItem>
+                              <SelectItem value="600" className="text-white hover:bg-white/10">10 Minuten</SelectItem>
+                              <SelectItem value="1800" className="text-white hover:bg-white/10">30 Minuten</SelectItem>
+                              <SelectItem value="3600" className="text-white hover:bg-white/10">1 Stunde</SelectItem>
+                              <SelectItem value="86400" className="text-white hover:bg-white/10">24 Stunden</SelectItem>
+                              <SelectItem value="604800" className="text-white hover:bg-white/10">7 Tage</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <p className="text-[#94A3B8] text-sm md:col-span-2">Die Auktion wird zum angegebenen Zeitpunkt automatisch gestartet.</p>
+                      </div>
+                    )}
+
+                    {newAuction.scheduling_mode === 'custom' && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label className="text-white flex items-center gap-2">
+                            <Clock className="w-4 h-4" /> Startzeit
+                          </Label>
+                          <Input 
+                            type="datetime-local" 
+                            value={newAuction.start_time} 
+                            onChange={(e) => setNewAuction({...newAuction, start_time: e.target.value})} 
+                            className="bg-[#0F0F16] border-white/10 text-white" 
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-white flex items-center gap-2">
+                            <Clock className="w-4 h-4" /> Endzeit
+                          </Label>
+                          <Input 
+                            type="datetime-local" 
+                            value={newAuction.end_time} 
+                            onChange={(e) => setNewAuction({...newAuction, end_time: e.target.value})} 
+                            required
+                            className="bg-[#0F0F16] border-white/10 text-white" 
+                          />
+                        </div>
+                        <p className="text-[#94A3B8] text-sm md:col-span-2">Legen Sie Start- und Endzeit manuell fest. Ohne Startzeit beginnt die Auktion sofort.</p>
+                      </div>
+                    )}
                   </div>
-                  <div className="space-y-2">
-                    <Label className="text-white">{t('admin.bidIncrement')}</Label>
-                    <Input type="number" step="0.01" value={newAuction.bid_increment} onChange={(e) => setNewAuction({...newAuction, bid_increment: e.target.value})} required className="bg-[#181824] border-white/10 text-white" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-white">{t('admin.duration')}</Label>
-                    <Select value={newAuction.duration_seconds} onValueChange={(value) => setNewAuction({...newAuction, duration_seconds: value})}>
-                      <SelectTrigger className="bg-[#181824] border-white/10 text-white"><SelectValue /></SelectTrigger>
-                      <SelectContent className="bg-[#181824] border-white/10">
-                        <SelectItem value="60" className="text-white hover:bg-white/10">1 Minute</SelectItem>
-                        <SelectItem value="300" className="text-white hover:bg-white/10">5 Minuten</SelectItem>
-                        <SelectItem value="600" className="text-white hover:bg-white/10">10 Minuten</SelectItem>
-                        <SelectItem value="1800" className="text-white hover:bg-white/10">30 Minuten</SelectItem>
-                        <SelectItem value="3600" className="text-white hover:bg-white/10">1 Stunde</SelectItem>
-                        <SelectItem value="86400" className="text-white hover:bg-white/10">24 Stunden</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="md:col-span-2">
+
+                  <div>
                     <Button type="submit" className="btn-primary"><Plus className="w-4 h-4 mr-2" />{t('admin.createAuction')}</Button>
                   </div>
                 </form>
