@@ -266,12 +266,12 @@ class MultiBotBidRequest(BaseModel):
     min_delay: Optional[float] = 1.0  # Minimum seconds between bids
     max_delay: Optional[float] = 5.0  # Maximum seconds between bids
 
-# Fixed bid packages (server-side only)
+# Fixed bid packages (server-side only) - €0.50 per bid
 BID_PACKAGES = {
-    "starter": BidPackage(id="starter", name="Starter Pack", bids=50, price=30.00),
+    "starter": BidPackage(id="starter", name="Starter Pack", bids=50, price=25.00),
     "popular": BidPackage(id="popular", name="Popular Pack", bids=150, price=75.00, popular=True),
-    "pro": BidPackage(id="pro", name="Pro Pack", bids=300, price=135.00),
-    "elite": BidPackage(id="elite", name="Elite Pack", bids=500, price=200.00),
+    "pro": BidPackage(id="pro", name="Pro Pack", bids=300, price=150.00),
+    "elite": BidPackage(id="elite", name="Elite Pack", bids=500, price=250.00),
 }
 
 # ==================== AUTH HELPERS ====================
