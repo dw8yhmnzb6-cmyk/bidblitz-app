@@ -1202,9 +1202,14 @@ async def get_detailed_stats(admin: dict = Depends(get_admin_user)):
         "ended": await db.auctions.count_documents({"status": "ended"})
     }
     
-    # Top products (by bids)
+    # Top products (by bids) - need to fetch product names
+    products_map = {}
+    products_list = await db.products.find({}, {"_id": 0, "id": 1, "name": 1}).to_list(1000)
+    for p in products_list:
+        products_map[p["id"]] = p.get("name", "Unknown")
+    
     top_products = sorted(
-        [(a.get("product", {}).get("name", "Unknown"), a.get("total_bids", 0)) for a in auctions],
+        [(products_map.get(a.get("product_id"), "Unknown"), a.get("total_bids", 0)) for a in auctions],
         key=lambda x: x[1],
         reverse=True
     )[:5]
