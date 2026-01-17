@@ -34,11 +34,11 @@ export const Navbar = () => {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2 group" data-testid="logo-link">
-            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#7C3AED] to-[#06B6D4] flex items-center justify-center">
-              <Zap className="w-6 h-6 text-white" />
+            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#FFD700] to-[#FF4D4D] flex items-center justify-center">
+              <Zap className="w-6 h-6 text-black" />
             </div>
-            <span className="text-xl font-bold tracking-tight font-['Outfit']">
-              Bid<span className="text-[#06B6D4]">Blitz</span>
+            <span className="text-xl font-bold tracking-tight font-['Poppins']">
+              Bid<span className="text-[#FFD700]">Blitz</span>
             </span>
           </Link>
 
