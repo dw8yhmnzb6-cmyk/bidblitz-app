@@ -370,7 +370,7 @@ export default function AuctionDetail() {
               )}
 
               {/* Bid Buttons */}
-              {!isEnded && (
+              {!isEnded && !isScheduled && (
                 <div className="space-y-4">
                   <Button
                     onClick={handleBid}
