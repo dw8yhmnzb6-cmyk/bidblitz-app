@@ -94,6 +94,12 @@ export default function Admin() {
         ]);
         setBots(botsRes.data);
         setAuctions(auctionsRes.data);
+      } else if (activeTab === 'payments') {
+        const res = await axios.get(`${API}/admin/payments`, { headers });
+        setPayments(res.data);
+      } else if (activeTab === 'logs') {
+        const res = await axios.get(`${API}/admin/logs`, { headers });
+        setLogs(res.data);
       }
     } catch (error) {
       console.error('Error fetching data:', error);
