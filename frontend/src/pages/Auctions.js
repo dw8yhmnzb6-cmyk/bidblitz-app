@@ -378,11 +378,62 @@ export default function Auctions() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
 
+  // WebSocket connection for all auctions
+  const { 
+    isConnected, 
+    auctionData: wsAuctionData, 
+    viewerCount,
+    bidNotification 
+  } = useAuctionWebSocket(null); // null = subscribe to all auctions
+
+  // Update auctions from WebSocket data
+  useEffect(() => {
+    if (wsAuctionData && Array.isArray(wsAuctionData)) {
+      // Initial state from WebSocket
+      setAuctions(prev => {
+        if (prev.length === 0) return wsAuctionData;
+        // Merge with existing data
+        return prev.map(auction => {
+          const wsAuction = wsAuctionData.find(wa => wa.id === auction.id);
+          return wsAuction ? { ...auction, ...wsAuction } : auction;
+        });
+      });
+    } else if (wsAuctionData && !Array.isArray(wsAuctionData)) {
+      // Bid update for specific auction
+      setAuctions(prev => prev.map(auction => 
+        auction.id === wsAuctionData.auction_id
+          ? {
+              ...auction,
+              current_price: wsAuctionData.current_price ?? auction.current_price,
+              end_time: wsAuctionData.end_time ?? auction.end_time,
+              last_bidder_name: wsAuctionData.last_bidder_name ?? auction.last_bidder_name,
+              total_bids: wsAuctionData.total_bids ?? auction.total_bids
+            }
+          : auction
+      ));
+    }
+  }, [wsAuctionData]);
+
+  // Show bid notification toast
+  useEffect(() => {
+    if (bidNotification) {
+      toast.info(bidNotification.message, {
+        description: `Neuer Preis: €${bidNotification.price?.toFixed(2)}`,
+        duration: 2000
+      });
+    }
+  }, [bidNotification]);
+
   useEffect(() => {
     fetchAuctions();
-    const interval = setInterval(fetchAuctions, 5000);
+    // Fallback polling only if WebSocket is not connected
+    const interval = setInterval(() => {
+      if (!isConnected) {
+        fetchAuctions();
+      }
+    }, 10000); // Slower polling as WebSocket is primary
     return () => clearInterval(interval);
-  }, []);
+  }, [isConnected]);
 
   const fetchAuctions = async () => {
     try {
