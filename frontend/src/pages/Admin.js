@@ -80,12 +80,14 @@ export default function Admin() {
       const headers = { Authorization: `Bearer ${token}` };
       
       if (activeTab === 'dashboard') {
-        const [statsRes, productsRes, auctionsRes] = await Promise.all([
+        const [statsRes, detailedRes, productsRes, auctionsRes] = await Promise.all([
           axios.get(`${API}/admin/stats`, { headers }),
+          axios.get(`${API}/admin/stats/detailed`, { headers }),
           axios.get(`${API}/products`),
           axios.get(`${API}/auctions`)
         ]);
         setStats(statsRes.data);
+        setDetailedStats(detailedRes.data);
         setProducts(productsRes.data);
         setAuctions(auctionsRes.data);
       } else if (activeTab === 'products') {
