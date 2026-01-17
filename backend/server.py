@@ -260,6 +260,12 @@ class BotBidRequest(BaseModel):
     num_bids: Optional[int] = None  # Number of bids to place
     delay_seconds: Optional[int] = 2  # Delay between bids
 
+class MultiBotBidRequest(BaseModel):
+    auction_id: str
+    target_price: float  # Price up to which bots will bid
+    min_delay: Optional[float] = 1.0  # Minimum seconds between bids
+    max_delay: Optional[float] = 5.0  # Maximum seconds between bids
+
 # Fixed bid packages (server-side only)
 BID_PACKAGES = {
     "starter": BidPackage(id="starter", name="Starter Pack", bids=50, price=30.00),
