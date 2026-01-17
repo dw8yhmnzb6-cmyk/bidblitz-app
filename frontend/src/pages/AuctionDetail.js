@@ -530,6 +530,31 @@ export default function AuctionDetail() {
           </div>
         </div>
       </div>
+
+      {/* Mobile Sticky Bid Bar */}
+      {!isEnded && !isScheduled && (
+        <div className="fixed bottom-0 left-0 right-0 lg:hidden glass border-t border-white/10 p-4 z-40">
+          <div className="flex items-center justify-between gap-4 max-w-6xl mx-auto">
+            <div className="flex-1">
+              <p className="text-[#94A3B8] text-xs">Aktueller Preis</p>
+              <p className="text-xl font-bold text-[#06B6D4] font-mono">€{auction.current_price?.toFixed(2)}</p>
+            </div>
+            <Button
+              onClick={handleBid}
+              disabled={!isAuthenticated || bidding}
+              className="btn-bid px-8 py-3 text-base h-auto"
+              data-testid="mobile-bid-btn"
+            >
+              {bidding ? '...' : (
+                <>
+                  <Zap className="w-5 h-5 mr-2" />
+                  Bieten
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
