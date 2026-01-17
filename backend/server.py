@@ -381,10 +381,10 @@ async def reset_password(request: ResetPasswordRequest):
     # Hash new password
     hashed = bcrypt.hashpw(request.new_password.encode('utf-8'), bcrypt.gensalt())
     
-    # Update user password
+    # Update user password (use 'password' field for consistency with login)
     result = await db.users.update_one(
         {"email": request.email},
-        {"$set": {"hashed_password": hashed.decode('utf-8')}}
+        {"$set": {"password": hashed.decode('utf-8')}}
     )
     
     if result.modified_count == 0:
