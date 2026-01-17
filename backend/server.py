@@ -480,9 +480,6 @@ async def get_me(user: dict = Depends(get_current_user)):
 
 # ==================== PASSWORD RESET ENDPOINTS ====================
 
-# In-memory store for reset codes (in production, use Redis or database)
-password_reset_codes = {}
-
 @api_router.post("/auth/forgot-password")
 async def forgot_password(request: ForgotPasswordRequest):
     user = await db.users.find_one({"email": request.email}, {"_id": 0})
@@ -495,12 +492,6 @@ async def forgot_password(request: ForgotPasswordRequest):
     import random
     import string
     code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
-    
-    # Store code with expiration (15 minutes)
-    password_reset_codes[request.email] = {
-        "code": code,
-        "expires": datetime.now(timezone.utc) + timedelta(minutes=15)
-    }
     
     logger.info(f"Password reset code for {request.email}: {code}")
     
