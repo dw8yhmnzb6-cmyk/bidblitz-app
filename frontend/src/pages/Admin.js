@@ -913,20 +913,6 @@ export default function Admin() {
                         </div>
                       </div>
                     )}
-                            <SelectContent className="bg-[#181824] border-white/10">
-                              <SelectItem value="60" className="text-white hover:bg-white/10">1 Minute</SelectItem>
-                              <SelectItem value="300" className="text-white hover:bg-white/10">5 Minuten</SelectItem>
-                              <SelectItem value="600" className="text-white hover:bg-white/10">10 Minuten</SelectItem>
-                              <SelectItem value="1800" className="text-white hover:bg-white/10">30 Minuten</SelectItem>
-                              <SelectItem value="3600" className="text-white hover:bg-white/10">1 Stunde</SelectItem>
-                              <SelectItem value="86400" className="text-white hover:bg-white/10">24 Stunden</SelectItem>
-                              <SelectItem value="604800" className="text-white hover:bg-white/10">7 Tage</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <p className="text-[#94A3B8] text-sm md:col-span-2">Die Auktion wird zum angegebenen Zeitpunkt automatisch gestartet.</p>
-                      </div>
-                    )}
 
                     {newAuction.scheduling_mode === 'custom' && (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -956,6 +942,36 @@ export default function Admin() {
                         <p className="text-[#94A3B8] text-sm md:col-span-2">Legen Sie Start- und Endzeit manuell fest. Ohne Startzeit beginnt die Auktion sofort.</p>
                       </div>
                     )}
+                  </div>
+
+                  {/* Bot Settings */}
+                  <div className="p-4 rounded-lg bg-[#181824] space-y-4">
+                    <div className="flex items-center gap-2 text-[#FFD700]">
+                      <Bot className="w-5 h-5" />
+                      <span className="font-medium">Bot-Einstellungen</span>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label className="text-white">Bot-Mindestpreis (€)</Label>
+                        <Input 
+                          type="number" 
+                          step="0.10" 
+                          min="0"
+                          placeholder="z.B. 2.50"
+                          value={newAuction.bot_target_price} 
+                          onChange={(e) => setNewAuction({...newAuction, bot_target_price: e.target.value})} 
+                          className="bg-[#0F0F16] border-white/10 text-white" 
+                        />
+                        <p className="text-[#94A3B8] text-sm">Bots bieten automatisch bis zu diesem Preis. Leer lassen = keine Bots.</p>
+                      </div>
+                      <div className="flex items-center gap-3 p-4 rounded-lg bg-[#0F0F16]">
+                        <Zap className="w-8 h-8 text-[#FFD700]" />
+                        <div>
+                          <p className="text-white font-medium">Gebots-Inkrement: €{newAuction.bid_increment}</p>
+                          <p className="text-[#94A3B8] text-sm">Kunden zahlen €0.50 pro Gebot</p>
+                        </div>
+                      </div>
+                    </div>
                   </div>
 
                   <div>
