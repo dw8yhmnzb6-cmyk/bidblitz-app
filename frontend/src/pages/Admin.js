@@ -27,6 +27,8 @@ export default function Admin() {
   const [users, setUsers] = useState([]);
   const [vouchers, setVouchers] = useState([]);
   const [bots, setBots] = useState([]);
+  const [payments, setPayments] = useState([]);
+  const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Edit states
