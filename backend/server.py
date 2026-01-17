@@ -210,6 +210,173 @@ def create_token(user_id: str, is_admin: bool = False) -> str:
     }
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
+# ==================== EMAIL HELPERS ====================
+
+async def send_email(to_email: str, subject: str, html_content: str) -> dict:
+    """Send email using Resend API. Returns success status."""
+    if not RESEND_API_KEY:
+        logger.warning(f"[EMAIL MOCK] No RESEND_API_KEY - Would send to {to_email}: {subject}")
+        return {"status": "mocked", "message": f"Email would be sent to {to_email}"}
+    
+    try:
+        params = {
+            "from": SENDER_EMAIL,
+            "to": [to_email],
+            "subject": subject,
+            "html": html_content
+        }
+        # Run sync SDK in thread to keep FastAPI non-blocking
+        result = await asyncio.to_thread(resend.Emails.send, params)
+        logger.info(f"[EMAIL SENT] To: {to_email}, Subject: {subject}")
+        return {"status": "sent", "email_id": result.get("id")}
+    except Exception as e:
+        logger.error(f"[EMAIL ERROR] Failed to send to {to_email}: {str(e)}")
+        return {"status": "error", "message": str(e)}
+
+async def send_winner_notification(winner_email: str, winner_name: str, product_name: str, 
+                                   final_price: float, retail_price: float, auction_id: str):
+    """Send winner notification email with auction details."""
+    savings = ((retail_price - final_price) / retail_price * 100) if retail_price > 0 else 0
+    
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="margin:0; padding:0; font-family:Arial,sans-serif; background-color:#f4f4f4;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px; margin:0 auto; background:#ffffff;">
+            <tr>
+                <td style="background:linear-gradient(135deg,#FFD700,#FF4D4D); padding:30px; text-align:center;">
+                    <h1 style="color:#111; margin:0; font-size:28px;">🎉 Herzlichen Glückwunsch!</h1>
+                </td>
+            </tr>
+            <tr>
+                <td style="padding:30px;">
+                    <p style="font-size:18px; color:#333; margin-bottom:20px;">
+                        Hallo <strong>{winner_name}</strong>,
+                    </p>
+                    <p style="font-size:16px; color:#555; line-height:1.6;">
+                        Sie haben die Auktion gewonnen! 🏆
+                    </p>
+                    
+                    <table width="100%" style="background:#f9f9f9; border-radius:10px; padding:20px; margin:20px 0;">
+                        <tr>
+                            <td style="padding:10px;">
+                                <p style="margin:0; font-size:14px; color:#888;">Produkt:</p>
+                                <p style="margin:5px 0 0; font-size:18px; color:#333; font-weight:bold;">{product_name}</p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding:10px;">
+                                <p style="margin:0; font-size:14px; color:#888;">Ihr Gewinnpreis:</p>
+                                <p style="margin:5px 0 0; font-size:28px; color:#10B981; font-weight:bold;">€{final_price:.2f}</p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding:10px;">
+                                <p style="margin:0; font-size:14px; color:#888;">UVP:</p>
+                                <p style="margin:5px 0 0; font-size:16px; color:#999; text-decoration:line-through;">€{retail_price:.2f}</p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding:10px;">
+                                <p style="margin:0; font-size:14px; color:#888;">Sie sparen:</p>
+                                <p style="margin:5px 0 0; font-size:18px; color:#FF4D4D; font-weight:bold;">{savings:.0f}%</p>
+                            </td>
+                        </tr>
+                    </table>
+                    
+                    <p style="font-size:16px; color:#555; line-height:1.6;">
+                        <strong>Nächste Schritte:</strong>
+                    </p>
+                    <ol style="color:#555; line-height:1.8;">
+                        <li>Melden Sie sich in Ihrem Dashboard an</li>
+                        <li>Gehen Sie zu "Gewonnene Auktionen"</li>
+                        <li>Bezahlen Sie den Gewinnpreis innerhalb von 7 Tagen</li>
+                        <li>Wir versenden Ihr Produkt nach Zahlungseingang</li>
+                    </ol>
+                    
+                    <table width="100%" style="margin-top:30px;">
+                        <tr>
+                            <td style="text-align:center;">
+                                <a href="#" style="display:inline-block; background:linear-gradient(135deg,#FFD700,#FF4D4D); color:#111; text-decoration:none; padding:15px 40px; border-radius:30px; font-weight:bold; font-size:16px;">
+                                    Zum Dashboard →
+                                </a>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+            <tr>
+                <td style="background:#111; padding:20px; text-align:center;">
+                    <p style="color:#888; font-size:12px; margin:0;">
+                        © 2026 BidBlitz GmbH • Alle Rechte vorbehalten
+                    </p>
+                    <p style="color:#666; font-size:11px; margin:10px 0 0;">
+                        Auktions-ID: {auction_id}
+                    </p>
+                </td>
+            </tr>
+        </table>
+    </body>
+    </html>
+    """
+    
+    return await send_email(
+        to_email=winner_email,
+        subject=f"🎉 Gewonnen: {product_name} für nur €{final_price:.2f}!",
+        html_content=html_content
+    )
+
+async def send_password_reset_email(to_email: str, reset_code: str, user_name: str):
+    """Send password reset code email."""
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+    </head>
+    <body style="margin:0; padding:0; font-family:Arial,sans-serif; background-color:#f4f4f4;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px; margin:0 auto; background:#ffffff;">
+            <tr>
+                <td style="background:#111; padding:30px; text-align:center;">
+                    <h1 style="color:#FFD700; margin:0; font-size:24px;">Passwort zurücksetzen</h1>
+                </td>
+            </tr>
+            <tr>
+                <td style="padding:30px;">
+                    <p style="font-size:16px; color:#333;">
+                        Hallo {user_name},
+                    </p>
+                    <p style="font-size:14px; color:#555; line-height:1.6;">
+                        Sie haben angefordert, Ihr Passwort zurückzusetzen. Verwenden Sie den folgenden Code:
+                    </p>
+                    <div style="background:#f5f5f5; padding:20px; text-align:center; margin:20px 0; border-radius:10px;">
+                        <span style="font-size:32px; font-weight:bold; letter-spacing:8px; color:#111; font-family:monospace;">
+                            {reset_code}
+                        </span>
+                    </div>
+                    <p style="font-size:14px; color:#888;">
+                        Dieser Code ist 15 Minuten gültig.
+                    </p>
+                    <p style="font-size:12px; color:#999; margin-top:30px;">
+                        Falls Sie diese Anfrage nicht gestellt haben, können Sie diese E-Mail ignorieren.
+                    </p>
+                </td>
+            </tr>
+        </table>
+    </body>
+    </html>
+    """
+    
+    return await send_email(
+        to_email=to_email,
+        subject=f"Ihr Passwort-Reset-Code: {reset_code}",
+        html_content=html_content
+    )
+
 async def get_current_user(authorization: Optional[str] = Header(None)):
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Not authenticated")
