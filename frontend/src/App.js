@@ -116,6 +116,11 @@ function AppContent() {
               <Wishlist />
             </ProtectedRoute>
           } />
+          <Route path="/invoices" element={
+            <ProtectedRoute>
+              <Invoices />
+            </ProtectedRoute>
+          } />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
