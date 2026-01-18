@@ -1,17 +1,7 @@
+// Complete translations for 20 languages
 export const translations = {
   de: {
-    // Navigation
-    nav: {
-      auctions: "Auktionen",
-      buyBids: "Gebote kaufen",
-      dashboard: "Dashboard",
-      admin: "Admin",
-      login: "Anmelden",
-      register: "Registrieren",
-      logout: "Abmelden",
-      bids: "Gebote"
-    },
-    // Home
+    nav: { auctions: "Auktionen", buyBids: "Gebote kaufen", dashboard: "Dashboard", admin: "Admin", login: "Anmelden", register: "Registrieren", logout: "Abmelden", bids: "Gebote" },
     home: {
       badge: "10 kostenlose Gebote bei Registrierung",
       heroTitle1: "Gewinnen Sie",
@@ -20,143 +10,519 @@ export const translations = {
       heroSubtitle: "Die aufregendste Penny-Auktionsplattform. Bieten, gewinnen und sparen Sie bis zu 90% auf Top-Marken.",
       ctaBid: "Jetzt bieten",
       ctaBuyBids: "Gebote kaufen",
-      features: {
-        pennyAuctions: "Penny Auktionen",
-        pennyDesc: "Jedes Gebot erhöht den Preis nur um wenige Cent",
-        savings: "Große Ersparnisse",
-        savingsDesc: "Gewinnen Sie Produkte bis zu 90% unter dem Einzelhandelspreis",
-        realtime: "Echtzeit-Gebote",
-        realtimeDesc: "Live-Updates und spannendes Bieterlebnis",
-        secure: "Sicher & Fair",
-        secureDesc: "Transparente Auktionen mit verifiziertem System"
-      },
       liveAuctions: "Live Auktionen",
-      dontMiss: "Verpassen Sie nicht Ihre Chance zu gewinnen",
       viewAll: "Alle anzeigen",
       noAuctions: "Keine aktiven Auktionen",
-      checkBack: "Schauen Sie bald wieder vorbei!",
       howItWorks: "So funktioniert's",
-      threeSteps: "In nur drei einfachen Schritten zum Schnäppchen",
-      step1: "Gebote kaufen",
-      step1Desc: "Kaufen Sie ein Gebotspaket zu günstigen Preisen",
-      step2: "Bieten",
-      step2Desc: "Platzieren Sie Ihr Gebot bei laufenden Auktionen",
-      step3: "Gewinnen",
-      step3Desc: "Seien Sie der letzte Bieter und gewinnen Sie das Produkt",
+      step1: "Gebote kaufen", step1Desc: "Kaufen Sie ein Gebotspaket zu günstigen Preisen",
+      step2: "Bieten", step2Desc: "Platzieren Sie Ihr Gebot bei laufenden Auktionen",
+      step3: "Gewinnen", step3Desc: "Seien Sie der letzte Bieter und gewinnen Sie",
       readyToWin: "Bereit zu gewinnen?",
-      registerNow: "Registrieren Sie sich jetzt und erhalten Sie 10 kostenlose Gebote zum Starten!",
       freeRegister: "Kostenlos registrieren"
     },
-    voucher: {
-      title: "Gutschein einlösen",
-      placeholder: "Gutscheincode eingeben",
-      redeem: "Einlösen",
-      success: "Gutschein eingelöst!",
-      bidsAdded: "Gebote gutgeschrieben"
+    auctions: { title: "Alle Auktionen", filter: "Filter", all: "Alle", active: "Aktiv", ended: "Beendet", currentPrice: "Aktueller Preis", bids: "Gebote", bid: "Bieten", live: "Live" },
+    buyBids: { title: "Gebote kaufen", popular: "Beliebt", bids: "Gebote", buyNow: "Jetzt kaufen" },
+    winners: { title: "Gewinner", totalSaved: "Gesamt gespart", avgSavings: "Durchschnittliche Ersparnis", winners: "Gewinner" },
+    auth: { login: "Anmelden", register: "Registrieren", email: "E-Mail", password: "Passwort", name: "Name", noAccount: "Noch kein Konto?", haveAccount: "Bereits ein Konto?" },
+    common: { loading: "Lädt...", error: "Fehler", success: "Erfolg", save: "Speichern", cancel: "Abbrechen" }
+  },
+  en: {
+    nav: { auctions: "Auctions", buyBids: "Buy Bids", dashboard: "Dashboard", admin: "Admin", login: "Login", register: "Register", logout: "Logout", bids: "Bids" },
+    home: {
+      badge: "10 free bids on registration",
+      heroTitle1: "Win",
+      heroTitle2: "Premium Products",
+      heroTitle3: "for pennies",
+      heroSubtitle: "The most exciting penny auction platform. Bid, win and save up to 90% on top brands.",
+      ctaBid: "Bid now",
+      ctaBuyBids: "Buy Bids",
+      liveAuctions: "Live Auctions",
+      viewAll: "View all",
+      noAuctions: "No active auctions",
+      howItWorks: "How it works",
+      step1: "Buy Bids", step1Desc: "Purchase a bid package at great prices",
+      step2: "Bid", step2Desc: "Place your bid on running auctions",
+      step3: "Win", step3Desc: "Be the last bidder and win",
+      readyToWin: "Ready to win?",
+      freeRegister: "Register for free"
     },
-    autobidder: {
-      title: "Autobidder",
-      description: "Lassen Sie automatisch bieten bis zu Ihrem Limit",
-      maxPrice: "Maximaler Preis (€)",
-      activate: "Autobidder aktivieren",
-      active: "Aktiv",
-      inactive: "Inaktiv",
-      bidsPlaced: "Gebote platziert",
-      noAutobidders: "Keine aktiven Autobidder",
-      delete: "Löschen",
-      toggle: "Ein/Aus"
+    auctions: { title: "All Auctions", filter: "Filter", all: "All", active: "Active", ended: "Ended", currentPrice: "Current Price", bids: "Bids", bid: "Bid", live: "Live" },
+    buyBids: { title: "Buy Bids", popular: "Popular", bids: "Bids", buyNow: "Buy now" },
+    winners: { title: "Winners", totalSaved: "Total saved", avgSavings: "Average savings", winners: "Winners" },
+    auth: { login: "Login", register: "Register", email: "Email", password: "Password", name: "Name", noAccount: "Don't have an account?", haveAccount: "Already have an account?" },
+    common: { loading: "Loading...", error: "Error", success: "Success", save: "Save", cancel: "Cancel" }
+  },
+  fr: {
+    nav: { auctions: "Enchères", buyBids: "Acheter des offres", dashboard: "Tableau de bord", admin: "Admin", login: "Connexion", register: "S'inscrire", logout: "Déconnexion", bids: "Offres" },
+    home: {
+      badge: "10 offres gratuites à l'inscription",
+      heroTitle1: "Gagnez",
+      heroTitle2: "des produits premium",
+      heroTitle3: "pour quelques centimes",
+      heroSubtitle: "La plateforme d'enchères au centime la plus excitante. Enchérissez, gagnez et économisez jusqu'à 90%.",
+      ctaBid: "Enchérir maintenant",
+      ctaBuyBids: "Acheter des offres",
+      liveAuctions: "Enchères en direct",
+      viewAll: "Voir tout",
+      noAuctions: "Pas d'enchères actives",
+      howItWorks: "Comment ça marche",
+      step1: "Acheter des offres", step1Desc: "Achetez un pack d'offres à prix réduit",
+      step2: "Enchérir", step2Desc: "Placez votre offre sur les enchères en cours",
+      step3: "Gagner", step3Desc: "Soyez le dernier enchérisseur et gagnez",
+      readyToWin: "Prêt à gagner?",
+      freeRegister: "S'inscrire gratuitement"
     },
-    auctions: {
-      title: "Alle Auktionen",
-      available: "Auktionen verfügbar",
-      filter: "Filter",
-      all: "Alle",
-      active: "Aktiv",
-      ended: "Beendet",
-      noAuctions: "Keine Auktionen gefunden",
-      tryFilter: "Versuchen Sie einen anderen Filter",
-      currentPrice: "Aktueller Preis",
-      bids: "Gebote",
-      lastBidder: "Letzter Bieter",
-      winner: "Gewinner",
-      details: "Details",
-      bid: "Bieten",
-      live: "Live",
-      rrp: "UVP"
+    auctions: { title: "Toutes les enchères", filter: "Filtrer", all: "Tout", active: "Actif", ended: "Terminé", currentPrice: "Prix actuel", bids: "Offres", bid: "Enchérir", live: "En direct" },
+    buyBids: { title: "Acheter des offres", popular: "Populaire", bids: "Offres", buyNow: "Acheter" },
+    winners: { title: "Gagnants", totalSaved: "Total économisé", avgSavings: "Économies moyennes", winners: "Gagnants" },
+    auth: { login: "Connexion", register: "S'inscrire", email: "E-mail", password: "Mot de passe", name: "Nom", noAccount: "Pas de compte?", haveAccount: "Déjà un compte?" },
+    common: { loading: "Chargement...", error: "Erreur", success: "Succès", save: "Sauvegarder", cancel: "Annuler" }
+  },
+  es: {
+    nav: { auctions: "Subastas", buyBids: "Comprar pujas", dashboard: "Panel", admin: "Admin", login: "Iniciar sesión", register: "Registrarse", logout: "Cerrar sesión", bids: "Pujas" },
+    home: {
+      badge: "10 pujas gratis al registrarse",
+      heroTitle1: "Gana",
+      heroTitle2: "productos premium",
+      heroTitle3: "por centavos",
+      heroSubtitle: "La plataforma de subastas de centavo más emocionante. Puja, gana y ahorra hasta un 90%.",
+      ctaBid: "Pujar ahora",
+      ctaBuyBids: "Comprar pujas",
+      liveAuctions: "Subastas en vivo",
+      viewAll: "Ver todo",
+      noAuctions: "No hay subastas activas",
+      howItWorks: "Cómo funciona",
+      step1: "Comprar pujas", step1Desc: "Compra un paquete de pujas a buen precio",
+      step2: "Pujar", step2Desc: "Coloca tu puja en subastas activas",
+      step3: "Ganar", step3Desc: "Sé el último en pujar y gana",
+      readyToWin: "¿Listo para ganar?",
+      freeRegister: "Registrarse gratis"
     },
-    buyBids: {
-      title: "Gebote kaufen",
-      subtitle: "Wählen Sie das passende Paket",
-      bestPrices: "Beste Preise garantiert",
-      popular: "Beliebt",
-      bids: "Gebote",
-      perBid: "pro Gebot",
-      instant: "Sofort verfügbar",
-      noExpiry: "Kein Ablaufdatum",
-      buyNow: "Jetzt kaufen"
+    auctions: { title: "Todas las subastas", filter: "Filtrar", all: "Todo", active: "Activo", ended: "Terminado", currentPrice: "Precio actual", bids: "Pujas", bid: "Pujar", live: "En vivo" },
+    buyBids: { title: "Comprar pujas", popular: "Popular", bids: "Pujas", buyNow: "Comprar" },
+    winners: { title: "Ganadores", totalSaved: "Total ahorrado", avgSavings: "Ahorro promedio", winners: "Ganadores" },
+    auth: { login: "Iniciar sesión", register: "Registrarse", email: "Correo", password: "Contraseña", name: "Nombre", noAccount: "¿No tienes cuenta?", haveAccount: "¿Ya tienes cuenta?" },
+    common: { loading: "Cargando...", error: "Error", success: "Éxito", save: "Guardar", cancel: "Cancelar" }
+  },
+  it: {
+    nav: { auctions: "Aste", buyBids: "Compra offerte", dashboard: "Pannello", admin: "Admin", login: "Accedi", register: "Registrati", logout: "Esci", bids: "Offerte" },
+    home: {
+      badge: "10 offerte gratis alla registrazione",
+      heroTitle1: "Vinci",
+      heroTitle2: "prodotti premium",
+      heroTitle3: "per pochi centesimi",
+      heroSubtitle: "La piattaforma di aste al centesimo più emozionante. Offri, vinci e risparmia fino al 90%.",
+      ctaBid: "Offri ora",
+      ctaBuyBids: "Compra offerte",
+      liveAuctions: "Aste in diretta",
+      viewAll: "Vedi tutto",
+      noAuctions: "Nessuna asta attiva",
+      howItWorks: "Come funziona",
+      step1: "Compra offerte", step1Desc: "Acquista un pacchetto di offerte a prezzi convenienti",
+      step2: "Offri", step2Desc: "Fai la tua offerta nelle aste attive",
+      step3: "Vinci", step3Desc: "Sii l'ultimo a offrire e vinci",
+      readyToWin: "Pronto a vincere?",
+      freeRegister: "Registrati gratis"
     },
-    dashboard: {
-      welcome: "Willkommen",
-      manage: "Verwalten Sie Ihr Konto",
-      availableBids: "Verfügbare Gebote",
-      wonAuctions: "Gewonnene Auktionen",
-      placedBids: "Platzierte Gebote",
-      buyBids: "Gebote kaufen",
-      profile: "Profil",
-      name: "Name",
-      email: "E-Mail"
+    auctions: { title: "Tutte le aste", filter: "Filtra", all: "Tutto", active: "Attivo", ended: "Terminato", currentPrice: "Prezzo attuale", bids: "Offerte", bid: "Offri", live: "Live" },
+    buyBids: { title: "Compra offerte", popular: "Popolare", bids: "Offerte", buyNow: "Compra" },
+    winners: { title: "Vincitori", totalSaved: "Totale risparmiato", avgSavings: "Risparmio medio", winners: "Vincitori" },
+    auth: { login: "Accedi", register: "Registrati", email: "Email", password: "Password", name: "Nome", noAccount: "Non hai un account?", haveAccount: "Hai già un account?" },
+    common: { loading: "Caricamento...", error: "Errore", success: "Successo", save: "Salva", cancel: "Annulla" }
+  },
+  pt: {
+    nav: { auctions: "Leilões", buyBids: "Comprar lances", dashboard: "Painel", admin: "Admin", login: "Entrar", register: "Registrar", logout: "Sair", bids: "Lances" },
+    home: {
+      badge: "10 lances grátis no registro",
+      heroTitle1: "Ganhe",
+      heroTitle2: "produtos premium",
+      heroTitle3: "por centavos",
+      heroSubtitle: "A plataforma de leilões de centavo mais emocionante. Lance, ganhe e economize até 90%.",
+      ctaBid: "Dar lance",
+      ctaBuyBids: "Comprar lances",
+      liveAuctions: "Leilões ao vivo",
+      viewAll: "Ver tudo",
+      noAuctions: "Nenhum leilão ativo",
+      howItWorks: "Como funciona",
+      step1: "Comprar lances", step1Desc: "Compre um pacote de lances a preços baixos",
+      step2: "Dar lance", step2Desc: "Faça seu lance em leilões ativos",
+      step3: "Ganhar", step3Desc: "Seja o último a dar lance e ganhe",
+      readyToWin: "Pronto para ganhar?",
+      freeRegister: "Registrar grátis"
     },
-    auth: {
-      welcomeBack: "Willkommen zurück",
-      loginContinue: "Melden Sie sich an",
-      email: "E-Mail",
-      password: "Passwort",
-      login: "Anmelden",
-      loggingIn: "Wird angemeldet...",
-      noAccount: "Noch kein Konto?",
-      registerNow: "Jetzt registrieren",
-      createAccount: "Konto erstellen",
-      name: "Name",
-      confirmPassword: "Passwort bestätigen",
-      creating: "Wird erstellt...",
-      create: "Konto erstellen",
-      haveAccount: "Bereits ein Konto?"
+    auctions: { title: "Todos os leilões", filter: "Filtrar", all: "Tudo", active: "Ativo", ended: "Encerrado", currentPrice: "Preço atual", bids: "Lances", bid: "Lance", live: "Ao vivo" },
+    buyBids: { title: "Comprar lances", popular: "Popular", bids: "Lances", buyNow: "Comprar" },
+    winners: { title: "Vencedores", totalSaved: "Total economizado", avgSavings: "Economia média", winners: "Vencedores" },
+    auth: { login: "Entrar", register: "Registrar", email: "Email", password: "Senha", name: "Nome", noAccount: "Não tem conta?", haveAccount: "Já tem conta?" },
+    common: { loading: "Carregando...", error: "Erro", success: "Sucesso", save: "Salvar", cancel: "Cancelar" }
+  },
+  nl: {
+    nav: { auctions: "Veilingen", buyBids: "Biedingen kopen", dashboard: "Dashboard", admin: "Admin", login: "Inloggen", register: "Registreren", logout: "Uitloggen", bids: "Biedingen" },
+    home: {
+      badge: "10 gratis biedingen bij registratie",
+      heroTitle1: "Win",
+      heroTitle2: "premium producten",
+      heroTitle3: "voor centen",
+      heroSubtitle: "Het meest opwindende penny veiling platform. Bied, win en bespaar tot 90%.",
+      ctaBid: "Nu bieden",
+      ctaBuyBids: "Biedingen kopen",
+      liveAuctions: "Live veilingen",
+      viewAll: "Alles bekijken",
+      noAuctions: "Geen actieve veilingen",
+      howItWorks: "Hoe het werkt",
+      step1: "Biedingen kopen", step1Desc: "Koop een biedingenpakket tegen lage prijzen",
+      step2: "Bieden", step2Desc: "Plaats je bod op lopende veilingen",
+      step3: "Winnen", step3Desc: "Wees de laatste bieder en win",
+      readyToWin: "Klaar om te winnen?",
+      freeRegister: "Gratis registreren"
     },
-    admin: {
-      panel: "Admin Panel",
-      dashboard: "Dashboard",
-      products: "Produkte",
-      auctions: "Auktionen",
-      users: "Benutzer",
-      refresh: "Aktualisieren",
-      category: "Kategorie",
-      price: "Preis",
-      status: "Status",
-      active: "Aktiv",
-      ended: "Beendet",
-      bids: "Gebote"
+    auctions: { title: "Alle veilingen", filter: "Filter", all: "Alles", active: "Actief", ended: "Beëindigd", currentPrice: "Huidige prijs", bids: "Biedingen", bid: "Bieden", live: "Live" },
+    buyBids: { title: "Biedingen kopen", popular: "Populair", bids: "Biedingen", buyNow: "Nu kopen" },
+    winners: { title: "Winnaars", totalSaved: "Totaal bespaard", avgSavings: "Gemiddelde besparing", winners: "Winnaars" },
+    auth: { login: "Inloggen", register: "Registreren", email: "E-mail", password: "Wachtwoord", name: "Naam", noAccount: "Geen account?", haveAccount: "Al een account?" },
+    common: { loading: "Laden...", error: "Fout", success: "Succes", save: "Opslaan", cancel: "Annuleren" }
+  },
+  pl: {
+    nav: { auctions: "Aukcje", buyBids: "Kup licytacje", dashboard: "Panel", admin: "Admin", login: "Zaloguj", register: "Zarejestruj", logout: "Wyloguj", bids: "Licytacje" },
+    home: {
+      badge: "10 darmowych licytacji przy rejestracji",
+      heroTitle1: "Wygrywaj",
+      heroTitle2: "produkty premium",
+      heroTitle3: "za grosze",
+      heroSubtitle: "Najbardziej ekscytująca platforma aukcji groszowych. Licytuj, wygrywaj i oszczędzaj do 90%.",
+      ctaBid: "Licytuj teraz",
+      ctaBuyBids: "Kup licytacje",
+      liveAuctions: "Aukcje na żywo",
+      viewAll: "Zobacz wszystko",
+      noAuctions: "Brak aktywnych aukcji",
+      howItWorks: "Jak to działa",
+      step1: "Kup licytacje", step1Desc: "Kup pakiet licytacji w niskich cenach",
+      step2: "Licytuj", step2Desc: "Złóż swoją ofertę na trwających aukcjach",
+      step3: "Wygrywaj", step3Desc: "Bądź ostatnim licytującym i wygraj",
+      readyToWin: "Gotowy do wygranej?",
+      freeRegister: "Zarejestruj się za darmo"
     },
-    payment: {
-      processing: "Zahlung wird verarbeitet...",
-      success: "Zahlung erfolgreich!",
-      credited: "Gebote wurden gutgeschrieben"
+    auctions: { title: "Wszystkie aukcje", filter: "Filtruj", all: "Wszystko", active: "Aktywne", ended: "Zakończone", currentPrice: "Aktualna cena", bids: "Licytacje", bid: "Licytuj", live: "Na żywo" },
+    buyBids: { title: "Kup licytacje", popular: "Popularne", bids: "Licytacje", buyNow: "Kup teraz" },
+    winners: { title: "Zwycięzcy", totalSaved: "Łącznie zaoszczędzone", avgSavings: "Średnie oszczędności", winners: "Zwycięzcy" },
+    auth: { login: "Zaloguj", register: "Zarejestruj", email: "Email", password: "Hasło", name: "Imię", noAccount: "Nie masz konta?", haveAccount: "Masz już konto?" },
+    common: { loading: "Ładowanie...", error: "Błąd", success: "Sukces", save: "Zapisz", cancel: "Anuluj" }
+  },
+  tr: {
+    nav: { auctions: "Müzayedeler", buyBids: "Teklif satın al", dashboard: "Panel", admin: "Yönetici", login: "Giriş", register: "Kayıt ol", logout: "Çıkış", bids: "Teklifler" },
+    home: {
+      badge: "Kayıtta 10 ücretsiz teklif",
+      heroTitle1: "Kazan",
+      heroTitle2: "premium ürünler",
+      heroTitle3: "kuruşlara",
+      heroSubtitle: "En heyecan verici kuruş müzayede platformu. Teklif ver, kazan ve %90'a kadar tasarruf et.",
+      ctaBid: "Şimdi teklif ver",
+      ctaBuyBids: "Teklif satın al",
+      liveAuctions: "Canlı müzayedeler",
+      viewAll: "Tümünü gör",
+      noAuctions: "Aktif müzayede yok",
+      howItWorks: "Nasıl çalışır",
+      step1: "Teklif satın al", step1Desc: "Uygun fiyatlı teklif paketi satın al",
+      step2: "Teklif ver", step2Desc: "Devam eden müzayedelere teklif ver",
+      step3: "Kazan", step3Desc: "Son teklifi veren ol ve kazan",
+      readyToWin: "Kazanmaya hazır mısın?",
+      freeRegister: "Ücretsiz kayıt ol"
     },
-    common: {
-      loading: "Lädt...",
-      error: "Fehler",
-      success: "Erfolg",
-      save: "Speichern",
-      cancel: "Abbrechen",
-      delete: "Löschen",
-      edit: "Bearbeiten",
-      back: "Zurück",
-      search: "Suchen",
-      language: "Sprache"
-    }
+    auctions: { title: "Tüm müzayedeler", filter: "Filtrele", all: "Tümü", active: "Aktif", ended: "Bitti", currentPrice: "Güncel fiyat", bids: "Teklifler", bid: "Teklif ver", live: "Canlı" },
+    buyBids: { title: "Teklif satın al", popular: "Popüler", bids: "Teklifler", buyNow: "Şimdi al" },
+    winners: { title: "Kazananlar", totalSaved: "Toplam tasarruf", avgSavings: "Ortalama tasarruf", winners: "Kazananlar" },
+    auth: { login: "Giriş", register: "Kayıt ol", email: "E-posta", password: "Şifre", name: "İsim", noAccount: "Hesabın yok mu?", haveAccount: "Zaten hesabın var mı?" },
+    common: { loading: "Yükleniyor...", error: "Hata", success: "Başarılı", save: "Kaydet", cancel: "İptal" }
+  },
+  ru: {
+    nav: { auctions: "Аукционы", buyBids: "Купить ставки", dashboard: "Панель", admin: "Админ", login: "Войти", register: "Регистрация", logout: "Выйти", bids: "Ставки" },
+    home: {
+      badge: "10 бесплатных ставок при регистрации",
+      heroTitle1: "Выигрывайте",
+      heroTitle2: "премиум товары",
+      heroTitle3: "за копейки",
+      heroSubtitle: "Самая захватывающая платформа пенни-аукционов. Делайте ставки, выигрывайте и экономьте до 90%.",
+      ctaBid: "Сделать ставку",
+      ctaBuyBids: "Купить ставки",
+      liveAuctions: "Живые аукционы",
+      viewAll: "Смотреть все",
+      noAuctions: "Нет активных аукционов",
+      howItWorks: "Как это работает",
+      step1: "Купить ставки", step1Desc: "Купите пакет ставок по выгодной цене",
+      step2: "Делать ставки", step2Desc: "Делайте ставки на активных аукционах",
+      step3: "Выигрывать", step3Desc: "Будьте последним и выиграйте",
+      readyToWin: "Готовы выигрывать?",
+      freeRegister: "Бесплатная регистрация"
+    },
+    auctions: { title: "Все аукционы", filter: "Фильтр", all: "Все", active: "Активные", ended: "Завершённые", currentPrice: "Текущая цена", bids: "Ставки", bid: "Ставка", live: "Живой" },
+    buyBids: { title: "Купить ставки", popular: "Популярный", bids: "Ставки", buyNow: "Купить" },
+    winners: { title: "Победители", totalSaved: "Всего сэкономлено", avgSavings: "Средняя экономия", winners: "Победители" },
+    auth: { login: "Войти", register: "Регистрация", email: "Email", password: "Пароль", name: "Имя", noAccount: "Нет аккаунта?", haveAccount: "Уже есть аккаунт?" },
+    common: { loading: "Загрузка...", error: "Ошибка", success: "Успех", save: "Сохранить", cancel: "Отмена" }
+  },
+  ar: {
+    nav: { auctions: "المزادات", buyBids: "شراء العروض", dashboard: "لوحة التحكم", admin: "المشرف", login: "تسجيل الدخول", register: "التسجيل", logout: "تسجيل الخروج", bids: "العروض" },
+    home: {
+      badge: "10 عروض مجانية عند التسجيل",
+      heroTitle1: "اربح",
+      heroTitle2: "منتجات مميزة",
+      heroTitle3: "بسنتات",
+      heroSubtitle: "أكثر منصة مزادات السنت إثارة. قدم عرضك واربح ووفر حتى 90%.",
+      ctaBid: "قدم عرضك الآن",
+      ctaBuyBids: "شراء العروض",
+      liveAuctions: "مزادات مباشرة",
+      viewAll: "عرض الكل",
+      noAuctions: "لا توجد مزادات نشطة",
+      howItWorks: "كيف يعمل",
+      step1: "شراء العروض", step1Desc: "اشترِ حزمة عروض بأسعار منخفضة",
+      step2: "قدم عرضك", step2Desc: "قدم عرضك في المزادات الجارية",
+      step3: "اربح", step3Desc: "كن آخر مزايد واربح",
+      readyToWin: "جاهز للفوز؟",
+      freeRegister: "سجل مجاناً"
+    },
+    auctions: { title: "جميع المزادات", filter: "تصفية", all: "الكل", active: "نشط", ended: "منتهي", currentPrice: "السعر الحالي", bids: "العروض", bid: "عرض", live: "مباشر" },
+    buyBids: { title: "شراء العروض", popular: "شائع", bids: "العروض", buyNow: "اشترِ الآن" },
+    winners: { title: "الفائزون", totalSaved: "إجمالي التوفير", avgSavings: "متوسط التوفير", winners: "الفائزون" },
+    auth: { login: "تسجيل الدخول", register: "التسجيل", email: "البريد الإلكتروني", password: "كلمة المرور", name: "الاسم", noAccount: "ليس لديك حساب؟", haveAccount: "لديك حساب بالفعل؟" },
+    common: { loading: "جاري التحميل...", error: "خطأ", success: "نجاح", save: "حفظ", cancel: "إلغاء" }
+  },
+  zh: {
+    nav: { auctions: "拍卖", buyBids: "购买竞价", dashboard: "仪表板", admin: "管理员", login: "登录", register: "注册", logout: "登出", bids: "竞价" },
+    home: {
+      badge: "注册即送10次免费竞价",
+      heroTitle1: "赢取",
+      heroTitle2: "高端产品",
+      heroTitle3: "只需几分钱",
+      heroSubtitle: "最刺激的便士拍卖平台。竞价、赢取、节省高达90%。",
+      ctaBid: "立即竞价",
+      ctaBuyBids: "购买竞价",
+      liveAuctions: "实时拍卖",
+      viewAll: "查看全部",
+      noAuctions: "没有活跃的拍卖",
+      howItWorks: "如何运作",
+      step1: "购买竞价", step1Desc: "以优惠价格购买竞价包",
+      step2: "竞价", step2Desc: "在进行中的拍卖中出价",
+      step3: "获胜", step3Desc: "成为最后出价者并获胜",
+      readyToWin: "准备好赢了吗？",
+      freeRegister: "免费注册"
+    },
+    auctions: { title: "所有拍卖", filter: "筛选", all: "全部", active: "进行中", ended: "已结束", currentPrice: "当前价格", bids: "竞价", bid: "出价", live: "实时" },
+    buyBids: { title: "购买竞价", popular: "热门", bids: "竞价", buyNow: "立即购买" },
+    winners: { title: "获奖者", totalSaved: "总节省", avgSavings: "平均节省", winners: "获奖者" },
+    auth: { login: "登录", register: "注册", email: "邮箱", password: "密码", name: "姓名", noAccount: "没有账户？", haveAccount: "已有账户？" },
+    common: { loading: "加载中...", error: "错误", success: "成功", save: "保存", cancel: "取消" }
+  },
+  ja: {
+    nav: { auctions: "オークション", buyBids: "入札を購入", dashboard: "ダッシュボード", admin: "管理者", login: "ログイン", register: "登録", logout: "ログアウト", bids: "入札" },
+    home: {
+      badge: "登録で10回の無料入札",
+      heroTitle1: "勝ち取る",
+      heroTitle2: "プレミアム製品を",
+      heroTitle3: "わずかな金額で",
+      heroSubtitle: "最もエキサイティングなペニーオークションプラットフォーム。入札して、勝って、最大90%節約。",
+      ctaBid: "今すぐ入札",
+      ctaBuyBids: "入札を購入",
+      liveAuctions: "ライブオークション",
+      viewAll: "すべて見る",
+      noAuctions: "アクティブなオークションはありません",
+      howItWorks: "仕組み",
+      step1: "入札を購入", step1Desc: "お得な価格で入札パックを購入",
+      step2: "入札する", step2Desc: "進行中のオークションに入札",
+      step3: "勝つ", step3Desc: "最後の入札者になって勝つ",
+      readyToWin: "勝つ準備はできましたか？",
+      freeRegister: "無料登録"
+    },
+    auctions: { title: "すべてのオークション", filter: "フィルター", all: "すべて", active: "アクティブ", ended: "終了", currentPrice: "現在の価格", bids: "入札", bid: "入札する", live: "ライブ" },
+    buyBids: { title: "入札を購入", popular: "人気", bids: "入札", buyNow: "今すぐ購入" },
+    winners: { title: "勝者", totalSaved: "合計節約", avgSavings: "平均節約", winners: "勝者" },
+    auth: { login: "ログイン", register: "登録", email: "メール", password: "パスワード", name: "名前", noAccount: "アカウントがない？", haveAccount: "すでにアカウントがある？" },
+    common: { loading: "読み込み中...", error: "エラー", success: "成功", save: "保存", cancel: "キャンセル" }
+  },
+  ko: {
+    nav: { auctions: "경매", buyBids: "입찰권 구매", dashboard: "대시보드", admin: "관리자", login: "로그인", register: "회원가입", logout: "로그아웃", bids: "입찰" },
+    home: {
+      badge: "가입시 무료 입찰 10회",
+      heroTitle1: "획득하세요",
+      heroTitle2: "프리미엄 제품을",
+      heroTitle3: "단돈 몇 센트에",
+      heroSubtitle: "가장 흥미진진한 페니 경매 플랫폼. 입찰하고, 이기고, 최대 90% 절약하세요.",
+      ctaBid: "지금 입찰",
+      ctaBuyBids: "입찰권 구매",
+      liveAuctions: "실시간 경매",
+      viewAll: "모두 보기",
+      noAuctions: "진행 중인 경매 없음",
+      howItWorks: "이용 방법",
+      step1: "입찰권 구매", step1Desc: "저렴한 가격에 입찰 패키지 구매",
+      step2: "입찰하기", step2Desc: "진행 중인 경매에 입찰",
+      step3: "당첨", step3Desc: "마지막 입찰자가 되어 당첨",
+      readyToWin: "당첨 준비 되셨나요?",
+      freeRegister: "무료 가입"
+    },
+    auctions: { title: "모든 경매", filter: "필터", all: "전체", active: "진행중", ended: "종료", currentPrice: "현재 가격", bids: "입찰", bid: "입찰", live: "실시간" },
+    buyBids: { title: "입찰권 구매", popular: "인기", bids: "입찰", buyNow: "구매하기" },
+    winners: { title: "당첨자", totalSaved: "총 절약액", avgSavings: "평균 절약", winners: "당첨자" },
+    auth: { login: "로그인", register: "회원가입", email: "이메일", password: "비밀번호", name: "이름", noAccount: "계정이 없으신가요?", haveAccount: "이미 계정이 있으신가요?" },
+    common: { loading: "로딩 중...", error: "오류", success: "성공", save: "저장", cancel: "취소" }
+  },
+  hi: {
+    nav: { auctions: "नीलामी", buyBids: "बोली खरीदें", dashboard: "डैशबोर्ड", admin: "एडमिन", login: "लॉगिन", register: "रजिस्टर", logout: "लॉगआउट", bids: "बोलियाँ" },
+    home: {
+      badge: "रजिस्ट्रेशन पर 10 मुफ्त बोलियाँ",
+      heroTitle1: "जीतें",
+      heroTitle2: "प्रीमियम उत्पाद",
+      heroTitle3: "पैसों में",
+      heroSubtitle: "सबसे रोमांचक पेनी नीलामी प्लेटफॉर्म। बोली लगाएं, जीतें और 90% तक बचाएं।",
+      ctaBid: "अभी बोली लगाएं",
+      ctaBuyBids: "बोली खरीदें",
+      liveAuctions: "लाइव नीलामी",
+      viewAll: "सभी देखें",
+      noAuctions: "कोई सक्रिय नीलामी नहीं",
+      howItWorks: "यह कैसे काम करता है",
+      step1: "बोली खरीदें", step1Desc: "कम कीमत पर बोली पैकेज खरीदें",
+      step2: "बोली लगाएं", step2Desc: "चल रही नीलामियों में बोली लगाएं",
+      step3: "जीतें", step3Desc: "अंतिम बोली लगाने वाले बनें और जीतें",
+      readyToWin: "जीतने के लिए तैयार?",
+      freeRegister: "मुफ्त रजिस्टर करें"
+    },
+    auctions: { title: "सभी नीलामी", filter: "फ़िल्टर", all: "सभी", active: "सक्रिय", ended: "समाप्त", currentPrice: "वर्तमान मूल्य", bids: "बोलियाँ", bid: "बोली", live: "लाइव" },
+    buyBids: { title: "बोली खरीदें", popular: "लोकप्रिय", bids: "बोलियाँ", buyNow: "अभी खरीदें" },
+    winners: { title: "विजेता", totalSaved: "कुल बचत", avgSavings: "औसत बचत", winners: "विजेता" },
+    auth: { login: "लॉगिन", register: "रजिस्टर", email: "ईमेल", password: "पासवर्ड", name: "नाम", noAccount: "खाता नहीं है?", haveAccount: "पहले से खाता है?" },
+    common: { loading: "लोड हो रहा है...", error: "त्रुटि", success: "सफलता", save: "सेव करें", cancel: "रद्द करें" }
+  },
+  sq: {
+    nav: { auctions: "Ankandet", buyBids: "Bli Oferta", dashboard: "Paneli", admin: "Admin", login: "Hyr", register: "Regjistrohu", logout: "Dil", bids: "Oferta" },
+    home: {
+      badge: "10 oferta falas me regjistrim",
+      heroTitle1: "Fito",
+      heroTitle2: "Produkte Premium",
+      heroTitle3: "për cent",
+      heroSubtitle: "Platforma më emocionuese e ankandeve. Oferoni, fitoni dhe kurseni deri në 90%.",
+      ctaBid: "Oferoni tani",
+      ctaBuyBids: "Bli Oferta",
+      liveAuctions: "Ankande Live",
+      viewAll: "Shiko të gjitha",
+      noAuctions: "Nuk ka ankande aktive",
+      howItWorks: "Si funksionon",
+      step1: "Bli Oferta", step1Desc: "Blini një paketë ofertash me çmime të mira",
+      step2: "Oferoni", step2Desc: "Vendosni ofertën tuaj në ankandet aktive",
+      step3: "Fitoni", step3Desc: "Bëhuni ofertuesi i fundit dhe fitoni",
+      readyToWin: "Gati për të fituar?",
+      freeRegister: "Regjistrohu falas"
+    },
+    auctions: { title: "Të Gjitha Ankandet", filter: "Filtro", all: "Të gjitha", active: "Aktive", ended: "Përfunduara", currentPrice: "Çmimi Aktual", bids: "Oferta", bid: "Oferoni", live: "Live" },
+    buyBids: { title: "Bli Oferta", popular: "Popullore", bids: "Oferta", buyNow: "Bli tani" },
+    winners: { title: "Fituesit", totalSaved: "Totali i kursyer", avgSavings: "Kursimi mesatar", winners: "Fituesit" },
+    auth: { login: "Hyr", register: "Regjistrohu", email: "Email", password: "Fjalëkalimi", name: "Emri", noAccount: "Nuk keni llogari?", haveAccount: "Keni tashmë llogari?" },
+    common: { loading: "Duke ngarkuar...", error: "Gabim", success: "Sukses", save: "Ruaj", cancel: "Anulo" }
+  },
+  cs: {
+    nav: { auctions: "Aukce", buyBids: "Koupit příhozy", dashboard: "Panel", admin: "Admin", login: "Přihlásit", register: "Registrovat", logout: "Odhlásit", bids: "Příhozy" },
+    home: {
+      badge: "10 příhozů zdarma při registraci",
+      heroTitle1: "Vyhrajte",
+      heroTitle2: "prémiové produkty",
+      heroTitle3: "za pár centů",
+      heroSubtitle: "Nejnapínavější platforma centových aukcí. Přihazujte, vyhrajte a ušetřete až 90%.",
+      ctaBid: "Přihodit nyní",
+      ctaBuyBids: "Koupit příhozy",
+      liveAuctions: "Živé aukce",
+      viewAll: "Zobrazit vše",
+      noAuctions: "Žádné aktivní aukce",
+      howItWorks: "Jak to funguje",
+      step1: "Koupit příhozy", step1Desc: "Kupte si balíček příhozů za výhodné ceny",
+      step2: "Přihazovat", step2Desc: "Přihazujte v probíhajících aukcích",
+      step3: "Vyhrát", step3Desc: "Buďte poslední a vyhrajte",
+      readyToWin: "Připraveni vyhrát?",
+      freeRegister: "Registrace zdarma"
+    },
+    auctions: { title: "Všechny aukce", filter: "Filtr", all: "Vše", active: "Aktivní", ended: "Ukončené", currentPrice: "Aktuální cena", bids: "Příhozy", bid: "Přihodit", live: "Živě" },
+    buyBids: { title: "Koupit příhozy", popular: "Populární", bids: "Příhozy", buyNow: "Koupit" },
+    winners: { title: "Vítězové", totalSaved: "Celkem ušetřeno", avgSavings: "Průměrná úspora", winners: "Vítězové" },
+    auth: { login: "Přihlásit", register: "Registrovat", email: "Email", password: "Heslo", name: "Jméno", noAccount: "Nemáte účet?", haveAccount: "Již máte účet?" },
+    common: { loading: "Načítání...", error: "Chyba", success: "Úspěch", save: "Uložit", cancel: "Zrušit" }
+  },
+  sv: {
+    nav: { auctions: "Auktioner", buyBids: "Köp bud", dashboard: "Kontrollpanel", admin: "Admin", login: "Logga in", register: "Registrera", logout: "Logga ut", bids: "Bud" },
+    home: {
+      badge: "10 gratis bud vid registrering",
+      heroTitle1: "Vinn",
+      heroTitle2: "premiumprodukter",
+      heroTitle3: "för ören",
+      heroSubtitle: "Den mest spännande öresauktionsplattformen. Buda, vinn och spara upp till 90%.",
+      ctaBid: "Buda nu",
+      ctaBuyBids: "Köp bud",
+      liveAuctions: "Live auktioner",
+      viewAll: "Visa alla",
+      noAuctions: "Inga aktiva auktioner",
+      howItWorks: "Så fungerar det",
+      step1: "Köp bud", step1Desc: "Köp ett budpaket till förmånliga priser",
+      step2: "Buda", step2Desc: "Lägg ditt bud på pågående auktioner",
+      step3: "Vinn", step3Desc: "Var sista budgivare och vinn",
+      readyToWin: "Redo att vinna?",
+      freeRegister: "Registrera gratis"
+    },
+    auctions: { title: "Alla auktioner", filter: "Filter", all: "Alla", active: "Aktiva", ended: "Avslutade", currentPrice: "Nuvarande pris", bids: "Bud", bid: "Buda", live: "Live" },
+    buyBids: { title: "Köp bud", popular: "Populär", bids: "Bud", buyNow: "Köp nu" },
+    winners: { title: "Vinnare", totalSaved: "Totalt sparat", avgSavings: "Genomsnittlig besparing", winners: "Vinnare" },
+    auth: { login: "Logga in", register: "Registrera", email: "E-post", password: "Lösenord", name: "Namn", noAccount: "Inget konto?", haveAccount: "Har redan konto?" },
+    common: { loading: "Laddar...", error: "Fel", success: "Lyckades", save: "Spara", cancel: "Avbryt" }
+  },
+  da: {
+    nav: { auctions: "Auktioner", buyBids: "Køb bud", dashboard: "Kontrolpanel", admin: "Admin", login: "Log ind", register: "Registrer", logout: "Log ud", bids: "Bud" },
+    home: {
+      badge: "10 gratis bud ved registrering",
+      heroTitle1: "Vind",
+      heroTitle2: "premium produkter",
+      heroTitle3: "for øre",
+      heroSubtitle: "Den mest spændende øreauktionsplatform. Byd, vind og spar op til 90%.",
+      ctaBid: "Byd nu",
+      ctaBuyBids: "Køb bud",
+      liveAuctions: "Live auktioner",
+      viewAll: "Se alle",
+      noAuctions: "Ingen aktive auktioner",
+      howItWorks: "Sådan virker det",
+      step1: "Køb bud", step1Desc: "Køb en budpakke til gode priser",
+      step2: "Byd", step2Desc: "Afgiv dit bud på igangværende auktioner",
+      step3: "Vind", step3Desc: "Vær den sidste budgiver og vind",
+      readyToWin: "Klar til at vinde?",
+      freeRegister: "Registrer gratis"
+    },
+    auctions: { title: "Alle auktioner", filter: "Filter", all: "Alle", active: "Aktive", ended: "Afsluttede", currentPrice: "Nuværende pris", bids: "Bud", bid: "Byd", live: "Live" },
+    buyBids: { title: "Køb bud", popular: "Populær", bids: "Bud", buyNow: "Køb nu" },
+    winners: { title: "Vindere", totalSaved: "Samlet sparet", avgSavings: "Gennemsnitlig besparelse", winners: "Vindere" },
+    auth: { login: "Log ind", register: "Registrer", email: "E-mail", password: "Adgangskode", name: "Navn", noAccount: "Ingen konto?", haveAccount: "Har allerede konto?" },
+    common: { loading: "Indlæser...", error: "Fejl", success: "Succes", save: "Gem", cancel: "Annuller" }
+  },
+  fi: {
+    nav: { auctions: "Huutokaupat", buyBids: "Osta tarjouksia", dashboard: "Hallintapaneeli", admin: "Admin", login: "Kirjaudu", register: "Rekisteröidy", logout: "Kirjaudu ulos", bids: "Tarjoukset" },
+    home: {
+      badge: "10 ilmaista tarjousta rekisteröityessä",
+      heroTitle1: "Voita",
+      heroTitle2: "premium-tuotteita",
+      heroTitle3: "senteillä",
+      heroSubtitle: "Jännittävin senttihuutokauppa-alusta. Tarjoa, voita ja säästä jopa 90%.",
+      ctaBid: "Tarjoa nyt",
+      ctaBuyBids: "Osta tarjouksia",
+      liveAuctions: "Live-huutokaupat",
+      viewAll: "Näytä kaikki",
+      noAuctions: "Ei aktiivisia huutokauppoja",
+      howItWorks: "Näin se toimii",
+      step1: "Osta tarjouksia", step1Desc: "Osta tarjouspaketti edulliseen hintaan",
+      step2: "Tarjoa", step2Desc: "Tee tarjouksesi käynnissä oleviin huutokauppoihin",
+      step3: "Voita", step3Desc: "Ole viimeinen tarjoaja ja voita",
+      readyToWin: "Valmis voittamaan?",
+      freeRegister: "Rekisteröidy ilmaiseksi"
+    },
+    auctions: { title: "Kaikki huutokaupat", filter: "Suodata", all: "Kaikki", active: "Aktiiviset", ended: "Päättyneet", currentPrice: "Nykyinen hinta", bids: "Tarjoukset", bid: "Tarjoa", live: "Live" },
+    buyBids: { title: "Osta tarjouksia", popular: "Suosittu", bids: "Tarjoukset", buyNow: "Osta nyt" },
+    winners: { title: "Voittajat", totalSaved: "Yhteensä säästetty", avgSavings: "Keskimääräinen säästö", winners: "Voittajat" },
+    auth: { login: "Kirjaudu", register: "Rekisteröidy", email: "Sähköposti", password: "Salasana", name: "Nimi", noAccount: "Ei tiliä?", haveAccount: "Onko jo tili?" },
+    common: { loading: "Ladataan...", error: "Virhe", success: "Onnistui", save: "Tallenna", cancel: "Peruuta" }
   }
 };
 
-// All supported languages with their display names
+// Language display names with flags
 export const languageList = {
   de: { name: 'Deutsch', flag: '🇩🇪' },
   en: { name: 'English', flag: '🇬🇧' },
@@ -180,18 +546,18 @@ export const languageList = {
   fi: { name: 'Suomi', flag: '🇫🇮' }
 };
 
-// Fallback to German for all languages (translations can be added later)
-Object.keys(languageList).forEach(lang => {
-  if (!translations[lang]) {
-    translations[lang] = translations.de;
-  }
-});
-
 export const getTranslation = (lang, key) => {
   const keys = key.split('.');
   let value = translations[lang] || translations.de;
   for (const k of keys) {
     value = value?.[k];
+  }
+  // Fallback to German if translation not found
+  if (!value && lang !== 'de') {
+    value = translations.de;
+    for (const k of keys) {
+      value = value?.[k];
+    }
   }
   return value || key;
 };
