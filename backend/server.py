@@ -249,6 +249,21 @@ class UserUpdate(BaseModel):
     email: Optional[EmailStr] = None
     bids_balance: Optional[int] = None
 
+# Affiliate Models
+class AffiliateRegister(BaseModel):
+    name: str
+    email: EmailStr
+    payment_method: str = "bank_transfer"  # bank_transfer, paypal
+    payment_details: str  # IBAN or PayPal email
+
+class AffiliateStats(BaseModel):
+    total_referrals: int
+    converted_leads: int  # Users who bought a package
+    pending_commission: float
+    paid_commission: float
+    current_tier: str
+    commission_rate: float
+
 # Admin Bot Models
 class BotCreate(BaseModel):
     name: str  # Bot display name (e.g., "Maria K.", "Thomas M.")
