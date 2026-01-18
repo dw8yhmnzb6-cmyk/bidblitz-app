@@ -137,6 +137,9 @@ Penny-Auktion-Website ähnlich dealdash.com mit Kunden-App und Admin-Panel.
 - `POST /api/auth/forgot-password`
 - `POST /api/auth/verify-reset-code`
 - `POST /api/auth/reset-password`
+- `POST /api/auth/2fa/setup`
+- `POST /api/auth/2fa/enable`
+- `POST /api/auth/2fa/disable`
 
 ### User
 - `PUT /api/user/profile`
@@ -148,6 +151,14 @@ Penny-Auktion-Website ähnlich dealdash.com mit Kunden-App und Admin-Panel.
 - `GET /api/auctions`
 - `GET /api/auctions/{id}`
 - `POST /api/auctions/{id}/bid`
+- `GET /api/auctions/{id}/buy-now-price` - Preis mit Gebots-Guthaben
+- `POST /api/auctions/{id}/buy-now` - Sofort kaufen
+
+### Autobidder
+- `POST /api/autobidder/create`
+- `GET /api/autobidder/my`
+- `DELETE /api/autobidder/{id}`
+- `PUT /api/autobidder/{id}/toggle`
 
 ### Admin
 - `GET /api/admin/stats`
@@ -158,6 +169,8 @@ Penny-Auktion-Website ähnlich dealdash.com mit Kunden-App und Admin-Panel.
 - `POST /api/admin/auctions`
 - `POST /api/admin/vouchers`
 - `POST /api/admin/bots`
+- `GET /api/admin/security-logs`
+- `GET /api/admin/security-stats`
 
 ---
 
