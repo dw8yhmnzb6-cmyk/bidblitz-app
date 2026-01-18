@@ -284,11 +284,14 @@ class MultiBotBidRequest(BaseModel):
 
 # Fixed bid packages (server-side only) - €0.50 per bid
 BID_PACKAGES = {
-    "mini": BidPackage(id="mini", name="Mini Pack", bids=20, price=10.00),  # Minimum für Affiliate
-    "starter": BidPackage(id="starter", name="Starter Pack", bids=50, price=25.00),
-    "popular": BidPackage(id="popular", name="Popular Pack", bids=150, price=75.00, popular=True),
-    "pro": BidPackage(id="pro", name="Pro Pack", bids=300, price=150.00),
-    "elite": BidPackage(id="elite", name="Elite Pack", bids=500, price=250.00),
+    "pack_5": BidPackage(id="pack_5", name="5 € Paket", bids=10, price=5.00),
+    "pack_10": BidPackage(id="pack_10", name="10 € Paket", bids=22, price=10.00),
+    "pack_15": BidPackage(id="pack_15", name="15 € Paket", bids=35, price=15.00),
+    "pack_25": BidPackage(id="pack_25", name="25 € Paket", bids=60, price=25.00, popular=True),
+    "pack_50": BidPackage(id="pack_50", name="50 € Paket", bids=130, price=50.00),
+    "pack_75": BidPackage(id="pack_75", name="75 € Paket", bids=200, price=75.00),
+    "pack_100": BidPackage(id="pack_100", name="100 € Paket", bids=280, price=100.00),
+    "pack_150": BidPackage(id="pack_150", name="150 € Paket", bids=450, price=150.00),
 }
 
 # Affiliate Commission Structure (per lead/month)
