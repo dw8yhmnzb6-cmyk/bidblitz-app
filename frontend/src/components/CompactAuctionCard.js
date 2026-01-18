@@ -119,7 +119,7 @@ export const CompactAuctionCard = ({ auction, onBid, isAuthenticated, t }) => {
           <div className="flex-1">
             {/* Current Price - More prominent & colorful */}
             <div className="bg-gradient-to-r from-teal-50 to-emerald-50 rounded-lg p-1.5 mb-1.5">
-              <p className="text-xl font-bold text-teal-600 font-mono whitespace-nowrap">
+              <p className="text-lg sm:text-xl font-bold text-teal-600 font-mono">
                 € {auction.current_price?.toFixed(2).replace('.', ',')}
               </p>
             </div>
@@ -132,7 +132,7 @@ export const CompactAuctionCard = ({ auction, onBid, isAuthenticated, t }) => {
             {/* Bid Button - More inviting */}
             <Link to={`/auctions/${auction.id}`}>
               <button 
-                className={`mt-2 w-full font-bold py-1.5 px-4 rounded-lg text-sm uppercase shadow-md transition-all ${
+                className={`mt-2 w-full font-bold py-1.5 px-3 rounded-lg text-sm uppercase shadow-md transition-all ${
                   isEnded 
                     ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
                     : 'bg-gradient-to-r from-emerald-400 via-teal-500 to-cyan-500 hover:from-emerald-500 hover:via-teal-600 hover:to-cyan-600 text-white hover:shadow-lg hover:shadow-teal-200'
