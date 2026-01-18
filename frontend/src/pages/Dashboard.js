@@ -463,6 +463,9 @@ export default function Dashboard() {
               )}
             </div>
 
+            {/* 2FA Sicherheitseinstellungen */}
+            <TwoFactorSettings />
+
             {/* Letzte Käufe */}
             {purchases.length > 0 && (
               <div className="glass-card rounded-2xl p-6">
