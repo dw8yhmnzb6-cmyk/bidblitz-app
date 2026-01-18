@@ -139,6 +139,7 @@ class UserCreate(BaseModel):
 class UserLogin(BaseModel):
     email: EmailStr
     password: str
+    two_factor_code: Optional[str] = None  # 6-digit TOTP code
 
 class UserResponse(BaseModel):
     id: str
@@ -147,6 +148,7 @@ class UserResponse(BaseModel):
     bids_balance: int
     is_admin: bool
     created_at: str
+    two_factor_enabled: bool = False
 
 class ProductCreate(BaseModel):
     name: str
