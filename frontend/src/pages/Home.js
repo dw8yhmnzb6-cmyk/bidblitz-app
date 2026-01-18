@@ -2,17 +2,21 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
+import { languageList } from '../i18n/translations';
 import { AuctionCard } from '../components/AuctionCard';
 import { Button } from '../components/ui/button';
-import { Zap, Trophy, Clock, Shield, ArrowRight, Sparkles } from 'lucide-react';
+import { Zap, Trophy, Clock, Shield, ArrowRight, Sparkles, Globe } from 'lucide-react';
 import { toast } from 'sonner';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 export default function Home() {
   const { isAuthenticated, token, updateBidsBalance } = useAuth();
+  const { language, changeLanguage } = useLanguage();
   const [auctions, setAuctions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showAllLanguages, setShowAllLanguages] = useState(false);
 
   useEffect(() => {
     fetchAuctions();
