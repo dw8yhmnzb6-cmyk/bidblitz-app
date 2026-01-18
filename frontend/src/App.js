@@ -24,6 +24,7 @@ import AGB from "./pages/AGB";
 import Profile from "./pages/Profile";
 import BidHistory from "./pages/BidHistory";
 import Purchases from "./pages/Purchases";
+import Affiliate from "./pages/Affiliate";
 
 // Protected Route Component
 const ProtectedRoute = ({ children, requireAdmin = false }) => {
