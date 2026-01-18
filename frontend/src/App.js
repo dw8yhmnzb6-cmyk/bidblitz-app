@@ -110,6 +110,11 @@ function AppContent() {
           <Route path="/invite" element={<InviteFriends />} />
           <Route path="/winners" element={<Winners />} />
           <Route path="/achievements" element={<Achievements />} />
+          <Route path="/wishlist" element={
+            <ProtectedRoute>
+              <Wishlist />
+            </ProtectedRoute>
+          } />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
