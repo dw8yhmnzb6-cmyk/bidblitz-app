@@ -117,7 +117,7 @@ const SnipsterCard = ({ auction, t }) => {
           <div className="flex-1 min-w-0">
             {/* Current Price - More prominent & colorful */}
             <div className="bg-gradient-to-r from-teal-50 to-emerald-50 rounded-lg p-1.5 mb-1.5">
-              <p className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-teal-600 to-emerald-600 font-mono leading-none">
+              <p className="text-lg font-bold text-teal-600 font-mono leading-none whitespace-nowrap">
                 € {auction.current_price?.toFixed(2).replace('.', ',')}
               </p>
             </div>
