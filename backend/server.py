@@ -3178,11 +3178,14 @@ import asyncio as async_lib
 bot_task_running = False
 
 async def bot_last_second_bidder():
-    """Background task that makes bots bid in the last seconds of auctions"""
+    """Background task that makes bots bid continuously until target price is reached"""
     global bot_task_running
     bot_task_running = True
     
-    logger.info("Bot last-second bidder started")
+    logger.info("Bot continuous bidder started")
+    
+    # Track last bot per auction to avoid same bot bidding twice in a row
+    last_bot_per_auction = {}
     
     while bot_task_running:
         try:
@@ -3198,40 +3201,49 @@ async def bot_last_second_bidder():
                     now = datetime.now(timezone.utc)
                     seconds_left = (end_time - now).total_seconds()
                     
-                    # Only bid in last 1-5 seconds
+                    # Bid when timer is between 1-5 seconds
                     if 1 <= seconds_left <= 5:
                         current_price = auction.get("current_price", 0)
                         target_price = auction.get("bot_target_price", 0)
-                        last_bidder_id = auction.get("last_bidder_id", "")
+                        auction_id = auction.get("id")
                         
-                        # Only bid if:
-                        # 1. Current price is below target
-                        # 2. Last bidder was NOT a bot (so we counter human bids)
-                        if current_price < target_price and not last_bidder_id.startswith("bot_"):
-                            # Get a random active bot
+                        # Continue bidding until target price is reached
+                        if current_price < target_price:
+                            # Get all active bots
                             bots = await db.bots.find({"is_active": True}, {"_id": 0}).to_list(100)
                             if bots:
-                                # Choose random bot (different from last bot if possible)
-                                bot = random.choice(bots)
+                                # Choose a different bot than the last one for this auction
+                                last_bot_id = last_bot_per_auction.get(auction_id)
+                                available_bots = [b for b in bots if b["id"] != last_bot_id]
+                                
+                                # If all bots have been filtered, use all bots
+                                if not available_bots:
+                                    available_bots = bots
+                                
+                                bot = random.choice(available_bots)
+                                last_bot_per_auction[auction_id] = bot["id"]
                                 
                                 # Place the bid
-                                new_price = current_price + auction.get("bid_increment", 0.01)
-                                new_end_time = datetime.now(timezone.utc) + timedelta(seconds=15)
+                                new_price = round(current_price + auction.get("bid_increment", 0.01), 2)
+                                
+                                # Random timer extension between 10-20 seconds for realism
+                                timer_extension = random.randint(10, 20)
+                                new_end_time = datetime.now(timezone.utc) + timedelta(seconds=timer_extension)
                                 
                                 bid_entry = {
                                     "user_id": f"bot_{bot['id']}",
                                     "user_name": bot["name"],
-                                    "price": round(new_price, 2),
+                                    "price": new_price,
                                     "timestamp": datetime.now(timezone.utc).isoformat(),
                                     "is_bot": True,
                                     "is_autobid": True
                                 }
                                 
                                 await db.auctions.update_one(
-                                    {"id": auction["id"], "status": "active"},
+                                    {"id": auction_id, "status": "active"},
                                     {
                                         "$set": {
-                                            "current_price": round(new_price, 2),
+                                            "current_price": new_price,
                                             "end_time": new_end_time.isoformat(),
                                             "last_bidder_id": f"bot_{bot['id']}",
                                             "last_bidder_name": bot["name"]
@@ -3248,8 +3260,8 @@ async def bot_last_second_bidder():
                                 )
                                 
                                 # Broadcast the bid via WebSocket
-                                await broadcast_bid_update(auction["id"], {
-                                    "current_price": round(new_price, 2),
+                                await broadcast_bid_update(auction_id, {
+                                    "current_price": new_price,
                                     "last_bidder_name": bot["name"],
                                     "last_bidder_id": f"bot_{bot['id']}",
                                     "total_bids": auction.get("total_bids", 0) + 1,
@@ -3257,7 +3269,7 @@ async def bot_last_second_bidder():
                                     "bidder_message": f"{bot['name']} hat geboten!"
                                 })
                                 
-                                logger.info(f"Bot '{bot['name']}' bid on auction {auction['id']} at €{new_price:.2f} (last second)")
+                                logger.info(f"Bot '{bot['name']}' bid €{new_price:.2f} on auction {auction_id[:8]}... (target: €{target_price:.2f})")
                                 
                 except Exception as e:
                     logger.error(f"Error in bot bidding for auction {auction.get('id')}: {e}")
