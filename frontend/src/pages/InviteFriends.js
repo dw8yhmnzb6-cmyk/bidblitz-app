@@ -161,6 +161,9 @@ export default function InviteFriends() {
               <p className="text-[#10B981] text-xl font-bold">10 kostenlose Gebote</p>
             </div>
           </div>
+          <p className="text-[#94A3B8] text-sm mt-3 border-t border-white/10 pt-3">
+            <span className="text-[#FFD700] font-medium">Bedingung:</span> Du erhältst deine Belohnung, sobald dein Freund mindestens <span className="text-white font-bold">€5</span> aufgeladen hat.
+          </p>
         </div>
 
         {/* Reward Tiers */}

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
@@ -19,9 +19,12 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [requires2FA, setRequires2FA] = useState(false);
+  const formRef = useRef(null);
+  const hasAutoLoginAttempted = useRef(false);
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
+    if (!email || !password) return;
     setLoading(true);
 
     try {
@@ -58,6 +61,49 @@ export default function Login() {
     }
   };
 
+  // Auto-login when browser auto-fills credentials
+  useEffect(() => {
+    const checkAutoFill = () => {
+      if (hasAutoLoginAttempted.current) return;
+      
+      const emailInput = formRef.current?.querySelector('input[type="email"]');
+      const passwordInput = formRef.current?.querySelector('input[type="password"]');
+      
+      if (emailInput && passwordInput) {
+        // Check if browser has auto-filled the fields
+        const autoFilledEmail = emailInput.value || email;
+        const autoFilledPassword = passwordInput.value || password;
+        
+        if (autoFilledEmail && autoFilledPassword && autoFilledEmail !== email) {
+          setEmail(autoFilledEmail);
+          setPassword(autoFilledPassword);
+          hasAutoLoginAttempted.current = true;
+          // Auto-submit after a short delay
+          setTimeout(() => {
+            handleSubmit();
+          }, 500);
+        }
+      }
+    };
+
+    // Check after a short delay to allow browser autofill
+    const timer = setTimeout(checkAutoFill, 800);
+    
+    // Also listen for input events (some browsers trigger these on autofill)
+    const handleInput = (e) => {
+      if (e.target.matches('input[type="email"], input[type="password"]')) {
+        setTimeout(checkAutoFill, 100);
+      }
+    };
+    
+    document.addEventListener('input', handleInput);
+    
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener('input', handleInput);
+    };
+  }, [email, password]);
+
   return (
     <div className="min-h-screen pt-24 pb-12 px-4 flex items-center justify-center" data-testid="login-page">
       <div className="w-full max-w-md">
@@ -75,7 +121,7 @@ export default function Login() {
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form ref={formRef} onSubmit={handleSubmit} className="space-y-6" autoComplete="on">
             {!requires2FA ? (
               <>
                 <div className="space-y-2">

@@ -274,7 +274,7 @@ export default function Home() {
               <span className="font-bold text-white">BidBlitz</span>
             </div>
             <p className="text-[#94A3B8] text-sm">
-              © 2024 BidBlitz. Alle Rechte vorbehalten.
+              © {new Date().getFullYear()} BidBlitz. Alle Rechte vorbehalten.
             </p>
           </div>
         </div>
