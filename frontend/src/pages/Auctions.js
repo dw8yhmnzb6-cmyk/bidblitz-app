@@ -370,10 +370,6 @@ const RecentlyEndedAuctions = ({ auctions }) => {
   );
 };
 
-    </div>
-  );
-}
-
 // Export with notification button
 export default function AuctionsWithAlarm() {
   return (
