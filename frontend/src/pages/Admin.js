@@ -11,7 +11,7 @@ import {
   LayoutDashboard, Package, Gavel, Users, Plus, Trash2, 
   Settings, BarChart3, Zap, RefreshCw, Square, UserPlus,
   Ban, CheckCircle, DollarSign, Globe, Ticket, Edit, X, Save,
-  Bot, Play, Target, Calendar, Clock, TrendingUp, Activity
+  Bot, Play, Target, Calendar, Clock, TrendingUp, Activity, Menu
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { 
