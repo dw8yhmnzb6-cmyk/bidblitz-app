@@ -96,6 +96,17 @@ export default function Register() {
             </div>
           </div>
 
+          {/* Referral Banner */}
+          {referralValid && (
+            <div className="flex items-center gap-3 p-4 rounded-lg bg-[#FFD700]/10 border border-[#FFD700]/30 mb-6">
+              <Users className="w-6 h-6 text-[#FFD700] flex-shrink-0" />
+              <div>
+                <p className="text-[#FFD700] font-bold">Empfohlen von {affiliateName}</p>
+                <p className="text-[#94A3B8] text-sm">Willkommen bei BidBlitz!</p>
+              </div>
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className="space-y-2">
               <Label htmlFor="name" className="text-white">Name</Label>
