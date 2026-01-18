@@ -30,6 +30,7 @@ import InviteFriends from "./pages/InviteFriends";
 import Winners from "./pages/Winners";
 import Achievements from "./pages/Achievements";
 import Wishlist from "./pages/Wishlist";
+import Invoices from "./pages/Invoices";
 
 // Protected Route Component
 const ProtectedRoute = ({ children, requireAdmin = false }) => {
