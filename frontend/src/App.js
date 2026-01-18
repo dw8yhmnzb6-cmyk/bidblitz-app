@@ -26,6 +26,7 @@ import BidHistory from "./pages/BidHistory";
 import Purchases from "./pages/Purchases";
 import Affiliate from "./pages/Affiliate";
 import InviteFriends from "./pages/InviteFriends";
+import Winners from "./pages/Winners";
 
 // Protected Route Component
 const ProtectedRoute = ({ children, requireAdmin = false }) => {
