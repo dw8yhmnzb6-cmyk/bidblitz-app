@@ -70,13 +70,23 @@ export const Navbar = () => {
               Freunde werben
             </Link>
             {isAuthenticated && (
-              <Link 
-                to="/dashboard" 
-                className="text-[#94A3B8] hover:text-white transition-colors font-medium"
-                data-testid="nav-dashboard"
-              >
-                {t('nav.dashboard')}
-              </Link>
+              <>
+                <Link 
+                  to="/wishlist" 
+                  className="text-[#FF4D4D] hover:text-[#FF6B6B] transition-colors font-medium flex items-center gap-1"
+                  data-testid="nav-wishlist"
+                >
+                  <Heart className="w-4 h-4" />
+                  Wunschliste
+                </Link>
+                <Link 
+                  to="/dashboard" 
+                  className="text-[#94A3B8] hover:text-white transition-colors font-medium"
+                  data-testid="nav-dashboard"
+                >
+                  {t('nav.dashboard')}
+                </Link>
+              </>
             )}
             {isAdmin && (
               <Link 
