@@ -36,6 +36,7 @@ Penny-Auktion-Website ähnlich dealdash.com mit Kunden-App und Admin-Panel.
 - [x] **Passwort vergessen**
 - [x] **Impressum / Datenschutz / AGB**
 - [x] **Gewinner-Galerie** (/winners) mit Statistiken
+- [x] **Achievements-Seite** (/achievements) mit täglicher Belohnung
 
 ### Nutzerbereich (2.2)
 - [x] **Dashboard** (Aktive Auktionen, Guthaben, Historie, Autobidder)
@@ -44,6 +45,7 @@ Penny-Auktion-Website ähnlich dealdash.com mit Kunden-App und Admin-Panel.
 - [x] **Gekaufte Gebotspakete**
 - [x] **2FA-Verwaltung** - Aktivieren/Deaktivieren
 - [x] **Freunde einladen** - Mit €5-Aufladung-Bedingung
+- [x] **Achievements & Tägliche Belohnung**
 
 ### Produkt-Management
 - [x] CRUD für Produkte
@@ -72,14 +74,11 @@ Penny-Auktion-Website ähnlich dealdash.com mit Kunden-App und Admin-Panel.
 - [x] **Systemlogs (Aktivitäten-Tracking)**
 - [x] **Sicherheits-Dashboard** (Login-Versuche, VPN-Blocks, 2FA-Stats)
 
-### Kunden-Features
-- [x] Bieten auf aktive Auktionen
-- [x] Autobidder
-- [x] Gutschein einlösen
-- [x] Gebotspaket-Kauf
-- [x] **Gebots-Historie**
-- [x] **Gekaufte Gebotspakete**
-- [x] **Sofort Kaufen** - Mit Modal und Preisberechnung
+### Gamification
+- [x] **12 Achievements** (Erster Sieg, Gewinner, Profi-Bieter, Nachteule, etc.)
+- [x] **Tägliche Belohnung** mit Streak-System (1-5 Gebote/Tag, Bonus bei 7 und 30 Tagen)
+- [x] **Punkte-System** für Achievements
+- [x] **VIP-Pläne** (Monthly €9.99, Yearly €79.99)
 
 ### Sicherheit
 - [x] **Starke Passwort-Richtlinien** (8+ Zeichen, Groß/Klein, Zahl, Sonderzeichen)
@@ -89,8 +88,9 @@ Penny-Auktion-Website ähnlich dealdash.com mit Kunden-App und Admin-Panel.
 - [x] **Security-Logs** in MongoDB
 
 ### UI/UX
-- [x] **Footer Jahr dynamisch** (© 2026 statt 2024)
+- [x] **Footer Jahr dynamisch** (© 2026)
 - [x] **Referral €5-Bedingung angezeigt**
+- [x] **Auktionszählung verbessert** (zeigt aktiv/beendet separat)
 
 ### Öffentliche Seiten
 - [x] **Impressum** (§ 5 TMG, Kontakt, Register)
