@@ -948,7 +948,8 @@ async def create_auction(auction: AuctionCreate, admin: dict = Depends(get_admin
         "last_bidder_id": None,
         "last_bidder_name": None,
         "created_at": now.isoformat(),
-        "bid_history": []
+        "bid_history": [],
+        "bot_target_price": auction.bot_target_price or 0  # Bot target price for last-second bidding
     }
     await db.auctions.insert_one(doc)
     
