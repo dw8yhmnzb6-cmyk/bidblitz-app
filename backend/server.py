@@ -1684,6 +1684,9 @@ async def get_checkout_status(session_id: str, http_request: Request, user: dict
         if commission:
             logger.info(f"Affiliate commission €{commission} processed for user {transaction['user_id']}")
         
+        # Process referral reward if user qualifies (€5+ deposit)
+        await process_referral_after_deposit(transaction["user_id"], transaction["amount"])
+        
         return {"status": "complete", "payment_status": "paid", "bids_added": transaction["bids"]}
     
     return {
