@@ -13,10 +13,9 @@ const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 export default function Home() {
   const { isAuthenticated, token, updateBidsBalance } = useAuth();
-  const { language, changeLanguage } = useLanguage();
+  const { language, changeLanguage, t } = useLanguage();
   const [auctions, setAuctions] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showAllLanguages, setShowAllLanguages] = useState(false);
 
   useEffect(() => {
     fetchAuctions();
