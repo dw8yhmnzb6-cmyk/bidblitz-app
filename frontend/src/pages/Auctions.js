@@ -601,9 +601,38 @@ function AuctionsPage() {
                 </Button>
               </div>
               
-              {/* Results count */}
+              {/* Results count - with active/ended breakdown */}
               <div className="mt-3 text-sm text-gray-600">
-                {filteredAuctions.length} Auktion{filteredAuctions.length !== 1 ? 'en' : ''} gefunden
+                {(() => {
+                  const activeCount = filteredAuctions.filter(a => a.status === 'active').length;
+                  const scheduledCount = filteredAuctions.filter(a => a.status === 'scheduled').length;
+                  const endedCount = filteredAuctions.filter(a => a.status === 'ended').length;
+                  
+                  if (activeCount === 0 && scheduledCount === 0 && endedCount > 0) {
+                    return (
+                      <span className="text-orange-600 font-medium">
+                        Keine aktiven Auktionen • {endedCount} beendete Auktion{endedCount !== 1 ? 'en' : ''}
+                      </span>
+                    );
+                  } else if (activeCount > 0) {
+                    return (
+                      <span>
+                        <span className="text-green-600 font-medium">{activeCount} aktiv</span>
+                        {scheduledCount > 0 && <span> • {scheduledCount} geplant</span>}
+                        {endedCount > 0 && <span className="text-gray-400"> • {endedCount} beendet</span>}
+                      </span>
+                    );
+                  } else if (scheduledCount > 0) {
+                    return (
+                      <span>
+                        <span className="text-orange-500 font-medium">{scheduledCount} geplant</span>
+                        {endedCount > 0 && <span className="text-gray-400"> • {endedCount} beendet</span>}
+                      </span>
+                    );
+                  } else {
+                    return `${filteredAuctions.length} Auktion${filteredAuctions.length !== 1 ? 'en' : ''} gefunden`;
+                  }
+                })()}
               </div>
             </div>
             
