@@ -103,6 +103,7 @@ function AppContent() {
             </ProtectedRoute>
           } />
           <Route path="/affiliate" element={<Affiliate />} />
+          <Route path="/invite" element={<InviteFriends />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
