@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import { translations } from '../i18n/translations';
+import { translations, getTranslation, languageList } from '../i18n/translations';
 
 const LanguageContext = createContext(null);
 
@@ -10,25 +10,24 @@ export const LanguageProvider = ({ children }) => {
 
   useEffect(() => {
     localStorage.setItem('language', language);
+    // Update HTML lang attribute for accessibility
+    document.documentElement.lang = language;
+    // Update text direction for RTL languages
+    document.documentElement.dir = language === 'ar' ? 'rtl' : 'ltr';
   }, [language]);
 
   const t = (key) => {
-    const keys = key.split('.');
-    let value = translations[language];
-    for (const k of keys) {
-      value = value?.[k];
-    }
-    return value || key;
+    return getTranslation(language, key);
   };
 
   const changeLanguage = (lang) => {
-    if (translations[lang]) {
+    if (languageList[lang]) {
       setLanguage(lang);
     }
   };
 
   return (
-    <LanguageContext.Provider value={{ language, t, changeLanguage, languages: Object.keys(translations) }}>
+    <LanguageContext.Provider value={{ language, t, changeLanguage, languages: Object.keys(languageList) }}>
       {children}
     </LanguageContext.Provider>
   );
