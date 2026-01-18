@@ -7,7 +7,7 @@ import { useAuctionWebSocket } from '../hooks/useAuctionWebSocket';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
-import { Timer, Users, Zap, ArrowLeft, Trophy, Tag, Package, Bot, Wifi, WifiOff, Eye, History, Clock, User, ChevronDown, ChevronUp } from 'lucide-react';
+import { Timer, Users, Zap, ArrowLeft, Trophy, Tag, Package, Bot, Wifi, WifiOff, Eye, History, Clock, User, ChevronDown, ChevronUp, ShoppingBag, CreditCard, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
