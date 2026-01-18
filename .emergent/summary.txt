@@ -1,178 +1,187 @@
 <analysis>**original_problem_statement:**
-The user requested the creation of a penny auction website, similar to . The requirements include a customer-facing application and an admin panel. The user has provided extensive and detailed feature requests via a specification document, which the agent is expected to implement individually. The latest request was to redesign the auction listing page to match the layout of , displaying all auctions on a single, filterable page.
+The user requested the creation of a penny auction website modeled after , with both a customer-facing application and an admin panel. The project began with a detailed specification document, and the agent's task is to implement the requested features sequentially. Key requests have included redesigning the auction page to mirror , implementing real-time updates via WebSockets, creating advanced admin controls for auction and bot management, and building out both an affiliate (commission-based) and a user referral (bid rewards) system.
 
 **PRODUCT REQUIREMENTS (extracted from user requests):**
-- **Core Functionality:** Penny auction system with live and scheduled auctions.
-- **Admin Panel:** Full management of products, auctions (including scheduling), users (lock/unlock, view details), voucher codes, and admin bots. Should include dashboards for payments, system logs, and business intelligence charts.
-- **User Features:** User registration/login, password recovery, profile management, bid history, purchase history, bid package purchasing, placing bids, an Autobidder feature, and voucher redemption.
-- **UI/UX:** A modern design with specific color schemes (gold/red accents), a redesigned auction page showing all items in a grid, and a comprehensive user dashboard.
-- **Technical/Other:** Multi-language support (DE, EN, AL), winner email notifications, and real-time updates.
+- **Core Functionality:** Penny auction system with real-time bidding, scheduled auctions, and bot bidding.
+- **Admin Panel:** Responsive UI for managing products, auctions (scheduling, duration, bot target prices, relisting), users, vouchers, and bots. Includes a statistics dashboard with charts.
+- **User Features:** Registration/login with referral code support, password recovery, a comprehensive dashboard, bid package purchasing (Stripe), placing bids, and an Invite Friends system to earn free bids.
+- **UI/UX:** A modern dark theme with gold/red accents. A mobile-first responsive design, especially for the admin panel and auction pages.
+- **Monetization:** Stripe integration for bid package sales, an affiliate program with commission tiers, and a user referral program.
+- **Technical:** Real-time updates via WebSockets, Resend integration for email notifications.
 
 **User's preferred language**: German. The next agent MUST respond in German.
 
 **what currently exists?**
-A full-stack penny auction application using FastAPI, React, and MongoDB. The application has a rich feature set, including:
-- **Core Auction System:** Admins can create products and auctions. Auctions can be started immediately, scheduled for a specific start time, or have a custom start/end time. The frontend correctly displays live and scheduled auctions.
-- **User Management:** Full JWT authentication, user registration, login, and a multi-step password recovery flow. Users have a comprehensive profile page to edit details and a dashboard to view their bid balance, history, and active autobidders.
-- **Admin Panel:** A multi-tabbed interface for managing users, products, auctions, vouchers, and bots. It also includes new (mocked) views for payment transactions and system activity logs.
-- **Redesigned UI:** The application features a new color scheme (dark theme with gold and red accents). The main auctions page () has been completely redesigned to a -style grid layout with advanced filtering and sorting. The user dashboard () has also been redesigned for better usability.
-- **Email Notifications:** The backend is integrated with Resend to send emails for password resets and to notify auction winners.
+A full-stack penny auction application using FastAPI, React, and MongoDB. The app is feature-rich and includes:
+- **Real-Time Auction System:** A complete auction system with WebSockets for instant updates on prices, timers, and bidder information, eliminating the need for polling.
+- **Advanced Admin Panel:** A responsive admin interface with a statistical dashboard (using ), comprehensive forms for creating auctions with precise duration (minutes/hours/days) and bot target prices, and the ability to restart ended auctions.
+- **User & Monetization Systems:** Full JWT authentication. Users can register with a referral code. Two separate reward systems are live: an affiliate program for partners to earn commissions and a user referral program for customers to earn free bids.
+- **Stripe Payment Integration:** The Buy Bids page is fully integrated with Stripe, with dynamic bid package pricing configured. However, it is currently non-functional due to an invalid API key.
+- **Mobile-First UI:** Significant work has been done to ensure the main application and the admin panel are responsive and usable on mobile devices, including a sticky bid button on the auction detail page.
 
 **Last working item**:
-- **Last item agent was working:** The agent was implementing an advanced statistics dashboard for the admin panel, complete with charts for visualizing business metrics.
-    - **Backend:** A new API endpoint, , was created in  to aggregate and provide data (e.g., revenue over time, new users, bids placed).
-    - **Frontend:** The  library was installed. The agent was about to modify  to add the chart components and fetch data from the new endpoint.
-- **Status:** IN PROGRESS
-- **Agent Testing Done:** N
-- **Which testing method agent to use?** both
+- **Last item agent was working:** The agent was debugging critical errors found by the . The user had reported a generic error (da ist so ein Fehler) and requested a full system test. The test revealed that both the Stripe and Resend API keys were invalid, with the Stripe key causing a fatal 520 error during checkout. The agent was investigating the invalid Stripe key.
+- **Status:** BLOCKED
+- **Agent Testing Done:** Y
+- **Which testing method agent to use?** backend testing agent
 - **User Testing Done:** N
 
 **All Pending/In progress Issue list**:
-- **Issue 1: Hardcoded API Key (P0)**
-    - **Description:** The  is hardcoded directly in . This is a major security vulnerability and violates best practices.
-    - **Attempted fixes:** None.
-    - **Next debug checklist:**
-        1.  Move the key from  to  as .
-        2.  In , load the key using .
-        3.  Restart the backend (backend: stopped
-backend: started) and test the email functionality (e.g., password reset).
-    - **Why fix this issue and what will be achieved with the fix?** To secure the API key and follow standard security practices, preventing credentials from being exposed in source code.
-    - **Status:** NOT STARTED
-    - **Is recurring issue?** N
-    - **Should Test frontend/backend/both after fix?** backend
-    - **Blocked on other issue:** None.
-- **Issue 2: Inconsistent Data Persistence (P1)**
-    - **Description:** A critical issue from the previous fork remains unresolved. The backend uses a mix of MongoDB and in-memory Python dictionaries for data. This will cause data loss and inconsistency upon server restarts.
-    - **Attempted fixes:** None. The agent has consistently ignored this issue.
-    - **Next debug checklist:**
-        1.  Identify all data currently stored in in-memory dictionaries within .
-        2.  Create corresponding MongoDB collections and Pydantic models for this data.
-        3.  Refactor all backend logic to read from and write to MongoDB exclusively for persistent data.
-    - **Why fix this issue and what will be achieved with the fix?** To ensure data integrity, persistence, and application stability. This is essential for a production-ready application.
-    - **Status:** NOT STARTED
-    - **Is recurring issue?** Y
-    - **Should Test frontend/backend/both after fix?** backend
-    - **Blocked on other issue:** None.
+- **Issue 1: Invalid Stripe Live API Key (P0)**
+  - **Description:** The Stripe live key () provided by the user is invalid, causing the checkout process to fail with a 520 error. This is a critical blocker for all payment-related functionality.
+  - **Attempted fixes:** The key was added to , but tests confirmed it is not working.
+  - **Next debug checklist:**
+    1.  Communicate to the user that the provided Stripe Live key is invalid and is blocking all payments.
+    2.  Request that the user generate a new, valid Live API key from their Stripe Dashboard and provide it.
+    3.  Once the new key is received, update the  in .
+    4.  Use the  to re-run the payment tests to confirm the fix.
+  - **Status:** BLOCKED
+  - **Is recurring issue?** N
+  - **Should Test frontend/backend/both after fix?** backend
+  - **Blocked on other issue:** None.
+- **Issue 2: Invalid Resend API Key (P1)**
+  - **Description:** The  in  is a placeholder (). This prevents all email notifications, including password resets and winner announcements.
+  - **Attempted fixes:** None. The issue was identified by the testing agent.
+  - **Next debug checklist:**
+    1.  Request a valid Resend API key from the user.
+    2.  Update the  in .
+    3.  Restart the backend service.
+    4.  Manually test the password reset flow to verify that emails are being sent successfully.
+  - **Status:** NOT STARTED
+  - **Is recurring issue?** N
+  - **Should Test frontend/backend/both after fix?** backend
+  - **Blocked on other issue:** None.
+- **Issue 3: Inconsistent Data Persistence (P2)**
+  - **Description:** This is a recurring architectural risk from a previous fork. While one specific in-memory dictionary was removed, a full audit has not been performed to ensure that all persistent application data (like active bots, sessions, etc.) is stored exclusively in MongoDB and not in volatile Python dictionaries.
+  - **Attempted fixes:** A single in-memory dictionary for password resets was removed.
+  - **Next debug checklist:**
+    1.  Thoroughly review  and other backend files for any global or class-level dictionaries/lists used to store state.
+    2.  Identify any data that should be persistent but is not being saved to the database.
+    3.  Create new MongoDB collections and Pydantic models for any identified in-memory data.
+    4.  Refactor the code to use the database for all stateful operations.
+  - **Status:** NOT STARTED
+  - **Is recurring issue?** Y
+  - **Should Test frontend/backend/both after fix?** backend
+  - **Blocked on other issue:** None.
 
 **In progress Task List**:
-- **Task 1: Complete Admin Dashboard Charts (P0)**
-    - **Where to resume:** Open . Import the necessary components from the  library. In the main  tab, add chart components (e.g., , ) and use  to fetch data from the  endpoint. Render the charts using the fetched data.
-    - **What will be achieved with this?** The admin will have a visual dashboard with charts to monitor key business metrics like revenue, user growth, and auction activity.
-    - **Status:** IN PROGRESS
-    - **Should Test frontend/backend/both after fix?** both
-    - **Blocked on something:** None.
+None. The current focus is on resolving the critical API key blockers.
 
 **Upcoming and Future Tasks**
 **Upcoming Tasks (P1):**
--   **WebSockets for Real-Time Updates:** Replace the current  polling on the frontend with WebSockets for instant updates on bids and timers. This will reduce server load and improve user experience.
--   **Complete and Test Admin Bot System:** The backend logic exists, but the frontend UI was overwritten during redesigns. A new UI for managing bots needs to be created in the Admin panel, and the entire feature needs end-to-end testing.
--   **Refactor Monolithic Backend:** Break down the massive  into smaller, manageable files using FastAPI's  (e.g., , ).
+- **Refactor Monolithic Backend:**  is now extremely large and complex. It should be broken down into logical modules using FastAPI's  (e.g., , , , ).
 
 **Future Tasks (P2):**
--   Buy It Now Feature.
--   Public winner gallery.
--   Referral system to reward users with bids.
--   Two-Factor Authentication (2FA).
--   Integrate PayPal as a second payment option.
--   Generate PDF invoices for bid package purchases.
+- Buy It Now Feature.
+- Public winner gallery.
+- Two-Factor Authentication (2FA).
+- Integrate PayPal as a second payment option.
+- Generate PDF invoices for bid package purchases.
 
 **Completed work in this session**
-- **Auction Scheduling:** Implemented a full scheduling system allowing admins to set start/end times for auctions. Tested with backend API tests and frontend screenshots.
-- **Massive Feature Expansion:**
-    -   Created legal pages (Impressum, AGB, Datenschutz).
-    -   Implemented a full Forgot Password flow with email codes.
-    -   Created user pages for Profile Management, Bid History, and Purchases.
-    -   Added Admin tabs for viewing Payments and System Logs (with mock data).
-- **Major UI/UX Overhaul:**
-    -   Redesigned the entire auction list page () to a -style grid with a feature auction, sidebar, and advanced filtering.
-    -   Redesigned the user Dashboard () with stat cards and a modern layout.
-    -   Implemented a new application-wide color scheme (gold/red accents) and a cookie consent banner.
-- **Email Notifications:** Integrated the Resend API to send emails for auction winners and password resets.
-- **Comprehensive Testing:** Used the  twice, which created and passed over 20 backend tests, ensuring the stability of new features.
+- **WebSocket Integration:** Successfully implemented real-time updates for bids, timers, and prices using FastAPI WebSockets and a custom React hook, replacing the previous polling mechanism.
+- **Advanced Admin Features:**
+    - Made the admin panel fully responsive for mobile use.
+    - Enhanced the auction creation form with controls for duration (minutes/hours/days) and a bot target price.
+    - Added a feature to re-list ended auctions with new parameters directly from the admin dashboard.
+- **Affiliate and Referral Systems:**
+    - Built and integrated a complete affiliate program for partners to earn commission.
+    - Built and integrated a Freunde einladen (Invite Friends) system for users to earn free bids.
+    - Created dedicated frontend pages (, ) and integrated them into the UI.
+- **Payment System Updates:**
+    - Switched to a live Stripe key (which turned out to be invalid).
+    - Implemented a new, more granular pricing structure for bid packages as requested by the user, starting from €5.
+- **Critical Fixes & Testing:**
+    - Resolved a hardcoded  by moving it to  (though the key itself is a placeholder).
+    - Removed a redundant in-memory dictionary, making progress on data persistence.
+    - Used the  multiple times to validate features and identify critical regressions like the Stripe key failure.
 
 **Earlier issues found/mentioned but not fixed**
-- **Issue 1: Inconsistent Data Persistence**
-    - The backend still relies on a mix of MongoDB and volatile in-memory Python dictionaries, risking data loss on every restart. This was noted in the initial handoff and has not been addressed.
+- The broader architectural issue of **Inconsistent Data Persistence** remains only partially addressed. A full audit is required.
 
 **Known issue recurrence from previous fork**
-N/A
+- **Issue recurrence in previous fork:** Inconsistent Data Persistence (using in-memory dictionaries instead of MongoDB).
+- **Recurrence count:** 2
+- **Status:** NOT STARTED (A full audit is pending).
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
-- **Backend:** FastAPI, Resend (for emails)
-- **Frontend:** React, Tailwind CSS, shadcn/ui,  (for charts)
-- **Database:** MongoDB (with inconsistent in-memory storage)
-- **Authentication:** JWT
-- **Real-time UI:**  polling (WebSockets pending).
+- **Backend:** FastAPI, WebSockets, Pydantic, MongoDB.
+- **Frontend:** React, Tailwind CSS, shadcn/ui, .
+- **Real-time:** Full WebSocket implementation for broadcasting auction state changes.
+- **Authentication:** JWT (extended to support referral codes on registration).
+- **Monetization:** Stripe Checkout, custom affiliate/referral logic.
 
 **key DB schema**
 - **users:** 
-- **products:** 
+- **affiliates:** 
+- **commissions:** 
+- **referrals:** 
 - **auctions:** 
-- **vouchers:** 
-- **autobidders:** 
-- **admin_bots:** 
 
 **changes in tech stack**
-- **Frontend:**  added for data visualization.
-- **Backend:**  added for transactional emails.
+- No new technologies, but significant implementation of native FastAPI WebSockets.
 
 **All files of reference**
-- : Heavily modified. Contains all new endpoints for password reset, user profiles, admin stats, and email sending.
-- : Completely overwritten with a new -style layout.
-- : Completely overwritten with a new user dashboard design.
-- : Modified to add tabs for Payments and Logs; next to be modified for charts.
-- : Modified to include new routes and components (, ).
-- : Heavily modified with a new color theme and styles.
-- New files created: , , , , , , , , .
-- : Test file created by the testing agent.
-- : The main specification document for the project.
+- : Contains all new backend logic for WebSockets, affiliate/referral systems, and advanced admin controls. **URGENTLY needs refactoring.**
+- : Heavily modified to be responsive and include new forms for auction creation.
+- : The custom hook for managing WebSocket connections.
+- , : Rewritten to remove polling and use the WebSocket hook.
+- , : New pages for the monetization/reward systems.
+- , : Updated to handle referral codes.
+- : Updated with the invalid live Stripe key.
+- : Updated by the testing agent with new tests for WebSockets and other features.
 
 **Areas that need refactoring**:
-- **Monolithic Backend:**  is critically oversized and needs to be split into multiple router files for maintainability.
-- **Inconsistent Data Persistence:** All application state stored in Python dictionaries must be migrated to MongoDB to prevent data loss.
-- **Hardcoded Secrets:** The  must be moved from  to the  file.
+- **Monolithic Backend:**  is unmaintainably large. It must be broken down into smaller files using . This is the highest priority refactoring task.
 
 **key api endpoints**
-- , 
-- , , , 
-- , 
-- 
+- **WebSockets:** , 
+- **Admin:** , 
+- **Affiliate/Referral:** , , 
 
 **Critical Info for New Agent**
-- **PRIORITIZE FIXING CRITICAL ISSUES:** Before adding new features, address the **hardcoded API key** (P0) and the **inconsistent data persistence** (P1). These are major architectural flaws.
-- The user is very engaged and provides detailed specifications. Refer to  and the user's last messages for the implementation plan.
-- The agent has successfully used the . Continue to use it after implementing significant features to ensure stability.
+- **PRIORITY 1: Unblock Payments.** The application is currently **BROKEN** due to an invalid Stripe Live API key. You must communicate this to the user and request a valid key before proceeding. All payment functionality is blocked.
+- **PRIORITY 2: Fix Emails.** The Resend API key is also a placeholder, breaking all email notifications. This should be fixed immediately after the Stripe issue.
+- **User Interaction:** The user is very hands-on and will provide specific, detailed requests. Implement the features, present them, and be prepared for iterative feedback.
+- **Refactoring is now critical:** The backend  file has become a significant technical debt. After resolving the API key blockers, the next major task should be to refactor it into smaller, manageable routers.
 
 **documents and test reports created in this job**
 - 
 - 
 - 
+- 
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **User:** Programmier mal so, dass die alle Artikel in einer Seite stehen (Code it so that all articles are on one page), with an image of snipster.de. (Completed - Auctions page was redesigned).
-2.  **User:** Was ich dir geschickt habe jede einzelne macht das einzelne (What I sent you, do each one individually). This was in response to the agent creating a large PRD, confirming the user wants all listed features implemented. (In Progress - Many features have been implemented since).
-3.  **User:** Ja (Yes). The user's approval to the agent's initial plan. (Completed).
+1.  **User request:** Provide admin and customer login credentials. (Completed)
+2.  **User request:** Create auctions and implement bots that bid up to a set price. (Completed)
+3.  **User request:** Add advanced admin controls for auction duration, bot target price, and define bid costs. (Completed)
+4.  **User request:** Add a feature for admins to restart ended auctions. (Completed)
+5.  **User feedback:** The admin panel is not mobile-friendly; also asked for payment integration. (Completed)
+6.  **User confirmation:** Chose Stripe for payments. (Completed)
+7.  **User provides:** A Stripe Live API key (which is invalid) and requirements for an affiliate program. (In Progress)
+8.  **User provides:** A UI example for a friend referral system. (Completed)
+9.  **User request:** Adjust bid package prices to start at €5. (Completed)
+10. **User feedback:** Reported a general, unspecified error and asked for a full system test. (In Progress - led to the discovery of the invalid API keys).
 
 **Project Health Check:**
 - **Broken:**
-    - The data persistence model is broken due to the mix of MongoDB and in-memory dictionaries.
-    - A secret key () is hardcoded in the source code.
+    - **Stripe Payments (Live):** The entire checkout flow is non-functional due to an invalid Live API key.
+    - **Email Notifications:** All transactional emails (password reset, winner notifications) will fail due to a placeholder Resend API key.
 - **Mocked:**
-    - Stripe payment integration is still a placeholder.
-    - Admin Payments and Logs tabs are populated with mock data.
+    - No major mocked components. The implemented features are real but blocked by invalid keys.
 
 **3rd Party Integrations**
-- **Stripe (Payments):** Placeholder implementation. Requires user API key.
-- **Resend (Email):** Integrated for sending emails.  is currently hardcoded.
+- **Stripe (Payments):** Fully integrated but configured with an **invalid live API key**.
+- **Resend (Email):** Fully integrated but configured with a **placeholder/invalid API key**.
 
 **Testing status**
-- **Testing agent used after significant changes:** YES. The agent ran the testing agent twice, which generated backend test suites that passed.
+- **Testing agent used after significant changes:** YES. The last run () successfully identified the critical Stripe and Resend key issues.
 - **Troubleshoot agent used after agent stuck in loop:** NO
-- **Test files created:** []
-- **Known regressions:** None.
+- **Test files created:** [] (Continuously updated by the testing agent).
+- **Known regressions:** Stripe checkout is failing.
 
 **Credentials to test flow:**
 - **Admin:**
@@ -183,4 +192,5 @@ N/A
     - **Password:** 
 
 **What agent forgot to execute**
-The agent has repeatedly ignored the critical architectural flaw of mixed data persistence (MongoDB and in-memory dictionaries), which was highlighted in the original handoff. It also introduced a new critical flaw by hardcoding an API key in the source code. It has also not yet started on the P1 task of implementing WebSockets.</analysis>
+- The agent did not perform a full audit of the codebase for the recurring Inconsistent Data Persistence issue, leaving a potential architectural risk.
+- The agent did not proactively ask the user for a valid Resend key and instead relied on the testing agent to flag the placeholder as an error.</analysis>
