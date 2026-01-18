@@ -2705,10 +2705,98 @@ async def broadcast_auction_ended(auction_id: str, winner_name: str, final_price
     await ws_manager.broadcast_to_auction(auction_id, message)
     await ws_manager.broadcast_to_auction("all_auctions", message)
 
+# ==================== BID HISTORY ENDPOINT ====================
+
+@api_router.get("/auctions/{auction_id}/bid-history")
+async def get_auction_bid_history(auction_id: str, limit: int = 50):
+    """Get bid history for a specific auction"""
+    auction = await db.auctions.find_one({"id": auction_id}, {"_id": 0, "bid_history": 1})
+    if not auction:
+        raise HTTPException(status_code=404, detail="Auction not found")
+    
+    bid_history = auction.get("bid_history", [])
+    # Sort by timestamp descending (newest first) and limit
+    bid_history = sorted(bid_history, key=lambda x: x.get("timestamp", ""), reverse=True)[:limit]
+    
+    return bid_history
+
+# ==================== WINNERS GALLERY ENDPOINT ====================
+
+@api_router.get("/winners")
+async def get_winners(limit: int = 20):
+    """Get recent auction winners for the winners gallery"""
+    # Find ended auctions with winners
+    winners_pipeline = [
+        {"$match": {"status": "ended", "winner_id": {"$ne": None}}},
+        {"$sort": {"ended_at": -1}},
+        {"$limit": limit}
+    ]
+    
+    ended_auctions = await db.auctions.aggregate(winners_pipeline).to_list(limit)
+    
+    winners = []
+    for auction in ended_auctions:
+        product = await db.products.find_one({"id": auction.get("product_id")}, {"_id": 0})
+        if product:
+            savings = 0
+            if product.get("retail_price") and auction.get("current_price"):
+                savings = round((product["retail_price"] - auction["current_price"]) / product["retail_price"] * 100)
+            
+            winners.append({
+                "auction_id": auction.get("id"),
+                "winner_name": auction.get("winner_name"),
+                "product_name": product.get("name"),
+                "product_image": product.get("image_url"),
+                "product_category": product.get("category"),
+                "final_price": auction.get("current_price"),
+                "retail_price": product.get("retail_price"),
+                "savings_percent": savings,
+                "total_bids": auction.get("total_bids", 0),
+                "ended_at": auction.get("ended_at") or auction.get("end_time")
+            })
+    
+    return winners
+
+# ==================== CATEGORIES ENDPOINT ====================
+
+@api_router.get("/categories")
+async def get_categories():
+    """Get all product categories with auction counts"""
+    # Get distinct categories from products
+    products = await db.products.find({}, {"_id": 0, "category": 1}).to_list(1000)
+    
+    category_counts = {}
+    for p in products:
+        cat = p.get("category", "Sonstige")
+        category_counts[cat] = category_counts.get(cat, 0) + 1
+    
+    # Get auction counts per category
+    auctions = await db.auctions.find({"status": {"$in": ["active", "scheduled"]}}, {"_id": 0, "product_id": 1}).to_list(1000)
+    
+    category_auction_counts = {}
+    for auction in auctions:
+        product = await db.products.find_one({"id": auction.get("product_id")}, {"_id": 0, "category": 1})
+        if product:
+            cat = product.get("category", "Sonstige")
+            category_auction_counts[cat] = category_auction_counts.get(cat, 0) + 1
+    
+    categories = []
+    for cat, product_count in category_counts.items():
+        categories.append({
+            "name": cat,
+            "product_count": product_count,
+            "active_auction_count": category_auction_counts.get(cat, 0)
+        })
+    
+    # Sort by auction count descending
+    categories.sort(key=lambda x: x["active_auction_count"], reverse=True)
+    
+    return categories
+
 # Root endpoint
 @api_router.get("/")
 async def root():
-    return {"message": "BidBlitz Auction API", "version": "2.1.0"}
+    return {"message": "BidBlitz Auction API", "version": "2.2.0"}
 
 # Include the router
 app.include_router(api_router)
