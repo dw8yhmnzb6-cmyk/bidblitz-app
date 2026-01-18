@@ -97,17 +97,17 @@ export const Navbar = () => {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="sm" className="text-[#94A3B8] hover:text-white hover:bg-white/10" data-testid="language-selector">
                   <Globe className="w-4 h-4 mr-2" />
-                  {languageNames[language]?.flag} {languageNames[language]?.name}
+                  {languageList[language]?.flag} {languageList[language]?.name}
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="bg-[#181824] border-white/10">
-                {languages.map((lang) => (
+              <DropdownMenuContent className="bg-[#181824] border-white/10 max-h-80 overflow-y-auto">
+                {Object.keys(languageList).map((lang) => (
                   <DropdownMenuItem 
                     key={lang} 
                     onClick={() => changeLanguage(lang)}
                     className={`text-white hover:bg-white/10 cursor-pointer ${language === lang ? 'bg-white/5' : ''}`}
                   >
-                    {languageNames[lang]?.flag} {languageNames[lang]?.name}
+                    {languageList[lang]?.flag} {languageList[lang]?.name}
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuContent>
