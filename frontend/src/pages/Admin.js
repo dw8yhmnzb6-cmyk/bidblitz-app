@@ -51,6 +51,9 @@ export default function Admin() {
   // Edit states
   const [editingProduct, setEditingProduct] = useState(null);
   const [editingUser, setEditingUser] = useState(null);
+  
+  // Mobile menu state (must be before any conditional returns)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Form states
   const [newProduct, setNewProduct] = useState({
