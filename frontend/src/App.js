@@ -25,6 +25,7 @@ import Profile from "./pages/Profile";
 import BidHistory from "./pages/BidHistory";
 import Purchases from "./pages/Purchases";
 import Affiliate from "./pages/Affiliate";
+import InviteFriends from "./pages/InviteFriends";
 
 // Protected Route Component
 const ProtectedRoute = ({ children, requireAdmin = false }) => {
