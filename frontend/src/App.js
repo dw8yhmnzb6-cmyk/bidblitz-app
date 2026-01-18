@@ -105,6 +105,7 @@ function AppContent() {
           } />
           <Route path="/affiliate" element={<Affiliate />} />
           <Route path="/invite" element={<InviteFriends />} />
+          <Route path="/winners" element={<Winners />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
