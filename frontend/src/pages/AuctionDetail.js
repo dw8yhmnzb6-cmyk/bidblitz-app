@@ -633,14 +633,14 @@ export default function AuctionDetail() {
                           className="w-full border-[#7C3AED]/50 text-[#7C3AED] hover:bg-[#7C3AED]/10"
                           data-testid="show-autobidder-btn"
                         >
-                          <Bot className="w-5 h-5 mr-2" />
-                          {t('autobidder.title') || 'Autobidder'} aktivieren
+                          <Zap className="w-5 h-5 mr-2" />
+                          {t('autobidder.title') || 'Auto-Bieter'} aktivieren
                         </Button>
                       ) : (
                         <div className="space-y-4 p-4 rounded-lg bg-[#181824]">
                           <div className="flex items-center gap-2 text-[#7C3AED]">
-                            <Bot className="w-5 h-5" />
-                            <span className="font-bold">{t('autobidder.title') || 'Autobidder'}</span>
+                            <Zap className="w-5 h-5" />
+                            <span className="font-bold">{t('autobidder.title') || 'Auto-Bieter'}</span>
                           </div>
                           <p className="text-[#94A3B8] text-sm">
                             {t('autobidder.description') || 'Lassen Sie automatisch bieten bis zu Ihrem Limit'}
