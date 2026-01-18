@@ -103,6 +103,13 @@ export default function AuctionDetail() {
     fetchBidHistory();
   }, [id]);
 
+  // Fetch Buy It Now price when authenticated
+  useEffect(() => {
+    if (isAuthenticated && id) {
+      fetchBuyNowPrice();
+    }
+  }, [isAuthenticated, id, auction?.current_price]);
+
   // Refresh bid history when there's a new bid
   useEffect(() => {
     if (bidNotification) {
