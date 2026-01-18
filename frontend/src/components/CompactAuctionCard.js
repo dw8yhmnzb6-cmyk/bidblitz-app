@@ -1,35 +1,46 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Timer, Zap } from 'lucide-react';
+import { Timer, Zap, Flame, Clock } from 'lucide-react';
 import { Button } from './ui/button';
 
-// Activity Index Component - colored dots showing auction activity
+// Activity Index Component - Friendly colorful bars
 const ActivityIndex = ({ bids }) => {
-  // More bids = more green dots, fewer bids = more red/orange dots
-  const getColors = () => {
-    if (bids >= 30) return ['#22c55e', '#22c55e', '#22c55e', '#22c55e', '#22c55e', '#84cc16', '#eab308', '#f97316', '#ef4444', '#dc2626'];
-    if (bids >= 20) return ['#22c55e', '#22c55e', '#22c55e', '#22c55e', '#84cc16', '#eab308', '#f97316', '#ef4444', '#dc2626', '#dc2626'];
-    if (bids >= 10) return ['#22c55e', '#22c55e', '#22c55e', '#84cc16', '#eab308', '#f97316', '#ef4444', '#ef4444', '#dc2626', '#dc2626'];
-    if (bids >= 5) return ['#22c55e', '#22c55e', '#84cc16', '#eab308', '#f97316', '#f97316', '#ef4444', '#ef4444', '#dc2626', '#dc2626'];
-    return ['#22c55e', '#84cc16', '#eab308', '#f97316', '#f97316', '#ef4444', '#ef4444', '#dc2626', '#dc2626', '#dc2626'];
-  };
-
+  const activeBars = Math.min(Math.ceil(bids / 5), 10);
+  
   return (
     <div className="flex items-center gap-0.5">
-      {getColors().map((color, i) => (
+      {[...Array(10)].map((_, i) => (
         <div 
           key={i} 
-          className="w-2 h-3 rounded-sm" 
-          style={{ backgroundColor: color }}
+          className={`w-2 h-3 rounded-sm transition-all ${
+            i < activeBars 
+              ? 'bg-gradient-to-t from-emerald-500 to-emerald-400' 
+              : 'bg-gray-200'
+          }`}
         />
       ))}
     </div>
   );
 };
 
-export const CompactAuctionCard = ({ auction, onBid, isAuthenticated }) => {
+export const CompactAuctionCard = ({ auction, onBid, isAuthenticated, t }) => {
   const [timeLeft, setTimeLeft] = useState({ hours: 0, minutes: 0, seconds: 0 });
   const [isUrgent, setIsUrgent] = useState(false);
+
+  // Fallback translation function if not provided
+  const translate = t || ((key) => {
+    const fallbacks = {
+      'auctionCard.liveNow': 'LIVE JETZT',
+      'auctionCard.comingSoon': 'DEMNÄCHST',
+      'auctionCard.ended': 'BEENDET',
+      'auctionCard.bidNow': 'BIETEN',
+      'auctionCard.activity': 'Aktivität',
+      'auctionCard.lastSold': 'Zuletzt versteigert für',
+      'auctionCard.retailPrice': 'Vergleichspreis*',
+      'auctionCard.startPrice': 'Startpreis'
+    };
+    return fallbacks[key] || key;
+  });
 
   useEffect(() => {
     const calculateTimeLeft = () => {
@@ -67,56 +78,79 @@ export const CompactAuctionCard = ({ auction, onBid, isAuthenticated }) => {
   // Generate a "last sold for" price (random between 1-15€)
   const lastSoldPrice = ((auction.id.charCodeAt(0) % 14) + 1 + Math.random()).toFixed(2);
 
+  // Badge styling based on status
+  const getBadgeStyle = () => {
+    if (isScheduled) return 'bg-gradient-to-r from-amber-400 to-orange-500';
+    if (isEnded) return 'bg-gray-400';
+    return 'bg-gradient-to-r from-emerald-400 to-teal-500';
+  };
+
+  const getBadgeText = () => {
+    if (isScheduled) return translate('auctionCard.comingSoon');
+    if (isEnded) return translate('auctionCard.ended');
+    return translate('auctionCard.liveNow');
+  };
+
   return (
     <div 
-      className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-200 hover:shadow-lg transition-shadow"
+      className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-100 hover:shadow-xl hover:scale-[1.02] transition-all duration-300 group"
       data-testid={`compact-auction-${auction.id}`}
     >
-      {/* Header Badge */}
-      <div className="bg-gradient-to-r from-red-500 to-red-600 text-white text-xs font-bold px-2 py-1 text-center uppercase tracking-wide">
-        {isScheduled ? 'DEMNÄCHST' : isEnded ? 'BEENDET' : 'FÜR PROFIS!'}
+      {/* Header Badge - Friendly status */}
+      <div className={`text-white text-xs font-bold px-2 py-1 text-center uppercase tracking-wide flex items-center justify-center gap-1 ${getBadgeStyle()}`}>
+        {!isEnded && !isScheduled && <Flame className="w-3 h-3 animate-pulse" />}
+        {isScheduled && <Clock className="w-3 h-3" />}
+        {getBadgeText()}
       </div>
 
       <div className="p-3">
         {/* Product Name */}
-        <h3 className="font-bold text-gray-800 text-sm leading-tight mb-1 line-clamp-2 h-10" title={product.name}>
+        <h3 className="font-bold text-gray-800 text-sm leading-tight mb-1 line-clamp-2 h-10 group-hover:text-teal-600 transition-colors" title={product.name}>
           {product.name?.toUpperCase()}
         </h3>
         
         {/* Retail Price */}
-        <p className="text-gray-500 text-xs mb-2">
-          Vergleichspreis*: € {product.retail_price?.toFixed(0)},-
+        <p className="text-gray-400 text-xs mb-2">
+          {translate('auctionCard.retailPrice')}: <span className="line-through">€ {product.retail_price?.toFixed(0)},-</span>
         </p>
 
         <div className="flex gap-2">
           {/* Left side - Price & Bidder */}
           <div className="flex-1">
-            {/* Current Price */}
-            <p className="text-2xl font-bold text-teal-600 font-mono">
-              € {auction.current_price?.toFixed(2).replace('.', ',')}
-            </p>
+            {/* Current Price - More prominent & colorful */}
+            <div className="bg-gradient-to-r from-teal-50 to-emerald-50 rounded-lg p-1.5 mb-1.5">
+              <p className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-teal-600 to-emerald-600 font-mono">
+                € {auction.current_price?.toFixed(2).replace('.', ',')}
+              </p>
+            </div>
             
             {/* Last Bidder */}
             <p className="text-gray-500 text-xs truncate">
-              {auction.last_bidder_name || 'Noch keine Gebote'}
+              {auction.last_bidder_name || translate('auctionCard.startPrice')}
             </p>
             
-            {/* Bid Button */}
+            {/* Bid Button - More inviting */}
             <Link to={`/auctions/${auction.id}`}>
               <button 
-                className="mt-2 w-full bg-gradient-to-b from-green-400 to-green-600 hover:from-green-500 hover:to-green-700 text-white font-bold py-1.5 px-4 rounded text-sm uppercase shadow-md transition-all"
+                className={`mt-2 w-full font-bold py-1.5 px-4 rounded-lg text-sm uppercase shadow-md transition-all ${
+                  isEnded 
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                    : 'bg-gradient-to-r from-emerald-400 via-teal-500 to-cyan-500 hover:from-emerald-500 hover:via-teal-600 hover:to-cyan-600 text-white hover:shadow-lg hover:shadow-teal-200'
+                }`}
                 disabled={isEnded}
               >
-                BIETEN
+                {isEnded ? translate('auctionCard.ended') : translate('auctionCard.bidNow')}
               </button>
             </Link>
           </div>
 
           {/* Right side - Image & Timer */}
           <div className="w-24 flex flex-col items-center">
-            {/* Timer */}
-            <div className={`w-full text-center py-1 px-2 rounded text-white text-xs font-mono font-bold mb-1 ${
-              isUrgent ? 'bg-red-500 animate-pulse' : isEnded ? 'bg-gray-500' : 'bg-green-500'
+            {/* Timer - More colorful */}
+            <div className={`w-full text-center py-1 px-2 rounded-lg text-white text-xs font-mono font-bold mb-1 shadow-sm ${
+              isUrgent ? 'bg-gradient-to-r from-red-500 to-rose-500 animate-pulse' : 
+              isEnded ? 'bg-gray-400' : 
+              'bg-gradient-to-r from-emerald-500 to-teal-500'
             }`}>
               {isEnded ? 'ENDE' : `${formatTime(timeLeft.hours)}:${formatTime(timeLeft.minutes)}:${formatTime(timeLeft.seconds)}`}
             </div>
@@ -125,22 +159,22 @@ export const CompactAuctionCard = ({ auction, onBid, isAuthenticated }) => {
             <img
               src={product.image_url || 'https://via.placeholder.com/100'}
               alt={product.name}
-              className="w-20 h-20 object-contain"
+              className="w-20 h-20 object-contain group-hover:scale-110 transition-transform"
             />
           </div>
         </div>
 
         {/* Activity Index */}
         <div className="mt-2 flex items-center gap-2">
-          <span className="text-gray-500 text-xs">Aktivitätsindex:</span>
+          <span className="text-gray-400 text-xs">{translate('auctionCard.activity')}:</span>
           <ActivityIndex bids={auction.total_bids || 0} />
         </div>
       </div>
 
-      {/* Footer - Last Sold */}
-      <div className="bg-gray-100 px-3 py-1.5 text-center">
+      {/* Footer - Friendlier message */}
+      <div className="bg-gradient-to-r from-emerald-50 to-teal-50 px-3 py-1.5 text-center border-t border-emerald-100">
         <p className="text-gray-600 text-xs">
-          Zuletzt versteigert für nur <span className="font-bold text-green-600">€ {lastSoldPrice}</span>
+          {translate('auctionCard.lastSold')} <span className="font-bold text-emerald-600">€ {lastSoldPrice}</span>
         </p>
       </div>
     </div>
