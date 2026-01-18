@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
@@ -19,8 +19,6 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [requires2FA, setRequires2FA] = useState(false);
-  const formRef = useRef(null);
-  const hasAutoLoginAttempted = useRef(false);
 
   const handleSubmit = async (e) => {
     if (e) e.preventDefault();
