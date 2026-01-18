@@ -10,7 +10,7 @@ import {
   Zap, Trophy, Target, TrendingUp, ArrowRight, User, Mail, 
   Ticket, Bot, Trash2, Power, Clock, Package, CreditCard,
   History, Settings, ChevronRight, Gift, Calendar, Eye,
-  Timer, CheckCircle, XCircle, Shield
+  Timer, CheckCircle, XCircle, Shield, FileText
 } from 'lucide-react';
 import { toast } from 'sonner';
 
