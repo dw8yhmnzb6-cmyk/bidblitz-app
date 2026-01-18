@@ -101,6 +101,7 @@ function AppContent() {
               <Purchases />
             </ProtectedRoute>
           } />
+          <Route path="/affiliate" element={<Affiliate />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
