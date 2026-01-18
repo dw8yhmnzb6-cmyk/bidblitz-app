@@ -637,6 +637,11 @@ async def register(user_data: UserCreate, request: Request):
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
     
+    # Validate password strength
+    is_valid, error_msg = validate_password_strength(user_data.password)
+    if not is_valid:
+        raise HTTPException(status_code=400, detail=error_msg)
+    
     # Get user's IP and referrer for tracking
     client_ip = request.client.host if request.client else "unknown"
     
@@ -654,6 +659,7 @@ async def register(user_data: UserCreate, request: Request):
     vpn_check = await check_vpn_proxy(client_ip)
     if vpn_check.get("is_vpn") or vpn_check.get("is_proxy") or vpn_check.get("is_datacenter"):
         logger.warning(f"VPN/Proxy blocked registration attempt from IP: {client_ip}")
+        await log_security_event("registration_blocked_vpn", "unknown", {"email": user_data.email, "reason": "VPN/Proxy"}, client_ip)
         raise HTTPException(
             status_code=403, 
             detail="VPN, Proxy oder Datacenter-Verbindungen sind nicht erlaubt. Bitte deaktivieren Sie Ihren VPN und versuchen Sie es erneut."
@@ -663,6 +669,7 @@ async def register(user_data: UserCreate, request: Request):
     if client_ip and client_ip != "unknown" and client_ip != "127.0.0.1":
         existing_ip_user = await db.users.find_one({"ip_address": client_ip, "is_admin": False})
         if existing_ip_user:
+            await log_security_event("registration_blocked_ip", "unknown", {"email": user_data.email, "reason": "Duplicate IP"}, client_ip)
             raise HTTPException(
                 status_code=400, 
                 detail="Von dieser IP-Adresse wurde bereits ein Konto erstellt. Nur ein Konto pro Haushalt erlaubt."
@@ -679,20 +686,28 @@ async def register(user_data: UserCreate, request: Request):
         "name": user_data.name,
         "bids_balance": 10,  # Free starting bids
         "is_admin": False,
-        "is_blocked": False,  # New field for blocking users
+        "is_blocked": False,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "won_auctions": [],
         "total_bids_placed": 0,
-        "total_deposits": 0.0,  # Track total money deposited
-        "source": user_data.source or "direct",  # Registration source
+        "total_deposits": 0.0,
+        "source": user_data.source or "direct",
         "ip_address": client_ip,
         "referrer": referrer,
         "user_agent": user_agent,
-        "country": "Unknown",  # Can be filled by IP geolocation
-        "referred_by": user_data.referral_code,  # Affiliate referral code
-        "affiliate_id": None  # Will be set if valid referral code
+        "country": "Unknown",
+        "referred_by": user_data.referral_code,
+        "affiliate_id": None,
+        # 2FA fields
+        "two_factor_enabled": False,
+        "two_factor_secret": None,
+        "last_login": None,
+        "login_count": 0
     }
     await db.users.insert_one(user)
+    
+    # Log registration
+    await log_security_event("registration", user_id, {"email": user_data.email, "user_agent": user_agent}, client_ip)
     
     # Process referral code if provided
     if user_data.referral_code:
