@@ -370,7 +370,21 @@ const RecentlyEndedAuctions = ({ auctions }) => {
   );
 };
 
-export default function Auctions() {
+    </div>
+  );
+}
+
+// Export with notification button
+export default function AuctionsWithAlarm() {
+  return (
+    <>
+      <AuctionsPage />
+      <NotificationPermissionButton />
+    </>
+  );
+}
+
+function AuctionsPage() {
   const { isAuthenticated, token, updateBidsBalance } = useAuth();
   const [auctions, setAuctions] = useState([]);
   const [loading, setLoading] = useState(true);
