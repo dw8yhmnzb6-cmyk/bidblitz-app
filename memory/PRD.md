@@ -26,6 +26,7 @@ Penny-Auktion-Website ähnlich dealdash.com mit Kunden-App und Admin-Panel.
 - [x] **Profilverwaltung (Name, Email ändern)**
 - [x] **Passwort ändern**
 - [x] **Two-Factor Authentication (2FA)** - TOTP-basiert mit QR-Code
+- [x] **Auto-Login** bei gespeicherten Anmeldedaten (Browser autofill)
 
 ### Öffentliche Seiten (2.1)
 - [x] **Startseite** (Hero, Live-Auktionen, Countdown, Call-to-Action)
@@ -42,6 +43,7 @@ Penny-Auktion-Website ähnlich dealdash.com mit Kunden-App und Admin-Panel.
 - [x] **Gebots-Historie**
 - [x] **Gekaufte Gebotspakete**
 - [x] **2FA-Verwaltung** - Aktivieren/Deaktivieren
+- [x] **Freunde einladen** - Mit €5-Aufladung-Bedingung
 
 ### Produkt-Management
 - [x] CRUD für Produkte
@@ -57,6 +59,7 @@ Penny-Auktion-Website ähnlich dealdash.com mit Kunden-App und Admin-Panel.
 - [x] Bieten nur bei aktiven Auktionen
 - [x] **Sofort Kaufen (Buy It Now)** - Mit Gebots-Guthaben (€0.15 pro Gebot)
 - [x] **Autobidder** - Automatisches Bieten bis Maximalpreis
+- [x] **Countdown-Timer-Alarm** - Benachrichtigung bei <60 Sekunden
 
 ### Admin-Panel
 - [x] Dashboard mit Statistiken (Charts)
@@ -84,6 +87,10 @@ Penny-Auktion-Website ähnlich dealdash.com mit Kunden-App und Admin-Panel.
 - [x] **IP-Beschränkung** (ein Konto pro Haushalt)
 - [x] **Rate-Limiting** für Login-Versuche
 - [x] **Security-Logs** in MongoDB
+
+### UI/UX
+- [x] **Footer Jahr dynamisch** (© 2026 statt 2024)
+- [x] **Referral €5-Bedingung angezeigt**
 
 ### Öffentliche Seiten
 - [x] **Impressum** (§ 5 TMG, Kontakt, Register)
