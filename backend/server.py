@@ -567,6 +567,17 @@ async def register(user_data: UserCreate, request: Request):
                 {"$set": {"affiliate_id": affiliate["id"]}}
             )
             logger.info(f"New referral tracked: {user_id} from affiliate {affiliate['id']}")
+        else:
+            # Check if it's a user referral (8 char code = user ID prefix)
+            referrer = await db.users.find_one({"id": {"$regex": f"^{user_data.referral_code}", "$options": "i"}})
+            if referrer:
+                await db.users.update_one(
+                    {"id": user_id},
+                    {"$set": {"referred_by_user": referrer["id"]}}
+                )
+                # Process referral reward for the referrer
+                await process_user_referral_reward(referrer["id"])
+                logger.info(f"User referral: {user_id} referred by {referrer['id']}")
     
     token = create_token(user_id)
     return {
