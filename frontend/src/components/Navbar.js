@@ -178,7 +178,7 @@ export const Navbar = () => {
           <div className="px-4 py-4 space-y-3">
             {/* Language selector mobile */}
             <div className="flex flex-wrap gap-2 pb-3 border-b border-white/10">
-              {Object.keys(languageList).slice(0, 10).map((lang) => (
+              {Object.keys(languageList).map((lang) => (
                 <button
                   key={lang}
                   onClick={() => changeLanguage(lang)}
