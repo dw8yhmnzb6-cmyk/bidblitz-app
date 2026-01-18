@@ -755,9 +755,6 @@ export default function AuctionDetail() {
                               <div>
                                 <p className="text-white text-sm font-medium">
                                   {bid.user_name}
-                                  {bid.is_autobid && (
-                                    <Bot className="w-3 h-3 inline ml-1 text-[#F59E0B]" />
-                                  )}
                                 </p>
                                 {index === 0 && (
                                   <p className="text-[#10B981] text-xs">Aktueller Höchstbieter</p>
