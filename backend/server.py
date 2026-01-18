@@ -1946,6 +1946,74 @@ async def update_user(user_id: str, data: UserUpdate, admin: dict = Depends(get_
     updated = await db.users.find_one({"id": user_id}, {"_id": 0, "password": 0})
     return {"message": "User updated", "user": updated}
 
+# ==================== USER REFERRAL SYSTEM (Free Bids) ====================
+
+# Reward tiers for inviting friends
+REFERRAL_REWARDS = [
+    {"friends": 1, "bids": 5},
+    {"friends": 3, "bids": 20},
+    {"friends": 5, "bids": 40},
+    {"friends": 10, "bids": 100},
+    {"friends": 25, "bids": 300},
+    {"friends": 50, "bids": 750},
+]
+
+@api_router.get("/users/referrals")
+async def get_user_referrals(user: dict = Depends(get_current_user)):
+    """Get user's referral stats and link"""
+    # Generate referral code from user ID
+    referral_code = user["id"][:8].upper()
+    
+    # Count invited friends
+    invited_count = await db.users.count_documents({"referred_by_user": user["id"]})
+    
+    # Get user's referral stats
+    user_data = await db.users.find_one({"id": user["id"]}, {"_id": 0})
+    bids_earned = user_data.get("referral_bids_earned", 0)
+    
+    return {
+        "referral_code": referral_code,
+        "referral_link": f"https://bidblitz.de/register?ref={referral_code}",
+        "invited_friends": invited_count,
+        "bids_earned": bids_earned,
+        "reward_tiers": REFERRAL_REWARDS
+    }
+
+async def process_user_referral_reward(referrer_id: str):
+    """Check and award referral rewards based on friend count"""
+    # Count total referred friends who registered
+    friend_count = await db.users.count_documents({"referred_by_user": referrer_id})
+    
+    referrer = await db.users.find_one({"id": referrer_id})
+    if not referrer:
+        return
+    
+    current_earned = referrer.get("referral_bids_earned", 0)
+    current_tier_reached = referrer.get("referral_tier_reached", 0)
+    
+    # Calculate total bids that should be earned
+    total_bids = 0
+    for tier in REFERRAL_REWARDS:
+        if friend_count >= tier["friends"]:
+            total_bids = tier["bids"]
+    
+    # Award new bids if we reached a new tier
+    new_bids = total_bids - current_earned
+    if new_bids > 0:
+        await db.users.update_one(
+            {"id": referrer_id},
+            {
+                "$inc": {"bids_balance": new_bids},
+                "$set": {
+                    "referral_bids_earned": total_bids,
+                    "referral_tier_reached": friend_count
+                }
+            }
+        )
+        logger.info(f"Referral reward: {new_bids} bids for user {referrer_id} (total friends: {friend_count})")
+    
+    return new_bids
+
 # ==================== AFFILIATE SYSTEM ====================
 
 def get_affiliate_tier(leads_this_month: int) -> dict:
