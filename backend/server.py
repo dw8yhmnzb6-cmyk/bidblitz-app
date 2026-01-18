@@ -533,9 +533,40 @@ async def register(user_data: UserCreate, request: Request):
         "ip_address": client_ip,
         "referrer": referrer,
         "user_agent": user_agent,
-        "country": "Unknown"  # Can be filled by IP geolocation
+        "country": "Unknown",  # Can be filled by IP geolocation
+        "referred_by": user_data.referral_code,  # Affiliate referral code
+        "affiliate_id": None  # Will be set if valid referral code
     }
     await db.users.insert_one(user)
+    
+    # Process referral code if provided
+    if user_data.referral_code:
+        affiliate = await db.affiliates.find_one({"referral_code": user_data.referral_code, "status": "active"})
+        if affiliate:
+            # Create lead record
+            lead = {
+                "id": str(uuid.uuid4()),
+                "affiliate_id": affiliate["id"],
+                "user_id": user_id,
+                "referral_code": user_data.referral_code,
+                "converted": False,
+                "conversion_amount": 0,
+                "commission_earned": 0,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "converted_at": None
+            }
+            await db.affiliate_leads.insert_one(lead)
+            
+            # Update affiliate and user
+            await db.affiliates.update_one(
+                {"id": affiliate["id"]},
+                {"$inc": {"total_referrals": 1}, "$push": {"referrals": user_id}}
+            )
+            await db.users.update_one(
+                {"id": user_id},
+                {"$set": {"affiliate_id": affiliate["id"]}}
+            )
+            logger.info(f"New referral tracked: {user_id} from affiliate {affiliate['id']}")
     
     token = create_token(user_id)
     return {
