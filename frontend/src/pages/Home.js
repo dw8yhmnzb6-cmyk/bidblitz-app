@@ -54,29 +54,6 @@ export default function Home() {
     }
   };
 
-  const features = [
-    {
-      icon: <Zap className="w-8 h-8" />,
-      title: 'Penny Auktionen',
-      description: 'Jedes Gebot erhöht den Preis nur um wenige Cent'
-    },
-    {
-      icon: <Trophy className="w-8 h-8" />,
-      title: 'Große Ersparnisse',
-      description: 'Gewinnen Sie Produkte bis zu 90% unter dem Einzelhandelspreis'
-    },
-    {
-      icon: <Clock className="w-8 h-8" />,
-      title: 'Echtzeit-Gebote',
-      description: 'Live-Updates und spannendes Bieterlebnis'
-    },
-    {
-      icon: <Shield className="w-8 h-8" />,
-      title: 'Sicher & Fair',
-      description: 'Transparente Auktionen mit verifiziertem System'
-    }
-  ];
-
   return (
     <div className="min-h-screen" data-testid="home-page">
       {/* Language Bar - Horizontal Scrollable */}
