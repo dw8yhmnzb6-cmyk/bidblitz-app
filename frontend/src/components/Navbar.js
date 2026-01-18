@@ -1,6 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
+import { languageList } from '../i18n/translations';
 import { Zap, User, LogOut, Shield, Menu, X, Globe, Gift, Trophy } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from './ui/button';
@@ -10,12 +11,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from './ui/dropdown-menu';
-
-const languageNames = {
-  de: { name: 'Deutsch', flag: '🇩🇪' },
-  en: { name: 'English', flag: '🇬🇧' },
-  sq: { name: 'Shqip', flag: '🇦🇱' }
-};
 
 export const Navbar = () => {
   const { user, isAuthenticated, isAdmin, logout } = useAuth();
