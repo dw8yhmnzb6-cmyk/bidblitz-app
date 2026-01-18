@@ -138,8 +138,14 @@ function AppContent() {
             background: '#181824',
             border: '1px solid rgba(255,255,255,0.1)',
             color: '#F8FAFC',
+            fontSize: '12px',
+            padding: '8px 12px',
+            maxWidth: '280px',
           },
+          duration: 3000,
         }}
+        visibleToasts={3}
+        gap={4}
       />
     </div>
   );
