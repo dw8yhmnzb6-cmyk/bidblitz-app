@@ -133,7 +133,7 @@ export default function Home() {
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link to="/auctions">
                 <Button className="btn-primary text-lg px-8 py-4 h-auto" data-testid="cta-auctions">
-                  Jetzt bieten
+                  {t('home.ctaBid')}
                   <ArrowRight className="w-5 h-5 ml-2" />
                 </Button>
               </Link>
@@ -143,7 +143,7 @@ export default function Home() {
                   className="text-lg px-8 py-4 h-auto border-white/20 text-white hover:bg-white/10"
                   data-testid="cta-buy-bids"
                 >
-                  Gebote kaufen
+                  {t('home.ctaBuyBids')}
                 </Button>
               </Link>
             </div>
@@ -155,7 +155,12 @@ export default function Home() {
       <section className="py-20 px-4 bg-[#0F0F16]/50">
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {features.map((feature, index) => (
+            {[
+              { icon: <Zap className="w-8 h-8" />, title: t('home.step1'), description: t('home.step1Desc') },
+              { icon: <Trophy className="w-8 h-8" />, title: t('home.step2'), description: t('home.step2Desc') },
+              { icon: <Clock className="w-8 h-8" />, title: t('home.step3'), description: t('home.step3Desc') },
+              { icon: <Shield className="w-8 h-8" />, title: t('home.readyToWin'), description: t('home.freeRegister') }
+            ].map((feature, index) => (
               <div 
                 key={index}
                 className="glass-card p-6 rounded-2xl hover:border-[#7C3AED]/30 transition-colors"
@@ -177,7 +182,7 @@ export default function Home() {
           <div className="flex items-center justify-between mb-10">
             <div>
               <h2 className="text-3xl sm:text-4xl font-bold text-white mb-2">
-                Live Auktionen
+                {t('home.liveAuctions')}
               </h2>
               <p className="text-[#94A3B8]">Verpassen Sie nicht Ihre Chance zu gewinnen</p>
             </div>
