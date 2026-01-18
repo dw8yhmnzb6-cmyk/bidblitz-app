@@ -53,7 +53,8 @@ export const translations = {
     buyBids: { title: "Buy Bids", popular: "Popular", bids: "Bids", buyNow: "Buy now" },
     winners: { title: "Winners", totalSaved: "Total saved", avgSavings: "Average savings", winners: "Winners" },
     auth: { login: "Login", register: "Register", email: "Email", password: "Password", name: "Name", noAccount: "Don't have an account?", haveAccount: "Already have an account?" },
-    common: { loading: "Loading...", error: "Error", success: "Success", save: "Save", cancel: "Cancel" }
+    common: { loading: "Loading...", error: "Error", success: "Success", save: "Save", cancel: "Cancel", back: "Back" },
+    admin: { category: "Category" }
   },
   fr: {
     nav: { auctions: "Enchères", buyBids: "Acheter des offres", dashboard: "Tableau de bord", admin: "Admin", login: "Connexion", register: "S'inscrire", logout: "Déconnexion", bids: "Offres" },
