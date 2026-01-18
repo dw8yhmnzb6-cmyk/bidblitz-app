@@ -2,7 +2,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { languageList } from '../i18n/translations';
-import { Zap, User, LogOut, Shield, Menu, X, Globe, Gift, Trophy } from 'lucide-react';
+import { Zap, User, LogOut, Shield, Menu, X, Globe, Gift, Trophy, Heart } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from './ui/button';
 import {
