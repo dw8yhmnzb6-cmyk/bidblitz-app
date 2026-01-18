@@ -128,6 +128,7 @@ class UserCreate(BaseModel):
     password: str
     name: str
     source: Optional[str] = None  # Where user came from (google, facebook, direct, etc.)
+    referral_code: Optional[str] = None  # Affiliate referral code
 
 class UserLogin(BaseModel):
     email: EmailStr
