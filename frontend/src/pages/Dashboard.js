@@ -512,6 +512,10 @@ export default function Dashboard() {
                   <span className="flex items-center gap-2 text-white"><Package className="w-4 h-4 text-[#94A3B8]" />Meine Käufe</span>
                   <ChevronRight className="w-4 h-4 text-[#94A3B8]" />
                 </Link>
+                <Link to="/invoices" className="flex items-center justify-between p-3 rounded-lg bg-[#181824] hover:bg-white/5 transition-colors">
+                  <span className="flex items-center gap-2 text-white"><FileText className="w-4 h-4 text-[#94A3B8]" />Rechnungen</span>
+                  <ChevronRight className="w-4 h-4 text-[#94A3B8]" />
+                </Link>
                 <Link to="/invite" className="flex items-center justify-between p-3 rounded-lg bg-[#181824] hover:bg-white/5 transition-colors">
                   <span className="flex items-center gap-2 text-white"><Gift className="w-4 h-4 text-[#10B981]" />Freunde einladen</span>
                   <ChevronRight className="w-4 h-4 text-[#94A3B8]" />
