@@ -1,7 +1,7 @@
 // Complete translations for 20 languages
 export const translations = {
   de: {
-    nav: { auctions: "Auktionen", buyBids: "Gebote kaufen", dashboard: "Dashboard", admin: "Admin", login: "Anmelden", register: "Registrieren", logout: "Abmelden", bids: "Gebote" },
+    nav: { auctions: "Auktionen", buyBids: "Gebote kaufen", dashboard: "Dashboard", admin: "Admin", login: "Anmelden", register: "Registrieren", logout: "Abmelden", bids: "Gebote", winners: "Gewinner", inviteFriends: "Freunde werben", wishlist: "Wunschliste" },
     home: {
       badge: "10 kostenlose Gebote bei Registrierung",
       heroTitle1: "Gewinnen Sie",
@@ -43,7 +43,7 @@ export const translations = {
     admin: { category: "Kategorie" }
   },
   en: {
-    nav: { auctions: "Auctions", buyBids: "Buy Bids", dashboard: "Dashboard", admin: "Admin", login: "Login", register: "Register", logout: "Logout", bids: "Bids" },
+    nav: { auctions: "Auctions", buyBids: "Buy Bids", dashboard: "Dashboard", admin: "Admin", login: "Login", register: "Register", logout: "Logout", bids: "Bids", winners: "Winners", inviteFriends: "Invite Friends", wishlist: "Wishlist" },
     home: {
       badge: "10 free bids on registration",
       heroTitle1: "Win",
@@ -85,7 +85,7 @@ export const translations = {
     admin: { category: "Category" }
   },
   fr: {
-    nav: { auctions: "Enchères", buyBids: "Acheter des offres", dashboard: "Tableau de bord", admin: "Admin", login: "Connexion", register: "S'inscrire", logout: "Déconnexion", bids: "Offres" },
+    nav: { auctions: "Enchères", buyBids: "Acheter des offres", dashboard: "Tableau de bord", admin: "Admin", login: "Connexion", register: "S'inscrire", logout: "Déconnexion", bids: "Offres", winners: "Gagnants", inviteFriends: "Inviter des amis", wishlist: "Liste de souhaits" },
     home: {
       badge: "10 offres gratuites à l'inscription",
       heroTitle1: "Gagnez",
@@ -125,7 +125,7 @@ export const translations = {
     common: { loading: "Chargement...", error: "Erreur", success: "Succès", save: "Sauvegarder", cancel: "Annuler" }
   },
   es: {
-    nav: { auctions: "Subastas", buyBids: "Comprar pujas", dashboard: "Panel", admin: "Admin", login: "Iniciar sesión", register: "Registrarse", logout: "Cerrar sesión", bids: "Pujas" },
+    nav: { auctions: "Subastas", buyBids: "Comprar pujas", dashboard: "Panel", admin: "Admin", login: "Iniciar sesión", register: "Registrarse", logout: "Cerrar sesión", bids: "Pujas", winners: "Ganadores", inviteFriends: "Invitar amigos", wishlist: "Lista de deseos" },
     home: {
       badge: "10 pujas gratis al registrarse",
       heroTitle1: "Gana",
