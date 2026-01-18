@@ -104,6 +104,10 @@ export const Navbar = () => {
 
             {isAuthenticated ? (
               <>
+                <Link to="/invite" className="flex items-center gap-2 px-3 py-2 rounded-lg text-[#FFD700] hover:bg-[#FFD700]/10 transition-colors" data-testid="invite-friends-link">
+                  <Gift className="w-4 h-4" />
+                  <span className="text-sm font-medium">Freunde einladen</span>
+                </Link>
                 <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-[#181824] border border-white/10">
                   <Zap className="w-4 h-4 text-[#06B6D4]" />
                   <span className="font-mono font-bold text-[#06B6D4]" data-testid="bids-balance">
