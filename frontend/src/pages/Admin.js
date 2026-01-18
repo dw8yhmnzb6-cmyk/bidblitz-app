@@ -499,6 +499,8 @@ export default function Admin() {
     );
   }
 
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
   const tabs = [
     { id: 'dashboard', label: t('admin.dashboard'), icon: <LayoutDashboard className="w-5 h-5" /> },
     { id: 'products', label: t('admin.products'), icon: <Package className="w-5 h-5" /> },
@@ -512,9 +514,52 @@ export default function Admin() {
 
   return (
     <div className="min-h-screen pt-20" data-testid="admin-page">
+      {/* Mobile Tab Bar */}
+      <div className="lg:hidden fixed top-16 left-0 right-0 z-30 bg-[#0F0F16] border-b border-white/10">
+        <div className="flex items-center justify-between px-4 py-3">
+          <h2 className="text-lg font-bold text-white flex items-center gap-2">
+            <Settings className="w-5 h-5 text-[#7C3AED]" />
+            Admin
+          </h2>
+          <Button 
+            variant="ghost" 
+            size="sm"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="text-white"
+          >
+            {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </Button>
+        </div>
+        
+        {/* Mobile Menu Dropdown */}
+        {mobileMenuOpen && (
+          <div className="px-2 pb-3 bg-[#0F0F16] border-b border-white/10">
+            <div className="grid grid-cols-4 gap-2">
+              {tabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => {
+                    setActiveTab(tab.id);
+                    setMobileMenuOpen(false);
+                  }}
+                  className={`flex flex-col items-center gap-1 p-2 rounded-lg transition-colors ${
+                    activeTab === tab.id
+                      ? 'bg-[#7C3AED]/20 text-[#7C3AED]'
+                      : 'text-[#94A3B8] hover:bg-white/5'
+                  }`}
+                >
+                  {tab.icon}
+                  <span className="text-[10px]">{tab.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
       <div className="flex">
-        {/* Sidebar */}
-        <aside className="w-64 min-h-screen bg-[#0F0F16] border-r border-white/10 fixed left-0 top-16 pt-6">
+        {/* Desktop Sidebar */}
+        <aside className="hidden lg:block w-64 min-h-screen bg-[#0F0F16] border-r border-white/10 fixed left-0 top-16 pt-6">
           <div className="px-4 mb-6">
             <h2 className="text-lg font-bold text-white flex items-center gap-2">
               <Settings className="w-5 h-5 text-[#7C3AED]" />
@@ -546,13 +591,13 @@ export default function Admin() {
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 ml-64 p-8">
+        <main className="flex-1 lg:ml-64 p-4 lg:p-8 pt-20 lg:pt-8">
           {/* Dashboard Tab */}
           {activeTab === 'dashboard' && (
-            <div className="space-y-8">
-              <div className="flex items-center justify-between">
-                <h1 className="text-2xl font-bold text-white">{t('admin.dashboard')}</h1>
-                <Button onClick={fetchData} variant="outline" className="border-white/10 text-white">
+            <div className="space-y-6 lg:space-y-8">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <h1 className="text-xl lg:text-2xl font-bold text-white">{t('admin.dashboard')}</h1>
+                <Button onClick={fetchData} variant="outline" className="border-white/10 text-white w-full sm:w-auto">
                   <RefreshCw className="w-4 h-4 mr-2" />{t('admin.refresh')}
                 </Button>
               </div>
