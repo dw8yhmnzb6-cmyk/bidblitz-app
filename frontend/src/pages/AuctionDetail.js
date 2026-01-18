@@ -392,57 +392,69 @@ export default function AuctionDetail() {
 
             {/* Timer */}
             <div className={`glass-card p-6 rounded-xl ${isUrgent && !isEnded && !isScheduled ? 'glow-urgency' : ''}`}>
-              <div className="flex items-center gap-3 mb-4">
-                <Timer className={`w-6 h-6 ${isScheduled ? 'text-[#F59E0B]' : isUrgent && !isEnded ? 'text-[#EF4444]' : 'text-[#06B6D4]'}`} />
-                <span className="text-[#94A3B8]">
-                  {isScheduled ? 'Startet in' : 'Verbleibende Zeit'}
-                </span>
-              </div>
               {isEnded ? (
-                <p className="text-3xl font-bold text-[#EF4444] font-mono">AUKTION {t('auctions.ended').toUpperCase()}</p>
+                <div className="text-center">
+                  <div className="flex items-center justify-center gap-3 mb-3">
+                    <Clock className="w-6 h-6 text-[#EF4444]" />
+                    <span className="text-[#EF4444] font-medium">Auktion beendet</span>
+                  </div>
+                  <p className="text-3xl font-bold text-[#EF4444] font-mono">{t('auctions.ended').toUpperCase()}</p>
+                </div>
               ) : isScheduled ? (
-                <div>
-                  <div className="flex gap-4 mb-4">
-                    {startTimeLeft.days > 0 && (
-                      <div className="text-center">
-                        <div className="text-4xl font-bold font-mono text-[#F59E0B]">
-                          {formatTime(startTimeLeft.days)}
+                <>
+                  <div className="flex items-center gap-3 mb-4">
+                    <Timer className="w-6 h-6 text-[#F59E0B]" />
+                    <span className="text-[#94A3B8]">Startet in</span>
+                  </div>
+                  <div>
+                    <div className="flex gap-4 mb-4">
+                      {startTimeLeft.days > 0 && (
+                        <div className="text-center">
+                          <div className="text-4xl font-bold font-mono text-[#F59E0B]">
+                            {formatTime(startTimeLeft.days)}
+                          </div>
+                          <div className="text-[#94A3B8] text-sm">Tage</div>
                         </div>
-                        <div className="text-[#94A3B8] text-sm">Tage</div>
-                      </div>
-                    )}
+                      )}
+                      {[
+                        { value: startTimeLeft.hours, label: 'Std' },
+                        { value: startTimeLeft.minutes, label: 'Min' },
+                        { value: startTimeLeft.seconds, label: 'Sek' }
+                      ].map((item, index) => (
+                        <div key={index} className="text-center">
+                          <div className="text-4xl font-bold font-mono text-[#F59E0B]">
+                            {formatTime(item.value)}
+                          </div>
+                          <div className="text-[#94A3B8] text-sm">{item.label}</div>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-[#94A3B8] text-sm">
+                      Startet am: {auction.start_time && new Date(auction.start_time).toLocaleString('de-DE', {dateStyle: 'medium', timeStyle: 'short'})}
+                    </p>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="flex items-center gap-3 mb-4">
+                    <Timer className="w-6 h-6 text-[#06B6D4]" />
+                    <span className="text-[#94A3B8]">Verbleibend</span>
+                  </div>
+                  <div className="flex gap-4">
                     {[
-                      { value: startTimeLeft.hours, label: 'Std' },
-                      { value: startTimeLeft.minutes, label: 'Min' },
-                      { value: startTimeLeft.seconds, label: 'Sek' }
+                      { value: timeLeft.hours, label: 'Std' },
+                      { value: timeLeft.minutes, label: 'Min' },
+                      { value: timeLeft.seconds, label: 'Sek' }
                     ].map((item, index) => (
                       <div key={index} className="text-center">
-                        <div className="text-4xl font-bold font-mono text-[#F59E0B]">
+                        <div className={`text-4xl font-bold font-mono ${isUrgent ? 'text-[#EF4444] timer-urgent' : 'text-white'}`}>
                           {formatTime(item.value)}
                         </div>
                         <div className="text-[#94A3B8] text-sm">{item.label}</div>
                       </div>
                     ))}
                   </div>
-                  <p className="text-[#94A3B8] text-sm">
-                    Startet am: {auction.start_time && new Date(auction.start_time).toLocaleString('de-DE', {dateStyle: 'medium', timeStyle: 'short'})}
-                  </p>
-                </div>
-              ) : (
-                <div className="flex gap-4">
-                  {[
-                    { value: timeLeft.hours, label: 'Std' },
-                    { value: timeLeft.minutes, label: 'Min' },
-                    { value: timeLeft.seconds, label: 'Sek' }
-                  ].map((item, index) => (
-                    <div key={index} className="text-center">
-                      <div className={`text-4xl font-bold font-mono ${isUrgent ? 'text-[#EF4444] timer-urgent' : 'text-white'}`}>
-                        {formatTime(item.value)}
-                      </div>
-                      <div className="text-[#94A3B8] text-sm">{item.label}</div>
-                    </div>
-                  ))}
-                </div>
+                </>
               )}
             </div>
 
