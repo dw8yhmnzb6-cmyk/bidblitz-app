@@ -5,11 +5,12 @@ import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
+import { TwoFactorSettings } from '../components/TwoFactorSettings';
 import { 
   Zap, Trophy, Target, TrendingUp, ArrowRight, User, Mail, 
   Ticket, Bot, Trash2, Power, Clock, Package, CreditCard,
   History, Settings, ChevronRight, Gift, Calendar, Eye,
-  Timer, CheckCircle, XCircle
+  Timer, CheckCircle, XCircle, Shield
 } from 'lucide-react';
 import { toast } from 'sonner';
 
