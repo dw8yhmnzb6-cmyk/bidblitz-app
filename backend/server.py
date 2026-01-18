@@ -762,14 +762,60 @@ async def register(user_data: UserCreate, request: Request):
     }
 
 @api_router.post("/auth/login", response_model=dict)
-async def login(credentials: UserLogin):
+async def login(credentials: UserLogin, request: Request):
+    client_ip = request.client.host if request.client else "unknown"
+    forwarded_for = request.headers.get("x-forwarded-for")
+    if forwarded_for:
+        client_ip = forwarded_for.split(",")[0].strip()
+    user_agent = request.headers.get("user-agent", "unknown")
+    
+    # Check login attempts (rate limiting)
+    can_login, wait_minutes = await check_login_attempts(client_ip, credentials.email)
+    if not can_login:
+        raise HTTPException(
+            status_code=429, 
+            detail=f"Zu viele fehlgeschlagene Anmeldeversuche. Bitte warten Sie {wait_minutes} Minuten."
+        )
+    
     user = await db.users.find_one({"email": credentials.email}, {"_id": 0})
     if not user or not verify_password(credentials.password, user["password"]):
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+        # Log failed attempt
+        await log_security_event("login_failed", user["id"] if user else "unknown", {
+            "email": credentials.email,
+            "reason": "Invalid credentials",
+            "user_agent": user_agent
+        }, client_ip)
+        raise HTTPException(status_code=401, detail="Ungültige Anmeldedaten")
     
     # Check if user is blocked
     if user.get("is_blocked", False):
-        raise HTTPException(status_code=403, detail="Your account has been blocked. Please contact support.")
+        await log_security_event("login_blocked", user["id"], {"reason": "Account blocked", "user_agent": user_agent}, client_ip)
+        raise HTTPException(status_code=403, detail="Ihr Konto wurde gesperrt. Bitte kontaktieren Sie den Support.")
+    
+    # Check if 2FA is enabled
+    if user.get("two_factor_enabled") and user.get("two_factor_secret"):
+        if not credentials.two_factor_code:
+            return {
+                "requires_2fa": True,
+                "message": "Bitte geben Sie Ihren 2FA-Code ein"
+            }
+        
+        # Verify 2FA code
+        if not verify_2fa_code(user["two_factor_secret"], credentials.two_factor_code):
+            await log_security_event("login_failed_2fa", user["id"], {"reason": "Invalid 2FA code", "user_agent": user_agent}, client_ip)
+            raise HTTPException(status_code=401, detail="Ungültiger 2FA-Code")
+    
+    # Log successful login
+    await log_security_event("login_success", user["id"], {"user_agent": user_agent}, client_ip)
+    
+    # Update last login
+    await db.users.update_one(
+        {"id": user["id"]},
+        {
+            "$set": {"last_login": datetime.now(timezone.utc).isoformat()},
+            "$inc": {"login_count": 1}
+        }
+    )
     
     token = create_token(user["id"], user.get("is_admin", False))
     return {
@@ -779,7 +825,8 @@ async def login(credentials: UserLogin):
             "email": user["email"],
             "name": user["name"],
             "bids_balance": user["bids_balance"],
-            "is_admin": user.get("is_admin", False)
+            "is_admin": user.get("is_admin", False),
+            "two_factor_enabled": user.get("two_factor_enabled", False)
         }
     }
 
