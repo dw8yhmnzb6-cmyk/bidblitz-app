@@ -105,6 +105,20 @@ export const translations = {
       freeRegister: "S'inscrire gratuitement"
     },
     auctions: { title: "Toutes les enchères", filter: "Filtrer", all: "Tout", active: "Actif", ended: "Terminé", currentPrice: "Prix actuel", bids: "Offres", bid: "Enchérir", live: "En direct" },
+    auctionPage: {
+      searchPlaceholder: "Rechercher des offres...",
+      categories: { all: "Tout", electronics: "Électronique", smartphones: "Smartphones", household: "Maison", emobility: "E-Mobilité", gifts: "Cadeaux", fashion: "Mode" },
+      active: "Actif", scheduled: "Prévu", all: "Tout",
+      offersFound: "offres trouvées",
+      noOffers: "Aucune offre trouvée",
+      tryAnother: "Essayez une autre catégorie ou recherche",
+      priceNote: "Prix de comparaison = Prix conseillé"
+    },
+    auctionCard: {
+      liveNow: "EN DIRECT", comingSoon: "BIENTÔT", ended: "TERMINÉ",
+      retailPrice: "Prix de référence*", startPrice: "Prix de départ", bidNow: "ENCHÉRIR",
+      end: "FIN", activity: "Activité", lastSold: "Dernière vente pour"
+    },
     buyBids: { title: "Acheter des offres", popular: "Populaire", bids: "Offres", buyNow: "Acheter" },
     winners: { title: "Gagnants", totalSaved: "Total économisé", avgSavings: "Économies moyennes", winners: "Gagnants" },
     auth: { login: "Connexion", register: "S'inscrire", email: "E-mail", password: "Mot de passe", name: "Nom", noAccount: "Pas de compte?", haveAccount: "Déjà un compte?" },
@@ -131,6 +145,20 @@ export const translations = {
       freeRegister: "Registrarse gratis"
     },
     auctions: { title: "Todas las subastas", filter: "Filtrar", all: "Todo", active: "Activo", ended: "Terminado", currentPrice: "Precio actual", bids: "Pujas", bid: "Pujar", live: "En vivo" },
+    auctionPage: {
+      searchPlaceholder: "Buscar ofertas...",
+      categories: { all: "Todo", electronics: "Electrónica", smartphones: "Smartphones", household: "Hogar", emobility: "E-Movilidad", gifts: "Regalos", fashion: "Moda" },
+      active: "Activo", scheduled: "Programado", all: "Todo",
+      offersFound: "ofertas encontradas",
+      noOffers: "No se encontraron ofertas",
+      tryAnother: "Prueba otra categoría o búsqueda",
+      priceNote: "Precio de referencia = PVP del fabricante"
+    },
+    auctionCard: {
+      liveNow: "EN VIVO", comingSoon: "PRÓXIMAMENTE", ended: "FINALIZADO",
+      retailPrice: "Precio ref.*", startPrice: "Precio inicial", bidNow: "PUJAR",
+      end: "FIN", activity: "Actividad", lastSold: "Última venta por"
+    },
     buyBids: { title: "Comprar pujas", popular: "Popular", bids: "Pujas", buyNow: "Comprar" },
     winners: { title: "Ganadores", totalSaved: "Total ahorrado", avgSavings: "Ahorro promedio", winners: "Ganadores" },
     auth: { login: "Iniciar sesión", register: "Registrarse", email: "Correo", password: "Contraseña", name: "Nombre", noAccount: "¿No tienes cuenta?", haveAccount: "¿Ya tienes cuenta?" },
