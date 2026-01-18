@@ -142,8 +142,9 @@ export default function InviteFriends() {
         <div className="grid grid-cols-2 gap-4 mb-6">
           <div className="glass-card p-5 rounded-xl text-center">
             <Users className="w-8 h-8 text-[#7C3AED] mx-auto mb-2" />
-            <p className="text-3xl font-bold text-white">{invitedFriends}</p>
-            <p className="text-[#94A3B8] text-sm">Eingeladene Freunde</p>
+            <p className="text-3xl font-bold text-white">{referralData?.qualified_friends || 0}</p>
+            <p className="text-[#94A3B8] text-sm">Qualifizierte Freunde</p>
+            <p className="text-[#94A3B8] text-xs">(mind. €5 eingezahlt)</p>
           </div>
           <div className="glass-card p-5 rounded-xl text-center">
             <Zap className="w-8 h-8 text-[#FFD700] mx-auto mb-2" />
@@ -151,6 +152,15 @@ export default function InviteFriends() {
             <p className="text-[#94A3B8] text-sm">Gebote verdient</p>
           </div>
         </div>
+
+        {/* Pending Friends Info */}
+        {invitedFriends > (referralData?.qualified_friends || 0) && (
+          <div className="glass-card p-4 rounded-xl mb-6 border border-[#FFD700]/30 bg-[#FFD700]/5">
+            <p className="text-[#FFD700] text-sm text-center">
+              <strong>{invitedFriends - (referralData?.qualified_friends || 0)}</strong> Freund(e) haben sich registriert, aber noch keine €5 eingezahlt
+            </p>
+          </div>
+        )}
 
         {/* Friend Gets */}
         <div className="glass-card p-5 rounded-xl mb-6 border border-[#10B981]/30 bg-[#10B981]/5">
