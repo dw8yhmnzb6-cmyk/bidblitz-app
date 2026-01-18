@@ -194,6 +194,14 @@ export const Navbar = () => {
             >
               {t('nav.buyBids')}
             </Link>
+            <Link 
+              to="/winners" 
+              className="block text-[#FFD700] hover:text-[#FCD34D] py-2 flex items-center gap-2"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              <Trophy className="w-4 h-4" />
+              Gewinner
+            </Link>
             {isAuthenticated && (
               <>
                 <Link 
