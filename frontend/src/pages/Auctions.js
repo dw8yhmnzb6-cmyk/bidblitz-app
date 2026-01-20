@@ -54,7 +54,7 @@ const ActivityIndex = ({ bids }) => {
   );
 };
 
-// Compact Auction Card - Vibrant & Friendly Style
+// Compact Auction Card - Clean & Readable Style
 const SnipsterCard = ({ auction, t }) => {
   const [timeLeft, setTimeLeft] = useState({ hours: 0, minutes: 0, seconds: 0 });
   const [isUrgent, setIsUrgent] = useState(false);
@@ -90,11 +90,10 @@ const SnipsterCard = ({ auction, t }) => {
   const formatTime = (num) => String(num).padStart(2, '0');
   const lastSoldPrice = ((auction.id.charCodeAt(0) % 12) + 1 + (auction.id.charCodeAt(1) % 10) / 10).toFixed(2);
 
-  // Vibrant badge styling
   const getBadgeStyle = () => {
-    if (isScheduled) return 'bg-gradient-to-r from-purple-500 via-pink-500 to-rose-500';
-    if (isEnded) return 'bg-gradient-to-r from-gray-400 to-gray-500';
-    return 'bg-gradient-to-r from-green-400 via-emerald-500 to-teal-500';
+    if (isScheduled) return 'bg-amber-500';
+    if (isEnded) return 'bg-gray-400';
+    return 'bg-green-500';
   };
 
   const getBadgeText = () => {
@@ -103,38 +102,28 @@ const SnipsterCard = ({ auction, t }) => {
     return t('auctionCard.liveNow');
   };
 
-  // Random fun accent colors for variety
-  const accentColors = [
-    { bg: 'from-blue-50 to-cyan-50', text: 'text-blue-600', border: 'border-blue-100' },
-    { bg: 'from-purple-50 to-pink-50', text: 'text-purple-600', border: 'border-purple-100' },
-    { bg: 'from-orange-50 to-amber-50', text: 'text-orange-600', border: 'border-orange-100' },
-    { bg: 'from-green-50 to-emerald-50', text: 'text-green-600', border: 'border-green-100' },
-    { bg: 'from-rose-50 to-pink-50', text: 'text-rose-600', border: 'border-rose-100' },
-  ];
-  const accent = accentColors[auction.id.charCodeAt(0) % accentColors.length];
-
   return (
-    <div className={`bg-white rounded-2xl shadow-lg overflow-hidden border-2 ${accent.border} hover:shadow-2xl hover:scale-[1.03] transition-all duration-300 group cursor-pointer`}>
-      {/* Header Badge - Animated & Vibrant */}
+    <div className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-200 hover:shadow-lg transition-all duration-300 group">
+      {/* Header Badge - Simple */}
       <div className={`text-white text-[11px] font-bold px-3 py-1.5 text-center uppercase tracking-wider flex items-center justify-center gap-1.5 ${getBadgeStyle()}`}>
-        {!isEnded && !isScheduled && <Sparkles className="w-3.5 h-3.5 animate-pulse" />}
-        {isScheduled && <Clock className="w-3.5 h-3.5 animate-bounce" />}
+        {!isEnded && !isScheduled && <Flame className="w-3 h-3" />}
+        {isScheduled && <Clock className="w-3 h-3" />}
         {getBadgeText()}
       </div>
 
       <div className="p-3">
-        {/* Product Name - Larger & Friendlier */}
-        <h3 className={`font-bold ${accent.text} text-sm leading-tight mb-1.5 line-clamp-2 h-10 group-hover:scale-[1.02] transition-transform`} title={product.name}>
+        {/* Product Name */}
+        <h3 className="font-bold text-gray-800 text-sm leading-tight mb-1.5 line-clamp-2 h-10" title={product.name}>
           {product.name?.toUpperCase()}
         </h3>
         
-        {/* Retail Price with Discount Badge */}
+        {/* Retail Price with Discount */}
         <div className="flex items-center gap-2 mb-2">
-          <p className="text-gray-400 text-[11px]">
-            {t('auctionCard.retailPrice')}: <span className="line-through">€{product.retail_price?.toFixed(0)},-</span>
+          <p className="text-gray-500 text-xs">
+            UVP: <span className="line-through">€{product.retail_price?.toFixed(0)},-</span>
           </p>
           {product.retail_price && auction.current_price < product.retail_price && (
-            <span className="bg-gradient-to-r from-red-500 to-rose-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full animate-pulse">
+            <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">
               -{Math.round((1 - auction.current_price / product.retail_price) * 100)}%
             </span>
           )}
@@ -143,41 +132,71 @@ const SnipsterCard = ({ auction, t }) => {
         <div className="flex gap-3">
           {/* Left side */}
           <div className="flex-1">
-            {/* Current Price - Big & Colorful */}
-            <div className={`bg-gradient-to-r ${accent.bg} rounded-xl p-2 mb-2 border ${accent.border}`}>
-              <p className={`text-xl sm:text-2xl font-black ${accent.text} font-mono leading-none tracking-tight`}>
-                € {auction.current_price?.toFixed(2).replace('.', ',')}
+            {/* Current Price - CLEAR & BIG */}
+            <div className="bg-gray-50 rounded-lg p-2 mb-2 border border-gray-200">
+              <p className="text-2xl sm:text-3xl font-black text-gray-900 font-mono leading-none">
+                €{auction.current_price?.toFixed(2).replace('.', ',')}
               </p>
             </div>
             
-            {/* Last Bidder with Avatar */}
-            <div className="flex items-center gap-1.5 mb-2">
-              <div className="w-5 h-5 rounded-full bg-gradient-to-br from-purple-400 to-pink-500 flex items-center justify-center">
-                <span className="text-white text-[8px] font-bold">{(auction.last_bidder_name || '?')[0]}</span>
-              </div>
-              <p className="text-gray-600 text-[11px] truncate font-medium">
-                {auction.last_bidder_name || t('auctionCard.startPrice')}
-              </p>
-            </div>
+            {/* Last Bidder */}
+            <p className="text-gray-600 text-xs truncate mb-2">
+              {auction.last_bidder_name || t('auctionCard.startPrice')}
+            </p>
             
-            {/* Bid Button - Vibrant & Inviting */}
+            {/* Bid Button - Simple Green */}
             <Link to={`/auctions/${auction.id}`}>
               <button 
                 data-testid={`bid-button-${auction.id}`}
-                className={`w-full font-bold py-2 px-3 rounded-xl text-xs uppercase shadow-lg transition-all transform hover:-translate-y-0.5 ${
+                className={`w-full font-bold py-2 px-3 rounded-lg text-xs uppercase transition-all ${
                   isEnded 
-                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed shadow-none' 
-                    : 'bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 hover:from-yellow-500 hover:via-orange-600 hover:to-red-600 text-white hover:shadow-xl'
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                    : 'bg-green-500 hover:bg-green-600 text-white shadow-md hover:shadow-lg'
                 }`}
                 disabled={isEnded}
               >
-                {isEnded ? t('auctionCard.ended') : `🎯 ${t('auctionCard.bidNow')}`}
+                {isEnded ? t('auctionCard.ended') : t('auctionCard.bidNow')}
               </button>
             </Link>
           </div>
 
           {/* Right side - Image & Timer */}
           <div className="w-20 sm:w-24 flex flex-col items-center flex-shrink-0">
+            {/* Timer - Clear */}
+            <div className={`w-full text-center py-1.5 px-2 rounded-lg text-white text-xs font-mono font-bold ${
+              isUrgent ? 'bg-red-500' : isEnded ? 'bg-gray-400' : 'bg-blue-500'
+            }`}>
+              {isEnded ? t('auctionCard.end') : `${formatTime(timeLeft.hours)}:${formatTime(timeLeft.minutes)}:${formatTime(timeLeft.seconds)}`}
+            </div>
+            
+            {/* Product Image */}
+            <img
+              src={product.image_url || 'https://via.placeholder.com/80'}
+              alt={product.name}
+              className="w-18 h-18 sm:w-20 sm:h-20 object-contain mt-2 group-hover:scale-105 transition-transform"
+            />
+          </div>
+        </div>
+
+        {/* Activity & Bids */}
+        <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
+          <div className="flex items-center gap-2">
+            <span>Aktivität:</span>
+            <ActivityIndex bids={auction.total_bids || 0} />
+          </div>
+          <span className="font-medium">{auction.total_bids || 0} Gebote</span>
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div className="bg-gray-50 px-3 py-2 text-center border-t border-gray-100">
+        <p className="text-gray-600 text-[11px]">
+          Zuletzt für <span className="font-bold text-green-600">€{lastSoldPrice}</span> versteigert
+        </p>
+      </div>
+    </div>
+  );
+};
             {/* Timer - Vibrant Colors */}
             <div className={`w-full text-center py-1.5 px-2 rounded-xl text-white text-xs font-mono font-bold shadow-md ${
               isUrgent ? 'bg-gradient-to-r from-red-500 via-pink-500 to-rose-500 animate-pulse' : 
