@@ -1428,20 +1428,25 @@ export default function Admin() {
 
               {/* Bot List */}
               <div className="glass-card rounded-xl p-6">
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
                   <h3 className="text-lg font-bold text-white">Verfügbare Bots ({bots.length})</h3>
-                  <form onSubmit={handleCreateBot} className="flex gap-2">
+                  
+                  {/* Bot Creation Form - More Prominent */}
+                  <form onSubmit={handleCreateBot} className="flex gap-2 w-full md:w-auto">
                     <Input
                       value={newBot.name}
                       onChange={(e) => setNewBot({name: e.target.value})}
-                      placeholder="Bot-Name (z.B. Maria K.)"
-                      className="bg-[#181824] border-white/10 text-white w-48"
+                      placeholder="Neuer Bot-Name (z.B. Bardh K.)"
+                      className="bg-[#181824] border-white/10 text-white flex-1 md:w-64"
+                      required
                     />
-                    <Button type="submit" size="sm" className="bg-[#7C3AED] hover:bg-[#6D28D9]">
-                      <Plus className="w-4 h-4" />
+                    <Button type="submit" className="bg-gradient-to-r from-[#7C3AED] to-[#EC4899] hover:opacity-90 whitespace-nowrap">
+                      <Plus className="w-4 h-4 mr-1" />
+                      Bot erstellen
                     </Button>
                   </form>
                 </div>
+                
                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
                   {bots.map((bot) => (
                     <div key={bot.id} className="flex items-center justify-between p-3 rounded-lg bg-[#181824] group">
