@@ -109,11 +109,28 @@ const AuctionCard = ({ auction, product, reminders, onToggleReminder, isLoggedIn
     >
       <div className={`bg-[#1a4a5e] rounded-lg overflow-hidden shadow-lg hover:shadow-xl transition-shadow ${isEnded ? 'opacity-60' : ''}`}>
         
-        {/* Header: Badge + Timer */}
+        {/* Header: Badge + Timer + Reminder */}
         <div className="flex justify-between items-center px-2 py-1.5 bg-[#0d3040]">
-          <span className="bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">
-            -{discount}%
-          </span>
+          <div className="flex items-center gap-1">
+            <span className="bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">
+              -{discount}%
+            </span>
+            {/* Reminder Button - only show for active auctions when logged in */}
+            {isLoggedIn && !isEnded && (
+              <button
+                onClick={handleReminderClick}
+                className={`p-1 rounded transition-colors ${
+                  hasReminder 
+                    ? 'bg-yellow-500/20 text-yellow-400' 
+                    : 'bg-gray-700/50 text-gray-400 hover:text-yellow-400'
+                }`}
+                title={hasReminder ? 'Erinnerung aktiv' : 'Erinnere mich'}
+                data-testid={`reminder-btn-${auction.id}`}
+              >
+                {hasReminder ? <Bell className="w-3 h-3" /> : <BellOff className="w-3 h-3" />}
+              </button>
+            )}
+          </div>
           {timeLeft.loading ? (
             <span className="text-gray-400 text-[11px]">...</span>
           ) : (
