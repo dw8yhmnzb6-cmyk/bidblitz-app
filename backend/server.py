@@ -27,6 +27,8 @@ from routers.bots import router as bots_router
 from routers.vouchers import router as vouchers_router
 from routers.staff import router as staff_router
 from routers.rewards import router as rewards_router
+from routers.invoices import router as invoices_router
+from routers.notifications import router as notifications_router
 
 # WebSocket manager
 from services.websocket import ws_manager, broadcast_bid_update, broadcast_auction_ended
