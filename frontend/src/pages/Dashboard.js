@@ -63,13 +63,13 @@ export default function Dashboard() {
       setWonAuctions(allAuctions.filter(a => a.winner_id === user?.id));
       
       // Autobidders
-      setAutobidders(autobiddersRes.data);
+      setAutobidders(autobiddersRes.data || []);
       
       // Recent bids
-      setRecentBids(myBids.slice(0, 10));
+      setRecentBids((myBids || []).slice(0, 10));
       
       // Purchases
-      setPurchases(purchasesRes.data.slice(0, 5));
+      setPurchases((purchasesRes.data || []).slice(0, 5));
       
     } catch (error) {
       console.error('Error fetching data:', error);
