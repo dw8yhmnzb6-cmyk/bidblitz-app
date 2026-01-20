@@ -23,11 +23,11 @@ export function useAuctionWebSocket(auctionId = null) {
     const wsProtocol = backendUrl.startsWith('https') ? 'wss' : 'ws';
     const wsHost = backendUrl.replace(/^https?:\/\//, '');
     
-    // WebSocket endpoints don't have /api prefix
+    // Use /api/ws/ prefix to ensure routing through ingress
     if (auctionId) {
-      return `${wsProtocol}://${wsHost}/ws/auction/${auctionId}`;
+      return `${wsProtocol}://${wsHost}/api/ws/auction/${auctionId}`;
     }
-    return `${wsProtocol}://${wsHost}/ws/auctions`;
+    return `${wsProtocol}://${wsHost}/api/ws/auctions`;
   }, [auctionId]);
 
   // Handle incoming messages
