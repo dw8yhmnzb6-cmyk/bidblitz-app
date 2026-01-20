@@ -276,108 +276,97 @@ export default function Auctions() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 pt-20 pb-8">
+    <div className="min-h-screen bg-gray-50 pt-20 pb-8">
       <div className="max-w-7xl mx-auto px-4">
-        {/* Fun Header Banner */}
+        {/* Simple Header */}
         <div className="text-center mb-6">
-          <h1 className="text-3xl sm:text-4xl font-black bg-gradient-to-r from-purple-600 via-pink-500 to-orange-500 bg-clip-text text-transparent mb-2">
-            🎉 {t('auctionPage.title') || 'Aktive Auktionen'}
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-1">
+            {t('auctionPage.title') || 'Aktive Auktionen'}
           </h1>
-          <p className="text-gray-600 text-sm">
-            ✨ {sortedAuctions.length} {t('auctionPage.offersFound') || 'Angebote gefunden'} • 🔥 {activeCount} {t('auctionPage.active') || 'aktiv'}
+          <p className="text-gray-500 text-sm">
+            {sortedAuctions.length} {t('auctionPage.offersFound')} • {activeCount} {t('auctionPage.active')}
           </p>
         </div>
 
-        {/* Header - Vibrant & Inviting */}
-        <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-4 mb-6 border border-white/50">
+        {/* Header - Clean & Simple */}
+        <div className="bg-white rounded-xl shadow-md p-4 mb-6 border border-gray-200">
           <div className="flex flex-wrap items-center justify-between gap-4">
-            {/* Search - Colorful */}
+            {/* Search */}
             <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-purple-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
                 type="text"
                 placeholder={t('auctionPage.searchPlaceholder')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 data-testid="auction-search-input"
-                className="w-full pl-10 pr-4 py-2.5 border-2 border-purple-100 rounded-xl focus:ring-2 focus:ring-purple-400 focus:border-purple-400 text-sm bg-white/80 transition-all placeholder:text-purple-300"
+                className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-400 focus:border-green-400 text-sm bg-gray-50"
               />
             </div>
 
-            {/* Category Buttons - Rainbow Colorful */}
+            {/* Category Buttons - Simple */}
             <div className="flex flex-wrap gap-1.5">
-              {categories.map((cat, idx) => {
-                const catColors = [
-                  'from-purple-500 to-indigo-500',
-                  'from-blue-500 to-cyan-500',
-                  'from-emerald-500 to-teal-500',
-                  'from-yellow-500 to-orange-500',
-                  'from-pink-500 to-rose-500',
-                  'from-red-500 to-pink-500',
-                  'from-violet-500 to-purple-500',
-                ];
-                return (
-                  <button
-                    key={cat.id}
-                    onClick={() => setSelectedCategory(cat.id)}
-                    data-testid={`category-${cat.id}`}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 transform hover:scale-105 ${
-                      selectedCategory === cat.id 
-                        ? `bg-gradient-to-r ${catColors[idx % catColors.length]} text-white shadow-lg` 
-                        : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
-                    }`}
-                  >
-                    {CATEGORY_ICONS[cat.id]}
-                    {cat.name}
-                  </button>
-                );
-              })}
+              {categories.map((cat) => (
+                <button
+                  key={cat.id}
+                  onClick={() => setSelectedCategory(cat.id)}
+                  data-testid={`category-${cat.id}`}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${
+                    selectedCategory === cat.id 
+                      ? 'bg-green-500 text-white shadow-md' 
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  {CATEGORY_ICONS[cat.id]}
+                  {cat.name}
+                </button>
+              ))}
             </div>
 
-            {/* Status Filter - Vibrant Pills */}
+            {/* Status Filter - Simple */}
             <div className="flex gap-2">
               <button
                 onClick={() => setStatusFilter('active')}
                 data-testid="filter-active"
-                className={`px-4 py-2 rounded-full text-xs font-bold transition-all transform hover:scale-105 ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                   statusFilter === 'active' 
-                    ? 'bg-gradient-to-r from-green-400 to-emerald-500 text-white shadow-lg shadow-green-200' 
-                    : 'bg-green-50 text-green-600 hover:bg-green-100 border border-green-200'
+                    ? 'bg-green-500 text-white' 
+                    : 'bg-green-50 text-green-600 hover:bg-green-100'
                 }`}
               >
-                🟢 {t('auctionPage.active')} ({activeCount})
+                {t('auctionPage.active')} ({activeCount})
               </button>
               <button
                 onClick={() => setStatusFilter('scheduled')}
                 data-testid="filter-scheduled"
-                className={`px-4 py-2 rounded-full text-xs font-bold transition-all transform hover:scale-105 ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                   statusFilter === 'scheduled' 
-                    ? 'bg-gradient-to-r from-purple-400 to-pink-500 text-white shadow-lg shadow-purple-200' 
-                    : 'bg-purple-50 text-purple-600 hover:bg-purple-100 border border-purple-200'
+                    ? 'bg-amber-500 text-white' 
+                    : 'bg-amber-50 text-amber-600 hover:bg-amber-100'
                 }`}
               >
-                ⏰ {t('auctionPage.scheduled')} ({scheduledCount})
+                {t('auctionPage.scheduled')} ({scheduledCount})
               </button>
               <button
                 onClick={() => setStatusFilter('all')}
                 data-testid="filter-all"
-                className={`px-4 py-2 rounded-full text-xs font-bold transition-all transform hover:scale-105 ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                   statusFilter === 'all' 
-                    ? 'bg-gradient-to-r from-blue-400 to-indigo-500 text-white shadow-lg shadow-blue-200' 
-                    : 'bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-200'
+                    ? 'bg-gray-600 text-white' 
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
               >
-                📋 {t('auctionPage.all')}
+                {t('auctionPage.all')}
               </button>
             </div>
 
-            {/* Refresh - Fun Animation */}
+            {/* Refresh - Simple */}
             <button
               onClick={fetchAuctions}
               data-testid="refresh-auctions"
-              className="p-3 rounded-xl bg-gradient-to-r from-yellow-400 to-orange-500 text-white shadow-lg hover:shadow-xl transition-all transform hover:scale-105 hover:rotate-180 duration-500"
+              className="p-2.5 rounded-lg bg-gray-100 hover:bg-gray-200 transition-all"
             >
-              <RefreshCw className="w-4 h-4" />
+              <RefreshCw className="w-4 h-4 text-gray-600" />
             </button>
           </div>
         </div>
