@@ -518,7 +518,7 @@ export const translations = {
     common: { loading: "جاري التحميل...", error: "خطأ", success: "نجاح", save: "حفظ", cancel: "إلغاء" }
   },
   zh: {
-    nav: { auctions: "拍卖", buyBids: "购买竞价", dashboard: "仪表板", admin: "管理员", login: "登录", register: "注册", logout: "登出", bids: "竞价" },
+    nav: { auctions: "拍卖", buyBids: "购买竞价", dashboard: "仪表板", admin: "管理员", login: "登录", register: "注册", logout: "登出", bids: "竞价", howItWorks: "如何运作", vip: "VIP会员", faq: "常见问题", contact: "联系" },
     home: {
       badge: "注册即送10次免费竞价",
       heroTitle1: "赢取",
