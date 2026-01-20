@@ -185,10 +185,6 @@ const SnipsterCard = ({ auction, t }) => {
   );
 };
 
-// Category definitions
-  );
-};
-
 // Main Auctions Page
 export default function Auctions() {
   const { isAuthenticated, token } = useAuth();
