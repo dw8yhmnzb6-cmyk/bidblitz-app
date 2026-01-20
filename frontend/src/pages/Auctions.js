@@ -264,9 +264,12 @@ export default function Auctions() {
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('active');
   const [searchQuery, setSearchQuery] = useState('');
+  const [serverTimeOffset, setServerTimeOffset] = useState(0);
 
   const fetchAuctions = useCallback(async () => {
     try {
+      const requestStartTime = Date.now();
+      
       const requests = [
         axios.get(`${API}/auctions`),
         axios.get(`${API}/products`)
@@ -285,6 +288,20 @@ export default function Auctions() {
       const auctionRes = results[0];
       const productRes = results[1];
       const remindersRes = results[2];
+      
+      // Calculate server time offset from response header or first auction's timestamp
+      // This helps devices with wrong system time
+      const serverDate = auctionRes.headers?.date;
+      if (serverDate) {
+        const serverTime = new Date(serverDate).getTime();
+        const clientTime = requestStartTime;
+        const offset = serverTime - clientTime;
+        // Only apply offset if it's significant (more than 30 seconds)
+        if (Math.abs(offset) > 30000) {
+          setServerTimeOffset(offset);
+          console.log(`Time offset detected: ${offset}ms (${Math.round(offset/1000)}s)`);
+        }
+      }
       
       setAuctions(auctionRes.data);
       const productMap = {};
