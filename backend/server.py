@@ -4135,6 +4135,170 @@ async def bot_last_second_bidder():
     
     logger.info("Bot last-second bidder stopped")
 
+# ==================== EMAIL MARKETING ENDPOINTS ====================
+
+@app.get("/api/admin/email/templates")
+async def get_email_templates(current_user: dict = Depends(get_admin_user)):
+    """Get available email templates"""
+    templates = [
+        {
+            "id": "welcome",
+            "name": "Willkommens-E-Mail",
+            "subject": "Willkommen bei BidBlitz! 🎉",
+            "preview": "Begrüßen Sie neue Benutzer..."
+        },
+        {
+            "id": "new_auction",
+            "name": "Neue Auktion",
+            "subject": "🔥 Neue Auktion: {product_name}",
+            "preview": "Informieren Sie über neue Auktionen..."
+        },
+        {
+            "id": "special_offer",
+            "name": "Sonderangebot",
+            "subject": "💰 Exklusives Angebot nur für Sie!",
+            "preview": "Bewerben Sie spezielle Gebotspaket..."
+        },
+        {
+            "id": "reactivation",
+            "name": "Reaktivierung",
+            "subject": "Wir vermissen Sie! 😢",
+            "preview": "Reaktivieren Sie inaktive Benutzer..."
+        },
+        {
+            "id": "custom",
+            "name": "Benutzerdefiniert",
+            "subject": "",
+            "preview": "Erstellen Sie eine eigene E-Mail..."
+        }
+    ]
+    return templates
+
+@app.get("/api/admin/email/user-stats")
+async def get_email_user_stats(current_user: dict = Depends(get_admin_user)):
+    """Get user statistics for email targeting"""
+    total_users = await db.users.count_documents({"role": "customer"})
+    
+    # Active users (bid in last 7 days)
+    seven_days_ago = datetime.now(timezone.utc) - timedelta(days=7)
+    active_users = await db.users.count_documents({
+        "role": "customer",
+        "last_bid_time": {"$gte": seven_days_ago}
+    })
+    
+    # Inactive users (no bid in 30 days)
+    thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
+    inactive_users = await db.users.count_documents({
+        "role": "customer",
+        "$or": [
+            {"last_bid_time": {"$lt": thirty_days_ago}},
+            {"last_bid_time": {"$exists": False}}
+        ]
+    })
+    
+    # Winners
+    winners = await db.users.count_documents({
+        "role": "customer",
+        "auctions_won": {"$gt": 0}
+    })
+    
+    # New users (registered in last 7 days)
+    new_users = await db.users.count_documents({
+        "role": "customer",
+        "created_at": {"$gte": seven_days_ago.isoformat()}
+    })
+    
+    return {
+        "total": total_users,
+        "active": active_users,
+        "inactive": inactive_users,
+        "winners": winners,
+        "new_users": new_users
+    }
+
+@app.post("/api/admin/email/test")
+async def send_test_email(data: EmailTestSend, current_user: dict = Depends(get_admin_user)):
+    """Send a test email to a single address"""
+    result = await send_email(data.to_email, data.subject, data.html_content)
+    if result.get("status") == "error":
+        raise HTTPException(status_code=500, detail=result.get("message"))
+    return {"success": True, "message": f"Test-E-Mail an {data.to_email} gesendet", "result": result}
+
+@app.post("/api/admin/email/campaign")
+async def send_email_campaign(data: EmailCampaignCreate, current_user: dict = Depends(get_admin_user)):
+    """Send email campaign to targeted user group"""
+    
+    # Build query based on target group
+    query = {"role": "customer"}
+    seven_days_ago = datetime.now(timezone.utc) - timedelta(days=7)
+    thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
+    
+    if data.target_group == "active":
+        query["last_bid_time"] = {"$gte": seven_days_ago}
+    elif data.target_group == "inactive":
+        query["$or"] = [
+            {"last_bid_time": {"$lt": thirty_days_ago}},
+            {"last_bid_time": {"$exists": False}}
+        ]
+    elif data.target_group == "winners":
+        query["auctions_won"] = {"$gt": 0}
+    elif data.target_group == "new_users":
+        query["created_at"] = {"$gte": seven_days_ago.isoformat()}
+    
+    # Get users
+    users = await db.users.find(query, {"email": 1, "name": 1}).to_list(1000)
+    
+    if not users:
+        raise HTTPException(status_code=404, detail="Keine Benutzer in dieser Gruppe gefunden")
+    
+    # Send emails (in background to avoid timeout)
+    sent_count = 0
+    failed_count = 0
+    
+    for user in users:
+        try:
+            # Personalize content
+            personalized_content = data.html_content.replace("{name}", user.get("name", "Kunde"))
+            personalized_subject = data.subject.replace("{name}", user.get("name", "Kunde"))
+            
+            result = await send_email(user["email"], personalized_subject, personalized_content)
+            if result.get("status") == "sent":
+                sent_count += 1
+            else:
+                failed_count += 1
+        except Exception as e:
+            logger.error(f"Failed to send campaign email to {user.get('email')}: {e}")
+            failed_count += 1
+    
+    # Log campaign
+    campaign_log = {
+        "id": str(uuid.uuid4()),
+        "subject": data.subject,
+        "target_group": data.target_group,
+        "sent_count": sent_count,
+        "failed_count": failed_count,
+        "total_recipients": len(users),
+        "sent_by": current_user["email"],
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.email_campaigns.insert_one(campaign_log)
+    
+    return {
+        "success": True,
+        "message": f"Kampagne gesendet: {sent_count} erfolgreich, {failed_count} fehlgeschlagen",
+        "sent": sent_count,
+        "failed": failed_count,
+        "total": len(users)
+    }
+
+@app.get("/api/admin/email/campaigns")
+async def get_email_campaigns(current_user: dict = Depends(get_admin_user)):
+    """Get list of past email campaigns"""
+    campaigns = await db.email_campaigns.find({}).sort("created_at", -1).to_list(50)
+    for c in campaigns:
+        c.pop("_id", None)
+    return campaigns
+
 @app.on_event("startup")
 async def startup_event():
     """Start background tasks on server startup"""
