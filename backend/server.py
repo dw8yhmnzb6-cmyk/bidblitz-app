@@ -1767,6 +1767,217 @@ async def stripe_webhook(request: Request):
         logger.error(f"Webhook error: {e}")
         return {"status": "error"}
 
+# ==================== CRYPTO PAYMENT ENDPOINTS (Coinbase Commerce) ====================
+
+@api_router.post("/checkout/crypto/create")
+async def create_crypto_checkout(
+    data: CryptoCheckoutRequest, 
+    http_request: Request,
+    user: dict = Depends(get_current_user)
+):
+    """Create a Coinbase Commerce charge for cryptocurrency payment"""
+    if not coinbase_client:
+        raise HTTPException(status_code=503, detail="Crypto payments not configured")
+    
+    try:
+        # Create charge with Coinbase Commerce
+        charge_data = {
+            "name": f"BidBlitz - {data.bids} Gebote",
+            "description": f"Gebotspaket mit {data.bids} Geboten für BidBlitz Auktionen",
+            "pricing_type": "fixed_price",
+            "local_price": {
+                "amount": str(data.price),
+                "currency": "EUR"
+            },
+            "metadata": {
+                "user_id": user["id"],
+                "package_id": data.package_id,
+                "bids": str(data.bids)
+            },
+            "redirect_url": f"{str(http_request.base_url).rstrip('/')}/buy-bids?crypto_success=true",
+            "cancel_url": f"{str(http_request.base_url).rstrip('/')}/buy-bids?crypto_cancel=true"
+        }
+        
+        charge = coinbase_client.charge.create(**charge_data)
+        
+        # Store transaction in database
+        transaction = {
+            "id": str(uuid.uuid4()),
+            "user_id": user["id"],
+            "charge_id": charge.id,
+            "payment_method": "crypto",
+            "package_id": data.package_id,
+            "bids": data.bids,
+            "amount": data.price,
+            "currency": "EUR",
+            "status": "pending",
+            "payment_status": "pending",
+            "hosted_url": charge.hosted_url,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        await db.crypto_transactions.insert_one(transaction)
+        
+        logger.info(f"Crypto charge created: {charge.id} for user {user['id']}")
+        
+        return {
+            "charge_id": charge.id,
+            "hosted_url": charge.hosted_url,
+            "status": "pending"
+        }
+        
+    except CoinbaseError as e:
+        logger.error(f"Coinbase Commerce error: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error creating crypto charge: {e}")
+        raise HTTPException(status_code=500, detail="Failed to create crypto payment")
+
+@api_router.get("/checkout/crypto/status/{charge_id}")
+async def get_crypto_checkout_status(charge_id: str, user: dict = Depends(get_current_user)):
+    """Check the status of a cryptocurrency payment"""
+    if not coinbase_client:
+        raise HTTPException(status_code=503, detail="Crypto payments not configured")
+    
+    try:
+        # First check our database
+        transaction = await db.crypto_transactions.find_one(
+            {"charge_id": charge_id, "user_id": user["id"]}, 
+            {"_id": 0}
+        )
+        
+        if not transaction:
+            raise HTTPException(status_code=404, detail="Transaction not found")
+        
+        # If already completed, return cached status
+        if transaction.get("payment_status") == "paid":
+            return {
+                "charge_id": charge_id,
+                "status": "completed",
+                "payment_status": "paid",
+                "bids_added": transaction.get("bids")
+            }
+        
+        # Check with Coinbase Commerce
+        charge = coinbase_client.charge.retrieve(charge_id)
+        
+        # Get latest status from timeline
+        latest_status = charge.timeline[-1]["status"] if charge.timeline else "NEW"
+        
+        status_map = {
+            "NEW": "pending",
+            "PENDING": "pending",
+            "COMPLETED": "completed",
+            "CONFIRMED": "completed",
+            "UNRESOLVED": "failed",
+            "RESOLVED": "completed",
+            "EXPIRED": "expired",
+            "CANCELED": "canceled"
+        }
+        
+        internal_status = status_map.get(latest_status, "pending")
+        
+        # If payment completed, update database and add bids
+        if internal_status == "completed" and transaction.get("payment_status") != "paid":
+            await db.crypto_transactions.update_one(
+                {"charge_id": charge_id},
+                {"$set": {"status": "complete", "payment_status": "paid"}}
+            )
+            
+            # Add bids to user
+            await db.users.update_one(
+                {"id": transaction["user_id"]},
+                {
+                    "$inc": {
+                        "bids_balance": transaction["bids"],
+                        "total_deposits": transaction["amount"]
+                    }
+                }
+            )
+            
+            # Process affiliate commission and referral rewards
+            await process_affiliate_commission(transaction["user_id"], transaction["amount"])
+            await process_referral_after_deposit(transaction["user_id"], transaction["amount"])
+            
+            logger.info(f"Crypto payment completed: {charge_id}, added {transaction['bids']} bids to user {transaction['user_id']}")
+            
+            return {
+                "charge_id": charge_id,
+                "status": "completed",
+                "payment_status": "paid",
+                "bids_added": transaction["bids"]
+            }
+        
+        return {
+            "charge_id": charge_id,
+            "status": internal_status,
+            "payment_status": internal_status,
+            "coinbase_status": latest_status
+        }
+        
+    except CoinbaseError as e:
+        logger.error(f"Coinbase Commerce error: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error checking crypto status: {e}")
+        raise HTTPException(status_code=500, detail="Failed to check payment status")
+
+@api_router.post("/webhook/coinbase")
+async def coinbase_webhook(request: Request):
+    """Webhook endpoint for Coinbase Commerce payment notifications"""
+    try:
+        body = await request.body()
+        event_data = await request.json()
+        
+        event_type = event_data.get("event", {}).get("type")
+        charge_data = event_data.get("event", {}).get("data", {})
+        charge_id = charge_data.get("id")
+        
+        logger.info(f"Coinbase webhook received: {event_type} for charge {charge_id}")
+        
+        if event_type in ["charge:confirmed", "charge:completed"]:
+            # Find transaction
+            transaction = await db.crypto_transactions.find_one(
+                {"charge_id": charge_id},
+                {"_id": 0}
+            )
+            
+            if transaction and transaction.get("payment_status") != "paid":
+                # Update transaction
+                await db.crypto_transactions.update_one(
+                    {"charge_id": charge_id},
+                    {"$set": {"status": "complete", "payment_status": "paid"}}
+                )
+                
+                # Add bids to user
+                await db.users.update_one(
+                    {"id": transaction["user_id"]},
+                    {
+                        "$inc": {
+                            "bids_balance": transaction["bids"],
+                            "total_deposits": transaction["amount"]
+                        }
+                    }
+                )
+                
+                # Process affiliate and referral
+                await process_affiliate_commission(transaction["user_id"], transaction["amount"])
+                await process_referral_after_deposit(transaction["user_id"], transaction["amount"])
+                
+                logger.info(f"Crypto webhook: Payment confirmed for charge {charge_id}")
+        
+        elif event_type == "charge:failed":
+            await db.crypto_transactions.update_one(
+                {"charge_id": charge_id},
+                {"$set": {"status": "failed", "payment_status": "failed"}}
+            )
+            logger.warning(f"Crypto webhook: Payment failed for charge {charge_id}")
+        
+        return {"status": "ok"}
+        
+    except Exception as e:
+        logger.error(f"Coinbase webhook error: {e}")
+        return {"status": "error"}
+
 # ==================== ADMIN ENDPOINTS ====================
 
 @api_router.get("/admin/users", response_model=List[dict])
