@@ -796,7 +796,8 @@ export const languageList = {
   cs: { name: 'Čeština', flag: '🇨🇿' },
   sv: { name: 'Svenska', flag: '🇸🇪' },
   da: { name: 'Dansk', flag: '🇩🇰' },
-  fi: { name: 'Suomi', flag: '🇫🇮' }
+  fi: { name: 'Suomi', flag: '🇫🇮' },
+  el: { name: 'Ελληνικά', flag: '🇬🇷' }
 };
 
 export const getTranslation = (lang, key) => {
