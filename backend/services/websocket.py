@@ -79,16 +79,24 @@ async def broadcast_bid_update(auction_id: str, data: dict):
     message = {
         "type": "bid_update",
         "auction_id": auction_id,
-        **data
+        "data": data,
+        "timestamp": datetime.now(timezone.utc).isoformat()
     }
+    # Broadcast to specific auction viewers
     await ws_manager.broadcast_to_auction(auction_id, message)
+    # Also broadcast to "all auctions" viewers
+    await ws_manager.broadcast_to_auction("all_auctions", message)
 
 async def broadcast_auction_ended(auction_id: str, winner_name: str, final_price: float):
     """Broadcast auction ended event"""
     message = {
         "type": "auction_ended",
         "auction_id": auction_id,
-        "winner_name": winner_name,
-        "final_price": final_price
+        "data": {
+            "winner_name": winner_name,
+            "final_price": final_price
+        },
+        "timestamp": datetime.now(timezone.utc).isoformat()
     }
     await ws_manager.broadcast_to_auction(auction_id, message)
+    await ws_manager.broadcast_to_auction("all_auctions", message)
