@@ -1,7 +1,7 @@
 // Complete translations for 20 languages
 export const translations = {
   de: {
-    nav: { auctions: "Auktionen", buyBids: "Gebote kaufen", dashboard: "Dashboard", admin: "Admin", login: "Anmelden", register: "Registrieren", logout: "Abmelden", bids: "Gebote", winners: "Gewinner", inviteFriends: "Freunde werben", wishlist: "Wunschliste" },
+    nav: { auctions: "Auktionen", buyBids: "Gebote kaufen", dashboard: "Dashboard", admin: "Admin", login: "Anmelden", register: "Registrieren", logout: "Abmelden", bids: "Gebote", winners: "Gewinner", inviteFriends: "Freunde werben", wishlist: "Wunschliste", howItWorks: "So funktioniert's", vip: "VIP Mitgliedschaft", faq: "FAQ", contact: "Kontakt" },
     home: {
       badge: "10 kostenlose Gebote bei Registrierung",
       heroTitle1: "Gewinnen Sie",
