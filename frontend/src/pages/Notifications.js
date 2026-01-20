@@ -212,27 +212,6 @@ export default function Notifications() {
     }
   };
 
-  const requestPushPermission = async () => {
-    if (!pushSupported) {
-      toast.error('Push-Benachrichtigungen werden nicht unterstützt');
-      return;
-    }
-
-    try {
-      const permission = await Notification.requestPermission();
-      if (permission === 'granted') {
-        // In a real app, you'd register a service worker and get subscription
-        toast.success('Push-Benachrichtigungen aktiviert!');
-        setPushSubscribed(true);
-        updatePreferences({ push_enabled: true });
-      } else {
-        toast.error('Berechtigung verweigert');
-      }
-    } catch (error) {
-      toast.error('Fehler bei der Anfrage');
-    }
-  };
-
   const formatDate = (dateStr) => {
     if (!dateStr) return '';
     const date = new Date(dateStr);
