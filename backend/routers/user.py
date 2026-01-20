@@ -1,0 +1,201 @@
+"""User router - User profile and dashboard endpoints"""
+from fastapi import APIRouter, HTTPException, Depends
+from datetime import datetime, timezone
+from typing import Optional
+
+from config import db, logger
+from dependencies import get_current_user, hash_password, verify_password, validate_password_strength
+from schemas import UpdateProfileRequest, ChangePasswordRequest, WishlistRequest
+
+router = APIRouter(tags=["User"])
+
+# ==================== PROFILE ====================
+
+@router.get("/user/profile")
+async def get_profile(user: dict = Depends(get_current_user)):
+    """Get user profile"""
+    return {
+        "id": user["id"],
+        "email": user["email"],
+        "name": user["name"],
+        "bids_balance": user["bids_balance"],
+        "total_bids_placed": user.get("total_bids_placed", 0),
+        "total_deposits": user.get("total_deposits", 0),
+        "won_auctions": user.get("won_auctions", []),
+        "referral_code": user.get("referral_code", user["id"][:8].upper()),
+        "two_factor_enabled": user.get("two_factor_enabled", False),
+        "created_at": user.get("created_at")
+    }
+
+@router.put("/user/profile")
+async def update_profile(data: UpdateProfileRequest, user: dict = Depends(get_current_user)):
+    """Update user profile"""
+    updates = {}
+    
+    if data.name:
+        updates["name"] = data.name
+    
+    if data.email and data.email != user["email"]:
+        # Check if email is taken
+        existing = await db.users.find_one({"email": data.email.lower()})
+        if existing:
+            raise HTTPException(status_code=400, detail="Email already in use")
+        updates["email"] = data.email.lower()
+    
+    if updates:
+        await db.users.update_one({"id": user["id"]}, {"$set": updates})
+    
+    updated = await db.users.find_one({"id": user["id"]}, {"_id": 0, "password": 0})
+    return updated
+
+@router.post("/user/change-password")
+async def change_password(data: ChangePasswordRequest, user: dict = Depends(get_current_user)):
+    """Change user password"""
+    # Verify current password
+    full_user = await db.users.find_one({"id": user["id"]})
+    if not verify_password(data.current_password, full_user["password"]):
+        raise HTTPException(status_code=401, detail="Current password is incorrect")
+    
+    # Validate new password
+    is_valid, message = validate_password_strength(data.new_password)
+    if not is_valid:
+        raise HTTPException(status_code=400, detail=message)
+    
+    # Update password
+    await db.users.update_one(
+        {"id": user["id"]},
+        {"$set": {"password": hash_password(data.new_password)}}
+    )
+    
+    return {"message": "Password changed successfully"}
+
+# ==================== DASHBOARD ====================
+
+@router.get("/user/dashboard")
+async def get_dashboard(user: dict = Depends(get_current_user)):
+    """Get user dashboard data"""
+    # Recent bid history
+    recent_auctions = await db.auctions.find(
+        {"bid_history.user_id": user["id"]},
+        {"_id": 0}
+    ).sort("end_time", -1).to_list(10)
+    
+    # Won auctions
+    won_auction_ids = user.get("won_auctions", [])
+    won_auctions = []
+    if won_auction_ids:
+        won_auctions = await db.auctions.find(
+            {"id": {"$in": won_auction_ids}},
+            {"_id": 0}
+        ).to_list(50)
+        
+        # Add product info
+        for auction in won_auctions:
+            product = await db.products.find_one({"id": auction.get("product_id")}, {"_id": 0})
+            if product:
+                auction["product"] = product
+    
+    # Active autobidders
+    autobidders = await db.autobidders.find(
+        {"user_id": user["id"], "is_active": True},
+        {"_id": 0}
+    ).to_list(20)
+    
+    # Transaction history
+    transactions = await db.transactions.find(
+        {"user_id": user["id"]},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(20)
+    
+    return {
+        "bids_balance": user["bids_balance"],
+        "total_bids_placed": user.get("total_bids_placed", 0),
+        "won_auctions_count": len(won_auction_ids),
+        "recent_activity": recent_auctions,
+        "won_auctions": won_auctions,
+        "autobidders": autobidders,
+        "transactions": transactions
+    }
+
+# ==================== WISHLIST ====================
+
+@router.get("/user/wishlist")
+async def get_wishlist(user: dict = Depends(get_current_user)):
+    """Get user's wishlist"""
+    wishlist = await db.wishlists.find(
+        {"user_id": user["id"]},
+        {"_id": 0}
+    ).to_list(100)
+    
+    # Enrich with product/category details
+    for item in wishlist:
+        if item.get("product_id"):
+            product = await db.products.find_one({"id": item["product_id"]}, {"_id": 0})
+            if product:
+                item["product"] = product
+    
+    return wishlist
+
+@router.post("/user/wishlist")
+async def add_to_wishlist(data: WishlistRequest, user: dict = Depends(get_current_user)):
+    """Add product or category to wishlist"""
+    if not data.product_id and not data.category:
+        raise HTTPException(status_code=400, detail="Product ID or category required")
+    
+    # Check for duplicates
+    query = {"user_id": user["id"]}
+    if data.product_id:
+        query["product_id"] = data.product_id
+    if data.category:
+        query["category"] = data.category
+    
+    existing = await db.wishlists.find_one(query)
+    if existing:
+        raise HTTPException(status_code=400, detail="Already in wishlist")
+    
+    item = {
+        "id": str(__import__('uuid').uuid4()),
+        "user_id": user["id"],
+        "product_id": data.product_id,
+        "category": data.category,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.wishlists.insert_one(item)
+    return {"message": "Added to wishlist", "id": item["id"]}
+
+@router.delete("/user/wishlist/{item_id}")
+async def remove_from_wishlist(item_id: str, user: dict = Depends(get_current_user)):
+    """Remove item from wishlist"""
+    result = await db.wishlists.delete_one({"id": item_id, "user_id": user["id"]})
+    
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Wishlist item not found")
+    
+    return {"message": "Removed from wishlist"}
+
+# ==================== REFERRALS ====================
+
+@router.get("/user/referrals")
+async def get_referral_stats(user: dict = Depends(get_current_user)):
+    """Get user's referral statistics"""
+    referral_code = user.get("referral_code", user["id"][:8].upper())
+    
+    # Count referrals
+    referrals = await db.users.count_documents({"referred_by": user["id"]})
+    
+    # Count successful referrals (those who deposited)
+    successful = await db.users.count_documents({
+        "referred_by": user["id"],
+        "total_deposits": {"$gt": 0}
+    })
+    
+    rewards_earned = user.get("referral_rewards_earned", 0)
+    
+    return {
+        "referral_code": referral_code,
+        "total_referrals": referrals,
+        "successful_referrals": successful,
+        "rewards_earned": rewards_earned,
+        "share_url": f"https://bidblitz.de/?ref={referral_code}"
+    }
