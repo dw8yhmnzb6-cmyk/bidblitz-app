@@ -16,6 +16,34 @@ Penny-Auktion-Website ähnlich dealdash.com und snipster.de mit Kunden-App und A
 
 ---
 
+## ✅ COMPLETED - New Features (20.01.2026)
+
+### 100+ Test-Auktionen erstellt
+- [x] Batch-Endpoint `/api/admin/auctions/batch` erstellt
+- [x] Parameter: `count`, `duration_minutes`, `bot_target_percentage`, `immediate_percent`
+- [x] 40 aktive + geplante Auktionen für Bot-Testing
+
+### Buy It Now Feature
+- [x] Backend Endpoint: `POST /api/auctions/{id}/buy-now`
+- [x] Preis-Check Endpoint: `GET /api/auctions/{id}/buy-now-price`
+- [x] Sofortkauf beendet Auktion und erstellt Kaufdatensatz
+- [x] Achievement "Sofortkäufer" wird vergeben
+
+### Auto-Bidder Erweiterungen
+- [x] `GET /api/autobidders/all` - Alle aktiven Autobidder eines Users
+- [x] `PUT /api/autobidder/{id}/settings` - Einstellungen aktualisieren (max_bids, max_price, pause)
+- [x] `GET /api/autobidder/{id}/stats` - Statistiken (verbleibende Gebote, wird fortgesetzt?)
+- [x] Pause/Resume Funktionalität für Autobidder
+
+### Achievements & Daily Rewards System
+- [x] 18 Achievements in 6 Kategorien (Bieten, Gewinnen, Kaufen, Engagement, Sozial, Spezial)
+- [x] Bonus-Gebote als Belohnung für Achievements
+- [x] Tägliche Belohnungen mit 7-Tage-Streak-System
+- [x] Leaderboard (wöchentlich) mit Punktesystem
+- [x] Frontend-Seite `/achievements` mit 3 Tabs
+
+---
+
 ## ✅ COMPLETED - Admin Panel Crash Fix (20.01.2026)
 
 ### Bug Fix
