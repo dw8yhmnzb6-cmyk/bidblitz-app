@@ -16,6 +16,33 @@ Penny-Auktion-Website ähnlich dealdash.com und snipster.de mit Kunden-App und A
 
 ---
 
+## ✅ COMPLETED - Push, PDF & 2FA (20.01.2026)
+
+### Push-Benachrichtigungen
+- [x] Router `/api/notifications/*` erstellt
+- [x] Push-Subscription System (subscribe/unsubscribe)
+- [x] In-App Benachrichtigungen (CRUD)
+- [x] Benachrichtigungs-Einstellungen pro Benutzer
+- [x] Admin: Broadcast an alle/aktive/zahlende Benutzer
+- [x] Frontend: `/notifications` Seite mit Settings
+
+### PDF-Rechnungen
+- [x] Router `/api/invoices/*` erstellt
+- [x] PDF-Generierung mit reportlab
+- [x] Rechnungen für Gebots-Käufe: `GET /api/invoices/{transaction_id}`
+- [x] Rechnungen für Auktions-Gewinne: `POST /api/invoices/auction-win/{auction_id}`
+- [x] Alle Rechnungen abrufen: `GET /api/invoices/user/all`
+- [x] Frontend: `/invoices` Seite mit Download-Funktion
+
+### 2FA-Erweiterungen
+- [x] Backup-Codes generieren: `POST /api/auth/2fa/backup-codes/generate` (10 Codes)
+- [x] Backup-Code verifizieren: `POST /api/auth/2fa/backup-codes/verify`
+- [x] Backup-Code Anzahl: `GET /api/auth/2fa/backup-codes/count`
+- [x] Umfassender 2FA-Status: `GET /api/auth/2fa/status`
+- [x] Code-nur-Verifikation: `POST /api/auth/2fa/verify-only` (für sensible Aktionen)
+
+---
+
 ## ✅ COMPLETED - New Features (20.01.2026)
 
 ### 100+ Test-Auktionen erstellt
