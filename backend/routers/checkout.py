@@ -37,39 +37,33 @@ async def create_checkout_session(request: CheckoutRequest, user: dict = Depends
     try:
         # Create pending transaction
         transaction_id = str(uuid.uuid4())
+        total_bids = package["bids"] + package.get("bonus", 0)
+        
         await db.transactions.insert_one({
             "id": transaction_id,
             "user_id": user["id"],
             "package_id": package["id"],
-            "bids": package["bids"],
-            "amount": package["price"],
+            "bids": total_bids,
+            "amount": float(package["price"]),
             "status": "pending",
             "payment_method": "stripe",
             "created_at": datetime.now(timezone.utc).isoformat()
         })
         
-        # Create Stripe session
+        # Create Stripe session using amount and currency (correct format)
         checkout_request = CheckoutSessionRequest(
-            line_items=[{
-                "price_data": {
-                    "currency": "eur",
-                    "unit_amount": int(package["price"] * 100),
-                    "product_data": {
-                        "name": f"{package['bids']} Gebote - {package['name']}",
-                        "description": f"BidBlitz Gebotspaket"
-                    }
-                },
-                "quantity": 1
-            }],
-            success_url=f"{FRONTEND_URL}/checkout/success?session_id={{CHECKOUT_SESSION_ID}}",
+            amount=float(package["price"]),
+            currency="eur",
+            success_url=f"{FRONTEND_URL}/payment/success?session_id={{CHECKOUT_SESSION_ID}}",
             cancel_url=f"{FRONTEND_URL}/buy-bids?canceled=true",
-            mode="payment",
             metadata={
                 "user_id": user["id"],
                 "package_id": package["id"],
-                "transaction_id": transaction_id
+                "transaction_id": transaction_id,
+                "bids": str(total_bids),
+                "package_name": package["name"]
             },
-            payment_method_types=["card", "klarna", "sepa_debit"]
+            payment_methods=["card"]
         )
         
         session = await stripe_checkout.create_checkout_session(checkout_request)
