@@ -1,5 +1,6 @@
 """Admin router - Dashboard stats, user management, email marketing"""
 from fastapi import APIRouter, HTTPException, Depends
+from pydantic import BaseModel
 from datetime import datetime, timezone, timedelta
 from typing import List, Optional
 import uuid
