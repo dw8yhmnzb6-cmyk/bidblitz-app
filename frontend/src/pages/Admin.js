@@ -1507,7 +1507,7 @@ export default function Admin() {
                           </td>
                         </tr>
                       ))}
-                      {vouchers.length === 0 && (<tr><td colSpan={6} className="px-4 py-8 text-center text-[#94A3B8]">Noch keine Gutscheine erstellt</td></tr>)}
+                      {(vouchers || []).length === 0 && (<tr><td colSpan={6} className="px-4 py-8 text-center text-[#94A3B8]">Noch keine Gutscheine erstellt</td></tr>)}
                     </tbody>
                   </table>
                 </div>
@@ -1601,7 +1601,7 @@ export default function Admin() {
               {/* Bot List */}
               <div className="glass-card rounded-xl p-6">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-                  <h3 className="text-lg font-bold text-white">Verfügbare Bots ({bots.length})</h3>
+                  <h3 className="text-lg font-bold text-white">Verfügbare Bots ({(bots || []).length})</h3>
                   
                   {/* Bot Creation Form - More Prominent */}
                   <form onSubmit={handleCreateBot} className="flex gap-2 w-full md:w-auto">
@@ -1637,7 +1637,7 @@ export default function Admin() {
                     </div>
                   ))}
                 </div>
-                {bots.length === 0 && (
+                {(bots || []).length === 0 && (
                   <p className="text-center text-[#94A3B8] py-8">Keine Bots erstellt. Klicken Sie oben auf "20 Standard-Bots erstellen"</p>
                 )}
               </div>
@@ -1677,7 +1677,7 @@ export default function Admin() {
                     </div>
                     <div>
                       <p className="text-[#94A3B8] text-sm">Transaktionen</p>
-                      <p className="text-2xl font-bold text-white">{payments.length}</p>
+                      <p className="text-2xl font-bold text-white">{(payments || []).length}</p>
                     </div>
                   </div>
                 </div>
@@ -1735,7 +1735,7 @@ export default function Admin() {
                     </tbody>
                   </table>
                 </div>
-                {payments.length === 0 && (
+                {(payments || []).length === 0 && (
                   <p className="text-center text-[#94A3B8] py-12">Noch keine Zahlungen erfasst</p>
                 )}
               </div>
@@ -1797,7 +1797,7 @@ export default function Admin() {
                     </div>
                   ))}
                 </div>
-                {logs.length === 0 && (
+                {(logs || []).length === 0 && (
                   <p className="text-center text-[#94A3B8] py-12">Keine Logs vorhanden</p>
                 )}
               </div>
@@ -2003,7 +2003,7 @@ export default function Admin() {
                   </h2>
 
                   <div className="space-y-3 max-h-[500px] overflow-y-auto">
-                    {emailCampaigns.length === 0 ? (
+                    {(emailCampaigns || []).length === 0 ? (
                       <p className="text-[#94A3B8] text-center py-8">Noch keine Kampagnen gesendet</p>
                     ) : (
                       (emailCampaigns || []).map(campaign => (
