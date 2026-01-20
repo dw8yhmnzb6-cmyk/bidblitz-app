@@ -7,6 +7,12 @@ import resend
 
 from config import db, logger, RESEND_API_KEY, SENDER_EMAIL
 from dependencies import get_admin_user
+from utils.email_translations import (
+    get_email_template, 
+    generate_email_html, 
+    SUPPORTED_EMAIL_LANGUAGES,
+    EMAIL_TRANSLATIONS
+)
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
 
