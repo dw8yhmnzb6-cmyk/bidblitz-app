@@ -342,6 +342,12 @@ class EmailTestSend(BaseModel):
     subject: str
     html_content: str
 
+# Crypto Payment Models
+class CryptoCheckoutRequest(BaseModel):
+    package_id: str
+    bids: int
+    price: float
+
 # ==================== SECURITY FUNCTIONS ====================
 
 def validate_password_strength(password: str) -> tuple[bool, str]:
