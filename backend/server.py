@@ -93,6 +93,7 @@ app.include_router(user_router, prefix="/api")
 app.include_router(bots_router, prefix="/api")
 app.include_router(vouchers_router, prefix="/api")
 app.include_router(staff_router, prefix="/api")
+app.include_router(rewards_router, prefix="/api")
 
 # ==================== HEALTH & BASIC ENDPOINTS ====================
 
