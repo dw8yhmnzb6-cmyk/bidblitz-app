@@ -24,6 +24,7 @@ async def get_profile(user: dict = Depends(get_current_user)):
         "won_auctions": user.get("won_auctions", []),
         "referral_code": user.get("referral_code", user["id"][:8].upper()),
         "two_factor_enabled": user.get("two_factor_enabled", False),
+        "preferred_language": user.get("preferred_language", "de"),
         "created_at": user.get("created_at")
     }
 
@@ -47,6 +48,22 @@ async def update_profile(data: UpdateProfileRequest, user: dict = Depends(get_cu
     
     updated = await db.users.find_one({"id": user["id"]}, {"_id": 0, "password": 0})
     return updated
+
+@router.put("/user/language")
+async def update_preferred_language(language: str, user: dict = Depends(get_current_user)):
+    """Update user's preferred language for emails"""
+    # List of supported languages
+    supported = ["de", "en", "sq", "el", "tr", "fr", "es", "it", "nl", "pl", "pt", "ru", "zh", "ja", "ko", "ar", "hi", "cs", "sr", "hr"]
+    
+    if language not in supported:
+        raise HTTPException(status_code=400, detail=f"Language '{language}' not supported")
+    
+    await db.users.update_one(
+        {"id": user["id"]},
+        {"$set": {"preferred_language": language}}
+    )
+    
+    return {"message": f"Preferred language updated to {language}", "language": language}
 
 @router.post("/user/change-password")
 async def change_password(data: ChangePasswordRequest, user: dict = Depends(get_current_user)):
