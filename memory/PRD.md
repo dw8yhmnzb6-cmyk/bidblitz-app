@@ -72,12 +72,14 @@ Penny-Auktion-Website ähnlich dealdash.com und snipster.de mit Kunden-App und A
 
 ### Admin-Panel
 - [x] Dashboard mit Statistiken
+- [x] **Detaillierte Stats/Charts** (revenue_by_day, bids_by_day, users_by_day)
 - [x] Produkt-Verwaltung
 - [x] Auktions-Verwaltung
 - [x] Benutzer-Verwaltung
 - [x] Voucher-System
 - [x] Bot-System (Seeding, Einzeln, Multi-Bid)
 - [x] **E-Mail Marketing** (Resend Integration)
+- [x] **Staff Management System** (Mitarbeiter mit Rollen)
 - [x] Sicherheits-Dashboard
 
 ### Auktions-System
