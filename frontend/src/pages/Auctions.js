@@ -197,47 +197,8 @@ const SnipsterCard = ({ auction, t }) => {
     </div>
   );
 };
-            {/* Timer - Vibrant Colors */}
-            <div className={`w-full text-center py-1.5 px-2 rounded-xl text-white text-xs font-mono font-bold shadow-md ${
-              isUrgent ? 'bg-gradient-to-r from-red-500 via-pink-500 to-rose-500 animate-pulse' : 
-              isEnded ? 'bg-gradient-to-r from-gray-400 to-gray-500' : 
-              'bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500'
-            }`}>
-              {isEnded ? '⏰ ' + t('auctionCard.end') : `${formatTime(timeLeft.hours)}:${formatTime(timeLeft.minutes)}:${formatTime(timeLeft.seconds)}`}
-            </div>
-            
-            {/* Product Image with Glow */}
-            <div className="relative mt-2">
-              <div className={`absolute inset-0 bg-gradient-to-br ${accent.bg} rounded-xl blur-md opacity-50 group-hover:opacity-80 transition-opacity`}></div>
-              <img
-                src={product.image_url || 'https://via.placeholder.com/80'}
-                alt={product.name}
-                className="relative w-18 h-18 sm:w-20 sm:h-20 object-contain group-hover:scale-110 transition-transform duration-300"
-              />
-            </div>
-          </div>
-        </div>
 
-        {/* Activity & Bids - Colorful Stats */}
-        <div className="mt-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-gray-500 text-[10px] font-medium">{t('auctionCard.activity')}:</span>
-            <ActivityIndex bids={auction.total_bids || 0} />
-          </div>
-          <div className="flex items-center gap-1 text-[10px] text-gray-500">
-            <Flame className="w-3 h-3 text-orange-500" />
-            <span className="font-bold">{auction.total_bids || 0}</span> Gebote
-          </div>
-        </div>
-      </div>
-
-      {/* Footer - Friendly Success Message */}
-      <div className={`bg-gradient-to-r ${accent.bg} px-3 py-2 text-center border-t ${accent.border}`}>
-        <p className="text-gray-700 text-[10px] font-medium">
-          ✨ {t('auctionCard.lastSold')} <span className={`font-bold ${accent.text}`}>€{lastSoldPrice}</span>
-        </p>
-      </div>
-    </div>
+// Category definitions
   );
 };
 
