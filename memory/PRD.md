@@ -16,6 +16,16 @@ Penny-Auktion-Website ähnlich dealdash.com und snipster.de mit Kunden-App und A
 
 ---
 
+## ✅ COMPLETED - Admin Panel Crash Fix (20.01.2026)
+
+### Bug Fix
+- [x] **Admin Panel TypeError behoben**: Der `/api/admin/stats/detailed` Endpoint fehlte nach dem Backend-Refactoring
+- [x] **Root Cause**: Endpoint wurde nicht in `routers/admin.py` migriert (existierte nur im alten Monolithen)
+- [x] **Lösung**: Vollständigen `stats/detailed` Endpoint zu `routers/admin.py` hinzugefügt
+- [x] **Ergebnis**: Admin Dashboard und Staff Management UI sind wieder funktional
+
+---
+
 ## ✅ COMPLETED - Backend Refactoring (20.01.2026)
 
 ### Modulare Architektur
