@@ -558,12 +558,12 @@ export default function AuctionDetail() {
                       data-testid="buy-now-btn"
                     >
                       <ShoppingBag className="w-5 h-5 mr-2" />
-                      Sofort kaufen ab €{buyNowPrice ? buyNowPrice.final_price.toFixed(2) : product.retail_price.toFixed(2)}
+                      Sofort kaufen ab €{buyNowPrice?.final_price?.toFixed(2) || product?.retail_price?.toFixed(2) || '0.00'}
                     </Button>
                   )}
 
                   {/* Buy It Now Modal */}
-                  {showBuyNowModal && (
+                  {showBuyNowModal && buyNowPrice && (
                     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" data-testid="buy-now-modal">
                       <div className="bg-[#181824] rounded-2xl max-w-md w-full p-6 space-y-6 animate-in fade-in zoom-in duration-200">
                         <div className="flex items-center gap-3">
@@ -572,42 +572,41 @@ export default function AuctionDetail() {
                           </div>
                           <div>
                             <h3 className="text-xl font-bold text-white">Sofort kaufen</h3>
-                            <p className="text-[#94A3B8] text-sm">{product.name}</p>
+                            <p className="text-[#94A3B8] text-sm">{product?.name || 'Produkt'}</p>
                           </div>
                         </div>
 
-                        {buyNowPrice && (
-                          <div className="space-y-4">
-                            <div className="p-4 rounded-lg bg-[#0F0F16] space-y-3">
-                              <div className="flex justify-between">
-                                <span className="text-[#94A3B8]">UVP</span>
-                                <span className="text-white font-mono">€{buyNowPrice.retail_price.toFixed(2)}</span>
-                              </div>
-                              {buyNowPrice.bid_credit > 0 && (
-                                <div className="flex justify-between text-[#10B981]">
-                                  <span className="flex items-center gap-2">
-                                    <Sparkles className="w-4 h-4" />
-                                    Gebots-Guthaben ({buyNowPrice.bids_used} Gebote)
-                                  </span>
-                                  <span className="font-mono">-€{buyNowPrice.bid_credit.toFixed(2)}</span>
-                                </div>
-                              )}
-                              <div className="border-t border-white/10 pt-3 flex justify-between">
-                                <span className="text-white font-bold">Ihr Preis</span>
-                                <span className="text-2xl font-bold text-[#10B981] font-mono">€{buyNowPrice.final_price.toFixed(2)}</span>
-                              </div>
+                        <div className="space-y-4">
+                          <div className="p-4 rounded-lg bg-[#0F0F16] space-y-3">
+                            <div className="flex justify-between">
+                              <span className="text-[#94A3B8]">UVP</span>
+                              <span className="text-white font-mono">€{buyNowPrice?.retail_price?.toFixed(2) || '0.00'}</span>
                             </div>
-
-                            {buyNowPrice.bid_credit > 0 && (
-                              <div className="p-3 rounded-lg bg-[#10B981]/10 border border-[#10B981]/30">
-                                <p className="text-[#10B981] text-sm text-center">
-                                  🎉 Sie sparen €{buyNowPrice.bid_credit.toFixed(2)} durch Ihre {buyNowPrice.bids_used} platzierten Gebote!
-                                </p>
+                            {buyNowPrice?.bid_credit > 0 && (
+                              <div className="flex justify-between text-[#10B981]">
+                                <span className="flex items-center gap-2">
+                                  <Sparkles className="w-4 h-4" />
+                                  Gebots-Guthaben ({buyNowPrice?.bids_used || 0} Gebote)
+                                </span>
+                                <span className="font-mono">-€{buyNowPrice?.bid_credit?.toFixed(2) || '0.00'}</span>
                               </div>
                             )}
+                            <div className="border-t border-white/10 pt-3 flex justify-between">
+                              <span className="text-white font-bold">Ihr Preis</span>
+                              <span className="text-2xl font-bold text-[#10B981] font-mono">€{buyNowPrice?.final_price?.toFixed(2) || '0.00'}</span>
+                            </div>
+                          </div>
 
-                            <p className="text-[#94A3B8] text-xs text-center">
-                              Jedes platzierte Gebot wird auf den Kaufpreis als €0,15 Guthaben angerechnet.
+                          {buyNowPrice?.bid_credit > 0 && (
+                            <div className="p-3 rounded-lg bg-[#10B981]/10 border border-[#10B981]/30">
+                              <p className="text-[#10B981] text-sm text-center">
+                                🎉 Sie sparen €{buyNowPrice?.bid_credit?.toFixed(2) || '0.00'} durch Ihre {buyNowPrice?.bids_used || 0} platzierten Gebote!
+                              </p>
+                            </div>
+                          )}
+
+                          <p className="text-[#94A3B8] text-xs text-center">
+                            Jedes platzierte Gebot wird auf den Kaufpreis als €0,15 Guthaben angerechnet.
                             </p>
                           </div>
                         )}
