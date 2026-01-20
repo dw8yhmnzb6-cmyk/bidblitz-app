@@ -321,37 +321,45 @@ async def get_email_templates(admin: dict = Depends(get_admin_user)):
         }
     ]
 
+class EmailCampaignRequest(BaseModel):
+    subject: str
+    html_content: str
+    target_group: str = "all"
+
 @router.post("/email/send-campaign")
 async def send_email_campaign(
-    subject: str,
-    html_content: str,
-    target_group: str = "all",
+    data: EmailCampaignRequest,
     admin: dict = Depends(get_admin_user)
 ):
     """Send email campaign to user segment"""
     if not RESEND_API_KEY or RESEND_API_KEY == 're_123_placeholder':
-        raise HTTPException(status_code=503, detail="Email service not configured")
+        raise HTTPException(status_code=503, detail="Email service not configured. Please add RESEND_API_KEY.")
     
     # Build query based on target group
     query = {"is_admin": {"$ne": True}}
     
-    if target_group == "active":
+    if data.target_group == "active":
         month_ago = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
         query["$or"] = [
             {"last_purchase_at": {"$gte": month_ago}},
             {"created_at": {"$gte": month_ago}}
         ]
-    elif target_group == "paying":
+    elif data.target_group == "paying":
         query["total_deposits"] = {"$gt": 0}
-    elif target_group == "inactive":
+    elif data.target_group == "inactive":
         week_ago = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
         query["total_deposits"] = {"$eq": 0}
         query["created_at"] = {"$lt": week_ago}
+    elif data.target_group == "winners":
+        query["won_auctions"] = {"$exists": True, "$not": {"$size": 0}}
+    elif data.target_group == "new_users":
+        week_ago = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
+        query["created_at"] = {"$gte": week_ago}
     
-    users = await db.users.find(query, {"email": 1}).to_list(10000)
+    users = await db.users.find(query, {"_id": 0, "email": 1, "name": 1}).to_list(10000)
     
     if not users:
-        return {"sent": 0, "message": "No users in target group"}
+        return {"sent": 0, "failed": 0, "message": "Keine Benutzer in dieser Zielgruppe"}
     
     # Send emails
     sent_count = 0
@@ -359,11 +367,15 @@ async def send_email_campaign(
     
     for user in users:
         try:
+            # Personalize content with user name
+            user_name = user.get("name") or user.get("email", "").split("@")[0]
+            personalized_content = data.html_content.replace("{name}", user_name)
+            
             resend.Emails.send({
                 "from": SENDER_EMAIL,
                 "to": [user["email"]],
-                "subject": subject,
-                "html": html_content
+                "subject": data.subject,
+                "html": personalized_content
             })
             sent_count += 1
         except Exception as e:
@@ -373,8 +385,8 @@ async def send_email_campaign(
     # Log campaign
     await db.email_campaigns.insert_one({
         "id": str(uuid.uuid4()),
-        "subject": subject,
-        "target_group": target_group,
+        "subject": data.subject,
+        "target_group": data.target_group,
         "sent_count": sent_count,
         "failed_count": failed_count,
         "sent_by": admin["id"],
@@ -384,7 +396,7 @@ async def send_email_campaign(
     return {
         "sent": sent_count,
         "failed": failed_count,
-        "message": f"Campaign sent to {sent_count} users"
+        "message": f"Kampagne an {sent_count} Benutzer gesendet ({failed_count} fehlgeschlagen)"
     }
 
 @router.post("/email/send-localized")
