@@ -345,3 +345,184 @@ async def delete_auction(auction_id: str, admin: dict = Depends(get_admin_user))
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Auction not found")
     return {"message": "Auction deleted"}
+
+@router.post("/admin/auctions/batch")
+async def create_batch_auctions(
+    count: int = 100,
+    duration_minutes: int = 30,
+    bot_target_percentage: int = 20,
+    admin: dict = Depends(get_admin_user)
+):
+    """Create multiple auctions at once for testing (admin only)"""
+    import random
+    
+    products = await db.products.find({}, {"_id": 0}).to_list(1000)
+    if not products:
+        raise HTTPException(status_code=400, detail="No products available")
+    
+    now = datetime.now(timezone.utc)
+    created_auctions = []
+    
+    for i in range(count):
+        product = random.choice(products)
+        
+        # Randomize start times over the next hours for variety
+        start_offset = random.randint(0, 120)  # 0-120 minutes
+        start_time = now + timedelta(minutes=start_offset)
+        end_time = start_time + timedelta(minutes=duration_minutes + random.randint(0, 30))
+        
+        # Status based on start time
+        status = "scheduled" if start_time > now else "active"
+        
+        # Calculate bot target price (percentage of retail price)
+        retail_price = product.get("retail_price", 100)
+        bot_target = round(retail_price * (bot_target_percentage / 100), 2)
+        
+        # Buy now price at 70-90% of retail
+        buy_now_price = round(retail_price * random.uniform(0.7, 0.9), 2)
+        
+        auction_id = str(uuid.uuid4())
+        doc = {
+            "id": auction_id,
+            "product_id": product["id"],
+            "starting_price": 0.01,
+            "current_price": 0.01,
+            "bid_increment": 0.01,
+            "start_time": start_time.isoformat(),
+            "end_time": end_time.isoformat(),
+            "status": status,
+            "total_bids": 0,
+            "last_bidder_id": None,
+            "last_bidder_name": None,
+            "winner_id": None,
+            "winner_name": None,
+            "bid_history": [],
+            "bot_target_price": bot_target,
+            "buy_now_price": buy_now_price,
+            "created_at": now.isoformat()
+        }
+        
+        await db.auctions.insert_one(doc)
+        created_auctions.append({
+            "id": auction_id,
+            "product": product["name"],
+            "status": status,
+            "bot_target": bot_target,
+            "buy_now_price": buy_now_price
+        })
+    
+    return {
+        "message": f"{count} Auktionen erstellt",
+        "active": len([a for a in created_auctions if a["status"] == "active"]),
+        "scheduled": len([a for a in created_auctions if a["status"] == "scheduled"]),
+        "auctions": created_auctions[:10]  # Return first 10 as sample
+    }
+
+# ==================== BUY IT NOW ====================
+
+@router.post("/auctions/{auction_id}/buy-now")
+async def buy_now(auction_id: str, user: dict = Depends(get_current_user)):
+    """Buy the item immediately at the buy-now price"""
+    auction = await db.auctions.find_one({"id": auction_id}, {"_id": 0})
+    if not auction:
+        raise HTTPException(status_code=404, detail="Auction not found")
+    
+    if auction["status"] != "active":
+        raise HTTPException(status_code=400, detail="Auktion ist nicht aktiv")
+    
+    buy_now_price = auction.get("buy_now_price")
+    if not buy_now_price:
+        raise HTTPException(status_code=400, detail="Sofortkauf nicht verfügbar")
+    
+    # Get product info
+    product = await db.products.find_one({"id": auction.get("product_id")}, {"_id": 0})
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    
+    # Create purchase record
+    purchase_id = str(uuid.uuid4())
+    purchase = {
+        "id": purchase_id,
+        "user_id": user["id"],
+        "user_email": user["email"],
+        "auction_id": auction_id,
+        "product_id": auction["product_id"],
+        "product_name": product.get("name", "Unknown"),
+        "product_image": product.get("image_url", ""),
+        "purchase_type": "buy_now",
+        "price": buy_now_price,
+        "status": "pending_payment",
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.purchases.insert_one(purchase)
+    
+    # End the auction
+    await db.auctions.update_one(
+        {"id": auction_id},
+        {"$set": {
+            "status": "ended",
+            "ended_at": datetime.now(timezone.utc).isoformat(),
+            "winner_id": user["id"],
+            "winner_name": user.get("name", user["email"]),
+            "final_price": buy_now_price,
+            "buy_now_used": True
+        }}
+    )
+    
+    # Add to user's won auctions
+    await db.users.update_one(
+        {"id": user["id"]},
+        {"$push": {"won_auctions": auction_id}}
+    )
+    
+    # Grant achievement
+    await grant_achievement(user["id"], "first_buy_now", "Sofortkäufer", "Ersten Artikel mit Sofortkauf erworben")
+    
+    # Broadcast auction ended
+    try:
+        await broadcast_auction_ended(auction_id, user.get("name", user["email"]), buy_now_price)
+    except Exception as e:
+        logger.error(f"Failed to broadcast: {e}")
+    
+    return {
+        "message": "Sofortkauf erfolgreich!",
+        "purchase_id": purchase_id,
+        "product": product.get("name"),
+        "price": buy_now_price,
+        "status": "pending_payment"
+    }
+
+@router.get("/auctions/{auction_id}/buy-now-price")
+async def get_buy_now_price(auction_id: str):
+    """Get the buy-now price for an auction"""
+    auction = await db.auctions.find_one({"id": auction_id}, {"_id": 0, "buy_now_price": 1, "status": 1})
+    if not auction:
+        raise HTTPException(status_code=404, detail="Auction not found")
+    
+    return {
+        "auction_id": auction_id,
+        "buy_now_price": auction.get("buy_now_price"),
+        "available": auction.get("status") == "active" and auction.get("buy_now_price") is not None
+    }
+
+# ==================== ACHIEVEMENTS HELPER ====================
+
+async def grant_achievement(user_id: str, achievement_id: str, name: str, description: str):
+    """Grant an achievement to a user"""
+    existing = await db.achievements.find_one({
+        "user_id": user_id,
+        "achievement_id": achievement_id
+    })
+    
+    if not existing:
+        await db.achievements.insert_one({
+            "id": str(uuid.uuid4()),
+            "user_id": user_id,
+            "achievement_id": achievement_id,
+            "name": name,
+            "description": description,
+            "earned_at": datetime.now(timezone.utc).isoformat()
+        })
+        return True
+    return False
