@@ -136,6 +136,8 @@ function AppContent() {
           <Route path="/how-it-works" element={<HowItWorks />} />
           <Route path="/faq" element={<FAQ />} />
           <Route path="/contact" element={<Contact />} />
+          <Route path="/vip" element={<VIP />} />
+          <Route path="/vip/success" element={<VIP />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
