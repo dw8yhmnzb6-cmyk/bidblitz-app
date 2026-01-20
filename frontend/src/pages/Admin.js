@@ -76,6 +76,9 @@ export default function Admin() {
   const [botBid, setBotBid] = useState({
     auction_id: '', target_price: '', num_bids: '5'
   });
+  const [newStaff, setNewStaff] = useState({
+    email: '', password: '', name: '', role: 'editor'
+  });
 
   // Email Marketing states
   const [emailTemplates, setEmailTemplates] = useState([]);
