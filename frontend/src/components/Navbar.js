@@ -182,6 +182,72 @@ export const Navbar = () => {
       {mobileMenuOpen && (
         <div className="md:hidden bg-[#0F0F16] border-t border-white/10">
           <div className="px-4 py-4 space-y-3">
+            
+            {/* AUTH SECTION - Prominent at top */}
+            {isAuthenticated ? (
+              <div className="bg-gradient-to-r from-[#1a2a42] to-[#0d1829] rounded-xl p-4 mb-4 border border-white/10">
+                {/* User Info & Balance */}
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#7C3AED] to-[#EC4899] flex items-center justify-center">
+                      <User className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <p className="text-white font-semibold text-sm">{user?.name || 'Benutzer'}</p>
+                      <p className="text-gray-400 text-xs">{user?.email}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1 bg-[#06B6D4]/20 px-3 py-1.5 rounded-full">
+                    <Zap className="w-4 h-4 text-[#06B6D4]" />
+                    <span className="font-mono font-bold text-[#06B6D4]">{user?.bids_balance || 0}</span>
+                  </div>
+                </div>
+                
+                {/* Quick Actions Row */}
+                <div className="flex gap-2">
+                  <Link 
+                    to="/dashboard" 
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex-1 bg-[#7C3AED] text-white py-2.5 px-3 rounded-lg font-semibold text-center text-sm"
+                  >
+                    Dashboard
+                  </Link>
+                  {isAdmin && (
+                    <Link 
+                      to="/admin" 
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="flex-1 bg-[#F59E0B] text-black py-2.5 px-3 rounded-lg font-semibold text-center text-sm flex items-center justify-center gap-1"
+                    >
+                      <Shield className="w-4 h-4" />
+                      Admin
+                    </Link>
+                  )}
+                  <button 
+                    onClick={() => { handleLogout(); setMobileMenuOpen(false); }}
+                    className="bg-[#EF4444] text-white py-2.5 px-4 rounded-lg font-semibold text-sm"
+                  >
+                    <LogOut className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-gradient-to-r from-[#1a2a42] to-[#0d1829] rounded-xl p-4 mb-4 border border-white/10">
+                <p className="text-gray-300 text-sm mb-3 text-center">Melde dich an, um zu bieten!</p>
+                <div className="flex gap-2">
+                  <Link to="/login" onClick={() => setMobileMenuOpen(false)} className="flex-1">
+                    <Button variant="outline" className="w-full border-[#7C3AED] text-[#7C3AED] py-3 text-base font-bold">
+                      Anmelden
+                    </Button>
+                  </Link>
+                  <Link to="/register" onClick={() => setMobileMenuOpen(false)} className="flex-1">
+                    <Button className="w-full bg-[#FFD700] hover:bg-[#FCD34D] text-black py-3 text-base font-bold">
+                      Registrieren
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            )}
+            
             {/* Language selector mobile - Bigger flags */}
             <div className="flex flex-wrap gap-2 pb-3 border-b border-white/10">
               {Object.keys(languageList).map((lang) => (
@@ -195,6 +261,7 @@ export const Navbar = () => {
               ))}
             </div>
             
+            {/* Navigation Links */}
             <Link 
               to="/auctions" 
               className="block text-[#94A3B8] hover:text-white py-2"
@@ -246,55 +313,6 @@ export const Navbar = () => {
               <Trophy className="w-4 h-4" />
               {t('nav.winners')}
             </Link>
-            
-            {/* Separator */}
-            <div className="border-t border-white/10 my-3"></div>
-            
-            {isAuthenticated ? (
-              <>
-                <Link 
-                  to="/dashboard" 
-                  className="block text-[#94A3B8] hover:text-white py-2"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  {t('nav.dashboard')}
-                </Link>
-                {isAdmin && (
-                  <Link 
-                    to="/admin" 
-                    className="block text-[#F59E0B] hover:text-[#FCD34D] py-2"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    Admin Panel
-                  </Link>
-                )}
-                <div className="flex items-center gap-2 py-2 bg-[#06B6D4]/10 px-3 rounded-lg my-2">
-                  <Zap className="w-4 h-4 text-[#06B6D4]" />
-                  <span className="font-mono font-bold text-[#06B6D4]">{user?.bids_balance || 0}</span>
-                  <span className="text-[#94A3B8] text-sm">{t('nav.bids')}</span>
-                </div>
-                <button 
-                  onClick={() => { handleLogout(); setMobileMenuOpen(false); }}
-                  className="w-full text-center bg-[#EF4444] text-white py-3 px-4 rounded-lg font-bold mt-2"
-                >
-                  <LogOut className="w-4 h-4 inline mr-2" />
-                  Abmelden
-                </button>
-              </>
-            ) : (
-              <div className="space-y-3 pt-2">
-                <Link to="/login" onClick={() => setMobileMenuOpen(false)} className="block">
-                  <Button variant="outline" className="w-full border-[#7C3AED] text-[#7C3AED] py-3 text-lg font-bold">
-                    Anmelden
-                  </Button>
-                </Link>
-                <Link to="/register" onClick={() => setMobileMenuOpen(false)} className="block">
-                  <Button className="w-full bg-[#FFD700] hover:bg-[#FCD34D] text-black py-3 text-lg font-bold">
-                    Registrieren
-                  </Button>
-                </Link>
-              </div>
-            )}
           </div>
         </div>
       )}
