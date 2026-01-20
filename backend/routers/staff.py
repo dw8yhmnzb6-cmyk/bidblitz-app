@@ -118,6 +118,7 @@ async def get_available_roles(admin: dict = Depends(get_admin_user)):
     """Get all predefined roles"""
     return ROLES
 
+@router.get("")
 @router.get("/")
 async def list_staff(admin: dict = Depends(get_admin_user)):
     """List all staff members"""
