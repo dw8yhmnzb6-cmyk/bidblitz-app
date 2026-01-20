@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/ui/button';
-import { Zap, Check, Sparkles, CreditCard } from 'lucide-react';
+import { Zap, Check, Sparkles, CreditCard, Bitcoin, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -11,13 +11,25 @@ const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 export default function BuyBids() {
   const { isAuthenticated, token } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [packages, setPackages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [purchasing, setPurchasing] = useState(null);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [selectedPackage, setSelectedPackage] = useState(null);
+  const [paymentMethod, setPaymentMethod] = useState('stripe');
 
   useEffect(() => {
     fetchPackages();
-  }, []);
+    
+    // Check for crypto callback
+    if (searchParams.get('crypto_success')) {
+      toast.success('Krypto-Zahlung erfolgreich! Gebote werden gutgeschrieben.');
+    }
+    if (searchParams.get('crypto_cancel')) {
+      toast.info('Krypto-Zahlung abgebrochen');
+    }
+  }, [searchParams]);
 
   const fetchPackages = async () => {
     try {
@@ -31,26 +43,47 @@ export default function BuyBids() {
     }
   };
 
-  const handlePurchase = async (packageId) => {
+  const openPaymentModal = (pkg) => {
     if (!isAuthenticated) {
       toast.error('Bitte melden Sie sich an, um Gebote zu kaufen');
       navigate('/login');
       return;
     }
+    setSelectedPackage(pkg);
+    setShowPaymentModal(true);
+  };
 
-    setPurchasing(packageId);
+  const handlePurchase = async () => {
+    if (!selectedPackage) return;
+    
+    setPurchasing(selectedPackage.id);
+    
     try {
-      const response = await axios.post(
-        `${API}/checkout/create-session`,
-        {
-          package_id: packageId,
-          origin_url: window.location.origin
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
-      // Redirect to Stripe Checkout
-      window.location.href = response.data.url;
+      if (paymentMethod === 'stripe') {
+        // Stripe checkout
+        const response = await axios.post(
+          `${API}/checkout/create-session`,
+          {
+            package_id: selectedPackage.id,
+            origin_url: window.location.origin
+          },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        window.location.href = response.data.url;
+      } else if (paymentMethod === 'crypto') {
+        // Coinbase Commerce checkout
+        const response = await axios.post(
+          `${API}/checkout/crypto/create`,
+          {
+            package_id: selectedPackage.id,
+            bids: selectedPackage.bids,
+            price: selectedPackage.price
+          },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        // Redirect to Coinbase Commerce hosted page
+        window.location.href = response.data.hosted_url;
+      }
     } catch (error) {
       console.error('Checkout error:', error);
       toast.error(error.response?.data?.detail || 'Fehler beim Erstellen der Zahlung');
@@ -83,6 +116,21 @@ export default function BuyBids() {
           <p className="text-[#94A3B8] text-lg max-w-2xl mx-auto">
             Wählen Sie das passende Paket und starten Sie mit dem Bieten. Je mehr Gebote Sie kaufen, desto mehr sparen Sie!
           </p>
+          
+          {/* Payment Methods Info */}
+          <div className="mt-6 flex items-center justify-center gap-4 flex-wrap">
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#181824] border border-white/10">
+              <CreditCard className="w-4 h-4 text-[#7C3AED]" />
+              <span className="text-xs text-[#94A3B8]">Kreditkarte</span>
+            </div>
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#181824] border border-white/10">
+              <Bitcoin className="w-4 h-4 text-[#F7931A]" />
+              <span className="text-xs text-[#94A3B8]">Bitcoin & Krypto</span>
+            </div>
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#181824] border border-white/10">
+              <span className="text-xs text-[#94A3B8]">SEPA • Klarna • PayPal</span>
+            </div>
+          </div>
         </div>
 
         {/* Packages Grid */}
@@ -141,7 +189,7 @@ export default function BuyBids() {
                 </ul>
 
                 <Button
-                  onClick={() => handlePurchase(pkg.id)}
+                  onClick={() => openPaymentModal(pkg)}
                   disabled={purchasing === pkg.id}
                   className={`w-full py-3 h-auto ${
                     pkg.popular ? 'btn-bid' : 'bg-white/10 hover:bg-white/20 text-white'
@@ -196,6 +244,96 @@ export default function BuyBids() {
           </div>
         </div>
       </div>
+
+      {/* Payment Method Modal */}
+      {showPaymentModal && selectedPackage && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="glass-card rounded-2xl p-6 w-full max-w-md relative">
+            <button 
+              onClick={() => {
+                setShowPaymentModal(false);
+                setPurchasing(null);
+              }}
+              className="absolute top-4 right-4 text-[#94A3B8] hover:text-white"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            
+            <h2 className="text-xl font-bold text-white mb-2">Zahlungsmethode wählen</h2>
+            <p className="text-[#94A3B8] text-sm mb-6">
+              {selectedPackage.bids} Gebote für €{selectedPackage.price.toFixed(2)}
+            </p>
+
+            <div className="space-y-3 mb-6">
+              {/* Stripe Option */}
+              <button
+                onClick={() => setPaymentMethod('stripe')}
+                className={`w-full p-4 rounded-xl border-2 transition-all flex items-center gap-4 ${
+                  paymentMethod === 'stripe' 
+                    ? 'border-[#7C3AED] bg-[#7C3AED]/10' 
+                    : 'border-white/10 hover:border-white/20'
+                }`}
+              >
+                <div className="w-12 h-12 rounded-lg bg-[#635BFF]/20 flex items-center justify-center">
+                  <CreditCard className="w-6 h-6 text-[#635BFF]" />
+                </div>
+                <div className="flex-1 text-left">
+                  <p className="text-white font-medium">Karte / Klarna / SEPA</p>
+                  <p className="text-[#94A3B8] text-xs">Kreditkarte, Klarna, SEPA Lastschrift, Google Pay, Apple Pay</p>
+                </div>
+                {paymentMethod === 'stripe' && (
+                  <Check className="w-5 h-5 text-[#7C3AED]" />
+                )}
+              </button>
+
+              {/* Crypto Option */}
+              <button
+                onClick={() => setPaymentMethod('crypto')}
+                className={`w-full p-4 rounded-xl border-2 transition-all flex items-center gap-4 ${
+                  paymentMethod === 'crypto' 
+                    ? 'border-[#F7931A] bg-[#F7931A]/10' 
+                    : 'border-white/10 hover:border-white/20'
+                }`}
+              >
+                <div className="w-12 h-12 rounded-lg bg-[#F7931A]/20 flex items-center justify-center">
+                  <Bitcoin className="w-6 h-6 text-[#F7931A]" />
+                </div>
+                <div className="flex-1 text-left">
+                  <p className="text-white font-medium">Kryptowährung</p>
+                  <p className="text-[#94A3B8] text-xs">Bitcoin, Ethereum, Litecoin, USDC, Dogecoin & mehr</p>
+                </div>
+                {paymentMethod === 'crypto' && (
+                  <Check className="w-5 h-5 text-[#F7931A]" />
+                )}
+              </button>
+            </div>
+
+            <Button
+              onClick={handlePurchase}
+              disabled={purchasing}
+              className="w-full py-3 h-auto btn-bid"
+            >
+              {purchasing ? (
+                'Wird geladen...'
+              ) : paymentMethod === 'crypto' ? (
+                <>
+                  <Bitcoin className="w-4 h-4 mr-2" />
+                  Mit Krypto bezahlen
+                </>
+              ) : (
+                <>
+                  <CreditCard className="w-4 h-4 mr-2" />
+                  Weiter zur Zahlung
+                </>
+              )}
+            </Button>
+
+            <p className="text-[#94A3B8] text-xs text-center mt-4">
+              Sichere Zahlung über {paymentMethod === 'crypto' ? 'Coinbase Commerce' : 'Stripe'}
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
