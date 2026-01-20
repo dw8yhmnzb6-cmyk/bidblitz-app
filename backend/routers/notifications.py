@@ -4,11 +4,27 @@ from datetime import datetime, timezone, timedelta
 from typing import Optional, List
 import uuid
 import json
+import os
+import httpx
 
 from config import db, logger
 from dependencies import get_current_user, get_admin_user
 
 router = APIRouter(prefix="/notifications", tags=["Notifications"])
+
+# VAPID Configuration
+VAPID_PUBLIC_KEY = os.environ.get("VAPID_PUBLIC_KEY", "")
+VAPID_PRIVATE_KEY_FILE = os.environ.get("VAPID_PRIVATE_KEY_FILE", "/app/backend/vapid_private.pem")
+VAPID_CLAIMS_EMAIL = os.environ.get("VAPID_CLAIMS_EMAIL", "mailto:support@bidblitz.de")
+
+# ==================== VAPID PUBLIC KEY ====================
+
+@router.get("/vapid-public-key")
+async def get_vapid_public_key():
+    """Get VAPID public key for push subscription"""
+    if not VAPID_PUBLIC_KEY:
+        raise HTTPException(status_code=503, detail="Push notifications not configured")
+    return {"publicKey": VAPID_PUBLIC_KEY}
 
 # ==================== PUSH SUBSCRIPTIONS ====================
 
