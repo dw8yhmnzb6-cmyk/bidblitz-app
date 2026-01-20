@@ -16,15 +16,15 @@ STRIPE_API_KEY = os.environ.get('STRIPE_API_KEY')
 if STRIPE_API_KEY:
     stripe.api_key = STRIPE_API_KEY
 
-# VIP Plans
+# VIP Plans - Reduced monthly bids
 VIP_PLANS = [
     {
         "id": "vip_basic",
         "name": "VIP Basic",
         "price_monthly": 9.99,
-        "monthly_bids": 25,
+        "monthly_bids": 10,
         "benefits": [
-            "25 Gratis-Gebote pro Monat",
+            "10 Gratis-Gebote pro Monat",
             "5% Rabatt auf Gebotspakete",
             "VIP Badge im Profil"
         ],
@@ -34,13 +34,12 @@ VIP_PLANS = [
         "id": "vip_gold",
         "name": "VIP Gold",
         "price_monthly": 19.99,
-        "monthly_bids": 60,
+        "monthly_bids": 25,
         "benefits": [
-            "60 Gratis-Gebote pro Monat",
+            "25 Gratis-Gebote pro Monat",
             "10% Rabatt auf Gebotspakete",
             "VIP Gold Badge im Profil",
-            "Prioritäts-Support",
-            "Früher Zugang zu neuen Auktionen"
+            "Prioritäts-Support"
         ],
         "badge_color": "#FFD700",  # Gold
         "popular": True
@@ -49,15 +48,13 @@ VIP_PLANS = [
         "id": "vip_platinum",
         "name": "VIP Platinum",
         "price_monthly": 39.99,
-        "monthly_bids": 150,
+        "monthly_bids": 50,
         "benefits": [
-            "150 Gratis-Gebote pro Monat",
+            "50 Gratis-Gebote pro Monat",
             "15% Rabatt auf Gebotspakete",
             "VIP Platinum Badge im Profil",
             "Prioritäts-Support",
-            "Früher Zugang zu neuen Auktionen",
-            "Exklusive Auktionen nur für Platinum",
-            "Kostenloser Versand"
+            "Exklusive Auktionen"
         ],
         "badge_color": "#E5E4E2"  # Platinum
     }
