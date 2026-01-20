@@ -274,7 +274,7 @@ export const Navbar = () => {
               className="block text-[#94A3B8] hover:text-white py-2"
               onClick={() => setMobileMenuOpen(false)}
             >
-              So funktioniert's
+              {t('nav.howItWorks') || "So funktioniert's"}
             </Link>
             <Link 
               to="/buy-bids" 
@@ -289,21 +289,21 @@ export const Navbar = () => {
               onClick={() => setMobileMenuOpen(false)}
             >
               <Crown className="w-4 h-4" />
-              VIP Mitgliedschaft
+              {t('nav.vip') || "VIP Mitgliedschaft"}
             </Link>
             <Link 
               to="/faq" 
               className="block text-[#94A3B8] hover:text-white py-2"
               onClick={() => setMobileMenuOpen(false)}
             >
-              FAQ
+              {t('nav.faq') || "FAQ"}
             </Link>
             <Link 
               to="/contact" 
               className="block text-[#94A3B8] hover:text-white py-2"
               onClick={() => setMobileMenuOpen(false)}
             >
-              Kontakt
+              {t('nav.contact') || "Kontakt"}
             </Link>
             <Link 
               to="/winners" 
