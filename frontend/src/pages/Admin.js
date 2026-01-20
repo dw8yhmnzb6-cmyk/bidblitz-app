@@ -347,6 +347,34 @@ export default function Admin() {
     }
   };
 
+  // Update bot target price for an auction
+  const handleUpdateBotTarget = async (auctionId, currentTarget) => {
+    const newTarget = prompt(
+      `Bot-Mindestpreis ändern:\n\n` +
+      `• Bots bieten automatisch bis zu diesem Preis\n` +
+      `• Sobald erreicht, können nur echte Kunden bieten\n` +
+      `• 0 = Keine Bots\n\n` +
+      `Neuer Zielpreis (€):`,
+      currentTarget || '0'
+    );
+    
+    if (newTarget === null) return;
+    
+    const targetPrice = parseFloat(newTarget) || 0;
+    
+    try {
+      const res = await axios.put(
+        `${API}/admin/bots/target-price/${auctionId}?target_price=${targetPrice}`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      toast.success(res.data.message);
+      fetchData();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Fehler beim Aktualisieren');
+    }
+  };
+
   // User handlers
   const handleToggleAdmin = async (userId) => {
     try {
