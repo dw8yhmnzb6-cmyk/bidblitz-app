@@ -492,7 +492,7 @@ export const translations = {
     common: { loading: "Загрузка...", error: "Ошибка", success: "Успех", save: "Сохранить", cancel: "Отмена" }
   },
   ar: {
-    nav: { auctions: "المزادات", buyBids: "شراء العروض", dashboard: "لوحة التحكم", admin: "المشرف", login: "تسجيل الدخول", register: "التسجيل", logout: "تسجيل الخروج", bids: "العروض" },
+    nav: { auctions: "المزادات", buyBids: "شراء العروض", dashboard: "لوحة التحكم", admin: "المشرف", login: "تسجيل الدخول", register: "التسجيل", logout: "تسجيل الخروج", bids: "العروض", howItWorks: "كيف يعمل", vip: "عضوية VIP", faq: "الأسئلة", contact: "اتصل" },
     home: {
       badge: "10 عروض مجانية عند التسجيل",
       heroTitle1: "اربح",
@@ -544,7 +544,7 @@ export const translations = {
     common: { loading: "加载中...", error: "错误", success: "成功", save: "保存", cancel: "取消" }
   },
   ja: {
-    nav: { auctions: "オークション", buyBids: "入札を購入", dashboard: "ダッシュボード", admin: "管理者", login: "ログイン", register: "登録", logout: "ログアウト", bids: "入札" },
+    nav: { auctions: "オークション", buyBids: "入札を購入", dashboard: "ダッシュボード", admin: "管理者", login: "ログイン", register: "登録", logout: "ログアウト", bids: "入札", howItWorks: "仕組み", vip: "VIP会員", faq: "FAQ", contact: "連絡" },
     home: {
       badge: "登録で10回の無料入札",
       heroTitle1: "勝ち取る",
@@ -570,7 +570,7 @@ export const translations = {
     common: { loading: "読み込み中...", error: "エラー", success: "成功", save: "保存", cancel: "キャンセル" }
   },
   ko: {
-    nav: { auctions: "경매", buyBids: "입찰권 구매", dashboard: "대시보드", admin: "관리자", login: "로그인", register: "회원가입", logout: "로그아웃", bids: "입찰" },
+    nav: { auctions: "경매", buyBids: "입찰권 구매", dashboard: "대시보드", admin: "관리자", login: "로그인", register: "회원가입", logout: "로그아웃", bids: "입찰", howItWorks: "작동 방식", vip: "VIP 멤버십", faq: "FAQ", contact: "연락" },
     home: {
       badge: "가입시 무료 입찰 10회",
       heroTitle1: "획득하세요",
@@ -596,7 +596,7 @@ export const translations = {
     common: { loading: "로딩 중...", error: "오류", success: "성공", save: "저장", cancel: "취소" }
   },
   hi: {
-    nav: { auctions: "नीलामी", buyBids: "बोली खरीदें", dashboard: "डैशबोर्ड", admin: "एडमिन", login: "लॉगिन", register: "रजिस्टर", logout: "लॉगआउट", bids: "बोलियाँ" },
+    nav: { auctions: "नीलामी", buyBids: "बोली खरीदें", dashboard: "डैशबोर्ड", admin: "एडमिन", login: "लॉगिन", register: "रजिस्टर", logout: "लॉगआउट", bids: "बोलियाँ", howItWorks: "यह कैसे काम करता है", vip: "VIP सदस्यता", faq: "FAQ", contact: "संपर्क" },
     home: {
       badge: "रजिस्ट्रेशन पर 10 मुफ्त बोलियाँ",
       heroTitle1: "जीतें",
@@ -663,7 +663,7 @@ export const translations = {
     common: { loading: "Duke ngarkuar...", error: "Gabim", success: "Sukses", save: "Ruaj", cancel: "Anulo" }
   },
   cs: {
-    nav: { auctions: "Aukce", buyBids: "Koupit příhozy", dashboard: "Panel", admin: "Admin", login: "Přihlásit", register: "Registrovat", logout: "Odhlásit", bids: "Příhozy" },
+    nav: { auctions: "Aukce", buyBids: "Koupit příhozy", dashboard: "Panel", admin: "Admin", login: "Přihlásit", register: "Registrovat", logout: "Odhlásit", bids: "Příhozy", howItWorks: "Jak to funguje", vip: "VIP Členství", faq: "FAQ", contact: "Kontakt" },
     home: {
       badge: "10 příhozů zdarma při registraci",
       heroTitle1: "Vyhrajte",
@@ -689,7 +689,7 @@ export const translations = {
     common: { loading: "Načítání...", error: "Chyba", success: "Úspěch", save: "Uložit", cancel: "Zrušit" }
   },
   sv: {
-    nav: { auctions: "Auktioner", buyBids: "Köp bud", dashboard: "Kontrollpanel", admin: "Admin", login: "Logga in", register: "Registrera", logout: "Logga ut", bids: "Bud" },
+    nav: { auctions: "Auktioner", buyBids: "Köp bud", dashboard: "Kontrollpanel", admin: "Admin", login: "Logga in", register: "Registrera", logout: "Logga ut", bids: "Bud", howItWorks: "Sådan fungerer det", vip: "VIP Medlemskab", faq: "FAQ", contact: "Kontakt", howItWorks: "Hur det fungerar", vip: "VIP-medlemskap", faq: "FAQ", contact: "Kontakt" },
     home: {
       badge: "10 gratis bud vid registrering",
       heroTitle1: "Vinn",
@@ -741,7 +741,7 @@ export const translations = {
     common: { loading: "Indlæser...", error: "Fejl", success: "Succes", save: "Gem", cancel: "Annuller" }
   },
   fi: {
-    nav: { auctions: "Huutokaupat", buyBids: "Osta tarjouksia", dashboard: "Hallintapaneeli", admin: "Admin", login: "Kirjaudu", register: "Rekisteröidy", logout: "Kirjaudu ulos", bids: "Tarjoukset" },
+    nav: { auctions: "Huutokaupat", buyBids: "Osta tarjouksia", dashboard: "Hallintapaneeli", admin: "Admin", login: "Kirjaudu", register: "Rekisteröidy", logout: "Kirjaudu ulos", bids: "Tarjoukset", howItWorks: "Miten se toimii", vip: "VIP-jäsenyys", faq: "UKK", contact: "Yhteystiedot" },
     home: {
       badge: "10 ilmaista tarjousta rekisteröityessä",
       heroTitle1: "Voita",
