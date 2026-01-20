@@ -117,7 +117,7 @@ async def get_bid_packages():
 
 # ==================== WEBSOCKET ENDPOINTS ====================
 
-@app.websocket("/ws/auction/{auction_id}")
+@app.websocket("/api/ws/auction/{auction_id}")
 async def websocket_auction(websocket: WebSocket, auction_id: str):
     """WebSocket endpoint for real-time auction updates"""
     await ws_manager.connect(websocket, auction_id)
@@ -132,7 +132,7 @@ async def websocket_auction(websocket: WebSocket, auction_id: str):
         logger.error(f"WebSocket error: {e}")
         ws_manager.disconnect(websocket)
 
-@app.websocket("/ws/auctions")
+@app.websocket("/api/ws/auctions")
 async def websocket_all_auctions(websocket: WebSocket):
     """WebSocket for all auction updates"""
     await ws_manager.connect(websocket, "all_auctions")
@@ -144,6 +144,15 @@ async def websocket_all_auctions(websocket: WebSocket):
     except Exception as e:
         logger.error(f"WebSocket error: {e}")
         ws_manager.disconnect(websocket)
+
+# Also support legacy paths without /api prefix
+@app.websocket("/ws/auction/{auction_id}")
+async def websocket_auction_legacy(websocket: WebSocket, auction_id: str):
+    await websocket_auction(websocket, auction_id)
+
+@app.websocket("/ws/auctions")
+async def websocket_all_auctions_legacy(websocket: WebSocket):
+    await websocket_all_auctions(websocket)
 
 # ==================== BOT BACKGROUND TASK ====================
 
