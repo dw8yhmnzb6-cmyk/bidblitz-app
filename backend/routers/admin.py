@@ -527,23 +527,21 @@ class TestEmailRequest(BaseModel):
 
 @router.post("/email/send-test")
 async def send_test_email(
-    to_email: str,
-    subject: str,
-    html_content: str,
+    data: TestEmailRequest,
     admin: dict = Depends(get_admin_user)
 ):
     """Send a test email"""
     if not RESEND_API_KEY or RESEND_API_KEY == 're_123_placeholder':
-        raise HTTPException(status_code=503, detail="Email service not configured")
+        raise HTTPException(status_code=503, detail="Email service not configured. Please add RESEND_API_KEY.")
     
     try:
         resend.Emails.send({
             "from": SENDER_EMAIL,
-            "to": [to_email],
-            "subject": subject,
-            "html": html_content
+            "to": [data.to_email],
+            "subject": data.subject,
+            "html": data.html_content
         })
-        return {"message": f"Test email sent to {to_email}"}
+        return {"message": f"Test email sent to {data.to_email}"}
     except Exception as e:
         logger.error(f"Failed to send test email: {e}")
         raise HTTPException(status_code=500, detail=str(e))
