@@ -284,7 +284,144 @@ async def broadcast_notification(
     if notifications:
         await db.notifications.insert_many(notifications)
     
-    return {"sent": len(notifications), "message": f"Benachrichtigung an {len(notifications)} Benutzer gesendet"}
+    # Send push notifications to subscribed users
+    push_sent = await send_push_to_users([u["id"] for u in users], title, message, link)
+    
+    return {
+        "sent": len(notifications), 
+        "push_sent": push_sent,
+        "message": f"Benachrichtigung an {len(notifications)} Benutzer gesendet ({push_sent} Push)"
+    }
+
+
+# ==================== PUSH NOTIFICATION SENDING ====================
+
+async def send_push_notification(subscription: dict, title: str, body: str, data: dict = None):
+    """Send a push notification to a single subscription"""
+    try:
+        from py_vapid import Vapid
+        import base64
+        import time
+        import jwt
+        
+        if not os.path.exists(VAPID_PRIVATE_KEY_FILE):
+            logger.warning("VAPID private key file not found")
+            return False
+        
+        # Load VAPID key
+        vapid = Vapid.from_file(VAPID_PRIVATE_KEY_FILE)
+        
+        # Prepare payload
+        payload = json.dumps({
+            "title": title,
+            "body": body,
+            "icon": "/logo192.png",
+            "badge": "/logo192.png",
+            "tag": f"bidblitz-{int(time.time())}",
+            "data": data or {},
+            "actions": [
+                {"action": "view", "title": "Ansehen"}
+            ],
+            "vibrate": [200, 100, 200]
+        })
+        
+        endpoint = subscription.get("endpoint", "")
+        if not endpoint:
+            return False
+        
+        # Get VAPID headers
+        vapid_headers = vapid.sign({
+            "sub": VAPID_CLAIMS_EMAIL,
+            "aud": "/".join(endpoint.split("/")[:3]),
+            "exp": int(time.time()) + 86400
+        })
+        
+        # Prepare headers
+        headers = {
+            "Authorization": vapid_headers.get("Authorization", ""),
+            "Crypto-Key": vapid_headers.get("Crypto-Key", ""),
+            "Content-Type": "application/json",
+            "TTL": "86400"
+        }
+        
+        # Send push
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                endpoint,
+                content=payload.encode(),
+                headers=headers,
+                timeout=10.0
+            )
+            
+            if response.status_code in [200, 201]:
+                logger.info(f"Push sent successfully to {endpoint[:50]}...")
+                return True
+            elif response.status_code == 410:
+                # Subscription expired, mark as inactive
+                await db.push_subscriptions.update_one(
+                    {"endpoint": endpoint},
+                    {"$set": {"active": False}}
+                )
+                logger.info(f"Push subscription expired: {endpoint[:50]}...")
+                return False
+            else:
+                logger.warning(f"Push failed: {response.status_code} - {response.text[:100]}")
+                return False
+                
+    except Exception as e:
+        logger.error(f"Error sending push: {e}")
+        return False
+
+
+async def send_push_to_user(user_id: str, title: str, body: str, data: dict = None):
+    """Send push notification to all subscriptions of a user"""
+    subscriptions = await db.push_subscriptions.find({
+        "user_id": user_id,
+        "active": True
+    }, {"_id": 0}).to_list(10)
+    
+    sent = 0
+    for sub in subscriptions:
+        if await send_push_notification(sub.get("subscription", {}), title, body, data):
+            sent += 1
+    
+    return sent
+
+
+async def send_push_to_users(user_ids: list, title: str, body: str, url: str = None):
+    """Send push notification to multiple users"""
+    subscriptions = await db.push_subscriptions.find({
+        "user_id": {"$in": user_ids},
+        "active": True
+    }, {"_id": 0}).to_list(10000)
+    
+    sent = 0
+    data = {"url": url} if url else {}
+    
+    for sub in subscriptions:
+        if await send_push_notification(sub.get("subscription", {}), title, body, data):
+            sent += 1
+    
+    return sent
+
+
+@router.post("/test-push")
+async def test_push_notification(user: dict = Depends(get_current_user)):
+    """Send a test push notification to the current user"""
+    sent = await send_push_to_user(
+        user["id"],
+        "🎉 Test erfolgreich!",
+        "Push-Benachrichtigungen funktionieren!",
+        {"url": "/notifications"}
+    )
+    
+    if sent > 0:
+        return {"message": f"Test-Push an {sent} Gerät(e) gesendet"}
+    else:
+        raise HTTPException(
+            status_code=400, 
+            detail="Keine aktive Push-Subscription gefunden. Bitte aktivieren Sie Push-Benachrichtigungen."
+        )
 
 
 # ==================== HELPER: CREATE NOTIFICATION ====================
