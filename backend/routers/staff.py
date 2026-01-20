@@ -10,6 +10,10 @@ from dependencies import get_admin_user, get_current_user, hash_password
 
 router = APIRouter(prefix="/admin/staff", tags=["Staff Management"])
 
+# Redirect slashes
+from fastapi import Request
+from fastapi.responses import RedirectResponse
+
 # Permission definitions
 PERMISSIONS = {
     "products": {
