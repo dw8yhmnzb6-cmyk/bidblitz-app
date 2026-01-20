@@ -43,12 +43,13 @@ if COINBASE_COMMERCE_API_KEY:
 REFERRAL_MIN_DEPOSIT = 5.00  # €5 minimum deposit for referral reward
 REFERRAL_REWARD_BIDS = 10    # Bids given to both referrer and referee
 
-# Bid packages
+# Bid packages - Updated pricing with bonus bids
 BID_PACKAGES = [
-    {"id": "starter", "name": "Starter", "bids": 50, "price": 15.00, "popular": False},
-    {"id": "basic", "name": "Basic", "bids": 100, "price": 25.00, "popular": True},
-    {"id": "pro", "name": "Pro", "bids": 250, "price": 50.00, "popular": False},
-    {"id": "ultimate", "name": "Ultimate", "bids": 500, "price": 89.00, "popular": False}
+    {"id": "mini", "name": "Mini", "bids": 10, "bonus": 0, "price": 5.00, "popular": False, "per_bid": 0.50},
+    {"id": "starter", "name": "Starter", "bids": 20, "bonus": 2, "price": 10.00, "popular": False, "per_bid": 0.45},
+    {"id": "basic", "name": "Basic", "bids": 40, "bonus": 5, "price": 20.00, "popular": True, "per_bid": 0.44},
+    {"id": "pro", "name": "Pro", "bids": 100, "bonus": 15, "price": 50.00, "popular": False, "per_bid": 0.43},
+    {"id": "ultimate", "name": "Ultimate", "bids": 200, "bonus": 30, "price": 100.00, "popular": False, "per_bid": 0.43}
 ]
 
 # Frontend URL for redirects
