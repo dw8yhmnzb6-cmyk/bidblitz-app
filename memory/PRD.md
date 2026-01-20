@@ -16,6 +16,22 @@ Penny-Auktion-Website ähnlich dealdash.com und snipster.de mit Kunden-App und A
 
 ---
 
+## ✅ COMPLETED - Bug Fixes (20.01.2026)
+
+### Kritischer Auktions-Timer Bug behoben
+- [x] **Root Cause:** ISO-Datum mit `+00:00` Timezone wurde von JavaScript falsch geparst
+- [x] **Lösung:** `parseEndTime()` Helper-Funktion erstellt, die Timezone korrekt normalisiert
+- [x] **Fix:** `isEnded` basiert jetzt auf Backend-Status statt lokaler Zeitberechnung
+- [x] **Ergebnis:** Alle 85 aktiven Auktionen zeigen korrekte Timer und "BIETEN" Buttons
+
+### Dashboard Null-Pointer Bug behoben
+- [x] **Root Cause:** API-Responses können `null` sein wenn Endpoint fehlt oder fehlschlägt
+- [x] **Fix 1:** Fehlenden `/api/autobidder/my` Endpoint im Backend hinzugefügt
+- [x] **Fix 2:** Alle Array-Zugriffe im Dashboard null-safe gemacht (`data || []`)
+- [x] **Ergebnis:** Dashboard lädt ohne Runtime Errors
+
+---
+
 ## ✅ COMPLETED - Push, PDF & 2FA (20.01.2026)
 
 ### Push-Benachrichtigungen (Echte Browser-Push)
