@@ -283,97 +283,121 @@ export default function Auctions() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 pt-20 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <div className="animate-spin rounded-full h-12 w-12 border-4 border-teal-500 border-t-transparent"></div>
-          <p className="text-gray-500 text-sm">{t('common.loading')}</p>
+      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 pt-20 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="relative">
+            <div className="animate-spin rounded-full h-16 w-16 border-4 border-purple-200"></div>
+            <div className="absolute top-0 left-0 animate-spin rounded-full h-16 w-16 border-t-4 border-purple-500"></div>
+          </div>
+          <p className="text-purple-600 text-sm font-medium animate-pulse">{t('common.loading')}</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 pt-20 pb-8">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 pt-20 pb-8">
       <div className="max-w-7xl mx-auto px-4">
-        {/* Header - More colorful & inviting */}
-        <div className="bg-white rounded-2xl shadow-lg p-4 mb-6 border border-gray-100">
+        {/* Fun Header Banner */}
+        <div className="text-center mb-6">
+          <h1 className="text-3xl sm:text-4xl font-black bg-gradient-to-r from-purple-600 via-pink-500 to-orange-500 bg-clip-text text-transparent mb-2">
+            🎉 {t('auctionPage.title') || 'Aktive Auktionen'}
+          </h1>
+          <p className="text-gray-600 text-sm">
+            ✨ {sortedAuctions.length} {t('auctionPage.offersFound') || 'Angebote gefunden'} • 🔥 {activeCount} {t('auctionPage.active') || 'aktiv'}
+          </p>
+        </div>
+
+        {/* Header - Vibrant & Inviting */}
+        <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-4 mb-6 border border-white/50">
           <div className="flex flex-wrap items-center justify-between gap-4">
-            {/* Search */}
+            {/* Search - Colorful */}
             <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-teal-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-purple-400" />
               <input
                 type="text"
                 placeholder={t('auctionPage.searchPlaceholder')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 data-testid="auction-search-input"
-                className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-teal-400 focus:border-teal-400 text-sm bg-gray-50 transition-all"
+                className="w-full pl-10 pr-4 py-2.5 border-2 border-purple-100 rounded-xl focus:ring-2 focus:ring-purple-400 focus:border-purple-400 text-sm bg-white/80 transition-all placeholder:text-purple-300"
               />
             </div>
 
-            {/* Category Buttons - More colorful */}
+            {/* Category Buttons - Rainbow Colorful */}
             <div className="flex flex-wrap gap-1.5">
-              {categories.map(cat => (
-                <button
-                  key={cat.id}
-                  onClick={() => setSelectedCategory(cat.id)}
-                  data-testid={`category-${cat.id}`}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${
-                    selectedCategory === cat.id 
-                      ? 'bg-gradient-to-r from-teal-500 to-emerald-500 text-white shadow-md shadow-teal-200' 
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-                >
-                  {CATEGORY_ICONS[cat.id]}
-                  {cat.name}
-                </button>
-              ))}
+              {categories.map((cat, idx) => {
+                const catColors = [
+                  'from-purple-500 to-indigo-500',
+                  'from-blue-500 to-cyan-500',
+                  'from-emerald-500 to-teal-500',
+                  'from-yellow-500 to-orange-500',
+                  'from-pink-500 to-rose-500',
+                  'from-red-500 to-pink-500',
+                  'from-violet-500 to-purple-500',
+                ];
+                return (
+                  <button
+                    key={cat.id}
+                    onClick={() => setSelectedCategory(cat.id)}
+                    data-testid={`category-${cat.id}`}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 transform hover:scale-105 ${
+                      selectedCategory === cat.id 
+                        ? `bg-gradient-to-r ${catColors[idx % catColors.length]} text-white shadow-lg` 
+                        : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
+                    }`}
+                  >
+                    {CATEGORY_ICONS[cat.id]}
+                    {cat.name}
+                  </button>
+                );
+              })}
             </div>
 
-            {/* Status Filter - Colorful pills */}
-            <div className="flex gap-1.5">
+            {/* Status Filter - Vibrant Pills */}
+            <div className="flex gap-2">
               <button
                 onClick={() => setStatusFilter('active')}
                 data-testid="filter-active"
-                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                className={`px-4 py-2 rounded-full text-xs font-bold transition-all transform hover:scale-105 ${
                   statusFilter === 'active' 
-                    ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-md' 
-                    : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
+                    ? 'bg-gradient-to-r from-green-400 to-emerald-500 text-white shadow-lg shadow-green-200' 
+                    : 'bg-green-50 text-green-600 hover:bg-green-100 border border-green-200'
                 }`}
               >
-                {t('auctionPage.active')} ({activeCount})
+                🟢 {t('auctionPage.active')} ({activeCount})
               </button>
               <button
                 onClick={() => setStatusFilter('scheduled')}
                 data-testid="filter-scheduled"
-                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                className={`px-4 py-2 rounded-full text-xs font-bold transition-all transform hover:scale-105 ${
                   statusFilter === 'scheduled' 
-                    ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md' 
-                    : 'bg-amber-50 text-amber-600 hover:bg-amber-100'
+                    ? 'bg-gradient-to-r from-purple-400 to-pink-500 text-white shadow-lg shadow-purple-200' 
+                    : 'bg-purple-50 text-purple-600 hover:bg-purple-100 border border-purple-200'
                 }`}
               >
-                {t('auctionPage.scheduled')} ({scheduledCount})
+                ⏰ {t('auctionPage.scheduled')} ({scheduledCount})
               </button>
               <button
                 onClick={() => setStatusFilter('all')}
                 data-testid="filter-all"
-                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                className={`px-4 py-2 rounded-full text-xs font-bold transition-all transform hover:scale-105 ${
                   statusFilter === 'all' 
-                    ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-md' 
-                    : 'bg-blue-50 text-blue-600 hover:bg-blue-100'
+                    ? 'bg-gradient-to-r from-blue-400 to-indigo-500 text-white shadow-lg shadow-blue-200' 
+                    : 'bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-200'
                 }`}
               >
-                {t('auctionPage.all')}
+                📋 {t('auctionPage.all')}
               </button>
             </div>
 
-            {/* Refresh */}
+            {/* Refresh - Fun Animation */}
             <button
               onClick={fetchAuctions}
               data-testid="refresh-auctions"
-              className="p-2.5 rounded-xl bg-gradient-to-r from-gray-100 to-gray-50 hover:from-teal-50 hover:to-emerald-50 transition-all border border-gray-200 hover:border-teal-200"
+              className="p-3 rounded-xl bg-gradient-to-r from-yellow-400 to-orange-500 text-white shadow-lg hover:shadow-xl transition-all transform hover:scale-105 hover:rotate-180 duration-500"
             >
-              <RefreshCw className="w-4 h-4 text-gray-500 hover:text-teal-500" />
+              <RefreshCw className="w-4 h-4" />
             </button>
           </div>
         </div>
