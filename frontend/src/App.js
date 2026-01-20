@@ -69,7 +69,8 @@ function AppContent() {
       
       <main className="flex-grow">
         <Routes>
-          <Route path="/" element={<Home />} />
+          {/* Startseite ist jetzt die Auktionsseite */}
+          <Route path="/" element={<Auctions />} />
           <Route path="/auctions" element={<Auctions />} />
           <Route path="/auctions/:id" element={<AuctionDetail />} />
           <Route path="/buy-bids" element={<BuyBids />} />
