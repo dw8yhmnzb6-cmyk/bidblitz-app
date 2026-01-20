@@ -1332,7 +1332,7 @@ export default function Admin() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {Object.entries(roles).map(([id, role]) => (
+                        {roles && Object.entries(roles).map(([id, role]) => (
                           <SelectItem key={id} value={id}>{role.name}</SelectItem>
                         ))}
                       </SelectContent>
@@ -1350,14 +1350,14 @@ export default function Admin() {
               <div className="glass-card rounded-xl p-6">
                 <h3 className="text-lg font-bold text-white mb-4">Verfügbare Rollen</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                  {Object.entries(roles).map(([id, role]) => (
+                  {roles && Object.entries(roles).map(([id, role]) => (
                     <div key={id} className="bg-[#181824] rounded-lg p-4 border border-white/10">
                       <h4 className="font-bold text-white mb-1">{role.name}</h4>
                       <p className="text-[#94A3B8] text-xs mb-2">{role.description}</p>
                       <div className="flex flex-wrap gap-1">
                         {role.permissions?.map(perm => (
                           <span key={perm} className="px-2 py-0.5 bg-[#7C3AED]/20 text-[#A78BFA] text-[10px] rounded">
-                            {permissions[perm]?.name || perm}
+                            {permissions?.[perm]?.name || perm}
                           </span>
                         ))}
                       </div>
@@ -1368,7 +1368,7 @@ export default function Admin() {
 
               {/* Staff List */}
               <div className="glass-card rounded-xl p-6">
-                <h3 className="text-lg font-bold text-white mb-4">Mitarbeiterliste ({staff.length})</h3>
+                <h3 className="text-lg font-bold text-white mb-4">Mitarbeiterliste ({staff?.length || 0})</h3>
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead>
@@ -1382,7 +1382,7 @@ export default function Admin() {
                       </tr>
                     </thead>
                     <tbody>
-                      {staff.map((member) => (
+                      {staff?.map((member) => (
                         <tr key={member.id} className="border-b border-white/5 hover:bg-white/5">
                           <td className="py-3 text-white font-medium">{member.name}</td>
                           <td className="py-3 text-[#94A3B8]">{member.email}</td>
@@ -1395,7 +1395,7 @@ export default function Admin() {
                             <div className="flex flex-wrap gap-1 max-w-xs">
                               {member.permissions?.slice(0, 3).map(perm => (
                                 <span key={perm} className="px-1.5 py-0.5 bg-[#06B6D4]/20 text-[#06B6D4] text-[10px] rounded">
-                                  {permissions[perm]?.name || perm}
+                                  {permissions?.[perm]?.name || perm}
                                 </span>
                               ))}
                               {member.permissions?.length > 3 && (
@@ -1436,7 +1436,7 @@ export default function Admin() {
                           </td>
                         </tr>
                       ))}
-                      {staff.length === 0 && (
+                      {(!staff || staff.length === 0) && (
                         <tr>
                           <td colSpan="6" className="py-8 text-center text-[#94A3B8]">
                             Keine Mitarbeiter vorhanden. Erstellen Sie den ersten Mitarbeiter oben.
