@@ -1,6 +1,6 @@
 """Bots router - Bot management for admin"""
 from fastapi import APIRouter, HTTPException, Depends
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import List, Optional
 import uuid
 import random
@@ -119,6 +119,3 @@ async def multi_bot_bid(request: MultiBotBidRequest, admin: dict = Depends(get_a
         "message": f"Bots will bid until €{request.target_price:.2f}",
         "auction_id": request.auction_id
     }
-
-# Import timedelta for bid timing
-from datetime import timedelta
