@@ -490,6 +490,55 @@ async def delete_auction(auction_id: str, admin: dict = Depends(get_admin_user))
         raise HTTPException(status_code=404, detail="Auction not found")
     return {"message": "Auction deleted"}
 
+@router.post("/admin/auctions/{auction_id}/restart")
+async def restart_auction(
+    auction_id: str, 
+    duration_seconds: int = 600,
+    bot_target_price: Optional[float] = None,
+    admin: dict = Depends(get_admin_user)
+):
+    """Restart an ended auction with a new end time"""
+    auction = await db.auctions.find_one({"id": auction_id})
+    if not auction:
+        raise HTTPException(status_code=404, detail="Auktion nicht gefunden")
+    
+    now = datetime.now(timezone.utc)
+    new_end_time = now + timedelta(seconds=duration_seconds)
+    
+    # Reset auction to active state
+    update_data = {
+        "status": "active",
+        "start_time": now.isoformat(),
+        "end_time": new_end_time.isoformat(),
+        "current_price": 0.01,
+        "total_bids": 0,
+        "last_bidder_id": None,
+        "last_bidder_name": None,
+        "winner_id": None,
+        "winner_name": None,
+        "bid_history": [],
+        "ended_at": None,
+        "final_price": None
+    }
+    
+    # Set bot target price if provided
+    if bot_target_price is not None:
+        update_data["bot_target_price"] = bot_target_price
+    
+    await db.auctions.update_one({"id": auction_id}, {"$set": update_data})
+    
+    # Get product info
+    product = await db.products.find_one({"id": auction.get("product_id")}, {"_id": 0})
+    
+    response_data = {
+        "message": "Auktion neu gestartet",
+        "auction_id": auction_id,
+        "new_end_time": new_end_time.isoformat(),
+        "bot_target_price": bot_target_price
+    }
+    
+    return response_data
+
 @router.post("/admin/auctions/batch")
 async def create_batch_auctions(
     count: int = 100,
