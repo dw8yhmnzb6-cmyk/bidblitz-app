@@ -2061,7 +2061,7 @@ export default function Admin() {
                       }
                       setSendingEmail(true);
                       try {
-                        const result = await axios.post(`${API}/admin/email/campaign`, {
+                        const result = await axios.post(`${API}/admin/email/send-campaign`, {
                           subject: emailForm.subject,
                           html_content: emailForm.html_content,
                           target_group: emailForm.target_group
