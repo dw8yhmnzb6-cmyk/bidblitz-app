@@ -125,6 +125,7 @@ async def list_staff(admin: dict = Depends(get_admin_user)):
     staff = await db.staff.find({}, {"_id": 0, "password": 0}).sort("created_at", -1).to_list(100)
     return staff
 
+@router.post("")
 @router.post("/")
 async def create_staff(data: StaffCreate, admin: dict = Depends(get_admin_user)):
     """Create a new staff member"""
