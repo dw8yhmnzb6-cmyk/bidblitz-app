@@ -118,36 +118,19 @@ async def create_vip_subscription(plan_id: str, user: dict = Depends(get_current
         raise HTTPException(status_code=400, detail="Sie haben bereits ein aktives VIP-Abo")
     
     try:
-        # Create Stripe Price ID dynamically or use existing
-        price_id = f"price_vip_{plan_id}"
-        
-        # Create or get Stripe product
-        try:
-            product = stripe.Product.retrieve(plan_id)
-        except stripe.error.InvalidRequestError:
-            product = stripe.Product.create(
-                id=plan_id,
-                name=plan["name"],
-                description=f"VIP Mitgliedschaft - {plan['monthly_bids']} Gebote/Monat"
-            )
-        
-        # Create or get Stripe price
-        try:
-            price = stripe.Price.retrieve(price_id)
-        except stripe.error.InvalidRequestError:
-            price = stripe.Price.create(
-                id=price_id,
-                product=plan_id,
-                unit_amount=int(plan["price_monthly"] * 100),
-                currency="eur",
-                recurring={"interval": "month"}
-            )
-        
-        # Create checkout session for subscription
+        # Create Stripe checkout session with price_data (no need for pre-created products)
         session = stripe.checkout.Session.create(
             payment_method_types=["card"],
             line_items=[{
-                "price": price.id,
+                "price_data": {
+                    "currency": "eur",
+                    "unit_amount": int(plan["price_monthly"] * 100),
+                    "recurring": {"interval": "month"},
+                    "product_data": {
+                        "name": plan["name"],
+                        "description": f"VIP Mitgliedschaft - {plan['monthly_bids']} Gebote/Monat"
+                    }
+                },
                 "quantity": 1
             }],
             mode="subscription",
