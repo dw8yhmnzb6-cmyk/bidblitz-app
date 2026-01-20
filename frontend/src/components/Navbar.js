@@ -51,7 +51,7 @@ export const Navbar = () => {
               className="text-[#94A3B8] hover:text-white transition-colors font-medium"
               data-testid="nav-how-it-works"
             >
-              So funktioniert's
+              {t('nav.howItWorks') || "So funktioniert's"}
             </Link>
             <Link 
               to="/buy-bids" 
@@ -66,14 +66,14 @@ export const Navbar = () => {
               data-testid="nav-vip"
             >
               <Crown className="w-4 h-4" />
-              VIP
+              {t('nav.vip') || "VIP"}
             </Link>
             <Link 
               to="/faq" 
               className="text-[#94A3B8] hover:text-white transition-colors font-medium"
               data-testid="nav-faq"
             >
-              FAQ
+              {t('nav.faq') || "FAQ"}
             </Link>
             <Link 
               to="/winners" 
