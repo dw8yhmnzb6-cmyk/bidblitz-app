@@ -158,8 +158,9 @@ async def create_staff(data: StaffCreate, admin: dict = Depends(get_admin_user))
     
     await db.staff.insert_one(staff_member)
     
-    # Return without password
-    del staff_member["password"]
+    # Return without password and _id
+    staff_member.pop("password", None)
+    staff_member.pop("_id", None)
     return staff_member
 
 @router.get("/{staff_id}")
