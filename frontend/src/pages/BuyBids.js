@@ -88,12 +88,21 @@ export default function BuyBids() {
   };
 
   const getPackageFeatures = (pkg) => {
-    const pricePerBid = (pkg.price / pkg.bids).toFixed(2);
-    return [
+    const totalBids = pkg.bids + (pkg.bonus || 0);
+    const pricePerBid = (pkg.price / totalBids).toFixed(2);
+    const features = [
       `${pkg.bids} Gebote`,
-      `€${pricePerBid} pro Gebot`,
-      'Sofort verfügbar',
-      'Kein Ablaufdatum'
+    ];
+    
+    if (pkg.bonus > 0) {
+      features.push(`+${pkg.bonus} GRATIS Gebote`);
+    }
+    
+    features.push(`€${pricePerBid} pro Gebot`);
+    features.push('Sofort verfügbar');
+    features.push('Kein Ablaufdatum');
+    
+    return features;
     ];
   };
 
