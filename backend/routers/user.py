@@ -1,7 +1,9 @@
 """User router - User profile and dashboard endpoints"""
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, UploadFile, File
 from datetime import datetime, timezone
 from typing import Optional
+import base64
+import uuid
 
 from config import db, logger
 from dependencies import get_current_user, hash_password, verify_password, validate_password_strength
