@@ -2,80 +2,83 @@
 The user requested the creation of a penny auction website modeled after  and , with both a customer-facing application and an admin panel. The project began with a detailed specification document, and the agent's task is to implement the requested features sequentially. Key requests have included redesigning the auction page, implementing real-time updates via WebSockets, creating advanced admin controls, and building out both an affiliate and a user referral system. The user has recently requested a large batch of new features, including a staff management system, UI/UX bug fixes, and new language support, PDF invoices, 2FA, and browser push notifications.
 
 **PRODUCT REQUIREMENTS (extracted from user requests):**
-- **Core Functionality:** Penny auction system with real-time bidding, scheduled auctions, and bot bidding. The auction timer should extend on a new bid.
+- **Core Functionality:** Penny auction system with real-time bidding, scheduled auctions, and bot bidding. The auction timer should extend on a new bid. The main landing page should be the auctions list.
 - **Admin Panel:** Responsive UI for managing products, auctions, users, vouchers, bots, email marketing, and a staff management system with role-based permissions.
-- **User Features:** Registration/login, password recovery, a comprehensive dashboard, bid package purchasing, placing bids, and an Invite Friends system.
+- **User Features:** Registration/login, password recovery, a comprehensive dashboard, bid package purchasing, placing bids, an Invite Friends system, and a VIP membership with monthly recurring bonus bids.
 - **UI/UX:** A modern dark theme with friendly, colorful accents, modeled after snipster.de. A mobile-first responsive design. Full internationalization for 20+ languages.
-- **Monetization:** Stripe and Coinbase Commerce integration, an affiliate program, and a user referral program.
+- **Static Pages:** How It Works, FAQ, and Contact pages.
+- **Monetization:** Stripe, Coinbase Commerce, and PayPal integration. An affiliate program and a user referral program.
 - **New Features:** Buy It Now, Auto-Bidder, Achievements, Daily Rewards, Wishlist, Auction of the Day, PDF Invoices, Countdown Alarms, and real browser Push Notifications.
 - **Security:** IP-based registration limits, VPN/Proxy blocking, strong password enforcement, and Two-Factor Authentication (2FA) with backup codes.
 
 **User's preferred language**: German. The next agent MUST respond in German.
 
 **what currently exists?**
-A full-stack penny auction application (FastAPI, React, MongoDB). The backend has been refactored into a modular structure using FastAPI routers. The frontend has been significantly updated to match the user's design requirements (a  clone) and to be mobile-responsive.
+A full-stack penny auction application (FastAPI, React, MongoDB). The core functionality is largely restored and operational. The backend uses a modular FastAPI router structure. The frontend has been significantly updated to a -like design and now features several new static pages and a VIP membership system.
 
-- **Core Systems:** Real-time auction system (WebSockets), bot bidding, JWT authentication, and affiliate/referral programs.
-- **Admin Panel:** A comprehensive and functional dashboard for managing site operations, including a staff management system.
-- **Payment Systems:** Stripe and Coinbase Commerce are integrated with test keys.
-- **New Features Implemented:**
-    - Buy It Now, Achievements & Daily Rewards, and advanced Auto-Bidder logic.
-    - PDF invoice generation backend.
-    - 2FA with backup codes.
-    - A complete browser push notification system using a Service Worker and VAPID keys.
-    - A multilingual email system that sends emails based on the user's preferred language.
+- **Core Systems:** Real-time auction system with WebSockets, JWT authentication, affiliate/referral programs, and bot bidding are in place and functional.
+- **Main Pages:** The auction list is the homepage and is working correctly, displaying active timers. New static pages for How It Works, FAQ, and Contact have been created and are accessible via the navigation bar.
+- **Payment Systems:** Stripe and Coinbase Commerce are integrated and functional using user-provided test keys.
+- **VIP Membership:** A new VIP subscription feature has been implemented, allowing users to sign up for monthly plans to receive bonus bids.
+- **Admin Panel:** A comprehensive dashboard for managing site operations is functional.
 
 **Last working item**:
-- **Last item agent was working:** The user reported that on the main auctions page, all active auctions were incorrectly showing a 00:00:00 timer and a VERKAUFT (Sold) status, making bidding impossible. The agent identified this as a critical frontend bug, likely related to timezone differences between the backend (UTC) and the browser's local time. An initial fix attempting to normalize the date parsing in  failed to resolve the issue.
-- **Status:** BLOCKED
-- **Agent Testing Done:** N (The agent confirmed via screenshot that the fix did not work).
-- **Which testing method agent to use?** Frontend testing agent. The main agent is stuck in a loop trying to fix a complex frontend state/timing issue. The testing agent should be tasked to specifically diagnose the  function and the component's state lifecycle in , inspecting console logs and WebSocket messages to determine why the  is being misinterpreted.
+- **Last item agent was working:** The user requested the implementation of a VIP Membership system and the removal of the Made with Emergent badge. Subsequent feedback indicated that the VIP bonus bids were too high, VIP payments were failing, and the login/logout buttons were not clear in the mobile menu. The agent successfully addressed all points: reduced the bonus bids, fixed the Stripe payment logic for subscriptions, and improved the visibility of the mobile auth buttons.
+- **Status:** USER VERIFICATION PENDING
+- **Agent Testing Done:** Y (Agent tested the VIP payment flow via  and verified the UI changes with screenshots.)
+- **Which testing method agent to use?** Manual testing by the user. The agent has implemented and verified the fixes. The user should now confirm that the VIP page, payment flow, and mobile menu meet their expectations.
 - **User Testing Done:** N
 
 **All Pending/In progress Issue list**:
-- **Issue 1: Incorrect Auction State on Frontend (P0)**
-  - **Description:** On the  page, all active auctions are displayed as BEENDET (Ended). The timer shows 00:00:00, the VERKAUFT (Sold) badge appears, and the bid button is disabled. Backend data confirms the auctions are active with future end times. This makes the core functionality of the site unusable.
-  - **Attempted fixes:**
-    1.  Modified  to correctly parse the ISO date string from the backend (). This did not solve the problem.
-    2.  Added a ... loading state to the timer for better UX, but this did not fix the underlying logic error.
+- **Issue 1: Inconsistent Data Persistence (P2)**
+  - **Description:** An architectural risk where some application state might be stored in volatile Python dictionaries instead of being persisted to MongoDB. This can lead to data loss on server restarts.
+  - **Attempted fixes:** None. This is recognized technical debt.
   - **Next debug checklist:**
-    1.  In , within the  hook that calculates the timer, add comprehensive  statements for , , , and the calculated time difference (). This is to verify the raw values and the result of the date parsing in the browser context.
-    2.  Inspect the WebSocket messages using browser developer tools. Confirm that the  updates being pushed from the server are correctly formatted and represent future timestamps.
-    3.  Log the entire return object from the  function each time it runs to see exactly when the  flag flips to .
-    4.  Verify that the initial state of the  array is not causing a premature render with incorrect data before the WebSocket connection is established and real data arrives.
-  - **Status:** IN PROGRESS
-  - **Is recurring issue?** Y (This page has had several display bugs, but this specific state error is new).
-  - **Should Test frontend/backend/both after fix?** frontend
-  - **Blocked on other issue:** This is the primary blocker.
+    1.  Conduct a full code audit across all backend files ( and ).
+    2.  Identify all instances of global or in-memory dictionaries/lists that hold state (e.g., user sessions, temporary data).
+    3.  Refactor the code to ensure all critical state is written to and read from the MongoDB database.
+  - **Why fix this issue?** To ensure data integrity, prevent data loss, and make the application stateless and horizontally scalable.
+  - **Status:** NOT STARTED
+  - **Is recurring issue?** Y
+  - **Should Test frontend/backend/both after fix?** backend
+  - **Blocked on other issue:** No
 
 **In progress Task List**:
 - None
 
 **Upcoming and Future Tasks**
 - **Upcoming Tasks:**
-  - **PayPal Integration (P1):** Implement PayPal as a third payment option.
-  - **Trigger Outbid Push Notification (P1):** Implement the backend logic to automatically send a push notification when a user is outbid. The infrastructure is now in place; only the trigger is missing.
+  - **PayPal Integration (P1):** Implement PayPal as a third payment option alongside Stripe and Coinbase.
+  - **Trigger Outbid Push Notification (P1):** The push notification infrastructure is in place. The next step is to implement the specific backend logic to send a notification to a user when they are outbid in an auction.
 - **Future Tasks:**
-  - Feature Recommendations (Gamification, Social Features)
-  - Wishlist & Auction of the Day
+  - **Cron Job for Auction Finalization:** Create a background job that periodically checks for auctions whose timers have expired but are still marked active, finalizes them, and notifies the winner.
+  - **Admin Panel Internationalization:** Refactor the Admin panel () to use the  framework instead of hardcoded German strings.
+  - **Feature: Wishlist & Auction of the Day:** Implement user wishlists and a feature to highlight a specific Auction of the Day.
+  - **UI: Winner's Gallery:** Create a section on the homepage to display recent winners to build trust and social proof.
+  - **Email Configuration:** Configure a production email service to move away from the Resend sandbox environment.
 
 **Completed work in this session**
-- **Fixed Critical Admin Panel Crash:** Resolved a JavaScript  by re-implementing a missing API endpoint () that was lost during a previous backend refactoring.
-- **Implemented Multiple New Features:** Successfully built and integrated Buy It Now, Auto-Bidder extensions, Achievements, and Daily Rewards, including both backend logic and frontend UI.
-- **Fixed Method Not Allowed Bot Error:** Implemented the missing  bot endpoint in the backend.
-- **Implemented Full Snipster.de Redesign:** Completely overhauled the  page to match the user's visual reference, including a responsive 2-column dark-themed layout.
-- **Resolved Mobile UI Bugs:** Conducted multiple iterations to fix layout issues on the auctions page, ensuring elements no longer overlap or get truncated on small screens.
-- **Implemented Multilingual Email System:** The backend can now send emails to users in their preferred language, and users can set this language in their profile.
-- **Implemented PDF Invoices and 2FA Enhancements:** Added backend endpoints for generating invoices and enhanced the 2FA flow to provide users with backup codes.
-- **Implemented Real Browser Push Notifications:** Successfully integrated a full push notification system using a Service Worker, VAPID keys, and a new settings UI for users to manage their subscriptions.
-- **Created Batch Auction Tool:** Added a backend endpoint to create hundreds of test auctions instantly, facilitating bot and scalability testing.
+- **Fixed Critical Auction Page Bug:** Resolved the P0 issue where all active auctions incorrectly showed 00:00:00 timers and an Ended status. The fix involved correcting frontend date parsing, handling client/server time differences, and clearing a stale frontend build cache.
+- **Fixed Dashboard & Backend Bugs:** Resolved a crash in the user dashboard by adding null-checks and implemented a missing  backend endpoint.
+- **Implemented New Site Structure & Pages:** Created How It Works, FAQ, and Contact pages, integrated them into the navigation, and set the Auctions page as the main homepage.
+- **Updated Bid Packages:** Implemented new pricing and bonus bids for bid packages as requested by the user.
+- **Fixed Payment Gateway Integrations:** Successfully fixed and tested both Stripe and Coinbase Commerce payment flows using user-provided API keys. The Stripe implementation was refactored to use the native  library to resolve a persistent bug.
+- **Fixed Auction Detail Page Crash:** Resolved a frontend crash on the auction detail page by adding null-safe access to price data.
+- **Stabilized WebSocket Connections:** Fixed the WebSocket connection errors by correctly prefixing the WebSocket routes with  on both the frontend and backend.
+- **Implemented VIP Membership Feature:** Built a complete VIP subscription system (frontend page, backend logic, Stripe integration) and adjusted it based on user feedback regarding bonus amounts and payment functionality.
+- **UI/UX Improvements:** Removed the Made with Emergent badge and improved the layout of the login/logout buttons in the mobile navigation menu for better visibility.
+- **Data Management:** Cleared out old, expired auctions from the database and created a fresh set of active auctions to restore a clean state for testing.
 
 **Earlier issues found/mentioned but not fixed**
-- **Inconsistent Data Persistence:** An architectural risk where application state might be stored in volatile Python dictionaries instead of MongoDB. This remains unaddressed and is a form of technical debt.
+- **Issue 1: Inconsistent Data Persistence**
+  - **Debug checklist:** Audit backend code for in-memory state variables and migrate them to MongoDB.
+  - **Why to solve this issue and what will be achieved with this?** This will prevent data loss on application restart and is crucial for production stability.
+  - **Should Test frontend/backend/both after fix:** backend
+  - **Is recurring issue?** Y
 
 **Known issue recurrence from previous fork**
-- **Issue recurrence in previous fork:** Inconsistent Data Persistence.
-- **Recurrence count:** 5
+- **Issue recurrence in previous fork:** Inconsistent Data Persistence
+- **Recurrence count:** 6
 - **Status:** NOT STARTED
 
 **Code Architecture**
@@ -84,63 +87,72 @@ A full-stack penny auction application (FastAPI, React, MongoDB). The backend ha
 **Key Technical Concepts**
 - **Backend:** FastAPI (Modular Router architecture), WebSockets, Pydantic, MongoDB, .
 - **Frontend:** React, Tailwind CSS, shadcn/ui, .
+- **Payments:** Stripe (native Python library), Coinbase Commerce.
 - **Push Notifications:** Service Workers, Web Push API, VAPID keys.
-- **Architecture:** Monolith-to-microservices refactoring is complete on the backend.
 
 **key DB schema**
-- **users:** now includes a  field to store the user's preferred language for communications.
+- **users:** Includes fields for  (str),  (str), and  (datetime).
+- **subscriptions:** A new collection to track Stripe subscription details mapped to user IDs.
 - **push_subscriptions:**  stores user push subscription data.
+- **auction_reminders:** Stores user requests for auction end-time notifications.
 
 **changes in tech stack**
-- **pywebpush:** Added to  for sending push notifications.
+- The native  Python library was installed and used directly for payment processing to work around a bug in the  library.
 
 **All files of reference**
-- : **Currently broken and the source of the P0 bug.** The timer logic inside this file is faulty.
-- : Contains the logic for creating and managing auctions.
-- : The new backend for handling push subscriptions and sending notifications.
-- : The new frontend page for managing push notification settings.
-- : The service worker that handles receiving push events in the browser.
+- : Contains the fix for the critical timer bug.
+- : Contains the updated payment logic for Stripe and Coinbase.
+- : Defines the new routing structure with Auctions as the homepage.
+- : Contains the updated navigation for desktop and mobile.
+- : Defines WebSocket routing and includes the new VIP router.
+- : New file containing all logic for the VIP membership feature.
+- : New frontend page for users to manage their VIP subscription.
 
 **Areas that need refactoring**:
-- The  component has hardcoded German strings instead of using the i18n translation system. This should be corrected to use the  hook for maintainability.
-- A full code audit is still needed to find and fix all instances of the Inconsistent Data Persistence issue where state is not saved to MongoDB.
+- **Admin Panel i18n:** The  component still has hardcoded German strings that should be migrated to use the  translation system for maintainability.
+- **Data Persistence:** A full code audit is needed to find and refactor any application state stored in-memory to use MongoDB instead.
 
 **key api endpoints**
-- : Creates multiple auctions with an optional .
-- : Saves a user's browser push subscription.
-- : Provides the public key needed for the browser to subscribe.
-- : Fetches a list of invoices for the logged-in user.
-- : Now returns a set of single-use backup codes upon successful activation.
-- : Updated to allow users to set their preferred .
+- : Creates a Stripe session for a VIP subscription.
+- : Retrieves the current user's VIP status.
+- : Handles Stripe webhooks for managing subscription lifecycle events.
+- : Allows a user to subscribe to a reminder for a specific auction.
+- : Fetches the reminders for the current user.
+- : Deletes an auction reminder.
+- : Broadcasts updates for all auctions.
+- : Provides real-time updates for a single auction.
 
 **Critical Info for New Agent**
-- **IMMEDIATE BLOCKER:** Your first and only priority is to fix the auction page (). It's the core of the application and is currently unusable because it shows all active auctions as ended. The problem is in the frontend date/time calculation within .
-- **New Push Notification System:** A complete browser push notification system has been implemented. The backend uses  and VAPID keys stored in . The frontend uses a service worker () and has a new settings page ().
-- **Snipster Design is Live:** The auction page has been completely redesigned to mimic . The code in  is entirely new and complex; do not refer to older versions of this file for bug fixing.
-- **Backend is Stable and Expanded:** Numerous new endpoints and routers have been added and are working correctly. You can confidently build on this foundation once the P0 frontend bug is resolved.
+- **P0 Bug is Resolved:** The critical bug preventing users from bidding on auctions is fixed. The application's core functionality is restored.
+- **Payments are Live (Test Mode):** Stripe and Coinbase are fully integrated and working with the user's provided test keys. The agent had to switch to the native  library to fix a bug.
+- **New VIP System:** A complete, functional VIP membership system has been implemented. Users can subscribe to monthly plans for bonus bids.
+- **New Site Structure:** The user requested a new site structure. The homepage is now the auction list, and several new static pages (How It Works, FAQ, Contact) have been added.
+- **User Provided API Keys:** The user provided  and  keys which have been added to the environment and are confirmed to be working.
 
 **documents and test reports created in this job**
--  (Updated)
+-  (Updated multiple times)
 
 **Last 10 User Messages and any pending HUMAN messages**
-1. **Request:** Fix mobile layout on the auction page (overlapping elements).
-2. **Request:** Fix bot Method Not Allowed error, redesign auction page to look like Snipster.de, and implement localized emails.
-3. **Bug Report:** The redesigned mobile view is still broken (elements cut off).
-4. **Request:** Implement Push Notifications, PDF Invoices, and 2FA extensions.
-5. **Request:** Implement real push notifications using a Service Worker.
-6. **Bug Report:** The VERKAUFT overlay on ended auctions is broken, covering the entire screen.
-7. **Bug Report (LATEST):** The fix for the overlay seems to have caused a new, critical bug where all active auctions show a 00:00:00 timer and an Ended status, making bidding impossible.
+1. **User asks to remove Made with Emergent badge and add a VIP subscription feature.** (Implemented)
+2. **User reports VIP bonus is too high, payment fails, and login/logout is missing from mobile menu.** (All Fixed)
+3. **User provides a restricted Stripe key.** (Agent identified as incorrect)
+4. **User provides the full Stripe secret key.** (Implemented and tested)
+5. **User provides an image showing a WebSocket connection error.** (Fixed)
+6. **User confirms payment issues and shows a crash on the auction detail page.** (Both Fixed)
+7. **User provides another Stripe key and a Coinbase key.** (Implemented and tested)
+8. **User states that Login/Logout buttons are still missing.** (Fixed by improving UI visibility)
+9. **User wants to change auction description/image, reports payment errors, and mentions translation issues.** (Auction example updated, payments fixed, translations remain a backlog item).
+10. **User reports that ended auctions are incorrectly shown as active and asks to reset them.** (Fixed by clearing and creating new auctions).
 
 **Project Health Check:**
-- **Broken:** The primary customer-facing feature, the auction list page (), is critically non-functional. It incorrectly displays the state of all active auctions, preventing users from bidding.
+- **Broken:** None. The critical bugs from the start of the session have been resolved.
 - **Mocked:**
-  - Stripe/Coinbase Payments: Using test API keys.
-  - Resend Emails: Limited by sandbox domain.
+  - **Resend Emails:** The email service is still using a sandbox domain, so no real emails are being sent.
 
 **3rd Party Integrations**
-- **Stripe (Payments):** Integrated with a test API key.
+- **Stripe (Payments):** Integrated with a user-provided test API key. Now uses the native  Python library.
 - **Resend (Email):** Integrated with a sandbox domain.
-- **Coinbase Commerce (Crypto Payments):** Integrated with a test API key.
+- **Coinbase Commerce (Crypto Payments):** Integrated with a user-provided test API key.
 - **ip-api.com (IP Intelligence):** Used for geo-blocking/security.
 - **reportlab:** For PDF invoice generation.
 - **pywebpush:** For implementing the Web Push protocol.
@@ -149,12 +161,12 @@ A full-stack penny auction application (FastAPI, React, MongoDB). The backend ha
 - **Testing agent used after significant changes:** NO
 - **Troubleshoot agent used after agent stuck in loop:** NO
 - **Test files created:** None
-- **Known regressions:** A major regression on the  page is preventing all bidding activity.
+- **Known regressions:** The major regression on the  page from the previous fork has been fixed.
 
 **Credentials to test flow:**
 - **Admin:**  / 
 - **Customer:**  / 
 
 **What agent forgot to execute**
-- The agent failed to resolve the critical bug where active auctions are displayed as ended. It identified the likely area of the bug ( timer logic) but its fix was ineffective, and it did not proceed with deeper debugging (e.g., checking browser console logs).
-- The agent implemented the infrastructure for push notifications but did not implement the specific trigger to send a notification when a user is outbid.</analysis>
+- The agent did not implement the outbid push notification trigger, which was an upcoming task from the previous handoff. It remains in the upcoming tasks list.
+- The agent did not address the i18n refactoring for the  component, which was noted as an area for refactoring. It remains in the backlog.</analysis>
