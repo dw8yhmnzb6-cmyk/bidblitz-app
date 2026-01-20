@@ -54,7 +54,7 @@ const ActivityIndex = ({ bids }) => {
   );
 };
 
-// Compact Auction Card - Friendly & Colorful Style
+// Compact Auction Card - Vibrant & Friendly Style
 const SnipsterCard = ({ auction, t }) => {
   const [timeLeft, setTimeLeft] = useState({ hours: 0, minutes: 0, seconds: 0 });
   const [isUrgent, setIsUrgent] = useState(false);
@@ -90,11 +90,11 @@ const SnipsterCard = ({ auction, t }) => {
   const formatTime = (num) => String(num).padStart(2, '0');
   const lastSoldPrice = ((auction.id.charCodeAt(0) % 12) + 1 + (auction.id.charCodeAt(1) % 10) / 10).toFixed(2);
 
-  // Badge styling based on status
+  // Vibrant badge styling
   const getBadgeStyle = () => {
-    if (isScheduled) return 'bg-gradient-to-r from-amber-400 to-orange-500';
-    if (isEnded) return 'bg-gray-400';
-    return 'bg-gradient-to-r from-emerald-400 to-teal-500';
+    if (isScheduled) return 'bg-gradient-to-r from-purple-500 via-pink-500 to-rose-500';
+    if (isEnded) return 'bg-gradient-to-r from-gray-400 to-gray-500';
+    return 'bg-gradient-to-r from-green-400 via-emerald-500 to-teal-500';
   };
 
   const getBadgeText = () => {
@@ -103,88 +103,119 @@ const SnipsterCard = ({ auction, t }) => {
     return t('auctionCard.liveNow');
   };
 
+  // Random fun accent colors for variety
+  const accentColors = [
+    { bg: 'from-blue-50 to-cyan-50', text: 'text-blue-600', border: 'border-blue-100' },
+    { bg: 'from-purple-50 to-pink-50', text: 'text-purple-600', border: 'border-purple-100' },
+    { bg: 'from-orange-50 to-amber-50', text: 'text-orange-600', border: 'border-orange-100' },
+    { bg: 'from-green-50 to-emerald-50', text: 'text-green-600', border: 'border-green-100' },
+    { bg: 'from-rose-50 to-pink-50', text: 'text-rose-600', border: 'border-rose-100' },
+  ];
+  const accent = accentColors[auction.id.charCodeAt(0) % accentColors.length];
+
   return (
-    <div className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-100 hover:shadow-xl hover:scale-[1.02] transition-all duration-300 group">
-      {/* Header Badge - Friendly status */}
-      <div className={`text-white text-[10px] font-bold px-2 py-1 text-center uppercase tracking-wider flex items-center justify-center gap-1 ${getBadgeStyle()}`}>
-        {!isEnded && !isScheduled && <Flame className="w-3 h-3 animate-pulse" />}
-        {isScheduled && <Clock className="w-3 h-3" />}
+    <div className={`bg-white rounded-2xl shadow-lg overflow-hidden border-2 ${accent.border} hover:shadow-2xl hover:scale-[1.03] transition-all duration-300 group cursor-pointer`}>
+      {/* Header Badge - Animated & Vibrant */}
+      <div className={`text-white text-[11px] font-bold px-3 py-1.5 text-center uppercase tracking-wider flex items-center justify-center gap-1.5 ${getBadgeStyle()}`}>
+        {!isEnded && !isScheduled && <Sparkles className="w-3.5 h-3.5 animate-pulse" />}
+        {isScheduled && <Clock className="w-3.5 h-3.5 animate-bounce" />}
         {getBadgeText()}
       </div>
 
-      <div className="p-2.5">
-        {/* Product Name */}
-        <h3 className="font-bold text-gray-800 text-xs leading-tight mb-1 line-clamp-2 h-8 group-hover:text-teal-600 transition-colors" title={product.name}>
+      <div className="p-3">
+        {/* Product Name - Larger & Friendlier */}
+        <h3 className={`font-bold ${accent.text} text-sm leading-tight mb-1.5 line-clamp-2 h-10 group-hover:scale-[1.02] transition-transform`} title={product.name}>
           {product.name?.toUpperCase()}
         </h3>
         
-        {/* Retail Price */}
-        <p className="text-gray-400 text-[10px] mb-1.5">
-          {t('auctionCard.retailPrice')}: <span className="line-through">€ {product.retail_price?.toFixed(0)},-</span>
-        </p>
+        {/* Retail Price with Discount Badge */}
+        <div className="flex items-center gap-2 mb-2">
+          <p className="text-gray-400 text-[11px]">
+            {t('auctionCard.retailPrice')}: <span className="line-through">€{product.retail_price?.toFixed(0)},-</span>
+          </p>
+          {product.retail_price && auction.current_price < product.retail_price && (
+            <span className="bg-gradient-to-r from-red-500 to-rose-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full animate-pulse">
+              -{Math.round((1 - auction.current_price / product.retail_price) * 100)}%
+            </span>
+          )}
+        </div>
 
-        <div className="flex gap-2">
+        <div className="flex gap-3">
           {/* Left side */}
           <div className="flex-1">
-            {/* Current Price - More prominent & colorful */}
-            <div className="bg-gradient-to-r from-teal-50 to-emerald-50 rounded-lg p-1.5 mb-1.5">
-              <p className="text-base sm:text-lg font-bold text-teal-600 font-mono leading-none">
+            {/* Current Price - Big & Colorful */}
+            <div className={`bg-gradient-to-r ${accent.bg} rounded-xl p-2 mb-2 border ${accent.border}`}>
+              <p className={`text-xl sm:text-2xl font-black ${accent.text} font-mono leading-none tracking-tight`}>
                 € {auction.current_price?.toFixed(2).replace('.', ',')}
               </p>
             </div>
             
-            {/* Last Bidder */}
-            <p className="text-gray-500 text-[10px] truncate">
-              {auction.last_bidder_name || t('auctionCard.startPrice')}
-            </p>
+            {/* Last Bidder with Avatar */}
+            <div className="flex items-center gap-1.5 mb-2">
+              <div className="w-5 h-5 rounded-full bg-gradient-to-br from-purple-400 to-pink-500 flex items-center justify-center">
+                <span className="text-white text-[8px] font-bold">{(auction.last_bidder_name || '?')[0]}</span>
+              </div>
+              <p className="text-gray-600 text-[11px] truncate font-medium">
+                {auction.last_bidder_name || t('auctionCard.startPrice')}
+              </p>
+            </div>
             
-            {/* Bid Button - More inviting */}
+            {/* Bid Button - Vibrant & Inviting */}
             <Link to={`/auctions/${auction.id}`}>
               <button 
                 data-testid={`bid-button-${auction.id}`}
-                className={`mt-1.5 w-full font-bold py-1.5 px-2 rounded-lg text-[10px] uppercase shadow-md transition-all ${
+                className={`w-full font-bold py-2 px-3 rounded-xl text-xs uppercase shadow-lg transition-all transform hover:-translate-y-0.5 ${
                   isEnded 
-                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
-                    : 'bg-gradient-to-r from-emerald-400 via-teal-500 to-cyan-500 hover:from-emerald-500 hover:via-teal-600 hover:to-cyan-600 text-white hover:shadow-lg hover:shadow-teal-200'
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed shadow-none' 
+                    : 'bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 hover:from-yellow-500 hover:via-orange-600 hover:to-red-600 text-white hover:shadow-xl'
                 }`}
                 disabled={isEnded}
               >
-                {isEnded ? t('auctionCard.ended') : t('auctionCard.bidNow')}
+                {isEnded ? t('auctionCard.ended') : `🎯 ${t('auctionCard.bidNow')}`}
               </button>
             </Link>
           </div>
 
           {/* Right side - Image & Timer */}
-          <div className="w-16 sm:w-20 flex flex-col items-center flex-shrink-0">
-            {/* Timer - More colorful */}
-            <div className={`w-full text-center py-1 px-1 rounded-lg text-white text-[10px] font-mono font-bold shadow-sm ${
-              isUrgent ? 'bg-gradient-to-r from-red-500 to-rose-500 animate-pulse' : 
-              isEnded ? 'bg-gray-400' : 
-              'bg-gradient-to-r from-emerald-500 to-teal-500'
+          <div className="w-20 sm:w-24 flex flex-col items-center flex-shrink-0">
+            {/* Timer - Vibrant Colors */}
+            <div className={`w-full text-center py-1.5 px-2 rounded-xl text-white text-xs font-mono font-bold shadow-md ${
+              isUrgent ? 'bg-gradient-to-r from-red-500 via-pink-500 to-rose-500 animate-pulse' : 
+              isEnded ? 'bg-gradient-to-r from-gray-400 to-gray-500' : 
+              'bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500'
             }`}>
-              {isEnded ? t('auctionCard.end') : `${formatTime(timeLeft.hours)}:${formatTime(timeLeft.minutes)}:${formatTime(timeLeft.seconds)}`}
+              {isEnded ? '⏰ ' + t('auctionCard.end') : `${formatTime(timeLeft.hours)}:${formatTime(timeLeft.minutes)}:${formatTime(timeLeft.seconds)}`}
             </div>
             
-            {/* Product Image */}
-            <img
-              src={product.image_url || 'https://via.placeholder.com/80'}
-              alt={product.name}
-              className="w-16 h-16 object-contain mt-1 group-hover:scale-110 transition-transform"
-            />
+            {/* Product Image with Glow */}
+            <div className="relative mt-2">
+              <div className={`absolute inset-0 bg-gradient-to-br ${accent.bg} rounded-xl blur-md opacity-50 group-hover:opacity-80 transition-opacity`}></div>
+              <img
+                src={product.image_url || 'https://via.placeholder.com/80'}
+                alt={product.name}
+                className="relative w-18 h-18 sm:w-20 sm:h-20 object-contain group-hover:scale-110 transition-transform duration-300"
+              />
+            </div>
           </div>
         </div>
 
-        {/* Activity Index */}
-        <div className="mt-2 flex items-center gap-1.5">
-          <span className="text-gray-400 text-[9px]">{t('auctionCard.activity')}:</span>
-          <ActivityIndex bids={auction.total_bids || 0} />
+        {/* Activity & Bids - Colorful Stats */}
+        <div className="mt-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-gray-500 text-[10px] font-medium">{t('auctionCard.activity')}:</span>
+            <ActivityIndex bids={auction.total_bids || 0} />
+          </div>
+          <div className="flex items-center gap-1 text-[10px] text-gray-500">
+            <Flame className="w-3 h-3 text-orange-500" />
+            <span className="font-bold">{auction.total_bids || 0}</span> Gebote
+          </div>
         </div>
       </div>
 
-      {/* Footer - Friendlier message */}
-      <div className="bg-gradient-to-r from-emerald-50 to-teal-50 px-2 py-1.5 text-center border-t border-emerald-100">
-        <p className="text-gray-600 text-[9px]">
-          {t('auctionCard.lastSold')} <span className="font-bold text-emerald-600">€{lastSoldPrice}</span>
+      {/* Footer - Friendly Success Message */}
+      <div className={`bg-gradient-to-r ${accent.bg} px-3 py-2 text-center border-t ${accent.border}`}>
+        <p className="text-gray-700 text-[10px] font-medium">
+          ✨ {t('auctionCard.lastSold')} <span className={`font-bold ${accent.text}`}>€{lastSoldPrice}</span>
         </p>
       </div>
     </div>
