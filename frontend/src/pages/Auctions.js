@@ -114,7 +114,7 @@ const AuctionCard = ({ auction, product }) => {
             </div>
             
             {/* Product Image */}
-            <div className="w-14 h-14 bg-white rounded flex items-center justify-center flex-shrink-0 overflow-hidden">
+            <div className="w-14 h-14 bg-white rounded flex items-center justify-center flex-shrink-0 overflow-hidden relative">
               <img
                 src={product?.image_url || 'https://via.placeholder.com/56'}
                 alt=""
@@ -122,8 +122,8 @@ const AuctionCard = ({ auction, product }) => {
                 onError={(e) => { e.target.src = 'https://via.placeholder.com/56?text=?'; }}
               />
               {isEnded && (
-                <div className="absolute inset-0 bg-red-500/70 flex items-center justify-center">
-                  <span className="text-white text-[8px] font-bold">VERKAUFT</span>
+                <div className="absolute inset-0 bg-red-500/80 flex items-center justify-center">
+                  <span className="text-white text-[8px] font-bold rotate-[-10deg]">VERKAUFT</span>
                 </div>
               )}
             </div>
