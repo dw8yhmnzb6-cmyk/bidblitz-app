@@ -46,3 +46,50 @@ async def delete_voucher(voucher_id: str, admin: dict = Depends(get_admin_user))
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Voucher not found")
     return {"message": "Voucher deleted"}
+
+# ==================== USER ENDPOINTS ====================
+
+@router.post("/vouchers/redeem")
+async def redeem_voucher(code: str, user: dict = Depends(get_current_user)):
+    """Redeem a voucher code"""
+    voucher = await db.vouchers.find_one({"code": code.upper()}, {"_id": 0})
+    
+    if not voucher:
+        raise HTTPException(status_code=404, detail="Ungültiger Gutscheincode")
+    
+    # Check if already used by this user
+    if user["id"] in voucher.get("used_by", []):
+        raise HTTPException(status_code=400, detail="Gutschein bereits eingelöst")
+    
+    # Check max uses
+    if voucher.get("used_count", 0) >= voucher.get("max_uses", 1):
+        raise HTTPException(status_code=400, detail="Gutschein ist ausgeschöpft")
+    
+    # Check expiry
+    if voucher.get("expires_at"):
+        expires = datetime.fromisoformat(voucher["expires_at"].replace("Z", "+00:00"))
+        if datetime.now(timezone.utc) > expires:
+            raise HTTPException(status_code=400, detail="Gutschein ist abgelaufen")
+    
+    # Credit bids
+    bids = voucher["bids"]
+    await db.users.update_one(
+        {"id": user["id"]},
+        {"$inc": {"bids_balance": bids}}
+    )
+    
+    # Update voucher usage
+    await db.vouchers.update_one(
+        {"id": voucher["id"]},
+        {
+            "$inc": {"used_count": 1},
+            "$push": {"used_by": user["id"]}
+        }
+    )
+    
+    logger.info(f"User {user['email']} redeemed voucher {code} for {bids} bids")
+    
+    return {
+        "message": f"{bids} Gebote gutgeschrieben!",
+        "bids_added": bids
+    }
