@@ -96,12 +96,68 @@ export default function Notifications() {
 
   const checkPushSubscription = async () => {
     try {
+      // Check local subscription status
+      const localSubscribed = await isSubscribed();
+      
+      // Also check server
       const res = await axios.get(`${API}/notifications/subscription-status`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setPushSubscribed(res.data.subscribed);
+      
+      setPushSubscribed(localSubscribed && res.data.subscribed);
     } catch (error) {
       console.error('Error checking push subscription:', error);
+    }
+  };
+
+  const handlePushSubscribe = async () => {
+    setPushLoading(true);
+    try {
+      await subscribeToPush(token);
+      setPushSubscribed(true);
+      setPushPermission('granted');
+      toast.success('Push-Benachrichtigungen aktiviert! 🔔');
+      
+      // Send test notification
+      setTimeout(async () => {
+        try {
+          await sendTestPush(token);
+        } catch (e) {
+          console.log('Test push may have failed:', e);
+        }
+      }, 1000);
+    } catch (error) {
+      console.error('Push subscribe error:', error);
+      if (error.message.includes('denied')) {
+        toast.error('Berechtigung verweigert. Bitte erlauben Sie Benachrichtigungen in Ihren Browser-Einstellungen.');
+        setPushPermission('denied');
+      } else {
+        toast.error('Fehler beim Aktivieren: ' + error.message);
+      }
+    } finally {
+      setPushLoading(false);
+    }
+  };
+
+  const handlePushUnsubscribe = async () => {
+    setPushLoading(true);
+    try {
+      await unsubscribeFromPush(token);
+      setPushSubscribed(false);
+      toast.success('Push-Benachrichtigungen deaktiviert');
+    } catch (error) {
+      toast.error('Fehler beim Deaktivieren');
+    } finally {
+      setPushLoading(false);
+    }
+  };
+
+  const handleTestPush = async () => {
+    try {
+      const result = await sendTestPush(token);
+      toast.success(result.message);
+    } catch (error) {
+      toast.error(error.message);
     }
   };
 
