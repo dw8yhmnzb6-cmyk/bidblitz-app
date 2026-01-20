@@ -191,7 +191,7 @@ const SnipsterCard = ({ auction, product, t }) => {
 };
 
 export default function Auctions() {
-  const { t } = useTranslation();
+  const { t } = useLanguage();
   const [auctions, setAuctions] = useState([]);
   const [products, setProducts] = useState({});
   const [loading, setLoading] = useState(true);
