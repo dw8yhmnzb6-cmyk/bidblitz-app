@@ -152,20 +152,22 @@ Penny-Auktion-Website ähnlich dealdash.com und snipster.de mit Kunden-App und A
 
 ```
 /app/backend/
-├── server.py           # 381 Zeilen - Main entry, WebSocket, Bot Task
+├── server.py           # Main entry, WebSocket, Bot Task
 ├── config.py           # DB, API Keys, Bid Packages
 ├── dependencies.py     # Auth utilities, Password, 2FA
 ├── schemas.py          # Pydantic models
 ├── routers/
 │   ├── auth.py         # Login, Register, 2FA, Password Reset
-│   ├── auctions.py     # Auctions CRUD, Bidding, Autobidder
+│   ├── auctions.py     # Auctions CRUD, Bidding, Autobidder, Buy It Now
 │   ├── products.py     # Products CRUD
 │   ├── admin.py        # Stats, Users, Email Marketing
 │   ├── checkout.py     # Stripe, Coinbase
 │   ├── affiliate.py    # Affiliate Program
 │   ├── user.py         # Profile, Dashboard, Wishlist
 │   ├── bots.py         # Bot Management
-│   └── vouchers.py     # Voucher System
+│   ├── vouchers.py     # Voucher System
+│   ├── staff.py        # Staff Management
+│   └── rewards.py      # Achievements, Daily Rewards, Leaderboard (NEW)
 ├── services/
 │   └── websocket.py    # WebSocket Manager
 ├── models/
@@ -174,7 +176,9 @@ Penny-Auktion-Website ähnlich dealdash.com und snipster.de mit Kunden-App und A
     └── auth.py         # Legacy auth utilities
 
 /app/frontend/src/
-├── pages/              # React pages
+├── pages/
+│   ├── Achievements.js # Achievements, Daily Rewards, Leaderboard (UPDATED)
+│   └── ...
 ├── components/         # Reusable components
 ├── context/            # Language, Auth context
 └── i18n/              # Translations
