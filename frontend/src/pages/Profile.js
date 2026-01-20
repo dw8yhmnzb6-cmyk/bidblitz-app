@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
@@ -7,17 +7,19 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { 
   User, Mail, Lock, Save, ArrowLeft, Camera, Shield, 
-  Zap, Trophy, Calendar, Loader2, CheckCircle
+  Zap, Trophy, Calendar, Loader2, CheckCircle, Trash2, Upload
 } from 'lucide-react';
 import { toast } from 'sonner';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 export default function Profile() {
-  const { user, token, updateUser } = useAuth();
+  const { user, token, updateUser, refreshUser } = useAuth();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const fileInputRef = useRef(null);
   
   // Form states
   const [name, setName] = useState('');
@@ -25,6 +27,77 @@ export default function Profile() {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState(null);
+
+  useEffect(() => {
+    if (user) {
+      setName(user.name || '');
+      setEmail(user.email || '');
+      setAvatarUrl(user.avatar_url || null);
+    }
+  }, [user]);
+
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleAvatarChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Check file size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('Die Datei ist zu groß. Maximal 2MB erlaubt.');
+      return;
+    }
+
+    // Check file type
+    if (!['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.type)) {
+      toast.error('Nur JPEG, PNG, WebP oder GIF Bilder erlaubt.');
+      return;
+    }
+
+    setUploadingAvatar(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await axios.post(`${API}/user/avatar`, formData, {
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+
+      setAvatarUrl(response.data.avatar_url);
+      toast.success('Profilbild erfolgreich hochgeladen!');
+      
+      // Refresh user data to update avatar everywhere
+      if (refreshUser) await refreshUser();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Fehler beim Hochladen');
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
+  const handleDeleteAvatar = async () => {
+    if (!avatarUrl) return;
+    
+    setUploadingAvatar(true);
+    try {
+      await axios.delete(`${API}/user/avatar`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setAvatarUrl(null);
+      toast.success('Profilbild erfolgreich gelöscht');
+      if (refreshUser) await refreshUser();
+    } catch (error) {
+      toast.error('Fehler beim Löschen');
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
 
   useEffect(() => {
     if (user) {
