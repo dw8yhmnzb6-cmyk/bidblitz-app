@@ -78,7 +78,7 @@ const parseEndTime = (endTimeStr) => {
 };
 
 // Compact Auction Card for Mobile
-const AuctionCard = ({ auction, product, reminders, onToggleReminder, isLoggedIn }) => {
+const AuctionCard = ({ auction, product, reminders, onToggleReminder, isLoggedIn, serverTimeOffset }) => {
   const [timeLeft, setTimeLeft] = useState({ h: 0, m: 0, s: 0, ended: false, loading: true });
   const hasReminder = reminders?.includes(auction.id);
   
@@ -86,7 +86,11 @@ const AuctionCard = ({ auction, product, reminders, onToggleReminder, isLoggedIn
     const calc = () => {
       // Parse end_time properly (handle timezone)
       const endTime = parseEndTime(auction.end_time);
-      const now = new Date();
+      
+      // Use server time offset if available (fixes devices with wrong system time)
+      const now = serverTimeOffset 
+        ? new Date(Date.now() + serverTimeOffset)
+        : new Date();
       
       // Safety check: if parsing failed or auction is explicitly ended
       if (!endTime || isNaN(endTime.getTime())) {
