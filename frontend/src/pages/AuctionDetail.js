@@ -607,9 +607,8 @@ export default function AuctionDetail() {
 
                           <p className="text-[#94A3B8] text-xs text-center">
                             Jedes platzierte Gebot wird auf den Kaufpreis als €0,15 Guthaben angerechnet.
-                            </p>
-                          </div>
-                        )}
+                          </p>
+                        </div>
 
                         <div className="flex gap-3">
                           <Button
