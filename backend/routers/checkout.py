@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from typing import Optional
 import uuid
 import os
+import stripe
 
 from config import db, logger, BID_PACKAGES, FRONTEND_URL, coinbase_client
 from dependencies import get_current_user
@@ -11,23 +12,17 @@ from schemas import CheckoutRequest
 
 router = APIRouter(prefix="/checkout", tags=["Checkout"])
 
-# Stripe checkout using emergent integration
-try:
-    from emergentintegrations.payments.stripe.checkout import (
-        StripeCheckout, CheckoutSessionResponse, CheckoutStatusResponse, CheckoutSessionRequest
-    )
-    STRIPE_API_KEY = os.environ.get('STRIPE_API_KEY')
-    stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY) if STRIPE_API_KEY else None
-except ImportError:
-    stripe_checkout = None
-    logger.warning("Stripe integration not available")
+# Stripe configuration
+STRIPE_API_KEY = os.environ.get('STRIPE_API_KEY')
+if STRIPE_API_KEY:
+    stripe.api_key = STRIPE_API_KEY
 
 # ==================== STRIPE CHECKOUT ====================
 
 @router.post("/create-session")
 async def create_checkout_session(request: CheckoutRequest, user: dict = Depends(get_current_user)):
-    """Create a Stripe checkout session"""
-    if not stripe_checkout:
+    """Create a Stripe checkout session using direct Stripe API"""
+    if not STRIPE_API_KEY:
         raise HTTPException(status_code=503, detail="Payment service unavailable")
     
     package = next((p for p in BID_PACKAGES if p["id"] == request.package_id), None)
