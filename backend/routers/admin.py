@@ -62,7 +62,125 @@ async def get_admin_stats(admin: dict = Depends(get_admin_user)):
             "total": round(total_revenue, 2),
             "this_week": round(week_revenue, 2)
         },
-        "products": total_products
+        "products": total_products,
+        "total_products": total_products,
+        "active_auctions": active_auctions,
+        "total_users": total_users,
+        "completed_transactions": len(completed_transactions)
+    }
+
+@router.get("/stats/detailed")
+async def get_detailed_stats(admin: dict = Depends(get_admin_user)):
+    """Get detailed statistics for charts and reports."""
+    now = datetime.now(timezone.utc)
+    
+    # Revenue and transactions
+    payments = await db.payment_transactions.find({"status": "paid"}, {"_id": 0}).to_list(1000)
+    total_revenue = sum(p.get("amount", 0) for p in payments)
+    total_bids_sold = sum(p.get("bids", 0) for p in payments)
+    
+    # Revenue by day (last 7 days)
+    revenue_by_day = []
+    for i in range(7):
+        day = now - timedelta(days=i)
+        day_start = day.replace(hour=0, minute=0, second=0, microsecond=0)
+        day_end = day_start + timedelta(days=1)
+        day_revenue = sum(
+            p.get("amount", 0) for p in payments 
+            if p.get("created_at") and 
+            day_start.isoformat() <= p.get("created_at", "") < day_end.isoformat()
+        )
+        revenue_by_day.append({
+            "date": day_start.strftime("%d.%m"),
+            "revenue": round(day_revenue, 2),
+            "day_name": day_start.strftime("%a")
+        })
+    revenue_by_day.reverse()
+    
+    # Auctions stats
+    auctions = await db.auctions.find({}, {"_id": 0}).to_list(1000)
+    ended_auctions = [a for a in auctions if a.get("status") == "ended"]
+    total_bids = sum(a.get("total_bids", 0) for a in auctions)
+    
+    # Bids by day (last 7 days)
+    bids_by_day = []
+    for i in range(7):
+        day = now - timedelta(days=i)
+        day_start = day.replace(hour=0, minute=0, second=0, microsecond=0)
+        day_end = day_start + timedelta(days=1)
+        day_bids = 0
+        for auction in auctions:
+            for bid in auction.get("bid_history", []):
+                bid_time = bid.get("timestamp", "")
+                if day_start.isoformat() <= bid_time < day_end.isoformat():
+                    day_bids += 1
+        bids_by_day.append({
+            "date": day_start.strftime("%d.%m"),
+            "bids": day_bids,
+            "day_name": day_start.strftime("%a")
+        })
+    bids_by_day.reverse()
+    
+    # Users stats
+    users = await db.users.find({}, {"_id": 0, "is_admin": 1, "bids_balance": 1, "created_at": 1}).to_list(10000)
+    total_users = len(users)
+    total_user_bids = sum(u.get("bids_balance", 0) for u in users)
+    
+    # New users by day (last 7 days)
+    users_by_day = []
+    for i in range(7):
+        day = now - timedelta(days=i)
+        day_start = day.replace(hour=0, minute=0, second=0, microsecond=0)
+        day_end = day_start + timedelta(days=1)
+        new_users = sum(
+            1 for u in users 
+            if u.get("created_at") and 
+            day_start.isoformat() <= u.get("created_at", "") < day_end.isoformat()
+        )
+        users_by_day.append({
+            "date": day_start.strftime("%d.%m"),
+            "users": new_users,
+            "day_name": day_start.strftime("%a")
+        })
+    users_by_day.reverse()
+    
+    # Auction status distribution
+    status_distribution = {
+        "active": await db.auctions.count_documents({"status": "active"}),
+        "scheduled": await db.auctions.count_documents({"status": "scheduled"}),
+        "ended": await db.auctions.count_documents({"status": "ended"})
+    }
+    
+    # Top products (by bids) - need to fetch product names
+    products_map = {}
+    products_list = await db.products.find({}, {"_id": 0, "id": 1, "name": 1}).to_list(1000)
+    for p in products_list:
+        products_map[p["id"]] = p.get("name", "Unknown")
+    
+    top_products = sorted(
+        [(products_map.get(a.get("product_id"), "Unknown"), a.get("total_bids", 0)) for a in auctions],
+        key=lambda x: x[1],
+        reverse=True
+    )[:5]
+    
+    return {
+        "summary": {
+            "total_revenue": round(total_revenue, 2),
+            "total_transactions": len(payments),
+            "total_bids_sold": total_bids_sold,
+            "total_bids_placed": total_bids,
+            "total_users": total_users,
+            "total_user_bids_balance": total_user_bids,
+            "ended_auctions": len(ended_auctions),
+            "avg_bids_per_auction": round(total_bids / len(auctions), 1) if auctions else 0
+        },
+        "charts": {
+            "revenue_by_day": revenue_by_day,
+            "bids_by_day": bids_by_day,
+            "users_by_day": users_by_day,
+            "status_distribution": status_distribution,
+            "top_products": [{"name": p[0], "bids": p[1]} for p in top_products]
+        }
     }
 
 # ==================== USER MANAGEMENT ====================
