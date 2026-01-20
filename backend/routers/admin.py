@@ -225,6 +225,22 @@ async def adjust_user_bids(user_id: str, bids: int, admin: dict = Depends(get_ad
     user = await db.users.find_one({"id": user_id}, {"_id": 0, "bids_balance": 1})
     return {"message": f"Bids adjusted by {bids}", "new_balance": user["bids_balance"]}
 
+@router.put("/users/{user_id}/add-bids")
+async def add_user_bids(user_id: str, bids: int, admin: dict = Depends(get_admin_user)):
+    """Add bids to user's balance (alias for /bids)"""
+    result = await db.users.update_one(
+        {"id": user_id},
+        {"$inc": {"bids_balance": bids}}
+    )
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Benutzer nicht gefunden")
+    
+    user = await db.users.find_one({"id": user_id}, {"_id": 0, "bids_balance": 1, "name": 1})
+    return {
+        "message": f"{bids} Gebote hinzugefügt für {user.get('name', 'Benutzer')}", 
+        "new_balance": user["bids_balance"]
+    }
+
 @router.put("/users/{user_id}/block")
 async def toggle_user_block(user_id: str, admin: dict = Depends(get_admin_user)):
     """Toggle user block status"""
