@@ -3052,14 +3052,6 @@ async def seed_bots(admin: dict = Depends(get_admin_user)):
     
     total = await db.bots.count_documents({})
     return {"message": f"{created} neue Bots erstellt", "total": total, "created": created}
-                "is_active": True,
-                "total_bids_placed": 0,
-                "created_at": datetime.now(timezone.utc).isoformat(),
-                "created_by": admin["id"]
-            }
-            await db.bots.insert_one(bot)
-            created += 1
-    return {"message": f"{created} bots created", "total": len(DEFAULT_BOT_NAMES)}
 
 @api_router.post("/admin/bots/bid")
 async def bot_place_bid(data: BotBidRequest, admin: dict = Depends(get_admin_user)):
