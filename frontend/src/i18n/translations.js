@@ -738,6 +738,7 @@ export const languageList = {
   ko: { name: '한국어', flag: '🇰🇷' },
   hi: { name: 'हिन्दी', flag: '🇮🇳' },
   sq: { name: 'Shqip', flag: '🇦🇱' },
+  xk: { name: 'Kosovë', flag: '🇽🇰' },
   cs: { name: 'Čeština', flag: '🇨🇿' },
   sv: { name: 'Svenska', flag: '🇸🇪' },
   da: { name: 'Dansk', flag: '🇩🇰' },
