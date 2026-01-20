@@ -52,4 +52,4 @@ BID_PACKAGES = [
 ]
 
 # Frontend URL for redirects
-FRONTEND_URL = os.environ.get('FRONTEND_URL', 'https://penny-rivals.preview.emergentagent.com')
+FRONTEND_URL = os.environ.get('FRONTEND_URL', 'https://snipbot.preview.emergentagent.com')
