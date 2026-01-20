@@ -22,6 +22,7 @@ export const translations = {
     },
     auctions: { title: "Alle Auktionen", filter: "Filter", all: "Alle", active: "Aktiv", ended: "Beendet", currentPrice: "Aktueller Preis", bids: "Gebote", bid: "Bieten", live: "Live", lastBidder: "Letzter Bieter", winner: "Gewinner", rrp: "UVP" },
     auctionPage: {
+      title: "Aktive Auktionen",
       searchPlaceholder: "Angebote suchen...",
       categories: { all: "Alle", electronics: "Elektronik", smartphones: "Smartphones", household: "Haushalt", emobility: "E-Mobilität", gifts: "Geschenke", fashion: "Mode" },
       active: "Aktiv", scheduled: "Geplant", all: "Alle",
