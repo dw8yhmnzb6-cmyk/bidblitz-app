@@ -18,10 +18,16 @@ Penny-Auktion-Website ähnlich dealdash.com und snipster.de mit Kunden-App und A
 
 ## ✅ COMPLETED - Push, PDF & 2FA (20.01.2026)
 
-### Push-Benachrichtigungen
-- [x] Router `/api/notifications/*` erstellt
-- [x] Push-Subscription System (subscribe/unsubscribe)
-- [x] In-App Benachrichtigungen (CRUD)
+### Push-Benachrichtigungen (Echte Browser-Push)
+- [x] Service Worker (`/sw.js`) für Push-Empfang
+- [x] VAPID-Keys generiert und konfiguriert
+- [x] Push-Subscription im Frontend (`/utils/pushNotifications.js`)
+- [x] Backend Push-Senden mit `py_vapid` und `webpush`
+- [x] Test-Push Endpoint: `POST /api/notifications/test-push`
+- [x] VAPID Public Key Endpoint: `GET /api/notifications/vapid-public-key`
+- [x] Frontend: Einstellungen-Panel mit Push-Aktivierung
+
+### In-App Benachrichtigungen
 - [x] Benachrichtigungs-Einstellungen pro Benutzer
 - [x] Admin: Broadcast an alle/aktive/zahlende Benutzer
 - [x] Frontend: `/notifications` Seite mit Settings
