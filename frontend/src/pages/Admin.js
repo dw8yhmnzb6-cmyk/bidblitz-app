@@ -1575,7 +1575,7 @@ export default function Admin() {
               <div className="glass-card rounded-xl p-6">
                 <h3 className="text-lg font-bold text-white mb-4">Aktive Auktionen - Schnellaktionen</h3>
                 <div className="space-y-4">
-                  {auctions.filter(a => a.status === 'active').map((auction) => (
+                  {(auctions || []).filter(a => a.status === 'active').map((auction) => (
                     <div key={auction.id} className="flex items-center justify-between p-4 rounded-lg bg-[#181824]">
                       <div className="flex items-center gap-4">
                         <img src={auction.product?.image_url} alt="" className="w-12 h-12 rounded-lg object-cover" />
@@ -1592,7 +1592,7 @@ export default function Admin() {
                       </div>
                     </div>
                   ))}
-                  {auctions.filter(a => a.status === 'active').length === 0 && (
+                  {(auctions || []).filter(a => a.status === 'active').length === 0 && (
                     <p className="text-center text-[#94A3B8] py-8">Keine aktiven Auktionen</p>
                   )}
                 </div>
