@@ -250,13 +250,10 @@ export default function Auctions() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 pt-20 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <div className="relative">
-            <div className="animate-spin rounded-full h-16 w-16 border-4 border-purple-200"></div>
-            <div className="absolute top-0 left-0 animate-spin rounded-full h-16 w-16 border-t-4 border-purple-500"></div>
-          </div>
-          <p className="text-purple-600 text-sm font-medium animate-pulse">{t('common.loading')}</p>
+      <div className="min-h-screen bg-gray-50 pt-20 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="animate-spin rounded-full h-12 w-12 border-4 border-green-500 border-t-transparent"></div>
+          <p className="text-gray-500 text-sm">{t('common.loading')}</p>
         </div>
       </div>
     );
