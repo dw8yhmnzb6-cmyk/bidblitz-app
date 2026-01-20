@@ -520,6 +520,11 @@ async def preview_email_template(
         "html": html_content
     }
 
+class TestEmailRequest(BaseModel):
+    to_email: str
+    subject: str
+    html_content: str
+
 @router.post("/email/send-test")
 async def send_test_email(
     to_email: str,
