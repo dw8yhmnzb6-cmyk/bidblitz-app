@@ -30,6 +30,17 @@ Penny-Auktion-Website ähnlich dealdash.com und snipster.de mit Kunden-App und A
 - [x] **Fix 2:** Alle Array-Zugriffe im Dashboard null-safe gemacht (`data || []`)
 - [x] **Ergebnis:** Dashboard lädt ohne Runtime Errors
 
+### Bieten-Erinnerungs-Feature implementiert
+- [x] **Backend:** Neue Endpoints in `routers/notifications.py`:
+  - `POST /api/notifications/auction-reminder/{auction_id}` - Erinnerung setzen
+  - `DELETE /api/notifications/auction-reminder/{auction_id}` - Erinnerung löschen
+  - `GET /api/notifications/auction-reminder/{auction_id}` - Status prüfen
+  - `GET /api/notifications/my-reminders` - Alle Erinnerungen abrufen
+- [x] **Background Task:** `auction_reminder_processor()` prüft alle 30 Sek. fällige Erinnerungen
+- [x] **Frontend:** Glocken-Button auf jeder Auktionskarte (nur für eingeloggte User)
+- [x] **UX:** Toast-Benachrichtigung bei Setzen/Löschen einer Erinnerung
+- [x] **Push Notification:** Automatische Push + In-App Notification 5 Min. vor Auktionsende
+
 ---
 
 ## ✅ COMPLETED - Push, PDF & 2FA (20.01.2026)
