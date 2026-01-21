@@ -55,7 +55,7 @@ export default function Login() {
         window.location.href = '/dashboard';
       }, 100);
     } catch (error) {
-      const errorMsg = error.response?.data?.detail || 'Anmeldung fehlgeschlagen';
+      const errorMsg = error.response?.data?.detail || texts.loginFailed;
       toast.error(errorMsg);
       
       // Reset 2FA code on error
