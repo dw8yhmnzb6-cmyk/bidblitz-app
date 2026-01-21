@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useLanguage } from '../context/LanguageContext';
+import { usePageTranslations } from '../i18n/pageTranslations';
 import { ChevronDown, ChevronUp, HelpCircle, Search } from 'lucide-react';
 
 const FAQItem = ({ question, answer, isOpen, onClick }) => {
@@ -25,79 +26,189 @@ const FAQItem = ({ question, answer, isOpen, onClick }) => {
   );
 };
 
+// Multilingual FAQ content
+const faqContent = {
+  de: {
+    title: "Häufig gestellte Fragen",
+    subtitle: "Antworten auf die häufigsten Fragen zu BidBlitz",
+    searchPlaceholder: "Fragen durchsuchen...",
+    stillQuestions: "Noch Fragen?",
+    contactText: "Unser Support-Team hilft Ihnen gerne weiter.",
+    contactButton: "Kontakt aufnehmen",
+    categories: [
+      {
+        title: "Allgemein",
+        faqs: [
+          { question: "Was ist BidBlitz?", answer: "BidBlitz ist eine Penny-Auktions-Plattform, auf der Sie Top-Markenprodukte für einen Bruchteil des Preises ersteigern können. Jedes Gebot erhöht den Preis um nur 0,01€ und verlängert den Timer." },
+          { question: "Ist BidBlitz seriös?", answer: "Ja! BidBlitz ist ein seriöses Unternehmen mit Sitz in Dubai, UAE. Alle Auktionen sind transparent und fair. Wir versenden echte Produkte an echte Gewinner." },
+          { question: "Wie kann ich Geld sparen?", answer: "Bei BidBlitz können Sie Produkte für bis zu 99% unter dem Marktpreis ersteigern. Ein iPhone im Wert von 1.199€ kann z.B. für unter 50€ ersteigert werden." }
+        ]
+      },
+      {
+        title: "Bieten & Auktionen",
+        faqs: [
+          { question: "Wie funktioniert das Bieten?", answer: "Jedes Gebot kostet Sie einen Ihrer gekauften Gebote (ab 0,50€). Der Auktionspreis steigt um 0,01€ und der Timer wird um 10-15 Sekunden verlängert. Der letzte Bieter gewinnt!" },
+          { question: "Was ist der Auto-Bidder?", answer: "Der Auto-Bidder bietet automatisch für Sie in den letzten Sekunden einer Auktion. Sie legen fest, wie viele Gebote maximal verwendet werden sollen." },
+          { question: "Wie lange dauert eine Auktion?", answer: "Die Dauer variiert. Bei jedem Gebot wird der Timer verlängert. Auktionen können von wenigen Minuten bis zu mehreren Stunden dauern." }
+        ]
+      },
+      {
+        title: "Gebote & Preise",
+        faqs: [
+          { question: "Was kosten Gebote?", answer: "Gebote kosten ab 0,50€ pro Stück. Je mehr Gebote Sie kaufen, desto günstiger wird der Einzelpreis. Außerdem erhalten Sie bei größeren Paketen Gratis-Gebote!" },
+          { question: "Verfallen meine Gebote?", answer: "Nein! Ihre Gebote verfallen nicht und können jederzeit verwendet werden." },
+          { question: "Welche Zahlungsmethoden werden akzeptiert?", answer: "Wir akzeptieren Kreditkarten, Klarna, SEPA-Lastschrift und Kryptowährungen über Coinbase Commerce." }
+        ]
+      }
+    ]
+  },
+  en: {
+    title: "Frequently Asked Questions",
+    subtitle: "Answers to the most common questions about BidBlitz",
+    searchPlaceholder: "Search questions...",
+    stillQuestions: "Still have questions?",
+    contactText: "Our support team is happy to help you.",
+    contactButton: "Contact Us",
+    categories: [
+      {
+        title: "General",
+        faqs: [
+          { question: "What is BidBlitz?", answer: "BidBlitz is a penny auction platform where you can win top brand products for a fraction of the price. Each bid increases the price by only €0.01 and extends the timer." },
+          { question: "Is BidBlitz legitimate?", answer: "Yes! BidBlitz is a legitimate company based in Dubai, UAE. All auctions are transparent and fair. We ship real products to real winners." },
+          { question: "How can I save money?", answer: "At BidBlitz, you can win products for up to 99% below market price. An iPhone worth €1,199 can be won for under €50." }
+        ]
+      },
+      {
+        title: "Bidding & Auctions",
+        faqs: [
+          { question: "How does bidding work?", answer: "Each bid costs one of your purchased bids (from €0.50). The auction price increases by €0.01 and the timer extends by 10-15 seconds. The last bidder wins!" },
+          { question: "What is the Auto-Bidder?", answer: "The Auto-Bidder automatically bids for you in the last seconds of an auction. You set the maximum number of bids to use." },
+          { question: "How long does an auction last?", answer: "Duration varies. The timer extends with each bid. Auctions can last from a few minutes to several hours." }
+        ]
+      },
+      {
+        title: "Bids & Pricing",
+        faqs: [
+          { question: "How much do bids cost?", answer: "Bids start at €0.50 each. The more bids you buy, the cheaper the unit price. Plus, you get free bonus bids with larger packages!" },
+          { question: "Do my bids expire?", answer: "No! Your bids never expire and can be used at any time." },
+          { question: "What payment methods are accepted?", answer: "We accept credit cards, Klarna, SEPA direct debit, and cryptocurrencies via Coinbase Commerce." }
+        ]
+      }
+    ]
+  },
+  sq: {
+    title: "Pyetjet e Bëra Shpesh",
+    subtitle: "Përgjigje për pyetjet më të zakonshme rreth BidBlitz",
+    searchPlaceholder: "Kërko pyetje...",
+    stillQuestions: "Ende keni pyetje?",
+    contactText: "Ekipi ynë i mbështetjes është i gatshëm t'ju ndihmojë.",
+    contactButton: "Na Kontaktoni",
+    categories: [
+      {
+        title: "Të Përgjithshme",
+        faqs: [
+          { question: "Çfarë është BidBlitz?", answer: "BidBlitz është një platformë ankandesh penny ku mund të fitoni produkte të markave të njohura me një pjesë të çmimit. Çdo ofertë rrit çmimin me vetëm 0.01€ dhe zgjat kohëmatësin." },
+          { question: "A është BidBlitz i besueshëm?", answer: "Po! BidBlitz është një kompani legjitime me bazë në Dubai, UAE. Të gjitha ankandet janë transparente dhe të drejta. Ne dërgojmë produkte reale tek fituesit realë." },
+          { question: "Si mund të kursej para?", answer: "Në BidBlitz, mund të fitoni produkte deri në 99% nën çmimin e tregut. Një iPhone me vlerë 1,199€ mund të fitohet për nën 50€." }
+        ]
+      },
+      {
+        title: "Ofertimi & Ankandet",
+        faqs: [
+          { question: "Si funksionon ofertimi?", answer: "Çdo ofertë kushton një nga ofertat tuaja të blera (nga 0.50€). Çmimi i ankandit rritet me 0.01€ dhe kohëmatësi zgjatet me 10-15 sekonda. Ofertuesi i fundit fiton!" },
+          { question: "Çfarë është Auto-Bidder?", answer: "Auto-Bidder oferton automatikisht për ju në sekondat e fundit të një ankandi. Ju vendosni numrin maksimal të ofertave për të përdorur." },
+          { question: "Sa kohë zgjat një ankand?", answer: "Kohëzgjatja varion. Kohëmatësi zgjatet me çdo ofertë. Ankandet mund të zgjasin nga disa minuta deri në disa orë." }
+        ]
+      },
+      {
+        title: "Ofertat & Çmimet",
+        faqs: [
+          { question: "Sa kushtojnë ofertat?", answer: "Ofertat fillojnë nga 0.50€ secila. Sa më shumë oferta blini, aq më lirë bëhet çmimi për njësi. Plus, merrni oferta bonus falas me paketat më të mëdha!" },
+          { question: "A skadojnë ofertat e mia?", answer: "Jo! Ofertat tuaja nuk skadojnë kurrë dhe mund të përdoren në çdo kohë." },
+          { question: "Cilat metoda pagese pranohen?", answer: "Ne pranojmë karta krediti, Klarna, debitim direkt SEPA, dhe kriptovaluta përmes Coinbase Commerce." }
+        ]
+      }
+    ]
+  },
+  tr: {
+    title: "Sık Sorulan Sorular",
+    subtitle: "BidBlitz hakkında en yaygın sorulara cevaplar",
+    searchPlaceholder: "Soru ara...",
+    stillQuestions: "Hala sorularınız mı var?",
+    contactText: "Destek ekibimiz size yardımcı olmaktan mutluluk duyar.",
+    contactButton: "Bize Ulaşın",
+    categories: [
+      {
+        title: "Genel",
+        faqs: [
+          { question: "BidBlitz nedir?", answer: "BidBlitz, en iyi marka ürünlerini fiyatın küçük bir bölümüyle kazanabileceğiniz bir penny açık artırma platformudur. Her teklif fiyatı sadece 0,01€ artırır ve zamanlayıcıyı uzatır." },
+          { question: "BidBlitz güvenilir mi?", answer: "Evet! BidBlitz, Dubai, BAE merkezli meşru bir şirkettir. Tüm açık artırmalar şeffaf ve adildir. Gerçek kazananlara gerçek ürünler gönderiyoruz." },
+          { question: "Nasıl para tasarruf edebilirim?", answer: "BidBlitz'de ürünleri piyasa fiyatının %99'a kadar altında kazanabilirsiniz. 1.199€ değerinde bir iPhone 50€'nun altında kazanılabilir." }
+        ]
+      },
+      {
+        title: "Teklif Verme & Açık Artırmalar",
+        faqs: [
+          { question: "Teklif verme nasıl çalışır?", answer: "Her teklif, satın aldığınız tekliflerden birini kullanır (0,50€'dan başlayan). Açık artırma fiyatı 0,01€ artar ve zamanlayıcı 10-15 saniye uzar. Son teklif veren kazanır!" },
+          { question: "Otomatik Teklif Verici nedir?", answer: "Otomatik Teklif Verici, bir açık artırmanın son saniyelerinde sizin için otomatik olarak teklif verir. Kullanılacak maksimum teklif sayısını siz belirlersiniz." },
+          { question: "Bir açık artırma ne kadar sürer?", answer: "Süre değişir. Zamanlayıcı her teklifle uzar. Açık artırmalar birkaç dakikadan birkaç saate kadar sürebilir." }
+        ]
+      },
+      {
+        title: "Teklifler & Fiyatlandırma",
+        faqs: [
+          { question: "Teklifler ne kadar?", answer: "Teklifler tanesi 0,50€'dan başlar. Ne kadar çok teklif alırsanız, birim fiyat o kadar ucuz olur. Ayrıca büyük paketlerde ücretsiz bonus teklifler alırsınız!" },
+          { question: "Tekliflerim sona erer mi?", answer: "Hayır! Teklifleriniz asla sona ermez ve her zaman kullanılabilir." },
+          { question: "Hangi ödeme yöntemleri kabul ediliyor?", answer: "Kredi kartları, Klarna, SEPA doğrudan borçlandırma ve Coinbase Commerce üzerinden kripto para birimlerini kabul ediyoruz." }
+        ]
+      }
+    ]
+  },
+  fr: {
+    title: "Questions Fréquemment Posées",
+    subtitle: "Réponses aux questions les plus courantes sur BidBlitz",
+    searchPlaceholder: "Rechercher des questions...",
+    stillQuestions: "Encore des questions?",
+    contactText: "Notre équipe de support est là pour vous aider.",
+    contactButton: "Contactez-nous",
+    categories: [
+      {
+        title: "Général",
+        faqs: [
+          { question: "Qu'est-ce que BidBlitz?", answer: "BidBlitz est une plateforme d'enchères au centime où vous pouvez gagner des produits de grandes marques pour une fraction du prix. Chaque enchère augmente le prix de seulement 0,01€ et prolonge le minuteur." },
+          { question: "BidBlitz est-il fiable?", answer: "Oui! BidBlitz est une entreprise légitime basée à Dubaï, EAU. Toutes les enchères sont transparentes et équitables. Nous expédions de vrais produits aux vrais gagnants." },
+          { question: "Comment puis-je économiser de l'argent?", answer: "Chez BidBlitz, vous pouvez gagner des produits jusqu'à 99% en dessous du prix du marché. Un iPhone d'une valeur de 1 199€ peut être gagné pour moins de 50€." }
+        ]
+      },
+      {
+        title: "Enchères & Ventes",
+        faqs: [
+          { question: "Comment fonctionnent les enchères?", answer: "Chaque enchère coûte une de vos enchères achetées (à partir de 0,50€). Le prix de la vente augmente de 0,01€ et le minuteur s'allonge de 10-15 secondes. Le dernier enchérisseur gagne!" },
+          { question: "Qu'est-ce que l'Auto-Bidder?", answer: "L'Auto-Bidder enchérit automatiquement pour vous dans les dernières secondes d'une vente. Vous définissez le nombre maximum d'enchères à utiliser." },
+          { question: "Combien de temps dure une vente aux enchères?", answer: "La durée varie. Le minuteur s'allonge à chaque enchère. Les ventes peuvent durer de quelques minutes à plusieurs heures." }
+        ]
+      },
+      {
+        title: "Enchères & Tarifs",
+        faqs: [
+          { question: "Combien coûtent les enchères?", answer: "Les enchères commencent à 0,50€ chacune. Plus vous achetez d'enchères, moins le prix unitaire est cher. De plus, vous obtenez des enchères bonus gratuites avec les plus grands forfaits!" },
+          { question: "Mes enchères expirent-elles?", answer: "Non! Vos enchères n'expirent jamais et peuvent être utilisées à tout moment." },
+          { question: "Quels modes de paiement sont acceptés?", answer: "Nous acceptons les cartes de crédit, Klarna, le prélèvement SEPA et les cryptomonnaies via Coinbase Commerce." }
+        ]
+      }
+    ]
+  }
+};
+
 export default function FAQ() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const texts = usePageTranslations(language);
   const [openIndex, setOpenIndex] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const faqCategories = [
-    {
-      title: "Allgemein",
-      faqs: [
-        {
-          question: "Was ist BidBlitz?",
-          answer: "BidBlitz ist eine Penny-Auktions-Plattform, auf der Sie Top-Markenprodukte für einen Bruchteil des Preises ersteigern können. Jedes Gebot erhöht den Preis um nur 0,01€ und verlängert den Timer."
-        },
-        {
-          question: "Ist BidBlitz seriös?",
-          answer: "Ja! BidBlitz ist ein seriöses Unternehmen mit Sitz in Deutschland. Alle Auktionen sind transparent und fair. Wir versenden echte Produkte an echte Gewinner."
-        },
-        {
-          question: "Wie kann ich Geld sparen?",
-          answer: "Bei BidBlitz können Sie Produkte für bis zu 99% unter dem Marktpreis ersteigern. Ein iPhone im Wert von 1.199€ kann z.B. für unter 50€ ersteigert werden."
-        }
-      ]
-    },
-    {
-      title: "Bieten & Auktionen",
-      faqs: [
-        {
-          question: "Wie funktioniert das Bieten?",
-          answer: "Jedes Gebot kostet Sie einen Ihrer gekauften Gebote (ab 0,50€). Der Auktionspreis steigt um 0,01€ und der Timer wird um 10-15 Sekunden verlängert. Der letzte Bieter gewinnt!"
-        },
-        {
-          question: "Was passiert mit meinen Geboten, wenn ich nicht gewinne?",
-          answer: "Verwendete Gebote werden nicht zurückerstattet. Sie können jedoch jederzeit neue Gebote kaufen und bei anderen Auktionen teilnehmen."
-        },
-        {
-          question: "Kann ich mehrfach hintereinander bieten?",
-          answer: "Ja, Sie können so oft bieten wie Sie möchten, solange Sie genügend Gebote haben. Beachten Sie aber, dass andere Nutzer auch bieten können."
-        },
-        {
-          question: "Was ist der Auto-Bidder?",
-          answer: "Der Auto-Bidder bietet automatisch für Sie in den letzten Sekunden einer Auktion. Sie legen fest, wie viele Gebote maximal verwendet werden sollen."
-        },
-        {
-          question: "Wie lange dauert eine Auktion?",
-          answer: "Die Dauer variiert. Bei jedem Gebot wird der Timer verlängert. Auktionen können von wenigen Minuten bis zu mehreren Stunden dauern."
-        }
-      ]
-    },
-    {
-      title: "Gebote & Preise",
-      faqs: [
-        {
-          question: "Was kosten Gebote?",
-          answer: "Gebote kosten ab 0,50€ pro Stück. Je mehr Gebote Sie kaufen, desto günstiger wird der Einzelpreis. Außerdem erhalten Sie bei größeren Paketen Gratis-Gebote!"
-        },
-        {
-          question: "Welche Gebotspakete gibt es?",
-          answer: "Wir bieten verschiedene Pakete: 10 Gebote für 5€, 20+2 für 10€, 40+5 für 20€, 100+15 für 50€ und 200+30 für 100€."
-        },
-        {
-          question: "Verfallen meine Gebote?",
-          answer: "Nein! Ihre Gebote verfallen nicht und können jederzeit verwendet werden."
-        },
-        {
-          question: "Welche Zahlungsmethoden werden akzeptiert?",
-          answer: "Wir akzeptieren Kreditkarten, Klarna, SEPA-Lastschrift und Kryptowährungen über Coinbase Commerce."
-        }
-      ]
-    },
-    {
-      title: "Gewinnen & Versand",
-      faqs: [
-        {
+  // Get FAQ content for current language
+  const content = faqContent[language] || faqContent.de;
+  const faqCategories = content.categories;
           question: "Wie erfahre ich, dass ich gewonnen habe?",
           answer: "Sie erhalten sofort eine E-Mail-Benachrichtigung und eine Nachricht in Ihrem Dashboard. Außerdem können Sie Push-Benachrichtigungen aktivieren."
         },
