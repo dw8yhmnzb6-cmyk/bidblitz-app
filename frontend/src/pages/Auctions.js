@@ -206,8 +206,14 @@ const auctionTranslations = {
   }
 };
 
+// Helper to get auction translations for current language
+const getAuctionText = (lang, key) => {
+  const langTrans = auctionTranslations[lang] || auctionTranslations.de;
+  return langTrans[key] || auctionTranslations.de[key] || key;
+};
+
 // Featured Auction Timer Component - Shows PAUSIERT when outside business hours
-const FeaturedTimer = ({ endTime, serverTimeOffset = 0, isPaused = false }) => {
+const FeaturedTimer = ({ endTime, serverTimeOffset = 0, isPaused = false, pausedText = "PAUSIERT" }) => {
   const [timeLeft, setTimeLeft] = useState({ h: 0, m: 0, s: 0 });
   
   useEffect(() => {
