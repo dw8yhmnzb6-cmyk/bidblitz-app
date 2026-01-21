@@ -244,16 +244,21 @@ Penny-Auktion-Website ähnlich dealdash.com und snipster.de mit Kunden-App und A
 
 ## Backlog (P2/P3)
 
-### P2 - Geplante Features
+### P1 - Nächste Priorität
 - [ ] PayPal Integration
+- [ ] Outbid Push-Benachrichtigungen (Backend-Logik)
+
+### P2 - Geplante Features
 - [ ] Farbenfrohere Auktionsseite (Design-Refresh)
-- [ ] Push-Benachrichtigungen
-- [ ] Erweiterte Affiliate-Analytics
+- [ ] Wishlist & Auktion des Tages
+- [ ] Winner's Gallery Sektion
+- [ ] Produktions-E-Mail-Konfiguration
 
 ### P3 - Technische Schulden
 - [ ] Daten-Persistenz Review (In-Memory → MongoDB)
 - [ ] Backend-Unit-Tests erweitern
 - [ ] API-Dokumentation (OpenAPI/Swagger)
+- [ ] Admin Panel Internationalisierung (hardcoded German → i18n)
 
 ---
 
