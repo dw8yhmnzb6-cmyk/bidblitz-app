@@ -9,11 +9,27 @@ import { toast } from 'sonner';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
-// Timer Component
-const AuctionTimer = ({ endTime }) => {
+// Timer Component with Pause support
+const AuctionTimer = ({ endTime, isPaused = false }) => {
   const [timeLeft, setTimeLeft] = useState({ h: 0, m: 0, s: 0 });
   
   useEffect(() => {
+    // Don't count down if paused
+    if (isPaused) {
+      const end = new Date(endTime);
+      const now = new Date();
+      const diff = end.getTime() - now.getTime();
+      
+      if (diff > 0) {
+        setTimeLeft({
+          h: Math.floor(diff / 3600000),
+          m: Math.floor((diff % 3600000) / 60000),
+          s: Math.floor((diff % 60000) / 1000)
+        });
+      }
+      return; // Don't set interval when paused
+    }
+    
     const calc = () => {
       const end = new Date(endTime);
       const now = new Date();
@@ -33,9 +49,18 @@ const AuctionTimer = ({ endTime }) => {
     calc();
     const int = setInterval(calc, 1000);
     return () => clearInterval(int);
-  }, [endTime]);
+  }, [endTime, isPaused]);
   
   const pad = (n) => String(n).padStart(2, '0');
+  
+  // Show PAUSIERT when outside business hours
+  if (isPaused) {
+    return (
+      <div className="flex items-center gap-1 font-bold text-orange-400">
+        <span className="bg-orange-500/20 px-3 py-1 rounded text-sm animate-pulse">⏸ PAUSIERT</span>
+      </div>
+    );
+  }
   
   return (
     <div className="flex items-center gap-1 font-mono text-lg font-bold text-yellow-400">
@@ -55,19 +80,20 @@ export default function VIPAuctions() {
   const [auctions, setAuctions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isVip, setIsVip] = useState(false);
+  const [businessHours, setBusinessHours] = useState({ is_open: true });
 
   const fetchVIPAuctions = useCallback(async () => {
     try {
-      const [auctionsRes, userRes] = await Promise.all([
-        axios.get(`${API}/auctions/vip-only`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {}
-        }).catch(() => ({ data: [] })),
+      const [auctionsRes, businessHoursRes, userRes] = await Promise.all([
+        axios.get(`${API}/auctions/vip-only`).catch(() => ({ data: [] })),
+        axios.get(`${API}/auctions/business-hours`).catch(() => ({ data: { is_open: true } })),
         token ? axios.get(`${API}/vip/status`, {
           headers: { Authorization: `Bearer ${token}` }
         }).catch(() => ({ data: { is_vip: false } })) : Promise.resolve({ data: { is_vip: false } })
       ]);
       
       setAuctions(auctionsRes.data || []);
+      setBusinessHours(businessHoursRes.data || { is_open: true });
       setIsVip(userRes.data?.is_vip || userRes.data?.vip_status === 'active');
     } catch (error) {
       console.error('Error:', error);
