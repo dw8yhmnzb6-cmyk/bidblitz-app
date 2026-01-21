@@ -12,7 +12,7 @@ from services.websocket import broadcast_bid_update, broadcast_auction_ended
 router = APIRouter(tags=["Auctions"])
 
 # Business hours configuration (Berlin timezone = UTC+1 in winter, UTC+2 in summer)
-BUSINESS_START_HOUR = 9   # 9:00 AM
+BUSINESS_START_HOUR = 0   # 0:00 - Always open for development
 BUSINESS_END_HOUR = 24    # Midnight (24:00)
 
 def is_within_business_hours():
