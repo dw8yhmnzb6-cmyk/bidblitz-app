@@ -205,6 +205,16 @@ export default function Winners() {
     ? Math.round(winners.reduce((sum, w) => sum + w.savings_percent, 0) / winners.length)
     : 0;
 
+  // Multilingual stats labels
+  const statsLabels = {
+    de: { happyWinners: 'Glückliche Gewinner', totalSaved: 'Gesamt gespart', avgSavings: 'Durchschnittliche Ersparnis', realWinners: 'Echte Gewinner, echte Ersparnisse', ourWinners: 'Unsere', subtitle: 'Diese Nutzer haben bei BidBlitz fantastische Schnäppchen gemacht. Der nächste Gewinner könnten Sie sein!', bidNow: 'Jetzt bieten' },
+    en: { happyWinners: 'Happy Winners', totalSaved: 'Total saved', avgSavings: 'Average savings', realWinners: 'Real winners, real savings', ourWinners: 'Our', subtitle: 'These users scored amazing deals at BidBlitz. You could be next!', bidNow: 'Bid Now' },
+    sq: { happyWinners: 'Fitues të Lumtur', totalSaved: 'Totali i kursyer', avgSavings: 'Kursimi mesatar', realWinners: 'Fitues realë, kursime reale', ourWinners: 'Fituesit', subtitle: 'Këta përdorues kanë bërë pazare fantastike në BidBlitz. Tjetri mund të jeni ju!', bidNow: 'Oferoni Tani' },
+    tr: { happyWinners: 'Mutlu Kazananlar', totalSaved: 'Toplam tasarruf', avgSavings: 'Ortalama tasarruf', realWinners: 'Gerçek kazananlar, gerçek tasarruflar', ourWinners: 'Kazananlarımız', subtitle: 'Bu kullanıcılar BidBlitz\'de harika fırsatlar yakaladı. Sıradaki siz olabilirsiniz!', bidNow: 'Şimdi Teklif Ver' },
+    fr: { happyWinners: 'Gagnants Heureux', totalSaved: 'Total économisé', avgSavings: 'Économie moyenne', realWinners: 'Vrais gagnants, vraies économies', ourWinners: 'Nos', subtitle: 'Ces utilisateurs ont fait de super affaires sur BidBlitz. Vous pourriez être le prochain!', bidNow: 'Enchérir' }
+  };
+  const stats = statsLabels[language] || statsLabels.de;
+
   return (
     <div className="min-h-screen pt-24 pb-12 px-4" data-testid="winners-page">
       <div className="max-w-7xl mx-auto">
@@ -212,16 +222,15 @@ export default function Winners() {
         <div className="text-center mb-12">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#FFD700]/10 border border-[#FFD700]/30 mb-6">
             <Sparkles className="w-4 h-4 text-[#FFD700]" />
-            <span className="text-[#FFD700] text-sm font-medium">Echte Gewinner, echte Ersparnisse</span>
+            <span className="text-[#FFD700] text-sm font-medium">{stats.realWinners}</span>
           </div>
           
           <h1 className="text-4xl sm:text-5xl font-bold text-white mb-4">
-            Unsere <span className="text-gradient">Gewinner</span>
+            {stats.ourWinners} <span className="text-gradient">{texts.title.replace('Gewinner-Galerie', 'Gewinner').replace('Winners Gallery', 'Winners').replace('Galeria e Fituesve', 'Fituesve').replace('Kazananlar Galerisi', 'Kazananlar').replace('Galerie des Gagnants', 'Gagnants')}</span>
           </h1>
           
           <p className="text-[#94A3B8] text-lg max-w-2xl mx-auto mb-8">
-            Diese Nutzer haben bei BidBlitz fantastische Schnäppchen gemacht. 
-            Der nächste Gewinner könnten Sie sein!
+            {stats.subtitle}
           </p>
           
           {/* Stats */}
@@ -231,7 +240,7 @@ export default function Winners() {
                 <Trophy className="w-8 h-8 text-[#FFD700]" />
                 <div className="text-left">
                   <p className="text-2xl font-bold text-white">{winners.length}+</p>
-                  <p className="text-[#94A3B8] text-sm">Glückliche Gewinner</p>
+                  <p className="text-[#94A3B8] text-sm">{stats.happyWinners}</p>
                 </div>
               </div>
             </div>
@@ -241,7 +250,7 @@ export default function Winners() {
                 <TrendingDown className="w-8 h-8 text-[#10B981]" />
                 <div className="text-left">
                   <p className="text-2xl font-bold text-white">€{totalSavings.toFixed(0)}</p>
-                  <p className="text-[#94A3B8] text-sm">Gesamt gespart</p>
+                  <p className="text-[#94A3B8] text-sm">{stats.totalSaved}</p>
                 </div>
               </div>
             </div>
@@ -251,7 +260,7 @@ export default function Winners() {
                 <Star className="w-8 h-8 text-[#F59E0B]" />
                 <div className="text-left">
                   <p className="text-2xl font-bold text-white">{avgSavings}%</p>
-                  <p className="text-[#94A3B8] text-sm">Durchschnittliche Ersparnis</p>
+                  <p className="text-[#94A3B8] text-sm">{stats.avgSavings}</p>
                 </div>
               </div>
             </div>
@@ -259,7 +268,7 @@ export default function Winners() {
           
           <Link to="/auctions">
             <Button className="btn-primary">
-              Jetzt bieten
+              {stats.bidNow}
               <ChevronRight className="w-4 h-4 ml-2" />
             </Button>
           </Link>
@@ -275,9 +284,9 @@ export default function Winners() {
         ) : winners.length === 0 ? (
           <div className="text-center py-16 glass-card rounded-2xl">
             <Trophy className="w-16 h-16 text-[#94A3B8] mx-auto mb-4 opacity-50" />
-            <h3 className="text-xl font-bold text-white mb-2">Noch keine Gewinner</h3>
+            <h3 className="text-xl font-bold text-white mb-2">{texts.noWinners}</h3>
             <p className="text-[#94A3B8] mb-6">
-              Seien Sie der Erste, der eine Auktion gewinnt!
+              {texts.firstWinner}
             </p>
             <Link to="/auctions">
               <Button className="btn-primary">Auktionen ansehen</Button>
