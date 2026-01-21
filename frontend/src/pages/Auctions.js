@@ -420,7 +420,7 @@ const AuctionCard = ({ auction, product, reminders, onToggleReminder, isLoggedIn
                     ? 'bg-yellow-500/20 text-yellow-400' 
                     : 'bg-gray-700/50 text-gray-400 hover:text-yellow-400'
                 }`}
-                title={hasReminder ? 'Erinnerung aktiv' : 'Erinnere mich'}
+                title={hasReminder ? texts.reminderActive : texts.remindMe}
                 data-testid={`reminder-btn-${auction.id}`}
               >
                 {hasReminder ? <Bell className="w-3 h-3" /> : <BellOff className="w-3 h-3" />}
@@ -431,7 +431,7 @@ const AuctionCard = ({ auction, product, reminders, onToggleReminder, isLoggedIn
             <span className="text-gray-400 text-[11px]">...</span>
           ) : isPaused && !isEnded ? (
             <span className="text-orange-400 text-[10px] font-bold bg-orange-500/20 px-2 py-0.5 rounded animate-pulse">
-              ⏸ PAUSIERT
+              ⏸ {texts.paused}
             </span>
           ) : (
             <div className={`flex text-[11px] font-mono font-bold ${isUrgent ? 'text-red-400' : 'text-yellow-400'}`}>
