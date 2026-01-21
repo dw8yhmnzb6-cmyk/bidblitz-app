@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
+import { usePageTranslations } from '../i18n/pageTranslations';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -11,6 +13,8 @@ import { toast } from 'sonner';
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 export default function Login() {
+  const { language } = useLanguage();
+  const texts = usePageTranslations(language);
   const { refreshUser } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
