@@ -569,6 +569,29 @@ async def delete_auction(auction_id: str, admin: dict = Depends(get_admin_user))
         raise HTTPException(status_code=404, detail="Auction not found")
     return {"message": "Auction deleted"}
 
+@router.put("/admin/auctions/{auction_id}/featured")
+async def set_featured_auction(auction_id: str, is_featured: bool = True, admin: dict = Depends(get_admin_user)):
+    """Set an auction as the featured/VIP auction (admin only)"""
+    auction = await db.auctions.find_one({"id": auction_id})
+    if not auction:
+        raise HTTPException(status_code=404, detail="Auktion nicht gefunden")
+    
+    # If setting as featured, unfeature all other auctions first
+    if is_featured:
+        await db.auctions.update_many({}, {"$set": {"is_featured": False}})
+    
+    # Update this auction
+    await db.auctions.update_one(
+        {"id": auction_id},
+        {"$set": {"is_featured": is_featured}}
+    )
+    
+    return {
+        "message": f"Auktion {'als VIP markiert' if is_featured else 'VIP-Status entfernt'}",
+        "auction_id": auction_id,
+        "is_featured": is_featured
+    }
+
 @router.post("/admin/auctions/{auction_id}/restart")
 async def restart_auction(
     auction_id: str, 
