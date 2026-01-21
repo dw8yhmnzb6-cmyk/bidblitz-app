@@ -362,33 +362,41 @@ export default function BuyBids() {
 
         {/* Info Section */}
         <div className="mt-16 glass-card rounded-2xl p-8">
-          <h2 className="text-2xl font-bold text-white mb-6 text-center">Wie funktionieren Gebote?</h2>
+          <h2 className="text-2xl font-bold text-white mb-6 text-center">
+            {language === 'en' ? 'How do bids work?' : language === 'sq' ? 'Si funksionojnë ofertat?' : language === 'tr' ? 'Teklifler nasıl çalışır?' : language === 'fr' ? 'Comment fonctionnent les enchères?' : 'Wie funktionieren Gebote?'}
+          </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="text-center">
               <div className="w-12 h-12 rounded-full bg-[#7C3AED]/20 flex items-center justify-center mx-auto mb-4">
                 <span className="text-xl font-bold text-[#7C3AED]">1</span>
               </div>
-              <h3 className="font-bold text-white mb-2">Gebot platzieren</h3>
+              <h3 className="font-bold text-white mb-2">
+                {language === 'en' ? 'Place bid' : language === 'sq' ? 'Vendos ofertë' : language === 'tr' ? 'Teklif ver' : language === 'fr' ? 'Placer une enchère' : 'Gebot platzieren'}
+              </h3>
               <p className="text-[#94A3B8] text-sm">
-                Jedes Mal, wenn Sie bieten, wird ein Gebot von Ihrem Konto abgezogen.
+                {language === 'en' ? 'Each time you bid, one bid is deducted from your account.' : language === 'sq' ? 'Çdo herë që ofroni, një ofertë zbritet nga llogaria juaj.' : language === 'tr' ? 'Her teklif verdiğinizde hesabınızdan bir teklif düşülür.' : language === 'fr' ? 'Chaque fois que vous enchérissez, une enchère est déduite de votre compte.' : 'Jedes Mal, wenn Sie bieten, wird ein Gebot von Ihrem Konto abgezogen.'}
               </p>
             </div>
             <div className="text-center">
               <div className="w-12 h-12 rounded-full bg-[#06B6D4]/20 flex items-center justify-center mx-auto mb-4">
                 <span className="text-xl font-bold text-[#06B6D4]">2</span>
               </div>
-              <h3 className="font-bold text-white mb-2">Preis erhöht sich</h3>
+              <h3 className="font-bold text-white mb-2">
+                {language === 'en' ? 'Price increases' : language === 'sq' ? 'Çmimi rritet' : language === 'tr' ? 'Fiyat artar' : language === 'fr' ? 'Le prix augmente' : 'Preis erhöht sich'}
+              </h3>
               <p className="text-[#94A3B8] text-sm">
-                Der Auktionspreis steigt um wenige Cent und der Timer wird zurückgesetzt.
+                {language === 'en' ? 'The auction price increases by a few cents and the timer is reset.' : language === 'sq' ? 'Çmimi i ankandit rritet me disa cent dhe kohëmatësi rivendoset.' : language === 'tr' ? 'Açık artırma fiyatı birkaç sent artar ve zamanlayıcı sıfırlanır.' : language === 'fr' ? 'Le prix de la vente augmente de quelques centimes et le minuteur est réinitialisé.' : 'Der Auktionspreis steigt um wenige Cent und der Timer wird zurückgesetzt.'}
               </p>
             </div>
             <div className="text-center">
               <div className="w-12 h-12 rounded-full bg-[#10B981]/20 flex items-center justify-center mx-auto mb-4">
                 <span className="text-xl font-bold text-[#10B981]">3</span>
               </div>
-              <h3 className="font-bold text-white mb-2">Gewinnen</h3>
+              <h3 className="font-bold text-white mb-2">
+                {language === 'en' ? 'Win' : language === 'sq' ? 'Fitoni' : language === 'tr' ? 'Kazan' : language === 'fr' ? 'Gagnez' : 'Gewinnen'}
+              </h3>
               <p className="text-[#94A3B8] text-sm">
-                Der letzte Bieter gewinnt das Produkt zum aktuellen Auktionspreis.
+                {language === 'en' ? 'The last bidder wins the product at the current auction price.' : language === 'sq' ? 'Ofertuesi i fundit fiton produktin me çmimin aktual të ankandit.' : language === 'tr' ? 'Son teklif veren ürünü mevcut açık artırma fiyatından kazanır.' : language === 'fr' ? 'Le dernier enchérisseur remporte le produit au prix actuel.' : 'Der letzte Bieter gewinnt das Produkt zum aktuellen Auktionspreis.'}
               </p>
             </div>
           </div>
@@ -409,9 +417,9 @@ export default function BuyBids() {
               <X className="w-5 h-5" />
             </button>
             
-            <h2 className="text-xl font-bold text-white mb-2">Zahlungsmethode wählen</h2>
+            <h2 className="text-xl font-bold text-white mb-2">{texts.paymentMethod}</h2>
             <p className="text-[#94A3B8] text-sm mb-6">
-              {selectedPackage.bids} Gebote für €{selectedPackage.price.toFixed(2)}
+              {selectedPackage.bids} {texts.bids} {language === 'en' ? 'for' : language === 'sq' ? 'për' : language === 'tr' ? 'için' : language === 'fr' ? 'pour' : 'für'} €{selectedPackage.price.toFixed(2)}
             </p>
 
             <div className="space-y-3 mb-6">
@@ -428,8 +436,8 @@ export default function BuyBids() {
                   <CreditCard className="w-6 h-6 text-[#635BFF]" />
                 </div>
                 <div className="flex-1 text-left">
-                  <p className="text-white font-medium">Karte / Klarna / SEPA</p>
-                  <p className="text-[#94A3B8] text-xs">Kreditkarte, Klarna, SEPA Lastschrift, Google Pay, Apple Pay</p>
+                  <p className="text-white font-medium">{texts.card} / Klarna / SEPA</p>
+                  <p className="text-[#94A3B8] text-xs">{language === 'en' ? 'Credit card, Klarna, SEPA, Google Pay, Apple Pay' : 'Kreditkarte, Klarna, SEPA Lastschrift, Google Pay, Apple Pay'}</p>
                 </div>
                 {paymentMethod === 'stripe' && (
                   <Check className="w-5 h-5 text-[#7C3AED]" />
@@ -452,11 +460,11 @@ export default function BuyBids() {
                   <Bitcoin className="w-6 h-6 text-[#F7931A]" />
                 </div>
                 <div className="flex-1 text-left">
-                  <p className="text-white font-medium">Kryptowährung</p>
+                  <p className="text-white font-medium">{texts.crypto}</p>
                   {paymentMethods.crypto ? (
-                    <p className="text-[#94A3B8] text-xs">Bitcoin, Ethereum, Litecoin, USDC, Dogecoin & mehr</p>
+                    <p className="text-[#94A3B8] text-xs">Bitcoin, Ethereum, Litecoin, USDC, Dogecoin & more</p>
                   ) : (
-                    <p className="text-orange-400 text-xs">Derzeit nicht verfügbar</p>
+                    <p className="text-orange-400 text-xs">{texts.cryptoUnavailable}</p>
                   )}
                 </div>
                 {paymentMethod === 'crypto' && paymentMethods.crypto && (
@@ -471,22 +479,22 @@ export default function BuyBids() {
               className="w-full py-3 h-auto btn-bid"
             >
               {purchasing ? (
-                'Wird geladen...'
+                texts.processing
               ) : paymentMethod === 'crypto' ? (
                 <>
                   <Bitcoin className="w-4 h-4 mr-2" />
-                  Mit Krypto bezahlen
+                  {language === 'en' ? 'Pay with Crypto' : language === 'sq' ? 'Paguaj me Kripto' : language === 'tr' ? 'Kripto ile Öde' : language === 'fr' ? 'Payer en Crypto' : 'Mit Krypto bezahlen'}
                 </>
               ) : (
                 <>
                   <CreditCard className="w-4 h-4 mr-2" />
-                  Weiter zur Zahlung
+                  {language === 'en' ? 'Continue to Payment' : language === 'sq' ? 'Vazhdo te Pagesa' : language === 'tr' ? 'Ödemeye Devam Et' : language === 'fr' ? 'Continuer vers le Paiement' : 'Weiter zur Zahlung'}
                 </>
               )}
             </Button>
 
             <p className="text-[#94A3B8] text-xs text-center mt-4">
-              Sichere Zahlung über {paymentMethod === 'crypto' ? 'Coinbase Commerce' : 'Stripe'}
+              {texts.securePayment} {paymentMethod === 'crypto' ? 'Coinbase Commerce' : ''}
             </p>
           </div>
         </div>
