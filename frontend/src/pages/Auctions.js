@@ -567,15 +567,19 @@ export default function Auctions() {
                     {/* Timer */}
                     <div className="bg-black/30 rounded-lg px-4 py-2">
                       <p className="text-gray-400 text-xs text-center">Endet in</p>
-                      <FeaturedTimer endTime={featuredAuction.end_time} serverTimeOffset={serverTimeOffset} />
+                      <FeaturedTimer endTime={featuredAuction.end_time} serverTimeOffset={serverTimeOffset} isPaused={!businessHours.is_open} />
                     </div>
                   </div>
                 </div>
                 
                 {/* Bid Button */}
                 <div className="flex-shrink-0">
-                  <button className="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 text-black font-bold py-3 px-8 rounded-xl text-lg transition-all transform hover:scale-105 shadow-lg">
-                    JETZT BIETEN
+                  <button className={`font-bold py-3 px-8 rounded-xl text-lg transition-all transform shadow-lg ${
+                    businessHours.is_open 
+                      ? 'bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 text-black hover:scale-105' 
+                      : 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                  }`} disabled={!businessHours.is_open}>
+                    {businessHours.is_open ? 'JETZT BIETEN' : '⏸ PAUSIERT'}
                   </button>
                 </div>
               </div>
