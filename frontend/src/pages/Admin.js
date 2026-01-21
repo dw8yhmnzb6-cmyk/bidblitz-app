@@ -175,6 +175,9 @@ export default function Admin() {
         setStaff(staffRes.data);
         setRoles(rolesRes.data);
         setPermissions(permsRes.data);
+      } else if (activeTab === 'pages') {
+        const res = await axios.get(`${API}/pages`);
+        setPages(res.data);
       }
     } catch (error) {
       console.error('Error fetching data:', error);
