@@ -147,12 +147,12 @@ export default function Login() {
               <div className="space-y-4">
                 <div className="text-center p-4 rounded-xl bg-[#7C3AED]/10 border border-[#7C3AED]/30">
                   <Shield className="w-12 h-12 text-[#7C3AED] mx-auto mb-3" />
-                  <p className="text-white font-medium">2FA-Code erforderlich</p>
-                  <p className="text-[#94A3B8] text-sm">Geben Sie den Code aus Ihrer Authenticator-App ein</p>
+                  <p className="text-white font-medium">{texts.twoFactorAuth}</p>
+                  <p className="text-[#94A3B8] text-sm">{texts.enter2FACode}</p>
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="twoFactorCode" className="text-white">6-stelliger Code</Label>
+                  <Label htmlFor="twoFactorCode" className="text-white">{texts.enter2FACode}</Label>
                   <Input
                     id="twoFactorCode"
                     type="text"
@@ -175,7 +175,7 @@ export default function Login() {
                   }}
                   className="text-[#94A3B8] hover:text-white text-sm underline w-full text-center"
                 >
-                  Zurück zur Anmeldung
+                  {texts.back}
                 </button>
               </div>
             )}
@@ -189,12 +189,12 @@ export default function Login() {
               {loading ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Wird angemeldet...
+                  {texts.loggingIn}
                 </>
               ) : requires2FA ? (
-                'Code bestätigen'
+                texts.verify2FA
               ) : (
-                'Anmelden'
+                texts.loginButton
               )}
             </Button>
           </form>
@@ -202,9 +202,9 @@ export default function Login() {
           {!requires2FA && (
             <div className="mt-6 text-center">
               <p className="text-[#94A3B8]">
-                Noch kein Konto?{' '}
+                {texts.noAccount}{' '}
                 <Link to="/register" className="text-[#7C3AED] hover:underline font-medium">
-                  Jetzt registrieren
+                  {texts.registerNow}
                 </Link>
               </p>
             </div>
