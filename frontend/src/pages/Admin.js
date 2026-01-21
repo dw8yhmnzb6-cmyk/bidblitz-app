@@ -1379,6 +1379,147 @@ export default function Admin() {
             </div>
           )}
 
+          {/* VIP Auctions Tab */}
+          {activeTab === 'vip-auctions' && (
+            <div className="space-y-8">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Crown className="w-8 h-8 text-yellow-400" />
+                  <div>
+                    <h1 className="text-2xl font-bold text-white">VIP Auktionen verwalten</h1>
+                    <p className="text-gray-400 text-sm">Exklusive Auktionen nur für VIP-Mitglieder</p>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Info Box */}
+              <div className="glass-card rounded-xl p-4 border-l-4 border-yellow-500">
+                <div className="flex items-start gap-3">
+                  <Crown className="w-6 h-6 text-yellow-400 flex-shrink-0 mt-1" />
+                  <div>
+                    <h4 className="text-white font-semibold mb-1">VIP-Only Auktionen</h4>
+                    <p className="text-[#94A3B8] text-sm">
+                      VIP-Only Auktionen sind nur für zahlende VIP-Mitglieder sichtbar und bietbar. 
+                      Diese exklusiven Auktionen haben weniger Konkurrenz und höhere Gewinnchancen.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Current VIP Auctions */}
+              <div className="glass-card rounded-xl p-6">
+                <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                  <Star className="w-5 h-5 text-yellow-400" />
+                  Aktuelle VIP-Auktionen ({vipAuctions.length})
+                </h3>
+                
+                {vipAuctions.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-[#181824]">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-[#94A3B8] font-medium">Produkt</th>
+                          <th className="px-4 py-3 text-left text-[#94A3B8] font-medium">Preis</th>
+                          <th className="px-4 py-3 text-left text-[#94A3B8] font-medium">Gebote</th>
+                          <th className="px-4 py-3 text-left text-[#94A3B8] font-medium">Status</th>
+                          <th className="px-4 py-3 text-left text-[#94A3B8] font-medium">Aktionen</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-white/10">
+                        {vipAuctions.map((auction) => (
+                          <tr key={auction.id} className="hover:bg-white/5">
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-3">
+                                <img 
+                                  src={auction.product?.image_url || '/placeholder.png'} 
+                                  alt={auction.product?.name}
+                                  className="w-12 h-12 object-contain bg-white/5 rounded"
+                                />
+                                <div>
+                                  <p className="text-white font-medium">{auction.product?.name || 'N/A'}</p>
+                                  <p className="text-gray-400 text-xs">UVP: €{auction.product?.retail_price?.toFixed(2)}</p>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-[#06B6D4] font-mono">€{auction.current_price?.toFixed(2)}</td>
+                            <td className="px-4 py-3 text-white">{auction.total_bids}</td>
+                            <td className="px-4 py-3">
+                              <span className={`px-2 py-1 rounded-full text-xs font-bold ${
+                                auction.status === 'active' ? 'bg-[#10B981]/20 text-[#10B981]' : 'bg-[#EF4444]/20 text-[#EF4444]'
+                              }`}>
+                                {auction.status === 'active' ? 'Aktiv' : 'Beendet'}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-2">
+                                <Button 
+                                  size="sm" 
+                                  variant="ghost" 
+                                  className="text-red-400 hover:bg-red-400/10"
+                                  onClick={() => handleSetVipOnly(auction.id, true)}
+                                  title="VIP-Status entfernen"
+                                >
+                                  <X className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p className="text-gray-400 text-center py-8">Keine VIP-Auktionen vorhanden</p>
+                )}
+              </div>
+
+              {/* Add Auction to VIP */}
+              <div className="glass-card rounded-xl p-6">
+                <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                  <Plus className="w-5 h-5 text-green-400" />
+                  Auktion zu VIP hinzufügen
+                </h3>
+                <p className="text-gray-400 text-sm mb-4">Wählen Sie eine normale Auktion aus, um sie als VIP-Only zu markieren:</p>
+                
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-[#181824]">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-[#94A3B8] font-medium">Produkt</th>
+                        <th className="px-4 py-3 text-left text-[#94A3B8] font-medium">Preis</th>
+                        <th className="px-4 py-3 text-left text-[#94A3B8] font-medium">Status</th>
+                        <th className="px-4 py-3 text-left text-[#94A3B8] font-medium">Aktion</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/10">
+                      {(auctions || []).filter(a => !a.is_vip_only && a.status === 'active').slice(0, 10).map((auction) => (
+                        <tr key={auction.id} className="hover:bg-white/5">
+                          <td className="px-4 py-3 text-white">{auction.product?.name || 'N/A'}</td>
+                          <td className="px-4 py-3 text-[#06B6D4] font-mono">€{auction.current_price?.toFixed(2)}</td>
+                          <td className="px-4 py-3">
+                            <span className="px-2 py-1 rounded-full text-xs font-bold bg-[#10B981]/20 text-[#10B981]">
+                              Aktiv
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <Button 
+                              size="sm"
+                              className="bg-yellow-500 hover:bg-yellow-400 text-black"
+                              onClick={() => handleSetVipOnly(auction.id, false)}
+                            >
+                              <Crown className="w-4 h-4 mr-1" />
+                              Als VIP markieren
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Users Tab */}
           {activeTab === 'users' && (
             <div className="space-y-8">
