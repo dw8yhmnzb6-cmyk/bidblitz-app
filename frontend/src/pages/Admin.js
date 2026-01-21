@@ -52,6 +52,10 @@ export default function Admin() {
   const [roles, setRoles] = useState({});
   const [permissions, setPermissions] = useState({});
   const [loading, setLoading] = useState(true);
+  const [pages, setPages] = useState([]);
+  const [selectedPage, setSelectedPage] = useState(null);
+  const [pageContent, setPageContent] = useState('');
+  const [pageTitle, setPageTitle] = useState('');
 
   // Edit states
   const [editingProduct, setEditingProduct] = useState(null);
