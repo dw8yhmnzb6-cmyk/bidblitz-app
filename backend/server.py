@@ -272,6 +272,66 @@ async def bot_last_second_bidder():
     logger.info("Bot bidder stopped")
 
 
+async def auction_auto_restart_processor():
+    """Background task - automatically restart ended auctions with auto_restart config"""
+    global bot_task_running
+    
+    logger.info("Auction auto-restart processor started")
+    
+    while bot_task_running:
+        try:
+            # Find ended auctions with auto_restart enabled
+            ended_auctions = await db.auctions.find({
+                "status": "ended",
+                "auto_restart.enabled": True
+            }, {"_id": 0}).to_list(100)
+            
+            for auction in ended_auctions:
+                try:
+                    auto_restart = auction.get("auto_restart", {})
+                    duration_minutes = auto_restart.get("duration_minutes", 10)
+                    bot_target = auto_restart.get("bot_target_price")
+                    
+                    now = datetime.now(timezone.utc)
+                    new_end_time = now + timedelta(minutes=duration_minutes)
+                    
+                    # Reset auction to active state
+                    update_data = {
+                        "status": "active",
+                        "start_time": now.isoformat(),
+                        "end_time": new_end_time.isoformat(),
+                        "current_price": 0.01,
+                        "total_bids": 0,
+                        "last_bidder_id": None,
+                        "last_bidder_name": None,
+                        "winner_id": None,
+                        "winner_name": None,
+                        "bid_history": [],
+                        "ended_at": None,
+                        "final_price": None
+                    }
+                    
+                    # Set bot target price if configured
+                    if bot_target and bot_target > 0:
+                        update_data["bot_target_price"] = bot_target
+                    
+                    await db.auctions.update_one({"id": auction["id"]}, {"$set": update_data})
+                    
+                    logger.info(f"Auto-restarted auction {auction['id'][:8]}... for {duration_minutes} min" + 
+                               (f" with bot target €{bot_target}" if bot_target else ""))
+                    
+                except Exception as e:
+                    logger.error(f"Auto-restart error for {auction.get('id')}: {e}")
+            
+            await asyncio.sleep(10)  # Check every 10 seconds
+            
+        except Exception as e:
+            logger.error(f"Auto-restart processor error: {e}")
+            await asyncio.sleep(30)
+    
+    logger.info("Auto-restart processor stopped")
+
+
 async def auction_reminder_processor():
     """Background task - process auction reminders and send push notifications"""
     global bot_task_running
