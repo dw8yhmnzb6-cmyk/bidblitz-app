@@ -272,19 +272,19 @@ export default function Contact() {
                   onChange={handleChange}
                   className="w-full px-4 py-3 rounded-lg bg-[#0d2538] border border-gray-700 text-white focus:outline-none focus:border-[#FFD700]"
                 >
-                  <option value="">Bitte wählen...</option>
-                  <option value="general">Allgemeine Anfrage</option>
-                  <option value="order">Bestellung / Versand</option>
-                  <option value="payment">Zahlung / Gebote</option>
-                  <option value="technical">Technisches Problem</option>
-                  <option value="feedback">Feedback / Vorschlag</option>
-                  <option value="other">Sonstiges</option>
+                  <option value="">{texts.selectSubject}</option>
+                  <option value="general">{texts.generalInquiry}</option>
+                  <option value="order">{language === 'en' ? 'Order / Shipping' : language === 'sq' ? 'Porosi / Dërgesë' : language === 'tr' ? 'Sipariş / Kargo' : language === 'fr' ? 'Commande / Livraison' : 'Bestellung / Versand'}</option>
+                  <option value="payment">{language === 'en' ? 'Payment / Bids' : language === 'sq' ? 'Pagesa / Oferta' : language === 'tr' ? 'Ödeme / Teklifler' : language === 'fr' ? 'Paiement / Enchères' : 'Zahlung / Gebote'}</option>
+                  <option value="technical">{texts.technicalSupport}</option>
+                  <option value="feedback">{language === 'en' ? 'Feedback / Suggestion' : language === 'sq' ? 'Koment / Sugjerim' : language === 'tr' ? 'Geri Bildirim / Öneri' : language === 'fr' ? 'Commentaire / Suggestion' : 'Feedback / Vorschlag'}</option>
+                  <option value="other">{texts.other}</option>
                 </select>
               </div>
               
               <div className="mb-6">
                 <label className="block text-gray-400 text-sm mb-2">
-                  Nachricht <span className="text-red-500">*</span>
+                  {texts.message} <span className="text-red-500">*</span>
                 </label>
                 <textarea
                   name="message"
@@ -292,7 +292,7 @@ export default function Contact() {
                   onChange={handleChange}
                   rows={5}
                   className="w-full px-4 py-3 rounded-lg bg-[#0d2538] border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:border-[#FFD700] resize-none"
-                  placeholder="Wie können wir Ihnen helfen?"
+                  placeholder={texts.yourMessagePlaceholder}
                   required
                 />
               </div>
@@ -305,18 +305,18 @@ export default function Contact() {
                 {submitting ? (
                   <>
                     <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-black mr-2" />
-                    Wird gesendet...
+                    {texts.sending}
                   </>
                 ) : (
                   <>
                     <Send className="w-5 h-5 mr-2" />
-                    Nachricht senden
+                    {texts.sendMessage}
                   </>
                 )}
               </Button>
               
               <p className="text-gray-500 text-xs mt-4 text-center">
-                Mit dem Absenden stimmen Sie unserer Datenschutzerklärung zu.
+                {language === 'en' ? 'By submitting, you agree to our Privacy Policy.' : language === 'sq' ? 'Duke dërguar, pranoni Politikën tonë të Privatësisë.' : language === 'tr' ? 'Göndererek Gizlilik Politikamızı kabul ediyorsunuz.' : language === 'fr' ? 'En soumettant, vous acceptez notre Politique de Confidentialité.' : 'Mit dem Absenden stimmen Sie unserer Datenschutzerklärung zu.'}
               </p>
             </form>
           </div>
