@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import axios from 'axios';
 import { 
   Crown, 
@@ -16,6 +17,135 @@ import { Button } from '../components/ui/button';
 import { toast } from 'sonner';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+
+// VIP page translations
+const vipTexts = {
+  de: {
+    title: "VIP-Mitgliedschaft",
+    subtitle: "Exklusive Vorteile für echte Schnäppchenjäger",
+    currentPlan: "Aktueller Plan",
+    freeMember: "Gratis-Mitglied",
+    vipMember: "VIP-Mitglied",
+    validUntil: "Gültig bis",
+    choosePlan: "Plan wählen",
+    month: "Monat",
+    popular: "Beliebt",
+    bestValue: "Bester Wert",
+    subscribe: "Abonnieren",
+    subscribing: "Wird abonniert...",
+    benefits: "Ihre Vorteile",
+    bonusBids: "Bonus-Gebote monatlich",
+    vipAuctions: "Zugang zu VIP-Auktionen",
+    prioritySupport: "Prioritäts-Support",
+    exclusiveOffers: "Exklusive Angebote",
+    noAutoRenewal: "Keine automatische Verlängerung",
+    cancelAnytime: "Jederzeit kündbar",
+    paymentCanceled: "Zahlung abgebrochen",
+    subscriptionActive: "VIP-Mitgliedschaft aktiviert!",
+    loginRequired: "Bitte melden Sie sich an",
+    perMonth: "pro Monat"
+  },
+  en: {
+    title: "VIP Membership",
+    subtitle: "Exclusive benefits for real bargain hunters",
+    currentPlan: "Current Plan",
+    freeMember: "Free Member",
+    vipMember: "VIP Member",
+    validUntil: "Valid until",
+    choosePlan: "Choose Plan",
+    month: "Month",
+    popular: "Popular",
+    bestValue: "Best Value",
+    subscribe: "Subscribe",
+    subscribing: "Subscribing...",
+    benefits: "Your Benefits",
+    bonusBids: "Bonus bids monthly",
+    vipAuctions: "Access to VIP auctions",
+    prioritySupport: "Priority support",
+    exclusiveOffers: "Exclusive offers",
+    noAutoRenewal: "No automatic renewal",
+    cancelAnytime: "Cancel anytime",
+    paymentCanceled: "Payment canceled",
+    subscriptionActive: "VIP membership activated!",
+    loginRequired: "Please log in",
+    perMonth: "per month"
+  },
+  sq: {
+    title: "Anëtarësimi VIP",
+    subtitle: "Përfitime ekskluzive për gjuetarët e vërtetë të ofertave",
+    currentPlan: "Plani Aktual",
+    freeMember: "Anëtar Falas",
+    vipMember: "Anëtar VIP",
+    validUntil: "I vlefshëm deri më",
+    choosePlan: "Zgjidhni Planin",
+    month: "Muaj",
+    popular: "Popullor",
+    bestValue: "Vlera më e Mirë",
+    subscribe: "Abonohu",
+    subscribing: "Duke u abonuar...",
+    benefits: "Përfitimet Tuaja",
+    bonusBids: "Oferta bonus mujore",
+    vipAuctions: "Qasje në ankande VIP",
+    prioritySupport: "Mbështetje me prioritet",
+    exclusiveOffers: "Oferta ekskluzive",
+    noAutoRenewal: "Pa rinovim automatik",
+    cancelAnytime: "Anuloni në çdo kohë",
+    paymentCanceled: "Pagesa u anulua",
+    subscriptionActive: "Anëtarësimi VIP u aktivizua!",
+    loginRequired: "Ju lutem hyni",
+    perMonth: "për muaj"
+  },
+  tr: {
+    title: "VIP Üyelik",
+    subtitle: "Gerçek fırsat avcıları için özel avantajlar",
+    currentPlan: "Mevcut Plan",
+    freeMember: "Ücretsiz Üye",
+    vipMember: "VIP Üye",
+    validUntil: "Geçerlilik",
+    choosePlan: "Plan Seçin",
+    month: "Ay",
+    popular: "Popüler",
+    bestValue: "En İyi Değer",
+    subscribe: "Abone Ol",
+    subscribing: "Abone olunuyor...",
+    benefits: "Avantajlarınız",
+    bonusBids: "Aylık bonus teklifler",
+    vipAuctions: "VIP açık artırmalara erişim",
+    prioritySupport: "Öncelikli destek",
+    exclusiveOffers: "Özel teklifler",
+    noAutoRenewal: "Otomatik yenileme yok",
+    cancelAnytime: "İstediğiniz zaman iptal edin",
+    paymentCanceled: "Ödeme iptal edildi",
+    subscriptionActive: "VIP üyelik aktifleştirildi!",
+    loginRequired: "Lütfen giriş yapın",
+    perMonth: "aylık"
+  },
+  fr: {
+    title: "Adhésion VIP",
+    subtitle: "Avantages exclusifs pour les vrais chasseurs de bonnes affaires",
+    currentPlan: "Plan Actuel",
+    freeMember: "Membre Gratuit",
+    vipMember: "Membre VIP",
+    validUntil: "Valable jusqu'au",
+    choosePlan: "Choisir un Plan",
+    month: "Mois",
+    popular: "Populaire",
+    bestValue: "Meilleure Valeur",
+    subscribe: "S'abonner",
+    subscribing: "Abonnement...",
+    benefits: "Vos Avantages",
+    bonusBids: "Enchères bonus mensuelles",
+    vipAuctions: "Accès aux enchères VIP",
+    prioritySupport: "Support prioritaire",
+    exclusiveOffers: "Offres exclusives",
+    noAutoRenewal: "Pas de renouvellement automatique",
+    cancelAnytime: "Annulez à tout moment",
+    paymentCanceled: "Paiement annulé",
+    subscriptionActive: "Adhésion VIP activée!",
+    loginRequired: "Veuillez vous connecter",
+    perMonth: "par mois"
+  }
+};
 
 const VIPBadge = ({ color, size = 'md' }) => {
   const sizes = {
@@ -36,6 +166,8 @@ const VIPBadge = ({ color, size = 'md' }) => {
 
 export default function VIP() {
   const { user, token } = useAuth();
+  const { language } = useLanguage();
+  const texts = vipTexts[language] || vipTexts.de;
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [plans, setPlans] = useState([]);
@@ -54,7 +186,7 @@ export default function VIP() {
     
     // Handle cancellation
     if (searchParams.get('canceled')) {
-      toast.error('Zahlung abgebrochen');
+      toast.error(texts.paymentCanceled);
     }
   }, [searchParams, token]);
 
