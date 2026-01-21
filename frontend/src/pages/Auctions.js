@@ -516,7 +516,7 @@ const AuctionCard = ({ auction, product, reminders, onToggleReminder, isLoggedIn
 };
 
 export default function Auctions() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { user, token } = useAuth();
   const [auctions, setAuctions] = useState([]);
   const [products, setProducts] = useState({});
@@ -527,6 +527,9 @@ export default function Auctions() {
   const [statusFilter, setStatusFilter] = useState('active');
   const [searchQuery, setSearchQuery] = useState('');
   const [serverTimeOffset, setServerTimeOffset] = useState(0);
+  
+  // Get texts for current language
+  const texts = auctionTranslations[language] || auctionTranslations.de;
 
   const fetchAuctions = useCallback(async () => {
     try {
