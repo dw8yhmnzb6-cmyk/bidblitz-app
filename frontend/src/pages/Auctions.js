@@ -326,7 +326,7 @@ const parseEndTime = (endTimeStr) => {
 };
 
 // Compact Auction Card for Mobile
-const AuctionCard = ({ auction, product, reminders, onToggleReminder, isLoggedIn, serverTimeOffset, isPaused }) => {
+const AuctionCard = ({ auction, product, reminders, onToggleReminder, isLoggedIn, serverTimeOffset, isPaused, texts }) => {
   const [timeLeft, setTimeLeft] = useState({ h: 0, m: 0, s: 0, ended: false, loading: true });
   const hasReminder = reminders?.includes(auction.id);
   
