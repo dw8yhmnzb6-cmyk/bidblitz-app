@@ -615,6 +615,24 @@ async def set_featured_auction(auction_id: str, is_featured: bool = True, admin:
         "is_featured": is_featured
     }
 
+@router.put("/admin/auctions/{auction_id}/vip-only")
+async def set_vip_only_auction(auction_id: str, is_vip_only: bool = True, admin: dict = Depends(get_admin_user)):
+    """Set an auction as VIP-only (only VIP members can bid)"""
+    auction = await db.auctions.find_one({"id": auction_id})
+    if not auction:
+        raise HTTPException(status_code=404, detail="Auktion nicht gefunden")
+    
+    await db.auctions.update_one(
+        {"id": auction_id},
+        {"$set": {"is_vip_only": is_vip_only}}
+    )
+    
+    return {
+        "message": f"Auktion {'als VIP-Only markiert' if is_vip_only else 'VIP-Only Status entfernt'}",
+        "auction_id": auction_id,
+        "is_vip_only": is_vip_only
+    }
+
 @router.post("/admin/auctions/{auction_id}/restart")
 async def restart_auction(
     auction_id: str, 
