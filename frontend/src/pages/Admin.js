@@ -1577,13 +1577,22 @@ export default function Admin() {
                             <tr key={auction.id} className="hover:bg-white/5">
                               <td className="px-4 py-3">
                                 <div className="flex items-center gap-3">
-                                  <img 
-                                    src={auction.product?.image_url || '/placeholder.png'} 
-                                    alt={auction.product?.name}
-                                    className="w-12 h-12 object-contain bg-white/5 rounded"
-                                  />
+                                  <div className="relative">
+                                    <img 
+                                      src={auction.product?.image_url || '/placeholder.png'} 
+                                      alt={auction.product?.name}
+                                      className="w-12 h-12 object-contain bg-white/5 rounded"
+                                    />
+                                    {/* VIP Badge on image */}
+                                    <div className="absolute -top-1 -left-1 bg-gradient-to-r from-yellow-500 to-amber-400 rounded-full p-0.5">
+                                      <Crown className="w-3 h-3 text-black" />
+                                    </div>
+                                  </div>
                                   <div>
-                                    <p className="text-white font-medium">{auction.product?.name || 'N/A'}</p>
+                                    <div className="flex items-center gap-2">
+                                      <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-gradient-to-r from-yellow-500 to-amber-400 text-black">VIP</span>
+                                      <p className="text-white font-medium">{auction.product?.name || 'N/A'}</p>
+                                    </div>
                                     <p className="text-gray-400 text-xs">UVP: €{auction.product?.retail_price?.toFixed(2)}</p>
                                   </div>
                                 </div>
