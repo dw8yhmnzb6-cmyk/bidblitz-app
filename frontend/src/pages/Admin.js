@@ -125,6 +125,15 @@ export default function Admin() {
         ]);
         setAuctions(auctionsRes.data);
         setProducts(productsRes.data);
+      } else if (activeTab === 'vip-auctions') {
+        const [vipRes, productsRes, allAuctionsRes] = await Promise.all([
+          axios.get(`${API}/auctions/vip-only`),
+          axios.get(`${API}/products`),
+          axios.get(`${API}/auctions`)
+        ]);
+        setVipAuctions(vipRes.data);
+        setProducts(productsRes.data);
+        setAuctions(allAuctionsRes.data);
       } else if (activeTab === 'users') {
         const res = await axios.get(`${API}/admin/users`, { headers });
         setUsers(res.data);
