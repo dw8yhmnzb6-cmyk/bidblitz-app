@@ -674,11 +674,11 @@ export default function Auctions() {
             <div className="flex items-center gap-3">
               <Clock className="w-6 h-6 text-orange-400" />
               <div>
-                <p className="text-white font-semibold">Auktionen pausiert</p>
+                <p className="text-white font-semibold">{texts.auctionsPaused}</p>
                 <p className="text-gray-300 text-sm">
-                  Unsere Auktionen laufen täglich von {businessHours.business_start} bis {businessHours.business_end} Uhr.
+                  {texts.businessHoursInfo} {businessHours.business_start} {texts.to} {businessHours.business_end}.
                   {businessHours.next_opening && (
-                    <span className="text-orange-400 font-medium"> Nächste Öffnung: {new Date(businessHours.next_opening).toLocaleString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr</span>
+                    <span className="text-orange-400 font-medium"> {texts.nextOpening}: {new Date(businessHours.next_opening).toLocaleTimeString(language === 'de' ? 'de-DE' : 'en-US', { hour: '2-digit', minute: '2-digit' })}</span>
                   )}
                 </p>
               </div>
@@ -693,7 +693,7 @@ export default function Auctions() {
               {/* VIP Badge */}
               <div className="absolute top-3 left-3 z-10">
                 <span className="bg-gradient-to-r from-yellow-500 to-orange-500 text-black text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1">
-                  <span>⭐</span> VIP AUKTION
+                  <span>⭐</span> {texts.vipAuction}
                 </span>
               </div>
               
@@ -720,26 +720,26 @@ export default function Auctions() {
                     {featuredAuction.product?.name}
                   </h2>
                   <p className="text-gray-400 text-sm mb-4 line-clamp-2">
-                    {featuredAuction.product?.description || 'Premium Produkt zum Schnäppchenpreis!'}
+                    {featuredAuction.product?.description || ''}
                   </p>
                   
                   <div className="flex flex-wrap items-center justify-center md:justify-start gap-4">
                     {/* Current Price */}
                     <div className="text-center">
-                      <p className="text-gray-400 text-xs">Aktueller Preis</p>
+                      <p className="text-gray-400 text-xs">{texts.currentPrice}</p>
                       <p className="text-3xl font-bold text-cyan-400">€{featuredAuction.current_price?.toFixed(2)}</p>
                     </div>
                     
                     {/* Retail Price */}
                     <div className="text-center">
-                      <p className="text-gray-400 text-xs">UVP</p>
+                      <p className="text-gray-400 text-xs">{texts.rrp}</p>
                       <p className="text-lg text-gray-500 line-through">€{featuredAuction.product?.retail_price?.toFixed(2)}</p>
                     </div>
                     
                     {/* Timer */}
                     <div className="bg-black/30 rounded-lg px-4 py-2">
-                      <p className="text-gray-400 text-xs text-center">Endet in</p>
-                      <FeaturedTimer endTime={featuredAuction.end_time} serverTimeOffset={serverTimeOffset} isPaused={!businessHours.is_open} />
+                      <p className="text-gray-400 text-xs text-center">{texts.endsIn}</p>
+                      <FeaturedTimer endTime={featuredAuction.end_time} serverTimeOffset={serverTimeOffset} isPaused={!businessHours.is_open} pausedText={texts.paused} />
                     </div>
                   </div>
                 </div>
