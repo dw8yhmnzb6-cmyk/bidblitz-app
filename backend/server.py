@@ -388,6 +388,74 @@ async def auction_auto_restart_processor():
     logger.info("Auto-restart processor stopped")
 
 
+async def auction_expiry_checker():
+    """Background task - automatically end auctions that have expired"""
+    global bot_task_running
+    
+    logger.info("Auction expiry checker started - Will end expired auctions automatically")
+    
+    while bot_task_running:
+        try:
+            now = datetime.now(timezone.utc)
+            now_iso = now.isoformat()
+            
+            # Find active auctions that have passed their end time
+            expired_auctions = await db.auctions.find({
+                "status": "active",
+                "end_time": {"$lt": now_iso}
+            }, {"_id": 0}).to_list(100)
+            
+            for auction in expired_auctions:
+                try:
+                    auction_id = auction["id"]
+                    
+                    # Determine winner
+                    winner_id = auction.get("last_bidder_id")
+                    winner_name = auction.get("last_bidder_name")
+                    final_price = auction.get("current_price", 0.01)
+                    
+                    # Update auction to ended status
+                    await db.auctions.update_one(
+                        {"id": auction_id},
+                        {"$set": {
+                            "status": "ended",
+                            "ended_at": now_iso,
+                            "final_price": final_price,
+                            "winner_id": winner_id,
+                            "winner_name": winner_name
+                        }}
+                    )
+                    
+                    # Create won auction record for user
+                    if winner_id:
+                        await db.won_auctions.insert_one({
+                            "id": str(uuid.uuid4()),
+                            "user_id": winner_id,
+                            "auction_id": auction_id,
+                            "product_id": auction.get("product_id"),
+                            "product_name": auction.get("product", {}).get("name"),
+                            "product_image": auction.get("product", {}).get("image_url"),
+                            "final_price": final_price,
+                            "retail_price": auction.get("product", {}).get("retail_price"),
+                            "won_at": now_iso,
+                            "status": "won"
+                        })
+                    
+                    product_name = auction.get("product", {}).get("name", auction_id[:8])
+                    logger.info(f"⏱️ Expired auction ended: {product_name} | Winner: {winner_name or 'None'} | Final: €{final_price}")
+                    
+                except Exception as e:
+                    logger.error(f"Error ending expired auction {auction.get('id')}: {e}")
+            
+            await asyncio.sleep(5)  # Check every 5 seconds
+            
+        except Exception as e:
+            logger.error(f"Auction expiry checker error: {e}")
+            await asyncio.sleep(10)
+    
+    logger.info("Auction expiry checker stopped")
+
+
 async def auction_reminder_processor():
     """Background task - process auction reminders and send push notifications"""
     global bot_task_running
