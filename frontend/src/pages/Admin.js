@@ -42,6 +42,7 @@ export default function Admin() {
   const [detailedStats, setDetailedStats] = useState(null);
   const [products, setProducts] = useState([]);
   const [auctions, setAuctions] = useState([]);
+  const [vipAuctions, setVipAuctions] = useState([]);
   const [users, setUsers] = useState([]);
   const [vouchers, setVouchers] = useState([]);
   const [bots, setBots] = useState([]);
