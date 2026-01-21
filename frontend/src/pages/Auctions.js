@@ -534,6 +534,9 @@ export default function Auctions() {
   const [searchQuery, setSearchQuery] = useState('');
   const [serverTimeOffset, setServerTimeOffset] = useState(0);
   
+  // WebSocket for real-time updates
+  const { isConnected, auctionData, bidNotification } = useAuctionWebSocket(null);
+  
   // Get texts for current language
   const texts = auctionTranslations[language] || auctionTranslations.de;
 
