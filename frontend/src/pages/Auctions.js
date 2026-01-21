@@ -146,44 +146,21 @@ const AuctionCard = ({ auction, product, reminders, onToggleReminder, isLoggedIn
   const hasReminder = reminders?.includes(auction.id);
   
   useEffect(() => {
-    // Don't count down if paused (outside business hours)
-    if (isPaused) {
-      // Just calculate current time left without interval
-      const endTime = parseEndTime(auction.end_time);
-      const now = serverTimeOffset ? new Date(Date.now() + serverTimeOffset) : new Date();
-      
-      if (endTime && !isNaN(endTime.getTime())) {
-        const diff = endTime.getTime() - now.getTime();
-        if (diff > 0) {
-          setTimeLeft({
-            h: Math.floor(diff / 3600000),
-            m: Math.floor((diff % 3600000) / 60000),
-            s: Math.floor((diff % 60000) / 1000),
-            ended: false,
-            loading: false,
-            paused: true
-          });
-        } else {
-          setTimeLeft({ h: 0, m: 0, s: 0, ended: true, loading: false, paused: true });
-        }
-      }
-      return; // Don't set up interval when paused
-    }
-    
     const calc = () => {
       // Parse end_time properly (handle timezone)
       const endTime = parseEndTime(auction.end_time);
+      
+      // Safety check: if parsing failed
+      if (!endTime || isNaN(endTime.getTime())) {
+        console.error('Invalid end_time:', auction.end_time);
+        setTimeLeft({ h: 0, m: 0, s: 0, ended: true, loading: false });
+        return;
+      }
       
       // Use server time offset if available (fixes devices with wrong system time)
       const now = serverTimeOffset 
         ? new Date(Date.now() + serverTimeOffset)
         : new Date();
-      
-      // Safety check: if parsing failed or auction is explicitly ended
-      if (!endTime || isNaN(endTime.getTime())) {
-        setTimeLeft({ h: 0, m: 0, s: 0, ended: true, loading: false });
-        return;
-      }
       
       const diff = endTime.getTime() - now.getTime();
       
@@ -195,13 +172,20 @@ const AuctionCard = ({ auction, product, reminders, onToggleReminder, isLoggedIn
           m: Math.floor((diff % 3600000) / 60000),
           s: Math.floor((diff % 60000) / 1000),
           ended: false,
-          loading: false
+          loading: false,
+          paused: isPaused
         });
       }
     };
+    
+    // Calculate immediately
     calc();
-    const int = setInterval(calc, 1000);
-    return () => clearInterval(int);
+    
+    // Only set interval if not paused
+    if (!isPaused) {
+      const int = setInterval(calc, 1000);
+      return () => clearInterval(int);
+    }
   }, [auction.end_time, serverTimeOffset, isPaused]);
   
   // IMPORTANT: Only show as ended if backend status is 'ended'
