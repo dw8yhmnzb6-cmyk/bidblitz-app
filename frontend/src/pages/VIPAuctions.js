@@ -198,28 +198,24 @@ export default function VIPAuctions() {
                   </span>
                 </div>
                 
-                {/* Product Image */}
-                <Link to={`/auctions/${auction.id}`}>
-                  <div className={`relative h-40 bg-white/5 ${!isVip ? 'blur-sm' : ''}`}>
+                {/* Product Image - visible for all, slight blur for non-VIP */}
+                <Link to={isVip ? `/auctions/${auction.id}` : '#'} onClick={(e) => !isVip && e.preventDefault()}>
+                  <div className="relative h-40 bg-white/5">
                     <img 
                       src={auction.product?.image_url || '/placeholder.png'}
                       alt={auction.product?.name}
-                      className="w-full h-full object-contain p-4"
+                      className={`w-full h-full object-contain p-4 ${!isVip ? 'opacity-70' : ''}`}
                     />
+                    {/* Lock icon for non-VIP - smaller and less intrusive */}
+                    {!isVip && (
+                      <div className="absolute top-2 right-2">
+                        <Lock className="w-5 h-5 text-yellow-400 drop-shadow-lg" />
+                      </div>
+                    )}
                   </div>
                 </Link>
                 
-                {/* Lock Overlay for non-VIP */}
-                {!isVip && (
-                  <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                    <div className="text-center">
-                      <Lock className="w-12 h-12 text-yellow-400 mx-auto mb-2" />
-                      <p className="text-white font-bold">Nur für VIP</p>
-                    </div>
-                  </div>
-                )}
-                
-                {/* Product Info */}
+                {/* Product Info - always visible */}
                 <div className="p-4">
                   <h3 className="text-white font-semibold text-sm mb-2 line-clamp-2">
                     {auction.product?.name}
