@@ -1308,6 +1308,43 @@ export default function Admin() {
                     </div>
                   </div>
 
+                  {/* Auto-Restart Settings */}
+                  <div className="p-4 rounded-lg bg-[#181824] space-y-4">
+                    <div className="flex items-center gap-2 text-[#7C3AED]">
+                      <Repeat className="w-5 h-5" />
+                      <span className="font-medium">Auto-Wiederholung</span>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="checkbox"
+                          id="auto_restart"
+                          checked={newAuction.auto_restart}
+                          onChange={(e) => setNewAuction({...newAuction, auto_restart: e.target.checked})}
+                          className="w-5 h-5 rounded border-white/10 bg-[#0F0F16] text-[#7C3AED] focus:ring-[#7C3AED]"
+                        />
+                        <Label htmlFor="auto_restart" className="text-white cursor-pointer">
+                          Auktion automatisch neu starten
+                        </Label>
+                      </div>
+                      {newAuction.auto_restart && (
+                        <div className="space-y-2">
+                          <Label className="text-white">Dauer pro Durchlauf (Minuten)</Label>
+                          <Input 
+                            type="number" 
+                            min="1"
+                            value={newAuction.auto_restart_duration} 
+                            onChange={(e) => setNewAuction({...newAuction, auto_restart_duration: e.target.value})} 
+                            className="bg-[#0F0F16] border-white/10 text-white" 
+                          />
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-[#94A3B8] text-sm">
+                      Wenn aktiviert, startet die Auktion automatisch neu, sobald sie endet - mit dem gleichen Bot-Mindestpreis.
+                    </p>
+                  </div>
+
                   <div>
                     <Button type="submit" className="btn-primary"><Plus className="w-4 h-4 mr-2" />{t('admin.createAuction')}</Button>
                   </div>
