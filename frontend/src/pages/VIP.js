@@ -281,10 +281,10 @@ export default function VIP() {
             <Crown className="w-10 h-10 text-black" />
           </div>
           <h1 className="text-3xl sm:text-4xl font-bold text-white mb-4">
-            VIP <span className="text-[#FFD700]">Mitgliedschaft</span>
+            {texts.title}
           </h1>
           <p className="text-gray-400 max-w-lg mx-auto">
-            Werden Sie VIP und erhalten Sie jeden Monat Gratis-Gebote, exklusive Rabatte und mehr!
+            {texts.subtitle}
           </p>
         </div>
 
@@ -296,23 +296,23 @@ export default function VIP() {
                 <VIPBadge color={vipStatus.badge_color} size="lg" />
                 <div>
                   <h3 className="text-xl font-bold text-white">
-                    Sie sind {vipStatus.plan?.name}!
+                    {texts.vipMember}: {vipStatus.plan?.name}!
                   </h3>
                   <p className="text-gray-400">
-                    {vipStatus.monthly_bids_remaining} Gratis-Gebote noch verfügbar diesen Monat
+                    {vipStatus.monthly_bids_remaining} {texts.bonusBids}
                   </p>
                 </div>
               </div>
               <div className="text-right">
-                <p className="text-gray-400 text-sm">Nächste Erneuerung</p>
+                <p className="text-gray-400 text-sm">{texts.validUntil}</p>
                 <p className="text-white font-semibold">
-                  {new Date(vipStatus.next_renewal).toLocaleDateString('de-DE')}
+                  {new Date(vipStatus.next_renewal).toLocaleDateString(language === 'de' ? 'de-DE' : language === 'fr' ? 'fr-FR' : 'en-US')}
                 </p>
                 <button 
                   onClick={handleCancel}
                   className="text-red-400 text-sm hover:underline mt-2"
                 >
-                  Abo kündigen
+                  {texts.cancelAnytime}
                 </button>
               </div>
             </div>
@@ -335,13 +335,13 @@ export default function VIP() {
               >
                 {plan.popular && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 bg-[#FFD700] text-black text-xs font-bold rounded-full">
-                    BELIEBT
+                    {texts.popular.toUpperCase()}
                   </div>
                 )}
                 
                 {isCurrentPlan && (
                   <div className="absolute -top-3 right-4 px-3 py-1 bg-green-500 text-white text-xs font-bold rounded-full">
-                    AKTIV
+                    {language === 'en' ? 'ACTIVE' : language === 'sq' ? 'AKTIV' : language === 'tr' ? 'AKTİF' : language === 'fr' ? 'ACTIF' : 'AKTIV'}
                   </div>
                 )}
                 
@@ -352,12 +352,12 @@ export default function VIP() {
                 
                 <div className="mb-6">
                   <span className="text-4xl font-bold text-white">€{plan.price_monthly.toFixed(2)}</span>
-                  <span className="text-gray-400">/Monat</span>
+                  <span className="text-gray-400">/{texts.month}</span>
                 </div>
                 
                 <div className="flex items-center gap-2 mb-6 p-3 rounded-lg bg-[#FFD700]/10">
                   <Gift className="w-5 h-5 text-[#FFD700]" />
-                  <span className="text-[#FFD700] font-bold">{plan.monthly_bids} Gratis-Gebote</span>
+                  <span className="text-[#FFD700] font-bold">{plan.monthly_bids} {texts.bonusBids}</span>
                   <span className="text-gray-400 text-sm">/Monat</span>
                 </div>
                 
