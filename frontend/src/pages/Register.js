@@ -54,12 +54,12 @@ export default function Register() {
     e.preventDefault();
 
     if (password !== confirmPassword) {
-      toast.error('Passwörter stimmen nicht überein');
+      toast.error(texts.passwordMismatch);
       return;
     }
 
     if (password.length < 6) {
-      toast.error('Passwort muss mindestens 6 Zeichen lang sein');
+      toast.error(texts.passwordTooShort);
       return;
     }
 
@@ -67,10 +67,10 @@ export default function Register() {
 
     try {
       await register(name, email, password, referralValid ? referralCode : null);
-      toast.success('Konto erfolgreich erstellt! Sie haben 10 kostenlose Gebote erhalten.');
+      toast.success(texts.registerSuccess);
       navigate('/dashboard');
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Registrierung fehlgeschlagen');
+      toast.error(error.response?.data?.detail || texts.registerFailed);
     } finally {
       setLoading(false);
     }
