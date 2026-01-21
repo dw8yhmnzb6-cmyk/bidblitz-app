@@ -638,7 +638,167 @@ async def toggle_autobidder(autobidder_id: str, user: dict = Depends(get_current
         "is_active": autobidder.get("is_active", True)
     }
 
-# ==================== ADMIN ENDPOINTS ====================
+# ==================== BUY IT NOW (SOFORT KAUFEN) ====================
+
+# Constants for Buy It Now pricing
+BID_VALUE_EURO = 0.15  # Each bid costs €0.15
+
+@router.get("/auctions/{auction_id}/buy-now-price")
+async def get_buy_now_price(auction_id: str, user: dict = Depends(get_current_user)):
+    """
+    Calculate the Buy It Now price for a user.
+    Formula: RRP - (user_bids_on_this_auction * BID_VALUE)
+    Minimum price is 50% of RRP.
+    """
+    auction = await db.auctions.find_one({"id": auction_id}, {"_id": 0})
+    if not auction:
+        raise HTTPException(status_code=404, detail="Auction not found")
+    
+    if auction["status"] != "active":
+        raise HTTPException(status_code=400, detail="Auction is not active")
+    
+    product = await db.products.find_one({"id": auction.get("product_id")}, {"_id": 0})
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    
+    rrp = product.get("retail_price", 0)
+    
+    # Count user's bids on this auction
+    bid_history = auction.get("bid_history", [])
+    user_bids = sum(1 for bid in bid_history if bid.get("user_id") == user["id"])
+    
+    # Calculate discount from bids
+    bid_discount = user_bids * BID_VALUE_EURO
+    
+    # Calculate final price (minimum 50% of RRP)
+    min_price = rrp * 0.5
+    final_price = max(min_price, rrp - bid_discount)
+    
+    # Calculate savings
+    savings = rrp - final_price
+    savings_percent = round((savings / rrp) * 100) if rrp > 0 else 0
+    
+    return {
+        "auction_id": auction_id,
+        "product_name": product.get("name"),
+        "rrp": rrp,
+        "user_bids": user_bids,
+        "bid_discount": round(bid_discount, 2),
+        "min_price": round(min_price, 2),
+        "final_price": round(final_price, 2),
+        "savings": round(savings, 2),
+        "savings_percent": savings_percent,
+        "buy_now_available": True
+    }
+
+
+@router.post("/auctions/{auction_id}/buy-now")
+async def buy_now(auction_id: str, user: dict = Depends(get_current_user)):
+    """
+    Execute Buy It Now purchase.
+    This ends the auction and assigns the product to the user.
+    """
+    auction = await db.auctions.find_one({"id": auction_id}, {"_id": 0})
+    if not auction:
+        raise HTTPException(status_code=404, detail="Auction not found")
+    
+    if auction["status"] != "active":
+        raise HTTPException(status_code=400, detail="Auction is not active")
+    
+    product = await db.products.find_one({"id": auction.get("product_id")}, {"_id": 0})
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    
+    rrp = product.get("retail_price", 0)
+    
+    # Calculate price (same logic as get_buy_now_price)
+    bid_history = auction.get("bid_history", [])
+    user_bids = sum(1 for bid in bid_history if bid.get("user_id") == user["id"])
+    bid_discount = user_bids * BID_VALUE_EURO
+    min_price = rrp * 0.5
+    final_price = round(max(min_price, rrp - bid_discount), 2)
+    
+    # Create buy-now order
+    order_id = str(uuid.uuid4())
+    order = {
+        "id": order_id,
+        "user_id": user["id"],
+        "auction_id": auction_id,
+        "product_id": product.get("id"),
+        "product_name": product.get("name"),
+        "type": "buy_now",
+        "rrp": rrp,
+        "user_bids_used": user_bids,
+        "bid_discount": round(bid_discount, 2),
+        "final_price": final_price,
+        "status": "pending_payment",
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.orders.insert_one(order)
+    
+    # End the auction (user wins via Buy Now)
+    await db.auctions.update_one(
+        {"id": auction_id},
+        {
+            "$set": {
+                "status": "ended",
+                "ended_at": datetime.now(timezone.utc).isoformat(),
+                "winner_id": user["id"],
+                "winner_name": user["name"],
+                "final_price": final_price,
+                "won_via": "buy_now"
+            }
+        }
+    )
+    
+    # Add to user's won auctions
+    await db.users.update_one(
+        {"id": user["id"]},
+        {
+            "$push": {"won_auctions": {
+                "auction_id": auction_id,
+                "product_name": product.get("name"),
+                "price": final_price,
+                "won_at": datetime.now(timezone.utc).isoformat(),
+                "won_via": "buy_now"
+            }}
+        }
+    )
+    
+    # Broadcast auction ended via WebSocket
+    try:
+        await broadcast_auction_ended(auction_id, {
+            "winner_name": user["name"],
+            "final_price": final_price,
+            "won_via": "buy_now"
+        })
+    except Exception as e:
+        logger.error(f"WebSocket broadcast error: {e}")
+    
+    logger.info(f"Buy Now completed: User {user['id']} bought {product.get('name')} for €{final_price}")
+    
+    return {
+        "success": True,
+        "order_id": order_id,
+        "product_name": product.get("name"),
+        "final_price": final_price,
+        "savings": round(rrp - final_price, 2),
+        "message": f"Herzlichen Glückwunsch! Sie haben {product.get('name')} für €{final_price} gekauft!"
+    }
+
+
+@router.get("/orders/my")
+async def get_my_orders(user: dict = Depends(get_current_user)):
+    """Get user's orders (Buy Now and auction wins)"""
+    orders = await db.orders.find(
+        {"user_id": user["id"]},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(100)
+    
+    return {"orders": orders, "count": len(orders)}
+
+
 
 @router.post("/admin/auctions")
 async def create_auction(auction: AuctionCreate, admin: dict = Depends(get_admin_user)):
