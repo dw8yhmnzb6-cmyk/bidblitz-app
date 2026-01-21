@@ -149,10 +149,20 @@ async def create_crypto_charge(
     user: dict = Depends(get_current_user)
 ):
     """Create a Coinbase Commerce charge for crypto payment"""
+    # Check if Coinbase is properly configured
+    coinbase_key = os.environ.get('COINBASE_COMMERCE_API_KEY', '')
+    
+    # Check for placeholder or invalid keys
+    if not coinbase_key or coinbase_key in ['pennyauction', 'your_key_here', 'test', '']:
+        raise HTTPException(
+            status_code=503, 
+            detail="Krypto-Zahlungen sind derzeit nicht verfügbar. Bitte verwenden Sie Kreditkarte oder kontaktieren Sie den Support."
+        )
+    
     if not coinbase_client:
         raise HTTPException(
             status_code=503, 
-            detail="Krypto-Zahlungen sind nicht konfiguriert. Bitte kontaktieren Sie den Administrator, um einen gültigen Coinbase Commerce API-Key einzurichten."
+            detail="Krypto-Zahlungen sind nicht konfiguriert. Bitte kontaktieren Sie den Administrator."
         )
     
     # Verify package (don't validate bids - just package_id and price)
@@ -211,8 +221,17 @@ async def create_crypto_charge(
         }
         
     except Exception as e:
+        error_msg = str(e)
         logger.error(f"Coinbase charge error: {e}")
-        raise HTTPException(status_code=500, detail=f"Crypto payment error: {str(e)}")
+        
+        # Provide user-friendly error messages
+        if "No such API key" in error_msg or "invalid" in error_msg.lower():
+            raise HTTPException(
+                status_code=503, 
+                detail="Krypto-Zahlungen sind derzeit nicht verfügbar. Der API-Schlüssel muss aktualisiert werden."
+            )
+        
+        raise HTTPException(status_code=500, detail=f"Krypto-Zahlung fehlgeschlagen: Bitte versuchen Sie es später erneut.")
 
 @router.post("/webhook/coinbase")
 async def coinbase_webhook(request: Request):
