@@ -75,6 +75,7 @@ function AppContent() {
           <Route path="/" element={<Auctions />} />
           <Route path="/auctions" element={<Auctions />} />
           <Route path="/auctions/:id" element={<AuctionDetail />} />
+          <Route path="/vip-auctions" element={<VIPAuctions />} />
           <Route path="/buy-bids" element={<BuyBids />} />
           <Route path="/payment/success" element={
             <ProtectedRoute>
