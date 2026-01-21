@@ -261,20 +261,24 @@ export default function VIPAuctions() {
                   {/* Timer */}
                   <div className="flex items-center justify-center bg-black/30 rounded-lg py-2 mb-3">
                     <Clock className="w-4 h-4 text-gray-400 mr-2" />
-                    <AuctionTimer endTime={auction.end_time} />
+                    <AuctionTimer endTime={auction.end_time} isPaused={!businessHours.is_open} />
                   </div>
                   
                   {/* Bid Button */}
                   <Button 
                     onClick={() => handleBid(auction.id)}
-                    disabled={!isVip}
+                    disabled={!isVip || !businessHours.is_open}
                     className={`w-full ${
-                      isVip 
-                        ? 'bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 text-black' 
-                        : 'bg-gray-700 text-gray-400 cursor-not-allowed'
+                      !businessHours.is_open
+                        ? 'bg-orange-600/50 text-orange-200 cursor-not-allowed'
+                        : isVip 
+                          ? 'bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 text-black' 
+                          : 'bg-gray-700 text-gray-400 cursor-not-allowed'
                     } font-bold`}
                   >
-                    {isVip ? (
+                    {!businessHours.is_open ? (
+                      <>⏸ PAUSIERT</>
+                    ) : isVip ? (
                       <>
                         <Zap className="w-4 h-4 mr-1" />
                         BIETEN
