@@ -36,6 +36,7 @@ import HowItWorks from "./pages/HowItWorks";
 import FAQ from "./pages/FAQ";
 import Contact from "./pages/Contact";
 import VIP from "./pages/VIP";
+import VIPAuctions from "./pages/VIPAuctions";
 
 // Protected Route Component
 const ProtectedRoute = ({ children, requireAdmin = false }) => {
