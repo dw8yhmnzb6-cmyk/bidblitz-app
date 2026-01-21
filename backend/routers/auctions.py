@@ -11,9 +11,88 @@ from services.websocket import broadcast_bid_update, broadcast_auction_ended
 
 router = APIRouter(tags=["Auctions"])
 
+# Business hours configuration (Berlin timezone = UTC+1 in winter, UTC+2 in summer)
+BUSINESS_START_HOUR = 9   # 9:00 AM
+BUSINESS_END_HOUR = 24    # Midnight (24:00)
+
+def is_within_business_hours():
+    """Check if current time is within business hours (9:00 - 24:00 Berlin time)"""
+    now = datetime.now(timezone.utc)
+    # Approximate Berlin time (UTC+1)
+    berlin_hour = (now.hour + 1) % 24
+    return BUSINESS_START_HOUR <= berlin_hour < BUSINESS_END_HOUR
+
+def get_next_business_opening():
+    """Get the next time auctions will open (9:00 Berlin time)"""
+    now = datetime.now(timezone.utc)
+    berlin_hour = (now.hour + 1) % 24
+    
+    if berlin_hour >= BUSINESS_END_HOUR or berlin_hour < BUSINESS_START_HOUR:
+        # Outside business hours - calculate next 9:00 AM
+        hours_until_opening = (BUSINESS_START_HOUR - berlin_hour) % 24
+        if hours_until_opening == 0:
+            hours_until_opening = 24
+        next_opening = now + timedelta(hours=hours_until_opening)
+        return next_opening.replace(minute=0, second=0, microsecond=0)
+    return None
+
 # ==================== PUBLIC ENDPOINTS ====================
 
+@router.get("/auctions/business-hours")
+async def get_business_hours():
+    """Get business hours status"""
+    is_open = is_within_business_hours()
+    next_opening = get_next_business_opening() if not is_open else None
+    
+    return {
+        "is_open": is_open,
+        "business_start": f"{BUSINESS_START_HOUR:02d}:00",
+        "business_end": f"{BUSINESS_END_HOUR:02d}:00",
+        "next_opening": next_opening.isoformat() if next_opening else None,
+        "timezone": "Europe/Berlin"
+    }
+
+@router.get("/auctions/featured")
+async def get_featured_auction():
+    """Get the featured/VIP auction to display prominently"""
+    # First try to find a VIP-marked auction
+    featured = await db.auctions.find_one(
+        {"status": "active", "is_featured": True},
+        {"_id": 0}
+    )
+    
+    # If no featured auction, get the auction with highest retail price that's active
+    if not featured:
+        auctions = await db.auctions.find(
+            {"status": "active"},
+            {"_id": 0}
+        ).to_list(100)
+        
+        if auctions:
+            # Find auction with highest value product
+            best = None
+            best_value = 0
+            
+            for auction in auctions:
+                product = await db.products.find_one({"id": auction.get("product_id")}, {"_id": 0})
+                if product:
+                    value = product.get("retail_price", 0)
+                    if value > best_value:
+                        best_value = value
+                        best = auction
+                        best["product"] = product
+            
+            featured = best
+    
+    if featured and "product" not in featured:
+        product = await db.products.find_one({"id": featured.get("product_id")}, {"_id": 0})
+        if product:
+            featured["product"] = product
+    
+    return featured
+
 @router.get("/auctions")
+async def get_auctions():
 async def get_auctions():
     """Get all auctions with product details"""
     auctions = await db.auctions.find({}, {"_id": 0}).sort("created_at", -1).to_list(100)
