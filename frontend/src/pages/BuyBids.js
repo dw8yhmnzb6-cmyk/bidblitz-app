@@ -293,7 +293,7 @@ export default function BuyBids() {
               >
                 {pkg.popular && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <span className="badge-popular">Beliebt</span>
+                    <span className="badge-popular">{texts.mostPopular}</span>
                   </div>
                 )}
 
@@ -309,7 +309,7 @@ export default function BuyBids() {
                 <div className="flex items-center justify-center gap-2 py-4 mb-2 rounded-lg bg-[#181824]">
                   <Zap className="w-6 h-6 text-[#F59E0B]" />
                   <span className="text-2xl font-bold text-white">{pkg.bids}</span>
-                  <span className="text-[#94A3B8]">Gebote</span>
+                  <span className="text-[#94A3B8]">{texts.bids}</span>
                 </div>
                 
                 {/* Bonus Bids */}
@@ -317,7 +317,7 @@ export default function BuyBids() {
                   <div className="text-center mb-4">
                     <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-green-500/20 text-green-400 text-sm font-semibold">
                       <Sparkles className="w-4 h-4" />
-                      +{pkg.bonus} GRATIS Gebote!
+                      +{pkg.bonus} {language === 'en' ? 'FREE Bids!' : language === 'sq' ? 'Oferta FALAS!' : language === 'tr' ? 'ÜCRETSİZ Teklif!' : language === 'fr' ? 'Enchères GRATUITES!' : 'GRATIS Gebote!'}
                     </span>
                   </div>
                 )}
@@ -325,7 +325,7 @@ export default function BuyBids() {
                 {/* Price per bid */}
                 {pkg.per_bid && (
                   <div className="text-center text-gray-400 text-sm mb-4">
-                    Nur €{pkg.per_bid.toFixed(2)} pro Gebot
+                    {language === 'en' ? 'Only' : language === 'sq' ? 'Vetëm' : language === 'tr' ? 'Sadece' : language === 'fr' ? 'Seulement' : 'Nur'} €{pkg.per_bid.toFixed(2)} {texts.perBid}
                   </div>
                 )}
 
@@ -347,11 +347,11 @@ export default function BuyBids() {
                   data-testid={`buy-${pkg.id}`}
                 >
                   {purchasing === pkg.id ? (
-                    'Wird geladen...'
+                    texts.processing
                   ) : (
                     <>
                       <CreditCard className="w-4 h-4 mr-2" />
-                      Jetzt kaufen
+                      {language === 'en' ? 'Buy Now' : language === 'sq' ? 'Bli Tani' : language === 'tr' ? 'Şimdi Satın Al' : language === 'fr' ? 'Acheter' : 'Jetzt kaufen'}
                     </>
                   )}
                 </Button>
