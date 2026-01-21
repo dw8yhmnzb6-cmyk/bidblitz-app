@@ -171,7 +171,7 @@ export default function Register() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword" className="text-white">Passwort bestätigen</Label>
+              <Label htmlFor="confirmPassword" className="text-white">{texts.confirmPassword}</Label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#94A3B8]" />
                 <Input
@@ -193,15 +193,15 @@ export default function Register() {
               className="w-full btn-primary py-3 h-auto"
               data-testid="register-submit"
             >
-              {loading ? 'Wird erstellt...' : 'Konto erstellen'}
+              {loading ? texts.registering : texts.registerButton}
             </Button>
           </form>
 
           <div className="mt-6 text-center">
             <p className="text-[#94A3B8]">
-              Bereits ein Konto?{' '}
+              {texts.hasAccount}{' '}
               <Link to="/login" className="text-[#7C3AED] hover:underline font-medium">
-                Anmelden
+                {texts.loginHere}
               </Link>
             </p>
           </div>
