@@ -1409,6 +1409,11 @@ export default function Admin() {
                                  auction.status === 'scheduled' ? 'Geplant' : 
                                  t('admin.ended')}
                               </span>
+                              {auction.auto_restart?.enabled && (
+                                <span className="ml-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-[#7C3AED]/20 text-[#7C3AED]" title={`Auto-Neustart: ${auction.auto_restart.duration_minutes} Min`}>
+                                  AUTO
+                                </span>
+                              )}
                             </td>
                             <td className="px-4 py-3">
                               <div className="flex items-center gap-2">
@@ -1421,6 +1426,16 @@ export default function Admin() {
                                   title={auction.is_featured ? 'VIP-Status entfernen' : 'Als VIP markieren'}
                                 >
                                   <Star className={`w-4 h-4 ${auction.is_featured ? 'fill-current' : ''}`} />
+                                </Button>
+                                {/* Auto-Restart Button */}
+                                <Button 
+                                  size="sm" 
+                                  variant="ghost" 
+                                  className={`${auction.auto_restart?.enabled ? 'text-[#7C3AED] bg-[#7C3AED]/20' : 'text-gray-400 hover:text-[#7C3AED]'} hover:bg-[#7C3AED]/10`}
+                                  onClick={() => handleSetAutoRestart(auction.id, auction.auto_restart?.duration_minutes || 10)}
+                                  title={auction.auto_restart?.enabled ? 'Auto-Neustart konfigurieren' : 'Auto-Neustart aktivieren'}
+                                >
+                                  <Repeat className="w-4 h-4" />
                                 </Button>
                                 {(auction.status === 'active' || auction.status === 'scheduled') && (
                                   <>
