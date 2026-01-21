@@ -27,11 +27,13 @@ const ActivityDots = ({ bids }) => {
   );
 };
 
-// Featured Auction Timer Component
-const FeaturedTimer = ({ endTime, serverTimeOffset = 0 }) => {
+// Featured Auction Timer Component - Shows PAUSIERT when outside business hours
+const FeaturedTimer = ({ endTime, serverTimeOffset = 0, isPaused = false }) => {
   const [timeLeft, setTimeLeft] = useState({ h: 0, m: 0, s: 0 });
   
   useEffect(() => {
+    if (isPaused) return; // Don't update timer when paused
+    
     const parseEndTime = (endTimeStr) => {
       if (!endTimeStr) return null;
       try {
@@ -64,9 +66,18 @@ const FeaturedTimer = ({ endTime, serverTimeOffset = 0 }) => {
     calc();
     const int = setInterval(calc, 1000);
     return () => clearInterval(int);
-  }, [endTime, serverTimeOffset]);
+  }, [endTime, serverTimeOffset, isPaused]);
   
   const pad = (n) => String(n).padStart(2, '0');
+  
+  // Show PAUSIERT when outside business hours
+  if (isPaused) {
+    return (
+      <div className="flex items-center gap-2 text-lg font-bold text-orange-400">
+        <span className="bg-orange-500/20 px-3 py-1 rounded animate-pulse">⏸ PAUSIERT</span>
+      </div>
+    );
+  }
   
   return (
     <div className="flex items-center gap-1 text-xl font-mono font-bold text-yellow-400">
