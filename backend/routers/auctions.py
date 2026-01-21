@@ -104,6 +104,21 @@ async def get_auctions():
     
     return auctions
 
+@router.get("/auctions/vip-only")
+async def get_vip_only_auctions():
+    """Get VIP-only auctions"""
+    auctions = await db.auctions.find(
+        {"status": "active", "is_vip_only": True},
+        {"_id": 0}
+    ).sort("end_time", 1).to_list(100)
+    
+    for auction in auctions:
+        product = await db.products.find_one({"id": auction.get("product_id")}, {"_id": 0})
+        if product:
+            auction["product"] = product
+    
+    return auctions
+
 @router.get("/auctions/active")
 async def get_active_auctions():
     """Get only active auctions"""
