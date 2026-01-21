@@ -129,13 +129,13 @@ const WinnerCard = ({ winner, texts, language }) => {
         {/* Price Comparison */}
         <div className="flex items-end justify-between">
           <div>
-            <p className="text-[#94A3B8] text-xs">Gewonnen für</p>
+            <p className="text-[#94A3B8] text-xs">{texts.wonFor}</p>
             <p className="text-2xl font-bold text-[#06B6D4]">
               €{winner.final_price?.toFixed(2)}
             </p>
           </div>
           <div className="text-right">
-            <p className="text-[#94A3B8] text-xs">Statt</p>
+            <p className="text-[#94A3B8] text-xs">{texts.retail}</p>
             <p className="text-lg text-[#94A3B8] line-through">
               €{winner.retail_price?.toFixed(2)}
             </p>
@@ -146,7 +146,7 @@ const WinnerCard = ({ winner, texts, language }) => {
         <div className="flex items-center justify-between text-xs text-[#94A3B8] pt-2 border-t border-white/10">
           <div className="flex items-center gap-1">
             <Users className="w-3 h-3" />
-            <span>{winner.total_bids} Gebote</span>
+            <span>{winner.total_bids} {texts.bids}</span>
           </div>
           <div className="flex items-center gap-1">
             <Clock className="w-3 h-3" />
@@ -159,6 +159,8 @@ const WinnerCard = ({ winner, texts, language }) => {
 };
 
 export default function Winners() {
+  const { language } = useLanguage();
+  const texts = winnersTexts[language] || winnersTexts.de;
   const [winners, setWinners] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -179,9 +181,9 @@ export default function Winners() {
         
         return {
           auction_id: auction.id,
-          product_name: auction.product?.name || 'Unbekanntes Produkt',
+          product_name: auction.product?.name || (language === 'en' ? 'Unknown Product' : 'Unbekanntes Produkt'),
           product_image: auction.product?.image_url || '',
-          winner_name: auction.winner_name || 'Anonym',
+          winner_name: auction.winner_name || (language === 'en' ? 'Anonymous' : 'Anonym'),
           final_price: finalPrice,
           retail_price: retailPrice,
           savings_percent: savingsPercent,
