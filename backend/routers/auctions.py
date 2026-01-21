@@ -138,6 +138,15 @@ async def get_auction(auction_id: str):
 @router.post("/auctions/{auction_id}/bid")
 async def place_bid(auction_id: str, user: dict = Depends(get_current_user)):
     """Place a bid on an auction"""
+    
+    # CHECK BUSINESS HOURS - No bidding outside 9:00-24:00 Berlin time
+    if not is_within_business_hours():
+        next_opening = get_next_business_opening()
+        raise HTTPException(
+            status_code=403, 
+            detail=f"Auktionen sind pausiert. Öffnungszeiten: 09:00 - 24:00 Uhr. Nächste Öffnung: {next_opening.strftime('%d.%m.%Y %H:%M') if next_opening else '09:00'} Uhr"
+        )
+    
     auction = await db.auctions.find_one({"id": auction_id}, {"_id": 0})
     if not auction:
         raise HTTPException(status_code=404, detail="Auction not found")
