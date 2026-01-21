@@ -260,6 +260,10 @@ const AuctionCard = ({ auction, product, reminders, onToggleReminder, isLoggedIn
           </div>
           {timeLeft.loading ? (
             <span className="text-gray-400 text-[11px]">...</span>
+          ) : isPaused && !isEnded ? (
+            <span className="text-orange-400 text-[10px] font-bold bg-orange-500/20 px-2 py-0.5 rounded animate-pulse">
+              ⏸ PAUSIERT
+            </span>
           ) : (
             <div className={`flex text-[11px] font-mono font-bold ${isUrgent ? 'text-red-400' : 'text-yellow-400'}`}>
               <span className="bg-black/30 px-1 rounded-l">{pad(timeLeft.h)}</span>
