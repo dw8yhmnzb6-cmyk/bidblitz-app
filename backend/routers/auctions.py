@@ -682,6 +682,38 @@ async def restart_auction(
     
     return response_data
 
+@router.put("/admin/auctions/{auction_id}/auto-restart")
+async def set_auto_restart(
+    auction_id: str,
+    duration_minutes: int = 10,
+    bot_target_price: float = 0,
+    admin: dict = Depends(get_admin_user)
+):
+    """Set auto-restart configuration for an auction"""
+    auction = await db.auctions.find_one({"id": auction_id})
+    if not auction:
+        raise HTTPException(status_code=404, detail="Auktion nicht gefunden")
+    
+    # Store auto-restart configuration
+    auto_restart_config = None
+    if duration_minutes > 0:
+        auto_restart_config = {
+            "enabled": True,
+            "duration_minutes": duration_minutes,
+            "bot_target_price": bot_target_price if bot_target_price > 0 else None
+        }
+    
+    await db.auctions.update_one(
+        {"id": auction_id},
+        {"$set": {"auto_restart": auto_restart_config}}
+    )
+    
+    return {
+        "message": f"Auto-Neustart {'aktiviert' if duration_minutes > 0 else 'deaktiviert'}",
+        "auction_id": auction_id,
+        "auto_restart": auto_restart_config
+    }
+
 @router.post("/admin/auctions/batch")
 async def create_batch_auctions(
     count: int = 100,
