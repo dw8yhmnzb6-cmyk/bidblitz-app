@@ -16,6 +16,33 @@ Penny-Auktion-Website ähnlich dealdash.com und snipster.de mit Kunden-App und A
 
 ---
 
+## ✅ COMPLETED - Admin Content Management & Auto-Restart (21.01.2026)
+
+### Admin Content Management System (CMS)
+- [x] **Backend Router:** `/app/backend/routers/pages.py` erstellt
+- [x] **Endpoints:**
+  - `GET /api/pages` - Alle bearbeitbaren Seiten abrufen
+  - `GET /api/pages/{page_id}` - Einzelne Seite abrufen
+  - `PUT /api/admin/pages/{page_id}` - Seite aktualisieren (Admin)
+  - `POST /api/admin/pages/{page_id}/reset` - Seite auf Standard zurücksetzen
+- [x] **Standard-Seiten:** Impressum, Datenschutz, AGB, FAQ, Kontakt, So funktioniert's
+- [x] **Frontend Admin-Tab:** "Seiten" mit Seitenauswahl, HTML-Editor und Live-Vorschau
+- [x] **Statische Seiten aktualisiert:** Impressum.js, Datenschutz.js, AGB.js laden Inhalt aus DB
+
+### Automatische Auktions-Wiederholung
+- [x] **Endpoint:** `PUT /api/admin/auctions/{id}/auto-restart?duration_minutes=&bot_target_price=`
+- [x] **Background Task:** `auction_auto_restart_processor()` prüft alle 10 Sek. beendete Auktionen
+- [x] **Admin UI:** Repeat-Button (🔁) in Auktions-Tabelle zum Konfigurieren
+- [x] **Status-Badge:** "AUTO" Badge bei Auktionen mit aktivem Auto-Restart
+- [x] **Auktions-Erstellung:** Checkbox "Auktion automatisch neu starten" mit Dauer-Eingabe
+
+### Bot-Zuweisung bei Auktionserstellung
+- [x] **Bot-Mindestpreis:** Wird bei Auktionserstellung direkt gesetzt
+- [x] **Auto-Restart + Bot:** Bei Auto-Restart wird der Bot-Mindestpreis übernommen
+- [x] **UI:** Bot-Einstellungen-Sektion im Auktions-Erstellungsformular
+
+---
+
 ## ✅ COMPLETED - Neue Seiten & Preise (20.01.2026)
 
 ### Neue Seiten erstellt (wie snipster.de)
