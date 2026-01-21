@@ -129,22 +129,32 @@ export default function Contact() {
               <CheckCircle className="w-10 h-10 text-green-500" />
             </div>
             <h2 className="text-2xl font-bold text-white mb-4">
-              Nachricht gesendet!
+              {successText.title}
             </h2>
             <p className="text-gray-400 mb-6">
-              Vielen Dank für Ihre Nachricht. Wir werden uns innerhalb von 24 Stunden bei Ihnen melden.
+              {successText.desc}
             </p>
             <Button 
               onClick={() => setSubmitted(false)}
               className="bg-[#FFD700] hover:bg-[#FCD34D] text-black font-bold"
             >
-              Weitere Nachricht senden
+              {successText.button}
             </Button>
           </div>
         </div>
       </div>
     );
   }
+
+  // Multilingual page titles
+  const pageTexts = {
+    de: { title: "Kontakt", subtitle: "Haben Sie Fragen oder Anregungen? Wir freuen uns auf Ihre Nachricht!" },
+    en: { title: "Contact", subtitle: "Have questions or suggestions? We look forward to hearing from you!" },
+    sq: { title: "Kontakti", subtitle: "Keni pyetje ose sugjerime? Presim me padurim mesazhin tuaj!" },
+    tr: { title: "İletişim", subtitle: "Sorularınız veya önerileriniz mi var? Mesajınızı bekliyoruz!" },
+    fr: { title: "Contact", subtitle: "Des questions ou suggestions? Nous avons hâte de vous lire!" }
+  };
+  const pageText = pageTexts[language] || pageTexts.de;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#0a1929] to-[#0d2538] pt-20 pb-16">
