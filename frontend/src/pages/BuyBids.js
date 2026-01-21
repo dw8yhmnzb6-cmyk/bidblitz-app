@@ -2,13 +2,131 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
+import { usePageTranslations } from '../i18n/pageTranslations';
 import { Button } from '../components/ui/button';
 import { Zap, Check, Sparkles, CreditCard, Bitcoin, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
+// Page-specific translations
+const buyBidsTexts = {
+  de: {
+    title: "Gebote kaufen",
+    subtitle: "Wählen Sie ein Paket und beginnen Sie mit dem Bieten",
+    cryptoSuccess: "Krypto-Zahlung erfolgreich! Gebote werden gutgeschrieben.",
+    cryptoCancel: "Krypto-Zahlung abgebrochen",
+    loadError: "Fehler beim Laden der Pakete",
+    loginRequired: "Bitte melden Sie sich an, um Gebote zu kaufen",
+    mostPopular: "Beliebteste",
+    bestValue: "Bester Wert",
+    bids: "Gebote",
+    bonus: "Bonus",
+    perBid: "pro Gebot",
+    selectPackage: "Paket auswählen",
+    paymentMethod: "Zahlungsmethode",
+    card: "Karte",
+    crypto: "Krypto",
+    cryptoUnavailable: "Krypto-Zahlungen derzeit nicht verfügbar",
+    pay: "Bezahlen",
+    processing: "Wird verarbeitet...",
+    cancel: "Abbrechen",
+    securePayment: "Sichere Zahlung über Stripe"
+  },
+  en: {
+    title: "Buy Bids",
+    subtitle: "Choose a package and start bidding",
+    cryptoSuccess: "Crypto payment successful! Bids being credited.",
+    cryptoCancel: "Crypto payment cancelled",
+    loadError: "Error loading packages",
+    loginRequired: "Please log in to buy bids",
+    mostPopular: "Most Popular",
+    bestValue: "Best Value",
+    bids: "Bids",
+    bonus: "Bonus",
+    perBid: "per bid",
+    selectPackage: "Select Package",
+    paymentMethod: "Payment Method",
+    card: "Card",
+    crypto: "Crypto",
+    cryptoUnavailable: "Crypto payments currently unavailable",
+    pay: "Pay",
+    processing: "Processing...",
+    cancel: "Cancel",
+    securePayment: "Secure payment via Stripe"
+  },
+  sq: {
+    title: "Bli Oferta",
+    subtitle: "Zgjidhni një paketë dhe filloni të ofroni",
+    cryptoSuccess: "Pagesa kripto me sukses! Ofertat po kreditohen.",
+    cryptoCancel: "Pagesa kripto u anulua",
+    loadError: "Gabim në ngarkimin e paketave",
+    loginRequired: "Ju lutem hyni për të blerë oferta",
+    mostPopular: "Më i Popullarizuar",
+    bestValue: "Vlera më e Mirë",
+    bids: "Oferta",
+    bonus: "Bonus",
+    perBid: "për ofertë",
+    selectPackage: "Zgjidh Paketën",
+    paymentMethod: "Metoda e Pagesës",
+    card: "Kartë",
+    crypto: "Kripto",
+    cryptoUnavailable: "Pagesat kripto aktualisht nuk janë të disponueshme",
+    pay: "Paguaj",
+    processing: "Duke procesuar...",
+    cancel: "Anulo",
+    securePayment: "Pagesë e sigurt përmes Stripe"
+  },
+  tr: {
+    title: "Teklif Satın Al",
+    subtitle: "Bir paket seçin ve teklif vermeye başlayın",
+    cryptoSuccess: "Kripto ödeme başarılı! Teklifler kredileniyor.",
+    cryptoCancel: "Kripto ödeme iptal edildi",
+    loadError: "Paketler yüklenirken hata",
+    loginRequired: "Teklif satın almak için lütfen giriş yapın",
+    mostPopular: "En Popüler",
+    bestValue: "En İyi Değer",
+    bids: "Teklif",
+    bonus: "Bonus",
+    perBid: "teklif başına",
+    selectPackage: "Paket Seç",
+    paymentMethod: "Ödeme Yöntemi",
+    card: "Kart",
+    crypto: "Kripto",
+    cryptoUnavailable: "Kripto ödemeleri şu anda kullanılamıyor",
+    pay: "Öde",
+    processing: "İşleniyor...",
+    cancel: "İptal",
+    securePayment: "Stripe ile güvenli ödeme"
+  },
+  fr: {
+    title: "Acheter des Enchères",
+    subtitle: "Choisissez un forfait et commencez à enchérir",
+    cryptoSuccess: "Paiement crypto réussi! Enchères en cours de crédit.",
+    cryptoCancel: "Paiement crypto annulé",
+    loadError: "Erreur de chargement des forfaits",
+    loginRequired: "Veuillez vous connecter pour acheter des enchères",
+    mostPopular: "Plus Populaire",
+    bestValue: "Meilleure Valeur",
+    bids: "Enchères",
+    bonus: "Bonus",
+    perBid: "par enchère",
+    selectPackage: "Sélectionner le Forfait",
+    paymentMethod: "Mode de Paiement",
+    card: "Carte",
+    crypto: "Crypto",
+    cryptoUnavailable: "Paiements crypto actuellement indisponibles",
+    pay: "Payer",
+    processing: "Traitement...",
+    cancel: "Annuler",
+    securePayment: "Paiement sécurisé via Stripe"
+  }
+};
+
 export default function BuyBids() {
+  const { language } = useLanguage();
+  const texts = buyBidsTexts[language] || buyBidsTexts.de;
   const { isAuthenticated, token } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -26,10 +144,10 @@ export default function BuyBids() {
     
     // Check for crypto callback
     if (searchParams.get('crypto_success')) {
-      toast.success('Krypto-Zahlung erfolgreich! Gebote werden gutgeschrieben.');
+      toast.success(texts.cryptoSuccess);
     }
     if (searchParams.get('crypto_cancel')) {
-      toast.info('Krypto-Zahlung abgebrochen');
+      toast.info(texts.cryptoCancel);
     }
   }, [searchParams]);
 
@@ -48,7 +166,7 @@ export default function BuyBids() {
       setPackages(response.data);
     } catch (error) {
       console.error('Error fetching packages:', error);
-      toast.error('Fehler beim Laden der Pakete');
+      toast.error(texts.loadError);
     } finally {
       setLoading(false);
     }
@@ -56,7 +174,7 @@ export default function BuyBids() {
 
   const openPaymentModal = (pkg) => {
     if (!isAuthenticated) {
-      toast.error('Bitte melden Sie sich an, um Gebote zu kaufen');
+      toast.error(texts.loginRequired);
       navigate('/login');
       return;
     }
