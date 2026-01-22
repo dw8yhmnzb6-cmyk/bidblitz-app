@@ -373,6 +373,26 @@ async def auction_auto_restart_processor():
                     logger.info(f"🔄 Auto-restarted: {product_name} for {duration_minutes} min" + 
                                (f" (Bot: €{bot_target})" if bot_target else ""))
                     
+                    # Broadcast auction restart via WebSocket so frontend updates immediately
+                    try:
+                        from services.websocket import ws_manager
+                        restart_message = {
+                            "type": "auction_restarted",
+                            "auction_id": auction["id"],
+                            "data": {
+                                "status": "active",
+                                "current_price": 0.01,
+                                "end_time": new_end_time.isoformat(),
+                                "total_bids": 0,
+                                "last_bidder_name": None
+                            },
+                            "timestamp": now.isoformat()
+                        }
+                        await ws_manager.broadcast_to_auction("all_auctions", restart_message)
+                        await ws_manager.broadcast_to_auction(auction["id"], restart_message)
+                    except Exception as ws_err:
+                        logger.error(f"WebSocket broadcast error on restart: {ws_err}")
+                    
                 except Exception as e:
                     logger.error(f"Auto-restart error for {auction.get('id')}: {e}")
             
