@@ -249,7 +249,7 @@ export default function AuctionDetail() {
       updateBidsBalance(response.data.bids_remaining);
       fetchAuction();
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Fehler beim Bieten');
+      toast.error(error.response?.data?.detail || t('auctions.bidError') || 'Fehler beim Bieten');
     } finally {
       setBidding(false);
     }
