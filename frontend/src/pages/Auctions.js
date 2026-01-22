@@ -901,7 +901,29 @@ export default function Auctions() {
                   : 'bg-[#1a3a52] text-gray-400'
               }`}
             >
-              🎓 {texts.beginner || 'Anfänger'} ({auctions.filter(a => a.is_beginner_only && a.status === 'active').length})
+              🎓 {texts.beginner || 'Anfänger'} ({beginnerCount})
+            </button>
+            <button
+              onClick={() => setStatusFilter('free')}
+              data-testid="filter-free"
+              className={`px-2 py-1.5 rounded text-[10px] font-medium ${
+                statusFilter === 'free' 
+                  ? 'bg-green-500 text-white' 
+                  : 'bg-[#1a3a52] text-gray-400'
+              }`}
+            >
+              🎁 Gratis ({freeCount})
+            </button>
+            <button
+              onClick={() => setStatusFilter('vip')}
+              data-testid="filter-vip"
+              className={`px-2 py-1.5 rounded text-[10px] font-medium ${
+                statusFilter === 'vip' 
+                  ? 'bg-yellow-500 text-black' 
+                  : 'bg-[#1a3a52] text-gray-400'
+              }`}
+            >
+              ⭐ VIP ({vipCount})
             </button>
             <button
               onClick={() => setStatusFilter('scheduled')}
