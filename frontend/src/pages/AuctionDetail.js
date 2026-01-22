@@ -234,7 +234,7 @@ export default function AuctionDetail() {
     }
 
     if (user?.bids_balance < 1) {
-      toast.error('Keine Gebote mehr verfügbar. Bitte kaufen Sie mehr Gebote.');
+      toast.error(t('auctions.noBidsAvailable') || 'Keine Gebote mehr verfügbar. Bitte kaufen Sie mehr Gebote.');
       return;
     }
 
