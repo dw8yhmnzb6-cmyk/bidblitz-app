@@ -905,3 +905,178 @@ async def bulk_import_products(products: List[ProductImport], admin: dict = Depe
         "message": f"{len(created_products)} products imported",
         "product_ids": created_products
     }
+
+
+# ==================== STAFF/MITARBEITER MANAGEMENT ====================
+
+# Available staff roles with permissions
+STAFF_ROLES = {
+    "editor": {
+        "name": "Editor",
+        "description": "Kann Produkte und Auktionen bearbeiten",
+        "permissions": ["products.view", "products.edit", "auctions.view", "auctions.edit"]
+    },
+    "support": {
+        "name": "Support",
+        "description": "Kann Benutzer verwalten und Support-Anfragen bearbeiten",
+        "permissions": ["users.view", "users.edit", "support.view", "support.manage"]
+    },
+    "marketing": {
+        "name": "Marketing",
+        "description": "Kann E-Mail-Kampagnen und Gutscheine verwalten",
+        "permissions": ["email.view", "email.send", "vouchers.view", "vouchers.create"]
+    },
+    "manager": {
+        "name": "Manager",
+        "description": "Vollständiger Zugriff auf alle Bereiche außer Mitarbeiter-Verwaltung",
+        "permissions": ["products.*", "auctions.*", "users.*", "email.*", "vouchers.*", "stats.view"]
+    },
+    "admin": {
+        "name": "Administrator",
+        "description": "Vollständiger Zugriff auf alle Bereiche inkl. Mitarbeiter-Verwaltung",
+        "permissions": ["*"]
+    }
+}
+
+ALL_PERMISSIONS = {
+    "products.view": "Produkte ansehen",
+    "products.edit": "Produkte bearbeiten",
+    "products.create": "Produkte erstellen",
+    "products.delete": "Produkte löschen",
+    "auctions.view": "Auktionen ansehen",
+    "auctions.edit": "Auktionen bearbeiten",
+    "auctions.create": "Auktionen erstellen",
+    "auctions.delete": "Auktionen löschen",
+    "users.view": "Benutzer ansehen",
+    "users.edit": "Benutzer bearbeiten",
+    "users.ban": "Benutzer sperren",
+    "email.view": "E-Mails ansehen",
+    "email.send": "E-Mails senden",
+    "vouchers.view": "Gutscheine ansehen",
+    "vouchers.create": "Gutscheine erstellen",
+    "vouchers.delete": "Gutscheine löschen",
+    "stats.view": "Statistiken ansehen",
+    "support.view": "Support-Anfragen ansehen",
+    "support.manage": "Support-Anfragen bearbeiten",
+    "staff.view": "Mitarbeiter ansehen",
+    "staff.manage": "Mitarbeiter verwalten"
+}
+
+
+class StaffCreate(BaseModel):
+    email: str
+    password: str
+    name: str = ""
+    role: str = "editor"
+
+
+class StaffUpdate(BaseModel):
+    name: Optional[str] = None
+    role: Optional[str] = None
+    is_active: Optional[bool] = None
+
+
+@router.get("/staff/roles")
+async def get_staff_roles(admin: dict = Depends(get_admin_user)):
+    """Get all available staff roles"""
+    return STAFF_ROLES
+
+
+@router.get("/staff/permissions")
+async def get_all_permissions(admin: dict = Depends(get_admin_user)):
+    """Get all available permissions"""
+    return ALL_PERMISSIONS
+
+
+@router.get("/staff")
+async def get_all_staff(admin: dict = Depends(get_admin_user)):
+    """Get all staff members"""
+    staff_members = await db.staff.find({}, {"_id": 0, "password_hash": 0}).to_list(100)
+    
+    # Add role name to each staff member
+    for member in staff_members:
+        role_id = member.get("role", "editor")
+        role_info = STAFF_ROLES.get(role_id, STAFF_ROLES["editor"])
+        member["role_name"] = role_info["name"]
+        member["permissions"] = role_info["permissions"]
+    
+    return staff_members
+
+
+@router.post("/staff")
+async def create_staff(data: StaffCreate, admin: dict = Depends(get_admin_user)):
+    """Create a new staff member"""
+    import bcrypt
+    
+    # Check if email already exists
+    existing = await db.staff.find_one({"email": data.email.lower()})
+    if existing:
+        raise HTTPException(status_code=400, detail="E-Mail bereits vergeben")
+    
+    # Validate role
+    if data.role not in STAFF_ROLES:
+        raise HTTPException(status_code=400, detail=f"Ungültige Rolle. Verfügbar: {list(STAFF_ROLES.keys())}")
+    
+    # Hash password
+    password_hash = bcrypt.hashpw(data.password.encode(), bcrypt.gensalt()).decode()
+    
+    now = datetime.now(timezone.utc)
+    staff_member = {
+        "id": str(uuid.uuid4()),
+        "email": data.email.lower(),
+        "password_hash": password_hash,
+        "name": data.name or data.email.split("@")[0],
+        "role": data.role,
+        "is_active": True,
+        "created_at": now.isoformat(),
+        "created_by": admin["id"]
+    }
+    
+    await db.staff.insert_one(staff_member)
+    
+    logger.info(f"Staff member created: {data.email} with role {data.role}")
+    
+    # Return without password
+    staff_member.pop("password_hash", None)
+    staff_member.pop("_id", None)
+    staff_member["role_name"] = STAFF_ROLES[data.role]["name"]
+    
+    return staff_member
+
+
+@router.put("/staff/{staff_id}")
+async def update_staff(staff_id: str, data: StaffUpdate, admin: dict = Depends(get_admin_user)):
+    """Update a staff member"""
+    staff_member = await db.staff.find_one({"id": staff_id})
+    if not staff_member:
+        raise HTTPException(status_code=404, detail="Mitarbeiter nicht gefunden")
+    
+    updates = {}
+    if data.name is not None:
+        updates["name"] = data.name
+    if data.role is not None:
+        if data.role not in STAFF_ROLES:
+            raise HTTPException(status_code=400, detail=f"Ungültige Rolle")
+        updates["role"] = data.role
+    if data.is_active is not None:
+        updates["is_active"] = data.is_active
+    
+    if updates:
+        updates["updated_at"] = datetime.now(timezone.utc).isoformat()
+        await db.staff.update_one({"id": staff_id}, {"$set": updates})
+    
+    updated = await db.staff.find_one({"id": staff_id}, {"_id": 0, "password_hash": 0})
+    updated["role_name"] = STAFF_ROLES.get(updated.get("role", "editor"), {}).get("name", "Editor")
+    
+    return updated
+
+
+@router.delete("/staff/{staff_id}")
+async def delete_staff(staff_id: str, admin: dict = Depends(get_admin_user)):
+    """Delete a staff member"""
+    result = await db.staff.delete_one({"id": staff_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Mitarbeiter nicht gefunden")
+    
+    logger.info(f"Staff member deleted: {staff_id}")
+    return {"message": "Mitarbeiter gelöscht"}
