@@ -299,31 +299,44 @@ export default function AuctionDetail() {
   };
 
   const handleSetAutobidder = async () => {
-    if (!maxPrice || parseFloat(maxPrice) <= 0) {
-      toast.error('Bitte geben Sie einen gültigen Maximalpreis ein');
+    const numMaxBids = parseInt(maxBids) || 10;
+    const numMaxPrice = parseFloat(maxPrice) || 0;
+    const numBidInLastSeconds = parseInt(bidInLastSeconds) || 10;
+
+    if (numMaxBids < 1) {
+      toast.error(t('autobidder.minBidsError') || 'Mindestens 1 Gebot erforderlich');
       return;
     }
 
-    if (parseFloat(maxPrice) <= auction.current_price) {
-      toast.error('Maximalpreis muss höher sein als der aktuelle Preis');
+    if (numMaxBids > user?.bids_balance) {
+      toast.error(t('autobidder.notEnoughBids') || `Nicht genug Gebote. Sie haben ${user?.bids_balance}, benötigen ${numMaxBids}`);
+      return;
+    }
+
+    if (numMaxPrice > 0 && numMaxPrice <= auction.current_price) {
+      toast.error(t('autobidder.maxPriceError') || 'Maximalpreis muss höher sein als der aktuelle Preis');
       return;
     }
 
     setSettingAutobidder(true);
     try {
       await axios.post(
-        `${API}/autobidder/create`,
+        `${API}/autobidder`,
         {
           auction_id: id,
-          max_price: parseFloat(maxPrice)
+          max_bids: numMaxBids,
+          max_price: numMaxPrice > 0 ? numMaxPrice : null,
+          bid_in_last_seconds: numBidInLastSeconds
         },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      toast.success('Autobidder aktiviert! Er wird automatisch für Sie bieten.');
+      toast.success(t('autobidder.activated') || 'Bid Buddy aktiviert! Er bietet automatisch für Sie.');
       setShowAutobidder(false);
       setMaxPrice('');
+      setMaxBids('10');
+      fetchAutobidder(); // Refresh autobidder status
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Fehler beim Aktivieren');
+      toast.error(error.response?.data?.detail || t('autobidder.activateError') || 'Fehler beim Aktivieren');
     } finally {
       setSettingAutobidder(false);
     }
