@@ -691,6 +691,7 @@ export default function Auctions() {
   // Filter
   const filtered = auctions.filter(a => {
     if (statusFilter === 'active' && a.status !== 'active') return false;
+    if (statusFilter === 'beginner' && (a.status !== 'active' || !a.is_beginner_only)) return false;
     if (statusFilter === 'scheduled' && a.status !== 'scheduled') return false;
     if (statusFilter === 'ended' && a.status !== 'ended') return false;
     if (searchQuery) {
@@ -708,6 +709,7 @@ export default function Auctions() {
   });
 
   const activeCount = auctions.filter(a => a.status === 'active').length;
+  const beginnerCount = auctions.filter(a => a.is_beginner_only && a.status === 'active').length;
   const scheduledCount = auctions.filter(a => a.status === 'scheduled').length;
   const endedCount = auctions.filter(a => a.status === 'ended').length;
 
