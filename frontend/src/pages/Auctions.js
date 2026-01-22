@@ -423,10 +423,22 @@ const AuctionCard = ({ auction, product, reminders, onToggleReminder, isLoggedIn
                 🎓
               </span>
             )}
+            {/* Free Auction Badge */}
+            {auction.is_free_auction && (
+              <span className="bg-green-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded" title="Gratis-Auktion - keine Gebote nötig!">
+                🎁 GRATIS
+              </span>
+            )}
             {/* VIP Badge */}
             {auction.is_vip_only && (
               <span className="bg-yellow-500 text-black text-[9px] font-bold px-1.5 py-0.5 rounded">
                 VIP
+              </span>
+            )}
+            {/* Night Auction Badge */}
+            {auction.is_night_auction && (
+              <span className="bg-indigo-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded" title="Nacht-Auktion (22-6 Uhr)">
+                🌙
               </span>
             )}
             {/* Reminder Button - only show for active auctions when logged in */}
