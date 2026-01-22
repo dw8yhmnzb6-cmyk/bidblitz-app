@@ -146,7 +146,7 @@ export default function AuctionDetail() {
   useEffect(() => {
     if (bidNotification) {
       toast.info(bidNotification.message, {
-        description: `Neuer Preis: €${bidNotification.price?.toFixed(2)}`,
+        description: `${t('auctions.newPrice') || 'Neuer Preis'}: €${bidNotification.price?.toFixed(2)}`,
         duration: 2000
       });
     }
