@@ -183,18 +183,28 @@ async def place_bid(auction_id: str, user: dict = Depends(get_current_user)):
                 detail="Diese Auktion ist nur für Anfänger (max. 10 gewonnene Auktionen). Sie haben bereits zu viele Auktionen gewonnen."
             )
     
-    # Check user's bid balance
-    if user["bids_balance"] < 1:
-        raise HTTPException(status_code=400, detail="Insufficient bids. Please buy more bids.")
+    # FREE AUCTION - no bid deduction required
+    is_free_auction = auction.get("is_free_auction", False)
     
-    # Deduct bid from user
-    await db.users.update_one(
-        {"id": user["id"]},
-        {"$inc": {"bids_balance": -1, "total_bids_placed": 1}}
-    )
+    if not is_free_auction:
+        # Check user's bid balance for regular auctions
+        if user["bids_balance"] < 1:
+            raise HTTPException(status_code=400, detail="Insufficient bids. Please buy more bids.")
+        
+        # Deduct bid from user
+        await db.users.update_one(
+            {"id": user["id"]},
+            {"$inc": {"bids_balance": -1, "total_bids_placed": 1}}
+        )
+    else:
+        # Free auction - just track participation
+        await db.users.update_one(
+            {"id": user["id"]},
+            {"$inc": {"total_bids_placed": 1, "free_bids_placed": 1}}
+        )
     
     # Update auction - extend timer by 10-15 seconds, don't reset
-    new_price = round(auction["current_price"] + auction["bid_increment"], 2)
+    new_price = round(auction["current_price"] + auction.get("bid_increment", 0.01), 2)
     current_end_time = datetime.fromisoformat(auction["end_time"].replace('Z', '+00:00'))
     now = datetime.now(timezone.utc)
     
