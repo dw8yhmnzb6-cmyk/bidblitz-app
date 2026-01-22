@@ -174,6 +174,15 @@ async def place_bid(auction_id: str, user: dict = Depends(get_current_user)):
     if datetime.now(timezone.utc) > end_time:
         raise HTTPException(status_code=400, detail="Auction has ended")
     
+    # Check BEGINNER AUCTION restriction
+    if auction.get("is_beginner_only"):
+        won_auctions = user.get("won_auctions", [])
+        if len(won_auctions) >= 10:
+            raise HTTPException(
+                status_code=403, 
+                detail="Diese Auktion ist nur für Anfänger (max. 10 gewonnene Auktionen). Sie haben bereits zu viele Auktionen gewonnen."
+            )
+    
     # Check user's bid balance
     if user["bids_balance"] < 1:
         raise HTTPException(status_code=400, detail="Insufficient bids. Please buy more bids.")
