@@ -633,10 +633,11 @@ export default function Auctions() {
 
   useEffect(() => {
     fetchAuctions();
-    // Reduced polling interval when WebSocket is connected
-    const interval = setInterval(fetchAuctions, isConnected ? 60000 : 15000);
+    // Faster polling to ensure timers stay updated
+    // Poll every 10 seconds regardless of WebSocket to catch restarts
+    const interval = setInterval(fetchAuctions, 10000);
     return () => clearInterval(interval);
-  }, [fetchAuctions, isConnected]);
+  }, [fetchAuctions]);
 
   // Update auctions from WebSocket in real-time
   useEffect(() => {
