@@ -28,20 +28,76 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [voucherCode, setVoucherCode] = useState('');
   const [redeemingVoucher, setRedeemingVoucher] = useState(false);
+  
+  // Daily Reward State
+  const [dailyRewardStatus, setDailyRewardStatus] = useState(null);
+  const [claimingReward, setClaimingReward] = useState(false);
+  const [achievements, setAchievements] = useState(null);
 
   // Dashboard translations
   const dashTexts = {
-    de: { welcome: 'Willkommen', profile: 'Profil', buyBids: 'Gebote kaufen', balance: 'Guthaben', bids: 'Gebote', won: 'Gewonnen', auctions: 'Auktionen', active: 'Aktiv', watching: 'Beobachtet', voucherCode: 'Gutscheincode', redeem: 'Einlösen', myAuctions: 'Meine Auktionen', recentBids: 'Letzte Gebote', autobidder: 'Autobidder', noBids: 'Noch keine Gebote', startBidding: 'Bieten anfangen', noAutobidder: 'Kein Autobidder', createAutobidder: 'Autobidder erstellen', viewAll: 'Alle anzeigen' },
-    en: { welcome: 'Welcome', profile: 'Profile', buyBids: 'Buy Bids', balance: 'Balance', bids: 'Bids', won: 'Won', auctions: 'Auctions', active: 'Active', watching: 'Watching', voucherCode: 'Voucher Code', redeem: 'Redeem', myAuctions: 'My Auctions', recentBids: 'Recent Bids', autobidder: 'Auto-Bidder', noBids: 'No bids yet', startBidding: 'Start Bidding', noAutobidder: 'No auto-bidder', createAutobidder: 'Create Auto-Bidder', viewAll: 'View All' },
-    sq: { welcome: 'Mirë se vini', profile: 'Profili', buyBids: 'Bli Oferta', balance: 'Bilanci', bids: 'Oferta', won: 'Fituar', auctions: 'Ankande', active: 'Aktive', watching: 'Duke ndjekur', voucherCode: 'Kodi i Kuponit', redeem: 'Aktivizo', myAuctions: 'Ankandet e Mia', recentBids: 'Ofertat e Fundit', autobidder: 'Auto-Ofertuesi', noBids: 'Ende pa oferta', startBidding: 'Fillo të Ofrosh', noAutobidder: 'Pa auto-ofertues', createAutobidder: 'Krijo Auto-Ofertues', viewAll: 'Shiko të Gjitha' },
-    tr: { welcome: 'Hoş geldiniz', profile: 'Profil', buyBids: 'Teklif Al', balance: 'Bakiye', bids: 'Teklif', won: 'Kazanılan', auctions: 'Açık Artırma', active: 'Aktif', watching: 'İzlenen', voucherCode: 'Kupon Kodu', redeem: 'Kullan', myAuctions: 'Açık Artırmalarım', recentBids: 'Son Teklifler', autobidder: 'Otomatik Teklif', noBids: 'Henüz teklif yok', startBidding: 'Teklif Vermeye Başla', noAutobidder: 'Otomatik teklif yok', createAutobidder: 'Otomatik Teklif Oluştur', viewAll: 'Tümünü Gör' },
-    fr: { welcome: 'Bienvenue', profile: 'Profil', buyBids: 'Acheter Enchères', balance: 'Solde', bids: 'Enchères', won: 'Gagné', auctions: 'Enchères', active: 'Actif', watching: 'Surveillé', voucherCode: 'Code Promo', redeem: 'Utiliser', myAuctions: 'Mes Enchères', recentBids: 'Enchères Récentes', autobidder: 'Auto-Enchère', noBids: 'Pas encore d\'enchères', startBidding: 'Commencer à Enchérir', noAutobidder: 'Pas d\'auto-enchère', createAutobidder: 'Créer Auto-Enchère', viewAll: 'Voir Tout' }
+    de: { welcome: 'Willkommen', profile: 'Profil', buyBids: 'Gebote kaufen', balance: 'Guthaben', bids: 'Gebote', won: 'Gewonnen', auctions: 'Auktionen', active: 'Aktiv', watching: 'Beobachtet', voucherCode: 'Gutscheincode', redeem: 'Einlösen', myAuctions: 'Meine Auktionen', recentBids: 'Letzte Gebote', autobidder: 'Autobidder', noBids: 'Noch keine Gebote', startBidding: 'Bieten anfangen', noAutobidder: 'Kein Autobidder', createAutobidder: 'Autobidder erstellen', viewAll: 'Alle anzeigen', dailyReward: 'Tägliche Belohnung', claimNow: 'Jetzt abholen!', alreadyClaimed: 'Heute abgeholt', streak: 'Streak', days: 'Tage', achievements: 'Achievements' },
+    en: { welcome: 'Welcome', profile: 'Profile', buyBids: 'Buy Bids', balance: 'Balance', bids: 'Bids', won: 'Won', auctions: 'Auctions', active: 'Active', watching: 'Watching', voucherCode: 'Voucher Code', redeem: 'Redeem', myAuctions: 'My Auctions', recentBids: 'Recent Bids', autobidder: 'Auto-Bidder', noBids: 'No bids yet', startBidding: 'Start Bidding', noAutobidder: 'No auto-bidder', createAutobidder: 'Create Auto-Bidder', viewAll: 'View All', dailyReward: 'Daily Reward', claimNow: 'Claim Now!', alreadyClaimed: 'Claimed Today', streak: 'Streak', days: 'Days', achievements: 'Achievements' },
+    sq: { welcome: 'Mirë se vini', profile: 'Profili', buyBids: 'Bli Oferta', balance: 'Bilanci', bids: 'Oferta', won: 'Fituar', auctions: 'Ankande', active: 'Aktive', watching: 'Duke ndjekur', voucherCode: 'Kodi i Kuponit', redeem: 'Aktivizo', myAuctions: 'Ankandet e Mia', recentBids: 'Ofertat e Fundit', autobidder: 'Auto-Ofertuesi', noBids: 'Ende pa oferta', startBidding: 'Fillo të Ofrosh', noAutobidder: 'Pa auto-ofertues', createAutobidder: 'Krijo Auto-Ofertues', viewAll: 'Shiko të Gjitha', dailyReward: 'Shpërblimi Ditor', claimNow: 'Merr Tani!', alreadyClaimed: 'Marrë Sot', streak: 'Streak', days: 'Ditë', achievements: 'Arritjet' },
+    tr: { welcome: 'Hoş geldiniz', profile: 'Profil', buyBids: 'Teklif Al', balance: 'Bakiye', bids: 'Teklif', won: 'Kazanılan', auctions: 'Açık Artırma', active: 'Aktif', watching: 'İzlenen', voucherCode: 'Kupon Kodu', redeem: 'Kullan', myAuctions: 'Açık Artırmalarım', recentBids: 'Son Teklifler', autobidder: 'Otomatik Teklif', noBids: 'Henüz teklif yok', startBidding: 'Teklif Vermeye Başla', noAutobidder: 'Otomatik teklif yok', createAutobidder: 'Otomatik Teklif Oluştur', viewAll: 'Tümünü Gör', dailyReward: 'Günlük Ödül', claimNow: 'Şimdi Al!', alreadyClaimed: 'Bugün Alındı', streak: 'Streak', days: 'Gün', achievements: 'Başarılar' },
+    fr: { welcome: 'Bienvenue', profile: 'Profil', buyBids: 'Acheter Enchères', balance: 'Solde', bids: 'Enchères', won: 'Gagné', auctions: 'Enchères', active: 'Actif', watching: 'Surveillé', voucherCode: 'Code Promo', redeem: 'Utiliser', myAuctions: 'Mes Enchères', recentBids: 'Enchères Récentes', autobidder: 'Auto-Enchère', noBids: 'Pas encore d\'enchères', startBidding: 'Commencer à Enchérir', noAutobidder: 'Pas d\'auto-enchère', createAutobidder: 'Créer Auto-Enchère', viewAll: 'Voir Tout', dailyReward: 'Récompense Quotidienne', claimNow: 'Réclamer!', alreadyClaimed: 'Réclamé Aujourd\'hui', streak: 'Streak', days: 'Jours', achievements: 'Succès' }
   };
   const dt = dashTexts[language] || dashTexts.de;
 
   useEffect(() => {
     if (user) fetchData();
   }, [user]);
+
+  // Fetch daily reward status
+  const fetchDailyRewardStatus = async () => {
+    try {
+      const res = await axios.get(`${API}/auth/daily-reward-status`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setDailyRewardStatus(res.data);
+    } catch (error) {
+      console.error('Error fetching daily reward status:', error);
+    }
+  };
+
+  // Fetch achievements
+  const fetchAchievements = async () => {
+    try {
+      const res = await axios.get(`${API}/auth/achievements`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setAchievements(res.data);
+    } catch (error) {
+      console.error('Error fetching achievements:', error);
+    }
+  };
+
+  // Claim daily reward
+  const claimDailyReward = async () => {
+    setClaimingReward(true);
+    try {
+      const res = await axios.post(`${API}/auth/claim-daily-reward`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success(`🎉 +${res.data.bids_received} Gebote erhalten!`, {
+        description: res.data.bonus_message || `Streak: ${res.data.current_streak} Tage`
+      });
+      setDailyRewardStatus({ ...dailyRewardStatus, can_claim: false, current_streak: res.data.current_streak });
+      refreshUser();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Fehler beim Abholen');
+    } finally {
+      setClaimingReward(false);
+    }
+  };
+
+  useEffect(() => {
+    if (token) {
+      fetchDailyRewardStatus();
+      fetchAchievements();
+    }
+  }, [token]);
+
 
   const fetchData = async () => {
     setLoading(true);
