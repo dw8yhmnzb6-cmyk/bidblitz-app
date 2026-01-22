@@ -27,10 +27,13 @@ export default function AuctionDetail() {
   const [showBidHistory, setShowBidHistory] = useState(true);
   const [loadingHistory, setLoadingHistory] = useState(false);
   
-  // Autobidder state
+  // Autobidder state (improved Bid Buddy)
   const [showAutobidder, setShowAutobidder] = useState(false);
   const [maxPrice, setMaxPrice] = useState('');
+  const [maxBids, setMaxBids] = useState('10');
+  const [bidInLastSeconds, setBidInLastSeconds] = useState('10');
   const [settingAutobidder, setSettingAutobidder] = useState(false);
+  const [activeAutobidder, setActiveAutobidder] = useState(null);
 
   // Buy It Now state
   const [buyNowPrice, setBuyNowPrice] = useState(null);
