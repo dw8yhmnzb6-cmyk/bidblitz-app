@@ -292,6 +292,101 @@ export default function Dashboard() {
           </div>
         </div>
 
+        {/* Daily Reward & Achievements Row */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+          {/* Daily Reward Card */}
+          <div className="glass-card rounded-xl p-5" data-testid="daily-reward-card">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#F59E0B] to-[#EF4444] flex items-center justify-center">
+                  <Gift className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-white font-bold">{dt.dailyReward}</h3>
+                  <p className="text-[#94A3B8] text-sm">
+                    🔥 {dt.streak}: {dailyRewardStatus?.current_streak || 0} {dt.days}
+                  </p>
+                </div>
+              </div>
+            </div>
+            
+            {dailyRewardStatus?.can_claim ? (
+              <Button
+                onClick={claimDailyReward}
+                disabled={claimingReward}
+                className="w-full bg-gradient-to-r from-[#F59E0B] to-[#EF4444] hover:from-[#D97706] hover:to-[#DC2626] text-white font-bold py-3"
+                data-testid="claim-daily-reward-btn"
+              >
+                {claimingReward ? '...' : (
+                  <>
+                    <Gift className="w-5 h-5 mr-2" />
+                    🎁 {dt.claimNow} (1-5 Gebote)
+                  </>
+                )}
+              </Button>
+            ) : (
+              <div className="text-center py-3 px-4 rounded-lg bg-[#181824]">
+                <CheckCircle className="w-6 h-6 text-[#10B981] mx-auto mb-2" />
+                <p className="text-[#10B981] font-medium">{dt.alreadyClaimed}</p>
+                <p className="text-[#94A3B8] text-xs mt-1">Komm morgen wieder!</p>
+              </div>
+            )}
+            
+            {/* Streak Progress */}
+            <div className="mt-4 grid grid-cols-7 gap-1">
+              {[1,2,3,4,5,6,7].map((day) => (
+                <div 
+                  key={day}
+                  className={`h-2 rounded-full ${
+                    (dailyRewardStatus?.current_streak || 0) % 7 >= day || (dailyRewardStatus?.current_streak || 0) % 7 === 0 && dailyRewardStatus?.current_streak >= 7
+                      ? 'bg-[#F59E0B]' 
+                      : 'bg-[#181824]'
+                  }`}
+                  title={`Tag ${day}`}
+                />
+              ))}
+            </div>
+            <p className="text-[#94A3B8] text-xs text-center mt-2">7 Tage = +10 Bonus-Gebote!</p>
+          </div>
+
+          {/* Achievements Card */}
+          <div className="glass-card rounded-xl p-5" data-testid="achievements-card">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-[#7C3AED]/20 flex items-center justify-center">
+                  <Trophy className="w-6 h-6 text-[#7C3AED]" />
+                </div>
+                <div>
+                  <h3 className="text-white font-bold">{dt.achievements}</h3>
+                  <p className="text-[#94A3B8] text-sm">
+                    {achievements?.total_earned || 0} / {achievements?.total_available || 12}
+                  </p>
+                </div>
+              </div>
+              <Link to="/achievements" className="text-[#7C3AED] text-sm hover:underline">
+                {dt.viewAll}
+              </Link>
+            </div>
+            
+            {/* Recent Achievements */}
+            <div className="flex flex-wrap gap-2">
+              {achievements?.earned?.slice(0, 6).map((ach) => (
+                <div 
+                  key={ach.id}
+                  className="px-3 py-2 rounded-lg bg-[#181824] flex items-center gap-2"
+                  title={ach.description}
+                >
+                  <span className="text-xl">{ach.icon}</span>
+                  <span className="text-white text-sm">{ach.name}</span>
+                </div>
+              ))}
+              {(!achievements?.earned || achievements.earned.length === 0) && (
+                <p className="text-[#94A3B8] text-sm">Noch keine Achievements - starte jetzt!</p>
+              )}
+            </div>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main Content - Left 2/3 */}
           <div className="lg:col-span-2 space-y-6">
