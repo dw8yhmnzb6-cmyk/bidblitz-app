@@ -483,7 +483,6 @@ const AuctionCard = ({ auction, product, reminders, onToggleReminder, isLoggedIn
               </div>
             )}
           </div>
-          )}
         </div>
 
         {/* Content */}
