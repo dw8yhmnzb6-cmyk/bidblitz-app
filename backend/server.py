@@ -312,7 +312,13 @@ async def auction_auto_restart_processor():
                             pass  # If we can't parse ended_at, restart anyway
                     
                     # Get original duration from the auto_restart config
-                    auto_restart = auction.get("auto_restart", {})
+                    # Handle case where auto_restart might be a bool instead of dict
+                    auto_restart_raw = auction.get("auto_restart")
+                    if isinstance(auto_restart_raw, dict):
+                        auto_restart = auto_restart_raw
+                    else:
+                        auto_restart = {}  # Default to empty dict if bool or None
+                    
                     duration_minutes = auto_restart.get("duration_minutes")
                     
                     # If no configured duration, use DEFAULT 10 minutes
