@@ -100,6 +100,30 @@ export default function Admin() {
     test_email: ''
   });
   const [sendingEmail, setSendingEmail] = useState(false);
+  
+  // Game Config State
+  const [gameConfig, setGameConfig] = useState(null);
+  const [savingConfig, setSavingConfig] = useState(false);
+
+  // WebSocket for real-time auction updates
+  const { isConnected, auctionData } = useAuctionWebSocket(null);
+
+  // Update auctions from WebSocket in real-time
+  useEffect(() => {
+    if (auctionData && auctionData.auction_id) {
+      setAuctions(prev => prev.map(auction => 
+        auction.id === auctionData.auction_id
+          ? {
+              ...auction,
+              current_price: auctionData.current_price ?? auction.current_price,
+              end_time: auctionData.end_time ?? auction.end_time,
+              last_bidder_name: auctionData.last_bidder_name ?? auction.last_bidder_name,
+              total_bids: auctionData.total_bids ?? auction.total_bids
+            }
+          : auction
+      ));
+    }
+  }, [auctionData]);
 
   useEffect(() => {
     if (isAdmin) {
