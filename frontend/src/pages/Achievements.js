@@ -1,398 +1,282 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '../context/AuthContext';
+import { Link } from 'react-router-dom';
 import axios from 'axios';
+import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import { Button } from '../components/ui/button';
 import { 
-  Trophy, Star, Crown, Flame, Gift, Sparkles, CheckCircle, Lock, 
-  Target, Users, Zap, Medal, Award, TrendingUp, Calendar, RefreshCw
+  Trophy, Lock, Gift, ArrowLeft, Zap, Star, Crown, 
+  Target, Moon, Sun, Heart, Users, Sparkles, CheckCircle
 } from 'lucide-react';
 import { toast } from 'sonner';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
-// Category Icons
-const CATEGORY_ICONS = {
-  bidding: Zap,
-  winning: Trophy,
-  buying: Gift,
-  engagement: Calendar,
-  social: Users,
-  special: Star
-};
+// All achievement definitions
+const ALL_ACHIEVEMENTS = [
+  { id: "first_win", name: "Erster Sieg", name_en: "First Win", description: "Gewinne deine erste Auktion", description_en: "Win your first auction", icon: "🏆", bids_reward: 5, category: "wins" },
+  { id: "wins_10", name: "Sammler", name_en: "Collector", description: "Gewinne 10 Auktionen", description_en: "Win 10 auctions", icon: "🎯", bids_reward: 20, category: "wins" },
+  { id: "wins_50", name: "Profi", name_en: "Pro", description: "Gewinne 50 Auktionen", description_en: "Win 50 auctions", icon: "⭐", bids_reward: 100, category: "wins" },
+  { id: "wins_100", name: "Meister", name_en: "Master", description: "Gewinne 100 Auktionen", description_en: "Win 100 auctions", icon: "👑", bids_reward: 250, category: "wins" },
+  { id: "night_owl", name: "Nachteule", name_en: "Night Owl", description: "Gewinne 5 Nacht-Auktionen", description_en: "Win 5 night auctions", icon: "🦉", bids_reward: 15, category: "special" },
+  { id: "early_bird", name: "Frühaufsteher", name_en: "Early Bird", description: "Biete vor 8 Uhr morgens", description_en: "Bid before 8 AM", icon: "🐦", bids_reward: 5, category: "special" },
+  { id: "big_spender", name: "Großzügig", name_en: "Big Spender", description: "Kaufe Gebote für über €100", description_en: "Buy bids worth over €100", icon: "💎", bids_reward: 30, category: "spending" },
+  { id: "lucky_winner", name: "Glückspilz", name_en: "Lucky Winner", description: "Gewinne mit nur 1 Gebot", description_en: "Win with just 1 bid", icon: "🍀", bids_reward: 10, category: "special" },
+  { id: "streak_7", name: "Wochensieger", name_en: "Week Champion", description: "7 Tage Login-Streak", description_en: "7 day login streak", icon: "🔥", bids_reward: 10, category: "streak" },
+  { id: "streak_30", name: "Monatssieger", name_en: "Month Champion", description: "30 Tage Login-Streak", description_en: "30 day login streak", icon: "💪", bids_reward: 50, category: "streak" },
+  { id: "referral_5", name: "Werber", name_en: "Recruiter", description: "Werbe 5 Freunde", description_en: "Refer 5 friends", icon: "👥", bids_reward: 25, category: "social" },
+  { id: "beginner_champ", name: "Anfänger-Champion", name_en: "Beginner Champ", description: "Gewinne 3 Anfänger-Auktionen", description_en: "Win 3 beginner auctions", icon: "🎓", bids_reward: 15, category: "special" },
+];
 
-const CATEGORY_COLORS = {
-  bidding: '#FFD700',
-  winning: '#10B981',
-  buying: '#06B6D4',
-  engagement: '#7C3AED',
-  social: '#EC4899',
-  special: '#F59E0B'
+const CATEGORY_LABELS = {
+  de: { wins: "Siege", special: "Spezial", spending: "Einkäufe", streak: "Streak", social: "Sozial" },
+  en: { wins: "Wins", special: "Special", spending: "Spending", streak: "Streak", social: "Social" }
 };
 
 export default function Achievements() {
-  const { isAuthenticated, token } = useAuth();
-  const [achievementData, setAchievementData] = useState(null);
-  const [dailyStatus, setDailyStatus] = useState(null);
-  const [leaderboard, setLeaderboard] = useState(null);
+  const { user, token } = useAuth();
+  const { language } = useLanguage();
+  const [achievements, setAchievements] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [claimingDaily, setClaimingDaily] = useState(false);
-  const [activeTab, setActiveTab] = useState('achievements');
+  const [selectedCategory, setSelectedCategory] = useState('all');
+
+  const texts = {
+    de: {
+      title: "Achievements",
+      subtitle: "Sammle Badges und verdiene Bonus-Gebote!",
+      earned: "Verdient",
+      locked: "Noch nicht freigeschaltet",
+      reward: "Belohnung",
+      bids: "Gebote",
+      progress: "Fortschritt",
+      all: "Alle",
+      loginRequired: "Melde dich an, um deine Achievements zu sehen",
+      totalEarned: "Verdiente Badges",
+      totalRewards: "Bonus-Gebote verdient",
+      backToAuctions: "Zurück zu Auktionen"
+    },
+    en: {
+      title: "Achievements",
+      subtitle: "Collect badges and earn bonus bids!",
+      earned: "Earned",
+      locked: "Not yet unlocked",
+      reward: "Reward",
+      bids: "Bids",
+      progress: "Progress",
+      all: "All",
+      loginRequired: "Log in to see your achievements",
+      totalEarned: "Badges Earned",
+      totalRewards: "Bonus Bids Earned",
+      backToAuctions: "Back to Auctions"
+    }
+  };
+  const t = texts[language] || texts.de;
+  const catLabels = CATEGORY_LABELS[language] || CATEGORY_LABELS.de;
 
   useEffect(() => {
-    if (isAuthenticated) {
-      fetchData();
+    if (token) {
+      fetchAchievements();
+    } else {
+      setLoading(false);
     }
-  }, [isAuthenticated]);
+  }, [token]);
 
-  const fetchData = async () => {
-    setLoading(true);
+  const fetchAchievements = async () => {
     try {
-      const headers = { Authorization: `Bearer ${token}` };
-      const [achRes, dailyRes, leaderRes] = await Promise.all([
-        axios.get(`${API}/rewards/achievements`, { headers }),
-        axios.get(`${API}/rewards/daily`, { headers }),
-        axios.get(`${API}/rewards/leaderboard?period=weekly`, { headers })
-      ]);
-      setAchievementData(achRes.data);
-      setDailyStatus(dailyRes.data);
-      setLeaderboard(leaderRes.data);
+      const res = await axios.get(`${API}/auth/achievements`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setAchievements(res.data);
     } catch (error) {
-      console.error('Error fetching data:', error);
-      toast.error('Fehler beim Laden der Daten');
+      console.error('Error fetching achievements:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const claimDailyReward = async () => {
-    setClaimingDaily(true);
-    try {
-      const response = await axios.post(`${API}/rewards/daily/claim`, {}, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      toast.success(`${response.data.message} +${response.data.total_bids} Gebote!`);
-      fetchData();
-    } catch (error) {
-      toast.error(error.response?.data?.detail || 'Fehler beim Abholen');
-    } finally {
-      setClaimingDaily(false);
-    }
-  };
+  const earnedIds = new Set(achievements?.earned?.map(a => a.id) || []);
+  
+  const filteredAchievements = ALL_ACHIEVEMENTS.filter(a => 
+    selectedCategory === 'all' || a.category === selectedCategory
+  );
 
-  if (!isAuthenticated) {
+  const totalBidsEarned = achievements?.earned?.reduce((sum, a) => sum + (a.bids_reward || 0), 0) || 0;
+
+  if (!user) {
     return (
-      <div className="min-h-screen pt-24 pb-12 px-4 flex items-center justify-center">
-        <div className="glass-card p-8 rounded-xl text-center max-w-md">
-          <Trophy className="w-16 h-16 text-[#FFD700] mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-white mb-4">Achievements & Belohnungen</h2>
-          <p className="text-[#94A3B8] mb-6">Melden Sie sich an, um Ihre Erfolge zu sehen.</p>
-          <Button className="btn-primary" onClick={() => window.location.href = '/login'}>
-            Anmelden
-          </Button>
+      <div className="min-h-screen bg-gradient-to-b from-[#0a1628] to-[#0d2137] py-8 px-4">
+        <div className="max-w-4xl mx-auto text-center py-20">
+          <Trophy className="w-20 h-20 text-[#7C3AED] mx-auto mb-6 opacity-50" />
+          <h1 className="text-2xl font-bold text-white mb-4">{t.loginRequired}</h1>
+          <Link to="/login">
+            <Button className="bg-[#7C3AED] hover:bg-[#6D28D9]">
+              Anmelden
+            </Button>
+          </Link>
         </div>
       </div>
     );
   }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen pt-24 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#FFD700]"></div>
-      </div>
-    );
-  }
-
-  const achievements = achievementData?.achievements || [];
-  const earnedCount = achievementData?.total_earned || 0;
-  const totalCount = achievementData?.total_available || 0;
-  const totalBidsEarned = achievementData?.total_bids_earned || 0;
-  const progressPercent = totalCount > 0 ? (earnedCount / totalCount) * 100 : 0;
-
-  // Group achievements by category
-  const groupedAchievements = achievements.reduce((acc, ach) => {
-    const cat = ach.category || 'special';
-    if (!acc[cat]) acc[cat] = [];
-    acc[cat].push(ach);
-    return acc;
-  }, {});
 
   return (
-    <div className="min-h-screen pt-24 pb-12 px-4" data-testid="achievements-page">
-      <div className="max-w-5xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-b from-[#0a1628] to-[#0d2137] py-8 px-4">
+      <div className="max-w-6xl mx-auto">
         {/* Header */}
-        <div className="text-center mb-8">
-          <div className="w-20 h-20 rounded-full bg-gradient-to-br from-[#FFD700] to-[#FF4D4D] flex items-center justify-center mx-auto mb-4">
-            <Trophy className="w-10 h-10 text-black" />
+        <div className="mb-8">
+          <Link to="/dashboard" className="inline-flex items-center gap-2 text-[#94A3B8] hover:text-white mb-4">
+            <ArrowLeft className="w-4 h-4" />
+            {t.backToAuctions}
+          </Link>
+          
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#7C3AED] to-[#06B6D4] flex items-center justify-center">
+                <Trophy className="w-8 h-8 text-white" />
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold text-white">{t.title}</h1>
+                <p className="text-[#94A3B8]">{t.subtitle}</p>
+              </div>
+            </div>
+            
+            {/* Stats */}
+            <div className="flex gap-4">
+              <div className="glass-card rounded-xl px-6 py-4 text-center">
+                <p className="text-3xl font-bold text-[#7C3AED]">{achievements?.total_earned || 0}</p>
+                <p className="text-[#94A3B8] text-sm">/ {achievements?.total_available || 12}</p>
+                <p className="text-white text-xs mt-1">{t.totalEarned}</p>
+              </div>
+              <div className="glass-card rounded-xl px-6 py-4 text-center">
+                <p className="text-3xl font-bold text-[#10B981]">+{totalBidsEarned}</p>
+                <p className="text-[#94A3B8] text-sm">{t.bids}</p>
+                <p className="text-white text-xs mt-1">{t.totalRewards}</p>
+              </div>
+            </div>
           </div>
-          <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">Achievements & Belohnungen</h1>
-          <p className="text-[#94A3B8]">Sammle Erfolge und verdiene Bonus-Gebote!</p>
         </div>
 
-        {/* Tab Navigation */}
-        <div className="flex gap-2 mb-6 justify-center">
-          {['achievements', 'daily', 'leaderboard'].map(tab => (
+        {/* Category Filter */}
+        <div className="flex flex-wrap gap-2 mb-6">
+          <button
+            onClick={() => setSelectedCategory('all')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              selectedCategory === 'all'
+                ? 'bg-[#7C3AED] text-white'
+                : 'bg-[#181824] text-[#94A3B8] hover:text-white'
+            }`}
+          >
+            {t.all} ({ALL_ACHIEVEMENTS.length})
+          </button>
+          {Object.keys(catLabels).map(cat => (
             <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`px-4 py-2 rounded-lg font-medium transition-all ${
-                activeTab === tab 
-                  ? 'bg-[#FFD700] text-black' 
+              key={cat}
+              onClick={() => setSelectedCategory(cat)}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                selectedCategory === cat
+                  ? 'bg-[#7C3AED] text-white'
                   : 'bg-[#181824] text-[#94A3B8] hover:text-white'
               }`}
             >
-              {tab === 'achievements' && 'Achievements'}
-              {tab === 'daily' && 'Tagesbonus'}
-              {tab === 'leaderboard' && 'Rangliste'}
+              {catLabels[cat]} ({ALL_ACHIEVEMENTS.filter(a => a.category === cat).length})
             </button>
           ))}
         </div>
 
-        {/* Daily Reward Card - Always visible */}
-        <div className="glass-card p-6 rounded-xl mb-8 border border-[#FFD700]/30 bg-gradient-to-r from-[#FFD700]/10 to-[#FF4D4D]/10">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className={`w-16 h-16 rounded-full flex items-center justify-center ${
-                dailyStatus?.can_claim ? 'bg-[#FFD700]/20 animate-pulse' : 'bg-[#475569]/20'
-              }`}>
-                <Gift className={`w-8 h-8 ${dailyStatus?.can_claim ? 'text-[#FFD700]' : 'text-[#94A3B8]'}`} />
-              </div>
-              <div>
-                <h3 className="text-lg font-bold text-white">Tägliche Belohnung</h3>
-                <p className="text-[#94A3B8] text-sm">
-                  {dailyStatus?.can_claim 
-                    ? `+${dailyStatus?.next_reward?.bids || 1} Gebot${(dailyStatus?.next_reward?.bids || 1) !== 1 ? 'e' : ''} warten auf dich!`
-                    : `Bereits abgeholt! Morgen wieder.`
-                  }
-                </p>
-                <p className="text-[#FFD700] text-xs mt-1">
-                  🔥 Streak: {dailyStatus?.current_streak || 0} Tage
-                </p>
-              </div>
-            </div>
-            <Button
-              onClick={claimDailyReward}
-              disabled={!dailyStatus?.can_claim || claimingDaily}
-              className={dailyStatus?.can_claim 
-                ? 'bg-gradient-to-r from-[#FFD700] to-[#FF4D4D] text-black font-bold hover:scale-105 transition-transform'
-                : 'bg-[#475569] text-white cursor-not-allowed'
-              }
-              data-testid="claim-daily-btn"
-            >
-              {claimingDaily ? (
-                <RefreshCw className="w-4 h-4 animate-spin" />
-              ) : dailyStatus?.can_claim ? (
-                'Jetzt abholen!'
-              ) : (
-                'Abgeholt ✓'
-              )}
-            </Button>
+        {/* Progress Bar */}
+        <div className="glass-card rounded-xl p-4 mb-8">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-white font-medium">{t.progress}</span>
+            <span className="text-[#7C3AED] font-bold">
+              {achievements?.total_earned || 0} / {achievements?.total_available || 12}
+            </span>
+          </div>
+          <div className="h-3 bg-[#181824] rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-gradient-to-r from-[#7C3AED] to-[#06B6D4] rounded-full transition-all duration-500"
+              style={{ width: `${((achievements?.total_earned || 0) / (achievements?.total_available || 12)) * 100}%` }}
+            />
           </div>
         </div>
 
-        {/* Achievements Tab */}
-        {activeTab === 'achievements' && (
-          <>
-            {/* Progress Stats */}
-            <div className="grid grid-cols-3 gap-4 mb-8">
-              <div className="glass-card p-4 rounded-xl text-center">
-                <p className="text-3xl font-bold text-[#FFD700]">{earnedCount}</p>
-                <p className="text-[#94A3B8] text-sm">Freigeschaltet</p>
-              </div>
-              <div className="glass-card p-4 rounded-xl text-center">
-                <p className="text-3xl font-bold text-white">{totalCount}</p>
-                <p className="text-[#94A3B8] text-sm">Gesamt</p>
-              </div>
-              <div className="glass-card p-4 rounded-xl text-center">
-                <p className="text-3xl font-bold text-[#10B981]">+{totalBidsEarned}</p>
-                <p className="text-[#94A3B8] text-sm">Gebote verdient</p>
-              </div>
-            </div>
-
-            {/* Progress Bar */}
-            <div className="glass-card p-4 rounded-xl mb-8">
-              <div className="flex justify-between text-sm mb-2">
-                <span className="text-[#94A3B8]">Fortschritt</span>
-                <span className="text-white font-bold">{Math.round(progressPercent)}%</span>
-              </div>
-              <div className="h-3 bg-[#181824] rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-gradient-to-r from-[#FFD700] to-[#FF4D4D] rounded-full transition-all duration-500"
-                  style={{ width: `${progressPercent}%` }}
-                />
-              </div>
-            </div>
-
-            {/* Achievements by Category */}
-            {Object.entries(groupedAchievements).map(([category, categoryAchievements]) => {
-              const CategoryIcon = CATEGORY_ICONS[category] || Trophy;
-              const categoryColor = CATEGORY_COLORS[category] || '#FFD700';
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <div className="w-10 h-10 border-4 border-[#7C3AED] border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredAchievements.map((achievement) => {
+              const isEarned = earnedIds.has(achievement.id);
+              const name = language === 'en' ? achievement.name_en : achievement.name;
+              const description = language === 'en' ? achievement.description_en : achievement.description;
               
               return (
-                <div key={category} className="mb-8">
-                  <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                    <CategoryIcon className="w-5 h-5" style={{ color: categoryColor }} />
-                    {category === 'bidding' && 'Bieten'}
-                    {category === 'winning' && 'Gewinnen'}
-                    {category === 'buying' && 'Kaufen'}
-                    {category === 'engagement' && 'Engagement'}
-                    {category === 'social' && 'Sozial'}
-                    {category === 'special' && 'Spezial'}
-                  </h2>
-                  
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {categoryAchievements.map((ach) => (
-                      <div 
-                        key={ach.id}
-                        className={`glass-card p-4 rounded-xl transition-all ${
-                          ach.earned 
-                            ? 'border border-[#FFD700]/50 bg-[#FFD700]/5' 
-                            : 'opacity-70'
-                        }`}
-                        data-testid={`achievement-${ach.id}`}
-                      >
-                        <div className="flex items-start gap-3">
-                          <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl ${
-                            ach.earned 
-                              ? 'bg-gradient-to-br from-[#FFD700] to-[#FF4D4D]' 
-                              : 'bg-[#181824]'
-                          }`}>
-                            {ach.earned ? ach.icon : <Lock className="w-5 h-5 text-[#475569]" />}
-                          </div>
-                          <div className="flex-1">
-                            <div className="flex items-center justify-between">
-                              <h3 className={`font-bold text-sm ${ach.earned ? 'text-white' : 'text-[#94A3B8]'}`}>
-                                {ach.name}
-                              </h3>
-                              <span className={`text-xs px-2 py-1 rounded-full ${
-                                ach.earned ? 'bg-[#10B981]/20 text-[#10B981]' : 'bg-[#181824] text-[#475569]'
-                              }`}>
-                                +{ach.reward_bids}
-                              </span>
-                            </div>
-                            <p className="text-[#94A3B8] text-xs mt-1">{ach.description}</p>
-                            
-                            {/* Progress Bar */}
-                            {!ach.earned && ach.target > 1 && (
-                              <div className="mt-2">
-                                <div className="h-1.5 bg-[#181824] rounded-full overflow-hidden">
-                                  <div 
-                                    className="h-full rounded-full transition-all"
-                                    style={{ 
-                                      width: `${ach.progress_percent}%`,
-                                      backgroundColor: categoryColor 
-                                    }}
-                                  />
-                                </div>
-                                <p className="text-[#475569] text-[10px] mt-1">
-                                  {ach.progress} / {ach.target}
-                                </p>
-                              </div>
-                            )}
-                            
-                            {ach.earned && ach.earned_at && (
-                              <p className="text-[#10B981] text-xs mt-2 flex items-center gap-1">
-                                <CheckCircle className="w-3 h-3" />
-                                {new Date(ach.earned_at).toLocaleDateString('de-DE')}
-                              </p>
-                            )}
-                          </div>
-                        </div>
+                <div
+                  key={achievement.id}
+                  className={`glass-card rounded-xl p-6 transition-all duration-300 ${
+                    isEarned 
+                      ? 'border border-[#7C3AED]/50 bg-[#7C3AED]/10' 
+                      : 'opacity-60 hover:opacity-80'
+                  }`}
+                  data-testid={`achievement-${achievement.id}`}
+                >
+                  <div className="flex items-start gap-4">
+                    {/* Icon */}
+                    <div className={`w-16 h-16 rounded-xl flex items-center justify-center text-3xl ${
+                      isEarned 
+                        ? 'bg-gradient-to-br from-[#7C3AED] to-[#06B6D4]' 
+                        : 'bg-[#181824]'
+                    }`}>
+                      {isEarned ? (
+                        achievement.icon
+                      ) : (
+                        <Lock className="w-6 h-6 text-[#94A3B8]" />
+                      )}
+                    </div>
+                    
+                    {/* Content */}
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="text-white font-bold">{name}</h3>
+                        {isEarned && (
+                          <CheckCircle className="w-4 h-4 text-[#10B981]" />
+                        )}
                       </div>
-                    ))}
+                      <p className="text-[#94A3B8] text-sm mb-3">{description}</p>
+                      
+                      {/* Reward */}
+                      <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg ${
+                        isEarned ? 'bg-[#10B981]/20 text-[#10B981]' : 'bg-[#181824] text-[#94A3B8]'
+                      }`}>
+                        <Gift className="w-4 h-4" />
+                        <span className="text-sm font-medium">
+                          +{achievement.bids_reward} {t.bids}
+                        </span>
+                        {isEarned && (
+                          <span className="text-xs">✓ {t.earned}</span>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
               );
             })}
-          </>
-        )}
-
-        {/* Daily Rewards Tab */}
-        {activeTab === 'daily' && (
-          <div className="space-y-6">
-            <div className="glass-card p-6 rounded-xl">
-              <h2 className="text-xl font-bold text-white mb-4">Tägliche Belohnungen</h2>
-              <p className="text-[#94A3B8] mb-6">
-                Logge dich jeden Tag ein und hole deinen Bonus ab! Je länger dein Streak, desto mehr Gebote bekommst du.
-              </p>
-              
-              <div className="grid grid-cols-7 gap-2">
-                {dailyStatus?.streak_rewards?.map((reward, index) => {
-                  const currentDay = (dailyStatus?.current_streak % 7) || 0;
-                  const isCurrentDay = index === currentDay && dailyStatus?.can_claim;
-                  const isPast = index < currentDay || (index === 0 && currentDay === 0 && !dailyStatus?.can_claim);
-                  
-                  return (
-                    <div 
-                      key={index}
-                      className={`p-3 rounded-lg text-center transition-all ${
-                        isCurrentDay 
-                          ? 'bg-gradient-to-br from-[#FFD700] to-[#FF4D4D] text-black animate-pulse'
-                          : isPast
-                            ? 'bg-[#10B981]/20 border border-[#10B981]'
-                            : 'bg-[#181824] border border-white/10'
-                      }`}
-                    >
-                      <p className={`text-xs font-medium ${isCurrentDay ? 'text-black' : 'text-[#94A3B8]'}`}>
-                        Tag {index + 1}
-                      </p>
-                      <p className={`text-lg font-bold ${isCurrentDay ? 'text-black' : isPast ? 'text-[#10B981]' : 'text-white'}`}>
-                        +{reward.bids}
-                      </p>
-                      {isPast && <CheckCircle className="w-4 h-4 text-[#10B981] mx-auto mt-1" />}
-                    </div>
-                  );
-                })}
-              </div>
-              
-              <div className="mt-6 p-4 bg-[#181824] rounded-lg">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-white font-medium">Aktueller Streak</p>
-                    <p className="text-[#FFD700] text-2xl font-bold">{dailyStatus?.current_streak || 0} Tage</p>
-                  </div>
-                  <Flame className="w-12 h-12 text-[#FF4D4D]" />
-                </div>
-              </div>
-            </div>
           </div>
         )}
 
-        {/* Leaderboard Tab */}
-        {activeTab === 'leaderboard' && (
-          <div className="glass-card p-6 rounded-xl">
-            <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-[#FFD700]" />
-              Wöchentliche Rangliste
-            </h2>
-            
-            <div className="space-y-2">
-              {leaderboard?.leaderboard?.slice(0, 20).map((entry, index) => (
-                <div 
-                  key={entry.user_id}
-                  className={`flex items-center justify-between p-3 rounded-lg ${
-                    index < 3 ? 'bg-gradient-to-r from-[#FFD700]/10 to-transparent' : 'bg-[#181824]'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="text-2xl w-8 text-center">{entry.badge || entry.rank}</span>
-                    <div>
-                      <p className="text-white font-medium">{entry.name}</p>
-                      <p className="text-[#94A3B8] text-xs">{entry.wins} Siege • {entry.bids} Gebote</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-[#FFD700] font-bold">{entry.score}</p>
-                    <p className="text-[#94A3B8] text-xs">Punkte</p>
-                  </div>
-                </div>
-              ))}
-              
-              {(!leaderboard?.leaderboard || leaderboard.leaderboard.length === 0) && (
-                <p className="text-center text-[#94A3B8] py-8">Noch keine Daten verfügbar</p>
-              )}
-            </div>
-          </div>
-        )}
+        {/* Tips Section */}
+        <div className="mt-8 glass-card rounded-xl p-6 border-l-4 border-[#F59E0B]">
+          <h3 className="text-white font-bold mb-3 flex items-center gap-2">
+            <Sparkles className="w-5 h-5 text-[#F59E0B]" />
+            Tipps zum Freischalten
+          </h3>
+          <ul className="space-y-2 text-[#94A3B8] text-sm">
+            <li>🎯 <strong className="text-white">Erster Sieg:</strong> Nimm an einer Auktion teil und gewinne!</li>
+            <li>🔥 <strong className="text-white">Streak-Bonus:</strong> Melde dich 7 Tage hintereinander an</li>
+            <li>🦉 <strong className="text-white">Nachteule:</strong> Gewinne Auktionen zwischen 22:00 und 6:00 Uhr</li>
+            <li>🍀 <strong className="text-white">Glückspilz:</strong> Manchmal reicht ein einziges Gebot zum Sieg!</li>
+            <li>👥 <strong className="text-white">Werber:</strong> Teile deinen Empfehlungscode mit Freunden</li>
+          </ul>
+        </div>
       </div>
     </div>
   );
