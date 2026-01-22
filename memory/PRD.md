@@ -9,39 +9,35 @@ Der Benutzer hat eine Penny-Auktions-Website nach dem Vorbild von `dealdash.com`
 
 ### Behobene Probleme dieser Session:
 
-1. **Admin-Login "Ungültige Anmeldedaten"** ✅ BEHOBEN
-   - Problem: `is_admin` Feld war `None` in MongoDB
-   - Lösung: Feld auf `True` aktualisiert
-
-2. **Timer bei 00:00:00 stehen geblieben** ✅ BEHOBEN
-   - Problem: Geschäftszeiten-Logik blockierte Auktionen
-   - Lösung: Geschäftszeiten auf 0:00-24:00 erweitert
-
-3. **Zahlungsübersicht zeigte €0.00** ✅ BEHOBEN
-   - Problem: Code las aus falscher Collection
-   - Lösung: Collection korrigiert
-
-4. **E-Mail Marketing zeigte 0 Benutzer** ✅ BEHOBEN
-   - Problem: Fehlender API-Endpoint
-   - Lösung: `/admin/email/user-stats` erstellt
-
+1. **Admin-Login** ✅ BEHOBEN
+2. **Timer stehen geblieben** ✅ BEHOBEN
+3. **Zahlungsübersicht €0.00** ✅ BEHOBEN
+4. **E-Mail Marketing 0 Benutzer** ✅ BEHOBEN
 5. **Zahlung nicht gutgeschrieben** ✅ BEHOBEN
-   - Problem: Pending Transaction nicht abgeschlossen
-   - Lösung: Manuelle Gutschrift + Code-Review
-
 6. **Stripe LIVE aktiviert** ✅ NEU
-   - Test-Modus auf LIVE-Modus umgestellt
-   - Echte Zahlungen werden jetzt verarbeitet
-
 7. **Echtzeit-Updates auf Startseite** ✅ NEU
-   - WebSocket-Verbindung für alle Auktionen
-   - "Live" Status-Anzeige hinzugefügt
-   - Preise und Bieter aktualisieren sich automatisch
-
 8. **Vollständige i18n für AuctionDetail.js** ✅ NEU
-   - Alle hartkodierte Texte durch Übersetzungssystem ersetzt
-   - Neue Übersetzungen für DE und SQ (Albanisch) hinzugefügt
-   - Strings: increment, bidHistory, buyNow, yourPrice, etc.
+
+### Neue Features implementiert:
+
+1. **Bid Buddy (Auto-Bieter) verbessert** ✅ NEU
+   - Konfigurierbare Anzahl max. Gebote
+   - Optionaler Maximalpreis
+   - Wählbar: Bieten in letzten 5/10/15/20 Sekunden
+   - Status-Anzeige: "🤖 Bid Buddy aktiv - noch X Gebote"
+   - Stopp-Button zum Deaktivieren
+
+2. **Push-Notifications "Auktion endet in 5 Min"** ✅ NEU
+   - Automatische Benachrichtigung 5 Minuten vor Auktionsende
+   - Geht an alle Bieter und Wunschlisten-Nutzer
+   - In-App + Browser Push
+   - Benutzer kann Notification-Typ deaktivieren
+
+3. **Beginner-Auktionen** ✅ NEU
+   - Filter-Button "🎓 Anfänger (X)" auf Startseite
+   - Lila 🎓 Badge auf Auktionskarten
+   - Nur Nutzer mit max. 10 gewonnenen Auktionen dürfen bieten
+   - Fehlermeldung bei Verstoß
 
 ### Neue Features implementiert:
 
