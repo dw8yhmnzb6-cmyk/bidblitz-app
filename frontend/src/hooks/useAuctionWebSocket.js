@@ -108,6 +108,42 @@ export function useAuctionWebSocket(auctionId = null) {
             );
           });
           break;
+        
+        case 'auction_restarted':
+          // Handle auction restart - update with new data
+          setAuctionData(prev => {
+            if (!prev) return message.data;
+            
+            // For single auction view
+            if (!Array.isArray(prev)) {
+              if (prev.id === message.auction_id) {
+                return {
+                  ...prev,
+                  status: message.data.status || 'active',
+                  current_price: message.data.current_price,
+                  end_time: message.data.end_time,
+                  total_bids: message.data.total_bids || 0,
+                  last_bidder_name: message.data.last_bidder_name
+                };
+              }
+              return prev;
+            }
+            
+            // For auctions list view
+            return prev.map(auction =>
+              auction.id === message.auction_id
+                ? {
+                    ...auction,
+                    status: message.data.status || 'active',
+                    current_price: message.data.current_price,
+                    end_time: message.data.end_time,
+                    total_bids: message.data.total_bids || 0,
+                    last_bidder_name: message.data.last_bidder_name
+                  }
+                : auction
+            );
+          });
+          break;
           
         case 'heartbeat':
         case 'pong':
