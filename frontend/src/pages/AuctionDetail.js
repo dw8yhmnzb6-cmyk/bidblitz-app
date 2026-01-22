@@ -245,7 +245,7 @@ export default function AuctionDetail() {
         {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      toast.success('Gebot erfolgreich platziert!');
+      toast.success(t('auctions.bidSuccess') || 'Gebot erfolgreich platziert!');
       updateBidsBalance(response.data.bids_remaining);
       fetchAuction();
     } catch (error) {
