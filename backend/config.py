@@ -53,4 +53,4 @@ BID_PACKAGES = [
 ]
 
 # Frontend URL for redirects
-FRONTEND_URL = os.environ.get('FRONTEND_URL', 'https://snipbid.preview.emergentagent.com')
+FRONTEND_URL = os.environ.get('FRONTEND_URL', 'https://bidblitz-1.preview.emergentagent.com')
