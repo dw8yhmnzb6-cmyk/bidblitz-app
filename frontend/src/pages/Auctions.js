@@ -279,6 +279,9 @@ const TrustBadges = memo(() => (
 // Info Sidebar with Badge Legend
 const InfoSidebar = memo(() => (
   <div className="space-y-3">
+    {/* Trust Badges First */}
+    <TrustBadges />
+    
     <div className="bg-white rounded-lg p-3 border border-gray-200 shadow-sm">
       <h3 className="text-xs font-bold text-gray-800 mb-2">AUKTIONS-TYPEN</h3>
       <div className="space-y-1.5 text-[9px]">
