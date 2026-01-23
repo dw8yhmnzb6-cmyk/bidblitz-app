@@ -10,28 +10,29 @@ import { toast } from 'sonner';
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 // Activity Index Bar - Snipster Style with gradient and pointer
-const ActivityIndex = ({ bids, auctionId = '' }) => {
-  // Create stable position based on auction ID
-  const stableOffset = auctionId ? (auctionId.charCodeAt(0) % 15) : 8;
-  const baseLevel = 35 + stableOffset;
-  const bidBonus = Math.min(20, (bids || 0) * 0.2);
-  const position = Math.min(60, baseLevel + bidBonus);
+// ALWAYS shows between 30-60% (never at extremes)
+const ActivityIndex = ({ auctionId = '' }) => {
+  // Create stable position based on auction ID (30-60% range ONLY)
+  const hash = auctionId ? auctionId.split('').reduce((a, b) => a + b.charCodeAt(0), 0) : 45;
+  const position = 30 + (hash % 31); // Always between 30 and 60
   
   return (
     <div className="mt-2">
       <div className="flex items-center justify-between mb-1">
         <span className="text-[10px] text-gray-400">Aktivitätsindex:</span>
       </div>
-      <div className="relative h-2 rounded-full overflow-hidden" style={{
-        background: 'linear-gradient(to right, #22c55e 0%, #84cc16 30%, #eab308 50%, #f97316 70%, #ef4444 100%)'
-      }}>
-        {/* Pointer */}
+      <div className="relative h-1.5 rounded-full overflow-hidden bg-gray-700">
         <div 
-          className="absolute top-0 w-0.5 h-full bg-white shadow-lg"
+          className="absolute inset-0 rounded-full"
+          style={{
+            background: 'linear-gradient(to right, #22c55e 0%, #84cc16 25%, #eab308 50%, #f97316 75%, #ef4444 100%)'
+          }}
+        />
+        <div 
+          className="absolute top-0 w-1 h-full bg-white rounded-full"
           style={{ 
             left: `${position}%`,
-            transition: 'left 0.5s ease-out',
-            boxShadow: '0 0 4px rgba(255,255,255,0.8)'
+            boxShadow: '0 0 6px rgba(255,255,255,0.9)'
           }}
         />
       </div>
