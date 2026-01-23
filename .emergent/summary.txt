@@ -1,90 +1,117 @@
 <analysis>**original_problem_statement:**
-The user requested the creation of a penny auction website modeled after  and , with a customer-facing application and an admin panel. Key requests have included real-time bidding, various auction types (VIP, Beginner, Free), admin controls, and monetization via Stripe. The user has recently provided a large list of new features, prioritizing Buy It Now, Bid Buddy improvements, and push notifications. Subsequent requests included implementing Gratis-Auktionen (Free Auctions), Achievements & Daily Rewards, adding more auction listings, and creating a centralized admin panel to manage all gamification settings. The user has also reported and the agent has fixed several critical bugs related to timers, admin login, payment processing, and real-time UI updates.
+The user requested the creation of a penny auction website modeled after  and , with a customer-facing application and an admin panel. Key requests have included real-time bidding, various auction types (VIP, Beginner, Free), admin controls, and monetization via Stripe. Throughout the project, new features like Buy It Now, Bid Buddy, push notifications, Achievements, and Daily Rewards were added.
+
+In the most recent interactions, the user's priority has shifted to a complete visual and functional overhaul of the frontend to precisely match the look, feel, and real-time behavior of . This includes a specific non-scrolling layout, smooth, granular UI updates (only numbers changing, not the whole component), specific timer behavior (resetting on last-second bids, not hitting zero), and UI elements like a new activity index. The user also requested the addition of many new auctions.
 
 **PRODUCT REQUIREMENTS (extracted from user requests):**
-- **Core Functionality:** Penny auction system with real-time bidding via WebSockets on all auction lists. Multiple auction types: Standard, VIP, Beginner-only, and Free.
-- **Admin Panel:** A comprehensive dashboard for managing products, auctions, users, and payments. A new Game Settings page to enable/disable and configure features like Daily Rewards, Beginner Auctions, Achievements, and Referral bonuses. Admin auction lists should now update in real-time.
-- **User Features:** Full user lifecycle (Login/Register/Profile). Ability to purchase bid packs. A dashboard to view stats and claim daily login rewards. An achievements system to reward user engagement.
-- **Gamification:**
-    - **Daily Login Rewards:** Users can claim a daily bid reward, with a streak bonus.
-    - **Achievements:** A system for awarding badges for milestones (e.g., First Win).
-    - **Bid Buddy / Auto-Bieter:** An improved UI showing the status and remaining bids for an active auto-bidder.
-- **Monetization:** Stripe integration is now configured for LIVE payments. Bid packages with bonus bids to incentivize larger purchases.
-- **Notifications:** Real-time browser push notifications for being outbid and when a watched auction is about to end.
-- **UI/UX:** A mobile-first, dark-themed design. The UI must be fully internationalized (i18n), with real-time updates on all auction pages.
+- **Core Functionality:** A penny auction system modeled after . All auctions should be displayed on a single, non-scrolling homepage.
+- **UI/UX (Snipster Clone):**
+    - A main page with a large Premium Auction card on the left and an info sidebar on the right.
+    - A grid of live auctions below. The page should not require scrolling to see all main content.
+    - Auction cards must be redesigned to match Snipster's style, including a new Activity Index made of colored squares.
+    - Real-time updates (timer, price, last bidder) must be invisible and smooth, without the entire auction card flashing or re-rendering.
+- **Timer Logic:** The timer should not reach . When a bid is placed in the last few seconds, the timer should reset to a value between 8-10 seconds. The minimum visible time before a bid should be around 3 seconds.
+- **Content:** The platform must display a large number of auctions (~150). Badge explanations (for VIP, Beginner, etc.) should be visible on the main page.
 
 **User's preferred language**: German. The next agent MUST respond in German.
 
 **what currently exists?**
-The application is a feature-rich penny auction platform. In this session, the agent resolved several critical bugs, including a broken admin login, stuck auction timers (caused by a timezone/business-hours conflict), and incorrect payment/user stats in the admin panel. Stripe has been successfully switched from test to LIVE mode using user-provided keys. The main auction page and the admin auction list now feature real-time updates via WebSockets.
+The application is a full-stack penny auction site. In this session, the agent performed a massive overhaul of the main auction page () to replicate the  UI/UX. This included creating a new layout with a premium auction, a sidebar, and a live auction grid. The auction cards were completely redesigned with a new activity index (colored squares) and timer display.
 
-A significant number of new gamification features were implemented:
-- **Beginner & Free Auctions:** Logic, UI filters, and badges are in place.
-- **Daily Login Rewards:** Users can claim daily bids from their dashboard.
-- **Bid Buddy UI:** The auction detail page now shows the status of an active auto-bidder.
-- **Auction Ending Soon Notifications:** The backend will now send push notifications for auctions ending in 5 minutes.
-- **Admin Game Settings:** A new page in the admin panel allows for toggling and configuring all the new gamification features.
-- **More Content:** The database has been seeded with over 60 auctions of various types.
-- **Internationalization (i18n):** The  page has been fully refactored to remove hardcoded text.
+Several critical backend and frontend bugs were fixed:
+- A fatal backend error () preventing auctions from auto-restarting was resolved in  and the database.
+- The non-functional admin Staff Management page was fixed by adding missing API endpoints in .
+- Multiple issues causing timers to get stuck at  were resolved by improving WebSocket communication and frontend logic.
+- CSS layout issues (oval dots, cut-off text) were fixed.
+- The database was seeded with 100 new auctions, bringing the total to ~149.
+
+The application's root path () now serves the  page directly.
 
 **Last working item**:
-- **Last item agent was working:** The agent was about to create a new dedicated page at  for users to view all available achievements and track their progress, as requested by the user.
-- **Status:** NOT STARTED (The agent's attempt to create the file  failed because a file with that name already exists).
-- **Agent Testing Done:** N
-- **Which testing method agent to use?** frontend testing agent. The test should navigate to the  page (once implemented) and verify that the layout, titles, and a list of achievements are displayed correctly.
+- **Last item agent was working:** The agent was fixing the real-time update mechanism. The user complained that the entire auction card re-renders on updates, instead of just the timer and price values, which is unlike the smooth experience on . The agent overwrote  with a new version intended to solve this and just added 100 new auctions.
+- **Status:** IN PROGRESS
+- **Agent Testing Done:** Y (A screenshot was taken, but this doesn't verify the smoothness of updates over time).
+- **Which testing method agent to use?** Frontend testing agent. The test should observe the main page for at least 30-60 seconds to verify that when bids occur: 1) Only the price, timer, and last bidder's name change. 2) The surrounding card elements (image, title, borders, button) DO NOT flash or visibly re-render. 3) The timer correctly resets to ~10 seconds on a last-second bid and does not hit zero.
 - **User Testing Done:** N
 
 **All Pending/In progress Issue list**:
--   **Issue 1: Inconsistent Data Persistence (P2)**
+-   **Issue 1: Inefficient/Janky Real-time UI Updates (P0)**
+-   **Issue 2: Add Badge Explanations to Main Page Sidebar (P1)**
+-   **Issue 3: Inconsistent Data Persistence (P2)**
 
 **Issues Detail:**
-- **Issue 1: Inconsistent Data Persistence**
+- **Issue 1: Inefficient/Janky Real-time UI Updates**
+    - **Attempted fixes:** The agent has rewritten  multiple times. Initial attempts used aggressive polling, causing the whole page to flash. The latest attempt in the last message involved another complete overwrite of , likely to better isolate state and use React memoization to prevent re-renders of the entire card.
+    - **Next debug checklist:**
+        1.  Verify the latest changes in .
+        2.  Use the frontend testing agent to visually confirm if the auction cards still flash on updates.
+        3.  Inspect the React code. Ensure  is used correctly on the  component and that state updates for price/time are managed within the most deeply nested component possible to prevent parent re-renders.
+        4.  Confirm that  props on the auction list are stable and not changing.
+    - **Why fix this issue and what will be achieved with the fix?** This is the user's primary complaint. Fixing it will provide the smooth, professional UX of  that the user is demanding.
+    - **Status:** IN PROGRESS
+    - **Is recurring issue?** Y
+    - **Should Test frontend/backend/both after fix?** frontend
+    - **Blocked on other issue:** No
+
+- **Issue 2: Add Badge Explanations to Main Page Sidebar**
+    - **Attempted fixes:** The agent previously added these explanations to the  page.
+    - **Next debug checklist:**
+        1.  Copy the badge explanation data/UI from .
+        2.  Edit .
+        3.  Integrate the badge explanations into the right-hand sidebar, as seen on .
+    - **Why fix this issue and what will be achieved with the fix?** To fully match the  layout as requested by the user.
+    - **Status:** NOT STARTED
+    - **Is recurring issue?** N
+    - **Should Test frontend/backend/both after fix?** frontend
+    - **Blocked on other issue:** No
+
+- **Issue 3: Inconsistent Data Persistence**
     - **Attempted fixes:** None. This is recognized technical debt from the previous session.
     - **Next debug checklist:**
-        1.  Audit all backend files ( and ) for any in-memory Python dictionaries or lists being used to store state that should be in the database.
-        2.  Refactor the code to move this state into MongoDB collections to ensure data is not lost on server restarts.
-    - **Why fix this issue and what will be achieved with the fix?** To ensure data integrity, prevent data loss, and make the application stateless and horizontally scalable. This is critical for production stability.
+        1.  Audit all backend files ( and ) for any in-memory Python dictionaries or lists being used to store state.
+        2.  Refactor the code to move this state into MongoDB collections.
+    - **Why fix this issue and what will be achieved with the fix?** To ensure data integrity and prevent data loss on server restarts, which is critical for production stability.
     - **Status:** NOT STARTED
     - **Is recurring issue?** Y
     - **Should Test frontend/backend/both after fix?** backend
     - **Blocked on other issue:** No
 
 **In progress Task List**:
-- None.
+- **Task 1: Complete Snipster.de UI/UX Replication**
+    - **Where to resume:** Verifying the fix for the real-time update smoothness (Issue 1). Then, implementing the badge explanations in the sidebar (Issue 2).
+    - **What will be achieved with this?** A homepage that is functionally and visually a near-perfect clone of the  user experience.
+    - **Status:** IN PROGRESS
+    - **Should Test frontend/backend/both after fix?** frontend
+    - **Blocked on something:** No
 
 **Upcoming and Future Tasks**
 - **Upcoming Tasks:**
-  - **Implement Achievements Page (P0):** View the existing  file, and build out the UI to fetch and display a list of all possible achievements, indicating which ones the user has earned.
-  - **Implement PayPal Integration (P1):** Add PayPal as a payment option alongside Stripe.
-  - **Implement Auction of the Day Feature (P1):** Create a mechanism to feature one specific auction on the homepage.
-  - **Implement Nacht-Auktionen (Night Auctions) (P2):** Implement the backend logic to handle the Night Auction type (e.g., reduced bid cost), which was requested by the user. Auctions have already been seeded with this type.
-  - **Internationalize the Admin Panel (P2):** The  component is very large and still contains hardcoded German strings. It needs to be refactored to use the  framework.
+    - **Implement Achievements Page (P1):** This was the original task for the session but was preempted by critical bugs. The file  exists but is empty and needs to be built out.
+    - **Implement PayPal Integration (P2):** Add PayPal as a payment option.
+    - **Implement Auction of the Day Feature (P2):** Create a mechanism to feature one specific auction.
 - **Future Tasks:**
-  - Implement a Live-Chat support feature.
-  - Add a user-facing statistics page.
-  - Implement social sharing features.
-  - Build out the VIP/Premium membership functionality.
-  - Implement Two-Factor Authentication (2FA).
+    - Implement a Live-Chat support feature.
+    - Add a user-facing statistics page.
+    - Implement social sharing features.
+    - Build out the VIP/Premium membership functionality.
+    - Implement Two-Factor Authentication (2FA).
+    - Internationalize the Admin Panel.
 
 **Completed work in this session**
-- **Critical Bug Fixes:**
-  - **Admin Login:** Resolved by correcting the database configuration () and setting the  flag correctly.
-  - **Stuck Timers:** Resolved by adjusting the business hours configuration to account for server timezone differences.
-  - **Stripe Payments:** Configured the application to use the user's LIVE Stripe keys, resolving the issue of payments not appearing in the live dashboard.
-  - **Admin Stats:** Fixed the admin dashboard to show correct revenue and user counts by pointing it to the correct database collections.
-- **Real-Time UI Implementation:**
-  - Integrated WebSockets into the main  page and the  auction list, so prices and timers update in real-time without polling.
-- **Feature Implementation:**
-  - **Gamification Suite:**
-    - Implemented **Beginner Auctions** (logic, filter, badge).
-    - Implemented **Free Auctions** (logic, filter, badge).
-    - Implemented **Daily Login Rewards** (backend logic & frontend UI in the user dashboard).
-  - **Admin Game Settings Panel:** Created a new page for admins to toggle and configure all gamification features.
-  - **Bid Buddy UI:** Improved the auto-bidder UI on the auction detail page to show its active status.
-  - **Auction Ending Soon Notifications:** Implemented the backend logic to send push notifications for auctions nearing their end.
-- **Content & i18n:**
-  - Seeded the database with 52 new diverse auctions.
-  - Fully internationalized the  page, removing all hardcoded German text.
+- **Major Frontend Overhaul (Snipster Clone):**
+  - Completely redesigned  to match the layout of , featuring a premium auction, a sidebar, and a live auction grid.
+  - Implemented a new Activity Index with colored squares.
+  - Set the  page as the application's root route ().
+- **Critical Backend Bug Fixes:**
+  - Resolved a fatal error in  that prevented auctions from auto-restarting and corrected 47 corrupted auction documents in the database.
+  - Enabled 24/7 auction restarts by removing the business hours restriction.
+  - Added missing API endpoints in  to fix the admin staff management page.
+- **Critical Frontend Bug Fixes:**
+  - Repeatedly debugged and fixed issues causing timers to get stuck at .
+  - Implemented new timer logic so bids in the final seconds reset the timer.
+- **Content & Configuration:**
+  - Seeded the database with 100 new auctions (total is now ~149).
+  - Adjusted the auction auto-restart delay to 5 minutes per user request.
 
 **Earlier issues found/mentioned but not fixed**
 - **Issue 1: Inconsistent Data Persistence**
@@ -95,98 +122,82 @@ A significant number of new gamification features were implemented:
 
 **Known issue recurrence from previous fork**
 - **Issue recurrence in previous fork:** Inconsistent Data Persistence
-- **Recurrence count:** 10
+- **Recurrence count:** 11 (carried over +1)
 - **Status:** NOT STARTED
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
-- **Real-Time Architecture:** Transitioned from HTTP polling to a WebSocket-based architecture for the main auction list and admin pages ( hook).
-- **Environment Configuration:** Debugged and resolved critical issues related to mismatched  configurations (database names, API keys).
-- **Gamification Engine:** Built a flexible system with multiple user engagement features (Daily Rewards, Auction Types, Achievements) managed via a central  document in MongoDB.
-- **Centralized Admin Control:** Created a dedicated admin page (Spiel-Einstellungen) for an admin to toggle and configure all gamification mechanics without code changes.
-- **Stripe Live Integration:** Successfully migrated the payment system from Stripe's test environment to its live environment.
+- **UI Replication:** The primary focus was analyzing  and replicating its UI/UX, including component design and real-time interaction patterns.
+- **State Management for Real-Time UI:** The main challenge was managing React state to allow for smooth, partial updates of components based on WebSocket data, avoiding full re-renders.
+- **Backend Background Tasks:** Debugging and fixing the   task in .
+- **Database Scripting:** Used  to find and correct malformed documents in MongoDB.
 
 **key DB schema**
-- **game_config (Singleton):** 
-- **users:** , , , 
-- **auctions:** , , 
-- **transactions:** Stores payment records from Stripe. Renamed from  to fix a bug.
+- No schema changes. Data was corrected for the  field.
 
 **changes in tech stack**
 - None.
 
 **All files of reference**
-- **Frontend (Heavily Modified):**
-  - 
-  - 
-  - 
-  - 
-  - 
-- **Backend (Heavily Modified):**
-  - 
-  - 
-  - 
-  - 
-- **Configuration:**
-  -  (Updated with Stripe LIVE key)
-  -  (Updated with Stripe LIVE key)
+-  (The primary file for the homepage)
+-  (Contains auto-restart logic)
+-  (Contains admin panel logic)
+-  (Contains top-level routing)
 
 **Areas that need refactoring**:
-- **Admin.js Component:** This file has grown to over 2700 lines and handles logic for many different tabs. It should be broken down into smaller, more manageable sub-components for maintainability.
-- **Data Persistence:** A full audit is still needed to move any remaining in-memory state to MongoDB to prevent data loss on restarts.
+- **/app/frontend/src/pages/Auctions.js:** This file is now a large monolithic component responsible for the entire homepage layout, data fetching, WebSocket handling, and multiple sub-component definitions. It urgently needs to be broken down into smaller components and custom hooks for maintainability.
 
 **key api endpoints**
-- **GET, POST **: (New) To manage the site's gamification settings.
-- **POST **: (New) Allows a user to claim their daily bid reward.
-- **GET **: (New) Checks if the user can claim a reward.
-- **PUT **: (New) Marks an auction as beginner-only.
-- **POST **: Modified to handle logic for free and beginner-only auctions.
-- **GET **: (New Alias) Created to fix a frontend bug.
+- **Newly Implemented:**
+  - 
+- **WebSocket Messages:**
+  - 
+  - 
 
 **Critical Info for New Agent**
-- **Stripe is LIVE:** The application is now configured with live Stripe keys. Be cautious with any operations that involve payments.
-- **Configuration is Key:** Many critical bugs in this session were not due to flawed code logic, but incorrect environment configuration (e.g., wrong DB name in , server timezone vs. business hours timezone). Always verify configuration first when debugging strange behavior.
-- **Gamification Engine:** The core logic for new features like Daily Rewards and different auction types is controlled by a single  document in the  database. The frontend for managing this is in the  Spiel-Einstellungen tab.
-- **The  file already exists.** Do not try to create it again. Your first step should be to  the existing file and proceed with implementing the UI there.
+- **The user's top priority is a pixel-perfect, functionally-perfect clone of snipster.de.** Pay very close attention to their feedback on UI/UX, especially the *smoothness* of real-time updates.
+- **Work on .** This is the application's homepage.
+- **The timer must not hit zero.** Bids in the last ~10 seconds should reset the timer.
+- **The biggest issue is the janky UI update.** The user wants only numbers/text to change, not the whole card. Your first task is to verify the latest fix and ensure it meets this standard.
 
 **documents and test reports created in this job**
--  (Updated)
+- None.
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **Latest:** User confirmed Yes to the agent's proposal to create an achievements page.
-2.  Agent proposed creating a dedicated achievements page for users to see earned and unearned badges.
-3.  User confirmed Yes and also reported that the admin and main auction pages do not auto-refresh.
-4.  Agent provided a summary of implementing the Admin Game Settings page and asked if they should build it.
-5.  User requested: Free Auctions, Achievements & Daily Rewards, more auctions, and an admin panel to configure it all.
-6.  Agent provided a summary of implementing Bid Buddy, Push Notifications, and Beginner auctions.
-7.  User requested the implementation of Bid Buddy improvements, Auction ends in 5 min notifications, and Beginner Auctions.
-8.  Agent provided a summary of the full i18n refactor of the Auction Detail page.
-9.  User sent a screenshot showing a language bug (Oferta) and requested all pages be checked for i18n issues.
-10. Agent asked the user to test the new Stripe LIVE configuration.
+1.  **LATEST:** User requests 100 new auctions and a fix for the timer update (only timer/price should update, not the whole card).
+2.  User states the final snipster-style layout is not correct: everything should be on one page without scrolling, and provides a list of all badge explanations that should be included. Timer still has issues (should not go to 0).
+3.  User is not happy with the redesign, says it's not the same as , and asks the agent to look again at how the page is structured (premium on top, others below) and how it updates. Also mentions the activity index is not quite right (should be 30-60%).
+4.  User says the homepage update is not good, it should be internal and invisible to the customer, like on .
+5.  User likes the new activity index but wants it to always show a value between 30-60% and wants an explanation for it on the How it works page.
+6.  User reports the activity dots are still not right and provides a screenshot, asking for an activity index bar instead.
+7.  User reports the frontend doesn't look good, half the text is cut off, and requests two new test auctions where bots bid up to 10 euros.
+8.  User states that when auctions end, they should restart after 5 minutes with the exact same settings.
+9.  User sends a screenshot showing  timers again and says it's not working correctly.
+10. User sends screenshots of broken timers and a broken admin staff page, asking for fixes.
 
 **Project Health Check:**
-- **Broken:** None.
+- **Broken:** The real-time update smoothness is considered broken by the user. The latest code pushed by the agent is an unverified attempt to fix this.
 - **Mocked:**
     - **Resend Emails:** The service is still in sandbox mode.
     - **Coinbase Commerce:** The feature is disabled due to a placeholder API key.
 - **Live:**
-    - **Stripe:** Now configured with LIVE keys and functional.
+    - **Stripe:** Configured with LIVE keys.
 
 **3rd Party Integrations**
 - **Stripe (Payments):** Integrated with user-provided **LIVE** API keys.
 - **Resend (Email):** Integrated with a sandbox domain.
-- **Coinbase Commerce (Crypto Payments):** Integrated but disabled due to an invalid key.
+- **Coinbase Commerce (Crypto Payments):** Integrated but disabled.
 - **ip-api.com (IP Intelligence):** Used for geo-blocking/security.
 - **reportlab:** For PDF invoice generation.
-- **pywebpush:** For implementing the Web Push protocol.
+- **pywebpush:** For implementing Web Push.
 
 **Testing status**
 - **Testing agent used after significant changes:** NO
 - **Troubleshoot agent used after agent stuck in loop:** NO
 - **Test files created:** None
-- **Known regressions:** None.
+- **Known regressions:** The smoothness of UI updates has been a recurring issue as the agent refactored the frontend. Each redesign introduced new animation/rendering bugs.
 
 **Credentials to test flow:**
 - **Admin:**  / 
@@ -194,5 +205,5 @@ A significant number of new gamification features were implemented:
 - **New Test Customer:**  / 
 
 **What agent forgot to execute**
-- The user's original requests for Auction of the Day and PayPal integration have not been started yet.
-- The agent was about to start the Achievements page implementation but was stopped by an existing file. This is the immediate next task.</analysis>
+- The agent has not yet moved the badge explanations from  to the main  page sidebar, which is a requirement for the final Snipster clone design.
+- The original task of implementing the  page remains pending.</analysis>
