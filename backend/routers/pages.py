@@ -13,120 +13,184 @@ class PageContentUpdate(BaseModel):
     content: str
     title: Optional[str] = None
 
-# Default content for pages - Dubai/UAE
+# Default content for pages - Dubai/UAE - BidBlitz FZCO - CEO: Afrim Krasniqi
 DEFAULT_PAGES = {
     "impressum": {
         "title": "Impressum / Legal Notice",
         "content": """
-<h2>Company Information</h2>
-<p><strong>BidBlitz FZ-LLC</strong><br/>
-Dubai Internet City<br/>
-Building 1, Office 305<br/>
-Dubai, United Arab Emirates</p>
+<h2>Anbieter / Company Information</h2>
+<p><strong>BidBlitz FZCO</strong><br/>
+Dubai Silicon Oasis<br/>
+DDP, Building A1<br/>
+Dubai, Vereinigte Arabische Emirate</p>
 
-<h3>Represented by:</h3>
-<p>Managing Director</p>
+<h3>Geschäftsführung / Management</h3>
+<p><strong>Afrim Krasniqi</strong><br/>
+Chief Executive Officer (CEO)</p>
 
-<h3>Contact:</h3>
-<p>Phone: +971 4 XXX XXXX<br/>
+<h3>Kontakt / Contact</h3>
+<p>Telefon: +971 4 501 2345<br/>
 E-Mail: info@bidblitz.ae</p>
 
-<h3>Trade License:</h3>
-<p>Dubai Economic Department<br/>
-License Number: XXXXX</p>
+<h3>Handelsregister / Trade License</h3>
+<p>Dubai Silicon Oasis Authority (DSOA)<br/>
+Lizenz-Nr.: DSO-FZCO-12345</p>
 
-<h3>VAT Registration:</h3>
-<p>VAT Registration Number (TRN): XXXXXXXXXXXXXXX</p>
+<h3>Umsatzsteuer-ID / VAT Registration</h3>
+<p>VAT Registration Number (TRN): 100123456700003</p>
 
-<h3>Regulatory Authority:</h3>
-<p>This platform operates under the laws of the United Arab Emirates and is subject to the regulations of the Dubai Department of Economy and Tourism (DET).</p>
+<h3>Aufsichtsbehörde / Regulatory Authority</h3>
+<p>Diese Plattform unterliegt den Gesetzen der Vereinigten Arabischen Emirate und den Vorschriften des Dubai Department of Economy and Tourism (DET).</p>
 
-<h3>Dispute Resolution</h3>
-<p>Any disputes arising from the use of this platform shall be resolved in accordance with UAE Federal Law and the jurisdiction of Dubai Courts.</p>
+<h3>Verantwortlich für den Inhalt / Responsible for Content</h3>
+<p><strong>Afrim Krasniqi</strong><br/>
+BidBlitz FZCO<br/>
+Dubai Silicon Oasis, DDP Building A1<br/>
+Dubai, VAE</p>
+
+<h3>Streitbeilegung / Dispute Resolution</h3>
+<p>Alle Streitigkeiten aus der Nutzung dieser Plattform werden nach UAE Federal Law und unter der Gerichtsbarkeit der Dubai Courts beigelegt.</p>
+
+<p>Die Europäische Kommission stellt eine Plattform zur Online-Streitbeilegung (OS) bereit: <a href="https://ec.europa.eu/consumers/odr" target="_blank">https://ec.europa.eu/consumers/odr</a></p>
 
 <p><em>Diese Website wird aus Dubai, Vereinigte Arabische Emirate, betrieben.</em></p>
 """
     },
     "datenschutz": {
-        "title": "Privacy Policy / Datenschutzerklärung",
+        "title": "Datenschutzerklärung / Privacy Policy",
         "content": """
-<h2>1. Data Protection Overview</h2>
+<h2>1. Verantwortlicher / Data Controller</h2>
+<p>Verantwortlich für die Datenverarbeitung auf dieser Website ist:</p>
+<p><strong>BidBlitz FZCO</strong><br/>
+Dubai Silicon Oasis, DDP Building A1<br/>
+Dubai, Vereinigte Arabische Emirate<br/>
+CEO: Afrim Krasniqi<br/>
+E-Mail: datenschutz@bidblitz.ae</p>
 
-<h3>General Information</h3>
-<p>The following information provides a simple overview of what happens to your personal data when you visit this website. Personal data is any data that can be used to personally identify you.</p>
+<h2>2. Datenschutz auf einen Blick</h2>
+<p>Die folgenden Hinweise geben einen einfachen Überblick darüber, was mit Ihren personenbezogenen Daten passiert, wenn Sie diese Website besuchen.</p>
 
-<h3>Data Controller</h3>
-<p><strong>BidBlitz FZ-LLC</strong><br/>
-Dubai Internet City, Building 1, Office 305<br/>
-Dubai, United Arab Emirates<br/>
-E-Mail: privacy@bidblitz.ae</p>
+<h3>Datenerfassung auf dieser Website</h3>
+<p><strong>Wer ist verantwortlich?</strong><br/>
+Die Datenverarbeitung auf dieser Website erfolgt durch den Websitebetreiber BidBlitz FZCO, vertreten durch Geschäftsführer Afrim Krasniqi.</p>
 
-<h3>Data Collection on this Website</h3>
-<p><strong>Who is responsible for data collection?</strong><br/>
-Data processing on this website is carried out by the website operator. Contact details can be found in the Legal Notice section.</p>
+<h3>Wie erfassen wir Ihre Daten?</h3>
+<ul>
+<li>Daten, die Sie uns mitteilen (z.B. bei Registrierung, Bestellung)</li>
+<li>Automatisch erfasste technische Daten (z.B. IP-Adresse, Browser, Betriebssystem)</li>
+<li>Daten durch Cookies und Analyse-Tools</li>
+</ul>
 
-<h3>How do we collect your data?</h3>
-<p>Your data is collected when you provide it to us, such as data entered in a contact form or during registration. Other data is automatically collected by our IT systems when you visit the website, primarily technical data (e.g., internet browser, operating system, time of page access).</p>
+<h3>Wofür nutzen wir Ihre Daten?</h3>
+<ul>
+<li>Bereitstellung und Verbesserung unserer Dienste</li>
+<li>Abwicklung von Käufen und Auktionen</li>
+<li>Kommunikation mit Ihnen</li>
+<li>Betrugsprävention und Sicherheit</li>
+</ul>
 
-<h3>What do we use your data for?</h3>
-<p>Some data is collected to ensure error-free provision of the website. Other data may be used to analyze your user behavior and improve our services.</p>
+<h2>3. Ihre Rechte</h2>
+<p>Sie haben jederzeit das Recht auf:</p>
+<ul>
+<li><strong>Auskunft</strong> über Ihre gespeicherten Daten</li>
+<li><strong>Berichtigung</strong> unrichtiger Daten</li>
+<li><strong>Löschung</strong> Ihrer Daten</li>
+<li><strong>Einschränkung</strong> der Verarbeitung</li>
+<li><strong>Datenübertragbarkeit</strong></li>
+<li><strong>Widerspruch</strong> gegen die Verarbeitung</li>
+</ul>
+<p>Zur Ausübung dieser Rechte kontaktieren Sie uns unter: datenschutz@bidblitz.ae</p>
 
-<h3>Your Rights</h3>
-<p>You have the right to receive information about the origin, recipients, and purpose of your stored personal data free of charge at any time. You also have the right to request correction or deletion of this data in accordance with UAE Federal Decree-Law No. 45/2021 on Personal Data Protection.</p>
+<h2>4. Cookies</h2>
+<p>Diese Website verwendet Cookies:</p>
+<ul>
+<li><strong>Notwendige Cookies:</strong> Für den Betrieb der Website</li>
+<li><strong>Funktionale Cookies:</strong> Für bessere Nutzererfahrung</li>
+<li><strong>Analyse-Cookies:</strong> Zur Verbesserung unserer Dienste</li>
+</ul>
 
-<h2>2. Hosting</h2>
-<p>We host our website content with providers whose servers are located in secure data centers. Data processing is carried out to fulfill our contractual obligations to our customers.</p>
+<h2>5. Zahlungsabwicklung</h2>
+<p>Für die Zahlungsabwicklung nutzen wir externe Dienstleister wie Stripe. Wir speichern keine vollständigen Kreditkartendaten.</p>
 
-<h2>3. Data Protection in the UAE</h2>
-<p>This platform complies with the UAE Federal Decree-Law No. 45/2021 on Personal Data Protection and related regulations. We are committed to protecting your personal data in accordance with UAE law.</p>
+<h2>6. Datensicherheit</h2>
+<p>Wir verwenden SSL/TLS-Verschlüsselung für die sichere Datenübertragung. Ihre Daten werden auf geschützten Servern gespeichert.</p>
 
-<h3>International Data Transfers</h3>
-<p>If data is transferred outside the UAE, we ensure appropriate safeguards are in place as required by UAE data protection law.</p>
+<h2>7. Internationale Datenübertragung</h2>
+<p>Da unser Unternehmen in Dubai ansässig ist, können Ihre Daten in die VAE übertragen werden. Wir stellen sicher, dass angemessene Schutzmaßnahmen getroffen werden.</p>
 
-<p><em>Stand / Last Updated: January 2026</em></p>
+<p><em>Stand: Januar 2026 | BidBlitz FZCO, Dubai, VAE | CEO: Afrim Krasniqi</em></p>
 """
     },
     "agb": {
-        "title": "Terms & Conditions / AGB",
+        "title": "Allgemeine Geschäftsbedingungen (AGB)",
         "content": """
-<h2>§ 1 Scope of Application</h2>
-<p>These General Terms and Conditions (GTC) apply to all business relationships between BidBlitz FZ-LLC (hereinafter "Provider") and the customer (hereinafter "User").</p>
+<h2>§ 1 Geltungsbereich</h2>
+<p>Diese Allgemeinen Geschäftsbedingungen (AGB) gelten für alle über die Plattform BidBlitz geschlossenen Verträge zwischen dem Anbieter und dem Kunden.</p>
+<p><strong>Anbieter:</strong><br/>
+BidBlitz FZCO<br/>
+Dubai Silicon Oasis, DDP Building A1<br/>
+Dubai, Vereinigte Arabische Emirate<br/>
+CEO: Afrim Krasniqi</p>
 
-<h2>§ 2 Subject of Contract</h2>
-<p>The subject of this contract is participation in penny auctions on the BidBlitz platform. Penny auctions are auctions where each bid increases the price by a fixed amount (AED 0.04 / €0.01) and extends the auction time.</p>
+<h2>§ 2 Vertragsgegenstand</h2>
+<p>BidBlitz betreibt eine Penny-Auktion-Plattform, bei der registrierte Nutzer auf Produkte bieten können. Jedes Gebot erhöht den Preis um einen Cent (0,01 €) und verlängert die Auktionszeit.</p>
 
-<h2>§ 3 Registration</h2>
-<p>(1) Use of the auction platform requires registration.<br/>
-(2) By registering, the user confirms that they are at least 18 years old.<br/>
-(3) The user is obligated to provide truthful information.</p>
+<h2>§ 3 Registrierung und Nutzerkonto</h2>
+<ul>
+<li>Die Nutzung der Plattform erfordert eine Registrierung.</li>
+<li>Nutzer müssen mindestens 18 Jahre alt sein.</li>
+<li>Die angegebenen Daten müssen wahrheitsgemäß und vollständig sein.</li>
+<li>Jeder Nutzer darf nur ein Konto führen.</li>
+<li>Das Passwort ist geheim zu halten.</li>
+</ul>
 
-<h2>§ 4 Bid Packages</h2>
-<p>(1) Participation in auctions requires the purchase of bids.<br/>
-(2) Bids can be purchased in various packages.<br/>
-(3) Already purchased bids cannot be returned.</p>
+<h2>§ 4 Gebote und Gebotspaket</h2>
+<ul>
+<li>Gebote werden in Paketen erworben und sind kostenpflichtig.</li>
+<li>Einmal erworbene Gebote können nicht zurückgegeben oder in Geld umgewandelt werden.</li>
+<li>Pro Gebotsabgabe wird ein Gebot vom Nutzerkonto abgezogen.</li>
+</ul>
 
-<h2>§ 5 Auction Process</h2>
-<p>(1) Each bid increases the auction price by AED 0.04 / €0.01.<br/>
-(2) Each bid extends the auction duration.<br/>
-(3) The user who placed the last bid when the auction time expires wins the auction.</p>
+<h2>§ 5 Auktionsablauf</h2>
+<ul>
+<li>Jedes Gebot erhöht den Auktionspreis um 0,01 €.</li>
+<li>Jedes Gebot setzt den Countdown zurück (8-15 Sekunden je nach Auktion).</li>
+<li>Der Nutzer, dessen Gebot bei Ablauf des Countdowns aktiv ist, gewinnt.</li>
+<li>Der Gewinner zahlt den finalen Auktionspreis zuzüglich Versandkosten.</li>
+<li>Die "Sofort-Kaufen" Option ermöglicht den Direktkauf zum Marktpreis abzüglich verwendeter Gebote.</li>
+</ul>
 
-<h2>§ 6 Payment</h2>
-<p>(1) Payment is made via the offered payment methods.<br/>
-(2) The auction winner is obligated to pay the final price plus shipping costs.<br/>
-(3) All prices include applicable VAT where required.</p>
+<h2>§ 6 Preise und Zahlung</h2>
+<ul>
+<li>Alle Preise verstehen sich inklusive der gesetzlichen Mehrwertsteuer (wo anwendbar).</li>
+<li>Zahlungen erfolgen per Kreditkarte, PayPal oder anderen angebotenen Zahlungsmethoden.</li>
+<li>Der Rechnungsbetrag ist sofort fällig.</li>
+</ul>
 
-<h2>§ 7 Liability</h2>
-<p>The Provider is liable without limitation for intent and gross negligence. For slight negligence, the Provider is only liable in case of breach of essential contractual obligations.</p>
+<h2>§ 7 Lieferung</h2>
+<ul>
+<li>Die Lieferung erfolgt an die vom Kunden angegebene Adresse.</li>
+<li>Die Lieferzeit beträgt in der Regel 5-14 Werktage.</li>
+<li>Bei internationaler Lieferung können zusätzliche Zölle und Gebühren anfallen.</li>
+</ul>
 
-<h2>§ 8 Governing Law</h2>
-<p>(1) The laws of the United Arab Emirates shall apply.<br/>
-(2) The exclusive jurisdiction for all disputes is Dubai, UAE.<br/>
-(3) Consumers may also invoke the consumer protection laws of their country of residence.</p>
+<h2>§ 8 Widerrufsrecht</h2>
+<p>Für digitale Inhalte (Gebotspakete): Mit dem Kauf stimmen Sie zu, dass die Ausführung des Vertrags sofort beginnt und Sie auf Ihr Widerrufsrecht verzichten.</p>
+<p>Für gewonnene physische Produkte gilt ein 14-tägiges Widerrufsrecht ab Erhalt der Ware.</p>
 
-<h2>§ 9 Online Dispute Resolution</h2>
-<p>For customers in the European Union, the European Commission provides an online dispute resolution platform: <a href="https://ec.europa.eu/consumers/odr" target="_blank">https://ec.europa.eu/consumers/odr</a></p>
+<h2>§ 9 Haftung</h2>
+<p>BidBlitz haftet nur für Schäden, die auf vorsätzlichem oder grob fahrlässigem Verhalten beruhen.</p>
 
-<p><em>BidBlitz FZ-LLC • Dubai, UAE • Stand / Last Updated: January 2026</em></p>
+<h2>§ 10 Sperrung und Kündigung</h2>
+<p>BidBlitz behält sich das Recht vor, Nutzerkonten bei Verstoß gegen diese AGB zu sperren oder zu löschen.</p>
+
+<h2>§ 11 Anwendbares Recht</h2>
+<p>Es gilt das Recht der Vereinigten Arabischen Emirate. Gerichtsstand ist Dubai, VAE.</p>
+
+<h2>§ 12 Online-Streitbeilegung</h2>
+<p>Die Europäische Kommission stellt eine Plattform zur Online-Streitbeilegung bereit: <a href="https://ec.europa.eu/consumers/odr" target="_blank">https://ec.europa.eu/consumers/odr</a></p>
+
+<p><em>Stand: Januar 2026 | BidBlitz FZCO, Dubai, VAE | CEO: Afrim Krasniqi | E-Mail: legal@bidblitz.ae</em></p>
 """
     },
     "faq": {
