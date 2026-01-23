@@ -309,62 +309,74 @@ const InfoSidebar = memo(() => (
     <TrustBadges />
     
     <div className="bg-white rounded-lg p-2 border border-gray-200 shadow-sm">
-      <h3 className="text-[10px] font-bold text-gray-800 mb-1">AUKTIONS-TYPEN</h3>
-      <div className="space-y-1">
+      <h3 className="text-[9px] font-bold text-gray-800 mb-2">AUKTIONS-TYPEN</h3>
+      <div className="space-y-1.5">
         {/* Rabatt Badge */}
-        <div className="flex items-center gap-1 p-1 bg-red-50 rounded border border-red-200">
-          <span className="bg-red-500 text-white px-1 py-0.5 rounded text-[7px] font-bold">-95%</span>
-          <span className="text-[7px] text-gray-600">Rabatt vs. UVP</span>
+        <div className="flex items-center gap-2 p-1.5 bg-red-50 rounded border border-red-200">
+          <span className="bg-red-500 text-white px-1.5 py-0.5 rounded text-[7px] font-bold whitespace-nowrap">-95%</span>
+          <span className="text-[8px] text-gray-700">Rabatt</span>
         </div>
         
         {/* Anfänger */}
-        <div className="flex items-center gap-1 p-1 bg-purple-50 rounded border border-purple-200">
-          <span className="bg-purple-500 text-white px-1 py-0.5 rounded text-[7px] font-bold">🎓</span>
-          <span className="text-[7px] text-gray-600">Anfänger (&lt;10 Siege)</span>
+        <div className="flex items-center gap-2 p-1.5 bg-purple-50 rounded border border-purple-200">
+          <span className="bg-purple-500 text-white px-1.5 py-0.5 rounded text-[7px] font-bold">🎓</span>
+          <span className="text-[8px] text-gray-700">Anfänger</span>
         </div>
         
         {/* Gratis */}
-        <div className="flex items-center gap-1 p-1 bg-green-50 rounded border border-green-200">
-          <span className="bg-green-500 text-white px-1 py-0.5 rounded text-[7px] font-bold">🎁</span>
-          <span className="text-[7px] text-gray-600">Gratis (kostenlos)</span>
+        <div className="flex items-center gap-2 p-1.5 bg-green-50 rounded border border-green-200">
+          <span className="bg-green-500 text-white px-1.5 py-0.5 rounded text-[7px] font-bold">🎁</span>
+          <span className="text-[8px] text-gray-700">Gratis</span>
         </div>
         
         {/* VIP */}
-        <div className="flex items-center gap-1 p-1 bg-yellow-50 rounded border border-yellow-200">
-          <span className="bg-yellow-500 text-black px-1 py-0.5 rounded text-[7px] font-bold">⭐</span>
-          <span className="text-[7px] text-gray-600">VIP-Mitglieder</span>
+        <div className="flex items-center gap-2 p-1.5 bg-yellow-50 rounded border border-yellow-200">
+          <span className="bg-yellow-500 text-black px-1.5 py-0.5 rounded text-[7px] font-bold">⭐</span>
+          <span className="text-[8px] text-gray-700">VIP</span>
         </div>
         
         {/* Nacht */}
-        <div className="flex items-center gap-1 p-1 bg-indigo-50 rounded border border-indigo-200">
-          <span className="bg-indigo-600 text-white px-1 py-0.5 rounded text-[7px] font-bold">🌙</span>
-          <span className="text-[7px] text-gray-600">Nacht 23:30-6h <b>½ Preis!</b></span>
+        <div className="flex items-center gap-2 p-1.5 bg-indigo-50 rounded border border-indigo-200">
+          <span className="bg-indigo-600 text-white px-1.5 py-0.5 rounded text-[7px] font-bold">🌙</span>
+          <span className="text-[8px] text-gray-700">Nacht <b>½</b></span>
         </div>
         
         {/* Erinnerung */}
-        <div className="flex items-center gap-1 p-1 bg-cyan-50 rounded border border-cyan-200">
-          <span className="bg-cyan-500 text-white px-1 py-0.5 rounded text-[7px] font-bold">🔔</span>
-          <span className="text-[7px] text-gray-600">Erinnerung (5 Min)</span>
+        <div className="flex items-center gap-2 p-1.5 bg-cyan-50 rounded border border-cyan-200">
+          <span className="bg-cyan-500 text-white px-1.5 py-0.5 rounded text-[7px] font-bold">🔔</span>
+          <span className="text-[8px] text-gray-700">Alarm</span>
         </div>
       </div>
     </div>
     
     <div className="bg-white rounded-lg p-2 border border-gray-200 shadow-sm">
-      <h3 className="text-[10px] font-bold text-gray-800 mb-1">AKTIVITÄT</h3>
-      <div className="flex flex-wrap gap-1 text-[7px]">
-        <span className="flex items-center gap-0.5"><span className="w-2 h-2 rounded bg-green-500"></span>Wenig</span>
-        <span className="flex items-center gap-0.5"><span className="w-2 h-2 rounded bg-yellow-500"></span>Mittel</span>
-        <span className="flex items-center gap-0.5"><span className="w-2 h-2 rounded bg-orange-500"></span>Hoch</span>
-        <span className="flex items-center gap-0.5"><span className="w-2 h-2 rounded bg-red-500"></span>Sehr</span>
+      <h3 className="text-[9px] font-bold text-gray-800 mb-2">AKTIVITÄT</h3>
+      <div className="space-y-1">
+        <div className="flex items-center gap-2">
+          <span className="w-3 h-3 rounded bg-green-500"></span>
+          <span className="text-[8px] text-gray-700">Wenig</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="w-3 h-3 rounded bg-yellow-500"></span>
+          <span className="text-[8px] text-gray-700">Mittel</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="w-3 h-3 rounded bg-orange-500"></span>
+          <span className="text-[8px] text-gray-700">Hoch</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="w-3 h-3 rounded bg-red-500"></span>
+          <span className="text-[8px] text-gray-700">Sehr hoch</span>
+        </div>
       </div>
     </div>
     
     <div className="bg-white rounded-lg p-2 border border-gray-200 shadow-sm">
-      <h3 className="text-[10px] font-bold text-gray-800 mb-1">SO GEHT'S</h3>
-      <ol className="text-[7px] text-gray-600 space-y-0.5">
-        <li><b className="text-cyan-600">1.</b> Gebote kaufen</li>
-        <li><b className="text-cyan-600">2.</b> Bieten</li>
-        <li><b className="text-cyan-600">3.</b> Gewinnen!</li>
+      <h3 className="text-[9px] font-bold text-gray-800 mb-2">SO GEHT'S</h3>
+      <ol className="text-[8px] text-gray-700 space-y-1">
+        <li className="flex items-center gap-1"><span className="font-bold text-cyan-600">1.</span> Kaufen</li>
+        <li className="flex items-center gap-1"><span className="font-bold text-cyan-600">2.</span> Bieten</li>
+        <li className="flex items-center gap-1"><span className="font-bold text-cyan-600">3.</span> Gewinnen</li>
       </ol>
     </div>
   </div>
