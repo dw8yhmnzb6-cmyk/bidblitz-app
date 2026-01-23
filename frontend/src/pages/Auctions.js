@@ -521,13 +521,13 @@ export default function Auctions() {
       </div>
       
       {/* Mobile: Sidebar at top */}
-      <div className="md:hidden mb-3">
+      <div className="md:hidden mb-3 mt-2">
         <details className="bg-white rounded-lg shadow-sm">
-          <summary className="p-3 font-bold text-gray-800 cursor-pointer flex items-center justify-between">
+          <summary className="p-3 font-bold text-gray-800 cursor-pointer flex items-center justify-between text-sm">
             <span>ℹ️ Auktions-Info & Badges</span>
-            <span className="text-cyan-600">▼</span>
+            <span className="text-cyan-600 text-xs">▼ Tippen zum Öffnen</span>
           </summary>
-          <div className="p-3 border-t">
+          <div className="p-3 border-t max-h-96 overflow-y-auto">
             <InfoSidebar />
           </div>
         </details>
