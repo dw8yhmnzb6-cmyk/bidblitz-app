@@ -71,8 +71,8 @@ function AppContent() {
       
       <main className="flex-grow">
         <Routes>
-          {/* Startseite mit Premium Auktion und Grid wie Snipster */}
-          <Route path="/" element={<Home />} />
+          {/* Startseite = Auctions mit allen Funktionen (Filter, Badges, Grid) */}
+          <Route path="/" element={<Auctions />} />
           <Route path="/auctions" element={<Auctions />} />
           <Route path="/auctions/:id" element={<AuctionDetail />} />
           <Route path="/vip-auctions" element={<VIPAuctions />} />
