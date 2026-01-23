@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
-import { Clock, Trophy, TrendingUp, Users, ChevronRight, Zap } from 'lucide-react';
+import { Clock, Trophy, TrendingUp, Users, Zap } from 'lucide-react';
 import { toast } from 'sonner';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
