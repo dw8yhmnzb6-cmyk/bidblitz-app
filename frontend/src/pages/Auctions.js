@@ -9,49 +9,207 @@ import { toast } from 'sonner';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
-// Activity Index Bar - Like Snipster style with gradient and pointer
-// Position is stable based on auction data, updates smoothly via WebSocket
+// Activity Index Bar - Snipster Style with gradient and pointer
 const ActivityIndex = ({ bids, auctionId = '' }) => {
-  // Create a stable "random" offset based on auction ID (so it doesn't jump around)
-  const stableOffset = auctionId ? 
-    (auctionId.charCodeAt(0) % 20) : 10; // 0-20 based on first char of ID
-  
-  // Base level is 30-50% + stable offset + bid bonus
-  const baseLevel = 30 + stableOffset;
-  const bidBonus = Math.min(25, (bids || 0) * 0.3); // Up to 25% bonus from bids
-  const pointerPosition = Math.min(65, baseLevel + bidBonus);
+  // Create stable position based on auction ID
+  const stableOffset = auctionId ? (auctionId.charCodeAt(0) % 15) : 8;
+  const baseLevel = 35 + stableOffset;
+  const bidBonus = Math.min(20, (bids || 0) * 0.2);
+  const position = Math.min(60, baseLevel + bidBonus);
   
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-      <span style={{ fontSize: '9px', color: '#94A3B8', whiteSpace: 'nowrap' }}>Aktivität:</span>
-      <div style={{ position: 'relative', width: '60px', height: '12px' }}>
-        {/* Gradient bar background */}
-        <div style={{
-          width: '100%',
-          height: '6px',
-          borderRadius: '3px',
-          background: 'linear-gradient(to right, #22C55E 0%, #84CC16 25%, #EAB308 50%, #F97316 75%, #EF4444 100%)',
-          boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.2)'
-        }} />
-        {/* Pointer/Arrow triangle pointing up */}
-        <div style={{
-          position: 'absolute',
-          left: `calc(${pointerPosition}% - 4px)`,
-          top: '7px',
-          width: 0,
-          height: 0,
-          borderLeft: '4px solid transparent',
-          borderRight: '4px solid transparent',
-          borderBottom: '5px solid white',
-          filter: 'drop-shadow(0 1px 1px rgba(0,0,0,0.3))',
-          transition: 'left 0.5s ease-out' // Smooth transition when bids change
-        }} />
+    <div className="mt-2">
+      <div className="flex items-center justify-between mb-1">
+        <span className="text-[10px] text-gray-400">Aktivitätsindex:</span>
+      </div>
+      <div className="relative h-2 rounded-full overflow-hidden" style={{
+        background: 'linear-gradient(to right, #22c55e 0%, #84cc16 30%, #eab308 50%, #f97316 70%, #ef4444 100%)'
+      }}>
+        {/* Pointer */}
+        <div 
+          className="absolute top-0 w-0.5 h-full bg-white shadow-lg"
+          style={{ 
+            left: `${position}%`,
+            transition: 'left 0.5s ease-out',
+            boxShadow: '0 0 4px rgba(255,255,255,0.8)'
+          }}
+        />
       </div>
     </div>
   );
 };
 
-// Auction page specific translations (inline for pages with lots of text)
+// Snipster-Style Auction Card - Clean, Professional Design
+const AuctionCard = ({ auction, product, texts, hasReminder, onToggleReminder, serverTimeOffset, isLoggedIn }) => {
+  const [timeLeft, setTimeLeft] = useState({ h: 0, m: 0, s: 0, loading: true, ended: false });
+  const isPaused = auction.is_paused;
+  
+  useEffect(() => {
+    if (auction.end_time) {
+      const calc = () => {
+        const now = Date.now() + serverTimeOffset;
+        const end = new Date(auction.end_time).getTime();
+        const diff = Math.max(0, end - now);
+        const totalSeconds = Math.floor(diff / 1000);
+        setTimeLeft({
+          h: Math.floor(totalSeconds / 3600),
+          m: Math.floor((totalSeconds % 3600) / 60),
+          s: totalSeconds % 60,
+          loading: false,
+          ended: diff <= 0
+        });
+      };
+      calc();
+      const int = setInterval(calc, 1000);
+      return () => clearInterval(int);
+    }
+  }, [auction.end_time, serverTimeOffset, isPaused]);
+  
+  const isEnded = auction.status === 'ended';
+  const isUrgent = !isEnded && timeLeft.h === 0 && timeLeft.m < 1;
+  const pad = (n) => String(n).padStart(2, '0');
+  
+  // Calculate discount
+  const discount = product?.retail_price 
+    ? Math.round((1 - auction.current_price / product.retail_price) * 100)
+    : 99;
+
+  return (
+    <Link 
+      to={`/auctions/${auction.id}`}
+      className="block group"
+      data-testid={`auction-card-${auction.id}`}
+    >
+      <div className={`rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 ${isEnded ? 'opacity-60' : ''}`}
+        style={{
+          background: 'linear-gradient(145deg, #1e3a5f 0%, #0f2744 100%)',
+          border: '1px solid rgba(255,255,255,0.1)'
+        }}
+      >
+        {/* Timer Bar at Top */}
+        <div className={`px-3 py-2 flex items-center justify-between ${isUrgent ? 'bg-red-600' : 'bg-gradient-to-r from-blue-600 to-blue-800'}`}>
+          <div className="flex items-center gap-2">
+            {/* Badges */}
+            {auction.is_beginner_only && (
+              <span className="bg-purple-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">🎓</span>
+            )}
+            {auction.is_free_auction && (
+              <span className="bg-green-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">GRATIS</span>
+            )}
+            {auction.is_vip_only && (
+              <span className="bg-yellow-400 text-black text-[9px] font-bold px-1.5 py-0.5 rounded">⭐ VIP</span>
+            )}
+            {auction.is_night_auction && (
+              <span className="bg-indigo-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">🌙</span>
+            )}
+          </div>
+          
+          {/* Timer */}
+          <div className="flex items-center gap-1">
+            <Clock className="w-3 h-3 text-white/70" />
+            {timeLeft.loading ? (
+              <span className="text-white text-xs">--:--:--</span>
+            ) : timeLeft.ended && auction.status === 'active' ? (
+              <span className="text-white text-xs animate-pulse">Neustart...</span>
+            ) : (
+              <div className="flex items-center text-white font-mono text-sm font-bold">
+                <span className="bg-black/30 px-1 rounded">{pad(timeLeft.h)}</span>
+                <span className="mx-0.5">:</span>
+                <span className="bg-black/30 px-1 rounded">{pad(timeLeft.m)}</span>
+                <span className="mx-0.5">:</span>
+                <span className={`px-1 rounded ${isUrgent ? 'bg-white text-red-600' : 'bg-black/30'}`}>
+                  {pad(timeLeft.s)}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+        
+        {/* Main Content */}
+        <div className="p-3">
+          {/* Product Title */}
+          <h3 className="text-white text-sm font-bold leading-tight mb-1 line-clamp-2 min-h-[2.5rem]" 
+              title={product?.name}>
+            {product?.name || 'Produkt'}
+          </h3>
+          
+          {/* Retail Price */}
+          <p className="text-gray-400 text-xs mb-3">
+            Vergleichspreis*: <span className="line-through">€ {product?.retail_price?.toLocaleString('de-DE') || '999'},-</span>
+          </p>
+          
+          {/* Image + Price Row */}
+          <div className="flex gap-3">
+            {/* Product Image */}
+            <div className="w-20 h-20 bg-white rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0 shadow-md">
+              <img
+                src={product?.image_url || 'https://via.placeholder.com/80'}
+                alt={product?.name || ''}
+                className="max-w-full max-h-full object-contain p-1"
+                onError={(e) => { e.target.src = 'https://via.placeholder.com/80?text=?'; }}
+              />
+            </div>
+            
+            {/* Price Block */}
+            <div className="flex-1 flex flex-col justify-between">
+              {/* Current Price */}
+              <div>
+                <p className="text-2xl font-black text-white leading-none">
+                  € {auction.current_price?.toFixed(2).replace('.', ',')}
+                </p>
+                <p className="text-cyan-400 text-xs mt-1 truncate">
+                  {auction.last_bidder_name || 'Startpreis'}
+                </p>
+              </div>
+              
+              {/* Discount Badge */}
+              <div className="flex items-center gap-2 mt-1">
+                <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded">
+                  -{discount}%
+                </span>
+                {isLoggedIn && !isEnded && (
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (onToggleReminder) onToggleReminder(auction.id, hasReminder);
+                    }}
+                    className={`p-1 rounded transition-colors ${
+                      hasReminder ? 'bg-yellow-500/30 text-yellow-400' : 'text-gray-500 hover:text-yellow-400'
+                    }`}
+                  >
+                    {hasReminder ? <Bell className="w-3.5 h-3.5" /> : <BellOff className="w-3.5 h-3.5" />}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+          
+          {/* Activity Index */}
+          <ActivityIndex bids={auction.total_bids} auctionId={auction.id} />
+          
+          {/* Bid Button */}
+          <button 
+            className={`w-full mt-3 py-2.5 rounded-lg text-sm font-bold uppercase tracking-wide transition-all duration-200 ${
+              isEnded 
+                ? 'bg-gray-600 text-gray-400 cursor-not-allowed' 
+                : 'bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-400 hover:to-blue-500 text-white shadow-lg hover:shadow-xl transform hover:scale-[1.02]'
+            }`}
+          >
+            {isEnded ? 'BEENDET' : 'BIETEN'}
+          </button>
+        </div>
+        
+        {/* Last Sold Footer */}
+        <div className="bg-black/30 px-3 py-1.5 text-center border-t border-white/5">
+          <p className="text-[10px] text-gray-400">
+            Zuletzt versteigert für nur <span className="text-green-400 font-bold">€ {((product?.retail_price || 100) * 0.05).toFixed(2).replace('.', ',')}</span>
+          </p>
+        </div>
+      </div>
+    </Link>
+  );
+};
 const auctionTranslations = {
   de: {
     vipAuction: "VIP AUKTION",
