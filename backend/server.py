@@ -282,16 +282,11 @@ async def auction_auto_restart_processor():
     # Auto-restart delay: 5 minutes (300 seconds)
     RESTART_DELAY_SECONDS = 300
     
-    logger.info(f"Auction auto-restart processor started - Ended auctions restart after {RESTART_DELAY_SECONDS // 60} minutes")
+    logger.info(f"Auction auto-restart processor started - Ended auctions restart after {RESTART_DELAY_SECONDS // 60} minutes (24/7)")
     
     while bot_task_running:
         try:
-            # CHECK BUSINESS HOURS - Don't restart outside 9:00-24:00
             now_utc = datetime.now(timezone.utc)
-            berlin_hour = (now_utc.hour + 1) % 24  # Approximate Berlin/Dubai time
-            if berlin_hour < 9:
-                await asyncio.sleep(60)  # Check again in 1 minute
-                continue
             
             # Find ALL ended auctions that have been ended for at least 5 minutes
             # This gives users time to see them in the "Ende" tab and claim prizes
