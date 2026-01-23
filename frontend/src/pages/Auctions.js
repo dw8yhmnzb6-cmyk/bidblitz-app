@@ -527,21 +527,9 @@ export default function Auctions() {
         {new Date().toLocaleTimeString('de-DE')} | {auctions.length} Live-Auktionen
       </div>
       
-      {/* Mobile: Sidebar at top */}
-      <div className="md:hidden mb-3 mt-2">
-        <details className="bg-white rounded-lg shadow-sm">
-          <summary className="p-3 font-bold text-gray-800 cursor-pointer flex items-center justify-between text-sm">
-            <span>ℹ️ Auktions-Info & Badges</span>
-            <span className="text-cyan-600 text-xs">▼ Tippen zum Öffnen</span>
-          </summary>
-          <div className="p-3 border-t max-h-96 overflow-y-auto">
-            <InfoSidebar />
-          </div>
-        </details>
-      </div>
-      
-      <div className="flex gap-3 max-w-7xl mx-auto">
-        <div className="flex-1">
+      <div className="flex flex-col md:flex-row gap-3 max-w-7xl mx-auto">
+        {/* Main Content */}
+        <div className="flex-1 order-1">
           {premiumAuction && products[premiumAuction.product_id] && (
             <PremiumCard auction={premiumAuction} product={products[premiumAuction.product_id]} onBid={handleBid} />
           )}
@@ -557,8 +545,8 @@ export default function Auctions() {
           </div>
         </div>
         
-        {/* Desktop: Sidebar on right */}
-        <div className="hidden md:block w-48 flex-shrink-0">
+        {/* Sidebar - Always visible, on right for desktop, below auctions for mobile */}
+        <div className="w-full md:w-48 flex-shrink-0 order-2">
           <InfoSidebar />
         </div>
       </div>
