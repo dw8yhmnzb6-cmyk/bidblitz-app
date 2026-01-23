@@ -11,16 +11,16 @@ const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 // Activity Index Bar - Like DealDash style with gradient and pointer
 const ActivityIndex = ({ bids }) => {
-  // Calculate activity level (0-10 scale based on bids)
-  const level = Math.min(10, Math.ceil((bids || 0) / 5));
-  
-  // Calculate pointer position (0-100%)
-  const pointerPosition = Math.min(100, (level / 10) * 100);
+  // Calculate activity level - minimum 30%, max 60% + some variation based on bids
+  // Base is 30-60%, with slight variation based on actual bids
+  const baseLevelPercent = 30 + Math.random() * 15; // Random base between 30-45%
+  const bidBonus = Math.min(20, (bids || 0) * 0.5); // Add up to 20% based on bids
+  const pointerPosition = Math.min(65, baseLevelPercent + bidBonus); // Cap at 65%
   
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
       <span style={{ fontSize: '9px', color: '#94A3B8', whiteSpace: 'nowrap' }}>Aktivität:</span>
-      <div style={{ position: 'relative', width: '60px', height: '8px' }}>
+      <div style={{ position: 'relative', width: '60px', height: '12px' }}>
         {/* Gradient bar background */}
         <div style={{
           width: '100%',
@@ -29,17 +29,17 @@ const ActivityIndex = ({ bids }) => {
           background: 'linear-gradient(to right, #22C55E 0%, #84CC16 25%, #EAB308 50%, #F97316 75%, #EF4444 100%)',
           boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.2)'
         }} />
-        {/* Pointer/Arrow */}
+        {/* Pointer/Arrow triangle pointing up */}
         <div style={{
           position: 'absolute',
           left: `calc(${pointerPosition}% - 4px)`,
-          top: '6px',
+          top: '7px',
           width: 0,
           height: 0,
           borderLeft: '4px solid transparent',
           borderRight: '4px solid transparent',
-          borderBottom: '5px solid #1E293B',
-          transition: 'left 0.3s ease'
+          borderBottom: '5px solid white',
+          filter: 'drop-shadow(0 1px 1px rgba(0,0,0,0.3))'
         }} />
       </div>
     </div>
