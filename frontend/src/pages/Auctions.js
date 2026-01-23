@@ -33,23 +33,26 @@ const ActivityIndex = memo(({ auctionId = '' }) => {
 
 // ISOLATED Timer Component - Updates independently every second
 const LiveTimer = memo(({ endTime }) => {
-  const [display, setDisplay] = useState('00:00:10');
+  const [display, setDisplay] = useState('--:--:--');
   const [isLow, setIsLow] = useState(false);
-  const endTimeRef = useRef(endTime);
-  
-  // Update ref when endTime changes from WebSocket
-  useEffect(() => {
-    endTimeRef.current = endTime;
-  }, [endTime]);
   
   useEffect(() => {
+    if (!endTime) {
+      setDisplay('--:--:--');
+      return;
+    }
+    
     const updateTimer = () => {
-      const currentEndTime = endTimeRef.current;
-      if (!currentEndTime) return;
-      
       const now = Date.now();
-      const end = new Date(currentEndTime).getTime();
+      const end = new Date(endTime).getTime();
       const diff = Math.max(0, end - now);
+      
+      // If diff is 0, the auction ended - show loading indicator
+      if (diff === 0) {
+        setDisplay('⏳');
+        setIsLow(true);
+        return;
+      }
       
       const h = Math.floor(diff / 3600000);
       const m = Math.floor((diff % 3600000) / 60000);
@@ -63,10 +66,10 @@ const LiveTimer = memo(({ endTime }) => {
     updateTimer(); // Initial update
     const interval = setInterval(updateTimer, 1000);
     return () => clearInterval(interval);
-  }, []); // Run only once, use ref for latest endTime
+  }, [endTime]); // Re-run when endTime changes from WebSocket
   
   return (
-    <span className={`font-mono text-[10px] font-bold px-1.5 py-0.5 rounded ${isLow ? 'bg-red-500 text-white animate-pulse' : 'bg-blue-600 text-white'}`}>
+    <span className={`font-mono text-[9px] font-bold px-1 py-0.5 rounded ${isLow ? 'bg-red-500 text-white animate-pulse' : 'bg-blue-600 text-white'}`}>
       {display}
     </span>
   );
