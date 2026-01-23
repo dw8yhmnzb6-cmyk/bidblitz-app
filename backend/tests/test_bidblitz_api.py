@@ -207,7 +207,7 @@ class TestBiddingFunctionality:
         """Test placing a bid on an auction"""
         headers = {"Authorization": f"Bearer {auth_token}"}
         response = requests.post(
-            f"{BASE_URL}/api/auctions/place-bid/{active_auction_id}",
+            f"{BASE_URL}/api/auctions/{active_auction_id}/bid",
             headers=headers
         )
         # Should succeed or fail with specific error (not enough bids, etc.)
@@ -221,7 +221,7 @@ class TestBiddingFunctionality:
     
     def test_bid_without_auth(self, active_auction_id):
         """Test that bidding requires authentication"""
-        response = requests.post(f"{BASE_URL}/api/auctions/place-bid/{active_auction_id}")
+        response = requests.post(f"{BASE_URL}/api/auctions/{active_auction_id}/bid")
         assert response.status_code in [401, 403, 422]
         print("✅ Bidding correctly requires authentication")
 
