@@ -503,8 +503,8 @@ export default function Auctions() {
   // Premium = VIP or first auction
   const premiumAuction = auctions.find(a => a.is_vip_only) || auctions[0];
   
-  // Grid auctions (6 for no-scroll view)
-  const gridAuctions = auctions.filter(a => a.id !== premiumAuction?.id).slice(0, 6);
+  // Grid auctions - ALL auctions except premium
+  const gridAuctions = auctions.filter(a => a.id !== premiumAuction?.id);
   
   if (loading) {
     return (
@@ -520,21 +520,37 @@ export default function Auctions() {
         {new Date().toLocaleTimeString('de-DE')} | {auctions.length} Live-Auktionen
       </div>
       
-      <div className="flex gap-3 max-w-6xl mx-auto">
+      {/* Mobile: Sidebar at top */}
+      <div className="md:hidden mb-3">
+        <details className="bg-white rounded-lg shadow-sm">
+          <summary className="p-3 font-bold text-gray-800 cursor-pointer flex items-center justify-between">
+            <span>ℹ️ Auktions-Info & Badges</span>
+            <span className="text-cyan-600">▼</span>
+          </summary>
+          <div className="p-3 border-t">
+            <InfoSidebar />
+          </div>
+        </details>
+      </div>
+      
+      <div className="flex gap-3 max-w-7xl mx-auto">
         <div className="flex-1">
           {premiumAuction && products[premiumAuction.product_id] && (
             <PremiumCard auction={premiumAuction} product={products[premiumAuction.product_id]} onBid={handleBid} />
           )}
           
-          <h2 className="text-sm font-bold text-gray-800 mt-3 mb-2">Live-Auktionen</h2>
+          <h2 className="text-sm font-bold text-gray-800 mt-3 mb-2">
+            Live-Auktionen ({gridAuctions.length})
+          </h2>
           
-          <div className="grid grid-cols-2 lg:grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
             {gridAuctions.map(auction => (
               <AuctionCard key={auction.id} auction={auction} product={products[auction.product_id]} onBid={handleBid} />
             ))}
           </div>
         </div>
         
+        {/* Desktop: Sidebar on right */}
         <div className="hidden md:block w-48 flex-shrink-0">
           <InfoSidebar />
         </div>
