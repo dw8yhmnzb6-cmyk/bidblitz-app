@@ -478,36 +478,37 @@ export default function Auctions() {
   }
   
   return (
-    <div className="min-h-screen bg-gradient-to-b from-cyan-200 to-cyan-300 p-3" data-testid="auctions-page">
-      <div className="text-center text-xs text-gray-600 mb-2">
+    <div className="min-h-screen bg-gradient-to-b from-cyan-200 to-cyan-300 p-2" data-testid="auctions-page">
+      <div className="text-center text-[10px] text-gray-600 mb-1">
         {new Date().toLocaleTimeString('de-DE')} | {auctions.length} Live-Auktionen
       </div>
       
-      <div className="flex flex-col md:flex-row gap-3 max-w-7xl mx-auto">
-        {/* Main Content */}
-        <div className="flex-1 order-1">
+      {/* Always flex row layout - sidebar on right */}
+      <div className="flex gap-2 max-w-7xl mx-auto">
+        {/* Main Content - takes remaining space */}
+        <div className="flex-1 min-w-0">
           {premiumAuction && products[premiumAuction.product_id] && (
             <PremiumCard auction={premiumAuction} product={products[premiumAuction.product_id]} onBid={handleBid} />
           )}
           
-          <h2 className="text-sm font-bold text-gray-800 mt-3 mb-2">
-            Live-Auktionen ({gridAuctions.length})
+          <h2 className="text-xs font-bold text-gray-800 mt-2 mb-1">
+            Live ({gridAuctions.length})
           </h2>
           
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-1.5">
             {gridAuctions.map(auction => (
               <AuctionCard key={auction.id} auction={auction} product={products[auction.product_id]} onBid={handleBid} />
             ))}
           </div>
         </div>
         
-        {/* Sidebar - Always visible, on right for desktop, below auctions for mobile */}
-        <div className="w-full md:w-48 flex-shrink-0 order-2">
+        {/* Sidebar - Always on right, narrower on mobile */}
+        <div className="w-28 sm:w-36 md:w-44 flex-shrink-0">
           <InfoSidebar />
         </div>
       </div>
       
-      <p className="text-center text-[8px] text-gray-500 mt-2">* Vergleichspreis = UVP</p>
+      <p className="text-center text-[7px] text-gray-500 mt-1">* UVP = Vergleichspreis</p>
     </div>
   );
 }
