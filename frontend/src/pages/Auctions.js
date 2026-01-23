@@ -99,35 +99,69 @@ const ProductInfo = memo(({ name, retailPrice, imageUrl, discount }) => (
 const AuctionCard = memo(({ auction, product, onBid }) => {
   if (!auction || !product) return null;
   
-  // Badge config
-  let badgeText = 'FÜR PROFIS!';
-  let badgeColor = 'bg-orange-500';
-  
-  if (auction.is_free_auction) {
-    badgeText = '🎁 GRATIS';
-    badgeColor = 'bg-green-500';
-  } else if (auction.is_beginner_only) {
-    badgeText = '🎓 ANFÄNGER';
-    badgeColor = 'bg-purple-500';
-  } else if (auction.is_vip_only) {
-    badgeText = '⭐ VIP';
-    badgeColor = 'bg-yellow-500 text-black';
-  } else if (auction.is_night_auction) {
-    badgeText = '🌙 NACHT';
-    badgeColor = 'bg-indigo-600';
-  }
-  
   const discount = product.retail_price 
     ? Math.round((1 - auction.current_price / product.retail_price) * 100)
     : 99;
+  
+  // Collect all badges for this auction
+  const badges = [];
+  
+  // Discount badge (always show)
+  badges.push(
+    <span key="discount" className="bg-red-500 text-white px-1.5 py-0.5 rounded text-[8px] font-bold">
+      -{discount}%
+    </span>
+  );
+  
+  // Special auction type badges
+  if (auction.is_vip_only) {
+    badges.push(
+      <span key="vip" className="bg-yellow-500 text-black px-1.5 py-0.5 rounded text-[8px] font-bold">
+        VIP
+      </span>
+    );
+  }
+  
+  if (auction.is_beginner_only) {
+    badges.push(
+      <span key="beginner" className="bg-purple-500 text-white px-1.5 py-0.5 rounded text-[8px] font-bold">
+        🎓
+      </span>
+    );
+  }
+  
+  if (auction.is_free_auction) {
+    badges.push(
+      <span key="free" className="bg-green-500 text-white px-1.5 py-0.5 rounded text-[8px] font-bold">
+        🎁
+      </span>
+    );
+  }
+  
+  if (auction.is_night_auction) {
+    badges.push(
+      <span key="night" className="bg-indigo-600 text-white px-1.5 py-0.5 rounded text-[8px] font-bold">
+        🌙
+      </span>
+    );
+  }
+  
+  // Header background color based on primary type
+  let headerBg = 'bg-gradient-to-r from-cyan-500 to-cyan-600';
+  if (auction.is_vip_only) headerBg = 'bg-gradient-to-r from-yellow-400 to-yellow-500';
+  else if (auction.is_night_auction) headerBg = 'bg-gradient-to-r from-indigo-600 to-purple-600';
+  else if (auction.is_free_auction) headerBg = 'bg-gradient-to-r from-green-500 to-emerald-500';
+  else if (auction.is_beginner_only) headerBg = 'bg-gradient-to-r from-purple-500 to-violet-500';
   
   return (
     <div className="bg-gradient-to-b from-cyan-50 to-cyan-100 rounded-lg overflow-hidden border border-cyan-300 cursor-pointer hover:shadow-lg transition-shadow"
          onClick={() => window.location.href = `/auctions/${auction.id}`}>
       
-      {/* Header with Badge + Timer */}
-      <div className={`${badgeColor} text-white text-[9px] font-bold py-1 px-2 flex items-center justify-between`}>
-        <span>{badgeText}</span>
+      {/* Header with Badges + Timer */}
+      <div className={`${headerBg} text-white text-[9px] font-bold py-1 px-2 flex items-center justify-between`}>
+        <div className="flex items-center gap-1 flex-wrap">
+          {badges}
+        </div>
         <LiveTimer endTime={auction.end_time} />
       </div>
       
@@ -137,17 +171,12 @@ const AuctionCard = memo(({ auction, product, onBid }) => {
           {product.name}
         </h3>
         <p className="text-[8px] text-gray-500 mb-1">
-          Vergleichspreis*: € {product.retail_price?.toLocaleString('de-DE')},-
+          UVP: € {product.retail_price?.toLocaleString('de-DE')},-
         </p>
         
         <div className="flex gap-2">
           <div className="flex-1">
-            <div className="flex items-center gap-1">
-              <LivePrice price={auction.current_price} bidderName={auction.last_bidder_name} />
-              <span className={`text-[8px] font-bold px-1 py-0.5 rounded ${discount > 90 ? 'bg-red-500 text-white' : 'bg-orange-400 text-white'}`}>
-                -{discount}%
-              </span>
-            </div>
+            <LivePrice price={auction.current_price} bidderName={auction.last_bidder_name} />
             
             <button 
               onClick={(e) => { e.stopPropagation(); onBid(auction.id); }}
