@@ -138,8 +138,13 @@ Penny-Auktions-Website nach dem Vorbild von `dealdash.com` und `snipster.de`.
 - 🎓 Anfänger-Auktion: Nur für Nutzer mit weniger als 10 gewonnenen Auktionen
 - 🎁 Gratis-Auktion: Keine Gebote erforderlich
 - ⭐ VIP-Auktion: Exklusiv für VIP-Mitglieder
-- 🌙 Nacht-Auktion: Läuft zwischen 22:00 und 6:00 Uhr
+- 🌙 Nacht-Auktion: 23:30 bis 6:00 Uhr, **HALBER GEBOTSPREIS!**
 - 🔔 Erinnerung: 5 Minuten vor Ende benachrichtigt werden
+
+### Badge-Icons auf Auktionskarten ✅ NEU
+- Jede Auktionskarte zeigt alle relevanten Badges (Rabatt + Typ-Icons)
+- "FÜR PROFIS!" entfernt - freundlicheres Design
+- Farbcodierte Header basierend auf Auktionstyp
 
 ### Timer-Verbesserungen ✅ NEU
 - Timer aktualisiert jede Sekunde
