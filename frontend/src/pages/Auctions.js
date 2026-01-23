@@ -531,7 +531,7 @@ const AuctionCard = ({ auction, product, reminders, onToggleReminder, isLoggedIn
                 {auction.last_bidder_name || texts.startPrice}
               </p>
               <div className="mt-1">
-                <ActivityIndex bids={auction.total_bids} />
+                <ActivityIndex bids={auction.total_bids} auctionId={auction.id} />
               </div>
             </div>
             
