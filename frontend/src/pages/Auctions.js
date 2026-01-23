@@ -494,36 +494,29 @@ export default function Auctions() {
   
   return (
     <div className="min-h-screen bg-gradient-to-b from-cyan-200 to-cyan-300 p-2" data-testid="auctions-page">
-      <div className="text-center text-[10px] text-gray-600 mb-1">
+      <div className="text-center text-[10px] text-gray-600 mb-2">
         {new Date().toLocaleTimeString('de-DE')} | {auctions.length} Live-Auktionen
       </div>
       
-      {/* Always flex row layout - sidebar on right */}
-      <div className="flex gap-2 max-w-7xl mx-auto">
-        {/* Main Content - takes remaining space */}
-        <div className="flex-1 min-w-0">
-          {premiumAuction && products[premiumAuction.product_id] && (
-            <PremiumCard auction={premiumAuction} product={products[premiumAuction.product_id]} onBid={handleBid} />
-          )}
-          
-          <h2 className="text-xs font-bold text-gray-800 mt-2 mb-1">
-            Live ({gridAuctions.length})
-          </h2>
-          
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-1.5">
-            {gridAuctions.map(auction => (
-              <AuctionCard key={auction.id} auction={auction} product={products[auction.product_id]} onBid={handleBid} />
-            ))}
-          </div>
-        </div>
+      {/* Full width layout - no sidebar */}
+      <div className="max-w-7xl mx-auto">
+        {premiumAuction && products[premiumAuction.product_id] && (
+          <PremiumCard auction={premiumAuction} product={products[premiumAuction.product_id]} onBid={handleBid} />
+        )}
         
-        {/* Sidebar - Always on right, narrower on mobile */}
-        <div className="w-28 sm:w-36 md:w-44 flex-shrink-0">
-          <InfoSidebar />
+        <h2 className="text-sm font-bold text-gray-800 mt-3 mb-2">
+          Live-Auktionen ({gridAuctions.length})
+        </h2>
+        
+        {/* Bigger cards - fewer columns on mobile */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2">
+          {gridAuctions.map(auction => (
+            <AuctionCard key={auction.id} auction={auction} product={products[auction.product_id]} onBid={handleBid} />
+          ))}
         </div>
       </div>
       
-      <p className="text-center text-[7px] text-gray-500 mt-1">* UVP = Vergleichspreis</p>
+      <p className="text-center text-[8px] text-gray-500 mt-2">* UVP = Vergleichspreis</p>
     </div>
   );
 }
