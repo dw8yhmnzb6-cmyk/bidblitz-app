@@ -9,29 +9,40 @@ import { toast } from 'sonner';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
-// Simple Activity Dots - Using SVG for perfect circles on all devices
-const ActivityDots = ({ bids }) => {
-  const level = Math.min(5, Math.ceil((bids || 0) / 10));
+// Activity Index Bar - Like DealDash style with gradient and pointer
+const ActivityIndex = ({ bids }) => {
+  // Calculate activity level (0-10 scale based on bids)
+  const level = Math.min(10, Math.ceil((bids || 0) / 5));
   
-  const getColor = (index) => {
-    if (index >= level) return '#4B5563'; // gray-600
-    if (index < 2) return '#4ADE80'; // green-400
-    if (index < 4) return '#FACC15'; // yellow-400
-    return '#F87171'; // red-400
-  };
+  // Calculate pointer position (0-100%)
+  const pointerPosition = Math.min(100, (level / 10) * 100);
   
   return (
-    <svg width="50" height="10" viewBox="0 0 50 10" style={{ display: 'inline-block', verticalAlign: 'middle' }}>
-      {[0, 1, 2, 3, 4].map((i) => (
-        <circle
-          key={i}
-          cx={5 + i * 10}
-          cy={5}
-          r={4}
-          fill={getColor(i)}
-        />
-      ))}
-    </svg>
+    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+      <span style={{ fontSize: '9px', color: '#94A3B8', whiteSpace: 'nowrap' }}>Aktivität:</span>
+      <div style={{ position: 'relative', width: '60px', height: '8px' }}>
+        {/* Gradient bar background */}
+        <div style={{
+          width: '100%',
+          height: '6px',
+          borderRadius: '3px',
+          background: 'linear-gradient(to right, #22C55E 0%, #84CC16 25%, #EAB308 50%, #F97316 75%, #EF4444 100%)',
+          boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.2)'
+        }} />
+        {/* Pointer/Arrow */}
+        <div style={{
+          position: 'absolute',
+          left: `calc(${pointerPosition}% - 4px)`,
+          top: '6px',
+          width: 0,
+          height: 0,
+          borderLeft: '4px solid transparent',
+          borderRight: '4px solid transparent',
+          borderBottom: '5px solid #1E293B',
+          transition: 'left 0.3s ease'
+        }} />
+      </div>
+    </div>
   );
 };
 
