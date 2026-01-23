@@ -3,7 +3,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
-import { useAuctionWebSocket } from '../hooks/useAuctionWebSocket';
 import { Clock, Trophy, TrendingUp, Users, ChevronRight, Zap } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -11,9 +10,8 @@ const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 // Activity Index - Always shows 30-60%
 const ActivityIndex = ({ auctionId = '' }) => {
-  // Stable position based on auction ID (30-60% range)
   const hash = auctionId ? auctionId.split('').reduce((a, b) => a + b.charCodeAt(0), 0) : 50;
-  const position = 30 + (hash % 31); // 30 to 60
+  const position = 30 + (hash % 31);
   
   return (
     <div className="mt-2">
@@ -37,34 +35,63 @@ const ActivityIndex = ({ auctionId = '' }) => {
   );
 };
 
-// Premium Featured Auction (Large Card at Top)
-const PremiumAuction = ({ auction, product, onBid, isLoggedIn }) => {
-  const [timeLeft, setTimeLeft] = useState({ h: 0, m: 0, s: 0 });
-  const navigate = useNavigate();
+// Live Timer Component - Updates every second
+const LiveTimer = ({ endTime, isUrgent, onExpired }) => {
+  const [time, setTime] = useState({ h: 0, m: 0, s: 0, expired: false });
   
   useEffect(() => {
-    if (!auction?.end_time) return;
+    if (!endTime) return;
     
     const calc = () => {
       const now = Date.now();
-      const end = new Date(auction.end_time).getTime();
+      const end = new Date(endTime).getTime();
       const diff = Math.max(0, end - now);
-      setTimeLeft({
+      
+      if (diff <= 0) {
+        setTime({ h: 0, m: 0, s: 0, expired: true });
+        if (onExpired) onExpired();
+        return;
+      }
+      
+      setTime({
         h: Math.floor(diff / 3600000),
         m: Math.floor((diff % 3600000) / 60000),
-        s: Math.floor((diff % 60000) / 1000)
+        s: Math.floor((diff % 60000) / 1000),
+        expired: false
       });
     };
     
     calc();
-    const int = setInterval(calc, 1000);
-    return () => clearInterval(int);
-  }, [auction?.end_time]);
-  
-  if (!auction || !product) return null;
+    const interval = setInterval(calc, 1000);
+    return () => clearInterval(interval);
+  }, [endTime, onExpired]);
   
   const pad = (n) => String(n).padStart(2, '0');
-  const isUrgent = timeLeft.h === 0 && timeLeft.m < 1;
+  const urgent = time.h === 0 && time.m < 1 && !time.expired;
+  
+  if (time.expired) {
+    return <span className="text-cyan-400 text-xs animate-pulse">Neustart...</span>;
+  }
+  
+  return (
+    <div className={`flex items-center gap-1 font-mono font-bold ${urgent ? 'text-red-400' : 'text-white'}`}>
+      <Clock className="w-3 h-3" />
+      <span className="bg-black/30 px-1 rounded">{pad(time.h)}</span>
+      <span>:</span>
+      <span className="bg-black/30 px-1 rounded">{pad(time.m)}</span>
+      <span>:</span>
+      <span className={`px-1 rounded ${urgent ? 'bg-red-500 text-white' : 'bg-black/30'}`}>
+        {pad(time.s)}
+      </span>
+    </div>
+  );
+};
+
+// Premium Featured Auction
+const PremiumAuction = ({ auction, product, onBid, onRefresh }) => {
+  const navigate = useNavigate();
+  
+  if (!auction || !product) return null;
   
   return (
     <div 
@@ -82,13 +109,8 @@ const PremiumAuction = ({ auction, product, onBid, isLoggedIn }) => {
       </div>
       
       {/* Timer Badge */}
-      <div className={`absolute top-4 right-4 z-10 px-3 py-1.5 rounded-lg ${isUrgent ? 'bg-red-500' : 'bg-black/50 backdrop-blur'}`}>
-        <div className="flex items-center gap-2">
-          <Clock className="w-4 h-4 text-white" />
-          <span className="text-white font-mono font-bold text-lg">
-            {pad(timeLeft.h)}:{pad(timeLeft.m)}:{pad(timeLeft.s)}
-          </span>
-        </div>
+      <div className={`absolute top-4 right-4 z-10 px-3 py-1.5 rounded-lg bg-black/50 backdrop-blur`}>
+        <LiveTimer endTime={auction.end_time} onExpired={onRefresh} />
       </div>
       
       <div className="flex flex-col md:flex-row p-6 gap-6">
@@ -108,10 +130,6 @@ const PremiumAuction = ({ auction, product, onBid, isLoggedIn }) => {
           <h2 className="text-2xl md:text-3xl font-bold text-white mb-2">
             {product.name}
           </h2>
-          
-          <p className="text-gray-400 text-sm mb-4 line-clamp-2">
-            {product.description || 'Premium-Produkt zum Schnäppchenpreis'}
-          </p>
           
           <p className="text-gray-400 mb-4">
             Vergleichspreis*: <span className="line-through">€ {product.retail_price?.toLocaleString('de-DE')},-</span>
@@ -142,45 +160,17 @@ const PremiumAuction = ({ auction, product, onBid, isLoggedIn }) => {
           >
             BIETEN
           </button>
-          
-          {/* Last Sold */}
-          <p className="text-xs text-gray-500 mt-4">
-            Zuletzt versteigert für nur <span className="text-green-400 font-semibold">€ {(product.retail_price * 0.03).toFixed(2).replace('.', ',')}</span>
-          </p>
         </div>
       </div>
     </div>
   );
 };
 
-// Small Auction Card (Grid below Premium)
-const AuctionCard = ({ auction, product, onBid, isLoggedIn }) => {
-  const [timeLeft, setTimeLeft] = useState({ h: 0, m: 0, s: 0 });
+// Small Auction Card
+const AuctionCard = ({ auction, product, onBid, onRefresh }) => {
   const navigate = useNavigate();
   
-  useEffect(() => {
-    if (!auction?.end_time) return;
-    
-    const calc = () => {
-      const now = Date.now();
-      const end = new Date(auction.end_time).getTime();
-      const diff = Math.max(0, end - now);
-      setTimeLeft({
-        h: Math.floor(diff / 3600000),
-        m: Math.floor((diff % 3600000) / 60000),
-        s: Math.floor((diff % 60000) / 1000)
-      });
-    };
-    
-    calc();
-    const int = setInterval(calc, 1000);
-    return () => clearInterval(int);
-  }, [auction?.end_time]);
-  
   if (!auction || !product) return null;
-  
-  const pad = (n) => String(n).padStart(2, '0');
-  const isUrgent = timeLeft.h === 0 && timeLeft.m < 1;
   
   return (
     <div 
@@ -192,7 +182,7 @@ const AuctionCard = ({ auction, product, onBid, isLoggedIn }) => {
       }}
     >
       {/* Timer Header */}
-      <div className={`px-3 py-2 flex items-center justify-between ${isUrgent ? 'bg-red-600' : 'bg-gradient-to-r from-blue-600 to-blue-700'}`}>
+      <div className="px-3 py-2 flex items-center justify-between bg-gradient-to-r from-blue-600 to-blue-700">
         <div className="flex items-center gap-1">
           {auction.is_vip_only && (
             <span className="bg-yellow-400 text-black text-[9px] font-bold px-1.5 py-0.5 rounded">VIP</span>
@@ -204,25 +194,19 @@ const AuctionCard = ({ auction, product, onBid, isLoggedIn }) => {
             <span className="bg-green-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">GRATIS</span>
           )}
         </div>
-        <div className="flex items-center gap-1 text-white font-mono text-sm font-bold">
-          <Clock className="w-3 h-3" />
-          {pad(timeLeft.h)}:{pad(timeLeft.m)}:{pad(timeLeft.s)}
-        </div>
+        <LiveTimer endTime={auction.end_time} onExpired={onRefresh} />
       </div>
       
       {/* Content */}
       <div className="p-3">
-        {/* Product Name */}
         <h3 className="text-white text-sm font-bold mb-1 line-clamp-2 min-h-[2.5rem]">
           {product.name}
         </h3>
         
-        {/* Retail Price */}
         <p className="text-gray-400 text-xs mb-2">
           Vergleichspreis*: € {product.retail_price?.toLocaleString('de-DE')},-
         </p>
         
-        {/* Image + Price */}
         <div className="flex gap-3">
           <div className="w-16 h-16 bg-white rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
             <img 
@@ -242,10 +226,8 @@ const AuctionCard = ({ auction, product, onBid, isLoggedIn }) => {
           </div>
         </div>
         
-        {/* Activity Index */}
         <ActivityIndex auctionId={auction.id} />
         
-        {/* Bid Button */}
         <button 
           onClick={(e) => {
             e.stopPropagation();
@@ -255,42 +237,6 @@ const AuctionCard = ({ auction, product, onBid, isLoggedIn }) => {
         >
           BIETEN
         </button>
-        
-        {/* Last Sold */}
-        <p className="text-[10px] text-gray-500 mt-2 text-center">
-          Zuletzt versteigert für nur <span className="text-green-400">€ {(product.retail_price * 0.04).toFixed(2).replace('.', ',')}</span>
-        </p>
-      </div>
-    </div>
-  );
-};
-
-// Recently Ended Auction (Horizontal Scroll)
-const EndedAuctionCard = ({ auction, product }) => {
-  const navigate = useNavigate();
-  
-  if (!product) return null;
-  
-  return (
-    <div 
-      onClick={() => navigate(`/auctions/${auction.id}`)}
-      className="flex-shrink-0 w-40 rounded-lg overflow-hidden cursor-pointer bg-[#1a2a3a] hover:bg-[#1e3040] transition-colors"
-    >
-      <div className="relative">
-        <img 
-          src={product.image_url || 'https://via.placeholder.com/160'}
-          alt=""
-          className="w-full h-24 object-contain bg-white p-2"
-        />
-        <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-          <span className="text-white text-xs font-bold bg-green-500 px-2 py-1 rounded">
-            € {auction.final_price?.toFixed(2) || auction.current_price?.toFixed(2)}
-          </span>
-        </div>
-      </div>
-      <div className="p-2">
-        <p className="text-white text-xs font-medium truncate">{product.name}</p>
-        <p className="text-gray-400 text-[10px]">Vergleichspreis: € {product.retail_price},-</p>
       </div>
     </div>
   );
@@ -329,40 +275,31 @@ const StatsBar = ({ totalBids, activeUsers, activeAuctions }) => (
 
 export default function Home() {
   const { isAuthenticated, token, updateBidsBalance } = useAuth();
-  const { t } = useLanguage();
   const navigate = useNavigate();
   
   const [auctions, setAuctions] = useState([]);
   const [products, setProducts] = useState({});
-  const [endedAuctions, setEndedAuctions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({ totalBids: 0, activeUsers: 0 });
+  const wsRef = useRef(null);
+  const reconnectTimeoutRef = useRef(null);
   
-  // WebSocket for real-time updates
-  const { auctionData, bidNotification } = useAuctionWebSocket(null);
-  
-  // Fetch data
+  // Fetch data from API
   const fetchData = useCallback(async () => {
     try {
-      const [auctionsRes, productsRes, endedRes] = await Promise.all([
+      const [auctionsRes, productsRes] = await Promise.all([
         axios.get(`${API}/auctions?status=active`),
-        axios.get(`${API}/products`),
-        axios.get(`${API}/auctions?status=ended&limit=10`)
+        axios.get(`${API}/products`)
       ]);
       
-      // Build products map
       const prodMap = {};
       productsRes.data.forEach(p => { prodMap[p.id] = p; });
       setProducts(prodMap);
+      setAuctions(auctionsRes.data.filter(a => a.status === 'active'));
       
-      // Set auctions
-      setAuctions(auctionsRes.data);
-      setEndedAuctions(endedRes.data.slice(0, 6));
-      
-      // Calculate stats
       const totalBids = auctionsRes.data.reduce((sum, a) => sum + (a.total_bids || 0), 0);
       const uniqueBidders = new Set(auctionsRes.data.map(a => a.last_bidder_id).filter(Boolean)).size;
-      setStats({ totalBids, activeUsers: uniqueBidders + Math.floor(Math.random() * 20) + 10 });
+      setStats({ totalBids, activeUsers: uniqueBidders + 15 });
       
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -371,22 +308,98 @@ export default function Home() {
     }
   }, []);
   
+  // WebSocket connection for real-time updates
+  useEffect(() => {
+    const connectWebSocket = () => {
+      const wsUrl = process.env.REACT_APP_BACKEND_URL?.replace('https://', 'wss://').replace('http://', 'ws://');
+      if (!wsUrl) return;
+      
+      const ws = new WebSocket(`${wsUrl}/ws/auctions/all_auctions`);
+      wsRef.current = ws;
+      
+      ws.onopen = () => {
+        console.log('WebSocket connected');
+      };
+      
+      ws.onmessage = (event) => {
+        try {
+          const message = JSON.parse(event.data);
+          
+          if (message.type === 'bid_update' && message.data) {
+            // Update the specific auction with new bid data
+            setAuctions(prev => prev.map(a => 
+              a.id === message.auction_id
+                ? { 
+                    ...a, 
+                    current_price: message.data.current_price,
+                    total_bids: message.data.total_bids,
+                    last_bidder_name: message.data.last_bidder_name,
+                    end_time: message.data.end_time || a.end_time
+                  }
+                : a
+            ));
+            
+            // Update stats
+            setStats(prev => ({
+              ...prev,
+              totalBids: prev.totalBids + 1
+            }));
+          }
+          
+          if (message.type === 'auction_restarted' && message.data) {
+            // Update or add the restarted auction
+            setAuctions(prev => {
+              const exists = prev.find(a => a.id === message.auction_id);
+              if (exists) {
+                return prev.map(a => 
+                  a.id === message.auction_id
+                    ? { ...a, ...message.data }
+                    : a
+                );
+              }
+              return prev;
+            });
+          }
+          
+          if (message.type === 'auction_ended') {
+            // Remove ended auction from list
+            setAuctions(prev => prev.filter(a => a.id !== message.auction_id));
+          }
+          
+        } catch (error) {
+          console.error('WebSocket message error:', error);
+        }
+      };
+      
+      ws.onclose = () => {
+        console.log('WebSocket disconnected, reconnecting...');
+        reconnectTimeoutRef.current = setTimeout(connectWebSocket, 3000);
+      };
+      
+      ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
+        ws.close();
+      };
+    };
+    
+    connectWebSocket();
+    
+    return () => {
+      if (wsRef.current) wsRef.current.close();
+      if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
+    };
+  }, []);
+  
+  // Initial data fetch
   useEffect(() => {
     fetchData();
   }, [fetchData]);
   
-  // Update from WebSocket
-  useEffect(() => {
-    if (auctionData && Array.isArray(auctionData)) {
-      setAuctions(auctionData.filter(a => a.status === 'active'));
-    } else if (auctionData && auctionData.auction_id) {
-      setAuctions(prev => prev.map(a => 
-        a.id === auctionData.auction_id
-          ? { ...a, ...auctionData }
-          : a
-      ));
-    }
-  }, [auctionData]);
+  // Refresh when timer expires (auction ended)
+  const handleTimerExpired = useCallback(() => {
+    // Small delay then refresh to get new auction data
+    setTimeout(fetchData, 2000);
+  }, [fetchData]);
   
   // Handle bid
   const handleBid = async (auctionId) => {
@@ -406,13 +419,12 @@ export default function Home() {
       if (res.data.bids_remaining !== undefined) {
         updateBidsBalance(res.data.bids_remaining);
       }
-      fetchData();
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Fehler beim Bieten');
     }
   };
   
-  // Get premium auction (highest retail price or VIP)
+  // Get premium auction (VIP or highest price)
   const premiumAuction = auctions.find(a => a.is_vip_only) || 
     auctions.reduce((max, a) => {
       const price = products[a.product_id]?.retail_price || 0;
@@ -420,7 +432,7 @@ export default function Home() {
       return price > maxPrice ? a : max;
     }, auctions[0]);
   
-  // Other auctions (excluding premium)
+  // Other auctions
   const otherAuctions = auctions.filter(a => a.id !== premiumAuction?.id).slice(0, 8);
   
   if (loading) {
@@ -449,7 +461,7 @@ export default function Home() {
               auction={premiumAuction}
               product={products[premiumAuction.product_id]}
               onBid={handleBid}
-              isLoggedIn={isAuthenticated}
+              onRefresh={handleTimerExpired}
             />
           </div>
         )}
@@ -473,31 +485,11 @@ export default function Home() {
                 auction={auction}
                 product={products[auction.product_id]}
                 onBid={handleBid}
-                isLoggedIn={isAuthenticated}
+                onRefresh={handleTimerExpired}
               />
             ))}
           </div>
         </div>
-        
-        {/* Recently Ended Section */}
-        {endedAuctions.length > 0 && (
-          <div className="mb-8">
-            <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-              <Trophy className="w-5 h-5 text-green-400" />
-              Kürzlich beendete Auktionen
-            </h2>
-            
-            <div className="flex gap-3 overflow-x-auto pb-2" style={{ scrollbarWidth: 'thin' }}>
-              {endedAuctions.map(auction => (
-                <EndedAuctionCard 
-                  key={auction.id}
-                  auction={auction}
-                  product={products[auction.product_id]}
-                />
-              ))}
-            </div>
-          </div>
-        )}
         
         {/* Footer Note */}
         <p className="text-center text-[10px] text-gray-600 mt-8">
