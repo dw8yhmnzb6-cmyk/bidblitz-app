@@ -562,28 +562,60 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Gewonnene Auktionen */}
+            {/* Gewonnene Auktionen - Mit Zahlungsoption */}
             {wonAuctions.length > 0 && (
               <div className="glass-card rounded-2xl p-6">
                 <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
                   <Trophy className="w-5 h-5 text-[#10B981]" />
                   Gewonnen ({wonAuctions.length})
                 </h2>
-                <div className="space-y-2">
-                  {wonAuctions.slice(0, 3).map((auction) => (
-                    <div key={auction.id} className="flex items-center gap-3 p-2 rounded-lg bg-[#10B981]/10 border border-[#10B981]/30">
-                      <img 
-                        src={auction.product?.image_url || 'https://via.placeholder.com/40'} 
-                        alt="" 
-                        className="w-10 h-10 rounded object-cover"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-white text-sm truncate">{auction.product?.name}</p>
-                        <p className="text-[#10B981] font-bold text-sm">€{auction.current_price?.toFixed(2)}</p>
+                <div className="space-y-3">
+                  {wonAuctions.slice(0, 5).map((auction) => {
+                    const isPendingPayment = auction.status === 'pending_payment' || !auction.paid;
+                    return (
+                      <div key={auction.id} className={`p-3 rounded-lg border ${isPendingPayment ? 'bg-amber-500/10 border-amber-500/30' : 'bg-[#10B981]/10 border-[#10B981]/30'}`}>
+                        <div className="flex items-center gap-3">
+                          <img 
+                            src={auction.product?.image_url || auction.product_image || 'https://via.placeholder.com/50'} 
+                            alt="" 
+                            className="w-12 h-12 rounded object-cover"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-white text-sm font-medium truncate">{auction.product?.name || auction.product_name}</p>
+                            <p className="text-[#10B981] font-bold">€ {(auction.current_price || auction.final_price)?.toFixed(2)}</p>
+                            {auction.is_free_auction && (
+                              <p className="text-[8px] text-amber-400">🎁 Gratis-Auktion - Endpreis zahlen</p>
+                            )}
+                          </div>
+                          {isPendingPayment ? (
+                            <Link to={`/checkout/won/${auction.auction_id || auction.id}`}>
+                              <Button size="sm" className="bg-amber-500 hover:bg-amber-600 text-white">
+                                <CreditCard className="w-4 h-4 mr-1" />
+                                Bezahlen
+                              </Button>
+                            </Link>
+                          ) : (
+                            <div className="flex items-center gap-1 text-[#10B981] text-xs">
+                              <CheckCircle className="w-4 h-4" />
+                              <span>Bezahlt</span>
+                            </div>
+                          )}
+                        </div>
+                        {isPendingPayment && auction.payment_deadline && (
+                          <div className="mt-2 pt-2 border-t border-white/10 text-xs text-amber-400 flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            Zahlungsfrist: {new Date(auction.payment_deadline).toLocaleDateString('de-DE')}
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
+                {wonAuctions.length > 5 && (
+                  <Link to="/purchases" className="text-[#06B6D4] text-sm hover:underline mt-3 block text-center">
+                    Alle {wonAuctions.length} gewonnenen Auktionen anzeigen →
+                  </Link>
+                )}
               </div>
             )}
 
