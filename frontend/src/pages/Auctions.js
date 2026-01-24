@@ -632,11 +632,17 @@ export default function Auctions() {
   // Filter out VIP auctions from homepage (VIP only visible on /vip page)
   const publicAuctions = auctions.filter(a => !a.is_vip_only);
   
-  // Premium = first public auction
-  const premiumAuction = publicAuctions[0];
+  // Auction of the Day - exclude from grid if present
+  const aotdId = auctionOfTheDay?.id;
   
-  // Grid auctions - ALL public auctions except premium
-  const gridAuctions = publicAuctions.filter(a => a.id !== premiumAuction?.id);
+  // Premium = first public auction (not AOTD)
+  const premiumAuction = publicAuctions.find(a => a.id !== aotdId);
+  
+  // Grid auctions - ALL public auctions except premium and AOTD
+  const gridAuctions = publicAuctions.filter(a => a.id !== premiumAuction?.id && a.id !== aotdId);
+  
+  // Get AOTD product
+  const aotdProduct = auctionOfTheDay?.product || (auctionOfTheDay?.product_id ? products[auctionOfTheDay.product_id] : null);
   
   if (loading) {
     return (
@@ -656,6 +662,15 @@ export default function Auctions() {
       <div className="flex gap-3 max-w-7xl mx-auto">
         {/* Main Content */}
         <div className="flex-1 min-w-0">
+          {/* Auction of the Day - Top Highlight */}
+          {auctionOfTheDay && aotdProduct && (
+            <AuctionOfTheDay 
+              auction={auctionOfTheDay} 
+              product={aotdProduct} 
+              onBid={handleBid} 
+            />
+          )}
+          
           {premiumAuction && products[premiumAuction.product_id] && (
             <PremiumCard auction={premiumAuction} product={products[premiumAuction.product_id]} onBid={handleBid} />
           )}
