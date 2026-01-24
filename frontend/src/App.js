@@ -88,6 +88,11 @@ function AppContent() {
               <Dashboard />
             </ProtectedRoute>
           } />
+          <Route path="/stats" element={
+            <ProtectedRoute>
+              <UserStats />
+            </ProtectedRoute>
+          } />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/admin" element={
