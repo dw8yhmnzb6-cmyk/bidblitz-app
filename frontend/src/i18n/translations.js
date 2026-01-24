@@ -949,6 +949,7 @@ export const languageList = {
   pl: { name: 'Polski', flag: '🇵🇱' },
   tr: { name: 'Türkçe', flag: '🇹🇷' },
   ru: { name: 'Русский', flag: '🇷🇺' },
+  ae: { name: 'الإمارات', flag: '🇦🇪' },
   ar: { name: 'العربية', flag: '🇸🇦' },
   zh: { name: '中文', flag: '🇨🇳' },
   ja: { name: '日本語', flag: '🇯🇵' },
