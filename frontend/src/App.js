@@ -39,6 +39,8 @@ import Contact from "./pages/Contact";
 import VIP from "./pages/VIP";
 import VIPAuctions from "./pages/VIPAuctions";
 import WonAuctionCheckout from "./pages/WonAuctionCheckout";
+import InfluencerDashboard from "./pages/InfluencerDashboard";
+import InfluencerBecome from "./pages/InfluencerBecome";
 
 // Protected Route Component
 const ProtectedRoute = ({ children, requireAdmin = false }) => {
@@ -152,6 +154,10 @@ function AppContent() {
           <Route path="/contact" element={<Contact />} />
           <Route path="/vip" element={<VIP />} />
           <Route path="/vip/success" element={<VIP />} />
+          {/* Influencer Pages */}
+          <Route path="/influencer-login" element={<InfluencerDashboard />} />
+          <Route path="/influencer-dashboard" element={<InfluencerDashboard />} />
+          <Route path="/influencer-werden" element={<InfluencerBecome />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
