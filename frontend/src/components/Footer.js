@@ -58,7 +58,24 @@ export const Footer = () => {
             </nav>
           </div>
 
-          {/* Legal */}
+          {/* Extras */}
+          <div className="space-y-4">
+            <h4 className="text-white font-bold">Extras</h4>
+            <nav className="flex flex-col gap-2">
+              <Link to="/influencer-werden" className="text-[#94A3B8] hover:text-[#FFD700] transition-colors">
+                Influencer werden
+              </Link>
+              <Link to="/influencer-login" className="text-[#94A3B8] hover:text-[#FFD700] transition-colors">
+                Influencer Login
+              </Link>
+              <Link to="/vip" className="text-[#94A3B8] hover:text-[#FFD700] transition-colors">
+                VIP Mitgliedschaft
+              </Link>
+              <Link to="/winners" className="text-[#94A3B8] hover:text-[#FFD700] transition-colors">
+                Gewinner
+              </Link>
+            </nav>
+          </div>
           <div className="space-y-4">
             <h4 className="text-white font-bold">Rechtliches</h4>
             <nav className="flex flex-col gap-2">
