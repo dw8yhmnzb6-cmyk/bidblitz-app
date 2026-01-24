@@ -658,6 +658,79 @@ export default function AuctionDetail() {
                     </Button>
                   )}
 
+                  {/* Social Share Button */}
+                  <div className="relative">
+                    <Button
+                      onClick={() => setShowShareMenu(!showShareMenu)}
+                      variant="outline"
+                      className="w-full border-white/20 text-white hover:bg-white/10 py-3"
+                      data-testid="share-button"
+                    >
+                      <Share2 className="w-5 h-5 mr-2" />
+                      Teilen
+                    </Button>
+                    
+                    {/* Share Menu Dropdown */}
+                    {showShareMenu && (
+                      <div className="absolute bottom-full left-0 right-0 mb-2 bg-[#181824] rounded-xl border border-white/10 shadow-xl overflow-hidden z-50">
+                        <div className="p-2 space-y-1">
+                          <button 
+                            onClick={() => handleShare('whatsapp')}
+                            className="w-full flex items-center gap-3 px-4 py-3 text-white hover:bg-[#25D366]/20 rounded-lg transition-colors"
+                          >
+                            <span className="text-xl">📱</span>
+                            <span>WhatsApp</span>
+                          </button>
+                          <button 
+                            onClick={() => handleShare('telegram')}
+                            className="w-full flex items-center gap-3 px-4 py-3 text-white hover:bg-[#0088cc]/20 rounded-lg transition-colors"
+                          >
+                            <span className="text-xl">✈️</span>
+                            <span>Telegram</span>
+                          </button>
+                          <button 
+                            onClick={() => handleShare('facebook')}
+                            className="w-full flex items-center gap-3 px-4 py-3 text-white hover:bg-[#1877F2]/20 rounded-lg transition-colors"
+                          >
+                            <span className="text-xl">📘</span>
+                            <span>Facebook</span>
+                          </button>
+                          <button 
+                            onClick={() => handleShare('twitter')}
+                            className="w-full flex items-center gap-3 px-4 py-3 text-white hover:bg-[#1DA1F2]/20 rounded-lg transition-colors"
+                          >
+                            <span className="text-xl">🐦</span>
+                            <span>Twitter / X</span>
+                          </button>
+                          <button 
+                            onClick={() => handleShare('email')}
+                            className="w-full flex items-center gap-3 px-4 py-3 text-white hover:bg-white/10 rounded-lg transition-colors"
+                          >
+                            <span className="text-xl">📧</span>
+                            <span>E-Mail</span>
+                          </button>
+                          <div className="border-t border-white/10 my-1"></div>
+                          <button 
+                            onClick={handleCopyLink}
+                            className="w-full flex items-center gap-3 px-4 py-3 text-white hover:bg-white/10 rounded-lg transition-colors"
+                          >
+                            {copied ? (
+                              <>
+                                <Check className="w-5 h-5 text-green-400" />
+                                <span className="text-green-400">Link kopiert!</span>
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="w-5 h-5" />
+                                <span>Link kopieren</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
                   {/* Buy It Now Modal */}
                   {showBuyNowModal && buyNowPrice && (
                     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" data-testid="buy-now-modal">
