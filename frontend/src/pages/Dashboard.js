@@ -223,6 +223,11 @@ export default function Dashboard() {
               </div>
             </div>
             <div className="flex flex-wrap gap-3">
+              <Link to="/stats">
+                <Button variant="outline" className="border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10">
+                  <TrendingUp className="w-4 h-4 mr-2" />Statistiken
+                </Button>
+              </Link>
               <Link to="/profile">
                 <Button variant="outline" className="border-white/10 text-white hover:bg-white/10">
                   <Settings className="w-4 h-4 mr-2" />{dt.profile}
