@@ -1171,26 +1171,24 @@ async def get_public_banners(position: str = "homepage_middle"):
     """Get active banners for a position (public endpoint)"""
     now = datetime.now(timezone.utc).isoformat()
     
-    query = {
+    # Simple query - just check position and is_active
+    banners = await db.banners.find({
         "position": position,
-        "is_active": True,
-        "$or": [
-            {"start_date": None},
-            {"start_date": {"$lte": now}}
-        ]
-    }
+        "is_active": True
+    }, {"_id": 0}).to_list(10)
     
-    banners = await db.banners.find(query, {"_id": 0}).to_list(10)
-    
-    # Filter by end_date
+    # Filter by date if set
     active_banners = []
     for b in banners:
-        if b.get("end_date") is None or b.get("end_date") >= now:
+        # Check start_date
+        start_ok = b.get("start_date") is None or b.get("start_date") <= now
+        # Check end_date
+        end_ok = b.get("end_date") is None or b.get("end_date") >= now
+        
+        if start_ok and end_ok:
             active_banners.append(b)
-    
-    # Increment view count
-    for b in active_banners:
-        await db.banners.update_one({"id": b["id"]}, {"$inc": {"views": 1}})
+            # Increment view count
+            await db.banners.update_one({"id": b["id"]}, {"$inc": {"views": 1}})
     
     return active_banners
 
