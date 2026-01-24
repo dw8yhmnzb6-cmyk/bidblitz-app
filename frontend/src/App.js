@@ -38,6 +38,7 @@ import FAQ from "./pages/FAQ";
 import Contact from "./pages/Contact";
 import VIP from "./pages/VIP";
 import VIPAuctions from "./pages/VIPAuctions";
+import WonAuctionCheckout from "./pages/WonAuctionCheckout";
 
 // Protected Route Component
 const ProtectedRoute = ({ children, requireAdmin = false }) => {
