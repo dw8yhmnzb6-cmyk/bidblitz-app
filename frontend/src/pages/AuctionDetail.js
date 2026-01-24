@@ -43,12 +43,52 @@ export default function AuctionDetail() {
   // Timer for scheduled auctions
   const [startTimeLeft, setStartTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
 
+  // Social Sharing state
+  const [showShareMenu, setShowShareMenu] = useState(false);
+  const [copied, setCopied] = useState(false);
+
   // Simulated viewer count (minimum 12, based on auction ID for consistency)
   const [simulatedViewers] = useState(() => {
     // Generate consistent number based on auction ID
     const hash = id ? id.split('').reduce((a, b) => a + b.charCodeAt(0), 0) : 0;
     return 12 + (hash % 25); // 12-36 viewers
   });
+
+  // Social Sharing functions
+  const getShareUrl = () => {
+    return `${window.location.origin}/auctions/${id}`;
+  };
+
+  const handleShare = (platform) => {
+    const url = encodeURIComponent(getShareUrl());
+    const productName = auction?.product?.name || 'Auktion';
+    const text = encodeURIComponent(`🔥 Schau dir diese Auktion an: ${productName} - Nur € ${auction?.current_price?.toFixed(2)}!`);
+    
+    const shareUrls = {
+      whatsapp: `https://wa.me/?text=${text}%20${url}`,
+      telegram: `https://t.me/share/url?url=${url}&text=${text}`,
+      facebook: `https://www.facebook.com/sharer/sharer.php?u=${url}`,
+      twitter: `https://twitter.com/intent/tweet?url=${url}&text=${text}`,
+      email: `mailto:?subject=${encodeURIComponent(`Auktion: ${productName}`)}&body=${text}%20${url}`
+    };
+    
+    if (shareUrls[platform]) {
+      window.open(shareUrls[platform], '_blank', 'width=600,height=400');
+    }
+    setShowShareMenu(false);
+  };
+
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(getShareUrl());
+      setCopied(true);
+      toast.success('Link kopiert!');
+      setTimeout(() => setCopied(false), 2000);
+    } catch (error) {
+      toast.error('Fehler beim Kopieren');
+    }
+    setShowShareMenu(false);
+  };
 
   // WebSocket connection
   const { 
