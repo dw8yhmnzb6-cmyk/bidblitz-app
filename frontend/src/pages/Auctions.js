@@ -645,6 +645,11 @@ export default function Auctions() {
         updateBidsBalance(res.data.bids_remaining);
       }
     } catch (error) {
+      // Don't show toast for 404 errors (normal when auction not found or ended)
+      if (error.response?.status === 404) {
+        console.log('Auction not found or ended');
+        return;
+      }
       toast.error(error.response?.data?.detail || 'Fehler');
     }
   };
