@@ -820,6 +820,7 @@ export default function Admin() {
     { id: 'products', label: t('admin.products'), icon: <Package className="w-5 h-5" /> },
     { id: 'auctions', label: t('admin.auctions'), icon: <Gavel className="w-5 h-5" /> },
     { id: 'vip-auctions', label: 'VIP Auktionen', icon: <Crown className="w-5 h-5" /> },
+    { id: 'banners', label: 'Werbebanner', icon: <Eye className="w-5 h-5" /> },
     { id: 'users', label: t('admin.users'), icon: <Users className="w-5 h-5" /> },
     { id: 'staff', label: 'Mitarbeiter', icon: <UserPlus className="w-5 h-5" /> },
     { id: 'vouchers', label: 'Gutscheine', icon: <Ticket className="w-5 h-5" /> },
