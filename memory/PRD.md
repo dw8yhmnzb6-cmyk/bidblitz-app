@@ -49,6 +49,42 @@ Penny-Auktions-Website nach dem Vorbild von `dealdash.com` und `snipster.de`.
 - **Design:** Dropdown-Menü mit Icons
 
 ### 5. BIETEN Button Bug behoben ✅
+
+### 6. Referral-Bonus-System ✅ NEU
+- 10 Gebote für den Einladenden
+- 5 Gebote für den Neukunden
+- Bedingung: Freund muss €5+ aufladen
+
+### 7. 51 Neue Auktionen ✅ NEU
+- Smartphones, Laptops, Gaming, Audio, TVs, Kameras, Smart Home, Uhren, Gutscheine, Mode, Sport
+- Insgesamt jetzt 152+ Live-Auktionen
+
+### 8. Nachtauktionen Logik ✅ NEU
+- Nachtauktionen nur zwischen 23:30 und 06:00 Uhr aktiv
+- Tagsüber zeigen sie "🌙 NACHTS" statt BIETEN Button
+- Halbe Gebote-Kosten während Nachtzeit
+
+### 9. Gratis-Auktionen Beschreibung ✅ NEU
+- "🎁 GRATIS" Badge mit Hinweis
+- "✓ Kostenlos bieten • Endpreis bezahlen" Banner
+- Besonders für Gutscheine geeignet
+
+### 10. Gewinner-E-Mail System ✅ NEU
+- Automatische E-Mail an Gewinner wenn Auktion endet
+- Enthält: Produktbild, Endpreis, Ersparnis, Zahlungsanleitung
+- Hinweis auf 7-Tage Zahlungsfrist
+- Link zum Dashboard für Zahlung
+
+### 11. Dashboard Zahlungs-Integration ✅ NEU
+- Gewonnene Auktionen mit Status "Ausstehende Zahlung"
+- "Bezahlen" Button direkt im Dashboard
+- Zahlungsfrist-Anzeige
+- Gratis-Auktion Hinweis bei Gutscheinen
+
+### 12. VPN-Erkennung bei Registrierung ✅ (bereits implementiert)
+- Blockiert VPN, Proxy, Datacenter-IPs
+- Maximal 2 Konten pro IP-Adresse
+- Nutzt ip-api.com für Erkennung
 - **Problem:** Falscher API-Endpunkt `/api/auctions/place-bid/{id}`
 - **Lösung:** Korrigiert zu `/api/auctions/{id}/bid`
 
