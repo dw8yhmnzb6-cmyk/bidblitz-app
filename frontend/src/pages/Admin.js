@@ -49,6 +49,8 @@ export default function Admin() {
   const [vouchers, setVouchers] = useState([]);
   const [bots, setBots] = useState([]);
   const [banners, setBanners] = useState([]);
+  const [editingBanner, setEditingBanner] = useState(null);
+  const [showBannerModal, setShowBannerModal] = useState(false);
   const [payments, setPayments] = useState([]);
   const [logs, setLogs] = useState([]);
   const [staff, setStaff] = useState([]);
