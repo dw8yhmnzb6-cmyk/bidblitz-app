@@ -66,6 +66,20 @@ export default function Admin() {
   const [selectedPage, setSelectedPage] = useState(null);
   const [pageContent, setPageContent] = useState('');
   const [pageTitle, setPageTitle] = useState('');
+  
+  // Influencer states
+  const [influencers, setInfluencers] = useState([]);
+  const [showInfluencerModal, setShowInfluencerModal] = useState(false);
+  const [influencerForm, setInfluencerForm] = useState({
+    name: '',
+    code: '',
+    commission_percent: 10,
+    email: '',
+    instagram: '',
+    youtube: '',
+    tiktok: ''
+  });
+  const [selectedInfluencer, setSelectedInfluencer] = useState(null);
 
   // Edit states
   const [editingProduct, setEditingProduct] = useState(null);
