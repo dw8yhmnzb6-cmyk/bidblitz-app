@@ -1537,6 +1537,16 @@ export default function Admin() {
                             </td>
                             <td className="px-4 py-3">
                               <div className="flex items-center gap-2">
+                                {/* Auction of the Day Button */}
+                                <Button 
+                                  size="sm" 
+                                  variant="ghost" 
+                                  className="text-amber-500 hover:bg-amber-500/10"
+                                  onClick={() => handleSetAuctionOfTheDay(auction.id)}
+                                  title="Als Auktion des Tages setzen"
+                                >
+                                  <Crown className="w-4 h-4" />
+                                </Button>
                                 {/* Featured/VIP Button */}
                                 <Button 
                                   size="sm" 
