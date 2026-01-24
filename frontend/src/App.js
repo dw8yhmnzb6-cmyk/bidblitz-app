@@ -6,6 +6,7 @@ import { Navbar } from "./components/Navbar";
 import { Footer } from "./components/Footer";
 import { CookieConsent } from "./components/CookieConsent";
 import { ScrollToTop } from "./components/ScrollToTop";
+import { ScrollToTopOnNavigate } from "./components/ScrollToTopOnNavigate";
 import { Toaster } from "./components/ui/sonner";
 
 // Pages
