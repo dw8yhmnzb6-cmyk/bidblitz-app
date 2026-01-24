@@ -104,9 +104,39 @@ export default function VIPAuctions() {
 
   useEffect(() => {
     fetchVIPAuctions();
-    const interval = setInterval(fetchVIPAuctions, 30000);
+    // Auto-refresh every 10 seconds for real-time updates
+    const interval = setInterval(fetchVIPAuctions, 10000);
     return () => clearInterval(interval);
   }, [fetchVIPAuctions]);
+
+  // WebSocket for real-time price updates
+  useEffect(() => {
+    const wsUrl = process.env.REACT_APP_BACKEND_URL?.replace('https://', 'wss://').replace('http://', 'ws://');
+    if (!wsUrl) return;
+    
+    const ws = new WebSocket(`${wsUrl}/ws/auctions/all_auctions`);
+    
+    ws.onmessage = (event) => {
+      try {
+        const msg = JSON.parse(event.data);
+        if (msg.type === 'bid_update' && msg.data) {
+          setAuctions(prev => prev.map(a => 
+            a.id === msg.auction_id 
+              ? { 
+                  ...a, 
+                  current_price: msg.data.current_price ?? a.current_price,
+                  end_time: msg.data.end_time ?? a.end_time,
+                  last_bidder_name: msg.data.last_bidder_name ?? a.last_bidder_name,
+                  total_bids: msg.data.total_bids ?? a.total_bids
+                }
+              : a
+          ));
+        }
+      } catch (e) {}
+    };
+    
+    return () => ws.close();
+  }, []);
 
   const handleBid = async (auctionId) => {
     if (!token) {
