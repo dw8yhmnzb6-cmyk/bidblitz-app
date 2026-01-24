@@ -95,13 +95,23 @@ async def get_featured_auction():
 @router.get("/auctions")
 async def get_auctions():
     """Get all auctions with product details"""
-    auctions = await db.auctions.find({}, {"_id": 0}).sort("created_at", -1).to_list(100)
+    auctions = await db.auctions.find({}, {"_id": 0}).sort("created_at", -1).to_list(200)
     
-    # Attach product info
+    # Check if currently night time
+    now_berlin = datetime.now(timezone.utc) + timedelta(hours=1)
+    current_hour = now_berlin.hour + now_berlin.minute / 60
+    is_night_time = current_hour >= 23.5 or current_hour < 6
+    
+    # Attach product info and night status
     for auction in auctions:
         product = await db.products.find_one({"id": auction.get("product_id")}, {"_id": 0})
         if product:
             auction["product"] = product
+        
+        # Mark night auctions as paused during day
+        if auction.get("is_night_auction") and not is_night_time:
+            auction["is_night_paused"] = True
+            auction["night_message"] = "🌙 Nur 23:30-06:00 Uhr"
     
     return auctions
 
