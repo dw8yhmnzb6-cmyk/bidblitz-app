@@ -186,6 +186,165 @@ async def get_dashboard(user: dict = Depends(get_current_user)):
         "transactions": transactions
     }
 
+# ==================== WON AUCTIONS ====================
+
+@router.get("/won-auctions/{auction_id}")
+async def get_won_auction(auction_id: str, user: dict = Depends(get_current_user)):
+    """Get a specific won auction for checkout"""
+    # First check in won_auctions collection
+    won_auction = await db.won_auctions.find_one(
+        {"auction_id": auction_id, "user_id": user["id"]},
+        {"_id": 0}
+    )
+    
+    if won_auction:
+        # Get product info
+        product = await db.products.find_one({"id": won_auction.get("product_id")}, {"_id": 0})
+        if product:
+            won_auction["is_bid_voucher"] = product.get("is_bid_voucher", False)
+            won_auction["bid_amount"] = product.get("bid_amount", 0)
+        return won_auction
+    
+    # Fallback: check in user's won_auctions list
+    user_won_ids = user.get("won_auctions", [])
+    if auction_id not in user_won_ids:
+        raise HTTPException(status_code=404, detail="Gewonnene Auktion nicht gefunden")
+    
+    # Get auction details
+    auction = await db.auctions.find_one({"id": auction_id}, {"_id": 0})
+    if not auction:
+        raise HTTPException(status_code=404, detail="Auktion nicht gefunden")
+    
+    # Get product
+    product = await db.products.find_one({"id": auction.get("product_id")}, {"_id": 0})
+    
+    return {
+        "auction_id": auction_id,
+        "user_id": user["id"],
+        "product_id": auction.get("product_id"),
+        "product_name": product.get("name") if product else "Unbekannt",
+        "product_image": product.get("image_url") if product else "",
+        "final_price": auction.get("current_price", auction.get("final_price", 0.01)),
+        "retail_price": product.get("retail_price") if product else 0,
+        "is_bid_voucher": product.get("is_bid_voucher", False) if product else False,
+        "bid_amount": product.get("bid_amount", 0) if product else 0,
+        "status": auction.get("payment_status", "pending_payment"),
+        "won_at": auction.get("ended_at"),
+        "is_free_auction": auction.get("is_free_auction", False)
+    }
+
+@router.post("/won-auctions/{auction_id}/claim-bids")
+async def claim_bid_voucher(auction_id: str, user: dict = Depends(get_current_user)):
+    """Claim bids from a won bid voucher (100 Gebote Gutschein)"""
+    # Verify user won this auction
+    won_auction = await db.won_auctions.find_one(
+        {"auction_id": auction_id, "user_id": user["id"]},
+        {"_id": 0}
+    )
+    
+    if not won_auction:
+        # Check in user's won_auctions
+        if auction_id not in user.get("won_auctions", []):
+            raise HTTPException(status_code=404, detail="Gewonnene Auktion nicht gefunden")
+    
+    # Check if already claimed
+    if won_auction and won_auction.get("status") == "paid":
+        raise HTTPException(status_code=400, detail="Gebote bereits abgeholt")
+    
+    # Get auction and product
+    auction = await db.auctions.find_one({"id": auction_id}, {"_id": 0})
+    if not auction:
+        raise HTTPException(status_code=404, detail="Auktion nicht gefunden")
+    
+    product = await db.products.find_one({"id": auction.get("product_id")}, {"_id": 0})
+    if not product or not product.get("is_bid_voucher"):
+        raise HTTPException(status_code=400, detail="Kein Gebote-Gutschein")
+    
+    bid_amount = product.get("bid_amount", 100)
+    
+    # Credit the bids to user
+    await db.users.update_one(
+        {"id": user["id"]},
+        {"$inc": {"bids_balance": bid_amount}}
+    )
+    
+    # Mark as claimed
+    await db.won_auctions.update_one(
+        {"auction_id": auction_id, "user_id": user["id"]},
+        {"$set": {"status": "paid", "claimed_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    logger.info(f"🎁 User {user['id']} claimed {bid_amount} bids from voucher")
+    
+    return {
+        "success": True,
+        "bids_credited": bid_amount,
+        "message": f"{bid_amount} Gebote wurden Ihrem Konto gutgeschrieben!"
+    }
+
+@router.post("/won-auctions/{auction_id}/checkout")
+async def checkout_won_auction(auction_id: str, user: dict = Depends(get_current_user)):
+    """Create Stripe checkout for won auction"""
+    import stripe
+    import os
+    
+    stripe.api_key = os.environ.get("STRIPE_SECRET_KEY")
+    
+    # Verify user won this auction
+    won_auction = await db.won_auctions.find_one(
+        {"auction_id": auction_id, "user_id": user["id"]},
+        {"_id": 0}
+    )
+    
+    if not won_auction:
+        if auction_id not in user.get("won_auctions", []):
+            raise HTTPException(status_code=404, detail="Gewonnene Auktion nicht gefunden")
+        
+        # Get from auction
+        auction = await db.auctions.find_one({"id": auction_id}, {"_id": 0})
+        if not auction:
+            raise HTTPException(status_code=404, detail="Auktion nicht gefunden")
+        
+        product = await db.products.find_one({"id": auction.get("product_id")}, {"_id": 0})
+        final_price = auction.get("current_price", auction.get("final_price", 0.01))
+        product_name = product.get("name") if product else "Gewonnene Auktion"
+    else:
+        final_price = won_auction.get("final_price", 0.01)
+        product_name = won_auction.get("product_name", "Gewonnene Auktion")
+    
+    # Create Stripe checkout session
+    frontend_url = os.environ.get("FRONTEND_URL", "https://bidblitz.de")
+    
+    try:
+        session = stripe.checkout.Session.create(
+            payment_method_types=["card"],
+            line_items=[{
+                "price_data": {
+                    "currency": "eur",
+                    "product_data": {
+                        "name": f"Gewonnen: {product_name}",
+                        "description": f"Endpreis der Auktion"
+                    },
+                    "unit_amount": int(final_price * 100)  # Stripe uses cents
+                },
+                "quantity": 1
+            }],
+            mode="payment",
+            success_url=f"{frontend_url}/dashboard?payment=success&auction={auction_id}",
+            cancel_url=f"{frontend_url}/checkout/won/{auction_id}",
+            metadata={
+                "type": "won_auction",
+                "auction_id": auction_id,
+                "user_id": user["id"]
+            }
+        )
+        
+        return {"checkout_url": session.url}
+        
+    except Exception as e:
+        logger.error(f"Stripe checkout error: {e}")
+        raise HTTPException(status_code=500, detail="Fehler beim Erstellen der Zahlung")
+
 # ==================== WISHLIST ====================
 
 @router.get("/user/wishlist")
