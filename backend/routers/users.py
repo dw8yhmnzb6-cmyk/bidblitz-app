@@ -3,7 +3,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from datetime import datetime, timezone
 import uuid
 
-from config import db, logger, REFERRAL_MIN_DEPOSIT, REFERRAL_REWARD_BIDS
+from config import db, logger, REFERRAL_MIN_DEPOSIT, REFERRER_REWARD_BIDS, REFEREE_REWARD_BIDS
 from dependencies import get_current_user, hash_password, verify_password, validate_password_strength
 from schemas import UpdateProfileRequest, ChangePasswordRequest, VoucherRedeem
 
