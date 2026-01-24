@@ -654,20 +654,65 @@ export default function Auctions() {
     }
   };
   
+  // Filter state
+  const [activeFilter, setActiveFilter] = useState('live');
+  
   // Filter out VIP auctions from homepage (VIP only visible on /vip page)
   const publicAuctions = auctions.filter(a => !a.is_vip_only);
+  
+  // Count auctions by type
+  const auctionCounts = {
+    live: publicAuctions.filter(a => a.status === 'active').length,
+    anfaenger: publicAuctions.filter(a => a.is_beginner_only && a.status === 'active').length,
+    gratis: publicAuctions.filter(a => a.is_free_auction && a.status === 'active').length,
+    nacht: publicAuctions.filter(a => a.is_night_auction && a.status === 'active').length,
+    ende: auctions.filter(a => a.status === 'ended').length,
+    vip: auctions.filter(a => a.is_vip_only && a.status === 'active').length
+  };
+  
+  // Apply filter
+  const getFilteredAuctions = () => {
+    switch(activeFilter) {
+      case 'anfaenger':
+        return publicAuctions.filter(a => a.is_beginner_only && a.status === 'active');
+      case 'gratis':
+        return publicAuctions.filter(a => a.is_free_auction && a.status === 'active');
+      case 'nacht':
+        return publicAuctions.filter(a => a.is_night_auction && a.status === 'active');
+      case 'ende':
+        return auctions.filter(a => a.status === 'ended');
+      case 'vip':
+        return auctions.filter(a => a.is_vip_only && a.status === 'active');
+      case 'live':
+      default:
+        return publicAuctions.filter(a => a.status === 'active');
+    }
+  };
   
   // Auction of the Day - exclude from grid if present
   const aotdId = auctionOfTheDay?.id;
   
   // Premium = first public auction (not AOTD)
-  const premiumAuction = publicAuctions.find(a => a.id !== aotdId);
+  const premiumAuction = publicAuctions.find(a => a.id !== aotdId && a.status === 'active');
   
-  // Grid auctions - ALL public auctions except premium and AOTD
-  const gridAuctions = publicAuctions.filter(a => a.id !== premiumAuction?.id && a.id !== aotdId);
+  // Filtered auctions for grid
+  const filteredAuctions = getFilteredAuctions();
+  
+  // Grid auctions - filtered minus premium and AOTD
+  const gridAuctions = filteredAuctions.filter(a => a.id !== premiumAuction?.id && a.id !== aotdId);
   
   // Get AOTD product
   const aotdProduct = auctionOfTheDay?.product || (auctionOfTheDay?.product_id ? products[auctionOfTheDay.product_id] : null);
+  
+  // Filter buttons config
+  const filterButtons = [
+    { id: 'live', label: 'Live', count: auctionCounts.live, color: 'from-cyan-500 to-cyan-600' },
+    { id: 'anfaenger', label: 'Anfänger', count: auctionCounts.anfaenger, color: 'from-purple-500 to-violet-500', icon: '🎓' },
+    { id: 'gratis', label: 'Gratis', count: auctionCounts.gratis, color: 'from-green-500 to-emerald-500', icon: '🎁' },
+    { id: 'nacht', label: 'Nacht', count: auctionCounts.nacht, color: 'from-indigo-600 to-purple-600', icon: '🌙' },
+    { id: 'ende', label: 'Ende', count: auctionCounts.ende, color: 'from-gray-500 to-gray-600' },
+    { id: 'vip', label: 'VIP', count: auctionCounts.vip, color: 'from-yellow-400 to-amber-500', icon: '⭐' }
+  ];
   
   if (loading) {
     return (
@@ -683,12 +728,37 @@ export default function Auctions() {
         {new Date().toLocaleTimeString('de-DE')} | {publicAuctions.length} Live-Auktionen
       </div>
       
+      {/* Filter Buttons */}
+      <div className="max-w-7xl mx-auto mb-3">
+        <div className="flex flex-wrap gap-1.5 justify-center">
+          {filterButtons.map(btn => (
+            <button
+              key={btn.id}
+              onClick={() => setActiveFilter(btn.id)}
+              className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1 ${
+                activeFilter === btn.id
+                  ? `bg-gradient-to-r ${btn.color} text-white shadow-lg scale-105`
+                  : 'bg-white/80 text-gray-700 hover:bg-white hover:shadow'
+              }`}
+            >
+              {btn.icon && <span>{btn.icon}</span>}
+              {btn.label}
+              <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[10px] ${
+                activeFilter === btn.id ? 'bg-white/20' : 'bg-gray-200'
+              }`}>
+                {btn.count}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+      
       {/* Main layout with trust badges on right */}
       <div className="flex gap-3 max-w-7xl mx-auto">
         {/* Main Content */}
         <div className="flex-1 min-w-0">
-          {/* Auction of the Day - Top Highlight (replaces Premium Card when present) */}
-          {auctionOfTheDay && aotdProduct && (
+          {/* Auction of the Day - Only show on 'live' filter */}
+          {activeFilter === 'live' && auctionOfTheDay && aotdProduct && (
             <AuctionOfTheDay 
               auction={auctionOfTheDay} 
               product={aotdProduct} 
@@ -696,23 +766,41 @@ export default function Auctions() {
             />
           )}
           
-          {/* Premium Card only shows if NO AOTD */}
-          {!auctionOfTheDay && premiumAuction && products[premiumAuction.product_id] && (
+          {/* Premium Card only shows if NO AOTD and on 'live' filter */}
+          {activeFilter === 'live' && !auctionOfTheDay && premiumAuction && products[premiumAuction.product_id] && (
             <PremiumCard auction={premiumAuction} product={products[premiumAuction.product_id]} onBid={handleBid} />
           )}
           
-          {/* Ad Banner - Between Premium and Live Auctions */}
-          <AdBanner />
+          {/* Ad Banner - Only on live filter */}
+          {activeFilter === 'live' && <AdBanner />}
           
           <h2 className="text-sm font-bold text-gray-800 mt-3 mb-2">
-            Live-Auktionen ({gridAuctions.length})
+            {activeFilter === 'live' && 'Live-Auktionen'}
+            {activeFilter === 'anfaenger' && '🎓 Anfänger-Auktionen'}
+            {activeFilter === 'gratis' && '🎁 Gratis-Auktionen'}
+            {activeFilter === 'nacht' && '🌙 Nacht-Auktionen'}
+            {activeFilter === 'ende' && 'Beendete Auktionen'}
+            {activeFilter === 'vip' && '⭐ VIP-Auktionen'}
+            {' '}({gridAuctions.length})
           </h2>
           
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2">
-            {gridAuctions.map(auction => (
-              <AuctionCard key={auction.id} auction={auction} product={products[auction.product_id]} onBid={handleBid} />
-            ))}
-          </div>
+          {gridAuctions.length === 0 ? (
+            <div className="text-center py-8 text-gray-600">
+              <p className="text-lg">Keine Auktionen in dieser Kategorie</p>
+              <button 
+                onClick={() => setActiveFilter('live')}
+                className="mt-2 text-cyan-600 underline"
+              >
+                Alle Live-Auktionen anzeigen
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2">
+              {gridAuctions.map(auction => (
+                <AuctionCard key={auction.id} auction={auction} product={products[auction.product_id]} onBid={handleBid} />
+              ))}
+            </div>
+          )}
         </div>
         
         {/* Trust Badges - Right Side (hidden on mobile) */}
