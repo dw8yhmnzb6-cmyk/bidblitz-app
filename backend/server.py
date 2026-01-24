@@ -24,6 +24,7 @@ from routers.checkout import router as checkout_router
 from routers.admin import router as admin_router
 from routers.affiliate import router as affiliate_router
 from routers.user import router as user_router
+from routers.users import router as users_router
 from routers.bots import router as bots_router
 from routers.vouchers import router as vouchers_router
 from routers.staff import router as staff_router
