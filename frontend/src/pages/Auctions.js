@@ -561,6 +561,9 @@ export default function Auctions() {
             <PremiumCard auction={premiumAuction} product={products[premiumAuction.product_id]} onBid={handleBid} />
           )}
           
+          {/* Ad Banner - Between Premium and Live Auctions */}
+          <AdBanner />
+          
           <h2 className="text-sm font-bold text-gray-800 mt-3 mb-2">
             Live-Auktionen ({gridAuctions.length})
           </h2>
