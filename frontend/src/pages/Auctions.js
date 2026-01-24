@@ -15,25 +15,30 @@ const AuctionOfTheDay = memo(({ auction, product, onBid }) => {
     : 99;
   
   return (
-    <div className="bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-400 rounded-xl p-1 mb-4 shadow-lg" data-testid="auction-of-the-day">
-      <div className="bg-gradient-to-b from-amber-50 to-white rounded-lg p-4">
+    <div 
+      className="bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-400 rounded-xl p-1 mb-4 shadow-lg cursor-pointer" 
+      data-testid="auction-of-the-day"
+      onClick={() => window.location.href = `/auctions/${auction.id}`}
+    >
+      <div className="bg-gradient-to-b from-amber-50 to-white rounded-lg p-3 sm:p-4">
         {/* Header with crown icon */}
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center justify-between mb-2 sm:mb-3">
           <div className="flex items-center gap-2">
-            <span className="text-2xl">👑</span>
+            <span className="text-xl sm:text-2xl">👑</span>
             <div>
-              <h2 className="text-lg font-black text-amber-800 uppercase tracking-wide">Auktion des Tages</h2>
-              <p className="text-xs text-amber-600">Unser Top-Angebot heute!</p>
+              <h2 className="text-sm sm:text-lg font-black text-amber-800 uppercase tracking-wide">Auktion des Tages</h2>
+              <p className="text-[10px] sm:text-xs text-amber-600">Unser Top-Angebot heute!</p>
             </div>
           </div>
-          <div className="bg-red-500 text-white px-3 py-1 rounded-full text-sm font-bold animate-pulse">
+          <div className="bg-red-500 text-white px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-xs sm:text-sm font-bold animate-pulse">
             -{discount}%
           </div>
         </div>
         
-        <div className="flex gap-4">
+        {/* Mobile: Stack layout, Desktop: Side by side */}
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
           {/* Product Image */}
-          <div className="w-32 h-32 bg-white rounded-lg flex items-center justify-center shadow-inner border border-amber-200 flex-shrink-0">
+          <div className="w-full sm:w-28 h-24 sm:h-28 bg-white rounded-lg flex items-center justify-center shadow-inner border border-amber-200 flex-shrink-0">
             <img 
               src={product.image_url || 'https://via.placeholder.com/128'} 
               alt={product.name}
@@ -43,31 +48,31 @@ const AuctionOfTheDay = memo(({ auction, product, onBid }) => {
           
           {/* Product Info */}
           <div className="flex-1 min-w-0">
-            <h3 className="text-base font-bold text-gray-800 uppercase leading-tight mb-1 line-clamp-2">
+            <h3 className="text-sm sm:text-base font-bold text-gray-800 uppercase leading-tight mb-1 line-clamp-2">
               {product.name}
             </h3>
-            <p className="text-sm text-gray-500 mb-2">
+            <p className="text-xs sm:text-sm text-gray-500 mb-2">
               UVP: <span className="line-through">€ {product.retail_price?.toLocaleString('de-DE')},-</span>
             </p>
             
-            <div className="flex items-end gap-4">
+            <div className="flex items-center justify-between sm:items-end sm:gap-4">
               <div>
-                <p className="text-xs text-gray-500">Aktueller Preis</p>
-                <p className="text-2xl font-black text-amber-600">
+                <p className="text-[10px] sm:text-xs text-gray-500">Aktueller Preis</p>
+                <p className="text-xl sm:text-2xl font-black text-amber-600">
                   € {auction.current_price?.toFixed(2).replace('.', ',')}
                 </p>
-                <p className="text-xs text-cyan-700">{auction.last_bidder_name || 'Startpreis'}</p>
+                <p className="text-[10px] sm:text-xs text-cyan-700">{auction.last_bidder_name || 'Startpreis'}</p>
               </div>
               
               <div className="text-center">
-                <p className="text-xs text-gray-500 mb-1">Verbleibend</p>
+                <p className="text-[10px] sm:text-xs text-gray-500 mb-1">Verbleibend</p>
                 <LiveTimer endTime={auction.end_time} />
               </div>
             </div>
             
             <button 
-              onClick={() => onBid(auction.id)}
-              className="mt-3 w-full py-2.5 bg-gradient-to-b from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-white font-bold text-sm rounded-lg shadow-md transition-all hover:shadow-lg"
+              onClick={(e) => { e.stopPropagation(); onBid(auction.id); }}
+              className="mt-2 sm:mt-3 w-full py-2 sm:py-2.5 bg-gradient-to-b from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-white font-bold text-xs sm:text-sm rounded-lg shadow-md transition-all hover:shadow-lg"
               data-testid="aotd-bid-button"
             >
               🔥 JETZT BIETEN
@@ -75,7 +80,7 @@ const AuctionOfTheDay = memo(({ auction, product, onBid }) => {
           </div>
         </div>
         
-        <div className="mt-3 pt-2 border-t border-amber-200 flex items-center justify-between text-xs text-gray-500">
+        <div className="mt-2 sm:mt-3 pt-2 border-t border-amber-200 flex items-center justify-between text-[10px] sm:text-xs text-gray-500">
           <span>⚡ {auction.total_bids || 0} Gebote</span>
           <span>Zuletzt für <span className="text-green-600 font-bold">€ {(product.retail_price * 0.01).toFixed(2).replace('.', ',')}</span></span>
         </div>
