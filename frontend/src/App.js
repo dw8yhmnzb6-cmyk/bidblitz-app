@@ -69,6 +69,9 @@ const ProtectedRoute = ({ children, requireAdmin = false }) => {
 function AppContent() {
   return (
     <div className="App bg-[#050509] min-h-screen flex flex-col">
+      {/* Scroll to top on route change */}
+      <ScrollToTopOnNavigate />
+      
       {/* Noise overlay */}
       <div className="noise-overlay" />
       
