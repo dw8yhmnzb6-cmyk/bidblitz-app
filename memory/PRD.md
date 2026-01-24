@@ -55,19 +55,20 @@ Penny-Auktions-Website nach dem Vorbild von `dealdash.com` und `snipster.de`.
 - 5 Gebote für den Neukunden
 - Bedingung: Freund muss €5+ aufladen
 
-### 7. 51 Neue Auktionen ✅ NEU
+### 7. 51+ Neue Auktionen ✅ NEU
 - Smartphones, Laptops, Gaming, Audio, TVs, Kameras, Smart Home, Uhren, Gutscheine, Mode, Sport
-- Insgesamt jetzt 152+ Live-Auktionen
+- Insgesamt jetzt 166+ Live-Auktionen
 
 ### 8. Nachtauktionen Logik ✅ NEU
 - Nachtauktionen nur zwischen 23:30 und 06:00 Uhr aktiv
 - Tagsüber zeigen sie "🌙 NACHTS" statt BIETEN Button
 - Halbe Gebote-Kosten während Nachtzeit
 
-### 9. Gratis-Auktionen Beschreibung ✅ NEU
-- "🎁 GRATIS" Badge mit Hinweis
-- "✓ Kostenlos bieten • Endpreis bezahlen" Banner
-- Besonders für Gutscheine geeignet
+### 9. 100 Gebote Gutschein (Gratis-Auktionen) ✅ NEU
+- Nur "100 Gebote Gutschein" ist Gratis-Auktion
+- "🎁 GRATIS" Badge mit "✓ Kostenlos bieten • Endpreis bezahlen"
+- Gewinner erhält 100 Gebote auf sein Konto gutgeschrieben
+- 5 aktive Gratis-Auktionen
 
 ### 10. Gewinner-E-Mail System ✅ NEU
 - Automatische E-Mail an Gewinner wenn Auktion endet
@@ -75,13 +76,22 @@ Penny-Auktions-Website nach dem Vorbild von `dealdash.com` und `snipster.de`.
 - Hinweis auf 7-Tage Zahlungsfrist
 - Link zum Dashboard für Zahlung
 
-### 11. Dashboard Zahlungs-Integration ✅ NEU
-- Gewonnene Auktionen mit Status "Ausstehende Zahlung"
-- "Bezahlen" Button direkt im Dashboard
-- Zahlungsfrist-Anzeige
-- Gratis-Auktion Hinweis bei Gutscheinen
+### 11. Checkout für gewonnene Auktionen ✅ NEU
+- `/checkout/won/{auctionId}` Route
+- Für physische Produkte: Stripe-Zahlung
+- Für Gebote-Gutscheine: Sofortige Gutschrift
+- Backend-APIs: GET/POST `/won-auctions/{id}`
 
-### 12. VPN-Erkennung bei Registrierung ✅ (bereits implementiert)
+### 12. "Not Found" Toast behoben ✅
+- 404-Fehler werden nicht mehr als Toast angezeigt
+- Leise Fehlerbehandlung für nicht gefundene Auktionen
+
+### 13. Admin-Panel Internationalisierung ✅ NEU
+- Alle Tab-Namen in DE/EN
+- Übersetzungsdatei: `/app/frontend/src/i18n/adminTranslations.js`
+- 140+ übersetzte Begriffe
+
+### 14. VPN-Erkennung bei Registrierung ✅ (bereits implementiert)
 - Blockiert VPN, Proxy, Datacenter-IPs
 - Maximal 2 Konten pro IP-Adresse
 - Nutzt ip-api.com für Erkennung
