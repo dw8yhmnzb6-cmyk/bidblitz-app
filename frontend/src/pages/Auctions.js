@@ -662,7 +662,7 @@ export default function Auctions() {
       <div className="flex gap-3 max-w-7xl mx-auto">
         {/* Main Content */}
         <div className="flex-1 min-w-0">
-          {/* Auction of the Day - Top Highlight */}
+          {/* Auction of the Day - Top Highlight (replaces Premium Card when present) */}
           {auctionOfTheDay && aotdProduct && (
             <AuctionOfTheDay 
               auction={auctionOfTheDay} 
@@ -671,7 +671,8 @@ export default function Auctions() {
             />
           )}
           
-          {premiumAuction && products[premiumAuction.product_id] && (
+          {/* Premium Card only shows if NO AOTD */}
+          {!auctionOfTheDay && premiumAuction && products[premiumAuction.product_id] && (
             <PremiumCard auction={premiumAuction} product={products[premiumAuction.product_id]} onBid={handleBid} />
           )}
           
