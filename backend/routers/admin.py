@@ -1080,3 +1080,125 @@ async def delete_staff(staff_id: str, admin: dict = Depends(get_admin_user)):
     
     logger.info(f"Staff member deleted: {staff_id}")
     return {"message": "Mitarbeiter gelöscht"}
+
+
+
+# ==================== BANNER MANAGEMENT ====================
+
+class BannerCreate(BaseModel):
+    title: str
+    image_url: str
+    link_url: Optional[str] = None
+    position: str = "homepage_middle"  # homepage_middle, homepage_top, sidebar
+    is_active: bool = True
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+
+class BannerUpdate(BaseModel):
+    title: Optional[str] = None
+    image_url: Optional[str] = None
+    link_url: Optional[str] = None
+    position: Optional[str] = None
+    is_active: Optional[bool] = None
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+
+
+@router.get("/banners")
+async def get_banners(admin: dict = Depends(get_admin_user)):
+    """Get all banners"""
+    banners = await db.banners.find({}, {"_id": 0}).to_list(100)
+    return banners
+
+
+@router.post("/banners")
+async def create_banner(data: BannerCreate, admin: dict = Depends(get_admin_user)):
+    """Create a new banner"""
+    now = datetime.now(timezone.utc)
+    
+    banner = {
+        "id": str(uuid.uuid4()),
+        "title": data.title,
+        "image_url": data.image_url,
+        "link_url": data.link_url,
+        "position": data.position,
+        "is_active": data.is_active,
+        "start_date": data.start_date,
+        "end_date": data.end_date,
+        "clicks": 0,
+        "views": 0,
+        "created_at": now.isoformat(),
+        "created_by": admin["id"]
+    }
+    
+    await db.banners.insert_one(banner)
+    banner.pop("_id", None)
+    
+    logger.info(f"Banner created: {data.title} by admin {admin['id']}")
+    return banner
+
+
+@router.put("/banners/{banner_id}")
+async def update_banner(banner_id: str, data: BannerUpdate, admin: dict = Depends(get_admin_user)):
+    """Update a banner"""
+    banner = await db.banners.find_one({"id": banner_id})
+    if not banner:
+        raise HTTPException(status_code=404, detail="Banner nicht gefunden")
+    
+    update_data = {k: v for k, v in data.dict().items() if v is not None}
+    if update_data:
+        update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+        await db.banners.update_one({"id": banner_id}, {"$set": update_data})
+    
+    updated = await db.banners.find_one({"id": banner_id}, {"_id": 0})
+    return updated
+
+
+@router.delete("/banners/{banner_id}")
+async def delete_banner(banner_id: str, admin: dict = Depends(get_admin_user)):
+    """Delete a banner"""
+    result = await db.banners.delete_one({"id": banner_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Banner nicht gefunden")
+    
+    logger.info(f"Banner deleted: {banner_id}")
+    return {"message": "Banner gelöscht"}
+
+
+# Public endpoint for banners (no auth required)
+@router.get("/public/banners")
+async def get_public_banners(position: str = "homepage_middle"):
+    """Get active banners for a position (public endpoint)"""
+    now = datetime.now(timezone.utc).isoformat()
+    
+    query = {
+        "position": position,
+        "is_active": True,
+        "$or": [
+            {"start_date": None},
+            {"start_date": {"$lte": now}}
+        ]
+    }
+    
+    banners = await db.banners.find(query, {"_id": 0}).to_list(10)
+    
+    # Filter by end_date
+    active_banners = []
+    for b in banners:
+        if b.get("end_date") is None or b.get("end_date") >= now:
+            active_banners.append(b)
+    
+    # Increment view count
+    for b in active_banners:
+        await db.banners.update_one({"id": b["id"]}, {"$inc": {"views": 1}})
+    
+    return active_banners
+
+
+@router.post("/public/banners/{banner_id}/click")
+async def track_banner_click(banner_id: str):
+    """Track a banner click (public endpoint)"""
+    result = await db.banners.update_one({"id": banner_id}, {"$inc": {"clicks": 1}})
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Banner nicht gefunden")
+    return {"success": True}
