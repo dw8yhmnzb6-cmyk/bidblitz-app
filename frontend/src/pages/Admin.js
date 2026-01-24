@@ -488,6 +488,21 @@ export default function Admin() {
     }
   };
 
+  // Set auction as "Auction of the Day"
+  const handleSetAuctionOfTheDay = async (auctionId) => {
+    try {
+      await axios.post(
+        `${API}/admin/auction-of-the-day/${auctionId}`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      toast.success('🏆 Als Auktion des Tages gesetzt!');
+      fetchData();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Fehler');
+    }
+  };
+
   // User handlers
   const handleToggleAdmin = async (userId) => {
     try {
