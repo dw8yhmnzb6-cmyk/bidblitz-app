@@ -49,9 +49,15 @@ async def delete_voucher(voucher_id: str, admin: dict = Depends(get_admin_user))
 
 # ==================== USER ENDPOINTS ====================
 
+from pydantic import BaseModel
+
+class VoucherRedeemRequest(BaseModel):
+    code: str
+
 @router.post("/vouchers/redeem")
-async def redeem_voucher(code: str, user: dict = Depends(get_current_user)):
+async def redeem_voucher(request: VoucherRedeemRequest, user: dict = Depends(get_current_user)):
     """Redeem a voucher code"""
+    code = request.code
     voucher = await db.vouchers.find_one({"code": code.upper()}, {"_id": 0})
     
     if not voucher:
