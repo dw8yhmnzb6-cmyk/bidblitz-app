@@ -443,6 +443,9 @@ async def auction_expiry_checker():
                         }}
                     )
                     
+                    # Get product data for email
+                    product = await db.products.find_one({"id": auction.get("product_id")}, {"_id": 0})
+                    
                     # Create won auction record for user
                     if winner_id:
                         await db.won_auctions.insert_one({
@@ -450,15 +453,25 @@ async def auction_expiry_checker():
                             "user_id": winner_id,
                             "auction_id": auction_id,
                             "product_id": auction.get("product_id"),
-                            "product_name": auction.get("product", {}).get("name"),
-                            "product_image": auction.get("product", {}).get("image_url"),
+                            "product_name": product.get("name") if product else auction_id[:8],
+                            "product_image": product.get("image_url") if product else "",
                             "final_price": final_price,
-                            "retail_price": auction.get("product", {}).get("retail_price"),
+                            "retail_price": product.get("retail_price") if product else 0,
                             "won_at": now_iso,
-                            "status": "won"
+                            "status": "pending_payment",  # New status for payment tracking
+                            "payment_deadline": (datetime.now(timezone.utc) + timedelta(days=7)).isoformat(),
+                            "is_free_auction": auction.get("is_free_auction", False)
                         })
+                        
+                        # Send winner notification email
+                        try:
+                            from services.winner_notifications import send_winner_email
+                            auction_with_product = {**auction, "product": product}
+                            await send_winner_email(winner_id, auction_with_product, product or {})
+                        except Exception as email_error:
+                            logger.error(f"Failed to send winner email: {email_error}")
                     
-                    product_name = auction.get("product", {}).get("name", auction_id[:8])
+                    product_name = product.get("name") if product else auction_id[:8]
                     logger.info(f"⏱️ Expired auction ended: {product_name} | Winner: {winner_name or 'None'} | Final: €{final_price}")
                     
                 except Exception as e:
