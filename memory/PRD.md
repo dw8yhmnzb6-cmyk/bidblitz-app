@@ -1,6 +1,6 @@
 # BidBlitz Penny Auction Platform - PRD
 
-## Letztes Update: 23. Januar 2026
+## Letztes Update: 24. Januar 2026
 
 ## Firmeninformationen
 - **Firma:** BidBlitz FZCO
@@ -12,78 +12,66 @@
 ## Original-Anforderung
 Penny-Auktions-Website nach dem Vorbild von `dealdash.com` und `snipster.de`.
 
-## Aktuelle Session - Massive Feature-Updates
+---
 
-### Neue Features (22. Januar 2026):
+## Session 24. Januar 2026 - Neue Features
 
-#### 1. Gratis-Auktionen ✅ NEU
-- Auktionen ohne Gebote-Abzug
-- 🎁 GRATIS Badge auf Karten
-- Filter "Gratis (X)" auf Startseite
-- 4 Gratis-Auktionen aktiv
+### 1. Auktion des Tages ✅ NEU
+- **Frontend:** Goldene Highlight-Sektion oben auf der Startseite
+- **Design:** Goldgradient-Rahmen, 👑 Kronen-Icon, "-100%" Badge
+- **Features:** Produktname, UVP durchgestrichen, aktueller Preis, Timer, "🔥 JETZT BIETEN" Button
+- **Admin:** Crown-Button im Admin-Panel zum manuellen Setzen
+- **Automatisch:** Wenn nicht manuell gesetzt, wird automatisch die höchstwertige aktive Auktion gewählt
+- **API:** `GET /api/auction-of-the-day`, `POST /api/admin/auction-of-the-day/{auction_id}`
 
-#### 2. Daily Login Rewards ✅ NEU  
-- 1-5 zufällige Gratis-Gebote pro Tag
-- Streak-System:
-  - 7 Tage = +10 Bonus
-  - 14 Tage = +20 Bonus
-  - 30 Tage = +50 Bonus
-- UI im Dashboard mit Streak-Anzeige
-- API: `/auth/claim-daily-reward`, `/auth/daily-reward-status`
+### 2. Live-Chat Support (Platzhalter) ✅ NEU
+- **Integration:** Tawk.to Script in `index.html` eingebettet
+- **Status:** Platzhalter - Admin muss Property ID von tawk.to eintragen
+- **Konfiguration:** In `/app/frontend/public/index.html`, Zeile 178-205
 
-#### 3. Achievements System ✅ NEU
-- 12 verschiedene Achievements:
-  - 🏆 Erster Sieg (5 Gebote)
-  - 🎯 Sammler - 10 Siege (20 Gebote)
-  - ⭐ Profi - 50 Siege (100 Gebote)
-  - 👑 Meister - 100 Siege (250 Gebote)
-  - 🦉 Nachteule (15 Gebote)
-  - 🐦 Frühaufsteher (5 Gebote)
-  - 💎 Großzügig (30 Gebote)
-  - 🍀 Glückspilz (10 Gebote)
-  - 🔥 Wochensieger (10 Gebote)
-  - 💪 Monatssieger (50 Gebote)
-  - 👥 Werber (25 Gebote)
-  - 🎓 Anfänger-Champion (15 Gebote)
-- UI im Dashboard
+### 3. Benutzerstatistik-Seite ✅ NEU
+- **Route:** `/stats`
+- **Features:**
+  - Level-System mit Fortschrittsbalken (Level = Gebote/100)
+  - Gebote insgesamt
+  - Gewonnene Auktionen
+  - Gewinnrate (%)
+  - Login-Streak
+  - Verfügbare Gebote
+  - Mitglied seit
+  - Achievements Preview
+  - Letzte Aktivitäten
+- **Link:** Dashboard hat neuen "Statistiken" Button
 
-#### 4. Mehr Auktionen ✅ NEU
-- **62 Produkte** (vorher 10)
-- **62 aktive Auktionen** (vorher 10)
-- Kategorien: Smartphones, Audio, TV, Laptops, Tablets, Gaming, Haushalt, Smart Home, Smartwatches, Kameras, Drohnen, Gutscheine, Fitness
+### 4. Social Sharing ✅ NEU
+- **Ort:** Auktionsdetailseite
+- **Plattformen:** WhatsApp, Telegram, Facebook, Twitter/X, E-Mail, Link kopieren
+- **Design:** Dropdown-Menü mit Icons
 
-#### 5. Admin-Konfiguration ✅ NEU
-- Alle Features einstellbar via Admin-Panel:
-  - Daily Rewards (ein/aus, Min/Max Gebote, Streak-Bonusse)
-  - Gratis-Auktionen (ein/aus, Max. Teilnehmer)
-  - Beginner-Auktionen (ein/aus, Max. Siege)
-  - Nacht-Auktionen (ein/aus, Rabatt %, Stunden)
-  - Achievements (ein/aus)
-  - Referral (Gebote, Min. Einzahlung)
-- API: `/admin/config/game`
-- Bulk-Auktions-Erstellung: `/admin/auctions/bulk-create`
-- Bulk-Produkt-Import: `/admin/products/bulk-import`
+### 5. BIETEN Button Bug behoben ✅
+- **Problem:** Falscher API-Endpunkt `/api/auctions/place-bid/{id}`
+- **Lösung:** Korrigiert zu `/api/auctions/{id}/bid`
 
-#### 6. Auktions-Filter erweitert ✅
-- Live (62)
-- 🎓 Anfänger (7)
-- 🎁 Gratis (4)
-- ⭐ VIP (8)
-- Geplant (0)
-- Beendet (0)
+---
 
-#### 7. Auktions-Badges ✅
-- 🎓 Lila Badge für Beginner-Auktionen
-- 🎁 GRATIS Badge für Gratis-Auktionen
-- VIP Badge für VIP-Auktionen
-- 🌙 Indigo Badge für Nacht-Auktionen
+## Frühere Features (22-23. Januar 2026)
 
-### Frühere Features dieser Session:
-- Bid Buddy verbessert
-- Push-Notifications "5 Min vor Ende"
-- Beginner-Auktionen (max. 10 Siege)
-- Stripe LIVE aktiviert
-- i18n komplett
+### Gratis-Auktionen ✅
+- Auktionen ohne Gebote-Abzug mit 🎁 GRATIS Badge
+
+### Daily Login Rewards ✅
+- 1-5 Gratis-Gebote pro Tag mit Streak-System
+
+### Achievements System ✅
+- 12 Achievements mit Bonus-Geboten
+
+### 62 Produkte & Auktionen ✅
+- Kategorien: Smartphones, Audio, TV, Laptops, Gaming, etc.
+
+### Admin-Managed Ad Banner ✅
+- CRUD für Werbebanner zwischen Premium und Live-Auktionen
+
+---
 
 ## Zugangsdaten
 
@@ -92,89 +80,98 @@ Penny-Auktions-Website nach dem Vorbild von `dealdash.com` und `snipster.de`.
 | Admin | admin@bidblitz.de | Admin123! |
 | Kunde | kunde@bidblitz.de | Kunde123! |
 
+---
+
 ## API Endpoints
 
+### Auction of the Day (NEU)
+- `GET /api/auction-of-the-day` - AOTD abrufen
+- `POST /api/admin/auction-of-the-day/{auction_id}` - AOTD setzen (Admin)
+
 ### Auth
-- `POST /auth/claim-daily-reward` - Tägliche Belohnung abholen
+- `POST /auth/claim-daily-reward` - Tägliche Belohnung
 - `GET /auth/daily-reward-status` - Status prüfen
 - `GET /auth/achievements` - Achievements anzeigen
 
-### Admin
-- `GET/PUT /admin/config/game` - Spielkonfiguration
-- `POST /admin/auctions/bulk-create` - Massenauktionen
-- `POST /admin/products/bulk-import` - Massenprodukte
-- `GET /admin/daily-rewards/stats` - Reward-Statistiken
-- `POST /admin/achievements/grant/{user_id}/{achievement_id}` - Achievement vergeben
-
 ### Auktionen
-- Alle Standard-Endpoints
+- `GET /api/auctions` - Alle Auktionen
+- `POST /api/auctions/{id}/bid` - Gebot platzieren
 - Filter: `is_beginner_only`, `is_free_auction`, `is_vip_only`, `is_night_auction`
+
+---
 
 ## Datenbank Collections
 
 - `game_config` - Spieleinstellungen
-- `daily_rewards` - Tägliche Belohnungen Log
+- `daily_rewards` - Tägliche Belohnungen
 - `user_achievements` - Benutzer-Achievements
 - `products` - 62 Produkte
-- `auctions` - 62 Auktionen
+- `auctions` - 62+ Auktionen
+- `auction_of_the_day` - AOTD-Einstellungen
+- `banners` - Werbe-Banner
 
-## Erledigte Aufgaben (23. Januar 2026)
+---
 
-### Rechtliche Seiten mit Dubai-Firmendaten ✅
-- Impressum: BidBlitz FZCO, Dubai Silicon Oasis, Afrim Krasniqi als CEO
-- AGB: Vollständige Geschäftsbedingungen mit Dubai-Rechtswahl
-- Datenschutz: DSGVO-konforme Datenschutzerklärung
-- Footer: Dubai-Kontaktdaten, info@bidblitz.ae, +971 4 501 2345
+## Code-Architektur
 
-### Trust Badges auf Startseite ✅ (entfernt für mehr Platz)
-- Sidebar entfernt - Auktionen haben jetzt volle Breite
+```
+/app/
+├── backend/
+│   ├── routers/
+│   │   ├── admin.py       # Banner + AOTD Management
+│   │   └── auctions.py    # AOTD API (Zeile 386-454)
+│   └── server.py
+├── frontend/
+│   ├── public/
+│   │   └── index.html     # Tawk.to Live-Chat (Zeile 178-205)
+│   └── src/
+│       ├── pages/
+│       │   ├── Auctions.js      # AOTD Component (Zeile 10-85)
+│       │   ├── AuctionDetail.js # Social Sharing (Zeile 38-89)
+│       │   ├── UserStats.js     # Statistik-Seite (NEU)
+│       │   ├── Dashboard.js     # Statistiken-Button (Zeile 226)
+│       │   └── Admin.js         # AOTD Crown Button (Zeile 492)
+│       └── App.js               # Route /stats
+```
 
-### Erweiterte Badge-Erklärungen ✅ (entfernt für mehr Platz)
-- Badges nur noch auf den Karten sichtbar: -99%, 🎓, 🎁, ⭐, 🌙
-
-### Badge-Icons auf Auktionskarten ✅
-- Jede Auktionskarte zeigt alle relevanten Badges (Rabatt + Typ-Icons)
-- Farbcodierte Header basierend auf Auktionstyp
-
-### Timer-Verbesserungen ✅
-- Timer aktualisiert jede Sekunde korrekt
-- Timer zeigt ⏳ wenn Auktion bei 0 (wartet auf Neustart)
-- Bei Gebot (Bot oder Kunde) wird Timer auf 9-11 Sekunden zurückgesetzt
-
-### 100+ Auktionen ✅
-- 77-80 aktive Auktionen
-- Verschiedene Typen: VIP, Nacht, Gratis, Anfänger
-
-### Kompletter Test ✅
-- 20/20 Backend-Tests bestanden
-- 14/14 Frontend-Features verifiziert
-- Keine Rechtschreibfehler gefunden
-- Keine Console-Fehler
-
-### Timer-Verbesserungen ✅ NEU
-- Timer aktualisiert jede Sekunde
-- Timer kann bis 0 runterzählen (keine künstliche Mindestgrenze mehr)
-- Bei Gebot (Bot oder Kunde) wird Timer auf 9-11 Sekunden zurückgesetzt
-- Pulse-Animation bei niedrigem Timer (unter 10 Sekunden)
-
-### Achievements-Seite ✅ (bereits implementiert)
-- 12 verschiedene Achievements
-- Kategoriefilter: Siege, Spezial, Einkäufe, Streak, Sozial
-- Fortschrittsanzeige und Stats
-- Bonus-Gebote für jedes Achievement
-
-### Real-time UI Optimierung ✅
-- LiveTimer-Komponente mit React.memo für sanfte Updates
-- AuctionCard mit custom comparison-Funktion
-- Timer aktualisiert nur Zahlen, nicht ganze Karte
+---
 
 ## Nächste Schritte
 
-1. PayPal Integration
-2. "Auktion des Tages" Feature
-3. Live-Chat Support
-4. Benutzer-Statistikseite
-5. Social Sharing Features
-6. VIP/Premium Mitgliedschaft ausbauen
-7. Zwei-Faktor-Authentifizierung (2FA)
-8. Admin-Panel Internationalisierung
+1. ✅ ~~Auktion des Tages Feature~~
+2. ✅ ~~Live-Chat Support (Platzhalter)~~
+3. ✅ ~~Benutzerstatistik-Seite~~
+4. ✅ ~~Social Sharing Features~~
+5. 🔄 PayPal Integration
+6. 🔄 "Not Found" Toast beheben (Intermittierend)
+7. 🔄 Sprachwechsel auf allen Seiten
+8. 🔄 Admin-Panel Internationalisierung
+9. 🔄 Zwei-Faktor-Authentifizierung (2FA)
+10. 🔄 Inkonsistente Datenpersistenz beheben
+
+---
+
+## Testing Status
+
+- **Backend Tests:** 16/16 bestanden (100%)
+- **Frontend Features:** 7/7 verifiziert (100%)
+- **Test Report:** `/app/test_reports/iteration_14.json`
+
+---
+
+## 3rd Party Integrations
+
+- **Stripe (Payments):** LIVE Keys konfiguriert
+- **Resend (Email):** Sandbox Mode
+- **Tawk.to (Live-Chat):** Platzhalter eingerichtet
+- **ip-api.com:** Geo-Blocking
+- **reportlab:** PDF Rechnungen
+- **pywebpush:** Web Push Notifications
+
+---
+
+## Bekannte Einschränkungen
+
+- **Live-Chat:** Tawk.to Platzhalter - Property ID muss eingegeben werden
+- **"Not Found" Toast:** Intermittierendes Problem (404 von unbekannter Quelle)
+- **Sprachwechsel:** Funktioniert nicht auf allen Seiten
