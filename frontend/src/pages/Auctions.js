@@ -373,10 +373,11 @@ const AuctionCard = memo(({ auction, product, onBid, t, language }) => {
     </div>
   );
 }, (prevProps, nextProps) => {
-  // Re-render if price, bidder, or language changes
+  // Re-render if price, bidder, language, or translations change
   return prevProps.auction.current_price === nextProps.auction.current_price &&
          prevProps.auction.last_bidder_name === nextProps.auction.last_bidder_name &&
          prevProps.auction.end_time === nextProps.auction.end_time &&
+         prevProps.language === nextProps.language &&
          prevProps.t === nextProps.t;
 });
 
