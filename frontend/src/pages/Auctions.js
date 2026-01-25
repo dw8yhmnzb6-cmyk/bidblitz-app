@@ -621,13 +621,33 @@ export default function Auctions() {
   useEffect(() => {
     fetchData();
     
-    // Auto-refresh auctions every 5 seconds (invisible to user)
+    // Auto-refresh auctions every second (completely invisible to user)
+    // Uses silent update - no loading state, no flicker
     const refreshInterval = setInterval(() => {
-      fetchData();
-    }, 5000);
+      // Silent background fetch - don't trigger loading state
+      const silentFetch = async () => {
+        try {
+          const [auctionsRes, productsRes] = await Promise.all([
+            axios.get(`${API}/auctions?status=active`),
+            axios.get(`${API}/products`)
+          ]);
+          
+          // Update state silently without triggering re-render flicker
+          setAuctions(auctionsRes.data || []);
+          
+          const prodMap = {};
+          (productsRes.data || []).forEach(p => { prodMap[p.id] = p; });
+          setProducts(prodMap);
+        } catch (error) {
+          // Silent fail - don't show errors for background refresh
+          console.log('Background refresh failed:', error.message);
+        }
+      };
+      silentFetch();
+    }, 1000); // Every 1 second
     
     return () => clearInterval(refreshInterval);
-  }, [fetchData]);
+  }, []);  // Empty dependency - only run once on mount
   
   // Handle bid
   const handleBid = async (auctionId) => {
