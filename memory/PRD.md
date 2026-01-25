@@ -278,4 +278,4 @@ Penny-Auktions-Website nach dem Vorbild von `dealdash.com` und `snipster.de`.
 
 - **Live-Chat:** Tawk.to Platzhalter - Property ID muss eingegeben werden
 - **"Not Found" Toast:** Intermittierendes Problem (404 von unbekannter Quelle)
-- **Sprachwechsel:** Funktioniert nicht auf allen Seiten
+- **Sprachwechsel auf statischen Seiten:** AGB, Impressum etc. benötigen noch Backend-Änderungen
