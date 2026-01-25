@@ -764,36 +764,37 @@ export default function Auctions() {
             <AuctionOfTheDay 
               auction={auctionOfTheDay} 
               product={aotdProduct} 
-              onBid={handleBid} 
+              onBid={handleBid}
+              t={t}
             />
           )}
           
           {/* Premium Card only shows if NO AOTD and on 'live' filter */}
           {activeFilter === 'live' && !auctionOfTheDay && premiumAuction && products[premiumAuction.product_id] && (
-            <PremiumCard auction={premiumAuction} product={products[premiumAuction.product_id]} onBid={handleBid} />
+            <PremiumCard auction={premiumAuction} product={products[premiumAuction.product_id]} onBid={handleBid} t={t} />
           )}
           
           {/* Ad Banner - Only on live filter */}
           {activeFilter === 'live' && <AdBanner />}
           
           <h2 className="text-sm font-bold text-gray-800 mt-3 mb-2">
-            {activeFilter === 'live' && 'Live-Auktionen'}
-            {activeFilter === 'anfaenger' && '🎓 Anfänger-Auktionen'}
-            {activeFilter === 'gratis' && '🎁 Gratis-Auktionen'}
-            {activeFilter === 'nacht' && '🌙 Nacht-Auktionen'}
-            {activeFilter === 'ende' && 'Beendete Auktionen'}
-            {activeFilter === 'vip' && '⭐ VIP-Auktionen'}
+            {activeFilter === 'live' && t('auctionPage.liveAuctions')}
+            {activeFilter === 'anfaenger' && `🎓 ${t('auctionPage.beginnerAuctions')}`}
+            {activeFilter === 'gratis' && `🎁 ${t('auctionPage.freeAuctions')}`}
+            {activeFilter === 'nacht' && `🌙 ${t('auctionPage.nightAuctions')}`}
+            {activeFilter === 'ende' && t('auctionPage.endedAuctions')}
+            {activeFilter === 'vip' && `⭐ ${t('auctionPage.vipAuctions')}`}
             {' '}({gridAuctions.length})
           </h2>
           
           {gridAuctions.length === 0 ? (
             <div className="text-center py-8 text-gray-600">
-              <p className="text-lg">Keine Auktionen in dieser Kategorie</p>
+              <p className="text-lg">{t('auctionPage.noAuctionsInCategory')}</p>
               <button 
                 onClick={() => setActiveFilter('live')}
                 className="mt-2 text-cyan-600 underline"
               >
-                Alle Live-Auktionen anzeigen
+                {t('auctionPage.showAllLive')}
               </button>
             </div>
           ) : (
@@ -803,7 +804,8 @@ export default function Auctions() {
                   key={auction.id} 
                   auction={auction} 
                   product={products[auction.product_id] || auction.product} 
-                  onBid={handleBid} 
+                  onBid={handleBid}
+                  t={t}
                 />
               ))}
             </div>
@@ -859,7 +861,7 @@ export default function Auctions() {
         </div>
       </div>
       
-      <p className="text-center text-[8px] text-gray-500 mt-2">* UVP = Vergleichspreis</p>
+      <p className="text-center text-[8px] text-gray-500 mt-2">{t('auctionPage.priceNote')}</p>
     </div>
   );
 }
