@@ -68,6 +68,9 @@ export const Footer = () => {
               <Link to="/influencer-login" className="text-[#94A3B8] hover:text-[#FFD700] transition-colors">
                 Influencer Login
               </Link>
+              <Link to="/wholesale/apply" className="text-[#94A3B8] hover:text-[#FFD700] transition-colors">
+                Großkunden (B2B)
+              </Link>
               <Link to="/vip" className="text-[#94A3B8] hover:text-[#FFD700] transition-colors">
                 VIP Mitgliedschaft
               </Link>
