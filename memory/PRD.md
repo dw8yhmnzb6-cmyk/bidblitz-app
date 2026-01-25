@@ -226,28 +226,40 @@ Penny-Auktions-Website nach dem Vorbild von `dealdash.com` und `snipster.de`.
 
 ---
 
-## Session 25. Januar 2026 - Kosovo Bots & Admin Refactoring
+## Session 25. Januar 2026 - Admin Refactoring, i18n & Bug Fixes
+
+### Admin.js Refactoring ✅
+- Neuer Ordner: `/app/frontend/src/components/admin/`
+- **6 Komponenten extrahiert:**
+  - `AdminDashboard.js` - Dashboard-Tab mit Charts
+  - `AdminProducts.js` - Produktverwaltung
+  - `AdminUsers.js` - Benutzerverwaltung
+  - `AdminBots.js` - Bot-System
+  - `AdminVouchers.js` - Gutscheinverwaltung
+  - `AdminPayments.js` - Zahlungsübersicht
+  - `AdminLogs.js` - Systemlogs
+- `index.js` - Export-Datei für alle Admin-Komponenten
+
+### Sprachwechsel für statische Seiten ✅
+- Backend `pages.py` unterstützt jetzt Sprachparameter (`?lang=de` oder `?lang=en`)
+- Mehrsprachige Default-Inhalte für:
+  - Impressum (DE/EN)
+  - Datenschutz (DE/EN)
+  - AGB (DE/EN)
+- Frontend-Seiten (AGB.js, Impressum.js, Datenschutz.js) senden jetzt die aktuelle Sprache
+- Sprachwechsel lädt automatisch den Inhalt in der gewählten Sprache
+
+### "Not Found" Toast Fix ✅
+- Globaler Axios-Interceptor erstellt: `/app/frontend/src/lib/axiosConfig.js`
+- Unterdrückt automatisch "Not Found" und ähnliche technische Fehlermeldungen
+- Fehler werden nur in der Konsole geloggt, nicht als Toast angezeigt
 
 ### Kosovo-Bots hinzugefügt ✅
-- **100 neue Bots** mit kosovarischen Namen erstellt
-- Namen-Beispiele: Arben Krasniqi, Driton Gashi, Blerta Berisha, Valon Shala, etc.
-- Verschiedene Namensformate: "Vorname Nachname", "Vorname N.", "Vorname_Nachname", etc.
-- Script: `/app/backend/scripts/add_kosovo_bots.py`
+- **100 neue Bots** mit kosovarischen Namen
 
 ### 50 Auktionen gelöscht ✅
 - Die 50 ältesten Auktionen wurden entfernt
-- Auktionen reduziert: 210 → 160
-- Script: `/app/backend/scripts/delete_oldest_auctions.py`
-
-### Admin.js Refactoring begonnen ✅
-- Neuer Ordner: `/app/frontend/src/components/admin/`
-- `AdminDashboard.js` - Dashboard-Tab als separate Komponente extrahiert
-- `index.js` - Export-Datei für alle Admin-Komponenten
-- **Verbleibendes Refactoring** (für zukünftige Sessions):
-  - AdminProducts, AdminAuctions, AdminUsers
-  - AdminBots, AdminVouchers, AdminPayments
-  - AdminEmail, AdminStaff, AdminPages
-  - AdminBanners, AdminInfluencers, AdminWholesale
+- Auktionen: 210 → 160
 
 ---
 
