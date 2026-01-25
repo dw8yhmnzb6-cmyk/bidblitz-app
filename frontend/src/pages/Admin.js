@@ -667,6 +667,18 @@ export default function Admin() {
     }
   };
 
+  const handleToggleGuaranteedWinner = async (userId, currentStatus) => {
+    try {
+      await axios.put(`${API}/admin/users/${userId}/guaranteed-winner`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success(currentStatus ? 'Garantierter Gewinner deaktiviert' : 'Garantierter Gewinner aktiviert 🏆');
+      fetchData();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Fehler');
+    }
+  };
+
   const handleAddBids = async (userId) => {
     const amount = prompt('Anzahl der Gebote hinzufügen:', '10');
     if (!amount) return;
