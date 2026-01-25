@@ -64,7 +64,7 @@ const AuctionOfTheDay = memo(({ auction, product, onBid, t, language }) => {
           {/* Product Info */}
           <div className="flex-1 min-w-0">
             <h3 className="text-sm sm:text-base font-bold text-gray-800 uppercase leading-tight mb-1 line-clamp-2">
-              {product.name}
+              {productName}
             </h3>
             <p className="text-xs sm:text-sm text-gray-500 mb-2">
               {t('auctionPage.uvp')}: <span className="line-through">€ {product.retail_price?.toLocaleString('de-DE')},-</span>
