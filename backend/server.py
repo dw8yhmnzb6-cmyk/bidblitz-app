@@ -172,21 +172,24 @@ async def websocket_all_auctions_legacy(websocket: WebSocket):
 async def bot_last_second_bidder():
     """Background task - bots bid in last seconds until auction price reaches minimum price.
     
-    WICHTIG: Bots bieten automatisch bis der Preis zwischen €1.00 und €2.00 liegt.
-    Danach bieten sie nur noch, wenn ein expliziter bot_target_price gesetzt ist.
+    LOGIK:
+    1. STANDARD (kein Zielpreis): Bots bieten bis €2-3, dann hören sie auf
+       - Echte Kunden können ab €2-3 weitermachen
+    2. MIT ZIELPREIS: Bots bieten NUR in den letzten 2-3 Sekunden bis zum Zielpreis
+       - Das "sperrt" den Endpreis, echte Kunden haben keine Chance mehr
     """
     global bot_task_running
     
-    logger.info("Bot continuous bidder started - Automatisches Bieten bis €1-2")
+    logger.info("Bot bidder started - Standard: €2-3, Mit Zielpreis: Spätes Bieten zum Sperren")
     last_bot_per_auction = {}
     
-    # Default minimum price range for all auctions (1.00 - 2.00 Euro)
-    DEFAULT_MIN_PRICE = 1.00
-    DEFAULT_MAX_PRICE = 2.00
+    # Default price range for auctions WITHOUT explicit target (2.00 - 3.00 Euro)
+    DEFAULT_MIN_PRICE = 2.00
+    DEFAULT_MAX_PRICE = 3.00
     
     while bot_task_running:
         try:
-            # Get ALL active auctions (not just those with bot_target_price)
+            # Get ALL active auctions
             active_auctions = await db.auctions.find({
                 "status": "active"
             }, {"_id": 0}).to_list(100)
@@ -203,86 +206,102 @@ async def bot_last_second_bidder():
                     now = datetime.now(timezone.utc)
                     seconds_left = (end_time - now).total_seconds()
                     
-                    # Bid when 1-5 seconds left
-                    if 1 <= seconds_left <= 5:
-                        current_price = auction.get("current_price", 0)
-                        auction_id = auction.get("id")
-                        bid_increment = auction.get("bid_increment", 0.01)
-                        
-                        # Determine target price:
-                        # 1. If bot_target_price is set, use that
-                        # 2. Otherwise, use random price between DEFAULT_MIN and DEFAULT_MAX
-                        explicit_target = auction.get("bot_target_price", 0)
-                        if explicit_target > 0:
+                    current_price = auction.get("current_price", 0)
+                    auction_id = auction.get("id")
+                    bid_increment = auction.get("bid_increment", 0.01)
+                    explicit_target = auction.get("bot_target_price", 0)
+                    
+                    # GUARANTEED WINNER CHECK: Don't bid if a guaranteed winner is active
+                    guaranteed_winner_id = auction.get("guaranteed_winner_bidding")
+                    if guaranteed_winner_id and auction.get("last_bidder_id") == guaranteed_winner_id:
+                        continue
+                    
+                    should_bid = False
+                    target_price = 0
+                    
+                    if explicit_target > 0:
+                        # MODUS 2: Mit Zielpreis - NUR in letzten 2-3 Sekunden bieten (SPERRE!)
+                        # Das verhindert dass echte Kunden noch überbiten können
+                        if 1 <= seconds_left <= 3:
                             target_price = explicit_target
-                        else:
-                            # Auto-target: random between 1.00 and 2.00 Euro
+                            if current_price < target_price:
+                                should_bid = True
+                    else:
+                        # MODUS 1: Standard - Bots bieten bis €2-3, dann aufhören
+                        # Echte Kunden können ab €2-3 weitermachen
+                        if 1 <= seconds_left <= 5:
                             # Use auction ID hash to keep consistent target for same auction
                             hash_val = hash(auction_id) % 100
                             target_price = DEFAULT_MIN_PRICE + (hash_val / 100) * (DEFAULT_MAX_PRICE - DEFAULT_MIN_PRICE)
                             target_price = round(target_price, 2)
-                        
-                        # GUARANTEED WINNER CHECK: Don't bid if a guaranteed winner is active
-                        guaranteed_winner_id = auction.get("guaranteed_winner_bidding")
-                        if guaranteed_winner_id and auction.get("last_bidder_id") == guaranteed_winner_id:
-                            continue
-                        
-                        # Bots bieten nur wenn der aktuelle Preis UNTER dem Zielpreis liegt
-                        if current_price < target_price:
-                            # Get bots
-                            bots = await db.bots.find({}, {"_id": 0}).to_list(100)
-                            if bots:
-                                # Choose different bot than last time
-                                last_bot_id = last_bot_per_auction.get(auction_id)
-                                available = [b for b in bots if b["id"] != last_bot_id] or bots
-                                bot = random.choice(available)
-                                last_bot_per_auction[auction_id] = bot["id"]
-                                
-                                # Place bid
-                                new_price = round(current_price + bid_increment, 2)
-                                timer_ext = random.randint(9, 14)  # Reset to 9-14 seconds
-                                new_end_time = datetime.now(timezone.utc) + timedelta(seconds=timer_ext)
-                                
-                                bid_entry = {
-                                    "user_id": f"bot_{bot['id']}",
-                                    "user_name": bot["name"],
-                                    "price": new_price,
-                                    "timestamp": datetime.now(timezone.utc).isoformat(),
-                                    "is_bot": True
+                            
+                            if current_price < target_price:
+                                should_bid = True
+                    
+                    if should_bid:
+                        # Get bots
+                        bots = await db.bots.find({}, {"_id": 0}).to_list(100)
+                        if bots:
+                            # Choose different bot than last time
+                            last_bot_id = last_bot_per_auction.get(auction_id)
+                            available = [b for b in bots if b["id"] != last_bot_id] or bots
+                            bot = random.choice(available)
+                            last_bot_per_auction[auction_id] = bot["id"]
+                            
+                            # Place bid
+                            new_price = round(current_price + bid_increment, 2)
+                            
+                            # Timer extension based on mode:
+                            # - Standard: 9-14 seconds (normal play)
+                            # - Mit Zielpreis: 8-12 seconds (faster to reach target)
+                            if explicit_target > 0:
+                                timer_ext = random.randint(8, 12)
+                            else:
+                                timer_ext = random.randint(9, 14)
+                            
+                            new_end_time = datetime.now(timezone.utc) + timedelta(seconds=timer_ext)
+                            
+                            bid_entry = {
+                                "user_id": f"bot_{bot['id']}",
+                                "user_name": bot["name"],
+                                "price": new_price,
+                                "timestamp": datetime.now(timezone.utc).isoformat(),
+                                "is_bot": True
+                            }
+                            
+                            await db.auctions.update_one(
+                                {"id": auction_id, "status": "active"},
+                                {
+                                    "$set": {
+                                        "current_price": new_price,
+                                        "end_time": new_end_time.isoformat(),
+                                        "last_bidder_id": f"bot_{bot['id']}",
+                                        "last_bidder_name": bot["name"]
+                                    },
+                                    "$inc": {"total_bids": 1},
+                                    "$push": {"bid_history": bid_entry}
                                 }
-                                
-                                await db.auctions.update_one(
-                                    {"id": auction_id, "status": "active"},
-                                    {
-                                        "$set": {
-                                            "current_price": new_price,
-                                            "end_time": new_end_time.isoformat(),
-                                            "last_bidder_id": f"bot_{bot['id']}",
-                                            "last_bidder_name": bot["name"]
-                                        },
-                                        "$inc": {"total_bids": 1},
-                                        "$push": {"bid_history": bid_entry}
-                                    }
-                                )
-                                
-                                # Update bot stats
-                                await db.bots.update_one(
-                                    {"id": bot["id"]},
-                                    {"$inc": {"total_bids_placed": 1}}
-                                )
-                                
-                                # Broadcast
-                                await broadcast_bid_update(auction_id, {
-                                    "current_price": new_price,
-                                    "last_bidder_name": bot["name"],
-                                    "last_bidder_id": f"bot_{bot['id']}",
-                                    "total_bids": auction.get("total_bids", 0) + 1,
-                                    "end_time": new_end_time.isoformat(),
-                                    "bidder_message": f"{bot['name']} hat geboten!"
-                                })
-                                
-                                logger.debug(f"Bot '{bot['name']}' bid €{new_price:.2f} on {auction_id[:8]}... (target: €{target_price:.2f})")
-                                
+                            )
+                            
+                            # Update bot stats
+                            await db.bots.update_one(
+                                {"id": bot["id"]},
+                                {"$inc": {"total_bids_placed": 1}}
+                            )
+                            
+                            # Broadcast
+                            await broadcast_bid_update(auction_id, {
+                                "current_price": new_price,
+                                "last_bidder_name": bot["name"],
+                                "last_bidder_id": f"bot_{bot['id']}",
+                                "total_bids": auction.get("total_bids", 0) + 1,
+                                "end_time": new_end_time.isoformat(),
+                                "bidder_message": f"{bot['name']} hat geboten!"
+                            })
+                            
+                            mode = "SPERRE" if explicit_target > 0 else "STANDARD"
+                            logger.debug(f"[{mode}] Bot '{bot['name']}' bid €{new_price:.2f} on {auction_id[:8]}... (target: €{target_price:.2f})")
+                            
                 except Exception as e:
                     logger.error(f"Bot bid error for {auction.get('id')}: {e}")
             
