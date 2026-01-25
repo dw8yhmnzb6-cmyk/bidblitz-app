@@ -12,8 +12,8 @@ export const LanguageProvider = ({ children }) => {
     localStorage.setItem('language', language);
     // Update HTML lang attribute for accessibility
     document.documentElement.lang = language;
-    // Update text direction for RTL languages
-    document.documentElement.dir = language === 'ar' ? 'rtl' : 'ltr';
+    // Update text direction for RTL languages (Arabic)
+    document.documentElement.dir = (language === 'ar' || language === 'ae') ? 'rtl' : 'ltr';
   }, [language]);
 
   const t = (key) => {
