@@ -122,7 +122,10 @@ async def multi_bot_bid(request: MultiBotBidRequest, admin: dict = Depends(get_a
 
 @router.post("/bid-to-price")
 async def bid_to_target_price(auction_id: str, target_price: float, admin: dict = Depends(get_admin_user)):
-    """Set bot target price for an auction - bots will automatically bid to this price"""
+    """Immediately place bot bids to reach target price"""
+    import random
+    from datetime import datetime, timezone, timedelta
+    
     auction = await db.auctions.find_one({"id": auction_id}, {"_id": 0})
     if not auction:
         raise HTTPException(status_code=404, detail="Auction not found")
@@ -135,7 +138,53 @@ async def bid_to_target_price(auction_id: str, target_price: float, admin: dict 
     if len(bots) < 2:
         raise HTTPException(status_code=400, detail="Need at least 2 bots. Create some first.")
     
-    # Update auction with target price - the background task will handle bidding
+    current_price = auction.get("current_price", 0.01)
+    bid_increment = auction.get("bid_increment", 0.01)
+    
+    if current_price >= target_price:
+        return {
+            "success": True,
+            "bids_placed": 0,
+            "final_price": current_price,
+            "message": "Target price already reached"
+        }
+    
+    # Calculate number of bids needed
+    bids_needed = int((target_price - current_price) / bid_increment)
+    bids_placed = 0
+    
+    # Place bids up to target price
+    for i in range(bids_needed):
+        bot = random.choice(bots)
+        new_price = round(current_price + bid_increment, 2)
+        
+        if new_price > target_price:
+            break
+        
+        # Update auction price
+        await db.auctions.update_one(
+            {"id": auction_id},
+            {
+                "$set": {
+                    "current_price": new_price,
+                    "last_bidder_id": f"bot_{bot['id']}",
+                    "last_bidder_name": bot["name"],
+                    "end_time": (datetime.now(timezone.utc) + timedelta(seconds=15)).isoformat()
+                },
+                "$inc": {"total_bids": 1}
+            }
+        )
+        
+        # Update bot stats
+        await db.bots.update_one(
+            {"id": bot["id"]},
+            {"$inc": {"total_bids_placed": 1}}
+        )
+        
+        current_price = new_price
+        bids_placed += 1
+    
+    # Also set target price for future reference
     await db.auctions.update_one(
         {"id": auction_id},
         {"$set": {"bot_target_price": target_price}}
@@ -143,10 +192,9 @@ async def bid_to_target_price(auction_id: str, target_price: float, admin: dict 
     
     return {
         "success": True,
-        "message": f"Bots werden bis €{target_price:.2f} bieten",
-        "auction_id": auction_id,
-        "current_price": auction.get("current_price", 0),
-        "target_price": target_price
+        "bids_placed": bids_placed,
+        "final_price": current_price,
+        "message": f"Bot bids placed successfully"
     }
 
 @router.put("/target-price/{auction_id}")
