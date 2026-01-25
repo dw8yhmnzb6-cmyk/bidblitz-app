@@ -431,19 +431,31 @@ async def check_wishlist(auction_id: str, user: dict = Depends(get_current_user)
 @router.get("/auction-of-the-day")
 async def get_auction_of_the_day():
     """Get the featured 'Auction of the Day'"""
+    now = datetime.now(timezone.utc)
+    
     # First check if there's a manually set AOTD
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    today = now.strftime("%Y-%m-%d")
     aotd = await db.auction_of_the_day.find_one({"date": today}, {"_id": 0})
     
     if aotd:
         auction = await db.auctions.find_one({"id": aotd["auction_id"]}, {"_id": 0})
         if auction and auction.get("status") == "active":
-            product = await db.products.find_one({"id": auction.get("product_id")}, {"_id": 0})
-            auction["product"] = product
-            auction["is_aotd"] = True
-            return auction
+            # Check if auction's end_time is still in the future
+            end_time_str = auction.get("end_time", "")
+            try:
+                end_time = datetime.fromisoformat(end_time_str.replace("Z", "+00:00"))
+                if end_time > now:
+                    product = await db.products.find_one({"id": auction.get("product_id")}, {"_id": 0})
+                    auction["product"] = product
+                    auction["is_aotd"] = True
+                    # Normalize last_bidder field name
+                    if auction.get("last_bidder") and not auction.get("last_bidder_name"):
+                        auction["last_bidder_name"] = auction["last_bidder"]
+                    return auction
+            except:
+                pass
     
-    # Otherwise, automatically select the highest-value active auction
+    # Otherwise, automatically select the highest-value active auction with valid time
     active_auctions = await db.auctions.find(
         {"status": "active"},
         {"_id": 0}
@@ -452,11 +464,20 @@ async def get_auction_of_the_day():
     if not active_auctions:
         return None
     
-    # Get product values and find highest
+    # Get product values and find highest (only consider auctions with time left)
     best_auction = None
     highest_value = 0
     
     for auction in active_auctions:
+        # Skip auctions that have expired
+        end_time_str = auction.get("end_time", "")
+        try:
+            end_time = datetime.fromisoformat(end_time_str.replace("Z", "+00:00"))
+            if end_time <= now:
+                continue  # Skip expired auctions
+        except:
+            continue
+        
         product = await db.products.find_one({"id": auction.get("product_id")}, {"_id": 0})
         if product:
             value = product.get("retail_price", 0)
@@ -468,6 +489,9 @@ async def get_auction_of_the_day():
     if best_auction:
         best_auction["is_aotd"] = True
         best_auction["auto_selected"] = True
+        # Normalize last_bidder field name
+        if best_auction.get("last_bidder") and not best_auction.get("last_bidder_name"):
+            best_auction["last_bidder_name"] = best_auction["last_bidder"]
     
     return best_auction
 
