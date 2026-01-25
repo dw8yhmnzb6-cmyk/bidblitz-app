@@ -23,6 +23,17 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, AreaChart
 } from 'recharts';
 
+// Import refactored admin components
+import { 
+  AdminDashboard, 
+  AdminProducts, 
+  AdminUsers, 
+  AdminBots, 
+  AdminVouchers,
+  AdminPayments,
+  AdminLogs
+} from '../components/admin';
+
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 // Chart Colors
