@@ -631,7 +631,7 @@ export default function Auctions() {
   // Handle bid
   const handleBid = async (auctionId) => {
     if (!isAuthenticated) {
-      toast.error('Bitte anmelden um zu bieten');
+      toast.error(t('auctionPage.pleaseLogin'));
       navigate('/login');
       return;
     }
@@ -642,7 +642,7 @@ export default function Auctions() {
         {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      toast.success('Gebot platziert!');
+      toast.success(t('auctionPage.bidPlaced'));
       if (res.data.bids_remaining !== undefined) {
         updateBidsBalance(res.data.bids_remaining);
       }
@@ -652,7 +652,7 @@ export default function Auctions() {
         console.log('Auction not found or ended');
         return;
       }
-      toast.error(error.response?.data?.detail || 'Fehler');
+      toast.error(error.response?.data?.detail || t('auctionPage.error'));
     }
   };
   
