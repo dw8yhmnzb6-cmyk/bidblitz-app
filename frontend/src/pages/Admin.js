@@ -246,6 +246,13 @@ export default function Admin() {
       } else if (activeTab === 'influencers') {
         const influencersRes = await axios.get(`${API}/influencer/admin/list`, { headers });
         setInfluencers(influencersRes.data);
+      } else if (activeTab === 'wholesale') {
+        const [appsRes, customersRes] = await Promise.all([
+          axios.get(`${API}/admin/wholesale/applications`, { headers }),
+          axios.get(`${API}/admin/wholesale/customers`, { headers })
+        ]);
+        setWholesaleApplications(appsRes.data);
+        setWholesaleCustomers(customersRes.data);
       } else if (activeTab === 'game-config') {
         const res = await axios.get(`${API}/admin/config/game`, { headers });
         setGameConfig(res.data);
