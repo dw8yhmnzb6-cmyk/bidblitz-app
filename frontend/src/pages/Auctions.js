@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 // Auction of the Day Component - Special highlight
-const AuctionOfTheDay = memo(({ auction, product, onBid }) => {
+const AuctionOfTheDay = memo(({ auction, product, onBid, t }) => {
   if (!auction || !product) return null;
   
   const discount = product.retail_price 
@@ -27,8 +27,8 @@ const AuctionOfTheDay = memo(({ auction, product, onBid }) => {
           <div className="flex items-center gap-2">
             <span className="text-xl sm:text-2xl">👑</span>
             <div>
-              <h2 className="text-sm sm:text-lg font-black text-amber-800 uppercase tracking-wide">Auktion des Tages</h2>
-              <p className="text-[10px] sm:text-xs text-amber-600">Unser Top-Angebot heute!</p>
+              <h2 className="text-sm sm:text-lg font-black text-amber-800 uppercase tracking-wide">{t('auctionPage.auctionOfDay') || 'Auktion des Tages'}</h2>
+              <p className="text-[10px] sm:text-xs text-amber-600">{t('home.heroSubtitle')?.substring(0, 25) || 'Unser Top-Angebot heute!'}</p>
             </div>
           </div>
           <div className="bg-red-500 text-white px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-xs sm:text-sm font-bold animate-pulse">
