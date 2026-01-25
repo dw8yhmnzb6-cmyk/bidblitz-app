@@ -15,7 +15,7 @@ import {
   Ban, CheckCircle, DollarSign, Globe, Ticket, Edit, X, Save,
   Bot, Play, Target, Calendar, Clock, TrendingUp, Activity, Menu,
   Mail, Send, Eye, Star, Crown, FileText, RotateCcw, Repeat,
-  Gift, Trophy, Moon, Wifi, WifiOff
+  Gift, Trophy, Moon, Wifi, WifiOff, Building2, Percent, CreditCard
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { 
