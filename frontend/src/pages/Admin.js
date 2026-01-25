@@ -981,6 +981,7 @@ export default function Admin() {
     { id: 'vip-auctions', label: at('vipAuctions'), icon: <Crown className="w-5 h-5" /> },
     { id: 'banners', label: at('banners'), icon: <Eye className="w-5 h-5" /> },
     { id: 'influencers', label: language === 'en' ? 'Influencers' : 'Influencer', icon: <Star className="w-5 h-5" /> },
+    { id: 'wholesale', label: language === 'en' ? 'Wholesale' : 'Großkunden', icon: <Building2 className="w-5 h-5" /> },
     { id: 'users', label: at('users'), icon: <Users className="w-5 h-5" /> },
     { id: 'staff', label: language === 'en' ? 'Staff' : 'Mitarbeiter', icon: <UserPlus className="w-5 h-5" /> },
     { id: 'vouchers', label: at('vouchers'), icon: <Ticket className="w-5 h-5" /> },
