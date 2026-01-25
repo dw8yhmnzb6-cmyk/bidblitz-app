@@ -6,7 +6,7 @@ import pytest
 import requests
 import os
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://auctionhub-18.preview.emergentagent.com')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://easysnipe.preview.emergentagent.com')
 
 class TestPublicEndpoints:
     """Test public API endpoints that don't require authentication"""
