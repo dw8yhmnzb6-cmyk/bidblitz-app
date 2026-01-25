@@ -8,9 +8,9 @@ export { default as AdminBots } from './AdminBots';
 export { default as AdminVouchers } from './AdminVouchers';
 export { default as AdminPayments } from './AdminPayments';
 export { default as AdminLogs } from './AdminLogs';
+export { AdminAuctions } from './AdminAuctions';
 
 // Components still embedded in Admin.js (to be extracted):
-// - AdminAuctions (complex with many sub-features)
 // - AdminVIPAuctions
 // - AdminStaff
 // - AdminEmail
