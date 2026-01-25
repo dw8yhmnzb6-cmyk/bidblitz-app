@@ -679,6 +679,18 @@ export default function Admin() {
     }
   };
 
+  const handleToggleVIP = async (userId, currentVipStatus) => {
+    try {
+      const response = await axios.put(`${API}/admin/users/${userId}/toggle-vip`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success(response.data.message);
+      fetchData();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Fehler');
+    }
+  };
+
   const handleAddBids = async (userId) => {
     const amount = prompt('Anzahl der Gebote hinzufügen:', '10');
     if (!amount) return;
