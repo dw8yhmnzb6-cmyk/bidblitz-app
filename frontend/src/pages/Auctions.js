@@ -701,8 +701,15 @@ export default function Auctions() {
   // Filtered auctions for grid
   const filteredAuctions = getFilteredAuctions();
   
-  // Grid auctions - filtered minus premium and AOTD
-  const gridAuctions = filteredAuctions.filter(a => a.id !== premiumAuction?.id && a.id !== aotdId);
+  // Grid auctions - filtered minus premium and AOTD, sorted by end_time (soonest first)
+  const gridAuctions = filteredAuctions
+    .filter(a => a.id !== premiumAuction?.id && a.id !== aotdId)
+    .sort((a, b) => {
+      // Sort by end_time ascending (auctions ending soon at the top)
+      const timeA = new Date(a.end_time).getTime();
+      const timeB = new Date(b.end_time).getTime();
+      return timeA - timeB;
+    });
   
   // Get AOTD product
   const aotdProduct = auctionOfTheDay?.product || (auctionOfTheDay?.product_id ? products[auctionOfTheDay.product_id] : null);
