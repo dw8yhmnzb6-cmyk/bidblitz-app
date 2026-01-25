@@ -217,12 +217,41 @@ Penny-Auktions-Website nach dem Vorbild von `dealdash.com` und `snipster.de`.
 2. ✅ ~~Live-Chat Support (Platzhalter)~~
 3. ✅ ~~Benutzerstatistik-Seite~~
 4. ✅ ~~Social Sharing Features~~
-5. 🔄 PayPal Integration
-6. 🔄 "Not Found" Toast beheben (Intermittierend)
-7. 🔄 Sprachwechsel auf allen Seiten
-8. 🔄 Admin-Panel Internationalisierung
+5. ✅ ~~Internationalisierung der Auktionsseite~~
+6. 🔄 PayPal Integration
+7. 🔄 "Not Found" Toast beheben (Intermittierend)
+8. 🔄 Sprachwechsel auf statischen Seiten (AGB, Impressum)
 9. 🔄 Zwei-Faktor-Authentifizierung (2FA)
 10. 🔄 Inkonsistente Datenpersistenz beheben
+
+---
+
+## Session 25. Januar 2026 - Internationalisierung Auktionsseite
+
+### Vollständige i18n der Auctions.js Seite ✅
+- **Alle Texte** auf der Hauptauktionsseite sind jetzt übersetzbar
+- **Übersetzt für 23 Sprachen:** DE, EN, FR, ES, IT, PT, NL, PL, TR, RU, AR, AE, ZH, JA, KO, HI, SQ, XK, CS, SV, DA, FI, EL
+- **Komponenten aktualisiert:**
+  - `AuctionOfTheDay` - Alle Texte dynamisch übersetzt
+  - `AuctionCard` - Alle Labels, Buttons und Badges übersetzt
+  - `ActivityIndex` - Aktivitätslabel übersetzt
+  - `LivePrice` - Startpreis übersetzt
+  - `PremiumCard` - Alle Texte übersetzt
+  - `TrustBadges` - "SICHER" Label übersetzt
+  - `InfoSidebar` - Alle Auktionstypen und Aktivitätslevel übersetzt
+- **Neue Übersetzungsschlüssel in `translations.js`:**
+  - `auctionPage.auctionOfDay`, `topOffer`, `currentPrice`, `remaining`
+  - `auctionPage.bidNow`, `bidsCount`, `lastSoldFor`, `activity`
+  - `auctionPage.uvp`, `comparePrice`, `startPrice`, `bid`, `nightOnly`
+  - `auctionPage.freeBidPayEnd`, `nightTime`, `secure`, `auctionTypes`
+  - `auctionPage.discount`, `beginner`, `free`, `vipLabel`, `night`, `alarm`
+  - `auctionPage.activityLow/Medium/High/VeryHigh`
+  - `auctionPage.howItWorks`, `step1/2/3`, `priceNote`
+  - `auctionPage.pleaseLogin`, `bidPlaced`, `error`
+  - `auctionPage.endedAuctions`, `noAuctionsInCategory`, `showAllLive`
+- **Memo-Vergleichsfunktion korrigiert:** AuctionCard re-rendert jetzt bei Sprachwechsel
+- **Filter-Buttons:** Alle Labels dynamisch übersetzt (Live, Anfänger, Gratis, Nacht, Ende, VIP)
+- **Überschriften:** Dynamisch basierend auf aktivem Filter
 
 ---
 
