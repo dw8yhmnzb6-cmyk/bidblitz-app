@@ -586,6 +586,62 @@ export default function Admin() {
     }
   };
 
+  // Wholesale/B2B handlers
+  const handleApproveWholesale = async (applicationId) => {
+    try {
+      await axios.post(`${API}/admin/wholesale/approve/${applicationId}`, wholesaleForm, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success('Großkunde freigeschaltet!');
+      setShowWholesaleModal(false);
+      setSelectedWholesale(null);
+      setWholesaleForm({ discount_percent: 10, credit_limit: 0, payment_terms: 'prepaid', notes: '' });
+      fetchData();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Fehler beim Freischalten');
+    }
+  };
+
+  const handleRejectWholesale = async (applicationId) => {
+    if (!window.confirm('Bewerbung wirklich ablehnen?')) return;
+    try {
+      await axios.post(`${API}/admin/wholesale/reject/${applicationId}`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success('Bewerbung abgelehnt');
+      fetchData();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Fehler');
+    }
+  };
+
+  const handleUpdateWholesale = async (wholesaleId) => {
+    try {
+      await axios.put(`${API}/admin/wholesale/${wholesaleId}`, wholesaleForm, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success('Großkunde aktualisiert');
+      setShowWholesaleModal(false);
+      setSelectedWholesale(null);
+      fetchData();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Fehler');
+    }
+  };
+
+  const handleDeleteWholesale = async (wholesaleId) => {
+    if (!window.confirm('Großkundenstatus wirklich entfernen?')) return;
+    try {
+      await axios.delete(`${API}/admin/wholesale/${wholesaleId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success('Großkundenstatus entfernt');
+      fetchData();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Fehler');
+    }
+  };
+
   // User handlers
   const handleToggleAdmin = async (userId) => {
     try {
