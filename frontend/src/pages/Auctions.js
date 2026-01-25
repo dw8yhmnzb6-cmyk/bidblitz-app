@@ -27,8 +27,8 @@ const AuctionOfTheDay = memo(({ auction, product, onBid, t }) => {
           <div className="flex items-center gap-2">
             <span className="text-xl sm:text-2xl">👑</span>
             <div>
-              <h2 className="text-sm sm:text-lg font-black text-amber-800 uppercase tracking-wide">{t('auctionPage.auctionOfDay') || 'Auktion des Tages'}</h2>
-              <p className="text-[10px] sm:text-xs text-amber-600">{t('home.heroSubtitle')?.substring(0, 25) || 'Unser Top-Angebot heute!'}</p>
+              <h2 className="text-sm sm:text-lg font-black text-amber-800 uppercase tracking-wide">{t('auctionPage.auctionOfDay')}</h2>
+              <p className="text-[10px] sm:text-xs text-amber-600">{t('auctionPage.topOffer')}</p>
             </div>
           </div>
           <div className="bg-red-500 text-white px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-xs sm:text-sm font-bold animate-pulse">
@@ -53,20 +53,20 @@ const AuctionOfTheDay = memo(({ auction, product, onBid, t }) => {
               {product.name}
             </h3>
             <p className="text-xs sm:text-sm text-gray-500 mb-2">
-              UVP: <span className="line-through">€ {product.retail_price?.toLocaleString('de-DE')},-</span>
+              {t('auctionPage.uvp')}: <span className="line-through">€ {product.retail_price?.toLocaleString('de-DE')},-</span>
             </p>
             
             <div className="flex items-center justify-between sm:items-end sm:gap-4">
               <div>
-                <p className="text-[10px] sm:text-xs text-gray-500">Aktueller Preis</p>
+                <p className="text-[10px] sm:text-xs text-gray-500">{t('auctionPage.currentPrice')}</p>
                 <p className="text-xl sm:text-2xl font-black text-amber-600">
                   € {auction.current_price?.toFixed(2).replace('.', ',')}
                 </p>
-                <p className="text-[10px] sm:text-xs text-cyan-700">{auction.last_bidder_name || 'Startpreis'}</p>
+                <p className="text-[10px] sm:text-xs text-cyan-700">{auction.last_bidder_name || t('auctionPage.startPrice')}</p>
               </div>
               
               <div className="text-center">
-                <p className="text-[10px] sm:text-xs text-gray-500 mb-1">Verbleibend</p>
+                <p className="text-[10px] sm:text-xs text-gray-500 mb-1">{t('auctionPage.remaining')}</p>
                 <LiveTimer endTime={auction.end_time} />
               </div>
             </div>
@@ -76,14 +76,14 @@ const AuctionOfTheDay = memo(({ auction, product, onBid, t }) => {
               className="mt-2 sm:mt-3 w-full py-2 sm:py-2.5 bg-gradient-to-b from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-white font-bold text-xs sm:text-sm rounded-lg shadow-md transition-all hover:shadow-lg"
               data-testid="aotd-bid-button"
             >
-              🔥 JETZT BIETEN
+              🔥 {t('auctionPage.bidNow')}
             </button>
           </div>
         </div>
         
         <div className="mt-2 sm:mt-3 pt-2 border-t border-amber-200 flex items-center justify-between text-[10px] sm:text-xs text-gray-500">
-          <span>⚡ {auction.total_bids || 0} Gebote</span>
-          <span>Zuletzt für <span className="text-green-600 font-bold">€ {(product.retail_price * 0.01).toFixed(2).replace('.', ',')}</span></span>
+          <span>⚡ {auction.total_bids || 0} {t('auctionPage.bidsCount')}</span>
+          <span>{t('auctionPage.lastSoldFor')} <span className="text-green-600 font-bold">€ {(product.retail_price * 0.01).toFixed(2).replace('.', ',')}</span></span>
         </div>
       </div>
     </div>
@@ -136,13 +136,13 @@ const AdBanner = memo(() => {
 });
 
 // Activity Index - Snipster Style (30-60%)
-const ActivityIndex = memo(({ auctionId = '' }) => {
+const ActivityIndex = memo(({ auctionId = '', t }) => {
   const hash = auctionId ? auctionId.split('').reduce((a, b) => a + b.charCodeAt(0), 0) : 50;
   const filledCount = 3 + (hash % 4);
   
   return (
     <div className="flex items-center gap-1 mt-1">
-      <span className="text-[8px] text-gray-600">Aktivität:</span>
+      <span className="text-[8px] text-gray-600">{t('auctionPage.activity')}:</span>
       <div className="flex gap-px">
         {[...Array(10)].map((_, i) => {
           let color = '#d1d5db';
@@ -205,12 +205,12 @@ const LiveTimer = memo(({ endTime }) => {
 });
 
 // ISOLATED Price Component - Only updates when price changes via WebSocket
-const LivePrice = memo(({ price, bidderName }) => (
+const LivePrice = memo(({ price, bidderName, t }) => (
   <div>
     <span className="text-lg font-black text-gray-800">
       € {price?.toFixed(2).replace('.', ',')}
     </span>
-    <p className="text-[9px] text-cyan-700 truncate">{bidderName || 'Startpreis'}</p>
+    <p className="text-[9px] text-cyan-700 truncate">{bidderName || t('auctionPage.startPrice')}</p>
   </div>
 ));
 
@@ -235,7 +235,7 @@ const ProductInfo = memo(({ name, retailPrice, imageUrl, discount }) => (
 ));
 
 // Auction Card - Only Timer and Price update, rest is static
-const AuctionCard = memo(({ auction, product, onBid }) => {
+const AuctionCard = memo(({ auction, product, onBid, t }) => {
   if (!auction || !product) return null;
   
   const discount = product.retail_price 
@@ -271,16 +271,16 @@ const AuctionCard = memo(({ auction, product, onBid }) => {
   
   if (auction.is_free_auction) {
     badges.push(
-      <span key="free" className="bg-green-500 text-white px-1.5 py-0.5 rounded text-[8px] font-bold" title="Kostenlos bieten - Endpreis zahlen">
-        🎁 GRATIS
+      <span key="free" className="bg-green-500 text-white px-1.5 py-0.5 rounded text-[8px] font-bold" title={t('auctionPage.freeBidPayEnd')}>
+        🎁 {t('auctionPage.filters.free').toUpperCase()}
       </span>
     );
   }
   
   if (auction.is_night_auction) {
     badges.push(
-      <span key="night" className="bg-indigo-600 text-white px-1.5 py-0.5 rounded text-[8px] font-bold" title="Nur 23:30-06:00 Uhr">
-        🌙 NACHT
+      <span key="night" className="bg-indigo-600 text-white px-1.5 py-0.5 rounded text-[8px] font-bold" title={t('auctionPage.nightTime')}>
+        🌙 {t('auctionPage.filters.night').toUpperCase()}
       </span>
     );
   }
@@ -314,7 +314,7 @@ const AuctionCard = memo(({ auction, product, onBid }) => {
       {/* Free Auction Notice */}
       {auction.is_free_auction && (
         <div className="bg-green-100 text-green-800 text-[8px] px-2 py-0.5 text-center border-b border-green-200">
-          ✓ Kostenlos bieten • Endpreis bezahlen
+          ✓ {t('auctionPage.freeBidPayEnd')}
         </div>
       )}
       
@@ -324,19 +324,19 @@ const AuctionCard = memo(({ auction, product, onBid }) => {
           {product.name}
         </h3>
         <p className="text-[8px] text-gray-500 mb-1">
-          UVP: € {product.retail_price?.toLocaleString('de-DE')},-
+          {t('auctionPage.uvp')}: € {product.retail_price?.toLocaleString('de-DE')},-
         </p>
         
         <div className="flex gap-2">
           <div className="flex-1">
-            <LivePrice price={auction.current_price} bidderName={auction.last_bidder_name} />
+            <LivePrice price={auction.current_price} bidderName={auction.last_bidder_name} t={t} />
             
             <button 
               onClick={(e) => { e.stopPropagation(); onBid(auction.id); }}
               disabled={isNightPaused}
               className={`mt-2 w-full py-1.5 ${isNightPaused ? 'bg-gray-400 cursor-not-allowed' : 'bg-gradient-to-b from-cyan-400 to-cyan-500 hover:from-cyan-300 hover:to-cyan-400'} text-white font-bold text-[10px] rounded`}
             >
-              {isNightPaused ? '🌙 NACHTS' : 'BIETEN'}
+              {isNightPaused ? `🌙 ${t('auctionPage.nightOnly')}` : t('auctionPage.bid')}
             </button>
           </div>
           
@@ -345,12 +345,12 @@ const AuctionCard = memo(({ auction, product, onBid }) => {
           </div>
         </div>
         
-        <ActivityIndex auctionId={auction.id} />
+        <ActivityIndex auctionId={auction.id} t={t} />
       </div>
       
       <div className="bg-cyan-200/50 px-2 py-1 text-center">
         <p className="text-[8px] text-gray-600">
-          Zuletzt für <span className="text-green-600 font-bold">€ {(product.retail_price * 0.03).toFixed(2).replace('.', ',')}</span>
+          {t('auctionPage.lastSoldFor')} <span className="text-green-600 font-bold">€ {(product.retail_price * 0.03).toFixed(2).replace('.', ',')}</span>
         </p>
       </div>
     </div>
