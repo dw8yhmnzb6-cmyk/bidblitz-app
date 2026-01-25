@@ -721,22 +721,26 @@ export default function Auctions() {
   // Filtered auctions for grid
   const filteredAuctions = getFilteredAuctions();
   
+  // Create a stable ID string for memoization
+  const filteredIds = filteredAuctions.map(a => a.id).join(',');
+  
   // Grid auctions - filtered minus premium and AOTD
-  // WICHTIG: Sortierung nur beim ersten Laden, danach stabile Reihenfolge
-  // Karten bleiben an ihrer Position - nur Preis/Timer werden aktualisiert
+  // WICHTIG: Stabile Reihenfolge - Karten springen nicht herum
+  // Nur Preis/Timer werden aktualisiert, nicht die Position
   const gridAuctions = useMemo(() => {
     const filtered = filteredAuctions.filter(a => a.id !== premiumAuction?.id && a.id !== aotdId);
     
-    // Sortiere nur einmal: Nachtauktionen unten, Rest nach ID (stabil)
+    // Stabile Sortierung: Nachtauktionen unten, Rest nach ID (ändert sich nie)
     return filtered.sort((a, b) => {
       // Night auctions always at the bottom
       if (a.is_night_auction && !b.is_night_auction) return 1;
       if (!a.is_night_auction && b.is_night_auction) return -1;
       
-      // Stabile Sortierung nach ID (ändert sich nicht)
+      // Stabile Sortierung nach ID
       return a.id.localeCompare(b.id);
     });
-  }, [filteredAuctions.map(a => a.id).join(','), premiumAuction?.id, aotdId, activeFilter]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filteredIds, premiumAuction?.id, aotdId, activeFilter]);
   
   // Get AOTD product
   const aotdProduct = auctionOfTheDay?.product || (auctionOfTheDay?.product_id ? products[auctionOfTheDay.product_id] : null);
