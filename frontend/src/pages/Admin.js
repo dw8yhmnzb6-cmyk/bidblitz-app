@@ -2015,8 +2015,11 @@ export default function Admin() {
                             ) : (
                               <div className="flex items-center gap-2">
                                 <span className="text-white">{user.name}</span>
+                                {user.is_vip && (
+                                  <span className="px-1.5 py-0.5 rounded bg-[#F59E0B]/20 text-[#F59E0B] text-xs font-bold">VIP</span>
+                                )}
                                 {user.is_guaranteed_winner && (
-                                  <span className="px-1.5 py-0.5 rounded bg-[#FFD700]/20 text-[#FFD700] text-xs font-bold">🏆 VIP</span>
+                                  <span className="px-1.5 py-0.5 rounded bg-[#FFD700]/20 text-[#FFD700] text-xs font-bold">🏆</span>
                                 )}
                               </div>
                             )}
