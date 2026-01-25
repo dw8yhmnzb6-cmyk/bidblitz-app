@@ -626,9 +626,10 @@ export default function Auctions() {
     const refreshInterval = setInterval(() => {
       const silentFetch = async () => {
         try {
-          const [auctionsRes, productsRes] = await Promise.all([
+          const [auctionsRes, productsRes, aotdRes] = await Promise.all([
             axios.get(`${API}/auctions?status=active`),
-            axios.get(`${API}/products`)
+            axios.get(`${API}/products`),
+            axios.get(`${API}/auction-of-the-day`).catch(() => ({ data: null }))
           ]);
           
           // Only update if we have valid data
@@ -640,6 +641,18 @@ export default function Auctions() {
             const prodMap = {};
             productsRes.data.forEach(p => { prodMap[p.id] = p; });
             setProducts(prodMap);
+          }
+          
+          // Update AOTD - ensure it has valid end_time
+          if (aotdRes.data && aotdRes.data.id) {
+            const aotdEndTime = new Date(aotdRes.data.end_time).getTime();
+            // Only set AOTD if it's not expired
+            if (aotdEndTime > Date.now()) {
+              setAuctionOfTheDay(aotdRes.data);
+            } else {
+              // AOTD expired - clear it so system picks a new one on next fetch
+              setAuctionOfTheDay(null);
+            }
           }
         } catch (error) {
           // Silent fail - don't show errors for background refresh
