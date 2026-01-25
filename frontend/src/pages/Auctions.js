@@ -907,12 +907,13 @@ export default function Auctions() {
               product={aotdProduct} 
               onBid={handleBid}
               t={t}
+              language={language}
             />
           )}
           
           {/* Premium Card only shows if NO AOTD and on 'live' filter */}
           {activeFilter === 'live' && !auctionOfTheDay && premiumAuction && products[premiumAuction.product_id] && (
-            <PremiumCard auction={premiumAuction} product={products[premiumAuction.product_id]} onBid={handleBid} t={t} />
+            <PremiumCard auction={premiumAuction} product={products[premiumAuction.product_id]} onBid={handleBid} t={t} language={language} />
           )}
           
           {/* Ad Banner - Only on live filter */}
