@@ -621,10 +621,9 @@ export default function Auctions() {
   useEffect(() => {
     fetchData();
     
-    // Auto-refresh auctions every second (completely invisible to user)
-    // Uses silent update - no loading state, no flicker
+    // Auto-refresh auctions every 5 seconds (reduced frequency to minimize UI churn)
+    // The WebSocket handles real-time bid updates, this is just for status sync
     const refreshInterval = setInterval(() => {
-      // Silent background fetch - don't trigger loading state
       const silentFetch = async () => {
         try {
           const [auctionsRes, productsRes] = await Promise.all([
@@ -632,19 +631,23 @@ export default function Auctions() {
             axios.get(`${API}/products`)
           ]);
           
-          // Update state silently without triggering re-render flicker
-          setAuctions(auctionsRes.data || []);
+          // Only update if we have valid data
+          if (auctionsRes.data && Array.isArray(auctionsRes.data)) {
+            setAuctions(auctionsRes.data);
+          }
           
-          const prodMap = {};
-          (productsRes.data || []).forEach(p => { prodMap[p.id] = p; });
-          setProducts(prodMap);
+          if (productsRes.data && Array.isArray(productsRes.data)) {
+            const prodMap = {};
+            productsRes.data.forEach(p => { prodMap[p.id] = p; });
+            setProducts(prodMap);
+          }
         } catch (error) {
           // Silent fail - don't show errors for background refresh
           console.log('Background refresh failed:', error.message);
         }
       };
       silentFetch();
-    }, 1000); // Every 1 second
+    }, 5000); // Every 5 seconds (WebSocket handles real-time updates)
     
     return () => clearInterval(refreshInterval);
   }, []);  // Empty dependency - only run once on mount
