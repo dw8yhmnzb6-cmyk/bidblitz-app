@@ -2027,7 +2027,6 @@ export default function Admin() {
                                   <Button size="sm" variant="ghost" className="text-[#7C3AED] hover:bg-[#7C3AED]/10" onClick={() => setEditingUser({...user})} title="Bearbeiten"><Edit className="w-4 h-4" /></Button>
                                   <Button size="sm" variant="ghost" className={user.is_blocked ? "text-[#10B981] hover:bg-[#10B981]/10" : "text-[#EF4444] hover:bg-[#EF4444]/10"} onClick={() => handleToggleBlock(user.id, user.is_blocked)} title={user.is_blocked ? 'Entsperren' : 'Sperren'}>{user.is_blocked ? <CheckCircle className="w-4 h-4" /> : <Ban className="w-4 h-4" />}</Button>
                                   <Button size="sm" variant="ghost" className={user.is_guaranteed_winner ? "text-[#FFD700] hover:bg-[#FFD700]/10" : "text-[#94A3B8] hover:bg-white/10"} onClick={() => handleToggleGuaranteedWinner(user.id, user.is_guaranteed_winner)} title={user.is_guaranteed_winner ? 'Garantierter Gewinner deaktivieren' : 'Als Garantierter Gewinner markieren'}><Trophy className="w-4 h-4" /></Button>
-                                  <Button size="sm" variant="ghost" className="text-[#F59E0B] hover:bg-[#F59E0B]/10" onClick={() => handleToggleAdmin(user.id)} title="Admin-Status ändern"><UserPlus className="w-4 h-4" /></Button>
                                   <Button size="sm" variant="ghost" className="text-[#06B6D4] hover:bg-[#06B6D4]/10" onClick={() => handleAddBids(user.id)} title="Gebote hinzufügen"><Plus className="w-4 h-4" /></Button>
                                 </>
                               )}
