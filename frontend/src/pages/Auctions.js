@@ -721,26 +721,28 @@ export default function Auctions() {
   // Filtered auctions for grid
   const filteredAuctions = getFilteredAuctions();
   
-  // Create a stable ID string for memoization
-  const filteredIds = filteredAuctions.map(a => a.id).join(',');
-  
-  // Grid auctions - filtered minus premium and AOTD
-  // WICHTIG: Stabile Reihenfolge - Karten springen nicht herum
-  // Nur Preis/Timer werden aktualisiert, nicht die Position
-  const gridAuctions = useMemo(() => {
-    const filtered = filteredAuctions.filter(a => a.id !== premiumAuction?.id && a.id !== aotdId);
-    
-    // Stabile Sortierung: Nachtauktionen unten, Rest nach ID (ändert sich nie)
-    return filtered.sort((a, b) => {
+  // Grid auctions - sorted by time remaining (soonest first)
+  // Auctions ending soon are at the top, night auctions at the bottom
+  // Filter out auctions that have already ended (timer at 0)
+  const gridAuctions = filteredAuctions
+    .filter(a => a.id !== premiumAuction?.id && a.id !== aotdId)
+    .filter(a => {
+      // Hide auctions that have ended (timer at 0 or past)
+      if (a.status !== 'active') return false;
+      const endTime = new Date(a.end_time).getTime();
+      const now = Date.now();
+      return endTime > now; // Only show auctions with time remaining
+    })
+    .sort((a, b) => {
       // Night auctions always at the bottom
       if (a.is_night_auction && !b.is_night_auction) return 1;
       if (!a.is_night_auction && b.is_night_auction) return -1;
       
-      // Stabile Sortierung nach ID
-      return a.id.localeCompare(b.id);
+      // Sort by end_time ascending (auctions ending soon at the top)
+      const timeA = new Date(a.end_time).getTime();
+      const timeB = new Date(b.end_time).getTime();
+      return timeA - timeB;
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filteredIds, premiumAuction?.id, aotdId, activeFilter]);
   
   // Get AOTD product
   const aotdProduct = auctionOfTheDay?.product || (auctionOfTheDay?.product_id ? products[auctionOfTheDay.product_id] : null);
