@@ -706,14 +706,14 @@ export default function Auctions() {
   // Get AOTD product
   const aotdProduct = auctionOfTheDay?.product || (auctionOfTheDay?.product_id ? products[auctionOfTheDay.product_id] : null);
   
-  // Filter buttons config
+  // Filter buttons config with translations
   const filterButtons = [
-    { id: 'live', label: 'Live', count: auctionCounts.live, color: 'from-cyan-500 to-cyan-600' },
-    { id: 'anfaenger', label: 'Anfänger', count: auctionCounts.anfaenger, color: 'from-purple-500 to-violet-500', icon: '🎓' },
-    { id: 'gratis', label: 'Gratis', count: auctionCounts.gratis, color: 'from-green-500 to-emerald-500', icon: '🎁' },
-    { id: 'nacht', label: 'Nacht', count: auctionCounts.nacht, color: 'from-indigo-600 to-purple-600', icon: '🌙' },
-    { id: 'ende', label: 'Ende', count: auctionCounts.ende, color: 'from-gray-500 to-gray-600' },
-    { id: 'vip', label: 'VIP', count: auctionCounts.vip, color: 'from-yellow-400 to-amber-500', icon: '⭐' }
+    { id: 'live', label: t('auctionPage.filters.live') || 'Live', count: auctionCounts.live, color: 'from-cyan-500 to-cyan-600' },
+    { id: 'anfaenger', label: t('auctionPage.filters.beginner') || 'Anfänger', count: auctionCounts.anfaenger, color: 'from-purple-500 to-violet-500', icon: '🎓' },
+    { id: 'gratis', label: t('auctionPage.filters.free') || 'Gratis', count: auctionCounts.gratis, color: 'from-green-500 to-emerald-500', icon: '🎁' },
+    { id: 'nacht', label: t('auctionPage.filters.night') || 'Nacht', count: auctionCounts.nacht, color: 'from-indigo-600 to-purple-600', icon: '🌙' },
+    { id: 'ende', label: t('auctionPage.filters.ending') || 'Ende', count: auctionCounts.ende, color: 'from-gray-500 to-gray-600' },
+    { id: 'vip', label: t('auctionPage.filters.vip') || 'VIP', count: auctionCounts.vip, color: 'from-yellow-400 to-amber-500', icon: '⭐' }
   ];
   
   if (loading) {
@@ -727,7 +727,7 @@ export default function Auctions() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-cyan-200 to-cyan-300 p-2 pt-16 sm:pt-20" data-testid="auctions-page">
       <div className="text-center text-[10px] text-gray-600 mb-2">
-        {new Date().toLocaleTimeString('de-DE')} | {publicAuctions.length} Live-Auktionen
+        {new Date().toLocaleTimeString('de-DE')} | {publicAuctions.length} {t('auctionPage.liveAuctions') || 'Live-Auktionen'}
       </div>
       
       {/* Filter Buttons */}
