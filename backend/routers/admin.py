@@ -256,6 +256,26 @@ async def toggle_user_block(user_id: str, admin: dict = Depends(get_admin_user))
     
     return {"message": f"User {'blocked' if new_status else 'unblocked'}", "is_blocked": new_status}
 
+@router.put("/users/{user_id}/guaranteed-winner")
+async def toggle_guaranteed_winner(user_id: str, admin: dict = Depends(get_admin_user)):
+    """Toggle guaranteed winner status - User will always win when bidding"""
+    user = await db.users.find_one({"id": user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    new_status = not user.get("is_guaranteed_winner", False)
+    await db.users.update_one(
+        {"id": user_id},
+        {"$set": {"is_guaranteed_winner": new_status}}
+    )
+    
+    logger.info(f"🏆 Guaranteed winner status changed for {user.get('name')}: {new_status}")
+    
+    return {
+        "message": f"Garantierter Gewinner {'aktiviert' if new_status else 'deaktiviert'}", 
+        "is_guaranteed_winner": new_status
+    }
+
 # ==================== EMAIL MARKETING ====================
 
 @router.get("/email/stats")
