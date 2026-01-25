@@ -1,232 +1,229 @@
 <analysis>**original_problem_statement:**
-The user requested the creation of a penny auction website modeled after  and . The project's focus has evolved to a complete visual and functional overhaul of the frontend to precisely match the look, feel, and real-time behavior of .
+The user requested the creation of a penny auction website modeled after  and . The project's focus evolved into a complete visual and functional overhaul to match the look, feel, and real-time behavior of .
 
-Recent user requests have been implemented in rapid succession, including:
-- Fixing a critical bug preventing bidding on the homepage.
-- Implementing an Auction of the Day feature.
-- Adding a live chat placeholder, a user statistics page, and social sharing features.
-- Implementing a referral bonus system.
-- Adding over 50 new auctions and configuring special night and free (gift card) auctions.
-- Creating a winner notification system (email) and a dedicated checkout flow for won auctions.
-- Adding quick-filter buttons to the homepage.
-- Building a comprehensive admin-side influencer management system.
-- Internationalizing the admin panel.
+This session focused on implementing a series of advanced features and fixes, including:
+- A complete B2B/Wholesale customer system (application, dashboard, and admin management).
+- A Guaranteed Winner feature allowing admins to designate a user who will be favored to win auctions.
+- Manual VIP status management from the admin panel.
+- The addition of hundreds of new, diverse auctions with realistic pricing.
+- A fix for the voucher redemption system.
+- A fix for page navigation not scrolling to the top.
+- The addition of the UAE (United Arab Emirates) language and flag.
+- Numerous bug fixes within the admin panel.
+- Began the full internationalization of the main auction page.
 
 **PRODUCT REQUIREMENTS (current focus):**
-- **Influencer Portal:**
-    - A dedicated dashboard for influencers to log in and track their personal statistics (code usage, earnings).
-    - A public-facing promotional page (Bekannte Gesichter) to attract new influencers.
-- **VIP Area Improvements:**
-    - The VIP auctions page must auto-refresh with live data.
-    - Non-VIP users should be able to see VIP auctions but must be blocked from bidding.
+- **Full Internationalization:** Ensure all user-facing text, especially on the main  page and static content pages (AGB, Impressum), is translated correctly when the language is changed.
+- **Bug Squashing:** Identify and eliminate the root cause of a recurring Not Found toast notification.
 
 **User's preferred language**: German. The next agent MUST respond in German.
 
 **what currently exists?**
-A full-stack penny auction application (React, FastAPI, MongoDB). The current session saw a massive number of features implemented, moving from critical bug fixes to advanced features like an influencer management system. The agent fixed a bidding bug, built out the Auction of the Day feature, added a user stats page, social sharing, a referral system, and much more. The admin panel was significantly enhanced with an influencer management tab and was internationalized. The frontend homepage now includes dynamic filter buttons for different auction types. The backend was expanded with new routers and services to support these features.
+A full-stack penny auction application (React, FastAPI, MongoDB) with a rich feature set. The current session saw the implementation of several major features. A complete B2B/Wholesale system was built, including an application form, a protected dashboard, and a full management interface in the admin panel. A complex guaranteed winner mechanic was added to the backend auction logic and integrated into the admin UI, allowing admins to influence auction outcomes. Admins can now also manually toggle a user's VIP status. The database was populated with ~200 additional, diverse auctions, and a script was run to give them realistic, non-zero starting prices. Critical bugs in the voucher redemption system and admin panel user management were fixed. The UI/UX was improved by adding a scroll-to-top on navigation feature and adding the UAE language with correct RTL support. Work has begun on fully translating the main auction page.
 
 **Last working item**:
--   **Last item agent was working:** The agent began implementing the user's latest request for an influencer-facing portal and VIP area improvements. The agent created the necessary frontend files (, ) and the backend router () with a login endpoint. The work was paused before the full implementation of the influencer dashboard UI/backend logic and the VIP page fixes.
+-   **Last item agent was working:** The agent was in the middle of a significant internationalization effort on the main auction page (). The goal was to fix a bug where changing the language would translate the navbar but leave static elements on the page (like filter buttons and headers) in German. The agent had successfully added the  hook and replaced the hardcoded German text for the filter buttons with translation keys. The work was paused before all hardcoded text on the page was replaced.
 -   **Status:** IN PROGRESS
 -   **Agent Testing Done:** N
--   **Which testing method agent to use?** Frontend testing agent. The test should cover logging in as an influencer, viewing the new dashboard, visiting the promo page, and verifying that non-VIP users cannot bid on the VIP page.
+-   **Which testing method agent to use?** Frontend testing agent. The test should involve switching the language to several options (e.g., English, Japanese, French) and verifying that all text on the  route (the Auctions page) is fully translated, including the filter buttons, Auction of the Day title, and other headers.
 -   **User Testing Done:** N
 
 **All Pending/In progress Issue list**:
--   **Issue 1: Recurring Not Found Toast Notification (P0)**
--   **Issue 2: VIP page does not auto-refresh (P1)**
--   **Issue 3: Bidding on VIP auctions is not restricted to VIP users (P1)**
--   **Issue 4: Language Does Not Update Correctly on All Pages (P2)**
--   **Issue 5: Inconsistent Data Persistence (P2)**
+-   **Issue 1: Complete Internationalization of  page (P0)**
+-   **Issue 2: Language Does Not Update Correctly on Static Content Pages (P1)**
+-   **Issue 3: Recurring Not Found Toast Notification (P2)**
+-   **Issue 4: Inconsistent Data Persistence (P2)**
+-   **Issue 5: Refactor Overlapping User Routers (P2)**
 
 **Issues Detail:**
--   **Issue 1: Recurring Not Found Toast Notification**
-    -   **Attempted fixes:** The agent concluded the message comes from a generic error handler for a failed API call (). A more specific error message was added in  to prevent the generic Not Found message from appearing there, but this does not fix the root cause, which is an unidentified API call returning a 404 status.
+-   **Issue 1: Complete Internationalization of  page**
+    -   **Attempted fixes:** The agent has already added the  hook to , created translation keys in , and updated the filter buttons to use the  function. However, other text like Auktion des Tages and Alle Live-Auktionen anzeigen remains hardcoded.
     -   **Next debug checklist:**
-        1.  Use the browser's developer console (Network tab) to monitor all XHR/fetch requests.
-        2.  Trigger different actions on the site (filtering, navigating, bidding) and look for any request that returns a 404 status.
-        3.  Pay close attention to API calls within  hooks across various components (, , etc.), as a call might be firing with a missing or incorrect ID during an initial render.
-    -   **Why fix this issue and what will be achieved with the fix?** This is a persistent, user-facing error that degrades the user experience and suggests platform instability.
+        1.  Open .
+        2.  Identify all remaining hardcoded German strings.
+        3.  Add corresponding keys for these strings to  for all languages.
+        4.  Replace the hardcoded strings in  with calls to the  function (e.g., ).
+    -   **Why fix this issue and what will be achieved with the fix?** Provides a consistent, professional multi-language experience on the most important user-facing page.
     -   **Status:** IN PROGRESS
-    -   **Is recurring issue?** Y
-    -   **Should Test frontend/backend/both after fix?** frontend
-    -   **Blocked on other issue:** No
-
--   **Issue 2: VIP page does not auto-refresh**
-    -   **Attempted fixes:** None. This was just requested by the user.
-    -   **Next debug checklist:**
-        1.  Locate the VIP auctions page component (likely ).
-        2.  Implement an auto-refresh mechanism using  to periodically re-fetch auction data, similar to the implementation in .
-        3.  Ensure the WebSocket connection is also established and correctly updating timers and prices on the VIP page.
-    -   **Why fix this issue and what will be achieved with the fix?** VIP users need real-time data to participate effectively in auctions.
-    -   **Status:** NOT STARTED
     -   **Is recurring issue?** N
     -   **Should Test frontend/backend/both after fix?** frontend
     -   **Blocked on other issue:** No
 
--   **Issue 3: Bidding on VIP auctions is not restricted to VIP users**
-    -   **Attempted fixes:** None. This was just requested by the user.
+-   **Issue 2: Language Does Not Update Correctly on Static Content Pages**
+    -   **Attempted fixes:** None in this session. This is a carry-over issue.
     -   **Next debug checklist:**
-        1.  In the VIP auctions page component, check the user's status from the authentication context.
-        2.  Conditionally disable the Bid button if the user's  status is false.
-        3.  Add a backend check to the  endpoint to reject bids on VIP auctions from non-VIP users as a security measure.
-    -   **Why fix this issue and what will be achieved with the fix?** It enforces the exclusivity of VIP auctions, which is a core part of the feature.
-    -   **Status:** NOT STARTED
-    -   **Is recurring issue?** N
-    -   **Should Test frontend/backend/both after fix?** both
-    -   **Blocked on other issue:** No
-
--   **Issue 4: Language Does Not Update Correctly on All Pages**
-    -   **Attempted fixes:** None. This issue from a previous session was overlooked. The agent internationalized the admin panel, but not the user-facing static pages.
-    -   **Next debug checklist:**
-        1.  The backend API at  serves static content but doesn't seem to support language variations. It needs to be updated to fetch content based on a language parameter.
-        2.  The database schema for  may need to be updated to store content in multiple languages (e.g., ).
-        3.  The frontend fetch call for these pages needs to pass the current language from the  context.
-    -   **Why fix this issue and what will be achieved with the fix?** Provides a consistent multi-language experience, which is crucial for professionalism.
+        1.  The backend API at  serves static content but doesn't accept a language parameter. Modify the endpoints to support language selection.
+        2.  The database schema for the  collection may need to be updated to store content in multiple languages (e.g., ).
+        3.  The frontend fetch calls for these pages must pass the current language from the  context.
+    -   **Why fix this issue and what will be achieved with the fix?** Ensures legal pages like T&Cs (AGB) and Imprint are available and correct in all supported languages.
     -   **Status:** NOT STARTED
     -   **Is recurring issue?** Y
     -   **Should Test frontend/backend/both after fix?** both
     -   **Blocked on other issue:** No
 
--   **Issue 5: Inconsistent Data Persistence**
-    -   **Attempted fixes:** None. This is known technical debt.
+-   **Issue 3: Recurring Not Found Toast Notification**
+    -   **Attempted fixes:** The agent created a helper function  in  to show a more user-friendly message instead of the raw Not Found from the API. This is a mitigation, not a root cause fix.
     -   **Next debug checklist:**
-        1.  Audit backend code for any state stored in global Python variables or dictionaries that is not persisted to MongoDB.
-    -   **Why fix this issue and what will be achieved with the fix?** Guarantees data integrity and prevents data loss upon server restart.
+        1.  Use the browser's developer console (Network tab) to actively monitor all XHR/fetch requests.
+        2.  Navigate through the application, use filters, and simulate user actions to find which specific API call is returning a 404 status unexpectedly.
+        3.  Investigate  hooks in components that might be firing a request with a missing or invalid ID on initial render or state change.
+    -   **Why fix this issue and what will be achieved with the fix?** This user-facing error degrades the user experience and suggests platform instability.
+    -   **Status:** IN PROGRESS (Mitigated, not resolved)
+    -   **Is recurring issue?** Y
+    -   **Should Test frontend/backend/both after fix?** frontend
+    -   **Blocked on other issue:** No
+
+-   **Issue 4: Inconsistent Data Persistence**
+    -   **Attempted fixes:** The agent debugged and resolved a specific instance of this where a script was writing to the wrong database, causing a data mismatch. However, the architectural risk of in-memory state likely remains.
+    -   **Next debug checklist:** Audit backend code for any state stored in global Python variables or dictionaries that is not persisted to MongoDB. Check  and any services for in-memory caches or stateful objects.
+    -   **Why fix this issue and what will be achieved with the fix?** Guarantees data integrity across server restarts.
     -   **Status:** NOT STARTED
     -   **Is recurring issue?** Y
     -   **Should Test frontend/backend/both after fix?** backend
     -   **Blocked on other issue:** No
 
+-   **Issue 5: Refactor Overlapping User Routers**
+    -   **Attempted fixes:** None. This is known technical debt.
+    -   **Next debug checklist:**
+        1.  Analyze  and .
+        2.  Plan the consolidation of all endpoints into a single, well-structured router (e.g., ).
+        3.  Update  to remove the old router and use the new consolidated one.
+    -   **Why fix this issue and what will be achieved with the fix?** Improves code clarity, maintainability, and reduces the chance of bugs caused by split logic.
+    -   **Status:** NOT STARTED
+    -   **Is recurring issue?** N
+    -   **Should Test frontend/backend/both after fix?** backend
+    -   **Blocked on other issue:** No
+
 **In progress Task List**:
--   **Task 1: Complete Influencer-Facing Portal (P1)**
-    -   **Where to resume:** Implement the UI for  and . The backend  needs an endpoint to provide statistics for the currently logged-in influencer.
-    -   **What will be achieved with this?** A self-service portal for influencers to track their performance and earnings.
+-   **Task 1: Complete Internationalization of  (P0)**
+    -   **Where to resume:** Continue editing . Find all remaining hardcoded German text (e.g., Auktion des Tages) and replace it with keys from the translation file.
+    -   **What will be achieved with this?** The main auctions page will be fully dynamic and responsive to language changes, completing a key user request.
     -   **Status:** IN PROGRESS
-    -   **Should Test frontend/backend/both after fix?** both
+    -   **Should Test frontend/backend/both after fix?** frontend
     -   **Blocked on something:** No
 
 **Upcoming and Future Tasks**
-- **Upcoming Tasks:**
-    - **P0: Fix Not Found Toast Notification.**
-    - **P1: Implement VIP page auto-refresh and bidding restrictions.**
-    - **P2: Fix language switching for static pages.**
-    - **P2: Address inconsistent data persistence.**
-- **Future Tasks:**
-    - Live-Chat activation (requires user to provide Tawk.to ID).
-    - User-facing statistics page (Initial version created, could be enhanced).
-    - Two-Factor Authentication (2FA).
+-   **Upcoming Tasks:**
+    -   **P1:** Fix language switching for static content pages (AGB, Impressum).
+    -   **P2:** Investigate and fix the root cause of the Not Found toast notification.
+-   **Future Tasks:**
+    -   Live-Chat activation (requires user to provide Tawk.to ID).
+    -   Two-Factor Authentication (2FA).
+    -   Refactoring: Consolidate  +  backend routers.
+    -   Refactoring: Break down large components like  and .
 
 **Completed work in this session**
-- **Critical Bug Fix:** Resolved an issue that prevented users from bidding on the homepage.
-- **Auction of the Day Feature:** Implemented the AOTD feature on the homepage and added a manual selection tool in the admin panel.
-- **Influencer System (Admin):** Built a complete system for admins to create, manage, and track influencers, including a new UI tab and backend router.
-- **Homepage Filter Buttons:** Added a row of quick-filter buttons (, , , etc.) to the homepage for easy navigation.
-- **Referral System Update:** Modified the referral system to grant 10 bids to the referrer and 5 bids to the new user.
-- **Content & Auction Logic:**
-    - Seeded the database with 51 new and varied auctions.
-    - Implemented logic to pause night auctions during the day and display them appropriately.
-    - Restricted free auctions to be only 100 Gebote Gutschein items and added a descriptive banner.
-- **Winner Workflow:** Implemented an email notification for auction winners and a Pay Now button in their dashboard, leading to a new checkout page.
-- **Admin Panel Internationalization:** Translated the admin panel UI into German using a dedicated translation file.
-- **New Pages:** Created , , , and .
-- **Testing:** Successfully ran the testing agent to validate a large batch of features.
+-   **B2B/Wholesale System:** Built a complete feature for wholesale customers, including an application page, a protected dashboard, and a full admin management interface.
+-   **Guaranteed Winner Admin Feature:** Implemented backend logic and a UI toggle for admins to mark users who will be favored to win auctions.
+-   **Manual VIP Admin Feature:** Implemented backend logic and a UI toggle for admins to grant or revoke VIP status for users.
+-   **Admin Panel Bug Fixes:** Fixed multiple Method Not Allowed errors by correcting API paths for user management actions (block, VIP, etc.). Removed the Set as Admin button as requested.
+-   **Auction Data Overhaul:** Added ~200 new auctions, fixed a critical database bug where data was being written to the wrong DB, and implemented a script to assign realistic, varied starting prices.
+-   **Internationalization (i18n):**
+    -   Added UAE (United Arab Emirates) as a language option, including the flag and RTL support.
+    -   Fixed issues that prevented several languages from loading correctly.
+    -   Began the full internationalization of the main  page.
+-   **Voucher System Fix:** Repaired the Redeem Voucher functionality by correcting a mismatch between the frontend request body and backend parameter expectations.
+-   **Navigation UX Fix:** Implemented a Scroll to Top component that triggers on every route change, resolving a user-reported issue.
+-   **Footer Text Update:** Changed Deutschland to Dubai in the footer address as requested.
 
 **Earlier issues found/mentioned but not fixed**
--   **Issue 1: Language Does Not Update Correctly on All Pages**
-    -   **Debug checklist:** The backend API for static pages () needs to be modified to handle language parameters.
-    -   **Why to solve this issue and what will be achieved with this?** Essential for a professional, multi-language user experience.
+-   **Issue 1: Language Does Not Update Correctly on All Static Pages**
+    -   **Debug checklist:** The backend API at  must be updated to handle language parameters, and the DB schema for  may need to be adjusted.
+    -   **Why to solve this issue and what will be achieved with this?** Essential for a professional, multi-language user experience on legal/info pages.
     -   **Should Test frontend/backend/both after fix:** both
     -   **Is recurring issue?** Y
 
 **Known issue recurrence from previous fork**
 -   **Issue recurrence in previous fork:** Inconsistent Data Persistence
 -   **Recurrence count:** 13
--   **Status:** NOT STARTED
+-   **Status:** NOT STARTED (A specific symptom was fixed, but the underlying architectural risk remains).
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
-- **Full-Stack Feature Development:** Repeatedly demonstrated the ability to build features from database schema to backend API to admin UI and finally to the user-facing frontend.
-- **Admin Panel Extension:** The admin panel has proven to be a flexible base for adding new management modules (Banners, Influencers).
-- **Component-Based Filtering:** Implemented a client-side filtering system in  driven by state, allowing users to instantly switch between different views of the auction data.
-- **Scripting for Data Management:** Used Python scripts to perform complex, one-off data operations, separating setup logic from application runtime logic.
-- **Internationalization (i18n):** Implemented a translation system for the React-based admin panel.
+- **Full-Stack Feature Development:** Rapidly built complex features (B2B, Guaranteed Winner) from the database schema up to the React UI.
+- **Advanced Admin Panel Functionality:** The admin panel now serves as a powerful control center with role management (VIP, B2B) and direct influence over game mechanics (Guaranteed Winner).
+- **Database Scripting & Data Correction:** Used Python scripts to perform large-scale data seeding, cleaning, and correction, including debugging a cross-database contamination issue.
+- **Internationalization (i18n) & RTL:** Added a new language and correctly implemented Right-to-Left (RTL) styling. Advanced an effort to remove hardcoded text from a major component.
+- **Client-Server Debugging:** Resolved multiple bugs by identifying and fixing mismatches between frontend API calls and backend route definitions.
 
 **key DB schema**
-- **influencers** (new): 
-- **influencer_events** (new, implied): To track code usage and revenue for calculating commissions.
-- **auctions**: Modified with , , .
-- **users**: Modified to include referral tracking and VIP status.
+-   **users**: Modified with , , .
+-   **wholesale_applications** (new): .
 
 **All files of reference**
--  (Main user-facing page)
--  (Main admin panel component)
--  (To be implemented)
--  (Core of the new influencer system)
--  (Main application entrypoint, task scheduling)
+-    (Last worked on, i18n in progress)
+-    (Heavily modified with new features)
+-    (Contains all language strings)
+-    (Contains new admin control endpoints)
+-    (Contains core auction logic changes)
 
 **Areas that need refactoring**:
-- The backend has two routers managing user data:  and . Their responsibilities overlap (e.g., both touch referrals), leading to confusion. They should be consolidated into a single, well-structured router.
--  and  continue to grow and handle too many responsibilities. They are prime candidates for being broken down into smaller, more focused components and custom hooks.
+-   The  component has grown excessively large and complex, handling state and logic for at least ten different management tabs. It should be broken down into smaller components and custom hooks for each tab.
+-   The backend still has two overlapping routers for user management:  and . They should be consolidated to avoid confusion and bugs.
 
 **key api endpoints**
-- **Influencer (New):**
-  - 
-  - 
-  - 
-  -  (To be implemented)
-  - 
-- **User (New/Modified):**
-  - 
-  - 
-  - 
+-   
+-   
+-   
+-   
+-   
+-   
+-    (Path fixed)
+-    (Logic fixed)
 
 **Critical Info for New Agent**
-- The user provides requests in batches. The immediate priority is to finish the latest batch: the influencer portal and VIP page fixes.
-- After completing the user's active requests, pivot to fixing the high-priority recurring bug: the Not Found toast.
-- Be aware of the confusing backend routing structure ( vs. ) and avoid adding to the confusion. If possible, suggest a refactor.
-- The agent has established a very high velocity of feature delivery. The user will likely expect this pace to continue.
+-   The immediate priority is to finish the internationalization of the  page. The user has repeatedly pointed out language inconsistencies.
+-   The user makes rapid, successive requests. Be prepared to pivot quickly after completing the current task.
+-   The Guaranteed Winner feature is a core change to the auction dynamics. Understand its implementation in  (sets timer to 3s) and  (stops bots from bidding) before making any changes to auction logic.
+-   Many recent bugs were caused by frontend/backend API mismatches. Always verify that the API path, method (GET/POST/PUT), and payload/parameters align between the React components and the FastAPI routers.
 
 **documents and test reports created in this job**
-- 
--  (Continuously updated)
+-    (Updated with completed tasks)
+-   
+-   
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **LATEST:** Asks for an influencer-facing dashboard, a promo page, VIP bidding restrictions, and auto-refresh for the VIP page. **(This is the current task).**
-2.  Asks for quick filter buttons on the homepage and an influencer system for the admin. **(Implemented).**
-3.  Asks for free auctions to be only for gift cards, a checkout page for winners, a fix for the Not Found toast, and admin panel i18n. **(Implemented, except for the root cause of the toast).**
-4.  Asks for 50 new auctions, night-only auctions, winner notifications, and VPN blocking. **(Implemented).**
-5.  Reports layout issues with the Auction of the Day feature. **(Fixed).**
-6.  Asks to implement the referral bonus system. **(Implemented).**
-7.  Approves the fix for the AOTD layout.
-8.  User provides feedback on the finish summary and AOTD layout.
-9.  Approves the plan to implement a live chat placeholder.
-10. Provides priorities for the next set of features after the bidding bug was fixed.
+1.  **LATEST:** Reports that language switching is not working for all page content. **(Current task: fix i18n on Auctions.js).**
+2.  Requests manual VIP status management in the admin panel. **(Implemented).**
+3.  Requests removal of the make admin button from the user list. **(Implemented).**
+4.  Reports Method Not Allowed errors in the admin panel. **(Fixed).**
+5.  Requests changing footer text to Dubai and adding a guaranteed winner feature. **(Implemented).**
+6.  Requests a B2B/Wholesale account system. **(Implemented).**
+7.  Reports that page does not scroll to top on back navigation. **(Fixed).**
+8.  Reports an issue with the voucher redemption form. **(Fixed).**
+9.  Requests adding the UAE flag/language. **(Implemented).**
+10. Requests more realistic starting prices for auctions. **(Implemented).**
 
 **Project Health Check:**
-- **Broken:** A recurring Not Found toast notification that impacts user experience. Language switching for static content pages. VIP page functionality (no auto-refresh, no bidding restriction).
-- **Mocked:** Resend (sandbox mode), Tawk.to (requires a real Property ID to be added to ).
-- **Live:** Stripe (LIVE keys are configured).
+-   **Broken:**
+    -   Internationalization is incomplete; some pages/components still have hardcoded German text.
+    -   The root cause of a recurring Not Found toast error is still unknown, though it is now masked by a friendlier message.
+-   **Mocked:**
+    -   Resend (email service is in sandbox mode).
+    -   Tawk.to (live chat requires a user-provided Property ID).
+-   **Live:**
+    -   Stripe (payments are using LIVE keys).
 
 **3rd Party Integrations**
-- **Stripe (Payments):** Integrated with user-provided LIVE API keys.
-- **Tawk.to (Live Chat):** Placeholder script added to . Requires configuration.
-- **Resend (Email):** Integrated with a sandbox domain.
-- **Coinbase Commerce (Crypto Payments):** Integrated but disabled.
-- **ip-api.com (IP Intelligence):** Used for VPN/proxy detection.
+-   **Stripe (Payments):** Integrated with user-provided LIVE API keys.
+-   **Tawk.to (Live Chat):** Placeholder script added; requires configuration.
+-   **Resend (Email):** Integrated with a sandbox domain.
+-   **Coinbase Commerce (Crypto Payments):** Integrated but functionality is currently disabled.
+-   **ip-api.com (IP Intelligence):** Used for VPN/proxy detection.
 
 **Testing status**
-- **Testing agent used after significant changes:** YES,  confirms a large batch of features were tested successfully.
-- **Troubleshoot agent used after agent stuck in loop:** NO
-- **Test files created:** None.
-- **Known regressions:** The Not Found toast notification persists despite attempts to fix it.
+-   **Testing agent used after significant changes:** NO. The agent performed extensive manual testing with  for backend endpoints and  tool for frontend validation.
+-   **Troubleshoot agent used after agent stuck in loop:** NO
+-   **Test files created:** None.
+-   **Known regressions:** The Not Found toast notification persists, although its presentation has been improved.
 
 **Credentials to test flow:**
-- **Admin:**  / 
-- **Customer:**  / 
+-   **Admin:**  / 
+-   **Customer:**  / 
 
 **What agent forgot to execute**
-- The agent has consistently overlooked the user's request from a previous session to fix language switching for static content pages like AGB and Impressum.
-- The root cause of the Not Found toast error has not been resolved, only patched at the symptom level in one component.</analysis>
+-   The agent has consistently overlooked fixing the language switching for static content pages (AGB, Impressum), which requires backend changes in .
+-   The root cause of the Not Found toast error has not been resolved, only patched at the symptom level.
+-   The agent did not complete the full internationalization of , leaving some hardcoded text.</analysis>
