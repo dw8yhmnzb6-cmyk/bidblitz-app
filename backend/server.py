@@ -190,7 +190,7 @@ async def bot_last_second_bidder():
     DEFAULT_MAX_PRICE = 3.00
     
     # Minimum time between bot bids on same auction (to look realistic)
-    MIN_BID_INTERVAL = 2.0  # seconds
+    MIN_BID_INTERVAL = 0.5  # seconds - fast bidding to reach €2-3 quickly
     
     while bot_task_running:
         try:
