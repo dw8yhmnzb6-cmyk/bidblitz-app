@@ -232,21 +232,21 @@ async def bot_last_second_bidder():
                     should_bid = False
                     target_price = 0
                     
-                    if explicit_target > 0:
-                        # MODUS 2: Mit Zielpreis - NUR in letzten 2-3 Sekunden bieten (SPERRE!)
-                        if 1 <= seconds_left <= 3:
+                    # Calculate default target (€2-3 range based on auction ID)
+                    hash_val = hash(auction_id) % 100
+                    default_target = DEFAULT_MIN_PRICE + (hash_val / 100) * (DEFAULT_MAX_PRICE - DEFAULT_MIN_PRICE)
+                    default_target = round(default_target, 2)
+                    
+                    # ALWAYS bid up to €2-3 first (regardless of explicit target)
+                    if current_price < default_target and time_since_last_bid >= MIN_BID_INTERVAL:
+                        target_price = default_target
+                        should_bid = True
+                    
+                    # Then, if explicit target is higher than current price AND we're in last 2-3 seconds
+                    # Use the explicit target (SPERRE mode)
+                    if explicit_target and explicit_target > 0:
+                        if 1 <= seconds_left <= 3 and current_price < explicit_target:
                             target_price = explicit_target
-                            if current_price < target_price:
-                                should_bid = True
-                    else:
-                        # MODUS 1: Standard - Bots bieten KONTINUIERLICH bis €2-3
-                        # Use auction ID hash for consistent target
-                        hash_val = hash(auction_id) % 100
-                        target_price = DEFAULT_MIN_PRICE + (hash_val / 100) * (DEFAULT_MAX_PRICE - DEFAULT_MIN_PRICE)
-                        target_price = round(target_price, 2)
-                        
-                        # Bid if price is below target AND enough time passed since last bid
-                        if current_price < target_price and time_since_last_bid >= MIN_BID_INTERVAL:
                             should_bid = True
                     
                     if should_bid:
