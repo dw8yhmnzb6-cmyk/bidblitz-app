@@ -494,10 +494,11 @@ export default function AuctionDetail() {
               {isEnded ? (
                 <div className="text-center">
                   <div className="flex items-center justify-center gap-3 mb-3">
-                    <Clock className="w-6 h-6 text-[#EF4444]" />
-                    <span className="text-[#EF4444] font-medium">Auktion beendet</span>
+                    <Clock className="w-6 h-6 text-[#F59E0B] animate-spin" />
+                    <span className="text-[#F59E0B] font-medium">Auktion wird neu gestartet...</span>
                   </div>
-                  <p className="text-3xl font-bold text-[#EF4444] font-mono">{t('auctions.ended').toUpperCase()}</p>
+                  <p className="text-3xl font-bold text-[#F59E0B] font-mono animate-pulse">NEUSTART</p>
+                  <p className="text-[#94A3B8] text-sm mt-2">Bitte warten Sie einen Moment</p>
                 </div>
               ) : isScheduled ? (
                 <>
