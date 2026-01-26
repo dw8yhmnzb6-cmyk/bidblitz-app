@@ -248,15 +248,6 @@ async def bot_last_second_bidder():
                         # Bid if price is below target AND enough time passed since last bid
                         if current_price < target_price and time_since_last_bid >= MIN_BID_INTERVAL:
                             should_bid = True
-                        # Echte Kunden können ab €2-3 weitermachen
-                        if 1 <= seconds_left <= 5:
-                            # Use auction ID hash to keep consistent target for same auction
-                            hash_val = hash(auction_id) % 100
-                            target_price = DEFAULT_MIN_PRICE + (hash_val / 100) * (DEFAULT_MAX_PRICE - DEFAULT_MIN_PRICE)
-                            target_price = round(target_price, 2)
-                            
-                            if current_price < target_price:
-                                should_bid = True
                     
                     if should_bid:
                         # Get bots
@@ -267,13 +258,12 @@ async def bot_last_second_bidder():
                             available = [b for b in bots if b["id"] != last_bot_id] or bots
                             bot = random.choice(available)
                             last_bot_per_auction[auction_id] = bot["id"]
+                            last_bid_time_per_auction[auction_id] = now.timestamp()
                             
                             # Place bid
                             new_price = round(current_price + bid_increment, 2)
                             
-                            # Timer extension based on mode:
-                            # - Standard: 10-15 seconds (normal play)
-                            # - Mit Zielpreis: 10-15 seconds (same, to reach target)
+                            # Timer extension: 10-15 seconds
                             timer_ext = random.randint(10, 15)
                             
                             new_end_time = datetime.now(timezone.utc) + timedelta(seconds=timer_ext)
