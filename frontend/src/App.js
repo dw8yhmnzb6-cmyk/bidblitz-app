@@ -133,6 +133,11 @@ function AppContent() {
           } />
           <Route path="/affiliate" element={<Affiliate />} />
           <Route path="/invite" element={<InviteFriends />} />
+          <Route path="/gift-bids" element={
+            <ProtectedRoute>
+              <GiftBids />
+            </ProtectedRoute>
+          } />
           <Route path="/winners" element={<Winners />} />
           <Route path="/achievements" element={<Achievements />} />
           <Route path="/wishlist" element={
