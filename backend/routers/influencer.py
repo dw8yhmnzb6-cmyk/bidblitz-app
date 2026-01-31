@@ -1,5 +1,5 @@
 """Influencer router - Influencer codes, commissions, and statistics"""
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
 from datetime import datetime, timezone, timedelta
 from pydantic import BaseModel
 from typing import Optional
@@ -7,6 +7,11 @@ import uuid
 
 from config import db, logger
 from dependencies import get_current_user, get_admin_user
+from utils.email import (
+    send_influencer_new_sale_notification,
+    send_influencer_new_signup_notification,
+    send_influencer_payout_confirmation
+)
 
 router = APIRouter(prefix="/influencer", tags=["Influencer"])
 
