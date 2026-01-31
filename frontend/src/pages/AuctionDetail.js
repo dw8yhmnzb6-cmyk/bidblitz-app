@@ -420,6 +420,8 @@ export default function AuctionDetail() {
   }
 
   const product = auction.product || {};
+  const productName = getProductName(product, language);
+  const productDescription = getProductDescription(product, language);
   const isEnded = auction.status === 'ended' || (timeLeft.hours === 0 && timeLeft.minutes === 0 && timeLeft.seconds === 0 && auction.status !== 'scheduled');
   const isScheduled = auction.status === 'scheduled';
   const formatTime = (num) => String(num).padStart(2, '0');
