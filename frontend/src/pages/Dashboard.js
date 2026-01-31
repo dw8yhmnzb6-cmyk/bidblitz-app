@@ -400,16 +400,16 @@ export default function Dashboard() {
                 <Gift className="w-7 h-7 text-white" />
               </div>
               <div>
-                <h3 className="text-white font-bold text-lg">Gebote verschenken</h3>
+                <h3 className="text-white font-bold text-lg">{t('gifts.dashboardTitle') || 'Gebote verschenken'}</h3>
                 <p className="text-gray-400 text-sm">
-                  Schenken Sie Freunden und Familie Gebote mit Ihrer Kundennummer
+                  {t('gifts.dashboardDesc') || 'Schenken Sie Freunden und Familie Gebote mit Ihrer Kundennummer'}
                 </p>
               </div>
             </div>
             <Link to="/gift-bids">
               <Button className="bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-400 hover:to-purple-400 text-white font-bold">
                 <Gift className="w-4 h-4 mr-2" />
-                Jetzt verschenken
+                {t('gifts.giftNow') || 'Jetzt verschenken'}
               </Button>
             </Link>
           </div>
