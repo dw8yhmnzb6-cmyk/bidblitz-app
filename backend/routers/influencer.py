@@ -567,7 +567,7 @@ async def get_payout_history(code: str):
 # ==================== HELPER FUNCTIONS ====================
 
 async def record_influencer_purchase(user_id: str, purchase_amount: float):
-    """Record a purchase for influencer commission tracking"""
+    """Record a purchase for influencer commission tracking and send notification"""
     user = await db.users.find_one({"id": user_id}, {"_id": 0})
     if not user:
         return
@@ -576,10 +576,68 @@ async def record_influencer_purchase(user_id: str, purchase_amount: float):
     if not influencer_code:
         return
     
+    # Get influencer details
+    influencer = await db.influencers.find_one(
+        {"code": influencer_code.lower()},
+        {"_id": 0}
+    )
+    
+    if not influencer:
+        return
+    
     # Update the use record with purchase amount
     await db.influencer_uses.update_one(
         {"user_id": user_id, "influencer_code": influencer_code},
         {"$inc": {"purchase_amount": purchase_amount}}
     )
     
-    logger.info(f"💰 Influencer purchase recorded: {influencer_code} - €{purchase_amount}")
+    # Calculate commission for this purchase
+    commission_rate = influencer.get("commission_percent", 10)
+    commission_earned = purchase_amount * (commission_rate / 100)
+    
+    # Calculate total commission for email
+    uses = await db.influencer_uses.find(
+        {"influencer_code": influencer_code.lower()},
+        {"_id": 0}
+    ).to_list(1000)
+    
+    total_revenue = sum(u.get("purchase_amount", 0) for u in uses)
+    total_commission = total_revenue * (commission_rate / 100)
+    
+    # Get already paid out amount
+    payouts = await db.influencer_payouts.find(
+        {"influencer_code": influencer_code.lower(), "status": {"$in": ["completed", "pending"]}},
+        {"_id": 0}
+    ).to_list(100)
+    
+    total_paid = sum(p.get("amount", 0) for p in payouts)
+    available_commission = total_commission - total_paid
+    
+    logger.info(f"💰 Influencer purchase recorded: {influencer_code} - €{purchase_amount} (Commission: €{commission_earned:.2f})")
+    
+    # Send email notification to influencer
+    if influencer.get("email"):
+        try:
+            await send_influencer_new_sale_notification(
+                influencer_email=influencer["email"],
+                influencer_name=influencer["name"],
+                customer_name=user.get("name", "Kunde"),
+                purchase_amount=purchase_amount,
+                commission_rate=commission_rate,
+                commission_earned=commission_earned,
+                total_commission=available_commission
+            )
+        except Exception as e:
+            logger.error(f"Failed to send sale notification email: {e}")
+    
+    # Create in-app notification for influencer
+    notification = {
+        "id": str(uuid.uuid4()),
+        "influencer_code": influencer_code.lower(),
+        "type": "new_sale",
+        "title": f"💰 Neue Provision: +€{commission_earned:.2f}",
+        "message": f"{user.get('name', 'Ein Kunde')} hat €{purchase_amount:.2f} ausgegeben. Ihre Provision: €{commission_earned:.2f}",
+        "read": False,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.influencer_notifications.insert_one(notification)
