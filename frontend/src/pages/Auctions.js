@@ -590,7 +590,7 @@ export default function Auctions() {
       const wsUrl = process.env.REACT_APP_BACKEND_URL?.replace('https://', 'wss://').replace('http://', 'ws://');
       if (!wsUrl) return;
       
-      const ws = new WebSocket(`${wsUrl}/ws/auctions/all_auctions`);
+      const ws = new WebSocket(`${wsUrl}/api/ws/auctions`);
       wsRef.current = ws;
       
       ws.onmessage = (event) => {
