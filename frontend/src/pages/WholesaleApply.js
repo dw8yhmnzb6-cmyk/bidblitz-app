@@ -132,7 +132,10 @@ export default function WholesaleApply() {
     }
   };
   
-  const wt = t('wholesale') || wholesaleTranslations[language] || wholesaleTranslations.en;
+  // Get translations - use local fallbacks if t('wholesale') returns empty or undefined
+  const translatedWholesale = t('wholesale');
+  const hasTranslation = translatedWholesale && Object.keys(translatedWholesale).length > 0 && translatedWholesale.title;
+  const wt = hasTranslation ? translatedWholesale : (wholesaleTranslations[language] || wholesaleTranslations.en);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
