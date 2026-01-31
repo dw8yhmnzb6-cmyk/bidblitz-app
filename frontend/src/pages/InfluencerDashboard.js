@@ -101,10 +101,12 @@ export default function InfluencerDashboard() {
   
   const handleLogout = () => {
     localStorage.removeItem('influencer_data');
+    authLogout(); // Also logout from AuthContext
     setIsLoggedIn(false);
     setInfluencer(null);
     setStats(null);
     toast.success('Ausgeloggt');
+    navigate('/');
   };
   
   const copyCode = () => {
