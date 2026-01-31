@@ -127,7 +127,7 @@ export function AdminAuctions({ token, t, auctions, products, fetchData }) {
   const handleRestartAuction = async (auctionId) => {
     const duration = prompt('Dauer in Minuten:', '10');
     if (!duration) return;
-    const botPrice = prompt('Bot-Mindestpreis (€) - leer für keine Bots:', '');
+    const botPrice = prompt('Bots bieten bis (€) - Bots bieten kontinuierlich bis zu diesem Preis.\nLeer lassen = Standard €2-3:', '');
     
     try {
       const params = new URLSearchParams();
@@ -168,7 +168,7 @@ export function AdminAuctions({ token, t, auctions, products, fetchData }) {
 
   const handleUpdateBotTarget = async (auctionId, currentTarget) => {
     const newTarget = prompt(
-      `Bot-Mindestpreis ändern:\n\nNeuer Zielpreis (€):`,
+      `Bots bieten bis (€):\n\nBots werden kontinuierlich bieten bis dieser Preis erreicht ist.\n0 = Standard €2-3\n\nNeuer Zielpreis:`,
       currentTarget || '0'
     );
     if (newTarget === null) return;
