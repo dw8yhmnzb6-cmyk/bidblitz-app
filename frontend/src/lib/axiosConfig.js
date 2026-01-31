@@ -13,8 +13,12 @@ const SILENT_ERRORS = [
   'user not found',
   'Auction not found',
   'Product not found',
-  'Resource not found'
+  'Resource not found',
+  'Method Not Allowed'
 ];
+
+// List of status codes to silently ignore
+const SILENT_STATUS_CODES = [404, 405];
 
 // Configure global response interceptor
 axios.interceptors.response.use(
@@ -24,9 +28,15 @@ axios.interceptors.response.use(
   // Error response - modify error detail if it's a silent error
   (error) => {
     const detail = error?.response?.data?.detail;
+    const statusCode = error?.response?.status;
     
-    // If error is in silent list, modify the error to prevent toast display
-    if (detail && SILENT_ERRORS.some(e => detail.toLowerCase().includes(e.toLowerCase()))) {
+    // Check if error should be silent (by status code or message)
+    const isSilentByStatus = SILENT_STATUS_CODES.includes(statusCode);
+    const isSilentByMessage = detail && SILENT_ERRORS.some(e => 
+      detail.toLowerCase().includes(e.toLowerCase())
+    );
+    
+    if (isSilentByStatus || isSilentByMessage) {
       // Mark this error as silent
       error.isSilentError = true;
       // Change the detail to null so toast.error won't show it
@@ -34,7 +44,9 @@ axios.interceptors.response.use(
         error.response.data.originalDetail = detail;
         error.response.data.detail = null;
       }
-      console.log('Suppressed silent error:', detail);
+      // Prevent default toast behavior by setting a flag
+      error.suppressToast = true;
+      console.log(`Suppressed error [${statusCode}]:`, detail || 'No detail');
     }
     
     return Promise.reject(error);
