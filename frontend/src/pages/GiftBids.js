@@ -269,7 +269,7 @@ export default function GiftBids() {
 
   const lookupRecipient = async () => {
     if (!recipientNumber || recipientNumber.length < 8) {
-      toast.error('Bitte geben Sie eine gültige 8-stellige Kundennummer ein');
+      toast.error(t.enterValidNumber);
       return;
     }
 
@@ -279,10 +279,10 @@ export default function GiftBids() {
         headers: { Authorization: `Bearer ${token}` }
       });
       setRecipientInfo(response.data);
-      toast.success(`Empfänger gefunden: ${response.data.name}`);
+      toast.success(`${t.recipientFound}: ${response.data.name}`);
     } catch (error) {
       setRecipientInfo(null);
-      toast.error(error.response?.data?.detail || 'Kundennummer nicht gefunden');
+      toast.error(error.response?.data?.detail || t.notFound);
     } finally {
       setLookupLoading(false);
     }
