@@ -939,6 +939,19 @@ async def create_auction(auction: AuctionCreate, admin: dict = Depends(get_admin
         status = "active"
     
     auction_id = str(uuid.uuid4())
+    
+    # Determine status based on auction type and current time
+    now_berlin = datetime.now(timezone.utc) + timedelta(hours=1)
+    current_hour = now_berlin.hour + now_berlin.minute / 60
+    is_night_time = current_hour >= 23.5 or current_hour < 6
+    
+    # Adjust status based on auction type
+    if auction.is_night_auction and not is_night_time:
+        status = "night_paused"  # Night auction during day
+    elif not auction.is_night_auction and is_night_time:
+        status = "day_paused"  # Day auction during night
+    # else keep the status from above (active or scheduled)
+    
     doc = {
         "id": auction_id,
         "product_id": auction.product_id,
@@ -949,6 +962,7 @@ async def create_auction(auction: AuctionCreate, admin: dict = Depends(get_admin
         "end_time": end_time.isoformat(),
         "status": status,
         "total_bids": 0,
+        "bid_count": 0,
         "last_bidder_id": None,
         "last_bidder_name": None,
         "winner_id": None,
@@ -956,6 +970,8 @@ async def create_auction(auction: AuctionCreate, admin: dict = Depends(get_admin
         "bid_history": [],
         "bot_target_price": auction.bot_target_price,
         "buy_now_price": auction.buy_now_price,
+        "is_night_auction": auction.is_night_auction or False,
+        "is_vip_only": auction.is_vip_only or False,
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     
