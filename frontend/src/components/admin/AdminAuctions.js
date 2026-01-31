@@ -63,6 +63,19 @@ export function AdminAuctions({ token, t, auctions, products, fetchData }) {
       });
       toast.success('Auktion erstellt');
       
+      // Set day/night mode
+      if (newAuction.auction_type === 'night') {
+        try {
+          await axios.post(
+            `${API}/admin/auctions/${response.data.id}/set-day-night?is_night=true`,
+            {},
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+        } catch (e) {
+          console.error('Failed to set night mode:', e);
+        }
+      }
+      
       if (newAuction.auto_restart) {
         try {
           await axios.put(
@@ -93,7 +106,8 @@ export function AdminAuctions({ token, t, auctions, products, fetchData }) {
         product_id: '', starting_price: '0.01', bid_increment: '0.01', 
         duration_value: '10', duration_unit: 'minutes',
         start_time: '', end_time: '', scheduling_mode: 'immediate',
-        bot_target_price: '', auto_restart: false, auto_restart_duration: '10'
+        bot_target_price: '', auto_restart: false, auto_restart_duration: '10',
+        auction_type: 'day', is_vip_only: false
       });
       fetchData();
     } catch (error) {
