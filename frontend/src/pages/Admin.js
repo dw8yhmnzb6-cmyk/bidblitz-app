@@ -1015,6 +1015,7 @@ export default function Admin() {
 
   const tabs = [
     { id: 'dashboard', label: at('dashboard'), icon: <LayoutDashboard className="w-5 h-5" /> },
+    { id: 'voice', label: language === 'en' ? 'Voice Commands' : 'Sprachbefehle', icon: <Mic className="w-5 h-5" />, highlight: true },
     { id: 'products', label: at('products'), icon: <Package className="w-5 h-5" /> },
     { id: 'auctions', label: at('auctions'), icon: <Gavel className="w-5 h-5" /> },
     { id: 'vip-auctions', label: at('vipAuctions'), icon: <Crown className="w-5 h-5" /> },
