@@ -552,6 +552,68 @@ async def execute_command(action: str, parameters: dict, admin: dict) -> dict:
         logger.info(f"🎤 Voice command: Set bot speed to {seconds}s by {admin['name']}")
         return {"success": True, "message": f"⚡ Bot-Geschwindigkeit auf {seconds} Sekunden gesetzt!"}
     
+    elif action == "create_bots":
+        count = parameters.get("count", 10)
+        count = min(count, 200)  # Max 200 at a time
+        nationality = parameters.get("nationality", "german").lower()
+        
+        # Name lists by nationality
+        name_lists = {
+            "german": {
+                "first": ["Max", "Anna", "Felix", "Marie", "Leon", "Sophie", "Paul", "Emma", "Jonas", "Lena", "Tim", "Laura", "Lukas", "Julia", "Noah", "Mia", "Finn", "Leonie", "Ben", "Hannah", "Elias", "Lea", "Niklas", "Sarah", "David", "Lisa", "Moritz", "Jana", "Julian", "Amelie"],
+                "last": ["Müller", "Schmidt", "Schneider", "Fischer", "Weber", "Meyer", "Wagner", "Becker", "Schulz", "Hoffmann", "Schäfer", "Koch", "Bauer", "Richter", "Klein", "Wolf", "Schröder", "Neumann", "Schwarz", "Zimmermann", "Braun", "Krüger", "Hofmann", "Hartmann", "Lange"]
+            },
+            "albanian": {
+                "first": ["Arben", "Albina", "Besnik", "Besa", "Driton", "Drita", "Erion", "Erjona", "Fatmir", "Flora", "Genti", "Greta", "Ilir", "Iliriana", "Kujtim", "Kaltrina", "Luan", "Luiza", "Mentor", "Mirela", "Naim", "Nora", "Petrit", "Pranvera", "Qëndrim", "Qamile", "Rexhep", "Rozafa", "Shpëtim", "Shqipe", "Taulant", "Teuta", "Valdrin", "Violeta", "Xhevat", "Xhevahire", "Ylber", "Yllka", "Zamir", "Zamira"],
+                "last": ["Hoxha", "Shehu", "Leka", "Basha", "Gjoka", "Kelmendi", "Berisha", "Rama", "Osmani", "Gashi", "Hajdari", "Shala", "Krasniqi", "Halili", "Maloku", "Bytyqi", "Hasani", "Rugova", "Ahmeti", "Mustafa"]
+            },
+            "turkish": {
+                "first": ["Ahmet", "Ayşe", "Mehmet", "Fatma", "Mustafa", "Emine", "Ali", "Hatice", "Hüseyin", "Zeynep", "Hasan", "Elif", "İbrahim", "Merve", "Yusuf", "Büşra", "Osman", "Esra", "Ömer", "Selin", "Emre", "Derya", "Can", "Cansu", "Burak", "Deniz"],
+                "last": ["Yılmaz", "Kaya", "Demir", "Şahin", "Çelik", "Yıldız", "Yıldırım", "Öztürk", "Aydın", "Özdemir", "Arslan", "Doğan", "Kılıç", "Aslan", "Çetin", "Kara", "Koç", "Kurt", "Özkan", "Şimşek"]
+            },
+            "arabic": {
+                "first": ["Ahmed", "Fatima", "Mohamed", "Aisha", "Ali", "Maryam", "Omar", "Layla", "Ibrahim", "Nour", "Hassan", "Zahra", "Youssef", "Sara", "Khalid", "Hana", "Karim", "Rania", "Tariq", "Dina"],
+                "last": ["Al-Hassan", "Al-Ahmad", "Al-Salem", "Al-Rashid", "Al-Nasser", "Al-Khalil", "Al-Mansour", "Al-Farsi", "Al-Qasim", "Al-Hamdi", "Al-Sabah", "Al-Jawad", "Al-Malik", "Al-Najjar", "Al-Bashir"]
+            }
+        }
+        
+        # Get names list or default to German
+        names = name_lists.get(nationality, name_lists["german"])
+        
+        import random
+        
+        created_count = 0
+        for _ in range(count):
+            first_name = random.choice(names["first"])
+            last_name = random.choice(names["last"])
+            bot_name = f"{first_name} {last_name[0]}."
+            
+            bot = {
+                "id": str(uuid.uuid4()),
+                "name": bot_name,
+                "nationality": nationality,
+                "is_active": True,
+                "total_bids": 0,
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }
+            
+            await db.bots.insert_one(bot)
+            created_count += 1
+        
+        nationality_names = {
+            "german": "deutschen",
+            "albanian": "albanischen",
+            "turkish": "türkischen",
+            "arabic": "arabischen"
+        }
+        
+        logger.info(f"🎤 Voice command: Created {created_count} {nationality} bots by {admin['name']}")
+        return {
+            "success": True, 
+            "message": f"🤖 {created_count} neue Bots mit {nationality_names.get(nationality, nationality)} Namen erstellt!",
+            "data": {"created": created_count, "nationality": nationality}
+        }
+    
     elif action == "approve_influencer":
         email = parameters.get("email")
         
