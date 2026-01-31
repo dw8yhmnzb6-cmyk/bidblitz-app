@@ -118,8 +118,9 @@ export function AdminInfluencers({ token, influencers, setInfluencers, fetchData
             <tr className="bg-[#181824] border-b border-white/10">
               <th className="text-left px-4 py-3 text-[#94A3B8] font-medium">Name</th>
               <th className="text-left px-4 py-3 text-[#94A3B8] font-medium">Code</th>
+              <th className="text-left px-4 py-3 text-[#94A3B8] font-medium">Tier</th>
               <th className="text-left px-4 py-3 text-[#94A3B8] font-medium">Provision</th>
-              <th className="text-left px-4 py-3 text-[#94A3B8] font-medium">Nutzungen</th>
+              <th className="text-left px-4 py-3 text-[#94A3B8] font-medium">Kunden</th>
               <th className="text-left px-4 py-3 text-[#94A3B8] font-medium">Umsatz</th>
               <th className="text-left px-4 py-3 text-[#94A3B8] font-medium">Verdient</th>
               <th className="text-left px-4 py-3 text-[#94A3B8] font-medium">Status</th>
@@ -142,8 +143,32 @@ export function AdminInfluencers({ token, influencers, setInfluencers, fetchData
                     {influencer.code}
                   </code>
                 </td>
-                <td className="px-4 py-3 text-white">{influencer.commission_percent}%</td>
-                <td className="px-4 py-3 text-[#06B6D4] font-medium">{influencer.total_uses || 0}</td>
+                <td className="px-4 py-3">
+                  <span className={`px-2 py-1 rounded text-xs font-bold ${
+                    influencer.commission_tier === 'Platin' ? 'bg-[#E5E4E2]/20 text-[#E5E4E2]' :
+                    influencer.commission_tier === 'Gold' ? 'bg-[#FFD700]/20 text-[#FFD700]' :
+                    influencer.commission_tier === 'Silber' ? 'bg-[#C0C0C0]/20 text-[#C0C0C0]' :
+                    'bg-[#CD7F32]/20 text-[#CD7F32]'
+                  }`}>
+                    {influencer.commission_tier === 'Platin' ? '💎' : 
+                     influencer.commission_tier === 'Gold' ? '🥇' :
+                     influencer.commission_tier === 'Silber' ? '🥈' : '🥉'} {influencer.commission_tier || 'Bronze'}
+                  </span>
+                  {influencer.next_tier_at && (
+                    <p className="text-[#94A3B8] text-xs mt-1">
+                      Noch {influencer.next_tier_at - (influencer.total_customers || 0)} bis nächstes Tier
+                    </p>
+                  )}
+                </td>
+                <td className="px-4 py-3">
+                  <div>
+                    <span className="text-white font-bold">{influencer.effective_commission || influencer.commission_percent}%</span>
+                    {influencer.tier_bonus > 0 && (
+                      <span className="text-[#10B981] text-xs ml-1">(+{influencer.tier_bonus}%)</span>
+                    )}
+                  </div>
+                </td>
+                <td className="px-4 py-3 text-[#06B6D4] font-medium">{influencer.total_customers || 0}</td>
                 <td className="px-4 py-3 text-[#10B981] font-medium">€{(influencer.total_revenue || 0).toFixed(2)}</td>
                 <td className="px-4 py-3 text-[#F59E0B] font-medium">€{(influencer.total_commission || 0).toFixed(2)}</td>
                 <td className="px-4 py-3">
