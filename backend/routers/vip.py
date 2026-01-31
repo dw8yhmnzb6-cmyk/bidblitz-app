@@ -82,6 +82,7 @@ async def get_vip_status(user: dict = Depends(get_current_user)):
                 "price_monthly": 0,
                 "monthly_bids": 0,
                 "benefits": [
+                    "100 Willkommens-Gebote",
                     "Kostenloser VIP-Zugang",
                     "Zugang zu allen VIP-Auktionen",
                     "Provision auf geworbene Kunden"
