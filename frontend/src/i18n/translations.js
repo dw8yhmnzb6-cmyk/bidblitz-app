@@ -1232,7 +1232,8 @@ export const translations = {
 // Language display names with flags
 export const languageList = {
   de: { name: 'Deutsch', flag: '🇩🇪' },
-  en: { name: 'English', flag: '🇬🇧' },
+  en: { name: 'English (UK)', flag: '🇬🇧' },
+  us: { name: 'English (US)', flag: '🇺🇸' },
   fr: { name: 'Français', flag: '🇫🇷' },
   es: { name: 'Español', flag: '🇪🇸' },
   it: { name: 'Italiano', flag: '🇮🇹' },
