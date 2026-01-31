@@ -6,7 +6,7 @@ import { Label } from '../ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { 
   Plus, Trash2, RefreshCw, Square, Bot, Play, Target, 
-  Calendar, Clock, Edit, Star, Crown, Repeat, Zap
+  Calendar, Clock, Edit, Star, Crown, Repeat, Zap, Sun, Moon
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -17,7 +17,8 @@ export function AdminAuctions({ token, t, auctions, products, fetchData }) {
     product_id: '', starting_price: '0.01', bid_increment: '0.01', 
     duration_value: '10', duration_unit: 'minutes',
     start_time: '', end_time: '', scheduling_mode: 'immediate',
-    bot_target_price: '', auto_restart: false, auto_restart_duration: '10'
+    bot_target_price: '', auto_restart: false, auto_restart_duration: '10',
+    auction_type: 'day', is_vip_only: false
   });
 
   const handleCreateAuction = async (e) => {
@@ -36,7 +37,9 @@ export function AdminAuctions({ token, t, auctions, products, fetchData }) {
         product_id: newAuction.product_id,
         starting_price: parseFloat(newAuction.starting_price),
         bid_increment: parseFloat(newAuction.bid_increment),
-        bot_target_price: newAuction.bot_target_price ? parseFloat(newAuction.bot_target_price) : null
+        bot_target_price: newAuction.bot_target_price ? parseFloat(newAuction.bot_target_price) : null,
+        is_night_auction: newAuction.auction_type === 'night',
+        is_vip_only: newAuction.auction_type === 'vip' || newAuction.is_vip_only
       };
 
       if (newAuction.scheduling_mode === 'immediate') {
