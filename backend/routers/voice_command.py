@@ -236,11 +236,21 @@ async def execute_command(action: str, parameters: dict, admin: dict) -> dict:
             product = random.choice(products)
             duration_days = parameters.get("duration_days", random.randint(1, 7))
             
+            # Handle name field - can be string or dict with language keys
+            name = product.get("name", "Produkt")
+            if isinstance(name, dict):
+                name = name.get("de", name.get("en", "Produkt"))
+            
+            # Handle description field - can be string or dict with language keys
+            description = product.get("description", "")
+            if isinstance(description, dict):
+                description = description.get("de", description.get("en", ""))
+            
             auction = {
                 "id": str(uuid.uuid4()),
                 "product_id": product["id"],
-                "title": product.get("name", {}).get("de", product.get("name", "Produkt")),
-                "description": product.get("description", {}).get("de", ""),
+                "title": name,
+                "description": description,
                 "image_url": product.get("image_url", ""),
                 "retail_price": product.get("retail_price", 100),
                 "current_price": 0.00,
