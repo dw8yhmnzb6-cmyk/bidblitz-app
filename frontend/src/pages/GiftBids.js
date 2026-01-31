@@ -475,23 +475,23 @@ export default function GiftBids() {
                 type="number"
                 value={giftAmount}
                 onChange={(e) => setGiftAmount(e.target.value)}
-                placeholder="Oder eigene Anzahl eingeben"
+                placeholder={t.orEnterCustom}
                 min="1"
                 max={user?.bids_balance || 0}
                 className="bg-[#181824] border-white/10 text-white"
               />
               <p className="text-gray-500 text-xs mt-1">
-                Verfügbar: {user?.bids_balance || 0} Gebote
+                {t.available}: {user?.bids_balance || 0} {t.bids}
               </p>
             </div>
 
             {/* Step 3: Message (optional) */}
             <div className="mb-6">
-              <Label className="text-white mb-2 block">3. Nachricht (optional)</Label>
+              <Label className="text-white mb-2 block">3. {t.messageOptional}</Label>
               <Input
                 value={giftMessage}
                 onChange={(e) => setGiftMessage(e.target.value)}
-                placeholder="z.B. Alles Gute zum Geburtstag! 🎉"
+                placeholder={t.messagePlaceholder}
                 className="bg-[#181824] border-white/10 text-white"
                 maxLength={200}
               />
@@ -504,13 +504,13 @@ export default function GiftBids() {
               className="w-full py-4 bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-400 hover:to-purple-400 text-white font-bold text-lg"
             >
               {loading ? (
-                'Wird gesendet...'
+                t.sending
               ) : (
                 <>
                   <Gift className="w-5 h-5 mr-2" />
                   {giftAmount && recipientInfo 
-                    ? `${giftAmount} Gebote an ${recipientInfo.name} senden`
-                    : 'Geschenk senden'
+                    ? `${giftAmount} ${t.bids} → ${recipientInfo.name}`
+                    : t.sendGift
                   }
                 </>
               )}
@@ -526,18 +526,18 @@ export default function GiftBids() {
               <div className="glass-card rounded-xl p-5">
                 <div className="flex items-center gap-3 mb-2">
                   <ArrowRight className="w-5 h-5 text-orange-400" />
-                  <span className="text-gray-400 text-sm">Gesendet</span>
+                  <span className="text-gray-400 text-sm">{t.sent}</span>
                 </div>
                 <p className="text-3xl font-bold text-orange-400">{history.total_sent}</p>
-                <p className="text-gray-500 text-xs">Gebote verschenkt</p>
+                <p className="text-gray-500 text-xs">{t.giftsGiven}</p>
               </div>
               <div className="glass-card rounded-xl p-5">
                 <div className="flex items-center gap-3 mb-2">
                   <ArrowLeft className="w-5 h-5 text-green-400" />
-                  <span className="text-gray-400 text-sm">Erhalten</span>
+                  <span className="text-gray-400 text-sm">{t.received}</span>
                 </div>
                 <p className="text-3xl font-bold text-green-400">{history.total_received}</p>
-                <p className="text-gray-500 text-xs">Gebote erhalten</p>
+                <p className="text-gray-500 text-xs">{t.giftsReceived}</p>
               </div>
             </div>
 
