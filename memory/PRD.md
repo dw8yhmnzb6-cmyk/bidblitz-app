@@ -156,3 +156,10 @@ January 31, 2026
   - Voice command: "Übersetze alle Produkte auf Englisch und Türkisch"
   - Frontend: AuctionCard and AuctionDetail now use translations based on language
   - Products now have `name_translations` and `description_translations` fields
+- 2026-01-31: Added GIFT CARD SYSTEM:
+  - Backend: `/api/giftcards/*` endpoints for purchase, redeem, validate
+  - Fixed packages: €10, €25, €50, €100 + Custom amounts (€5-€500)
+  - Redemption as bids OR account balance (not withdrawable)
+  - Email notification to recipients with beautiful card design
+  - Frontend: `/giftcards` page with 3-step purchase flow
+  - Navbar link added
