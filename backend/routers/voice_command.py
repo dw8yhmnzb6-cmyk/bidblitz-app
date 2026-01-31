@@ -50,6 +50,12 @@ Analysiere den Befehl und gib eine strukturierte JSON-Antwort zurück.
 
 WICHTIG: Bei kombinierten Befehlen (z.B. "Lösche alle Auktionen und erstelle 50 neue") verwende die "batch" Aktion!
 
+WICHTIG - BOTS ERSTELLEN VS STARTEN:
+- "erstelle Bots", "neue Bots", "X Bots mit [Nationalität] Namen" = create_bots (NEUE Bots in Datenbank anlegen)
+- "starte Bots", "Bots aktivieren", "Bots einschalten" = start_bots (existierende Bots aktivieren)
+- "stoppe Bots", "Bots deaktivieren", "Bots ausschalten" = stop_bots
+Diese Unterscheidung ist KRITISCH! Bei "erstelle 50 Bots" IMMER create_bots verwenden!
+
 Verfügbare Aktionen:
 
 === BATCH (FÜR KOMBINIERTE BEFEHLE) ===
@@ -57,52 +63,58 @@ Verfügbare Aktionen:
    Parameter: actions (Array von Aktionen, jede mit "action" und "parameters")
    Beispiel: {"action": "batch", "parameters": {"actions": [{"action": "delete_auctions", "parameters": {"status": "ended"}}, {"action": "create_auctions", "parameters": {"count": 50}}]}}
 
+=== BOTS (WICHTIG - ERSTELLEN VS STARTEN/STOPPEN) ===
+1. create_bots - NEUE Bots in Datenbank erstellen
+   TRIGGER-WÖRTER: "erstelle", "neue", "anlegen", "generiere", "mache" + "Bots"
+   Parameter: count (Anzahl Bots), nationality (z.B. "german", "albanian", "turkish", "arabic")
+   Beispiele:
+   - "Erstelle 50 Bots mit albanischen Namen" -> {"action": "create_bots", "parameters": {"count": 50, "nationality": "albanian"}}
+   - "50 neue Bots mit türkischen Namen" -> {"action": "create_bots", "parameters": {"count": 50, "nationality": "turkish"}}
+   - "Generiere 100 deutsche Bots" -> {"action": "create_bots", "parameters": {"count": 100, "nationality": "german"}}
+
+2. start_bots - Existierende Bots AKTIVIEREN (starten)
+   TRIGGER-WÖRTER: "starte", "aktiviere", "einschalten", "Bots an"
+   Parameter: keine
+   
+3. stop_bots - Bots DEAKTIVIEREN (stoppen)
+   TRIGGER-WÖRTER: "stoppe", "deaktiviere", "ausschalten", "Bots aus"
+   Parameter: keine
+
+4. set_bot_speed - Bot-Geschwindigkeit setzen
+   Parameter: seconds (Intervall in Sekunden)
+
 === AUKTIONEN ===
-1. create_auctions - Neue Auktionen erstellen
+5. create_auctions - Neue Auktionen erstellen
    Parameter: count (Anzahl), category (optional), duration_days (optional), auction_type (optional: "day", "night", "vip")
    
-2. delete_auctions - Auktionen löschen
+6. delete_auctions - Auktionen löschen
    Parameter: status ("ended" = nur beendete, "all" = alle Auktionen), older_than_days (optional, Standard: 0 = keine Zeitbegrenzung)
 
-3. extend_auction - Auktion verlängern
+7. extend_auction - Auktion verlängern
    Parameter: auction_id, hours (Stunden)
    
-4. set_auction_of_day - Auktion des Tages setzen
+8. set_auction_of_day - Auktion des Tages setzen
    Parameter: auction_id oder "auto" für automatische Auswahl
 
 === BENUTZER ===
-5. add_bids_to_user - Gebote zu einem Benutzer hinzufügen
+9. add_bids_to_user - Gebote zu einem Benutzer hinzufügen
    Parameter: email, amount
 
-6. ban_user - Benutzer sperren
-   Parameter: email, reason (optional)
+10. ban_user - Benutzer sperren
+    Parameter: email, reason (optional)
    
-7. unban_user - Benutzer entsperren
-   Parameter: email
+11. unban_user - Benutzer entsperren
+    Parameter: email
 
-8. make_vip - Benutzer zum VIP machen
-   Parameter: email, duration_days (optional, 30 = Standard)
+12. make_vip - Benutzer zum VIP machen
+    Parameter: email, duration_days (optional, 30 = Standard)
 
-9. remove_vip - VIP-Status entfernen
-   Parameter: email
+13. remove_vip - VIP-Status entfernen
+    Parameter: email
 
 === GUTSCHEINE ===
-10. create_voucher - Gutscheincode erstellen
+14. create_voucher - Gutscheincode erstellen
     Parameter: bids (Anzahl Gebote), code (optional, wird generiert), max_uses (optional)
-
-=== BOTS ===
-11. create_bots - Neue Bots erstellen
-    Parameter: count (Anzahl Bots), nationality (z.B. "german", "albanian", "turkish", "arabic")
-    Beispiel: "Erstelle 50 Bots mit albanischen Namen" -> {"action": "create_bots", "parameters": {"count": 50, "nationality": "albanian"}}
-
-12. start_bots - Bots starten
-    Parameter: keine
-
-13. stop_bots - Bots stoppen
-    Parameter: keine
-
-14. set_bot_speed - Bot-Geschwindigkeit setzen
-    Parameter: seconds (Intervall in Sekunden)
 
 === PRODUKTE ===
 15. translate_products - Alle Produkte übersetzen
@@ -147,11 +159,16 @@ Antworte NUR mit einem JSON-Objekt im folgenden Format:
   "needs_confirmation": true/false
 }
 
-Beispiele:
+BEISPIELE FÜR BOT-BEFEHLE (SEHR WICHTIG):
+- "Erstelle 50 Bots mit albanischen Namen" -> {"action": "create_bots", "parameters": {"count": 50, "nationality": "albanian"}, "confirmation_message": "Soll ich 50 neue Bots mit albanischen Namen erstellen?", "needs_confirmation": true}
+- "50 neue Bots mit türkischen Namen" -> {"action": "create_bots", "parameters": {"count": 50, "nationality": "turkish"}, "confirmation_message": "Soll ich 50 neue Bots mit türkischen Namen erstellen?", "needs_confirmation": true}
+- "Starte die Bots" -> {"action": "start_bots", "parameters": {}, "confirmation_message": "Soll ich die Bots starten?", "needs_confirmation": true}
+- "Stoppe die Bots" -> {"action": "stop_bots", "parameters": {}, "confirmation_message": "Soll ich alle Bots stoppen?", "needs_confirmation": true}
+
+ANDERE BEISPIELE:
 - "Erstelle 50 neue Auktionen" -> {"action": "create_auctions", "parameters": {"count": 50}, "confirmation_message": "Soll ich 50 neue Auktionen erstellen?", "needs_confirmation": true}
 - "Sperre Benutzer test@email.de" -> {"action": "ban_user", "parameters": {"email": "test@email.de"}, "confirmation_message": "Soll ich den Benutzer test@email.de sperren?", "needs_confirmation": true}
 - "Lösche alle Auktionen und erstelle 50 neue" -> {"action": "batch", "parameters": {"actions": [{"action": "delete_auctions", "parameters": {"status": "all"}}, {"action": "create_auctions", "parameters": {"count": 50}}]}, "confirmation_message": "Soll ich alle Auktionen löschen und dann 50 neue erstellen?", "needs_confirmation": true}
-- "Stoppe die Bots" -> {"action": "stop_bots", "parameters": {}, "confirmation_message": "Soll ich alle Bots stoppen?", "needs_confirmation": true}
 - "Zeige heutige Einnahmen" -> {"action": "get_stats", "parameters": {"type": "today"}, "confirmation_message": "Ich zeige Ihnen die heutigen Einnahmen.", "needs_confirmation": false}
 """
     
