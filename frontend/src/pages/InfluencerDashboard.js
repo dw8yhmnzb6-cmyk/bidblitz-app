@@ -218,6 +218,50 @@ export default function InfluencerDashboard() {
           </Button>
         </div>
         
+        {/* VIP Status Banner */}
+        <div className="glass-card rounded-xl p-4 mb-6 bg-gradient-to-r from-purple-600/20 to-pink-600/20 border border-purple-500/30">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+                <Crown className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <p className="text-white font-bold flex items-center gap-2">
+                  VIP-Status aktiv
+                  <span className="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full">KOSTENLOS</span>
+                </p>
+                <p className="text-gray-400 text-sm">Als Influencer haben Sie unbegrenzten VIP-Zugang!</p>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Link to="/auctions">
+                <Button className="bg-cyan-500 hover:bg-cyan-600 text-white">
+                  <Gavel className="w-4 h-4 mr-2" />
+                  Auktionen
+                </Button>
+              </Link>
+              <Link to="/vip-auctions">
+                <Button className="bg-purple-500 hover:bg-purple-600 text-white">
+                  <Crown className="w-4 h-4 mr-2" />
+                  VIP-Auktionen
+                </Button>
+              </Link>
+              <Link to="/buy-bids">
+                <Button className="bg-gradient-to-r from-yellow-400 to-amber-500 hover:from-yellow-300 hover:to-amber-400 text-black font-bold">
+                  <ShoppingCart className="w-4 h-4 mr-2" />
+                  Gebote kaufen
+                </Button>
+              </Link>
+            </div>
+          </div>
+          {authUser && (
+            <div className="mt-3 pt-3 border-t border-white/10 flex items-center gap-4">
+              <span className="text-gray-400 text-sm">Ihr Guthaben:</span>
+              <span className="text-2xl font-bold text-cyan-400">{authUser.bids_balance || 0} Gebote</span>
+            </div>
+          )}
+        </div>
+        
         {/* Stats Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           <div className="glass-card rounded-xl p-5">
