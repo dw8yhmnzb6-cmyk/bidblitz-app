@@ -113,6 +113,7 @@ app.include_router(vip_router, prefix="/api")
 app.include_router(pages_router, prefix="/api")
 app.include_router(influencer_router, prefix="/api")
 app.include_router(wholesale_router, prefix="/api")
+app.include_router(gifts_router, prefix="/api")
 
 # ==================== HEALTH & BASIC ENDPOINTS ====================
 
