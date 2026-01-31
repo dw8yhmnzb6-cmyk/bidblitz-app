@@ -144,11 +144,10 @@ export default function AdminVoiceCommand() {
     setIsProcessing(true);
     
     try {
-      const response = await axios.post(`${API}/voice-command/confirm-execute`, null, {
-        params: {
-          action: parsedCommand.action,
-          parameters: JSON.stringify(parsedCommand.parameters)
-        },
+      const response = await axios.post(`${API}/voice-command/confirm-execute`, {
+        action: parsedCommand.action,
+        parameters: parsedCommand.parameters
+      }, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
