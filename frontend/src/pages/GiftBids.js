@@ -343,10 +343,10 @@ export default function GiftBids() {
       <div className="min-h-screen pt-24 pb-12 px-4">
         <div className="max-w-lg mx-auto text-center">
           <Gift className="w-16 h-16 text-pink-400 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-white mb-4">Gebote verschenken</h1>
-          <p className="text-gray-400 mb-6">Melden Sie sich an, um Gebote zu verschenken</p>
+          <h1 className="text-2xl font-bold text-white mb-4">{t.title}</h1>
+          <p className="text-gray-400 mb-6">{t.loginToGift}</p>
           <Button onClick={() => window.location.href = '/login'} className="bg-pink-500 hover:bg-pink-600">
-            Anmelden
+            {t.login}
           </Button>
         </div>
       </div>
@@ -361,17 +361,15 @@ export default function GiftBids() {
           <div className="w-20 h-20 rounded-full bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center mx-auto mb-4">
             <Gift className="w-10 h-10 text-white" />
           </div>
-          <h1 className="text-3xl font-bold text-white mb-2">Gebote verschenken</h1>
-          <p className="text-gray-400">
-            Schenken Sie Ihren Freunden und Familie Gebote!
-          </p>
+          <h1 className="text-3xl font-bold text-white mb-2">{t.title}</h1>
+          <p className="text-gray-400">{t.subtitle}</p>
         </div>
 
         {/* Customer Number Card */}
         <div className="glass-card rounded-xl p-6 mb-6 bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border border-cyan-500/30">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-              <p className="text-gray-400 text-sm mb-1">Ihre Kundennummer</p>
+              <p className="text-gray-400 text-sm mb-1">{t.yourCustomerNumber}</p>
               <div className="flex items-center gap-3">
                 <code className="text-3xl font-bold text-cyan-400 tracking-wider">{customerNumber || '--------'}</code>
                 <button 
@@ -381,13 +379,11 @@ export default function GiftBids() {
                   {copied ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
                 </button>
               </div>
-              <p className="text-gray-500 text-xs mt-2">
-                Teilen Sie diese Nummer mit Freunden, damit diese Ihnen Gebote schenken können
-              </p>
+              <p className="text-gray-500 text-xs mt-2">{t.shareNumber}</p>
             </div>
             <div className="text-right">
-              <p className="text-gray-400 text-sm">Ihr Guthaben</p>
-              <p className="text-2xl font-bold text-white">{user?.bids_balance || 0} Gebote</p>
+              <p className="text-gray-400 text-sm">{t.yourBalance}</p>
+              <p className="text-2xl font-bold text-white">{user?.bids_balance || 0} {t.bids}</p>
             </div>
           </div>
         </div>
