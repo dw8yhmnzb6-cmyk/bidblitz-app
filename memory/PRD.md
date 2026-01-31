@@ -144,17 +144,22 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 January 31, 2026 (Session 2)
 
 ## Changelog
+- 2026-01-31: **MAJOR REFACTOR** Admin.js reduced from 3461 to 2118 lines (-39%)
+  - Extracted AdminPages component (pages management)
+  - Extracted AdminBanners component (banner management)
+  - Extracted AdminInfluencers component (influencer management)
+  - Extracted AdminWholesale component (B2B customer management)
+  - Extracted AdminGameConfig component (game settings)
+  - All 16 admin components now in /app/frontend/src/components/admin/
 - 2026-01-31: **REFACTORED** User routers consolidated
   - Merged `/app/backend/routers/users.py` into `/app/backend/routers/user.py`
   - Added backward-compatible endpoints (/users/* → /user/*)
   - Deleted redundant `users.py` file
   - Added `process_referral_reward` helper function
-- 2026-01-31: **REFACTORED** Admin.js - extracted AdminEmail component
-  - Created `/app/frontend/src/components/admin/AdminEmail.js` (215 lines extracted)
-  - Admin.js reduced from 3461 to 3242 lines (~60% complete)
 - 2026-01-31: **IMPROVED** 404 Toast debugging
   - Added detailed URL logging in axiosConfig.js
   - Added EXPECTED_404_PATTERNS to suppress known false positives
+  - Identified WebSocket connection issue as potential source
 - 2026-01-31: **FIXED** Voice command "Erstelle X Bots mit Y Namen" now correctly parsed as `create_bots`
   - Improved GPT prompt with clear distinction between create_bots vs start_bots/stop_bots
   - Added trigger words documentation in system prompt
