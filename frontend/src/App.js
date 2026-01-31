@@ -176,6 +176,15 @@ function AppContent() {
           <Route path="/wholesale/apply" element={<WholesaleApply />} />
           <Route path="/wholesale" element={<WholesaleDashboard />} />
           <Route path="/grosshandel" element={<WholesaleDashboard />} />
+          {/* Gift Cards */}
+          <Route path="/giftcards" element={<GiftCards />} />
+          <Route path="/giftcards/redeem" element={<GiftCards />} />
+          <Route path="/giftcards/success" element={
+            <ProtectedRoute>
+              <GiftCardSuccess />
+            </ProtectedRoute>
+          } />
+          <Route path="/geschenkkarten" element={<GiftCards />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
