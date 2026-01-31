@@ -609,7 +609,7 @@ export default function GiftBids() {
                   ))}
                 </div>
               ) : (
-                <p className="text-gray-500 text-center py-4">Noch keine Geschenke erhalten</p>
+                <p className="text-gray-500 text-center py-4">{t.noReceivedGifts}</p>
               )}
             </div>
           </div>
