@@ -163,3 +163,10 @@ January 31, 2026
   - Email notification to recipients with beautiful card design
   - Frontend: `/giftcards` page with 3-step purchase flow
   - Navbar link added
+- 2026-01-31: Fixed voice command execution (Body instead of Query parameters)
+- 2026-01-31: Fixed bot bid_count not updating
+- 2026-01-31: Added DAY/NIGHT AUCTION SCHEDULER:
+  - Automatic switch at 23:30 (night start) and 06:00 (day start)
+  - Day auctions pause during night, night auctions pause during day
+  - Admin endpoints for setting auction day/night mode
+  - Status: day_paused, night_paused for paused auctions
