@@ -386,7 +386,7 @@ export function AdminAuctions({ token, t, auctions, products, fetchData }) {
               <Sun className="w-5 h-5" />
               <span className="font-medium">Auktionstyp</span>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <button
                 type="button"
                 onClick={() => setNewAuction({...newAuction, auction_type: 'day', is_vip_only: false})}
@@ -397,10 +397,10 @@ export function AdminAuctions({ token, t, auctions, products, fetchData }) {
                 }`}
               >
                 <Sun className={`w-8 h-8 ${newAuction.auction_type === 'day' ? 'text-[#F59E0B]' : 'text-[#94A3B8]'}`} />
-                <span className={`font-bold ${newAuction.auction_type === 'day' ? 'text-white' : 'text-[#94A3B8]'}`}>
+                <span className={`font-bold text-sm ${newAuction.auction_type === 'day' ? 'text-white' : 'text-[#94A3B8]'}`}>
                   Tagesaktion
                 </span>
-                <span className="text-xs text-[#666]">06:00 - 23:30 Uhr</span>
+                <span className="text-xs text-[#666]">06:00 - 23:30</span>
               </button>
 
               <button
@@ -413,10 +413,10 @@ export function AdminAuctions({ token, t, auctions, products, fetchData }) {
                 }`}
               >
                 <Moon className={`w-8 h-8 ${newAuction.auction_type === 'night' ? 'text-[#7C3AED]' : 'text-[#94A3B8]'}`} />
-                <span className={`font-bold ${newAuction.auction_type === 'night' ? 'text-white' : 'text-[#94A3B8]'}`}>
+                <span className={`font-bold text-sm ${newAuction.auction_type === 'night' ? 'text-white' : 'text-[#94A3B8]'}`}>
                   Nachtaktion
                 </span>
-                <span className="text-xs text-[#666]">23:30 - 06:00 Uhr</span>
+                <span className="text-xs text-[#666]">23:30 - 06:00</span>
               </button>
 
               <button
@@ -429,10 +429,26 @@ export function AdminAuctions({ token, t, auctions, products, fetchData }) {
                 }`}
               >
                 <Crown className={`w-8 h-8 ${newAuction.auction_type === 'vip' ? 'text-[#FFD700]' : 'text-[#94A3B8]'}`} />
-                <span className={`font-bold ${newAuction.auction_type === 'vip' ? 'text-white' : 'text-[#94A3B8]'}`}>
+                <span className={`font-bold text-sm ${newAuction.auction_type === 'vip' ? 'text-white' : 'text-[#94A3B8]'}`}>
                   VIP-Aktion
                 </span>
-                <span className="text-xs text-[#666]">Nur für VIP-Mitglieder</span>
+                <span className="text-xs text-[#666]">Nur VIP</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setNewAuction({...newAuction, auction_type: 'aotd', is_vip_only: false})}
+                className={`p-4 rounded-xl border-2 transition-all flex flex-col items-center gap-2 ${
+                  newAuction.auction_type === 'aotd'
+                    ? 'border-[#EF4444] bg-[#EF4444]/10'
+                    : 'border-[#2D2D3D] bg-[#0F0F16] hover:border-[#3D3D4D]'
+                }`}
+              >
+                <Star className={`w-8 h-8 ${newAuction.auction_type === 'aotd' ? 'text-[#EF4444]' : 'text-[#94A3B8]'}`} />
+                <span className={`font-bold text-sm ${newAuction.auction_type === 'aotd' ? 'text-white' : 'text-[#94A3B8]'}`}>
+                  Aktion des Tages
+                </span>
+                <span className="text-xs text-[#666]">Hervorgehoben</span>
               </button>
             </div>
           </div>
