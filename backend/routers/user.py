@@ -16,11 +16,27 @@ router = APIRouter(tags=["User"])
 @router.get("/user/profile")
 async def get_profile(user: dict = Depends(get_current_user)):
     """Get user profile"""
+    # Ensure customer number exists
+    customer_number = user.get("customer_number")
+    if not customer_number:
+        import random
+        import string
+        while True:
+            customer_number = ''.join(random.choices(string.digits, k=8))
+            existing = await db.users.find_one({"customer_number": customer_number})
+            if not existing:
+                break
+        await db.users.update_one(
+            {"id": user["id"]},
+            {"$set": {"customer_number": customer_number}}
+        )
+    
     return {
         "id": user["id"],
         "email": user["email"],
         "name": user["name"],
         "bids_balance": user["bids_balance"],
+        "customer_number": customer_number,
         "total_bids_placed": user.get("total_bids_placed", 0),
         "total_deposits": user.get("total_deposits", 0),
         "won_auctions": user.get("won_auctions", []),
