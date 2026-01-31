@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
+import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { 
   Star, TrendingUp, Users, DollarSign, BarChart3, 
   Copy, Check, Eye, ShoppingCart, Calendar, ArrowRight,
-  Instagram, Youtube, Clock, Zap, Gift, LogOut
+  Instagram, Youtube, Clock, Zap, Gift, LogOut, Gavel, Crown
 } from 'lucide-react';
 import { toast } from 'sonner';
 
