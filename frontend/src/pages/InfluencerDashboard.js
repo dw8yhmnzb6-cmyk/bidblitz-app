@@ -106,8 +106,74 @@ export default function InfluencerDashboard() {
     try {
       const response = await axios.get(`${API}/influencer/stats/${code}`);
       setStats(response.data);
+      // Also fetch payout balance
+      fetchPayoutBalance(code);
     } catch (error) {
       console.error('Error fetching stats:', error);
+    }
+  };
+  
+  const fetchPayoutBalance = async (code) => {
+    try {
+      const response = await axios.get(`${API}/influencer/payout/balance/${code}`);
+      setPayoutBalance(response.data);
+    } catch (error) {
+      console.error('Error fetching payout balance:', error);
+    }
+  };
+  
+  const fetchPayoutHistory = async (code) => {
+    try {
+      const response = await axios.get(`${API}/influencer/payout/history/${code}`);
+      setPayoutHistory(response.data);
+    } catch (error) {
+      console.error('Error fetching payout history:', error);
+    }
+  };
+  
+  const handlePayoutRequest = async () => {
+    if (!influencer?.code) return;
+    
+    const amount = parseFloat(payoutAmount);
+    if (isNaN(amount) || amount < 50) {
+      toast.error('Mindestbetrag für Auszahlung: €50');
+      return;
+    }
+    
+    if (payoutMethod === 'bank_transfer' && (!bankIban || !bankName)) {
+      toast.error('Bitte IBAN und Bankname eingeben');
+      return;
+    }
+    
+    if (payoutMethod === 'paypal' && !paypalEmail) {
+      toast.error('Bitte PayPal E-Mail eingeben');
+      return;
+    }
+    
+    setPayoutLoading(true);
+    try {
+      const response = await axios.post(`${API}/influencer/payout/request/${influencer.code}`, {
+        amount,
+        payment_method: payoutMethod,
+        bank_iban: bankIban,
+        bank_name: bankName,
+        paypal_email: paypalEmail
+      });
+      
+      if (response.data.success) {
+        toast.success(response.data.message);
+        setShowPayoutModal(false);
+        setPayoutAmount('');
+        setBankIban('');
+        setBankName('');
+        setPaypalEmail('');
+        fetchPayoutBalance(influencer.code);
+        fetchPayoutHistory(influencer.code);
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Fehler bei der Auszahlungsanfrage');
+    } finally {
+      setPayoutLoading(false);
     }
   };
   
