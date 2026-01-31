@@ -24,14 +24,22 @@ export function AdminAuctions({ token, t, auctions, products, fetchData }) {
   const handleCreateAuction = async (e) => {
     e.preventDefault();
     try {
-      let durationSeconds = parseInt(newAuction.duration_value);
+      // Parse duration value
+      const durationValue = parseInt(newAuction.duration_value) || 10;
+      let durationSeconds = durationValue;
+      
+      // Convert to seconds based on unit
       if (newAuction.duration_unit === 'minutes') {
-        durationSeconds = durationSeconds * 60;
+        durationSeconds = durationValue * 60;
       } else if (newAuction.duration_unit === 'hours') {
-        durationSeconds = durationSeconds * 60 * 60;
+        durationSeconds = durationValue * 60 * 60;
       } else if (newAuction.duration_unit === 'days') {
-        durationSeconds = durationSeconds * 60 * 60 * 24;
+        durationSeconds = durationValue * 60 * 60 * 24;
+      } else if (newAuction.duration_unit === 'seconds') {
+        durationSeconds = durationValue;
       }
+      
+      console.log(`Duration: ${durationValue} ${newAuction.duration_unit} = ${durationSeconds} seconds`);
 
       const auctionData = {
         product_id: newAuction.product_id,
@@ -58,6 +66,8 @@ export function AdminAuctions({ token, t, auctions, products, fetchData }) {
           auctionData.end_time = new Date(newAuction.end_time).toISOString();
         }
       }
+      
+      console.log('Auction data being sent:', JSON.stringify(auctionData, null, 2));
 
       const response = await axios.post(`${API}/admin/auctions`, auctionData, { 
         headers: { Authorization: `Bearer ${token}` } 
