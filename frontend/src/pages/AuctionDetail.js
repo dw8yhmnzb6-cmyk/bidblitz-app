@@ -494,11 +494,15 @@ export default function AuctionDetail() {
               {isEnded ? (
                 <div className="text-center">
                   <div className="flex items-center justify-center gap-3 mb-3">
-                    <Clock className="w-6 h-6 text-[#F59E0B] animate-spin" />
-                    <span className="text-[#F59E0B] font-medium">Auktion wird neu gestartet...</span>
+                    <Trophy className="w-6 h-6 text-[#EF4444]" />
+                    <span className="text-[#EF4444] font-medium">{t('auctions.auctionEnded') || 'Auktion beendet'}</span>
                   </div>
-                  <p className="text-3xl font-bold text-[#F59E0B] font-mono animate-pulse">NEUSTART</p>
-                  <p className="text-[#94A3B8] text-sm mt-2">Bitte warten Sie einen Moment</p>
+                  <p className="text-3xl font-bold text-[#EF4444] font-mono">{t('auctions.ended') || 'BEENDET'}</p>
+                  {auction.winner_name && (
+                    <p className="text-[#10B981] text-sm mt-2 font-medium">
+                      {t('auctions.winner')}: {auction.winner_name}
+                    </p>
+                  )}
                 </div>
               ) : isScheduled ? (
                 <>
