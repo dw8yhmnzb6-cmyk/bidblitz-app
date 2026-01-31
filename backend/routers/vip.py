@@ -70,6 +70,49 @@ async def get_vip_plans():
 @router.get("/status")
 async def get_vip_status(user: dict = Depends(get_current_user)):
     """Get current VIP status for user"""
+    
+    # Check if user is an influencer (free VIP)
+    if user.get("is_influencer") and user.get("is_vip"):
+        return {
+            "is_vip": True,
+            "is_influencer_vip": True,
+            "plan": {
+                "id": "influencer_free",
+                "name": "Influencer VIP",
+                "price_monthly": 0,
+                "monthly_bids": 0,
+                "benefits": [
+                    "Kostenloser VIP-Zugang",
+                    "Zugang zu allen VIP-Auktionen",
+                    "Provision auf geworbene Kunden"
+                ],
+                "badge_color": "#FFD700"
+            },
+            "plan_id": "influencer_free",
+            "expires_at": None,  # Never expires
+            "monthly_bids_remaining": 0,
+            "next_renewal": None
+        }
+    
+    # Check if user has is_vip flag set directly (e.g., by admin)
+    if user.get("is_vip") and user.get("vip_expires_at") is None:
+        return {
+            "is_vip": True,
+            "plan": {
+                "id": "admin_granted",
+                "name": "VIP (Admin)",
+                "price_monthly": 0,
+                "monthly_bids": 0,
+                "benefits": ["VIP-Zugang durch Admin gewährt"],
+                "badge_color": "#FFD700"
+            },
+            "plan_id": "admin_granted",
+            "expires_at": None,
+            "monthly_bids_remaining": 0,
+            "next_renewal": None
+        }
+    
+    # Check subscription-based VIP
     subscription = await db.vip_subscriptions.find_one(
         {"user_id": user["id"], "status": "active"},
         {"_id": 0}
