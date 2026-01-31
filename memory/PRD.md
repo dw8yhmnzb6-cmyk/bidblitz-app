@@ -151,3 +151,8 @@ January 31, 2026
 - 2026-01-31: Fixed create_auctions bug with product name/description structure
 - 2026-01-31: Improved delete_auctions logic for status="all"
 - 2026-01-31: Added new voice command examples in admin UI
+- 2026-01-31: Added PRODUCT TRANSLATION feature:
+  - Backend: `/api/admin/products/{id}/translate` and `/api/admin/products/translate-all`
+  - Voice command: "Übersetze alle Produkte auf Englisch und Türkisch"
+  - Frontend: AuctionCard and AuctionDetail now use translations based on language
+  - Products now have `name_translations` and `description_translations` fields
