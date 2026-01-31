@@ -397,7 +397,7 @@ export default function GiftBids() {
               : 'bg-[#181824] text-gray-400 border border-white/10'}`}
           >
             <Send className="w-4 h-4 mr-2" />
-            Gebote senden
+            {t.sendBids}
           </Button>
           <Button
             onClick={() => setActiveTab('history')}
@@ -406,7 +406,7 @@ export default function GiftBids() {
               : 'bg-[#181824] text-gray-400 border border-white/10'}`}
           >
             <History className="w-4 h-4 mr-2" />
-            Verlauf
+            {t.history}
           </Button>
         </div>
 
@@ -415,12 +415,12 @@ export default function GiftBids() {
           <div className="glass-card rounded-xl p-6">
             <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
               <Heart className="w-6 h-6 text-pink-400" />
-              Gebote verschenken
+              {t.giftBids}
             </h2>
 
             {/* Step 1: Find Recipient */}
             <div className="mb-6">
-              <Label className="text-white mb-2 block">1. Empfänger suchen</Label>
+              <Label className="text-white mb-2 block">1. {t.findRecipient}</Label>
               <div className="flex gap-2">
                 <Input
                   value={recipientNumber}
@@ -428,7 +428,7 @@ export default function GiftBids() {
                     setRecipientNumber(e.target.value.replace(/\D/g, '').slice(0, 8));
                     setRecipientInfo(null);
                   }}
-                  placeholder="8-stellige Kundennummer eingeben"
+                  placeholder={t.enterCustomerNumber}
                   className="bg-[#181824] border-white/10 text-white font-mono text-lg tracking-wider"
                   maxLength={8}
                 />
@@ -448,7 +448,7 @@ export default function GiftBids() {
                   </div>
                   <div>
                     <p className="text-green-400 font-semibold">{recipientInfo.name}</p>
-                    <p className="text-gray-400 text-sm">Kundennummer: {recipientInfo.customer_number}</p>
+                    <p className="text-gray-400 text-sm">{t.customerNumberLabel}: {recipientInfo.customer_number}</p>
                   </div>
                   <Check className="w-6 h-6 text-green-400 ml-auto" />
                 </div>
@@ -457,7 +457,7 @@ export default function GiftBids() {
 
             {/* Step 2: Amount */}
             <div className="mb-6">
-              <Label className="text-white mb-2 block">2. Anzahl der Gebote</Label>
+              <Label className="text-white mb-2 block">2. {t.numberOfBids}</Label>
               <div className="flex gap-2 flex-wrap mb-3">
                 {[5, 10, 25, 50, 100].map((amount) => (
                   <Button
