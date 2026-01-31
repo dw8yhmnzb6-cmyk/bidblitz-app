@@ -239,6 +239,16 @@ export const Navbar = () => {
                       Admin
                     </Link>
                   )}
+                  {isInfluencer && (
+                    <Link 
+                      to="/influencer-dashboard" 
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="flex-1 bg-[#FFD700] text-black py-2.5 px-3 rounded-lg font-semibold text-center text-sm flex items-center justify-center gap-1"
+                    >
+                      <Star className="w-4 h-4" />
+                      Influencer
+                    </Link>
+                  )}
                   <button 
                     onClick={() => { handleLogout(); setMobileMenuOpen(false); }}
                     className="bg-[#EF4444] text-white py-2.5 px-4 rounded-lg font-semibold text-sm"
