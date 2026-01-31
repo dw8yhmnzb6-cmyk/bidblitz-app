@@ -545,7 +545,7 @@ export default function GiftBids() {
             <div className="glass-card rounded-xl p-6">
               <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
                 <ArrowRight className="w-5 h-5 text-orange-400" />
-                Gesendete Geschenke
+                {t.sentGifts}
               </h3>
               {history.sent.length > 0 ? (
                 <div className="space-y-3">
@@ -556,10 +556,10 @@ export default function GiftBids() {
                           <Gift className="w-5 h-5 text-orange-400" />
                         </div>
                         <div>
-                          <p className="text-white font-medium">An: {gift.recipient_name}</p>
+                          <p className="text-white font-medium">{t.to}: {gift.recipient_name}</p>
                           <p className="text-gray-500 text-xs flex items-center gap-1">
                             <Clock className="w-3 h-3" />
-                            {new Date(gift.created_at).toLocaleDateString('de-DE')}
+                            {new Date(gift.created_at).toLocaleDateString(language === 'de' ? 'de-DE' : 'en-US')}
                           </p>
                         </div>
                       </div>
@@ -573,7 +573,7 @@ export default function GiftBids() {
                   ))}
                 </div>
               ) : (
-                <p className="text-gray-500 text-center py-4">Noch keine Geschenke gesendet</p>
+                <p className="text-gray-500 text-center py-4">{t.noSentGifts}</p>
               )}
             </div>
 
@@ -581,7 +581,7 @@ export default function GiftBids() {
             <div className="glass-card rounded-xl p-6">
               <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
                 <ArrowLeft className="w-5 h-5 text-green-400" />
-                Erhaltene Geschenke
+                {t.receivedGifts}
               </h3>
               {history.received.length > 0 ? (
                 <div className="space-y-3">
@@ -592,10 +592,10 @@ export default function GiftBids() {
                           <Sparkles className="w-5 h-5 text-green-400" />
                         </div>
                         <div>
-                          <p className="text-white font-medium">Von: {gift.sender_name}</p>
+                          <p className="text-white font-medium">{t.from}: {gift.sender_name}</p>
                           <p className="text-gray-500 text-xs flex items-center gap-1">
                             <Clock className="w-3 h-3" />
-                            {new Date(gift.created_at).toLocaleDateString('de-DE')}
+                            {new Date(gift.created_at).toLocaleDateString(language === 'de' ? 'de-DE' : 'en-US')}
                           </p>
                         </div>
                       </div>
