@@ -356,7 +356,9 @@ export default function Admin() {
         product_id: newAuction.product_id,
         starting_price: parseFloat(newAuction.starting_price),
         bid_increment: parseFloat(newAuction.bid_increment),
-        bot_target_price: newAuction.bot_target_price ? parseFloat(newAuction.bot_target_price) : null
+        bot_target_price: newAuction.bot_target_price ? parseFloat(newAuction.bot_target_price) : null,
+        is_night_auction: newAuction.auction_type === 'night',
+        is_vip_only: newAuction.auction_type === 'vip' || newAuction.is_vip_only
       };
 
       // Handle scheduling modes
@@ -378,6 +380,19 @@ export default function Admin() {
 
       const response = await axios.post(`${API}/admin/auctions`, auctionData, { headers: { Authorization: `Bearer ${token}` } });
       toast.success('Auktion erstellt');
+      
+      // Set day/night mode based on auction type
+      if (newAuction.auction_type === 'night') {
+        try {
+          await axios.post(
+            `${API}/admin/auctions/${response.data.id}/set-day-night?is_night=true`,
+            {},
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+        } catch (e) {
+          console.error('Failed to set night mode:', e);
+        }
+      }
       
       // Set auto-restart if enabled
       if (newAuction.auto_restart) {
@@ -411,7 +426,8 @@ export default function Admin() {
         product_id: '', starting_price: '0.01', bid_increment: '0.01', 
         duration_value: '10', duration_unit: 'minutes',
         start_time: '', end_time: '', scheduling_mode: 'immediate',
-        bot_target_price: '', auto_restart: false, auto_restart_duration: '10'
+        bot_target_price: '', auto_restart: false, auto_restart_duration: '10',
+        auction_type: 'day', is_vip_only: false
       });
       fetchData();
     } catch (error) {
