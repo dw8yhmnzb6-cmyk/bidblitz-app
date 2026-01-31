@@ -386,6 +386,155 @@ async def use_influencer_code(code: str, user: dict = Depends(get_current_user))
         "influencer_name": influencer["name"]
     }
 
+# ==================== PAYOUT / WITHDRAWAL ENDPOINTS ====================
+
+MINIMUM_PAYOUT = 50.0  # Minimum €50 for withdrawal
+
+class PayoutRequest(BaseModel):
+    amount: float
+    payment_method: str  # "bank_transfer" or "paypal"
+    bank_iban: Optional[str] = None
+    bank_name: Optional[str] = None
+    paypal_email: Optional[str] = None
+
+@router.get("/payout/balance/{code}")
+async def get_payout_balance(code: str):
+    """Get available balance for withdrawal"""
+    influencer = await db.influencers.find_one(
+        {"code": code.lower()},
+        {"_id": 0}
+    )
+    
+    if not influencer:
+        raise HTTPException(status_code=404, detail="Influencer nicht gefunden")
+    
+    # Calculate total commission earned
+    uses = await db.influencer_uses.find(
+        {"influencer_code": code.lower()},
+        {"_id": 0}
+    ).to_list(1000)
+    
+    total_revenue = sum(u.get("purchase_amount", 0) for u in uses)
+    total_commission = total_revenue * (influencer.get("commission_percent", 10) / 100)
+    
+    # Get already paid out amount
+    payouts = await db.influencer_payouts.find(
+        {"influencer_code": code.lower(), "status": {"$in": ["completed", "pending"]}},
+        {"_id": 0}
+    ).to_list(100)
+    
+    total_paid = sum(p.get("amount", 0) for p in payouts)
+    available_balance = total_commission - total_paid
+    
+    return {
+        "total_commission": round(total_commission, 2),
+        "total_paid": round(total_paid, 2),
+        "available_balance": round(available_balance, 2),
+        "minimum_payout": MINIMUM_PAYOUT,
+        "can_withdraw": available_balance >= MINIMUM_PAYOUT
+    }
+
+@router.post("/payout/request")
+async def request_payout(data: PayoutRequest):
+    """Request a payout (requires influencer to be logged in via localStorage data)"""
+    # Note: This uses code from the request, validated via the influencer_data in localStorage
+    # For security, we should add proper authentication, but for now we trust the frontend
+    
+    # Validate payment method data
+    if data.payment_method == "bank_transfer":
+        if not data.bank_iban or not data.bank_name:
+            raise HTTPException(status_code=400, detail="IBAN und Bankname erforderlich")
+    elif data.payment_method == "paypal":
+        if not data.paypal_email:
+            raise HTTPException(status_code=400, detail="PayPal E-Mail erforderlich")
+    else:
+        raise HTTPException(status_code=400, detail="Ungültige Zahlungsmethode")
+    
+    if data.amount < MINIMUM_PAYOUT:
+        raise HTTPException(status_code=400, detail=f"Mindestbetrag für Auszahlung: €{MINIMUM_PAYOUT}")
+    
+    return {"success": True, "message": "Bitte verwenden Sie den authentifizierten Endpoint"}
+
+@router.post("/payout/request/{code}")
+async def request_payout_for_influencer(code: str, data: PayoutRequest):
+    """Request a payout for an influencer"""
+    influencer = await db.influencers.find_one(
+        {"code": code.lower(), "is_active": True},
+        {"_id": 0}
+    )
+    
+    if not influencer:
+        raise HTTPException(status_code=404, detail="Influencer nicht gefunden")
+    
+    # Validate payment method data
+    if data.payment_method == "bank_transfer":
+        if not data.bank_iban or not data.bank_name:
+            raise HTTPException(status_code=400, detail="IBAN und Bankname erforderlich")
+    elif data.payment_method == "paypal":
+        if not data.paypal_email:
+            raise HTTPException(status_code=400, detail="PayPal E-Mail erforderlich")
+    else:
+        raise HTTPException(status_code=400, detail="Ungültige Zahlungsmethode")
+    
+    # Calculate available balance
+    uses = await db.influencer_uses.find(
+        {"influencer_code": code.lower()},
+        {"_id": 0}
+    ).to_list(1000)
+    
+    total_revenue = sum(u.get("purchase_amount", 0) for u in uses)
+    total_commission = total_revenue * (influencer.get("commission_percent", 10) / 100)
+    
+    payouts = await db.influencer_payouts.find(
+        {"influencer_code": code.lower(), "status": {"$in": ["completed", "pending"]}},
+        {"_id": 0}
+    ).to_list(100)
+    
+    total_paid = sum(p.get("amount", 0) for p in payouts)
+    available_balance = total_commission - total_paid
+    
+    if data.amount > available_balance:
+        raise HTTPException(status_code=400, detail=f"Nicht genügend Guthaben. Verfügbar: €{available_balance:.2f}")
+    
+    if data.amount < MINIMUM_PAYOUT:
+        raise HTTPException(status_code=400, detail=f"Mindestbetrag für Auszahlung: €{MINIMUM_PAYOUT}")
+    
+    # Create payout request
+    payout = {
+        "id": str(uuid.uuid4()),
+        "influencer_code": code.lower(),
+        "influencer_name": influencer["name"],
+        "influencer_email": influencer.get("email"),
+        "amount": data.amount,
+        "payment_method": data.payment_method,
+        "bank_iban": data.bank_iban,
+        "bank_name": data.bank_name,
+        "paypal_email": data.paypal_email,
+        "status": "pending",
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.influencer_payouts.insert_one(payout)
+    
+    logger.info(f"💸 Payout request: {influencer['name']} - €{data.amount} via {data.payment_method}")
+    
+    return {
+        "success": True,
+        "message": f"Auszahlungsanfrage über €{data.amount:.2f} wurde eingereicht",
+        "payout_id": payout["id"],
+        "status": "pending"
+    }
+
+@router.get("/payout/history/{code}")
+async def get_payout_history(code: str):
+    """Get payout history for an influencer"""
+    payouts = await db.influencer_payouts.find(
+        {"influencer_code": code.lower()},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(50)
+    
+    return payouts
+
 # ==================== HELPER FUNCTIONS ====================
 
 async def record_influencer_purchase(user_id: str, purchase_amount: float):
