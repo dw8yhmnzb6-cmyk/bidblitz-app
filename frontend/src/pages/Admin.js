@@ -447,7 +447,7 @@ export default function Admin() {
     const duration = prompt('Dauer in Minuten:', '10');
     if (!duration) return;
     
-    const botPrice = prompt('Bot-Mindestpreis (€) - leer für keine Bots:', '');
+    const botPrice = prompt('Bots bieten bis (€):\n\nBots werden kontinuierlich bieten bis dieser Preis erreicht ist.\nLeer lassen = Standard €2-3:', '');
     
     try {
       const params = new URLSearchParams();
@@ -489,10 +489,10 @@ export default function Admin() {
   // Update bot target price for an auction
   const handleUpdateBotTarget = async (auctionId, currentTarget) => {
     const newTarget = prompt(
-      `Bot-Mindestpreis ändern:\n\n` +
-      `• Bots bieten automatisch bis zu diesem Preis\n` +
-      `• Sobald erreicht, können nur echte Kunden bieten\n` +
-      `• 0 = Keine Bots\n\n` +
+      `Bots bieten bis (€):\n\n` +
+      `• Bots bieten kontinuierlich bis zu diesem Preis\n` +
+      `• Sobald erreicht, hören die Bots auf\n` +
+      `• 0 = Standard €2-3\n\n` +
       `Neuer Zielpreis (€):`,
       currentTarget || '0'
     );
