@@ -49,28 +49,80 @@ async def parse_command(text: str) -> dict:
 Analysiere den Befehl und gib eine strukturierte JSON-Antwort zurück.
 
 Verfügbare Aktionen:
+
+=== AUKTIONEN ===
 1. create_auctions - Neue Auktionen erstellen
    Parameter: count (Anzahl), category (optional), duration_days (optional)
    
 2. delete_auctions - Auktionen löschen
    Parameter: status (ended/all), older_than_days (optional)
+
+3. extend_auction - Auktion verlängern
+   Parameter: auction_id, hours (Stunden)
    
-3. add_bids_to_user - Gebote zu einem Benutzer hinzufügen
-   Parameter: email, amount
-   
-4. create_product - Neues Produkt erstellen
-   Parameter: name, price, description
-   
-5. set_auction_of_day - Auktion des Tages setzen
+4. set_auction_of_day - Auktion des Tages setzen
    Parameter: auction_id oder "auto" für automatische Auswahl
+
+=== BENUTZER ===
+5. add_bids_to_user - Gebote zu einem Benutzer hinzufügen
+   Parameter: email, amount
+
+6. ban_user - Benutzer sperren
+   Parameter: email, reason (optional)
    
-6. get_stats - Statistiken abrufen
-   Parameter: type (users/auctions/revenue)
-   
-7. send_notification - Benachrichtigung an alle senden
-   Parameter: title, message
-   
-8. unknown - Wenn der Befehl nicht erkannt wird
+7. unban_user - Benutzer entsperren
+   Parameter: email
+
+8. make_vip - Benutzer zum VIP machen
+   Parameter: email, duration_days (optional, 30 = Standard)
+
+9. remove_vip - VIP-Status entfernen
+   Parameter: email
+
+=== GUTSCHEINE ===
+10. create_voucher - Gutscheincode erstellen
+    Parameter: bids (Anzahl Gebote), code (optional, wird generiert), max_uses (optional)
+
+=== BOTS ===
+11. start_bots - Bots starten
+    Parameter: keine
+
+12. stop_bots - Bots stoppen
+    Parameter: keine
+
+13. set_bot_speed - Bot-Geschwindigkeit setzen
+    Parameter: seconds (Intervall in Sekunden)
+
+=== INFLUENCER ===
+14. approve_influencer - Influencer-Bewerbung genehmigen
+    Parameter: email
+
+15. show_pending_payouts - Offene Auszahlungsanfragen zeigen
+    Parameter: keine
+
+=== SYSTEM ===
+16. get_stats - Statistiken abrufen
+    Parameter: type (users/auctions/revenue/today)
+
+17. send_notification - Benachrichtigung an alle senden
+    Parameter: title, message
+
+18. maintenance_mode - Wartungsmodus ein/ausschalten
+    Parameter: enabled (true/false)
+
+19. send_test_email - Test-E-Mail senden
+    Parameter: email
+
+20. export_users - Benutzer exportieren
+    Parameter: format (csv/json)
+
+21. create_backup - Datenbank-Backup erstellen
+    Parameter: keine
+
+22. create_report - Bericht erstellen (Woche/Monat)
+    Parameter: period (week/month)
+
+23. unknown - Wenn der Befehl nicht erkannt wird
 
 Antworte NUR mit einem JSON-Objekt im folgenden Format:
 {
@@ -80,9 +132,12 @@ Antworte NUR mit einem JSON-Objekt im folgenden Format:
   "needs_confirmation": true/false
 }
 
-Beispiel:
-Befehl: "Erstelle 50 neue Auktionen"
-Antwort: {"action": "create_auctions", "parameters": {"count": 50}, "confirmation_message": "Soll ich 50 neue Auktionen erstellen?", "needs_confirmation": true}
+Beispiele:
+- "Erstelle 50 neue Auktionen" -> {"action": "create_auctions", "parameters": {"count": 50}, "confirmation_message": "Soll ich 50 neue Auktionen erstellen?", "needs_confirmation": true}
+- "Sperre Benutzer test@email.de" -> {"action": "ban_user", "parameters": {"email": "test@email.de"}, "confirmation_message": "Soll ich den Benutzer test@email.de sperren?", "needs_confirmation": true}
+- "Erstelle Gutscheincode mit 100 Geboten" -> {"action": "create_voucher", "parameters": {"bids": 100}, "confirmation_message": "Soll ich einen Gutscheincode mit 100 Geboten erstellen?", "needs_confirmation": true}
+- "Stoppe die Bots" -> {"action": "stop_bots", "parameters": {}, "confirmation_message": "Soll ich alle Bots stoppen?", "needs_confirmation": true}
+- "Zeige heutige Einnahmen" -> {"action": "get_stats", "parameters": {"type": "today"}, "confirmation_message": "Ich zeige Ihnen die heutigen Einnahmen.", "needs_confirmation": false}
 """
     
     chat = LlmChat(
