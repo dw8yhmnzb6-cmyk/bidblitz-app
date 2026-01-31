@@ -397,6 +397,115 @@ async def get_influencer_public_stats(code: str):
         "recent_activity": recent_activity
     }
 
+# ==================== PAYOUT REQUESTS ====================
+
+class PayoutRequest(BaseModel):
+    code: str
+    amount: float
+    payment_method: str = "paypal"  # paypal, bank_transfer, crypto
+    payment_details: str  # PayPal email, IBAN, or crypto wallet
+
+@router.post("/payout/request")
+async def request_payout(data: PayoutRequest):
+    """Request a payout of earned commission"""
+    influencer = await db.influencers.find_one({"code": data.code.lower()}, {"_id": 0})
+    if not influencer:
+        raise HTTPException(status_code=404, detail="Influencer nicht gefunden")
+    
+    # Calculate available balance
+    unique_customers = await db.influencer_uses.distinct("user_id", {"influencer_code": data.code.lower()})
+    total_customers = len(unique_customers)
+    
+    purchases = await db.influencer_uses.find(
+        {"influencer_code": data.code.lower(), "purchase_amount": {"$gt": 0}}
+    ).to_list(1000)
+    
+    total_revenue = sum(p.get("purchase_amount", 0) for p in purchases)
+    
+    # Calculate with tier bonus
+    base_commission = influencer.get("commission_percent", 10)
+    custom_tiers = influencer.get("custom_tiers")
+    commission_info = calculate_effective_commission(base_commission, total_customers, custom_tiers)
+    effective_rate = commission_info["effective_commission"]
+    total_earned = total_revenue * (effective_rate / 100)
+    
+    # Get already paid out amount
+    paid_payouts = await db.influencer_payouts.find(
+        {"influencer_code": data.code.lower(), "status": {"$in": ["completed", "pending"]}}
+    ).to_list(100)
+    total_paid = sum(p.get("amount", 0) for p in paid_payouts)
+    
+    available_balance = total_earned - total_paid
+    
+    if data.amount < 10:
+        raise HTTPException(status_code=400, detail="Mindestauszahlung: €10.00")
+    
+    if data.amount > available_balance:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Nicht genügend Guthaben. Verfügbar: €{available_balance:.2f}"
+        )
+    
+    payout_request = {
+        "id": str(uuid.uuid4()),
+        "influencer_id": influencer.get("id"),
+        "influencer_code": data.code.lower(),
+        "influencer_name": influencer.get("name"),
+        "amount": data.amount,
+        "payment_method": data.payment_method,
+        "payment_details": data.payment_details,
+        "status": "pending",
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.influencer_payouts.insert_one(payout_request)
+    
+    logger.info(f"Payout request from {influencer.get('name')}: €{data.amount}")
+    
+    return {
+        "success": True,
+        "message": f"Auszahlungsanfrage über €{data.amount:.2f} eingereicht",
+        "request_id": payout_request["id"],
+        "status": "pending"
+    }
+
+@router.get("/payout/history/{code}")
+async def get_payout_history(code: str):
+    """Get payout history for an influencer"""
+    influencer = await db.influencers.find_one({"code": code.lower()}, {"_id": 0})
+    if not influencer:
+        raise HTTPException(status_code=404, detail="Influencer nicht gefunden")
+    
+    payouts = await db.influencer_payouts.find(
+        {"influencer_code": code.lower()},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(50)
+    
+    # Calculate balance
+    unique_customers = await db.influencer_uses.distinct("user_id", {"influencer_code": code.lower()})
+    total_customers = len(unique_customers)
+    
+    purchases = await db.influencer_uses.find(
+        {"influencer_code": code.lower(), "purchase_amount": {"$gt": 0}}
+    ).to_list(1000)
+    
+    total_revenue = sum(p.get("purchase_amount", 0) for p in purchases)
+    base_commission = influencer.get("commission_percent", 10)
+    commission_info = calculate_effective_commission(base_commission, total_customers)
+    total_earned = total_revenue * (commission_info["effective_commission"] / 100)
+    
+    total_paid = sum(p.get("amount", 0) for p in payouts if p.get("status") in ["completed", "pending"])
+    available_balance = total_earned - total_paid
+    
+    return {
+        "payouts": payouts,
+        "total_earned": round(total_earned, 2),
+        "total_paid": round(total_paid, 2),
+        "available_balance": round(available_balance, 2)
+    }
+
+
+
 class InfluencerApply(BaseModel):
     name: str
     email: str
