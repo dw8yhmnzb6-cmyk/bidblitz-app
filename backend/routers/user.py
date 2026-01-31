@@ -443,3 +443,135 @@ async def get_referral_stats(user: dict = Depends(get_current_user)):
         "rewards_earned": rewards_earned,
         "share_url": f"https://bidblitz.de/?ref={referral_code}"
     }
+
+
+# ==================== BID HISTORY (from users.py) ====================
+
+@router.get("/user/bid-history")
+async def get_bid_history(user: dict = Depends(get_current_user), limit: int = 50):
+    """Get user's bid history with auction details"""
+    bids = await db.bid_history.find(
+        {"user_id": user["id"]},
+        {"_id": 0}
+    ).sort("timestamp", -1).limit(limit).to_list(length=limit)
+    
+    for bid in bids:
+        auction = await db.auctions.find_one({"id": bid["auction_id"]}, {"_id": 0})
+        if auction:
+            product = await db.products.find_one({"id": auction["product_id"]}, {"_id": 0})
+            bid["auction"] = auction
+            bid["product"] = product
+    
+    return bids
+
+# Also support /users/bid-history for backwards compatibility
+@router.get("/users/bid-history")
+async def get_bid_history_compat(user: dict = Depends(get_current_user), limit: int = 50):
+    return await get_bid_history(user, limit)
+
+# ==================== PURCHASES (from users.py) ====================
+
+@router.get("/user/purchases")
+async def get_purchases(user: dict = Depends(get_current_user), limit: int = 50):
+    """Get user's purchase history"""
+    purchases = await db.purchases.find(
+        {"user_id": user["id"]},
+        {"_id": 0}
+    ).sort("created_at", -1).limit(limit).to_list(length=limit)
+    return purchases
+
+@router.get("/users/purchases")
+async def get_purchases_compat(user: dict = Depends(get_current_user), limit: int = 50):
+    return await get_purchases(user, limit)
+
+# ==================== VOUCHER REDEEM (from users.py) ====================
+
+@router.post("/user/redeem-voucher")
+async def redeem_voucher(request: VoucherRedeem, user: dict = Depends(get_current_user)):
+    """Redeem a voucher code for bids"""
+    voucher = await db.vouchers.find_one({"code": request.code.upper()}, {"_id": 0})
+    
+    if not voucher:
+        raise HTTPException(status_code=404, detail="Gutschein nicht gefunden")
+    
+    if voucher.get("used_count", 0) >= voucher.get("max_uses", 1):
+        raise HTTPException(status_code=400, detail="Gutschein bereits vollständig eingelöst")
+    
+    if voucher.get("expires_at"):
+        if datetime.fromisoformat(voucher["expires_at"].replace("Z", "+00:00")) < datetime.now(timezone.utc):
+            raise HTTPException(status_code=400, detail="Gutschein abgelaufen")
+    
+    used_by = voucher.get("used_by", [])
+    if user["id"] in used_by:
+        raise HTTPException(status_code=400, detail="Sie haben diesen Gutschein bereits eingelöst")
+    
+    await db.vouchers.update_one(
+        {"code": request.code.upper()},
+        {
+            "$inc": {"used_count": 1},
+            "$push": {"used_by": user["id"]}
+        }
+    )
+    
+    await db.users.update_one(
+        {"id": user["id"]},
+        {"$inc": {"bids_balance": voucher["bids"]}}
+    )
+    
+    updated_user = await db.users.find_one({"id": user["id"]}, {"_id": 0})
+    
+    return {
+        "message": f"{voucher['bids']} Gebote gutgeschrieben!",
+        "bids_added": voucher["bids"],
+        "new_balance": updated_user["bids_balance"]
+    }
+
+@router.post("/users/redeem-voucher")
+async def redeem_voucher_compat(request: VoucherRedeem, user: dict = Depends(get_current_user)):
+    return await redeem_voucher(request, user)
+
+# ==================== REFERRAL HELPER (from users.py) ====================
+
+async def process_referral_reward(user_id: str, deposit_amount: float):
+    """Called after a user makes a deposit to check and process referral rewards"""
+    user = await db.users.find_one({"id": user_id})
+    if not user:
+        return
+    
+    # Update total deposits
+    new_total = user.get("total_deposits", 0) + deposit_amount
+    await db.users.update_one(
+        {"id": user_id},
+        {"$set": {"total_deposits": new_total}}
+    )
+    
+    # Check if this is the first time crossing the threshold
+    if user.get("total_deposits", 0) < REFERRAL_MIN_DEPOSIT and new_total >= REFERRAL_MIN_DEPOSIT:
+        referred_by = user.get("referred_by")
+        if referred_by and user.get("referral_reward_pending"):
+            # Reward the referrer
+            await db.users.update_one(
+                {"id": referred_by},
+                {"$inc": {"bids_balance": REFERRER_REWARD_BIDS}}
+            )
+            
+            # Reward the referee
+            await db.users.update_one(
+                {"id": user_id},
+                {
+                    "$inc": {"bids_balance": REFEREE_REWARD_BIDS},
+                    "$set": {"referral_reward_pending": False}
+                }
+            )
+            
+            logger.info(f"Referral reward processed: Referrer {referred_by} gets {REFERRER_REWARD_BIDS} bids, Referee {user_id} gets {REFEREE_REWARD_BIDS} bids")
+            
+            await db.referral_rewards.insert_one({
+                "id": str(uuid.uuid4()),
+                "referrer_id": referred_by,
+                "referee_id": user_id,
+                "referrer_bids_awarded": REFERRER_REWARD_BIDS,
+                "referee_bids_awarded": REFEREE_REWARD_BIDS,
+                "trigger_deposit": deposit_amount,
+                "created_at": datetime.now(timezone.utc).isoformat()
+            })
