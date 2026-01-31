@@ -111,8 +111,9 @@ export default function InfluencerDashboard() {
     try {
       const response = await axios.get(`${API}/influencer/stats/${code}`);
       setStats(response.data);
-      // Also fetch payout balance
+      // Also fetch payout balance and notifications
       fetchPayoutBalance(code);
+      fetchNotifications(code);
     } catch (error) {
       console.error('Error fetching stats:', error);
     }
@@ -124,6 +125,30 @@ export default function InfluencerDashboard() {
       setPayoutBalance(response.data);
     } catch (error) {
       console.error('Error fetching payout balance:', error);
+    }
+  };
+  
+  const fetchNotifications = async (code) => {
+    try {
+      const [notifResponse, countResponse] = await Promise.all([
+        axios.get(`${API}/influencer/notifications/${code}`),
+        axios.get(`${API}/influencer/notifications/${code}/unread-count`)
+      ]);
+      setNotifications(notifResponse.data);
+      setUnreadCount(countResponse.data.unread_count);
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+    }
+  };
+  
+  const markNotificationsRead = async () => {
+    if (!influencer?.code) return;
+    try {
+      await axios.post(`${API}/influencer/notifications/${influencer.code}/mark-read`);
+      setUnreadCount(0);
+      setNotifications(notifications.map(n => ({ ...n, read: true })));
+    } catch (error) {
+      console.error('Error marking notifications read:', error);
     }
   };
   
