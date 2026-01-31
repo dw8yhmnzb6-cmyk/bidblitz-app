@@ -144,6 +144,16 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 January 31, 2026 (Session 3)
 
 ## Changelog
+- 2026-01-31: **FEATURE** Influencer Auszahlungsanfragen
+  - Neuer Backend-Endpoint: `/api/influencer/payout/request`
+  - Neuer Backend-Endpoint: `/api/influencer/payout/history/{code}`
+  - Dashboard zeigt: Gesamt verdient, Bereits ausgezahlt, Verfügbar
+  - Mindestauszahlung: €10.00
+  - Zahlungsmethoden: PayPal, Banküberweisung, Kryptowährung
+  - Auszahlungshistorie mit Status (Pending, Completed, Rejected)
+- 2026-01-31: **FIXED** Produktübersetzungen auf Startseite
+  - Home.js verwendet jetzt useLanguage() Hook
+  - AuctionCard zeigt name_translations basierend auf ausgewählter Sprache
 - 2026-01-31: **FEATURE** Influencer Dashboard komplett überarbeitet
   - Login mit E-Mail + Code zur Statistik-Ansicht
   - Tier-Fortschritt mit visueller Progress-Bar
