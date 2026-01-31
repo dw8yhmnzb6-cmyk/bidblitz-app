@@ -174,7 +174,7 @@ async def multi_bot_bid(request: MultiBotBidRequest, admin: dict = Depends(get_a
 
 @router.post("/bid-to-price")
 async def bid_to_target_price(auction_id: str, target_price: float, admin: dict = Depends(get_admin_user)):
-    """Immediately place bot bids to reach target price"""
+    """Set bot target price for an auction. If auction is active, immediately place bids."""
     import random
     from datetime import datetime, timezone, timedelta
     
@@ -182,13 +182,31 @@ async def bid_to_target_price(auction_id: str, target_price: float, admin: dict 
     if not auction:
         raise HTTPException(status_code=404, detail="Auction not found")
     
-    if auction["status"] != "active":
-        raise HTTPException(status_code=400, detail="Auction is not active")
+    # Always save the bot_target_price for later use by the bot system
+    await db.auctions.update_one(
+        {"id": auction_id},
+        {"$set": {"bot_target_price": target_price}}
+    )
+    
+    # If auction is not active (e.g., scheduled), just save the target and return success
+    if auction["status"] not in ["active", "day_paused", "night_paused"]:
+        return {
+            "success": True,
+            "bids_placed": 0,
+            "final_price": auction.get("current_price", 0.01),
+            "message": f"Bot target price (€{target_price:.2f}) saved. Bots will bid when auction becomes active."
+        }
     
     # Get all bots
     bots = await db.bots.find({}, {"_id": 0}).to_list(100)
     if len(bots) < 2:
-        raise HTTPException(status_code=400, detail="Need at least 2 bots. Create some first.")
+        # Still save the target, but warn about bots
+        return {
+            "success": True,
+            "bids_placed": 0,
+            "final_price": auction.get("current_price", 0.01),
+            "message": f"Bot target price saved, but need at least 2 bots to start bidding."
+        }
     
     current_price = auction.get("current_price", 0.01)
     bid_increment = auction.get("bid_increment", 0.01)
