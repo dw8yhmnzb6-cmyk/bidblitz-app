@@ -10,6 +10,7 @@ export { default as AdminPayments } from './AdminPayments';
 export { default as AdminLogs } from './AdminLogs';
 export { AdminAuctions } from './AdminAuctions';
 export { AdminVIPAuctions } from './AdminVIPAuctions';
+export { default as AdminVoiceCommand } from './AdminVoiceCommand';
 
 // Components still embedded in Admin.js (to be extracted):
 // - AdminStaff
