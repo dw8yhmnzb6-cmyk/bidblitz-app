@@ -53,6 +53,9 @@ export default function InfluencerDashboard() {
     try {
       const res = await axios.get(`${API}/influencer/stats/${code}`);
       setStats(res.data);
+      // Also fetch payout history
+      const payoutRes = await axios.get(`${API}/influencer/payout/history/${code}`);
+      setPayoutHistory(payoutRes.data);
     } catch (error) {
       console.error('Failed to fetch stats:', error);
     }
@@ -73,6 +76,27 @@ export default function InfluencerDashboard() {
       toast.error(error.response?.data?.detail || 'Login fehlgeschlagen');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handlePayoutRequest = async () => {
+    if (!payoutForm.amount || !payoutForm.payment_details) {
+      toast.error('Bitte alle Felder ausfüllen');
+      return;
+    }
+    try {
+      const res = await axios.post(`${API}/influencer/payout/request`, {
+        code: influencer.code,
+        amount: parseFloat(payoutForm.amount),
+        payment_method: payoutForm.payment_method,
+        payment_details: payoutForm.payment_details
+      });
+      toast.success(res.data.message);
+      setShowPayoutModal(false);
+      setPayoutForm({ amount: '', payment_method: 'paypal', payment_details: '' });
+      fetchStats(influencer.code);
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Fehler bei der Anfrage');
     }
   };
 
