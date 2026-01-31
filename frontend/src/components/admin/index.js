@@ -12,11 +12,10 @@ export { AdminAuctions } from './AdminAuctions';
 export { AdminVIPAuctions } from './AdminVIPAuctions';
 export { default as AdminVoiceCommand } from './AdminVoiceCommand';
 export { AdminEmail } from './AdminEmail';
+export { AdminPages } from './AdminPages';
+export { AdminBanners } from './AdminBanners';
+export { AdminInfluencers } from './AdminInfluencers';
+export { AdminWholesale } from './AdminWholesale';
+export { AdminGameConfig } from './AdminGameConfig';
 
-// Components still embedded in Admin.js (to be extracted):
-// - AdminStaff
-// - AdminPages
-// - AdminBanners
-// - AdminInfluencers
-// - AdminWholesale
-// - AdminGameConfig
+// All components have been extracted!
