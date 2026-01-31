@@ -90,7 +90,11 @@ async def list_influencers(admin: dict = Depends(get_admin_user)):
     for influencer in influencers:
         code = influencer.get("code")
         
-        # Count uses
+        # Count unique customers (users who used the code)
+        unique_customers = await db.influencer_uses.distinct("user_id", {"influencer_code": code})
+        total_customers = len(unique_customers)
+        
+        # Count total uses
         uses = await db.influencer_uses.count_documents({"influencer_code": code})
         
         # Sum purchases
@@ -99,12 +103,25 @@ async def list_influencers(admin: dict = Depends(get_admin_user)):
         ).to_list(1000)
         
         total_revenue = sum(p.get("purchase_amount", 0) for p in purchases)
-        total_commission = total_revenue * (influencer.get("commission_percent", 10) / 100)
+        
+        # Calculate tiered commission
+        base_commission = influencer.get("commission_percent", 10)
+        custom_tiers = influencer.get("custom_tiers")
+        commission_info = calculate_effective_commission(base_commission, total_customers, custom_tiers)
+        
+        # Calculate actual commission with tier bonus
+        effective_rate = commission_info["effective_commission"]
+        total_commission = total_revenue * (effective_rate / 100)
         
         influencer["total_uses"] = uses
+        influencer["total_customers"] = total_customers
         influencer["total_revenue"] = round(total_revenue, 2)
         influencer["total_commission"] = round(total_commission, 2)
         influencer["total_purchases"] = len(purchases)
+        influencer["commission_tier"] = commission_info["current_tier"]
+        influencer["effective_commission"] = commission_info["effective_commission"]
+        influencer["tier_bonus"] = commission_info["tier_bonus"]
+        influencer["next_tier_at"] = commission_info["next_tier_at"]
     
     return influencers
 
