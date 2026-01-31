@@ -200,10 +200,13 @@ const PremiumAuction = memo(({ auction, product, onBid, onRefresh }) => {
 });
 
 // Small Auction Card - Snipster Style
-const AuctionCard = memo(({ auction, product, onBid, onRefresh }) => {
+const AuctionCard = memo(({ auction, product, onBid, onRefresh, language = 'de' }) => {
   const navigate = useNavigate();
   
   if (!auction || !product) return null;
+  
+  // Get translated product name
+  const productName = product.name_translations?.[language] || product.name;
   
   return (
     <div 
@@ -224,7 +227,7 @@ const AuctionCard = memo(({ auction, product, onBid, onRefresh }) => {
           {/* Left: Product Info */}
           <div className="flex-1">
             <h3 className="text-sm font-bold text-gray-800 leading-tight mb-2 line-clamp-2">
-              {product.name?.toUpperCase()}
+              {productName?.toUpperCase()}
             </h3>
             <p className="text-gray-500 text-xs mb-3">
               Vergleichspreis*: € {product.retail_price?.toLocaleString('de-DE')},-
