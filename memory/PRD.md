@@ -141,9 +141,17 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 3. Data persistence may be lost on server restart
 
 ## Last Updated
-January 31, 2026
+January 31, 2026 (Session 2)
 
 ## Changelog
+- 2026-01-31: **FIXED** Voice command "Erstelle X Bots mit Y Namen" now correctly parsed as `create_bots`
+  - Improved GPT prompt with clear distinction between create_bots vs start_bots/stop_bots
+  - Added trigger words documentation in system prompt
+  - Added explicit examples for bot creation commands
+- 2026-01-31: **ADDED** "Aktion des Tages" option to auction creation form
+  - New auction type button in AdminAuctions.js
+  - Automatically sets auction as "Auction of the Day" when selected
+  - Four auction types now available: Tagesaktion, Nachtaktion, VIP-Aktion, Aktion des Tages
 - 2026-01-31: Fixed "NEUSTART" display issue - now shows "BEENDET" for ended auctions
 - 2026-01-31: Tested and verified all 23 admin voice commands
 - 2026-01-31: Added translation keys for auctionEnded in DE and EN
