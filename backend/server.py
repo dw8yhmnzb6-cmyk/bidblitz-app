@@ -24,7 +24,7 @@ from routers.checkout import router as checkout_router
 from routers.admin import router as admin_router
 from routers.affiliate import router as affiliate_router
 from routers.user import router as user_router
-from routers.users import router as users_router
+# users_router removed - consolidated into user_router
 from routers.bots import router as bots_router
 from routers.vouchers import router as vouchers_router
 from routers.staff import router as staff_router
@@ -105,7 +105,7 @@ app.include_router(checkout_router, prefix="/api")
 app.include_router(admin_router, prefix="/api")
 app.include_router(affiliate_router, prefix="/api")
 app.include_router(user_router, prefix="/api")
-app.include_router(users_router, prefix="/api")
+# users_router removed - consolidated into user_router
 app.include_router(bots_router, prefix="/api")
 app.include_router(vouchers_router, prefix="/api")
 app.include_router(staff_router, prefix="/api")
