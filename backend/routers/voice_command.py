@@ -1,5 +1,5 @@
 """Voice Command Router - Admin voice commands using Whisper + GPT"""
-from fastapi import APIRouter, HTTPException, Depends, File, UploadFile
+from fastapi import APIRouter, HTTPException, Depends, File, UploadFile, Request
 from datetime import datetime, timezone
 from pydantic import BaseModel
 from typing import Optional
