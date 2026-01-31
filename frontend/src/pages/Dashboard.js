@@ -392,6 +392,29 @@ export default function Dashboard() {
           </div>
         </div>
 
+        {/* Gift Bids Card */}
+        <div className="glass-card rounded-xl p-5 mb-8 bg-gradient-to-r from-pink-500/10 to-purple-500/10 border border-pink-500/30">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-pink-500 to-purple-500 flex items-center justify-center">
+                <Gift className="w-7 h-7 text-white" />
+              </div>
+              <div>
+                <h3 className="text-white font-bold text-lg">Gebote verschenken</h3>
+                <p className="text-gray-400 text-sm">
+                  Schenken Sie Freunden und Familie Gebote mit Ihrer Kundennummer
+                </p>
+              </div>
+            </div>
+            <Link to="/gift-bids">
+              <Button className="bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-400 hover:to-purple-400 text-white font-bold">
+                <Gift className="w-4 h-4 mr-2" />
+                Jetzt verschenken
+              </Button>
+            </Link>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main Content - Left 2/3 */}
           <div className="lg:col-span-2 space-y-6">
