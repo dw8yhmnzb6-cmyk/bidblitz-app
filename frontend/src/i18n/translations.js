@@ -1240,7 +1240,9 @@ export const translations = {
     influencer: {
       title: "Инфлюенсер",
       login: "Вход инфлюенсера",
+      loginSubtitle: "Войдите, чтобы увидеть вашу статистику",
       email: "Email",
+      emailPlaceholder: "ваш@email.ru",
       code: "Ваш код",
       loginButton: "Войти",
       logout: "Выйти",
