@@ -243,24 +243,24 @@ export default function InfluencerDashboard() {
         <div className="glass-card rounded-2xl p-4 md:p-6 border-l-4" style={{ borderColor: tierConfig.color }}>
           {/* Mobile: Stack vertically, Desktop: Side by side */}
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div className="flex-1">
-              <p className="text-[#94A3B8] text-sm mb-1">{t('influencer.yourCode') || 'Dein Influencer-Code'}</p>
-              <div className="flex items-center gap-3">
-                <code className="text-2xl md:text-3xl font-bold text-[#FFD700] tracking-wider">
+            <div className="flex-1 min-w-0">
+              <p className="text-[#94A3B8] text-sm mb-2">{t('influencer.yourCode') || 'Dein Influencer-Code'}</p>
+              <div className="flex items-center gap-2 flex-wrap">
+                <code className="text-xl sm:text-2xl md:text-3xl font-bold text-[#FFD700] tracking-wider break-all">
                   {influencer?.code?.toUpperCase()}
                 </code>
-                <Button onClick={copyCode} size="sm" variant="ghost" className="text-white">
-                  {copied ? <CheckCircle className="w-5 h-5 text-green-400" /> : <Copy className="w-5 h-5" />}
+                <Button onClick={copyCode} size="sm" variant="ghost" className="text-white shrink-0 p-1">
+                  {copied ? <CheckCircle className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
                 </Button>
               </div>
-              <p className="text-[#94A3B8] text-xs md:text-sm mt-2 leading-relaxed">
+              <p className="text-[#94A3B8] text-xs mt-2 leading-relaxed line-clamp-2 sm:line-clamp-none">
                 {t('influencer.shareCode') || 'Teile diesen Code mit deiner Community - sie erhalten Rabatt, du verdienst Provision!'}
               </p>
             </div>
             {/* Commission display - visible on mobile too */}
-            <div className="flex md:block items-center justify-between md:text-right bg-[#181824] md:bg-transparent p-3 md:p-0 rounded-lg">
+            <div className="flex md:block items-center justify-between md:text-right bg-[#181824] md:bg-transparent p-3 md:p-0 rounded-lg shrink-0">
               <span className="text-[#94A3B8] text-sm md:hidden">{t('influencer.currentCommission') || 'Aktuelle Provision'}</span>
-              <p className="text-3xl md:text-5xl font-bold" style={{ color: tierConfig.color }}>
+              <p className="text-2xl sm:text-3xl md:text-5xl font-bold" style={{ color: tierConfig.color }}>
                 {stats?.effective_commission || 10}%
               </p>
               <p className="text-[#94A3B8] text-sm hidden md:block">{t('influencer.currentCommission') || 'Aktuelle Provision'}</p>
@@ -272,7 +272,7 @@ export default function InfluencerDashboard() {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
           <div className="glass-card rounded-xl p-5">
             <div className="flex items-center gap-3 mb-2">
               <Users className="w-5 h-5 text-[#06B6D4]" />
