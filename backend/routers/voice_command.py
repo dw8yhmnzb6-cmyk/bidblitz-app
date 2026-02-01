@@ -134,35 +134,35 @@ Verfügbare Aktionen:
     - "Du musst die Übersetzung überprüfen" -> {"action": "check_translations", "parameters": {}}
 
 === INFLUENCER ===
-16. approve_influencer - Influencer-Bewerbung genehmigen
+17. approve_influencer - Influencer-Bewerbung genehmigen
     Parameter: email
 
-17. show_pending_payouts - Offene Auszahlungsanfragen zeigen
+18. show_pending_payouts - Offene Auszahlungsanfragen zeigen
     Parameter: keine
 
 === SYSTEM ===
-18. get_stats - Statistiken abrufen
+19. get_stats - Statistiken abrufen
     Parameter: type (users/auctions/revenue/today)
 
-19. send_notification - Benachrichtigung an alle senden
+20. send_notification - Benachrichtigung an alle senden
     Parameter: title, message
 
-20. maintenance_mode - Wartungsmodus ein/ausschalten
+21. maintenance_mode - Wartungsmodus ein/ausschalten
     Parameter: enabled (true/false)
 
-21. send_test_email - Test-E-Mail senden
+22. send_test_email - Test-E-Mail senden
     Parameter: email
 
-22. export_users - Benutzer exportieren
+23. export_users - Benutzer exportieren
     Parameter: format (csv/json)
 
-23. create_backup - Datenbank-Backup erstellen
+24. create_backup - Datenbank-Backup erstellen
     Parameter: keine
 
-24. create_report - Bericht erstellen (Woche/Monat)
+25. create_report - Bericht erstellen (Woche/Monat)
     Parameter: period (week/month)
 
-25. unknown - Wenn der Befehl nicht erkannt wird
+26. unknown - Wenn der Befehl nicht erkannt wird
 
 Antworte NUR mit einem JSON-Objekt im folgenden Format:
 {
