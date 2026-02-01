@@ -326,6 +326,78 @@ export default function AdminVoiceCommand() {
             </Button>
           </div>
         </div>
+
+        {/* Image Upload Section */}
+        <div className="mt-6 pt-6 border-t border-white/10">
+          <p className="text-gray-400 text-sm text-center mb-4">
+            <Camera className="w-4 h-4 inline mr-1" />
+            Oder laden Sie ein Bild hoch für KI-Analyse:
+          </p>
+          
+          {/* Hidden file input */}
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleImageSelect}
+            accept="image/*"
+            className="hidden"
+          />
+          
+          <div className="flex flex-col items-center gap-4">
+            {/* Image Preview */}
+            {imagePreview ? (
+              <div className="relative">
+                <img 
+                  src={imagePreview} 
+                  alt="Preview" 
+                  className="max-h-48 rounded-lg border border-white/20"
+                />
+                <button
+                  onClick={removeImage}
+                  className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"
+                >
+                  <X className="w-4 h-4 text-white" />
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="w-full max-w-md py-8 border-2 border-dashed border-white/20 rounded-lg hover:border-purple-500/50 transition-colors flex flex-col items-center gap-2"
+              >
+                <Image className="w-8 h-8 text-gray-400" />
+                <span className="text-gray-400 text-sm">Klicken zum Hochladen</span>
+                <span className="text-gray-500 text-xs">PNG, JPG bis 10MB</span>
+              </button>
+            )}
+            
+            {/* Analyze Button */}
+            {selectedImage && (
+              <div className="flex gap-2 w-full max-w-md">
+                <input
+                  type="text"
+                  value={textInput}
+                  onChange={(e) => setTextInput(e.target.value)}
+                  placeholder="Frage zum Bild (optional)..."
+                  className="flex-1 bg-[#181824] border border-white/10 rounded-lg px-4 py-2 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-purple-500"
+                />
+                <Button
+                  onClick={analyzeImage}
+                  disabled={isAnalyzingImage}
+                  className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600"
+                >
+                  {isAnalyzingImage ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    <>
+                      <Sparkles className="w-4 h-4 mr-2" />
+                      Analysieren
+                    </>
+                  )}
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
       
       {/* Transcription & Parsed Command */}
