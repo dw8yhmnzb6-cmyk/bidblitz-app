@@ -776,13 +776,13 @@ export default function AuctionDetail() {
                               <div className="flex justify-between text-[#10B981]">
                                 <span className="flex items-center gap-2">
                                   <Sparkles className="w-4 h-4" />
-                                  {t('auctions.bidCredit') || 'Gebots-Guthaben'} ({buyNowPrice?.bids_used || 0} {t('auctions.bids') || 'Gebote'})
+                                  {dtl.bidCredit} ({buyNowPrice?.bids_used || 0} {t('auctions.bids') || 'Gebote'})
                                 </span>
                                 <span className="font-mono">-€{buyNowPrice?.bid_credit?.toFixed(2) || '0.00'}</span>
                               </div>
                             )}
                             <div className="border-t border-white/10 pt-3 flex justify-between">
-                              <span className="text-white font-bold">{t('auctions.yourPrice') || 'Ihr Preis'}</span>
+                              <span className="text-white font-bold">{dtl.yourPrice}</span>
                               <span className="text-2xl font-bold text-[#10B981] font-mono">€{buyNowPrice?.final_price?.toFixed(2) || '0.00'}</span>
                             </div>
                           </div>
@@ -790,13 +790,13 @@ export default function AuctionDetail() {
                           {buyNowPrice?.bid_credit > 0 && (
                             <div className="p-3 rounded-lg bg-[#10B981]/10 border border-[#10B981]/30">
                               <p className="text-[#10B981] text-sm text-center">
-                                🎉 {t('auctions.savingsMessage') || 'Sie sparen durch Ihre platzierten Gebote!'}
+                                {dtl.savingsMessage}
                               </p>
                             </div>
                           )}
 
                           <p className="text-[#94A3B8] text-xs text-center">
-                            {t('auctions.savingsNote') || 'Jedes platzierte Gebot wird auf den Kaufpreis als €0,15 Guthaben angerechnet.'}
+                            {dtl.savingsNote}
                           </p>
                         </div>
 
@@ -807,7 +807,7 @@ export default function AuctionDetail() {
                             className="flex-1 border-white/20 text-white hover:bg-white/10"
                             disabled={buyingNow}
                           >
-                            {t('common.cancel') || 'Abbrechen'}
+                            {t('common.cancel') || (language === 'en' ? 'Cancel' : language === 'sq' ? 'Anulo' : language === 'tr' ? 'İptal' : language === 'fr' ? 'Annuler' : 'Abbrechen')}
                           </Button>
                           <Button
                             onClick={handleBuyNow}
@@ -816,7 +816,7 @@ export default function AuctionDetail() {
                             data-testid="confirm-buy-now-btn"
                           >
                             {buyingNow ? (
-                              'Wird gekauft...'
+                              dtl.beingPurchased
                             ) : (
                               <>
                                 <CreditCard className="w-5 h-5 mr-2" />
