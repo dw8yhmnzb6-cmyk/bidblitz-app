@@ -257,6 +257,15 @@ February 1, 2026 (Session 4)
   - Admin can upload UI screenshots to identify bugs
   - Results displayed in voice command result area
   - New UI section with drag-and-drop image upload
+  - **FIXED** Changed from `image_urls` to `file_contents` with `ImageContent` class
+
+- 2026-02-01: **FIXED** Translation System
+  - AuctionOfTheDay.js now uses i18n translations for all text
+  - Added missing translations: `auctionOfDay`, `currentPrice`, `remaining`, `bidNow`, `lastBidder`
+  - Navbar now uses t() function for `giftCards` and `vipAuctions`
+  - Added Turkish translations for `nav.giftCards` and `nav.vipAuctions`
+  - Added German translations for `nav.giftCards` and `nav.vipAuctions`
+  - Product names now display in selected language using `name_translations`
 
 - 2026-02-01: **TESTED** All bug fixes verified by testing agent (100% pass rate)
   - Test file created: /app/backend/tests/test_voice_translation.py
