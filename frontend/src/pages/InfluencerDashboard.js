@@ -373,8 +373,8 @@ export default function InfluencerDashboard() {
               )}
             </div>
 
-            {/* Tier Steps */}
-            <div className="grid grid-cols-4 gap-2">
+            {/* Tier Steps - Responsive Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {Object.entries(TIERS).map(([name, config]) => {
                 const isActive = name === currentTier;
                 const isUnlocked = (stats?.total_customers || 0) >= config.minCustomers;
@@ -382,7 +382,8 @@ export default function InfluencerDashboard() {
                 return (
                   <div 
                     key={name}
-                    className={`p-4 rounded-xl text-center transition-all ${
+                    data-testid={`tier-${name.toLowerCase()}`}
+                    className={`p-3 md:p-4 rounded-xl text-center transition-all ${
                       isActive 
                         ? 'ring-2' 
                         : isUnlocked 
@@ -394,10 +395,10 @@ export default function InfluencerDashboard() {
                       backgroundColor: isActive ? `${config.color}15` : undefined
                     }}
                   >
-                    <span className="text-2xl">{config.emoji}</span>
-                    <p className="font-bold text-white mt-1">{name}</p>
+                    <span className="text-xl md:text-2xl">{config.emoji}</span>
+                    <p className="font-bold text-white mt-1 text-sm md:text-base">{name}</p>
                     <p className="text-xs" style={{ color: config.color }}>
-                      {config.minCustomers === 0 ? '0-10' : `${config.minCustomers}+`} Kunden
+                      {config.minCustomers === 0 ? '0-10' : `${config.minCustomers}+`}
                     </p>
                     <p className="text-xs text-[#94A3B8] mt-1">
                       {config.bonus === 0 ? 'Basis' : `+${config.bonus}%`}
