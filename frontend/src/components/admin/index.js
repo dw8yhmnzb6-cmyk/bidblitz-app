@@ -18,4 +18,10 @@ export { AdminInfluencers } from './AdminInfluencers';
 export { AdminWholesale } from './AdminWholesale';
 export { AdminGameConfig } from './AdminGameConfig';
 
+// New Dashboard Widgets
+export { default as AdminQuickActions } from './AdminQuickActions';
+export { default as AdminLiveWidgets } from './AdminLiveWidgets';
+export { default as AdminGlobalSearch } from './AdminGlobalSearch';
+export { default as AdminAIChat } from './AdminAIChat';
+
 // All components have been extracted!
