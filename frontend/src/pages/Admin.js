@@ -2170,6 +2170,25 @@ export default function Admin() {
           )}
         </main>
       </div>
+      
+      {/* Global Search Modal */}
+      <AdminGlobalSearch 
+        isOpen={showGlobalSearch} 
+        onClose={() => setShowGlobalSearch(false)}
+        onNavigate={(type, item) => {
+          // Navigate to the appropriate tab when selecting a search result
+          if (type === 'users') setActiveTab('users');
+          else if (type === 'auctions') setActiveTab('auctions');
+          else if (type === 'products') setActiveTab('products');
+        }}
+      />
+      
+      {/* AI Chat Assistant */}
+      <AdminAIChat 
+        isOpen={showAIChat} 
+        onClose={() => setShowAIChat(false)}
+        onToggle={() => setShowAIChat(prev => !prev)}
+      />
     </div>
   );
 }
