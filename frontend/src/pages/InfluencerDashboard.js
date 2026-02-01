@@ -164,18 +164,18 @@ export default function InfluencerDashboard() {
             <div className="w-20 h-20 rounded-full bg-gradient-to-br from-[#FFD700] to-[#F59E0B] flex items-center justify-center mx-auto mb-4">
               <Star className="w-10 h-10 text-white" />
             </div>
-            <h1 className="text-3xl font-bold text-white mb-2">Influencer Portal</h1>
-            <p className="text-[#94A3B8]">Melden Sie sich an, um Ihre Statistiken zu sehen</p>
+            <h1 className="text-3xl font-bold text-white mb-2">{t('influencer.title') || 'Influencer'} Portal</h1>
+            <p className="text-[#94A3B8]">{t('influencer.loginSubtitle') || 'Melden Sie sich an, um Ihre Statistiken zu sehen'}</p>
           </div>
 
           <form onSubmit={handleLogin} className="glass-card rounded-2xl p-6 space-y-4">
             <div>
-              <Label className="text-white">E-Mail</Label>
+              <Label className="text-white">{t('influencer.email') || 'E-Mail'}</Label>
               <Input
                 type="email"
                 value={loginForm.email}
                 onChange={(e) => setLoginForm({...loginForm, email: e.target.value})}
-                placeholder="ihre@email.de"
+                placeholder={t('influencer.emailPlaceholder') || 'ihre@email.de'}
                 className="mt-1 bg-[#181824] border-white/10 text-white"
                 required
               />
