@@ -228,6 +228,7 @@ February 1, 2026 (Session 4)
   - Fixed translate_products to handle both string and dict product name formats
   - Shows skipped count for already-translated products
   - Better German confirmation messages
+  - Increased product limit from 100 to 500 for translate_products and check_translations
 
 - 2026-02-01: **NEW** Voice Command "check_translations" / "Übersetzung überprüfen"
   - New command to check translation status of all products
@@ -236,6 +237,26 @@ February 1, 2026 (Session 4)
   - Shows overall translation percentage
   - Provides helpful tip to translate missing products
   - Trigger words: "Übersetzung überprüfen", "Übersetzungen prüfen", "funktioniert nicht so richtig"
+
+- 2026-02-01: **FIXED** Influencer-Code Card Mobile Layout
+  - Changed from side-by-side to stacked layout on mobile (flex-col on mobile, flex-row on desktop)
+  - Commission percentage now visible on mobile with "Aktuelle Provision" label
+  - Description text uses smaller font (text-xs) on mobile with leading-relaxed
+  - Influencer code text reduced to text-2xl on mobile for better fit
+
+- 2026-02-01: **IMPROVED** Influencer Login Persistence
+  - Now saves `influencer_token` separately in localStorage
+  - Validates session on page load by fetching stats
+  - Clears storage if session is invalid
+  - Shows success toast on logout
+
+- 2026-02-01: **NEW** Image Analysis Feature for Voice Commands
+  - New `/api/voice-command/analyze-image` endpoint
+  - Accepts image upload (PNG, JPG, GIF, WebP up to 10MB)
+  - Uses GPT-4o Vision to analyze screenshots
+  - Admin can upload UI screenshots to identify bugs
+  - Results displayed in voice command result area
+  - New UI section with drag-and-drop image upload
 
 - 2026-02-01: **TESTED** All bug fixes verified by testing agent (100% pass rate)
   - Test file created: /app/backend/tests/test_voice_translation.py
