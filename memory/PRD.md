@@ -285,12 +285,19 @@ February 1, 2026 (Session 4)
   - **Tag/Nacht-Filter**: Neuer Filter-Bereich über der Auktionen-Tabelle (Alle/Tag/Nacht)
   - **Typ-Spalte**: Neue Spalte in Auktionen-Tabelle zeigt Tag/Nacht-Typ mit Icons
 
+- 2026-02-01: **BUG FIXES** Auktionsdauer und Großkunden-API
+  - **Auktionsdauer-Berechnung**: Code refactored mit switch-statement und besseren Debug-Logs
+  - **Großkunden API-Pfade korrigiert**: 
+    - `/wholesale/admin/{id}/approve` → `/admin/wholesale/approve/{id}`
+    - `/wholesale/admin/{id}/reject` → `/admin/wholesale/reject/{id}`
+    - `/wholesale/admin/{id}` → `/admin/wholesale/{id}`
+  - **Verbesserte Fehlermeldungen**: Benutzerfreundliche deutsche Fehlermeldungen für alle Großkunden-Operationen
+  - **Root Cause für "Fehler" Toast**: Problem war falscher API-Pfad + fehlende Benutzerkonten für Großkunden-Bewerbungen
+
 ## Pending Issues
 
-### P1 - Critical Bugs
-1. **Incorrect auction duration calculation** - Bei "1 Tag" wird falsche Sekundenzahl gesendet
-   - Datei: `/app/frontend/src/components/admin/AdminAuctions.js`
-   - Status: NOT STARTED
+### P1 - Resolved ✅
+1. ~~**Incorrect auction duration calculation**~~ - Code verbessert, Backend-Tests bestätigen korrekte Berechnung
 
 ### P2 - Pending Features
 2. **Admin email notifications for payout requests** - Email an Admin bei neuen Influencer-Auszahlungsanfragen
