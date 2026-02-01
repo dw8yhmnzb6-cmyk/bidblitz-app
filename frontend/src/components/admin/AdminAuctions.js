@@ -20,6 +20,17 @@ export function AdminAuctions({ token, t, auctions, products, fetchData }) {
     bot_target_price: '', auto_restart: false, auto_restart_duration: '10',
     auction_type: 'day', is_vip_only: false
   });
+  
+  // Filter state for day/night auctions
+  const [auctionFilter, setAuctionFilter] = useState('all'); // 'all', 'day', 'night'
+  
+  // Filter auctions based on selected filter
+  const filteredAuctions = (auctions || []).filter(auction => {
+    if (auctionFilter === 'all') return true;
+    if (auctionFilter === 'day') return !auction.is_night_auction;
+    if (auctionFilter === 'night') return auction.is_night_auction;
+    return true;
+  });
 
   const handleCreateAuction = async (e) => {
     e.preventDefault();
