@@ -34,6 +34,7 @@ export default function Dashboard() {
   const [dailyRewardStatus, setDailyRewardStatus] = useState(null);
   const [claimingReward, setClaimingReward] = useState(false);
   const [achievements, setAchievements] = useState(null);
+  const [wheelOpen, setWheelOpen] = useState(false);
 
   // Dashboard translations
   const dashTexts = {
