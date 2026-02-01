@@ -49,6 +49,7 @@ import GiftBids from "./pages/GiftBids";
 import GiftCards from "./pages/GiftCards";
 import GiftCardSuccess from "./pages/GiftCardSuccess";
 import Leaderboard from "./pages/Leaderboard";
+import BeginnerAuctions from "./pages/BeginnerAuctions";
 
 // Protected Route Component
 const ProtectedRoute = ({ children, requireAdmin = false }) => {
