@@ -813,23 +813,52 @@ async def execute_command(action: str, parameters: dict, admin: dict) -> dict:
         if not api_key:
             return {"success": False, "message": "❌ API Key nicht konfiguriert"}
         
-        target_languages = parameters.get("languages", ["en", "tr", "fr"])
+        # Default to all available languages if not specified
+        target_languages = parameters.get("languages", ["en", "tr", "fr", "sq", "ar"])
         
-        # Get all products without translations
+        # Get all products
         products = await db.products.find({}, {"_id": 0}).to_list(100)
         
+        if not products:
+            return {"success": False, "message": "❌ Keine Produkte zum Übersetzen gefunden"}
+        
         translated_count = 0
+        skipped_count = 0
+        
         for product in products:
-            # Skip if already has all requested translations
-            existing = product.get("name_translations", {})
-            if all(lang in existing for lang in target_languages):
+            # Get current name - handle both string and dict formats
+            current_name = product.get("name", "")
+            current_desc = product.get("description", "")
+            
+            if isinstance(current_name, dict):
+                german_name = current_name.get("de", list(current_name.values())[0] if current_name else "")
+            else:
+                german_name = current_name
+                
+            if isinstance(current_desc, dict):
+                german_desc = current_desc.get("de", list(current_desc.values())[0] if current_desc else "")
+            else:
+                german_desc = current_desc
+            
+            # Skip if no name or description
+            if not german_name:
+                skipped_count += 1
+                continue
+            
+            # Check if already has all requested translations
+            existing_name_trans = product.get("name_translations", {})
+            existing_desc_trans = product.get("description_translations", {})
+            
+            if all(lang in existing_name_trans for lang in target_languages):
+                skipped_count += 1
                 continue
             
             # Create translation prompt
             system_prompt = """Du bist ein professioneller Übersetzer für E-Commerce-Produktbeschreibungen.
 Übersetze den gegebenen deutschen Produktnamen und die Beschreibung in die angeforderten Sprachen.
+Achte auf korrekte Übersetzungen für jede Zielsprache.
 Antworte NUR mit einem JSON-Objekt im Format:
-{"name_translations": {"en": "...", "tr": "...", ...}, "description_translations": {"en": "...", "tr": "...", ...}}"""
+{"name_translations": {"en": "...", "tr": "...", "fr": "...", "sq": "...", "ar": "..."}, "description_translations": {"en": "...", "tr": "...", "fr": "...", "sq": "...", "ar": "..."}}"""
             
             chat = LlmChat(
                 api_key=api_key,
@@ -837,9 +866,13 @@ Antworte NUR mit einem JSON-Objekt im Format:
                 system_message=system_prompt
             ).with_model("openai", "gpt-4o-mini")
             
-            user_prompt = f"""Übersetze in: {', '.join(target_languages)}
-Produktname: {product['name']}
-Beschreibung: {product['description']}"""
+            lang_names = {"en": "Englisch", "tr": "Türkisch", "fr": "Französisch", "sq": "Albanisch", "ar": "Arabisch"}
+            lang_list = ", ".join([lang_names.get(l, l) for l in target_languages])
+            
+            user_prompt = f"""Übersetze in folgende Sprachen: {lang_list}
+
+Produktname (Deutsch): {german_name}
+Beschreibung (Deutsch): {german_desc if german_desc else "Keine Beschreibung vorhanden"}"""
             
             try:
                 response = await chat.send_message(UserMessage(text=user_prompt))
@@ -852,25 +885,34 @@ Beschreibung: {product['description']}"""
                 translations = json.loads(response_text)
                 
                 # Build translations with German original
-                name_trans = {"de": product["name"], **translations.get("name_translations", {})}
-                desc_trans = {"de": product["description"], **translations.get("description_translations", {})}
+                name_trans = {"de": german_name, **translations.get("name_translations", {})}
+                desc_trans = {"de": german_desc, **translations.get("description_translations", {})}
                 
-                # Update product
+                # Update product with translations
                 await db.products.update_one(
                     {"id": product["id"]},
-                    {"$set": {"name_translations": name_trans, "description_translations": desc_trans}}
+                    {"$set": {
+                        "name": german_name,  # Keep German as default name
+                        "name_translations": name_trans,
+                        "description": german_desc,
+                        "description_translations": desc_trans
+                    }}
                 )
                 translated_count += 1
+                logger.info(f"✅ Translated product: {german_name}")
                 
             except Exception as e:
                 logger.error(f"Translation error for {product['id']}: {str(e)}")
                 continue
         
+        lang_names_de = {"en": "Englisch", "tr": "Türkisch", "fr": "Französisch", "sq": "Albanisch", "ar": "Arabisch"}
+        lang_list_de = ", ".join([lang_names_de.get(l, l) for l in target_languages])
+        
         logger.info(f"🎤 Voice command: Translated {translated_count} products by {admin['name']}")
         return {
             "success": True,
-            "message": f"🌐 {translated_count} Produkte in {len(target_languages)} Sprachen übersetzt!",
-            "data": {"translated": translated_count, "languages": target_languages}
+            "message": f"🌐 {translated_count} Produkte übersetzt in: {lang_list_de}! ({skipped_count} übersprungen)",
+            "data": {"translated": translated_count, "skipped": skipped_count, "languages": target_languages}
         }
     
     else:
