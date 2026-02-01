@@ -4,7 +4,8 @@ import axios from 'axios';
 import { Button } from '../ui/button';
 import { 
   Mic, MicOff, Send, Loader2, CheckCircle, XCircle, 
-  History, Volume2, Sparkles, MessageSquare, Command
+  History, Volume2, Sparkles, MessageSquare, Command,
+  Image, X, Camera
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -20,9 +21,13 @@ export default function AdminVoiceCommand() {
   const [history, setHistory] = useState([]);
   const [showHistory, setShowHistory] = useState(false);
   const [textInput, setTextInput] = useState('');
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [isAnalyzingImage, setIsAnalyzingImage] = useState(false);
   
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
+  const fileInputRef = useRef(null);
   
   useEffect(() => {
     fetchHistory();
