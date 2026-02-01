@@ -190,6 +190,36 @@ export default function Admin() {
     }
   }, [auctionData]);
 
+  // Keyboard Shortcuts for Admin Panel
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // "/" for global search
+      if (e.key === '/' && !e.ctrlKey && !e.metaKey && document.activeElement.tagName !== 'INPUT') {
+        e.preventDefault();
+        setShowGlobalSearch(true);
+      }
+      // "Escape" to close modals
+      if (e.key === 'Escape') {
+        setShowGlobalSearch(false);
+        setShowAIChat(false);
+        setMobileMenuOpen(false);
+      }
+      // Ctrl+K for search (alternative)
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        setShowGlobalSearch(true);
+      }
+      // Ctrl+J for AI Chat
+      if ((e.ctrlKey || e.metaKey) && e.key === 'j') {
+        e.preventDefault();
+        setShowAIChat(prev => !prev);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   useEffect(() => {
     if (isAdmin) {
       fetchData();
