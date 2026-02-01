@@ -850,6 +850,7 @@ async def execute_command(action: str, parameters: dict, admin: dict) -> dict:
         
         # Default to all available languages if not specified
         target_languages = parameters.get("languages", ["en", "tr", "fr", "sq", "ar"])
+        force_retranslate = parameters.get("force", False)  # Force re-translate even if already translated
         
         # Get all products (increased limit to 500)
         products = await db.products.find({}, {"_id": 0}).to_list(500)
@@ -880,11 +881,11 @@ async def execute_command(action: str, parameters: dict, admin: dict) -> dict:
                 skipped_count += 1
                 continue
             
-            # Check if already has all requested translations
+            # Check if already has all requested translations (unless force is enabled)
             existing_name_trans = product.get("name_translations", {})
             existing_desc_trans = product.get("description_translations", {})
             
-            if all(lang in existing_name_trans for lang in target_languages):
+            if not force_retranslate and all(lang in existing_name_trans for lang in target_languages):
                 skipped_count += 1
                 continue
             
