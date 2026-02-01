@@ -1,101 +1,93 @@
 <analysis>**original_problem_statement:**
-The user initially requested a penny auction website modeled after  and . The project's focus has evolved into a complete visual and functional overhaul to match the look, feel, and real-time behavior of .
+The user initially requested a penny auction website modeled after . The project's focus has since evolved into a complete visual and functional overhaul to match the look, feel, and real-time behavior of .
 
-This session was focused on implementing a series of significant new features and bug fixes based on user requests, including a customer-to-customer gifting system, a full notification system for influencers, an advanced voice command interface for the admin panel, a gift card system, and an automated day/night auction scheduler. Additionally, a major effort was made to expand the site's internationalization (i18n) support by adding a system to auto-translate product descriptions.
+This session focused on resolving user-reported bugs, significantly refactoring the admin panel, and implementing a multi-tiered commission system and a dedicated dashboard for influencers.
 
 **PRODUCT REQUIREMENTS (current focus):**
-- **Admin Efficiency:** Empower the admin with powerful, easy-to-use tools like voice commands to manage the platform. This includes creating bots and managing auctions.
+- **Admin Efficiency:** Empower the admin with powerful, easy-to-use tools like voice commands to manage the platform.
 - **Full Internationalization:** All user-facing pages and text should be fully translatable. Product descriptions should change dynamically with the selected language.
-- **Advanced Auction Management:** Provide fine-grained control over auctions, including specifying their type (Day, Night, VIP, Auction of the Day) and duration upon creation.
-- **Robust Bot Behavior:** Bots should bid up to a specific, admin-defined monetary value, and their behavior should be predictable.
+- **Robust Auction Management:** Provide fine-grained control over auctions, including specifying their type and duration upon creation. The duration calculation must be accurate.
+- **Advanced Influencer System:** Provide influencers with a dedicated portal to track earnings, see their commission tier, and request payouts.
 - **Complete  Refactor:** Break down the massive  file into smaller, manageable components.
 
 **User's preferred language**: German. The next agent MUST respond in German.
 
 **what currently exists?**
-A feature-rich, full-stack penny auction application (React, FastAPI, MongoDB). Key systems include:
-- **Core Auction Platform:** A stable auction system with a sophisticated bot bidding mechanism. It now includes an automated scheduler that pauses day auctions at night and vice-versa.
-- **Admin Voice Commands:** An advanced Sprachbefehle (Voice Commands) tab in the admin panel that uses OpenAI Whisper and GPT-4o-mini to parse and execute natural language commands. It supports batch operations.
-- **Internationalization (i18n):** Expanded translation support across most pages. A new system allows for automatic AI-powered translation of product names and descriptions, which are displayed dynamically based on the user's selected language.
-- **Gift Systems:**
-    - **Bid Gifting:** Users can send bids to each other using a unique Customer Number.
-    - **Gift Cards:** A new, complete system for purchasing and redeeming gift cards with real money (via Stripe). Includes a dedicated frontend page and backend logic.
-- **Bot Target Pricing:** Admins can set a specific monetary value (e.g., €20) that bots will bid up to on a specific auction.
+A feature-rich, full-stack penny auction application (React, FastAPI, MongoDB). Key systems include a core auction platform with an automated day/night scheduler, advanced admin voice commands, and i18n with AI-powered translations.
+
+This session added:
+- **Major Admin Panel Refactor:** The  file has been significantly reduced in size (~39% smaller), with most tabs (, , , , , ) extracted into their own components.
+- **Tiered Influencer System:** Influencers now have a tiered commission structure (Bronze, Silver, Gold, Platin) that rewards them with higher percentages for referring more customers.
+- **Influencer Dashboard:** A new, complete frontend page () and backend API allow influencers to log in, view their stats (customers, earnings, tier progress), copy their referral code, and request payouts.
+- **Bug Fixes:**
+    - The voice command for create bots is now correctly parsed.
+    - A bug preventing bot bidding from being set on newly created auctions was resolved.
+    - WebSocket connection URLs were corrected across the site to improve real-time stability.
+    - Product name translations are now correctly displayed on the homepage.
+    - User-related API routers (, ) have been consolidated.
 
 **Last working item**:
--   **Last item agent was working:** The agent was addressing two user requests submitted with screenshots:
-    1.  **Auktionsformular erweitern (Extend Auction Form):** The user wants to add options to the auction creation form to define the auction type (Tagesaktion, Nachtaktion, VIP, Aktion des Tages) and ensure the duration is set correctly. The agent had started implementing this by adding the new fields to the state in  and , and was in the process of adding the UI elements.
-    2.  **Sprachbefehl wird falsch erkannt (Voice Command Misinterpretation):** The user reported that the command erstelle 50 neue Bots mit albanischem Namen (create 50 new bots with Albanian names) was being misinterpreted. The agent identified the need for a new  action in the voice command system and began implementing the backend logic for it in .
+-   **Last item agent was working:** The agent was debugging an issue where the auction duration is calculated incorrectly when an admin creates a new auction. For example, setting a duration of 1 day results in an auction lasting only a few minutes or seconds. The agent confirmed the backend logic is correct and concluded the bug is in the frontend form logic within . The agent added  statements to the  function to trace the values being sent.
 -   **Status:** IN PROGRESS
 -   **Agent Testing Done:** N
--   **Which testing method agent to use?** both
-    -   **Backend:** Use  to test the new  voice command action.
-    -   **Frontend:** Use the screenshot tool on the admin page to verify the new fields (Auction Type, Duration) are present in the auction creation form and function correctly.
+-   **Which testing method agent to use?** Frontend testing agent. The agent should create a new auction in the admin panel, set the duration to 1 Tag (1 Day), and verify that the created auction's end time is approximately 24 hours in the future.
 -   **User Testing Done:** N
 
 **All Pending/In progress Issue list**:
--   **Issue 1: Voice command misinterpretation for bot creation (P0)**
--   **Issue 2: Auction creation form is missing type/duration options (P0)**
+-   **Issue 1: Incorrect auction duration calculation (P0)**
+-   **Issue 2: Implement Admin email notifications for payout requests (P1)**
 -   **Issue 3: Root Cause of Not Found Toast Notification (P2)**
 -   **Issue 4: Inconsistent Data Persistence (P2)**
--   **Issue 5: Refactor Overlapping User Routers (P2)**
 
 **Issues Detail:**
--   **Issue 1: Voice command misinterpretation for bot creation**
-    -   **Attempted fixes:** The agent identified that the voice command parser prompt was missing an action for . The agent added  to the prompt and started implementing the corresponding handler function in .
+-   **Issue 1: Incorrect auction duration calculation**
+    -   **Attempted fixes:** The agent investigated the backend () and confirmed it correctly uses . The focus shifted to the frontend (), where the agent added  statements to debug the form submission handler ().
     -   **Next debug checklist:**
-        1.  Complete the implementation of the  action in the  function in .
-        2.  Test with a  command to ensure the command erstelle 50 neue Bots mit albanischem Namen is now correctly parsed and executed.
-    -   **Why fix this issue and what will be achieved with the fix?** To enable admins to create bots using natural language, as requested by the user.
-    -   **Status:** IN PROGRESS
-    -   **Is recurring issue?** Y (Voice command parsing has required several adjustments).
-    -   **Should Test frontend/backend/both after fix?** backend
-    -   **Blocked on other issue:** No
-
--   **Issue 2: Auction creation form is missing type/duration options**
-    -   **Attempted fixes:** The agent added  to the state in  and . Backend schemas () and creation logic () were updated to support  and . A syntax error in  was fixed. The work is incomplete.
-    -   **Next debug checklist:**
-        1.  Complete the UI implementation in  to add a dropdown for  (Normal, Tag, Nacht, VIP, Aktion des Tages).
-        2.  Ensure the state is correctly passed to the backend API when the form is submitted.
-        3.  Verify the duration field works as expected.
-    -   **Why fix this issue and what will be achieved with the fix?** To give the admin full control over auction creation, as requested by the user.
+        1.  Restart the frontend and backend services.
+        2.  Open the browser's developer console.
+        3.  Attempt to create an auction with a duration of 1 Tag.
+        4.  Analyze the console logs to see the  and  being sent to the backend.
+        5.  Fix the logic in  to ensure the correct number of seconds is calculated and sent.
+    -   **Why fix this issue and what will be achieved with the fix?** To allow admins to create auctions with the intended duration, which is a core platform function.
     -   **Status:** IN PROGRESS
     -   **Is recurring issue?** N
     -   **Should Test frontend/backend/both after fix?** frontend
     -   **Blocked on other issue:** No
 
--   **Issue 3: Root Cause of Not Found Toast Notification**
-    -   **Attempted fixes:** A global Axios interceptor in  was improved to catch more 404 errors, but the root cause (which API call is failing) is still unknown.
-    -   **Next debug checklist:** Use browser developer tools (Network tab) to identify which specific API call intermittently returns a 404 status during normal app usage.
-    -   **Why fix this issue and what will be achieved with the fix?** Improves platform stability and eliminates a confusing error message for users.
+-   **Issue 2: Implement Admin email notifications for payout requests**
+    -   **Attempted fixes:** None. This is a new feature request from the user.
+    -   **Next debug checklist:**
+        1.  Integrate an email sending service (Resend is already set up in sandbox mode) within the  endpoint in .
+        2.  When a request is successfully created, send an email to the admin address () with the influencer's details and the requested amount.
+    -   **Why fix this issue and what will be achieved with the fix?** To notify the admin of pending work, enabling them to process influencer payouts in a timely manner.
     -   **Status:** NOT STARTED
+    -   **Is recurring issue?** N
+    -   **Should Test frontend/backend/both after fix?** backend
+    -   **Blocked on other issue:** No
+
+-   **Issue 3: Root Cause of Not Found Toast Notification**
+    -   **Attempted fixes:** The agent improved the global Axios interceptor in  to log the failing URL. Several incorrect WebSocket URLs were also fixed, which may have contributed to the issue.
+    -   **Next debug checklist:** Monitor the browser console during regular app usage to see if the enhanced logging catches any further 404 errors and identifies the specific API call that is failing.
+    -   **Why fix this issue and what will be achieved with the fix?** Improves platform stability and user experience by eliminating a confusing error message.
+    -   **Status:** IN PROGRESS
     -   **Is recurring issue?** Y
-    -   **Should Test frontend/backend/both after fix?** both
+    -   **Should Test frontend/backend/both after fix?** frontend
     -   **Blocked on other issue:** No
 
 -   **Issue 4: Inconsistent Data Persistence**
-    -   **Attempted fixes:** None. Known architectural risk.
-    -   **Next debug checklist:** Audit backend code for any state stored in global Python variables that is not persisted to MongoDB. The recent bot bug that fixed itself on restart points to this as a potential area of concern.
+    -   **Attempted fixes:** None. This is a known architectural risk.
+    -   **Next debug checklist:** Audit backend code for any state stored in global Python variables that is not persisted to MongoDB.
     -   **Why fix this issue and what will be achieved with the fix?** Guarantees data integrity across server restarts.
     -   **Status:** NOT STARTED
     -   **Is recurring issue?** Y
     -   **Should Test frontend/backend/both after fix?** backend
     -   **Blocked on other issue:** No
 
--   **Issue 5: Refactor Overlapping User Routers**
-    -   **Attempted fixes:** Agent analyzed  and  and confirmed overlapping endpoints. No refactoring was done.
-    -   **Next debug checklist:** Consolidate all user-related endpoints into  and delete . Update  accordingly.
-    -   **Why fix this issue and what will be achieved with the fix?** Improves code clarity and maintainability.
-    -   **Status:** NOT STARTED
-    -   **Is recurring issue?** N
-    -   **Should Test frontend/backend/both after fix?** backend
-    -   **Blocked on other issue:** No
-
 **In progress Task List**:
 -   **Task 1: Complete  Refactoring (P1)**
-    -   **Where to resume:** The file is over 3000 lines. Continue extracting the remaining tabs (, , , , , , etc.) from  into their own components in .
-    -   **What will be achieved with this?** Reduces the complexity of the massive  file, improving maintainability and performance.
-    -   **Status:** IN PROGRESS (~55% complete)
+    -   **Where to resume:** Most large tabs have been extracted from . The next step is to review the remaining ~2100 lines and extract any smaller leftover logic or UI sections (e.g., the  tab) into their own components.
+    -   **What will be achieved with this?** A fully modular, maintainable, and performant admin panel.
+    -   **Status:** IN PROGRESS (~85% complete)
     -   **Should Test frontend/backend/both after fix?** frontend
     -   **Blocked on something:** No
 
@@ -108,99 +100,90 @@ A feature-rich, full-stack penny auction application (React, FastAPI, MongoDB). 
     -   Translate the remaining non-critical frontend pages.
 
 **Completed work in this session**
--   **Gift Card System:** Implemented a full system for users to buy and redeem gift cards via Stripe ( page, new backend router ).
--   **Automated Day/Night Auction Scheduler:** Created a background task in  to automatically pause/resume day and night auctions based on the time of day (Berlin time).
--   **AI-Powered Product Translations:** Extended product schema to support multilingual fields (, ). Implemented a voice command and API endpoint to auto-translate all products using an LLM. Frontend now displays the correct language.
--   **Bot Bidding Logic Overhaul:** Changed bot logic to bid continuously up to a specific admin-set monetary value (Bots bieten bis €X), rather than just bidding at the end.
--   **Critical Bug Fix (Auction Bidding):** Resolved an issue where bot bids increased the price but didn't update the  or . The fix involved correcting the MongoDB update operation in the bot bidding loop in .
--   **Voice Command Enhancements:**
-    -   Fixed a bug where complex batch commands failed because parameters were sent in the URL instead of the request body.
-    -   Implemented a command history UI in the admin panel.
--   **UI & Translation Fixes:**
-    -   Removed the user-facing NEUSTART... (Restarting...) status from auction cards.
-    -   Fixed a missing German translation for Achievements on the dashboard.
+-   **Influencer Dashboard & Payouts:** Created a full-featured dashboard for influencers with stats, tier tracking, and payout requests.
+-   **Tiered Influencer Commissions:** Implemented a backend system and frontend UI for a multi-level influencer commission structure.
+-   ** Major Refactoring:** Extracted most tabs (, , , , , ) into separate components, reducing file size by ~39%.
+-   **User Router Consolidation:** Merged  into  and deleted the redundant file.
+-   **Bug Fix: Bot-Bieten fehlgeschlagen:** Modified the backend to allow setting a bot target price on newly created  auctions.
+-   **Bug Fix: Voice Command Parsing:** Improved the prompt in  to correctly recognize the  command.
+-   **Bug Fix: Missing Homepage Translations:** Updated  to use the  utility, ensuring product names are displayed in the selected language.
+-   **Bug Fix: WebSocket Stability:** Corrected hardcoded WebSocket URLs on several pages to use the proper  prefix.
+-   **UI Enhancement:** Added Aktion des Tages (Auction of the Day) type to the auction creation form.
 
 **Earlier issues found/mentioned but not fixed**
--   Same as the pending issue list: Not Found Toast, Inconsistent Data Persistence, Overlapping User Routers.
+-   Same as the pending issue list: **Inconsistent Data Persistence**.
 
 **Known issue recurrence from previous fork**
 -   **Issue recurrence in previous fork:** Not Found Toast Notification.
 -   **Recurrence count:** 4
--   **Status:** NOT STARTED (Mitigation in place, but root cause not found).
+-   **Status:** IN PROGRESS (Mitigation and improved logging are in place, but the root cause may not be fully eliminated).
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
--   **Automated Day/Night Auction Scheduler:** A background  task in  that runs periodically to check the current time (using a specific timezone) and updates the status of auctions in MongoDB ( vs. /).
--   **AI-Powered Product Translation:** A system where product names/descriptions are stored as dictionaries (e.g., ). A backend endpoint uses an LLM to populate these dictionaries for multiple languages automatically.
--   **Gift Card Purchase & Redemption Flow:** A complete e-commerce flow involving Stripe Checkout sessions for purchasing, generating a unique code, and a separate mechanism for another user to redeem that code for on-site credit (bids).
--   **Stateful Bot Logic:** Bot behavior is now directly tied to a  field on the auction document in MongoDB, ensuring their bidding strategy is persistent and predictable.
+-   **Tiered Commission Logic:** In , a helper function now calculates an influencer's commission percentage based on the number of customers they have referred, pulling tier thresholds from a configuration dictionary.
+-   **Influencer Payout System:** Involves a new API endpoint () and a new MongoDB collection () to track payout requests separately from general earnings.
+-   **Component-Based Refactoring:** The  page was broken down by extracting the JSX and state management for each tab into its own React component, which are then conditionally rendered in the main  file.
 
 **key DB schema**
--   **products**: Added , .
--   **auctions**: Added , , ,  now includes  and . The  field is now the primary driver for bot bidding.
--   **gift_cards**: (New) .
+-   **influencers**: Schema was effectively extended to support commission tiers. The backend now calculates , , and  on the fly.
+-   **influencer_payout_requests**: (New Collection) .
 
 **All files of reference**
--    (File with the pending voice command bug)
--    (File with the pending form implementation)
--    (File with the pending form implementation)
--    (Contains the new day/night scheduler and corrected bot logic)
--    (Logic for the new gift card system)
--    (UI for the new gift card system)
--    (Contains the new translation endpoint)
--    (Helper for displaying translated text)
+-    (Location of the current bug).
+-    (The file that was heavily refactored).
+-    (Contains the new influencer features).
+-    (The new influencer dashboard page).
+-    (The consolidated user router).
+-    (File where translation was fixed).
 
 **Areas that need refactoring**:
--   **:** This is a critical tech debt item. The file is over 3,400 lines long and urgently needs to be broken down into smaller components for each tab.
--   **Backend User Routers:** The  and  files must be consolidated to remove duplicate logic and clarify API structure.
--   **:** The main  function is a large  block that is becoming hard to maintain. It should be refactored into a dictionary mapping command actions to handler functions.
+-   **:** While significantly improved, the file still contains rendering logic and state that could be further cleaned up. A final pass is needed to extract any remaining small tabs or shared logic.
+-   **:** The main  function remains a large  block and would benefit from being refactored into a dictionary mapping actions to handler functions.
 
 **key api endpoints**
--   : Creates a Stripe session to purchase a gift card.
--   : Redeems a gift card code.
--   : (Admin) Triggers AI translation for all products.
--   : Used by the admin panel to create new auctions. Needs to be checked to ensure it handles the new  fields.
--   : (Modified) Now accepts parameters in the request body to support complex batch commands.
+-   : (New) Allows an authenticated influencer to request a payout of their available earnings.
+-   : (New) Provides all necessary data for the influencer dashboard, including tier progress.
+-   : (Modified) Logic was updated to allow setting a bot target price on auctions with a  status.
+-   The endpoints previously under  are now available under .
 
 **Critical Info for New Agent**
--   Your immediate priorities are the two issues the user last reported with screenshots:
-    1.  Fix the voice command parser so it can handle create bots commands.
-    2.  Finish implementing the auction creation form in the admin panel to include  and  fields.
--   The bot bidding system recently had a critical bug where bid counts weren't updating. It was fixed, but the fact that it resolved after a server restart suggests potential statefulness issues in the backend. Be mindful of this.
--   The long-standing refactoring of  is a high-priority background task. If you have downtime between user requests, dedicate time to extracting tabs from this file.
+-   Your immediate priority is fixing the auction duration bug in . The user is blocked from creating auctions with correct timings.
+-   After fixing the bug, the next priority is to implement the admin email notification for new influencer payout requests, which the user has already approved.
+-   The influencer system is a major new feature. Be aware of the new dashboard, endpoints, and database collections related to it.
 
 **documents and test reports created in this job**
--    (Updated)
+-    (Updated several times to reflect progress).
+-   
+-   
+-   
 -   
 -   
 -   
 -   
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **LATEST:** User requests adding more options to the auction creation form (Day, Night, VIP, AOTD) and reports that voice commands for creating bots are being misinterpreted, providing screenshots for both issues.
-2.  User requests that the bot target price should make bots bid up to that real money value.
-3.  User requests a day/night system where day auctions are paused at night and vice-versa.
-4.  User reports multiple issues via screenshots: incorrect (Albanian) translations appearing, voice command processing getting stuck, and all auctions showing the same low price/bid count.
-5.  User reports that the voice command execution fails (command is recognized but not executed).
-6.  User requests a gift card system where users can buy cards for themselves or others, payable with Stripe/Crypto, but only redeemable for bids (no cash out).
-7.  User confirms plan for gift card system.
-8.  Agent proposes plan to add gift card system.
-9.  User reports an issue with voice commands and provides a screenshot showing a command was misinterpreted. Requests 3 recommended improvements to be implemented.
-10. Agent finishes implementing voice command fixes and product translation feature.
+1.  **LATEST:** User reports that the auction duration is not being set correctly (e.g., 1 day becomes a few minutes). (IN PROGRESS)
+2.  User asks for influencer credentials, reports translation issues, a bug with auction settings (which was already fixed), and agrees to add payout requests to the influencer dashboard. (PARTIALLY COMPLETE - Payouts added, translation fixed, duration bug reported in next message).
+3.  User agrees to the creation of an influencer dashboard. (COMPLETE)
+4.  Agent proposes building an influencer dashboard. (COMPLETE)
+5.  User confirms they want the WebSocket Not Found errors fixed and asks for a recommendation to improve influencer earnings. Also resubmits screenshots of the Bot-Bieten fehlgeschlagen bug. (COMPLETE - WebSocket fixed, tiered commissions added).
+6.  Agent finishes the Admin.js refactoring and asks if the user wants to fix the WebSocket issue. (COMPLETE)
+7.  Agent finishes the user router consolidation and initial  refactoring and proposes to extract more components. (COMPLETE)
+8.  Agent proposes plan to consolidate user routers, analyze the Not Found toast, and refactor . (COMPLETE)
+9.  Agent finishes fixing the voice command and auction form, then proposes to work on refactoring and bug hunting. (COMPLETE)
+10. User provides screenshots and reports that the auction form is missing options and the voice command for creating bots is being misinterpreted. (COMPLETE)
 
 **Project Health Check:**
--   **Broken:**
-    -   The voice command for creating bots is not working as intended, which is a key admin feature.
-    -   The auction creation form is incomplete and doesn't allow setting the auction type as requested.
+-   **Broken:** The auction creation form in the admin panel calculates the auction duration incorrectly, making it impossible for the admin to set correct auction times.
 -   **Mocked:**
-    -   Resend (email service is in sandbox mode).
+    -   Resend (email service is in sandbox mode, needed for the upcoming payout notification task).
     -   Tawk.to (live chat requires a user-provided Property ID).
 
 **3rd Party Integrations**
 -   **OpenAI Whisper & GPT-4o-mini:** Used for the admin voice command feature. Uses Emergent LLM Key.
--   **Stripe (Payments):** Integrated for bid packages and the new gift card system.
+-   **Stripe (Payments):** Integrated for bid packages and the gift card system.
 -   **Tawk.to (Live Chat):** Placeholder script exists.
 -   **Resend (Email):** Sandbox integration.
 -   **Coinbase Commerce (Crypto Payments):** Integrated but disabled.
@@ -210,7 +193,7 @@ A feature-rich, full-stack penny auction application (React, FastAPI, MongoDB). 
 -   **Testing agent used after significant changes:** NO
 -   **Troubleshoot agent used after agent stuck in loop:** NO
 -   **Test files created:** None.
--   **Known regressions:** None from this session, but the intermittent Not Found toast remains a known issue.
+-   **Known regressions:** None. The WebSocket fixes may have resolved a known regression (Not Found toast), but this is unconfirmed.
 
 **Credentials to test flow:**
 -   **Admin:**  / 
@@ -218,5 +201,5 @@ A feature-rich, full-stack penny auction application (React, FastAPI, MongoDB). 
 -   **Influencer:** Email: , Code: 
 
 **What agent forgot to execute**
--   The agent did not complete the implementation for the user's two most recent requests (auction form and  voice command) before the session ended.
--   The major refactoring tasks (, user routers) and the hunt for the Not Found toast's root cause continue to be deferred in favor of new feature requests from the user.</analysis>
+-   The agent did not yet implement the admin email notification system for new influencer payout requests, even though the user approved it.
+-   The final fix and verification for the auction duration bug is still pending.</analysis>
