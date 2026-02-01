@@ -66,7 +66,7 @@ export const Navbar = () => {
               data-testid="nav-giftcards"
             >
               <Gift className="w-4 h-4" />
-              Geschenkkarten
+              {t('nav.giftCards') || 'Geschenkkarten'}
             </Link>
             <Link 
               to="/vip-auctions" 
@@ -74,7 +74,7 @@ export const Navbar = () => {
               data-testid="nav-vip-auctions"
             >
               <Crown className="w-4 h-4" />
-              VIP Auktionen
+              {t('nav.vipAuctions') || 'VIP Auktionen'}
             </Link>
             <Link 
               to="/vip" 
