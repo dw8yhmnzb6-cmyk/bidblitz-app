@@ -48,6 +48,16 @@ export default function AuctionDetail() {
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [copied, setCopied] = useState(false);
 
+  // Auction Detail translations
+  const detailTexts = {
+    de: { pleaseLogin: 'Bitte melden Sie sich an', linkCopied: 'Link kopiert!', copyError: 'Fehler beim Kopieren', checkoutAuction: 'Schau dir diese Auktion an', auctionTitle: 'Auktion', buyNow: 'Sofort kaufen', bidBuddy: 'Bid Buddy', bidBuddyActivated: 'Bid Buddy aktiviert! Er bietet automatisch für Sie.', bidBuddyDesc: 'Ihr Bid Buddy bietet automatisch in den letzten Sekunden für Sie!', scheduledAuction: 'Diese Auktion ist geplant und startet am', noBidsAvailable: 'Keine Gebote mehr verfügbar. Bitte kaufen Sie mehr Gebote.', notEnoughBids: 'Nicht genug Gebote', beingPurchased: 'Wird gekauft...', bidCredit: 'Gebots-Guthaben', yourPrice: 'Ihr Preis', savingsMessage: 'Sie sparen durch Ihre platzierten Gebote!', savingsNote: 'Jedes platzierte Gebot wird auf den Kaufpreis als €0,15 Guthaben angerechnet.' },
+    en: { pleaseLogin: 'Please log in', linkCopied: 'Link copied!', copyError: 'Error copying', checkoutAuction: 'Check out this auction', auctionTitle: 'Auction', buyNow: 'Buy Now', bidBuddy: 'Bid Buddy', bidBuddyActivated: 'Bid Buddy activated! It will bid automatically for you.', bidBuddyDesc: 'Your Bid Buddy will automatically bid in the last seconds for you!', scheduledAuction: 'This auction is scheduled and starts on', noBidsAvailable: 'No more bids available. Please buy more bids.', notEnoughBids: 'Not enough bids', beingPurchased: 'Being purchased...', bidCredit: 'Bid Credit', yourPrice: 'Your Price', savingsMessage: 'You save through your placed bids!', savingsNote: 'Each placed bid is credited as €0.15 credit towards the purchase price.' },
+    sq: { pleaseLogin: 'Ju lutem hyni', linkCopied: 'Linku u kopjua!', copyError: 'Gabim gjatë kopjimit', checkoutAuction: 'Shiko këtë ankand', auctionTitle: 'Ankandi', buyNow: 'Bli Tani', bidBuddy: 'Bid Buddy', bidBuddyActivated: 'Bid Buddy u aktivizua! Do të ofertojë automatikisht për ju.', bidBuddyDesc: 'Bid Buddy juaj do të ofertojë automatikisht në sekondat e fundit!', scheduledAuction: 'Ky ankand është planifikuar dhe fillon më', noBidsAvailable: 'Nuk ka më oferta. Ju lutem blini më shumë oferta.', notEnoughBids: 'Jo mjaft oferta', beingPurchased: 'Duke u blerë...', bidCredit: 'Kredi Ofertash', yourPrice: 'Çmimi Juaj', savingsMessage: 'Ju kurseni nga ofertat e vendosura!', savingsNote: 'Çdo ofertë e vendosur kreditohet si €0,15 kredi për çmimin e blerjes.' },
+    tr: { pleaseLogin: 'Lütfen giriş yapın', linkCopied: 'Link kopyalandı!', copyError: 'Kopyalama hatası', checkoutAuction: 'Bu açık artırmaya göz atın', auctionTitle: 'Açık Artırma', buyNow: 'Şimdi Satın Al', bidBuddy: 'Bid Buddy', bidBuddyActivated: 'Bid Buddy aktif! Sizin için otomatik teklif verecek.', bidBuddyDesc: 'Bid Buddy son saniyelerde sizin için otomatik teklif verecek!', scheduledAuction: 'Bu açık artırma planlandı ve başlıyor', noBidsAvailable: 'Teklif kalmadı. Lütfen daha fazla teklif satın alın.', notEnoughBids: 'Yeterli teklif yok', beingPurchased: 'Satın alınıyor...', bidCredit: 'Teklif Kredisi', yourPrice: 'Fiyatınız', savingsMessage: 'Teklifleriniz sayesinde tasarruf ediyorsunuz!', savingsNote: 'Her teklif satın alma fiyatına €0,15 kredi olarak eklenir.' },
+    fr: { pleaseLogin: 'Veuillez vous connecter', linkCopied: 'Lien copié!', copyError: 'Erreur de copie', checkoutAuction: 'Découvrez cette enchère', auctionTitle: 'Enchère', buyNow: 'Acheter Maintenant', bidBuddy: 'Bid Buddy', bidBuddyActivated: 'Bid Buddy activé! Il enchérira automatiquement pour vous.', bidBuddyDesc: 'Votre Bid Buddy enchérira automatiquement dans les dernières secondes!', scheduledAuction: 'Cette enchère est programmée et commence le', noBidsAvailable: 'Plus d\'enchères disponibles. Veuillez acheter plus d\'enchères.', notEnoughBids: 'Pas assez d\'enchères', beingPurchased: 'Achat en cours...', bidCredit: 'Crédit d\'enchère', yourPrice: 'Votre Prix', savingsMessage: 'Vous économisez grâce à vos enchères!', savingsNote: 'Chaque enchère est créditée de €0,15 sur le prix d\'achat.' }
+  };
+  const dtl = detailTexts[language] || detailTexts.de;
+
   // Simulated viewer count (minimum 12, based on auction ID for consistency)
   const [simulatedViewers] = useState(() => {
     // Generate consistent number based on auction ID
@@ -62,15 +72,15 @@ export default function AuctionDetail() {
 
   const handleShare = (platform) => {
     const url = encodeURIComponent(getShareUrl());
-    const productName = auction?.product?.name || 'Auktion';
-    const text = encodeURIComponent(`🔥 Schau dir diese Auktion an: ${productName} - Nur € ${auction?.current_price?.toFixed(2)}!`);
+    const productName = auction?.product?.name || dtl.auctionTitle;
+    const text = encodeURIComponent(`🔥 ${dtl.checkoutAuction}: ${productName} - € ${auction?.current_price?.toFixed(2)}!`);
     
     const shareUrls = {
       whatsapp: `https://wa.me/?text=${text}%20${url}`,
       telegram: `https://t.me/share/url?url=${url}&text=${text}`,
       facebook: `https://www.facebook.com/sharer/sharer.php?u=${url}`,
       twitter: `https://twitter.com/intent/tweet?url=${url}&text=${text}`,
-      email: `mailto:?subject=${encodeURIComponent(`Auktion: ${productName}`)}&body=${text}%20${url}`
+      email: `mailto:?subject=${encodeURIComponent(`${dtl.auctionTitle}: ${productName}`)}&body=${text}%20${url}`
     };
     
     if (shareUrls[platform]) {
@@ -83,10 +93,10 @@ export default function AuctionDetail() {
     try {
       await navigator.clipboard.writeText(getShareUrl());
       setCopied(true);
-      toast.success('Link kopiert!');
+      toast.success(dtl.linkCopied);
       setTimeout(() => setCopied(false), 2000);
     } catch (error) {
-      toast.error('Fehler beim Kopieren');
+      toast.error(dtl.copyError);
     }
     setShowShareMenu(false);
   };
@@ -128,7 +138,7 @@ export default function AuctionDetail() {
   // Handle Buy It Now
   const handleBuyNow = async () => {
     if (!isAuthenticated) {
-      toast.error('Bitte melden Sie sich an');
+      toast.error(dtl.pleaseLogin);
       return;
     }
 
