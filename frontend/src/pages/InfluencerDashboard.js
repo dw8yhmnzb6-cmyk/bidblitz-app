@@ -272,36 +272,39 @@ export default function InfluencerDashboard() {
         </div>
 
         {/* Payout Card */}
-        <div className="glass-card rounded-2xl p-6 border-l-4 border-[#10B981]">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                <Wallet className="w-6 h-6 text-[#10B981]" />
-                Auszahlung
-              </h2>
-              <div className="mt-2 grid grid-cols-3 gap-6">
-                <div>
-                  <p className="text-[#94A3B8] text-sm">Gesamt verdient</p>
-                  <p className="text-2xl font-bold text-[#F59E0B]">€{payoutHistory?.total_earned?.toFixed(2) || '0.00'}</p>
-                </div>
-                <div>
-                  <p className="text-[#94A3B8] text-sm">Bereits ausgezahlt</p>
-                  <p className="text-2xl font-bold text-[#94A3B8]">€{payoutHistory?.total_paid?.toFixed(2) || '0.00'}</p>
-                </div>
-                <div>
-                  <p className="text-[#94A3B8] text-sm">Verfügbar</p>
-                  <p className="text-2xl font-bold text-[#10B981]">€{payoutHistory?.available_balance?.toFixed(2) || '0.00'}</p>
-                </div>
-              </div>
-            </div>
+        <div className="glass-card rounded-2xl p-4 md:p-6 border-l-4 border-[#10B981]">
+          {/* Header Row */}
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg md:text-xl font-bold text-white flex items-center gap-2">
+              <Wallet className="w-5 h-5 md:w-6 md:h-6 text-[#10B981]" />
+              Auszahlung
+            </h2>
             <Button 
               onClick={() => setShowPayoutModal(true)}
               disabled={(payoutHistory?.available_balance || 0) < 10}
-              className="bg-[#10B981] hover:bg-[#059669] px-6"
+              className="bg-[#10B981] hover:bg-[#059669] px-3 md:px-6 text-sm md:text-base"
+              data-testid="request-payout-btn"
             >
-              <Send className="w-4 h-4 mr-2" />
-              Auszahlung anfordern
+              <Send className="w-4 h-4 mr-1 md:mr-2" />
+              <span className="hidden sm:inline">Auszahlung anfordern</span>
+              <span className="sm:hidden">Anfordern</span>
             </Button>
+          </div>
+          
+          {/* Stats Grid - Stacked on mobile, row on desktop */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-6">
+            <div className="flex justify-between sm:block p-3 sm:p-0 bg-[#181824] sm:bg-transparent rounded-lg">
+              <p className="text-[#94A3B8] text-sm">Gesamt verdient</p>
+              <p className="text-xl md:text-2xl font-bold text-[#F59E0B]">€{payoutHistory?.total_earned?.toFixed(2) || '0.00'}</p>
+            </div>
+            <div className="flex justify-between sm:block p-3 sm:p-0 bg-[#181824] sm:bg-transparent rounded-lg">
+              <p className="text-[#94A3B8] text-sm">Bereits ausgezahlt</p>
+              <p className="text-xl md:text-2xl font-bold text-[#94A3B8]">€{payoutHistory?.total_paid?.toFixed(2) || '0.00'}</p>
+            </div>
+            <div className="flex justify-between sm:block p-3 sm:p-0 bg-[#181824] sm:bg-transparent rounded-lg">
+              <p className="text-[#94A3B8] text-sm">Verfügbar</p>
+              <p className="text-xl md:text-2xl font-bold text-[#10B981]">€{payoutHistory?.available_balance?.toFixed(2) || '0.00'}</p>
+            </div>
           </div>
           
           {(payoutHistory?.available_balance || 0) < 10 && (
