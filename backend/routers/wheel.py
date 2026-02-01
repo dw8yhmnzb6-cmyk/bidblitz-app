@@ -2,10 +2,8 @@
 from fastapi import APIRouter, Depends, HTTPException
 from datetime import datetime, timedelta, timezone
 import random
-from ..config import get_db, get_current_user
-import logging
-
-logger = logging.getLogger(__name__)
+from config import db, logger
+from dependencies import get_current_user
 
 router = APIRouter(prefix="/wheel", tags=["wheel"])
 
