@@ -506,31 +506,39 @@ export default function HowItWorks() {
                   borderRadius: '4px',
                   background: 'linear-gradient(to right, #22C55E 0%, #84CC16 25%, #EAB308 50%, #F97316 75%, #EF4444 100%)'
                 }} />
-                <span className="text-white font-semibold text-sm">📊 Aktivitätsindex</span>
+                <span className="text-white font-semibold text-sm">📊 {language === 'en' ? 'Activity Index' : language === 'sq' ? 'Indeksi i Aktivitetit' : language === 'tr' ? 'Aktivite Endeksi' : language === 'fr' ? "Indice d'Activité" : 'Aktivitätsindex'}</span>
               </div>
               <p className="text-gray-400 text-sm mb-3">
-                Der Aktivitätsindex zeigt dir, wie aktiv eine Auktion gerade ist:
+                {language === 'en' ? 'The activity index shows you how active an auction currently is:' : 
+                 language === 'sq' ? 'Indeksi i aktivitetit tregon se sa aktiv është një ankand:' :
+                 language === 'tr' ? 'Aktivite endeksi size bir açık artırmanın ne kadar aktif olduğunu gösterir:' :
+                 language === 'fr' ? "L'indice d'activité vous montre l'activité actuelle d'une vente:" :
+                 'Der Aktivitätsindex zeigt dir, wie aktiv eine Auktion gerade ist:'}
               </p>
               <div className="grid grid-cols-2 gap-2 text-xs">
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                  <span className="text-gray-300">Grün = Wenig Aktivität</span>
+                  <span className="text-gray-300">{language === 'en' ? 'Green = Low Activity' : language === 'sq' ? 'Jeshile = Aktivitet i Ulët' : language === 'tr' ? 'Yeşil = Düşük Aktivite' : language === 'fr' ? 'Vert = Faible Activité' : 'Grün = Wenig Aktivität'}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
-                  <span className="text-gray-300">Gelb = Mittlere Aktivität</span>
+                  <span className="text-gray-300">{language === 'en' ? 'Yellow = Medium Activity' : language === 'sq' ? 'Verdhë = Aktivitet Mesatar' : language === 'tr' ? 'Sarı = Orta Aktivite' : language === 'fr' ? 'Jaune = Activité Moyenne' : 'Gelb = Mittlere Aktivität'}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-full bg-orange-500"></div>
-                  <span className="text-gray-300">Orange = Hohe Aktivität</span>
+                  <span className="text-gray-300">{language === 'en' ? 'Orange = High Activity' : language === 'sq' ? 'Portokalli = Aktivitet i Lartë' : language === 'tr' ? 'Turuncu = Yüksek Aktivite' : language === 'fr' ? 'Orange = Haute Activité' : 'Orange = Hohe Aktivität'}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-full bg-red-500"></div>
-                  <span className="text-gray-300">Rot = Sehr hohe Aktivität</span>
+                  <span className="text-gray-300">{language === 'en' ? 'Red = Very High Activity' : language === 'sq' ? 'Kuq = Aktivitet Shumë i Lartë' : language === 'tr' ? 'Kırmızı = Çok Yüksek Aktivite' : language === 'fr' ? 'Rouge = Très Haute Activité' : 'Rot = Sehr hohe Aktivität'}</span>
                 </div>
               </div>
               <p className="text-gray-500 text-xs mt-3">
-                💡 Tipp: Bei niedriger Aktivität hast du bessere Chancen zu gewinnen!
+                💡 {language === 'en' ? 'Tip: You have better chances to win with low activity!' : 
+                    language === 'sq' ? 'Këshillë: Ke shanse më të mira për të fituar me aktivitet të ulët!' :
+                    language === 'tr' ? 'İpucu: Düşük aktivitede kazanma şansınız daha yüksek!' :
+                    language === 'fr' ? 'Conseil: Vous avez de meilleures chances avec une faible activité!' :
+                    'Tipp: Bei niedriger Aktivität hast du bessere Chancen zu gewinnen!'}
               </p>
             </div>
           </div>
