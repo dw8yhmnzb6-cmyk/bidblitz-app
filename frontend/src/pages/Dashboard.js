@@ -36,11 +36,11 @@ export default function Dashboard() {
 
   // Dashboard translations
   const dashTexts = {
-    de: { welcome: 'Willkommen', profile: 'Profil', buyBids: 'Gebote kaufen', balance: 'Guthaben', bids: 'Gebote', won: 'Gewonnen', auctions: 'Auktionen', active: 'Aktiv', watching: 'Beobachtet', voucherCode: 'Gutscheincode', redeem: 'Einlösen', myAuctions: 'Meine Auktionen', recentBids: 'Letzte Gebote', autobidder: 'Autobidder', noBids: 'Noch keine Gebote', startBidding: 'Bieten anfangen', noAutobidder: 'Kein Autobidder', createAutobidder: 'Autobidder erstellen', viewAll: 'Alle anzeigen', dailyReward: 'Tägliche Belohnung', claimNow: 'Jetzt abholen!', alreadyClaimed: 'Heute abgeholt', streak: 'Streak', days: 'Tage', achievements: 'Erfolge' },
-    en: { welcome: 'Welcome', profile: 'Profile', buyBids: 'Buy Bids', balance: 'Balance', bids: 'Bids', won: 'Won', auctions: 'Auctions', active: 'Active', watching: 'Watching', voucherCode: 'Voucher Code', redeem: 'Redeem', myAuctions: 'My Auctions', recentBids: 'Recent Bids', autobidder: 'Auto-Bidder', noBids: 'No bids yet', startBidding: 'Start Bidding', noAutobidder: 'No auto-bidder', createAutobidder: 'Create Auto-Bidder', viewAll: 'View All', dailyReward: 'Daily Reward', claimNow: 'Claim Now!', alreadyClaimed: 'Claimed Today', streak: 'Streak', days: 'Days', achievements: 'Achievements' },
-    sq: { welcome: 'Mirë se vini', profile: 'Profili', buyBids: 'Bli Oferta', balance: 'Bilanci', bids: 'Oferta', won: 'Fituar', auctions: 'Ankande', active: 'Aktive', watching: 'Duke ndjekur', voucherCode: 'Kodi i Kuponit', redeem: 'Aktivizo', myAuctions: 'Ankandet e Mia', recentBids: 'Ofertat e Fundit', autobidder: 'Auto-Ofertuesi', noBids: 'Ende pa oferta', startBidding: 'Fillo të Ofrosh', noAutobidder: 'Pa auto-ofertues', createAutobidder: 'Krijo Auto-Ofertues', viewAll: 'Shiko të Gjitha', dailyReward: 'Shpërblimi Ditor', claimNow: 'Merr Tani!', alreadyClaimed: 'Marrë Sot', streak: 'Streak', days: 'Ditë', achievements: 'Arritjet' },
-    tr: { welcome: 'Hoş geldiniz', profile: 'Profil', buyBids: 'Teklif Al', balance: 'Bakiye', bids: 'Teklif', won: 'Kazanılan', auctions: 'Açık Artırma', active: 'Aktif', watching: 'İzlenen', voucherCode: 'Kupon Kodu', redeem: 'Kullan', myAuctions: 'Açık Artırmalarım', recentBids: 'Son Teklifler', autobidder: 'Otomatik Teklif', noBids: 'Henüz teklif yok', startBidding: 'Teklif Vermeye Başla', noAutobidder: 'Otomatik teklif yok', createAutobidder: 'Otomatik Teklif Oluştur', viewAll: 'Tümünü Gör', dailyReward: 'Günlük Ödül', claimNow: 'Şimdi Al!', alreadyClaimed: 'Bugün Alındı', streak: 'Streak', days: 'Gün', achievements: 'Başarılar' },
-    fr: { welcome: 'Bienvenue', profile: 'Profil', buyBids: 'Acheter Enchères', balance: 'Solde', bids: 'Enchères', won: 'Gagné', auctions: 'Enchères', active: 'Actif', watching: 'Surveillé', voucherCode: 'Code Promo', redeem: 'Utiliser', myAuctions: 'Mes Enchères', recentBids: 'Enchères Récentes', autobidder: 'Auto-Enchère', noBids: 'Pas encore d\'enchères', startBidding: 'Commencer à Enchérir', noAutobidder: 'Pas d\'auto-enchère', createAutobidder: 'Créer Auto-Enchère', viewAll: 'Voir Tout', dailyReward: 'Récompense Quotidienne', claimNow: 'Réclamer!', alreadyClaimed: 'Réclamé Aujourd\'hui', streak: 'Streak', days: 'Jours', achievements: 'Succès' }
+    de: { welcome: 'Willkommen', profile: 'Profil', buyBids: 'Gebote kaufen', balance: 'Guthaben', bids: 'Gebote', won: 'Gewonnen', auctions: 'Auktionen', active: 'Aktiv', watching: 'Beobachtet', voucherCode: 'Gutscheincode', redeem: 'Einlösen', myAuctions: 'Meine Auktionen', recentBids: 'Letzte Gebote', autobidder: 'Autobidder', noBids: 'Noch keine Gebote', startBidding: 'Bieten anfangen', noAutobidder: 'Kein Autobidder', createAutobidder: 'Autobidder erstellen', viewAll: 'Alle anzeigen', dailyReward: 'Tägliche Belohnung', claimNow: 'Jetzt abholen!', alreadyClaimed: 'Heute abgeholt', streak: 'Streak', days: 'Tage', achievements: 'Erfolge', bidsAvailable: 'Gebote verfügbar', redeemVoucher: 'Gutschein einlösen', pay: 'Bezahlen', paid: 'Bezahlt', paymentDeadline: 'Zahlungsfrist', freeAuctionNote: 'Gratis-Auktion - Endpreis zahlen', showAllWon: 'Alle gewonnenen Auktionen anzeigen', myAutobidders: 'Meine Autobidder', noAutobidderMsg: 'Keine aktiven Autobidder. Erstellen Sie einen auf der Auktionsdetailseite!', giftBids: 'Gebote verschenken', giftBidsDesc: 'Schenken Sie Freunden und Familie Gebote mit Ihrer Kundennummer', giftNow: 'Jetzt verschenken' },
+    en: { welcome: 'Welcome', profile: 'Profile', buyBids: 'Buy Bids', balance: 'Balance', bids: 'Bids', won: 'Won', auctions: 'Auctions', active: 'Active', watching: 'Watching', voucherCode: 'Voucher Code', redeem: 'Redeem', myAuctions: 'My Auctions', recentBids: 'Recent Bids', autobidder: 'Auto-Bidder', noBids: 'No bids yet', startBidding: 'Start Bidding', noAutobidder: 'No auto-bidder', createAutobidder: 'Create Auto-Bidder', viewAll: 'View All', dailyReward: 'Daily Reward', claimNow: 'Claim Now!', alreadyClaimed: 'Claimed Today', streak: 'Streak', days: 'Days', achievements: 'Achievements', bidsAvailable: 'Bids available', redeemVoucher: 'Redeem voucher', pay: 'Pay', paid: 'Paid', paymentDeadline: 'Payment deadline', freeAuctionNote: 'Free auction - Pay final price', showAllWon: 'Show all won auctions', myAutobidders: 'My Auto-Bidders', noAutobidderMsg: 'No active auto-bidders. Create one on the auction detail page!', giftBids: 'Gift Bids', giftBidsDesc: 'Gift bids to friends and family using their customer number', giftNow: 'Gift Now' },
+    sq: { welcome: 'Mirë se vini', profile: 'Profili', buyBids: 'Bli Oferta', balance: 'Bilanci', bids: 'Oferta', won: 'Fituar', auctions: 'Ankande', active: 'Aktive', watching: 'Duke ndjekur', voucherCode: 'Kodi i Kuponit', redeem: 'Aktivizo', myAuctions: 'Ankandet e Mia', recentBids: 'Ofertat e Fundit', autobidder: 'Auto-Ofertuesi', noBids: 'Ende pa oferta', startBidding: 'Fillo të Ofrosh', noAutobidder: 'Pa auto-ofertues', createAutobidder: 'Krijo Auto-Ofertues', viewAll: 'Shiko të Gjitha', dailyReward: 'Shpërblimi Ditor', claimNow: 'Merr Tani!', alreadyClaimed: 'Marrë Sot', streak: 'Streak', days: 'Ditë', achievements: 'Arritjet', bidsAvailable: 'Oferta në dispozicion', redeemVoucher: 'Aktivizo kuponin', pay: 'Paguaj', paid: 'Paguar', paymentDeadline: 'Afati i pagesës', freeAuctionNote: 'Ankand falas - Paguaj çmimin final', showAllWon: 'Shiko të gjitha ankandet e fituara', myAutobidders: 'Auto-Ofertuesit e Mi', noAutobidderMsg: 'Pa auto-ofertues aktiv. Krijoni një në faqen e detajeve të ankandit!', giftBids: 'Dhuro Oferta', giftBidsDesc: 'Dhuroni oferta miqve dhe familjes duke përdorur numrin e klientit', giftNow: 'Dhuro Tani' },
+    tr: { welcome: 'Hoş geldiniz', profile: 'Profil', buyBids: 'Teklif Al', balance: 'Bakiye', bids: 'Teklif', won: 'Kazanılan', auctions: 'Açık Artırma', active: 'Aktif', watching: 'İzlenen', voucherCode: 'Kupon Kodu', redeem: 'Kullan', myAuctions: 'Açık Artırmalarım', recentBids: 'Son Teklifler', autobidder: 'Otomatik Teklif', noBids: 'Henüz teklif yok', startBidding: 'Teklif Vermeye Başla', noAutobidder: 'Otomatik teklif yok', createAutobidder: 'Otomatik Teklif Oluştur', viewAll: 'Tümünü Gör', dailyReward: 'Günlük Ödül', claimNow: 'Şimdi Al!', alreadyClaimed: 'Bugün Alındı', streak: 'Streak', days: 'Gün', achievements: 'Başarılar', bidsAvailable: 'Mevcut teklifler', redeemVoucher: 'Kuponu kullan', pay: 'Öde', paid: 'Ödendi', paymentDeadline: 'Ödeme tarihi', freeAuctionNote: 'Ücretsiz açık artırma - Son fiyatı öde', showAllWon: 'Tüm kazanılan açık artırmaları göster', myAutobidders: 'Otomatik Tekliflerim', noAutobidderMsg: 'Aktif otomatik teklif yok. Açık artırma detay sayfasında bir tane oluşturun!', giftBids: 'Teklif Hediye Et', giftBidsDesc: 'Müşteri numarası ile arkadaşlarınıza teklif hediye edin', giftNow: 'Şimdi Hediye Et' },
+    fr: { welcome: 'Bienvenue', profile: 'Profil', buyBids: 'Acheter Enchères', balance: 'Solde', bids: 'Enchères', won: 'Gagné', auctions: 'Enchères', active: 'Actif', watching: 'Surveillé', voucherCode: 'Code Promo', redeem: 'Utiliser', myAuctions: 'Mes Enchères', recentBids: 'Enchères Récentes', autobidder: 'Auto-Enchère', noBids: 'Pas encore d\'enchères', startBidding: 'Commencer à Enchérir', noAutobidder: 'Pas d\'auto-enchère', createAutobidder: 'Créer Auto-Enchère', viewAll: 'Voir Tout', dailyReward: 'Récompense Quotidienne', claimNow: 'Réclamer!', alreadyClaimed: 'Réclamé Aujourd\'hui', streak: 'Streak', days: 'Jours', achievements: 'Succès', bidsAvailable: 'Enchères disponibles', redeemVoucher: 'Utiliser un coupon', pay: 'Payer', paid: 'Payé', paymentDeadline: 'Date limite de paiement', freeAuctionNote: 'Enchère gratuite - Payer le prix final', showAllWon: 'Voir toutes les enchères gagnées', myAutobidders: 'Mes Auto-Enchères', noAutobidderMsg: 'Pas d\'auto-enchère active. Créez-en une sur la page de détails!', giftBids: 'Offrir des Enchères', giftBidsDesc: 'Offrez des enchères à vos amis avec leur numéro client', giftNow: 'Offrir Maintenant' }
   };
   const dt = dashTexts[language] || dashTexts.de;
 
@@ -400,16 +400,16 @@ export default function Dashboard() {
                 <Gift className="w-7 h-7 text-white" />
               </div>
               <div>
-                <h3 className="text-white font-bold text-lg">{t('gifts.dashboardTitle') || 'Gebote verschenken'}</h3>
+                <h3 className="text-white font-bold text-lg">{dt.giftBids}</h3>
                 <p className="text-gray-400 text-sm">
-                  {t('gifts.dashboardDesc') || 'Schenken Sie Freunden und Familie Gebote mit Ihrer Kundennummer'}
+                  {dt.giftBidsDesc}
                 </p>
               </div>
             </div>
             <Link to="/gift-bids">
               <Button className="bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-400 hover:to-purple-400 text-white font-bold">
                 <Gift className="w-4 h-4 mr-2" />
-                {t('gifts.giftNow') || 'Jetzt verschenken'}
+                {dt.giftNow}
               </Button>
             </Link>
           </div>
@@ -553,15 +553,15 @@ export default function Dashboard() {
             <div className="glass-card rounded-2xl p-6">
               <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
                 <Zap className="w-5 h-5 text-[#FFD700]" />
-                Guthaben
+                {dt.balance}
               </h2>
               <div className="text-center py-4 mb-4 rounded-xl bg-gradient-to-br from-[#FFD700]/20 to-[#FF4D4D]/20 border border-[#FFD700]/30">
                 <p className="text-5xl font-bold text-[#FFD700] font-mono">{user.bids_balance || 0}</p>
-                <p className="text-[#94A3B8] text-sm">Gebote verfügbar</p>
+                <p className="text-[#94A3B8] text-sm">{dt.bidsAvailable}</p>
               </div>
               <Link to="/buy-bids">
                 <Button className="w-full btn-primary mb-4">
-                  <CreditCard className="w-4 h-4 mr-2" />Gebote kaufen
+                  <CreditCard className="w-4 h-4 mr-2" />{dt.buyBids}
                 </Button>
               </Link>
               
@@ -569,7 +569,7 @@ export default function Dashboard() {
               <div className="border-t border-white/10 pt-4">
                 <p className="text-white text-sm mb-2 flex items-center gap-2">
                   <Ticket className="w-4 h-4 text-[#FFD700]" />
-                  Gutschein einlösen
+                  {dt.redeemVoucher}
                 </p>
                 <form onSubmit={handleRedeemVoucher} className="flex gap-2">
                   <Input
@@ -590,7 +590,7 @@ export default function Dashboard() {
               <div className="glass-card rounded-2xl p-6">
                 <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
                   <Trophy className="w-5 h-5 text-[#10B981]" />
-                  Gewonnen ({wonAuctions.length})
+                  {dt.won} ({wonAuctions.length})
                 </h2>
                 <div className="space-y-3">
                   {wonAuctions.slice(0, 5).map((auction) => {
@@ -607,27 +607,27 @@ export default function Dashboard() {
                             <p className="text-white text-sm font-medium truncate">{auction.product?.name || auction.product_name}</p>
                             <p className="text-[#10B981] font-bold">€ {(auction.current_price || auction.final_price)?.toFixed(2)}</p>
                             {auction.is_free_auction && (
-                              <p className="text-[8px] text-amber-400">🎁 Gratis-Auktion - Endpreis zahlen</p>
+                              <p className="text-[8px] text-amber-400">{dt.freeAuctionNote}</p>
                             )}
                           </div>
                           {isPendingPayment ? (
                             <Link to={`/checkout/won/${auction.auction_id || auction.id}`}>
                               <Button size="sm" className="bg-amber-500 hover:bg-amber-600 text-white">
                                 <CreditCard className="w-4 h-4 mr-1" />
-                                Bezahlen
+                                {dt.pay}
                               </Button>
                             </Link>
                           ) : (
                             <div className="flex items-center gap-1 text-[#10B981] text-xs">
                               <CheckCircle className="w-4 h-4" />
-                              <span>Bezahlt</span>
+                              <span>{dt.paid}</span>
                             </div>
                           )}
                         </div>
                         {isPendingPayment && auction.payment_deadline && (
                           <div className="mt-2 pt-2 border-t border-white/10 text-xs text-amber-400 flex items-center gap-1">
                             <Clock className="w-3 h-3" />
-                            Zahlungsfrist: {new Date(auction.payment_deadline).toLocaleDateString('de-DE')}
+                            {dt.paymentDeadline}: {new Date(auction.payment_deadline).toLocaleDateString(language === 'en' ? 'en-US' : language === 'fr' ? 'fr-FR' : language === 'tr' ? 'tr-TR' : 'de-DE')}
                           </div>
                         )}
                       </div>
@@ -636,7 +636,7 @@ export default function Dashboard() {
                 </div>
                 {wonAuctions.length > 5 && (
                   <Link to="/purchases" className="text-[#06B6D4] text-sm hover:underline mt-3 block text-center">
-                    Alle {wonAuctions.length} gewonnenen Auktionen anzeigen →
+                    {dt.showAllWon} ({wonAuctions.length}) →
                   </Link>
                 )}
               </div>
@@ -646,11 +646,11 @@ export default function Dashboard() {
             <div className="glass-card rounded-2xl p-6">
               <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
                 <Bot className="w-5 h-5 text-[#06B6D4]" />
-                Meine Autobidder
+                {dt.myAutobidders}
               </h2>
               {(autobidders || []).length === 0 ? (
                 <p className="text-[#94A3B8] text-sm text-center py-4">
-                  Keine aktiven Autobidder. Erstellen Sie einen auf der Auktionsdetailseite!
+                  {dt.noAutobidderMsg}
                 </p>
               ) : (
                 <div className="space-y-2">
