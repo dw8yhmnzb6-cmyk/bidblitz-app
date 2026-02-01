@@ -1096,6 +1096,96 @@ async def analyze_image_command(
     base64_content = base64.b64encode(content).decode('utf-8')
     
     try:
+        # Check if the user wants to execute an action instead of just analyzing
+        action_keywords = {
+            "translate_products": ["übersetze", "übersetz", "übersetzen", "translation", "sprache", "sprachen", "englisch", "türkisch", "andere sprachen"],
+            "check_translations": ["übersetzung prüfen", "übersetzungen prüfen", "übersetzung überprüfen", "translation check"],
+            "create_auctions": ["erstelle auktionen", "neue auktionen", "auktionen erstellen"],
+            "create_bots": ["erstelle bots", "neue bots", "bots erstellen"],
+            "start_bots": ["starte bots", "bots starten", "bots aktivieren"],
+            "stop_bots": ["stoppe bots", "bots stoppen", "bots deaktivieren"],
+        }
+        
+        text_lower = text.lower()
+        detected_action = None
+        
+        for action, keywords in action_keywords.items():
+            if any(kw in text_lower for kw in keywords):
+                detected_action = action
+                break
+        
+        # If an action is detected, execute it first
+        if detected_action:
+            logger.info(f"🎯 Action detected in media request: {detected_action}")
+            
+            # Execute the action
+            action_params = {}
+            if detected_action == "translate_products":
+                action_params = {"languages": ["en", "tr", "fr", "sq", "ar"]}
+            
+            # Use the existing confirm-execute logic
+            action_result = await execute_action_internal(detected_action, action_params, admin)
+            
+            # Create a response combining action result and image analysis
+            action_response = f"✅ **Aktion ausgeführt: {detected_action}**\n\n{action_result.get('message', 'Aktion erfolgreich')}\n\n"
+            
+            # Now also analyze the image if present
+            system_prompt_with_action = f"""Du bist ein hilfreicher Admin-Assistent für die BidBlitz Penny-Auktions-Plattform.
+
+Der Administrator hat gerade die Aktion '{detected_action}' ausgeführt.
+Ergebnis: {action_result.get('message', 'Erfolgreich')}
+
+Wenn dir ein Screenshot oder Video gezeigt wird:
+1. Beschreibe kurz was du siehst
+2. Erkläre, wie die ausgeführte Aktion das angezeigte Problem lösen könnte
+3. Gib weitere Empfehlungen, falls nötig
+
+Antworte auf Deutsch und sei präzise und hilfreich."""
+
+            chat = LlmChat(
+                api_key=api_key,
+                session_id=f"media-analysis-{uuid.uuid4()}",
+                system_message=system_prompt_with_action
+            ).with_model("openai", "gpt-4o")
+            
+            media_content = ImageContent(
+                image_base64=base64_content
+            )
+            
+            media_type_text = "Video" if is_video else "Bild"
+            user_prompt = f"""Benutzeranfrage: {text}
+
+Bitte analysiere das hochgeladene {media_type_text} im Kontext der ausgeführten Aktion."""
+            
+            response = await chat.send_message(UserMessage(
+                text=user_prompt,
+                file_contents=[media_content]
+            ))
+            
+            full_response = action_response + "---\n\n**Bildanalyse:**\n" + response
+            
+            # Log to history
+            await db.voice_command_history.insert_one({
+                "id": str(uuid.uuid4()),
+                "admin_id": admin["id"],
+                "admin_name": admin["name"],
+                "transcription": f"[{media_type_text} + Aktion] {text}",
+                "action": detected_action,
+                "parameters": action_params,
+                "result": {"success": True, "message": full_response[:500]},
+                "created_at": datetime.now(timezone.utc)
+            })
+            
+            return {
+                "success": True,
+                "analysis": full_response,
+                "query": text,
+                "type": "video" if is_video else "image",
+                "action_executed": detected_action,
+                "action_result": action_result
+            }
+        
+        # No action detected, just analyze the image
         # Create chat with GPT-4o for vision
         system_prompt = """Du bist ein hilfreicher Admin-Assistent für die BidBlitz Penny-Auktions-Plattform.
         
