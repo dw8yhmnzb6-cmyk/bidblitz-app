@@ -827,8 +827,8 @@ async def execute_command(action: str, parameters: dict, admin: dict) -> dict:
         # Default to all available languages if not specified
         target_languages = parameters.get("languages", ["en", "tr", "fr", "sq", "ar"])
         
-        # Get all products
-        products = await db.products.find({}, {"_id": 0}).to_list(100)
+        # Get all products (increased limit to 500)
+        products = await db.products.find({}, {"_id": 0}).to_list(500)
         
         if not products:
             return {"success": False, "message": "❌ Keine Produkte zum Übersetzen gefunden"}
