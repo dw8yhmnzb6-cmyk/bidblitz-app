@@ -945,9 +945,18 @@ Beschreibung (Deutsch): {german_desc if german_desc else "Keine Beschreibung vor
         lang_list_de = ", ".join([lang_names_de.get(l, l) for l in target_languages])
         
         logger.info(f"🎤 Voice command: Translated {translated_count} products by {admin['name']}")
+        
+        # Better message depending on results
+        if translated_count == 0 and skipped_count > 0:
+            message = f"✅ Alle {skipped_count} Produkte sind bereits in {lang_list_de} übersetzt! Benutze 'erneut übersetzen' um sie neu zu übersetzen."
+        elif translated_count > 0:
+            message = f"🌐 {translated_count} Produkte übersetzt in: {lang_list_de}! ({skipped_count} bereits übersetzt)"
+        else:
+            message = f"🌐 Übersetzung abgeschlossen. {translated_count} übersetzt, {skipped_count} übersprungen."
+        
         return {
             "success": True,
-            "message": f"🌐 {translated_count} Produkte übersetzt in: {lang_list_de}! ({skipped_count} übersprungen)",
+            "message": message,
             "data": {"translated": translated_count, "skipped": skipped_count, "languages": target_languages}
         }
     
