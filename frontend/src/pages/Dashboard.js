@@ -794,6 +794,9 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+      
+      {/* Spin Wheel Modal */}
+      <SpinWheel isOpen={wheelOpen} onClose={() => setWheelOpen(false)} />
     </div>
   );
 }
