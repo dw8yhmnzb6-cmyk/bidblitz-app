@@ -220,6 +220,15 @@ ANDERE BEISPIELE:
             "needs_confirmation": False
         }
 
+# Helper function to execute actions internally (used by analyze-media)
+async def execute_action_internal(action: str, parameters: dict, admin: dict) -> dict:
+    """Execute a command action internally"""
+    try:
+        return await execute_command(action, parameters, admin)
+    except Exception as e:
+        logger.error(f"Internal action execution failed: {str(e)}")
+        return {"success": False, "message": f"Fehler bei der Ausführung: {str(e)}"}
+
 # ==================== COMMAND EXECUTION ====================
 
 async def execute_command(action: str, parameters: dict, admin: dict) -> dict:
