@@ -181,11 +181,11 @@ export default function InfluencerDashboard() {
               />
             </div>
             <div>
-              <Label className="text-white">Influencer-Code</Label>
+              <Label className="text-white">{t('influencer.code') || 'Influencer-Code'}</Label>
               <Input
                 value={loginForm.code}
                 onChange={(e) => setLoginForm({...loginForm, code: e.target.value})}
-                placeholder="Ihr Code"
+                placeholder={t('influencer.code') || 'Ihr Code'}
                 className="mt-1 bg-[#181824] border-white/10 text-white"
                 required
               />
@@ -195,17 +195,17 @@ export default function InfluencerDashboard() {
               disabled={loading}
               className="w-full bg-gradient-to-r from-[#FFD700] to-[#F59E0B] text-black font-bold hover:opacity-90"
             >
-              {loading ? 'Wird geladen...' : 'Anmelden'}
+              {loading ? (t('common.loading') || 'Wird geladen...') : (t('influencer.loginButton') || 'Anmelden')}
             </Button>
           </form>
 
           <p className="text-center text-[#94A3B8] text-sm mt-6">
-            Noch kein Influencer?{' '}
+            {t('auth.noAccount') || 'Noch kein Influencer?'}{' '}
             <button 
               onClick={() => navigate('/influencer/apply')}
               className="text-[#FFD700] hover:underline"
             >
-              Jetzt bewerben
+              {t('influencer.apply') || 'Jetzt bewerben'}
             </button>
           </p>
         </div>
