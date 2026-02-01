@@ -185,6 +185,9 @@ ANDERE BEISPIELE:
 - "Zeige heutige Einnahmen" -> {"action": "get_stats", "parameters": {"type": "today"}, "confirmation_message": "Ich zeige Ihnen die heutigen Einnahmen.", "needs_confirmation": false}
 - "Übersetze alle Produkte" -> {"action": "translate_products", "parameters": {"languages": ["en", "tr", "fr", "sq", "ar"]}, "confirmation_message": "Soll ich alle Produkte in die verfügbaren Sprachen übersetzen?", "needs_confirmation": true}
 - "Die Seite soll komplett übersetzt werden" -> {"action": "translate_products", "parameters": {"languages": ["en", "tr", "fr", "sq", "ar"]}, "confirmation_message": "Soll ich alle Produkte in die verfügbaren Sprachen übersetzen?", "needs_confirmation": true}
+- "Übersetzung überprüfen" -> {"action": "check_translations", "parameters": {}, "confirmation_message": "Ich überprüfe die Übersetzungen...", "needs_confirmation": false}
+- "Du musst die Übersetzung überprüfen" -> {"action": "check_translations", "parameters": {}, "confirmation_message": "Ich überprüfe die Übersetzungen...", "needs_confirmation": false}
+- "Die Übersetzung funktioniert nicht so richtig" -> {"action": "check_translations", "parameters": {}, "confirmation_message": "Ich überprüfe die Übersetzungen und zeige den Status...", "needs_confirmation": false}
 """
     
     chat = LlmChat(
