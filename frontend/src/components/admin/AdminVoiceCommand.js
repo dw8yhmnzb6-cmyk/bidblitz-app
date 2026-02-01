@@ -43,6 +43,74 @@ export default function AdminVoiceCommand() {
       console.error('Error fetching history:', error);
     }
   };
+
+  // Image handling functions
+  const handleImageSelect = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (!file.type.startsWith('image/')) {
+        toast.error('Bitte nur Bilddateien auswählen');
+        return;
+      }
+      if (file.size > 10 * 1024 * 1024) { // 10MB limit
+        toast.error('Bild zu groß. Maximum: 10MB');
+        return;
+      }
+      setSelectedImage(file);
+      const reader = new FileReader();
+      reader.onload = (e) => setImagePreview(e.target.result);
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removeImage = () => {
+    setSelectedImage(null);
+    setImagePreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const analyzeImage = async () => {
+    if (!selectedImage) {
+      toast.error('Bitte zuerst ein Bild auswählen');
+      return;
+    }
+
+    setIsAnalyzingImage(true);
+    setIsProcessing(true);
+
+    try {
+      const formData = new FormData();
+      formData.append('image', selectedImage);
+      formData.append('text', textInput || 'Analysiere dieses Bild und beschreibe was du siehst. Was könnte das Problem sein?');
+
+      const response = await axios.post(`${API}/voice-command/analyze-image`, formData, {
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+
+      if (response.data.success) {
+        setTranscription(textInput || 'Bildanalyse');
+        setExecutionResult({
+          success: true,
+          message: response.data.analysis
+        });
+        setParsedCommand({ action: 'analyze_image', parameters: {} });
+        toast.success('Bildanalyse abgeschlossen!');
+      } else {
+        toast.error(response.data.message || 'Bildanalyse fehlgeschlagen');
+      }
+    } catch (error) {
+      console.error('Image analysis error:', error);
+      toast.error(error.response?.data?.detail || 'Bildanalyse fehlgeschlagen');
+    } finally {
+      setIsAnalyzingImage(false);
+      setIsProcessing(false);
+    }
+  };
   
   const startRecording = async () => {
     try {
