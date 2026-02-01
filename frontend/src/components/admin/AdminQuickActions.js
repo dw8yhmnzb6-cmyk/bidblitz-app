@@ -31,16 +31,18 @@ export default function AdminQuickActions({ onRefresh, stats }) {
           break;
           
         case 'start_bots':
-          response = await axios.post(`${API}/admin/bots/start-all`, {}, {
-            headers: { Authorization: `Bearer ${token}` }
-          });
+          response = await axios.post(`${API}/voice-command/confirm-execute`, {
+            action: 'start_bots',
+            parameters: {}
+          }, { headers: { Authorization: `Bearer ${token}` } });
           toast.success('Alle Bots gestartet!');
           break;
           
         case 'stop_bots':
-          response = await axios.post(`${API}/admin/bots/stop-all`, {}, {
-            headers: { Authorization: `Bearer ${token}` }
-          });
+          response = await axios.post(`${API}/voice-command/confirm-execute`, {
+            action: 'stop_bots',
+            parameters: {}
+          }, { headers: { Authorization: `Bearer ${token}` } });
           toast.success('Alle Bots gestoppt!');
           break;
           
