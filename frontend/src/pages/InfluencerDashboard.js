@@ -206,32 +206,33 @@ export default function InfluencerDashboard() {
         </div>
 
         {/* Your Code Card */}
-        <div className="glass-card rounded-2xl p-6 border-l-4" style={{ borderColor: tierConfig.color }}>
-          <div className="flex items-center justify-between">
-            <div>
+        <div className="glass-card rounded-2xl p-4 md:p-6 border-l-4" style={{ borderColor: tierConfig.color }}>
+          {/* Mobile: Stack vertically, Desktop: Side by side */}
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div className="flex-1">
               <p className="text-[#94A3B8] text-sm mb-1">Dein Influencer-Code</p>
               <div className="flex items-center gap-3">
-                <code className="text-3xl font-bold text-[#FFD700] tracking-wider">
+                <code className="text-2xl md:text-3xl font-bold text-[#FFD700] tracking-wider">
                   {influencer?.code?.toUpperCase()}
                 </code>
                 <Button onClick={copyCode} size="sm" variant="ghost" className="text-white">
                   {copied ? <CheckCircle className="w-5 h-5 text-green-400" /> : <Copy className="w-5 h-5" />}
                 </Button>
               </div>
-              <p className="text-[#94A3B8] text-sm mt-2">
+              <p className="text-[#94A3B8] text-xs md:text-sm mt-2 leading-relaxed">
                 Teile diesen Code mit deiner Community - sie erhalten Rabatt, du verdienst Provision!
               </p>
             </div>
-            <div className="hidden md:block">
-              <div className="text-right">
-                <p className="text-5xl font-bold" style={{ color: tierConfig.color }}>
-                  {stats?.effective_commission || 10}%
-                </p>
-                <p className="text-[#94A3B8] text-sm">Aktuelle Provision</p>
-                {stats?.tier_bonus > 0 && (
-                  <p className="text-green-400 text-xs mt-1">+{stats.tier_bonus}% Tier-Bonus</p>
-                )}
-              </div>
+            {/* Commission display - visible on mobile too */}
+            <div className="flex md:block items-center justify-between md:text-right bg-[#181824] md:bg-transparent p-3 md:p-0 rounded-lg">
+              <span className="text-[#94A3B8] text-sm md:hidden">Aktuelle Provision</span>
+              <p className="text-3xl md:text-5xl font-bold" style={{ color: tierConfig.color }}>
+                {stats?.effective_commission || 10}%
+              </p>
+              <p className="text-[#94A3B8] text-sm hidden md:block">Aktuelle Provision</p>
+              {stats?.tier_bonus > 0 && (
+                <p className="text-green-400 text-xs mt-1 hidden md:block">+{stats.tier_bonus}% Tier-Bonus</p>
+              )}
             </div>
           </div>
         </div>
