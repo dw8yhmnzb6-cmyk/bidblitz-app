@@ -1177,58 +1177,77 @@ export default function Admin() {
         <main className="flex-1 lg:ml-64 p-4 lg:p-8 pt-20 lg:pt-8">
           {/* Dashboard Tab */}
           {activeTab === 'dashboard' && (
-            <div className="space-y-6 lg:space-y-8">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="space-y-4 lg:space-y-6">
+              {/* Header with Search */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <h1 className="text-xl lg:text-2xl font-bold text-white">{t('admin.dashboard')}</h1>
-                <Button onClick={fetchData} variant="outline" className="border-white/10 text-white w-full sm:w-auto">
-                  <RefreshCw className="w-4 h-4 mr-2" />{t('admin.refresh')}
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button 
+                    onClick={() => setShowGlobalSearch(true)} 
+                    variant="outline" 
+                    className="border-white/10 text-white flex-1 sm:flex-none justify-start"
+                    data-testid="global-search-btn"
+                  >
+                    <Search className="w-4 h-4 mr-2" />
+                    <span className="text-gray-400 text-sm">Suchen...</span>
+                    <kbd className="hidden sm:inline ml-2 px-1.5 py-0.5 text-xs bg-white/10 rounded">/</kbd>
+                  </Button>
+                  <Button onClick={fetchData} variant="outline" className="border-white/10 text-white px-3" data-testid="refresh-btn">
+                    <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                  </Button>
+                </div>
               </div>
+              
+              {/* Quick Actions Bar */}
+              <AdminQuickActions onRefresh={fetchData} stats={stats} />
+              
+              {/* Live Widgets */}
+              <AdminLiveWidgets stats={stats} detailedStats={detailedStats} />
               
               {/* Summary Stats Cards */}
               {stats && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                  <div className="glass-card rounded-xl p-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
+                  <div className="glass-card rounded-xl p-4 lg:p-6">
                     <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-xl bg-[#7C3AED]/20 flex items-center justify-center">
-                        <Users className="w-6 h-6 text-[#7C3AED]" />
+                      <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-xl bg-[#7C3AED]/20 flex items-center justify-center">
+                        <Users className="w-5 h-5 lg:w-6 lg:h-6 text-[#7C3AED]" />
                       </div>
                       <div>
-                        <p className="text-[#94A3B8] text-sm">{t('admin.totalUsers')}</p>
-                        <p className="text-2xl font-bold text-white">{stats.total_users}</p>
+                        <p className="text-[#94A3B8] text-xs lg:text-sm">{t('admin.totalUsers')}</p>
+                        <p className="text-xl lg:text-2xl font-bold text-white">{stats.total_users}</p>
                       </div>
                     </div>
                   </div>
-                  <div className="glass-card rounded-xl p-6">
+                  <div className="glass-card rounded-xl p-4 lg:p-6">
                     <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-xl bg-[#06B6D4]/20 flex items-center justify-center">
-                        <Gavel className="w-6 h-6 text-[#06B6D4]" />
+                      <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-xl bg-[#06B6D4]/20 flex items-center justify-center">
+                        <Gavel className="w-5 h-5 lg:w-6 lg:h-6 text-[#06B6D4]" />
                       </div>
                       <div>
-                        <p className="text-[#94A3B8] text-sm">{t('admin.activeAuctions')}</p>
-                        <p className="text-2xl font-bold text-white">{stats.active_auctions}</p>
+                        <p className="text-[#94A3B8] text-xs lg:text-sm">{t('admin.activeAuctions')}</p>
+                        <p className="text-xl lg:text-2xl font-bold text-white">{stats.active_auctions}</p>
                       </div>
                     </div>
                   </div>
-                  <div className="glass-card rounded-xl p-6">
+                  <div className="glass-card rounded-xl p-4 lg:p-6">
                     <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-xl bg-[#10B981]/20 flex items-center justify-center">
-                        <Package className="w-6 h-6 text-[#10B981]" />
+                      <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-xl bg-[#10B981]/20 flex items-center justify-center">
+                        <Package className="w-5 h-5 lg:w-6 lg:h-6 text-[#10B981]" />
                       </div>
                       <div>
-                        <p className="text-[#94A3B8] text-sm">{t('admin.totalProducts')}</p>
-                        <p className="text-2xl font-bold text-white">{stats.total_products}</p>
+                        <p className="text-[#94A3B8] text-xs lg:text-sm">{t('admin.totalProducts')}</p>
+                        <p className="text-xl lg:text-2xl font-bold text-white">{stats.total_products}</p>
                       </div>
                     </div>
                   </div>
-                  <div className="glass-card rounded-xl p-6">
+                  <div className="glass-card rounded-xl p-4 lg:p-6">
                     <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-xl bg-[#F59E0B]/20 flex items-center justify-center">
-                        <BarChart3 className="w-6 h-6 text-[#F59E0B]" />
+                      <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-xl bg-[#F59E0B]/20 flex items-center justify-center">
+                        <BarChart3 className="w-5 h-5 lg:w-6 lg:h-6 text-[#F59E0B]" />
                       </div>
                       <div>
-                        <p className="text-[#94A3B8] text-sm">{t('admin.transactions')}</p>
-                        <p className="text-2xl font-bold text-white">{stats.completed_transactions}</p>
+                        <p className="text-[#94A3B8] text-xs lg:text-sm">{t('admin.transactions')}</p>
+                        <p className="text-xl lg:text-2xl font-bold text-white">{stats.completed_transactions}</p>
                       </div>
                     </div>
                   </div>
