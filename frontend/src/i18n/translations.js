@@ -882,7 +882,7 @@ export const translations = {
     }
   },
   it: {
-    nav: { auctions: "Aste", buyBids: "Compra offerte", dashboard: "Pannello", admin: "Admin", login: "Accedi", register: "Registrati", logout: "Esci", bids: "Offerte", winners: "Vincitori", inviteFriends: "Invita amici", wishlist: "Lista desideri", howItWorks: "Come funziona", vip: "Abbonamento VIP", faq: "FAQ", contact: "Contatto" },
+    nav: { auctions: "Aste", buyBids: "Compra offerte", dashboard: "Pannello", admin: "Admin", login: "Accedi", register: "Registrati", logout: "Esci", bids: "Offerte", winners: "Vincitori", inviteFriends: "Invita amici", wishlist: "Lista desideri", howItWorks: "Come funziona", vip: "Abbonamento VIP", faq: "FAQ", contact: "Contatto", giftCards: "Carte Regalo", vipAuctions: "Aste VIP" },
     home: {
       badge: "10 offerte gratis alla registrazione",
       heroTitle1: "Vinci",
