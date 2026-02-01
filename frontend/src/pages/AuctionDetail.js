@@ -317,7 +317,7 @@ export default function AuctionDetail() {
       console.error('Error fetching auction:', error);
       // Only show error if not a 404 (auction might have ended)
       if (error.response?.status !== 404) {
-        toast.error('Fehler beim Laden der Auktion');
+        toast.error(language === 'en' ? 'Error loading auction' : language === 'sq' ? 'Gabim gjatë ngarkimit të ankandit' : language === 'tr' ? 'Açık artırma yükleme hatası' : language === 'fr' ? 'Erreur de chargement' : 'Fehler beim Laden der Auktion');
       }
     } finally {
       setLoading(false);
@@ -326,12 +326,12 @@ export default function AuctionDetail() {
 
   const handleBid = async () => {
     if (!isAuthenticated) {
-      toast.error('Bitte melden Sie sich an, um zu bieten');
+      toast.error(dtl.pleaseLogin);
       return;
     }
 
     if (user?.bids_balance < 1) {
-      toast.error(t('auctions.noBidsAvailable') || 'Keine Gebote mehr verfügbar. Bitte kaufen Sie mehr Gebote.');
+      toast.error(dtl.noBidsAvailable);
       return;
     }
 
@@ -363,7 +363,7 @@ export default function AuctionDetail() {
     }
 
     if (numMaxBids > user?.bids_balance) {
-      toast.error(t('autobidder.notEnoughBids') || `Nicht genug Gebote. Sie haben ${user?.bids_balance}, benötigen ${numMaxBids}`);
+      toast.error(`${dtl.notEnoughBids}. ${user?.bids_balance}/${numMaxBids}`);
       return;
     }
 
