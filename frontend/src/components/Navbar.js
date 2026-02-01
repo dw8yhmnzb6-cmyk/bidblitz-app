@@ -2,9 +2,10 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { languageList } from '../i18n/translations';
-import { Zap, User, LogOut, Shield, Menu, X, Globe, Gift, Trophy, Heart, Crown, Star } from 'lucide-react';
+import { Zap, User, LogOut, Shield, Menu, X, Globe, Gift, Trophy, Heart, Crown, Star, Sparkles } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from './ui/button';
+import SpinWheel from './SpinWheel';
 import {
   DropdownMenu,
   DropdownMenuContent,
