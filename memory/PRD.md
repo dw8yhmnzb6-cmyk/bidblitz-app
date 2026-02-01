@@ -280,6 +280,11 @@ February 1, 2026 (Session 4)
   - Neue Komponenten: AdminQuickActions.js, AdminLiveWidgets.js, AdminGlobalSearch.js, AdminAIChat.js
   - Test-Ergebnis: 100% (9/9 Tests bestanden)
 
+- 2026-02-01: **BUG FIXES** Quick Actions und Auktionen-Filter
+  - **Quick Actions Fix**: Bots Start/Stop verwenden jetzt korrekt die Voice-Command API statt nicht existierende Endpoints
+  - **Tag/Nacht-Filter**: Neuer Filter-Bereich über der Auktionen-Tabelle (Alle/Tag/Nacht)
+  - **Typ-Spalte**: Neue Spalte in Auktionen-Tabelle zeigt Tag/Nacht-Typ mit Icons
+
 ## Pending Issues
 
 ### P1 - Critical Bugs
