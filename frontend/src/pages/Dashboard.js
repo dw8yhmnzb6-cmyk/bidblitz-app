@@ -394,6 +394,52 @@ export default function Dashboard() {
           </div>
         </div>
 
+        {/* Lucky Wheel & Leaderboard Row */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+          {/* Lucky Wheel Card */}
+          <div className="glass-card rounded-xl p-5 bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border border-yellow-500/30" data-testid="lucky-wheel-card">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center animate-pulse">
+                  <Sparkles className="w-7 h-7 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-white font-bold text-lg">{language === 'de' ? 'Glücksrad' : language === 'en' ? 'Lucky Wheel' : language === 'tr' ? 'Şans Çarkı' : 'Glücksrad'}</h3>
+                  <p className="text-gray-400 text-sm">
+                    {language === 'de' ? 'Drehe täglich für Gratis-Preise!' : language === 'en' ? 'Spin daily for free prizes!' : language === 'tr' ? 'Günlük çevir, ücretsiz ödüller kazan!' : 'Drehe täglich für Gratis-Preise!'}
+                  </p>
+                </div>
+              </div>
+              <Button 
+                onClick={() => setWheelOpen(true)}
+                className="bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-300 hover:to-orange-400 text-black font-bold"
+                data-testid="open-wheel-btn"
+              >
+                <Sparkles className="w-4 h-4 mr-2" />
+                {language === 'de' ? 'Jetzt drehen!' : language === 'en' ? 'Spin Now!' : language === 'tr' ? 'Şimdi çevir!' : 'Jetzt drehen!'}
+              </Button>
+            </div>
+          </div>
+
+          {/* Leaderboard Card */}
+          <Link to="/leaderboard" className="glass-card rounded-xl p-5 bg-gradient-to-r from-purple-500/10 to-blue-500/10 border border-purple-500/30 hover:border-purple-400/50 transition-all" data-testid="leaderboard-card">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
+                  <Trophy className="w-7 h-7 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-white font-bold text-lg">{language === 'de' ? 'Wochen-Rangliste' : language === 'en' ? 'Weekly Leaderboard' : language === 'tr' ? 'Haftalık Sıralama' : 'Wochen-Rangliste'}</h3>
+                  <p className="text-gray-400 text-sm">
+                    {language === 'de' ? 'Top 10 gewinnen Gratis-Gebote!' : language === 'en' ? 'Top 10 win free bids!' : language === 'tr' ? 'İlk 10 ücretsiz teklif kazanır!' : 'Top 10 gewinnen Gratis-Gebote!'}
+                  </p>
+                </div>
+              </div>
+              <ChevronRight className="w-6 h-6 text-purple-400" />
+            </div>
+          </Link>
+        </div>
+
         {/* Gift Bids Card */}
         <div className="glass-card rounded-xl p-5 mb-8 bg-gradient-to-r from-pink-500/10 to-purple-500/10 border border-pink-500/30">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
