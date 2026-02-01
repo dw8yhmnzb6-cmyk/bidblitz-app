@@ -14,6 +14,7 @@ export const AuctionOfTheDay = () => {
   const [auction, setAuction] = useState(null);
   const [timeLeft, setTimeLeft] = useState('');
   const [loading, setLoading] = useState(true);
+  const { t, language } = useLanguage();
 
   useEffect(() => {
     fetchAuctionOfTheDay();
