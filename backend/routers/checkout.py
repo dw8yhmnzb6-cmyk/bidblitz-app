@@ -46,20 +46,50 @@ async def create_checkout_session(request: CheckoutRequest, user: dict = Depends
         raise HTTPException(status_code=400, detail="Invalid package")
     
     try:
+        # Check for HAPPY HOUR bonus
+        happy_hour_active = False
+        happy_hour_multiplier = 1.0
+        try:
+            from routers.gamification import get_happy_hour_config, is_happy_hour_active
+            hh_config = await get_happy_hour_config()
+            hh_status = is_happy_hour_active(hh_config)
+            if hh_status.get("active"):
+                happy_hour_active = True
+                happy_hour_multiplier = hh_status.get("multiplier", 2.0)
+        except Exception as e:
+            logger.error(f"Error checking happy hour: {e}")
+        
+        # Calculate total bids with Happy Hour bonus
+        base_bids = package["bids"] + package.get("bonus", 0)
+        if happy_hour_active:
+            total_bids = int(base_bids * happy_hour_multiplier)
+            logger.info(f"🎉 HAPPY HOUR: {base_bids} x {happy_hour_multiplier} = {total_bids} bids")
+        else:
+            total_bids = base_bids
+        
         # Create pending transaction
         transaction_id = str(uuid.uuid4())
-        total_bids = package["bids"] + package.get("bonus", 0)
         
         await db.transactions.insert_one({
             "id": transaction_id,
             "user_id": user["id"],
             "package_id": package["id"],
             "bids": total_bids,
+            "base_bids": base_bids,
+            "happy_hour_active": happy_hour_active,
+            "happy_hour_multiplier": happy_hour_multiplier if happy_hour_active else None,
             "amount": float(package["price"]),
             "status": "pending",
             "payment_method": "stripe",
             "created_at": datetime.now(timezone.utc).isoformat()
         })
+        
+        # Create product description
+        product_desc = f"BidBlitz Gebotspaket mit {package['bids']} Geboten"
+        if package.get('bonus'):
+            product_desc += f" + {package.get('bonus', 0)} Bonus"
+        if happy_hour_active:
+            product_desc += f" 🎉 HAPPY HOUR: x{int(happy_hour_multiplier)} = {total_bids} Gebote!"
         
         # Create Stripe session using native Stripe library
         session = stripe.checkout.Session.create(
@@ -69,8 +99,8 @@ async def create_checkout_session(request: CheckoutRequest, user: dict = Depends
                     "currency": "eur",
                     "unit_amount": int(float(package["price"]) * 100),
                     "product_data": {
-                        "name": f"{total_bids} Gebote - {package['name']}",
-                        "description": f"BidBlitz Gebotspaket mit {package['bids']} Geboten" + (f" + {package.get('bonus', 0)} Bonus" if package.get('bonus') else "")
+                        "name": f"{total_bids} Gebote - {package['name']}" + (" 🎉 HAPPY HOUR!" if happy_hour_active else ""),
+                        "description": product_desc
                     }
                 },
                 "quantity": 1
