@@ -879,14 +879,31 @@ export const translations = {
     },
     auctions: { title: "Tüm müzayedeler", filter: "Filtrele", all: "Tümü", active: "Aktif", ended: "Bitti", currentPrice: "Güncel fiyat", bids: "Teklifler", bid: "Teklif ver", live: "Canlı" },
     auctionPage: {
-      title: "Active Auctions",
+      title: "Aktif Müzayedeler",
       searchPlaceholder: "Teklifleri ara...",
       categories: { all: "Tümü", electronics: "Elektronik", smartphones: "Akıllı Telefonlar", household: "Ev", emobility: "E-Mobilite", gifts: "Hediyeler", fashion: "Moda" },
       active: "Aktif", scheduled: "Planlanmış", all: "Tümü",
       offersFound: "teklif bulundu",
       noOffers: "Teklif bulunamadı",
       tryAnother: "Başka bir kategori veya arama deneyin",
-      priceNote: "Karşılaştırma fiyatı = Üreticinin önerdiği fiyat"
+      priceNote: "Karşılaştırma fiyatı = Üreticinin önerdiği fiyat",
+      auctionOfDay: "GÜNÜN AÇIK ARTIRMASI",
+      liveAuctions: "Canlı Müzayedeler",
+      currentPrice: "Güncel Fiyat",
+      remaining: "Kalan Süre",
+      bidNow: "ŞİMDİ TEKLİF VER",
+      bidsCount: "Teklifler",
+      uvp: "PSFM",
+      lastBidder: "Son Teklif Veren",
+      noAuctionsInCategory: "Bu kategoride müzayede yok",
+      filters: {
+        live: "Canlı",
+        beginner: "Başlangıç",
+        free: "Ücretsiz",
+        night: "Gece",
+        ending: "Bitiyor",
+        vip: "VIP"
+      }
     },
     auctionCard: {
       liveNow: "CANLI", comingSoon: "YAKINDA", ended: "BİTTİ",
