@@ -18,6 +18,7 @@ export const Navbar = () => {
   const { t, language, changeLanguage, languages } = useLanguage();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [wheelOpen, setWheelOpen] = useState(false);
 
   const handleLogout = () => {
     logout();
