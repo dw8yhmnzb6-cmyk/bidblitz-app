@@ -4,6 +4,8 @@ from datetime import datetime, timezone, timedelta
 from typing import List, Optional
 import uuid
 import random
+import os
+import asyncio
 
 from config import db, logger
 from dependencies import get_current_user, get_admin_user
@@ -11,6 +13,228 @@ from schemas import AuctionCreate, AuctionUpdate, AutobidderCreate
 from services.websocket import broadcast_bid_update, broadcast_auction_ended
 
 router = APIRouter(tags=["Auctions"])
+
+# ==================== AUTOBIDDER HELPER FUNCTIONS ====================
+
+async def process_autobid(user_id: str, auction_id: str, current_price: float) -> bool:
+    """
+    Process autobid for a user who was outbid.
+    Returns True if autobid was placed, False otherwise.
+    """
+    # Get user's autobidder for this auction
+    autobidder = await db.autobidders.find_one({
+        "user_id": user_id,
+        "auction_id": auction_id,
+        "is_active": True
+    })
+    
+    if not autobidder:
+        return False
+    
+    # Check if autobidder is paused
+    if autobidder.get("is_paused", False):
+        return False
+    
+    # Check if max bids reached
+    bids_placed = autobidder.get("bids_placed", 0)
+    max_bids = autobidder.get("max_bids", 0)
+    
+    if bids_placed >= max_bids:
+        logger.info(f"Autobidder for {user_id}: Max bids ({max_bids}) reached")
+        return False
+    
+    # Check if max price exceeded
+    max_price = autobidder.get("max_price")
+    bid_increment = 0.01  # Default increment
+    
+    auction = await db.auctions.find_one({"id": auction_id}, {"_id": 0})
+    if auction:
+        bid_increment = auction.get("bid_increment", 0.01)
+    
+    next_price = current_price + bid_increment
+    
+    if max_price and next_price > max_price:
+        logger.info(f"Autobidder for {user_id}: Max price €{max_price} would be exceeded (€{next_price})")
+        return False
+    
+    # Get user and check bids balance
+    user = await db.users.find_one({"id": user_id}, {"_id": 0})
+    if not user or user.get("bids_balance", 0) < 1:
+        logger.info(f"Autobidder for {user_id}: No bids left")
+        return False
+    
+    # Small delay to make it look natural (0.5-2 seconds)
+    bid_delay = autobidder.get("bid_in_last_seconds", 5)
+    await asyncio.sleep(min(random.uniform(0.5, 2.0), bid_delay))
+    
+    # Place the autobid
+    try:
+        # Deduct bid
+        await db.users.update_one(
+            {"id": user_id},
+            {"$inc": {"bids_balance": -1}}
+        )
+        
+        # Update auction
+        new_price = current_price + bid_increment
+        timer_extension = 10  # seconds
+        new_end_time = datetime.now(timezone.utc) + timedelta(seconds=timer_extension)
+        
+        await db.auctions.update_one(
+            {"id": auction_id},
+            {
+                "$set": {
+                    "current_price": new_price,
+                    "end_time": new_end_time.isoformat(),
+                    "last_bidder_id": user_id,
+                    "last_bidder_name": user.get("name", "Autobidder")
+                },
+                "$inc": {"total_bids": 1},
+                "$push": {
+                    "bid_history": {
+                        "user_id": user_id,
+                        "user_name": user.get("name", "Autobidder"),
+                        "price": new_price,
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                        "is_autobid": True
+                    }
+                }
+            }
+        )
+        
+        # Update autobidder stats
+        await db.autobidders.update_one(
+            {"id": autobidder["id"]},
+            {"$inc": {"bids_placed": 1}}
+        )
+        
+        # Broadcast via WebSocket
+        try:
+            await broadcast_bid_update(auction_id, {
+                "current_price": new_price,
+                "end_time": new_end_time.isoformat(),
+                "last_bidder_name": user.get("name", "Autobidder"),
+                "bidder_message": f"🤖 {user.get('name', 'Autobidder')} (Auto)"
+            })
+        except:
+            pass
+        
+        logger.info(f"🤖 Autobid placed: User {user_id} -> €{new_price} (bid {bids_placed + 1}/{max_bids})")
+        return True
+        
+    except Exception as e:
+        logger.error(f"Autobid error: {e}")
+        return False
+
+
+async def send_outbid_email(user_id: str, auction_id: str, current_price: float, outbidder_name: str):
+    """Send email notification when user is outbid"""
+    try:
+        import httpx
+        
+        RESEND_API_KEY = os.environ.get("RESEND_API_KEY")
+        SENDER_EMAIL = os.environ.get("SENDER_EMAIL", "noreply@bidblitz.de")
+        
+        if not RESEND_API_KEY:
+            return
+        
+        # Get user email
+        user = await db.users.find_one({"id": user_id}, {"_id": 0, "email": 1, "name": 1})
+        if not user or not user.get("email"):
+            return
+        
+        # Get auction and product info
+        auction = await db.auctions.find_one({"id": auction_id}, {"_id": 0})
+        if not auction:
+            return
+        
+        product = await db.products.find_one({"id": auction.get("product_id")}, {"_id": 0})
+        product_name = product.get("name", "Auktion") if product else "Auktion"
+        product_image = product.get("image_url", "") if product else ""
+        
+        # Check user email preferences (skip if disabled)
+        prefs = await db.user_preferences.find_one({"user_id": user_id})
+        if prefs and not prefs.get("email_outbid", True):
+            return
+        
+        # Build email HTML
+        email_html = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <style>
+                body {{ font-family: Arial, sans-serif; background: #0A0A0F; color: white; padding: 20px; }}
+                .container {{ max-width: 600px; margin: 0 auto; background: #1A1A2E; border-radius: 16px; padding: 30px; }}
+                .header {{ text-align: center; margin-bottom: 20px; }}
+                .logo {{ color: #7C3AED; font-size: 28px; font-weight: bold; }}
+                .alert {{ background: linear-gradient(135deg, #EF4444, #F97316); padding: 15px; border-radius: 12px; text-align: center; margin-bottom: 20px; }}
+                .alert h2 {{ margin: 0; color: white; }}
+                .product {{ display: flex; align-items: center; gap: 15px; background: #252540; padding: 15px; border-radius: 12px; margin-bottom: 20px; }}
+                .product img {{ width: 80px; height: 80px; object-fit: contain; border-radius: 8px; background: white; }}
+                .product-info h3 {{ margin: 0 0 5px 0; color: white; }}
+                .price {{ color: #10B981; font-size: 24px; font-weight: bold; }}
+                .btn {{ display: inline-block; background: linear-gradient(135deg, #7C3AED, #EC4899); color: white; padding: 15px 30px; border-radius: 25px; text-decoration: none; font-weight: bold; }}
+                .btn:hover {{ opacity: 0.9; }}
+                .footer {{ text-align: center; color: #666; font-size: 12px; margin-top: 20px; }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <div class="logo">BidBlitz</div>
+                </div>
+                <div class="alert">
+                    <h2>⚡ Du wurdest überboten!</h2>
+                </div>
+                <p>Hallo {user.get('name', 'Bieter')},</p>
+                <p><strong>{outbidder_name}</strong> hat dich bei folgender Auktion überboten:</p>
+                <div class="product">
+                    <img src="{product_image}" alt="{product_name}">
+                    <div class="product-info">
+                        <h3>{product_name}</h3>
+                        <div class="price">€{current_price:.2f}</div>
+                    </div>
+                </div>
+                <p style="text-align: center;">
+                    <a href="https://bidblitz.de/auctions/{auction_id}" class="btn">🔥 Jetzt zurückbieten!</a>
+                </p>
+                <p style="color: #94A3B8; font-size: 14px;">
+                    💡 <strong>Tipp:</strong> Aktiviere den Autobidder und wir bieten automatisch für dich!
+                </p>
+                <div class="footer">
+                    <p>BidBlitz - Deutschlands beste Penny-Auktionen</p>
+                    <p><a href="https://bidblitz.de/profile" style="color: #666;">E-Mail Einstellungen ändern</a></p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        
+        # Send via Resend API
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                "https://api.resend.com/emails",
+                headers={
+                    "Authorization": f"Bearer {RESEND_API_KEY}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "from": SENDER_EMAIL,
+                    "to": user["email"],
+                    "subject": f"⚡ Überboten: {product_name} - Jetzt zurückbieten!",
+                    "html": email_html
+                },
+                timeout=10.0
+            )
+            
+            if response.status_code in [200, 201]:
+                logger.info(f"📧 Outbid email sent to {user['email']}")
+            else:
+                logger.error(f"Resend error: {response.status_code} - {response.text}")
+                
+    except Exception as e:
+        logger.error(f"Error sending outbid email: {e}")
 
 # Business hours configuration (Berlin timezone = UTC+1 in winter, UTC+2 in summer)
 BUSINESS_START_HOUR = 0   # 0:00 - Always open for development
