@@ -30,7 +30,7 @@ export function AdminWholesale({
 
   const handleApproveWholesale = async (id) => {
     try {
-      await axios.post(`${API}/wholesale/admin/${id}/approve`, wholesaleForm, {
+      await axios.post(`${API}/admin/wholesale/approve/${id}`, wholesaleForm, {
         headers: { Authorization: `Bearer ${token}` }
       });
       toast.success('Großkunde freigeschaltet');
@@ -38,7 +38,9 @@ export function AdminWholesale({
       setSelectedWholesale(null);
       fetchData();
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Fehler');
+      const errorMsg = error.response?.data?.detail || 'Fehler beim Freischalten';
+      toast.error(errorMsg);
+      console.error('Wholesale approve error:', errorMsg);
     }
   };
 
