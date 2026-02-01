@@ -119,10 +119,14 @@ Verfügbare Aktionen:
 === PRODUKTE & ÜBERSETZUNGEN ===
 15. translate_products - Alle Produkte übersetzen (Namen und Beschreibungen)
     TRIGGER-WÖRTER: "übersetze Produkte", "Produktübersetzung", "übersetze alle Produkte", "Produkte in andere Sprachen", "Die Seite soll übersetzt werden"
-    Parameter: languages (Liste: en, tr, fr, sq, ar - optional, Standard: alle verfügbaren)
+    Parameter: 
+    - languages (Liste: en, tr, fr, sq, ar - optional, Standard: alle verfügbaren)
+    - force (boolean - wenn true, werden ALLE Produkte neu übersetzt, auch wenn schon Übersetzungen existieren)
     Beispiele:
     - "Übersetze alle Produkte" -> {"action": "translate_products", "parameters": {"languages": ["en", "tr", "fr", "sq", "ar"]}}
     - "Die Seite soll übersetzt werden" -> {"action": "translate_products", "parameters": {"languages": ["en", "tr", "fr", "sq", "ar"]}}
+    - "Produkte erneut übersetzen" -> {"action": "translate_products", "parameters": {"languages": ["en", "tr", "fr", "sq", "ar"], "force": true}}
+    - "Alle Produkte neu übersetzen" -> {"action": "translate_products", "parameters": {"languages": ["en", "tr", "fr", "sq", "ar"], "force": true}}
 
 16. check_translations - Übersetzungen überprüfen und Status anzeigen
     TRIGGER-WÖRTER: "Übersetzung überprüfen", "Übersetzungen prüfen", "Übersetzung funktioniert nicht", "Übersetzungsstatus", "Seitenübersetzung prüfen", "check translation"
