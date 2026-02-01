@@ -6,11 +6,12 @@ import { useLanguage } from '../context/LanguageContext';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { TwoFactorSettings } from '../components/TwoFactorSettings';
+import SpinWheel from '../components/SpinWheel';
 import { 
   Zap, Trophy, Target, TrendingUp, ArrowRight, User, Mail, 
   Ticket, Bot, Trash2, Power, Clock, Package, CreditCard,
   History, Settings, ChevronRight, Gift, Calendar, Eye,
-  Timer, CheckCircle, XCircle, Shield, FileText
+  Timer, CheckCircle, XCircle, Shield, FileText, Sparkles
 } from 'lucide-react';
 import { toast } from 'sonner';
 
