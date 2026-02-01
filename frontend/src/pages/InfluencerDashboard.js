@@ -215,27 +215,28 @@ export default function InfluencerDashboard() {
 
   // Dashboard
   return (
-    <div className="min-h-screen bg-[#0A0A0F] p-4 md:p-8">
-      <div className="max-w-7xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
+    <div className="min-h-screen bg-[#0A0A0F] pt-20 md:pt-24 pb-8 px-4 md:px-8">
+      <div className="max-w-7xl mx-auto space-y-4 md:space-y-6">
+        {/* Header - Responsive */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="flex items-center gap-3">
             <div 
-              className="w-14 h-14 rounded-full flex items-center justify-center text-2xl"
+              className="w-10 h-10 sm:w-14 sm:h-14 rounded-full flex items-center justify-center text-xl sm:text-2xl shrink-0"
               style={{ backgroundColor: `${tierConfig.color}20` }}
             >
               {tierConfig.emoji}
             </div>
-            <div>
-              <h1 className="text-2xl font-bold text-white">{influencer?.name}</h1>
-              <p className="text-[#94A3B8]">
+            <div className="min-w-0">
+              <h1 className="text-lg sm:text-2xl font-bold text-white truncate">{influencer?.name}</h1>
+              <p className="text-sm text-[#94A3B8]">
                 <span style={{ color: tierConfig.color }}>{currentTier}</span> {t('influencer.title') || 'Influencer'}
               </p>
             </div>
           </div>
-          <Button onClick={handleLogout} variant="outline" className="border-white/10 text-white">
-            <LogOut className="w-4 h-4 mr-2" />
-            {t('influencer.logout') || 'Abmelden'}
+          <Button onClick={handleLogout} variant="outline" className="border-white/10 text-white self-end sm:self-auto" size="sm">
+            <LogOut className="w-4 h-4 mr-1 sm:mr-2" />
+            <span className="hidden sm:inline">{t('influencer.logout') || 'Abmelden'}</span>
+            <span className="sm:hidden">Logout</span>
           </Button>
         </div>
 
