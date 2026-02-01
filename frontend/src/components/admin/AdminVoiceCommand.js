@@ -375,12 +375,12 @@ export default function AdminVoiceCommand() {
           {[
             { cmd: "Erstelle 50 neue Auktionen", desc: "Neue Auktionen erstellen" },
             { cmd: "Lösche alle beendeten Auktionen", desc: "Alte Auktionen löschen" },
-            { cmd: "Lösche alle Auktionen und erstelle 50 neue", desc: "🆕 Batch-Befehl" },
+            { cmd: "Lösche alle Auktionen und erstelle 50 neue", desc: "Batch-Befehl" },
+            { cmd: "Übersetze alle Produkte", desc: "Produkte in alle Sprachen übersetzen" },
             { cmd: "Zeige mir die Statistiken", desc: "Plattform-Statistiken" },
             { cmd: "Setze die Auktion des Tages", desc: "AOTD automatisch setzen" },
             { cmd: "Füge 100 Gebote zu kunde@email.de hinzu", desc: "Gebote vergeben" },
-            { cmd: "Erstelle Gutscheincode mit 50 Geboten", desc: "Gutschein generieren" },
-            { cmd: "Sende eine Nachricht an alle Benutzer", desc: "Massenbenachrichtigung" }
+            { cmd: "Erstelle Gutscheincode mit 50 Geboten", desc: "Gutschein generieren" }
           ].map((example, idx) => (
             <button
               key={idx}
