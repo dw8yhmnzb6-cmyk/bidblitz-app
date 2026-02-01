@@ -172,7 +172,7 @@ export const AuctionOfTheDay = () => {
               </span>
               {auction.last_bidder_name && (
                 <span>
-                  Letzter Bieter: <span className="text-white">{auction.last_bidder_name}</span>
+                  {t('auctions.lastBidder') || 'Letzter Bieter'}: <span className="text-white">{auction.last_bidder_name}</span>
                 </span>
               )}
             </div>
@@ -181,7 +181,7 @@ export const AuctionOfTheDay = () => {
             <Link to={`/auctions/${auction.id}`}>
               <Button className="w-full sm:w-auto bg-gradient-to-r from-[#FFD700] to-[#FF4D4D] text-black font-bold hover:scale-105 transition-transform">
                 <Zap className="w-5 h-5 mr-2" />
-                Jetzt mitbieten
+                {t('auctionPage.bidNow') || 'JETZT BIETEN'}
                 <ArrowRight className="w-5 h-5 ml-2" />
               </Button>
             </Link>
