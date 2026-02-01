@@ -400,62 +400,6 @@ export const Navbar = () => {
               <Trophy className="w-4 h-4" />
               {t('nav.winners')}
             </Link>
-            
-            {/* Mobile Language Selector */}
-            <div className="pt-4 mt-4 border-t border-white/10">
-              <p className="text-white text-sm font-semibold mb-3 flex items-center gap-2">
-                <Globe className="w-4 h-4" />
-                {t('nav.language') || 'Sprache wählen'}
-              </p>
-              <div className="grid grid-cols-3 gap-2">
-                {[
-                  { code: 'de', flag: '🇩🇪', name: 'Deutsch' },
-                  { code: 'en', flag: '🇬🇧', name: 'English' },
-                  { code: 'tr', flag: '🇹🇷', name: 'Türkçe' },
-                  { code: 'fr', flag: '🇫🇷', name: 'Français' },
-                  { code: 'es', flag: '🇪🇸', name: 'Español' },
-                  { code: 'it', flag: '🇮🇹', name: 'Italiano' },
-                  { code: 'ru', flag: '🇷🇺', name: 'Русский' },
-                  { code: 'ar', flag: '🇸🇦', name: 'العربية' },
-                  { code: 'sq', flag: '🇦🇱', name: 'Shqip' },
-                ].map((lang) => (
-                  <button
-                    key={lang.code}
-                    onClick={() => {
-                      // Save language directly to localStorage
-                      localStorage.setItem('language', lang.code);
-                      console.log('Language changed to:', lang.code);
-                      // Close menu
-                      setMobileMenuOpen(false);
-                      // Force hard reload after a short delay
-                      setTimeout(() => {
-                        window.location.href = window.location.pathname;
-                      }, 100);
-                    }}
-                    className={`flex flex-col items-center justify-center p-3 rounded-lg transition-all ${
-                      language === lang.code 
-                        ? 'bg-[#7C3AED] text-white border-2 border-[#FFD700]' 
-                        : 'bg-[#181824] text-gray-300 hover:bg-[#252532] border border-white/10'
-                    }`}
-                  >
-                    <span className="text-2xl">{lang.flag}</span>
-                    <span className="text-xs mt-1 font-medium">{lang.name}</span>
-                  </button>
-                ))}
-              </div>
-              
-              {/* All Languages Button */}
-              <button
-                onClick={() => {
-                  setMobileMenuOpen(false);
-                  // Open language modal or navigate to language settings
-                }}
-                className="w-full mt-3 py-2 px-4 bg-[#181824] text-gray-400 rounded-lg text-sm flex items-center justify-center gap-2 border border-white/10"
-              >
-                <Globe className="w-4 h-4" />
-                {t('nav.moreLanguages') || 'Weitere Sprachen...'}
-              </button>
-            </div>
           </div>
         </div>
       )}
