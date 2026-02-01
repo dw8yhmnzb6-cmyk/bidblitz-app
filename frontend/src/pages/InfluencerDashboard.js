@@ -305,23 +305,6 @@ export default function InfluencerDashboard() {
             <p className="text-2xl md:text-3xl font-bold text-white">{stats?.total_purchases || 0}</p>
           </div>
         </div>
-          
-          <div className="glass-card rounded-xl p-5">
-            <div className="flex items-center gap-3 mb-2">
-              <TrendingUp className="w-5 h-5 text-[#F59E0B]" />
-              <span className="text-[#94A3B8] text-sm">{t('influencer.earned') || 'Verdient'}</span>
-            </div>
-            <p className="text-3xl font-bold text-[#F59E0B]">€{stats?.total_commission?.toFixed(2) || '0.00'}</p>
-          </div>
-          
-          <div className="glass-card rounded-xl p-5">
-            <div className="flex items-center gap-3 mb-2">
-              <Gift className="w-5 h-5 text-[#7C3AED]" />
-              <span className="text-[#94A3B8] text-sm">{t('influencer.purchases') || 'Käufe'}</span>
-            </div>
-            <p className="text-3xl font-bold text-white">{stats?.total_purchases || 0}</p>
-          </div>
-        </div>
 
         {/* Payout Card */}
         <div className="glass-card rounded-2xl p-4 md:p-6 border-l-4 border-[#10B981]">
