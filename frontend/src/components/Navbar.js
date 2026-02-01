@@ -397,19 +397,24 @@ export const Navbar = () => {
                   <button
                     key={lang.code}
                     onClick={() => {
-                      changeLanguage(lang.code);
+                      // Save language directly to localStorage
+                      localStorage.setItem('language', lang.code);
+                      console.log('Language changed to:', lang.code);
+                      // Close menu
                       setMobileMenuOpen(false);
-                      // Force page reload to apply translations
-                      window.location.reload();
+                      // Force hard reload after a short delay
+                      setTimeout(() => {
+                        window.location.href = window.location.pathname;
+                      }, 100);
                     }}
-                    className={`flex flex-col items-center justify-center p-2 rounded-lg transition-all ${
+                    className={`flex flex-col items-center justify-center p-3 rounded-lg transition-all ${
                       language === lang.code 
                         ? 'bg-[#7C3AED] text-white border-2 border-[#FFD700]' 
                         : 'bg-[#181824] text-gray-300 hover:bg-[#252532] border border-white/10'
                     }`}
                   >
-                    <span className="text-xl">{lang.flag}</span>
-                    <span className="text-xs mt-1">{lang.name}</span>
+                    <span className="text-2xl">{lang.flag}</span>
+                    <span className="text-xs mt-1 font-medium">{lang.name}</span>
                   </button>
                 ))}
               </div>
