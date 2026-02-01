@@ -8,6 +8,7 @@ import { CookieConsent } from "./components/CookieConsent";
 import { ScrollToTop } from "./components/ScrollToTop";
 import { ScrollToTopOnNavigate } from "./components/ScrollToTopOnNavigate";
 import { Toaster } from "./components/ui/sonner";
+import HappyHourBanner from "./components/HappyHourBanner";
 
 // Pages
 import Home from "./pages/Home";
