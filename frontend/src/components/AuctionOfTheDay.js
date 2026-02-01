@@ -29,7 +29,7 @@ export const AuctionOfTheDay = () => {
       const diff = end - now;
       
       if (diff <= 0) {
-        setTimeLeft('Beendet');
+        setTimeLeft(t('auctions.ended') || 'Beendet');
         clearInterval(timer);
         return;
       }
@@ -42,7 +42,7 @@ export const AuctionOfTheDay = () => {
     }, 1000);
     
     return () => clearInterval(timer);
-  }, [auction]);
+  }, [auction, t]);
 
   const fetchAuctionOfTheDay = async () => {
     try {
