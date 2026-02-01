@@ -48,12 +48,13 @@ export default function AdminVoiceCommand() {
   const handleImageSelect = (e) => {
     const file = e.target.files[0];
     if (file) {
-      if (!file.type.startsWith('image/')) {
-        toast.error('Bitte nur Bilddateien auswählen');
+      // Accept both images and videos
+      if (!file.type.startsWith('image/') && !file.type.startsWith('video/')) {
+        toast.error('Bitte nur Bild- oder Videodateien auswählen');
         return;
       }
-      if (file.size > 10 * 1024 * 1024) { // 10MB limit
-        toast.error('Bild zu groß. Maximum: 10MB');
+      if (file.size > 20 * 1024 * 1024) { // 20MB limit for videos
+        toast.error('Datei zu groß. Maximum: 20MB');
         return;
       }
       setSelectedImage(file);
@@ -73,7 +74,7 @@ export default function AdminVoiceCommand() {
 
   const analyzeImage = async () => {
     if (!selectedImage) {
-      toast.error('Bitte zuerst ein Bild auswählen');
+      toast.error('Bitte zuerst ein Bild oder Video auswählen');
       return;
     }
 
@@ -83,7 +84,12 @@ export default function AdminVoiceCommand() {
     try {
       const formData = new FormData();
       formData.append('image', selectedImage);
-      formData.append('text', textInput || 'Analysiere dieses Bild und beschreibe was du siehst. Was könnte das Problem sein?');
+      
+      const defaultPrompt = selectedImage.type?.startsWith('video/')
+        ? 'Analysiere dieses Video und beschreibe was du siehst. Was könnte das Problem sein?'
+        : 'Analysiere dieses Bild und beschreibe was du siehst. Was könnte das Problem sein?';
+      
+      formData.append('text', textInput || defaultPrompt);
 
       const response = await axios.post(`${API}/voice-command/analyze-image`, formData, {
         headers: { 
