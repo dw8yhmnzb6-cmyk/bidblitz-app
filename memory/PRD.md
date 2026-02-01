@@ -19,17 +19,28 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 - VIP-only auctions
 - Auto-restart (3s delay)
 - Timer extension on bids (10-15s)
+- **NEW: Beginner-Protection Auctions** (for users with <10 wins)
 
 ### Payment Integration
 - Stripe (LIVE keys configured)
 - Bid packages
+- **NEW: Happy Hour 2x Bids** (18:00-20:00 Berlin)
 - Coinbase Commerce (disabled)
 
-### Gift System (NEW)
+### Gift System
 - Customer numbers for all users
 - Gift bids to friends/family
 - Gift history tracking
 - Notifications for recipients
+
+### Gamification System (NEW - Feb 2026)
+- **Glücksrad (Lucky Wheel)**: Daily spin for free prizes (1-10 bids, discounts, VIP time)
+- **Wochen-Rangliste (Leaderboard)**: Top 10 win 8-100 free bids every Sunday
+- **Bieter-Streak Bonus**: 5/10/15/25/50 consecutive bids = bonus bids
+- **Enhanced Achievements**: 15 achievements with bid rewards
+- **Happy Hour**: 2x bids during 18:00-20:00 (Berlin time)
+- **Beginner Protection**: Exclusive auctions for new users (<10 wins)
+- **Telegram Bot**: Auction alerts via Telegram (link codes, preferences)
 
 ### Influencer System
 - Influencer login with code + email
