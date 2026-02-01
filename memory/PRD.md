@@ -207,3 +207,28 @@ January 31, 2026 (Session 3)
   - Day auctions pause during night, night auctions pause during day
   - Admin endpoints for setting auction day/night mode
   - Status: day_paused, night_paused for paused auctions
+
+## February 1, 2026 Changelog
+
+- 2026-02-01: **FIXED** Influencer Dashboard Mobile Layout
+  - Payout section now uses responsive stacked layout (grid-cols-1 on mobile, grid-cols-3 on desktop)
+  - Stats display "Label" on left, "Value" on right on mobile for better readability
+  - "Anfordern" button shortened on mobile to prevent overflow
+  - Added data-testid for payout button
+  
+- 2026-02-01: **FIXED** Tier Progress Mobile Layout
+  - Changed from grid-cols-4 to grid-cols-2 on mobile for 2x2 grid
+  - Reduced padding on mobile (p-3 instead of p-4)
+  - Added data-testid for each tier (tier-bronze, tier-silber, etc.)
+  
+- 2026-02-01: **IMPROVED** Voice Command Translation
+  - Enhanced system prompt with better trigger words for translate_products
+  - Default to all 5 languages (en, tr, fr, sq, ar) when no specific languages mentioned
+  - Added multiple example translations to GPT prompt
+  - Fixed translate_products to handle both string and dict product name formats
+  - Shows skipped count for already-translated products
+  - Better German confirmation messages
+
+- 2026-02-01: **TESTED** All bug fixes verified by testing agent (100% pass rate)
+  - Test file created: /app/backend/tests/test_voice_translation.py
+
