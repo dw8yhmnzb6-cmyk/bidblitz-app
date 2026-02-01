@@ -215,7 +215,7 @@
             new google.translate.TranslateElement({
                 pageLanguage: 'de',
                 includedLanguages: 'en,tr,fr,es,it,ru,ar,sq,nl,pt,pl,zh-CN,ja,ko,sv,no,da,fi,cs,el,he,hi,th,vi,id,ms,ro,hu,uk,bg,hr,sk,sl,lt,lv,et,sr,mk,ka,az,kk,uz',
-                layout: google.translate.TranslateElement.InlineLayout.SIMPLE,
+                layout: google.translate.TranslateElement.InlineLayout.HORIZONTAL,
                 autoDisplay: false,
                 multilanguagePage: true
             }, 'google_translate_element');
@@ -226,22 +226,34 @@
         /* Style Google Translate dropdown */
         #google_translate_element {
             position: fixed;
-            top: 80px;
-            right: 20px;
-            z-index: 9999;
+            top: 18px;
+            right: 320px;
+            z-index: 99999;
             background: rgba(24, 24, 36, 0.95);
-            padding: 8px 12px;
+            padding: 6px 10px;
             border-radius: 8px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 215, 0, 0.3);
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
         }
+        @media (max-width: 768px) {
+            #google_translate_element {
+                top: auto;
+                bottom: 20px;
+                right: 20px;
+            }
+        }
         #google_translate_element select {
-            background: #1a1a2e;
-            color: white;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 4px;
-            padding: 4px 8px;
-            font-size: 12px;
+            background: #1a1a2e !important;
+            color: white !important;
+            border: 1px solid rgba(255, 215, 0, 0.3) !important;
+            border-radius: 4px !important;
+            padding: 4px 8px !important;
+            font-size: 12px !important;
+            cursor: pointer !important;
+        }
+        #google_translate_element select:focus {
+            outline: none !important;
+            border-color: #FFD700 !important;
         }
         .goog-te-banner-frame.skiptranslate {
             display: none !important;
@@ -251,10 +263,12 @@
         }
         .goog-te-gadget {
             font-family: inherit !important;
+            color: white !important;
         }
         .goog-te-gadget-simple {
             background: transparent !important;
             border: none !important;
+            padding: 0 !important;
         }
         .goog-te-gadget-simple .goog-te-menu-value span {
             color: white !important;
@@ -265,15 +279,22 @@
         .goog-te-gadget-simple .goog-te-menu-value {
             color: white !important;
         }
-        /* Hide Google Translate attribution */
+        /* Hide Google Translate attribution but keep select visible */
+        .goog-te-gadget > span {
+            display: none !important;
+        }
+        .goog-te-gadget .goog-te-combo {
+            display: inline-block !important;
+            color: white !important;
+            background: #1a1a2e !important;
+        }
         .goog-logo-link {
             display: none !important;
         }
-        .goog-te-gadget span {
-            display: none !important;
-        }
-        .goog-te-gadget-simple span[style*="border-left"] {
-            display: none !important;
+        /* Add translate icon label */
+        #google_translate_element::before {
+            content: "🌐 ";
+            font-size: 14px;
         }
         </style>
     </body>
