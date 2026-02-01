@@ -273,21 +273,38 @@ export default function InfluencerDashboard() {
 
         {/* Stats Grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-          <div className="glass-card rounded-xl p-5">
-            <div className="flex items-center gap-3 mb-2">
-              <Users className="w-5 h-5 text-[#06B6D4]" />
-              <span className="text-[#94A3B8] text-sm">{t('influencer.customers') || 'Kunden'}</span>
+          <div className="glass-card rounded-xl p-3 md:p-5">
+            <div className="flex items-center gap-2 mb-1 md:mb-2">
+              <Users className="w-4 h-4 md:w-5 md:h-5 text-[#06B6D4]" />
+              <span className="text-[#94A3B8] text-xs md:text-sm">{t('influencer.customers') || 'Kunden'}</span>
             </div>
-            <p className="text-3xl font-bold text-white">{stats?.total_customers || 0}</p>
+            <p className="text-2xl md:text-3xl font-bold text-white">{stats?.total_customers || 0}</p>
           </div>
           
-          <div className="glass-card rounded-xl p-5">
-            <div className="flex items-center gap-3 mb-2">
-              <DollarSign className="w-5 h-5 text-[#10B981]" />
-              <span className="text-[#94A3B8] text-sm">{t('influencer.revenue') || 'Umsatz'}</span>
+          <div className="glass-card rounded-xl p-3 md:p-5">
+            <div className="flex items-center gap-2 mb-1 md:mb-2">
+              <DollarSign className="w-4 h-4 md:w-5 md:h-5 text-[#10B981]" />
+              <span className="text-[#94A3B8] text-xs md:text-sm">{t('influencer.revenue') || 'Umsatz'}</span>
             </div>
-            <p className="text-3xl font-bold text-[#10B981]">€{stats?.total_revenue?.toFixed(2) || '0.00'}</p>
+            <p className="text-2xl md:text-3xl font-bold text-[#10B981]">€{stats?.total_revenue?.toFixed(2) || '0.00'}</p>
           </div>
+          
+          <div className="glass-card rounded-xl p-3 md:p-5">
+            <div className="flex items-center gap-2 mb-1 md:mb-2">
+              <TrendingUp className="w-4 h-4 md:w-5 md:h-5 text-[#F59E0B]" />
+              <span className="text-[#94A3B8] text-xs md:text-sm">{t('influencer.earned') || 'Verdient'}</span>
+            </div>
+            <p className="text-2xl md:text-3xl font-bold text-[#F59E0B]">€{stats?.total_commission?.toFixed(2) || '0.00'}</p>
+          </div>
+          
+          <div className="glass-card rounded-xl p-3 md:p-5">
+            <div className="flex items-center gap-2 mb-1 md:mb-2">
+              <Gift className="w-4 h-4 md:w-5 md:h-5 text-[#7C3AED]" />
+              <span className="text-[#94A3B8] text-xs md:text-sm">{t('influencer.purchases') || 'Käufe'}</span>
+            </div>
+            <p className="text-2xl md:text-3xl font-bold text-white">{stats?.total_purchases || 0}</p>
+          </div>
+        </div>
           
           <div className="glass-card rounded-xl p-5">
             <div className="flex items-center gap-3 mb-2">
