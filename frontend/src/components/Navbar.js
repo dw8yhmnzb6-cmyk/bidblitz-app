@@ -127,6 +127,14 @@ export const Navbar = () => {
                 >
                   {t('nav.dashboard')}
                 </Link>
+                <Link 
+                  to="/beginner-auctions" 
+                  className="text-[#10B981] hover:text-[#34D399] transition-colors font-medium flex items-center gap-1"
+                  data-testid="nav-beginner"
+                >
+                  <Shield className="w-4 h-4" />
+                  {language === 'de' ? 'Anfänger' : language === 'en' ? 'Beginner' : 'Anfänger'}
+                </Link>
               </>
             )}
             {isAdmin && (
