@@ -6,6 +6,7 @@ import {
   ArrowRight, Sparkles, Clock
 } from 'lucide-react';
 import { Button } from './ui/button';
+import { useLanguage } from '../context/LanguageContext';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
