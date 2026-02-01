@@ -1111,21 +1111,21 @@ Antworte auf Deutsch und sei präzise und hilfreich."""
         media_type_text = "Video" if is_video else "Bild"
         user_prompt = f"""Benutzeranfrage: {text}
 
-Bitte analysiere das hochgeladene {media_type} und beantworte die Frage des Administrators."""
+Bitte analysiere das hochgeladene {media_type_text} und beantworte die Frage des Administrators."""
         
         response = await chat.send_message(UserMessage(
             text=user_prompt,
             file_contents=[media_content]
         ))
         
-        logger.info(f"🖼️ {media_type} analyzed by {admin['name']}: {text[:50]}...")
+        logger.info(f"🖼️ {media_type_text} analyzed by {admin['name']}: {text[:50]}...")
         
         # Log to history
         await db.voice_command_history.insert_one({
             "id": str(uuid.uuid4()),
             "admin_id": admin["id"],
             "admin_name": admin["name"],
-            "transcription": f"[{media_type}analyse] {text}",
+            "transcription": f"[{media_type_text}analyse] {text}",
             "action": "analyze_image",
             "parameters": {"type": "video" if is_video else "image"},
             "result": {"success": True, "message": response[:200] + "..." if len(response) > 200 else response},
