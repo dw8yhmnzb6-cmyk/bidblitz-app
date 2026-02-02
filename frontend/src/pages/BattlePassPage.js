@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
+import { getFeatureTranslation } from '../i18n/featureTranslations';
 import { useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'sonner';
@@ -22,57 +23,33 @@ const BattlePassPage = () => {
   const [purchasing, setPurchasing] = useState(false);
   const [visibleTiers, setVisibleTiers] = useState({ start: 0, end: 10 });
 
-  const texts = {
-    de: {
-      title: 'Battle Pass',
-      season: 'Saison',
-      tier: 'Tier',
-      free: 'Gratis',
-      premium: 'Premium',
-      getPremium: 'Premium holen',
-      getPremiumPlus: 'Premium+ (inkl. 25 Tier-Skips)',
-      owned: 'Besitzt',
-      claim: 'Abholen',
-      claimed: 'Abgeholt',
-      locked: 'Gesperrt',
-      daysLeft: 'Tage übrig',
-      currentTier: 'Aktueller Tier',
-      xpToNext: 'XP zum nächsten Tier',
-      maxTier: 'MAX erreicht!',
-      rewards: 'Belohnungen',
-      purchaseSuccess: 'Battle Pass erfolgreich gekauft!',
-      premiumPerks: 'Premium Vorteile',
-      perk1: 'Alle Premium-Belohnungen freischalten',
-      perk2: 'Exklusive Tier 50 Mega-Belohnung',
-      perk3: 'VIP-Tage und Bonus-Gebote',
-      perk4: 'Premium+ enthält 25 Tier-Skips!'
-    },
-    en: {
-      title: 'Battle Pass',
-      season: 'Season',
-      tier: 'Tier',
-      free: 'Free',
-      premium: 'Premium',
-      getPremium: 'Get Premium',
-      getPremiumPlus: 'Premium+ (incl. 25 Tier Skips)',
-      owned: 'Owned',
-      claim: 'Claim',
-      claimed: 'Claimed',
-      locked: 'Locked',
-      daysLeft: 'days left',
-      currentTier: 'Current Tier',
-      xpToNext: 'XP to next tier',
-      maxTier: 'MAX reached!',
-      rewards: 'Rewards',
-      purchaseSuccess: 'Battle Pass purchased successfully!',
-      premiumPerks: 'Premium Perks',
-      perk1: 'Unlock all Premium rewards',
-      perk2: 'Exclusive Tier 50 Mega reward',
-      perk3: 'VIP days and bonus bids',
-      perk4: 'Premium+ includes 25 Tier Skips!'
-    }
+  // Use centralized translations with fallback for specific keys
+  const ft = getFeatureTranslation('battlePass', language);
+  const t = {
+    ...ft,
+    title: ft.title || 'Battle Pass',
+    season: ft.season || 'Season',
+    tier: ft.tier || 'Tier',
+    free: ft.free || 'Free',
+    premium: ft.premium || 'Premium',
+    getPremium: language === 'de' ? 'Premium holen' : 'Get Premium',
+    getPremiumPlus: language === 'de' ? 'Premium+ (inkl. 25 Tier-Skips)' : 'Premium+ (incl. 25 Tier Skips)',
+    owned: language === 'de' ? 'Besitzt' : 'Owned',
+    claim: ft.claimReward || 'Claim',
+    claimed: ft.claimed || 'Claimed',
+    locked: ft.locked || 'Locked',
+    daysLeft: ft.daysLeft || 'days left',
+    currentTier: ft.currentTier || 'Current Tier',
+    xpToNext: language === 'de' ? 'XP zum nächsten Tier' : 'XP to next tier',
+    maxTier: language === 'de' ? 'MAX erreicht!' : 'MAX reached!',
+    rewards: language === 'de' ? 'Belohnungen' : 'Rewards',
+    purchaseSuccess: language === 'de' ? 'Battle Pass erfolgreich gekauft!' : 'Battle Pass purchased successfully!',
+    premiumPerks: language === 'de' ? 'Premium Vorteile' : 'Premium Perks',
+    perk1: ft.exclusiveRewards || 'Unlock all Premium rewards',
+    perk2: ft.megaReward || 'Exclusive Tier 50 Mega reward',
+    perk3: ft.vipDays || 'VIP days and bonus bids',
+    perk4: language === 'de' ? 'Premium+ enthält 25 Tier-Skips!' : 'Premium+ includes 25 Tier Skips!'
   };
-  const t = texts[language] || texts.de;
 
   useEffect(() => {
     if (isAuthenticated) {
