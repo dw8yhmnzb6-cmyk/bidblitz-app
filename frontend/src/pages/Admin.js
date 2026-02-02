@@ -2184,25 +2184,38 @@ export default function Admin() {
                           )}
                         </td>
                         <td className="py-3 px-4 text-right">
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            onClick={async () => {
-                              try {
-                                await axios.delete(`${API}/manager/admin/${mgr.id}`, {
-                                  headers: { Authorization: `Bearer ${token}` }
-                                });
-                                toast.success('Manager deaktiviert');
-                                fetchData();
-                              } catch (err) {
-                                toast.error('Fehler');
-                              }
-                            }}
-                            className="border-red-500/30 text-red-500 hover:bg-red-500/10"
-                          >
-                            <Ban className="w-3 h-3 mr-1" />
-                            Sperren
-                          </Button>
+                          <div className="flex justify-end gap-2">
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => {
+                                setSelectedManager(mgr);
+                                setShowManagerDetails(true);
+                              }}
+                              className="border-[#7C3AED]/30 text-[#7C3AED] hover:bg-[#7C3AED]/10"
+                            >
+                              <Eye className="w-3 h-3 mr-1" />
+                              Details
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={async () => {
+                                try {
+                                  await axios.delete(`${API}/manager/admin/${mgr.id}`, {
+                                    headers: { Authorization: `Bearer ${token}` }
+                                  });
+                                  toast.success('Manager deaktiviert');
+                                  fetchData();
+                                } catch (err) {
+                                  toast.error('Fehler');
+                                }
+                              }}
+                              className="border-red-500/30 text-red-500 hover:bg-red-500/10"
+                            >
+                              <Ban className="w-3 h-3" />
+                            </Button>
+                          </div>
                         </td>
                       </tr>
                     ))}
