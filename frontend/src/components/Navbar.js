@@ -88,6 +88,16 @@ export const Navbar = () => {
                 {language === 'de' ? 'Glücksrad' : language === 'en' ? 'Lucky Wheel' : 'Glücksrad'}
               </button>
             )}
+            {isAuthenticated && (
+              <Link 
+                to="/battle-pass" 
+                className="text-[#8B5CF6] hover:text-[#A78BFA] transition-colors font-medium flex items-center gap-1"
+                data-testid="nav-battle-pass"
+              >
+                <Shield className="w-4 h-4" />
+                {language === 'de' ? 'Battle Pass' : 'Battle Pass'}
+              </Link>
+            )}
             <Link 
               to="/vip-auctions" 
               className="text-[#FFA500] hover:text-[#FFD700] transition-colors font-medium flex items-center gap-1"
