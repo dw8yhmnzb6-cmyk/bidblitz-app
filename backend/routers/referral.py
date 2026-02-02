@@ -108,7 +108,7 @@ async def apply_referral_code(referral_code: str, user: dict = Depends(get_curre
     if referrer["id"] == user_id:
         raise HTTPException(status_code=400, detail="Du kannst deinen eigenen Code nicht verwenden")
     
-    # Create referral record
+    # Create referral record (NO IMMEDIATE BONUS - bonus only on first purchase!)
     referral_id = str(uuid.uuid4())
     await db.referrals.insert_one({
         "id": referral_id,
@@ -119,31 +119,31 @@ async def apply_referral_code(referral_code: str, user: dict = Depends(get_curre
         "referral_code": referral_code.upper(),
         "has_purchased": False,
         "reward_bids": 0,
+        "referrer_bonus_given": False,  # Track if 10 bids given to referrer
+        "referred_bonus_given": False,  # Track if 5 bids given to referred user
         "created_at": datetime.now(timezone.utc).isoformat()
     })
     
-    # Give welcome bonus to new user (5 free bids)
-    await db.users.update_one(
-        {"id": user_id},
-        {"$inc": {"bids_balance": 5}}
-    )
+    # NO IMMEDIATE BONUS - User must make first purchase to receive bonus!
+    # This prevents fake account creation for free bids
     
-    # Notify referrer
+    # Notify referrer that someone signed up (but no bonus yet)
     await db.notifications.insert_one({
         "id": str(uuid.uuid4()),
         "user_id": referrer["id"],
         "type": "referral",
-        "title": "🎉 Neuer Empfohlener!",
-        "message": f"{user.get('name', 'Jemand')} hat sich mit deinem Code angemeldet!",
+        "title": "👋 Neuer Empfohlener!",
+        "message": f"{user.get('name', 'Jemand')} hat sich mit deinem Code angemeldet! Bonus gibt's sobald er kauft.",
         "read": False,
         "created_at": datetime.now(timezone.utc).isoformat()
     })
     
-    logger.info(f"Referral: {user.get('name')} used code {referral_code} from {referrer.get('name')}")
+    logger.info(f"Referral: {user.get('name')} used code {referral_code} from {referrer.get('name')} (pending purchase)")
     
     return {
-        "message": "Empfehlungscode erfolgreich eingelöst! Du hast 5 Gratis-Gebote erhalten!",
-        "bids_earned": 5,
+        "message": "Empfehlungscode erfolgreich registriert! Dein Bonus (5 Gebote) wird nach deinem ersten Kauf gutgeschrieben.",
+        "bids_earned": 0,  # Changed from 5 to 0
+        "pending_bonus": 5,
         "referrer_name": referrer.get("name", "")
     }
 
