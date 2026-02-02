@@ -359,21 +359,30 @@ export default function Admin() {
     }
   };
 
-  // Load Manager Details (Influencers)
+  // Load Manager Details (Influencers and Activities)
   useEffect(() => {
     const loadManagerDetails = async () => {
       if (!selectedManager || !showManagerDetails) return;
       
       setLoadingManagerDetails(true);
       try {
-        const res = await axios.get(
+        // Load influencers
+        const infRes = await axios.get(
           `${API}/manager/admin/${selectedManager.id}/influencers`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
-        setManagerInfluencers(res.data.influencers || []);
+        setManagerInfluencers(infRes.data.influencers || []);
+        
+        // Load activities
+        const actRes = await axios.get(
+          `${API}/manager/admin/${selectedManager.id}/activities?limit=20`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        setManagerActivities(actRes.data.activities || []);
       } catch (error) {
-        console.error('Error loading manager influencers:', error);
+        console.error('Error loading manager details:', error);
         setManagerInfluencers([]);
+        setManagerActivities([]);
       } finally {
         setLoadingManagerDetails(false);
       }
