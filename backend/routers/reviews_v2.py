@@ -7,8 +7,8 @@ from typing import Optional, List
 from datetime import datetime, timezone
 import uuid
 
-from .auth import get_current_user, get_current_admin
-from .database import db
+from config import db
+from dependencies import get_current_user, get_admin_user as get_current_admin
 
 router = APIRouter(prefix="/reviews", tags=["reviews"])
 

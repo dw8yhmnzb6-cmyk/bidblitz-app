@@ -9,8 +9,8 @@ import os
 import stripe
 import uuid
 
-from .auth import get_current_user
-from .database import db
+from config import db
+from dependencies import get_current_user
 
 router = APIRouter(prefix="/bundles", tags=["bundles"])
 

@@ -4,8 +4,8 @@ Last Chance Auctions & Ending Soon - Auktionen die bald enden
 from fastapi import APIRouter, Depends
 from datetime import datetime, timezone, timedelta
 
-from .auth import get_current_user
-from .database import db
+from config import db
+from dependencies import get_current_user
 
 router = APIRouter(prefix="/last-chance", tags=["last-chance"])
 
