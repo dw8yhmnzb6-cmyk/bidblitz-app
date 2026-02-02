@@ -939,6 +939,7 @@ export default function Auctions() {
           <h2 className="text-sm font-bold text-gray-800 mt-3 mb-2">
             {activeFilter === 'live' && t('auctionPage.liveAuctions')}
             {activeFilter === 'anfaenger' && `🎓 ${t('auctionPage.beginnerAuctions')}`}
+            {activeFilter === 'geschenke' && `🎀 ${t('auctionPage.giftAuctions') || 'Geschenke-Auktionen'}`}
             {activeFilter === 'gratis' && `🎁 ${t('auctionPage.freeAuctions')}`}
             {activeFilter === 'nacht' && `🌙 ${t('auctionPage.nightAuctions')}`}
             {activeFilter === 'ende' && t('auctionPage.endedAuctions')}
