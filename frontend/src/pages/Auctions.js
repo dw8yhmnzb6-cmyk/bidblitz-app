@@ -869,6 +869,17 @@ export default function Auctions() {
   
   return (
     <div className="min-h-screen bg-gradient-to-b from-cyan-200 to-cyan-300 p-2 pt-16 sm:pt-20" data-testid="auctions-page">
+      
+      {/* Global Jackpot - Top of Page */}
+      <div className="max-w-4xl mx-auto mb-4">
+        <GlobalJackpot />
+      </div>
+      
+      {/* Excitement Status Bar */}
+      <div className="max-w-7xl mx-auto mb-3">
+        <ExcitementStatusBar />
+      </div>
+      
       <div className="text-center text-[10px] text-gray-600 mb-2">
         {new Date().toLocaleTimeString('de-DE')} | {publicAuctions.length} {t('auctionPage.liveAuctions') || 'Live-Auktionen'}
       </div>
