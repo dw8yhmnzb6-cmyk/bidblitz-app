@@ -66,12 +66,14 @@ export const translations = {
       filters: {
         live: "Live",
         beginner: "Anfänger",
+        gifts: "Geschenke",
         free: "Gratis",
         night: "Nacht",
         ending: "Ende",
         vip: "VIP"
       },
       beginnerAuctions: "Anfänger-Auktionen",
+      giftAuctions: "Geschenke-Auktionen",
       freeAuctions: "Gratis-Auktionen",
       nightAuctions: "Nacht-Auktionen",
       vipAuctions: "VIP-Auktionen",
