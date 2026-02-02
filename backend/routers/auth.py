@@ -191,6 +191,8 @@ async def get_me(user: dict = Depends(get_current_user)):
         "is_admin": user.get("is_admin", False),
         "is_vip": user.get("is_vip", False),
         "is_influencer": user.get("is_influencer", False),
+        "is_manager": user.get("is_manager", False),
+        "role": user.get("role", "user"),
         "influencer_code": user.get("influencer_code"),
         "referral_code": user.get("referral_code", user["id"][:8].upper()),
         "two_factor_enabled": user.get("two_factor_enabled", False),
