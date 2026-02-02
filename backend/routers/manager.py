@@ -161,6 +161,18 @@ async def delete_manager(manager_id: str, admin: dict = Depends(get_admin_user))
     
     return {"success": True, "message": "Manager deaktiviert"}
 
+@router.get("/by-email/{email}")
+async def get_manager_by_email(email: str):
+    """Get manager data by email (for users who logged in via main auth)"""
+    manager = await db.managers.find_one(
+        {"email": email.lower(), "is_active": True},
+        {"_id": 0, "password_hash": 0}
+    )
+    if not manager:
+        raise HTTPException(status_code=404, detail="Manager nicht gefunden")
+    
+    return {"success": True, "manager": manager}
+
 @router.get("/admin/{manager_id}/influencers")
 async def get_manager_influencers(manager_id: str, admin: dict = Depends(get_admin_user)):
     """Get all influencers managed by a specific manager (Admin only)"""
