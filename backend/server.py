@@ -74,6 +74,16 @@ from routers.achievements import achievements_router
 from routers.testimonials import testimonials_router
 from routers.countdown_alarm import countdown_alarm_router
 from routers.win_notifications import win_notifications_router
+from routers.favorites import favorites_router
+from routers.teams import teams_router
+from routers.bid_refund import bid_refund_router
+from routers.auction_replay import auction_replay_router
+from routers.flash_coupons import flash_coupons_router
+from routers.vip_lounge import vip_lounge_router
+from routers.birthday import birthday_router
+from routers.insurance import insurance_router
+from routers.wishlist import wishlist_router
+from routers.streak_protection import streak_protection_router
 
 # WebSocket manager
 from services.websocket import ws_manager, broadcast_bid_update, broadcast_auction_ended
