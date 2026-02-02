@@ -144,6 +144,13 @@ app.include_router(challenges_router, prefix="/api")
 app.include_router(events_router, prefix="/api")
 app.include_router(gallery_router, prefix="/api")
 app.include_router(subscriptions_router, prefix="/api")
+app.include_router(loyalty_router, prefix="/api")
+app.include_router(flash_sales_router, prefix="/api")
+app.include_router(wishlist_router, prefix="/api")
+app.include_router(user_stats_router, prefix="/api")
+app.include_router(cart_router, prefix="/api")
+app.include_router(reviews_router, prefix="/api")
+app.include_router(mystery_router, prefix="/api")
 
 # ==================== HEALTH & BASIC ENDPOINTS ====================
 
