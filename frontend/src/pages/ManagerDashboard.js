@@ -334,19 +334,6 @@ export default function ManagerDashboard() {
           </Button>
         </div>
 
-        {/* Cities */}
-        <div className="mb-6">
-          <h2 className="text-lg font-semibold text-white mb-3">{t.cities}</h2>
-          <div className="flex flex-wrap gap-2">
-            {manager.cities.map((city) => (
-              <Badge key={city} className="bg-[#7C3AED]/20 text-[#7C3AED] border-[#7C3AED]/30 px-3 py-1">
-                <MapPin className="w-3 h-3 mr-1" />
-                {city}
-              </Badge>
-            ))}
-          </div>
-        </div>
-
         {/* Statistics */}
         {dashboard && (
           <>
