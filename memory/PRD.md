@@ -410,6 +410,13 @@ February 1, 2026 (Session 4)
 | Verlassene Warenkorb E-Mails | ✅ Fertig | abandoned_cart.py | - (Backend only) |
 | Gewinner-Bewertungen | ✅ Fertig | reviews.py | - (API ready) |
 | Mystery Box Auktionen | ✅ Fertig | mystery_box.py | - (API ready) |
+| **Gamification Level-System** | ✅ Fertig | levels.py | LevelsPage.js |
+
+### Level-System Details (neu)
+- **5 Level**: Bronze → Silber (500 XP) → Gold (2000 XP) → Platin (5000 XP) → Diamant (15000 XP)
+- **XP-Aktionen**: Gebot (1), Gewinn (50), Kauf (10/€10), Login (5/Tag), Bewertung (15), Empfehlung (100)
+- **Level-Up Boni**: Silber +5, Gold +15, Platin +30, Diamant +50 Gratis-Gebote
+- **Perks pro Level**: Mehr Glücksrad-Spins, höhere Gebote-Zurück %, Sofortkauf-Rabatte, exklusive Auktionen
 
 ## Pending Issues
 
