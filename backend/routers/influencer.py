@@ -10,7 +10,8 @@ from dependencies import get_current_user, get_admin_user
 from utils.email import (
     send_influencer_new_sale_notification,
     send_influencer_new_signup_notification,
-    send_influencer_payout_confirmation
+    send_influencer_payout_confirmation,
+    send_admin_payout_notification
 )
 
 router = APIRouter(prefix="/influencer", tags=["Influencer"])
