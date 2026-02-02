@@ -176,6 +176,7 @@ app.include_router(vip_subscription_router, prefix="/api")
 app.include_router(last_chance_router, prefix="/api")
 app.include_router(reviews_v2_router, prefix="/api")
 app.include_router(friend_battle_router, prefix="/api")
+app.include_router(manager_router, prefix="/api")
 
 # ==================== HEALTH & BASIC ENDPOINTS ====================
 
