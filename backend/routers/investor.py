@@ -151,6 +151,174 @@ async def get_growth_chart():
     
     return {"chart_data": months_data}
 
+# ==================== INVESTMENT PACKAGES ====================
+
+@router.get("/packages")
+async def get_investment_packages():
+    """Get available investment packages"""
+    return {
+        "packages": [
+            {"id": k, **v} for k, v in INVESTMENT_PACKAGES.items()
+        ],
+        "currency": "EUR"
+    }
+
+# ==================== STRIPE CHECKOUT ====================
+
+@router.post("/checkout")
+async def create_investment_checkout(
+    request: Request,
+    checkout_data: InvestmentCheckoutRequest,
+    user: dict = Depends(get_current_user)
+):
+    """Create Stripe checkout session for investment"""
+    package_id = checkout_data.package_id
+    origin_url = checkout_data.origin_url
+    
+    # Validate package
+    if package_id not in INVESTMENT_PACKAGES:
+        raise HTTPException(status_code=400, detail="Ungültiges Investment-Paket")
+    
+    package = INVESTMENT_PACKAGES[package_id]
+    amount = package["amount"]
+    
+    # Create success/cancel URLs
+    success_url = f"{origin_url}/investor?session_id={{CHECKOUT_SESSION_ID}}&success=true"
+    cancel_url = f"{origin_url}/investor?cancelled=true"
+    
+    # Initialize Stripe
+    host_url = str(request.base_url).rstrip("/")
+    webhook_url = f"{host_url}/api/investor/webhook/stripe"
+    stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=webhook_url)
+    
+    # Create checkout session
+    checkout_request = CheckoutSessionRequest(
+        amount=amount,
+        currency="eur",
+        success_url=success_url,
+        cancel_url=cancel_url,
+        metadata={
+            "user_id": user["id"],
+            "user_email": user.get("email", ""),
+            "package_id": package_id,
+            "investment_type": "direct",
+            "equity": package["equity"]
+        }
+    )
+    
+    try:
+        session: CheckoutSessionResponse = await stripe_checkout.create_checkout_session(checkout_request)
+        
+        # Create pending transaction record
+        transaction_id = str(uuid.uuid4())
+        await db.investment_transactions.insert_one({
+            "id": transaction_id,
+            "session_id": session.session_id,
+            "user_id": user["id"],
+            "user_email": user.get("email"),
+            "package_id": package_id,
+            "amount": amount,
+            "currency": "EUR",
+            "equity": package["equity"],
+            "perks": package["perks"],
+            "payment_status": "pending",
+            "created_at": datetime.now(timezone.utc).isoformat()
+        })
+        
+        logger.info(f"Investment checkout created for {user.get('email')}: €{amount} ({package_id})")
+        
+        return {
+            "checkout_url": session.url,
+            "session_id": session.session_id
+        }
+    except Exception as e:
+        logger.error(f"Stripe checkout error: {e}")
+        raise HTTPException(status_code=500, detail="Fehler bei der Zahlungsverarbeitung")
+
+@router.get("/checkout/status/{session_id}")
+async def get_checkout_status(session_id: str, user: dict = Depends(get_current_user)):
+    """Get status of checkout session"""
+    # Initialize Stripe
+    stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url="")
+    
+    try:
+        status: CheckoutStatusResponse = await stripe_checkout.get_checkout_status(session_id)
+        
+        # Update transaction if payment completed
+        if status.payment_status == "paid":
+            # Check if already processed
+            existing = await db.investment_transactions.find_one({
+                "session_id": session_id,
+                "payment_status": "completed"
+            })
+            
+            if not existing:
+                # Update to completed
+                result = await db.investment_transactions.update_one(
+                    {"session_id": session_id},
+                    {"$set": {
+                        "payment_status": "completed",
+                        "completed_at": datetime.now(timezone.utc).isoformat()
+                    }}
+                )
+                
+                if result.modified_count > 0:
+                    # Get transaction details
+                    transaction = await db.investment_transactions.find_one({"session_id": session_id})
+                    
+                    # Create investment record
+                    await db.investor_investments.insert_one({
+                        "id": str(uuid.uuid4()),
+                        "user_id": transaction["user_id"],
+                        "user_email": transaction.get("user_email"),
+                        "amount": transaction["amount"],
+                        "investment_type": transaction["package_id"],
+                        "equity": transaction.get("equity"),
+                        "perks": transaction.get("perks"),
+                        "status": "completed",
+                        "transaction_id": transaction["id"],
+                        "created_at": datetime.now(timezone.utc).isoformat()
+                    })
+                    
+                    logger.info(f"Investment completed: €{transaction['amount']} from {transaction.get('user_email')}")
+        
+        return {
+            "status": status.status,
+            "payment_status": status.payment_status,
+            "amount": status.amount_total / 100,  # Convert from cents
+            "currency": status.currency.upper()
+        }
+    except Exception as e:
+        logger.error(f"Checkout status error: {e}")
+        raise HTTPException(status_code=500, detail="Fehler beim Abrufen des Status")
+
+@router.post("/webhook/stripe")
+async def stripe_webhook(request: Request):
+    """Handle Stripe webhooks"""
+    try:
+        body = await request.body()
+        signature = request.headers.get("Stripe-Signature")
+        
+        stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url="")
+        webhook_response = await stripe_checkout.handle_webhook(body, signature)
+        
+        logger.info(f"Stripe webhook received: {webhook_response.event_type}")
+        
+        if webhook_response.payment_status == "paid":
+            # Update transaction
+            await db.investment_transactions.update_one(
+                {"session_id": webhook_response.session_id},
+                {"$set": {
+                    "payment_status": "completed",
+                    "completed_at": datetime.now(timezone.utc).isoformat()
+                }}
+            )
+        
+        return {"received": True}
+    except Exception as e:
+        logger.error(f"Webhook error: {e}")
+        return {"received": True}
+
 # ==================== INVESTMENT MANAGEMENT ====================
 
 @router.get("/investments")
