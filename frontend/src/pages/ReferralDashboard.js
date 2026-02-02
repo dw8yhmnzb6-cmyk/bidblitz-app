@@ -56,8 +56,10 @@ const ReferralDashboard = () => {
       noReferrals: 'Noch keine Empfehlungen',
       howItWorks: 'So funktioniert\'s',
       step1: '1. Teile deinen Code mit Freunden',
-      step2: '2. Sie melden sich an und erhalten 5 Gebote',
-      step3: '3. Bei ihrem ersten Kauf bekommst du 10 Gebote',
+      step2: '2. Sie melden sich an mit deinem Code',
+      step3: '3. Bei ihrem ersten Kauf: Ihr beide bekommt Bonus!',
+      step3Detail: 'Du: 10 Gebote • Freund: 5 Gebote',
+      vipBonus: '🌟 VIP+ Bonus: 20 Gebote bei Abo-Empfehlungen!',
       prizes: 'Top-Werber gewinnen jeden Monat Preise!',
       nextRank: 'Noch {n} Empfehlungen bis',
       loginRequired: 'Bitte einloggen'
