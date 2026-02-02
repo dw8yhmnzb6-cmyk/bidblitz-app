@@ -572,6 +572,63 @@ async def assign_influencer_city(manager_id: str, data: InfluencerCityAssign):
     logger.info(f"Manager {manager['name']} assigned influencer {influencer.get('name')} to city {data.city}")
     return {"success": True, "message": f"Influencer zu {data.city} zugewiesen"}
 
+class InfluencerUpdateByManager(BaseModel):
+    city: Optional[str] = None
+    commission_percent: Optional[float] = None
+
+@router.put("/{manager_id}/influencer/{influencer_id}/update")
+async def update_influencer_by_manager(manager_id: str, influencer_id: str, data: InfluencerUpdateByManager):
+    """Update influencer details by manager (limited fields)"""
+    manager = await get_current_manager(manager_id)
+    cities = manager.get("cities", manager.get("managed_cities", []))
+    
+    influencer = await db.influencers.find_one({"id": influencer_id}, {"_id": 0})
+    if not influencer:
+        raise HTTPException(status_code=404, detail="Influencer nicht gefunden")
+    
+    # Check if influencer is in manager's cities or already assigned to this manager
+    current_city = influencer.get("city")
+    if current_city and current_city not in cities and influencer.get("manager_id") != manager_id:
+        raise HTTPException(status_code=403, detail="Influencer ist nicht in Ihren Städten")
+    
+    # Build update dict
+    updates = {}
+    changes = []
+    
+    if data.city is not None:
+        if data.city and data.city not in cities:
+            raise HTTPException(status_code=403, detail=f"Sie können nur Städte aus Ihrem Bereich zuweisen: {', '.join(cities)}")
+        updates["city"] = data.city
+        updates["manager_id"] = manager_id
+        changes.append(f"Stadt: {current_city or '-'} → {data.city or '-'}")
+    
+    if data.commission_percent is not None:
+        old_commission = influencer.get("commission_percent", 10)
+        updates["commission_percent"] = data.commission_percent
+        changes.append(f"Provision: {old_commission}% → {data.commission_percent}%")
+    
+    if not updates:
+        return {"success": True, "message": "Keine Änderungen"}
+    
+    updates["updated_at"] = datetime.now(timezone.utc).isoformat()
+    updates["updated_by_manager"] = manager_id
+    
+    await db.influencers.update_one(
+        {"id": influencer_id},
+        {"$set": updates}
+    )
+    
+    # Log activity
+    await log_manager_activity(
+        manager_id,
+        "influencer_updated",
+        f"Influencer '{influencer.get('name', influencer.get('code'))}' bearbeitet: {', '.join(changes)}",
+        {"influencer_id": influencer_id, "changes": changes}
+    )
+    
+    logger.info(f"Manager {manager['name']} updated influencer {influencer.get('name')}: {changes}")
+    return {"success": True, "message": "Influencer aktualisiert", "changes": changes}
+
 # ==================== MANAGER PAYOUT ====================
 
 @router.post("/{manager_id}/request-payout")
