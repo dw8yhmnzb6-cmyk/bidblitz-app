@@ -617,6 +617,20 @@ async def place_bid(auction_id: str, user: dict = Depends(get_current_user)):
     except Exception as e:
         logger.error(f"Error checking streak: {e}")
     
+    # Award XP for bidding
+    try:
+        from routers.levels import award_xp
+        await award_xp(user["id"], "place_bid", description="Gebot platziert")
+    except Exception as e:
+        logger.error(f"Error awarding XP: {e}")
+    
+    # Award Loyalty Points for bidding
+    try:
+        from routers.loyalty import award_bid_points
+        await award_bid_points(user["id"], 1)
+    except Exception as e:
+        logger.error(f"Error awarding loyalty points: {e}")
+    
     response = {
         "message": "Bid placed successfully",
         "new_price": new_price,
