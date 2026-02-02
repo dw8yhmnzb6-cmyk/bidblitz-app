@@ -9,7 +9,7 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 - User registration with email verification
 - JWT-based authentication
 - Customer numbers (8-digit) for gifting
-- VIP membership tiers
+- VIP membership tiers (Standard, Gold, Platinum, Diamond)
 - Influencer accounts with free VIP access
 - Manager accounts (regional) - 3-tier hierarchy
 - Referral System with rankings
@@ -22,31 +22,41 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 - Auto-restart (3s delay)
 - Timer extension on bids (10-15s)
 - Beginner-Protection Auctions (<10 wins)
-- **NEW: Bid Buddy / Auto-Bieter** - Automatic bidding system
-- **NEW: Buy It Now** - Purchase with bid credit after losing
-- **NEW: Countdown Alarm** - Notifications before auction ends
+- **Bid Buddy / Auto-Bieter** - Automatic bidding system
+- **Buy It Now** - Purchase with bid credit after losing
+- **Countdown Alarm** - Notifications before auction ends
+- **NEW: Team Auctions** - Group bidding with shared bids
+- **NEW: Auction Replay** - View bid history and statistics
 
 ### Payment Integration
 - Stripe (LIVE keys configured)
 - Bid packages
 - Happy Hour 2x Bids (18:00-20:00 Berlin)
-- **NEW: Subscription Model** - Monthly bid packages (Basic €19.99, Pro €39.99, Elite €79.99)
+- **Subscription Model** - Monthly bid packages (Basic €19.99, Pro €39.99, Elite €79.99)
+- **NEW: Auction Insurance** - €0.50 per auction, 50% bid refund on loss
 
 ### Gamification System
 - **Glücksrad (Lucky Wheel)**: Daily spin for prizes
 - **Wochen-Rangliste (Leaderboard)**: Top 10 win free bids
 - **Bieter-Streak Bonus**: Consecutive bid bonuses
-- **NEW: Achievements & Badges**: 18 achievements across 5 categories with bid rewards
+- **Achievements & Badges**: 18 achievements across 5 categories
 - **Battle Pass System**: 50-tier progression with rewards
 - **Mystery Box Auctions**: Hidden premium products
 - **Levels System**: Bronze → Diamond progression
+- **NEW: Streak Protection**: Protect login streaks with shield
+- **NEW: Birthday Bonus**: 10-30 free bids on birthday (VIP-tiered)
 
 ### Engagement Features
-- **NEW: Video Testimonials**: Winner videos with upload rewards (+15 bids)
-- **NEW: Win Notifications**: FOMO-inducing push notifications
+- **Video Testimonials**: Winner videos with upload rewards
+- **Win Notifications**: FOMO-inducing push notifications
 - **Referral/Freunde-Bonus**: Invite friends, earn bids
 - **Social Share Bonus**: Share wins on social media
 - **Price Alerts**: Get notified when auctions drop below target
+- **NEW: Favorites with Smart Alerts**: Notification when favorite products go live
+- **NEW: Flash Coupons**: Time-limited discounts during auctions
+- **NEW: VIP Lounge Chat**: Exclusive chat for VIP members
+- **NEW: Product Wishlist**: Vote for products you want auctioned
+- **NEW: Bid Refund for VIP**: 10-25% bid refund on losses
 
 ### Communication
 - Telegram Bot (@BidBlitzBot)
@@ -68,125 +78,120 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 - JWT authentication
 - WebSocket manager
 
-### Key Files
-- `/app/backend/server.py` - Main server + bot logic + all router imports
-- `/app/frontend/src/App.js` - All frontend routes
-- `/app/frontend/src/components/Navbar.js` - Navigation
-
 ## Completion Status (February 2, 2026)
 
-### ✅ Completed - 10 New Customer Features
-1. **Bid Buddy / Auto-Bieter** - Full backend + frontend
-2. **Buy It Now** - Bid credit system with Stripe
-3. **Subscription Model** - 3 tiers (Basic, Pro, Elite)
-4. **Achievements & Badges** - 18 achievements, 5 categories
-5. **Referral/Freunde-Bonus** - Page with stats and sharing
-6. **Win Notifications** - FOMO notifications API
-7. **Countdown Alarm** - Pre-auction-end notifications
-8. **Video Testimonials** - Upload rewards + gallery
-9. **Statistics & Insights** - Already implemented (MyStatsPage)
-10. **Live Chat** - Tawk.to component (needs user's ID)
+### ✅ Completed - 20 Customer Features (2 Batches)
+
+**Batch 1 (10 Features):**
+1. Bid Buddy / Auto-Bieter
+2. Buy It Now with bid credit
+3. Subscription Model (3 tiers)
+4. Achievements & Badges (18 badges)
+5. Referral/Freunde-Bonus
+6. Win Notifications
+7. Countdown Alarm
+8. Video Testimonials
+9. Statistics & Insights (MyStatsPage)
+10. Live Chat (Tawk.to placeholder)
+
+**Batch 2 (10 Features):**
+1. **Auction Favorites with Smart Alerts**
+2. **Team Auctions (Group Bidding)**
+3. **Bid Refund for VIP** (10-25% back on loss)
+4. **Auction Replay & Statistics**
+5. **Flash Coupons** (time-limited discounts)
+6. **VIP Lounge Chat**
+7. **Birthday Bonus** (10-30 bids)
+8. **Auction Insurance** (€0.50 for 50% refund)
+9. **Product Wishlist Voting**
+10. **Streak Protection**
 
 ### 📋 Pending Items
-- **Live Chat Activation**: Requires user's Tawk.to Property ID and Widget ID
+- **Live Chat Activation**: Requires user's Tawk.to Property ID
 - **Apple Login**: UI button added, needs Apple Developer credentials
 - **Auction Duration Bug**: P2 - Admin form calculation issue
-- **"Not Found" Toast**: P3 - Recurring issue (needs network tab debugging)
-- **i18n Completion**: Some hardcoded text may exist
+- **"Not Found" Toast**: P3 - Recurring issue
+
+## New Routes Added
+
+### Backend API Endpoints
+- `/api/favorites/*` - Favorites management
+- `/api/teams/*` - Team auctions
+- `/api/bid-refund/*` - VIP bid refunds
+- `/api/auction-replay/*` - Auction history
+- `/api/flash-coupons/*` - Flash coupons
+- `/api/vip-lounge/*` - VIP chat
+- `/api/birthday/*` - Birthday bonus
+- `/api/insurance/*` - Auction insurance
+- `/api/wishlist/*` - Product wishlist
+- `/api/streak-protection/*` - Login streaks
+
+### Frontend Pages
+- `/streak` or `/login-streak` - Streak Protection
+- `/birthday` or `/geburtstag` - Birthday Bonus
+- `/teams` or `/team-auktionen` - Team Auctions
+- `/produkt-wuensche` or `/product-wishlist` - Product Wishlist
 
 ## Test Credentials
 - **Admin:** admin@bidblitz.de / Admin123!
 - **Customer:** kunde@bidblitz.de / Kunde123!
-- **Influencer:** Code: demo, Email: demo@influencer.test
+- **Influencer:** Code: demo
 - **Manager (Berlin):** manager.berlin@bidblitz.de / Manager123!
 - **Manager (Prishtina):** manager.prishtina@bidblitz.de / Prishtina2024!
 
-## API Endpoints - New Features
-
-### Bid Buddy
-- POST /api/bid-buddy/activate - Activate auto-bidder
-- DELETE /api/bid-buddy/deactivate/{auction_id} - Deactivate
-- GET /api/bid-buddy/my-buddies - Get active bid buddies
-- GET /api/bid-buddy/status/{auction_id} - Check status
-
-### Buy It Now
-- GET /api/buy-it-now/offers - Get available offers (after losing)
-- GET /api/buy-it-now/offer/{auction_id} - Get specific offer
-- POST /api/buy-it-now/purchase - Purchase with bid credit
-- GET /api/buy-it-now/purchases - Purchase history
-
-### Subscription
-- GET /api/subscription/plans - Get all plans
-- GET /api/subscription/my-subscription - User's subscription
-- POST /api/subscription/subscribe - Subscribe to plan
-- POST /api/subscription/cancel - Cancel subscription
-- POST /api/subscription/reactivate - Reactivate
-
-### Achievements
-- GET /api/achievements/all - All 18 achievements
-- GET /api/achievements/my-achievements - User's progress
-- GET /api/achievements/progress - Progress towards next
-
-### Testimonials
-- GET /api/testimonials/videos - Get approved videos
-- POST /api/testimonials/submit - Submit video
-- POST /api/testimonials/{id}/like - Like video
-
-### Countdown Alarm
-- POST /api/countdown-alarm/set - Set alarm
-- DELETE /api/countdown-alarm/remove/{auction_id} - Remove
-- GET /api/countdown-alarm/my-alarms - User's alarms
-- GET /api/countdown-alarm/status/{auction_id} - Check status
-
-### Win Notifications
-- GET /api/win-notifications/recent - Recent wins
-- GET /api/win-notifications/preferences - User preferences
-- POST /api/win-notifications/preferences - Update preferences
+## Test Reports
+- `/app/test_reports/iteration_28.json` - Batch 1 (100% pass)
+- `/app/test_reports/iteration_29.json` - Batch 2 (100% pass)
 
 ## Database Collections - New
-- `bid_buddies` - Auto-bidder configurations
-- `buy_it_now_purchases` - Buy It Now transactions
-- `user_subscriptions` - Active subscriptions
-- `pending_subscriptions` - Stripe pending
-- `user_achievements` - Earned achievements
-- `video_testimonials` - Winner videos
-- `testimonial_likes` - Video likes
-- `countdown_alarms` - User alarms
-- `notification_preferences` - User notification settings
-- `win_events` - Win notification events
-
-## Test Reports
-- `/app/test_reports/iteration_28.json` - 10 New Features Test (100% pass)
-- Previous: iterations 1-27
+- `favorites` - User favorites with price alerts
+- `teams` - Bidding teams
+- `team_bids` - Team bid history
+- `bid_refunds` - VIP refund records
+- `flash_coupons` - Time-limited coupons
+- `coupon_redemptions` - Coupon usage
+- `user_discounts` - Active discounts
+- `vip_chat_messages` - VIP lounge messages
+- `birthday_bonuses` - Claimed birthday bonuses
+- `auction_insurance` - Insurance policies
+- `product_wishes` - Product suggestions
+- `streak_protections` - Streak protection records
+- `streak_rewards_claimed` - Claimed streak milestones
 
 ## Mocked APIs
 - **Resend Email**: Mock mode (no production key)
 - **Tawk.to Live Chat**: Placeholder (needs user configuration)
 
-## Last Updated
-February 2, 2026
-
 ## Changelog
 
-### February 2, 2026 - 10 Customer Features Implementation
-- ✅ Implemented Bid Buddy (Auto-Bieter) - Backend router + Frontend page
-- ✅ Implemented Buy It Now with bid credit (€0.50 per bid)
-- ✅ Implemented Subscription Model (3 tiers with Stripe)
-- ✅ Implemented Achievements System (18 badges, 5 categories)
-- ✅ Implemented Video Testimonials page with upload rewards
-- ✅ Implemented Win Notifications API
-- ✅ Implemented Countdown Alarm system
-- ✅ Implemented Referral/Freunde-Bonus page
-- ✅ Created TawkToChat component for Live Chat
-- ✅ Added new routes to App.js and Navbar.js
+### February 2, 2026 - Batch 2: 10 Engagement Features
+- ✅ Implemented Favorites with Smart Alerts
+- ✅ Implemented Team Auctions (group bidding)
+- ✅ Implemented Bid Refund for VIP (10-25%)
+- ✅ Implemented Auction Replay & Statistics
+- ✅ Implemented Flash Coupons system
+- ✅ Implemented VIP Lounge Chat
+- ✅ Implemented Birthday Bonus (VIP-tiered)
+- ✅ Implemented Auction Insurance
+- ✅ Implemented Product Wishlist Voting
+- ✅ Implemented Streak Protection with milestones
+- ✅ Fixed route conflict in wishlist router
+- ✅ Test Report: 100% success (28 backend + 4 frontend tests)
+
+### February 2, 2026 - Batch 1: 10 Customer Features
+- ✅ Implemented Bid Buddy, Buy It Now, Subscriptions
+- ✅ Implemented Achievements, Testimonials, Win Notifications
 - ✅ Test Report: 100% success (23 backend + 4 frontend tests)
 
 ### Previous Sessions
 - Manager System (3-tier hierarchy)
 - Product Database update (72 new 2025/2026 products)
-- Stripe payment fix (STRIPE_API_KEY)
+- Stripe payment fix
 - Influencer System with tiered commissions
 - Admin Voice Commands
 - Battle Pass System
 - Mystery Box Auctions
 - And many more...
+
+## Last Updated
+February 2, 2026
