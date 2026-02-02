@@ -60,6 +60,12 @@ from routers.power_hour import router as power_hour_router
 from routers.price_alerts import router as price_alerts_router
 from routers.social_share import router as social_share_router
 from routers.battle_pass import router as battle_pass_router
+from routers.bundles import bundles_router
+from routers.flash_sales_v2 import flash_sales_router
+from routers.vip_subscription import vip_subscription_router
+from routers.last_chance import last_chance_router
+from routers.reviews_v2 import reviews_router as reviews_v2_router
+from routers.friend_battle import friend_battle_router
 
 # WebSocket manager
 from services.websocket import ws_manager, broadcast_bid_update, broadcast_auction_ended
