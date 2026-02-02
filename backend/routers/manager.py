@@ -508,16 +508,16 @@ async def approve_influencer(manager_id: str, influencer_id: str):
 
 @router.post("/{manager_id}/influencer/block/{influencer_id}")
 async def block_influencer(manager_id: str, influencer_id: str):
-    """Block/deactivate an influencer (Manager only)"""
+    """Block/deactivate an influencer (Manager only) - Only if assigned to this manager"""
     manager = await get_current_manager(manager_id)
-    cities = manager.get("cities", manager.get("managed_cities", []))
     
     influencer = await db.influencers.find_one({"id": influencer_id}, {"_id": 0})
     if not influencer:
         raise HTTPException(status_code=404, detail="Influencer nicht gefunden")
     
-    if influencer.get("city") and influencer["city"] not in cities:
-        raise HTTPException(status_code=403, detail="Influencer ist nicht in Ihren Städten")
+    # Check if influencer is assigned to THIS manager
+    if influencer.get("manager_id") != manager_id:
+        raise HTTPException(status_code=403, detail="Dieser Influencer ist Ihnen nicht zugewiesen")
     
     await db.influencers.update_one(
         {"id": influencer_id},
