@@ -596,3 +596,13 @@ February 1, 2026 (Session 4)
   - API: POST /api/wheel/spin gibt Preis zurück UND aktualisiert bids_balance
   - 24h Cooldown funktioniert
   - 8 Preis-Typen mit gewichteten Wahrscheinlichkeiten
+
+
+- 2026-02-02: **TRANSLATION FIX** Zentrale Feature-Übersetzungen implementiert
+  - Neue Datei: `/app/frontend/src/i18n/featureTranslations.js`
+  - Unterstützte Features: Mystery Box, Battle Pass, Price Alerts, Social Share, Daily Rewards, Levels
+  - Unterstützte Sprachen: DE, EN, TR, FR, ES, SQ
+  - Alle neuen Seiten (MysteryBoxPage, BattlePassPage, PriceAlertsPage, SocialSharePage, DailyRewardsPage, LevelsPage) aktualisiert
+  - Verwendet `getFeatureTranslation(feature, language)` Helper-Funktion
+  - Google Login Button übersetzt: "Mit Google anmelden" / "Sign in with Google" etc.
+  - Verifiziert: Mystery Box Seite zeigt korrekt Türkisch an ("Gizem Kutuları")
