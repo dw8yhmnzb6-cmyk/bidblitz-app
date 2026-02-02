@@ -218,7 +218,7 @@ app.include_router(streak_protection_router, prefix="/api")
 app.include_router(weekly_winners_router, prefix="/api")
 app.include_router(excitement_router, prefix="/api")
 app.include_router(investor_router, prefix="/api")
-app.include_router(free_auctions_router, prefix="/api")
+app.include_router(voucher_auctions_router, prefix="/api")
 
 # ==================== HEALTH & BASIC ENDPOINTS ====================
 
