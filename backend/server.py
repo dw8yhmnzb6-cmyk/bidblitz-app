@@ -209,7 +209,7 @@ app.include_router(flash_coupons_router, prefix="/api")
 app.include_router(vip_lounge_router, prefix="/api")
 app.include_router(birthday_router, prefix="/api")
 app.include_router(insurance_router, prefix="/api")
-app.include_router(wishlist_router, prefix="/api")
+app.include_router(product_wishlist_router, prefix="/api")
 app.include_router(streak_protection_router, prefix="/api")
 
 # ==================== HEALTH & BASIC ENDPOINTS ====================
