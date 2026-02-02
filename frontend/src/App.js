@@ -54,6 +54,9 @@ import ReferralDashboard from "./pages/ReferralDashboard";
 import FlashEvents from "./pages/FlashEvents";
 import WinnerGallery from "./pages/WinnerGallery";
 import Subscriptions from "./pages/Subscriptions";
+import LoyaltyPage from "./pages/LoyaltyPage";
+import FlashSalesPage from "./pages/FlashSalesPage";
+import MyStatsPage from "./pages/MyStatsPage";
 
 // Protected Route Component
 const ProtectedRoute = ({ children, requireAdmin = false }) => {
