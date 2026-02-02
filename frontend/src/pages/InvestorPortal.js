@@ -502,11 +502,6 @@ export default function InvestorPortal() {
             </div>
           </div>
         )}
-                <li>• Mitspracherecht bei wichtigen Entscheidungen (Partner-Paket)</li>
-              </ul>
-            </div>
-          </div>
-        )}
         
         {/* My Investments Tab */}
         {activeTab === 'my-investments' && (
