@@ -399,6 +399,18 @@ February 1, 2026 (Session 4)
 | WhatsApp Business | 📋 Ausstehend | - | - |
 | VIP+ Exklusive Auktionen | 📋 Ausstehend | - | - |
 
+## Neue Features (Feb 2, 2026 - Wave 2)
+
+| Feature | Status | Backend | Frontend |
+|---------|--------|---------|----------|
+| Treuepunkte-System | ✅ Fertig | loyalty.py | LoyaltyPage.js |
+| Flash Sales (Zeit-limitiert) | ✅ Fertig | flash_sales.py | FlashSalesPage.js |
+| Persönliche Statistiken | ✅ Fertig | user_stats.py | MyStatsPage.js |
+| Wunschliste mit Alarm | ✅ Fertig | wishlist.py | - (API ready) |
+| Verlassene Warenkorb E-Mails | ✅ Fertig | abandoned_cart.py | - (Backend only) |
+| Gewinner-Bewertungen | ✅ Fertig | reviews.py | - (API ready) |
+| Mystery Box Auktionen | ✅ Fertig | mystery_box.py | - (API ready) |
+
 ## Pending Issues
 
 ### P1 - Resolved ✅
