@@ -22,8 +22,6 @@ const SocialSharePage = () => {
 
   // Use centralized translations
   const t = getFeatureTranslation('socialShare', language);
-  };
-  const t = texts[language] || texts.de;
 
   const platforms = [
     { id: 'facebook', name: 'Facebook', icon: Facebook, color: '#1877F2' },
