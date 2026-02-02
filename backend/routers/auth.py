@@ -201,6 +201,119 @@ async def get_me(user: dict = Depends(get_current_user)):
     }
 
 
+# ==================== GOOGLE OAUTH ====================
+
+import httpx
+
+@router.post("/google")
+async def google_oauth(session_id: str, request: Request):
+    """
+    Process Google OAuth session_id from Emergent Auth.
+    REMINDER: DO NOT HARDCODE THE URL, OR ADD ANY FALLBACKS OR REDIRECT URLS, THIS BREAKS THE AUTH
+    """
+    client_ip = get_client_ip(request)
+    
+    try:
+        # Verify session_id with Emergent Auth
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                "https://demobackend.emergentagent.com/auth/v1/env/oauth/session-data",
+                headers={"X-Session-ID": session_id}
+            )
+            
+            if response.status_code != 200:
+                raise HTTPException(status_code=401, detail="Ungültige Google-Sitzung")
+            
+            google_data = response.json()
+    except httpx.RequestError as e:
+        logger.error(f"Google OAuth error: {e}")
+        raise HTTPException(status_code=500, detail="Fehler bei der Google-Authentifizierung")
+    
+    email = google_data.get("email", "").lower()
+    name = google_data.get("name", "Google User")
+    picture = google_data.get("picture", "")
+    
+    if not email:
+        raise HTTPException(status_code=400, detail="E-Mail nicht von Google erhalten")
+    
+    # Check if user exists
+    existing_user = await db.users.find_one({"email": email}, {"_id": 0})
+    
+    if existing_user:
+        # Existing user - update avatar if needed and log in
+        if picture and not existing_user.get("avatar_url"):
+            await db.users.update_one(
+                {"id": existing_user["id"]},
+                {"$set": {"avatar_url": picture, "last_login_ip": client_ip}}
+            )
+        
+        await log_security_event("google_login_success", existing_user["id"], {
+            "email": email
+        }, client_ip)
+        
+        token = create_token(existing_user["id"], existing_user.get("is_admin", False))
+        
+        return {
+            "token": token,
+            "user": {
+                "id": existing_user["id"],
+                "email": existing_user["email"],
+                "name": existing_user["name"],
+                "bids_balance": existing_user["bids_balance"],
+                "is_admin": existing_user.get("is_admin", False),
+                "two_factor_enabled": existing_user.get("two_factor_enabled", False)
+            },
+            "is_new_user": False
+        }
+    else:
+        # New user - create account
+        user_id = str(uuid.uuid4())
+        referral_code = user_id[:8].upper()
+        
+        new_user = {
+            "id": user_id,
+            "email": email,
+            "password": None,  # Google users don't have password
+            "name": name,
+            "avatar_url": picture,
+            "bids_balance": 10,  # Welcome bids
+            "is_admin": False,
+            "is_blocked": False,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "won_auctions": [],
+            "total_bids_placed": 0,
+            "source": "google",
+            "referral_code": referral_code,
+            "referred_by": None,
+            "total_deposits": 0.0,
+            "registration_ip": client_ip,
+            "last_login_ip": client_ip,
+            "two_factor_secret": None,
+            "two_factor_enabled": False
+        }
+        
+        await db.users.insert_one(new_user)
+        
+        await log_security_event("google_registration_success", user_id, {
+            "email": email
+        }, client_ip)
+        
+        token = create_token(user_id)
+        
+        return {
+            "token": token,
+            "user": {
+                "id": user_id,
+                "email": email,
+                "name": name,
+                "bids_balance": 10,
+                "is_admin": False,
+                "referral_code": referral_code
+            },
+            "is_new_user": True
+        }
+
+
 # ==================== DAILY LOGIN REWARD ====================
 
 @router.post("/claim-daily-reward")
