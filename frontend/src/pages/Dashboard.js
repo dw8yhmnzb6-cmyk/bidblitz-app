@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -19,8 +19,9 @@ import { toast } from 'sonner';
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 export default function Dashboard() {
-  const { user, token, refreshUser, updateBidsBalance } = useAuth();
+  const { user, token, refreshUser, updateBidsBalance, isManager } = useAuth();
   const { t, language } = useLanguage();
+  const navigate = useNavigate();
   const [activeAuctions, setActiveAuctions] = useState([]);
   const [myBidAuctions, setMyBidAuctions] = useState([]);
   const [wonAuctions, setWonAuctions] = useState([]);
