@@ -87,8 +87,10 @@ const ReferralDashboard = () => {
       noReferrals: 'No referrals yet',
       howItWorks: 'How it Works',
       step1: '1. Share your code with friends',
-      step2: '2. They sign up and get 5 free bids',
-      step3: '3. When they purchase, you get 10 bids',
+      step2: '2. They sign up with your code',
+      step3: '3. On their first purchase: You both get bonus!',
+      step3Detail: 'You: 10 bids • Friend: 5 bids',
+      vipBonus: '🌟 VIP+ Bonus: 20 bids for subscription referrals!',
       prizes: 'Top referrers win prizes every month!',
       nextRank: '{n} more referrals until',
       loginRequired: 'Please login'
