@@ -460,6 +460,11 @@ function AppContent() {
               <ExcitementAdminPage />
             </ProtectedRoute>
           } />
+          
+          {/* Investor Portal - Public */}
+          <Route path="/investor" element={<InvestorPortal />} />
+          <Route path="/investoren" element={<InvestorPortal />} />
+          
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
