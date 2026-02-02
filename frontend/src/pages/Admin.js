@@ -344,8 +344,12 @@ export default function Admin() {
       } else if (activeTab === 'jackpot') {
         const jpRes = await axios.get(`${API}/excitement/global-jackpot`);
         setJackpotData(jpRes.data);
+        setJackpotAmount(jpRes.data.current_amount || 500);
         const histRes = await axios.get(`${API}/excitement/global-jackpot/history`);
         setJackpotHistory(histRes.data.winners || []);
+        // Also load users for jackpot award
+        const usersRes = await axios.get(`${API}/admin/users`, { headers });
+        setUsers(usersRes.data);
       }
     } catch (error) {
       console.error('Error fetching data:', error);
