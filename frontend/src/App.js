@@ -448,6 +448,17 @@ function AppContent() {
               <StreakProtectionPage />
             </ProtectedRoute>
           } />
+          {/* Excitement Admin */}
+          <Route path="/admin/excitement" element={
+            <ProtectedRoute requireAdmin={true}>
+              <ExcitementAdminPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/spannung" element={
+            <ProtectedRoute requireAdmin={true}>
+              <ExcitementAdminPage />
+            </ProtectedRoute>
+          } />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
