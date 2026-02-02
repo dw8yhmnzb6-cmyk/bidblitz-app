@@ -128,6 +128,7 @@ app.include_router(wheel_router, prefix="/api")
 app.include_router(leaderboard_router, prefix="/api")
 app.include_router(gamification_router, prefix="/api")
 app.include_router(telegram_router, prefix="/api")
+app.include_router(referral_router, prefix="/api")
 
 # ==================== HEALTH & BASIC ENDPOINTS ====================
 
