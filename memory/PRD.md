@@ -109,13 +109,12 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 - GET `/api/weekly-winners/leaderboard` - Top Gewinner
 
 ## Pending Items (Priority Order)
-1. ~~**P1: UI-Button für "Gewinner der Woche" Broadcast**~~ ✅ Implementiert
-2. ~~**P0: Manager sehen nur ihre zugewiesenen Influencer**~~ ✅ Implementiert
-3. **P1: Internationalisierung (i18n)** - Hardcodierte Texte durch `t()` ersetzen
-4. **P2: Apple Login finalisieren** - Apple Developer Account erforderlich
-5. **P2: Auction Duration Bug** - Admin-Formular Berechnung
-6. **P3: "Not Found" Toast** - Wiederkehrendes Problem
-7. **Live-Chat aktivieren**: Tawk.to Property ID + Widget ID erforderlich
+1. ~~**P0: Admin Panel UI Bugs (Manager Modal + Jackpot Panel)**~~ ✅ Behoben
+2. **P1: Internationalisierung (i18n)** - Hardcodierte Texte durch `t()` ersetzen
+3. **P2: Apple Login finalisieren** - Apple Developer Account erforderlich
+4. **P2: Auction Duration Bug** - Admin-Formular Berechnung
+5. **P3: "Not Found" Toast** - Wiederkehrendes Problem
+6. **Live-Chat aktivieren**: Tawk.to Property ID + Widget ID erforderlich
 
 ## Key API Endpoints - Manager Features
 - `POST /api/manager/login` - Manager-Anmeldung
