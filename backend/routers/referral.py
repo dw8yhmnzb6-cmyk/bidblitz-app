@@ -299,38 +299,81 @@ async def get_my_rank(user: dict = Depends(get_current_user)):
 
 # ==================== REWARD PROCESSING ====================
 
-async def process_referral_reward(referred_user_id: str):
+async def process_referral_reward(referred_user_id: str, is_subscription: bool = False):
     """
     Called when a referred user makes their first purchase.
-    Awards bonus bids to BOTH the referrer (10 bids) and referred user (5 bids).
+    Awards bonus bids to BOTH the referrer AND the referred user.
+    
+    Args:
+        referred_user_id: The user who made a purchase
+        is_subscription: True if the purchase was a subscription (VIP+ gives extra bonus)
     """
     # Find the referral record
     referral = await db.referrals.find_one({"referred_id": referred_user_id})
     
     if not referral:
-        return
-    
-    if referral.get("has_purchased", False):
-        return  # Already rewarded
+        return  # User wasn't referred by anyone
     
     referrer_id = referral["referrer_id"]
     
-    # Award 10 bids to referrer (if not already given)
-    referrer_reward_bids = 10
-    referred_reward_bids = 5
-    
-    if not referral.get("referrer_bonus_given", False):
-        await db.users.update_one(
-            {"id": referrer_id},
-            {"$inc": {"bids_balance": referrer_reward_bids}}
-        )
-    
-    # Award 5 bids to referred user (if not already given)
+    # ===== REWARD FOR REFERRED USER (5 bids - first purchase bonus) =====
     if not referral.get("referred_bonus_given", False):
+        referred_bonus = 5
         await db.users.update_one(
             {"id": referred_user_id},
-            {"$inc": {"bids_balance": referred_reward_bids}}
+            {"$inc": {"bids_balance": referred_bonus}}
         )
+        
+        # Notify referred user
+        await db.notifications.insert_one({
+            "id": str(uuid.uuid4()),
+            "user_id": referred_user_id,
+            "type": "referral_welcome",
+            "title": "🎁 Willkommensbonus!",
+            "message": f"Danke für deinen ersten Kauf! Du erhältst {referred_bonus} Gratis-Gebote als Empfehlungsbonus!",
+            "read": False,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        })
+        
+        logger.info(f"Referral bonus: Referred user {referred_user_id} received {referred_bonus} bids")
+    
+    # ===== REWARD FOR REFERRER (10 bids - standard, 20 for subscription) =====
+    if not referral.get("referrer_bonus_given", False):
+        # Check if referrer is VIP+ for extra subscription bonus
+        referrer = await db.users.find_one({"id": referrer_id}, {"_id": 0, "is_vip_plus": 1})
+        is_referrer_vip_plus = referrer.get("is_vip_plus", False) if referrer else False
+        
+        # Base reward
+        reward_bids = 10
+        
+        # VIP+ referrer gets 20 bids if referred friend buys subscription
+        if is_subscription and is_referrer_vip_plus:
+            reward_bids = 20
+        # Non-VIP+ referrer still gets extra for subscription referrals
+        elif is_subscription:
+            reward_bids = 15
+        
+        await db.users.update_one(
+            {"id": referrer_id},
+            {"$inc": {"bids_balance": reward_bids}}
+        )
+        
+        # Notify referrer
+        referred_user = await db.users.find_one({"id": referred_user_id}, {"_id": 0, "name": 1})
+        referred_name = referred_user.get("name", "Dein Empfohlener") if referred_user else "Dein Empfohlener"
+        
+        bonus_type = "Abo" if is_subscription else "Kauf"
+        await db.notifications.insert_one({
+            "id": str(uuid.uuid4()),
+            "user_id": referrer_id,
+            "type": "referral_reward",
+            "title": "🎁 Empfehlungsbonus!",
+            "message": f"{referred_name} hat eingekauft ({bonus_type})! Du erhältst {reward_bids} Gratis-Gebote!",
+            "read": False,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        })
+        
+        logger.info(f"Referral reward: Referrer {referrer_id} earned {reward_bids} bids from {referred_user_id}'s {bonus_type}")
     
     # Update referral record
     await db.referrals.update_one(
@@ -338,41 +381,14 @@ async def process_referral_reward(referred_user_id: str):
         {
             "$set": {
                 "has_purchased": True,
-                "reward_bids": referrer_reward_bids,
+                "reward_bids": 10,  # Keep track of referrer reward
                 "referrer_bonus_given": True,
                 "referred_bonus_given": True,
-                "rewarded_at": datetime.now(timezone.utc).isoformat()
+                "rewarded_at": datetime.now(timezone.utc).isoformat(),
+                "purchase_type": "subscription" if is_subscription else "bids"
             }
         }
     )
-    
-    # Get user names for notifications
-    referred_user = await db.users.find_one({"id": referred_user_id}, {"_id": 0, "name": 1})
-    referred_name = referred_user.get("name", "Dein Empfohlener") if referred_user else "Dein Empfohlener"
-    
-    # Notify referrer
-    await db.notifications.insert_one({
-        "id": str(uuid.uuid4()),
-        "user_id": referrer_id,
-        "type": "referral_reward",
-        "title": "🎁 Empfehlungsbonus!",
-        "message": f"{referred_name} hat eingekauft! Du erhältst {referrer_reward_bids} Gratis-Gebote!",
-        "read": False,
-        "created_at": datetime.now(timezone.utc).isoformat()
-    })
-    
-    # Notify referred user
-    await db.notifications.insert_one({
-        "id": str(uuid.uuid4()),
-        "user_id": referred_user_id,
-        "type": "referral_reward",
-        "title": "🎉 Willkommensbonus!",
-        "message": f"Danke für deinen ersten Kauf! Du erhältst {referred_reward_bids} Gratis-Gebote als Willkommensbonus!",
-        "read": False,
-        "created_at": datetime.now(timezone.utc).isoformat()
-    })
-    
-    logger.info(f"Referral reward: {referrer_id} earned {referrer_reward_bids} bids, {referred_user_id} earned {referred_reward_bids} bids from first purchase")
 
 
 # ==================== ADMIN ENDPOINTS ====================
