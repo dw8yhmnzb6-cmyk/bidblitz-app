@@ -411,6 +411,11 @@ February 1, 2026 (Session 4)
 | Gewinner-Bewertungen | ✅ Fertig | reviews.py | - (API ready) |
 | Mystery Box Auktionen | ✅ Fertig | mystery_box.py | - (API ready) |
 | **Gamification Level-System** | ✅ Fertig | levels.py | LevelsPage.js |
+| **Daily Quests** | ✅ Fertig | daily_quests.py | DailyRewardsPage.js |
+| **Login-Kalender** | ✅ Fertig | daily_quests.py | DailyRewardsPage.js |
+| **Power Hour** | ✅ Fertig | power_hour.py | DailyRewardsPage.js |
+| **Schnäppchen-Alarm** | ✅ Fertig | price_alerts.py | - (API ready) |
+| **Social Share Bonus** | ✅ Fertig | social_share.py | - (API ready) |
 
 ### Level-System Details (neu)
 - **5 Level**: Bronze → Silber (500 XP) → Gold (2000 XP) → Platin (5000 XP) → Diamant (15000 XP)
