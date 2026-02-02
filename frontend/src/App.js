@@ -78,6 +78,7 @@ import TeamAuctionsPage from "./pages/TeamAuctionsPage";
 import BirthdayBonusPage from "./pages/BirthdayBonusPage";
 import WishlistPage from "./pages/WishlistPage";
 import StreakProtectionPage from "./pages/StreakProtectionPage";
+import ExcitementAdminPage from "./pages/ExcitementAdminPage";
 
 // Protected Route Component
 const ProtectedRoute = ({ children, requireAdmin = false }) => {
