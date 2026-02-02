@@ -50,6 +50,7 @@ import GiftCards from "./pages/GiftCards";
 import GiftCardSuccess from "./pages/GiftCardSuccess";
 import Leaderboard from "./pages/Leaderboard";
 import BeginnerAuctions from "./pages/BeginnerAuctions";
+import ReferralDashboard from "./pages/ReferralDashboard";
 
 // Protected Route Component
 const ProtectedRoute = ({ children, requireAdmin = false }) => {
