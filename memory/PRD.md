@@ -86,7 +86,7 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 - GET `/api/weekly-winners/leaderboard` - Top Gewinner
 
 ## Pending Items (Priority Order)
-1. **P1: UI-Button für "Gewinner der Woche" Broadcast** im Admin-Panel hinzufügen (Backend existiert bereits)
+1. ~~**P1: UI-Button für "Gewinner der Woche" Broadcast**~~ ✅ Implementiert
 2. **P1: Internationalisierung (i18n)** - Hardcodierte Texte durch `t()` ersetzen
 3. **P2: Apple Login finalisieren** - Apple Developer Account erforderlich
 4. **P2: Auction Duration Bug** - Admin-Formular Berechnung
