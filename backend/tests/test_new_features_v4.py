@@ -9,7 +9,7 @@ import pytest
 import requests
 import os
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://bidblitz-hub.preview.emergentagent.com')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://bidhero-pass.preview.emergentagent.com')
 
 # Test credentials
 TEST_USER = {"email": "kunde@bidblitz.de", "password": "Kunde123!"}
