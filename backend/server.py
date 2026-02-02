@@ -188,6 +188,9 @@ app.include_router(bid_buddy_router, prefix="/api")
 app.include_router(buy_it_now_router, prefix="/api")
 app.include_router(subscription_router, prefix="/api")
 app.include_router(achievements_router, prefix="/api")
+app.include_router(testimonials_router, prefix="/api")
+app.include_router(countdown_alarm_router, prefix="/api")
+app.include_router(win_notifications_router, prefix="/api")
 
 # ==================== HEALTH & BASIC ENDPOINTS ====================
 
