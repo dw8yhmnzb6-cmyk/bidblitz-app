@@ -157,6 +157,16 @@ export const Navbar = () => {
                 Influencer
               </Link>
             )}
+            {isAuthenticated && (
+              <Link 
+                to="/referral" 
+                className="text-[#EC4899] hover:text-[#F472B6] transition-colors font-medium flex items-center gap-1"
+                data-testid="nav-referral"
+              >
+                <Heart className="w-4 h-4" />
+                {language === 'de' ? 'Freunde werben' : 'Refer Friends'}
+              </Link>
+            )}
           </div>
 
           {/* Right side */}
