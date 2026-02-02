@@ -241,31 +241,108 @@ async def get_all_cities(admin: dict = Depends(get_admin_user)):
 
 @router.post("/login")
 async def manager_login(data: ManagerLogin):
-    """Manager login"""
+    """Manager login - supports both direct manager password and user account"""
+    # First try to find manager by email
     manager = await db.managers.find_one({
         "email": data.email.lower(),
-        "is_active": True
-    })
+        "is_active": {"$ne": False}
+    }, {"_id": 0})
     
-    if not manager or not verify_password(data.password, manager.get("password_hash", "")):
-        raise HTTPException(status_code=401, detail="Ungültige Anmeldedaten")
+    if manager:
+        # Check if manager has own password_hash
+        if manager.get("password_hash"):
+            if verify_password(data.password, manager["password_hash"]):
+                # Direct manager login
+                await db.managers.update_one(
+                    {"id": manager["id"]},
+                    {"$set": {"last_login": datetime.now(timezone.utc).isoformat()}}
+                )
+                
+                # Log activity
+                await log_manager_activity(manager["id"], "login", "Manager eingeloggt")
+                
+                return {
+                    "success": True,
+                    "manager": {
+                        "id": manager["id"],
+                        "name": manager["name"],
+                        "email": manager["email"],
+                        "cities": manager.get("cities", manager.get("managed_cities", [])),
+                        "commission_percent": manager.get("commission_percent", MANAGER_COMMISSION_PERCENT)
+                    }
+                }
+        
+        # Try user account login
+        if manager.get("user_id"):
+            user = await db.users.find_one({"id": manager["user_id"]}, {"_id": 0})
+            if user and verify_password(data.password, user.get("password", "")):
+                await db.managers.update_one(
+                    {"id": manager["id"]},
+                    {"$set": {"last_login": datetime.now(timezone.utc).isoformat()}}
+                )
+                
+                await log_manager_activity(manager["id"], "login", "Manager eingeloggt")
+                
+                return {
+                    "success": True,
+                    "manager": {
+                        "id": manager["id"],
+                        "name": manager["name"],
+                        "email": manager["email"],
+                        "cities": manager.get("cities", manager.get("managed_cities", [])),
+                        "commission_percent": manager.get("commission_percent", MANAGER_COMMISSION_PERCENT)
+                    }
+                }
     
-    # Update last login
-    await db.managers.update_one(
-        {"id": manager["id"]},
-        {"$set": {"last_login": datetime.now(timezone.utc).isoformat()}}
-    )
+    # Try to find user with manager role
+    user = await db.users.find_one({
+        "email": data.email.lower(),
+        "$or": [{"role": "manager"}, {"is_manager": True}]
+    }, {"_id": 0})
     
-    return {
-        "success": True,
-        "manager": {
-            "id": manager["id"],
-            "name": manager["name"],
-            "email": manager["email"],
-            "cities": manager.get("cities", []),
-            "commission_percent": manager.get("commission_percent", MANAGER_COMMISSION_PERCENT)
-        }
+    if user and verify_password(data.password, user.get("password", "")):
+        # Find or create manager record for this user
+        manager = await db.managers.find_one({"user_id": user["id"]}, {"_id": 0})
+        
+        if not manager:
+            manager = await db.managers.find_one({"email": user["email"]}, {"_id": 0})
+        
+        if manager:
+            await db.managers.update_one(
+                {"id": manager["id"]},
+                {"$set": {
+                    "user_id": user["id"],
+                    "last_login": datetime.now(timezone.utc).isoformat()
+                }}
+            )
+            
+            await log_manager_activity(manager["id"], "login", "Manager eingeloggt")
+            
+            return {
+                "success": True,
+                "manager": {
+                    "id": manager["id"],
+                    "name": manager.get("name", user.get("name", user.get("username"))),
+                    "email": manager["email"],
+                    "cities": manager.get("cities", manager.get("managed_cities", [])),
+                    "commission_percent": manager.get("commission_percent", MANAGER_COMMISSION_PERCENT)
+                }
+            }
+    
+    raise HTTPException(status_code=401, detail="Ungültige Anmeldedaten")
+
+async def log_manager_activity(manager_id: str, action: str, description: str, details: dict = None):
+    """Log manager activity for audit trail"""
+    activity = {
+        "id": str(uuid.uuid4()),
+        "manager_id": manager_id,
+        "action": action,
+        "description": description,
+        "details": details or {},
+        "created_at": datetime.now(timezone.utc).isoformat()
     }
+    await db.manager_activities.insert_one(activity)
+    return activity
 
 # ==================== MANAGER DASHBOARD ====================
 
