@@ -67,6 +67,7 @@ import BundlesPage from "./pages/BundlesPage";
 import LastChancePage from "./pages/LastChancePage";
 import FriendBattlePage from "./pages/FriendBattlePage";
 import ReviewsPage from "./pages/ReviewsPage";
+import ManagerDashboard from "./pages/ManagerDashboard";
 
 // Protected Route Component
 const ProtectedRoute = ({ children, requireAdmin = false }) => {
