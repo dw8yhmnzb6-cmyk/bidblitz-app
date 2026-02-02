@@ -972,9 +972,20 @@ export const featureTranslations = {
   }
 };
 
+// Language mapping for regional variants (Kosovo uses Albanian)
+const languageMapping = {
+  'xk': 'sq',  // Kosovo -> Albanian
+  'us': 'en',  // US English -> English
+  'ae': 'ar', // UAE -> Arabic
+};
+
 // Helper function to get feature translation
 export const getFeatureTranslation = (feature, language) => {
   const featureData = featureTranslations[feature];
   if (!featureData) return {};
-  return featureData[language] || featureData.de || {};
+  
+  // Map regional languages to their base language
+  const mappedLang = languageMapping[language] || language;
+  
+  return featureData[mappedLang] || featureData[language] || featureData.de || {};
 };
