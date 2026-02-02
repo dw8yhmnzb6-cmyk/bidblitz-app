@@ -643,9 +643,9 @@ async def place_bid(auction_id: str, user: dict = Depends(get_current_user)):
     
     return response
 
-# ==================== WISHLIST ====================
+# ==================== AUCTION WISHLIST ====================
 
-@router.post("/wishlist/{auction_id}")
+@router.post("/auction-wishlist/{auction_id}")
 async def add_to_wishlist(auction_id: str, user: dict = Depends(get_current_user)):
     """Add auction to user's wishlist"""
     auction = await db.auctions.find_one({"id": auction_id}, {"_id": 0})
@@ -675,7 +675,7 @@ async def add_to_wishlist(auction_id: str, user: dict = Depends(get_current_user
     return {"message": "Added to wishlist", "id": wishlist_item["id"]}
 
 
-@router.delete("/wishlist/{auction_id}")
+@router.delete("/auction-wishlist/{auction_id}")
 async def remove_from_wishlist(auction_id: str, user: dict = Depends(get_current_user)):
     """Remove auction from user's wishlist"""
     result = await db.wishlist.delete_one({
