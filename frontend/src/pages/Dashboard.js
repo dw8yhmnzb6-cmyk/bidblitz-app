@@ -7,6 +7,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { TwoFactorSettings } from '../components/TwoFactorSettings';
 import SpinWheel from '../components/SpinWheel';
+import WeeklyChallenges from '../components/WeeklyChallenges';
 import { 
   Zap, Trophy, Target, TrendingUp, ArrowRight, User, Mail, 
   Ticket, Bot, Trash2, Power, Clock, Package, CreditCard,
