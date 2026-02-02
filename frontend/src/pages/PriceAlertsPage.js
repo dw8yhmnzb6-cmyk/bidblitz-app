@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
+import { getFeatureTranslation } from '../i18n/featureTranslations';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { Button } from '../components/ui/button';
@@ -18,56 +19,8 @@ const PriceAlertsPage = () => {
   const [loading, setLoading] = useState(true);
   const [editingAlert, setEditingAlert] = useState(null);
 
-  const texts = {
-    de: {
-      title: 'Schnäppchen-Alarm',
-      subtitle: 'Werde benachrichtigt wenn Auktionen deinen Wunschpreis erreichen',
-      noAlerts: 'Keine Alarme eingerichtet',
-      noAlertsDesc: 'Gehe zu einer Auktion und setze einen Preisalarm!',
-      targetPrice: 'Zielpreis',
-      product: 'Produkt',
-      status: 'Status',
-      active: 'Aktiv',
-      triggered: 'Ausgelöst',
-      notifications: 'Benachrichtigungen',
-      telegram: 'Telegram',
-      email: 'E-Mail',
-      push: 'Push',
-      delete: 'Löschen',
-      edit: 'Bearbeiten',
-      save: 'Speichern',
-      triggeredAt: 'Ausgelöst am',
-      atPrice: 'bei',
-      howItWorks: 'So funktioniert es',
-      step1: 'Setze einen Zielpreis für ein Produkt',
-      step2: 'Wenn der Auktionspreis unter deinem Ziel liegt, wirst du benachrichtigt',
-      step3: 'Schnapp dir das Schnäppchen bevor es weg ist!',
-      goToAuctions: 'Zu den Auktionen'
-    },
-    en: {
-      title: 'Price Alerts',
-      subtitle: 'Get notified when auctions reach your target price',
-      noAlerts: 'No alerts set up',
-      noAlertsDesc: 'Go to an auction and set a price alert!',
-      targetPrice: 'Target Price',
-      product: 'Product',
-      status: 'Status',
-      active: 'Active',
-      triggered: 'Triggered',
-      notifications: 'Notifications',
-      telegram: 'Telegram',
-      email: 'Email',
-      push: 'Push',
-      delete: 'Delete',
-      edit: 'Edit',
-      save: 'Save',
-      triggeredAt: 'Triggered at',
-      atPrice: 'at',
-      howItWorks: 'How it Works',
-      step1: 'Set a target price for a product',
-      step2: 'When the auction price drops below your target, you get notified',
-      step3: 'Grab the deal before it\'s gone!',
-      goToAuctions: 'Go to Auctions'
+  // Use centralized translations
+  const t = getFeatureTranslation('priceAlerts', language);
     }
   };
   const t = texts[language] || texts.de;
