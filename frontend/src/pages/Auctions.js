@@ -725,9 +725,10 @@ export default function Auctions() {
   // Count auctions by type
   const auctionCounts = {
     live: publicAuctions.filter(a => a.status === 'active').length,
-    anfaenger: publicAuctions.filter(a => a.is_beginner_only && a.status === 'active').length,
+    anfaenger: publicAuctions.filter(a => (a.is_beginner_only || a.is_beginner_auction) && a.status === 'active').length,
     gratis: publicAuctions.filter(a => a.is_free_auction && a.status === 'active').length,
     nacht: publicAuctions.filter(a => a.is_night_auction && a.status === 'active').length,
+    geschenke: publicAuctions.filter(a => a.is_gift_auction && a.status === 'active').length,
     ende: auctions.filter(a => a.status === 'ended').length,
     vip: auctions.filter(a => a.is_vip_only && a.status === 'active').length
   };
@@ -736,11 +737,13 @@ export default function Auctions() {
   const getFilteredAuctions = () => {
     switch(activeFilter) {
       case 'anfaenger':
-        return publicAuctions.filter(a => a.is_beginner_only && a.status === 'active');
+        return publicAuctions.filter(a => (a.is_beginner_only || a.is_beginner_auction) && a.status === 'active');
       case 'gratis':
         return publicAuctions.filter(a => a.is_free_auction && a.status === 'active');
       case 'nacht':
         return publicAuctions.filter(a => a.is_night_auction && a.status === 'active');
+      case 'geschenke':
+        return publicAuctions.filter(a => a.is_gift_auction && a.status === 'active');
       case 'ende':
         return auctions.filter(a => a.status === 'ended');
       case 'vip':
