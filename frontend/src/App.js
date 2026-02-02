@@ -68,6 +68,12 @@ import LastChancePage from "./pages/LastChancePage";
 import FriendBattlePage from "./pages/FriendBattlePage";
 import ReviewsPage from "./pages/ReviewsPage";
 import ManagerDashboard from "./pages/ManagerDashboard";
+import BidBuddyPage from "./pages/BidBuddyPage";
+import BuyItNowPage from "./pages/BuyItNowPage";
+import AchievementsPage from "./pages/AchievementsPage";
+import SubscriptionPage from "./pages/SubscriptionPage";
+import ReferralPage from "./pages/ReferralPage";
+import VideoTestimonialsPage from "./pages/VideoTestimonialsPage";
 
 // Protected Route Component
 const ProtectedRoute = ({ children, requireAdmin = false }) => {
