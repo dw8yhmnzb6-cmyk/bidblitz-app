@@ -330,6 +330,26 @@ function AppContent() {
               <SocialSharePage />
             </ProtectedRoute>
           } />
+          {/* Bundles */}
+          <Route path="/bundles" element={<BundlesPage />} />
+          <Route path="/pakete" element={<BundlesPage />} />
+          {/* Last Chance */}
+          <Route path="/last-chance" element={<LastChancePage />} />
+          <Route path="/letzte-chance" element={<LastChancePage />} />
+          {/* Friend Battle */}
+          <Route path="/friend-battle" element={
+            <ProtectedRoute>
+              <FriendBattlePage />
+            </ProtectedRoute>
+          } />
+          <Route path="/freunde-battle" element={
+            <ProtectedRoute>
+              <FriendBattlePage />
+            </ProtectedRoute>
+          } />
+          {/* Reviews */}
+          <Route path="/reviews" element={<ReviewsPage />} />
+          <Route path="/bewertungen" element={<ReviewsPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
