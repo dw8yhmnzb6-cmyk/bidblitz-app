@@ -44,7 +44,7 @@ export default function ManagerDashboard() {
       pendingPayout: 'Ausstehende Auszahlung',
       requestPayout: 'Auszahlung anfordern',
       influencers: 'Ihre Influencer',
-      noInfluencers: 'Noch keine Influencer in Ihren Städten',
+      noInfluencers: 'Noch keine Influencer zugewiesen',
       approve: 'Freischalten',
       block: 'Sperren',
       edit: 'Bearbeiten',
