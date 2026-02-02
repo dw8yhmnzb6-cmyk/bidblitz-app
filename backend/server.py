@@ -54,6 +54,7 @@ from routers.user_stats import router as user_stats_router
 from routers.abandoned_cart import router as cart_router
 from routers.reviews import router as reviews_router
 from routers.mystery_box import router as mystery_router
+from routers.levels import router as levels_router
 
 # WebSocket manager
 from services.websocket import ws_manager, broadcast_bid_update, broadcast_auction_ended
