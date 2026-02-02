@@ -307,6 +307,9 @@ export default function Admin() {
       } else if (activeTab === 'influencers') {
         const influencersRes = await axios.get(`${API}/influencer/admin/list`, { headers });
         setInfluencers(influencersRes.data);
+      } else if (activeTab === 'managers') {
+        const managersRes = await axios.get(`${API}/manager/admin/list`, { headers });
+        setManagers(managersRes.data.managers || []);
       } else if (activeTab === 'wholesale') {
         const [appsRes, customersRes] = await Promise.all([
           axios.get(`${API}/admin/wholesale/applications`, { headers }),
