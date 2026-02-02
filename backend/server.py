@@ -67,6 +67,10 @@ from routers.last_chance import last_chance_router
 from routers.reviews_v2 import reviews_router as reviews_v2_router
 from routers.friend_battle import friend_battle_router
 from routers.manager import manager_router
+from routers.bid_buddy import bid_buddy_router
+from routers.buy_it_now import buy_it_now_router
+from routers.subscription import subscription_router
+from routers.achievements import achievements_router
 
 # WebSocket manager
 from services.websocket import ws_manager, broadcast_bid_update, broadcast_auction_ended
