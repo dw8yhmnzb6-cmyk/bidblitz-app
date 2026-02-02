@@ -85,6 +85,9 @@ class AuctionCreate(BaseModel):
     buy_now_price: Optional[float] = None
     is_night_auction: Optional[bool] = False
     is_vip_only: Optional[bool] = False
+    is_beginner_auction: Optional[bool] = False
+    is_gift_auction: Optional[bool] = False
+    auction_type: Optional[str] = "normal"  # normal, night, beginner, gift, mystery
 
 class AuctionUpdate(BaseModel):
     duration_seconds: Optional[int] = None
