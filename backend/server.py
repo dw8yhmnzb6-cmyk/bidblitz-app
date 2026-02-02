@@ -181,6 +181,10 @@ app.include_router(last_chance_router, prefix="/api")
 app.include_router(reviews_v2_router, prefix="/api")
 app.include_router(friend_battle_router, prefix="/api")
 app.include_router(manager_router, prefix="/api")
+app.include_router(bid_buddy_router, prefix="/api")
+app.include_router(buy_it_now_router, prefix="/api")
+app.include_router(subscription_router, prefix="/api")
+app.include_router(achievements_router, prefix="/api")
 
 # ==================== HEALTH & BASIC ENDPOINTS ====================
 
