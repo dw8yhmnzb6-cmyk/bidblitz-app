@@ -16,6 +16,7 @@ const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 export default function Login() {
   const { language } = useLanguage();
   const texts = usePageTranslations(language);
+  const commonT = getFeatureTranslation('common', language);
   const { refreshUser } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
