@@ -251,6 +251,9 @@ function AppContent() {
               <MyStatsPage />
             </ProtectedRoute>
           } />
+          <Route path="/levels" element={<LevelsPage />} />
+          <Route path="/level" element={<LevelsPage />} />
+          <Route path="/rang" element={<LevelsPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
