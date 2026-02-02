@@ -121,6 +121,10 @@ export default function Admin() {
   // Manager states
   const [managers, setManagers] = useState([]);
   const [showManagerModal, setShowManagerModal] = useState(false);
+  const [showManagerDetails, setShowManagerDetails] = useState(false);
+  const [selectedManager, setSelectedManager] = useState(null);
+  const [managerInfluencers, setManagerInfluencers] = useState([]);
+  const [loadingManagerDetails, setLoadingManagerDetails] = useState(false);
   const [managerForm, setManagerForm] = useState({
     name: '',
     email: '',
