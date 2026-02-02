@@ -45,6 +45,7 @@ async def create_product(product: ProductCreate, admin: dict = Depends(get_admin
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     await db.products.insert_one(doc)
+    doc.pop("_id", None)  # Remove MongoDB _id before returning
     return doc
 
 @router.put("/admin/products/{product_id}")
