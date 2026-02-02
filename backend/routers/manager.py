@@ -490,19 +490,27 @@ async def block_influencer(manager_id: str, influencer_id: str):
         }}
     )
     
-    logger.info(f"Manager {manager['name']} blocked influencer {influencer['name']}")
+    # Log activity
+    await log_manager_activity(
+        manager_id, 
+        "influencer_blocked",
+        f"Influencer '{influencer.get('name', influencer.get('code'))}' gesperrt",
+        {"influencer_id": influencer_id, "influencer_name": influencer.get("name"), "influencer_code": influencer.get("code")}
+    )
+    
+    logger.info(f"Manager {manager['name']} blocked influencer {influencer.get('name')}")
     return {"success": True, "message": "Influencer gesperrt"}
 
 @router.post("/{manager_id}/influencer/assign-city")
 async def assign_influencer_city(manager_id: str, data: InfluencerCityAssign):
     """Assign an influencer to a city (Manager only)"""
     manager = await get_current_manager(manager_id)
-    cities = manager.get("cities", [])
+    cities = manager.get("cities", manager.get("managed_cities", []))
     
     if data.city not in cities:
         raise HTTPException(status_code=403, detail="Sie können nur Städte zuweisen, die Sie verwalten")
     
-    influencer = await db.influencers.find_one({"id": data.influencer_id})
+    influencer = await db.influencers.find_one({"id": data.influencer_id}, {"_id": 0})
     if not influencer:
         raise HTTPException(status_code=404, detail="Influencer nicht gefunden")
     
@@ -515,7 +523,15 @@ async def assign_influencer_city(manager_id: str, data: InfluencerCityAssign):
         }}
     )
     
-    logger.info(f"Manager {manager['name']} assigned influencer {influencer['name']} to city {data.city}")
+    # Log activity
+    await log_manager_activity(
+        manager_id, 
+        "influencer_city_assigned",
+        f"Influencer '{influencer.get('name', influencer.get('code'))}' zu Stadt '{data.city}' zugewiesen",
+        {"influencer_id": data.influencer_id, "city": data.city}
+    )
+    
+    logger.info(f"Manager {manager['name']} assigned influencer {influencer.get('name')} to city {data.city}")
     return {"success": True, "message": f"Influencer zu {data.city} zugewiesen"}
 
 # ==================== MANAGER PAYOUT ====================
