@@ -361,6 +361,52 @@ function AppContent() {
           {/* Reviews */}
           <Route path="/reviews" element={<ReviewsPage />} />
           <Route path="/bewertungen" element={<ReviewsPage />} />
+          {/* Bid Buddy */}
+          <Route path="/bid-buddy" element={
+            <ProtectedRoute>
+              <BidBuddyPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/auto-bieter" element={
+            <ProtectedRoute>
+              <BidBuddyPage />
+            </ProtectedRoute>
+          } />
+          {/* Buy It Now */}
+          <Route path="/buy-it-now" element={
+            <ProtectedRoute>
+              <BuyItNowPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/sofort-kaufen" element={
+            <ProtectedRoute>
+              <BuyItNowPage />
+            </ProtectedRoute>
+          } />
+          {/* Subscription/Abo */}
+          <Route path="/subscription" element={<SubscriptionPage />} />
+          <Route path="/abo-modell" element={<SubscriptionPage />} />
+          <Route path="/gebot-abo" element={<SubscriptionPage />} />
+          {/* Referral / Freunde-Bonus */}
+          <Route path="/freunde-bonus" element={
+            <ProtectedRoute>
+              <ReferralPage />
+            </ProtectedRoute>
+          } />
+          {/* Achievements / Badges */}
+          <Route path="/badges" element={
+            <ProtectedRoute>
+              <AchievementsPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/abzeichen" element={
+            <ProtectedRoute>
+              <AchievementsPage />
+            </ProtectedRoute>
+          } />
+          {/* Video Testimonials */}
+          <Route path="/testimonials" element={<VideoTestimonialsPage />} />
+          <Route path="/gewinner-videos" element={<VideoTestimonialsPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
