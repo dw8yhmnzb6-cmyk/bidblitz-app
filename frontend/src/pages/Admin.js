@@ -2391,26 +2391,26 @@ export default function Admin() {
                     
                     <div className="p-6 overflow-y-auto max-h-[calc(90vh-100px)]">
                       {/* Manager Stats */}
-                      <div className="grid grid-cols-4 gap-4 mb-6">
-                        <div className="bg-[#0D0D14] rounded-lg p-4 text-center">
-                          <Building2 className="w-6 h-6 text-[#7C3AED] mx-auto mb-1" />
-                          <p className="text-2xl font-bold text-white">{selectedManager.cities?.length || 0}</p>
-                          <p className="text-[#94A3B8] text-xs">{language === 'en' ? 'Cities' : 'Städte'}</p>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+                        <div className="bg-[#0D0D14] rounded-lg p-3 text-center">
+                          <Building2 className="w-5 h-5 text-[#7C3AED] mx-auto mb-1" />
+                          <p className="text-xl font-bold text-white">{selectedManager.cities?.length || 0}</p>
+                          <p className="text-[#94A3B8] text-[10px]">{language === 'en' ? 'Cities' : 'Städte'}</p>
                         </div>
-                        <div className="bg-[#0D0D14] rounded-lg p-4 text-center">
-                          <Users className="w-6 h-6 text-[#F59E0B] mx-auto mb-1" />
-                          <p className="text-2xl font-bold text-white">{selectedManager.influencer_count || managerInfluencers.length}</p>
-                          <p className="text-[#94A3B8] text-xs">Influencer</p>
+                        <div className="bg-[#0D0D14] rounded-lg p-3 text-center">
+                          <Users className="w-5 h-5 text-[#F59E0B] mx-auto mb-1" />
+                          <p className="text-xl font-bold text-white">{selectedManager.influencer_count || managerInfluencers.length}</p>
+                          <p className="text-[#94A3B8] text-[10px]">Influencer</p>
                         </div>
-                        <div className="bg-[#0D0D14] rounded-lg p-4 text-center">
-                          <DollarSign className="w-6 h-6 text-[#10B981] mx-auto mb-1" />
-                          <p className="text-2xl font-bold text-[#10B981]">€{(selectedManager.total_influencer_commission || 0).toFixed(2)}</p>
-                          <p className="text-[#94A3B8] text-xs">{language === 'en' ? 'Inf. Commission' : 'Inf. Provision'}</p>
+                        <div className="bg-[#0D0D14] rounded-lg p-3 text-center">
+                          <DollarSign className="w-5 h-5 text-[#10B981] mx-auto mb-1" />
+                          <p className="text-lg font-bold text-[#10B981]">€{(selectedManager.total_influencer_commission || 0).toFixed(2)}</p>
+                          <p className="text-[#94A3B8] text-[10px]">{language === 'en' ? 'Inf. Commission' : 'Inf. Provision'}</p>
                         </div>
-                        <div className="bg-[#0D0D14] rounded-lg p-4 text-center">
-                          <Crown className="w-6 h-6 text-[#7C3AED] mx-auto mb-1" />
-                          <p className="text-2xl font-bold text-[#7C3AED]">€{(selectedManager.manager_commission || 0).toFixed(2)}</p>
-                          <p className="text-[#94A3B8] text-xs">{language === 'en' ? 'Manager 15%' : 'Manager 15%'}</p>
+                        <div className="bg-[#0D0D14] rounded-lg p-3 text-center">
+                          <Crown className="w-5 h-5 text-[#7C3AED] mx-auto mb-1" />
+                          <p className="text-lg font-bold text-[#7C3AED]">€{(selectedManager.manager_commission || 0).toFixed(2)}</p>
+                          <p className="text-[#94A3B8] text-[10px]">{language === 'en' ? 'Manager 15%' : 'Manager 15%'}</p>
                         </div>
                       </div>
 
