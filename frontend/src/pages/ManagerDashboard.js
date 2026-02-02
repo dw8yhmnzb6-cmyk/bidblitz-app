@@ -110,15 +110,36 @@ export default function ManagerDashboard() {
 
   const t = texts[language] || texts.de;
 
-  // Check for saved manager session
+  // Check for saved manager session OR global auth user who is a manager
   useEffect(() => {
     const savedManager = localStorage.getItem('manager');
     if (savedManager) {
       const parsed = JSON.parse(savedManager);
       setManager(parsed);
       fetchDashboard(parsed.id);
+    } else if (isManager && user) {
+      // User logged in via main auth as manager - fetch their manager data
+      fetchManagerDataByEmail(user.email);
     }
-  }, []);
+  }, [isManager, user]);
+
+  // Fetch manager data by email (for users who logged in via main auth)
+  const fetchManagerDataByEmail = async (email) => {
+    try {
+      // Use the manager list endpoint to find this manager
+      const res = await fetch(`${API_URL}/api/manager/by-email/${encodeURIComponent(email)}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.manager) {
+          setManager(data.manager);
+          localStorage.setItem('manager', JSON.stringify(data.manager));
+          fetchDashboard(data.manager.id);
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching manager by email:', err);
+    }
+  };
 
   const handleLogin = async (e) => {
     e.preventDefault();
