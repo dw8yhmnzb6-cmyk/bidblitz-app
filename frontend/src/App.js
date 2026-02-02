@@ -213,6 +213,17 @@ function AppContent() {
           <Route path="/referral" element={<ReferralDashboard />} />
           <Route path="/freunde-werben" element={<ReferralDashboard />} />
           <Route path="/empfehlen" element={<ReferralDashboard />} />
+          {/* Flash Events & Gallery */}
+          <Route path="/events" element={<FlashEvents />} />
+          <Route path="/flash-auctions" element={<FlashEvents />} />
+          <Route path="/flash" element={<FlashEvents />} />
+          <Route path="/gallery" element={<WinnerGallery />} />
+          <Route path="/gewinner-galerie" element={<WinnerGallery />} />
+          <Route path="/winner-gallery" element={<WinnerGallery />} />
+          {/* Subscriptions */}
+          <Route path="/subscriptions" element={<Subscriptions />} />
+          <Route path="/abos" element={<Subscriptions />} />
+          <Route path="/abo" element={<Subscriptions />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
