@@ -151,6 +151,20 @@ async def get_jackpot_history(limit: int = 10):
     
     return {"winners": history}
 
+@router.post("/global-jackpot/set")
+async def set_global_jackpot(data: dict, admin: dict = Depends(get_admin_user)):
+    """Set the global jackpot amount (Admin only)"""
+    amount = data.get("amount", 500)
+    
+    await db.global_jackpot.update_one(
+        {"type": "global"},
+        {"$set": {"current_amount": amount}},
+        upsert=True
+    )
+    
+    logger.info(f"Admin set global jackpot to {amount}")
+    return {"success": True, "new_amount": amount}
+
 # ==================== JACKPOT SYSTEM ====================
 
 @router.get("/jackpot/active")
