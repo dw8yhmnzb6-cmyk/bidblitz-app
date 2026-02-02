@@ -341,6 +341,11 @@ export default function Admin() {
       } else if (activeTab === 'game-config') {
         const res = await axios.get(`${API}/admin/config/game`, { headers });
         setGameConfig(res.data);
+      } else if (activeTab === 'jackpot') {
+        const jpRes = await axios.get(`${API}/excitement/global-jackpot`);
+        setJackpotData(jpRes.data);
+        const histRes = await axios.get(`${API}/excitement/global-jackpot/history`);
+        setJackpotHistory(histRes.data.winners || []);
       }
     } catch (error) {
       console.error('Error fetching data:', error);
