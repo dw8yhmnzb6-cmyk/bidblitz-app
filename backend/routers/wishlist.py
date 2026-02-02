@@ -1,251 +1,260 @@
-"""Wishlist & Watch List - Track products and get alerts"""
+"""Product Wishlist Router - User voting for wanted products"""
 from fastapi import APIRouter, HTTPException, Depends
 from datetime import datetime, timezone
-from typing import Optional
+from pydantic import BaseModel
+from typing import Optional, List
 import uuid
 
 from config import db, logger
-from dependencies import get_current_user
+from dependencies import get_current_user, get_admin_user
 
-router = APIRouter(prefix="/wishlist", tags=["Wishlist"])
+router = APIRouter(prefix="/wishlist", tags=["Product Wishlist"])
 
-# ==================== WISHLIST ENDPOINTS ====================
+# ==================== SCHEMAS ====================
 
-@router.get("/")
-async def get_wishlist(user: dict = Depends(get_current_user)):
-    """Get user's wishlist with active auctions"""
+class WishCreate(BaseModel):
+    product_name: str
+    category: Optional[str] = None
+    description: Optional[str] = None
+    estimated_price: Optional[float] = None
+    image_url: Optional[str] = None
+
+class WishVote(BaseModel):
+    wish_id: str
+
+# ==================== ENDPOINTS ====================
+
+@router.post("/suggest")
+async def suggest_product(data: WishCreate, user: dict = Depends(get_current_user)):
+    """Suggest a new product for auctions"""
     user_id = user["id"]
     
-    # Get wishlist items
-    wishlist = await db.wishlists.find(
-        {"user_id": user_id},
-        {"_id": 0}
-    ).sort("created_at", -1).to_list(100)
+    if not data.product_name or len(data.product_name) < 3:
+        raise HTTPException(status_code=400, detail="Produktname muss mindestens 3 Zeichen haben")
     
-    # Enrich with product and auction info
-    enriched = []
-    for item in wishlist:
-        product = await db.products.find_one({"id": item["product_id"]}, {"_id": 0})
-        
-        # Check for active auctions
-        active_auction = await db.auctions.find_one({
-            "product_id": item["product_id"],
-            "status": "active"
-        }, {"_id": 0, "id": 1, "current_price": 1, "end_time": 1})
-        
-        enriched.append({
-            **item,
-            "product": product,
-            "active_auction": active_auction,
-            "has_active_auction": active_auction is not None
-        })
+    if len(data.product_name) > 100:
+        raise HTTPException(status_code=400, detail="Produktname zu lang (max 100 Zeichen)")
     
-    return {"items": enriched, "count": len(enriched)}
-
-@router.post("/add/{product_id}")
-async def add_to_wishlist(
-    product_id: str,
-    notify_on_auction: bool = True,
-    max_price_alert: Optional[float] = None,
-    user: dict = Depends(get_current_user)
-):
-    """Add a product to wishlist"""
-    user_id = user["id"]
-    
-    # Check if product exists
-    product = await db.products.find_one({"id": product_id})
-    if not product:
-        raise HTTPException(status_code=404, detail="Produkt nicht gefunden")
-    
-    # Check if already in wishlist
-    existing = await db.wishlists.find_one({
-        "user_id": user_id,
-        "product_id": product_id
+    # Check for duplicate suggestions
+    existing = await db.product_wishes.find_one({
+        "product_name": {"$regex": f"^{data.product_name}$", "$options": "i"}
     })
     
     if existing:
-        raise HTTPException(status_code=400, detail="Produkt ist bereits auf deiner Wunschliste")
+        # Just vote for existing instead
+        return await vote_for_wish(WishVote(wish_id=existing["id"]), user)
     
-    wishlist_item = {
+    user_data = await db.users.find_one({"id": user_id}, {"_id": 0})
+    
+    wish = {
         "id": str(uuid.uuid4()),
-        "user_id": user_id,
-        "product_id": product_id,
-        "product_name": product.get("name", ""),
-        "notify_on_auction": notify_on_auction,
-        "max_price_alert": max_price_alert,
+        "product_name": data.product_name,
+        "category": data.category or "Sonstiges",
+        "description": data.description,
+        "estimated_price": data.estimated_price,
+        "image_url": data.image_url,
+        "suggested_by": user_id,
+        "suggested_by_name": user_data.get("username", "Benutzer") if user_data else "Benutzer",
+        "votes": [user_id],  # Auto-vote by suggester
+        "vote_count": 1,
+        "status": "pending",  # pending, approved, rejected, completed
+        "admin_notes": None,
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     
-    await db.wishlists.insert_one(wishlist_item)
+    await db.product_wishes.insert_one(wish)
     
-    logger.info(f"Wishlist: {user_id} added {product.get('name')}")
+    logger.info(f"Product wish created: {data.product_name} by {user_id}")
     
     return {
-        "message": "Zur Wunschliste hinzugefügt!",
-        "item": wishlist_item
+        "success": True,
+        "message": f"'{data.product_name}' vorgeschlagen! Andere können dafür abstimmen.",
+        "wish_id": wish["id"]
     }
 
-@router.delete("/remove/{product_id}")
-async def remove_from_wishlist(product_id: str, user: dict = Depends(get_current_user)):
-    """Remove a product from wishlist"""
-    result = await db.wishlists.delete_one({
-        "user_id": user["id"],
-        "product_id": product_id
-    })
+@router.post("/vote")
+async def vote_for_wish(data: WishVote, user: dict = Depends(get_current_user)):
+    """Vote for a product wish"""
+    user_id = user["id"]
     
-    if result.deleted_count == 0:
-        raise HTTPException(status_code=404, detail="Produkt nicht auf Wunschliste")
+    wish = await db.product_wishes.find_one({"id": data.wish_id}, {"_id": 0})
     
-    return {"message": "Von Wunschliste entfernt"}
-
-@router.put("/settings/{product_id}")
-async def update_wishlist_settings(
-    product_id: str,
-    notify_on_auction: Optional[bool] = None,
-    max_price_alert: Optional[float] = None,
-    user: dict = Depends(get_current_user)
-):
-    """Update wishlist item notification settings"""
-    update = {}
-    if notify_on_auction is not None:
-        update["notify_on_auction"] = notify_on_auction
-    if max_price_alert is not None:
-        update["max_price_alert"] = max_price_alert
+    if not wish:
+        raise HTTPException(status_code=404, detail="Vorschlag nicht gefunden")
     
-    if not update:
-        raise HTTPException(status_code=400, detail="Keine Änderungen angegeben")
+    if wish.get("status") not in ["pending", "approved"]:
+        raise HTTPException(status_code=400, detail="Abstimmung nicht mehr möglich")
     
-    result = await db.wishlists.update_one(
-        {"user_id": user["id"], "product_id": product_id},
-        {"$set": update}
+    if user_id in wish.get("votes", []):
+        raise HTTPException(status_code=400, detail="Du hast bereits abgestimmt")
+    
+    await db.product_wishes.update_one(
+        {"id": data.wish_id},
+        {
+            "$push": {"votes": user_id},
+            "$inc": {"vote_count": 1}
+        }
     )
     
-    if result.matched_count == 0:
-        raise HTTPException(status_code=404, detail="Produkt nicht auf Wunschliste")
+    new_count = wish.get("vote_count", 0) + 1
     
-    return {"message": "Einstellungen aktualisiert"}
+    logger.info(f"Vote for wish {data.wish_id} by {user_id} - now {new_count} votes")
+    
+    return {
+        "success": True,
+        "message": f"Stimme abgegeben! ({new_count} Stimmen)",
+        "new_vote_count": new_count
+    }
 
-# ==================== WATCH LIST (AUCTIONS) ====================
+@router.delete("/unvote/{wish_id}")
+async def unvote_wish(wish_id: str, user: dict = Depends(get_current_user)):
+    """Remove vote from a wish"""
+    user_id = user["id"]
+    
+    wish = await db.product_wishes.find_one({"id": wish_id}, {"_id": 0})
+    
+    if not wish:
+        raise HTTPException(status_code=404, detail="Vorschlag nicht gefunden")
+    
+    if user_id not in wish.get("votes", []):
+        raise HTTPException(status_code=400, detail="Du hast nicht abgestimmt")
+    
+    # Can't unvote if you're the suggester
+    if wish.get("suggested_by") == user_id:
+        raise HTTPException(status_code=400, detail="Du kannst deinen eigenen Vorschlag nicht zurückziehen")
+    
+    await db.product_wishes.update_one(
+        {"id": wish_id},
+        {
+            "$pull": {"votes": user_id},
+            "$inc": {"vote_count": -1}
+        }
+    )
+    
+    return {"success": True, "message": "Stimme zurückgezogen"}
 
-@router.get("/watching")
-async def get_watched_auctions(user: dict = Depends(get_current_user)):
-    """Get auctions the user is watching"""
-    watched = await db.watched_auctions.find(
-        {"user_id": user["id"]},
-        {"_id": 0}
+@router.get("/top")
+async def get_top_wishes(limit: int = 20, category: Optional[str] = None):
+    """Get top voted product wishes"""
+    query = {"status": {"$in": ["pending", "approved"]}}
+    if category:
+        query["category"] = category
+    
+    wishes = await db.product_wishes.find(
+        query,
+        {"_id": 0, "votes": 0}  # Don't return voter list
+    ).sort("vote_count", -1).to_list(limit)
+    
+    return {"wishes": wishes}
+
+@router.get("/my-wishes")
+async def get_my_wishes(user: dict = Depends(get_current_user)):
+    """Get wishes suggested by user"""
+    wishes = await db.product_wishes.find(
+        {"suggested_by": user["id"]},
+        {"_id": 0, "votes": 0}
     ).sort("created_at", -1).to_list(50)
     
-    # Enrich with auction data
-    enriched = []
-    for item in watched:
-        auction = await db.auctions.find_one({"id": item["auction_id"]}, {"_id": 0})
-        if auction:
-            product = await db.products.find_one({"id": auction.get("product_id")}, {"_id": 0})
-            enriched.append({
-                **item,
-                "auction": auction,
-                "product": product
-            })
-    
-    return {"auctions": enriched, "count": len(enriched)}
+    return {"wishes": wishes}
 
-@router.post("/watch/{auction_id}")
-async def watch_auction(auction_id: str, user: dict = Depends(get_current_user)):
-    """Start watching an auction without bidding"""
-    auction = await db.auctions.find_one({"id": auction_id})
-    if not auction:
-        raise HTTPException(status_code=404, detail="Auktion nicht gefunden")
+@router.get("/my-votes")
+async def get_my_votes(user: dict = Depends(get_current_user)):
+    """Get wishes user has voted for"""
+    wishes = await db.product_wishes.find(
+        {"votes": user["id"]},
+        {"_id": 0, "votes": 0}
+    ).sort("vote_count", -1).to_list(50)
     
-    # Check if already watching
-    existing = await db.watched_auctions.find_one({
-        "user_id": user["id"],
-        "auction_id": auction_id
-    })
-    
-    if existing:
-        raise HTTPException(status_code=400, detail="Du beobachtest diese Auktion bereits")
-    
-    await db.watched_auctions.insert_one({
-        "id": str(uuid.uuid4()),
-        "user_id": user["id"],
-        "auction_id": auction_id,
-        "created_at": datetime.now(timezone.utc).isoformat()
-    })
-    
-    return {"message": "Auktion wird beobachtet"}
+    return {"wishes": wishes}
 
-@router.delete("/unwatch/{auction_id}")
-async def unwatch_auction(auction_id: str, user: dict = Depends(get_current_user)):
-    """Stop watching an auction"""
-    result = await db.watched_auctions.delete_one({
-        "user_id": user["id"],
-        "auction_id": auction_id
-    })
-    
-    if result.deleted_count == 0:
-        raise HTTPException(status_code=404, detail="Auktion nicht beobachtet")
-    
-    return {"message": "Beobachtung beendet"}
+@router.get("/categories")
+async def get_wish_categories():
+    """Get available categories for wishes"""
+    categories = [
+        {"id": "electronics", "name": "Elektronik", "icon": "📱"},
+        {"id": "gaming", "name": "Gaming", "icon": "🎮"},
+        {"id": "home", "name": "Haushalt", "icon": "🏠"},
+        {"id": "fashion", "name": "Mode", "icon": "👗"},
+        {"id": "sports", "name": "Sport", "icon": "⚽"},
+        {"id": "beauty", "name": "Beauty", "icon": "💄"},
+        {"id": "tools", "name": "Werkzeug", "icon": "🔧"},
+        {"id": "other", "name": "Sonstiges", "icon": "📦"}
+    ]
+    return {"categories": categories}
 
-# ==================== NOTIFICATION FUNCTIONS ====================
+# ==================== ADMIN ENDPOINTS ====================
 
-async def notify_wishlist_auction_started(product_id: str, auction_id: str):
-    """Notify users when a wishlisted product goes to auction"""
-    product = await db.products.find_one({"id": product_id}, {"_id": 0, "name": 1, "image_url": 1})
-    if not product:
-        return
-    
-    # Find all users with this product on wishlist
-    wishlist_items = await db.wishlists.find({
-        "product_id": product_id,
-        "notify_on_auction": True
-    }).to_list(1000)
-    
-    for item in wishlist_items:
-        await db.notifications.insert_one({
-            "id": str(uuid.uuid4()),
-            "user_id": item["user_id"],
-            "type": "wishlist_auction",
-            "title": "🎯 Dein Wunschprodukt wird versteigert!",
-            "message": f"{product.get('name', 'Ein Produkt')} ist jetzt in einer Auktion!",
-            "action_url": f"/auctions/{auction_id}",
-            "image_url": product.get("image_url"),
-            "read": False,
-            "created_at": datetime.now(timezone.utc).isoformat()
-        })
-    
-    logger.info(f"Notified {len(wishlist_items)} users about wishlist auction for {product.get('name')}")
+@router.post("/admin/{wish_id}/approve")
+async def approve_wish(wish_id: str, admin: dict = Depends(get_admin_user)):
+    """Approve a product wish"""
+    await db.product_wishes.update_one(
+        {"id": wish_id},
+        {"$set": {
+            "status": "approved",
+            "approved_by": admin["id"],
+            "approved_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    return {"success": True, "message": "Vorschlag genehmigt"}
 
-async def notify_price_alert(auction_id: str, current_price: float):
-    """Notify watchers when price drops below their alert threshold"""
-    auction = await db.auctions.find_one({"id": auction_id}, {"_id": 0, "product_id": 1})
-    if not auction:
-        return
+@router.post("/admin/{wish_id}/reject")
+async def reject_wish(wish_id: str, reason: Optional[str] = None, admin: dict = Depends(get_admin_user)):
+    """Reject a product wish"""
+    await db.product_wishes.update_one(
+        {"id": wish_id},
+        {"$set": {
+            "status": "rejected",
+            "rejected_by": admin["id"],
+            "admin_notes": reason,
+            "rejected_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    return {"success": True, "message": "Vorschlag abgelehnt"}
+
+@router.post("/admin/{wish_id}/complete")
+async def complete_wish(wish_id: str, auction_id: Optional[str] = None, admin: dict = Depends(get_admin_user)):
+    """Mark wish as completed (auction created)"""
+    await db.product_wishes.update_one(
+        {"id": wish_id},
+        {"$set": {
+            "status": "completed",
+            "completed_by": admin["id"],
+            "auction_id": auction_id,
+            "completed_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
     
-    # Find wishlist items with price alerts
-    alerts = await db.wishlists.find({
-        "product_id": auction["product_id"],
-        "max_price_alert": {"$gte": current_price}
-    }).to_list(1000)
-    
-    for item in alerts:
-        # Check if already notified for this auction
-        existing = await db.notifications.find_one({
-            "user_id": item["user_id"],
-            "type": "price_alert",
-            "action_url": f"/auctions/{auction_id}"
-        })
-        
-        if not existing:
-            await db.notifications.insert_one({
+    # Notify voters
+    wish = await db.product_wishes.find_one({"id": wish_id}, {"_id": 0})
+    if wish:
+        for voter_id in wish.get("votes", []):
+            notification = {
                 "id": str(uuid.uuid4()),
-                "user_id": item["user_id"],
-                "type": "price_alert",
-                "title": "💰 Preisalarm!",
-                "message": f"{item.get('product_name', 'Ein Produkt')} ist jetzt unter €{item['max_price_alert']:.2f}!",
-                "action_url": f"/auctions/{auction_id}",
+                "user_id": voter_id,
+                "type": "wish_completed",
+                "title": "Dein Wunschprodukt ist da!",
+                "message": f"'{wish['product_name']}' ist jetzt als Auktion verfügbar!",
+                "auction_id": auction_id,
                 "read": False,
                 "created_at": datetime.now(timezone.utc).isoformat()
-            })
+            }
+            await db.notifications.insert_one(notification)
+    
+    return {"success": True, "message": "Vorschlag als erledigt markiert"}
 
-__all__ = ['notify_wishlist_auction_started', 'notify_price_alert']
+@router.get("/admin/all")
+async def get_all_wishes(status: Optional[str] = None, admin: dict = Depends(get_admin_user)):
+    """Get all wishes (admin view)"""
+    query = {}
+    if status:
+        query["status"] = status
+    
+    wishes = await db.product_wishes.find(
+        query,
+        {"_id": 0}
+    ).sort("vote_count", -1).to_list(100)
+    
+    return {"wishes": wishes}
+
+
+wishlist_router = router
