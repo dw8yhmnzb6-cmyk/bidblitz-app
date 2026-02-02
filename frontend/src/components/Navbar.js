@@ -177,6 +177,15 @@ export const Navbar = () => {
                 {language === 'de' ? 'Freunde werben' : 'Refer Friends'}
               </Link>
             )}
+            {/* Mystery Box - visible to all */}
+            <Link 
+              to="/mystery" 
+              className="text-[#A855F7] hover:text-[#C084FC] transition-colors font-medium flex items-center gap-1"
+              data-testid="nav-mystery-box"
+            >
+              <Gift className="w-4 h-4" />
+              {language === 'de' ? 'Mystery' : 'Mystery'}
+            </Link>
             <Link 
               to="/gallery" 
               className="text-[#94A3B8] hover:text-white transition-colors font-medium flex items-center gap-1"
