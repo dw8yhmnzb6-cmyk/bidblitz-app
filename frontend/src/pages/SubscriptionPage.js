@@ -121,7 +121,7 @@ export default function SubscriptionPage() {
       });
       const data = await res.json();
       if (data.checkout_url) {
-        window.location.href = data.checkout_url;
+        window.location.assign(data.checkout_url);
       } else {
         toast.error(data.detail || 'Fehler');
       }
