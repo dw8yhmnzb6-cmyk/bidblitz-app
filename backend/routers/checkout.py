@@ -332,31 +332,16 @@ async def coinbase_webhook(request: Request):
 
 # ==================== HELPER FUNCTIONS ====================
 
+async def process_referral_reward_checkout(user_id: str, amount: float, is_subscription: bool = False):
+    """Process referral rewards when user makes a deposit - calls the central referral system"""
+    from routers.referral import process_referral_reward as central_referral_reward
+    
+    # Call the central referral reward system
+    await central_referral_reward(user_id, is_subscription=is_subscription)
+    
+    logger.info(f"Referral check for user {user_id}, amount €{amount}, subscription={is_subscription}")
+
+# Keep old function name for backwards compatibility
 async def process_referral_reward(user_id: str, amount: float):
-    """Process referral rewards when user makes a deposit"""
-    from config import REFERRAL_MIN_DEPOSIT, REFERRAL_REWARD_BIDS
-    
-    user = await db.users.find_one({"id": user_id})
-    if not user:
-        return
-    
-    # Check if referral reward pending and deposit threshold met
-    if user.get("referral_reward_pending") and amount >= REFERRAL_MIN_DEPOSIT:
-        referred_by = user.get("referred_by")
-        if referred_by:
-            # Reward referee
-            await db.users.update_one(
-                {"id": user_id},
-                {
-                    "$inc": {"bids_balance": REFERRAL_REWARD_BIDS},
-                    "$set": {"referral_reward_pending": False}
-                }
-            )
-            
-            # Reward referrer
-            await db.users.update_one(
-                {"id": referred_by},
-                {"$inc": {"bids_balance": REFERRAL_REWARD_BIDS, "referral_rewards_earned": REFERRAL_REWARD_BIDS}}
-            )
-            
-            logger.info(f"Referral rewards granted: {REFERRAL_REWARD_BIDS} bids each to {user_id} and {referred_by}")
+    """Wrapper for backwards compatibility"""
+    await process_referral_reward_checkout(user_id, amount, is_subscription=False)
