@@ -59,6 +59,7 @@ import FlashSalesPage from "./pages/FlashSalesPage";
 import MyStatsPage from "./pages/MyStatsPage";
 import LevelsPage from "./pages/LevelsPage";
 import DailyRewardsPage from "./pages/DailyRewardsPage";
+import BattlePassPage from "./pages/BattlePassPage";
 
 // Protected Route Component
 const ProtectedRoute = ({ children, requireAdmin = false }) => {
@@ -268,6 +269,22 @@ function AppContent() {
           <Route path="/taeglich" element={
             <ProtectedRoute>
               <DailyRewardsPage />
+            </ProtectedRoute>
+          } />
+          {/* Battle Pass */}
+          <Route path="/battle-pass" element={
+            <ProtectedRoute>
+              <BattlePassPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/battlepass" element={
+            <ProtectedRoute>
+              <BattlePassPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/pass" element={
+            <ProtectedRoute>
+              <BattlePassPage />
             </ProtectedRoute>
           } />
           <Route path="*" element={<Navigate to="/" replace />} />

@@ -162,6 +162,7 @@ app.include_router(daily_quests_router, prefix="/api")
 app.include_router(power_hour_router, prefix="/api")
 app.include_router(price_alerts_router, prefix="/api")
 app.include_router(social_share_router, prefix="/api")
+app.include_router(battle_pass_router, prefix="/api")
 
 # ==================== HEALTH & BASIC ENDPOINTS ====================
 
