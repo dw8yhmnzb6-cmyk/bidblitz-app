@@ -42,6 +42,7 @@ from routers.wheel import router as wheel_router
 from routers.leaderboard import router as leaderboard_router
 from routers.gamification import router as gamification_router
 from routers.telegram import router as telegram_router
+from routers.referral import router as referral_router
 
 # WebSocket manager
 from services.websocket import ws_manager, broadcast_bid_update, broadcast_auction_ended
