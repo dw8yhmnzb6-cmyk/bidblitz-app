@@ -48,6 +48,21 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 ### Notification System (NEW - Feb 2026)
 - **Outbid Email Notifications**: HTML email via Resend when outbid
 - **Telegram Alerts**: Outbid, won, deals notifications
+
+### Engagement Features - Wave 2 (Feb 2, 2026)
+- **Mystery Box Auctions**: Hidden premium products in 4 tiers (Bronze €50-150, Silver €150-400, Gold €400-1000, Diamond €1000-5000)
+- **Schnäppchen-Alarm (Price Alerts)**: Set target prices for products, get notified when price drops
+- **Social Share Bonus**: Share wins on Facebook/Twitter/WhatsApp/Telegram, earn 3 bonus bids per share
+- **Google OAuth Login**: "Mit Google anmelden" via Emergent Auth integration
+- **Progressive Web App (PWA)**: Install BidBlitz as standalone app, offline support
+
+### Battle Pass System (Feb 2, 2026)
+- 50-Tier progression with XP (100 XP per tier)
+- Free Track: Rewards every 5 tiers (bids, XP boosts)
+- Premium Track (€9.99): Rewards every tier (bids, spins, VIP days)
+- Premium+ (€19.99): Includes 25 tier skips
+- Season system: 30 days per season with themes
+
 - Push notifications for ending auctions
 
 ### Influencer System
