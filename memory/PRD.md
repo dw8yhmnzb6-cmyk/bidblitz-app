@@ -5,14 +5,18 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 
 ## Completion Status (February 2, 2026)
 
-### ✅ Session Summary: Manager/Admin Dashboard Enhancement (P0 Complete)
+### ✅ Session Summary: Influencer-Bearbeitung Implementiert
 
-**Completed in this session (February 2, 2026):**
-- ✅ Manager-Dashboard-Erweiterung: Manager können ihre Influencer sehen, Verdienste anzeigen, aktivieren/deaktivieren
-- ✅ Admin Manager-Aktivitätsprotokoll: Admin sieht alle Aktionen eines Managers (Login, Freischalten, Sperren)
-- ✅ Bug-Fix: "Check is not defined" Fehler in Admin.js behoben
+**Neu implementiert (February 2, 2026):**
+- ✅ **Admin: Influencer bearbeiten** - Vollständiges Modal mit allen Feldern (Name, Provision, E-Mail, Stadt, Manager, Social Media, Status)
+- ✅ **Manager: Influencer bearbeiten** - Eingeschränktes Modal (nur Stadt aus eigenem Bereich zuweisen)
+- ✅ **Activity-Logging** - Alle Manager-Bearbeitungen werden im Aktivitäts-Protokoll erfasst
+- ✅ Manager-Dashboard zeigt jetzt Bearbeiten-Button für jeden Influencer
 
-**Testing Report:** `/app/test_reports/iteration_30.json` - 100% Backend & Frontend Tests bestanden
+**Vorherige Session:**
+- ✅ Manager-Dashboard-Erweiterung
+- ✅ Admin Manager-Aktivitätsprotokoll
+- ✅ "Gewinner der Woche"-Broadcast-Button
 
 ### Previous Session: 21 Features + Manager Fix
 
@@ -98,8 +102,12 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 - `GET /api/manager/dashboard/{manager_id}` - Manager-Dashboard mit Statistiken und Influencer-Liste
 - `POST /api/manager/{manager_id}/influencer/approve/{influencer_id}` - Influencer freischalten
 - `POST /api/manager/{manager_id}/influencer/block/{influencer_id}` - Influencer sperren
+- `PUT /api/manager/{manager_id}/influencer/{influencer_id}/update` - **NEU:** Influencer bearbeiten (Stadt zuweisen)
 - `GET /api/manager/admin/{manager_id}/influencers` - Influencer eines Managers (Admin)
 - `GET /api/manager/admin/{manager_id}/activities` - Aktivitätsprotokoll eines Managers (Admin)
+
+## Key API Endpoints - Influencer Features
+- `PUT /api/influencer/admin/{influencer_id}` - **Vollständige Bearbeitung** (Admin only)
 
 ## Last Updated
 February 2, 2026
