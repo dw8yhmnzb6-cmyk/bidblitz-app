@@ -2,16 +2,16 @@ import { useState, useEffect } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Card, CardContent } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { toast } from 'sonner';
-import { Video, Play, ThumbsUp, Upload, Star, Trophy, User, Calendar } from 'lucide-react';
+import { Video, Play, Upload, Star, User } from 'lucide-react';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
 export default function VideoTestimonialsPage() {
   const { language } = useLanguage();
-  const { token, isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
   const [testimonials, setTestimonials] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedVideo, setSelectedVideo] = useState(null);
@@ -31,7 +31,6 @@ export default function VideoTestimonialsPage() {
       noVideos: 'Noch keine Videos vorhanden',
       beFirst: 'Sei der Erste und lade dein Gewinner-Video hoch!',
       loginToUpload: 'Melde dich an um ein Video hochzuladen',
-      uploadSuccess: 'Video erfolgreich hochgeladen! Es wird nach Prüfung veröffentlicht.',
       bonus: '+15 Gebote nach Genehmigung'
     },
     en: {
@@ -48,7 +47,6 @@ export default function VideoTestimonialsPage() {
       noVideos: 'No videos yet',
       beFirst: 'Be the first to upload your winner video!',
       loginToUpload: 'Log in to upload a video',
-      uploadSuccess: 'Video uploaded successfully! It will be published after review.',
       bonus: '+15 bids after approval'
     }
   };
@@ -102,73 +100,29 @@ export default function VideoTestimonialsPage() {
     }
   ];
 
-  const fetchTestimonials = async () => {
-    try {
-      const res = await fetch(`${API_URL}/api/testimonials/videos`);
-      if (res.ok) {
-        const data = await res.json();
-        setTestimonials(data.videos?.length > 0 ? data.videos : getPlaceholderVideos());
-      } else {
+  useEffect(() => {
+    const fetchTestimonials = async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/testimonials/videos`);
+        if (res.ok) {
+          const data = await res.json();
+          setTestimonials(data.videos?.length > 0 ? data.videos : getPlaceholderVideos());
+        } else {
+          setTestimonials(getPlaceholderVideos());
+        }
+      } catch (err) {
         setTestimonials(getPlaceholderVideos());
       }
-    } catch (err) {
-      setTestimonials(getPlaceholderVideos());
-    }
-    setLoading(false);
-  };
-
-  useEffect(() => {
+      setLoading(false);
+    };
     fetchTestimonials();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-      final_price: 12.50,
-      retail_price: 1499,
-      thumbnail: 'https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=400',
-      views: 1234,
-      featured: true,
-      created_at: new Date().toISOString()
-    },
-    {
-      id: '2',
-      username: 'Sarah M.',
-      product_name: 'MacBook Pro 14"',
-      final_price: 8.75,
-      retail_price: 2199,
-      thumbnail: 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=400',
-      views: 892,
-      featured: true,
-      created_at: new Date(Date.now() - 86400000).toISOString()
-    },
-    {
-      id: '3',
-      username: 'Tim L.',
-      product_name: 'PlayStation 5 Pro',
-      final_price: 5.20,
-      retail_price: 799,
-      thumbnail: 'https://images.unsplash.com/photo-1606144042614-b2417e99c4e3?w=400',
-      views: 567,
-      featured: false,
-      created_at: new Date(Date.now() - 172800000).toISOString()
-    },
-    {
-      id: '4',
-      username: 'Anna B.',
-      product_name: 'Dyson V20 Absolute',
-      final_price: 3.80,
-      retail_price: 799,
-      thumbnail: 'https://images.unsplash.com/photo-1558317374-067fb5f30001?w=400',
-      views: 345,
-      featured: false,
-      created_at: new Date(Date.now() - 259200000).toISOString()
-    }
-  ];
 
   const handleUpload = () => {
     if (!isAuthenticated) {
       toast.error(t.loginToUpload);
       return;
     }
-    // In production, this would open a file upload dialog
     toast.info('Video-Upload kommt bald!');
   };
 
@@ -217,14 +171,6 @@ export default function VideoTestimonialsPage() {
         {/* Videos Grid */}
         {loading ? (
           <div className="text-center py-12 text-[#94A3B8]">Laden...</div>
-        ) : testimonials.length === 0 ? (
-          <Card className="bg-[#1A1A2E] border-white/10">
-            <CardContent className="p-12 text-center">
-              <Video className="w-16 h-16 text-[#94A3B8] mx-auto mb-4 opacity-50" />
-              <h3 className="text-white text-xl mb-2">{t.noVideos}</h3>
-              <p className="text-[#94A3B8]">{t.beFirst}</p>
-            </CardContent>
-          </Card>
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {testimonials.map((video) => (
