@@ -3,9 +3,39 @@
 ## Original Problem Statement
 Create a penny auction website modeled after `dealdash.com` and `snipster.de` with complete visual and functional overhaul.
 
-## Completion Status (February 2, 2026)
+## Completion Status (February 3, 2026)
 
-### ✅ NEW: Auktionstypen + Investor Portal (February 2, 2026)
+### ✅ NEW: Stripe Integration + Tag/Nacht Logik + Gratis-System (Feb 3, 2026)
+
+**Neu implementiert:**
+
+1. ✅ **Investor Portal mit Stripe-Zahlung:**
+   - 4 Investment-Pakete: Starter (€500), Standard (€2.500), Premium (€10.000), Partner (€50.000)
+   - Automatische Stripe-Checkout Integration
+   - Equity-Anteile und Perks pro Paket
+   - Polling für Zahlungsstatus
+
+2. ✅ **Tag/Nacht-Auktionen Logik:**
+   - Tag-Auktionen: Nur sichtbar 06:00-23:30 Uhr
+   - Nacht-Auktionen: Nur sichtbar 23:30-06:00 Uhr
+   - "Nacht"-Filter nur nachts sichtbar
+   - "Geschenke"-Filter entfernt
+
+3. ✅ **Gratis-Auktionen System:**
+   - Backend: `/api/free-auctions/*` Router
+   - Max 20 Gratis-Gebote pro Woche pro Nutzer
+   - Max 1 Gratis-Gewinn pro Nutzer (lifetime)
+   - 4 Gratis-Gutschein-Auktionen aktiv
+
+4. ✅ **Neue Backend APIs:**
+   - `GET /api/investor/packages` - Investment-Pakete
+   - `POST /api/investor/checkout` - Stripe Checkout erstellen
+   - `GET /api/investor/checkout/status/:id` - Zahlungsstatus
+   - `POST /api/investor/webhook/stripe` - Stripe Webhook
+   - `GET /api/free-auctions/limits` - Gratis-Gebote Limits
+   - `POST /api/free-auctions/bid/:id` - Gratis-Gebot platzieren
+
+### ✅ Auktionstypen + Investor Portal (February 2, 2026)
 
 **Neu implementiert:**
 
