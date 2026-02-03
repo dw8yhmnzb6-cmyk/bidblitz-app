@@ -1700,13 +1700,14 @@ export const translations = {
       filters: {
         live: "Live",
         beginner: "Fillestar",
-        free: "Falas",
+        free: "Kuponë",
         night: "Natë",
         ending: "Fund",
         vip: "VIP"
       },
       beginnerAuctions: "Ankande për Fillestarë",
-      freeAuctions: "Ankande Falas",
+      freeAuctions: "Ankande Kuponësh",
+      freeAuctionInfo: "Ofertoni me ofertat e blera - Kuponi është FALAS kur fitoni!",
       nightAuctions: "Ankande të Natës",
       vipAuctions: "Ankande VIP",
       endedAuctions: "Ankande të Përfunduara",
@@ -1971,13 +1972,14 @@ export const translations = {
       filters: {
         live: "Live",
         beginner: "Fillestar",
-        free: "Falas",
+        free: "Kuponë",
         night: "Natë",
         ending: "Fund",
         vip: "VIP"
       },
       beginnerAuctions: "Ankande për Fillestarë",
-      freeAuctions: "Ankande Falas",
+      freeAuctions: "Ankande Kuponësh",
+      freeAuctionInfo: "Ofertoni me ofertat e blera - Kuponi është FALAS kur fitoni!",
       nightAuctions: "Ankande të Natës",
       vipAuctions: "Ankande VIP",
       endedAuctions: "Ankande të Përfunduara",
