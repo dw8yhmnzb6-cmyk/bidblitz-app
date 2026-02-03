@@ -359,14 +359,19 @@ export default function Admin() {
         const res = await axios.get(`${API}/admin/config/game`, { headers });
         setGameConfig(res.data);
       } else if (activeTab === 'jackpot') {
-        const jpRes = await axios.get(`${API}/excitement/global-jackpot`);
+        const [jpRes, histRes, usersRes, happyHourRes, luckyRes] = await Promise.all([
+          axios.get(`${API}/excitement/global-jackpot`),
+          axios.get(`${API}/excitement/global-jackpot/history`),
+          axios.get(`${API}/admin/users`, { headers }),
+          axios.get(`${API}/gamification/happy-hour`).catch(() => ({ data: { config: {} } })),
+          axios.get(`${API}/excitement/lucky-bid/status`).catch(() => ({ data: {} }))
+        ]);
         setJackpotData(jpRes.data);
         setJackpotAmount(jpRes.data.current_amount || 500);
-        const histRes = await axios.get(`${API}/excitement/global-jackpot/history`);
         setJackpotHistory(histRes.data.winners || []);
-        // Also load users for jackpot award
-        const usersRes = await axios.get(`${API}/admin/users`, { headers });
         setUsers(usersRes.data);
+        setHappyHourConfig(happyHourRes.data.config || happyHourRes.data);
+        setLuckyConfig(luckyRes.data);
       } else if (activeTab === 'promo-codes') {
         const promoRes = await axios.get(`${API}/promo-codes/admin/list`, { headers });
         setPromoCodes(promoRes.data.promo_codes || []);
