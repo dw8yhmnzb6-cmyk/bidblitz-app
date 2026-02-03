@@ -2783,6 +2783,211 @@ export default function Admin() {
                   </div>
                 </div>
               )}
+              
+              {/* ==================== HAPPY HOUR SETTINGS ==================== */}
+              <div className="glass-card rounded-xl p-4 sm:p-6 border border-orange-500/30 bg-gradient-to-r from-orange-500/10 to-yellow-500/10">
+                <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                  <span className="text-2xl">⚡</span> Happy Hour Einstellungen
+                </h3>
+                <p className="text-[#94A3B8] text-sm mb-4">
+                  Während der Happy Hour erhalten Kunden Bonus-Gebote bei jedem Kauf!
+                </p>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <Label className="text-[#94A3B8]">Status</Label>
+                    <div className="flex items-center gap-3 mt-2">
+                      <button
+                        onClick={async () => {
+                          try {
+                            await axios.put(`${API}/gamification/happy-hour/config?enabled=${!happyHourConfig?.enabled}`, {}, {
+                              headers: { Authorization: `Bearer ${token}` }
+                            });
+                            toast.success(happyHourConfig?.enabled ? 'Happy Hour deaktiviert' : 'Happy Hour aktiviert');
+                            fetchData();
+                          } catch (err) {
+                            toast.error('Fehler');
+                          }
+                        }}
+                        className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors ${
+                          happyHourConfig?.enabled ? 'bg-[#F59E0B]' : 'bg-[#374151]'
+                        }`}
+                      >
+                        <span className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${
+                          happyHourConfig?.enabled ? 'translate-x-7' : 'translate-x-1'
+                        }`} />
+                      </button>
+                      <span className={happyHourConfig?.enabled ? 'text-[#F59E0B] font-bold' : 'text-[#94A3B8]'}>
+                        {happyHourConfig?.enabled ? 'AKTIV' : 'Inaktiv'}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <Label className="text-[#94A3B8]">Bonus-Multiplikator</Label>
+                    <Select 
+                      value={String(happyHourConfig?.multiplier || 2)}
+                      onValueChange={async (val) => {
+                        try {
+                          await axios.put(`${API}/gamification/happy-hour/config?multiplier=${val}`, {}, {
+                            headers: { Authorization: `Bearer ${token}` }
+                          });
+                          toast.success(`Multiplikator auf ${val}x gesetzt`);
+                          fetchData();
+                        } catch (err) {
+                          toast.error('Fehler');
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="bg-[#181824] border-white/10 text-white mt-2">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-[#181824] border-white/10">
+                        <SelectItem value="1.5" className="text-white">1.5x Gebote</SelectItem>
+                        <SelectItem value="2" className="text-white">2x Gebote (Standard)</SelectItem>
+                        <SelectItem value="2.5" className="text-white">2.5x Gebote</SelectItem>
+                        <SelectItem value="3" className="text-white">3x Gebote</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <Label className="text-[#94A3B8]">Startzeit (Uhr)</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={23}
+                      value={happyHourConfig?.start_hour || 18}
+                      onChange={async (e) => {
+                        const val = parseInt(e.target.value);
+                        if (val >= 0 && val <= 23) {
+                          try {
+                            await axios.put(`${API}/gamification/happy-hour/config?start_hour=${val}`, {}, {
+                              headers: { Authorization: `Bearer ${token}` }
+                            });
+                            fetchData();
+                          } catch (err) {}
+                        }
+                      }}
+                      className="bg-[#181824] border-white/10 text-white"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-[#94A3B8]">Endzeit (Uhr)</Label>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={24}
+                      value={happyHourConfig?.end_hour || 20}
+                      onChange={async (e) => {
+                        const val = parseInt(e.target.value);
+                        if (val >= 1 && val <= 24) {
+                          try {
+                            await axios.put(`${API}/gamification/happy-hour/config?end_hour=${val}`, {}, {
+                              headers: { Authorization: `Bearer ${token}` }
+                            });
+                            fetchData();
+                          } catch (err) {}
+                        }
+                      }}
+                      className="bg-[#181824] border-white/10 text-white"
+                    />
+                  </div>
+                </div>
+                
+                <p className="text-[#F59E0B] text-sm p-2 bg-[#F59E0B]/10 rounded">
+                  ⚡ Happy Hour: Täglich von <strong>{happyHourConfig?.start_hour || 18}:00</strong> bis <strong>{happyHourConfig?.end_hour || 20}:00</strong> Uhr - Kunden erhalten <strong>{happyHourConfig?.multiplier || 2}x</strong> Gebote!
+                </p>
+              </div>
+              
+              {/* ==================== LUCKY IN 50 SETTINGS ==================== */}
+              <div className="glass-card rounded-xl p-4 sm:p-6 border border-green-500/30 bg-gradient-to-r from-green-500/10 to-emerald-500/10">
+                <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                  <span className="text-2xl">🎁</span> Lucky in 50 Einstellungen
+                </h3>
+                <p className="text-[#94A3B8] text-sm mb-4">
+                  Jedes X. Gebot gewinnt automatisch Bonus-Gebote! Ermutigt Benutzer mehr zu bieten.
+                </p>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <Label className="text-[#94A3B8]">Gewinn-Intervall</Label>
+                    <Select 
+                      value={String(luckyConfig?.interval || 50)}
+                      onValueChange={async (val) => {
+                        try {
+                          await axios.put(`${API}/excitement/lucky-bid/config`, 
+                            { interval: parseInt(val) },
+                            { headers: { Authorization: `Bearer ${token}` } }
+                          );
+                          toast.success(`Jedes ${val}. Gebot gewinnt!`);
+                          fetchData();
+                        } catch (err) {
+                          toast.error('Fehler');
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="bg-[#181824] border-white/10 text-white mt-2">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-[#181824] border-white/10">
+                        <SelectItem value="25" className="text-white">Jedes 25. Gebot</SelectItem>
+                        <SelectItem value="50" className="text-white">Jedes 50. Gebot (Standard)</SelectItem>
+                        <SelectItem value="100" className="text-white">Jedes 100. Gebot</SelectItem>
+                        <SelectItem value="200" className="text-white">Jedes 200. Gebot</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div>
+                    <Label className="text-[#94A3B8]">Gewinn (Gratis-Gebote)</Label>
+                    <Select 
+                      value={String(luckyConfig?.reward || 10)}
+                      onValueChange={async (val) => {
+                        try {
+                          await axios.put(`${API}/excitement/lucky-bid/config`, 
+                            { reward: parseInt(val) },
+                            { headers: { Authorization: `Bearer ${token}` } }
+                          );
+                          toast.success(`Gewinn auf ${val} Gebote gesetzt`);
+                          fetchData();
+                        } catch (err) {
+                          toast.error('Fehler');
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="bg-[#181824] border-white/10 text-white mt-2">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-[#181824] border-white/10">
+                        <SelectItem value="5" className="text-white">5 Gratis-Gebote</SelectItem>
+                        <SelectItem value="10" className="text-white">10 Gratis-Gebote (Standard)</SelectItem>
+                        <SelectItem value="15" className="text-white">15 Gratis-Gebote</SelectItem>
+                        <SelectItem value="25" className="text-white">25 Gratis-Gebote</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                
+                <div className="bg-[#181824] rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-[#94A3B8] text-sm">Gebote bis zum nächsten Lucky Bid:</p>
+                      <p className="text-2xl font-bold text-[#10B981]">{luckyConfig?.bids_until_lucky || 50}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[#94A3B8] text-sm">Gesamte Gebote heute:</p>
+                      <p className="text-xl font-bold text-white">{luckyConfig?.total_bids_today || 0}</p>
+                    </div>
+                  </div>
+                </div>
+                
+                <p className="text-[#10B981] text-sm p-2 bg-[#10B981]/10 rounded mt-4">
+                  🎁 Jedes <strong>{luckyConfig?.interval || 50}.</strong> Gebot gewinnt automatisch <strong>{luckyConfig?.reward || 10} Gratis-Gebote</strong>!
+                </p>
+              </div>
             </div>
           )}
 
