@@ -561,19 +561,23 @@ export default function Auctions() {
   const [auctionOfTheDay, setAuctionOfTheDay] = useState(null);
   const wsRef = useRef(null);
   
+  const [endedAuctions, setEndedAuctions] = useState([]);
+  
   // Fetch data
   const fetchData = useCallback(async () => {
     try {
-      const [auctionsRes, productsRes, aotdRes] = await Promise.all([
-        axios.get(`${API}/auctions`), // Load ALL auctions (including ended)
+      const [auctionsRes, productsRes, aotdRes, endedRes] = await Promise.all([
+        axios.get(`${API}/auctions`),
         axios.get(`${API}/products`),
-        axios.get(`${API}/auction-of-the-day`).catch(() => ({ data: null }))
+        axios.get(`${API}/auction-of-the-day`).catch(() => ({ data: null })),
+        axios.get(`${API}/auctions/ended`).catch(() => ({ data: [] })) // Get ended auctions from history
       ]);
       
       const prodMap = {};
       productsRes.data.forEach(p => { prodMap[p.id] = p; });
       setProducts(prodMap);
-      setAuctions(auctionsRes.data); // Don't filter - we need ended auctions too
+      setAuctions(auctionsRes.data);
+      setEndedAuctions(endedRes.data || []);
       
       // Set Auction of the Day
       if (aotdRes.data && aotdRes.data.id) {
