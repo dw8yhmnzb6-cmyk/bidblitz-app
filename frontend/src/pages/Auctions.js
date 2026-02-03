@@ -748,8 +748,10 @@ export default function Auctions() {
       case 'gratis':
         return publicAuctions.filter(a => a.is_free_auction && a.status === 'active');
       case 'nacht':
-        return isNightTime ? publicAuctions.filter(a => a.is_night_auction && a.status === 'active') : [];
+        // Night auctions always visible - show with timer/label when not night time
+        return publicAuctions.filter(a => a.is_night_auction);
       case 'ende':
+        // Show ALL ended auctions from the full auctions list
         return auctions.filter(a => a.status === 'ended');
       case 'vip':
         return auctions.filter(a => a.is_vip_only && a.status === 'active');
