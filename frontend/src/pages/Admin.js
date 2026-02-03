@@ -362,6 +362,9 @@ export default function Admin() {
         // Also load users for jackpot award
         const usersRes = await axios.get(`${API}/admin/users`, { headers });
         setUsers(usersRes.data);
+      } else if (activeTab === 'promo-codes') {
+        const promoRes = await axios.get(`${API}/promo-codes/admin/list`, { headers });
+        setPromoCodes(promoRes.data.promo_codes || []);
       }
     } catch (error) {
       console.error('Error fetching data:', error);
