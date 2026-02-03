@@ -93,7 +93,18 @@ export default function Login() {
 
       // Login successful
       const { token, user: userData } = response.data;
-      localStorage.setItem('token', token);
+      
+      try {
+        localStorage.setItem('token', token);
+      } catch (e) {
+        console.warn('localStorage not available, using sessionStorage:', e);
+        try {
+          sessionStorage.setItem('token', token);
+        } catch (e2) {
+          console.error('Storage not available:', e2);
+        }
+      }
+      
       await refreshUser();
       toast.success(texts.loginSuccess);
       
