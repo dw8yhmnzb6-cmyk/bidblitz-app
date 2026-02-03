@@ -44,6 +44,7 @@ async def create_promo_code(data: PromoCodeCreate, admin: dict = Depends(get_adm
         "reward_type": data.reward_type,
         "reward_amount": data.reward_amount,
         "max_uses": data.max_uses,
+        "one_per_user": data.one_per_user,  # New field
         "current_uses": 0,
         "valid_from": data.valid_from,
         "valid_until": data.valid_until,
