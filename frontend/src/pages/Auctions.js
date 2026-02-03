@@ -745,7 +745,7 @@ export default function Auctions() {
     anfaenger: publicAuctions.filter(a => (a.is_beginner_only || a.is_beginner_auction) && a.status === 'active').length,
     gratis: publicAuctions.filter(a => a.is_free_auction && a.status === 'active').length,
     nacht: publicAuctions.filter(a => a.is_night_auction).length,
-    ende: auctions.filter(a => a.status === 'ended').length,
+    ende: endedAuctions.length, // Use endedAuctions from auction_history
     vip: auctions.filter(a => a.is_vip_only && a.status === 'active').length
   };
   
