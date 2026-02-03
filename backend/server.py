@@ -88,6 +88,7 @@ from routers.weekly_winners import weekly_winners_router
 from routers.excitement import router as excitement_router
 from routers.investor import router as investor_router
 from routers.voucher_auctions import router as voucher_auctions_router
+from routers.promo_codes import router as promo_codes_router
 
 # WebSocket manager
 from services.websocket import ws_manager, broadcast_bid_update, broadcast_auction_ended
