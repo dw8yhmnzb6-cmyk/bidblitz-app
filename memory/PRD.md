@@ -5,7 +5,32 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 
 ## Completion Status (February 3, 2026)
 
-### ✅ NEW: Investor Portal + Gutschein-System Fixes (Feb 3, 2026 - Update 2)
+### ✅ NEW: Update 3 - Jackpot Toggle + BidBlitz Gutscheine + Übersetzungen (Feb 3)
+
+**Implementiert:**
+
+1. ✅ **Admin Jackpot Ein/Aus-Schalter:**
+   - Toggle-Button im Admin Panel (🏆 Jackpot Tab)
+   - API: `POST /api/excitement/global-jackpot/toggle`
+   - Status wird in global_jackpot.is_active gespeichert
+
+2. ✅ **BidBlitz-eigene Gutscheine:**
+   - Neue Produkte erstellt (nur unsere eigenen):
+     - BidBlitz 50 Gratis-Gebote
+     - BidBlitz 100 Gratis-Gebote  
+     - BidBlitz 200 Gratis-Gebote
+     - BidBlitz VIP 1 Monat GRATIS
+   - Alte Drittanbieter-Gutscheine entfernt aus Auktionen
+
+3. ✅ **Übersetzungen aktualisiert:**
+   - "Gutscheine" statt "Gratis/Free" in allen Sprachen
+   - Albanisch (SQ): "Kuponë" 
+   - Türkisch (TR): "Kuponlar"
+   - Französisch (FR): "Bons"
+   - Spanisch (ES): "Cupones"
+   - Info-Text: "Gebote kosten Geld, Gutschein ist GRATIS bei Gewinn"
+
+### ✅ Update 2 - Investor Portal + Gutschein-System (Feb 3)
 
 **Verbesserungen:**
 
