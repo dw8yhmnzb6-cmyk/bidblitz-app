@@ -1188,11 +1188,17 @@ export const translations = {
       filters: {
         live: "Canlı",
         beginner: "Başlangıç",
-        free: "Ücretsiz",
+        free: "Kuponlar",
         night: "Gece",
         ending: "Bitiyor",
         vip: "VIP"
-      }
+      },
+      beginnerAuctions: "Başlangıç Müzayedeleri",
+      freeAuctions: "Kupon Müzayedeleri",
+      freeAuctionInfo: "Satın alınan tekliflerle teklif verin - Kazandığınızda kupon ÜCRETSİZ!",
+      nightAuctions: "Gece Müzayedeleri",
+      vipAuctions: "VIP Müzayedeler",
+      endedAuctions: "Biten Müzayedeler"
     },
     auctionCard: {
       liveNow: "CANLI", comingSoon: "YAKINDA", ended: "BİTTİ",
