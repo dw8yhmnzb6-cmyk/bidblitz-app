@@ -650,7 +650,7 @@ export default function Auctions() {
       const silentFetch = async () => {
         try {
           const [auctionsRes, productsRes, aotdRes] = await Promise.all([
-            axios.get(`${API}/auctions?status=active`),
+            axios.get(`${API}/auctions`), // Load ALL auctions for ended tab
             axios.get(`${API}/products`),
             axios.get(`${API}/auction-of-the-day`).catch(() => ({ data: null }))
           ]);
