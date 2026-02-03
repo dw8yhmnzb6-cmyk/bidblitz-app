@@ -783,9 +783,16 @@ export default function Auctions() {
       lastFilterRef.current = activeFilter;
     }
     
+    // For "Ende" filter, return ended auctions directly without filtering by status/time
+    if (activeFilter === 'ende') {
+      return filteredAuctions.filter(a => a.id !== premiumAuction?.id && a.id !== aotdId);
+    }
+    
     // Get valid auctions (exclude AOTD, premium, and truly ended)
     const validAuctions = filteredAuctions.filter(a => {
       if (a.id === premiumAuction?.id || a.id === aotdId) return false;
+      // For night filter, show all night auctions regardless of status
+      if (activeFilter === 'nacht') return true;
       if (a.status !== 'active') return false;
       // Only filter out if time is more than 5 seconds past (give buffer for refresh)
       const timeLeft = new Date(a.end_time).getTime() - Date.now();
