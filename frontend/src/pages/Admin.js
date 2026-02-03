@@ -148,7 +148,8 @@ export default function Admin() {
     reward_type: 'bids',
     reward_amount: 10,
     max_uses: null,
-    valid_until: ''
+    valid_until: '',
+    one_per_user: true  // Default: Jeder Kunde kann nur 1x einlösen
   });
 
   // Edit states
