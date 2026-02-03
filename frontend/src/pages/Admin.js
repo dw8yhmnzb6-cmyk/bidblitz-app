@@ -1175,6 +1175,7 @@ export default function Admin() {
     { id: 'payments', label: language === 'en' ? 'Payments' : 'Zahlungen', icon: <DollarSign className="w-5 h-5" /> },
     { id: 'logs', label: language === 'en' ? 'System Logs' : 'Systemlogs', icon: <BarChart3 className="w-5 h-5" /> },
     { id: 'jackpot', label: '🏆 Jackpot', icon: <Trophy className="w-5 h-5" />, highlight: true },
+    { id: 'promo-codes', label: '🎫 Gutschein-Codes', icon: <Gift className="w-5 h-5" />, highlight: true },
     { id: 'game-config', label: at('gameSettings'), icon: <Settings className="w-5 h-5" /> }
   ];
 
