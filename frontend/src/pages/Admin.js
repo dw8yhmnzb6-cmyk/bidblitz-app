@@ -2784,6 +2784,223 @@ export default function Admin() {
               )}
             </div>
           )}
+
+          {/* Promo Codes Tab */}
+          {activeTab === 'promo-codes' && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold text-white">🎫 Gutschein-Codes</h2>
+                <Button
+                  onClick={() => setShowPromoModal(true)}
+                  className="btn-primary"
+                >
+                  + Neuen Code erstellen
+                </Button>
+              </div>
+
+              {/* Promo Codes List */}
+              <div className="glass-card rounded-xl overflow-hidden">
+                <table className="w-full">
+                  <thead className="bg-[#181824]">
+                    <tr>
+                      <th className="text-left text-[#94A3B8] font-medium p-4">Code</th>
+                      <th className="text-left text-[#94A3B8] font-medium p-4">Name</th>
+                      <th className="text-left text-[#94A3B8] font-medium p-4">Belohnung</th>
+                      <th className="text-left text-[#94A3B8] font-medium p-4">Einlösungen</th>
+                      <th className="text-left text-[#94A3B8] font-medium p-4">Status</th>
+                      <th className="text-left text-[#94A3B8] font-medium p-4">Aktionen</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {promoCodes.map(promo => (
+                      <tr key={promo.id} className="border-t border-white/5">
+                        <td className="p-4">
+                          <span className="font-mono text-[#FFD700] bg-[#FFD700]/10 px-2 py-1 rounded">
+                            {promo.code}
+                          </span>
+                        </td>
+                        <td className="p-4 text-white">{promo.name}</td>
+                        <td className="p-4">
+                          <span className="text-[#10B981]">
+                            {promo.reward_amount} {promo.reward_type === 'bids' ? 'Gebote' : promo.reward_type === 'vip_days' ? 'VIP Tage' : '%'}
+                          </span>
+                        </td>
+                        <td className="p-4 text-white">
+                          {promo.current_uses || 0}
+                          {promo.max_uses && <span className="text-[#94A3B8]"> / {promo.max_uses}</span>}
+                        </td>
+                        <td className="p-4">
+                          <span className={`px-2 py-1 rounded text-xs ${promo.is_active ? 'bg-[#10B981]/20 text-[#10B981]' : 'bg-red-500/20 text-red-500'}`}>
+                            {promo.is_active ? 'Aktiv' : 'Inaktiv'}
+                          </span>
+                        </td>
+                        <td className="p-4">
+                          <div className="flex gap-2">
+                            <button
+                              onClick={async () => {
+                                try {
+                                  await axios.put(`${API}/promo-codes/admin/${promo.id}/toggle`, {}, {
+                                    headers: { Authorization: `Bearer ${token}` }
+                                  });
+                                  toast.success(promo.is_active ? 'Code deaktiviert' : 'Code aktiviert');
+                                  fetchData();
+                                } catch (err) {
+                                  toast.error('Fehler');
+                                }
+                              }}
+                              className={`px-3 py-1 rounded text-sm ${promo.is_active ? 'bg-red-500/20 text-red-400' : 'bg-[#10B981]/20 text-[#10B981]'}`}
+                            >
+                              {promo.is_active ? 'Deaktivieren' : 'Aktivieren'}
+                            </button>
+                            <button
+                              onClick={async () => {
+                                if (confirm('Code wirklich löschen?')) {
+                                  try {
+                                    await axios.delete(`${API}/promo-codes/admin/${promo.id}`, {
+                                      headers: { Authorization: `Bearer ${token}` }
+                                    });
+                                    toast.success('Code gelöscht');
+                                    fetchData();
+                                  } catch (err) {
+                                    toast.error('Fehler beim Löschen');
+                                  }
+                                }
+                              }}
+                              className="px-3 py-1 rounded text-sm bg-red-500/20 text-red-400"
+                            >
+                              Löschen
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {promoCodes.length === 0 && (
+                      <tr>
+                        <td colSpan="6" className="p-8 text-center text-[#94A3B8]">
+                          Keine Gutschein-Codes vorhanden
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Create Promo Modal */}
+              {showPromoModal && (
+                <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+                  <div className="bg-[#1A1A2E] rounded-xl border border-white/10 max-w-md w-full p-6">
+                    <h3 className="text-xl font-bold text-white mb-4">Neuen Gutschein-Code erstellen</h3>
+                    
+                    <form onSubmit={async (e) => {
+                      e.preventDefault();
+                      try {
+                        await axios.post(`${API}/promo-codes/admin/create`, {
+                          ...promoForm,
+                          max_uses: promoForm.max_uses || null,
+                          valid_until: promoForm.valid_until || null
+                        }, {
+                          headers: { Authorization: `Bearer ${token}` }
+                        });
+                        toast.success('Gutschein-Code erstellt!');
+                        setShowPromoModal(false);
+                        setPromoForm({ code: '', name: '', reward_type: 'bids', reward_amount: 10, max_uses: null, valid_until: '' });
+                        fetchData();
+                      } catch (err) {
+                        toast.error(err.response?.data?.detail || 'Fehler beim Erstellen');
+                      }
+                    }} className="space-y-4">
+                      <div>
+                        <label className="text-white text-sm">Code (z.B. WEIHNACHTEN2026)</label>
+                        <input
+                          type="text"
+                          value={promoForm.code}
+                          onChange={(e) => setPromoForm({...promoForm, code: e.target.value.toUpperCase()})}
+                          className="w-full bg-[#181824] border border-white/10 rounded-lg px-4 py-2 text-white font-mono"
+                          placeholder="WILLKOMMEN"
+                          required
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="text-white text-sm">Name/Beschreibung</label>
+                        <input
+                          type="text"
+                          value={promoForm.name}
+                          onChange={(e) => setPromoForm({...promoForm, name: e.target.value})}
+                          className="w-full bg-[#181824] border border-white/10 rounded-lg px-4 py-2 text-white"
+                          placeholder="Willkommensbonus für neue Nutzer"
+                          required
+                        />
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="text-white text-sm">Belohnungsart</label>
+                          <select
+                            value={promoForm.reward_type}
+                            onChange={(e) => setPromoForm({...promoForm, reward_type: e.target.value})}
+                            className="w-full bg-[#181824] border border-white/10 rounded-lg px-4 py-2 text-white"
+                          >
+                            <option value="bids">Gratis-Gebote</option>
+                            <option value="vip_days">VIP-Tage</option>
+                            <option value="discount_percent">Rabatt %</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-white text-sm">Menge</label>
+                          <input
+                            type="number"
+                            min="1"
+                            value={promoForm.reward_amount}
+                            onChange={(e) => setPromoForm({...promoForm, reward_amount: parseInt(e.target.value)})}
+                            className="w-full bg-[#181824] border border-white/10 rounded-lg px-4 py-2 text-white"
+                            required
+                          />
+                        </div>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="text-white text-sm">Max. Einlösungen (leer = unbegrenzt)</label>
+                          <input
+                            type="number"
+                            min="1"
+                            value={promoForm.max_uses || ''}
+                            onChange={(e) => setPromoForm({...promoForm, max_uses: e.target.value ? parseInt(e.target.value) : null})}
+                            className="w-full bg-[#181824] border border-white/10 rounded-lg px-4 py-2 text-white"
+                            placeholder="Unbegrenzt"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-white text-sm">Gültig bis (optional)</label>
+                          <input
+                            type="date"
+                            value={promoForm.valid_until}
+                            onChange={(e) => setPromoForm({...promoForm, valid_until: e.target.value})}
+                            className="w-full bg-[#181824] border border-white/10 rounded-lg px-4 py-2 text-white"
+                          />
+                        </div>
+                      </div>
+                      
+                      <div className="flex gap-2 pt-4">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setShowPromoModal(false)}
+                          className="flex-1"
+                        >
+                          Abbrechen
+                        </Button>
+                        <Button type="submit" className="flex-1 btn-primary">
+                          Erstellen
+                        </Button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </main>
       </div>
       
