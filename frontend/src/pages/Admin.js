@@ -2604,6 +2604,42 @@ export default function Admin() {
                 </div>
               </div>
 
+              {/* Jackpot On/Off Toggle */}
+              <div className="glass-card rounded-xl p-4 sm:p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-white font-bold">Jackpot Status</h3>
+                    <p className="text-[#94A3B8] text-sm">
+                      {jackpotData?.is_active !== false ? 'Jackpot ist aktiv und wird bei Geboten erhöht' : 'Jackpot ist deaktiviert'}
+                    </p>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      const newStatus = jackpotData?.is_active === false;
+                      try {
+                        await axios.post(`${API}/excitement/global-jackpot/toggle`, 
+                          { is_active: newStatus },
+                          { headers: { Authorization: `Bearer ${token}` } }
+                        );
+                        toast.success(newStatus ? 'Jackpot aktiviert!' : 'Jackpot deaktiviert!');
+                        fetchData();
+                      } catch (err) {
+                        toast.error('Fehler beim Umschalten');
+                      }
+                    }}
+                    className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors ${
+                      jackpotData?.is_active !== false ? 'bg-[#10B981]' : 'bg-[#374151]'
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${
+                        jackpotData?.is_active !== false ? 'translate-x-7' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
+              </div>
+
               {/* Jackpot Controls */}
               <div className="glass-card rounded-xl p-4 sm:p-6">
                 <h3 className="text-white font-bold mb-4">Jackpot anpassen</h3>
