@@ -5,9 +5,37 @@ const AuthContext = createContext(null);
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
+// Helper to safely get/set storage (works in Safari private mode)
+const safeStorage = {
+  getItem: (key) => {
+    try {
+      return localStorage.getItem(key) || sessionStorage.getItem(key);
+    } catch (e) {
+      return null;
+    }
+  },
+  setItem: (key, value) => {
+    try {
+      localStorage.setItem(key, value);
+    } catch (e) {
+      try {
+        sessionStorage.setItem(key, value);
+      } catch (e2) {
+        console.warn('Storage not available');
+      }
+    }
+  },
+  removeItem: (key) => {
+    try {
+      localStorage.removeItem(key);
+      sessionStorage.removeItem(key);
+    } catch (e) {}
+  }
+};
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [token, setToken] = useState(localStorage.getItem('token'));
+  const [token, setToken] = useState(safeStorage.getItem('token'));
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
