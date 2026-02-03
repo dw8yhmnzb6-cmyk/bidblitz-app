@@ -516,6 +516,25 @@ async def auction_auto_restart_processor():
                         "restart_count": auto_restart.get("restart_count", 0) + 1
                     }
                     
+                    # SAVE TO AUCTION HISTORY before restarting (for "Ende" tab)
+                    history_entry = {
+                        "id": str(uuid.uuid4()),
+                        "auction_id": auction["id"],
+                        "product_id": auction.get("product_id"),
+                        "product": auction.get("product"),
+                        "winner_id": auction.get("winner_id"),
+                        "winner_name": auction.get("winner_name"),
+                        "final_price": auction.get("final_price") or auction.get("current_price"),
+                        "total_bids": auction.get("total_bids", 0),
+                        "ended_at": auction.get("ended_at") or now.isoformat(),
+                        "started_at": auction.get("start_time"),
+                        "is_night_auction": auction.get("is_night_auction", False),
+                        "is_beginner_auction": auction.get("is_beginner_auction", False),
+                        "is_voucher_auction": auction.get("is_voucher_auction", False),
+                        "is_vip_only": auction.get("is_vip_only", False),
+                    }
+                    await db.auction_history.insert_one(history_entry)
+                    
                     await db.auctions.update_one({"id": auction["id"]}, {"$set": update_data})
                     
                     product_name = auction.get("product", {}).get("name", auction["id"][:8])
