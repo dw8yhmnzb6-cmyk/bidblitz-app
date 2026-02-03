@@ -565,7 +565,7 @@ export default function Auctions() {
   const fetchData = useCallback(async () => {
     try {
       const [auctionsRes, productsRes, aotdRes] = await Promise.all([
-        axios.get(`${API}/auctions?status=active`),
+        axios.get(`${API}/auctions`), // Load ALL auctions (including ended)
         axios.get(`${API}/products`),
         axios.get(`${API}/auction-of-the-day`).catch(() => ({ data: null }))
       ]);
@@ -573,7 +573,7 @@ export default function Auctions() {
       const prodMap = {};
       productsRes.data.forEach(p => { prodMap[p.id] = p; });
       setProducts(prodMap);
-      setAuctions(auctionsRes.data.filter(a => a.status === 'active'));
+      setAuctions(auctionsRes.data); // Don't filter - we need ended auctions too
       
       // Set Auction of the Day
       if (aotdRes.data && aotdRes.data.id) {
