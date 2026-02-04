@@ -1235,19 +1235,30 @@ async def create_auction(auction: AuctionCreate, admin: dict = Depends(get_admin
     
     now = datetime.now(timezone.utc)
     
+    # MINIMUM DURATION: 10 hours (36000 seconds)
+    MIN_DURATION_SECONDS = 36000  # 10 hours
+    
     # Determine start_time and end_time
     if auction.start_time and auction.end_time:
         start_time = datetime.fromisoformat(auction.start_time.replace('Z', '+00:00'))
         end_time = datetime.fromisoformat(auction.end_time.replace('Z', '+00:00'))
+        # Enforce minimum duration
+        if (end_time - start_time).total_seconds() < MIN_DURATION_SECONDS:
+            end_time = start_time + timedelta(seconds=MIN_DURATION_SECONDS)
         status = "scheduled" if start_time > now else "active"
     elif auction.duration_seconds:
+        # Enforce minimum 10 hours
+        duration = max(auction.duration_seconds, MIN_DURATION_SECONDS)
         start_time = now
-        end_time = now + timedelta(seconds=auction.duration_seconds)
+        end_time = now + timedelta(seconds=duration)
         status = "active"
     else:
         start_time = now
         end_time = now + timedelta(hours=24)  # Default 24 hours
         status = "active"
+    
+    # Store actual duration in seconds
+    duration_seconds = int((end_time - start_time).total_seconds())
     
     auction_id = str(uuid.uuid4())
     
