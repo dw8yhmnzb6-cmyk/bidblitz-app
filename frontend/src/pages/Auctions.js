@@ -785,12 +785,17 @@ export default function Auctions() {
         updateBidsBalance(res.data.bids_remaining);
       }
     } catch (error) {
-      // Don't show toast for 404 errors (normal when auction not found or ended)
-      if (error.response?.status === 404) {
+      // Don't show toast for silent errors (404, network errors, etc.)
+      if (error.isSilentError || error.suppressToast || error.response?.status === 404) {
         console.log('Auction not found or ended');
         return;
       }
-      toast.error(error.response?.data?.detail || t('auctionPage.error'));
+      const detail = error.response?.data?.detail;
+      if (detail) {
+        toast.error(detail);
+      } else {
+        toast.error(t('auctionPage.error'));
+      }
     }
   };
   
