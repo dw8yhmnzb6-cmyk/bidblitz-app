@@ -868,9 +868,13 @@ export default function Auctions() {
     
     // Get valid auctions (exclude AOTD, premium, and truly ended)
     const validAuctions = filteredAuctions.filter(a => {
+      // For night filter, show ALL night auctions (don't exclude premium/AOTD)
+      if (activeFilter === 'nacht') {
+        return true; // Show all night auctions without exclusions
+      }
+      
+      // For other filters, exclude premium and AOTD
       if (a.id === premiumAuction?.id || a.id === aotdId) return false;
-      // For night filter, show all night auctions regardless of status
-      if (activeFilter === 'nacht') return true;
       if (a.status !== 'active') return false;
       // Only filter out if time is more than 5 seconds past (give buffer for refresh)
       const timeLeft = new Date(a.end_time).getTime() - Date.now();
