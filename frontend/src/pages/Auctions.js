@@ -861,24 +861,22 @@ export default function Auctions() {
       lastFilterRef.current = activeFilter;
     }
     
-    // For "Ende" filter, return ended auctions directly without filtering by status/time
+    // For "Ende" filter, return ended auctions directly
     if (activeFilter === 'ende') {
-      return filteredAuctions.filter(a => a.id !== premiumAuction?.id && a.id !== aotdId);
+      return filteredAuctions;
     }
     
-    // Get valid auctions (exclude AOTD, premium, and truly ended)
+    // For "Nacht" filter, show ALL night auctions without any exclusions
+    if (activeFilter === 'nacht') {
+      return filteredAuctions;
+    }
+    
+    // For other filters, exclude premium and AOTD from grid (they're shown separately)
     const validAuctions = filteredAuctions.filter(a => {
-      // For night filter, show ALL night auctions (don't exclude premium/AOTD)
-      if (activeFilter === 'nacht') {
-        return true; // Show all night auctions without exclusions
-      }
-      
-      // For other filters, exclude premium and AOTD
       if (a.id === premiumAuction?.id || a.id === aotdId) return false;
       if (a.status !== 'active') return false;
-      // Only filter out if time is more than 5 seconds past (give buffer for refresh)
       const timeLeft = new Date(a.end_time).getTime() - Date.now();
-      return timeLeft > -5000; // Keep auctions that ended within last 5 seconds
+      return timeLeft > -5000;
     });
     
     // Build a map for quick lookup
