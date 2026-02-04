@@ -1046,7 +1046,7 @@ export default function Auctions() {
             {activeFilter === 'nacht' && `🌙 ${t('auctionPage.nightAuctions')}`}
             {activeFilter === 'ende' && t('auctionPage.endedAuctions')}
             {activeFilter === 'vip' && `⭐ ${t('auctionPage.vipAuctions')}`}
-            {' '}({gridAuctions.length})
+            {' '}({auctionCounts[activeFilter] || gridAuctions.length})
           </h2>
           
           {gridAuctions.length === 0 ? (
