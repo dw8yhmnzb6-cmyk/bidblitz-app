@@ -470,10 +470,10 @@ async def auction_auto_restart_processor():
                     
                     duration_minutes = auto_restart.get("duration_minutes")
                     
-                    # If no configured duration, use DEFAULT 10 minutes
-                    # Don't try to calculate from times as this can lead to very short durations
-                    if not duration_minutes or duration_minutes < 5:
-                        duration_minutes = 10  # Default 10 minutes minimum
+                    # MINIMUM 10 HOURS (600 minutes) for auto-restart
+                    MIN_DURATION_MINUTES = 600  # 10 hours
+                    if not duration_minutes or duration_minutes < MIN_DURATION_MINUTES:
+                        duration_minutes = MIN_DURATION_MINUTES
                     
                     # Keep the same bot target price
                     bot_target = auction.get("bot_target_price") or auto_restart.get("bot_target_price")
