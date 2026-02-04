@@ -8,24 +8,41 @@ export function cn(...inputs) {
 /**
  * Parse API error and return user-friendly German message
  * This helps avoid showing raw "Not Found" or technical errors to users
+ * Works together with axiosConfig.js interceptor
  */
 export function getErrorMessage(error, fallback = 'Ein Fehler ist aufgetreten') {
+  // If error was already marked as silent by interceptor, skip toast
+  if (error?.isSilentError || error?.suppressToast) {
+    return null;
+  }
+  
   const detail = error?.response?.data?.detail;
   
+  // If no detail or empty string, use fallback
   if (!detail) return fallback;
   
-  // Skip showing these specific errors as toasts (they're not user-actionable)
-  const silentErrors = [
+  // Additional check for silent error patterns (backup for interceptor)
+  const silentPatterns = [
     'not found',
-    'Not found',
-    'NOT FOUND',
-    'User not found',
-    'user not found'
+    'method not allowed',
+    'network error'
   ];
   
-  if (silentErrors.some(e => detail.includes(e))) {
+  const lowerDetail = detail.toLowerCase();
+  if (silentPatterns.some(p => lowerDetail.includes(p))) {
     return null; // Return null to indicate "don't show toast"
   }
   
   return detail;
+}
+
+/**
+ * Show error toast only if the error is not silent
+ */
+export function showErrorToast(error, fallback = 'Fehler') {
+  const message = getErrorMessage(error, fallback);
+  if (message) {
+    const { toast } = require('sonner');
+    toast.error(message);
+  }
 }
