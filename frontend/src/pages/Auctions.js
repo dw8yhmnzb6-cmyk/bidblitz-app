@@ -905,11 +905,17 @@ export default function Auctions() {
     for (const id of stableOrderRef.current) {
       if (auctionMap.has(id)) {
         const auction = auctionMap.get(id);
-        // Double check it's not ended (timer > -5s)
-        const timeLeft = new Date(auction.end_time).getTime() - Date.now();
-        if (timeLeft > -5000) {
+        // For night filter, don't check time - show all
+        if (activeFilter === 'nacht') {
           result.push(auction);
           usedIds.add(id);
+        } else {
+          // Double check it's not ended (timer > -5s)
+          const timeLeft = new Date(auction.end_time).getTime() - Date.now();
+          if (timeLeft > -5000) {
+            result.push(auction);
+            usedIds.add(id);
+          }
         }
       }
     }
@@ -922,13 +928,15 @@ export default function Auctions() {
       let insertIndex = result.length; // Default: end
       for (let i = 0; i < result.length; i++) {
         const existing = result[i];
-        // Night auctions go to the bottom
-        if (newAuction.is_night_auction && !existing.is_night_auction) {
-          continue; // Keep looking
-        }
-        if (!newAuction.is_night_auction && existing.is_night_auction) {
-          insertIndex = i;
-          break;
+        // Night auctions go to the bottom (unless we're in nacht filter)
+        if (activeFilter !== 'nacht') {
+          if (newAuction.is_night_auction && !existing.is_night_auction) {
+            continue; // Keep looking
+          }
+          if (!newAuction.is_night_auction && existing.is_night_auction) {
+            insertIndex = i;
+            break;
+          }
         }
         // Same category: compare by end time
         if (new Date(newAuction.end_time).getTime() < new Date(existing.end_time).getTime()) {
