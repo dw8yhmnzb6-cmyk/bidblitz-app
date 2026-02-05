@@ -9,41 +9,53 @@
   display: none !important;
 }
 
+/* Light Theme (Default) */
 :root {
-  /* Cyber-Auction Protocol Theme */
-  --bg-default: #050505;
-  --bg-paper: #0A0A0F;
-  --bg-subtle: #12121A;
+  --bg-primary: #ECFEFF; /* cyan-50 */
+  --bg-secondary: #CFFAFE; /* cyan-100 */
+  --bg-card: #FFFFFF;
+  --bg-card-hover: #F8FAFC;
   
-  /* Acid Green - Primary */
-  --acid: #D4FF00;
-  --acid-hover: #E5FF4D;
-  --acid-glow: rgba(212, 255, 0, 0.5);
+  --text-primary: #1F2937; /* gray-800 */
+  --text-secondary: #6B7280; /* gray-500 */
+  --text-muted: #9CA3AF; /* gray-400 */
   
-  /* Cyber Blue - Secondary */
-  --cyber: #00F0FF;
-  --cyber-hover: #4DFAFF;
-  --cyber-glow: rgba(0, 240, 255, 0.5);
+  --accent-primary: #F59E0B; /* amber-500 */
+  --accent-secondary: #EA580C; /* orange-600 */
+  --accent-cyan: #06B6D4; /* cyan-500 */
   
-  /* Hot Pink - Accent/Urgency */
-  --hot-pink: #FF0099;
-  --hot-pink-hover: #FF33B2;
-  --urgency: #FF3B30;
+  --border-light: #E5E7EB; /* gray-200 */
+  --border-medium: #D1D5DB; /* gray-300 */
+}
+
+/* Dark Theme */
+.dark {
+  --bg-primary: #050509;
+  --bg-secondary: #0D0D14;
+  --bg-card: #181824;
+  --bg-card-hover: #252532;
   
-  /* Legacy support */
-  --primary: #D4FF00;
-  --primary-light: #E5FF4D;
-  --secondary: #00F0FF;
-  --secondary-light: #4DFAFF;
-  --accent: #FF0099;
-  --accent-light: #FF33B2;
-  --cyan: #00F0FF;
-  --purple: #7C3AED;
-  --warning: #F59E0B;
-  --success: #10B981;
-  --text-primary: #FFFFFF;
+  --text-primary: #F8FAFC;
   --text-secondary: #94A3B8;
-  --text-muted: #475569;
+  --text-muted: #64748B;
+  
+  --accent-primary: #F59E0B;
+  --accent-secondary: #EA580C;
+  --accent-cyan: #06B6D4;
+  
+  --border-light: rgba(255,255,255,0.1);
+  --border-medium: rgba(255,255,255,0.2);
+}
+
+/* Apply theme colors to body */
+body {
+  background: linear-gradient(to bottom, var(--bg-primary), var(--bg-secondary));
+  color: var(--text-primary);
+  transition: background 0.3s ease, color 0.3s ease;
+}
+
+.dark body {
+  background: var(--bg-primary);
 }
 
 * {
