@@ -113,9 +113,14 @@ const ProtectedRoute = ({ children, requireAdmin = false }) => {
 
 function AppContent() {
   const { language, mappedLanguage } = useLanguage();
+  const { isDarkMode } = useTheme();
   
   return (
-    <div className="App bg-gradient-to-b from-cyan-50 to-cyan-100 min-h-screen flex flex-col overflow-x-hidden">
+    <div className={`App min-h-screen flex flex-col overflow-x-hidden transition-colors duration-300 ${
+      isDarkMode 
+        ? 'bg-[#050509] text-white' 
+        : 'bg-gradient-to-b from-cyan-50 to-cyan-100 text-gray-800'
+    }`}>
       {/* Scroll to top on route change */}
       <ScrollToTopOnNavigate />
       
