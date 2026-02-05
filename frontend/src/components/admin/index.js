@@ -17,6 +17,7 @@ export { AdminBanners } from './AdminBanners';
 export { AdminInfluencers } from './AdminInfluencers';
 export { AdminWholesale } from './AdminWholesale';
 export { AdminGameConfig } from './AdminGameConfig';
+export { AdminDebugReports } from './AdminDebugReports';
 
 // New Dashboard Widgets
 export { default as AdminQuickActions } from './AdminQuickActions';
