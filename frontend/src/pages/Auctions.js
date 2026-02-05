@@ -1006,17 +1006,17 @@ export default function Auctions() {
             </h2>
           
           {gridAuctions.length === 0 ? (
-            <div className="text-center py-8 text-gray-600">
-              <p className="text-lg">{t('auctionPage.noAuctionsInCategory')}</p>
+            <div className="text-center py-12 text-gray-500">
+              <p className="text-lg font-body">{t('auctionPage.noAuctionsInCategory')}</p>
               <button 
                 onClick={() => setActiveFilter('live')}
-                className="mt-2 text-cyan-600 underline"
+                className="mt-3 text-acid hover:text-acid-hover underline font-body transition-colors"
               >
                 {t('auctionPage.showAllLive')}
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
               {gridAuctions.map(auction => (
                 activeFilter === 'ende' ? (
                   <EndedAuctionCard 
@@ -1041,56 +1041,57 @@ export default function Auctions() {
           )}
         </div>
         
-        {/* Trust Badges - Right Side (hidden on mobile) */}
-        <div className="hidden sm:flex flex-col gap-2 w-24">
+        {/* Trust Badges - Right Side (hidden on mobile) - Cyber Style */}
+        <div className="hidden sm:flex flex-col gap-3 w-28">
           {/* SSL */}
-          <div className="bg-white rounded-lg p-2 border border-green-200 shadow-sm">
+          <div className="bg-obsidian-subtle rounded-md p-3 border border-acid/20 shadow-neon-acid">
             <div className="flex items-center gap-2">
-              <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
-                <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="w-6 h-6 bg-acid rounded flex items-center justify-center flex-shrink-0">
+                <svg className="w-4 h-4 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
               <div>
-                <p className="text-[9px] font-bold text-green-800">SSL</p>
-                <p className="text-[7px] text-green-600">256-Bit</p>
+                <p className="text-[9px] font-heading font-bold text-acid uppercase">SSL</p>
+                <p className="text-[7px] text-gray-500 font-mono">256-Bit</p>
               </div>
             </div>
           </div>
           
           {/* Stripe */}
-          <div className="bg-white rounded-lg p-2 border border-blue-200 shadow-sm">
+          <div className="bg-obsidian-subtle rounded-md p-3 border border-cyber/20 shadow-neon-cyber">
             <div className="flex items-center gap-2">
-              <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
-                <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="w-6 h-6 bg-cyber rounded flex items-center justify-center flex-shrink-0">
+                <svg className="w-4 h-4 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
                 </svg>
               </div>
               <div>
-                <p className="text-[9px] font-bold text-blue-800">Stripe</p>
-                <p className="text-[7px] text-blue-600">PayPal</p>
+                <p className="text-[9px] font-heading font-bold text-cyber uppercase">Stripe</p>
+                <p className="text-[7px] text-gray-500 font-mono">PayPal</p>
               </div>
             </div>
           </div>
           
           {/* Dubai */}
-          <div className="bg-white rounded-lg p-2 border border-amber-200 shadow-sm">
+          <div className="bg-obsidian-subtle rounded-md p-3 border border-hot-pink/20 shadow-neon-pink">
             <div className="flex items-center gap-2">
-              <div className="w-6 h-6 bg-amber-500 rounded-full flex items-center justify-center flex-shrink-0">
+              <div className="w-6 h-6 bg-hot-pink rounded flex items-center justify-center flex-shrink-0">
                 <svg className="w-4 h-4 text-white" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
                 </svg>
               </div>
               <div>
-                <p className="text-[9px] font-bold text-amber-800">Dubai</p>
-                <p className="text-[7px] text-amber-600">DSOA</p>
+                <p className="text-[9px] font-heading font-bold text-hot-pink uppercase">Dubai</p>
+                <p className="text-[7px] text-gray-500 font-mono">DSOA</p>
               </div>
             </div>
           </div>
         </div>
       </div>
       
-      <p className="text-center text-[8px] text-gray-500 mt-2">{t('auctionPage.priceNote')}</p>
+      <p className="text-center text-[10px] text-gray-500 mt-6 font-body">{t('auctionPage.priceNote')}</p>
+      </div>
     </div>
   );
 }
