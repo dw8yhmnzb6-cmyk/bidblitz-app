@@ -9,7 +9,7 @@ import { HappyHourBanner, LuckyBidCounter, ExcitementStatusBar } from '../compon
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
-// Auction of the Day Component - Cyber Style Special highlight
+// Auction of the Day Component - Special highlight
 const AuctionOfTheDay = memo(({ auction, product, onBid, t, language }) => {
   if (!auction || !product) return null;
   
@@ -33,78 +33,73 @@ const AuctionOfTheDay = memo(({ auction, product, onBid, t, language }) => {
   
   return (
     <div 
-      className="relative rounded-xl p-[2px] mb-4 cursor-pointer group overflow-hidden" 
+      className="bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-400 rounded-xl p-1 mb-4 shadow-lg cursor-pointer" 
       data-testid="auction-of-the-day"
       onClick={() => window.location.href = `/auctions/${auction.id}`}
     >
-      {/* Animated Border Gradient */}
-      <div className="absolute inset-0 bg-gradient-to-r from-acid via-cyber to-hot-pink animate-border-flow opacity-80" style={{ backgroundSize: '200% 200%' }} />
-      
-      <div className="relative bg-obsidian-paper rounded-lg p-4 sm:p-5">
-        {/* Header with crown icon - Cyber Style */}
-        <div className="flex items-center justify-between mb-3 sm:mb-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-md bg-acid flex items-center justify-center shadow-neon-acid">
-              <span className="text-xl">👑</span>
-            </div>
+      <div className="bg-gradient-to-b from-amber-50 to-white rounded-lg p-3 sm:p-4">
+        {/* Header with crown icon */}
+        <div className="flex items-center justify-between mb-2 sm:mb-3">
+          <div className="flex items-center gap-2">
+            <span className="text-xl sm:text-2xl">👑</span>
             <div>
-              <h2 className="text-sm sm:text-base font-heading font-black text-acid uppercase tracking-wider">{t('auctionPage.auctionOfDay')}</h2>
-              <p className="text-[10px] sm:text-xs text-gray-500 font-body">{t('auctionPage.topOffer')}</p>
+              <h2 className="text-sm sm:text-lg font-black text-amber-800 uppercase tracking-wide">{t('auctionPage.auctionOfDay')}</h2>
+              <p className="text-[10px] sm:text-xs text-amber-600">{t('auctionPage.topOffer')}</p>
             </div>
           </div>
-          <div className="bg-hot-pink text-white px-3 py-1 rounded-md text-xs sm:text-sm font-heading font-bold animate-pulse">
+          <div className="bg-red-500 text-white px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-xs sm:text-sm font-bold animate-pulse">
             -{discount}%
           </div>
         </div>
         
         {/* Mobile: Stack layout, Desktop: Side by side */}
-        <div className="flex flex-col sm:flex-row gap-4">
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
           {/* Product Image */}
-          <div className="w-full sm:w-32 h-28 sm:h-32 bg-obsidian-subtle rounded-md flex items-center justify-center border border-white/10 flex-shrink-0">
+          <div className="w-full sm:w-28 h-24 sm:h-28 bg-white rounded-lg flex items-center justify-center shadow-inner border border-amber-200 flex-shrink-0">
             <img 
               src={product.image_url || 'https://via.placeholder.com/128'} 
               alt={product.name}
-              className="max-w-full max-h-full object-contain p-2 group-hover:scale-105 transition-transform duration-300"
+              className="max-w-full max-h-full object-contain p-2"
             />
           </div>
           
           {/* Product Info */}
           <div className="flex-1 min-w-0">
-            <h3 className="text-sm sm:text-lg font-heading font-bold text-white uppercase leading-tight mb-2 line-clamp-2">
+            <h3 className="text-sm sm:text-base font-bold text-gray-800 uppercase leading-tight mb-1 line-clamp-2">
               {productName}
             </h3>
-            <p className="text-xs sm:text-sm text-gray-500 mb-3 font-mono">
+            <p className="text-xs sm:text-sm text-gray-500 mb-2">
               {t('auctionPage.uvp')}: <span className="line-through">€ {product.retail_price?.toLocaleString('de-DE')},-</span>
             </p>
             
             <div className="flex items-center justify-between sm:items-end sm:gap-4">
               <div>
-                <p className="text-[10px] sm:text-xs text-gray-500 font-body">{t('auctionPage.currentPrice')}</p>
-                <p className="text-2xl sm:text-3xl font-heading font-black text-acid">
+                <p className="text-[10px] sm:text-xs text-gray-500">{t('auctionPage.currentPrice')}</p>
+                <p className="text-xl sm:text-2xl font-black text-amber-600">
                   € {auction.current_price?.toFixed(2).replace('.', ',')}
                 </p>
-                <p className="text-[10px] sm:text-xs text-cyber font-mono">{lastBidder || t('auctionPage.startPrice')}</p>
+                <p className="text-[10px] sm:text-xs text-cyan-700">{lastBidder || t('auctionPage.startPrice')}</p>
               </div>
               
               <div className="text-center">
-                <p className="text-[10px] sm:text-xs text-gray-500 mb-1 font-body">{t('auctionPage.remaining')}</p>
+                <p className="text-[10px] sm:text-xs text-gray-500 mb-1">{t('auctionPage.remaining')}</p>
                 <LiveTimer endTime={auction.end_time} />
               </div>
             </div>
             
             <button 
               onClick={(e) => { e.stopPropagation(); onBid(auction.id); }}
-              className="mt-3 sm:mt-4 w-full py-2.5 sm:py-3 bg-acid hover:bg-acid-hover text-black font-heading font-black text-xs sm:text-sm rounded-md shadow-neon-acid transition-all hover:shadow-[0_0_30px_rgba(212,255,0,0.5)] uppercase tracking-wider"
+              className="mt-2 sm:mt-3 w-full py-2 sm:py-2.5 bg-gradient-to-b from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-white font-bold text-xs sm:text-sm rounded-lg shadow-md transition-all hover:shadow-lg"
               data-testid="aotd-bid-button"
             >
-              ⚡ {t('auctionPage.bidNow')}
+              🔥 {t('auctionPage.bidNow')}
             </button>
           </div>
         </div>
         
-        <div className="mt-3 sm:mt-4 pt-3 border-t border-white/10 flex items-center justify-between text-[10px] sm:text-xs text-gray-500 font-body">
-          <span className="flex items-center gap-1"><span className="text-acid">⚡</span> {auction.total_bids || 0} {t('auctionPage.bidsCount')}</span>
-          <span>{t('auctionPage.lastSoldFor')} <span className="text-acid font-bold font-mono">€ {(product.retail_price * 0.01).toFixed(2).replace('.', ',')}</span></span>
+        <div className="mt-2 sm:mt-3 pt-2 border-t border-amber-200 flex items-center justify-between text-[10px] sm:text-xs text-gray-500">
+          <span>⚡ {auction.total_bids || 0} {t('auctionPage.bidsCount')}</span>
+          <span>{t('auctionPage.lastSoldFor')} <span className="text-green-600 font-bold">€ {(product.retail_price * 0.01).toFixed(2).replace('.', ',')}</span></span>
         </div>
       </div>
     </div>
