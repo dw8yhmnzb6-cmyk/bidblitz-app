@@ -250,9 +250,9 @@ export default function Register() {
           </form>
 
           <div className="mt-6 text-center">
-            <p className="text-[#94A3B8]">
+            <p className="text-gray-400 font-body">
               {texts.hasAccount}{' '}
-              <Link to="/login" className="text-[#7C3AED] hover:underline font-medium">
+              <Link to="/login" className="text-acid hover:text-acid-hover font-bold transition-colors">
                 {texts.loginHere}
               </Link>
             </p>
