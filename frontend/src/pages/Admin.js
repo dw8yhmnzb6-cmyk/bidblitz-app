@@ -718,25 +718,25 @@ export default function Admin() {
       await axios.post(`${API}/influencer/admin/create`, influencerForm, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      toast.success('🌟 Influencer erstellt!');
+      toast.success(at('influencerCreated'));
       setShowInfluencerModal(false);
       setInfluencerForm({ name: '', code: '', commission_percent: 10, email: '', instagram: '', youtube: '', tiktok: '' });
       fetchData();
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Fehler beim Erstellen');
+      toast.error(error.response?.data?.detail || at('errorCreatingInfluencer'));
     }
   };
 
   const handleDeleteInfluencer = async (influencerId) => {
-    if (!window.confirm('Influencer wirklich löschen?')) return;
+    if (!window.confirm(at('confirmDeleteInfluencer'))) return;
     try {
       await axios.delete(`${API}/influencer/admin/${influencerId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      toast.success('Influencer gelöscht');
+      toast.success(at('influencerDeleted'));
       fetchData();
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Fehler');
+      toast.error(error.response?.data?.detail || at('error'));
     }
   };
 
@@ -746,10 +746,10 @@ export default function Admin() {
         { is_active: !currentStatus },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      toast.success(currentStatus ? 'Influencer deaktiviert' : 'Influencer aktiviert');
+      toast.success(currentStatus ? at('influencerDeactivated') : at('influencerActivated'));
       fetchData();
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Fehler');
+      toast.error(error.response?.data?.detail || at('error'));
     }
   };
 
