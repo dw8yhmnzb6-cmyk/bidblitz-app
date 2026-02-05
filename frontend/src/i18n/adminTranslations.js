@@ -149,7 +149,89 @@ export const adminTranslations = {
     refresh: 'Aktualisieren',
     export: 'Exportieren',
     filter: 'Filtern',
-    search: 'Suchen'
+    search: 'Suchen',
+    
+    // Toast Messages - Products
+    productCreated: 'Produkt erstellt',
+    productUpdated: 'Produkt aktualisiert',
+    productDeleted: 'Produkt gelöscht',
+    confirmDeleteProduct: 'Produkt wirklich löschen?',
+    errorDeleting: 'Fehler beim Löschen',
+    
+    // Toast Messages - Auctions
+    auctionCreated: 'Auktion erstellt',
+    auctionExtended: 'Auktion verlängert',
+    auctionEnded: 'Auktion beendet',
+    auctionRestarted: 'Auktion neu gestartet!',
+    auctionDeleted: 'Auktion gelöscht',
+    autoRestartEnabled: 'Auto-Neustart aktiviert',
+    botsWillBidTo: 'Bots bieten bis',
+    botBidFailed: 'Bot-Bieten fehlgeschlagen - Bots erstellen?',
+    confirmDeleteAuction: 'Auktion wirklich löschen?',
+    errorRestarting: 'Fehler beim Neustarten',
+    vipStatusRemoved: 'VIP-Status entfernt',
+    markedAsVip: 'Als VIP-Auktion markiert',
+    vipOnlyRemoved: 'VIP-Only Status entfernt',
+    markedAsVipOnly: 'Als VIP-Only markiert',
+    setAsAotd: '🏆 Als Auktion des Tages gesetzt!',
+    
+    // Toast Messages - Users
+    adminStatusChanged: 'Admin-Status geändert',
+    userBlocked: 'Benutzer gesperrt',
+    userUnblocked: 'Benutzer entsperrt',
+    guaranteedWinnerEnabled: 'Garantierter Gewinner aktiviert 🏆',
+    guaranteedWinnerDisabled: 'Garantierter Gewinner deaktiviert',
+    bidsAdded: 'Gebote hinzugefügt',
+    userUpdated: 'Benutzer aktualisiert',
+    enterBidsAmount: 'Anzahl der Gebote hinzufügen:',
+    
+    // Toast Messages - Vouchers
+    voucherCreated: 'Gutschein erstellt',
+    voucherStatusChanged: 'Gutschein-Status geändert',
+    voucherDeleted: 'Gutschein gelöscht',
+    confirmDeleteVoucher: 'Gutschein wirklich löschen?',
+    
+    // Toast Messages - Bots
+    botCreated: 'Bot erstellt',
+    botDeleted: 'Bot gelöscht',
+    confirmDeleteBot: 'Bot wirklich löschen?',
+    testDataCreated: 'Testdaten erstellt',
+    
+    // Toast Messages - Influencers
+    influencerCreated: '🌟 Influencer erstellt!',
+    influencerDeleted: 'Influencer gelöscht',
+    influencerActivated: 'Influencer aktiviert',
+    influencerDeactivated: 'Influencer deaktiviert',
+    confirmDeleteInfluencer: 'Influencer wirklich löschen?',
+    errorCreatingInfluencer: 'Fehler beim Erstellen',
+    
+    // Toast Messages - Wholesale
+    wholesaleApproved: 'Großkunde freigeschaltet!',
+    wholesaleRejected: 'Bewerbung abgelehnt',
+    wholesaleUpdated: 'Großkunde aktualisiert',
+    wholesaleRemoved: 'Großkundenstatus entfernt',
+    confirmRejectApplication: 'Bewerbung wirklich ablehnen?',
+    confirmRemoveWholesale: 'Großkundenstatus wirklich entfernen?',
+    errorApproving: 'Fehler beim Freischalten',
+    
+    // Toast Messages - Pages
+    pageSaved: 'Seite gespeichert',
+    pageReset: 'Seite zurückgesetzt',
+    confirmResetPage: 'Seite auf Standardinhalt zurücksetzen?',
+    errorSavingPage: 'Fehler beim Speichern',
+    errorResettingPage: 'Fehler beim Zurücksetzen',
+    
+    // Toast Messages - Settings
+    settingsSaved: 'Einstellungen gespeichert!',
+    errorSavingSettings: 'Fehler beim Speichern',
+    
+    // Prompts
+    promptExtendTime: 'Zeit verlängern um (Sekunden):',
+    promptDurationMinutes: 'Dauer in Minuten:',
+    promptBotTarget: 'Bots bieten bis (€):',
+    promptBotTargetDesc: 'Bots werden kontinuierlich bieten bis dieser Preis erreicht ist.\nLeer lassen = Standard €2-3:',
+    promptAutoRestartDuration: 'Auto-Neustart Dauer in Minuten (0 = deaktiviert):',
+    promptBotTargetAutoRestart: 'Bots bieten bis (€) für Auto-Neustart:\n\nBots bieten kontinuierlich bis zu diesem Preis.\nLeer = Standard €2-3:'
   },
   
   en: {
