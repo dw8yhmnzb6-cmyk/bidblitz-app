@@ -123,8 +123,8 @@ export default function Invoices() {
                     </div>
                     
                     <div>
-                      <p className="text-white font-medium">{invoice.invoice_number}</p>
-                      <p className="text-gray-400 text-sm mt-0.5">{invoice.description}</p>
+                      <p className="text-gray-800 font-medium">{invoice.invoice_number}</p>
+                      <p className="text-gray-500 text-sm mt-0.5">{invoice.description}</p>
                       <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
                         <span className="flex items-center gap-1">
                           <Calendar className="w-3 h-3" />
@@ -132,8 +132,8 @@ export default function Invoices() {
                         </span>
                         <span className={`px-2 py-0.5 rounded ${
                           invoice.type === 'auction_win'
-                            ? 'bg-green-500/20 text-green-400'
-                            : 'bg-blue-500/20 text-blue-400'
+                            ? 'bg-green-100 text-green-600'
+                            : 'bg-blue-100 text-blue-600'
                         }`}>
                           {invoice.type === 'auction_win' ? 'Gewinn' : 'Kauf'}
                         </span>
@@ -142,14 +142,14 @@ export default function Invoices() {
                   </div>
                   
                   <div className="text-right flex flex-col items-end gap-2">
-                    <p className="text-white font-bold text-lg">
+                    <p className="text-gray-800 font-bold text-lg">
                       €{invoice.amount?.toFixed(2).replace('.', ',')}
                     </p>
                     <Button
                       size="sm"
                       variant="ghost"
                       onClick={() => downloadInvoice(invoice)}
-                      className="text-cyan-400 hover:text-cyan-300 hover:bg-cyan-400/10"
+                      className="text-cyan-600 hover:text-cyan-700 hover:bg-cyan-50"
                     >
                       <Download className="w-4 h-4 mr-1" />
                       PDF
@@ -162,8 +162,8 @@ export default function Invoices() {
         )}
 
         {/* Info Note */}
-        <div className="mt-6 p-4 bg-[#1a3a52]/50 rounded-xl border border-white/5">
-          <p className="text-gray-400 text-xs text-center">
+        <div className="mt-6 p-4 bg-white rounded-xl border border-gray-200 shadow-sm">
+          <p className="text-gray-500 text-xs text-center">
             Alle Rechnungen enthalten die gesetzlich vorgeschriebene Mehrwertsteuer (19%).
             Bei Fragen wenden Sie sich an support@bidblitz.de
           </p>
