@@ -156,25 +156,25 @@ const AdBanner = memo(() => {
   );
 });
 
-// Activity Index - Snipster Style (30-60%)
+// Activity Index - Cyber Style (30-60%)
 const ActivityIndex = memo(({ auctionId = '', t }) => {
   const hash = auctionId ? auctionId.split('').reduce((a, b) => a + b.charCodeAt(0), 0) : 50;
   const filledCount = 3 + (hash % 4);
   
   return (
     <div className="flex items-center gap-1 mt-1">
-      <span className="text-[8px] text-gray-600">{t('auctionPage.activity')}:</span>
+      <span className="text-[8px] text-gray-500 font-mono">{t('auctionPage.activity')}:</span>
       <div className="flex gap-px">
         {[...Array(10)].map((_, i) => {
-          let color = '#d1d5db';
+          let color = '#374151'; // gray-700 for empty
           if (i < filledCount) {
-            if (i < 2) color = '#22c55e';
-            else if (i < 4) color = '#84cc16';
-            else if (i < 6) color = '#eab308';
-            else if (i < 8) color = '#f97316';
-            else color = '#ef4444';
+            if (i < 2) color = '#d4ff00'; // acid
+            else if (i < 4) color = '#00ffff'; // cyber
+            else if (i < 6) color = '#ff1493'; // hot-pink
+            else if (i < 8) color = '#ff6b35'; // orange
+            else color = '#ff0040'; // red
           }
-          return <div key={i} className="w-1.5 h-2.5 rounded-sm" style={{ backgroundColor: color }} />;
+          return <div key={i} className="w-1.5 h-2.5 rounded-sm border border-white/10" style={{ backgroundColor: color }} />;
         })}
       </div>
     </div>
