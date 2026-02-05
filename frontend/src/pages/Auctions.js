@@ -421,69 +421,58 @@ const AuctionCard = memo(({ auction, product, onBid, t, language }) => {
          prevProps.t === nextProps.t;
 });
 
-// Ended Auction Card - Cyber Style - Shows completed auction info
+// Ended Auction Card - Cyber Style
 const EndedAuctionCard = memo(({ auction, product, t, language }) => {
-  if (!auction) return null;
+  if (!auction || !product) return null;
   
-  const prod = product || auction.product;
-  if (!prod) return null;
+  // Get translated product name (fallback to default name)
+  const productName = product.name_translations?.[language] || product.name;
   
-  const productName = prod.name_translations?.[language] || prod.name;
-  const finalPrice = auction.final_price || auction.current_price || 0;
-  const discount = prod.retail_price 
-    ? Math.round((1 - finalPrice / prod.retail_price) * 100)
+  const discount = product.retail_price 
+    ? Math.round((1 - auction.final_price / product.retail_price) * 100)
     : 99;
   
-  // Format ended time
-  const endedAt = auction.ended_at ? new Date(auction.ended_at) : new Date();
-  const timeAgo = Math.floor((Date.now() - endedAt.getTime()) / 60000); // minutes ago
-  const timeAgoText = timeAgo < 60 
-    ? `${timeAgo} min` 
-    : timeAgo < 1440 
-      ? `${Math.floor(timeAgo / 60)} h` 
-      : `${Math.floor(timeAgo / 1440)} d`;
-  
   return (
-    <div className="bg-obsidian-paper rounded-lg overflow-hidden border border-white/10 opacity-80">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-obsidian-subtle to-obsidian-paper text-gray-400 text-[9px] font-heading font-bold py-1 px-2 flex items-center justify-between border-b border-white/10">
-        <span className="bg-gray-600 text-white px-1.5 py-0.5 rounded text-[8px] font-bold">
+    <div className="bg-obsidian-paper rounded-md overflow-hidden border border-white/5 opacity-75 hover:opacity-100 transition-all duration-300"
+         onClick={() => window.location.href = `/auctions/${auction.id || auction.auction_id}`}
+         data-testid={`ended-auction-card-${auction.id || auction.auction_id}`}>
+      
+      <div className="bg-obsidian-subtle text-gray-500 text-[9px] font-bold py-1.5 px-2 flex items-center justify-between border-b border-white/5">
+        <span className="bg-gray-700 text-gray-400 px-1.5 py-0.5 rounded text-[8px] font-heading uppercase">
+          {t('auctionPage.ended')}
+        </span>
+        <span className="text-[8px] text-gray-600 font-mono">
           -{discount}%
         </span>
-        <span className="text-[8px] opacity-80 font-mono">✓ {timeAgoText}</span>
       </div>
       
-      {/* Winner Banner */}
-      <div className="bg-acid text-black text-[8px] px-2 py-1 text-center font-heading font-bold">
-        🏆 {auction.winner_name || 'Gewinner'}
-      </div>
-      
-      {/* Content */}
-      <div className="p-2">
-        <h3 className="text-[10px] font-heading font-bold text-gray-400 uppercase leading-tight mb-1 line-clamp-2 min-h-[24px]">
+      <div className="p-2.5">
+        <h3 className="text-[10px] font-heading font-bold text-gray-400 uppercase leading-tight mb-1.5 line-clamp-2 min-h-[24px]">
           {productName}
         </h3>
-        <p className="text-[8px] text-gray-500 mb-1 line-through font-mono">
-          UVP: € {prod.retail_price?.toLocaleString('de-DE')},-
-        </p>
         
         <div className="flex gap-2">
           <div className="flex-1">
-            <div>
-              <span className="text-sm font-heading font-black text-acid">
-                € {finalPrice?.toFixed(2).replace('.', ',')}
-              </span>
-              <p className="text-[8px] text-gray-500 font-body">{t('auctionPage.endPrice') || 'Endpreis'}</p>
-            </div>
+            <p className="text-[8px] text-gray-600 font-body">{t('auctionPage.soldFor')}</p>
+            <span className="text-base font-heading font-black text-gray-400">
+              € {auction.final_price?.toFixed(2).replace('.', ',')}
+            </span>
+            <p className="text-[9px] text-acid font-body mt-1">
+              👤 {auction.winner_name || '---'}
+            </p>
           </div>
           
-          <div className="w-14 h-14 bg-obsidian-subtle rounded flex items-center justify-center border border-white/5 flex-shrink-0 grayscale">
-            <img src={prod.image_url || 'https://via.placeholder.com/56'} alt="" className="max-w-full max-h-full object-contain" />
+          <div className="w-12 h-12 bg-obsidian-subtle rounded flex items-center justify-center flex-shrink-0 border border-white/5">
+            <img src={product.image_url || 'https://via.placeholder.com/48'} alt="" className="max-w-full max-h-full object-contain opacity-60" />
           </div>
         </div>
-        
-        <p className="text-[8px] text-gray-500 mt-1 font-mono">
-          {auction.total_bids || 0} {t('auctionPage.bidsCount')}
+      </div>
+      
+      <div className="bg-obsidian-subtle/30 px-2 py-1.5 text-center border-t border-white/5">
+        <p className="text-[8px] text-gray-600 font-body">
+          {t('auctionPage.endedAt')} {new Date(auction.end_time).toLocaleString('de-DE', { 
+            day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' 
+          })}
         </p>
       </div>
     </div>
