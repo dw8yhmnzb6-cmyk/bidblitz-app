@@ -144,18 +144,24 @@ export default function Login() {
   }, []);
 
   return (
-    <div className="min-h-screen pt-24 pb-12 px-4 flex items-center justify-center" data-testid="login-page">
-      <div className="w-full max-w-md">
-        <div className="glass-card rounded-2xl p-8">
-          {/* Logo */}
+    <div className="min-h-screen pt-24 pb-12 px-4 flex items-center justify-center bg-obsidian" data-testid="login-page">
+      {/* Background Effects */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-acid/5 rounded-full blur-[120px]" />
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-cyber/5 rounded-full blur-[120px]" />
+      </div>
+      
+      <div className="w-full max-w-md relative z-10">
+        <div className="backdrop-blur-xl bg-obsidian-paper/90 border border-white/10 rounded-xl p-8 shadow-2xl">
+          {/* Logo - Cyber Style */}
           <div className="text-center mb-8">
             <Link to="/" className="inline-flex items-center gap-2">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#7C3AED] to-[#06B6D4] flex items-center justify-center">
-                <Zap className="w-7 h-7 text-white" />
+              <div className="w-12 h-12 rounded-md bg-acid flex items-center justify-center shadow-neon-acid">
+                <Zap className="w-7 h-7 text-black" />
               </div>
             </Link>
-            <h1 className="text-2xl font-bold text-white mt-4">{texts.welcomeBack}</h1>
-            <p className="text-[#94A3B8] mt-2">
+            <h1 className="text-2xl font-heading font-black text-white mt-4 uppercase tracking-wider">{texts.welcomeBack}</h1>
+            <p className="text-gray-400 mt-2 font-body">
               {requires2FA ? texts.twoFactorAuth : texts.loginToContinue}
             </p>
           </div>
@@ -164,9 +170,9 @@ export default function Login() {
             {!requires2FA ? (
               <>
                 <div className="space-y-2">
-                  <Label htmlFor="email" className="text-white">{texts.email}</Label>
+                  <Label htmlFor="email" className="text-white font-body">{texts.email}</Label>
                   <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#94A3B8]" />
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
                     <Input
                       id="email"
                       type="email"
@@ -175,7 +181,7 @@ export default function Login() {
                       onChange={(e) => setEmail(e.target.value)}
                       required
                       autoComplete="email"
-                      className="pl-10 h-12 bg-[#181824] border-white/10 text-white placeholder:text-[#475569]"
+                      className="pl-10 h-12 bg-obsidian border-white/10 text-white placeholder:text-gray-600 focus:border-acid focus:ring-acid/20 font-body"
                       data-testid="email-input"
                     />
                   </div>
@@ -183,13 +189,13 @@ export default function Login() {
 
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="password" className="text-white">{texts.password}</Label>
-                    <Link to="/forgot-password" className="text-sm text-[#7C3AED] hover:underline">
+                    <Label htmlFor="password" className="text-white font-body">{texts.password}</Label>
+                    <Link to="/forgot-password" className="text-sm text-acid hover:text-acid-hover transition-colors font-body">
                       {texts.forgotPassword}
                     </Link>
                   </div>
                   <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#94A3B8]" />
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
                     <Input
                       id="password"
                       type={showPassword ? 'text' : 'password'}
@@ -198,13 +204,13 @@ export default function Login() {
                       onChange={(e) => setPassword(e.target.value)}
                       required
                       autoComplete="current-password"
-                      className="pl-10 pr-10 h-12 bg-[#181824] border-white/10 text-white placeholder:text-[#475569]"
+                      className="pl-10 pr-10 h-12 bg-obsidian border-white/10 text-white placeholder:text-gray-600 focus:border-acid focus:ring-acid/20 font-body"
                       data-testid="password-input"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[#94A3B8] hover:text-white"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-acid transition-colors"
                     >
                       {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                     </button>
@@ -213,14 +219,14 @@ export default function Login() {
               </>
             ) : (
               <div className="space-y-4">
-                <div className="text-center p-4 rounded-xl bg-[#7C3AED]/10 border border-[#7C3AED]/30">
-                  <Shield className="w-12 h-12 text-[#7C3AED] mx-auto mb-3" />
-                  <p className="text-white font-medium">{texts.twoFactorAuth}</p>
-                  <p className="text-[#94A3B8] text-sm">{texts.enter2FACode}</p>
+                <div className="text-center p-4 rounded-lg bg-cyber/10 border border-cyber/30">
+                  <Shield className="w-12 h-12 text-cyber mx-auto mb-3" />
+                  <p className="text-white font-heading font-bold">{texts.twoFactorAuth}</p>
+                  <p className="text-gray-400 text-sm font-body">{texts.enter2FACode}</p>
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="twoFactorCode" className="text-white">{texts.enter2FACode}</Label>
+                  <Label htmlFor="twoFactorCode" className="text-white font-body">{texts.enter2FACode}</Label>
                   <Input
                     id="twoFactorCode"
                     type="text"
@@ -229,7 +235,7 @@ export default function Login() {
                     onChange={(e) => setTwoFactorCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                     required
                     autoFocus
-                    className="h-14 text-center text-2xl font-mono tracking-[0.5em] bg-[#181824] border-white/10 text-white"
+                    className="h-14 text-center text-2xl font-mono tracking-[0.5em] bg-obsidian border-white/10 text-acid focus:border-cyber focus:ring-cyber/20"
                     data-testid="2fa-input"
                     maxLength={6}
                   />
@@ -241,7 +247,7 @@ export default function Login() {
                     setRequires2FA(false);
                     setTwoFactorCode('');
                   }}
-                  className="text-[#94A3B8] hover:text-white text-sm underline w-full text-center"
+                  className="text-gray-400 hover:text-acid text-sm underline w-full text-center font-body transition-colors"
                 >
                   {texts.back}
                 </button>
@@ -251,7 +257,7 @@ export default function Login() {
             <Button
               type="submit"
               disabled={loading || (requires2FA && twoFactorCode.length !== 6)}
-              className="w-full btn-primary py-3 h-auto"
+              className="w-full bg-acid text-black font-heading font-black uppercase tracking-wider py-3 h-auto hover:bg-acid-hover hover:shadow-neon-acid transition-all"
               data-testid="login-submit"
             >
               {loading ? (
@@ -273,7 +279,7 @@ export default function Login() {
                   <div className="w-full border-t border-white/10"></div>
                 </div>
                 <div className="relative flex justify-center text-sm">
-                  <span className="px-2 bg-[#0D0D14] text-[#94A3B8]">{language === 'de' ? 'oder' : 'or'}</span>
+                  <span className="px-2 bg-obsidian-paper text-gray-500 font-body">{language === 'de' ? 'oder' : 'or'}</span>
                 </div>
               </div>
             )}
@@ -284,7 +290,7 @@ export default function Login() {
                 onClick={handleGoogleLogin}
                 disabled={googleLoading}
                 variant="outline"
-                className="w-full h-12 border-white/20 text-white hover:bg-white/5"
+                className="w-full h-12 border-white/20 text-white hover:bg-white/5 hover:border-acid/30 font-body transition-all"
                 data-testid="google-login-btn"
               >
                 {googleLoading ? (
@@ -310,7 +316,7 @@ export default function Login() {
                   : 'Apple Login requires Apple Developer Credentials. Please configure in .env.'
                 )}
                 variant="outline"
-                className="w-full h-12 border-white/20 text-white hover:bg-white/5 mt-3"
+                className="w-full h-12 border-white/20 text-white hover:bg-white/5 hover:border-acid/30 mt-3 font-body transition-all"
                 data-testid="apple-login-btn"
               >
                 <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="currentColor">
@@ -323,9 +329,9 @@ export default function Login() {
 
           {!requires2FA && (
             <div className="mt-6 text-center">
-              <p className="text-[#94A3B8]">
+              <p className="text-gray-400 font-body">
                 {texts.noAccount}{' '}
-                <Link to="/register" className="text-[#7C3AED] hover:underline font-medium">
+                <Link to="/register" className="text-acid hover:text-acid-hover font-bold transition-colors">
                   {texts.registerNow}
                 </Link>
               </p>
