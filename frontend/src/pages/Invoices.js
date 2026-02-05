@@ -62,12 +62,12 @@ export default function Invoices() {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen pt-24 pb-12 px-4 flex items-center justify-center bg-[#0a1929]">
-        <div className="glass-card p-8 rounded-xl text-center max-w-md">
-          <FileText className="w-16 h-16 text-[#FFD700] mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-white mb-4">Meine Rechnungen</h2>
-          <p className="text-[#94A3B8] mb-6">Melden Sie sich an, um Ihre Rechnungen zu sehen.</p>
-          <Button className="btn-primary" onClick={() => window.location.href = '/login'}>
+      <div className="min-h-screen pt-24 pb-12 px-4 flex items-center justify-center bg-gradient-to-b from-cyan-50 to-cyan-100">
+        <div className="bg-white p-8 rounded-xl text-center max-w-md shadow-lg border border-gray-200">
+          <FileText className="w-16 h-16 text-amber-500 mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-gray-800 mb-4">Meine Rechnungen</h2>
+          <p className="text-gray-600 mb-6">Melden Sie sich an, um Ihre Rechnungen zu sehen.</p>
+          <Button className="bg-amber-500 hover:bg-amber-600 text-white" onClick={() => window.location.href = '/login'}>
             Anmelden
           </Button>
         </div>
@@ -76,44 +76,44 @@ export default function Invoices() {
   }
 
   return (
-    <div className="min-h-screen pt-20 pb-12 px-4 bg-gradient-to-b from-[#0a1929] to-[#0d2538]" data-testid="invoices-page">
+    <div className="min-h-screen pt-20 pb-12 px-4 bg-gradient-to-b from-cyan-50 to-cyan-100" data-testid="invoices-page">
       <div className="max-w-3xl mx-auto">
         
         {/* Header */}
         <div className="flex items-center gap-3 mb-6">
-          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#FFD700] to-[#FF4D4D] flex items-center justify-center">
-            <FileText className="w-6 h-6 text-black" />
+          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center">
+            <FileText className="w-6 h-6 text-white" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-white">Meine Rechnungen</h1>
-            <p className="text-sm text-gray-400">{invoices.length} Rechnungen</p>
+            <h1 className="text-xl font-bold text-gray-800">Meine Rechnungen</h1>
+            <p className="text-sm text-gray-500">{invoices.length} Rechnungen</p>
           </div>
         </div>
 
         {/* Invoice List */}
         {loading ? (
           <div className="flex justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FFD700]"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-500"></div>
           </div>
         ) : invoices.length === 0 ? (
-          <div className="text-center py-12 bg-[#1a3a52] rounded-xl">
-            <FileText className="w-12 h-12 text-gray-600 mx-auto mb-3" />
-            <p className="text-white font-medium">Keine Rechnungen</p>
-            <p className="text-gray-400 text-sm mt-1">Ihre Rechnungen erscheinen hier nach dem Kauf</p>
+          <div className="text-center py-12 bg-white rounded-xl shadow-sm border border-gray-200">
+            <FileText className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+            <p className="text-gray-800 font-medium">Keine Rechnungen</p>
+            <p className="text-gray-500 text-sm mt-1">Ihre Rechnungen erscheinen hier nach dem Kauf</p>
           </div>
         ) : (
           <div className="space-y-3">
             {invoices.map((invoice) => (
               <div 
                 key={invoice.id}
-                className="bg-[#1a3a52] rounded-xl p-4 border border-white/5 hover:border-white/10 transition-all"
+                className="bg-white rounded-xl p-4 border border-gray-200 hover:border-gray-300 transition-all shadow-sm"
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex items-start gap-3">
                     <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
                       invoice.type === 'auction_win' 
-                        ? 'bg-green-500/20 text-green-400'
-                        : 'bg-blue-500/20 text-blue-400'
+                        ? 'bg-green-100 text-green-600'
+                        : 'bg-blue-100 text-blue-600'
                     }`}>
                       {invoice.type === 'auction_win' ? (
                         <Trophy className="w-5 h-5" />
