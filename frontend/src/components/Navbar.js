@@ -182,7 +182,7 @@ export const Navbar = () => {
                     onClick={() => {
                       changeLanguage(lang);
                     }}
-                    className={`text-gray-700 hover:bg-gray-100 cursor-pointer ${language === lang ? 'bg-gray-50' : ''}`}
+                    className={`${isDarkMode ? 'text-white hover:bg-white/10' : 'text-gray-700 hover:bg-gray-100'} cursor-pointer ${language === lang ? (isDarkMode ? 'bg-white/5' : 'bg-gray-50') : ''}`}
                   >
                     {languageList[lang]?.flag} {languageList[lang]?.name}
                   </DropdownMenuItem>
