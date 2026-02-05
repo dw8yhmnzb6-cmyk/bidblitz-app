@@ -1,15 +1,15 @@
 /**
  * Voice Debug Assistant Component
- * Hotword-activated voice debugging for admin panel
- * Uses "Hey BidBlitz" to activate
+ * AI-powered voice debugging for admin panel
+ * Works on all browsers including iOS Safari
  */
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { 
   Mic, MicOff, AlertTriangle, CheckCircle, XCircle, 
-  FileText, Loader2, Volume2, Bug, Sparkles, X,
-  AlertCircle, Info, ChevronDown, ChevronUp
+  FileText, Loader2, Bug, Sparkles, X,
+  AlertCircle, Info, ChevronDown, ChevronUp, Square
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { toast } from 'sonner';
@@ -21,24 +21,22 @@ const API = process.env.REACT_APP_BACKEND_URL;
 const translations = {
   de: {
     title: 'Sprach-Debug-Assistent',
-    subtitle: 'Sage "Hey BidBlitz" um einen Fehler zu melden',
+    subtitle: 'Beschreibe den Fehler per Sprache',
     listening: 'Höre zu...',
-    recording: 'Aufnahme läuft...',
+    recording: 'Aufnahme läuft... Beschreibe den Fehler!',
     processing: 'Verarbeite...',
-    analyzing: 'Analysiere Fehler...',
-    hotwordDetected: 'Hey BidBlitz erkannt! Beschreibe den Fehler...',
+    analyzing: 'Analysiere Fehler mit KI...',
     speakNow: 'Sprich jetzt...',
     stopRecording: 'Aufnahme stoppen',
-    startListening: 'Zuhören starten',
-    stopListening: 'Zuhören stoppen',
+    startRecording: 'Aufnahme starten',
     errorReport: 'Fehler-Report',
     description: 'Beschreibung',
     severity: 'Schweregrad',
     possibleCauses: 'Mögliche Ursachen',
     affectedFiles: 'Betroffene Dateien',
     recommendations: 'Empfehlungen',
-    transcription: 'Transkription',
-    noMicrophone: 'Kein Mikrofon gefunden',
+    transcription: 'Was du gesagt hast',
+    noMicrophone: 'Kein Mikrofon gefunden. Bitte erlaube den Zugriff.',
     microphoneError: 'Mikrofon-Fehler',
     analysisComplete: 'Analyse abgeschlossen!',
     analysisFailed: 'Analyse fehlgeschlagen',
@@ -46,30 +44,30 @@ const translations = {
     medium: 'Mittel',
     high: 'Hoch',
     critical: 'Kritisch',
-    waitingForHotword: 'Warte auf "Hey BidBlitz"...',
     newReport: 'Neuer Report',
     close: 'Schließen',
+    hint: 'Tipp: Drücke den roten Button und beschreibe den Fehler. Z.B. "Der Login funktioniert nicht" oder "Die Seite lädt nicht richtig"',
+    permissionDenied: 'Mikrofon-Zugriff verweigert. Bitte erlaube den Zugriff in deinen Browser-Einstellungen.',
+    recordingTooShort: 'Aufnahme zu kurz. Bitte sprich mindestens 2 Sekunden.',
   },
   en: {
     title: 'Voice Debug Assistant',
-    subtitle: 'Say "Hey BidBlitz" to report a bug',
+    subtitle: 'Describe the bug using voice',
     listening: 'Listening...',
-    recording: 'Recording...',
+    recording: 'Recording... Describe the bug!',
     processing: 'Processing...',
-    analyzing: 'Analyzing error...',
-    hotwordDetected: 'Hey BidBlitz detected! Describe the error...',
+    analyzing: 'Analyzing error with AI...',
     speakNow: 'Speak now...',
     stopRecording: 'Stop recording',
-    startListening: 'Start listening',
-    stopListening: 'Stop listening',
+    startRecording: 'Start recording',
     errorReport: 'Error Report',
     description: 'Description',
     severity: 'Severity',
     possibleCauses: 'Possible Causes',
     affectedFiles: 'Affected Files',
     recommendations: 'Recommendations',
-    transcription: 'Transcription',
-    noMicrophone: 'No microphone found',
+    transcription: 'What you said',
+    noMicrophone: 'No microphone found. Please allow access.',
     microphoneError: 'Microphone error',
     analysisComplete: 'Analysis complete!',
     analysisFailed: 'Analysis failed',
@@ -77,9 +75,11 @@ const translations = {
     medium: 'Medium',
     high: 'High',
     critical: 'Critical',
-    waitingForHotword: 'Waiting for "Hey BidBlitz"...',
     newReport: 'New Report',
     close: 'Close',
+    hint: 'Tip: Press the red button and describe the bug. E.g. "The login doesn\'t work" or "The page doesn\'t load correctly"',
+    permissionDenied: 'Microphone access denied. Please allow access in your browser settings.',
+    recordingTooShort: 'Recording too short. Please speak for at least 2 seconds.',
   }
 };
 
@@ -102,11 +102,10 @@ export const VoiceDebugAssistant = ({ isOpen, onClose }) => {
   const { language } = useLanguage();
   const t = translations[language] || translations.de;
   
-  const [isListening, setIsListening] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [hotwordDetected, setHotwordDetected] = useState(false);
   const [report, setReport] = useState(null);
+  const [recordingTime, setRecordingTime] = useState(0);
   const [expandedSections, setExpandedSections] = useState({
     causes: true,
     files: true,
@@ -115,94 +114,49 @@ export const VoiceDebugAssistant = ({ isOpen, onClose }) => {
   
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
-  const recognitionRef = useRef(null);
   const streamRef = useRef(null);
+  const timerRef = useRef(null);
   
-  // Initialize Speech Recognition for hotword detection
+  // Cleanup on unmount
   useEffect(() => {
-    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-      console.warn('Speech Recognition not supported');
-      return;
-    }
-    
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    recognitionRef.current = new SpeechRecognition();
-    recognitionRef.current.continuous = true;
-    recognitionRef.current.interimResults = true;
-    recognitionRef.current.lang = language === 'de' ? 'de-DE' : 'en-US';
-    
-    recognitionRef.current.onresult = (event) => {
-      const transcript = Array.from(event.results)
-        .map(result => result[0].transcript.toLowerCase())
-        .join(' ');
-      
-      // Check for hotword
-      if (transcript.includes('hey bidblitz') || 
-          transcript.includes('hey bid blitz') ||
-          transcript.includes('hey bitblitz')) {
-        setHotwordDetected(true);
-        startRecording();
-      }
-    };
-    
-    recognitionRef.current.onerror = (event) => {
-      console.error('Speech recognition error:', event.error);
-      if (event.error === 'not-allowed') {
-        toast.error(t.microphoneError);
-      }
-    };
-    
     return () => {
-      if (recognitionRef.current) {
-        recognitionRef.current.stop();
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
       }
     };
-  }, [language, t.microphoneError]);
-  
-  // Start listening for hotword
-  const startListening = useCallback(async () => {
-    try {
-      // Request microphone permission
-      streamRef.current = await navigator.mediaDevices.getUserMedia({ audio: true });
-      
-      if (recognitionRef.current) {
-        recognitionRef.current.start();
-        setIsListening(true);
-        toast.success(t.waitingForHotword);
-      }
-    } catch (err) {
-      console.error('Microphone error:', err);
-      toast.error(t.noMicrophone);
-    }
-  }, [t.waitingForHotword, t.noMicrophone]);
-  
-  // Stop listening
-  const stopListening = useCallback(() => {
-    if (recognitionRef.current) {
-      recognitionRef.current.stop();
-    }
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-    }
-    setIsListening(false);
-    setHotwordDetected(false);
   }, []);
   
-  // Start recording after hotword
-  const startRecording = useCallback(async () => {
+  // Start recording
+  const startRecording = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      streamRef.current = stream;
-      
-      // Stop speech recognition during recording
-      if (recognitionRef.current) {
-        recognitionRef.current.stop();
-      }
-      
-      mediaRecorderRef.current = new MediaRecorder(stream, {
-        mimeType: 'audio/webm'
+      // Request microphone permission
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          sampleRate: 44100
+        } 
       });
       
+      streamRef.current = stream;
+      
+      // Check for supported MIME types
+      let mimeType = 'audio/webm';
+      if (!MediaRecorder.isTypeSupported(mimeType)) {
+        mimeType = 'audio/mp4';
+        if (!MediaRecorder.isTypeSupported(mimeType)) {
+          mimeType = 'audio/ogg';
+          if (!MediaRecorder.isTypeSupported(mimeType)) {
+            mimeType = ''; // Use default
+          }
+        }
+      }
+      
+      const options = mimeType ? { mimeType } : {};
+      mediaRecorderRef.current = new MediaRecorder(stream, options);
       audioChunksRef.current = [];
       
       mediaRecorderRef.current.ondataavailable = (event) => {
@@ -212,47 +166,77 @@ export const VoiceDebugAssistant = ({ isOpen, onClose }) => {
       };
       
       mediaRecorderRef.current.onstop = async () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const mimeTypeUsed = mediaRecorderRef.current.mimeType || 'audio/webm';
+        const audioBlob = new Blob(audioChunksRef.current, { type: mimeTypeUsed });
+        
+        // Check if recording is long enough (at least 1 second)
+        if (recordingTime < 1) {
+          toast.error(t.recordingTooShort);
+          return;
+        }
+        
         await analyzeAudio(audioBlob);
       };
       
-      mediaRecorderRef.current.start();
+      mediaRecorderRef.current.start(100); // Collect data every 100ms
       setIsRecording(true);
+      setRecordingTime(0);
       
-      toast.success(t.hotwordDetected);
+      // Start timer
+      timerRef.current = setInterval(() => {
+        setRecordingTime(prev => prev + 1);
+      }, 1000);
       
-      // Auto-stop after 30 seconds
+      toast.success(t.recording);
+      
+      // Auto-stop after 60 seconds
       setTimeout(() => {
         if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
           stopRecording();
         }
-      }, 30000);
+      }, 60000);
       
     } catch (err) {
       console.error('Recording error:', err);
-      toast.error(t.microphoneError);
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        toast.error(t.permissionDenied);
+      } else {
+        toast.error(t.noMicrophone);
+      }
     }
-  }, [t.hotwordDetected, t.microphoneError]);
+  };
   
   // Stop recording
-  const stopRecording = useCallback(() => {
+  const stopRecording = () => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+    
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
       mediaRecorderRef.current.stop();
     }
+    
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
     }
+    
     setIsRecording(false);
-    setHotwordDetected(false);
-  }, []);
+  };
   
   // Analyze audio
   const analyzeAudio = async (audioBlob) => {
     setIsProcessing(true);
     
     try {
+      // Determine file extension based on MIME type
+      let extension = 'webm';
+      if (audioBlob.type.includes('mp4')) extension = 'mp4';
+      else if (audioBlob.type.includes('ogg')) extension = 'ogg';
+      else if (audioBlob.type.includes('wav')) extension = 'wav';
+      
       const formData = new FormData();
-      formData.append('audio', audioBlob, 'recording.webm');
+      formData.append('audio', audioBlob, `recording.${extension}`);
       formData.append('language', language);
       
       const response = await axios.post(
@@ -262,7 +246,8 @@ export const VoiceDebugAssistant = ({ isOpen, onClose }) => {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'multipart/form-data'
-          }
+          },
+          timeout: 60000 // 60 second timeout
         }
       );
       
@@ -275,10 +260,10 @@ export const VoiceDebugAssistant = ({ isOpen, onClose }) => {
       
     } catch (err) {
       console.error('Analysis error:', err);
-      toast.error(t.analysisFailed);
+      const errorMsg = err.response?.data?.detail || err.response?.data?.error || t.analysisFailed;
+      toast.error(errorMsg);
     } finally {
       setIsProcessing(false);
-      setIsListening(false);
     }
   };
   
@@ -293,16 +278,22 @@ export const VoiceDebugAssistant = ({ isOpen, onClose }) => {
   // Reset for new report
   const resetForNewReport = () => {
     setReport(null);
-    setHotwordDetected(false);
     setIsRecording(false);
     setIsProcessing(false);
-    startListening();
+    setRecordingTime(0);
+  };
+  
+  // Format time
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
   
   if (!isOpen) return null;
   
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden">
         {/* Header */}
         <div className="bg-gradient-to-r from-purple-600 to-indigo-600 p-6 text-white">
@@ -318,7 +309,7 @@ export const VoiceDebugAssistant = ({ isOpen, onClose }) => {
             </div>
             <button 
               onClick={onClose}
-              className="text-white/80 hover:text-white"
+              className="text-white/80 hover:text-white p-2"
             >
               <X className="w-6 h-6" />
             </button>
@@ -327,27 +318,28 @@ export const VoiceDebugAssistant = ({ isOpen, onClose }) => {
         
         {/* Content */}
         <div className="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
-          {/* Status Display */}
+          {/* Recording Interface */}
           {!report && (
             <div className="text-center py-8">
               {/* Microphone Animation */}
-              <div className={`w-32 h-32 mx-auto rounded-full flex items-center justify-center mb-6 transition-all ${
+              <div className={`w-32 h-32 mx-auto rounded-full flex items-center justify-center mb-6 transition-all duration-300 ${
                 isRecording 
-                  ? 'bg-red-100 animate-pulse' 
-                  : isListening 
-                    ? 'bg-green-100 animate-pulse' 
-                    : isProcessing
-                      ? 'bg-purple-100'
-                      : 'bg-gray-100'
+                  ? 'bg-red-100 animate-pulse scale-110' 
+                  : isProcessing
+                    ? 'bg-purple-100'
+                    : 'bg-gray-100 hover:bg-gray-200'
               }`}>
                 {isProcessing ? (
                   <Loader2 className="w-16 h-16 text-purple-600 animate-spin" />
                 ) : isRecording ? (
-                  <Mic className="w-16 h-16 text-red-600 animate-pulse" />
-                ) : isListening ? (
-                  <Volume2 className="w-16 h-16 text-green-600" />
+                  <div className="relative">
+                    <Mic className="w-16 h-16 text-red-600" />
+                    <div className="absolute -top-2 -right-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full font-mono">
+                      {formatTime(recordingTime)}
+                    </div>
+                  </div>
                 ) : (
-                  <MicOff className="w-16 h-16 text-gray-400" />
+                  <Mic className="w-16 h-16 text-gray-400" />
                 )}
               </div>
               
@@ -357,50 +349,55 @@ export const VoiceDebugAssistant = ({ isOpen, onClose }) => {
                   ? t.analyzing 
                   : isRecording 
                     ? t.recording 
-                    : hotwordDetected
-                      ? t.speakNow
-                      : isListening 
-                        ? t.waitingForHotword 
-                        : t.subtitle}
+                    : t.subtitle}
               </p>
               
-              {/* Hotword hint */}
-              {isListening && !isRecording && !hotwordDetected && (
-                <div className="flex items-center justify-center gap-2 text-purple-600 mt-4">
-                  <Sparkles className="w-5 h-5" />
-                  <span className="font-mono">"Hey BidBlitz, es gibt einen Fehler..."</span>
+              {/* Hint */}
+              {!isRecording && !isProcessing && (
+                <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4 mb-6 text-left">
+                  <div className="flex items-start gap-2">
+                    <Sparkles className="w-5 h-5 text-purple-600 flex-shrink-0 mt-0.5" />
+                    <p className="text-sm text-purple-700 dark:text-purple-300">
+                      {t.hint}
+                    </p>
+                  </div>
+                </div>
+              )}
+              
+              {/* Recording Progress Bar */}
+              {isRecording && (
+                <div className="w-full max-w-xs mx-auto mb-6">
+                  <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-red-500 transition-all duration-1000"
+                      style={{ width: `${Math.min((recordingTime / 60) * 100, 100)}%` }}
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">Max. 60 Sekunden</p>
                 </div>
               )}
               
               {/* Control Buttons */}
-              <div className="flex justify-center gap-4 mt-8">
+              <div className="flex justify-center gap-4 mt-4">
                 {isRecording ? (
                   <Button 
                     onClick={stopRecording}
-                    className="bg-red-500 hover:bg-red-600 text-white"
+                    size="lg"
+                    className="bg-red-500 hover:bg-red-600 text-white px-8 py-6 text-lg"
                     disabled={isProcessing}
                   >
-                    <MicOff className="w-5 h-5 mr-2" />
+                    <Square className="w-6 h-6 mr-2 fill-current" />
                     {t.stopRecording}
-                  </Button>
-                ) : isListening ? (
-                  <Button 
-                    onClick={stopListening}
-                    variant="outline"
-                    className="border-gray-300"
-                    disabled={isProcessing}
-                  >
-                    <MicOff className="w-5 h-5 mr-2" />
-                    {t.stopListening}
                   </Button>
                 ) : (
                   <Button 
-                    onClick={startListening}
-                    className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white"
+                    onClick={startRecording}
+                    size="lg"
+                    className="bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-400 hover:to-pink-400 text-white px-8 py-6 text-lg"
                     disabled={isProcessing}
                   >
-                    <Mic className="w-5 h-5 mr-2" />
-                    {t.startListening}
+                    <Mic className="w-6 h-6 mr-2" />
+                    {t.startRecording}
                   </Button>
                 )}
               </div>
@@ -419,9 +416,9 @@ export const VoiceDebugAssistant = ({ isOpen, onClose }) => {
                     <p className="text-sm text-gray-500">{report.id}</p>
                   </div>
                 </div>
-                <span className={`px-3 py-1 rounded-full text-sm font-medium border ${severityColors[report.severity]}`}>
+                <span className={`px-3 py-1 rounded-full text-sm font-medium border flex items-center gap-1 ${severityColors[report.severity]}`}>
                   {severityIcons[report.severity]}
-                  <span className="ml-1">{t[report.severity]}</span>
+                  <span>{t[report.severity]}</span>
                 </span>
               </div>
               
@@ -438,21 +435,23 @@ export const VoiceDebugAssistant = ({ isOpen, onClose }) => {
               </div>
               
               {/* Possible Causes */}
-              <div className="border rounded-lg dark:border-gray-700">
+              <div className="border rounded-lg dark:border-gray-700 overflow-hidden">
                 <button 
                   onClick={() => toggleSection('causes')}
-                  className="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-800"
+                  className="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                 >
                   <div className="flex items-center gap-2">
                     <AlertTriangle className="w-5 h-5 text-orange-500" />
                     <span className="font-medium text-gray-800 dark:text-gray-200">{t.possibleCauses}</span>
-                    <span className="text-sm text-gray-500">({report.possible_causes.length})</span>
+                    <span className="text-sm text-gray-500 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-full">
+                      {report.possible_causes.length}
+                    </span>
                   </div>
-                  {expandedSections.causes ? <ChevronUp /> : <ChevronDown />}
+                  {expandedSections.causes ? <ChevronUp className="w-5 h-5 text-gray-400" /> : <ChevronDown className="w-5 h-5 text-gray-400" />}
                 </button>
                 {expandedSections.causes && (
-                  <div className="px-4 pb-4">
-                    <ul className="space-y-2">
+                  <div className="px-4 pb-4 border-t dark:border-gray-700">
+                    <ul className="space-y-2 mt-3">
                       {report.possible_causes.map((cause, i) => (
                         <li key={i} className="flex items-start gap-2 text-gray-600 dark:text-gray-400">
                           <span className="text-orange-500 mt-1">•</span>
@@ -465,23 +464,25 @@ export const VoiceDebugAssistant = ({ isOpen, onClose }) => {
               </div>
               
               {/* Affected Files */}
-              <div className="border rounded-lg dark:border-gray-700">
+              <div className="border rounded-lg dark:border-gray-700 overflow-hidden">
                 <button 
                   onClick={() => toggleSection('files')}
-                  className="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-800"
+                  className="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                 >
                   <div className="flex items-center gap-2">
                     <FileText className="w-5 h-5 text-blue-500" />
                     <span className="font-medium text-gray-800 dark:text-gray-200">{t.affectedFiles}</span>
-                    <span className="text-sm text-gray-500">({report.affected_files.length})</span>
+                    <span className="text-sm text-gray-500 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-full">
+                      {report.affected_files.length}
+                    </span>
                   </div>
-                  {expandedSections.files ? <ChevronUp /> : <ChevronDown />}
+                  {expandedSections.files ? <ChevronUp className="w-5 h-5 text-gray-400" /> : <ChevronDown className="w-5 h-5 text-gray-400" />}
                 </button>
                 {expandedSections.files && (
-                  <div className="px-4 pb-4">
-                    <ul className="space-y-2">
+                  <div className="px-4 pb-4 border-t dark:border-gray-700">
+                    <ul className="space-y-2 mt-3">
                       {report.affected_files.map((file, i) => (
-                        <li key={i} className="font-mono text-sm text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-2 py-1 rounded">
+                        <li key={i} className="font-mono text-sm text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-3 py-2 rounded">
                           {file}
                         </li>
                       ))}
@@ -491,24 +492,26 @@ export const VoiceDebugAssistant = ({ isOpen, onClose }) => {
               </div>
               
               {/* Recommendations */}
-              <div className="border rounded-lg dark:border-gray-700">
+              <div className="border rounded-lg dark:border-gray-700 overflow-hidden">
                 <button 
                   onClick={() => toggleSection('recommendations')}
-                  className="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-800"
+                  className="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                 >
                   <div className="flex items-center gap-2">
                     <CheckCircle className="w-5 h-5 text-green-500" />
                     <span className="font-medium text-gray-800 dark:text-gray-200">{t.recommendations}</span>
-                    <span className="text-sm text-gray-500">({report.recommendations.length})</span>
+                    <span className="text-sm text-gray-500 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-full">
+                      {report.recommendations.length}
+                    </span>
                   </div>
-                  {expandedSections.recommendations ? <ChevronUp /> : <ChevronDown />}
+                  {expandedSections.recommendations ? <ChevronUp className="w-5 h-5 text-gray-400" /> : <ChevronDown className="w-5 h-5 text-gray-400" />}
                 </button>
                 {expandedSections.recommendations && (
-                  <div className="px-4 pb-4">
-                    <ul className="space-y-2">
+                  <div className="px-4 pb-4 border-t dark:border-gray-700">
+                    <ul className="space-y-2 mt-3">
                       {report.recommendations.map((rec, i) => (
                         <li key={i} className="flex items-start gap-2 text-gray-600 dark:text-gray-400">
-                          <span className="text-green-500 mt-1">✓</span>
+                          <CheckCircle className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
                           {rec}
                         </li>
                       ))}
