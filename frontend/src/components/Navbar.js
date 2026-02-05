@@ -200,7 +200,7 @@ export const Navbar = () => {
                   <span className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{t('nav.bids')}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-gray-600" data-testid="user-name">{user?.name}</span>
+                  <span className={isDarkMode ? 'text-gray-300' : 'text-gray-600'} data-testid="user-name">{user?.name}</span>
                   <Button
                     variant="ghost"
                     size="icon"
