@@ -226,12 +226,12 @@ export default function Notifications() {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen pt-24 pb-12 px-4 flex items-center justify-center bg-[#0a1929]">
-        <div className="glass-card p-8 rounded-xl text-center max-w-md">
-          <Bell className="w-16 h-16 text-[#FFD700] mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-white mb-4">Benachrichtigungen</h2>
-          <p className="text-[#94A3B8] mb-6">Melden Sie sich an, um Ihre Benachrichtigungen zu sehen.</p>
-          <Button className="btn-primary" onClick={() => window.location.href = '/login'}>
+      <div className="min-h-screen pt-24 pb-12 px-4 flex items-center justify-center bg-gradient-to-b from-cyan-50 to-cyan-100">
+        <div className="bg-white p-8 rounded-xl text-center max-w-md shadow-lg border border-gray-200">
+          <Bell className="w-16 h-16 text-amber-500 mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-gray-800 mb-4">Benachrichtigungen</h2>
+          <p className="text-gray-600 mb-6">Melden Sie sich an, um Ihre Benachrichtigungen zu sehen.</p>
+          <Button className="bg-amber-500 hover:bg-amber-600 text-white" onClick={() => window.location.href = '/login'}>
             Anmelden
           </Button>
         </div>
