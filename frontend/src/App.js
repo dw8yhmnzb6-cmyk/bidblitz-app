@@ -109,6 +109,8 @@ const ProtectedRoute = ({ children, requireAdmin = false }) => {
 };
 
 function AppContent() {
+  const { language, mappedLanguage } = useLanguage();
+  
   return (
     <div className="App bg-[#050509] min-h-screen flex flex-col">
       {/* Scroll to top on route change */}
@@ -119,6 +121,9 @@ function AppContent() {
       
       {/* Happy Hour Banner */}
       <HappyHourBanner />
+      
+      {/* Live Winner Popup - Shows real-time win notifications */}
+      <LiveWinnerPopup language={mappedLanguage || language} />
       
       <Navbar />
       
