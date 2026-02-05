@@ -5,9 +5,38 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 
 ## Completion Status (February 5, 2026)
 
-### ✅ LATEST: Update 9 - Alle Features implementiert (Feb 5)
+### ✅ LATEST: Update 10 - Timer-Fix + Bot-Verbesserung + Schnäppchen-Radar (Feb 5)
 
-**Status aller 9 empfohlenen Features:**
+**Implementiert:**
+
+1. ✅ **Timer-Anzeige korrigiert (P0 - Kritisch):**
+   - Timer zeigt jetzt **Stunden:Minuten:Sekunden** für Auktionen > 1 Stunde
+   - Grüner Hintergrund für lange Auktionen (>1 Stunde)
+   - Blauer Hintergrund für kurze Auktionen (<1 Stunde) 
+   - Roter pulsierender Hintergrund wenn < 30 Sekunden
+   - Tage-Format implementiert: `1T 12:30:45` für Auktionen > 24 Stunden
+   - Dateien: `/app/frontend/src/pages/Auctions.js`, `/app/frontend/src/pages/Home.js`
+
+2. ✅ **Bot-Verhalten verbessert (P1):**
+   - **Realistische Intervalle:** 15-90 Sekunden (vorher: 4 Sekunden)
+   - **Pause-Perioden:** 15% Chance für 1-3 Minuten Pause
+   - **Bot-Rotation:** Verschiedene Bots pro Auktion (nicht immer derselbe)
+   - **Gestaffeltes Bieten:** Nicht alle Auktionen gleichzeitig
+   - **Doppelte Bot-Namen entfernt:** 37 Duplikate gelöscht
+   - Datei: `/app/backend/server.py` (Funktion `bot_last_second_bidder`)
+
+3. ✅ **Schnäppchen-Radar (Neues Feature):**
+   - Neue Seite: `/deal-radar` (auch `/radar`, `/schnaeppchen`, `/deals`)
+   - Findet Auktionen mit wenig Konkurrenz
+   - Zeigt Preishistorie für Produkte
+   - Tabs: "Top Schnäppchen" und "Wenig Aktivität"
+   - API-Endpoints:
+     - `GET /api/deal-radar/bargains` - Schnäppchen finden
+     - `GET /api/deal-radar/low-activity` - Wenig-Aktivität Auktionen
+     - `GET /api/deal-radar/price-history/{product_id}` - Preishistorie
+   - Dateien: `/app/backend/routers/deal_radar.py`, `/app/frontend/src/pages/DealRadarPage.js`
+
+### Bereits vorhanden (aus vorherigen Sessions)
 
 | # | Feature | Status | Pfad |
 |---|---------|--------|------|
@@ -17,134 +46,80 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 | 4 | Auktions-Favoriten | ✅ Vorhanden | `/favorites/`, `/watchlist` |
 | 5 | Winner Gallery | ✅ Vorhanden | `/winners`, `/gewinner` |
 | 6 | Täglicher Login-Bonus | ✅ Vorhanden | `/daily-quests/`, `/belohnungen` |
-| 7 | SMS-Verifizierung | ✅ NEU | `/phone-verify`, `/telefon` |
+| 7 | SMS-Verifizierung | ✅ Placeholder | `/phone-verify` (benötigt Twilio) |
 | 8 | Gebote-Abo | ✅ Vorhanden | `/subscription`, `/abo` |
 | 9 | Affiliate-Programm | ✅ Vorhanden | `/influencer/`, `/affiliate/` |
-
-**NEU implementiert:**
-- SMS-Verifizierung (`/app/backend/routers/phone_verification.py`)
-- Frontend-Seite (`/app/frontend/src/pages/PhoneVerification.js`)
-- +5 Gratis-Gebote bei Verifizierung
-- Mock-Modus für Tests (ohne Twilio API)
-
-### ✅ Update 8 - Mindestpreis + Auktionen (Feb 5)
-
-**Implementiert:**
-
-1. ✅ **Mindestpreis €20 für alle Auktionen:**
-   - Bots bieten jetzt automatisch bis mindestens €20-25
-   - Keine Auktion endet mehr unter €20
-   - In `/app/backend/server.py` `MINIMUM_AUCTION_PRICE = 20.00` gesetzt
-
-2. ✅ **Beendete Auktionen gelöscht:**
-   - `auction_history` Collection geleert
-   - Alte 6-Cent Auktionen entfernt
-
-3. ✅ **Fehlende Übersetzung "endPrice" hinzugefügt:**
-   - Deutsch: "Endpreis"
-   - Englisch: "Final Price"
-   - Alle anderen Sprachen ergänzt
-
-### ✅ Update 7 - Vollständige Übersetzungen ALLE SEITEN (Feb 5)
-
-**Implementiert für die KOMPLETTE Webseite:**
-
-1. ✅ **Öffentliche Seiten (ohne Login):**
-   - 🏠 Homepage (Home.js) - 6 Sprachen
-   - 🔐 Login (Login.js) - 6 Sprachen  
-   - 📝 Register (Register.js) - 6 Sprachen
-   - ℹ️ HowItWorks, FAQ, Contact - 6 Sprachen
-
-2. ✅ **Investor Portal:** 6 Sprachen (DE, EN, TR, FR, ES, SQ)
-
-3. ✅ **Admin Panel:** 6 Sprachen (DE, EN, TR, FR, ES, SQ)
-
-4. ✅ **Alle Toast-Meldungen übersetzt:**
-   - Gebote platziert/Fehler
-   - Login-Nachrichten
-   - Registrierungs-Nachrichten
-   - Admin-Aktionen
-
-5. ✅ **Unterstützte Sprachen:**
-   - 🇩🇪 Deutsch
-   - 🇬🇧 Englisch
-   - 🇹🇷 Türkisch
-   - 🇫🇷 Französisch
-   - 🇪🇸 Spanisch
-   - 🇦🇱 Albanisch
-
-**Geänderte Dateien:**
-- `/app/frontend/src/i18n/pageTranslations.js` - Spanisch hinzugefügt
-- `/app/frontend/src/i18n/featureTranslations.js` - Alle Sprachen erweitert
-- `/app/frontend/src/i18n/adminTranslations.js` - 4 neue Sprachen
-- `/app/frontend/src/pages/Home.js` - Toast-Meldungen übersetzt
-- `/app/frontend/src/pages/Login.js` - Übersetzungen korrigiert
-- `/app/frontend/src/pages/Register.js` - Übersetzungen korrigiert
-
-### ✅ Update 6 - Bug Fixes (Feb 5)
-
-1. ✅ **"Not Found" Toast-Unterdrückung** - Axios-Interceptor verbessert
-2. ✅ **Auktionsdauer-Bug** - Funktioniert korrekt
-3. ✅ **Penny-Auktion Timer** - Funktioniert wie beabsichtigt
-
-### ✅ Update 5 - iPad Fixes + Happy Hour/Lucky Admin (Feb 4)
-
-1. ✅ **iPad Admin-Sidebar repariert**
-2. ✅ **Glücksrad (Spin Wheel) iPad-Fix**
-3. ✅ **Safari/iOS Login-Kompatibilität**
-4. ✅ **Happy Hour Admin-Einstellungen**
-5. ✅ **Lucky in 50 Admin-Einstellungen**
-6. ✅ **Promo-Code "Nur einmal pro Kunde" Option**
-
-### ✅ Update 4 - Auktions-Sichtbarkeit + Promo-Codes (Feb 3)
-
-1. ✅ "Ende" Tab zeigt beendete Auktionen (via auction_history)
-2. ✅ Nacht-Auktionen immer sichtbar
-3. ✅ Promo-Code-System fertig (Admin + Benutzer-UI)
+| 10 | Preis-Alarme | ✅ Vorhanden | `/alerts`, `/price-alerts` |
+| 11 | PWA Support | ✅ Vorhanden | manifest.json + sw.js |
+| 12 | Live-Chat | ✅ Vorbereitet | TawkToChat.js (benötigt Tawk.to ID) |
 
 ## Test Credentials
 - **Admin:** admin@bidblitz.de / Admin123!
+- **Manager (Prishtina):** manager.prishtina@bidblitz.de / Manager123!
 - **Promo Code:** WELCOME2026 (50 Gebote)
 
 ## Key API Endpoints
 
 ### Auctions
-- `POST /api/admin/auctions` - Auktion erstellen (mit `duration_seconds`)
+- `POST /api/admin/auctions` - Auktion erstellen
 - `GET /api/auctions/ended` - Beendete Auktionen für "Ende" Tab
 - `GET /api/auction-of-the-day` - Auktion des Tages
+- `POST /api/auctions/{id}/bid` - Gebot platzieren
+
+### Deal Radar (NEU)
+- `GET /api/deal-radar/bargains` - Schnäppchen finden
+- `GET /api/deal-radar/low-activity` - Auktionen mit wenig Aktivität
+- `GET /api/deal-radar/price-history/{product_id}` - Preishistorie
+- `GET /api/deal-radar/ending-soon?minutes=30` - Auktionen die bald enden
 
 ### Gamification
 - `GET /api/gamification/happy-hour` - Status abrufen
 - `PUT /api/gamification/happy-hour/config` - Einstellungen ändern
-- `GET /api/excitement/lucky-bid/status` - Status und Statistik
-- `PUT /api/excitement/lucky-bid/config` - Einstellungen ändern
+- `GET /api/excitement/lucky-bid/status` - Lucky Bid Status
 
 ## Pending Items (Priority Order)
 
-1. **P1: Alle Übersetzungen vervollständigen** - Site-weiter Audit für 100% deutsche Übersetzung
-2. **P2: Apple Login fertigstellen** - Wartet auf Apple Developer Credentials
+1. **P1: SMS-Verifizierung aktivieren** - Benötigt Twilio API-Schlüssel
+2. **P2: Live-Chat aktivieren** - Benötigt Tawk.to Property ID
 
 ## Future Tasks (Backlog)
 
-- Live-Chat aktivieren (benötigt Tawk.to ID)
+- Apple Login fertigstellen (blockiert - Apple Developer Credentials)
 - WhatsApp Business Integration
 - 2FA (Zwei-Faktor-Authentifizierung)
 - SEO Optimierung
 
 ## Known Mocked Services
 
-- **Tawk.to (Live Chat):** Placeholder-Skript vorhanden
+- **Tawk.to (Live Chat):** Vorbereitet, benötigt Property ID
 - **Resend (Email):** API integriert, aber im Mock-Modus
+- **Twilio (SMS):** Placeholder erstellt, benötigt API-Schlüssel
 
 ## Architecture Notes
 
-### Auction Timer Behavior (Penny Auction)
-Der Timer zeigt NICHT die Gesamtdauer der Auktion, sondern die verbleibende Zeit bis das aktuelle Gebot gewinnt. Bei jedem neuen Gebot wird der Timer auf 10-15 Sekunden zurückgesetzt. Dies ist das Standard-Verhalten einer Penny-Auktion.
+### Auction System
+- **Fixed-End Auktionen:** Timer läuft ohne Reset bei neuem Gebot
+- **is_fixed_end Flag:** Alle Auktionen haben dieses Flag = true
+- **Mindestpreis:** €20 für normale Auktionen, 30% für Gutscheine
+
+### Timer Behavior
+- Grün: > 1 Stunde verbleibend (HH:MM:SS)
+- Blau: < 1 Stunde verbleibend (MM:SS)
+- Rot/Pulsierend: < 30 Sekunden verbleibend
+- Tage-Format: > 24 Stunden (XT HH:MM:SS)
+
+### Bot Behavior
+- Intervalle: 15-90 Sekunden (zufällig)
+- Pause-Chance: 15% für 1-3 Minuten
+- Rotation: Verschiedene Bots pro Auktion
+- Gestaffelt: Max 5 Auktionen pro Zyklus
 
 ### Error Handling
 - `/app/frontend/src/lib/axiosConfig.js` - Globaler Axios-Interceptor
 - Unterdrückt 404, 405 und Netzwerkfehler automatisch
-- Verhindert "Not Found" Toast-Meldungen für Benutzer
+
+## Test Reports
+- `/app/test_reports/iteration_32.json` - Timer + Deal Radar Tests (100% PASS)
 
 ## Last Updated
 February 5, 2026
