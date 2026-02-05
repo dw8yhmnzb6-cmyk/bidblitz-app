@@ -960,7 +960,7 @@ export default function Auctions() {
       </div>
       
       {/* Main layout with trust badges on right */}
-      <div className="flex gap-3 max-w-7xl mx-auto">
+      <div className="flex gap-3 max-w-7xl mx-auto px-2">
         {/* Main Content */}
         <div className="flex-1 min-w-0">
           {/* Auction of the Day - Only show on 'live' filter */}
