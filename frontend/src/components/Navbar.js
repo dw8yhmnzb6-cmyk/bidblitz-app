@@ -175,7 +175,7 @@ export const Navbar = () => {
                   {languageList[language]?.flag} {languageList[language]?.name}
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="bg-white border-gray-200 max-h-80 overflow-y-auto shadow-lg">
+              <DropdownMenuContent className={`${isDarkMode ? 'bg-[#181824] border-white/10' : 'bg-white border-gray-200'} max-h-80 overflow-y-auto shadow-lg`}>
                 {Object.keys(languageList).map((lang) => (
                   <DropdownMenuItem 
                     key={lang} 
