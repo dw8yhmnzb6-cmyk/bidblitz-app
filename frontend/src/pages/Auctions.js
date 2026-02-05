@@ -156,31 +156,31 @@ const AdBanner = memo(() => {
   );
 });
 
-// Activity Index - Cyber Style micro-component showing auction heat
+// Activity Index - micro-component showing auction heat
 const ActivityIndex = memo(({ auctionId, t }) => {
   const activity = Math.floor(Math.random() * 100);
   let activityLevel, activityColor;
   
   if (activity > 80) {
     activityLevel = t('auctionPage.activityHot');
-    activityColor = 'bg-hot-pink text-white shadow-neon-pink';
+    activityColor = 'bg-red-500 text-white';
   } else if (activity > 50) {
     activityLevel = t('auctionPage.activityActive');
-    activityColor = 'bg-cyber text-black shadow-neon-cyber';
+    activityColor = 'bg-yellow-400 text-yellow-900';
   } else {
     activityLevel = t('auctionPage.activityCalm');
-    activityColor = 'bg-acid/20 text-acid';
+    activityColor = 'bg-gray-200 text-gray-600';
   }
   
   return (
-    <div className="mt-2 flex items-center gap-1.5">
-      <div className="flex-1 bg-obsidian rounded-full h-1.5 overflow-hidden border border-white/5">
+    <div className="mt-2 flex items-center gap-1">
+      <div className="flex-1 bg-gray-200 rounded-full h-1 overflow-hidden">
         <div 
-          className={`h-full ${activity > 80 ? 'bg-hot-pink' : activity > 50 ? 'bg-cyber' : 'bg-acid/40'} transition-all duration-500`}
+          className={`h-full ${activity > 80 ? 'bg-red-500' : activity > 50 ? 'bg-yellow-400' : 'bg-gray-400'}`}
           style={{ width: `${activity}%` }}
         />
       </div>
-      <span className={`text-[7px] px-1.5 py-0.5 rounded font-heading font-bold uppercase ${activityColor}`}>
+      <span className={`text-[7px] px-1 py-0.5 rounded font-bold ${activityColor}`}>
         {activityLevel}
       </span>
     </div>
