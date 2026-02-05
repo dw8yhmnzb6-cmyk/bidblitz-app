@@ -153,6 +153,20 @@ export const Navbar = () => {
 
           {/* Right side */}
           <div className="hidden md:flex items-center gap-4">
+            {/* Dark Mode Toggle */}
+            <button
+              onClick={toggleDarkMode}
+              className={`p-2 rounded-lg transition-all ${
+                isDarkMode 
+                  ? 'bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30' 
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+              data-testid="dark-mode-toggle"
+              title={isDarkMode ? 'Light Mode' : 'Dark Mode'}
+            >
+              {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+            </button>
+
             {/* Language Selector */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
