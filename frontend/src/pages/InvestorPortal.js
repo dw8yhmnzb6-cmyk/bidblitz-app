@@ -93,6 +93,9 @@ export default function InvestorPortal() {
   const { language } = useLanguage();
   const [searchParams] = useSearchParams();
   
+  // Get translations
+  const t = getFeatureTranslation('investorPortal', language);
+  
   const [stats, setStats] = useState(null);
   const [chartData, setChartData] = useState([]);
   const [packages, setPackages] = useState([]);
@@ -112,15 +115,15 @@ export default function InvestorPortal() {
       // Poll payment status
       pollPaymentStatus(sessionId);
     } else if (cancelled) {
-      toast.error('Zahlung abgebrochen');
+      toast.error(t.paymentCancelled || 'Zahlung abgebrochen');
     }
-  }, [searchParams]);
+  }, [searchParams, t]);
   
   const pollPaymentStatus = async (sessionId, attempts = 0) => {
     const maxAttempts = 5;
     
     if (attempts >= maxAttempts) {
-      toast.error('Zahlung konnte nicht bestätigt werden. Bitte kontaktieren Sie uns.');
+      toast.error(t.paymentNotConfirmed || 'Zahlung konnte nicht bestätigt werden. Bitte kontaktieren Sie uns.');
       return;
     }
     
@@ -130,12 +133,12 @@ export default function InvestorPortal() {
       });
       
       if (res.data.payment_status === 'paid') {
-        toast.success(`Investition von €${res.data.amount.toLocaleString('de-DE')} erfolgreich! Willkommen als Investor!`);
+        toast.success(`${t.investmentSuccess || 'Investition erfolgreich!'} €${res.data.amount.toLocaleString('de-DE')}`);
         fetchData();
         setActiveTab('my-investments');
         return;
       } else if (res.data.status === 'expired') {
-        toast.error('Zahlungssitzung abgelaufen');
+        toast.error(t.sessionExpired || 'Zahlungssitzung abgelaufen');
         return;
       }
       
