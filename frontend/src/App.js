@@ -81,6 +81,7 @@ import StreakProtectionPage from "./pages/StreakProtectionPage";
 import ExcitementAdminPage from "./pages/ExcitementAdminPage";
 import InvestorPortal from "./pages/InvestorPortal";
 import PhoneVerification from "./pages/PhoneVerification";
+import DealRadarPage from "./pages/DealRadarPage";
 
 // Protected Route Component
 const ProtectedRoute = ({ children, requireAdmin = false }) => {
