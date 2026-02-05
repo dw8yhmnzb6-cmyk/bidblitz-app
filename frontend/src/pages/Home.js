@@ -56,11 +56,54 @@ const ActivityIndex = memo(({ auctionId = '', language = 'de' }) => {
 
 // Home page translations
 const homeTexts = {
-  de: { ended: 'Beendet', hrs: 'STD.', min: 'MIN.', sec: 'SEK.', startPrice: 'Startpreis', beFirst: 'Sei der Erste!', bid: 'BIETEN', comparePrice: 'Vergleichspreis*', lastSold: 'Zuletzt versteigert für nur', liveAuctions: 'Live Auktionen', loading: 'Auktionen werden geladen...', noAuctions: 'Derzeit keine aktiven Auktionen', pleaseTryLater: 'Bitte schauen Sie später wieder vorbei' },
-  en: { ended: 'Ended', hrs: 'HRS', min: 'MIN', sec: 'SEC', startPrice: 'Start Price', beFirst: 'Be the first!', bid: 'BID', comparePrice: 'Compare at*', lastSold: 'Last sold for only', liveAuctions: 'Live Auctions', loading: 'Loading auctions...', noAuctions: 'No active auctions currently', pleaseTryLater: 'Please check back later' },
-  sq: { ended: 'Përfundoi', hrs: 'ORË', min: 'MIN', sec: 'SEK', startPrice: 'Çmimi Fillestar', beFirst: 'Bëhu i pari!', bid: 'OFERTOHU', comparePrice: 'Krahasoni me*', lastSold: 'Shitur për vetëm', liveAuctions: 'Ankande Live', loading: 'Duke ngarkuar ankandet...', noAuctions: 'Asnjë ankand aktiv aktualisht', pleaseTryLater: 'Ju lutem kontrolloni më vonë' },
-  tr: { ended: 'Bitti', hrs: 'SAAT', min: 'DAK', sec: 'SN', startPrice: 'Başlangıç Fiyatı', beFirst: 'İlk sen ol!', bid: 'TEKLİF VER', comparePrice: 'Karşılaştırma*', lastSold: 'Son satış sadece', liveAuctions: 'Canlı Açık Artırmalar', loading: 'Açık artırmalar yükleniyor...', noAuctions: 'Şu anda aktif açık artırma yok', pleaseTryLater: 'Lütfen daha sonra tekrar kontrol edin' },
-  fr: { ended: 'Terminé', hrs: 'H', min: 'MIN', sec: 'SEC', startPrice: 'Prix de départ', beFirst: 'Soyez le premier!', bid: 'ENCHÉRIR', comparePrice: 'Comparez à*', lastSold: 'Vendu dernièrement pour seulement', liveAuctions: 'Enchères en Direct', loading: 'Chargement des enchères...', noAuctions: 'Pas d\'enchères actives actuellement', pleaseTryLater: 'Veuillez revenir plus tard' }
+  de: { 
+    ended: 'Beendet', hrs: 'STD.', min: 'MIN.', sec: 'SEK.', startPrice: 'Startpreis', 
+    beFirst: 'Sei der Erste!', bid: 'BIETEN', comparePrice: 'Vergleichspreis*', 
+    lastSold: 'Zuletzt versteigert für nur', liveAuctions: 'Live Auktionen', 
+    loading: 'Auktionen werden geladen...', noAuctions: 'Derzeit keine aktiven Auktionen', 
+    pleaseTryLater: 'Bitte schauen Sie später wieder vorbei',
+    pleaseLogin: 'Bitte anmelden um zu bieten', bidPlaced: 'Gebot platziert!', bidError: 'Fehler beim Bieten'
+  },
+  en: { 
+    ended: 'Ended', hrs: 'HRS', min: 'MIN', sec: 'SEC', startPrice: 'Start Price', 
+    beFirst: 'Be the first!', bid: 'BID', comparePrice: 'Compare at*', 
+    lastSold: 'Last sold for only', liveAuctions: 'Live Auctions', 
+    loading: 'Loading auctions...', noAuctions: 'No active auctions currently', 
+    pleaseTryLater: 'Please check back later',
+    pleaseLogin: 'Please log in to bid', bidPlaced: 'Bid placed!', bidError: 'Error placing bid'
+  },
+  sq: { 
+    ended: 'Përfundoi', hrs: 'ORË', min: 'MIN', sec: 'SEK', startPrice: 'Çmimi Fillestar', 
+    beFirst: 'Bëhu i pari!', bid: 'OFERTOHU', comparePrice: 'Krahasoni me*', 
+    lastSold: 'Shitur për vetëm', liveAuctions: 'Ankande Live', 
+    loading: 'Duke ngarkuar ankandet...', noAuctions: 'Asnjë ankand aktiv aktualisht', 
+    pleaseTryLater: 'Ju lutem kontrolloni më vonë',
+    pleaseLogin: 'Ju lutem hyni për të ofruar', bidPlaced: 'Oferta u vendos!', bidError: 'Gabim në vendosjen e ofertës'
+  },
+  tr: { 
+    ended: 'Bitti', hrs: 'SAAT', min: 'DAK', sec: 'SN', startPrice: 'Başlangıç Fiyatı', 
+    beFirst: 'İlk sen ol!', bid: 'TEKLİF VER', comparePrice: 'Karşılaştırma*', 
+    lastSold: 'Son satış sadece', liveAuctions: 'Canlı Açık Artırmalar', 
+    loading: 'Açık artırmalar yükleniyor...', noAuctions: 'Şu anda aktif açık artırma yok', 
+    pleaseTryLater: 'Lütfen daha sonra tekrar kontrol edin',
+    pleaseLogin: 'Teklif vermek için giriş yapın', bidPlaced: 'Teklif verildi!', bidError: 'Teklif verme hatası'
+  },
+  fr: { 
+    ended: 'Terminé', hrs: 'H', min: 'MIN', sec: 'SEC', startPrice: 'Prix de départ', 
+    beFirst: 'Soyez le premier!', bid: 'ENCHÉRIR', comparePrice: 'Comparez à*', 
+    lastSold: 'Vendu dernièrement pour seulement', liveAuctions: 'Enchères en Direct', 
+    loading: 'Chargement des enchères...', noAuctions: 'Pas d\'enchères actives actuellement', 
+    pleaseTryLater: 'Veuillez revenir plus tard',
+    pleaseLogin: 'Veuillez vous connecter pour enchérir', bidPlaced: 'Enchère placée!', bidError: 'Erreur lors de l\'enchère'
+  },
+  es: { 
+    ended: 'Terminado', hrs: 'HRS', min: 'MIN', sec: 'SEG', startPrice: 'Precio inicial', 
+    beFirst: '¡Sé el primero!', bid: 'PUJAR', comparePrice: 'Comparar con*', 
+    lastSold: 'Último vendido por solo', liveAuctions: 'Subastas en Vivo', 
+    loading: 'Cargando subastas...', noAuctions: 'No hay subastas activas actualmente', 
+    pleaseTryLater: 'Por favor vuelve más tarde',
+    pleaseLogin: 'Por favor inicia sesión para pujar', bidPlaced: '¡Puja realizada!', bidError: 'Error al pujar'
+  }
 };
 
 // Live Timer - Only updates the timer, not the whole card
