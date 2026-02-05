@@ -39,10 +39,10 @@ export default function GlobalJackpot({ className = '' }) {
       animate={{ opacity: 1, y: 0 }}
       className={`relative ${className}`}
     >
-      {/* Compact Jackpot Card */}
-      <div className="bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-400 rounded-xl p-3 shadow-lg border-2 border-yellow-500/50 overflow-hidden">
+      {/* Compact Jackpot Card - Cyber Style */}
+      <div className="bg-obsidian-paper rounded-lg p-3 border border-acid/20 shadow-neon-acid overflow-hidden">
         {/* Animated Background Shimmer */}
-        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 animate-shimmer" />
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-acid/10 to-transparent -skew-x-12 animate-shimmer" />
         
         <div className="relative flex items-center justify-between gap-3">
           {/* Left: Trophy */}
@@ -51,26 +51,26 @@ export default function GlobalJackpot({ className = '' }) {
             transition={{ repeat: Infinity, duration: 1.5 }}
             className="flex-shrink-0"
           >
-            <div className="w-12 h-12 sm:w-14 sm:h-14 bg-yellow-600/30 rounded-full flex items-center justify-center">
-              <Trophy className="w-7 h-7 sm:w-8 sm:h-8 text-yellow-900" />
+            <div className="w-12 h-12 sm:w-14 sm:h-14 bg-acid rounded-md flex items-center justify-center">
+              <Trophy className="w-7 h-7 sm:w-8 sm:h-8 text-black" />
             </div>
           </motion.div>
 
           {/* Center: Amount */}
           <div className="flex-grow text-center">
-            <p className="text-yellow-900/70 text-[10px] sm:text-xs font-bold uppercase tracking-wider">
-              🏆 Jackpot
+            <p className="text-gray-500 text-[10px] sm:text-xs font-heading font-bold uppercase tracking-wider">
+              🏆 JACKPOT
             </p>
             <div className="flex items-baseline justify-center gap-1">
               <motion.span
                 key={jackpot.current_amount}
                 initial={{ scale: 1.2 }}
                 animate={{ scale: 1 }}
-                className="text-2xl sm:text-3xl font-black text-yellow-900"
+                className="text-2xl sm:text-3xl font-heading font-black text-white"
               >
-                {jackpot.current_amount.toLocaleString('de-DE')}
+                <span className="text-acid font-mono">{jackpot.current_amount.toLocaleString('de-DE')}</span>
               </motion.span>
-              <span className="text-sm sm:text-base font-bold text-yellow-900/80">
+              <span className="text-sm sm:text-base font-heading font-bold text-white">
                 Gebote
               </span>
               
@@ -81,23 +81,23 @@ export default function GlobalJackpot({ className = '' }) {
                     initial={{ opacity: 0, y: 0 }}
                     animate={{ opacity: 1, y: -15 }}
                     exit={{ opacity: 0 }}
-                    className="absolute text-green-700 font-bold text-sm"
+                    className="absolute text-acid font-bold text-sm"
                   >
                     +1
                   </motion.span>
                 )}
               </AnimatePresence>
             </div>
-            <p className="text-yellow-900/60 text-[9px] sm:text-[10px]">
+            <p className="text-gray-500 text-[9px] sm:text-[10px] font-body">
               Jedes Gebot = +1 zum Jackpot
             </p>
           </div>
 
           {/* Right: Value */}
           <div className="flex-shrink-0 text-right">
-            <div className="bg-yellow-600/20 rounded-lg px-2 py-1">
-              <p className="text-yellow-900/60 text-[8px] sm:text-[9px]">Wert</p>
-              <p className="text-yellow-900 font-black text-sm sm:text-base">
+            <div className="bg-obsidian-subtle rounded-lg px-2 py-1 border border-white/10">
+              <p className="text-gray-500 text-[8px] sm:text-[9px] uppercase tracking-wider font-heading">Wert</p>
+              <p className="text-acid font-heading font-black text-sm sm:text-base">
                 €{(jackpot.current_amount * 0.50).toFixed(0)}
               </p>
             </div>
@@ -106,16 +106,16 @@ export default function GlobalJackpot({ className = '' }) {
 
         {/* Last Winner (if exists) */}
         {jackpot.last_winner && (
-          <div className="mt-2 pt-2 border-t border-yellow-600/30 text-center">
-            <p className="text-yellow-900/70 text-[9px] sm:text-[10px]">
-              🏆 Letzter Gewinner: <strong>{jackpot.last_winner}</strong>
+          <div className="mt-2 pt-2 border-t border-white/10 text-center">
+            <p className="text-gray-500 text-[9px] sm:text-[10px] font-body">
+              <span className="text-cyber">♪</span> Letzter Gewinner: <span className="text-acid font-bold">{jackpot.last_winner}</span>
             </p>
           </div>
         )}
       </div>
 
       {/* Subtle Glow */}
-      <div className="absolute inset-0 bg-yellow-400/30 rounded-xl blur-xl -z-10 scale-95" />
+      <div className="absolute inset-0 bg-acid/20 rounded-lg blur-xl -z-10 scale-95" />
     </motion.div>
   );
 }
