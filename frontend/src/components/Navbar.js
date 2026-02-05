@@ -205,7 +205,7 @@ export const Navbar = () => {
                     variant="ghost"
                     size="icon"
                     onClick={handleLogout}
-                    className="text-gray-500 hover:text-gray-800 hover:bg-gray-100"
+                    className={`${isDarkMode ? 'text-gray-400 hover:text-white hover:bg-white/10' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-100'}`}
                     data-testid="logout-btn"
                   >
                     <LogOut className="w-5 h-5" />
