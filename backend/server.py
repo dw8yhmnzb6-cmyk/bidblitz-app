@@ -385,10 +385,16 @@ async def bot_last_second_bidder():
                             
                             new_price = round(current_price + bid_increment, 2)
                             
-                            # Timer extension: 10-15 seconds
-                            timer_ext = random.randint(10, 15)
+                            # CHECK: Is this a FIXED END auction?
+                            is_fixed_end = auction.get("is_fixed_end", False)
                             
-                            new_end_time = datetime.now(timezone.utc) + timedelta(seconds=timer_ext)
+                            if is_fixed_end:
+                                # FIXED END: Endzeit bleibt unverändert
+                                new_end_time = end_time
+                            else:
+                                # Normal: Timer reset to 10-15 seconds
+                                timer_ext = random.randint(10, 15)
+                                new_end_time = datetime.now(timezone.utc) + timedelta(seconds=timer_ext)
                             
                             bid_entry = {
                                 "user_id": f"bot_{bot['id']}",
