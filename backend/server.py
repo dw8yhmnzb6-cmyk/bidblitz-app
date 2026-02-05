@@ -95,6 +95,14 @@ from routers.beginner_guarantee import router as beginner_guarantee_router
 from routers.whatsapp_notifications import router as whatsapp_router
 from routers.countdown_emails import router as countdown_emails_router
 from routers.team_auctions import router as team_auctions_router
+from routers.ai_bid_recommendations import router as ai_bid_router
+from routers.auction_preview import router as auction_preview_router
+from routers.social_betting import router as social_betting_router
+from routers.personalized_homepage import router as personalized_router
+from routers.livestream import router as livestream_router
+from routers.crypto_payments import router as crypto_router
+from routers.influencer_auctions import router as influencer_auctions_router
+from routers.ar_preview import router as ar_preview_router
 
 # WebSocket manager
 from services.websocket import ws_manager, broadcast_bid_update, broadcast_auction_ended
