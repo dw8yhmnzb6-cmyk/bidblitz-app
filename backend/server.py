@@ -279,29 +279,32 @@ async def websocket_all_auctions_legacy(websocket: WebSocket):
 # ==================== BOT BACKGROUND TASK ====================
 
 async def bot_last_second_bidder():
-    """Background task - bots bid continuously until auction price reaches €20 minimum.
+    """Background task - bots bid continuously until auction price reaches minimum.
     
     LOGIK:
-    1. STANDARD (kein Zielpreis): Bots bieten KONTINUIERLICH bis €20
-       - Auktionen bleiben nicht unter €20 
-       - Echte Kunden können ab €20 weitermachen
-    2. MIT ZIELPREIS: Bots bieten bis zum höheren Wert (Zielpreis oder €20)
+    1. STANDARD (normale Auktionen): Bots bieten bis €20
+    2. GUTSCHEIN-AUKTIONEN: Bots bieten bis 30% des Gutscheinwertes
+       - z.B. €100 Gutschein = Mindestpreis €30
+    3. MIT ZIELPREIS: Bots bieten bis zum höheren Wert
     """
     global bot_task_running
     
-    logger.info("Bot bidder started - Kontinuierliches Bieten bis mindestens €20")
+    logger.info("Bot bidder started - Mindestpreis: €20 oder 30% bei Gutscheinen")
     last_bot_per_auction = {}
     last_bid_time_per_auction = {}
     
-    # MINIMUM price for ALL auctions - €20
+    # MINIMUM price for NORMAL auctions - €20
     MINIMUM_AUCTION_PRICE = 20.00
     
-    # Default price range for auctions WITHOUT explicit target (20.00 - 25.00 Euro)
+    # GUTSCHEIN-AUKTIONEN: 30% des Retail-Preises
+    VOUCHER_MIN_PERCENTAGE = 0.30  # 30%
+    
+    # Default price range for normal auctions (20.00 - 25.00 Euro)
     DEFAULT_MIN_PRICE = 20.00
     DEFAULT_MAX_PRICE = 25.00
     
-    # Minimum time between bot bids on same auction (slower so customers see each 1 cent increment)
-    MIN_BID_INTERVAL = 4.0  # 4 seconds between bids - customers can see each 1 cent step
+    # Minimum time between bot bids on same auction
+    MIN_BID_INTERVAL = 4.0  # 4 seconds between bids
     
     while bot_task_running:
         try:
@@ -314,12 +317,9 @@ async def bot_last_second_bidder():
             
             for auction in active_auctions:
                 try:
-                    # NOTE: Bots bid 24/7 - no business hours restriction
-                    
                     end_time = datetime.fromisoformat(auction["end_time"].replace("Z", "+00:00"))
                     seconds_left = (end_time - now).total_seconds()
                     
-                    # Skip if auction already ended
                     if seconds_left <= 0:
                         continue
                     
@@ -327,33 +327,45 @@ async def bot_last_second_bidder():
                     auction_id = auction.get("id")
                     bid_increment = auction.get("bid_increment", 0.01)
                     explicit_target = auction.get("bot_target_price", 0)
+                    retail_price = auction.get("retail_price", 0)
+                    is_free_auction = auction.get("is_free_auction", False)
                     
-                    # GUARANTEED WINNER CHECK: Don't bid if a guaranteed winner is active
+                    # GUARANTEED WINNER CHECK
                     guaranteed_winner_id = auction.get("guaranteed_winner_bidding")
                     if guaranteed_winner_id and auction.get("last_bidder_id") == guaranteed_winner_id:
                         continue
                     
-                    # Check if enough time has passed since last bot bid on this auction
                     last_bid_time = last_bid_time_per_auction.get(auction_id, 0)
                     time_since_last_bid = (now.timestamp() - last_bid_time)
                     
                     should_bid = False
                     target_price = 0
                     
-                    # ALWAYS ensure minimum price of €20
-                    # Use the HIGHER value between explicit_target and MINIMUM_AUCTION_PRICE
-                    effective_target = max(explicit_target or 0, MINIMUM_AUCTION_PRICE)
+                    # BERECHNE MINDESTPREIS basierend auf Auktionstyp
+                    if is_free_auction and retail_price > 0:
+                        # GUTSCHEIN-AUKTION: 30% des Gutscheinwertes
+                        voucher_min = retail_price * VOUCHER_MIN_PERCENTAGE
+                        effective_minimum = max(voucher_min, 10.00)  # Mindestens €10
+                    else:
+                        # NORMALE AUKTION: €20
+                        effective_minimum = MINIMUM_AUCTION_PRICE
                     
-                    # Check if explicit target is set for this auction
+                    # Verwende das Maximum aus explicit_target und effective_minimum
+                    effective_target = max(explicit_target or 0, effective_minimum)
+                    
                     if explicit_target and explicit_target > 0:
-                        # Bot-Zielpreis ist gesetzt - verwende das Maximum aus Zielpreis und Minimum
                         if current_price < effective_target and time_since_last_bid >= MIN_BID_INTERVAL:
                             target_price = effective_target
                             should_bid = True
                     else:
-                        # Kein Zielpreis gesetzt - verwende Standard €20-25 Range
+                        # Kein Zielpreis - verwende berechnetes Minimum
                         hash_val = hash(auction_id) % 100
-                        default_target = DEFAULT_MIN_PRICE + (hash_val / 100) * (DEFAULT_MAX_PRICE - DEFAULT_MIN_PRICE)
+                        if is_free_auction:
+                            # Gutschein: 30-35% des Wertes
+                            default_target = effective_minimum + (hash_val / 100) * (effective_minimum * 0.15)
+                        else:
+                            # Normal: €20-25
+                            default_target = DEFAULT_MIN_PRICE + (hash_val / 100) * (DEFAULT_MAX_PRICE - DEFAULT_MIN_PRICE)
                         default_target = round(default_target, 2)
                         
                         if current_price < default_target and time_since_last_bid >= MIN_BID_INTERVAL:
@@ -361,17 +373,14 @@ async def bot_last_second_bidder():
                             should_bid = True
                     
                     if should_bid:
-                        # Get bots
                         bots = await db.bots.find({}, {"_id": 0}).to_list(100)
                         if bots:
-                            # Choose different bot than last time
                             last_bot_id = last_bot_per_auction.get(auction_id)
                             available = [b for b in bots if b["id"] != last_bot_id] or bots
                             bot = random.choice(available)
                             last_bot_per_auction[auction_id] = bot["id"]
                             last_bid_time_per_auction[auction_id] = now.timestamp()
                             
-                            # Place bid
                             new_price = round(current_price + bid_increment, 2)
                             
                             # Timer extension: 10-15 seconds
