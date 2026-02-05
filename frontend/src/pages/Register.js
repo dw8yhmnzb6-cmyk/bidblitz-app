@@ -210,7 +210,7 @@ export default function Register() {
                 <div className="w-full border-t border-white/10"></div>
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-[#0D0D14] text-[#94A3B8]">{language === 'de' ? 'oder' : 'or'}</span>
+                <span className="px-2 bg-obsidian-paper text-gray-500 font-body">{language === 'de' ? 'oder' : 'or'}</span>
               </div>
             </div>
 
@@ -222,7 +222,7 @@ export default function Register() {
                 window.location.href = `https://auth.emergentagent.com/?redirect=${encodeURIComponent(redirectUrl)}`;
               }}
               variant="outline"
-              className="w-full h-12 border-white/20 text-white hover:bg-white/5"
+              className="w-full h-12 border-white/20 text-white hover:bg-white/5 hover:border-acid/30 font-body transition-all"
               data-testid="google-register-btn"
             >
               <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
@@ -239,7 +239,7 @@ export default function Register() {
               type="button"
               onClick={() => toast.info(texts.appleLoginNotConfigured || 'Apple Login requires configuration.')}
               variant="outline"
-              className="w-full h-12 border-white/20 text-white hover:bg-white/5 mt-3"
+              className="w-full h-12 border-white/20 text-white hover:bg-white/5 hover:border-acid/30 mt-3 font-body transition-all"
               data-testid="apple-register-btn"
             >
               <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="currentColor">
