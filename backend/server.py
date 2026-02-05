@@ -91,6 +91,10 @@ from routers.excitement import router as excitement_router
 from routers.investor import router as investor_router
 from routers.voucher_auctions import router as voucher_auctions_router
 from routers.promo_codes import router as promo_codes_router
+from routers.beginner_guarantee import router as beginner_guarantee_router
+from routers.whatsapp_notifications import router as whatsapp_router
+from routers.countdown_emails import router as countdown_emails_router
+from routers.team_auctions import router as team_auctions_router
 
 # WebSocket manager
 from services.websocket import ws_manager, broadcast_bid_update, broadcast_auction_ended
