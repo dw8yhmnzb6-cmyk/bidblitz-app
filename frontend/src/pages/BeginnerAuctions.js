@@ -140,6 +140,12 @@ const BeginnerAuctions = () => {
       );
       toast.success('Gebot platziert!');
     } catch (err) {
+      // Check if it's an authentication error
+      if (err.response?.status === 401 || err.response?.status === 403) {
+        toast.error('Bitte anmelden um zu bieten');
+        navigate('/login');
+        return;
+      }
       toast.error(err.response?.data?.detail || 'Fehler beim Bieten');
     }
   };

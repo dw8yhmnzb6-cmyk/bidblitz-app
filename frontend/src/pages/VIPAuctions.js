@@ -158,6 +158,12 @@ export default function VIPAuctions() {
       toast.success('Gebot platziert!');
       fetchVIPAuctions();
     } catch (error) {
+      // Check if it's an authentication error
+      if (error.response?.status === 401 || error.response?.status === 403) {
+        toast.error('Bitte anmelden um zu bieten');
+        navigate('/login');
+        return;
+      }
       toast.error(error.response?.data?.detail || 'Fehler beim Bieten');
     }
   };

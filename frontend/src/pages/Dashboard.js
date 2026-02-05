@@ -211,6 +211,11 @@ export default function Dashboard() {
       updateBidsBalance(response.data.bids_remaining);
       fetchData();
     } catch (error) {
+      // Check if it's an authentication error
+      if (error.response?.status === 401 || error.response?.status === 403) {
+        toast.error(language === 'en' ? 'Please log in to bid' : 'Bitte anmelden um zu bieten');
+        return;
+      }
       toast.error(error.response?.data?.detail || (language === 'en' ? 'Error bidding' : 'Fehler beim Bieten'));
     }
   };
