@@ -363,6 +363,21 @@ function AppContent() {
               <UserStatsPage />
             </ProtectedRoute>
           } />
+          {/* AI Bid Recommendations */}
+          <Route path="/ki-empfehlungen" element={
+            <ProtectedRoute>
+              <AIBidRecommendationsPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/ai-bids" element={
+            <ProtectedRoute>
+              <AIBidRecommendationsPage />
+            </ProtectedRoute>
+          } />
+          {/* Crypto Payment */}
+          <Route path="/crypto" element={<CryptoPaymentPage />} />
+          <Route path="/krypto" element={<CryptoPaymentPage />} />
+          <Route path="/bitcoin" element={<CryptoPaymentPage />} />
           {/* Social Share */}
           <Route path="/share" element={
             <ProtectedRoute>
