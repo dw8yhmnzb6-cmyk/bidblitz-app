@@ -309,7 +309,7 @@ async def analyze_voice_error(
                 "created_by": current_user.get("user_id"),
                 "created_by_name": current_user.get("name", "Admin")
             }
-            db.debug_reports.insert_one(report_dict)
+            await db.debug_reports.insert_one(report_dict)
             print(f"Debug report saved: {report.id}")
         except Exception as db_error:
             print(f"Failed to save debug report to database: {db_error}")
