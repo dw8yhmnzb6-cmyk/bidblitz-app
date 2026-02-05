@@ -527,9 +527,9 @@ function AppContent() {
         position="top-right"
         toastOptions={{
           style: {
-            background: '#181824',
-            border: '1px solid rgba(255,255,255,0.1)',
-            color: '#F8FAFC',
+            background: '#FFFFFF',
+            border: '1px solid rgba(0,0,0,0.1)',
+            color: '#1F2937',
             fontSize: '12px',
             padding: '8px 12px',
             maxWidth: '280px',
