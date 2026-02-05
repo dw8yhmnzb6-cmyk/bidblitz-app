@@ -221,19 +221,19 @@ export default function InvestorPortal() {
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-3xl sm:text-4xl font-bold text-white mb-2">
-            💼 Investor Portal
+            💼 {t.title || 'Investor Portal'}
           </h1>
           <p className="text-[#94A3B8]">
-            Investieren Sie in die Zukunft von BidBlitz
+            {t.subtitle || 'Investieren Sie in die Zukunft von BidBlitz'}
           </p>
         </div>
         
         {/* Tab Navigation */}
         <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
           {[
-            { id: 'overview', label: 'Übersicht', icon: BarChart3 },
-            { id: 'invest', label: 'Investieren', icon: Wallet },
-            { id: 'my-investments', label: 'Meine Investitionen', icon: Briefcase }
+            { id: 'overview', label: t.overview || 'Übersicht', icon: BarChart3 },
+            { id: 'invest', label: t.invest || 'Investieren', icon: Wallet },
+            { id: 'my-investments', label: t.myInvestments || 'Meine Investitionen', icon: Briefcase }
           ].map(tab => (
             <button
               key={tab.id}
@@ -257,31 +257,31 @@ export default function InvestorPortal() {
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               <StatCard
                 icon={Users}
-                label="Gesamte Nutzer"
+                label={t.totalUsers || 'Gesamte Nutzer'}
                 value={stats.platform_stats?.total_users?.toLocaleString('de-DE') || 0}
-                subValue={`+${stats.platform_stats?.new_users_30d || 0} (30 Tage)`}
+                subValue={`+${stats.platform_stats?.new_users_30d || 0} (${t.last30Days || '30 Tage'})`}
                 color="text-[#7C3AED]"
-                trend={`${stats.growth_indicators?.monthly_growth_rate || 0}% Wachstum`}
+                trend={`${stats.growth_indicators?.monthly_growth_rate || 0}% ${t.growth || 'Wachstum'}`}
               />
               <StatCard
                 icon={DollarSign}
-                label="Gesamtumsatz"
+                label={t.totalRevenue || 'Gesamtumsatz'}
                 value={`€${stats.financial_stats?.total_revenue_eur?.toLocaleString('de-DE') || 0}`}
-                subValue={`Ø €${stats.financial_stats?.avg_transaction_value || 0}/Trans.`}
+                subValue={`Ø €${stats.financial_stats?.avg_transaction_value || 0}/${t.avgTransaction || 'Trans.'}`}
                 color="text-[#10B981]"
               />
               <StatCard
                 icon={BarChart3}
-                label="Auktionen"
+                label={t.auctions || 'Auktionen'}
                 value={stats.auction_stats?.total_auctions?.toLocaleString('de-DE') || 0}
-                subValue={`${stats.auction_stats?.active_auctions || 0} aktiv`}
+                subValue={`${stats.auction_stats?.active_auctions || 0} ${t.active || 'aktiv'}`}
                 color="text-[#06B6D4]"
               />
               <StatCard
                 icon={TrendingUp}
-                label="Erfolgsrate"
+                label={t.successRate || 'Erfolgsrate'}
                 value={`${stats.auction_stats?.success_rate || 0}%`}
-                subValue={`${stats.auction_stats?.completed_auctions || 0} abgeschlossen`}
+                subValue={`${stats.auction_stats?.completed_auctions || 0} ${t.completed || 'abgeschlossen'}`}
                 color="text-[#F59E0B]"
               />
             </div>
@@ -290,7 +290,7 @@ export default function InvestorPortal() {
             <div className="glass-card rounded-xl p-6">
               <h3 className="text-white font-bold text-lg mb-4 flex items-center gap-2">
                 <TrendingUp className="w-5 h-5 text-[#7C3AED]" />
-                Wachstumskurve (12 Monate)
+                {t.growthChart || 'Wachstumskurve (12 Monate)'}
               </h3>
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
@@ -314,14 +314,14 @@ export default function InvestorPortal() {
                       stroke="#7C3AED" 
                       fillOpacity={1} 
                       fill="url(#colorUsers)" 
-                      name="Neue Nutzer"
+                      name={t.newUsers || 'Neue Nutzer'}
                     />
                     <Line 
                       type="monotone" 
                       dataKey="revenue" 
                       stroke="#10B981" 
                       strokeWidth={2}
-                      name="Umsatz (€)"
+                      name={`${t.revenue || 'Umsatz'} (€)`}
                       dot={false}
                     />
                   </AreaChart>
@@ -331,33 +331,33 @@ export default function InvestorPortal() {
             
             {/* Why Invest Section */}
             <div className="glass-card rounded-xl p-6">
-              <h3 className="text-white font-bold text-lg mb-4">Warum in BidBlitz investieren?</h3>
+              <h3 className="text-white font-bold text-lg mb-4">{t.whyInvest || 'Warum in BidBlitz investieren?'}</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="p-4 bg-[#181824] rounded-lg">
                   <div className="w-10 h-10 bg-[#7C3AED]/20 rounded-lg flex items-center justify-center mb-3">
                     <TrendingUp className="w-5 h-5 text-[#7C3AED]" />
                   </div>
-                  <h4 className="text-white font-medium mb-1">Starkes Wachstum</h4>
+                  <h4 className="text-white font-medium mb-1">{t.strongGrowth || 'Starkes Wachstum'}</h4>
                   <p className="text-[#94A3B8] text-sm">
-                    {stats.growth_indicators?.monthly_growth_rate || 0}% monatliches Nutzerwachstum
+                    {stats.growth_indicators?.monthly_growth_rate || 0}% {t.monthlyGrowth || 'monatliches Nutzerwachstum'}
                   </p>
                 </div>
                 <div className="p-4 bg-[#181824] rounded-lg">
                   <div className="w-10 h-10 bg-[#06B6D4]/20 rounded-lg flex items-center justify-center mb-3">
                     <Building2 className="w-5 h-5 text-[#06B6D4]" />
                   </div>
-                  <h4 className="text-white font-medium mb-1">Bewährtes Modell</h4>
+                  <h4 className="text-white font-medium mb-1">{t.provenModel || 'Bewährtes Modell'}</h4>
                   <p className="text-[#94A3B8] text-sm">
-                    Penny-Auktionen sind ein etabliertes Geschäftsmodell
+                    {t.provenModelDesc || 'Penny-Auktionen sind ein etabliertes Geschäftsmodell'}
                   </p>
                 </div>
                 <div className="p-4 bg-[#181824] rounded-lg">
                   <div className="w-10 h-10 bg-[#10B981]/20 rounded-lg flex items-center justify-center mb-3">
                     <Target className="w-5 h-5 text-[#10B981]" />
                   </div>
-                  <h4 className="text-white font-medium mb-1">Klare Strategie</h4>
+                  <h4 className="text-white font-medium mb-1">{t.clearStrategy || 'Klare Strategie'}</h4>
                   <p className="text-[#94A3B8] text-sm">
-                    Expansion in neue Märkte und Produktkategorien
+                    {t.clearStrategyDesc || 'Expansion in neue Märkte und Produktkategorien'}
                   </p>
                 </div>
               </div>
@@ -365,13 +365,13 @@ export default function InvestorPortal() {
             
             {/* CTA */}
             <div className="glass-card rounded-xl p-6 text-center bg-gradient-to-r from-[#7C3AED]/20 to-[#06B6D4]/20 border border-[#7C3AED]/30">
-              <h3 className="text-2xl font-bold text-white mb-2">Werden Sie Teil unserer Erfolgsgeschichte</h3>
-              <p className="text-[#94A3B8] mb-4">Investieren Sie jetzt und profitieren Sie vom Wachstum</p>
+              <h3 className="text-2xl font-bold text-white mb-2">{t.bePartOf || 'Werden Sie Teil unserer Erfolgsgeschichte'}</h3>
+              <p className="text-[#94A3B8] mb-4">{t.investAndProfit || 'Investieren Sie jetzt und profitieren Sie vom Wachstum'}</p>
               <Button 
                 onClick={() => setActiveTab('invest')}
                 className="btn-primary text-lg px-8"
               >
-                Jetzt investieren
+                {t.investNow || 'Jetzt investieren'}
               </Button>
             </div>
           </div>
