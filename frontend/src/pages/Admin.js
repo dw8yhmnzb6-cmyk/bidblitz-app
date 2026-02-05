@@ -118,6 +118,9 @@ export default function Admin() {
     discount_percent: 10,
     credit_limit: 0,
     payment_terms: 'prepaid',
+  
+  // Voice Debug Assistant state
+  const [showVoiceDebug, setShowVoiceDebug] = useState(false);
     notes: ''
   });
 
