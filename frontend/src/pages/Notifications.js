@@ -378,7 +378,7 @@ export default function Notifications() {
         ) : notifications.length === 0 ? (
           <div className="text-center py-12 bg-white rounded-xl shadow-sm border border-gray-200">
             <Bell className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-            <p className="text-gray-400">Keine Benachrichtigungen</p>
+            <p className="text-gray-500">Keine Benachrichtigungen</p>
           </div>
         ) : (
           <div className="space-y-2">
@@ -389,8 +389,8 @@ export default function Notifications() {
               return (
                 <div 
                   key={notif.id}
-                  className={`bg-[#1a3a52] rounded-xl p-4 transition-all ${
-                    !notif.read ? 'border-l-4 border-[#FFD700]' : ''
+                  className={`bg-white rounded-xl p-4 transition-all shadow-sm border border-gray-200 ${
+                    !notif.read ? 'border-l-4 border-l-amber-500' : ''
                   }`}
                 >
                   <div className="flex gap-3">
@@ -400,20 +400,20 @@ export default function Notifications() {
                     
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2">
-                        <h4 className={`font-medium ${notif.read ? 'text-gray-300' : 'text-white'}`}>
+                        <h4 className={`font-medium ${notif.read ? 'text-gray-500' : 'text-gray-800'}`}>
                           {notif.title}
                         </h4>
-                        <span className="text-gray-500 text-xs flex-shrink-0">
+                        <span className="text-gray-400 text-xs flex-shrink-0">
                           {formatDate(notif.created_at)}
                         </span>
                       </div>
                       
-                      <p className="text-gray-400 text-sm mt-1">{notif.message}</p>
+                      <p className="text-gray-600 text-sm mt-1">{notif.message}</p>
                       
                       {notif.link && (
                         <a 
                           href={notif.link}
-                          className="text-cyan-400 text-xs mt-2 inline-block hover:underline"
+                          className="text-cyan-600 text-xs mt-2 inline-block hover:underline"
                         >
                           Mehr erfahren →
                         </a>
@@ -424,7 +424,7 @@ export default function Notifications() {
                       {!notif.read && (
                         <button
                           onClick={() => markAsRead(notif.id)}
-                          className="p-1.5 text-gray-400 hover:text-green-400 hover:bg-green-400/10 rounded"
+                          className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded"
                           title="Als gelesen markieren"
                         >
                           <Check className="w-4 h-4" />
