@@ -260,8 +260,8 @@ const SpinWheel = ({ isOpen, onClose }) => {
                     );
                   })}
                   {/* Center circle */}
-                  <circle cx="100" cy="100" r="15" fill="#1A1A2E" stroke="#FFD700" strokeWidth="3" />
-                  <text x="100" y="100" fill="#FFD700" fontSize="10" fontWeight="bold" textAnchor="middle" dominantBaseline="middle">
+                  <circle cx="100" cy="100" r="15" fill="#FFFFFF" stroke="#F59E0B" strokeWidth="3" />
+                  <text x="100" y="100" fill="#F59E0B" fontSize="10" fontWeight="bold" textAnchor="middle" dominantBaseline="middle">
                     GO
                   </text>
                 </svg>
@@ -270,17 +270,17 @@ const SpinWheel = ({ isOpen, onClose }) => {
             
             {/* Result Display */}
             {result && (
-              <div className="mb-6 p-4 rounded-xl bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-500/30 text-center animate-pulse" data-testid="wheel-result">
-                <p className="text-green-400 text-lg font-bold">{text.congrats}</p>
-                <p className="text-white text-xl flex items-center justify-center gap-2 mt-2">
-                  {result.type === 'bids' && <Zap className="w-5 h-5 text-yellow-400" />}
-                  {result.type === 'discount' && <Gift className="w-5 h-5 text-pink-400" />}
-                  {result.type === 'vip_day' && <Crown className="w-5 h-5 text-purple-400" />}
-                  {result.type === 'retry' && <RefreshCw className="w-5 h-5 text-green-400" />}
+              <div className="mb-6 p-4 rounded-xl bg-gradient-to-r from-green-50 to-emerald-50 border border-green-300 text-center animate-pulse" data-testid="wheel-result">
+                <p className="text-green-600 text-lg font-bold">{text.congrats}</p>
+                <p className="text-gray-800 text-xl flex items-center justify-center gap-2 mt-2">
+                  {result.type === 'bids' && <Zap className="w-5 h-5 text-amber-500" />}
+                  {result.type === 'discount' && <Gift className="w-5 h-5 text-pink-500" />}
+                  {result.type === 'vip_day' && <Crown className="w-5 h-5 text-purple-500" />}
+                  {result.type === 'retry' && <RefreshCw className="w-5 h-5 text-green-500" />}
                   {result.label}
                 </p>
                 {result.code && (
-                  <p className="text-yellow-400 mt-2 font-mono text-sm">
+                  <p className="text-amber-600 mt-2 font-mono text-sm">
                     Code: {result.code}
                   </p>
                 )}
@@ -292,7 +292,7 @@ const SpinWheel = ({ isOpen, onClose }) => {
               <Button
                 onClick={handleSpin}
                 disabled={spinning}
-                className="w-full bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-300 hover:to-orange-400 text-black font-bold text-lg py-6"
+                className="w-full bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-white font-bold text-lg py-6"
                 data-testid="spin-btn"
               >
                 {spinning ? (
@@ -308,9 +308,9 @@ const SpinWheel = ({ isOpen, onClose }) => {
                 )}
               </Button>
             ) : (
-              <div className="text-center p-4 rounded-xl bg-gray-800/50 border border-gray-700">
-                <p className="text-gray-400 text-sm mb-1">{text.nextSpin}</p>
-                <p className="text-2xl font-mono text-yellow-400 flex items-center justify-center gap-2">
+              <div className="text-center p-4 rounded-xl bg-gray-50 border border-gray-200">
+                <p className="text-gray-500 text-sm mb-1">{text.nextSpin}</p>
+                <p className="text-2xl font-mono text-amber-500 flex items-center justify-center gap-2">
                   <Clock className="w-5 h-5" />
                   {timeDisplay || formatTimeRemaining(nextSpinTime)}
                 </p>
