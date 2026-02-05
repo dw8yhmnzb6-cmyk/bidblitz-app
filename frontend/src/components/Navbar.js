@@ -26,16 +26,16 @@ export const Navbar = () => {
   };
 
   return (
-    <nav className="glass fixed top-0 left-0 right-0 z-50" data-testid="navbar">
+    <nav className="bg-white/95 backdrop-blur-md shadow-sm fixed top-0 left-0 right-0 z-50 border-b border-gray-200" data-testid="navbar">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2 group" data-testid="logo-link">
-            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#FFD700] to-[#FF4D4D] flex items-center justify-center">
-              <Zap className="w-6 h-6 text-black" />
+            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center">
+              <Zap className="w-6 h-6 text-white" />
             </div>
-            <span className="text-xl font-bold tracking-tight font-['Poppins']">
-              Bid<span className="text-[#FFD700]">Blitz</span>
+            <span className="text-xl font-bold tracking-tight text-gray-800">
+              Bid<span className="text-amber-500">Blitz</span>
             </span>
           </Link>
 
@@ -43,28 +43,28 @@ export const Navbar = () => {
           <div className="hidden md:flex items-center gap-6">
             <Link 
               to="/auctions" 
-              className="text-[#94A3B8] hover:text-white transition-colors font-medium"
+              className="text-gray-600 hover:text-gray-900 transition-colors font-medium"
               data-testid="nav-auctions"
             >
               {t('nav.auctions')}
             </Link>
             <Link 
               to="/how-it-works" 
-              className="text-[#94A3B8] hover:text-white transition-colors font-medium"
+              className="text-gray-600 hover:text-gray-900 transition-colors font-medium"
               data-testid="nav-how-it-works"
             >
               {t('nav.howItWorks') || "So funktioniert's"}
             </Link>
             <Link 
               to="/buy-bids" 
-              className="text-[#FFD700] hover:text-[#FCD34D] transition-colors font-medium"
+              className="text-amber-600 hover:text-amber-700 transition-colors font-medium"
               data-testid="nav-buy-bids"
             >
               {t('nav.buyBids')}
             </Link>
             <Link 
               to="/giftcards" 
-              className="text-[#F59E0B] hover:text-[#FBBF24] transition-colors font-medium flex items-center gap-1"
+              className="text-orange-600 hover:text-orange-700 transition-colors font-medium flex items-center gap-1"
               data-testid="nav-giftcards"
             >
               <Gift className="w-4 h-4" />
@@ -72,7 +72,7 @@ export const Navbar = () => {
             </Link>
             <Link 
               to="/leaderboard" 
-              className="text-[#A855F7] hover:text-[#C084FC] transition-colors font-medium flex items-center gap-1"
+              className="text-purple-600 hover:text-purple-700 transition-colors font-medium flex items-center gap-1"
               data-testid="nav-leaderboard"
             >
               <Trophy className="w-4 h-4" />
@@ -81,7 +81,7 @@ export const Navbar = () => {
             {isAuthenticated && (
               <button 
                 onClick={() => setWheelOpen(true)}
-                className="text-[#F59E0B] hover:text-[#FFD700] transition-colors font-medium flex items-center gap-1"
+                className="text-amber-500 hover:text-amber-600 transition-colors font-medium flex items-center gap-1"
                 data-testid="nav-wheel"
               >
                 <Sparkles className="w-4 h-4" />
@@ -90,7 +90,7 @@ export const Navbar = () => {
             )}
             <Link 
               to="/vip-auctions" 
-              className="text-[#FFA500] hover:text-[#FFD700] transition-colors font-medium flex items-center gap-1"
+              className="text-orange-500 hover:text-orange-600 transition-colors font-medium flex items-center gap-1"
               data-testid="nav-vip-auctions"
             >
               <Crown className="w-4 h-4" />
@@ -98,7 +98,7 @@ export const Navbar = () => {
             </Link>
             <Link 
               to="/winners" 
-              className="text-[#94A3B8] hover:text-white transition-colors font-medium flex items-center gap-1"
+              className="text-gray-600 hover:text-gray-900 transition-colors font-medium flex items-center gap-1"
               data-testid="nav-winners"
             >
               <Trophy className="w-4 h-4" />
@@ -107,7 +107,7 @@ export const Navbar = () => {
             {isAuthenticated && (
               <Link 
                 to="/dashboard" 
-                className="text-[#94A3B8] hover:text-white transition-colors font-medium"
+                className="text-gray-600 hover:text-gray-900 transition-colors font-medium"
                 data-testid="nav-dashboard"
               >
                 {t('nav.dashboard')}
@@ -116,7 +116,7 @@ export const Navbar = () => {
             {isAdmin && (
               <Link 
                 to="/admin" 
-                className="text-[#F59E0B] hover:text-[#FCD34D] transition-colors font-medium flex items-center gap-1"
+                className="text-orange-600 hover:text-orange-700 transition-colors font-medium flex items-center gap-1"
                 data-testid="nav-admin"
               >
                 <Shield className="w-4 h-4" />
@@ -126,7 +126,7 @@ export const Navbar = () => {
             {isInfluencer && (
               <Link 
                 to="/influencer-dashboard" 
-                className="text-[#FFD700] hover:text-[#FCD34D] transition-colors font-medium flex items-center gap-1"
+                className="text-amber-600 hover:text-amber-700 transition-colors font-medium flex items-center gap-1"
                 data-testid="nav-influencer"
               >
                 <Star className="w-4 h-4" />
@@ -136,7 +136,7 @@ export const Navbar = () => {
             {isManager && (
               <Link 
                 to="/manager-dashboard" 
-                className="text-[#7C3AED] hover:text-[#A78BFA] transition-colors font-medium flex items-center gap-1"
+                className="text-purple-600 hover:text-purple-700 transition-colors font-medium flex items-center gap-1"
                 data-testid="nav-manager"
               >
                 <Shield className="w-4 h-4" />
@@ -150,19 +150,19 @@ export const Navbar = () => {
             {/* Language Selector */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="text-[#94A3B8] hover:text-white hover:bg-white/10" data-testid="language-selector">
+                <Button variant="ghost" size="sm" className="text-gray-600 hover:text-gray-900 hover:bg-gray-100" data-testid="language-selector">
                   <Globe className="w-4 h-4 mr-2" />
                   {languageList[language]?.flag} {languageList[language]?.name}
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="bg-[#181824] border-white/10 max-h-80 overflow-y-auto">
+              <DropdownMenuContent className="bg-white border-gray-200 max-h-80 overflow-y-auto shadow-lg">
                 {Object.keys(languageList).map((lang) => (
                   <DropdownMenuItem 
                     key={lang} 
                     onClick={() => {
                       changeLanguage(lang);
                     }}
-                    className={`text-white hover:bg-white/10 cursor-pointer ${language === lang ? 'bg-white/5' : ''}`}
+                    className={`text-gray-700 hover:bg-gray-100 cursor-pointer ${language === lang ? 'bg-gray-50' : ''}`}
                   >
                     {languageList[lang]?.flag} {languageList[lang]?.name}
                   </DropdownMenuItem>
@@ -172,20 +172,20 @@ export const Navbar = () => {
 
             {isAuthenticated ? (
               <>
-                <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-[#181824] border border-white/10">
-                  <Zap className="w-4 h-4 text-[#06B6D4]" />
-                  <span className="font-mono font-bold text-[#06B6D4]" data-testid="bids-balance">
+                <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-cyan-50 border border-cyan-200">
+                  <Zap className="w-4 h-4 text-cyan-600" />
+                  <span className="font-mono font-bold text-cyan-600" data-testid="bids-balance">
                     {user?.bids_balance || 0}
                   </span>
-                  <span className="text-[#94A3B8] text-sm">{t('nav.bids')}</span>
+                  <span className="text-gray-500 text-sm">{t('nav.bids')}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-[#94A3B8]" data-testid="user-name">{user?.name}</span>
+                  <span className="text-gray-600" data-testid="user-name">{user?.name}</span>
                   <Button
                     variant="ghost"
                     size="icon"
                     onClick={handleLogout}
-                    className="text-[#94A3B8] hover:text-white hover:bg-white/10"
+                    className="text-gray-500 hover:text-gray-800 hover:bg-gray-100"
                     data-testid="logout-btn"
                   >
                     <LogOut className="w-5 h-5" />
@@ -195,7 +195,7 @@ export const Navbar = () => {
             ) : (
               <>
                 <Link to="/login">
-                  <Button variant="ghost" className="text-[#94A3B8] hover:text-white" data-testid="login-btn">
+                  <Button variant="ghost" className="text-gray-600 hover:text-gray-900" data-testid="login-btn">
                     {t('nav.login')}
                   </Button>
                 </Link>
