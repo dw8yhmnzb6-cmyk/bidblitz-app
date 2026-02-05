@@ -58,49 +58,85 @@ body {
   background: var(--bg-primary);
 }
 
-/* Dark mode overrides for common backgrounds */
-.dark .bg-gradient-to-b.from-cyan-50.to-cyan-100,
-.dark .bg-cyan-50,
-.dark .bg-cyan-100 {
+/* Dark mode - Strong overrides for ALL light backgrounds */
+.dark [class*="from-cyan"],
+.dark [class*="to-cyan"],
+.dark [class*="bg-cyan"],
+.dark .bg-gradient-to-b.from-cyan-50,
+.dark .bg-gradient-to-b.to-cyan-100 {
+  --tw-gradient-from: #050509 !important;
+  --tw-gradient-to: #050509 !important;
   background: #050509 !important;
 }
 
-.dark .bg-white {
-  background: #181824 !important;
+.dark .bg-white,
+.dark [class*="bg-white"] {
+  background-color: #181824 !important;
 }
 
-.dark .bg-gray-50 {
-  background: #0D0D14 !important;
+.dark .bg-gray-50,
+.dark [class*="bg-gray-50"] {
+  background-color: #0D0D14 !important;
 }
 
-.dark .bg-gray-100 {
-  background: #12121A !important;
+.dark .bg-gray-100,
+.dark [class*="bg-gray-100"] {
+  background-color: #12121A !important;
 }
 
+/* Dark mode text colors */
 .dark .text-gray-800,
 .dark .text-gray-700,
-.dark .text-gray-900 {
+.dark .text-gray-900,
+.dark [class*="text-gray-8"],
+.dark [class*="text-gray-7"],
+.dark [class*="text-gray-9"] {
   color: #F8FAFC !important;
 }
 
 .dark .text-gray-600,
-.dark .text-gray-500 {
+.dark .text-gray-500,
+.dark [class*="text-gray-6"],
+.dark [class*="text-gray-5"] {
   color: #94A3B8 !important;
 }
 
+/* Dark mode borders */
 .dark .border-gray-200,
-.dark .border-gray-100 {
+.dark .border-gray-100,
+.dark [class*="border-gray-2"],
+.dark [class*="border-gray-1"] {
   border-color: rgba(255,255,255,0.1) !important;
 }
 
-.dark .border-gray-300 {
+.dark .border-gray-300,
+.dark [class*="border-gray-3"] {
   border-color: rgba(255,255,255,0.2) !important;
 }
 
+/* Dark mode shadows */
 .dark .shadow-md,
 .dark .shadow-lg,
-.dark .shadow-xl {
+.dark .shadow-xl,
+.dark .shadow-2xl {
   box-shadow: 0 4px 20px rgba(0,0,0,0.5) !important;
+}
+
+/* Keep accent colors */
+.dark .bg-amber-50,
+.dark .bg-amber-100 {
+  background-color: rgba(245, 158, 11, 0.1) !important;
+}
+
+.dark .bg-green-50,
+.dark .bg-green-100 {
+  background-color: rgba(16, 185, 129, 0.1) !important;
+}
+
+.dark .bg-cyan-50.border-cyan-200,
+.dark .bg-cyan-100.border-cyan-200 {
+  background-color: rgba(6, 182, 212, 0.1) !important;
+  border-color: rgba(6, 182, 212, 0.3) !important;
 }
 
 * {
