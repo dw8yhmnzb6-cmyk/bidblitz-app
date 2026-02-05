@@ -164,16 +164,16 @@ const SpinWheel = ({ isOpen, onClose }) => {
 
   return (
     <div 
-      className="fixed inset-0 bg-black/95 flex items-center justify-center p-4" 
+      className="fixed inset-0 bg-black/70 flex items-center justify-center p-4" 
       style={{ zIndex: 99999 }}
       data-testid="spin-wheel-modal"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="relative bg-gradient-to-br from-[#1A1A2E] to-[#16213E] rounded-2xl p-4 sm:p-6 w-full max-w-[320px] sm:max-w-sm border border-yellow-500/30 shadow-2xl max-h-[90vh] overflow-y-auto">
+      <div className="relative bg-white rounded-2xl p-4 sm:p-6 w-full max-w-[320px] sm:max-w-sm border border-amber-400 shadow-2xl max-h-[90vh] overflow-y-auto">
         {/* Close Button */}
         <button 
           onClick={onClose}
-          className="absolute top-3 right-3 sm:top-4 sm:right-4 text-gray-400 hover:text-white z-20"
+          className="absolute top-3 right-3 sm:top-4 sm:right-4 text-gray-500 hover:text-gray-800 z-20"
           data-testid="close-wheel-btn"
         >
           <X className="w-6 h-6" />
@@ -182,20 +182,20 @@ const SpinWheel = ({ isOpen, onClose }) => {
         {/* Header */}
         <div className="text-center mb-4 sm:mb-6">
           <div className="flex items-center justify-center gap-2 mb-2">
-            <Sparkles className="w-6 h-6 sm:w-8 sm:h-8 text-yellow-400" />
-            <h2 className="text-xl sm:text-2xl font-bold text-white">{text.title}</h2>
-            <Sparkles className="w-6 h-6 sm:w-8 sm:h-8 text-yellow-400" />
+            <Sparkles className="w-6 h-6 sm:w-8 sm:h-8 text-amber-500" />
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-800">{text.title}</h2>
+            <Sparkles className="w-6 h-6 sm:w-8 sm:h-8 text-amber-500" />
           </div>
-          <p className="text-gray-400 text-sm sm:text-base">{text.subtitle}</p>
+          <p className="text-gray-500 text-sm sm:text-base">{text.subtitle}</p>
         </div>
         
         {!token ? (
           <div className="text-center py-8">
-            <p className="text-gray-400">{text.loginRequired}</p>
+            <p className="text-gray-500">{text.loginRequired}</p>
           </div>
         ) : loading ? (
           <div className="flex justify-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-yellow-400"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-amber-500"></div>
           </div>
         ) : (
           <>
@@ -203,13 +203,13 @@ const SpinWheel = ({ isOpen, onClose }) => {
             <div className="relative w-56 h-56 sm:w-72 sm:h-72 mx-auto mb-4 sm:mb-6">
               {/* Pointer */}
               <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-2 z-10">
-                <div className="w-0 h-0 border-l-[15px] border-r-[15px] border-t-[25px] border-l-transparent border-r-transparent border-t-yellow-400 drop-shadow-lg"></div>
+                <div className="w-0 h-0 border-l-[15px] border-r-[15px] border-t-[25px] border-l-transparent border-r-transparent border-t-amber-500 drop-shadow-lg"></div>
               </div>
               
               {/* Wheel */}
               <div 
                 ref={wheelRef}
-                className="w-full h-full rounded-full border-4 border-yellow-400 shadow-[0_0_30px_rgba(255,215,0,0.3)] overflow-hidden"
+                className="w-full h-full rounded-full border-4 border-amber-500 shadow-[0_0_30px_rgba(245,158,11,0.3)] overflow-hidden"
                 style={{
                   transform: `rotate(${rotation}deg)`,
                   transition: spinning ? 'transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99)' : 'none',
