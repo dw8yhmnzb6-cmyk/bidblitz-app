@@ -251,7 +251,7 @@ export default function Login() {
             <Button
               type="submit"
               disabled={loading || (requires2FA && twoFactorCode.length !== 6)}
-              className="w-full btn-primary py-3 h-auto"
+              className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white py-3 h-auto font-bold"
               data-testid="login-submit"
             >
               {loading ? (
@@ -270,10 +270,10 @@ export default function Login() {
             {!requires2FA && (
               <div className="relative my-4">
                 <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-white/10"></div>
+                  <div className="w-full border-t border-gray-200"></div>
                 </div>
                 <div className="relative flex justify-center text-sm">
-                  <span className="px-2 bg-[#0D0D14] text-[#94A3B8]">{language === 'de' ? 'oder' : 'or'}</span>
+                  <span className="px-2 bg-white text-gray-500">{language === 'de' ? 'oder' : 'or'}</span>
                 </div>
               </div>
             )}
@@ -284,7 +284,7 @@ export default function Login() {
                 onClick={handleGoogleLogin}
                 disabled={googleLoading}
                 variant="outline"
-                className="w-full h-12 border-white/20 text-white hover:bg-white/5"
+                className="w-full h-12 border-gray-300 text-gray-700 hover:bg-gray-50"
                 data-testid="google-login-btn"
               >
                 {googleLoading ? (
@@ -310,7 +310,7 @@ export default function Login() {
                   : 'Apple Login requires Apple Developer Credentials. Please configure in .env.'
                 )}
                 variant="outline"
-                className="w-full h-12 border-white/20 text-white hover:bg-white/5 mt-3"
+                className="w-full h-12 border-gray-300 bg-gray-800 text-white hover:bg-gray-700 mt-3"
                 data-testid="apple-login-btn"
               >
                 <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="currentColor">
@@ -323,9 +323,9 @@ export default function Login() {
 
           {!requires2FA && (
             <div className="mt-6 text-center">
-              <p className="text-[#94A3B8]">
+              <p className="text-gray-500">
                 {texts.noAccount}{' '}
-                <Link to="/register" className="text-[#7C3AED] hover:underline font-medium">
+                <Link to="/register" className="text-amber-600 hover:underline font-medium">
                   {texts.registerNow}
                 </Link>
               </p>
