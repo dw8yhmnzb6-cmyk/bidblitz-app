@@ -183,7 +183,7 @@ export default function Register() {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
-                  className="pl-10 h-12 bg-[#181824] border-white/10 text-white placeholder:text-[#475569]"
+                  className="pl-10 h-12 bg-gray-50 border-gray-200 text-gray-800 placeholder:text-gray-400"
                   data-testid="confirm-password-input"
                 />
               </div>
@@ -192,7 +192,7 @@ export default function Register() {
             <Button
               type="submit"
               disabled={loading}
-              className="w-full btn-primary py-3 h-auto"
+              className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white font-bold py-3 h-auto"
               data-testid="register-submit"
             >
               {loading ? texts.registering : texts.registerButton}
@@ -201,10 +201,10 @@ export default function Register() {
             {/* Google Register */}
             <div className="relative my-4">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-white/10"></div>
+                <div className="w-full border-t border-gray-200"></div>
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-[#0D0D14] text-[#94A3B8]">{language === 'de' ? 'oder' : 'or'}</span>
+                <span className="px-2 bg-white text-gray-500">{language === 'de' ? 'oder' : 'or'}</span>
               </div>
             </div>
 
@@ -216,7 +216,7 @@ export default function Register() {
                 window.location.href = `https://auth.emergentagent.com/?redirect=${encodeURIComponent(redirectUrl)}`;
               }}
               variant="outline"
-              className="w-full h-12 border-white/20 text-white hover:bg-white/5"
+              className="w-full h-12 border-gray-300 text-gray-700 hover:bg-gray-50"
               data-testid="google-register-btn"
             >
               <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
