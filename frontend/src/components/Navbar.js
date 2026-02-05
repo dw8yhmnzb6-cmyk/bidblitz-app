@@ -1,8 +1,9 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
+import { useTheme } from '../context/ThemeContext';
 import { languageList } from '../i18n/translations';
-import { Zap, User, LogOut, Shield, Menu, X, Globe, Gift, Trophy, Heart, Crown, Star, Sparkles } from 'lucide-react';
+import { Zap, User, LogOut, Shield, Menu, X, Globe, Gift, Trophy, Heart, Crown, Star, Sparkles, Sun, Moon } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from './ui/button';
 import SpinWheel from './SpinWheel';
@@ -16,6 +17,7 @@ import {
 export const Navbar = () => {
   const { user, isAuthenticated, isAdmin, isInfluencer, isManager, logout } = useAuth();
   const { t, language, changeLanguage, languages } = useLanguage();
+  const { isDarkMode, toggleDarkMode } = useTheme();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [wheelOpen, setWheelOpen] = useState(false);
@@ -26,7 +28,11 @@ export const Navbar = () => {
   };
 
   return (
-    <nav className="bg-white/95 backdrop-blur-md shadow-sm fixed top-0 left-0 right-0 z-50 border-b border-gray-200" data-testid="navbar">
+    <nav className={`backdrop-blur-md shadow-sm fixed top-0 left-0 right-0 z-50 border-b transition-colors duration-300 ${
+      isDarkMode 
+        ? 'bg-[#0D0D14]/95 border-white/10' 
+        : 'bg-white/95 border-gray-200'
+    }`} data-testid="navbar">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
@@ -34,7 +40,7 @@ export const Navbar = () => {
             <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center">
               <Zap className="w-6 h-6 text-white" />
             </div>
-            <span className="text-xl font-bold tracking-tight text-gray-800">
+            <span className={`text-xl font-bold tracking-tight ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>
               Bid<span className="text-amber-500">Blitz</span>
             </span>
           </Link>
