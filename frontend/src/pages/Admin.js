@@ -3280,7 +3280,7 @@ export default function Admin() {
       {/* Voice Debug Floating Button */}
       <button
         onClick={() => setShowVoiceDebug(true)}
-        className="fixed bottom-24 left-6 w-14 h-14 rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg hover:shadow-xl transition-all flex items-center justify-center z-40 group"
+        className="fixed bottom-6 left-64 w-14 h-14 rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg hover:shadow-xl transition-all flex items-center justify-center z-40 group"
         title="Sprach-Debug-Assistent"
         data-testid="voice-debug-btn"
       >
