@@ -536,7 +536,7 @@ export default function Admin() {
             {},
             { headers: { Authorization: `Bearer ${token}` } }
           );
-          toast.success('Auto-Neustart aktiviert');
+          toast.success(at('autoRestartEnabled'));
         } catch (autoRestartError) {
           console.error('Auto-restart setup failed:', autoRestartError);
         }
@@ -550,9 +550,9 @@ export default function Admin() {
             {},
             { headers: { Authorization: `Bearer ${token}` } }
           );
-          toast.success(`Bots bieten bis €${newAuction.bot_target_price}`);
+          toast.success(`${at('botsWillBidTo')} €${newAuction.bot_target_price}`);
         } catch (botError) {
-          toast.error('Bot-Bieten fehlgeschlagen - Bots erstellen?');
+          toast.error(at('botBidFailed'));
         }
       }
       
