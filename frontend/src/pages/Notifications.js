@@ -240,19 +240,19 @@ export default function Notifications() {
   }
 
   return (
-    <div className="min-h-screen pt-20 pb-12 px-4 bg-gradient-to-b from-[#0a1929] to-[#0d2538]" data-testid="notifications-page">
+    <div className="min-h-screen pt-20 pb-12 px-4 bg-gradient-to-b from-cyan-50 to-cyan-100" data-testid="notifications-page">
       <div className="max-w-2xl mx-auto">
         
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#FFD700] to-[#FF4D4D] flex items-center justify-center">
-              <Bell className="w-6 h-6 text-black" />
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center">
+              <Bell className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-white">Benachrichtigungen</h1>
+              <h1 className="text-xl font-bold text-gray-800">Benachrichtigungen</h1>
               {unreadCount > 0 && (
-                <p className="text-sm text-[#FFD700]">{unreadCount} ungelesen</p>
+                <p className="text-sm text-amber-600">{unreadCount} ungelesen</p>
               )}
             </div>
           </div>
@@ -263,7 +263,7 @@ export default function Notifications() {
                 variant="ghost" 
                 size="sm"
                 onClick={markAllAsRead}
-                className="text-cyan-400 hover:text-cyan-300"
+                className="text-cyan-600 hover:text-cyan-700"
               >
                 <Check className="w-4 h-4 mr-1" />
                 Alle lesen
@@ -273,7 +273,7 @@ export default function Notifications() {
               variant="ghost" 
               size="sm"
               onClick={() => setShowSettings(!showSettings)}
-              className="text-gray-400 hover:text-white"
+              className="text-gray-500 hover:text-gray-700"
             >
               <Settings className="w-4 h-4" />
             </Button>
@@ -282,20 +282,20 @@ export default function Notifications() {
 
         {/* Settings Panel */}
         {showSettings && (
-          <div className="bg-[#1a3a52] rounded-xl p-4 mb-6 border border-white/10">
+          <div className="bg-white rounded-xl p-4 mb-6 border border-gray-200 shadow-sm">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-white font-semibold">Benachrichtigungs-Einstellungen</h3>
+              <h3 className="text-gray-800 font-semibold">Benachrichtigungs-Einstellungen</h3>
               <button onClick={() => setShowSettings(false)}>
-                <X className="w-5 h-5 text-gray-400 hover:text-white" />
+                <X className="w-5 h-5 text-gray-400 hover:text-gray-600" />
               </button>
             </div>
             
             {/* Push Notifications */}
-            <div className="mb-4 p-3 bg-[#0a1929] rounded-lg">
+            <div className="mb-4 p-3 bg-gray-50 rounded-lg">
               <div className="flex items-center justify-between mb-2">
                 <div>
-                  <p className="text-white font-medium">Push-Benachrichtigungen</p>
-                  <p className="text-gray-400 text-xs">
+                  <p className="text-gray-800 font-medium">Push-Benachrichtigungen</p>
+                  <p className="text-gray-500 text-xs">
                     {pushPermission === 'denied' 
                       ? 'Blockiert - Bitte in Browser-Einstellungen erlauben'
                       : 'Im Browser benachrichtigt werden'
