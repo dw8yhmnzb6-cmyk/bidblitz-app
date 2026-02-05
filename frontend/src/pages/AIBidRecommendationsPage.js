@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import axios from 'axios';
+import { toast } from 'sonner';
 import { 
   Brain, TrendingUp, Target, Clock, 
   Zap, AlertTriangle, CheckCircle, ArrowRight,
