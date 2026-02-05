@@ -333,6 +333,11 @@ function AppContent() {
               <PriceAlertsPage />
             </ProtectedRoute>
           } />
+          {/* Deal Radar - Schnäppchen Finder */}
+          <Route path="/deal-radar" element={<DealRadarPage />} />
+          <Route path="/radar" element={<DealRadarPage />} />
+          <Route path="/schnaeppchen" element={<DealRadarPage />} />
+          <Route path="/deals" element={<DealRadarPage />} />
           {/* Social Share */}
           <Route path="/share" element={
             <ProtectedRoute>
