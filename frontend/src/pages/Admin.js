@@ -936,11 +936,11 @@ export default function Admin() {
       await axios.post(`${API}/admin/bots`, newBot, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      toast.success('Bot erstellt');
+      toast.success(at('botCreated'));
       setNewBot({ name: '' });
       fetchData();
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Fehler');
+      toast.error(error.response?.data?.detail || at('error'));
     }
   };
 
@@ -952,20 +952,20 @@ export default function Admin() {
       toast.success(res.data.message);
       fetchData();
     } catch (error) {
-      toast.error('Fehler');
+      toast.error(at('error'));
     }
   };
 
   const handleDeleteBot = async (botId) => {
-    if (!confirm('Bot wirklich löschen?')) return;
+    if (!confirm(at('confirmDeleteBot'))) return;
     try {
       await axios.delete(`${API}/admin/bots/${botId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      toast.success('Bot gelöscht');
+      toast.success(at('botDeleted'));
       fetchData();
     } catch (error) {
-      toast.error('Fehler');
+      toast.error(at('error'));
     }
   };
 
