@@ -1543,6 +1543,11 @@ export default function Admin() {
             <AdminVoiceCommand />
           )}
 
+          {/* Debug Reports Tab */}
+          {activeTab === 'debug-reports' && (
+            <AdminDebugReports token={token} />
+          )}
+
           {/* Products Tab */}
           {activeTab === 'products' && (
             <div className="space-y-8">
