@@ -286,7 +286,7 @@ export default function AIBidRecommendationsPage() {
         
         {/* Refresh Button */}
         <div className="flex justify-end mb-4">
-          <Button variant="outline" onClick={fetchOpportunities} disabled={loading}>
+          <Button variant="outline" onClick={fetchOpportunities} disabled={loading} className="border-gray-300 text-gray-700 hover:bg-gray-50">
             {t.refresh}
           </Button>
         </div>
@@ -296,13 +296,13 @@ export default function AIBidRecommendationsPage() {
           <div className="flex items-center justify-center py-16">
             <div className="text-center">
               <Brain className="w-16 h-16 text-purple-500 mx-auto mb-4 animate-pulse" />
-              <p className="text-gray-400">{t.loading}</p>
+              <p className="text-gray-600">{t.loading}</p>
             </div>
           </div>
         ) : opportunities.length === 0 ? (
-          <div className="bg-gray-800/50 rounded-xl p-12 text-center">
-            <Target className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-            <h3 className="text-xl text-white mb-2">{t.noOpportunities}</h3>
+          <div className="bg-white rounded-xl p-12 text-center shadow-lg border border-gray-200">
+            <Target className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-xl text-gray-800 mb-2">{t.noOpportunities}</h3>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -318,22 +318,22 @@ export default function AIBidRecommendationsPage() {
         )}
         
         {/* Info Box */}
-        <div className="mt-8 bg-gradient-to-r from-purple-500/10 to-pink-500/10 rounded-xl p-6 border border-purple-500/20">
-          <h3 className="text-lg font-bold text-white mb-3 flex items-center gap-2">
-            <Brain className="w-5 h-5 text-purple-400" />
+        <div className="mt-8 bg-white rounded-xl p-6 border border-purple-200 shadow-lg">
+          <h3 className="text-lg font-bold text-gray-800 mb-3 flex items-center gap-2">
+            <Brain className="w-5 h-5 text-purple-600" />
             Wie funktionieren die KI-Empfehlungen?
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-300">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600">
             <div className="flex items-start gap-2">
-              <BarChart3 className="w-5 h-5 text-purple-400 flex-shrink-0" />
+              <BarChart3 className="w-5 h-5 text-purple-500 flex-shrink-0" />
               <p>Analyse von Bieter-Mustern und Aktivitätsintensität</p>
             </div>
             <div className="flex items-start gap-2">
-              <Users className="w-5 h-5 text-purple-400 flex-shrink-0" />
+              <Users className="w-5 h-5 text-purple-500 flex-shrink-0" />
               <p>Bewertung der Konkurrenz und deiner Gewinnhistorie</p>
             </div>
             <div className="flex items-start gap-2">
-              <TrendingUp className="w-5 h-5 text-purple-400 flex-shrink-0" />
+              <TrendingUp className="w-5 h-5 text-purple-500 flex-shrink-0" />
               <p>Echtzeit-Berechnung der Gewinnwahrscheinlichkeit</p>
             </div>
           </div>
