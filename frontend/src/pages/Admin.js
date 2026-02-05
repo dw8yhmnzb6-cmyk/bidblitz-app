@@ -1054,10 +1054,10 @@ export default function Admin() {
 
   // Auto-restart auction handler
   const handleSetAutoRestart = async (auctionId, currentAutoRestart) => {
-    const duration = prompt('Auto-Neustart Dauer in Minuten (0 = deaktiviert):', currentAutoRestart || '10');
+    const duration = prompt(at('promptAutoRestartDuration'), currentAutoRestart || '10');
     if (duration === null) return;
     
-    const botPrice = prompt('Bots bieten bis (€) für Auto-Neustart:\n\nBots bieten kontinuierlich bis zu diesem Preis.\nLeer = Standard €2-3:', '');
+    const botPrice = prompt(at('promptBotTargetAutoRestart'), '');
     
     try {
       await axios.put(
@@ -1065,10 +1065,10 @@ export default function Admin() {
         {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      toast.success(parseInt(duration) > 0 ? `Auto-Neustart aktiviert (${duration} Min)` : 'Auto-Neustart deaktiviert');
+      toast.success(parseInt(duration) > 0 ? `${at('autoRestartEnabled')} (${duration} Min)` : at('autoRestartEnabled'));
       fetchData();
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Fehler');
+      toast.error(error.response?.data?.detail || at('error'));
     }
   };
 
