@@ -110,7 +110,7 @@ const Leaderboard = () => {
       case 1:
         return <Trophy className="w-6 h-6 text-yellow-400" />;
       case 2:
-        return <Medal className="w-6 h-6 text-gray-300" />;
+        return <Medal className="w-6 h-6 text-gray-600" />;
       case 3:
         return <Medal className="w-6 h-6 text-amber-600" />;
       default:
@@ -127,7 +127,7 @@ const Leaderboard = () => {
       case 3:
         return 'bg-gradient-to-r from-amber-600/20 to-orange-600/20 border-amber-600/50';
       default:
-        return 'bg-[#1E1E2D] border-white/10';
+        return 'bg-white shadow-md border-gray-200';
     }
   };
 
@@ -158,21 +158,21 @@ const Leaderboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#0A0A0F] py-8 px-4">
+    <div className="min-h-screen bg-gradient-to-b from-cyan-50 to-cyan-100 py-8 px-4">
       <div className="max-w-3xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-3 mb-2">
             <Trophy className="w-10 h-10 text-yellow-400" />
-            <h1 className="text-3xl font-bold text-white">{text.title}</h1>
+            <h1 className="text-3xl font-bold text-gray-800">{text.title}</h1>
           </div>
-          <p className="text-gray-400">{text.subtitle}</p>
+          <p className="text-gray-500">{text.subtitle}</p>
           
           {/* Week Info */}
-          <div className="mt-4 inline-flex items-center gap-4 px-4 py-2 rounded-full bg-[#1E1E2D] border border-white/10">
+          <div className="mt-4 inline-flex items-center gap-4 px-4 py-2 rounded-full bg-white shadow-md border border-gray-200">
             <div className="flex items-center gap-2 text-sm">
               <Calendar className="w-4 h-4 text-blue-400" />
-              <span className="text-gray-400">{formatDate(weekInfo.start)} - {formatDate(weekInfo.end)}</span>
+              <span className="text-gray-500">{formatDate(weekInfo.start)} - {formatDate(weekInfo.end)}</span>
             </div>
             <div className="w-px h-4 bg-white/20"></div>
             <div className="flex items-center gap-2 text-sm">
@@ -190,7 +190,7 @@ const Leaderboard = () => {
               className={`p-4 rounded-xl text-center border ${getRankBg(rank)}`}
             >
               {getRankIcon(rank)}
-              <p className="text-white font-bold mt-2">{text.rank} {rank}</p>
+              <p className="text-gray-800 font-bold mt-2">{text.rank} {rank}</p>
               <p className="text-yellow-400 font-mono text-lg flex items-center justify-center gap-1">
                 <Zap className="w-4 h-4" />
                 {prizes[rank]?.bids || 0}
@@ -209,8 +209,8 @@ const Leaderboard = () => {
                   <User className="w-5 h-5 text-purple-400" />
                 </div>
                 <div>
-                  <p className="text-gray-400 text-sm">{text.yourPosition}</p>
-                  <p className="text-white font-bold">
+                  <p className="text-gray-500 text-sm">{text.yourPosition}</p>
+                  <p className="text-gray-800 font-bold">
                     {currentUser.rank <= 10 ? (
                       <span className="text-green-400">#{currentUser.rank}</span>
                     ) : (
@@ -220,12 +220,12 @@ const Leaderboard = () => {
                 </div>
               </div>
               <div className="text-right">
-                <p className="text-gray-400 text-sm">{text.bids}</p>
+                <p className="text-gray-500 text-sm">{text.bids}</p>
                 <p className="text-yellow-400 font-bold font-mono">{currentUser.total_bids || 0}</p>
               </div>
               {currentUser.prize && (
                 <div className="text-right">
-                  <p className="text-gray-400 text-sm">{text.prize}</p>
+                  <p className="text-gray-500 text-sm">{text.prize}</p>
                   <p className="text-green-400 font-bold flex items-center gap-1">
                     <Zap className="w-4 h-4" />
                     {currentUser.prize.bids}
@@ -234,21 +234,21 @@ const Leaderboard = () => {
               )}
             </div>
             {currentUser.rank > 10 && (
-              <p className="text-gray-400 text-sm mt-2 text-center">{text.bidMore}</p>
+              <p className="text-gray-500 text-sm mt-2 text-center">{text.bidMore}</p>
             )}
           </div>
         )}
 
         {!token && (
-          <div className="mb-6 p-4 rounded-xl bg-[#1E1E2D] border border-white/10 text-center">
-            <p className="text-gray-400">{text.loginToSee}</p>
+          <div className="mb-6 p-4 rounded-xl bg-white shadow-md border border-gray-200 text-center">
+            <p className="text-gray-500">{text.loginToSee}</p>
           </div>
         )}
 
         {/* Leaderboard Table */}
         <div className="glass-card rounded-xl overflow-hidden" data-testid="leaderboard-table">
           {/* Header */}
-          <div className="grid grid-cols-12 gap-2 p-4 bg-[#1A1A2E] border-b border-white/10 text-sm font-medium text-gray-400">
+          <div className="grid grid-cols-12 gap-2 p-4 bg-[#1A1A2E] border-b border-gray-200 text-sm font-medium text-gray-500">
             <div className="col-span-2">{text.rank}</div>
             <div className="col-span-6">{text.user}</div>
             <div className="col-span-2 text-right">{text.bids}</div>
@@ -257,12 +257,12 @@ const Leaderboard = () => {
 
           {/* Rows */}
           {loading ? (
-            <div className="p-8 text-center text-gray-400">
+            <div className="p-8 text-center text-gray-500">
               <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-yellow-400 mx-auto mb-2"></div>
               {text.loading}
             </div>
           ) : leaderboard.length === 0 ? (
-            <div className="p-8 text-center text-gray-400">
+            <div className="p-8 text-center text-gray-500">
               {text.notRanked}
             </div>
           ) : (
@@ -278,18 +278,18 @@ const Leaderboard = () => {
                   {/* Rank */}
                   <div className="col-span-2 flex items-center gap-2">
                     {getRankIcon(entry.rank)}
-                    <span className={`font-bold ${entry.rank <= 3 ? 'text-white text-lg' : 'text-gray-400'}`}>
+                    <span className={`font-bold ${entry.rank <= 3 ? 'text-gray-800 text-lg' : 'text-gray-500'}`}>
                       #{entry.rank}
                     </span>
                   </div>
                   
                   {/* User */}
                   <div className="col-span-6 flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-white font-bold">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-gray-800 font-bold">
                       {entry.username?.charAt(0).toUpperCase() || '?'}
                     </div>
                     <div>
-                      <p className="text-white font-medium flex items-center gap-2">
+                      <p className="text-gray-800 font-medium flex items-center gap-2">
                         {entry.username}
                         {entry.is_vip && (
                           <span className="px-1.5 py-0.5 rounded text-xs bg-yellow-500/20 text-yellow-400 flex items-center gap-1">
@@ -322,15 +322,15 @@ const Leaderboard = () => {
         </div>
 
         {/* Prize Legend */}
-        <div className="mt-6 p-4 rounded-xl bg-[#1E1E2D] border border-white/10">
-          <h3 className="text-white font-bold mb-3 flex items-center gap-2">
+        <div className="mt-6 p-4 rounded-xl bg-white shadow-md border border-gray-200">
+          <h3 className="text-gray-800 font-bold mb-3 flex items-center gap-2">
             <Trophy className="w-5 h-5 text-yellow-400" />
             {text.prize}
           </h3>
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-sm">
             {Object.entries(prizes).slice(0, 10).map(([rank, prize]) => (
-              <div key={rank} className="flex items-center gap-2 text-gray-400">
-                <span className="text-white font-medium">#{rank}:</span>
+              <div key={rank} className="flex items-center gap-2 text-gray-500">
+                <span className="text-gray-800 font-medium">#{rank}:</span>
                 <span className="text-yellow-400">{prize.bids} {text.freeBids}</span>
               </div>
             ))}

@@ -341,7 +341,7 @@ export default function Profile() {
   return (
     <div className="min-h-screen pt-24 pb-12 px-4" data-testid="profile-page">
       <div className="max-w-4xl mx-auto">
-        <Link to="/dashboard" className="inline-flex items-center gap-2 text-[#94A3B8] hover:text-white mb-6 transition-colors">
+        <Link to="/dashboard" className="inline-flex items-center gap-2 text-gray-500 hover:text-gray-800 mb-6 transition-colors">
           <ArrowLeft className="w-4 h-4" />
           {texts.back}
         </Link>
@@ -378,7 +378,7 @@ export default function Profile() {
                 <button 
                   onClick={handleAvatarClick}
                   disabled={uploadingAvatar}
-                  className="absolute bottom-0 right-0 w-10 h-10 rounded-full bg-[#181824] border-2 border-[#FFD700] flex items-center justify-center hover:bg-[#FFD700]/20 transition-colors disabled:opacity-50"
+                  className="absolute bottom-0 right-0 w-10 h-10 rounded-full bg-white border-2 border-[#FFD700] flex items-center justify-center hover:bg-[#FFD700]/20 transition-colors disabled:opacity-50"
                   title={texts.changePhoto}
                 >
                   {uploadingAvatar ? (
@@ -402,30 +402,30 @@ export default function Profile() {
               )}
 
               <div>
-                <h2 className="text-xl font-bold text-white">{user.name}</h2>
-                <p className="text-[#94A3B8] text-sm">{user.email}</p>
+                <h2 className="text-xl font-bold text-gray-800">{user.name}</h2>
+                <p className="text-gray-500 text-sm">{user.email}</p>
               </div>
 
               {/* Stats */}
-              <div className="grid grid-cols-2 gap-4 pt-4 border-t border-white/10">
+              <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-200">
                 <div className="text-center">
                   <div className="flex items-center justify-center gap-1 text-[#FFD700]">
                     <Zap className="w-5 h-5" />
                     <span className="text-2xl font-bold">{user.bids_balance || 0}</span>
                   </div>
-                  <p className="text-[#94A3B8] text-xs">{language === 'en' ? 'Bids' : language === 'sq' ? 'Oferta' : language === 'tr' ? 'Teklifler' : language === 'fr' ? 'Enchères' : 'Gebote'}</p>
+                  <p className="text-gray-500 text-xs">{language === 'en' ? 'Bids' : language === 'sq' ? 'Oferta' : language === 'tr' ? 'Teklifler' : language === 'fr' ? 'Enchères' : 'Gebote'}</p>
                 </div>
                 <div className="text-center">
                   <div className="flex items-center justify-center gap-1 text-[#10B981]">
                     <Trophy className="w-5 h-5" />
                     <span className="text-2xl font-bold">{user.won_auctions?.length || 0}</span>
                   </div>
-                  <p className="text-[#94A3B8] text-xs">{texts.auctionsWon}</p>
+                  <p className="text-gray-500 text-xs">{texts.auctionsWon}</p>
                 </div>
               </div>
 
               {/* Member since */}
-              <div className="flex items-center justify-center gap-2 text-[#94A3B8] text-sm pt-4 border-t border-white/10">
+              <div className="flex items-center justify-center gap-2 text-gray-500 text-sm pt-4 border-t border-gray-200">
                 <Calendar className="w-4 h-4" />
                 <span>{texts.memberSince} {new Date(user.created_at || Date.now()).toLocaleDateString(language === 'de' ? 'de-DE' : language === 'fr' ? 'fr-FR' : language === 'tr' ? 'tr-TR' : 'en-US', { month: 'long', year: 'numeric' })}</span>
               </div>
@@ -433,11 +433,11 @@ export default function Profile() {
 
             {/* Quick Links */}
             <div className="glass-card rounded-2xl p-4 mt-4 space-y-2">
-              <Link to="/bid-history" className="flex items-center gap-3 p-3 rounded-lg hover:bg-white/5 transition-colors text-[#94A3B8] hover:text-white">
+              <Link to="/bid-history" className="flex items-center gap-3 p-3 rounded-lg hover:bg-white/5 transition-colors text-gray-500 hover:text-gray-800">
                 <Zap className="w-5 h-5" />
                 <span>{language === 'en' ? 'Bid History' : language === 'sq' ? 'Historiku i Ofertave' : language === 'tr' ? 'Teklif Geçmişi' : language === 'fr' ? 'Historique des Enchères' : 'Gebots-Historie'}</span>
               </Link>
-              <Link to="/purchases" className="flex items-center gap-3 p-3 rounded-lg hover:bg-white/5 transition-colors text-[#94A3B8] hover:text-white">
+              <Link to="/purchases" className="flex items-center gap-3 p-3 rounded-lg hover:bg-white/5 transition-colors text-gray-500 hover:text-gray-800">
                 <Trophy className="w-5 h-5" />
                 <span>{language === 'en' ? 'My Purchases' : language === 'sq' ? 'Blerjet e Mia' : language === 'tr' ? 'Satın Alımlarım' : language === 'fr' ? 'Mes Achats' : 'Meine Käufe'}</span>
               </Link>
@@ -453,34 +453,34 @@ export default function Profile() {
                   <User className="w-5 h-5 text-[#FFD700]" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-white">{texts.personalInfo}</h3>
-                  <p className="text-[#94A3B8] text-sm">{language === 'en' ? 'Update your account information' : language === 'sq' ? 'Përditësoni informacionin e llogarisë' : language === 'tr' ? 'Hesap bilgilerinizi güncelleyin' : language === 'fr' ? 'Mettez à jour vos informations' : 'Aktualisieren Sie Ihre Kontoinformationen'}</p>
+                  <h3 className="text-lg font-bold text-gray-800">{texts.personalInfo}</h3>
+                  <p className="text-gray-500 text-sm">{language === 'en' ? 'Update your account information' : language === 'sq' ? 'Përditësoni informacionin e llogarisë' : language === 'tr' ? 'Hesap bilgilerinizi güncelleyin' : language === 'fr' ? 'Mettez à jour vos informations' : 'Aktualisieren Sie Ihre Kontoinformationen'}</p>
                 </div>
               </div>
 
               <form onSubmit={handleUpdateProfile} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label className="text-white">{texts.name}</Label>
+                    <Label className="text-gray-800">{texts.name}</Label>
                     <div className="relative">
-                      <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#94A3B8]" />
+                      <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
                       <Input
                         value={name}
                         onChange={(e) => setName(e.target.value)}
-                        className="bg-[#181824] border-white/10 text-white pl-10 h-12"
+                        className="bg-white border-gray-200 text-gray-800 pl-10 h-12"
                         data-testid="name-input"
                       />
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-white">{texts.email}</Label>
+                    <Label className="text-gray-800">{texts.email}</Label>
                     <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#94A3B8]" />
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
                       <Input
                         type="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        className="bg-[#181824] border-white/10 text-white pl-10 h-12"
+                        className="bg-white border-gray-200 text-gray-800 pl-10 h-12"
                         data-testid="email-input"
                       />
                     </div>
@@ -509,51 +509,51 @@ export default function Profile() {
                   <Shield className="w-5 h-5 text-[#7C3AED]" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-white">{texts.changePassword}</h3>
-                  <p className="text-[#94A3B8] text-sm">{language === 'en' ? 'Secure your account with a strong password' : language === 'sq' ? 'Siguroni llogarinë me një fjalëkalim të fortë' : language === 'tr' ? 'Hesabınızı güçlü bir şifre ile güvence altına alın' : language === 'fr' ? 'Sécurisez votre compte avec un mot de passe fort' : 'Sichern Sie Ihr Konto mit einem starken Passwort'}</p>
+                  <h3 className="text-lg font-bold text-gray-800">{texts.changePassword}</h3>
+                  <p className="text-gray-500 text-sm">{language === 'en' ? 'Secure your account with a strong password' : language === 'sq' ? 'Siguroni llogarinë me një fjalëkalim të fortë' : language === 'tr' ? 'Hesabınızı güçlü bir şifre ile güvence altına alın' : language === 'fr' ? 'Sécurisez votre compte avec un mot de passe fort' : 'Sichern Sie Ihr Konto mit einem starken Passwort'}</p>
                 </div>
               </div>
 
               <form onSubmit={handleChangePassword} className="space-y-4">
                 <div className="space-y-2">
-                  <Label className="text-white">{texts.currentPassword}</Label>
+                  <Label className="text-gray-800">{texts.currentPassword}</Label>
                   <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#94A3B8]" />
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
                     <Input
                       type="password"
                       value={currentPassword}
                       onChange={(e) => setCurrentPassword(e.target.value)}
                       placeholder="••••••••"
-                      className="bg-[#181824] border-white/10 text-white pl-10 h-12"
+                      className="bg-white border-gray-200 text-gray-800 pl-10 h-12"
                       data-testid="current-password-input"
                     />
                   </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label className="text-white">{texts.newPassword}</Label>
+                    <Label className="text-gray-800">{texts.newPassword}</Label>
                     <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#94A3B8]" />
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
                       <Input
                         type="password"
                         value={newPassword}
                         onChange={(e) => setNewPassword(e.target.value)}
                         placeholder={language === 'en' ? 'At least 6 characters' : language === 'sq' ? 'Së paku 6 karaktere' : language === 'tr' ? 'En az 6 karakter' : language === 'fr' ? 'Au moins 6 caractères' : 'Mindestens 6 Zeichen'}
-                        className="bg-[#181824] border-white/10 text-white pl-10 h-12"
+                        className="bg-white border-gray-200 text-gray-800 pl-10 h-12"
                         data-testid="new-password-input"
                       />
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-white">{texts.confirmPassword}</Label>
+                    <Label className="text-gray-800">{texts.confirmPassword}</Label>
                     <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#94A3B8]" />
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
                       <Input
                         type="password"
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
                         placeholder={language === 'en' ? 'Repeat' : language === 'sq' ? 'Përsërit' : language === 'tr' ? 'Tekrarla' : language === 'fr' ? 'Répéter' : 'Wiederholen'}
-                        className="bg-[#181824] border-white/10 text-white pl-10 h-12"
+                        className="bg-white border-gray-200 text-gray-800 pl-10 h-12"
                         data-testid="confirm-password-input"
                       />
                     </div>
@@ -726,15 +726,15 @@ function PromoCodeSection({ token, language, refreshUser }) {
           <Tag className="w-5 h-5 text-[#FFD700]" />
         </div>
         <div>
-          <h3 className="text-lg font-bold text-white">{t.title}</h3>
-          <p className="text-[#94A3B8] text-sm">{t.subtitle}</p>
+          <h3 className="text-lg font-bold text-gray-800">{t.title}</h3>
+          <p className="text-gray-500 text-sm">{t.subtitle}</p>
         </div>
       </div>
       
       <div className="space-y-4">
         <div className="flex gap-2">
           <div className="relative flex-1">
-            <Gift className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#94A3B8]" />
+            <Gift className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
             <Input
               value={promoCode}
               onChange={(e) => {
@@ -742,7 +742,7 @@ function PromoCodeSection({ token, language, refreshUser }) {
                 setCodeInfo(null);
               }}
               placeholder={t.placeholder}
-              className="bg-[#181824] border-white/10 text-white pl-10 h-12 uppercase font-mono tracking-wider"
+              className="bg-white border-gray-200 text-gray-800 pl-10 h-12 uppercase font-mono tracking-wider"
               data-testid="promo-code-input"
             />
           </div>
@@ -774,9 +774,9 @@ function PromoCodeSection({ token, language, refreshUser }) {
               </span>
             </div>
             {codeInfo.valid && (
-              <div className="mt-2 text-white">
+              <div className="mt-2 text-gray-800">
                 <p className="font-semibold">{codeInfo.name}</p>
-                <p className="text-sm text-[#94A3B8]">
+                <p className="text-sm text-gray-500">
                   🎁 {getRewardLabel(codeInfo.reward_type, codeInfo.reward_amount)}
                 </p>
               </div>

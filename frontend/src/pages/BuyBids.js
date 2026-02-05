@@ -239,29 +239,29 @@ export default function BuyBids() {
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="text-center mb-12">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#181824] border border-white/10 mb-6">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-gray-200 mb-6">
             <Sparkles className="w-4 h-4 text-[#F59E0B]" />
-            <span className="text-sm text-[#94A3B8]">{language === 'en' ? 'Best prices guaranteed' : language === 'sq' ? 'Çmimet më të mira të garantuara' : language === 'tr' ? 'En iyi fiyatlar garantili' : language === 'fr' ? 'Meilleurs prix garantis' : 'Beste Preise garantiert'}</span>
+            <span className="text-sm text-gray-500">{language === 'en' ? 'Best prices guaranteed' : language === 'sq' ? 'Çmimet më të mira të garantuara' : language === 'tr' ? 'En iyi fiyatlar garantili' : language === 'fr' ? 'Meilleurs prix garantis' : 'Beste Preise garantiert'}</span>
           </div>
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-4">
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-800 mb-4">
             {texts.title}
           </h1>
-          <p className="text-[#94A3B8] text-lg max-w-2xl mx-auto">
+          <p className="text-gray-500 text-lg max-w-2xl mx-auto">
             {texts.subtitle}
           </p>
           
           {/* Payment Methods Info */}
           <div className="mt-6 flex items-center justify-center gap-4 flex-wrap">
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#181824] border border-white/10">
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white border border-gray-200">
               <CreditCard className="w-4 h-4 text-[#7C3AED]" />
-              <span className="text-xs text-[#94A3B8]">{language === 'en' ? 'Credit Card' : language === 'sq' ? 'Kartë Krediti' : language === 'tr' ? 'Kredi Kartı' : language === 'fr' ? 'Carte de Crédit' : 'Kreditkarte'}</span>
+              <span className="text-xs text-gray-500">{language === 'en' ? 'Credit Card' : language === 'sq' ? 'Kartë Krediti' : language === 'tr' ? 'Kredi Kartı' : language === 'fr' ? 'Carte de Crédit' : 'Kreditkarte'}</span>
             </div>
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#181824] border border-white/10">
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white border border-gray-200">
               <Bitcoin className="w-4 h-4 text-[#F7931A]" />
-              <span className="text-xs text-[#94A3B8]">Bitcoin & Crypto</span>
+              <span className="text-xs text-gray-500">Bitcoin & Crypto</span>
             </div>
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#181824] border border-white/10">
-              <span className="text-xs text-[#94A3B8]">SEPA • Klarna • PayPal</span>
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white border border-gray-200">
+              <span className="text-xs text-gray-500">SEPA • Klarna • PayPal</span>
             </div>
           </div>
         </div>
@@ -271,11 +271,11 @@ export default function BuyBids() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {[...Array(4)].map((_, i) => (
               <div key={i} className="glass-card rounded-2xl p-6 animate-pulse">
-                <div className="h-8 bg-[#181824] rounded mb-4" />
-                <div className="h-16 bg-[#181824] rounded mb-6" />
+                <div className="h-8 bg-white rounded mb-4" />
+                <div className="h-16 bg-white rounded mb-6" />
                 <div className="space-y-3">
                   {[...Array(4)].map((_, j) => (
-                    <div key={j} className="h-4 bg-[#181824] rounded" />
+                    <div key={j} className="h-4 bg-white rounded" />
                   ))}
                 </div>
               </div>
@@ -298,7 +298,7 @@ export default function BuyBids() {
                 )}
 
                 <div className="text-center mb-6">
-                  <h3 className="text-xl font-bold text-white mb-2">{pkg.name}</h3>
+                  <h3 className="text-xl font-bold text-gray-800 mb-2">{pkg.name}</h3>
                   <div className="flex items-baseline justify-center gap-1">
                     <span className="text-4xl font-bold text-[#06B6D4] font-mono">
                       €{pkg.price.toFixed(0)}
@@ -306,10 +306,10 @@ export default function BuyBids() {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-center gap-2 py-4 mb-2 rounded-lg bg-[#181824]">
+                <div className="flex items-center justify-center gap-2 py-4 mb-2 rounded-lg bg-white">
                   <Zap className="w-6 h-6 text-[#F59E0B]" />
-                  <span className="text-2xl font-bold text-white">{pkg.bids}</span>
-                  <span className="text-[#94A3B8]">{texts.bids}</span>
+                  <span className="text-2xl font-bold text-gray-800">{pkg.bids}</span>
+                  <span className="text-gray-500">{texts.bids}</span>
                 </div>
                 
                 {/* Bonus Bids */}
@@ -324,14 +324,14 @@ export default function BuyBids() {
                 
                 {/* Price per bid */}
                 {pkg.per_bid && (
-                  <div className="text-center text-gray-400 text-sm mb-4">
+                  <div className="text-center text-gray-500 text-sm mb-4">
                     {language === 'en' ? 'Only' : language === 'sq' ? 'Vetëm' : language === 'tr' ? 'Sadece' : language === 'fr' ? 'Seulement' : 'Nur'} €{pkg.per_bid.toFixed(2)} {texts.perBid}
                   </div>
                 )}
 
                 <ul className="space-y-3 mb-6">
                   {getPackageFeatures(pkg).map((feature, index) => (
-                    <li key={index} className="flex items-center gap-2 text-[#94A3B8]">
+                    <li key={index} className="flex items-center gap-2 text-gray-500">
                       <Check className="w-4 h-4 text-[#10B981] flex-shrink-0" />
                       <span className="text-sm">{feature}</span>
                     </li>
@@ -342,7 +342,7 @@ export default function BuyBids() {
                   onClick={() => openPaymentModal(pkg)}
                   disabled={purchasing === pkg.id}
                   className={`w-full py-3 h-auto ${
-                    pkg.popular ? 'btn-bid' : 'bg-white/10 hover:bg-white/20 text-white'
+                    pkg.popular ? 'btn-bid' : 'bg-white/10 hover:bg-white/20 text-gray-800'
                   }`}
                   data-testid={`buy-${pkg.id}`}
                 >
@@ -362,7 +362,7 @@ export default function BuyBids() {
 
         {/* Info Section */}
         <div className="mt-16 glass-card rounded-2xl p-8">
-          <h2 className="text-2xl font-bold text-white mb-6 text-center">
+          <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">
             {language === 'en' ? 'How do bids work?' : language === 'sq' ? 'Si funksionojnë ofertat?' : language === 'tr' ? 'Teklifler nasıl çalışır?' : language === 'fr' ? 'Comment fonctionnent les enchères?' : 'Wie funktionieren Gebote?'}
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -370,10 +370,10 @@ export default function BuyBids() {
               <div className="w-12 h-12 rounded-full bg-[#7C3AED]/20 flex items-center justify-center mx-auto mb-4">
                 <span className="text-xl font-bold text-[#7C3AED]">1</span>
               </div>
-              <h3 className="font-bold text-white mb-2">
+              <h3 className="font-bold text-gray-800 mb-2">
                 {language === 'en' ? 'Place bid' : language === 'sq' ? 'Vendos ofertë' : language === 'tr' ? 'Teklif ver' : language === 'fr' ? 'Placer une enchère' : 'Gebot platzieren'}
               </h3>
-              <p className="text-[#94A3B8] text-sm">
+              <p className="text-gray-500 text-sm">
                 {language === 'en' ? 'Each time you bid, one bid is deducted from your account.' : language === 'sq' ? 'Çdo herë që ofroni, një ofertë zbritet nga llogaria juaj.' : language === 'tr' ? 'Her teklif verdiğinizde hesabınızdan bir teklif düşülür.' : language === 'fr' ? 'Chaque fois que vous enchérissez, une enchère est déduite de votre compte.' : 'Jedes Mal, wenn Sie bieten, wird ein Gebot von Ihrem Konto abgezogen.'}
               </p>
             </div>
@@ -381,10 +381,10 @@ export default function BuyBids() {
               <div className="w-12 h-12 rounded-full bg-[#06B6D4]/20 flex items-center justify-center mx-auto mb-4">
                 <span className="text-xl font-bold text-[#06B6D4]">2</span>
               </div>
-              <h3 className="font-bold text-white mb-2">
+              <h3 className="font-bold text-gray-800 mb-2">
                 {language === 'en' ? 'Price increases' : language === 'sq' ? 'Çmimi rritet' : language === 'tr' ? 'Fiyat artar' : language === 'fr' ? 'Le prix augmente' : 'Preis erhöht sich'}
               </h3>
-              <p className="text-[#94A3B8] text-sm">
+              <p className="text-gray-500 text-sm">
                 {language === 'en' ? 'The auction price increases by a few cents and the timer is reset.' : language === 'sq' ? 'Çmimi i ankandit rritet me disa cent dhe kohëmatësi rivendoset.' : language === 'tr' ? 'Açık artırma fiyatı birkaç sent artar ve zamanlayıcı sıfırlanır.' : language === 'fr' ? 'Le prix de la vente augmente de quelques centimes et le minuteur est réinitialisé.' : 'Der Auktionspreis steigt um wenige Cent und der Timer wird zurückgesetzt.'}
               </p>
             </div>
@@ -392,10 +392,10 @@ export default function BuyBids() {
               <div className="w-12 h-12 rounded-full bg-[#10B981]/20 flex items-center justify-center mx-auto mb-4">
                 <span className="text-xl font-bold text-[#10B981]">3</span>
               </div>
-              <h3 className="font-bold text-white mb-2">
+              <h3 className="font-bold text-gray-800 mb-2">
                 {language === 'en' ? 'Win' : language === 'sq' ? 'Fitoni' : language === 'tr' ? 'Kazan' : language === 'fr' ? 'Gagnez' : 'Gewinnen'}
               </h3>
-              <p className="text-[#94A3B8] text-sm">
+              <p className="text-gray-500 text-sm">
                 {language === 'en' ? 'The last bidder wins the product at the current auction price.' : language === 'sq' ? 'Ofertuesi i fundit fiton produktin me çmimin aktual të ankandit.' : language === 'tr' ? 'Son teklif veren ürünü mevcut açık artırma fiyatından kazanır.' : language === 'fr' ? 'Le dernier enchérisseur remporte le produit au prix actuel.' : 'Der letzte Bieter gewinnt das Produkt zum aktuellen Auktionspreis.'}
               </p>
             </div>
@@ -412,13 +412,13 @@ export default function BuyBids() {
                 setShowPaymentModal(false);
                 setPurchasing(null);
               }}
-              className="absolute top-4 right-4 text-[#94A3B8] hover:text-white"
+              className="absolute top-4 right-4 text-gray-500 hover:text-gray-800"
             >
               <X className="w-5 h-5" />
             </button>
             
-            <h2 className="text-xl font-bold text-white mb-2">{texts.paymentMethod}</h2>
-            <p className="text-[#94A3B8] text-sm mb-6">
+            <h2 className="text-xl font-bold text-gray-800 mb-2">{texts.paymentMethod}</h2>
+            <p className="text-gray-500 text-sm mb-6">
               {selectedPackage.bids} {texts.bids} {language === 'en' ? 'for' : language === 'sq' ? 'për' : language === 'tr' ? 'için' : language === 'fr' ? 'pour' : 'für'} €{selectedPackage.price.toFixed(2)}
             </p>
 
@@ -429,15 +429,15 @@ export default function BuyBids() {
                 className={`w-full p-4 rounded-xl border-2 transition-all flex items-center gap-4 ${
                   paymentMethod === 'stripe' 
                     ? 'border-[#7C3AED] bg-[#7C3AED]/10' 
-                    : 'border-white/10 hover:border-white/20'
+                    : 'border-gray-200 hover:border-gray-300'
                 }`}
               >
                 <div className="w-12 h-12 rounded-lg bg-[#635BFF]/20 flex items-center justify-center">
                   <CreditCard className="w-6 h-6 text-[#635BFF]" />
                 </div>
                 <div className="flex-1 text-left">
-                  <p className="text-white font-medium">{texts.card} / Klarna / SEPA</p>
-                  <p className="text-[#94A3B8] text-xs">{language === 'en' ? 'Credit card, Klarna, SEPA, Google Pay, Apple Pay' : 'Kreditkarte, Klarna, SEPA Lastschrift, Google Pay, Apple Pay'}</p>
+                  <p className="text-gray-800 font-medium">{texts.card} / Klarna / SEPA</p>
+                  <p className="text-gray-500 text-xs">{language === 'en' ? 'Credit card, Klarna, SEPA, Google Pay, Apple Pay' : 'Kreditkarte, Klarna, SEPA Lastschrift, Google Pay, Apple Pay'}</p>
                 </div>
                 {paymentMethod === 'stripe' && (
                   <Check className="w-5 h-5 text-[#7C3AED]" />
@@ -453,16 +453,16 @@ export default function BuyBids() {
                     ? 'border-white/5 opacity-50 cursor-not-allowed'
                     : paymentMethod === 'crypto' 
                       ? 'border-[#F7931A] bg-[#F7931A]/10' 
-                      : 'border-white/10 hover:border-white/20'
+                      : 'border-gray-200 hover:border-gray-300'
                 }`}
               >
                 <div className="w-12 h-12 rounded-lg bg-[#F7931A]/20 flex items-center justify-center">
                   <Bitcoin className="w-6 h-6 text-[#F7931A]" />
                 </div>
                 <div className="flex-1 text-left">
-                  <p className="text-white font-medium">{texts.crypto}</p>
+                  <p className="text-gray-800 font-medium">{texts.crypto}</p>
                   {paymentMethods.crypto ? (
-                    <p className="text-[#94A3B8] text-xs">Bitcoin, Ethereum, Litecoin, USDC, Dogecoin & more</p>
+                    <p className="text-gray-500 text-xs">Bitcoin, Ethereum, Litecoin, USDC, Dogecoin & more</p>
                   ) : (
                     <p className="text-orange-400 text-xs">{texts.cryptoUnavailable}</p>
                   )}
@@ -493,7 +493,7 @@ export default function BuyBids() {
               )}
             </Button>
 
-            <p className="text-[#94A3B8] text-xs text-center mt-4">
+            <p className="text-gray-500 text-xs text-center mt-4">
               {texts.securePayment} {paymentMethod === 'crypto' ? 'Coinbase Commerce' : ''}
             </p>
           </div>

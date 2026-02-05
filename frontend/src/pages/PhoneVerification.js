@@ -168,37 +168,37 @@ export default function PhoneVerification() {
 
   if (!token) {
     return (
-      <div className="min-h-screen bg-[#0D0D14] pt-20 pb-12 px-4">
+      <div className="min-h-screen bg-gradient-to-b from-cyan-50 to-cyan-100 pt-20 pb-12 px-4">
         <div className="max-w-md mx-auto text-center">
-          <Phone className="w-16 h-16 text-[#94A3B8] mx-auto mb-4" />
-          <p className="text-white">Bitte anmelden um fortzufahren</p>
+          <Phone className="w-16 h-16 text-gray-500 mx-auto mb-4" />
+          <p className="text-gray-800">Bitte anmelden um fortzufahren</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0D0D14] pt-20 pb-12 px-4" data-testid="phone-verification-page">
+    <div className="min-h-screen bg-gradient-to-b from-cyan-50 to-cyan-100 pt-20 pb-12 px-4" data-testid="phone-verification-page">
       <div className="max-w-md mx-auto">
         
         {/* Header */}
         <div className="text-center mb-8">
           <div className="w-20 h-20 bg-gradient-to-br from-[#7C3AED] to-[#06B6D4] rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <Phone className="w-10 h-10 text-white" />
+            <Phone className="w-10 h-10 text-gray-800" />
           </div>
-          <h1 className="text-2xl font-bold text-white mb-2">{t.title}</h1>
-          <p className="text-[#94A3B8]">{t.subtitle}</p>
+          <h1 className="text-2xl font-bold text-gray-800 mb-2">{t.title}</h1>
+          <p className="text-gray-500">{t.subtitle}</p>
         </div>
 
         {/* Benefits */}
         <div className="glass-card rounded-xl p-4 mb-6">
-          <h3 className="text-white font-medium mb-3 flex items-center gap-2">
+          <h3 className="text-gray-800 font-medium mb-3 flex items-center gap-2">
             <Gift className="w-5 h-5 text-[#FFD700]" />
             {t.bonus}
           </h3>
           <ul className="space-y-2">
             {t.benefits.map((benefit, i) => (
-              <li key={i} className="flex items-center gap-2 text-sm text-[#94A3B8]">
+              <li key={i} className="flex items-center gap-2 text-sm text-gray-500">
                 <CheckCircle className="w-4 h-4 text-[#10B981]" />
                 {benefit}
               </li>
@@ -213,7 +213,7 @@ export default function PhoneVerification() {
           {step === 'phone' && (
             <form onSubmit={handleSendCode} className="space-y-4">
               <div>
-                <label className="block text-white text-sm font-medium mb-2">
+                <label className="block text-gray-800 text-sm font-medium mb-2">
                   {t.phoneLabel}
                 </label>
                 <Input
@@ -221,7 +221,7 @@ export default function PhoneVerification() {
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder={t.phonePlaceholder}
-                  className="bg-white/5 border-white/10 text-white"
+                  className="bg-white/5 border-gray-200 text-gray-800"
                   data-testid="phone-input"
                 />
               </div>
@@ -246,7 +246,7 @@ export default function PhoneVerification() {
                     <AlertCircle className="w-4 h-4" />
                     {t.mockModeNote}
                   </div>
-                  <div className="text-2xl font-mono text-white mt-2 text-center">
+                  <div className="text-2xl font-mono text-gray-800 mt-2 text-center">
                     {mockCode}
                   </div>
                 </div>
@@ -254,13 +254,13 @@ export default function PhoneVerification() {
 
               {/* Countdown */}
               {countdown > 0 && (
-                <div className="text-center text-[#94A3B8] text-sm mb-2">
-                  {t.codeExpires}: <span className="text-white font-mono">{formatCountdown(countdown)}</span>
+                <div className="text-center text-gray-500 text-sm mb-2">
+                  {t.codeExpires}: <span className="text-gray-800 font-mono">{formatCountdown(countdown)}</span>
                 </div>
               )}
 
               <div>
-                <label className="block text-white text-sm font-medium mb-2">
+                <label className="block text-gray-800 text-sm font-medium mb-2">
                   {t.codeLabel}
                 </label>
                 <Input
@@ -268,7 +268,7 @@ export default function PhoneVerification() {
                   value={code}
                   onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                   placeholder={t.codePlaceholder}
-                  className="bg-white/5 border-white/10 text-white text-center text-2xl tracking-widest"
+                  className="bg-white/5 border-gray-200 text-gray-800 text-center text-2xl tracking-widest"
                   maxLength={6}
                   data-testid="code-input"
                 />
@@ -291,7 +291,7 @@ export default function PhoneVerification() {
                   setCode('');
                   setMockCode(null);
                 }}
-                className="w-full text-[#94A3B8]"
+                className="w-full text-gray-500"
               >
                 {t.resendCode}
               </Button>
@@ -304,10 +304,10 @@ export default function PhoneVerification() {
               <div className="w-16 h-16 bg-[#10B981]/20 rounded-full flex items-center justify-center mx-auto mb-4">
                 <CheckCircle className="w-8 h-8 text-[#10B981]" />
               </div>
-              <h3 className="text-xl font-bold text-white mb-2">{t.verified}</h3>
-              <p className="text-[#94A3B8] mb-4">{t.verifiedMessage}</p>
+              <h3 className="text-xl font-bold text-gray-800 mb-2">{t.verified}</h3>
+              <p className="text-gray-500 mb-4">{t.verifiedMessage}</p>
               {status?.phone_masked && (
-                <div className="flex items-center justify-center gap-2 text-[#94A3B8]">
+                <div className="flex items-center justify-center gap-2 text-gray-500">
                   <Phone className="w-4 h-4" />
                   {status.phone_masked}
                 </div>
@@ -317,7 +317,7 @@ export default function PhoneVerification() {
         </div>
 
         {/* Security Note */}
-        <div className="flex items-center justify-center gap-2 mt-6 text-[#94A3B8] text-sm">
+        <div className="flex items-center justify-center gap-2 mt-6 text-gray-500 text-sm">
           <Shield className="w-4 h-4" />
           <span>SSL-verschlüsselt • DSGVO-konform</span>
         </div>

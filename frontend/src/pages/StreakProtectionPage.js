@@ -165,37 +165,37 @@ export default function StreakProtectionPage() {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-[#0D0D14] flex items-center justify-center">
-        <Card className="bg-[#1A1A2E] border-white/10 p-8 text-center">
+      <div className="min-h-screen bg-gradient-to-b from-cyan-50 to-cyan-100 flex items-center justify-center">
+        <Card className="bg-[#1A1A2E] border-gray-200 p-8 text-center">
           <Flame className="w-16 h-16 text-[#F59E0B] mx-auto mb-4" />
-          <p className="text-white text-xl">{t.loginRequired}</p>
+          <p className="text-gray-800 text-xl">{t.loginRequired}</p>
         </Card>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0D0D14] py-8 px-4" data-testid="streak-protection-page">
+    <div className="min-h-screen bg-gradient-to-b from-cyan-50 to-cyan-100 py-8 px-4" data-testid="streak-protection-page">
       <div className="max-w-2xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-[#F59E0B] to-[#EF4444] mb-4">
-            <Flame className="w-10 h-10 text-white" />
+            <Flame className="w-10 h-10 text-gray-800" />
           </div>
-          <h1 className="text-3xl font-bold text-white mb-2">{t.title}</h1>
-          <p className="text-[#94A3B8]">{t.subtitle}</p>
+          <h1 className="text-3xl font-bold text-gray-800 mb-2">{t.title}</h1>
+          <p className="text-gray-500">{t.subtitle}</p>
         </div>
 
         {loading ? (
-          <div className="text-center py-12 text-[#94A3B8]">Laden...</div>
+          <div className="text-center py-12 text-gray-500">Laden...</div>
         ) : (
           <>
             {/* Current Streak */}
             <Card className="bg-gradient-to-r from-[#F59E0B]/20 to-[#EF4444]/20 border-[#F59E0B]/30 mb-6">
               <CardContent className="p-6 text-center">
                 <Flame className="w-12 h-12 text-[#F59E0B] mx-auto mb-2" />
-                <p className="text-[#94A3B8]">{t.currentStreak}</p>
-                <p className="text-5xl font-bold text-white my-2">
+                <p className="text-gray-500">{t.currentStreak}</p>
+                <p className="text-5xl font-bold text-gray-800 my-2">
                   {status?.current_streak || 0}
                 </p>
                 <p className="text-[#F59E0B]">{t.days}</p>
@@ -215,15 +215,15 @@ export default function StreakProtectionPage() {
             </Card>
 
             {/* Streak Protection */}
-            <Card className="bg-[#1A1A2E] border-white/10 mb-6">
+            <Card className="bg-[#1A1A2E] border-gray-200 mb-6">
               <CardHeader>
-                <CardTitle className="text-white flex items-center">
+                <CardTitle className="text-gray-800 flex items-center">
                   <Shield className="w-5 h-5 mr-2 text-[#10B981]" />
                   {t.protection}
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-[#94A3B8] mb-4">{t.protectionInfo}</p>
+                <p className="text-gray-500 mb-4">{t.protectionInfo}</p>
                 
                 {status?.has_protection ? (
                   <div className="bg-[#10B981]/20 rounded-lg p-4 flex items-center justify-between">
@@ -235,8 +235,8 @@ export default function StreakProtectionPage() {
                   </div>
                 ) : status?.protection_on_cooldown ? (
                   <div className="bg-[#94A3B8]/20 rounded-lg p-4 flex items-center justify-between">
-                    <span className="text-[#94A3B8]">{t.cooldown}</span>
-                    <Badge className="bg-[#94A3B8]/20 text-[#94A3B8]">
+                    <span className="text-gray-500">{t.cooldown}</span>
+                    <Badge className="bg-[#94A3B8]/20 text-gray-500">
                       {status.cooldown_days_remaining} {t.daysRemaining}
                     </Badge>
                   </div>
@@ -247,17 +247,17 @@ export default function StreakProtectionPage() {
                   </Button>
                 ) : (
                   <div className="bg-[#94A3B8]/20 rounded-lg p-4 text-center">
-                    <Lock className="w-6 h-6 text-[#94A3B8] mx-auto mb-2" />
-                    <p className="text-[#94A3B8]">{t.requirement}</p>
+                    <Lock className="w-6 h-6 text-gray-500 mx-auto mb-2" />
+                    <p className="text-gray-500">{t.requirement}</p>
                   </div>
                 )}
               </CardContent>
             </Card>
 
             {/* Milestones */}
-            <Card className="bg-[#1A1A2E] border-white/10">
+            <Card className="bg-[#1A1A2E] border-gray-200">
               <CardHeader>
-                <CardTitle className="text-white flex items-center">
+                <CardTitle className="text-gray-800 flex items-center">
                   <Trophy className="w-5 h-5 mr-2 text-[#F59E0B]" />
                   {t.milestones}
                 </CardTitle>
@@ -272,7 +272,7 @@ export default function StreakProtectionPage() {
                       <div 
                         key={milestone.days}
                         className={`flex items-center justify-between p-3 rounded-lg ${
-                          isReached ? 'bg-[#F59E0B]/10' : 'bg-[#0D0D14]'
+                          isReached ? 'bg-[#F59E0B]/10' : 'bg-gradient-to-b from-cyan-50 to-cyan-100'
                         }`}
                       >
                         <div className="flex items-center gap-3">
@@ -284,18 +284,18 @@ export default function StreakProtectionPage() {
                             ) : isReached ? (
                               <Gift className="w-5 h-5 text-[#F59E0B]" />
                             ) : (
-                              <Lock className="w-5 h-5 text-[#94A3B8]" />
+                              <Lock className="w-5 h-5 text-gray-500" />
                             )}
                           </div>
                           <div>
-                            <p className={`font-medium ${isReached ? 'text-white' : 'text-[#94A3B8]'}`}>
+                            <p className={`font-medium ${isReached ? 'text-gray-800' : 'text-gray-500'}`}>
                               {milestone.name}
                             </p>
-                            <p className="text-[#94A3B8] text-sm">{milestone.days} {t.days}</p>
+                            <p className="text-gray-500 text-sm">{milestone.days} {t.days}</p>
                           </div>
                         </div>
                         <div className="flex items-center gap-3">
-                          <Badge className={isReached ? 'bg-[#10B981]/20 text-[#10B981]' : 'bg-[#94A3B8]/20 text-[#94A3B8]'}>
+                          <Badge className={isReached ? 'bg-[#10B981]/20 text-[#10B981]' : 'bg-[#94A3B8]/20 text-gray-500'}>
                             +{milestone.bids} {t.bids}
                           </Badge>
                           {isReached && !isClaimed ? (
@@ -305,7 +305,7 @@ export default function StreakProtectionPage() {
                           ) : isClaimed ? (
                             <Badge className="bg-[#10B981]/20 text-[#10B981]">{t.claimed}</Badge>
                           ) : (
-                            <Badge className="bg-[#94A3B8]/20 text-[#94A3B8]">{t.locked}</Badge>
+                            <Badge className="bg-[#94A3B8]/20 text-gray-500">{t.locked}</Badge>
                           )}
                         </div>
                       </div>

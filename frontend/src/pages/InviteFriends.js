@@ -229,8 +229,8 @@ export default function InviteFriends() {
       <div className="min-h-screen pt-24 pb-12 px-4 flex items-center justify-center">
         <div className="glass-card p-8 rounded-xl text-center max-w-md">
           <Users className="w-16 h-16 text-[#FFD700] mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-white mb-4">Freunde einladen</h2>
-          <p className="text-[#94A3B8] mb-6">Melden Sie sich an, um Freunde einzuladen und Gebote zu verdienen.</p>
+          <h2 className="text-xl font-bold text-gray-800 mb-4">Freunde einladen</h2>
+          <p className="text-gray-500 mb-6">Melden Sie sich an, um Freunde einzuladen und Gebote zu verdienen.</p>
           <Button className="btn-primary" onClick={() => window.location.href = '/login'}>
             Anmelden
           </Button>
@@ -255,10 +255,10 @@ export default function InviteFriends() {
           <div className="w-20 h-20 rounded-full bg-[#FFD700]/20 flex items-center justify-center mx-auto mb-4">
             <Gift className="w-10 h-10 text-[#FFD700]" />
           </div>
-          <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-2">
             Freunde einladen
           </h1>
-          <p className="text-[#94A3B8]">
+          <p className="text-gray-500">
             Je mehr Freunde, desto mehr Gebote!
           </p>
         </div>
@@ -267,10 +267,10 @@ export default function InviteFriends() {
         <div className="glass-card p-6 rounded-xl mb-6">
           <div className="flex items-center gap-3 mb-4">
             <Share2 className="w-5 h-5 text-[#06B6D4]" />
-            <span className="text-white font-medium">Dein Einladungslink</span>
+            <span className="text-gray-800 font-medium">Dein Einladungslink</span>
           </div>
           <div className="flex flex-col sm:flex-row gap-3">
-            <div className="flex-1 p-3 rounded-lg bg-[#181824] border border-white/10 overflow-hidden">
+            <div className="flex-1 p-3 rounded-lg bg-white border border-gray-200 overflow-hidden">
               <code className="text-[#06B6D4] text-sm truncate block">
                 {referralData?.referral_link || `https://bidblitz.de/register?ref=${user?.id?.substring(0, 8).toUpperCase()}`}
               </code>
@@ -280,7 +280,7 @@ export default function InviteFriends() {
               {copied ? 'Kopiert!' : 'Kopieren'}
             </Button>
           </div>
-          <Button onClick={shareLink} variant="outline" className="w-full mt-3 border-white/10 text-white">
+          <Button onClick={shareLink} variant="outline" className="w-full mt-3 border-gray-200 text-gray-800">
             <Share2 className="w-4 h-4 mr-2" />
             Link teilen
           </Button>
@@ -290,14 +290,14 @@ export default function InviteFriends() {
         <div className="grid grid-cols-2 gap-4 mb-6">
           <div className="glass-card p-5 rounded-xl text-center">
             <Users className="w-8 h-8 text-[#7C3AED] mx-auto mb-2" />
-            <p className="text-3xl font-bold text-white">{referralData?.qualified_friends || 0}</p>
-            <p className="text-[#94A3B8] text-sm">Qualifizierte Freunde</p>
-            <p className="text-[#94A3B8] text-xs">(mind. €5 eingezahlt)</p>
+            <p className="text-3xl font-bold text-gray-800">{referralData?.qualified_friends || 0}</p>
+            <p className="text-gray-500 text-sm">Qualifizierte Freunde</p>
+            <p className="text-gray-500 text-xs">(mind. €5 eingezahlt)</p>
           </div>
           <div className="glass-card p-5 rounded-xl text-center">
             <Zap className="w-8 h-8 text-[#FFD700] mx-auto mb-2" />
             <p className="text-3xl font-bold text-[#FFD700]">{bidsEarned}</p>
-            <p className="text-[#94A3B8] text-sm">Gebote verdient</p>
+            <p className="text-gray-500 text-sm">Gebote verdient</p>
           </div>
         </div>
 
@@ -312,30 +312,30 @@ export default function InviteFriends() {
 
         {/* Bonus Info - Clear explanation */}
         <div className="glass-card p-5 rounded-xl mb-6 border border-[#10B981]/30 bg-[#10B981]/5">
-          <h3 className="text-white font-bold mb-3 flex items-center gap-2">
+          <h3 className="text-gray-800 font-bold mb-3 flex items-center gap-2">
             <Gift className="w-5 h-5 text-[#10B981]" />
             {texts.bonusInfo || 'Bei erstem Kauf des Freundes:'}
           </h3>
           <div className="grid grid-cols-2 gap-4">
             <div className="text-center p-3 bg-[#FFD700]/10 rounded-lg">
               <p className="text-[#FFD700] text-2xl font-black">10</p>
-              <p className="text-[#94A3B8] text-xs">{texts.youGet || 'Sie erhalten'}</p>
-              <p className="text-white text-sm font-medium">Gebote</p>
+              <p className="text-gray-500 text-xs">{texts.youGet || 'Sie erhalten'}</p>
+              <p className="text-gray-800 text-sm font-medium">Gebote</p>
             </div>
             <div className="text-center p-3 bg-[#10B981]/10 rounded-lg">
               <p className="text-[#10B981] text-2xl font-black">5</p>
-              <p className="text-[#94A3B8] text-xs">{texts.friendGets || 'Ihr Freund erhält'}</p>
-              <p className="text-white text-sm font-medium">Gebote</p>
+              <p className="text-gray-500 text-xs">{texts.friendGets || 'Ihr Freund erhält'}</p>
+              <p className="text-gray-800 text-sm font-medium">Gebote</p>
             </div>
           </div>
-          <p className="text-[#94A3B8] text-xs mt-3 border-t border-white/10 pt-3 text-center">
-            <span className="text-[#FFD700] font-medium">Bedingung:</span> Freund muss mindestens <span className="text-white font-bold">€5</span> aufladen
+          <p className="text-gray-500 text-xs mt-3 border-t border-gray-200 pt-3 text-center">
+            <span className="text-[#FFD700] font-medium">Bedingung:</span> Freund muss mindestens <span className="text-gray-800 font-bold">€5</span> aufladen
           </p>
         </div>
 
         {/* Reward Tiers */}
         <div className="glass-card p-6 rounded-xl">
-          <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+          <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
             <Zap className="w-5 h-5 text-[#FFD700]" />
             Deine Belohnungen
           </h3>
@@ -353,7 +353,7 @@ export default function InviteFriends() {
                       ? 'bg-[#10B981]/20 border border-[#10B981]/30' 
                       : isNext 
                         ? 'bg-[#FFD700]/10 border border-[#FFD700]/30'
-                        : 'bg-[#181824]'
+                        : 'bg-white'
                   }`}
                 >
                   <div className="flex items-center gap-3">
@@ -362,11 +362,11 @@ export default function InviteFriends() {
                     ) : (
                       <div className={`w-5 h-5 rounded-full border-2 ${isNext ? 'border-[#FFD700]' : 'border-[#475569]'}`} />
                     )}
-                    <span className={achieved ? 'text-[#10B981]' : isNext ? 'text-[#FFD700]' : 'text-[#94A3B8]'}>
+                    <span className={achieved ? 'text-[#10B981]' : isNext ? 'text-[#FFD700]' : 'text-gray-500'}>
                       {tier.label}
                     </span>
                   </div>
-                  <span className={`font-bold ${achieved ? 'text-[#10B981]' : isNext ? 'text-[#FFD700]' : 'text-white'}`}>
+                  <span className={`font-bold ${achieved ? 'text-[#10B981]' : isNext ? 'text-[#FFD700]' : 'text-gray-800'}`}>
                     +{tier.bids} Gebote
                   </span>
                 </div>

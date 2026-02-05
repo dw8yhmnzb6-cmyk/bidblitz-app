@@ -117,39 +117,39 @@ export default function AchievementsPage() {
     : achievements.filter(a => a.category === activeCategory);
 
   return (
-    <div className="min-h-screen bg-[#0D0D14] py-8 px-4" data-testid="achievements-page">
+    <div className="min-h-screen bg-gradient-to-b from-cyan-50 to-cyan-100 py-8 px-4" data-testid="achievements-page">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-[#7C3AED] to-[#EC4899] mb-4">
-            <Trophy className="w-10 h-10 text-white" />
+            <Trophy className="w-10 h-10 text-gray-800" />
           </div>
-          <h1 className="text-3xl font-bold text-white mb-2">{t.title}</h1>
-          <p className="text-[#94A3B8]">{t.subtitle}</p>
+          <h1 className="text-3xl font-bold text-gray-800 mb-2">{t.title}</h1>
+          <p className="text-gray-500">{t.subtitle}</p>
         </div>
 
         {/* Stats */}
         {stats && (
           <div className="grid grid-cols-3 gap-4 mb-6">
-            <Card className="bg-[#1A1A2E] border-white/10">
+            <Card className="bg-[#1A1A2E] border-gray-200">
               <CardContent className="p-4 text-center">
                 <Trophy className="w-8 h-8 text-[#F59E0B] mx-auto mb-2" />
-                <p className="text-2xl font-bold text-white">{stats.earned}/{stats.total}</p>
-                <p className="text-xs text-[#94A3B8]">{t.earned}</p>
+                <p className="text-2xl font-bold text-gray-800">{stats.earned}/{stats.total}</p>
+                <p className="text-xs text-gray-500">{t.earned}</p>
               </CardContent>
             </Card>
-            <Card className="bg-[#1A1A2E] border-white/10">
+            <Card className="bg-[#1A1A2E] border-gray-200">
               <CardContent className="p-4 text-center">
                 <Target className="w-8 h-8 text-[#10B981] mx-auto mb-2" />
-                <p className="text-2xl font-bold text-white">{stats.progress_percent}%</p>
-                <p className="text-xs text-[#94A3B8]">{t.completion}</p>
+                <p className="text-2xl font-bold text-gray-800">{stats.progress_percent}%</p>
+                <p className="text-xs text-gray-500">{t.completion}</p>
               </CardContent>
             </Card>
-            <Card className="bg-[#1A1A2E] border-white/10">
+            <Card className="bg-[#1A1A2E] border-gray-200">
               <CardContent className="p-4 text-center">
                 <Gift className="w-8 h-8 text-[#7C3AED] mx-auto mb-2" />
-                <p className="text-2xl font-bold text-white">{stats.total_rewards_earned}</p>
-                <p className="text-xs text-[#94A3B8]">{t.totalEarned} {t.bids}</p>
+                <p className="text-2xl font-bold text-gray-800">{stats.total_rewards_earned}</p>
+                <p className="text-xs text-gray-500">{t.totalEarned} {t.bids}</p>
               </CardContent>
             </Card>
           </div>
@@ -157,25 +157,25 @@ export default function AchievementsPage() {
 
         {/* Progress - Next Up */}
         {progress.length > 0 && (
-          <Card className="bg-[#1A1A2E] border-white/10 mb-6">
+          <Card className="bg-[#1A1A2E] border-gray-200 mb-6">
             <CardHeader>
-              <CardTitle className="text-white flex items-center">
+              <CardTitle className="text-gray-800 flex items-center">
                 <Flame className="w-5 h-5 mr-2 text-[#F59E0B]" />
                 {t.nextUp}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               {progress.slice(0, 3).map((p) => (
-                <div key={p.id} className="bg-[#0D0D14] rounded-lg p-3">
+                <div key={p.id} className="bg-gradient-to-b from-cyan-50 to-cyan-100 rounded-lg p-3">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center">
                       <span className="text-2xl mr-3">{p.icon}</span>
                       <div>
-                        <p className="text-white font-medium">{p.name}</p>
-                        <p className="text-[#94A3B8] text-xs">+{p.reward_bids} {t.bids}</p>
+                        <p className="text-gray-800 font-medium">{p.name}</p>
+                        <p className="text-gray-500 text-xs">+{p.reward_bids} {t.bids}</p>
                       </div>
                     </div>
-                    <Badge className={p.progress_percent >= 80 ? 'bg-[#10B981]/20 text-[#10B981]' : 'bg-white/10 text-white'}>
+                    <Badge className={p.progress_percent >= 80 ? 'bg-[#10B981]/20 text-[#10B981]' : 'bg-white/10 text-gray-800'}>
                       {p.current}/{p.target}
                     </Badge>
                   </div>
@@ -204,7 +204,7 @@ export default function AchievementsPage() {
               onClick={() => setActiveCategory(cat)}
               className={activeCategory === cat 
                 ? 'bg-[#7C3AED]' 
-                : 'border-white/20 text-white hover:bg-white/5'
+                : 'border-gray-300 text-gray-800 hover:bg-white/5'
               }
             >
               {cat !== 'all' && CATEGORY_ICONS[cat]}
@@ -215,13 +215,13 @@ export default function AchievementsPage() {
 
         {/* Achievements Grid */}
         {loading ? (
-          <div className="text-center py-12 text-[#94A3B8]">Laden...</div>
+          <div className="text-center py-12 text-gray-500">Laden...</div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             {filteredAchievements.map((ach) => (
               <Card 
                 key={ach.id} 
-                className={`border-white/10 transition-all ${
+                className={`border-gray-200 transition-all ${
                   ach.earned 
                     ? 'bg-gradient-to-br from-[#1A1A2E] to-[#2D1F4E] border-[#7C3AED]/30' 
                     : 'bg-[#1A1A2E] opacity-60'
@@ -235,10 +235,10 @@ export default function AchievementsPage() {
                   }`}>
                     <span className="text-3xl">{ach.icon}</span>
                   </div>
-                  <h3 className="text-white font-medium mb-1">{ach.name}</h3>
-                  <p className="text-[#94A3B8] text-xs mb-2">{ach.description}</p>
+                  <h3 className="text-gray-800 font-medium mb-1">{ach.name}</h3>
+                  <p className="text-gray-500 text-xs mb-2">{ach.description}</p>
                   <div className="flex items-center justify-center gap-2">
-                    <Badge className={ach.earned ? 'bg-[#10B981]/20 text-[#10B981]' : 'bg-white/10 text-[#94A3B8]'}>
+                    <Badge className={ach.earned ? 'bg-[#10B981]/20 text-[#10B981]' : 'bg-white/10 text-gray-500'}>
                       {ach.earned ? (
                         <>
                           <Star className="w-3 h-3 mr-1" />

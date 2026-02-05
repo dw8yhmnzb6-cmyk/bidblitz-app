@@ -131,16 +131,16 @@ export default function VideoTestimonialsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0D0D14] py-8 px-4" data-testid="video-testimonials-page">
+    <div className="min-h-screen bg-gradient-to-b from-cyan-50 to-cyan-100 py-8 px-4" data-testid="video-testimonials-page">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-[#EF4444] to-[#F97316] mb-4">
-            <Video className="w-10 h-10 text-white" />
+            <Video className="w-10 h-10 text-gray-800" />
           </div>
-          <h1 className="text-3xl font-bold text-white mb-2">{t.title}</h1>
+          <h1 className="text-3xl font-bold text-gray-800 mb-2">{t.title}</h1>
           <p className="text-xl text-[#EF4444]">{t.subtitle}</p>
-          <p className="text-[#94A3B8] mt-2">{t.description}</p>
+          <p className="text-gray-500 mt-2">{t.description}</p>
         </div>
 
         {/* Upload CTA */}
@@ -151,8 +151,8 @@ export default function VideoTestimonialsPage() {
                 <Upload className="w-7 h-7 text-[#EF4444]" />
               </div>
               <div>
-                <h3 className="text-white font-bold text-lg">{t.uploadTitle}</h3>
-                <p className="text-[#94A3B8] text-sm">{t.uploadDesc}</p>
+                <h3 className="text-gray-800 font-bold text-lg">{t.uploadTitle}</h3>
+                <p className="text-gray-500 text-sm">{t.uploadDesc}</p>
                 <Badge className="bg-[#10B981]/20 text-[#10B981] mt-1">
                   {t.bonus}
                 </Badge>
@@ -170,13 +170,13 @@ export default function VideoTestimonialsPage() {
 
         {/* Videos Grid */}
         {loading ? (
-          <div className="text-center py-12 text-[#94A3B8]">Laden...</div>
+          <div className="text-center py-12 text-gray-500">Laden...</div>
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {testimonials.map((video) => (
               <Card 
                 key={video.id} 
-                className="bg-[#1A1A2E] border-white/10 overflow-hidden group cursor-pointer hover:border-[#EF4444]/30 transition-all"
+                className="bg-[#1A1A2E] border-gray-200 overflow-hidden group cursor-pointer hover:border-[#EF4444]/30 transition-all"
                 onClick={() => setSelectedVideo(video)}
               >
                 {/* Thumbnail */}
@@ -188,7 +188,7 @@ export default function VideoTestimonialsPage() {
                   />
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="w-16 h-16 rounded-full bg-[#EF4444]/90 flex items-center justify-center group-hover:scale-110 transition-transform">
-                      <Play className="w-8 h-8 text-white ml-1" />
+                      <Play className="w-8 h-8 text-gray-800 ml-1" />
                     </div>
                   </div>
                   {video.featured && (
@@ -197,7 +197,7 @@ export default function VideoTestimonialsPage() {
                       {t.featured}
                     </Badge>
                   )}
-                  <div className="absolute bottom-3 right-3 bg-black/70 px-2 py-1 rounded text-white text-xs flex items-center">
+                  <div className="absolute bottom-3 right-3 bg-black/70 px-2 py-1 rounded text-gray-800 text-xs flex items-center">
                     <Play className="w-3 h-3 mr-1" />
                     {video.views.toLocaleString()} {t.views}
                   </div>
@@ -207,27 +207,27 @@ export default function VideoTestimonialsPage() {
                   {/* User Info */}
                   <div className="flex items-center gap-3 mb-3">
                     <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#7C3AED] to-[#EC4899] flex items-center justify-center">
-                      <User className="w-5 h-5 text-white" />
+                      <User className="w-5 h-5 text-gray-800" />
                     </div>
                     <div>
-                      <p className="text-white font-medium">{video.username}</p>
-                      <p className="text-[#94A3B8] text-xs">
+                      <p className="text-gray-800 font-medium">{video.username}</p>
+                      <p className="text-gray-500 text-xs">
                         {new Date(video.created_at).toLocaleDateString()}
                       </p>
                     </div>
                   </div>
 
                   {/* Product */}
-                  <h3 className="text-white font-bold mb-2">{video.product_name}</h3>
+                  <h3 className="text-gray-800 font-bold mb-2">{video.product_name}</h3>
 
                   {/* Stats */}
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-[#94A3B8] text-xs">{t.wonFor}</p>
+                      <p className="text-gray-500 text-xs">{t.wonFor}</p>
                       <p className="text-[#10B981] font-bold">€{video.final_price.toFixed(2)}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-[#94A3B8] text-xs line-through">€{video.retail_price}</p>
+                      <p className="text-gray-500 text-xs line-through">€{video.retail_price}</p>
                       <Badge className="bg-[#10B981]/20 text-[#10B981]">
                         {t.saved} {calculateSavings(video.retail_price, video.final_price)}%
                       </Badge>
@@ -251,23 +251,23 @@ export default function VideoTestimonialsPage() {
             >
               <div className="aspect-video bg-black flex items-center justify-center">
                 <div className="text-center">
-                  <Video className="w-20 h-20 text-[#94A3B8] mx-auto mb-4" />
-                  <p className="text-[#94A3B8]">Video-Player kommt bald!</p>
+                  <Video className="w-20 h-20 text-gray-500 mx-auto mb-4" />
+                  <p className="text-gray-500">Video-Player kommt bald!</p>
                 </div>
               </div>
               <div className="p-6">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#7C3AED] to-[#EC4899] flex items-center justify-center">
-                    <User className="w-6 h-6 text-white" />
+                    <User className="w-6 h-6 text-gray-800" />
                   </div>
                   <div>
-                    <p className="text-white font-bold text-lg">{selectedVideo.username}</p>
-                    <p className="text-[#94A3B8] text-sm">
+                    <p className="text-gray-800 font-bold text-lg">{selectedVideo.username}</p>
+                    <p className="text-gray-500 text-sm">
                       {t.wonFor} €{selectedVideo.final_price.toFixed(2)} - {t.saved} {calculateSavings(selectedVideo.retail_price, selectedVideo.final_price)}%
                     </p>
                   </div>
                 </div>
-                <h3 className="text-white text-xl font-bold">{selectedVideo.product_name}</h3>
+                <h3 className="text-gray-800 text-xl font-bold">{selectedVideo.product_name}</h3>
                 <Button 
                   className="mt-4 w-full"
                   variant="outline"

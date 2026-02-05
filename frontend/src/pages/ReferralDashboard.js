@@ -13,9 +13,9 @@ import {
 const API = process.env.REACT_APP_BACKEND_URL;
 
 const RANK_COLORS = {
-  'Starter': 'text-gray-400',
+  'Starter': 'text-gray-500',
   'Bronze-Werber': 'text-amber-600',
-  'Silber-Werber': 'text-gray-300',
+  'Silber-Werber': 'text-gray-600',
   'Gold-Werber': 'text-yellow-400',
   'Platin-Werber': 'text-cyan-400',
   'Diamant-Werber': 'text-purple-400',
@@ -150,11 +150,11 @@ const ReferralDashboard = () => {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-[#0A0A0F] py-12 px-4">
+      <div className="min-h-screen bg-gradient-to-b from-cyan-50 to-cyan-100 py-12 px-4">
         <div className="max-w-lg mx-auto text-center">
           <Users className="w-16 h-16 text-purple-400 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-white mb-2">{t.title}</h1>
-          <p className="text-gray-400 mb-6">{t.loginRequired}</p>
+          <h1 className="text-2xl font-bold text-gray-800 mb-2">{t.title}</h1>
+          <p className="text-gray-500 mb-6">{t.loginRequired}</p>
           <Button onClick={() => window.location.href = '/login'} className="bg-purple-500">
             Login
           </Button>
@@ -165,20 +165,20 @@ const ReferralDashboard = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0A0A0F] flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-b from-cyan-50 to-cyan-100 flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-400"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0A0A0F] py-8 px-4">
+    <div className="min-h-screen bg-gradient-to-b from-cyan-50 to-cyan-100 py-8 px-4">
       <div className="max-w-5xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-3 mb-2">
             <Users className="w-10 h-10 text-purple-400" />
-            <h1 className="text-3xl font-bold text-white">{t.title}</h1>
+            <h1 className="text-3xl font-bold text-gray-800">{t.title}</h1>
           </div>
           <p className="text-purple-400 text-lg">{t.subtitle}</p>
         </div>
@@ -188,7 +188,7 @@ const ReferralDashboard = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Code */}
             <div>
-              <label className="text-gray-400 text-sm">{t.yourCode}</label>
+              <label className="text-gray-500 text-sm">{t.yourCode}</label>
               <div className="flex items-center gap-2 mt-1">
                 <div className="flex-1 bg-[#1A1A2E] rounded-lg px-4 py-3 font-mono text-2xl text-purple-400 font-bold text-center">
                   {referralData?.referral_code}
@@ -204,12 +204,12 @@ const ReferralDashboard = () => {
             
             {/* Link */}
             <div>
-              <label className="text-gray-400 text-sm">{t.yourLink}</label>
+              <label className="text-gray-500 text-sm">{t.yourLink}</label>
               <div className="flex items-center gap-2 mt-1">
                 <Input 
                   value={referralData?.referral_link || ''}
                   readOnly
-                  className="bg-[#1A1A2E] border-white/10 text-white text-sm"
+                  className="bg-[#1A1A2E] border-gray-200 text-gray-800 text-sm"
                 />
                 <Button 
                   onClick={shareLink}
@@ -226,25 +226,25 @@ const ReferralDashboard = () => {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           <div className="glass-card rounded-xl p-4 text-center">
             <Users className="w-8 h-8 text-blue-400 mx-auto mb-2" />
-            <p className="text-2xl font-bold text-white">{referralData?.stats?.total_referrals || 0}</p>
-            <p className="text-gray-400 text-sm">{t.totalReferrals}</p>
+            <p className="text-2xl font-bold text-gray-800">{referralData?.stats?.total_referrals || 0}</p>
+            <p className="text-gray-500 text-sm">{t.totalReferrals}</p>
           </div>
           <div className="glass-card rounded-xl p-4 text-center">
             <Check className="w-8 h-8 text-green-400 mx-auto mb-2" />
-            <p className="text-2xl font-bold text-white">{referralData?.stats?.successful_referrals || 0}</p>
-            <p className="text-gray-400 text-sm">{t.successfulReferrals}</p>
+            <p className="text-2xl font-bold text-gray-800">{referralData?.stats?.successful_referrals || 0}</p>
+            <p className="text-gray-500 text-sm">{t.successfulReferrals}</p>
           </div>
           <div className="glass-card rounded-xl p-4 text-center">
             <Zap className="w-8 h-8 text-yellow-400 mx-auto mb-2" />
-            <p className="text-2xl font-bold text-white">{referralData?.stats?.total_bids_earned || 0}</p>
-            <p className="text-gray-400 text-sm">{t.bidsEarned}</p>
+            <p className="text-2xl font-bold text-gray-800">{referralData?.stats?.total_bids_earned || 0}</p>
+            <p className="text-gray-500 text-sm">{t.bidsEarned}</p>
           </div>
           <div className="glass-card rounded-xl p-4 text-center">
             <Trophy className="w-8 h-8 text-purple-400 mx-auto mb-2" />
-            <p className={`text-2xl font-bold ${RANK_COLORS[referralData?.stats?.rank_title] || 'text-white'}`}>
+            <p className={`text-2xl font-bold ${RANK_COLORS[referralData?.stats?.rank_title] || 'text-gray-800'}`}>
               #{referralData?.stats?.rank || '-'}
             </p>
-            <p className="text-gray-400 text-sm">{t.yourRank}</p>
+            <p className="text-gray-500 text-sm">{t.yourRank}</p>
           </div>
         </div>
 
@@ -258,14 +258,14 @@ const ReferralDashboard = () => {
                   <p className={`font-bold text-lg ${RANK_COLORS[referralData?.stats?.rank_title]}`}>
                     {referralData?.stats?.rank_title}
                   </p>
-                  <p className="text-gray-400 text-sm">
+                  <p className="text-gray-500 text-sm">
                     {referralData?.stats?.total_referrals || 0} Empfehlungen
                   </p>
                 </div>
               </div>
               {referralData?.stats?.next_rank && (
                 <div className="text-right">
-                  <p className="text-gray-400 text-sm">
+                  <p className="text-gray-500 text-sm">
                     Noch {referralData.stats.next_rank.referrals_needed} bis
                   </p>
                   <p className={`font-bold ${RANK_COLORS[referralData.stats.next_rank.title]}`}>
@@ -279,7 +279,7 @@ const ReferralDashboard = () => {
 
         {/* How it Works */}
         <div className="glass-card rounded-xl p-6 mb-8">
-          <h3 className="text-white font-bold text-lg mb-4 flex items-center gap-2">
+          <h3 className="text-gray-800 font-bold text-lg mb-4 flex items-center gap-2">
             <Gift className="w-5 h-5 text-pink-400" />
             {t.howItWorks}
           </h3>
@@ -287,20 +287,20 @@ const ReferralDashboard = () => {
             <div className="flex items-start gap-3 p-3 bg-white/5 rounded-lg">
               <div className="w-8 h-8 rounded-full bg-purple-500/20 flex items-center justify-center text-purple-400 font-bold">1</div>
               <div>
-                <p className="text-white font-medium">{t.step1}</p>
+                <p className="text-gray-800 font-medium">{t.step1}</p>
               </div>
             </div>
             <div className="flex items-start gap-3 p-3 bg-white/5 rounded-lg">
               <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center text-green-400 font-bold">2</div>
               <div>
-                <p className="text-white font-medium">{t.step2}</p>
+                <p className="text-gray-800 font-medium">{t.step2}</p>
               </div>
             </div>
             <div className="flex items-start gap-3 p-3 bg-white/5 rounded-lg">
               <div className="w-8 h-8 rounded-full bg-yellow-500/20 flex items-center justify-center text-yellow-400 font-bold">3</div>
               <div>
-                <p className="text-white font-medium">{t.step3}</p>
-                {t.step3Detail && <p className="text-gray-400 text-sm">{t.step3Detail}</p>}
+                <p className="text-gray-800 font-medium">{t.step3}</p>
+                {t.step3Detail && <p className="text-gray-500 text-sm">{t.step3Detail}</p>}
               </div>
             </div>
           </div>
@@ -315,8 +315,8 @@ const ReferralDashboard = () => {
 
         {/* Leaderboard */}
         <div className="glass-card rounded-xl overflow-hidden mb-8">
-          <div className="p-4 border-b border-white/10 flex items-center justify-between">
-            <h3 className="text-white font-bold text-lg flex items-center gap-2">
+          <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+            <h3 className="text-gray-800 font-bold text-lg flex items-center gap-2">
               <Trophy className="w-5 h-5 text-yellow-400" />
               {t.leaderboard}
             </h3>
@@ -337,7 +337,7 @@ const ReferralDashboard = () => {
           
           <div className="divide-y divide-white/5">
             {leaderboard.length === 0 ? (
-              <p className="text-center text-gray-400 py-8">{t.noReferrals}</p>
+              <p className="text-center text-gray-500 py-8">{t.noReferrals}</p>
             ) : (
               leaderboard.map((entry, idx) => (
                 <div 
@@ -347,14 +347,14 @@ const ReferralDashboard = () => {
                   <div className="flex items-center gap-4">
                     <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${
                       idx === 0 ? 'bg-yellow-500/20 text-yellow-400' :
-                      idx === 1 ? 'bg-gray-400/20 text-gray-300' :
+                      idx === 1 ? 'bg-gray-400/20 text-gray-600' :
                       idx === 2 ? 'bg-amber-600/20 text-amber-500' :
-                      'bg-white/10 text-gray-400'
+                      'bg-white/10 text-gray-500'
                     }`}>
                       {idx < 3 ? ['🥇', '🥈', '🥉'][idx] : `#${entry.position}`}
                     </div>
                     <div>
-                      <p className="text-white font-medium">{entry.name}</p>
+                      <p className="text-gray-800 font-medium">{entry.name}</p>
                       <p className={`text-sm ${RANK_COLORS[entry.rank_title]}`}>
                         {entry.rank_icon} {entry.rank_title}
                       </p>
@@ -373,8 +373,8 @@ const ReferralDashboard = () => {
         {/* My Referrals */}
         {myReferrals.length > 0 && (
           <div className="glass-card rounded-xl overflow-hidden">
-            <div className="p-4 border-b border-white/10">
-              <h3 className="text-white font-bold text-lg flex items-center gap-2">
+            <div className="p-4 border-b border-gray-200">
+              <h3 className="text-gray-800 font-bold text-lg flex items-center gap-2">
                 <Users className="w-5 h-5 text-blue-400" />
                 {t.myReferrals} ({myReferrals.length})
               </h3>
@@ -383,7 +383,7 @@ const ReferralDashboard = () => {
               {myReferrals.map(ref => (
                 <div key={ref.id} className="flex items-center justify-between p-4">
                   <div>
-                    <p className="text-white font-medium">{ref.referred_name}</p>
+                    <p className="text-gray-800 font-medium">{ref.referred_name}</p>
                     <p className="text-gray-500 text-sm">
                       {new Date(ref.created_at).toLocaleDateString('de-DE')}
                     </p>
@@ -395,7 +395,7 @@ const ReferralDashboard = () => {
                         +{ref.reward_bids} Gebote
                       </span>
                     ) : (
-                      <span className="px-2 py-1 rounded-full bg-gray-500/20 text-gray-400 text-sm">
+                      <span className="px-2 py-1 rounded-full bg-gray-500/20 text-gray-500 text-sm">
                         Warte auf Kauf
                       </span>
                     )}

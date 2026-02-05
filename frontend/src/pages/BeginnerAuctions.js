@@ -160,7 +160,7 @@ const BeginnerAuctions = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0A0A0F] flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-b from-cyan-50 to-cyan-100 flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-green-400"></div>
       </div>
     );
@@ -168,11 +168,11 @@ const BeginnerAuctions = () => {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-[#0A0A0F] py-12 px-4">
+      <div className="min-h-screen bg-gradient-to-b from-cyan-50 to-cyan-100 py-12 px-4">
         <div className="max-w-lg mx-auto text-center">
           <ShieldCheck className="w-16 h-16 text-green-400 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-white mb-2">{t.title}</h1>
-          <p className="text-gray-400 mb-6">{t.loginRequired}</p>
+          <h1 className="text-2xl font-bold text-gray-800 mb-2">{t.title}</h1>
+          <p className="text-gray-500 mb-6">{t.loginRequired}</p>
           <Button onClick={() => navigate('/login')} className="bg-green-500 hover:bg-green-600">
             Login
           </Button>
@@ -182,16 +182,16 @@ const BeginnerAuctions = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#0A0A0F] py-8 px-4">
+    <div className="min-h-screen bg-gradient-to-b from-cyan-50 to-cyan-100 py-8 px-4">
       <div className="max-w-5xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-3 mb-2">
             <ShieldCheck className="w-10 h-10 text-green-400" />
-            <h1 className="text-3xl font-bold text-white">{t.title}</h1>
+            <h1 className="text-3xl font-bold text-gray-800">{t.title}</h1>
           </div>
           <p className="text-green-400 text-lg">{t.subtitle}</p>
-          <p className="text-gray-400 mt-1">{t.description}</p>
+          <p className="text-gray-500 mt-1">{t.description}</p>
         </div>
 
         {/* Eligibility Status */}
@@ -211,7 +211,7 @@ const BeginnerAuctions = () => {
                     </div>
                     <div>
                       <p className="text-green-400 font-bold text-lg">{t.eligible}</p>
-                      <p className="text-gray-400 text-sm">
+                      <p className="text-gray-500 text-sm">
                         {t.yourWins}: {beginnerStatus.wins} | {t.daysRegistered}: {beginnerStatus.days_since_registration}
                       </p>
                     </div>
@@ -219,10 +219,10 @@ const BeginnerAuctions = () => {
                 ) : (
                   <>
                     <div className="w-12 h-12 rounded-full bg-gray-600/20 flex items-center justify-center">
-                      <Lock className="w-6 h-6 text-gray-400" />
+                      <Lock className="w-6 h-6 text-gray-500" />
                     </div>
                     <div>
-                      <p className="text-gray-300 font-bold">{t.notEligible}</p>
+                      <p className="text-gray-600 font-bold">{t.notEligible}</p>
                       <p className="text-gray-500 text-sm">
                         {t.yourWins}: {beginnerStatus.wins}
                       </p>
@@ -235,12 +235,12 @@ const BeginnerAuctions = () => {
               <div className="flex items-center gap-4 text-sm">
                 <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5">
                   <Trophy className="w-4 h-4 text-yellow-400" />
-                  <span className="text-gray-300">{t.maxWins}</span>
+                  <span className="text-gray-600">{t.maxWins}</span>
                 </div>
                 <span className="text-gray-500">{t.or}</span>
                 <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5">
                   <Star className="w-4 h-4 text-blue-400" />
-                  <span className="text-gray-300">{t.newUser}</span>
+                  <span className="text-gray-600">{t.newUser}</span>
                 </div>
               </div>
             </div>
@@ -251,18 +251,18 @@ const BeginnerAuctions = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
           <div className="glass-card p-4 rounded-xl text-center">
             <ShieldCheck className="w-8 h-8 text-green-400 mx-auto mb-2" />
-            <p className="text-white font-bold">{t.protectedAuction}</p>
-            <p className="text-gray-400 text-sm">{t.specialBadge}</p>
+            <p className="text-gray-800 font-bold">{t.protectedAuction}</p>
+            <p className="text-gray-500 text-sm">{t.specialBadge}</p>
           </div>
           <div className="glass-card p-4 rounded-xl text-center">
             <Users className="w-8 h-8 text-blue-400 mx-auto mb-2" />
-            <p className="text-white font-bold">{t.lessBidders}</p>
-            <p className="text-gray-400 text-sm">&lt; 10 {language === 'de' ? 'Teilnehmer' : 'participants'}</p>
+            <p className="text-gray-800 font-bold">{t.lessBidders}</p>
+            <p className="text-gray-500 text-sm">&lt; 10 {language === 'de' ? 'Teilnehmer' : 'participants'}</p>
           </div>
           <div className="glass-card p-4 rounded-xl text-center">
             <Gift className="w-8 h-8 text-yellow-400 mx-auto mb-2" />
-            <p className="text-white font-bold">{t.betterChances}</p>
-            <p className="text-gray-400 text-sm">3x {language === 'de' ? 'höher' : 'higher'}</p>
+            <p className="text-gray-800 font-bold">{t.betterChances}</p>
+            <p className="text-gray-500 text-sm">3x {language === 'de' ? 'höher' : 'higher'}</p>
           </div>
         </div>
 
@@ -270,7 +270,7 @@ const BeginnerAuctions = () => {
         {auctions.length === 0 ? (
           <div className="text-center py-12 glass-card rounded-xl">
             <ShieldCheck className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-            <p className="text-gray-400 text-lg">{t.noAuctions}</p>
+            <p className="text-gray-500 text-lg">{t.noAuctions}</p>
             <p className="text-gray-500">{t.checkBack}</p>
           </div>
         ) : (
@@ -283,7 +283,7 @@ const BeginnerAuctions = () => {
               >
                 {/* Badge */}
                 <div className="bg-gradient-to-r from-green-500 to-emerald-500 px-3 py-1 text-center">
-                  <span className="text-white text-xs font-bold flex items-center justify-center gap-1">
+                  <span className="text-gray-800 text-xs font-bold flex items-center justify-center gap-1">
                     <ShieldCheck className="w-3 h-3" />
                     {t.specialBadge}
                   </span>
@@ -300,21 +300,21 @@ const BeginnerAuctions = () => {
                   </div>
 
                   {/* Product Info */}
-                  <h3 className="text-white font-bold text-sm mb-2 line-clamp-2">
+                  <h3 className="text-gray-800 font-bold text-sm mb-2 line-clamp-2">
                     {auction.product?.name}
                   </h3>
 
                   {/* Price & Timer */}
                   <div className="flex items-center justify-between mb-3">
                     <div>
-                      <p className="text-gray-400 text-xs">{t.currentPrice}</p>
+                      <p className="text-gray-500 text-xs">{t.currentPrice}</p>
                       <p className="text-green-400 font-bold text-xl">
                         €{auction.current_price?.toFixed(2)}
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="text-gray-400 text-xs">{t.endsIn}</p>
-                      <p className="text-white font-mono">
+                      <p className="text-gray-500 text-xs">{t.endsIn}</p>
+                      <p className="text-gray-800 font-mono">
                         <Clock className="w-4 h-4 inline mr-1" />
                         {formatTime(auction.end_time)}
                       </p>

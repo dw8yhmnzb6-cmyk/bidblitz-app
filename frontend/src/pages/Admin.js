@@ -1158,8 +1158,8 @@ export default function Admin() {
     return (
       <div className="min-h-screen pt-24 pb-12 px-4 flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-white mb-4">{t('admin.noAccess')}</h2>
-          <p className="text-[#94A3B8] mb-4">{t('admin.needAdmin')}</p>
+          <h2 className="text-2xl font-bold text-gray-800 mb-4">{t('admin.noAccess')}</h2>
+          <p className="text-gray-500 mb-4">{t('admin.needAdmin')}</p>
           <Link to="/"><Button className="btn-primary">{t('admin.toHome')}</Button></Link>
         </div>
       </div>
@@ -1192,9 +1192,9 @@ export default function Admin() {
   return (
     <div className="min-h-screen pt-20 md:pt-0" data-testid="admin-page">
       {/* Mobile Tab Bar - only on small screens */}
-      <div className="md:hidden fixed top-16 left-0 right-0 z-30 bg-[#0F0F16] border-b border-white/10">
+      <div className="md:hidden fixed top-16 left-0 right-0 z-30 bg-gradient-to-b from-cyan-50 to-cyan-100 border-b border-gray-200">
         <div className="flex items-center justify-between px-4 py-3">
-          <h2 className="text-lg font-bold text-white flex items-center gap-2">
+          <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
             <Settings className="w-5 h-5 text-[#7C3AED]" />
             Admin
           </h2>
@@ -1202,7 +1202,7 @@ export default function Admin() {
             variant="ghost" 
             size="sm"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="text-white"
+            className="text-gray-800"
           >
             {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </Button>
@@ -1210,7 +1210,7 @@ export default function Admin() {
         
         {/* Mobile Menu Dropdown */}
         {mobileMenuOpen && (
-          <div className="px-2 pb-3 bg-[#0F0F16] border-b border-white/10">
+          <div className="px-2 pb-3 bg-gradient-to-b from-cyan-50 to-cyan-100 border-b border-gray-200">
             <div className="grid grid-cols-4 gap-2">
               {tabs.map((tab) => (
                 <button
@@ -1222,7 +1222,7 @@ export default function Admin() {
                   className={`flex flex-col items-center gap-1 p-2 rounded-lg transition-colors ${
                     activeTab === tab.id
                       ? 'bg-[#7C3AED]/20 text-[#7C3AED]'
-                      : 'text-[#94A3B8] hover:bg-white/5'
+                      : 'text-gray-500 hover:bg-white/5'
                   }`}
                 >
                   {tab.icon}
@@ -1236,9 +1236,9 @@ export default function Admin() {
 
       <div className="flex">
         {/* Tablet/Desktop Sidebar - visible on md and up */}
-        <aside className="hidden md:block w-56 lg:w-64 min-h-screen bg-[#0F0F16] border-r border-white/10 fixed left-0 top-16 pt-6 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 64px)' }}>
+        <aside className="hidden md:block w-56 lg:w-64 min-h-screen bg-gradient-to-b from-cyan-50 to-cyan-100 border-r border-gray-200 fixed left-0 top-16 pt-6 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 64px)' }}>
           <div className="px-3 lg:px-4 mb-6">
-            <h2 className="text-base lg:text-lg font-bold text-white flex items-center gap-2">
+            <h2 className="text-base lg:text-lg font-bold text-gray-800 flex items-center gap-2">
               <Settings className="w-4 h-4 lg:w-5 lg:h-5 text-[#7C3AED]" />
               {t('admin.panel')}
             </h2>
@@ -1251,7 +1251,7 @@ export default function Admin() {
                 className={`w-full flex items-center gap-2 lg:gap-3 px-3 lg:px-4 py-2 lg:py-3 rounded-lg transition-colors text-sm lg:text-base ${
                   activeTab === tab.id
                     ? 'bg-[#7C3AED]/20 text-[#7C3AED]'
-                    : 'text-[#94A3B8] hover:bg-white/5 hover:text-white'
+                    : 'text-gray-500 hover:bg-white/5 hover:text-gray-800'
                 }`}
                 data-testid={`tab-${tab.id}`}
               >
@@ -1261,13 +1261,13 @@ export default function Admin() {
             ))}
           </nav>
           <div className="px-3 lg:px-4 mt-8 space-y-3">
-            <Button onClick={handleSeedData} variant="outline" className="w-full border-white/10 text-white hover:bg-white/10">
+            <Button onClick={handleSeedData} variant="outline" className="w-full border-gray-200 text-gray-800 hover:bg-white/10">
               <Plus className="w-4 h-4 mr-2" />{t('admin.seedData')}
             </Button>
             
             {/* Keyboard Shortcuts Hint */}
             <div className="text-xs text-gray-500 space-y-1 pt-2 border-t border-white/5">
-              <p className="font-medium text-gray-400">Tastenkürzel:</p>
+              <p className="font-medium text-gray-500">Tastenkürzel:</p>
               <p><kbd className="px-1 py-0.5 bg-white/10 rounded">/</kbd> Suche</p>
               <p><kbd className="px-1 py-0.5 bg-white/10 rounded">Ctrl</kbd>+<kbd className="px-1 py-0.5 bg-white/10 rounded">J</kbd> KI-Chat</p>
               <p><kbd className="px-1 py-0.5 bg-white/10 rounded">Esc</kbd> Schließen</p>
@@ -1282,19 +1282,19 @@ export default function Admin() {
             <div className="space-y-4 lg:space-y-6">
               {/* Header with Search */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <h1 className="text-xl lg:text-2xl font-bold text-white">{t('admin.dashboard')}</h1>
+                <h1 className="text-xl lg:text-2xl font-bold text-gray-800">{t('admin.dashboard')}</h1>
                 <div className="flex items-center gap-2">
                   <Button 
                     onClick={() => setShowGlobalSearch(true)} 
                     variant="outline" 
-                    className="border-white/10 text-white flex-1 sm:flex-none justify-start"
+                    className="border-gray-200 text-gray-800 flex-1 sm:flex-none justify-start"
                     data-testid="global-search-btn"
                   >
                     <Search className="w-4 h-4 mr-2" />
-                    <span className="text-gray-400 text-sm">Suchen...</span>
+                    <span className="text-gray-500 text-sm">Suchen...</span>
                     <kbd className="hidden sm:inline ml-2 px-1.5 py-0.5 text-xs bg-white/10 rounded">/</kbd>
                   </Button>
-                  <Button onClick={fetchData} variant="outline" className="border-white/10 text-white px-3" data-testid="refresh-btn">
+                  <Button onClick={fetchData} variant="outline" className="border-gray-200 text-gray-800 px-3" data-testid="refresh-btn">
                     <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
                   </Button>
                 </div>
@@ -1315,8 +1315,8 @@ export default function Admin() {
                         <Users className="w-5 h-5 lg:w-6 lg:h-6 text-[#7C3AED]" />
                       </div>
                       <div>
-                        <p className="text-[#94A3B8] text-xs lg:text-sm">{t('admin.totalUsers')}</p>
-                        <p className="text-xl lg:text-2xl font-bold text-white">{stats.total_users}</p>
+                        <p className="text-gray-500 text-xs lg:text-sm">{t('admin.totalUsers')}</p>
+                        <p className="text-xl lg:text-2xl font-bold text-gray-800">{stats.total_users}</p>
                       </div>
                     </div>
                   </div>
@@ -1326,8 +1326,8 @@ export default function Admin() {
                         <Gavel className="w-5 h-5 lg:w-6 lg:h-6 text-[#06B6D4]" />
                       </div>
                       <div>
-                        <p className="text-[#94A3B8] text-xs lg:text-sm">{t('admin.activeAuctions')}</p>
-                        <p className="text-xl lg:text-2xl font-bold text-white">{stats.active_auctions}</p>
+                        <p className="text-gray-500 text-xs lg:text-sm">{t('admin.activeAuctions')}</p>
+                        <p className="text-xl lg:text-2xl font-bold text-gray-800">{stats.active_auctions}</p>
                       </div>
                     </div>
                   </div>
@@ -1337,8 +1337,8 @@ export default function Admin() {
                         <Package className="w-5 h-5 lg:w-6 lg:h-6 text-[#10B981]" />
                       </div>
                       <div>
-                        <p className="text-[#94A3B8] text-xs lg:text-sm">{t('admin.totalProducts')}</p>
-                        <p className="text-xl lg:text-2xl font-bold text-white">{stats.total_products}</p>
+                        <p className="text-gray-500 text-xs lg:text-sm">{t('admin.totalProducts')}</p>
+                        <p className="text-xl lg:text-2xl font-bold text-gray-800">{stats.total_products}</p>
                       </div>
                     </div>
                   </div>
@@ -1348,8 +1348,8 @@ export default function Admin() {
                         <BarChart3 className="w-5 h-5 lg:w-6 lg:h-6 text-[#F59E0B]" />
                       </div>
                       <div>
-                        <p className="text-[#94A3B8] text-xs lg:text-sm">{t('admin.transactions')}</p>
-                        <p className="text-xl lg:text-2xl font-bold text-white">{stats.completed_transactions}</p>
+                        <p className="text-gray-500 text-xs lg:text-sm">{t('admin.transactions')}</p>
+                        <p className="text-xl lg:text-2xl font-bold text-gray-800">{stats.completed_transactions}</p>
                       </div>
                     </div>
                   </div>
@@ -1362,19 +1362,19 @@ export default function Admin() {
                   {/* Revenue & Summary Cards */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                     <div className="glass-card rounded-xl p-6 border-l-4 border-[#10B981]">
-                      <p className="text-[#94A3B8] text-sm mb-1">Gesamtumsatz</p>
+                      <p className="text-gray-500 text-sm mb-1">Gesamtumsatz</p>
                       <p className="text-3xl font-bold text-[#10B981]">€{detailedStats.summary?.total_revenue?.toFixed(2) || '0.00'}</p>
                     </div>
                     <div className="glass-card rounded-xl p-6 border-l-4 border-[#FFD700]">
-                      <p className="text-[#94A3B8] text-sm mb-1">Verkaufte Gebote</p>
+                      <p className="text-gray-500 text-sm mb-1">Verkaufte Gebote</p>
                       <p className="text-3xl font-bold text-[#FFD700]">{detailedStats.summary?.total_bids_sold || 0}</p>
                     </div>
                     <div className="glass-card rounded-xl p-6 border-l-4 border-[#06B6D4]">
-                      <p className="text-[#94A3B8] text-sm mb-1">Platzierte Gebote</p>
+                      <p className="text-gray-500 text-sm mb-1">Platzierte Gebote</p>
                       <p className="text-3xl font-bold text-[#06B6D4]">{detailedStats.summary?.total_bids_placed || 0}</p>
                     </div>
                     <div className="glass-card rounded-xl p-6 border-l-4 border-[#7C3AED]">
-                      <p className="text-[#94A3B8] text-sm mb-1">Ø Gebote/Auktion</p>
+                      <p className="text-gray-500 text-sm mb-1">Ø Gebote/Auktion</p>
                       <p className="text-3xl font-bold text-[#7C3AED]">{detailedStats.summary?.avg_bids_per_auction || 0}</p>
                     </div>
                   </div>
@@ -1383,7 +1383,7 @@ export default function Admin() {
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {/* Revenue Chart */}
                     <div className="glass-card rounded-xl p-6">
-                      <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                      <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
                         <TrendingUp className="w-5 h-5 text-[#10B981]" />
                         Umsatz (7 Tage)
                       </h3>
@@ -1412,7 +1412,7 @@ export default function Admin() {
 
                     {/* Bids Chart */}
                     <div className="glass-card rounded-xl p-6">
-                      <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                      <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
                         <Activity className="w-5 h-5 text-[#FFD700]" />
                         Gebote (7 Tage)
                       </h3>
@@ -1438,7 +1438,7 @@ export default function Admin() {
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     {/* New Users Chart */}
                     <div className="glass-card rounded-xl p-6">
-                      <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                      <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
                         <Users className="w-5 h-5 text-[#7C3AED]" />
                         Neue Nutzer (7 Tage)
                       </h3>
@@ -1461,7 +1461,7 @@ export default function Admin() {
 
                     {/* Auction Status Pie Chart */}
                     <div className="glass-card rounded-xl p-6">
-                      <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                      <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
                         <Gavel className="w-5 h-5 text-[#06B6D4]" />
                         Auktionsstatus
                       </h3>
@@ -1490,7 +1490,7 @@ export default function Admin() {
                               formatter={(value, name) => [value, name]}
                             />
                             <Legend 
-                              formatter={(value) => <span className="text-[#94A3B8]">{value}</span>}
+                              formatter={(value) => <span className="text-gray-500">{value}</span>}
                             />
                           </PieChart>
                         </ResponsiveContainer>
@@ -1499,22 +1499,22 @@ export default function Admin() {
 
                     {/* Top Products */}
                     <div className="glass-card rounded-xl p-6">
-                      <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                      <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
                         <Package className="w-5 h-5 text-[#F59E0B]" />
                         Top Produkte
                       </h3>
                       <div className="space-y-3">
                         {(detailedStats.charts?.top_products || []).map((product, index) => (
-                          <div key={index} className="flex items-center justify-between p-2 rounded-lg bg-[#181824]">
+                          <div key={index} className="flex items-center justify-between p-2 rounded-lg bg-white">
                             <div className="flex items-center gap-2">
                               <span className="text-[#FFD700] font-bold text-sm">#{index + 1}</span>
-                              <span className="text-white text-sm truncate max-w-[140px]">{product.name}</span>
+                              <span className="text-gray-800 text-sm truncate max-w-[140px]">{product.name}</span>
                             </div>
                             <span className="text-[#06B6D4] font-mono text-sm">{product.bids} Gebote</span>
                           </div>
                         ))}
                         {(!detailedStats.charts?.top_products || detailedStats.charts.top_products.length === 0) && (
-                          <p className="text-[#94A3B8] text-center py-4">Noch keine Daten</p>
+                          <p className="text-gray-500 text-center py-4">Noch keine Daten</p>
                         )}
                       </div>
                     </div>
@@ -1538,29 +1538,29 @@ export default function Admin() {
           {/* Products Tab */}
           {activeTab === 'products' && (
             <div className="space-y-8">
-              <h1 className="text-2xl font-bold text-white">{t('admin.manageProducts')}</h1>
+              <h1 className="text-2xl font-bold text-gray-800">{t('admin.manageProducts')}</h1>
               <div className="glass-card rounded-xl p-6">
-                <h3 className="text-lg font-bold text-white mb-4">{t('admin.newProduct')}</h3>
+                <h3 className="text-lg font-bold text-gray-800 mb-4">{t('admin.newProduct')}</h3>
                 <form onSubmit={handleCreateProduct} className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label className="text-white">{t('admin.productName')}</Label>
-                    <Input value={newProduct.name} onChange={(e) => setNewProduct({...newProduct, name: e.target.value})} required className="bg-[#181824] border-white/10 text-white" placeholder="z.B. iPhone 15 Pro" />
+                    <Label className="text-gray-800">{t('admin.productName')}</Label>
+                    <Input value={newProduct.name} onChange={(e) => setNewProduct({...newProduct, name: e.target.value})} required className="bg-white border-gray-200 text-gray-800" placeholder="z.B. iPhone 15 Pro" />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-white">{t('admin.category')}</Label>
-                    <Input value={newProduct.category} onChange={(e) => setNewProduct({...newProduct, category: e.target.value})} required className="bg-[#181824] border-white/10 text-white" placeholder="z.B. Elektronik" />
+                    <Label className="text-gray-800">{t('admin.category')}</Label>
+                    <Input value={newProduct.category} onChange={(e) => setNewProduct({...newProduct, category: e.target.value})} required className="bg-white border-gray-200 text-gray-800" placeholder="z.B. Elektronik" />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-white">{t('admin.imageUrl')}</Label>
-                    <Input value={newProduct.image_url} onChange={(e) => setNewProduct({...newProduct, image_url: e.target.value})} required className="bg-[#181824] border-white/10 text-white" placeholder="https://..." />
+                    <Label className="text-gray-800">{t('admin.imageUrl')}</Label>
+                    <Input value={newProduct.image_url} onChange={(e) => setNewProduct({...newProduct, image_url: e.target.value})} required className="bg-white border-gray-200 text-gray-800" placeholder="https://..." />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-white">{t('admin.rrp')}</Label>
-                    <Input type="number" step="0.01" value={newProduct.retail_price} onChange={(e) => setNewProduct({...newProduct, retail_price: e.target.value})} required className="bg-[#181824] border-white/10 text-white" placeholder="999.00" />
+                    <Label className="text-gray-800">{t('admin.rrp')}</Label>
+                    <Input type="number" step="0.01" value={newProduct.retail_price} onChange={(e) => setNewProduct({...newProduct, retail_price: e.target.value})} required className="bg-white border-gray-200 text-gray-800" placeholder="999.00" />
                   </div>
                   <div className="space-y-2 md:col-span-2">
-                    <Label className="text-white">{t('admin.description')}</Label>
-                    <Input value={newProduct.description} onChange={(e) => setNewProduct({...newProduct, description: e.target.value})} required className="bg-[#181824] border-white/10 text-white" placeholder="Produktbeschreibung..." />
+                    <Label className="text-gray-800">{t('admin.description')}</Label>
+                    <Input value={newProduct.description} onChange={(e) => setNewProduct({...newProduct, description: e.target.value})} required className="bg-white border-gray-200 text-gray-800" placeholder="Produktbeschreibung..." />
                   </div>
                   <div className="md:col-span-2">
                     <Button type="submit" className="btn-primary"><Plus className="w-4 h-4 mr-2" />{t('admin.createProduct')}</Button>
@@ -1570,28 +1570,28 @@ export default function Admin() {
               <div className="glass-card rounded-xl overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full">
-                    <thead className="bg-[#181824]">
+                    <thead className="bg-white">
                       <tr>
-                        <th className="px-4 py-3 text-left text-[#94A3B8] font-medium">{t('admin.image')}</th>
-                        <th className="px-4 py-3 text-left text-[#94A3B8] font-medium">{t('admin.productName')}</th>
-                        <th className="px-4 py-3 text-left text-[#94A3B8] font-medium">{t('admin.category')}</th>
-                        <th className="px-4 py-3 text-left text-[#94A3B8] font-medium">{t('admin.rrp')}</th>
-                        <th className="px-4 py-3 text-left text-[#94A3B8] font-medium">{t('admin.actions')}</th>
+                        <th className="px-4 py-3 text-left text-gray-500 font-medium">{t('admin.image')}</th>
+                        <th className="px-4 py-3 text-left text-gray-500 font-medium">{t('admin.productName')}</th>
+                        <th className="px-4 py-3 text-left text-gray-500 font-medium">{t('admin.category')}</th>
+                        <th className="px-4 py-3 text-left text-gray-500 font-medium">{t('admin.rrp')}</th>
+                        <th className="px-4 py-3 text-left text-gray-500 font-medium">{t('admin.actions')}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white/10">
                       {(products || []).map((product) => (
                         <tr key={product.id} className="hover:bg-white/5">
                           <td className="px-4 py-3"><img src={product.image_url} alt="" className="w-12 h-12 rounded-lg object-cover" /></td>
-                          <td className="px-4 py-3">{editingProduct?.id === product.id ? <Input value={editingProduct.name} onChange={(e) => setEditingProduct({...editingProduct, name: e.target.value})} className="bg-[#181824] border-white/10 text-white h-8" /> : <span className="text-white">{product.name}</span>}</td>
-                          <td className="px-4 py-3">{editingProduct?.id === product.id ? <Input value={editingProduct.category} onChange={(e) => setEditingProduct({...editingProduct, category: e.target.value})} className="bg-[#181824] border-white/10 text-white h-8" /> : <span className="text-[#94A3B8]">{product.category}</span>}</td>
-                          <td className="px-4 py-3">{editingProduct?.id === product.id ? <Input type="number" step="0.01" value={editingProduct.retail_price} onChange={(e) => setEditingProduct({...editingProduct, retail_price: parseFloat(e.target.value)})} className="bg-[#181824] border-white/10 text-white h-8 w-24" /> : <span className="text-[#06B6D4] font-mono">€{product.retail_price?.toFixed(2)}</span>}</td>
+                          <td className="px-4 py-3">{editingProduct?.id === product.id ? <Input value={editingProduct.name} onChange={(e) => setEditingProduct({...editingProduct, name: e.target.value})} className="bg-white border-gray-200 text-gray-800 h-8" /> : <span className="text-gray-800">{product.name}</span>}</td>
+                          <td className="px-4 py-3">{editingProduct?.id === product.id ? <Input value={editingProduct.category} onChange={(e) => setEditingProduct({...editingProduct, category: e.target.value})} className="bg-white border-gray-200 text-gray-800 h-8" /> : <span className="text-gray-500">{product.category}</span>}</td>
+                          <td className="px-4 py-3">{editingProduct?.id === product.id ? <Input type="number" step="0.01" value={editingProduct.retail_price} onChange={(e) => setEditingProduct({...editingProduct, retail_price: parseFloat(e.target.value)})} className="bg-white border-gray-200 text-gray-800 h-8 w-24" /> : <span className="text-[#06B6D4] font-mono">€{product.retail_price?.toFixed(2)}</span>}</td>
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-2">
                               {editingProduct?.id === product.id ? (
                                 <>
                                   <Button size="sm" variant="ghost" className="text-[#10B981] hover:bg-[#10B981]/10" onClick={() => handleUpdateProduct(product.id)}><Save className="w-4 h-4" /></Button>
-                                  <Button size="sm" variant="ghost" className="text-[#94A3B8] hover:bg-white/10" onClick={() => setEditingProduct(null)}><X className="w-4 h-4" /></Button>
+                                  <Button size="sm" variant="ghost" className="text-gray-500 hover:bg-white/10" onClick={() => setEditingProduct(null)}><X className="w-4 h-4" /></Button>
                                 </>
                               ) : (
                                 <>
@@ -1636,18 +1636,18 @@ export default function Admin() {
           {/* Users Tab */}
           {activeTab === 'users' && (
             <div className="space-y-8">
-              <h1 className="text-2xl font-bold text-white">{t('admin.manageUsers')}</h1>
+              <h1 className="text-2xl font-bold text-gray-800">{t('admin.manageUsers')}</h1>
               <div className="glass-card rounded-xl overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full">
-                    <thead className="bg-[#181824]">
+                    <thead className="bg-white">
                       <tr>
-                        <th className="px-4 py-3 text-left text-[#94A3B8] font-medium">{t('dashboard.name')}</th>
-                        <th className="px-4 py-3 text-left text-[#94A3B8] font-medium">{t('dashboard.email')}</th>
-                        <th className="px-4 py-3 text-left text-[#94A3B8] font-medium">{t('admin.bids')}</th>
-                        <th className="px-4 py-3 text-left text-[#94A3B8] font-medium">{t('admin.deposits')}</th>
-                        <th className="px-4 py-3 text-left text-[#94A3B8] font-medium">{t('admin.status')}</th>
-                        <th className="px-4 py-3 text-left text-[#94A3B8] font-medium">{t('admin.actions')}</th>
+                        <th className="px-4 py-3 text-left text-gray-500 font-medium">{t('dashboard.name')}</th>
+                        <th className="px-4 py-3 text-left text-gray-500 font-medium">{t('dashboard.email')}</th>
+                        <th className="px-4 py-3 text-left text-gray-500 font-medium">{t('admin.bids')}</th>
+                        <th className="px-4 py-3 text-left text-gray-500 font-medium">{t('admin.deposits')}</th>
+                        <th className="px-4 py-3 text-left text-gray-500 font-medium">{t('admin.status')}</th>
+                        <th className="px-4 py-3 text-left text-gray-500 font-medium">{t('admin.actions')}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white/10">
@@ -1655,10 +1655,10 @@ export default function Admin() {
                         <tr key={user.id} className={`hover:bg-white/5 ${user.is_blocked ? 'opacity-50' : ''}`}>
                           <td className="px-4 py-3">
                             {editingUser?.id === user.id ? (
-                              <Input value={editingUser.name} onChange={(e) => setEditingUser({...editingUser, name: e.target.value})} className="bg-[#181824] border-white/10 text-white h-8 w-32" />
+                              <Input value={editingUser.name} onChange={(e) => setEditingUser({...editingUser, name: e.target.value})} className="bg-white border-gray-200 text-gray-800 h-8 w-32" />
                             ) : (
                               <div className="flex items-center gap-2">
-                                <span className="text-white">{user.name}</span>
+                                <span className="text-gray-800">{user.name}</span>
                                 {user.is_vip && (
                                   <span className="px-1.5 py-0.5 rounded bg-[#F59E0B]/20 text-[#F59E0B] text-xs font-bold">VIP</span>
                                 )}
@@ -1668,8 +1668,8 @@ export default function Admin() {
                               </div>
                             )}
                           </td>
-                          <td className="px-4 py-3">{editingUser?.id === user.id ? <Input value={editingUser.email} onChange={(e) => setEditingUser({...editingUser, email: e.target.value})} className="bg-[#181824] border-white/10 text-white h-8" /> : <span className="text-[#94A3B8]">{user.email}</span>}</td>
-                          <td className="px-4 py-3">{editingUser?.id === user.id ? <Input type="number" value={editingUser.bids_balance} onChange={(e) => setEditingUser({...editingUser, bids_balance: parseInt(e.target.value)})} className="bg-[#181824] border-white/10 text-white h-8 w-20" /> : <span className="flex items-center gap-1 text-[#06B6D4]"><Zap className="w-4 h-4" />{user.bids_balance}</span>}</td>
+                          <td className="px-4 py-3">{editingUser?.id === user.id ? <Input value={editingUser.email} onChange={(e) => setEditingUser({...editingUser, email: e.target.value})} className="bg-white border-gray-200 text-gray-800 h-8" /> : <span className="text-gray-500">{user.email}</span>}</td>
+                          <td className="px-4 py-3">{editingUser?.id === user.id ? <Input type="number" value={editingUser.bids_balance} onChange={(e) => setEditingUser({...editingUser, bids_balance: parseInt(e.target.value)})} className="bg-white border-gray-200 text-gray-800 h-8 w-20" /> : <span className="flex items-center gap-1 text-[#06B6D4]"><Zap className="w-4 h-4" />{user.bids_balance}</span>}</td>
                           <td className="px-4 py-3"><span className="flex items-center gap-1 text-[#10B981]"><DollarSign className="w-4 h-4" />€{(user.total_deposits || 0).toFixed(2)}</span></td>
                           <td className="px-4 py-3"><span className={`px-2 py-1 rounded-full text-xs font-bold ${user.is_blocked ? 'bg-[#EF4444]/20 text-[#EF4444]' : 'bg-[#10B981]/20 text-[#10B981]'}`}>{user.is_blocked ? t('admin.blocked') : t('admin.active')}</span></td>
                           <td className="px-4 py-3">
@@ -1677,14 +1677,14 @@ export default function Admin() {
                               {editingUser?.id === user.id ? (
                                 <>
                                   <Button size="sm" variant="ghost" className="text-[#10B981] hover:bg-[#10B981]/10" onClick={() => handleUpdateUser(user.id)}><Save className="w-4 h-4" /></Button>
-                                  <Button size="sm" variant="ghost" className="text-[#94A3B8] hover:bg-white/10" onClick={() => setEditingUser(null)}><X className="w-4 h-4" /></Button>
+                                  <Button size="sm" variant="ghost" className="text-gray-500 hover:bg-white/10" onClick={() => setEditingUser(null)}><X className="w-4 h-4" /></Button>
                                 </>
                               ) : (
                                 <>
                                   <Button size="sm" variant="ghost" className="text-[#7C3AED] hover:bg-[#7C3AED]/10" onClick={() => setEditingUser({...user})} title="Bearbeiten"><Edit className="w-4 h-4" /></Button>
                                   <Button size="sm" variant="ghost" className={user.is_blocked ? "text-[#10B981] hover:bg-[#10B981]/10" : "text-[#EF4444] hover:bg-[#EF4444]/10"} onClick={() => handleToggleBlock(user.id, user.is_blocked)} title={user.is_blocked ? 'Entsperren' : 'Sperren'}>{user.is_blocked ? <CheckCircle className="w-4 h-4" /> : <Ban className="w-4 h-4" />}</Button>
-                                  <Button size="sm" variant="ghost" className={user.is_vip ? "text-[#F59E0B] hover:bg-[#F59E0B]/10" : "text-[#94A3B8] hover:bg-white/10"} onClick={() => handleToggleVIP(user.id, user.is_vip)} title={user.is_vip ? 'VIP entfernen' : 'VIP aktivieren'}><Crown className="w-4 h-4" /></Button>
-                                  <Button size="sm" variant="ghost" className={user.is_guaranteed_winner ? "text-[#FFD700] hover:bg-[#FFD700]/10" : "text-[#94A3B8] hover:bg-white/10"} onClick={() => handleToggleGuaranteedWinner(user.id, user.is_guaranteed_winner)} title={user.is_guaranteed_winner ? 'Garantierter Gewinner deaktivieren' : 'Als Garantierter Gewinner markieren'}><Trophy className="w-4 h-4" /></Button>
+                                  <Button size="sm" variant="ghost" className={user.is_vip ? "text-[#F59E0B] hover:bg-[#F59E0B]/10" : "text-gray-500 hover:bg-white/10"} onClick={() => handleToggleVIP(user.id, user.is_vip)} title={user.is_vip ? 'VIP entfernen' : 'VIP aktivieren'}><Crown className="w-4 h-4" /></Button>
+                                  <Button size="sm" variant="ghost" className={user.is_guaranteed_winner ? "text-[#FFD700] hover:bg-[#FFD700]/10" : "text-gray-500 hover:bg-white/10"} onClick={() => handleToggleGuaranteedWinner(user.id, user.is_guaranteed_winner)} title={user.is_guaranteed_winner ? 'Garantierter Gewinner deaktivieren' : 'Als Garantierter Gewinner markieren'}><Trophy className="w-4 h-4" /></Button>
                                   <Button size="sm" variant="ghost" className="text-[#06B6D4] hover:bg-[#06B6D4]/10" onClick={() => handleAddBids(user.id)} title="Gebote hinzufügen"><Plus className="w-4 h-4" /></Button>
                                 </>
                               )}
@@ -1702,11 +1702,11 @@ export default function Admin() {
           {/* Staff Tab */}
           {activeTab === 'staff' && (
             <div className="space-y-8">
-              <h1 className="text-2xl font-bold text-white">Mitarbeiter verwalten</h1>
+              <h1 className="text-2xl font-bold text-gray-800">Mitarbeiter verwalten</h1>
               
               {/* Add Staff Form */}
               <div className="glass-card rounded-xl p-6">
-                <h3 className="text-lg font-bold text-white mb-4">Neuer Mitarbeiter</h3>
+                <h3 className="text-lg font-bold text-gray-800 mb-4">Neuer Mitarbeiter</h3>
                 <form onSubmit={async (e) => {
                   e.preventDefault();
                   try {
@@ -1719,21 +1719,21 @@ export default function Admin() {
                   }
                 }} className="grid grid-cols-1 md:grid-cols-5 gap-4">
                   <div className="space-y-2">
-                    <Label className="text-white">Name</Label>
-                    <Input value={newStaff.name} onChange={(e) => setNewStaff({...newStaff, name: e.target.value})} required className="bg-[#181824] border-white/10 text-white" placeholder="Max Mustermann" />
+                    <Label className="text-gray-800">Name</Label>
+                    <Input value={newStaff.name} onChange={(e) => setNewStaff({...newStaff, name: e.target.value})} required className="bg-white border-gray-200 text-gray-800" placeholder="Max Mustermann" />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-white">E-Mail</Label>
-                    <Input type="email" value={newStaff.email} onChange={(e) => setNewStaff({...newStaff, email: e.target.value})} required className="bg-[#181824] border-white/10 text-white" placeholder="mitarbeiter@bidblitz.de" />
+                    <Label className="text-gray-800">E-Mail</Label>
+                    <Input type="email" value={newStaff.email} onChange={(e) => setNewStaff({...newStaff, email: e.target.value})} required className="bg-white border-gray-200 text-gray-800" placeholder="mitarbeiter@bidblitz.de" />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-white">Passwort</Label>
-                    <Input type="password" value={newStaff.password} onChange={(e) => setNewStaff({...newStaff, password: e.target.value})} required className="bg-[#181824] border-white/10 text-white" placeholder="••••••••" />
+                    <Label className="text-gray-800">Passwort</Label>
+                    <Input type="password" value={newStaff.password} onChange={(e) => setNewStaff({...newStaff, password: e.target.value})} required className="bg-white border-gray-200 text-gray-800" placeholder="••••••••" />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-white">Rolle</Label>
+                    <Label className="text-gray-800">Rolle</Label>
                     <Select value={newStaff.role} onValueChange={(v) => setNewStaff({...newStaff, role: v})}>
-                      <SelectTrigger className="bg-[#181824] border-white/10 text-white">
+                      <SelectTrigger className="bg-white border-gray-200 text-gray-800">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -1744,7 +1744,7 @@ export default function Admin() {
                     </Select>
                   </div>
                   <div className="flex items-end">
-                    <Button type="submit" className="w-full bg-[#7C3AED] hover:bg-[#6D28D9] text-white">
+                    <Button type="submit" className="w-full bg-[#7C3AED] hover:bg-[#6D28D9] text-gray-800">
                       <Plus className="w-4 h-4 mr-2" /> Erstellen
                     </Button>
                   </div>
@@ -1753,12 +1753,12 @@ export default function Admin() {
 
               {/* Roles Overview */}
               <div className="glass-card rounded-xl p-6">
-                <h3 className="text-lg font-bold text-white mb-4">Verfügbare Rollen</h3>
+                <h3 className="text-lg font-bold text-gray-800 mb-4">Verfügbare Rollen</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
                   {roles && Object.entries(roles).map(([id, role]) => (
-                    <div key={id} className="bg-[#181824] rounded-lg p-4 border border-white/10">
-                      <h4 className="font-bold text-white mb-1">{role.name}</h4>
-                      <p className="text-[#94A3B8] text-xs mb-2">{role.description}</p>
+                    <div key={id} className="bg-white rounded-lg p-4 border border-gray-200">
+                      <h4 className="font-bold text-gray-800 mb-1">{role.name}</h4>
+                      <p className="text-gray-500 text-xs mb-2">{role.description}</p>
                       <div className="flex flex-wrap gap-1">
                         {role.permissions?.map(perm => (
                           <span key={perm} className="px-2 py-0.5 bg-[#7C3AED]/20 text-[#A78BFA] text-[10px] rounded">
@@ -1773,24 +1773,24 @@ export default function Admin() {
 
               {/* Staff List */}
               <div className="glass-card rounded-xl p-6">
-                <h3 className="text-lg font-bold text-white mb-4">Mitarbeiterliste ({staff?.length || 0})</h3>
+                <h3 className="text-lg font-bold text-gray-800 mb-4">Mitarbeiterliste ({staff?.length || 0})</h3>
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead>
-                      <tr className="border-b border-white/10">
-                        <th className="text-left py-3 text-[#94A3B8] font-medium">Name</th>
-                        <th className="text-left py-3 text-[#94A3B8] font-medium">E-Mail</th>
-                        <th className="text-left py-3 text-[#94A3B8] font-medium">Rolle</th>
-                        <th className="text-left py-3 text-[#94A3B8] font-medium">Berechtigungen</th>
-                        <th className="text-left py-3 text-[#94A3B8] font-medium">Status</th>
-                        <th className="text-left py-3 text-[#94A3B8] font-medium">Aktionen</th>
+                      <tr className="border-b border-gray-200">
+                        <th className="text-left py-3 text-gray-500 font-medium">Name</th>
+                        <th className="text-left py-3 text-gray-500 font-medium">E-Mail</th>
+                        <th className="text-left py-3 text-gray-500 font-medium">Rolle</th>
+                        <th className="text-left py-3 text-gray-500 font-medium">Berechtigungen</th>
+                        <th className="text-left py-3 text-gray-500 font-medium">Status</th>
+                        <th className="text-left py-3 text-gray-500 font-medium">Aktionen</th>
                       </tr>
                     </thead>
                     <tbody>
                       {staff?.map((member) => (
                         <tr key={member.id} className="border-b border-white/5 hover:bg-white/5">
-                          <td className="py-3 text-white font-medium">{member.name}</td>
-                          <td className="py-3 text-[#94A3B8]">{member.email}</td>
+                          <td className="py-3 text-gray-800 font-medium">{member.name}</td>
+                          <td className="py-3 text-gray-500">{member.email}</td>
                           <td className="py-3">
                             <span className="px-2 py-1 bg-[#7C3AED]/20 text-[#A78BFA] text-xs rounded">
                               {member.role_name}
@@ -1804,7 +1804,7 @@ export default function Admin() {
                                 </span>
                               ))}
                               {member.permissions?.length > 3 && (
-                                <span className="px-1.5 py-0.5 bg-white/10 text-white/60 text-[10px] rounded">
+                                <span className="px-1.5 py-0.5 bg-white/10 text-gray-800/60 text-[10px] rounded">
                                   +{member.permissions.length - 3}
                                 </span>
                               )}
@@ -1843,7 +1843,7 @@ export default function Admin() {
                       ))}
                       {(!staff || staff.length === 0) && (
                         <tr>
-                          <td colSpan="6" className="py-8 text-center text-[#94A3B8]">
+                          <td colSpan="6" className="py-8 text-center text-gray-500">
                             Keine Mitarbeiter vorhanden. Erstellen Sie den ersten Mitarbeiter oben.
                           </td>
                         </tr>
@@ -1875,7 +1875,7 @@ export default function Admin() {
           {activeTab === 'bots' && (
             <div className="space-y-8">
               <div className="flex items-center justify-between">
-                <h1 className="text-2xl font-bold text-white flex items-center gap-3">
+                <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-3">
                   <Bot className="w-8 h-8 text-[#7C3AED]" />
                   Bot-System (Preis erhöhen)
                 </h1>
@@ -1886,20 +1886,20 @@ export default function Admin() {
 
               {/* Quick Bot Actions */}
               <div className="glass-card rounded-xl p-6">
-                <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
                   <Target className="w-5 h-5 text-[#06B6D4]" />
                   Preis automatisch erhöhen
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="space-y-2">
-                    <Label className="text-white">Auktion wählen</Label>
+                    <Label className="text-gray-800">Auktion wählen</Label>
                     <Select value={botBid.auction_id} onValueChange={(value) => setBotBid({...botBid, auction_id: value})}>
-                      <SelectTrigger className="bg-[#181824] border-white/10 text-white">
+                      <SelectTrigger className="bg-white border-gray-200 text-gray-800">
                         <SelectValue placeholder="Auktion wählen..." />
                       </SelectTrigger>
-                      <SelectContent className="bg-[#181824] border-white/10">
+                      <SelectContent className="bg-white border-gray-200">
                         {(auctions || []).filter(a => a.status === 'active').map((auction) => (
-                          <SelectItem key={auction.id} value={auction.id} className="text-white hover:bg-white/10">
+                          <SelectItem key={auction.id} value={auction.id} className="text-gray-800 hover:bg-white/10">
                             {auction.product?.name} (€{auction.current_price?.toFixed(2)})
                           </SelectItem>
                         ))}
@@ -1907,18 +1907,18 @@ export default function Admin() {
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-white">Zielpreis (€)</Label>
+                    <Label className="text-gray-800">Zielpreis (€)</Label>
                     <Input
                       type="number"
                       step="0.01"
                       value={botBid.target_price}
                       onChange={(e) => setBotBid({...botBid, target_price: e.target.value})}
                       placeholder="z.B. 5.00"
-                      className="bg-[#181824] border-white/10 text-white"
+                      className="bg-white border-gray-200 text-gray-800"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-white">&nbsp;</Label>
+                    <Label className="text-gray-800">&nbsp;</Label>
                     <Button onClick={handleBotBidToPrice} className="w-full bg-gradient-to-r from-[#7C3AED] to-[#06B6D4] hover:opacity-90">
                       <Play className="w-4 h-4 mr-2" />
                       Preis erhöhen
@@ -1929,27 +1929,27 @@ export default function Admin() {
 
               {/* Active Auctions with Quick Bot Actions */}
               <div className="glass-card rounded-xl p-6">
-                <h3 className="text-lg font-bold text-white mb-4">Aktive Auktionen - Schnellaktionen</h3>
+                <h3 className="text-lg font-bold text-gray-800 mb-4">Aktive Auktionen - Schnellaktionen</h3>
                 <div className="space-y-4">
                   {(auctions || []).filter(a => a.status === 'active').map((auction) => (
-                    <div key={auction.id} className="flex items-center justify-between p-4 rounded-lg bg-[#181824]">
+                    <div key={auction.id} className="flex items-center justify-between p-4 rounded-lg bg-white">
                       <div className="flex items-center gap-4">
                         <img src={auction.product?.image_url} alt="" className="w-12 h-12 rounded-lg object-cover" />
                         <div>
-                          <p className="text-white font-medium">{auction.product?.name}</p>
+                          <p className="text-gray-800 font-medium">{auction.product?.name}</p>
                           <p className="text-[#06B6D4] font-mono">€{auction.current_price?.toFixed(2)} • {auction.total_bids} Gebote</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Button size="sm" onClick={() => handleBotQuickBids(auction.id, 1)} className="bg-[#181824] border border-white/10 hover:bg-white/10 text-white">+1</Button>
-                        <Button size="sm" onClick={() => handleBotQuickBids(auction.id, 5)} className="bg-[#181824] border border-white/10 hover:bg-white/10 text-white">+5</Button>
-                        <Button size="sm" onClick={() => handleBotQuickBids(auction.id, 10)} className="bg-[#181824] border border-white/10 hover:bg-white/10 text-white">+10</Button>
-                        <Button size="sm" onClick={() => handleBotQuickBids(auction.id, 50)} className="bg-[#7C3AED] hover:bg-[#6D28D9] text-white">+50</Button>
+                        <Button size="sm" onClick={() => handleBotQuickBids(auction.id, 1)} className="bg-white border border-gray-200 hover:bg-white/10 text-gray-800">+1</Button>
+                        <Button size="sm" onClick={() => handleBotQuickBids(auction.id, 5)} className="bg-white border border-gray-200 hover:bg-white/10 text-gray-800">+5</Button>
+                        <Button size="sm" onClick={() => handleBotQuickBids(auction.id, 10)} className="bg-white border border-gray-200 hover:bg-white/10 text-gray-800">+10</Button>
+                        <Button size="sm" onClick={() => handleBotQuickBids(auction.id, 50)} className="bg-[#7C3AED] hover:bg-[#6D28D9] text-gray-800">+50</Button>
                       </div>
                     </div>
                   ))}
                   {(auctions || []).filter(a => a.status === 'active').length === 0 && (
-                    <p className="text-center text-[#94A3B8] py-8">Keine aktiven Auktionen</p>
+                    <p className="text-center text-gray-500 py-8">Keine aktiven Auktionen</p>
                   )}
                 </div>
               </div>
@@ -1957,7 +1957,7 @@ export default function Admin() {
               {/* Bot List */}
               <div className="glass-card rounded-xl p-6">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-                  <h3 className="text-lg font-bold text-white">Verfügbare Bots ({(bots || []).length})</h3>
+                  <h3 className="text-lg font-bold text-gray-800">Verfügbare Bots ({(bots || []).length})</h3>
                   
                   {/* Bot Creation Form - More Prominent */}
                   <form onSubmit={handleCreateBot} className="flex gap-2 w-full md:w-auto">
@@ -1965,7 +1965,7 @@ export default function Admin() {
                       value={newBot.name}
                       onChange={(e) => setNewBot({name: e.target.value})}
                       placeholder="Neuer Bot-Name (z.B. Bardh K.)"
-                      className="bg-[#181824] border-white/10 text-white flex-1 md:w-64"
+                      className="bg-white border-gray-200 text-gray-800 flex-1 md:w-64"
                       required
                     />
                     <Button type="submit" className="bg-gradient-to-r from-[#7C3AED] to-[#EC4899] hover:opacity-90 whitespace-nowrap">
@@ -1977,14 +1977,14 @@ export default function Admin() {
                 
                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
                   {(bots || []).map((bot) => (
-                    <div key={bot.id} className="flex items-center justify-between p-3 rounded-lg bg-[#181824] group">
+                    <div key={bot.id} className="flex items-center justify-between p-3 rounded-lg bg-white group">
                       <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#7C3AED] to-[#06B6D4] flex items-center justify-center text-white text-xs font-bold">
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#7C3AED] to-[#06B6D4] flex items-center justify-center text-gray-800 text-xs font-bold">
                           {bot.name.charAt(0)}
                         </div>
                         <div>
-                          <p className="text-white text-sm font-medium">{bot.name}</p>
-                          <p className="text-[#94A3B8] text-xs">{bot.total_bids_placed} Gebote</p>
+                          <p className="text-gray-800 text-sm font-medium">{bot.name}</p>
+                          <p className="text-gray-500 text-xs">{bot.total_bids_placed} Gebote</p>
                         </div>
                       </div>
                       <Button size="sm" variant="ghost" className="opacity-0 group-hover:opacity-100 text-[#EF4444] hover:bg-[#EF4444]/10" onClick={() => handleDeleteBot(bot.id)}>
@@ -1994,7 +1994,7 @@ export default function Admin() {
                   ))}
                 </div>
                 {(bots || []).length === 0 && (
-                  <p className="text-center text-[#94A3B8] py-8">Keine Bots erstellt. Klicken Sie oben auf "20 Standard-Bots erstellen"</p>
+                  <p className="text-center text-gray-500 py-8">Keine Bots erstellt. Klicken Sie oben auf "20 Standard-Bots erstellen"</p>
                 )}
               </div>
             </div>
@@ -2005,10 +2005,10 @@ export default function Admin() {
             <div className="space-y-8">
               <div className="flex items-center justify-between">
                 <div>
-                  <h1 className="text-2xl font-bold text-white">Zahlungsübersicht</h1>
-                  <p className="text-[#94A3B8]">Alle Transaktionen im Überblick</p>
+                  <h1 className="text-2xl font-bold text-gray-800">Zahlungsübersicht</h1>
+                  <p className="text-gray-500">Alle Transaktionen im Überblick</p>
                 </div>
-                <Button onClick={fetchData} variant="outline" className="border-white/10 text-white">
+                <Button onClick={fetchData} variant="outline" className="border-gray-200 text-gray-800">
                   <RefreshCw className="w-4 h-4 mr-2" />Aktualisieren
                 </Button>
               </div>
@@ -2021,8 +2021,8 @@ export default function Admin() {
                       <DollarSign className="w-6 h-6 text-[#10B981]" />
                     </div>
                     <div>
-                      <p className="text-[#94A3B8] text-sm">Umsatz gesamt</p>
-                      <p className="text-2xl font-bold text-white">€{payments.reduce((sum, p) => sum + (p.amount || 0), 0).toFixed(2)}</p>
+                      <p className="text-gray-500 text-sm">Umsatz gesamt</p>
+                      <p className="text-2xl font-bold text-gray-800">€{payments.reduce((sum, p) => sum + (p.amount || 0), 0).toFixed(2)}</p>
                     </div>
                   </div>
                 </div>
@@ -2032,8 +2032,8 @@ export default function Admin() {
                       <CheckCircle className="w-6 h-6 text-[#7C3AED]" />
                     </div>
                     <div>
-                      <p className="text-[#94A3B8] text-sm">Transaktionen</p>
-                      <p className="text-2xl font-bold text-white">{(payments || []).length}</p>
+                      <p className="text-gray-500 text-sm">Transaktionen</p>
+                      <p className="text-2xl font-bold text-gray-800">{(payments || []).length}</p>
                     </div>
                   </div>
                 </div>
@@ -2043,8 +2043,8 @@ export default function Admin() {
                       <Zap className="w-6 h-6 text-[#FFD700]" />
                     </div>
                     <div>
-                      <p className="text-[#94A3B8] text-sm">Gebote verkauft</p>
-                      <p className="text-2xl font-bold text-white">{payments.reduce((sum, p) => sum + (p.bids || 0), 0)}</p>
+                      <p className="text-gray-500 text-sm">Gebote verkauft</p>
+                      <p className="text-2xl font-bold text-gray-800">{payments.reduce((sum, p) => sum + (p.bids || 0), 0)}</p>
                     </div>
                   </div>
                 </div>
@@ -2054,27 +2054,27 @@ export default function Admin() {
               <div className="glass-card rounded-xl overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full">
-                    <thead className="bg-[#181824]">
+                    <thead className="bg-white">
                       <tr>
-                        <th className="px-6 py-4 text-left text-[#94A3B8] font-medium">Datum</th>
-                        <th className="px-6 py-4 text-left text-[#94A3B8] font-medium">Kunde</th>
-                        <th className="px-6 py-4 text-left text-[#94A3B8] font-medium">Paket</th>
-                        <th className="px-6 py-4 text-left text-[#94A3B8] font-medium">Gebote</th>
-                        <th className="px-6 py-4 text-left text-[#94A3B8] font-medium">Betrag</th>
-                        <th className="px-6 py-4 text-left text-[#94A3B8] font-medium">Status</th>
+                        <th className="px-6 py-4 text-left text-gray-500 font-medium">Datum</th>
+                        <th className="px-6 py-4 text-left text-gray-500 font-medium">Kunde</th>
+                        <th className="px-6 py-4 text-left text-gray-500 font-medium">Paket</th>
+                        <th className="px-6 py-4 text-left text-gray-500 font-medium">Gebote</th>
+                        <th className="px-6 py-4 text-left text-gray-500 font-medium">Betrag</th>
+                        <th className="px-6 py-4 text-left text-gray-500 font-medium">Status</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white/10">
                       {(payments || []).map((payment, index) => (
                         <tr key={index} className="hover:bg-white/5">
-                          <td className="px-6 py-4 text-white">
+                          <td className="px-6 py-4 text-gray-800">
                             {new Date(payment.created_at).toLocaleString('de-DE', {dateStyle: 'short', timeStyle: 'short'})}
                           </td>
                           <td className="px-6 py-4">
-                            <p className="text-white">{payment.user_name || 'N/A'}</p>
-                            <p className="text-[#94A3B8] text-sm">{payment.user_email}</p>
+                            <p className="text-gray-800">{payment.user_name || 'N/A'}</p>
+                            <p className="text-gray-500 text-sm">{payment.user_email}</p>
                           </td>
-                          <td className="px-6 py-4 text-white">{payment.package_name}</td>
+                          <td className="px-6 py-4 text-gray-800">{payment.package_name}</td>
                           <td className="px-6 py-4 text-[#FFD700] font-bold">{payment.bids}</td>
                           <td className="px-6 py-4 text-[#10B981] font-mono font-bold">€{payment.amount?.toFixed(2)}</td>
                           <td className="px-6 py-4">
@@ -2092,7 +2092,7 @@ export default function Admin() {
                   </table>
                 </div>
                 {(payments || []).length === 0 && (
-                  <p className="text-center text-[#94A3B8] py-12">Noch keine Zahlungen erfasst</p>
+                  <p className="text-center text-gray-500 py-12">Noch keine Zahlungen erfasst</p>
                 )}
               </div>
             </div>
@@ -2103,10 +2103,10 @@ export default function Admin() {
             <div className="space-y-8">
               <div className="flex items-center justify-between">
                 <div>
-                  <h1 className="text-2xl font-bold text-white">Systemlogs</h1>
-                  <p className="text-[#94A3B8]">Aktivitäten und Ereignisse</p>
+                  <h1 className="text-2xl font-bold text-gray-800">Systemlogs</h1>
+                  <p className="text-gray-500">Aktivitäten und Ereignisse</p>
                 </div>
-                <Button onClick={fetchData} variant="outline" className="border-white/10 text-white">
+                <Button onClick={fetchData} variant="outline" className="border-gray-200 text-gray-800">
                   <RefreshCw className="w-4 h-4 mr-2" />Aktualisieren
                 </Button>
               </div>
@@ -2130,12 +2130,12 @@ export default function Admin() {
                           {log.type === 'user' && <Users className="w-5 h-5 text-[#7C3AED]" />}
                           {log.type === 'auction' && <Gavel className="w-5 h-5 text-[#06B6D4]" />}
                           {log.type === 'error' && <Ban className="w-5 h-5 text-[#EF4444]" />}
-                          {!['bid', 'payment', 'user', 'auction', 'error'].includes(log.type) && <BarChart3 className="w-5 h-5 text-white" />}
+                          {!['bid', 'payment', 'user', 'auction', 'error'].includes(log.type) && <BarChart3 className="w-5 h-5 text-gray-800" />}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-white font-medium">{log.message}</p>
+                          <p className="text-gray-800 font-medium">{log.message}</p>
                           <div className="flex items-center gap-4 mt-1">
-                            <span className="text-[#94A3B8] text-sm">
+                            <span className="text-gray-500 text-sm">
                               {new Date(log.timestamp).toLocaleString('de-DE', {dateStyle: 'short', timeStyle: 'medium'})}
                             </span>
                             {log.user_email && (
@@ -2145,7 +2145,7 @@ export default function Admin() {
                         </div>
                         <span className={`px-2 py-1 rounded text-xs font-medium ${
                           log.type === 'error' ? 'bg-[#EF4444]/20 text-[#EF4444]' :
-                          'bg-white/10 text-[#94A3B8]'
+                          'bg-white/10 text-gray-500'
                         }`}>
                           {log.type?.toUpperCase()}
                         </span>
@@ -2154,7 +2154,7 @@ export default function Admin() {
                   ))}
                 </div>
                 {(logs || []).length === 0 && (
-                  <p className="text-center text-[#94A3B8] py-12">Keine Logs vorhanden</p>
+                  <p className="text-center text-gray-500 py-12">Keine Logs vorhanden</p>
                 )}
               </div>
             </div>
@@ -2204,7 +2204,7 @@ export default function Admin() {
           {activeTab === 'managers' && (
             <div className="space-y-6">
               <div className="flex justify-between items-center">
-                <h1 className="text-2xl font-bold text-white">
+                <h1 className="text-2xl font-bold text-gray-800">
                   {language === 'en' ? 'Regional Managers' : 'Regionale Manager'}
                 </h1>
                 <Button 
@@ -2216,32 +2216,32 @@ export default function Admin() {
                 </Button>
               </div>
               
-              <p className="text-[#94A3B8]">
+              <p className="text-gray-500">
                 {language === 'en' 
                   ? 'Managers supervise influencers in their assigned cities and receive 15% of influencer commissions.'
                   : 'Manager verwalten Influencer in ihren zugewiesenen Städten und erhalten 15% der Influencer-Provisionen.'}
               </p>
 
               {/* Manager List */}
-              <div className="bg-[#1A1A2E] rounded-xl border border-white/10 overflow-hidden">
+              <div className="bg-[#1A1A2E] rounded-xl border border-gray-200 overflow-hidden">
                 <table className="w-full">
                   <thead className="bg-white/5">
                     <tr>
-                      <th className="text-left text-[#94A3B8] py-3 px-4 text-sm">Name</th>
-                      <th className="text-left text-[#94A3B8] py-3 px-4 text-sm">E-Mail</th>
-                      <th className="text-left text-[#94A3B8] py-3 px-4 text-sm">{language === 'en' ? 'Cities' : 'Städte'}</th>
-                      <th className="text-right text-[#94A3B8] py-3 px-4 text-sm">Influencer</th>
-                      <th className="text-right text-[#94A3B8] py-3 px-4 text-sm">{language === 'en' ? 'Inf. Commission' : 'Inf. Provision'}</th>
-                      <th className="text-right text-[#94A3B8] py-3 px-4 text-sm">{language === 'en' ? 'Manager 15%' : 'Manager 15%'}</th>
-                      <th className="text-center text-[#94A3B8] py-3 px-4 text-sm">Status</th>
-                      <th className="text-right text-[#94A3B8] py-3 px-4 text-sm">Aktionen</th>
+                      <th className="text-left text-gray-500 py-3 px-4 text-sm">Name</th>
+                      <th className="text-left text-gray-500 py-3 px-4 text-sm">E-Mail</th>
+                      <th className="text-left text-gray-500 py-3 px-4 text-sm">{language === 'en' ? 'Cities' : 'Städte'}</th>
+                      <th className="text-right text-gray-500 py-3 px-4 text-sm">Influencer</th>
+                      <th className="text-right text-gray-500 py-3 px-4 text-sm">{language === 'en' ? 'Inf. Commission' : 'Inf. Provision'}</th>
+                      <th className="text-right text-gray-500 py-3 px-4 text-sm">{language === 'en' ? 'Manager 15%' : 'Manager 15%'}</th>
+                      <th className="text-center text-gray-500 py-3 px-4 text-sm">Status</th>
+                      <th className="text-right text-gray-500 py-3 px-4 text-sm">Aktionen</th>
                     </tr>
                   </thead>
                   <tbody>
                     {managers.map((mgr) => (
                       <tr key={mgr.id} className="border-t border-white/5 hover:bg-white/5">
-                        <td className="py-3 px-4 text-white font-medium">{mgr.name}</td>
-                        <td className="py-3 px-4 text-[#94A3B8]">{mgr.email}</td>
+                        <td className="py-3 px-4 text-gray-800 font-medium">{mgr.name}</td>
+                        <td className="py-3 px-4 text-gray-500">{mgr.email}</td>
                         <td className="py-3 px-4">
                           <div className="flex flex-wrap gap-1">
                             {mgr.cities?.map((city) => (
@@ -2251,7 +2251,7 @@ export default function Admin() {
                             ))}
                           </div>
                         </td>
-                        <td className="py-3 px-4 text-white text-right">{mgr.influencer_count || 0}</td>
+                        <td className="py-3 px-4 text-gray-800 text-right">{mgr.influencer_count || 0}</td>
                         <td className="py-3 px-4 text-[#F59E0B] text-right">€{(mgr.total_influencer_commission || 0).toFixed(2)}</td>
                         <td className="py-3 px-4 text-[#10B981] text-right font-medium">€{(mgr.manager_commission || 0).toFixed(2)}</td>
                         <td className="py-3 px-4 text-center">
@@ -2299,7 +2299,7 @@ export default function Admin() {
                     ))}
                     {managers.length === 0 && (
                       <tr>
-                        <td colSpan="8" className="py-8 text-center text-[#94A3B8]">
+                        <td colSpan="8" className="py-8 text-center text-gray-500">
                           {language === 'en' ? 'No managers yet' : 'Noch keine Manager'}
                         </td>
                       </tr>
@@ -2312,7 +2312,7 @@ export default function Admin() {
               {showManagerModal && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowManagerModal(false)}>
                   <div className="bg-[#1A1A2E] rounded-xl p-6 max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
-                    <h2 className="text-xl font-bold text-white mb-4">
+                    <h2 className="text-xl font-bold text-gray-800 mb-4">
                       {language === 'en' ? 'Create Manager' : 'Manager erstellen'}
                     </h2>
                     <form onSubmit={async (e) => {
@@ -2333,57 +2333,57 @@ export default function Admin() {
                       }
                     }} className="space-y-4">
                       <div>
-                        <Label className="text-[#94A3B8]">Name</Label>
+                        <Label className="text-gray-500">Name</Label>
                         <Input 
                           value={managerForm.name}
                           onChange={(e) => setManagerForm({...managerForm, name: e.target.value})}
-                          className="bg-[#0D0D14] border-white/10 text-white"
+                          className="bg-gradient-to-b from-cyan-50 to-cyan-100 border-gray-200 text-gray-800"
                           required
                         />
                       </div>
                       <div>
-                        <Label className="text-[#94A3B8]">E-Mail</Label>
+                        <Label className="text-gray-500">E-Mail</Label>
                         <Input 
                           type="email"
                           value={managerForm.email}
                           onChange={(e) => setManagerForm({...managerForm, email: e.target.value})}
-                          className="bg-[#0D0D14] border-white/10 text-white"
+                          className="bg-gradient-to-b from-cyan-50 to-cyan-100 border-gray-200 text-gray-800"
                           required
                         />
                       </div>
                       <div>
-                        <Label className="text-[#94A3B8]">{language === 'en' ? 'Password' : 'Passwort'}</Label>
+                        <Label className="text-gray-500">{language === 'en' ? 'Password' : 'Passwort'}</Label>
                         <Input 
                           type="password"
                           value={managerForm.password}
                           onChange={(e) => setManagerForm({...managerForm, password: e.target.value})}
-                          className="bg-[#0D0D14] border-white/10 text-white"
+                          className="bg-gradient-to-b from-cyan-50 to-cyan-100 border-gray-200 text-gray-800"
                           required
                         />
                       </div>
                       <div>
-                        <Label className="text-[#94A3B8]">{language === 'en' ? 'Cities (comma separated)' : 'Städte (Komma getrennt)'}</Label>
+                        <Label className="text-gray-500">{language === 'en' ? 'Cities (comma separated)' : 'Städte (Komma getrennt)'}</Label>
                         <Input 
                           value={managerForm.cities}
                           onChange={(e) => setManagerForm({...managerForm, cities: e.target.value})}
-                          className="bg-[#0D0D14] border-white/10 text-white"
+                          className="bg-gradient-to-b from-cyan-50 to-cyan-100 border-gray-200 text-gray-800"
                           placeholder="Berlin, Hamburg, München"
                           required
                         />
                       </div>
                       <div>
-                        <Label className="text-[#94A3B8]">{language === 'en' ? 'Commission %' : 'Provision %'}</Label>
+                        <Label className="text-gray-500">{language === 'en' ? 'Commission %' : 'Provision %'}</Label>
                         <Input 
                           type="number"
                           value={managerForm.commission_percent}
                           onChange={(e) => setManagerForm({...managerForm, commission_percent: parseFloat(e.target.value)})}
-                          className="bg-[#0D0D14] border-white/10 text-white"
+                          className="bg-gradient-to-b from-cyan-50 to-cyan-100 border-gray-200 text-gray-800"
                           min="0"
                           max="50"
                         />
                       </div>
                       <div className="flex gap-2">
-                        <Button type="button" variant="outline" onClick={() => setShowManagerModal(false)} className="flex-1 border-white/10 text-white">
+                        <Button type="button" variant="outline" onClick={() => setShowManagerModal(false)} className="flex-1 border-gray-200 text-gray-800">
                           {language === 'en' ? 'Cancel' : 'Abbrechen'}
                         </Button>
                         <Button type="submit" className="flex-1 bg-[#7C3AED]">
@@ -2398,14 +2398,14 @@ export default function Admin() {
               {/* Manager Details Modal */}
               {showManagerDetails && selectedManager && (
                 <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
-                  <div className="bg-[#1A1A2E] rounded-xl border border-white/10 max-w-4xl w-full max-h-[90vh] overflow-hidden">
-                    <div className="p-6 border-b border-white/10 flex justify-between items-center">
+                  <div className="bg-[#1A1A2E] rounded-xl border border-gray-200 max-w-4xl w-full max-h-[90vh] overflow-hidden">
+                    <div className="p-6 border-b border-gray-200 flex justify-between items-center">
                       <div>
-                        <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                        <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
                           <Building2 className="w-5 h-5 text-[#7C3AED]" />
                           {selectedManager.name}
                         </h2>
-                        <p className="text-[#94A3B8] text-sm">{selectedManager.email}</p>
+                        <p className="text-gray-500 text-sm">{selectedManager.email}</p>
                       </div>
                       <Button
                         variant="ghost"
@@ -2413,7 +2413,7 @@ export default function Admin() {
                           setShowManagerDetails(false);
                           setSelectedManager(null);
                         }}
-                        className="text-[#94A3B8] hover:text-white"
+                        className="text-gray-500 hover:text-gray-800"
                       >
                         <X className="w-5 h-5" />
                       </Button>
@@ -2422,31 +2422,31 @@ export default function Admin() {
                     <div className="p-6 overflow-y-auto max-h-[calc(90vh-100px)]">
                       {/* Manager Stats */}
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-                        <div className="bg-[#0D0D14] rounded-lg p-3 text-center">
+                        <div className="bg-gradient-to-b from-cyan-50 to-cyan-100 rounded-lg p-3 text-center">
                           <Building2 className="w-5 h-5 text-[#7C3AED] mx-auto mb-1" />
-                          <p className="text-xl font-bold text-white">{selectedManager.cities?.length || 0}</p>
-                          <p className="text-[#94A3B8] text-[10px]">{language === 'en' ? 'Cities' : 'Städte'}</p>
+                          <p className="text-xl font-bold text-gray-800">{selectedManager.cities?.length || 0}</p>
+                          <p className="text-gray-500 text-[10px]">{language === 'en' ? 'Cities' : 'Städte'}</p>
                         </div>
-                        <div className="bg-[#0D0D14] rounded-lg p-3 text-center">
+                        <div className="bg-gradient-to-b from-cyan-50 to-cyan-100 rounded-lg p-3 text-center">
                           <Users className="w-5 h-5 text-[#F59E0B] mx-auto mb-1" />
-                          <p className="text-xl font-bold text-white">{selectedManager.influencer_count || managerInfluencers.length}</p>
-                          <p className="text-[#94A3B8] text-[10px]">Influencer</p>
+                          <p className="text-xl font-bold text-gray-800">{selectedManager.influencer_count || managerInfluencers.length}</p>
+                          <p className="text-gray-500 text-[10px]">Influencer</p>
                         </div>
-                        <div className="bg-[#0D0D14] rounded-lg p-3 text-center">
+                        <div className="bg-gradient-to-b from-cyan-50 to-cyan-100 rounded-lg p-3 text-center">
                           <DollarSign className="w-5 h-5 text-[#10B981] mx-auto mb-1" />
                           <p className="text-lg font-bold text-[#10B981]">€{(selectedManager.total_influencer_commission || 0).toFixed(2)}</p>
-                          <p className="text-[#94A3B8] text-[10px]">{language === 'en' ? 'Inf. Commission' : 'Inf. Provision'}</p>
+                          <p className="text-gray-500 text-[10px]">{language === 'en' ? 'Inf. Commission' : 'Inf. Provision'}</p>
                         </div>
-                        <div className="bg-[#0D0D14] rounded-lg p-3 text-center">
+                        <div className="bg-gradient-to-b from-cyan-50 to-cyan-100 rounded-lg p-3 text-center">
                           <Crown className="w-5 h-5 text-[#7C3AED] mx-auto mb-1" />
                           <p className="text-lg font-bold text-[#7C3AED]">€{(selectedManager.manager_commission || 0).toFixed(2)}</p>
-                          <p className="text-[#94A3B8] text-[10px]">{language === 'en' ? 'Manager 15%' : 'Manager 15%'}</p>
+                          <p className="text-gray-500 text-[10px]">{language === 'en' ? 'Manager 15%' : 'Manager 15%'}</p>
                         </div>
                       </div>
 
                       {/* Cities */}
                       <div className="mb-6">
-                        <h3 className="text-white font-medium mb-2">{language === 'en' ? 'Managed Cities' : 'Verwaltete Städte'}</h3>
+                        <h3 className="text-gray-800 font-medium mb-2">{language === 'en' ? 'Managed Cities' : 'Verwaltete Städte'}</h3>
                         <div className="flex flex-wrap gap-2">
                           {selectedManager.cities?.map((city) => (
                             <span key={city} className="px-3 py-1 bg-[#7C3AED]/20 text-[#7C3AED] rounded-full text-sm">
@@ -2458,42 +2458,42 @@ export default function Admin() {
 
                       {/* Influencer List */}
                       <div>
-                        <h3 className="text-white font-medium mb-3 flex items-center gap-2">
+                        <h3 className="text-gray-800 font-medium mb-3 flex items-center gap-2">
                           <Users className="w-4 h-4 text-[#F59E0B]" />
                           {language === 'en' ? 'Managed Influencers' : 'Verwaltete Influencer'}
                         </h3>
                         
                         {loadingManagerDetails ? (
-                          <div className="text-center py-8 text-[#94A3B8]">Laden...</div>
+                          <div className="text-center py-8 text-gray-500">Laden...</div>
                         ) : managerInfluencers.length === 0 ? (
-                          <div className="text-center py-8 bg-[#0D0D14] rounded-lg">
-                            <Users className="w-12 h-12 text-[#94A3B8] mx-auto mb-2 opacity-50" />
-                            <p className="text-[#94A3B8]">{language === 'en' ? 'No influencers yet' : 'Noch keine Influencer'}</p>
+                          <div className="text-center py-8 bg-gradient-to-b from-cyan-50 to-cyan-100 rounded-lg">
+                            <Users className="w-12 h-12 text-gray-500 mx-auto mb-2 opacity-50" />
+                            <p className="text-gray-500">{language === 'en' ? 'No influencers yet' : 'Noch keine Influencer'}</p>
                           </div>
                         ) : (
-                          <div className="bg-[#0D0D14] rounded-lg overflow-hidden">
+                          <div className="bg-gradient-to-b from-cyan-50 to-cyan-100 rounded-lg overflow-hidden">
                             <table className="w-full">
                               <thead className="bg-white/5">
                                 <tr>
-                                  <th className="text-left text-[#94A3B8] py-2 px-3 text-xs">Name</th>
-                                  <th className="text-left text-[#94A3B8] py-2 px-3 text-xs">Code</th>
-                                  <th className="text-left text-[#94A3B8] py-2 px-3 text-xs">{language === 'en' ? 'City' : 'Stadt'}</th>
-                                  <th className="text-right text-[#94A3B8] py-2 px-3 text-xs">{language === 'en' ? 'Signups' : 'Anmeldungen'}</th>
-                                  <th className="text-right text-[#94A3B8] py-2 px-3 text-xs">{language === 'en' ? 'Commission' : 'Provision'}</th>
-                                  <th className="text-center text-[#94A3B8] py-2 px-3 text-xs">Status</th>
+                                  <th className="text-left text-gray-500 py-2 px-3 text-xs">Name</th>
+                                  <th className="text-left text-gray-500 py-2 px-3 text-xs">Code</th>
+                                  <th className="text-left text-gray-500 py-2 px-3 text-xs">{language === 'en' ? 'City' : 'Stadt'}</th>
+                                  <th className="text-right text-gray-500 py-2 px-3 text-xs">{language === 'en' ? 'Signups' : 'Anmeldungen'}</th>
+                                  <th className="text-right text-gray-500 py-2 px-3 text-xs">{language === 'en' ? 'Commission' : 'Provision'}</th>
+                                  <th className="text-center text-gray-500 py-2 px-3 text-xs">Status</th>
                                 </tr>
                               </thead>
                               <tbody>
                                 {managerInfluencers.map((inf) => (
                                   <tr key={inf.id} className="border-t border-white/5 hover:bg-white/5">
-                                    <td className="py-2 px-3 text-white text-sm">{inf.name || inf.username}</td>
+                                    <td className="py-2 px-3 text-gray-800 text-sm">{inf.name || inf.username}</td>
                                     <td className="py-2 px-3">
                                       <span className="px-2 py-0.5 bg-[#F59E0B]/20 text-[#F59E0B] rounded text-xs font-mono">
                                         {inf.code}
                                       </span>
                                     </td>
-                                    <td className="py-2 px-3 text-[#94A3B8] text-sm">{inf.city || '-'}</td>
-                                    <td className="py-2 px-3 text-white text-right text-sm">{inf.signups || inf.total_signups || 0}</td>
+                                    <td className="py-2 px-3 text-gray-500 text-sm">{inf.city || '-'}</td>
+                                    <td className="py-2 px-3 text-gray-800 text-right text-sm">{inf.signups || inf.total_signups || 0}</td>
                                     <td className="py-2 px-3 text-[#10B981] text-right text-sm font-medium">
                                       €{(inf.total_earnings || inf.commission || 0).toFixed(2)}
                                     </td>
@@ -2509,8 +2509,8 @@ export default function Admin() {
                               </tbody>
                               <tfoot className="bg-white/5">
                                 <tr>
-                                  <td colSpan="3" className="py-2 px-3 text-[#94A3B8] text-sm font-medium">Gesamt</td>
-                                  <td className="py-2 px-3 text-white text-right text-sm font-bold">
+                                  <td colSpan="3" className="py-2 px-3 text-gray-500 text-sm font-medium">Gesamt</td>
+                                  <td className="py-2 px-3 text-gray-800 text-right text-sm font-bold">
                                     {managerInfluencers.reduce((sum, inf) => sum + (inf.signups || inf.total_signups || 0), 0)}
                                   </td>
                                   <td className="py-2 px-3 text-[#10B981] text-right text-sm font-bold">
@@ -2526,33 +2526,33 @@ export default function Admin() {
 
                       {/* Credentials Info */}
                       <div className="mt-6 p-4 bg-[#7C3AED]/10 rounded-lg border border-[#7C3AED]/20">
-                        <h4 className="text-white font-medium mb-2 flex items-center gap-2">
+                        <h4 className="text-gray-800 font-medium mb-2 flex items-center gap-2">
                           <CreditCard className="w-4 h-4 text-[#7C3AED]" />
                           {language === 'en' ? 'Login Credentials' : 'Zugangsdaten'}
                         </h4>
                         <div className="space-y-1 text-sm">
-                          <p className="text-[#94A3B8]">
-                            <span className="text-white">E-Mail:</span> {selectedManager.email}
+                          <p className="text-gray-500">
+                            <span className="text-gray-800">E-Mail:</span> {selectedManager.email}
                           </p>
-                          <p className="text-[#94A3B8]">
-                            <span className="text-white">Dashboard:</span> /manager-dashboard
+                          <p className="text-gray-500">
+                            <span className="text-gray-800">Dashboard:</span> /manager-dashboard
                           </p>
                         </div>
                       </div>
 
                       {/* Activity Log */}
                       <div className="mt-6">
-                        <h3 className="text-white font-medium mb-3 flex items-center gap-2">
+                        <h3 className="text-gray-800 font-medium mb-3 flex items-center gap-2">
                           <Clock className="w-4 h-4 text-[#F59E0B]" />
                           {language === 'en' ? 'Activity Log' : 'Aktivitäts-Protokoll'}
                         </h3>
                         {managerActivities.length === 0 ? (
-                          <div className="bg-[#0D0D14] rounded-lg p-4 text-center">
-                            <Clock className="w-8 h-8 text-[#94A3B8] mx-auto mb-2 opacity-50" />
-                            <p className="text-[#94A3B8] text-sm">{language === 'en' ? 'No activities yet' : 'Noch keine Aktivitäten'}</p>
+                          <div className="bg-gradient-to-b from-cyan-50 to-cyan-100 rounded-lg p-4 text-center">
+                            <Clock className="w-8 h-8 text-gray-500 mx-auto mb-2 opacity-50" />
+                            <p className="text-gray-500 text-sm">{language === 'en' ? 'No activities yet' : 'Noch keine Aktivitäten'}</p>
                           </div>
                         ) : (
-                          <div className="bg-[#0D0D14] rounded-lg overflow-hidden max-h-64 overflow-y-auto">
+                          <div className="bg-gradient-to-b from-cyan-50 to-cyan-100 rounded-lg overflow-hidden max-h-64 overflow-y-auto">
                             {managerActivities.map((activity, i) => (
                               <div key={activity.id || i} className="flex items-start gap-3 p-3 border-b border-white/5 last:border-0">
                                 <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
@@ -2567,8 +2567,8 @@ export default function Admin() {
                                    <Clock className="w-4 h-4 text-[#F59E0B]" />}
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <p className="text-white text-sm">{activity.description}</p>
-                                  <p className="text-[#94A3B8] text-xs">
+                                  <p className="text-gray-800 text-sm">{activity.description}</p>
+                                  <p className="text-gray-500 text-xs">
                                     {new Date(activity.created_at).toLocaleString('de-DE')}
                                   </p>
                                 </div>
@@ -2609,7 +2609,7 @@ export default function Admin() {
           {/* Jackpot Tab */}
           {activeTab === 'jackpot' && (
             <div className="space-y-6">
-              <h1 className="text-xl sm:text-2xl font-bold text-white flex items-center gap-2">
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-800 flex items-center gap-2">
                 <Trophy className="w-6 h-6 text-[#FFD700]" />
                 Jackpot Verwaltung
               </h1>
@@ -2618,11 +2618,11 @@ export default function Admin() {
               <div className="glass-card rounded-xl p-4 sm:p-6 bg-gradient-to-r from-amber-500/20 to-yellow-500/20 border border-yellow-500/30">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-[#94A3B8] text-sm">Aktueller Jackpot</p>
+                    <p className="text-gray-500 text-sm">Aktueller Jackpot</p>
                     <p className="text-3xl sm:text-4xl font-black text-[#FFD700]">
                       {jackpotData?.current_amount?.toLocaleString('de-DE') || 0} Gebote
                     </p>
-                    <p className="text-white text-lg mt-1">
+                    <p className="text-gray-800 text-lg mt-1">
                       Wert: €{((jackpotData?.current_amount || 0) * 0.50).toFixed(2)}
                     </p>
                   </div>
@@ -2634,8 +2634,8 @@ export default function Admin() {
               <div className="glass-card rounded-xl p-4 sm:p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="text-white font-bold">Jackpot Status</h3>
-                    <p className="text-[#94A3B8] text-sm">
+                    <h3 className="text-gray-800 font-bold">Jackpot Status</h3>
+                    <p className="text-gray-500 text-sm">
                       {jackpotData?.is_active !== false ? 'Jackpot ist aktiv und wird bei Geboten erhöht' : 'Jackpot ist deaktiviert'}
                     </p>
                   </div>
@@ -2668,15 +2668,15 @@ export default function Admin() {
 
               {/* Jackpot Controls */}
               <div className="glass-card rounded-xl p-4 sm:p-6">
-                <h3 className="text-white font-bold mb-4">Jackpot anpassen</h3>
+                <h3 className="text-gray-800 font-bold mb-4">Jackpot anpassen</h3>
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-end gap-3">
                   <div className="flex-1">
-                    <Label className="text-[#94A3B8]">Neuer Jackpot-Betrag (Gebote)</Label>
+                    <Label className="text-gray-500">Neuer Jackpot-Betrag (Gebote)</Label>
                     <Input
                       type="number"
                       value={jackpotAmount}
                       onChange={(e) => setJackpotAmount(parseInt(e.target.value) || 0)}
-                      className="bg-[#181824] border-white/10 text-white text-lg"
+                      className="bg-white border-gray-200 text-gray-800 text-lg"
                       min={0}
                     />
                   </div>
@@ -2699,17 +2699,17 @@ export default function Admin() {
                     Setzen
                   </Button>
                 </div>
-                <p className="text-[#94A3B8] text-xs mt-2">
+                <p className="text-gray-500 text-xs mt-2">
                   Aktuell: {jackpotData?.current_amount || 0} Gebote = €{((jackpotData?.current_amount || 0) * 0.50).toFixed(2)}
                 </p>
               </div>
 
               {/* Award Jackpot */}
               <div className="glass-card rounded-xl p-4 sm:p-6">
-                <h3 className="text-white font-bold mb-4">🏆 Jackpot vergeben</h3>
+                <h3 className="text-gray-800 font-bold mb-4">🏆 Jackpot vergeben</h3>
                 <div className="space-y-3">
                   <div>
-                    <Label className="text-[#94A3B8]">Benutzer auswählen ({users.length} verfügbar)</Label>
+                    <Label className="text-gray-500">Benutzer auswählen ({users.length} verfügbar)</Label>
                     <Select onValueChange={async (userId) => {
                       if (!userId) return;
                       if (!window.confirm(`Jackpot von ${jackpotData?.current_amount || 0} Geboten wirklich vergeben?`)) return;
@@ -2725,17 +2725,17 @@ export default function Admin() {
                         toast.error(err.response?.data?.detail || 'Fehler');
                       }
                     }}>
-                      <SelectTrigger className="bg-[#181824] border-white/10 text-white">
+                      <SelectTrigger className="bg-white border-gray-200 text-gray-800">
                         <SelectValue placeholder="Benutzer wählen zum Vergeben..." />
                       </SelectTrigger>
-                      <SelectContent className="bg-[#181824] border-white/10 max-h-60">
+                      <SelectContent className="bg-white border-gray-200 max-h-60">
                         {users.length === 0 ? (
-                          <SelectItem value="none" disabled className="text-[#94A3B8]">
+                          <SelectItem value="none" disabled className="text-gray-500">
                             Keine Benutzer geladen
                           </SelectItem>
                         ) : (
                           users.map((user) => (
-                            <SelectItem key={user.id} value={user.id} className="text-white">
+                            <SelectItem key={user.id} value={user.id} className="text-gray-800">
                               {user.name} ({user.email})
                             </SelectItem>
                           ))
@@ -2751,25 +2751,25 @@ export default function Admin() {
 
               {/* Jackpot History */}
               <div className="glass-card rounded-xl p-6">
-                <h3 className="text-white font-bold mb-4">Jackpot-Gewinner Historie</h3>
+                <h3 className="text-gray-800 font-bold mb-4">Jackpot-Gewinner Historie</h3>
                 {jackpotHistory.length === 0 ? (
-                  <p className="text-[#94A3B8] text-center py-4">Noch keine Jackpot-Gewinner</p>
+                  <p className="text-gray-500 text-center py-4">Noch keine Jackpot-Gewinner</p>
                 ) : (
                   <div className="space-y-2">
                     {jackpotHistory.map((winner, i) => (
-                      <div key={i} className="flex items-center justify-between p-3 bg-[#181824] rounded-lg">
+                      <div key={i} className="flex items-center justify-between p-3 bg-white rounded-lg">
                         <div className="flex items-center gap-3">
                           <Trophy className="w-5 h-5 text-[#FFD700]" />
                           <div>
-                            <p className="text-white font-medium">{winner.user_name}</p>
-                            <p className="text-[#94A3B8] text-xs">
+                            <p className="text-gray-800 font-medium">{winner.user_name}</p>
+                            <p className="text-gray-500 text-xs">
                               {new Date(winner.won_at).toLocaleString('de-DE')}
                             </p>
                           </div>
                         </div>
                         <div className="text-right">
                           <p className="text-[#FFD700] font-bold">{winner.amount} Gebote</p>
-                          <p className="text-[#94A3B8] text-xs">€{(winner.amount * 0.50).toFixed(2)}</p>
+                          <p className="text-gray-500 text-xs">€{(winner.amount * 0.50).toFixed(2)}</p>
                         </div>
                       </div>
                     ))}
@@ -2780,12 +2780,12 @@ export default function Admin() {
               {/* Last Winner Info */}
               {jackpotData?.last_winner && jackpotData?.last_won_amount && (
                 <div className="glass-card rounded-xl p-6 border border-[#FFD700]/30">
-                  <h3 className="text-white font-bold mb-2">Letzter Gewinner</h3>
+                  <h3 className="text-gray-800 font-bold mb-2">Letzter Gewinner</h3>
                   <div className="flex items-center gap-4">
                     <Trophy className="w-10 h-10 text-[#FFD700]" />
                     <div>
-                      <p className="text-xl font-bold text-white">{jackpotData.last_winner}</p>
-                      <p className="text-[#94A3B8]">
+                      <p className="text-xl font-bold text-gray-800">{jackpotData.last_winner}</p>
+                      <p className="text-gray-500">
                         Gewonnen: {jackpotData.last_won_amount || 0} Gebote (€{((jackpotData.last_won_amount || 0) * 0.50).toFixed(2)})
                       </p>
                     </div>
@@ -2795,16 +2795,16 @@ export default function Admin() {
               
               {/* ==================== HAPPY HOUR SETTINGS ==================== */}
               <div className="glass-card rounded-xl p-4 sm:p-6 border border-orange-500/30 bg-gradient-to-r from-orange-500/10 to-yellow-500/10">
-                <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
                   <span className="text-2xl">⚡</span> Happy Hour Einstellungen
                 </h3>
-                <p className="text-[#94A3B8] text-sm mb-4">
+                <p className="text-gray-500 text-sm mb-4">
                   Während der Happy Hour erhalten Kunden Bonus-Gebote bei jedem Kauf!
                 </p>
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                   <div>
-                    <Label className="text-[#94A3B8]">Status</Label>
+                    <Label className="text-gray-500">Status</Label>
                     <div className="flex items-center gap-3 mt-2">
                       <button
                         onClick={async () => {
@@ -2826,14 +2826,14 @@ export default function Admin() {
                           happyHourConfig?.enabled ? 'translate-x-7' : 'translate-x-1'
                         }`} />
                       </button>
-                      <span className={happyHourConfig?.enabled ? 'text-[#F59E0B] font-bold' : 'text-[#94A3B8]'}>
+                      <span className={happyHourConfig?.enabled ? 'text-[#F59E0B] font-bold' : 'text-gray-500'}>
                         {happyHourConfig?.enabled ? 'AKTIV' : 'Inaktiv'}
                       </span>
                     </div>
                   </div>
                   
                   <div>
-                    <Label className="text-[#94A3B8]">Bonus-Multiplikator</Label>
+                    <Label className="text-gray-500">Bonus-Multiplikator</Label>
                     <Select 
                       value={String(happyHourConfig?.multiplier || 2)}
                       onValueChange={async (val) => {
@@ -2848,14 +2848,14 @@ export default function Admin() {
                         }
                       }}
                     >
-                      <SelectTrigger className="bg-[#181824] border-white/10 text-white mt-2">
+                      <SelectTrigger className="bg-white border-gray-200 text-gray-800 mt-2">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className="bg-[#181824] border-white/10">
-                        <SelectItem value="1.5" className="text-white">1.5x Gebote</SelectItem>
-                        <SelectItem value="2" className="text-white">2x Gebote (Standard)</SelectItem>
-                        <SelectItem value="2.5" className="text-white">2.5x Gebote</SelectItem>
-                        <SelectItem value="3" className="text-white">3x Gebote</SelectItem>
+                      <SelectContent className="bg-white border-gray-200">
+                        <SelectItem value="1.5" className="text-gray-800">1.5x Gebote</SelectItem>
+                        <SelectItem value="2" className="text-gray-800">2x Gebote (Standard)</SelectItem>
+                        <SelectItem value="2.5" className="text-gray-800">2.5x Gebote</SelectItem>
+                        <SelectItem value="3" className="text-gray-800">3x Gebote</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -2863,7 +2863,7 @@ export default function Admin() {
                 
                 <div className="grid grid-cols-2 gap-4 mb-4">
                   <div>
-                    <Label className="text-[#94A3B8]">Startzeit (Uhr)</Label>
+                    <Label className="text-gray-500">Startzeit (Uhr)</Label>
                     <Input
                       type="number"
                       min={0}
@@ -2880,11 +2880,11 @@ export default function Admin() {
                           } catch (err) {}
                         }
                       }}
-                      className="bg-[#181824] border-white/10 text-white"
+                      className="bg-white border-gray-200 text-gray-800"
                     />
                   </div>
                   <div>
-                    <Label className="text-[#94A3B8]">Endzeit (Uhr)</Label>
+                    <Label className="text-gray-500">Endzeit (Uhr)</Label>
                     <Input
                       type="number"
                       min={1}
@@ -2901,7 +2901,7 @@ export default function Admin() {
                           } catch (err) {}
                         }
                       }}
-                      className="bg-[#181824] border-white/10 text-white"
+                      className="bg-white border-gray-200 text-gray-800"
                     />
                   </div>
                 </div>
@@ -2913,16 +2913,16 @@ export default function Admin() {
               
               {/* ==================== LUCKY IN 50 SETTINGS ==================== */}
               <div className="glass-card rounded-xl p-4 sm:p-6 border border-green-500/30 bg-gradient-to-r from-green-500/10 to-emerald-500/10">
-                <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
                   <span className="text-2xl">🎁</span> Lucky in 50 Einstellungen
                 </h3>
-                <p className="text-[#94A3B8] text-sm mb-4">
+                <p className="text-gray-500 text-sm mb-4">
                   Jedes X. Gebot gewinnt automatisch Bonus-Gebote! Ermutigt Benutzer mehr zu bieten.
                 </p>
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                   <div>
-                    <Label className="text-[#94A3B8]">Gewinn-Intervall</Label>
+                    <Label className="text-gray-500">Gewinn-Intervall</Label>
                     <Select 
                       value={String(luckyConfig?.interval || 50)}
                       onValueChange={async (val) => {
@@ -2938,20 +2938,20 @@ export default function Admin() {
                         }
                       }}
                     >
-                      <SelectTrigger className="bg-[#181824] border-white/10 text-white mt-2">
+                      <SelectTrigger className="bg-white border-gray-200 text-gray-800 mt-2">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className="bg-[#181824] border-white/10">
-                        <SelectItem value="25" className="text-white">Jedes 25. Gebot</SelectItem>
-                        <SelectItem value="50" className="text-white">Jedes 50. Gebot (Standard)</SelectItem>
-                        <SelectItem value="100" className="text-white">Jedes 100. Gebot</SelectItem>
-                        <SelectItem value="200" className="text-white">Jedes 200. Gebot</SelectItem>
+                      <SelectContent className="bg-white border-gray-200">
+                        <SelectItem value="25" className="text-gray-800">Jedes 25. Gebot</SelectItem>
+                        <SelectItem value="50" className="text-gray-800">Jedes 50. Gebot (Standard)</SelectItem>
+                        <SelectItem value="100" className="text-gray-800">Jedes 100. Gebot</SelectItem>
+                        <SelectItem value="200" className="text-gray-800">Jedes 200. Gebot</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   
                   <div>
-                    <Label className="text-[#94A3B8]">Gewinn (Gratis-Gebote)</Label>
+                    <Label className="text-gray-500">Gewinn (Gratis-Gebote)</Label>
                     <Select 
                       value={String(luckyConfig?.reward || 10)}
                       onValueChange={async (val) => {
@@ -2967,28 +2967,28 @@ export default function Admin() {
                         }
                       }}
                     >
-                      <SelectTrigger className="bg-[#181824] border-white/10 text-white mt-2">
+                      <SelectTrigger className="bg-white border-gray-200 text-gray-800 mt-2">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className="bg-[#181824] border-white/10">
-                        <SelectItem value="5" className="text-white">5 Gratis-Gebote</SelectItem>
-                        <SelectItem value="10" className="text-white">10 Gratis-Gebote (Standard)</SelectItem>
-                        <SelectItem value="15" className="text-white">15 Gratis-Gebote</SelectItem>
-                        <SelectItem value="25" className="text-white">25 Gratis-Gebote</SelectItem>
+                      <SelectContent className="bg-white border-gray-200">
+                        <SelectItem value="5" className="text-gray-800">5 Gratis-Gebote</SelectItem>
+                        <SelectItem value="10" className="text-gray-800">10 Gratis-Gebote (Standard)</SelectItem>
+                        <SelectItem value="15" className="text-gray-800">15 Gratis-Gebote</SelectItem>
+                        <SelectItem value="25" className="text-gray-800">25 Gratis-Gebote</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                 </div>
                 
-                <div className="bg-[#181824] rounded-lg p-4">
+                <div className="bg-white rounded-lg p-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-[#94A3B8] text-sm">Gebote bis zum nächsten Lucky Bid:</p>
+                      <p className="text-gray-500 text-sm">Gebote bis zum nächsten Lucky Bid:</p>
                       <p className="text-2xl font-bold text-[#10B981]">{luckyConfig?.bids_until_lucky || 50}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-[#94A3B8] text-sm">Gesamte Gebote heute:</p>
-                      <p className="text-xl font-bold text-white">{luckyConfig?.total_bids_today || 0}</p>
+                      <p className="text-gray-500 text-sm">Gesamte Gebote heute:</p>
+                      <p className="text-xl font-bold text-gray-800">{luckyConfig?.total_bids_today || 0}</p>
                     </div>
                   </div>
                 </div>
@@ -3004,7 +3004,7 @@ export default function Admin() {
           {activeTab === 'promo-codes' && (
             <div className="space-y-6">
               <div className="flex items-center justify-between">
-                <h2 className="text-xl font-bold text-white">🎫 Gutschein-Codes</h2>
+                <h2 className="text-xl font-bold text-gray-800">🎫 Gutschein-Codes</h2>
                 <Button
                   onClick={() => setShowPromoModal(true)}
                   className="btn-primary"
@@ -3016,15 +3016,15 @@ export default function Admin() {
               {/* Promo Codes List */}
               <div className="glass-card rounded-xl overflow-hidden">
                 <table className="w-full">
-                  <thead className="bg-[#181824]">
+                  <thead className="bg-white">
                     <tr>
-                      <th className="text-left text-[#94A3B8] font-medium p-4">Code</th>
-                      <th className="text-left text-[#94A3B8] font-medium p-4">Name</th>
-                      <th className="text-left text-[#94A3B8] font-medium p-4">Belohnung</th>
-                      <th className="text-left text-[#94A3B8] font-medium p-4">Einlösungen</th>
-                      <th className="text-left text-[#94A3B8] font-medium p-4">Limit</th>
-                      <th className="text-left text-[#94A3B8] font-medium p-4">Status</th>
-                      <th className="text-left text-[#94A3B8] font-medium p-4">Aktionen</th>
+                      <th className="text-left text-gray-500 font-medium p-4">Code</th>
+                      <th className="text-left text-gray-500 font-medium p-4">Name</th>
+                      <th className="text-left text-gray-500 font-medium p-4">Belohnung</th>
+                      <th className="text-left text-gray-500 font-medium p-4">Einlösungen</th>
+                      <th className="text-left text-gray-500 font-medium p-4">Limit</th>
+                      <th className="text-left text-gray-500 font-medium p-4">Status</th>
+                      <th className="text-left text-gray-500 font-medium p-4">Aktionen</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -3035,15 +3035,15 @@ export default function Admin() {
                             {promo.code}
                           </span>
                         </td>
-                        <td className="p-4 text-white">{promo.name}</td>
+                        <td className="p-4 text-gray-800">{promo.name}</td>
                         <td className="p-4">
                           <span className="text-[#10B981]">
                             {promo.reward_amount} {promo.reward_type === 'bids' ? 'Gebote' : promo.reward_type === 'vip_days' ? 'VIP Tage' : '%'}
                           </span>
                         </td>
-                        <td className="p-4 text-white">
+                        <td className="p-4 text-gray-800">
                           {promo.current_uses || 0}
-                          {promo.max_uses && <span className="text-[#94A3B8]"> / {promo.max_uses}</span>}
+                          {promo.max_uses && <span className="text-gray-500"> / {promo.max_uses}</span>}
                         </td>
                         <td className="p-4">
                           {promo.one_per_user !== false ? (
@@ -3103,7 +3103,7 @@ export default function Admin() {
                     ))}
                     {promoCodes.length === 0 && (
                       <tr>
-                        <td colSpan="7" className="p-8 text-center text-[#94A3B8]">
+                        <td colSpan="7" className="p-8 text-center text-gray-500">
                           Keine Gutschein-Codes vorhanden
                         </td>
                       </tr>
@@ -3115,8 +3115,8 @@ export default function Admin() {
               {/* Create Promo Modal */}
               {showPromoModal && (
                 <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
-                  <div className="bg-[#1A1A2E] rounded-xl border border-white/10 max-w-md w-full p-6">
-                    <h3 className="text-xl font-bold text-white mb-4">Neuen Gutschein-Code erstellen</h3>
+                  <div className="bg-[#1A1A2E] rounded-xl border border-gray-200 max-w-md w-full p-6">
+                    <h3 className="text-xl font-bold text-gray-800 mb-4">Neuen Gutschein-Code erstellen</h3>
                     
                     <form onSubmit={async (e) => {
                       e.preventDefault();
@@ -3137,24 +3137,24 @@ export default function Admin() {
                       }
                     }} className="space-y-4">
                       <div>
-                        <label className="text-white text-sm">Code (z.B. WEIHNACHTEN2026)</label>
+                        <label className="text-gray-800 text-sm">Code (z.B. WEIHNACHTEN2026)</label>
                         <input
                           type="text"
                           value={promoForm.code}
                           onChange={(e) => setPromoForm({...promoForm, code: e.target.value.toUpperCase()})}
-                          className="w-full bg-[#181824] border border-white/10 rounded-lg px-4 py-2 text-white font-mono"
+                          className="w-full bg-white border border-gray-200 rounded-lg px-4 py-2 text-gray-800 font-mono"
                           placeholder="WILLKOMMEN"
                           required
                         />
                       </div>
                       
                       <div>
-                        <label className="text-white text-sm">Name/Beschreibung</label>
+                        <label className="text-gray-800 text-sm">Name/Beschreibung</label>
                         <input
                           type="text"
                           value={promoForm.name}
                           onChange={(e) => setPromoForm({...promoForm, name: e.target.value})}
-                          className="w-full bg-[#181824] border border-white/10 rounded-lg px-4 py-2 text-white"
+                          className="w-full bg-white border border-gray-200 rounded-lg px-4 py-2 text-gray-800"
                           placeholder="Willkommensbonus für neue Nutzer"
                           required
                         />
@@ -3162,11 +3162,11 @@ export default function Admin() {
                       
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <label className="text-white text-sm">Belohnungsart</label>
+                          <label className="text-gray-800 text-sm">Belohnungsart</label>
                           <select
                             value={promoForm.reward_type}
                             onChange={(e) => setPromoForm({...promoForm, reward_type: e.target.value})}
-                            className="w-full bg-[#181824] border border-white/10 rounded-lg px-4 py-2 text-white"
+                            className="w-full bg-white border border-gray-200 rounded-lg px-4 py-2 text-gray-800"
                           >
                             <option value="bids">Gratis-Gebote</option>
                             <option value="vip_days">VIP-Tage</option>
@@ -3174,13 +3174,13 @@ export default function Admin() {
                           </select>
                         </div>
                         <div>
-                          <label className="text-white text-sm">Menge</label>
+                          <label className="text-gray-800 text-sm">Menge</label>
                           <input
                             type="number"
                             min="1"
                             value={promoForm.reward_amount}
                             onChange={(e) => setPromoForm({...promoForm, reward_amount: parseInt(e.target.value)})}
-                            className="w-full bg-[#181824] border border-white/10 rounded-lg px-4 py-2 text-white"
+                            className="w-full bg-white border border-gray-200 rounded-lg px-4 py-2 text-gray-800"
                             required
                           />
                         </div>
@@ -3188,39 +3188,39 @@ export default function Admin() {
                       
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <label className="text-white text-sm">Max. Einlösungen (leer = unbegrenzt)</label>
+                          <label className="text-gray-800 text-sm">Max. Einlösungen (leer = unbegrenzt)</label>
                           <input
                             type="number"
                             min="1"
                             value={promoForm.max_uses || ''}
                             onChange={(e) => setPromoForm({...promoForm, max_uses: e.target.value ? parseInt(e.target.value) : null})}
-                            className="w-full bg-[#181824] border border-white/10 rounded-lg px-4 py-2 text-white"
+                            className="w-full bg-white border border-gray-200 rounded-lg px-4 py-2 text-gray-800"
                             placeholder="Unbegrenzt"
                           />
                         </div>
                         <div>
-                          <label className="text-white text-sm">Gültig bis (optional)</label>
+                          <label className="text-gray-800 text-sm">Gültig bis (optional)</label>
                           <input
                             type="date"
                             value={promoForm.valid_until}
                             onChange={(e) => setPromoForm({...promoForm, valid_until: e.target.value})}
-                            className="w-full bg-[#181824] border border-white/10 rounded-lg px-4 py-2 text-white"
+                            className="w-full bg-white border border-gray-200 rounded-lg px-4 py-2 text-gray-800"
                           />
                         </div>
                       </div>
                       
                       {/* Einmal pro Kunde Option */}
-                      <div className="flex items-center gap-3 p-3 bg-[#181824] rounded-lg border border-white/10">
+                      <div className="flex items-center gap-3 p-3 bg-white rounded-lg border border-gray-200">
                         <input
                           type="checkbox"
                           id="one_per_user"
                           checked={promoForm.one_per_user}
                           onChange={(e) => setPromoForm({...promoForm, one_per_user: e.target.checked})}
-                          className="w-5 h-5 rounded bg-[#252540] border-white/20 text-[#FFD700] focus:ring-[#FFD700]"
+                          className="w-5 h-5 rounded bg-[#252540] border-gray-300 text-[#FFD700] focus:ring-[#FFD700]"
                         />
-                        <label htmlFor="one_per_user" className="text-white cursor-pointer">
+                        <label htmlFor="one_per_user" className="text-gray-800 cursor-pointer">
                           <span className="font-medium">Nur einmal pro Kunde</span>
-                          <span className="text-[#94A3B8] text-sm block">Jeder Kunde kann diesen Code nur 1x einlösen</span>
+                          <span className="text-gray-500 text-sm block">Jeder Kunde kann diesen Code nur 1x einlösen</span>
                         </label>
                       </div>
                       

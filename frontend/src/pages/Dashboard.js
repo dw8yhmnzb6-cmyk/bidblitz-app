@@ -234,8 +234,8 @@ export default function Dashboard() {
                 {user.name?.charAt(0).toUpperCase()}
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-white">{dt.welcome}, {user.name}!</h1>
-                <p className="text-[#94A3B8]">{user.email}</p>
+                <h1 className="text-2xl font-bold text-gray-800">{dt.welcome}, {user.name}!</h1>
+                <p className="text-gray-500">{user.email}</p>
               </div>
             </div>
             <div className="flex flex-wrap gap-3">
@@ -245,7 +245,7 @@ export default function Dashboard() {
                 </Button>
               </Link>
               <Link to="/profile">
-                <Button variant="outline" className="border-white/10 text-white hover:bg-white/10">
+                <Button variant="outline" className="border-gray-200 text-gray-800 hover:bg-white/10">
                   <Settings className="w-4 h-4 mr-2" />{dt.profile}
                 </Button>
               </Link>
@@ -266,8 +266,8 @@ export default function Dashboard() {
                 <Zap className="w-6 h-6 text-[#FFD700]" />
               </div>
               <div>
-                <p className="text-[#94A3B8] text-sm">{dt.balance}</p>
-                <p className="text-2xl font-bold text-white">{user.bids_balance || 0}</p>
+                <p className="text-gray-500 text-sm">{dt.balance}</p>
+                <p className="text-2xl font-bold text-gray-800">{user.bids_balance || 0}</p>
                 <p className="text-[#FFD700] text-xs">{dt.bids}</p>
               </div>
             </div>
@@ -279,8 +279,8 @@ export default function Dashboard() {
                 <Trophy className="w-6 h-6 text-[#10B981]" />
               </div>
               <div>
-                <p className="text-[#94A3B8] text-sm">{dt.won}</p>
-                <p className="text-2xl font-bold text-white">{wonAuctions.length}</p>
+                <p className="text-gray-500 text-sm">{dt.won}</p>
+                <p className="text-2xl font-bold text-gray-800">{wonAuctions.length}</p>
                 <p className="text-[#10B981] text-xs">{dt.auctions}</p>
               </div>
             </div>
@@ -292,8 +292,8 @@ export default function Dashboard() {
                 <Target className="w-6 h-6 text-[#7C3AED]" />
               </div>
               <div>
-                <p className="text-[#94A3B8] text-sm">Aktive Gebote</p>
-                <p className="text-2xl font-bold text-white">{myBidAuctions.length}</p>
+                <p className="text-gray-500 text-sm">Aktive Gebote</p>
+                <p className="text-2xl font-bold text-gray-800">{myBidAuctions.length}</p>
                 <p className="text-[#7C3AED] text-xs">Auktionen</p>
               </div>
             </div>
@@ -305,8 +305,8 @@ export default function Dashboard() {
                 <Bot className="w-6 h-6 text-[#06B6D4]" />
               </div>
               <div>
-                <p className="text-[#94A3B8] text-sm">Autobidder</p>
-                <p className="text-2xl font-bold text-white">{(autobidders || []).filter(a => a.is_active).length}</p>
+                <p className="text-gray-500 text-sm">Autobidder</p>
+                <p className="text-2xl font-bold text-gray-800">{(autobidders || []).filter(a => a.is_active).length}</p>
                 <p className="text-[#06B6D4] text-xs">Aktiv</p>
               </div>
             </div>
@@ -320,11 +320,11 @@ export default function Dashboard() {
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#F59E0B] to-[#EF4444] flex items-center justify-center">
-                  <Gift className="w-6 h-6 text-white" />
+                  <Gift className="w-6 h-6 text-gray-800" />
                 </div>
                 <div>
-                  <h3 className="text-white font-bold">{dt.dailyReward}</h3>
-                  <p className="text-[#94A3B8] text-sm">
+                  <h3 className="text-gray-800 font-bold">{dt.dailyReward}</h3>
+                  <p className="text-gray-500 text-sm">
                     🔥 {dt.streak}: {dailyRewardStatus?.current_streak || 0} {dt.days}
                   </p>
                 </div>
@@ -335,7 +335,7 @@ export default function Dashboard() {
               <Button
                 onClick={claimDailyReward}
                 disabled={claimingReward}
-                className="w-full bg-gradient-to-r from-[#F59E0B] to-[#EF4444] hover:from-[#D97706] hover:to-[#DC2626] text-white font-bold py-3"
+                className="w-full bg-gradient-to-r from-[#F59E0B] to-[#EF4444] hover:from-[#D97706] hover:to-[#DC2626] text-gray-800 font-bold py-3"
                 data-testid="claim-daily-reward-btn"
               >
                 {claimingReward ? '...' : (
@@ -346,10 +346,10 @@ export default function Dashboard() {
                 )}
               </Button>
             ) : (
-              <div className="text-center py-3 px-4 rounded-lg bg-[#181824]">
+              <div className="text-center py-3 px-4 rounded-lg bg-white">
                 <CheckCircle className="w-6 h-6 text-[#10B981] mx-auto mb-2" />
                 <p className="text-[#10B981] font-medium">{dt.alreadyClaimed}</p>
-                <p className="text-[#94A3B8] text-xs mt-1">Komm morgen wieder!</p>
+                <p className="text-gray-500 text-xs mt-1">Komm morgen wieder!</p>
               </div>
             )}
             
@@ -361,13 +361,13 @@ export default function Dashboard() {
                   className={`h-2 rounded-full ${
                     (dailyRewardStatus?.current_streak || 0) % 7 >= day || (dailyRewardStatus?.current_streak || 0) % 7 === 0 && dailyRewardStatus?.current_streak >= 7
                       ? 'bg-[#F59E0B]' 
-                      : 'bg-[#181824]'
+                      : 'bg-white'
                   }`}
                   title={`Tag ${day}`}
                 />
               ))}
             </div>
-            <p className="text-[#94A3B8] text-xs text-center mt-2">7 Tage = +10 Bonus-Gebote!</p>
+            <p className="text-gray-500 text-xs text-center mt-2">7 Tage = +10 Bonus-Gebote!</p>
           </div>
 
           {/* Achievements Card */}
@@ -378,8 +378,8 @@ export default function Dashboard() {
                   <Trophy className="w-6 h-6 text-[#7C3AED]" />
                 </div>
                 <div>
-                  <h3 className="text-white font-bold">{dt.achievements}</h3>
-                  <p className="text-[#94A3B8] text-sm">
+                  <h3 className="text-gray-800 font-bold">{dt.achievements}</h3>
+                  <p className="text-gray-500 text-sm">
                     {achievements?.total_earned || 0} / {achievements?.total_available || 12}
                   </p>
                 </div>
@@ -394,15 +394,15 @@ export default function Dashboard() {
               {achievements?.earned?.slice(0, 6).map((ach) => (
                 <div 
                   key={ach.id}
-                  className="px-3 py-2 rounded-lg bg-[#181824] flex items-center gap-2"
+                  className="px-3 py-2 rounded-lg bg-white flex items-center gap-2"
                   title={ach.description}
                 >
                   <span className="text-xl">{ach.icon}</span>
-                  <span className="text-white text-sm">{ach.name}</span>
+                  <span className="text-gray-800 text-sm">{ach.name}</span>
                 </div>
               ))}
               {(!achievements?.earned || achievements.earned.length === 0) && (
-                <p className="text-[#94A3B8] text-sm">Noch keine Achievements - starte jetzt!</p>
+                <p className="text-gray-500 text-sm">Noch keine Achievements - starte jetzt!</p>
               )}
             </div>
           </div>
@@ -415,11 +415,11 @@ export default function Dashboard() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-center gap-4">
                 <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center animate-pulse">
-                  <Sparkles className="w-7 h-7 text-white" />
+                  <Sparkles className="w-7 h-7 text-gray-800" />
                 </div>
                 <div>
-                  <h3 className="text-white font-bold text-lg">{mappedLang === 'de' ? 'Glücksrad' : mappedLang === 'en' ? 'Lucky Wheel' : mappedLang === 'tr' ? 'Şans Çarkı' : mappedLang === 'sq' ? 'Rrota e Fatit' : mappedLang === 'fr' ? 'Roue de la Fortune' : mappedLang === 'es' ? 'Ruleta de la Suerte' : 'Glücksrad'}</h3>
-                  <p className="text-gray-400 text-sm">
+                  <h3 className="text-gray-800 font-bold text-lg">{mappedLang === 'de' ? 'Glücksrad' : mappedLang === 'en' ? 'Lucky Wheel' : mappedLang === 'tr' ? 'Şans Çarkı' : mappedLang === 'sq' ? 'Rrota e Fatit' : mappedLang === 'fr' ? 'Roue de la Fortune' : mappedLang === 'es' ? 'Ruleta de la Suerte' : 'Glücksrad'}</h3>
+                  <p className="text-gray-500 text-sm">
                     {mappedLang === 'de' ? 'Drehe täglich für Gratis-Preise!' : mappedLang === 'en' ? 'Spin daily for free prizes!' : mappedLang === 'tr' ? 'Günlük çevir, ücretsiz ödüller kazan!' : mappedLang === 'sq' ? 'Rrotullo çdo ditë për çmime falas!' : mappedLang === 'fr' ? 'Tournez chaque jour pour des prix gratuits!' : mappedLang === 'es' ? '¡Gira diariamente para premios gratis!' : 'Drehe täglich für Gratis-Preise!'}
                   </p>
                 </div>
@@ -440,11 +440,11 @@ export default function Dashboard() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
-                  <Trophy className="w-7 h-7 text-white" />
+                  <Trophy className="w-7 h-7 text-gray-800" />
                 </div>
                 <div>
-                  <h3 className="text-white font-bold text-lg">{language === 'de' ? 'Wochen-Rangliste' : language === 'en' ? 'Weekly Leaderboard' : language === 'tr' ? 'Haftalık Sıralama' : 'Wochen-Rangliste'}</h3>
-                  <p className="text-gray-400 text-sm">
+                  <h3 className="text-gray-800 font-bold text-lg">{language === 'de' ? 'Wochen-Rangliste' : language === 'en' ? 'Weekly Leaderboard' : language === 'tr' ? 'Haftalık Sıralama' : 'Wochen-Rangliste'}</h3>
+                  <p className="text-gray-500 text-sm">
                     {language === 'de' ? 'Top 10 gewinnen Gratis-Gebote!' : language === 'en' ? 'Top 10 win free bids!' : language === 'tr' ? 'İlk 10 ücretsiz teklif kazanır!' : 'Top 10 gewinnen Gratis-Gebote!'}
                   </p>
                 </div>
@@ -459,17 +459,17 @@ export default function Dashboard() {
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-pink-500 to-purple-500 flex items-center justify-center">
-                <Gift className="w-7 h-7 text-white" />
+                <Gift className="w-7 h-7 text-gray-800" />
               </div>
               <div>
-                <h3 className="text-white font-bold text-lg">{dt.giftBids}</h3>
-                <p className="text-gray-400 text-sm">
+                <h3 className="text-gray-800 font-bold text-lg">{dt.giftBids}</h3>
+                <p className="text-gray-500 text-sm">
                   {dt.giftBidsDesc}
                 </p>
               </div>
             </div>
             <Link to="/gift-bids">
-              <Button className="bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-400 hover:to-purple-400 text-white font-bold">
+              <Button className="bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-400 hover:to-purple-400 text-gray-800 font-bold">
                 <Gift className="w-4 h-4 mr-2" />
                 {dt.giftNow}
               </Button>
@@ -489,7 +489,7 @@ export default function Dashboard() {
             {myBidAuctions.length > 0 && (
               <div className="glass-card rounded-2xl p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                  <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
                     <Target className="w-5 h-5 text-[#FFD700]" />
                     Meine aktiven Auktionen
                   </h2>
@@ -499,18 +499,18 @@ export default function Dashboard() {
                 </div>
                 <div className="space-y-3">
                   {myBidAuctions.map((auction) => (
-                    <div key={auction.id} className="flex items-center gap-4 p-3 rounded-lg bg-[#181824] hover:bg-white/5 transition-colors">
+                    <div key={auction.id} className="flex items-center gap-4 p-3 rounded-lg bg-white hover:bg-white/5 transition-colors">
                       <img 
                         src={auction.product?.image_url || 'https://via.placeholder.com/60'} 
                         alt="" 
                         className="w-14 h-14 rounded-lg object-cover"
                       />
                       <div className="flex-1 min-w-0">
-                        <p className="text-white font-medium truncate">{auction.product?.name}</p>
+                        <p className="text-gray-800 font-medium truncate">{auction.product?.name}</p>
                         <p className="text-[#06B6D4] font-mono font-bold">€{auction.current_price?.toFixed(2)}</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-[#94A3B8] text-xs">Letzter Bieter</p>
+                        <p className="text-gray-500 text-xs">Letzter Bieter</p>
                         <p className={`text-sm font-medium ${auction.last_bidder_id === user.id ? 'text-[#10B981]' : 'text-[#EF4444]'}`}>
                           {auction.last_bidder_name || '-'}
                         </p>
@@ -531,7 +531,7 @@ export default function Dashboard() {
             {/* Live-Auktionen entdecken */}
             <div className="glass-card rounded-2xl p-6">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
                   <Timer className="w-5 h-5 text-[#FF4D4D]" />
                   Live-Auktionen entdecken
                 </h2>
@@ -544,7 +544,7 @@ export default function Dashboard() {
                   <Link 
                     key={auction.id} 
                     to={`/auctions/${auction.id}`}
-                    className="flex items-center gap-3 p-3 rounded-lg bg-[#181824] hover:bg-white/5 transition-colors"
+                    className="flex items-center gap-3 p-3 rounded-lg bg-white hover:bg-white/5 transition-colors"
                   >
                     <img 
                       src={auction.product?.image_url || 'https://via.placeholder.com/50'} 
@@ -552,13 +552,13 @@ export default function Dashboard() {
                       className="w-12 h-12 rounded-lg object-cover"
                     />
                     <div className="flex-1 min-w-0">
-                      <p className="text-white font-medium truncate text-sm">{auction.product?.name}</p>
+                      <p className="text-gray-800 font-medium truncate text-sm">{auction.product?.name}</p>
                       <div className="flex items-center gap-2">
                         <span className="text-[#06B6D4] font-mono font-bold text-sm">€{auction.current_price?.toFixed(2)}</span>
-                        <span className="text-[#94A3B8] text-xs">• {auction.total_bids} Gebote</span>
+                        <span className="text-gray-500 text-xs">• {auction.total_bids} Gebote</span>
                       </div>
                     </div>
-                    <Eye className="w-4 h-4 text-[#94A3B8]" />
+                    <Eye className="w-4 h-4 text-gray-500" />
                   </Link>
                 ))}
               </div>
@@ -567,7 +567,7 @@ export default function Dashboard() {
             {/* Gebots-Historie */}
             <div className="glass-card rounded-2xl p-6">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
                   <History className="w-5 h-5 text-[#7C3AED]" />
                   Gebots-Historie
                 </h2>
@@ -576,11 +576,11 @@ export default function Dashboard() {
                 </Link>
               </div>
               {recentBids.length === 0 ? (
-                <p className="text-[#94A3B8] text-center py-4">Noch keine Gebote abgegeben</p>
+                <p className="text-gray-500 text-center py-4">Noch keine Gebote abgegeben</p>
               ) : (
                 <div className="space-y-2">
                   {recentBids.slice(0, 5).map((bid, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-[#181824]">
+                    <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-white">
                       <div className="flex items-center gap-3">
                         <img 
                           src={bid.product?.image_url || 'https://via.placeholder.com/40'} 
@@ -588,8 +588,8 @@ export default function Dashboard() {
                           className="w-10 h-10 rounded object-cover"
                         />
                         <div>
-                          <p className="text-white text-sm truncate max-w-[200px]">{bid.product?.name}</p>
-                          <p className="text-[#94A3B8] text-xs">€{bid.price?.toFixed(2)}</p>
+                          <p className="text-gray-800 text-sm truncate max-w-[200px]">{bid.product?.name}</p>
+                          <p className="text-gray-500 text-xs">€{bid.price?.toFixed(2)}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
@@ -618,13 +618,13 @@ export default function Dashboard() {
           <div className="space-y-6">
             {/* Guthaben & Voucher */}
             <div className="glass-card rounded-2xl p-6">
-              <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+              <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
                 <Zap className="w-5 h-5 text-[#FFD700]" />
                 {dt.balance}
               </h2>
               <div className="text-center py-4 mb-4 rounded-xl bg-gradient-to-br from-[#FFD700]/20 to-[#FF4D4D]/20 border border-[#FFD700]/30">
                 <p className="text-5xl font-bold text-[#FFD700] font-mono">{user.bids_balance || 0}</p>
-                <p className="text-[#94A3B8] text-sm">{dt.bidsAvailable}</p>
+                <p className="text-gray-500 text-sm">{dt.bidsAvailable}</p>
               </div>
               <Link to="/buy-bids">
                 <Button className="w-full btn-primary mb-4">
@@ -633,8 +633,8 @@ export default function Dashboard() {
               </Link>
               
               {/* Voucher einlösen */}
-              <div className="border-t border-white/10 pt-4">
-                <p className="text-white text-sm mb-2 flex items-center gap-2">
+              <div className="border-t border-gray-200 pt-4">
+                <p className="text-gray-800 text-sm mb-2 flex items-center gap-2">
                   <Ticket className="w-4 h-4 text-[#FFD700]" />
                   {dt.redeemVoucher}
                 </p>
@@ -643,7 +643,7 @@ export default function Dashboard() {
                     value={voucherCode}
                     onChange={(e) => setVoucherCode(e.target.value.toUpperCase())}
                     placeholder="CODE"
-                    className="bg-[#181824] border-white/10 text-white uppercase"
+                    className="bg-white border-gray-200 text-gray-800 uppercase"
                   />
                   <Button type="submit" disabled={redeemingVoucher} className="bg-[#10B981] hover:bg-[#059669]">
                     <Gift className="w-4 h-4" />
@@ -655,7 +655,7 @@ export default function Dashboard() {
             {/* Gewonnene Auktionen - Mit Zahlungsoption */}
             {wonAuctions.length > 0 && (
               <div className="glass-card rounded-2xl p-6">
-                <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
                   <Trophy className="w-5 h-5 text-[#10B981]" />
                   {dt.won} ({wonAuctions.length})
                 </h2>
@@ -671,7 +671,7 @@ export default function Dashboard() {
                             className="w-12 h-12 rounded object-cover"
                           />
                           <div className="flex-1 min-w-0">
-                            <p className="text-white text-sm font-medium truncate">{auction.product?.name || auction.product_name}</p>
+                            <p className="text-gray-800 text-sm font-medium truncate">{auction.product?.name || auction.product_name}</p>
                             <p className="text-[#10B981] font-bold">€ {(auction.current_price || auction.final_price)?.toFixed(2)}</p>
                             {auction.is_free_auction && (
                               <p className="text-[8px] text-amber-400">{dt.freeAuctionNote}</p>
@@ -679,7 +679,7 @@ export default function Dashboard() {
                           </div>
                           {isPendingPayment ? (
                             <Link to={`/checkout/won/${auction.auction_id || auction.id}`}>
-                              <Button size="sm" className="bg-amber-500 hover:bg-amber-600 text-white">
+                              <Button size="sm" className="bg-amber-500 hover:bg-amber-600 text-gray-800">
                                 <CreditCard className="w-4 h-4 mr-1" />
                                 {dt.pay}
                               </Button>
@@ -692,7 +692,7 @@ export default function Dashboard() {
                           )}
                         </div>
                         {isPendingPayment && auction.payment_deadline && (
-                          <div className="mt-2 pt-2 border-t border-white/10 text-xs text-amber-400 flex items-center gap-1">
+                          <div className="mt-2 pt-2 border-t border-gray-200 text-xs text-amber-400 flex items-center gap-1">
                             <Clock className="w-3 h-3" />
                             {dt.paymentDeadline}: {new Date(auction.payment_deadline).toLocaleDateString(language === 'en' ? 'en-US' : language === 'fr' ? 'fr-FR' : language === 'tr' ? 'tr-TR' : 'de-DE')}
                           </div>
@@ -711,28 +711,28 @@ export default function Dashboard() {
 
             {/* Autobidder */}
             <div className="glass-card rounded-2xl p-6">
-              <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+              <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
                 <Bot className="w-5 h-5 text-[#06B6D4]" />
                 {dt.myAutobidders}
               </h2>
               {(autobidders || []).length === 0 ? (
-                <p className="text-[#94A3B8] text-sm text-center py-4">
+                <p className="text-gray-500 text-sm text-center py-4">
                   {dt.noAutobidderMsg}
                 </p>
               ) : (
                 <div className="space-y-2">
                   {(autobidders || []).map((ab) => (
-                    <div key={ab.id} className="flex items-center justify-between p-3 rounded-lg bg-[#181824]">
+                    <div key={ab.id} className="flex items-center justify-between p-3 rounded-lg bg-white">
                       <div className="flex-1 min-w-0">
-                        <p className="text-white text-sm truncate">{ab.auction_name || 'Auktion'}</p>
-                        <p className="text-[#94A3B8] text-xs">Max: €{ab.max_price?.toFixed(2)}</p>
+                        <p className="text-gray-800 text-sm truncate">{ab.auction_name || 'Auktion'}</p>
+                        <p className="text-gray-500 text-xs">Max: €{ab.max_price?.toFixed(2)}</p>
                       </div>
                       <div className="flex items-center gap-1">
                         <Button 
                           size="sm" 
                           variant="ghost"
                           onClick={() => handleToggleAutobidder(ab.id, ab.is_active)}
-                          className={ab.is_active ? 'text-[#10B981]' : 'text-[#94A3B8]'}
+                          className={ab.is_active ? 'text-[#10B981]' : 'text-gray-500'}
                         >
                           <Power className="w-4 h-4" />
                         </Button>
@@ -758,7 +758,7 @@ export default function Dashboard() {
             {purchases.length > 0 && (
               <div className="glass-card rounded-2xl p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                  <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
                     <Package className="w-5 h-5 text-[#FFD700]" />
                     Letzte Käufe
                   </h2>
@@ -768,10 +768,10 @@ export default function Dashboard() {
                 </div>
                 <div className="space-y-2">
                   {purchases.map((purchase, index) => (
-                    <div key={index} className="flex items-center justify-between p-2 rounded-lg bg-[#181824]">
+                    <div key={index} className="flex items-center justify-between p-2 rounded-lg bg-white">
                       <div>
-                        <p className="text-white text-sm">{purchase.package_name || 'Gebotspaket'}</p>
-                        <p className="text-[#94A3B8] text-xs">{purchase.bids} Gebote</p>
+                        <p className="text-gray-800 text-sm">{purchase.package_name || 'Gebotspaket'}</p>
+                        <p className="text-gray-500 text-xs">{purchase.bids} Gebote</p>
                       </div>
                       <p className="text-[#10B981] font-bold">€{purchase.amount?.toFixed(2)}</p>
                     </div>
@@ -782,31 +782,31 @@ export default function Dashboard() {
 
             {/* Quick Links */}
             <div className="glass-card rounded-2xl p-6">
-              <h2 className="text-lg font-bold text-white mb-4">Schnellzugriff</h2>
+              <h2 className="text-lg font-bold text-gray-800 mb-4">Schnellzugriff</h2>
               <div className="space-y-2">
                 <Link to="/achievements" className="flex items-center justify-between p-3 rounded-lg bg-gradient-to-r from-[#FFD700]/10 to-[#FF4D4D]/10 border border-[#FFD700]/30 hover:bg-[#FFD700]/20 transition-colors">
                   <span className="flex items-center gap-2 text-[#FFD700]"><Trophy className="w-4 h-4" />Achievements & Belohnungen</span>
                   <ChevronRight className="w-4 h-4 text-[#FFD700]" />
                 </Link>
-                <Link to="/profile" className="flex items-center justify-between p-3 rounded-lg bg-[#181824] hover:bg-white/5 transition-colors">
-                  <span className="flex items-center gap-2 text-white"><User className="w-4 h-4 text-[#94A3B8]" />Profil bearbeiten</span>
-                  <ChevronRight className="w-4 h-4 text-[#94A3B8]" />
+                <Link to="/profile" className="flex items-center justify-between p-3 rounded-lg bg-white hover:bg-white/5 transition-colors">
+                  <span className="flex items-center gap-2 text-gray-800"><User className="w-4 h-4 text-gray-500" />Profil bearbeiten</span>
+                  <ChevronRight className="w-4 h-4 text-gray-500" />
                 </Link>
-                <Link to="/bid-history" className="flex items-center justify-between p-3 rounded-lg bg-[#181824] hover:bg-white/5 transition-colors">
-                  <span className="flex items-center gap-2 text-white"><History className="w-4 h-4 text-[#94A3B8]" />Gebots-Historie</span>
-                  <ChevronRight className="w-4 h-4 text-[#94A3B8]" />
+                <Link to="/bid-history" className="flex items-center justify-between p-3 rounded-lg bg-white hover:bg-white/5 transition-colors">
+                  <span className="flex items-center gap-2 text-gray-800"><History className="w-4 h-4 text-gray-500" />Gebots-Historie</span>
+                  <ChevronRight className="w-4 h-4 text-gray-500" />
                 </Link>
-                <Link to="/purchases" className="flex items-center justify-between p-3 rounded-lg bg-[#181824] hover:bg-white/5 transition-colors">
-                  <span className="flex items-center gap-2 text-white"><Package className="w-4 h-4 text-[#94A3B8]" />Meine Käufe</span>
-                  <ChevronRight className="w-4 h-4 text-[#94A3B8]" />
+                <Link to="/purchases" className="flex items-center justify-between p-3 rounded-lg bg-white hover:bg-white/5 transition-colors">
+                  <span className="flex items-center gap-2 text-gray-800"><Package className="w-4 h-4 text-gray-500" />Meine Käufe</span>
+                  <ChevronRight className="w-4 h-4 text-gray-500" />
                 </Link>
-                <Link to="/invoices" className="flex items-center justify-between p-3 rounded-lg bg-[#181824] hover:bg-white/5 transition-colors">
-                  <span className="flex items-center gap-2 text-white"><FileText className="w-4 h-4 text-[#94A3B8]" />Rechnungen</span>
-                  <ChevronRight className="w-4 h-4 text-[#94A3B8]" />
+                <Link to="/invoices" className="flex items-center justify-between p-3 rounded-lg bg-white hover:bg-white/5 transition-colors">
+                  <span className="flex items-center gap-2 text-gray-800"><FileText className="w-4 h-4 text-gray-500" />Rechnungen</span>
+                  <ChevronRight className="w-4 h-4 text-gray-500" />
                 </Link>
-                <Link to="/invite" className="flex items-center justify-between p-3 rounded-lg bg-[#181824] hover:bg-white/5 transition-colors">
-                  <span className="flex items-center gap-2 text-white"><Gift className="w-4 h-4 text-[#10B981]" />Freunde einladen</span>
-                  <ChevronRight className="w-4 h-4 text-[#94A3B8]" />
+                <Link to="/invite" className="flex items-center justify-between p-3 rounded-lg bg-white hover:bg-white/5 transition-colors">
+                  <span className="flex items-center gap-2 text-gray-800"><Gift className="w-4 h-4 text-[#10B981]" />Freunde einladen</span>
+                  <ChevronRight className="w-4 h-4 text-gray-500" />
                 </Link>
               </div>
             </div>

@@ -104,22 +104,22 @@ export default function BidBuddyPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0D0D14] py-8 px-4" data-testid="bid-buddy-page">
+    <div className="min-h-screen bg-gradient-to-b from-cyan-50 to-cyan-100 py-8 px-4" data-testid="bid-buddy-page">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-[#7C3AED] to-[#10B981] mb-4">
-            <Bot className="w-10 h-10 text-white" />
+            <Bot className="w-10 h-10 text-gray-800" />
           </div>
-          <h1 className="text-3xl font-bold text-white mb-2">{t.title}</h1>
+          <h1 className="text-3xl font-bold text-gray-800 mb-2">{t.title}</h1>
           <p className="text-xl text-[#7C3AED]">{t.subtitle}</p>
-          <p className="text-[#94A3B8] mt-2">{t.description}</p>
+          <p className="text-gray-500 mt-2">{t.description}</p>
         </div>
 
         {/* User Bids */}
-        <Card className="bg-[#1A1A2E] border-white/10 mb-6">
+        <Card className="bg-[#1A1A2E] border-gray-200 mb-6">
           <CardContent className="p-4 flex items-center justify-between">
-            <span className="text-[#94A3B8]">{t.yourBids}:</span>
+            <span className="text-gray-500">{t.yourBids}:</span>
             <Badge className="bg-[#10B981]/20 text-[#10B981] text-lg px-4 py-1">
               <Zap className="w-4 h-4 mr-1" />
               {userBids}
@@ -128,16 +128,16 @@ export default function BidBuddyPage() {
         </Card>
 
         {/* How It Works */}
-        <Card className="bg-[#1A1A2E] border-white/10 mb-6">
+        <Card className="bg-[#1A1A2E] border-gray-200 mb-6">
           <CardHeader>
-            <CardTitle className="text-white flex items-center">
+            <CardTitle className="text-gray-800 flex items-center">
               <Settings className="w-5 h-5 mr-2 text-[#7C3AED]" />
               {t.howItWorks}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             {[t.step1, t.step2, t.step3, t.step4].map((step, i) => (
-              <div key={i} className="flex items-center text-[#94A3B8]">
+              <div key={i} className="flex items-center text-gray-500">
                 <div className="w-8 h-8 rounded-full bg-[#7C3AED]/20 flex items-center justify-center mr-3">
                   <span className="text-[#7C3AED] font-bold">{i + 1}</span>
                 </div>
@@ -148,19 +148,19 @@ export default function BidBuddyPage() {
         </Card>
 
         {/* Active Buddies */}
-        <Card className="bg-[#1A1A2E] border-white/10">
+        <Card className="bg-[#1A1A2E] border-gray-200">
           <CardHeader>
-            <CardTitle className="text-white">{t.activeBuddies}</CardTitle>
+            <CardTitle className="text-gray-800">{t.activeBuddies}</CardTitle>
           </CardHeader>
           <CardContent>
             {loading ? (
-              <div className="text-center py-8 text-[#94A3B8]">Laden...</div>
+              <div className="text-center py-8 text-gray-500">Laden...</div>
             ) : myBuddies.length === 0 ? (
-              <div className="text-center py-8 text-[#94A3B8]">{t.noBuddies}</div>
+              <div className="text-center py-8 text-gray-500">{t.noBuddies}</div>
             ) : (
               <div className="space-y-4">
                 {myBuddies.map((buddy) => (
-                  <div key={buddy.id} className="bg-[#0D0D14] rounded-lg p-4 border border-white/5">
+                  <div key={buddy.id} className="bg-gradient-to-b from-cyan-50 to-cyan-100 rounded-lg p-4 border border-white/5">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center">
                         {buddy.auction?.product_image && (
@@ -171,8 +171,8 @@ export default function BidBuddyPage() {
                           />
                         )}
                         <div>
-                          <h3 className="text-white font-medium">{buddy.auction_name}</h3>
-                          <p className="text-[#94A3B8] text-sm">
+                          <h3 className="text-gray-800 font-medium">{buddy.auction_name}</h3>
+                          <p className="text-gray-500 text-sm">
                             {buddy.auction?.current_price && `€${buddy.auction.current_price}`}
                           </p>
                         </div>
@@ -184,15 +184,15 @@ export default function BidBuddyPage() {
                     
                     <div className="grid grid-cols-3 gap-4 mb-3">
                       <div className="text-center">
-                        <p className="text-[#94A3B8] text-xs">{t.maxBids}</p>
-                        <p className="text-white font-bold">{buddy.max_bids}</p>
+                        <p className="text-gray-500 text-xs">{t.maxBids}</p>
+                        <p className="text-gray-800 font-bold">{buddy.max_bids}</p>
                       </div>
                       <div className="text-center">
-                        <p className="text-[#94A3B8] text-xs">{t.bidsPlaced}</p>
-                        <p className="text-white font-bold">{buddy.bids_placed}</p>
+                        <p className="text-gray-500 text-xs">{t.bidsPlaced}</p>
+                        <p className="text-gray-800 font-bold">{buddy.bids_placed}</p>
                       </div>
                       <div className="text-center">
-                        <p className="text-[#94A3B8] text-xs">{t.remaining}</p>
+                        <p className="text-gray-500 text-xs">{t.remaining}</p>
                         <p className="text-[#10B981] font-bold">{buddy.remaining_bids}</p>
                       </div>
                     </div>

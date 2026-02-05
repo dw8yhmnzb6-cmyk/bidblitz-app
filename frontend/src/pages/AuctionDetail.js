@@ -401,13 +401,13 @@ export default function AuctionDetail() {
       <div className="min-h-screen pt-24 pb-12 px-4">
         <div className="max-w-6xl mx-auto">
           <div className="animate-pulse space-y-8">
-            <div className="h-8 w-48 bg-[#181824] rounded" />
+            <div className="h-8 w-48 bg-white rounded" />
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              <div className="aspect-square bg-[#181824] rounded-2xl" />
+              <div className="aspect-square bg-white rounded-2xl" />
               <div className="space-y-6">
-                <div className="h-10 bg-[#181824] rounded" />
-                <div className="h-20 bg-[#181824] rounded" />
-                <div className="h-16 bg-[#181824] rounded" />
+                <div className="h-10 bg-white rounded" />
+                <div className="h-20 bg-white rounded" />
+                <div className="h-16 bg-white rounded" />
               </div>
             </div>
           </div>
@@ -420,7 +420,7 @@ export default function AuctionDetail() {
     return (
       <div className="min-h-screen pt-24 pb-12 px-4 flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-white mb-4">Auktion nicht gefunden</h2>
+          <h2 className="text-2xl font-bold text-gray-800 mb-4">Auktion nicht gefunden</h2>
           <Link to="/auctions">
             <Button className="btn-primary">Zurück zu Auktionen</Button>
           </Link>
@@ -441,7 +441,7 @@ export default function AuctionDetail() {
     <div className="min-h-screen pt-24 pb-12 px-4" data-testid="auction-detail-page">
       <div className="max-w-6xl mx-auto">
         {/* Back button */}
-        <Link to="/auctions" className="inline-flex items-center gap-2 text-[#94A3B8] hover:text-white mb-6 transition-colors">
+        <Link to="/auctions" className="inline-flex items-center gap-2 text-gray-500 hover:text-gray-800 mb-6 transition-colors">
           <ArrowLeft className="w-4 h-4" />
           {t('common.back')} zu Auktionen
         </Link>
@@ -449,22 +449,22 @@ export default function AuctionDetail() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Product Image */}
           <div className="space-y-4">
-            <div className="relative aspect-square rounded-2xl overflow-hidden bg-[#181824]">
+            <div className="relative aspect-square rounded-2xl overflow-hidden bg-white">
               <img
                 src={product.image_url || 'https://via.placeholder.com/600'}
                 alt={productName}
                 className="w-full h-full object-cover"
               />
               {isEnded ? (
-                <div className="absolute top-4 right-4 px-4 py-2 rounded-full bg-[#EF4444] text-white font-bold">
+                <div className="absolute top-4 right-4 px-4 py-2 rounded-full bg-[#EF4444] text-gray-800 font-bold">
                   {t('auctions.ended') || 'BEENDET'}
                 </div>
               ) : isScheduled ? (
-                <div className="absolute top-4 right-4 px-4 py-2 rounded-full bg-[#F59E0B] text-white font-bold">
+                <div className="absolute top-4 right-4 px-4 py-2 rounded-full bg-[#F59E0B] text-gray-800 font-bold">
                   Geplant
                 </div>
               ) : (
-                <div className="absolute top-4 right-4 px-4 py-2 rounded-full bg-[#10B981] text-white font-bold animate-pulse">
+                <div className="absolute top-4 right-4 px-4 py-2 rounded-full bg-[#10B981] text-gray-800 font-bold animate-pulse">
                   ● {t('auctions.live')}
                 </div>
               )}
@@ -472,34 +472,34 @@ export default function AuctionDetail() {
 
             {/* Product Info */}
             <div className="glass-card p-6 rounded-xl space-y-4">
-              <h3 className="text-lg font-bold text-white">Produktdetails</h3>
+              <h3 className="text-lg font-bold text-gray-800">Produktdetails</h3>
               <div className="grid grid-cols-2 gap-4">
                 <div className="flex items-center gap-3">
                   <Tag className="w-5 h-5 text-[#7C3AED]" />
                   <div>
-                    <p className="text-[#94A3B8] text-sm">{t('admin.category')}</p>
-                    <p className="text-white font-medium">{product.category || 'N/A'}</p>
+                    <p className="text-gray-500 text-sm">{t('admin.category')}</p>
+                    <p className="text-gray-800 font-medium">{product.category || 'N/A'}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
                   <Package className="w-5 h-5 text-[#06B6D4]" />
                   <div>
-                    <p className="text-[#94A3B8] text-sm">{t('auctions.rrp')}</p>
-                    <p className="text-white font-medium">€{product.retail_price?.toFixed(2)}</p>
+                    <p className="text-gray-500 text-sm">{t('auctions.rrp')}</p>
+                    <p className="text-gray-800 font-medium">€{product.retail_price?.toFixed(2)}</p>
                   </div>
                 </div>
               </div>
-              <p className="text-[#94A3B8]">{productDescription}</p>
+              <p className="text-gray-500">{productDescription}</p>
             </div>
           </div>
 
           {/* Auction Info */}
           <div className="space-y-6">
             <div>
-              <h1 className="text-3xl sm:text-4xl font-bold text-white mb-2" data-testid="auction-title">
+              <h1 className="text-3xl sm:text-4xl font-bold text-gray-800 mb-2" data-testid="auction-title">
                 {productName}
               </h1>
-              <p className="text-[#94A3B8]">Auktion #{auction.id.slice(0, 8)}</p>
+              <p className="text-gray-500">Auktion #{auction.id.slice(0, 8)}</p>
             </div>
 
             {/* Timer */}
@@ -521,7 +521,7 @@ export default function AuctionDetail() {
                 <>
                   <div className="flex items-center gap-3 mb-4">
                     <Timer className="w-6 h-6 text-[#F59E0B]" />
-                    <span className="text-[#94A3B8]">Startet in</span>
+                    <span className="text-gray-500">Startet in</span>
                   </div>
                   <div>
                     <div className="flex gap-4 mb-4">
@@ -530,7 +530,7 @@ export default function AuctionDetail() {
                           <div className="text-4xl font-bold font-mono text-[#F59E0B]">
                             {formatTime(startTimeLeft.days)}
                           </div>
-                          <div className="text-[#94A3B8] text-sm">Tage</div>
+                          <div className="text-gray-500 text-sm">Tage</div>
                         </div>
                       )}
                       {[
@@ -542,11 +542,11 @@ export default function AuctionDetail() {
                           <div className="text-4xl font-bold font-mono text-[#F59E0B]">
                             {formatTime(item.value)}
                           </div>
-                          <div className="text-[#94A3B8] text-sm">{item.label}</div>
+                          <div className="text-gray-500 text-sm">{item.label}</div>
                         </div>
                       ))}
                     </div>
-                    <p className="text-[#94A3B8] text-sm">
+                    <p className="text-gray-500 text-sm">
                       Startet am: {auction.start_time && new Date(auction.start_time).toLocaleString('de-DE', {dateStyle: 'medium', timeStyle: 'short'})}
                     </p>
                   </div>
@@ -555,7 +555,7 @@ export default function AuctionDetail() {
                 <>
                   <div className="flex items-center gap-3 mb-4">
                     <Timer className="w-6 h-6 text-[#06B6D4]" />
-                    <span className="text-[#94A3B8]">Verbleibend</span>
+                    <span className="text-gray-500">Verbleibend</span>
                   </div>
                   <div className="flex gap-4">
                     {[
@@ -564,10 +564,10 @@ export default function AuctionDetail() {
                       { value: timeLeft.seconds, label: 'Sek' }
                     ].map((item, index) => (
                       <div key={index} className="text-center">
-                        <div className={`text-4xl font-bold font-mono ${isUrgent ? 'text-[#EF4444] timer-urgent' : 'text-white'}`}>
+                        <div className={`text-4xl font-bold font-mono ${isUrgent ? 'text-[#EF4444] timer-urgent' : 'text-gray-800'}`}>
                           {formatTime(item.value)}
                         </div>
-                        <div className="text-[#94A3B8] text-sm">{item.label}</div>
+                        <div className="text-gray-500 text-sm">{item.label}</div>
                       </div>
                     ))}
                   </div>
@@ -577,7 +577,7 @@ export default function AuctionDetail() {
 
             {/* Live Status & Viewers */}
             {!isEnded && !isScheduled && (
-              <div className="flex items-center justify-between p-3 rounded-lg bg-[#181824]">
+              <div className="flex items-center justify-between p-3 rounded-lg bg-white">
                 <div className="flex items-center gap-2">
                   {isConnected ? (
                     <Wifi className="w-4 h-4 text-[#10B981]" />
@@ -590,8 +590,8 @@ export default function AuctionDetail() {
                 </div>
                 {/* Always show at least 12 viewers */}
                 <div className="flex items-center gap-2">
-                  <Eye className="w-4 h-4 text-[#94A3B8]" />
-                  <span className="text-[#94A3B8] text-sm">{Math.max(simulatedViewers, viewerCount + simulatedViewers)} Zuschauer</span>
+                  <Eye className="w-4 h-4 text-gray-500" />
+                  <span className="text-gray-500 text-sm">{Math.max(simulatedViewers, viewerCount + simulatedViewers)} Zuschauer</span>
                 </div>
               </div>
             )}
@@ -600,38 +600,38 @@ export default function AuctionDetail() {
             <div className="glass-card p-6 rounded-xl space-y-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-[#94A3B8] text-sm uppercase tracking-wider mb-1">{t('auctions.currentPrice')}</p>
+                  <p className="text-gray-500 text-sm uppercase tracking-wider mb-1">{t('auctions.currentPrice')}</p>
                   <p className="text-4xl font-bold text-[#06B6D4] font-mono" data-testid="current-price">
                     €{auction.current_price?.toFixed(2)}
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="text-[#94A3B8] text-sm uppercase tracking-wider mb-1">Ersparnis</p>
+                  <p className="text-gray-500 text-sm uppercase tracking-wider mb-1">Ersparnis</p>
                   <p className="text-2xl font-bold text-[#10B981]">{savings}%</p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 py-4 border-t border-b border-white/10">
+              <div className="grid grid-cols-2 gap-4 py-4 border-t border-b border-gray-200">
                 <div className="flex items-center gap-2">
                   <Users className="w-5 h-5 text-[#7C3AED]" />
                   <div>
-                    <p className="text-[#94A3B8] text-sm">{t('auctions.bids')}</p>
-                    <p className="text-white font-bold" data-testid="total-bids">{auction.total_bids}</p>
+                    <p className="text-gray-500 text-sm">{t('auctions.bids')}</p>
+                    <p className="text-gray-800 font-bold" data-testid="total-bids">{auction.total_bids}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <Zap className="w-5 h-5 text-[#F59E0B]" />
                   <div>
-                    <p className="text-[#94A3B8] text-sm">{t('auctions.increment') || 'Inkrement'}</p>
-                    <p className="text-white font-bold">+€{auction.bid_increment?.toFixed(2)}</p>
+                    <p className="text-gray-500 text-sm">{t('auctions.increment') || 'Inkrement'}</p>
+                    <p className="text-gray-800 font-bold">+€{auction.bid_increment?.toFixed(2)}</p>
                   </div>
                 </div>
               </div>
 
               {/* Last Bidder */}
               {auction.last_bidder_name && (
-                <div className="flex items-center justify-between p-3 rounded-lg bg-[#181824]">
-                  <span className="text-[#94A3B8]">{t('auctions.lastBidder')}:</span>
+                <div className="flex items-center justify-between p-3 rounded-lg bg-white">
+                  <span className="text-gray-500">{t('auctions.lastBidder')}:</span>
                   <span className="text-[#A78BFA] font-bold">{auction.last_bidder_name}</span>
                 </div>
               )}
@@ -641,7 +641,7 @@ export default function AuctionDetail() {
                 <div className="flex items-center gap-3 p-4 rounded-lg bg-[#10B981]/10 border border-[#10B981]/30">
                   <Trophy className="w-8 h-8 text-[#10B981]" />
                   <div>
-                    <p className="text-[#94A3B8] text-sm">{t('auctions.winner')}</p>
+                    <p className="text-gray-500 text-sm">{t('auctions.winner')}</p>
                     <p className="text-[#10B981] font-bold text-lg">{auction.winner_name}</p>
                   </div>
                 </div>
@@ -684,7 +684,7 @@ export default function AuctionDetail() {
                     <Button
                       onClick={() => setShowShareMenu(!showShareMenu)}
                       variant="outline"
-                      className="w-full border-white/20 text-white hover:bg-white/10 py-3"
+                      className="w-full border-gray-300 text-gray-800 hover:bg-white/10 py-3"
                       data-testid="share-button"
                     >
                       <Share2 className="w-5 h-5 mr-2" />
@@ -693,47 +693,47 @@ export default function AuctionDetail() {
                     
                     {/* Share Menu Dropdown */}
                     {showShareMenu && (
-                      <div className="absolute bottom-full left-0 right-0 mb-2 bg-[#181824] rounded-xl border border-white/10 shadow-xl overflow-hidden z-50">
+                      <div className="absolute bottom-full left-0 right-0 mb-2 bg-white rounded-xl border border-gray-200 shadow-xl overflow-hidden z-50">
                         <div className="p-2 space-y-1">
                           <button 
                             onClick={() => handleShare('whatsapp')}
-                            className="w-full flex items-center gap-3 px-4 py-3 text-white hover:bg-[#25D366]/20 rounded-lg transition-colors"
+                            className="w-full flex items-center gap-3 px-4 py-3 text-gray-800 hover:bg-[#25D366]/20 rounded-lg transition-colors"
                           >
                             <span className="text-xl">📱</span>
                             <span>WhatsApp</span>
                           </button>
                           <button 
                             onClick={() => handleShare('telegram')}
-                            className="w-full flex items-center gap-3 px-4 py-3 text-white hover:bg-[#0088cc]/20 rounded-lg transition-colors"
+                            className="w-full flex items-center gap-3 px-4 py-3 text-gray-800 hover:bg-[#0088cc]/20 rounded-lg transition-colors"
                           >
                             <span className="text-xl">✈️</span>
                             <span>Telegram</span>
                           </button>
                           <button 
                             onClick={() => handleShare('facebook')}
-                            className="w-full flex items-center gap-3 px-4 py-3 text-white hover:bg-[#1877F2]/20 rounded-lg transition-colors"
+                            className="w-full flex items-center gap-3 px-4 py-3 text-gray-800 hover:bg-[#1877F2]/20 rounded-lg transition-colors"
                           >
                             <span className="text-xl">📘</span>
                             <span>Facebook</span>
                           </button>
                           <button 
                             onClick={() => handleShare('twitter')}
-                            className="w-full flex items-center gap-3 px-4 py-3 text-white hover:bg-[#1DA1F2]/20 rounded-lg transition-colors"
+                            className="w-full flex items-center gap-3 px-4 py-3 text-gray-800 hover:bg-[#1DA1F2]/20 rounded-lg transition-colors"
                           >
                             <span className="text-xl">🐦</span>
                             <span>Twitter / X</span>
                           </button>
                           <button 
                             onClick={() => handleShare('email')}
-                            className="w-full flex items-center gap-3 px-4 py-3 text-white hover:bg-white/10 rounded-lg transition-colors"
+                            className="w-full flex items-center gap-3 px-4 py-3 text-gray-800 hover:bg-white/10 rounded-lg transition-colors"
                           >
                             <span className="text-xl">📧</span>
                             <span>E-Mail</span>
                           </button>
-                          <div className="border-t border-white/10 my-1"></div>
+                          <div className="border-t border-gray-200 my-1"></div>
                           <button 
                             onClick={handleCopyLink}
-                            className="w-full flex items-center gap-3 px-4 py-3 text-white hover:bg-white/10 rounded-lg transition-colors"
+                            className="w-full flex items-center gap-3 px-4 py-3 text-gray-800 hover:bg-white/10 rounded-lg transition-colors"
                           >
                             {copied ? (
                               <>
@@ -755,22 +755,22 @@ export default function AuctionDetail() {
                   {/* Buy It Now Modal */}
                   {showBuyNowModal && buyNowPrice && (
                     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" data-testid="buy-now-modal">
-                      <div className="bg-[#181824] rounded-2xl max-w-md w-full p-6 space-y-6 animate-in fade-in zoom-in duration-200">
+                      <div className="bg-white rounded-2xl max-w-md w-full p-6 space-y-6 animate-in fade-in zoom-in duration-200">
                         <div className="flex items-center gap-3">
                           <div className="w-12 h-12 rounded-full bg-[#10B981]/20 flex items-center justify-center">
                             <ShoppingBag className="w-6 h-6 text-[#10B981]" />
                           </div>
                           <div>
-                            <h3 className="text-xl font-bold text-white">{t('auctions.buyNow') || 'Sofort kaufen'}</h3>
-                            <p className="text-[#94A3B8] text-sm">{product?.name || 'Produkt'}</p>
+                            <h3 className="text-xl font-bold text-gray-800">{t('auctions.buyNow') || 'Sofort kaufen'}</h3>
+                            <p className="text-gray-500 text-sm">{product?.name || 'Produkt'}</p>
                           </div>
                         </div>
 
                         <div className="space-y-4">
-                          <div className="p-4 rounded-lg bg-[#0F0F16] space-y-3">
+                          <div className="p-4 rounded-lg bg-gradient-to-b from-cyan-50 to-cyan-100 space-y-3">
                             <div className="flex justify-between">
-                              <span className="text-[#94A3B8]">{t('auctions.rrp') || 'UVP'}</span>
-                              <span className="text-white font-mono">€{buyNowPrice?.retail_price?.toFixed(2) || '0.00'}</span>
+                              <span className="text-gray-500">{t('auctions.rrp') || 'UVP'}</span>
+                              <span className="text-gray-800 font-mono">€{buyNowPrice?.retail_price?.toFixed(2) || '0.00'}</span>
                             </div>
                             {buyNowPrice?.bid_credit > 0 && (
                               <div className="flex justify-between text-[#10B981]">
@@ -781,8 +781,8 @@ export default function AuctionDetail() {
                                 <span className="font-mono">-€{buyNowPrice?.bid_credit?.toFixed(2) || '0.00'}</span>
                               </div>
                             )}
-                            <div className="border-t border-white/10 pt-3 flex justify-between">
-                              <span className="text-white font-bold">{dtl.yourPrice}</span>
+                            <div className="border-t border-gray-200 pt-3 flex justify-between">
+                              <span className="text-gray-800 font-bold">{dtl.yourPrice}</span>
                               <span className="text-2xl font-bold text-[#10B981] font-mono">€{buyNowPrice?.final_price?.toFixed(2) || '0.00'}</span>
                             </div>
                           </div>
@@ -795,7 +795,7 @@ export default function AuctionDetail() {
                             </div>
                           )}
 
-                          <p className="text-[#94A3B8] text-xs text-center">
+                          <p className="text-gray-500 text-xs text-center">
                             {dtl.savingsNote}
                           </p>
                         </div>
@@ -804,14 +804,14 @@ export default function AuctionDetail() {
                           <Button
                             onClick={() => setShowBuyNowModal(false)}
                             variant="outline"
-                            className="flex-1 border-white/20 text-white hover:bg-white/10"
+                            className="flex-1 border-gray-300 text-gray-800 hover:bg-white/10"
                             disabled={buyingNow}
                           >
                             {t('common.cancel') || (language === 'en' ? 'Cancel' : language === 'sq' ? 'Anulo' : language === 'tr' ? 'İptal' : language === 'fr' ? 'Annuler' : 'Abbrechen')}
                           </Button>
                           <Button
                             onClick={handleBuyNow}
-                            className="flex-1 bg-[#10B981] hover:bg-[#059669] text-white"
+                            className="flex-1 bg-[#10B981] hover:bg-[#059669] text-gray-800"
                             disabled={buyingNow}
                             data-testid="confirm-buy-now-btn"
                           >
@@ -831,7 +831,7 @@ export default function AuctionDetail() {
 
                   {/* Bid Buddy / Autobidder Section */}
                   {isAuthenticated && (
-                    <div className="border-t border-white/10 pt-4">
+                    <div className="border-t border-gray-200 pt-4">
                       {/* Active Bid Buddy Status */}
                       {activeAutobidder && (
                         <div className="mb-4 p-4 rounded-lg bg-gradient-to-r from-[#7C3AED]/20 to-[#06B6D4]/20 border border-[#7C3AED]/30" data-testid="active-autobidder">
@@ -851,23 +851,23 @@ export default function AuctionDetail() {
                           </div>
                           <div className="grid grid-cols-2 gap-3 text-sm">
                             <div className="bg-black/20 rounded-lg p-2">
-                              <p className="text-[#94A3B8] text-xs">Verbleibende Gebote</p>
-                              <p className="text-white font-bold text-lg">
+                              <p className="text-gray-500 text-xs">Verbleibende Gebote</p>
+                              <p className="text-gray-800 font-bold text-lg">
                                 {activeAutobidder.max_bids - (activeAutobidder.bids_placed || 0)} / {activeAutobidder.max_bids}
                               </p>
                             </div>
                             <div className="bg-black/20 rounded-lg p-2">
-                              <p className="text-[#94A3B8] text-xs">Platzierte Gebote</p>
+                              <p className="text-gray-500 text-xs">Platzierte Gebote</p>
                               <p className="text-[#10B981] font-bold text-lg">{activeAutobidder.bids_placed || 0}</p>
                             </div>
                             {activeAutobidder.max_price && (
                               <div className="bg-black/20 rounded-lg p-2 col-span-2">
-                                <p className="text-[#94A3B8] text-xs">Max. Preis</p>
-                                <p className="text-white font-bold">€{activeAutobidder.max_price?.toFixed(2)}</p>
+                                <p className="text-gray-500 text-xs">Max. Preis</p>
+                                <p className="text-gray-800 font-bold">€{activeAutobidder.max_price?.toFixed(2)}</p>
                               </div>
                             )}
                           </div>
-                          <p className="text-[#94A3B8] text-xs mt-3 text-center">
+                          <p className="text-gray-500 text-xs mt-3 text-center">
                             ⚡ Bietet automatisch in den letzten {activeAutobidder.bid_in_last_seconds || 10} Sekunden
                           </p>
                         </div>
@@ -888,18 +888,18 @@ export default function AuctionDetail() {
 
                       {/* Bid Buddy Setup Form */}
                       {showAutobidder && !activeAutobidder && (
-                        <div className="space-y-4 p-4 rounded-lg bg-[#181824]" data-testid="autobidder-form">
+                        <div className="space-y-4 p-4 rounded-lg bg-white" data-testid="autobidder-form">
                           <div className="flex items-center gap-2 text-[#7C3AED]">
                             <Zap className="w-5 h-5" />
                             <span className="font-bold">{dtl.bidBuddy}</span>
                           </div>
-                          <p className="text-[#94A3B8] text-sm">
+                          <p className="text-gray-500 text-sm">
                             {dtl.bidBuddyDesc}
                           </p>
                           
                           {/* Max Bids */}
                           <div className="space-y-2">
-                            <Label className="text-white">{language === 'en' ? 'Maximum bids' : language === 'sq' ? 'Oferta maksimale' : language === 'tr' ? 'Maksimum teklif' : language === 'fr' ? 'Enchères maximum' : 'Maximale Anzahl Gebote'}</Label>
+                            <Label className="text-gray-800">{language === 'en' ? 'Maximum bids' : language === 'sq' ? 'Oferta maksimale' : language === 'tr' ? 'Maksimum teklif' : language === 'fr' ? 'Enchères maximum' : 'Maximale Anzahl Gebote'}</Label>
                             <Input
                               type="number"
                               min="1"
@@ -907,15 +907,15 @@ export default function AuctionDetail() {
                               value={maxBids}
                               onChange={(e) => setMaxBids(e.target.value)}
                               placeholder={language === 'en' ? 'e.g. 10' : language === 'sq' ? 'p.sh. 10' : language === 'tr' ? 'örn. 10' : language === 'fr' ? 'ex. 10' : 'z.B. 10'}
-                              className="bg-[#0F0F16] border-white/10 text-white"
+                              className="bg-gradient-to-b from-cyan-50 to-cyan-100 border-gray-200 text-gray-800"
                               data-testid="max-bids-input"
                             />
-                            <p className="text-[#94A3B8] text-xs">{language === 'en' ? 'Available' : language === 'sq' ? 'Në dispozicion' : language === 'tr' ? 'Mevcut' : language === 'fr' ? 'Disponible' : 'Verfügbar'}: {user?.bids_balance || 0}</p>
+                            <p className="text-gray-500 text-xs">{language === 'en' ? 'Available' : language === 'sq' ? 'Në dispozicion' : language === 'tr' ? 'Mevcut' : language === 'fr' ? 'Disponible' : 'Verfügbar'}: {user?.bids_balance || 0}</p>
                           </div>
 
                           {/* Max Price (optional) */}
                           <div className="space-y-2">
-                            <Label className="text-white">{language === 'en' ? 'Max price (€)' : language === 'sq' ? 'Çmimi maks (€)' : language === 'tr' ? 'Maks fiyat (€)' : language === 'fr' ? 'Prix max (€)' : 'Maximaler Preis (€)'} <span className="text-[#94A3B8]">- {language === 'en' ? 'optional' : language === 'sq' ? 'opsionale' : language === 'tr' ? 'isteğe bağlı' : language === 'fr' ? 'optionnel' : 'optional'}</span></Label>
+                            <Label className="text-gray-800">{language === 'en' ? 'Max price (€)' : language === 'sq' ? 'Çmimi maks (€)' : language === 'tr' ? 'Maks fiyat (€)' : language === 'fr' ? 'Prix max (€)' : 'Maximaler Preis (€)'} <span className="text-gray-500">- {language === 'en' ? 'optional' : language === 'sq' ? 'opsionale' : language === 'tr' ? 'isteğe bağlı' : language === 'fr' ? 'optionnel' : 'optional'}</span></Label>
                             <Input
                               type="number"
                               step="0.01"
@@ -923,19 +923,19 @@ export default function AuctionDetail() {
                               value={maxPrice}
                               onChange={(e) => setMaxPrice(e.target.value)}
                               placeholder={`${language === 'en' ? 'e.g.' : language === 'sq' ? 'p.sh.' : language === 'tr' ? 'örn.' : language === 'fr' ? 'ex.' : 'z.B.'} ${(auction.current_price * 2).toFixed(2)}`}
-                              className="bg-[#0F0F16] border-white/10 text-white"
+                              className="bg-gradient-to-b from-cyan-50 to-cyan-100 border-gray-200 text-gray-800"
                               data-testid="max-price-input"
                             />
-                            <p className="text-[#94A3B8] text-xs">{language === 'en' ? 'Stops when this price is reached' : language === 'sq' ? 'Ndalet kur arrihet ky çmim' : language === 'tr' ? 'Bu fiyata ulaşıldığında durur' : language === 'fr' ? 'S\'arrête quand ce prix est atteint' : 'Stoppt wenn dieser Preis erreicht ist'}</p>
+                            <p className="text-gray-500 text-xs">{language === 'en' ? 'Stops when this price is reached' : language === 'sq' ? 'Ndalet kur arrihet ky çmim' : language === 'tr' ? 'Bu fiyata ulaşıldığında durur' : language === 'fr' ? 'S\'arrête quand ce prix est atteint' : 'Stoppt wenn dieser Preis erreicht ist'}</p>
                           </div>
 
                           {/* Bid in Last Seconds */}
                           <div className="space-y-2">
-                            <Label className="text-white">{language === 'en' ? 'Bid in last seconds' : language === 'sq' ? 'Ofertohet në sekondat e fundit' : language === 'tr' ? 'Son saniyelerde teklif ver' : language === 'fr' ? 'Enchérir dans les dernières secondes' : 'Bieten in letzten Sekunden'}</Label>
+                            <Label className="text-gray-800">{language === 'en' ? 'Bid in last seconds' : language === 'sq' ? 'Ofertohet në sekondat e fundit' : language === 'tr' ? 'Son saniyelerde teklif ver' : language === 'fr' ? 'Enchérir dans les dernières secondes' : 'Bieten in letzten Sekunden'}</Label>
                             <select
                               value={bidInLastSeconds}
                               onChange={(e) => setBidInLastSeconds(e.target.value)}
-                              className="w-full h-10 px-3 bg-[#0F0F16] border border-white/10 rounded-md text-white"
+                              className="w-full h-10 px-3 bg-gradient-to-b from-cyan-50 to-cyan-100 border border-gray-200 rounded-md text-gray-800"
                               data-testid="bid-seconds-select"
                             >
                               <option value="5">5 {language === 'en' ? 'seconds' : language === 'sq' ? 'sekonda' : language === 'tr' ? 'saniye' : language === 'fr' ? 'secondes' : 'Sekunden'}</option>
@@ -957,7 +957,7 @@ export default function AuctionDetail() {
                             <Button
                               onClick={() => setShowAutobidder(false)}
                               variant="outline"
-                              className="border-white/10 text-white hover:bg-white/10"
+                              className="border-gray-200 text-gray-800 hover:bg-white/10"
                             >
                               {language === 'en' ? 'Cancel' : language === 'sq' ? 'Anulo' : language === 'tr' ? 'İptal' : language === 'fr' ? 'Annuler' : 'Abbrechen'}
                             </Button>
@@ -980,7 +980,7 @@ export default function AuctionDetail() {
               )}
 
               {!isAuthenticated && !isScheduled && !isEnded && (
-                <p className="text-center text-[#94A3B8] text-sm">
+                <p className="text-center text-gray-500 text-sm">
                   <Link to="/login" className="text-[#7C3AED] hover:underline">{t('nav.login')}</Link> um zu bieten
                 </p>
               )}
@@ -996,35 +996,35 @@ export default function AuctionDetail() {
           >
             <div className="flex items-center gap-3">
               <History className="w-5 h-5 text-[#7C3AED]" />
-              <span className="text-white font-bold">{t('auctions.bidHistory') || 'Gebotsverlauf'}</span>
-              <span className="text-[#94A3B8] text-sm">({bidHistory.length} {t('auctions.bids') || 'Gebote'})</span>
+              <span className="text-gray-800 font-bold">{t('auctions.bidHistory') || 'Gebotsverlauf'}</span>
+              <span className="text-gray-500 text-sm">({bidHistory.length} {t('auctions.bids') || 'Gebote'})</span>
             </div>
             {showBidHistory ? (
-              <ChevronUp className="w-5 h-5 text-[#94A3B8]" />
+              <ChevronUp className="w-5 h-5 text-gray-500" />
             ) : (
-              <ChevronDown className="w-5 h-5 text-[#94A3B8]" />
+              <ChevronDown className="w-5 h-5 text-gray-500" />
             )}
           </button>
           
           {showBidHistory && (
-            <div className="border-t border-white/10">
+            <div className="border-t border-gray-200">
               {loadingHistory ? (
                 <div className="p-6 text-center">
                   <div className="w-8 h-8 border-2 border-[#7C3AED] border-t-transparent rounded-full animate-spin mx-auto" />
                 </div>
               ) : bidHistory.length === 0 ? (
-                <div className="p-6 text-center text-[#94A3B8]">
+                <div className="p-6 text-center text-gray-500">
                   <History className="w-12 h-12 mx-auto mb-3 opacity-30" />
                   <p>{t('auctions.noBidsYet') || 'Noch keine Gebote abgegeben'}</p>
                 </div>
               ) : (
                 <div className="max-h-80 overflow-y-auto">
                   <table className="w-full">
-                    <thead className="bg-[#0F0F16] sticky top-0">
+                    <thead className="bg-gradient-to-b from-cyan-50 to-cyan-100 sticky top-0">
                       <tr>
-                        <th className="text-left text-[#94A3B8] text-xs font-medium p-3">{t('auctions.lastBidder') || 'Bieter'}</th>
-                        <th className="text-right text-[#94A3B8] text-xs font-medium p-3">{t('auctions.price') || 'Preis'}</th>
-                        <th className="text-right text-[#94A3B8] text-xs font-medium p-3 hidden sm:table-cell">{t('auctions.time') || 'Zeit'}</th>
+                        <th className="text-left text-gray-500 text-xs font-medium p-3">{t('auctions.lastBidder') || 'Bieter'}</th>
+                        <th className="text-right text-gray-500 text-xs font-medium p-3">{t('auctions.price') || 'Preis'}</th>
+                        <th className="text-right text-gray-500 text-xs font-medium p-3 hidden sm:table-cell">{t('auctions.time') || 'Zeit'}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1037,10 +1037,10 @@ export default function AuctionDetail() {
                           <td className="p-3">
                             <div className="flex items-center gap-2">
                               <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#7C3AED] to-[#06B6D4] flex items-center justify-center">
-                                <User className="w-4 h-4 text-white" />
+                                <User className="w-4 h-4 text-gray-800" />
                               </div>
                               <div>
-                                <p className="text-white text-sm font-medium">
+                                <p className="text-gray-800 text-sm font-medium">
                                   {bid.user_name}
                                 </p>
                                 {index === 0 && (
@@ -1050,12 +1050,12 @@ export default function AuctionDetail() {
                             </div>
                           </td>
                           <td className="p-3 text-right">
-                            <span className={`font-mono font-bold ${index === 0 ? 'text-[#06B6D4]' : 'text-white'}`}>
+                            <span className={`font-mono font-bold ${index === 0 ? 'text-[#06B6D4]' : 'text-gray-800'}`}>
                               €{bid.price?.toFixed(2)}
                             </span>
                           </td>
                           <td className="p-3 text-right hidden sm:table-cell">
-                            <div className="flex items-center justify-end gap-1 text-[#94A3B8] text-xs">
+                            <div className="flex items-center justify-end gap-1 text-gray-500 text-xs">
                               <Clock className="w-3 h-3" />
                               <span>
                                 {new Date(bid.timestamp).toLocaleTimeString('de-DE', {
@@ -1079,10 +1079,10 @@ export default function AuctionDetail() {
 
       {/* Mobile Sticky Bid Bar */}
       {!isEnded && !isScheduled && (
-        <div className="fixed bottom-16 left-0 right-0 lg:hidden glass border-t border-white/10 p-4 z-40">
+        <div className="fixed bottom-16 left-0 right-0 lg:hidden glass border-t border-gray-200 p-4 z-40">
           <div className="flex items-center justify-between gap-4 max-w-6xl mx-auto">
             <div className="flex-1">
-              <p className="text-[#94A3B8] text-xs">{t('auctions.currentPrice') || 'Aktueller Preis'}</p>
+              <p className="text-gray-500 text-xs">{t('auctions.currentPrice') || 'Aktueller Preis'}</p>
               <p className="text-xl font-bold text-[#06B6D4] font-mono">€{auction.current_price?.toFixed(2)}</p>
             </div>
             <Button

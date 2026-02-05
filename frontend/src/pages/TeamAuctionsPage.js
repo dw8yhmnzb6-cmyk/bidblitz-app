@@ -202,29 +202,29 @@ export default function TeamAuctionsPage() {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-[#0D0D14] flex items-center justify-center">
-        <Card className="bg-[#1A1A2E] border-white/10 p-8 text-center">
+      <div className="min-h-screen bg-gradient-to-b from-cyan-50 to-cyan-100 flex items-center justify-center">
+        <Card className="bg-[#1A1A2E] border-gray-200 p-8 text-center">
           <Users className="w-16 h-16 text-[#7C3AED] mx-auto mb-4" />
-          <p className="text-white text-xl">{t.loginRequired}</p>
+          <p className="text-gray-800 text-xl">{t.loginRequired}</p>
         </Card>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0D0D14] py-8 px-4" data-testid="team-auctions-page">
+    <div className="min-h-screen bg-gradient-to-b from-cyan-50 to-cyan-100 py-8 px-4" data-testid="team-auctions-page">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-[#7C3AED] to-[#EC4899] mb-4">
-            <Users className="w-10 h-10 text-white" />
+            <Users className="w-10 h-10 text-gray-800" />
           </div>
-          <h1 className="text-3xl font-bold text-white mb-2">{t.title}</h1>
-          <p className="text-[#94A3B8]">{t.subtitle}</p>
+          <h1 className="text-3xl font-bold text-gray-800 mb-2">{t.title}</h1>
+          <p className="text-gray-500">{t.subtitle}</p>
         </div>
 
         {loading ? (
-          <div className="text-center py-12 text-[#94A3B8]">Laden...</div>
+          <div className="text-center py-12 text-gray-500">Laden...</div>
         ) : myTeam ? (
           /* User has a team */
           <div className="space-y-6">
@@ -234,10 +234,10 @@ export default function TeamAuctionsPage() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="w-14 h-14 rounded-full bg-[#7C3AED] flex items-center justify-center">
-                      <Crown className="w-7 h-7 text-white" />
+                      <Crown className="w-7 h-7 text-gray-800" />
                     </div>
                     <div>
-                      <CardTitle className="text-white text-2xl">{myTeam.name}</CardTitle>
+                      <CardTitle className="text-gray-800 text-2xl">{myTeam.name}</CardTitle>
                       <div className="flex items-center gap-2 mt-1">
                         <Badge className="bg-[#7C3AED]/20 text-[#7C3AED]">
                           Code: {myTeam.code}
@@ -257,52 +257,52 @@ export default function TeamAuctionsPage() {
               <CardContent>
                 {/* Team Stats */}
                 <div className="grid grid-cols-3 gap-4 mb-6">
-                  <div className="bg-[#0D0D14] rounded-lg p-4 text-center">
+                  <div className="bg-gradient-to-b from-cyan-50 to-cyan-100 rounded-lg p-4 text-center">
                     <Users className="w-6 h-6 text-[#7C3AED] mx-auto mb-1" />
-                    <p className="text-2xl font-bold text-white">{myTeam.members?.length || 0}/{myTeam.max_members}</p>
-                    <p className="text-[#94A3B8] text-sm">{t.members}</p>
+                    <p className="text-2xl font-bold text-gray-800">{myTeam.members?.length || 0}/{myTeam.max_members}</p>
+                    <p className="text-gray-500 text-sm">{t.members}</p>
                   </div>
-                  <div className="bg-[#0D0D14] rounded-lg p-4 text-center">
+                  <div className="bg-gradient-to-b from-cyan-50 to-cyan-100 rounded-lg p-4 text-center">
                     <Zap className="w-6 h-6 text-[#F59E0B] mx-auto mb-1" />
-                    <p className="text-2xl font-bold text-white">{myTeam.shared_bids || 0}</p>
-                    <p className="text-[#94A3B8] text-sm">{t.sharedBids}</p>
+                    <p className="text-2xl font-bold text-gray-800">{myTeam.shared_bids || 0}</p>
+                    <p className="text-gray-500 text-sm">{t.sharedBids}</p>
                   </div>
-                  <div className="bg-[#0D0D14] rounded-lg p-4 text-center">
+                  <div className="bg-gradient-to-b from-cyan-50 to-cyan-100 rounded-lg p-4 text-center">
                     <Trophy className="w-6 h-6 text-[#10B981] mx-auto mb-1" />
-                    <p className="text-2xl font-bold text-white">{myTeam.total_wins || 0}</p>
-                    <p className="text-[#94A3B8] text-sm">{t.wins}</p>
+                    <p className="text-2xl font-bold text-gray-800">{myTeam.total_wins || 0}</p>
+                    <p className="text-gray-500 text-sm">{t.wins}</p>
                   </div>
                 </div>
 
                 {/* Members List */}
                 <div className="space-y-2 mb-6">
-                  <h4 className="text-white font-medium">{t.members}</h4>
+                  <h4 className="text-gray-800 font-medium">{t.members}</h4>
                   {myTeam.members?.map((member, i) => (
-                    <div key={i} className="flex items-center justify-between bg-[#0D0D14] rounded-lg p-3">
+                    <div key={i} className="flex items-center justify-between bg-gradient-to-b from-cyan-50 to-cyan-100 rounded-lg p-3">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-[#7C3AED]/20 flex items-center justify-center">
                           {member.is_leader ? <Crown className="w-5 h-5 text-[#F59E0B]" /> : <Users className="w-5 h-5 text-[#7C3AED]" />}
                         </div>
                         <div>
-                          <p className="text-white">{member.username}</p>
+                          <p className="text-gray-800">{member.username}</p>
                           {member.is_leader && <Badge className="bg-[#F59E0B]/20 text-[#F59E0B] text-xs">{t.leader}</Badge>}
                         </div>
                       </div>
-                      <p className="text-[#94A3B8] text-sm">{member.contributed_bids} {t.contributed}</p>
+                      <p className="text-gray-500 text-sm">{member.contributed_bids} {t.contributed}</p>
                     </div>
                   ))}
                 </div>
 
                 {/* Contribute Bids */}
-                <div className="bg-[#0D0D14] rounded-lg p-4">
-                  <h4 className="text-white font-medium mb-3">{t.contribute}</h4>
+                <div className="bg-gradient-to-b from-cyan-50 to-cyan-100 rounded-lg p-4">
+                  <h4 className="text-gray-800 font-medium mb-3">{t.contribute}</h4>
                   <div className="flex gap-2">
                     <Input
                       type="number"
                       value={contributeBids}
                       onChange={(e) => setContributeBids(parseInt(e.target.value) || 0)}
                       min={1}
-                      className="bg-[#1A1A2E] border-white/10 text-white w-24"
+                      className="bg-[#1A1A2E] border-gray-200 text-gray-800 w-24"
                     />
                     <Button onClick={handleContribute} className="bg-[#7C3AED]">
                       <Plus className="w-4 h-4 mr-2" />
@@ -316,20 +316,20 @@ export default function TeamAuctionsPage() {
         ) : (
           /* User has no team */
           <div className="space-y-6">
-            <Card className="bg-[#1A1A2E] border-white/10">
+            <Card className="bg-[#1A1A2E] border-gray-200">
               <CardContent className="p-6 text-center">
-                <Users className="w-16 h-16 text-[#94A3B8] mx-auto mb-4 opacity-50" />
-                <h3 className="text-white text-xl mb-4">{t.noTeam}</h3>
+                <Users className="w-16 h-16 text-gray-500 mx-auto mb-4 opacity-50" />
+                <h3 className="text-gray-800 text-xl mb-4">{t.noTeam}</h3>
                 
                 {/* Join Team */}
-                <div className="bg-[#0D0D14] rounded-lg p-4 mb-4">
-                  <h4 className="text-white font-medium mb-3">{t.joinTeam}</h4>
+                <div className="bg-gradient-to-b from-cyan-50 to-cyan-100 rounded-lg p-4 mb-4">
+                  <h4 className="text-gray-800 font-medium mb-3">{t.joinTeam}</h4>
                   <div className="flex gap-2">
                     <Input
                       value={joinCode}
                       onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
                       placeholder={t.teamCode}
-                      className="bg-[#1A1A2E] border-white/10 text-white"
+                      className="bg-[#1A1A2E] border-gray-200 text-gray-800"
                     />
                     <Button onClick={handleJoinTeam} className="bg-[#10B981]">
                       <UserPlus className="w-4 h-4 mr-2" />
@@ -340,14 +340,14 @@ export default function TeamAuctionsPage() {
 
                 {/* Create Team */}
                 {showCreate ? (
-                  <div className="bg-[#0D0D14] rounded-lg p-4">
-                    <h4 className="text-white font-medium mb-3">{t.createTeam}</h4>
+                  <div className="bg-gradient-to-b from-cyan-50 to-cyan-100 rounded-lg p-4">
+                    <h4 className="text-gray-800 font-medium mb-3">{t.createTeam}</h4>
                     <div className="flex gap-2">
                       <Input
                         value={newTeamName}
                         onChange={(e) => setNewTeamName(e.target.value)}
                         placeholder={t.teamName}
-                        className="bg-[#1A1A2E] border-white/10 text-white"
+                        className="bg-[#1A1A2E] border-gray-200 text-gray-800"
                       />
                       <Button onClick={handleCreateTeam} className="bg-[#7C3AED]">
                         {t.create}
@@ -364,27 +364,27 @@ export default function TeamAuctionsPage() {
             </Card>
 
             {/* Leaderboard */}
-            <Card className="bg-[#1A1A2E] border-white/10">
+            <Card className="bg-[#1A1A2E] border-gray-200">
               <CardHeader>
-                <CardTitle className="text-white flex items-center">
+                <CardTitle className="text-gray-800 flex items-center">
                   <Trophy className="w-5 h-5 mr-2 text-[#F59E0B]" />
                   {t.leaderboard}
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 {leaderboard.length === 0 ? (
-                  <p className="text-[#94A3B8] text-center py-4">Noch keine Teams</p>
+                  <p className="text-gray-500 text-center py-4">Noch keine Teams</p>
                 ) : (
                   <div className="space-y-2">
                     {leaderboard.map((team, i) => (
-                      <div key={team.team_id} className="flex items-center justify-between bg-[#0D0D14] rounded-lg p-3">
+                      <div key={team.team_id} className="flex items-center justify-between bg-gradient-to-b from-cyan-50 to-cyan-100 rounded-lg p-3">
                         <div className="flex items-center gap-3">
                           <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
                             i === 0 ? 'bg-[#F59E0B]' : i === 1 ? 'bg-[#94A3B8]' : i === 2 ? 'bg-[#CD7F32]' : 'bg-[#1A1A2E]'
                           }`}>
-                            <span className="text-white font-bold">{team.rank}</span>
+                            <span className="text-gray-800 font-bold">{team.rank}</span>
                           </div>
-                          <p className="text-white font-medium">{team.name}</p>
+                          <p className="text-gray-800 font-medium">{team.name}</p>
                         </div>
                         <Badge className="bg-[#10B981]/20 text-[#10B981]">
                           {team.wins} {t.wins}

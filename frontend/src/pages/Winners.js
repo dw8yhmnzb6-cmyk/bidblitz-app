@@ -93,11 +93,11 @@ const WinnerCard = ({ winner, texts, language }) => {
 
   return (
     <div 
-      className="bg-gradient-to-br from-[#181824] to-[#0F0F16] rounded-xl overflow-hidden border border-white/10 hover:border-[#FFD700]/30 transition-all duration-300 hover:shadow-lg hover:shadow-[#FFD700]/5 group"
+      className="bg-gradient-to-br from-[#181824] to-[#0F0F16] rounded-xl overflow-hidden border border-gray-200 hover:border-[#FFD700]/30 transition-all duration-300 hover:shadow-lg hover:shadow-[#FFD700]/5 group"
       data-testid={`winner-card-${winner.auction_id}`}
     >
       {/* Image Section */}
-      <div className="relative aspect-square overflow-hidden bg-[#0F0F16]">
+      <div className="relative aspect-square overflow-hidden bg-gradient-to-b from-cyan-50 to-cyan-100">
         <img
           src={winner.product_image || 'https://via.placeholder.com/300'}
           alt={winner.product_name}
@@ -105,7 +105,7 @@ const WinnerCard = ({ winner, texts, language }) => {
         />
         
         {/* Savings Badge */}
-        <div className="absolute top-3 right-3 px-3 py-1.5 rounded-full bg-[#10B981] text-white font-bold text-sm shadow-lg">
+        <div className="absolute top-3 right-3 px-3 py-1.5 rounded-full bg-[#10B981] text-gray-800 font-bold text-sm shadow-lg">
           -{winner.savings_percent}%
         </div>
         
@@ -115,35 +115,35 @@ const WinnerCard = ({ winner, texts, language }) => {
             <div className="w-8 h-8 rounded-full bg-[#FFD700] flex items-center justify-center">
               <Trophy className="w-4 h-4 text-black" />
             </div>
-            <span className="text-white font-bold truncate">{winner.winner_name}</span>
+            <span className="text-gray-800 font-bold truncate">{winner.winner_name}</span>
           </div>
         </div>
       </div>
       
       {/* Content Section */}
       <div className="p-4 space-y-3">
-        <h3 className="text-white font-bold text-sm line-clamp-2 min-h-[40px]">
+        <h3 className="text-gray-800 font-bold text-sm line-clamp-2 min-h-[40px]">
           {winner.product_name}
         </h3>
         
         {/* Price Comparison */}
         <div className="flex items-end justify-between">
           <div>
-            <p className="text-[#94A3B8] text-xs">{texts.wonFor}</p>
+            <p className="text-gray-500 text-xs">{texts.wonFor}</p>
             <p className="text-2xl font-bold text-[#06B6D4]">
               €{winner.final_price?.toFixed(2)}
             </p>
           </div>
           <div className="text-right">
-            <p className="text-[#94A3B8] text-xs">{texts.retail}</p>
-            <p className="text-lg text-[#94A3B8] line-through">
+            <p className="text-gray-500 text-xs">{texts.retail}</p>
+            <p className="text-lg text-gray-500 line-through">
               €{winner.retail_price?.toFixed(2)}
             </p>
           </div>
         </div>
         
         {/* Stats */}
-        <div className="flex items-center justify-between text-xs text-[#94A3B8] pt-2 border-t border-white/10">
+        <div className="flex items-center justify-between text-xs text-gray-500 pt-2 border-t border-gray-200">
           <div className="flex items-center gap-1">
             <Users className="w-3 h-3" />
             <span>{winner.total_bids} {texts.bids}</span>
@@ -225,11 +225,11 @@ export default function Winners() {
             <span className="text-[#FFD700] text-sm font-medium">{stats.realWinners}</span>
           </div>
           
-          <h1 className="text-4xl sm:text-5xl font-bold text-white mb-4">
+          <h1 className="text-4xl sm:text-5xl font-bold text-gray-800 mb-4">
             {stats.ourWinners} <span className="text-gradient">{texts.title.replace('Gewinner-Galerie', 'Gewinner').replace('Winners Gallery', 'Winners').replace('Galeria e Fituesve', 'Fituesve').replace('Kazananlar Galerisi', 'Kazananlar').replace('Galerie des Gagnants', 'Gagnants')}</span>
           </h1>
           
-          <p className="text-[#94A3B8] text-lg max-w-2xl mx-auto mb-8">
+          <p className="text-gray-500 text-lg max-w-2xl mx-auto mb-8">
             {stats.subtitle}
           </p>
           
@@ -239,8 +239,8 @@ export default function Winners() {
               <div className="flex items-center gap-3">
                 <Trophy className="w-8 h-8 text-[#FFD700]" />
                 <div className="text-left">
-                  <p className="text-2xl font-bold text-white">{winners.length}+</p>
-                  <p className="text-[#94A3B8] text-sm">{stats.happyWinners}</p>
+                  <p className="text-2xl font-bold text-gray-800">{winners.length}+</p>
+                  <p className="text-gray-500 text-sm">{stats.happyWinners}</p>
                 </div>
               </div>
             </div>
@@ -249,8 +249,8 @@ export default function Winners() {
               <div className="flex items-center gap-3">
                 <TrendingDown className="w-8 h-8 text-[#10B981]" />
                 <div className="text-left">
-                  <p className="text-2xl font-bold text-white">€{totalSavings.toFixed(0)}</p>
-                  <p className="text-[#94A3B8] text-sm">{stats.totalSaved}</p>
+                  <p className="text-2xl font-bold text-gray-800">€{totalSavings.toFixed(0)}</p>
+                  <p className="text-gray-500 text-sm">{stats.totalSaved}</p>
                 </div>
               </div>
             </div>
@@ -259,8 +259,8 @@ export default function Winners() {
               <div className="flex items-center gap-3">
                 <Star className="w-8 h-8 text-[#F59E0B]" />
                 <div className="text-left">
-                  <p className="text-2xl font-bold text-white">{avgSavings}%</p>
-                  <p className="text-[#94A3B8] text-sm">{stats.avgSavings}</p>
+                  <p className="text-2xl font-bold text-gray-800">{avgSavings}%</p>
+                  <p className="text-gray-500 text-sm">{stats.avgSavings}</p>
                 </div>
               </div>
             </div>
@@ -278,14 +278,14 @@ export default function Winners() {
         {loading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {[...Array(8)].map((_, i) => (
-              <div key={i} className="bg-[#181824] rounded-xl h-96 animate-pulse" />
+              <div key={i} className="bg-white rounded-xl h-96 animate-pulse" />
             ))}
           </div>
         ) : winners.length === 0 ? (
           <div className="text-center py-16 glass-card rounded-2xl">
-            <Trophy className="w-16 h-16 text-[#94A3B8] mx-auto mb-4 opacity-50" />
-            <h3 className="text-xl font-bold text-white mb-2">{texts.noWinners}</h3>
-            <p className="text-[#94A3B8] mb-6">
+            <Trophy className="w-16 h-16 text-gray-500 mx-auto mb-4 opacity-50" />
+            <h3 className="text-xl font-bold text-gray-800 mb-2">{texts.noWinners}</h3>
+            <p className="text-gray-500 mb-6">
               {texts.firstWinner}
             </p>
             <Link to="/auctions">
@@ -304,10 +304,10 @@ export default function Winners() {
         {winners.length > 0 && (
           <div className="mt-16 text-center">
             <div className="glass-card p-8 rounded-2xl max-w-3xl mx-auto">
-              <h2 className="text-2xl font-bold text-white mb-4">
+              <h2 className="text-2xl font-bold text-gray-800 mb-4">
                 {language === 'en' ? 'Be the next winner!' : language === 'sq' ? 'Bëhuni fituesi i radhës!' : language === 'tr' ? 'Bir sonraki kazanan siz olun!' : language === 'fr' ? 'Soyez le prochain gagnant!' : 'Werden Sie der nächste Gewinner!'}
               </h2>
-              <p className="text-[#94A3B8] mb-6">
+              <p className="text-gray-500 mb-6">
                 {language === 'en' ? 'Register now and get 10 free bids to start.' : language === 'sq' ? 'Regjistrohuni tani dhe merrni 10 oferta falas për të filluar.' : language === 'tr' ? 'Şimdi kaydolun ve başlamak için 10 ücretsiz teklif alın.' : language === 'fr' ? 'Inscrivez-vous maintenant et obtenez 10 enchères gratuites pour commencer.' : 'Registrieren Sie sich jetzt und erhalten Sie 10 kostenlose Gebote zum Start.'}
               </p>
               <div className="flex flex-wrap justify-center gap-4">
@@ -315,7 +315,7 @@ export default function Winners() {
                   <Button className="btn-primary">{language === 'en' ? 'Register Free' : language === 'sq' ? 'Regjistrohu Falas' : language === 'tr' ? 'Ücretsiz Kayıt' : language === 'fr' ? 'Inscription Gratuite' : 'Kostenlos registrieren'}</Button>
                 </Link>
                 <Link to="/auctions">
-                  <Button variant="outline" className="border-white/20 text-white hover:bg-white/10">
+                  <Button variant="outline" className="border-gray-300 text-gray-800 hover:bg-white/10">
                     {texts.goToAuctions}
                   </Button>
                 </Link>

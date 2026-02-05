@@ -84,8 +84,8 @@ export default function ForgotPassword() {
               <CheckCircle className="w-10 h-10 text-[#10B981]" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-white mb-2">Passwort geändert!</h1>
-              <p className="text-[#94A3B8]">
+              <h1 className="text-2xl font-bold text-gray-800 mb-2">Passwort geändert!</h1>
+              <p className="text-gray-500">
                 Ihr Passwort wurde erfolgreich zurückgesetzt. Sie können sich jetzt mit Ihrem 
                 neuen Passwort anmelden.
               </p>
@@ -104,7 +104,7 @@ export default function ForgotPassword() {
   return (
     <div className="min-h-screen pt-24 pb-12 px-4 flex items-center justify-center" data-testid="forgot-password-page">
       <div className="w-full max-w-md">
-        <Link to="/login" className="inline-flex items-center gap-2 text-[#94A3B8] hover:text-white mb-6 transition-colors">
+        <Link to="/login" className="inline-flex items-center gap-2 text-gray-500 hover:text-gray-800 mb-6 transition-colors">
           <ArrowLeft className="w-4 h-4" />
           Zurück zur Anmeldung
         </Link>
@@ -129,22 +129,22 @@ export default function ForgotPassword() {
                 <div className="w-16 h-16 rounded-xl bg-[#FFD700]/20 flex items-center justify-center mx-auto mb-4">
                   <Mail className="w-8 h-8 text-[#FFD700]" />
                 </div>
-                <h1 className="text-2xl font-bold text-white mb-2">Passwort vergessen?</h1>
-                <p className="text-[#94A3B8]">
+                <h1 className="text-2xl font-bold text-gray-800 mb-2">Passwort vergessen?</h1>
+                <p className="text-gray-500">
                   Geben Sie Ihre E-Mail-Adresse ein und wir senden Ihnen einen Code zum Zurücksetzen.
                 </p>
               </div>
 
               <form onSubmit={handleRequestReset} className="space-y-4">
                 <div className="space-y-2">
-                  <Label className="text-white">E-Mail-Adresse</Label>
+                  <Label className="text-gray-800">E-Mail-Adresse</Label>
                   <Input
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="ihre@email.de"
                     required
-                    className="bg-[#181824] border-white/10 text-white h-12"
+                    className="bg-white border-gray-200 text-gray-800 h-12"
                     data-testid="email-input"
                   />
                 </div>
@@ -171,15 +171,15 @@ export default function ForgotPassword() {
                 <div className="w-16 h-16 rounded-xl bg-[#7C3AED]/20 flex items-center justify-center mx-auto mb-4">
                   <Key className="w-8 h-8 text-[#7C3AED]" />
                 </div>
-                <h1 className="text-2xl font-bold text-white mb-2">Code eingeben</h1>
-                <p className="text-[#94A3B8]">
-                  Wir haben einen 6-stelligen Code an <span className="text-white">{email}</span> gesendet.
+                <h1 className="text-2xl font-bold text-gray-800 mb-2">Code eingeben</h1>
+                <p className="text-gray-500">
+                  Wir haben einen 6-stelligen Code an <span className="text-gray-800">{email}</span> gesendet.
                 </p>
               </div>
 
               <form onSubmit={handleVerifyCode} className="space-y-4">
                 <div className="space-y-2">
-                  <Label className="text-white">Reset-Code</Label>
+                  <Label className="text-gray-800">Reset-Code</Label>
                   <Input
                     type="text"
                     value={code}
@@ -187,7 +187,7 @@ export default function ForgotPassword() {
                     placeholder="ABC123"
                     maxLength={6}
                     required
-                    className="bg-[#181824] border-white/10 text-white h-12 text-center text-2xl tracking-widest font-mono"
+                    className="bg-white border-gray-200 text-gray-800 h-12 text-center text-2xl tracking-widest font-mono"
                     data-testid="code-input"
                   />
                 </div>
@@ -206,7 +206,7 @@ export default function ForgotPassword() {
                 <button
                   type="button"
                   onClick={() => setStep(1)}
-                  className="w-full text-[#94A3B8] hover:text-white text-sm transition-colors"
+                  className="w-full text-gray-500 hover:text-gray-800 text-sm transition-colors"
                 >
                   Anderen E-Mail verwenden
                 </button>
@@ -221,15 +221,15 @@ export default function ForgotPassword() {
                 <div className="w-16 h-16 rounded-xl bg-[#10B981]/20 flex items-center justify-center mx-auto mb-4">
                   <Key className="w-8 h-8 text-[#10B981]" />
                 </div>
-                <h1 className="text-2xl font-bold text-white mb-2">Neues Passwort</h1>
-                <p className="text-[#94A3B8]">
+                <h1 className="text-2xl font-bold text-gray-800 mb-2">Neues Passwort</h1>
+                <p className="text-gray-500">
                   Geben Sie Ihr neues Passwort ein.
                 </p>
               </div>
 
               <form onSubmit={handleResetPassword} className="space-y-4">
                 <div className="space-y-2">
-                  <Label className="text-white">Neues Passwort</Label>
+                  <Label className="text-gray-800">Neues Passwort</Label>
                   <Input
                     type="password"
                     value={newPassword}
@@ -237,19 +237,19 @@ export default function ForgotPassword() {
                     placeholder="Mindestens 6 Zeichen"
                     required
                     minLength={6}
-                    className="bg-[#181824] border-white/10 text-white h-12"
+                    className="bg-white border-gray-200 text-gray-800 h-12"
                     data-testid="new-password-input"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-white">Passwort bestätigen</Label>
+                  <Label className="text-gray-800">Passwort bestätigen</Label>
                   <Input
                     type="password"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="Passwort wiederholen"
                     required
-                    className="bg-[#181824] border-white/10 text-white h-12"
+                    className="bg-white border-gray-200 text-gray-800 h-12"
                     data-testid="confirm-password-input"
                   />
                 </div>

@@ -46,15 +46,15 @@ export default function BidHistory() {
   return (
     <div className="min-h-screen pt-24 pb-12 px-4" data-testid="bid-history-page">
       <div className="max-w-6xl mx-auto">
-        <Link to="/dashboard" className="inline-flex items-center gap-2 text-[#94A3B8] hover:text-white mb-6 transition-colors">
+        <Link to="/dashboard" className="inline-flex items-center gap-2 text-gray-500 hover:text-gray-800 mb-6 transition-colors">
           <ArrowLeft className="w-4 h-4" />
           Zurück zum Dashboard
         </Link>
 
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-white">Gebots-Historie</h1>
-            <p className="text-[#94A3B8]">Übersicht aller Ihrer abgegebenen Gebote</p>
+            <h1 className="text-3xl font-bold text-gray-800">Gebots-Historie</h1>
+            <p className="text-gray-500">Übersicht aller Ihrer abgegebenen Gebote</p>
           </div>
         </div>
 
@@ -66,8 +66,8 @@ export default function BidHistory() {
                 <Zap className="w-6 h-6 text-[#FFD700]" />
               </div>
               <div>
-                <p className="text-[#94A3B8] text-sm">Gebote gesamt</p>
-                <p className="text-2xl font-bold text-white">{totalBids}</p>
+                <p className="text-gray-500 text-sm">Gebote gesamt</p>
+                <p className="text-2xl font-bold text-gray-800">{totalBids}</p>
               </div>
             </div>
           </div>
@@ -77,8 +77,8 @@ export default function BidHistory() {
                 <CheckCircle className="w-6 h-6 text-[#10B981]" />
               </div>
               <div>
-                <p className="text-[#94A3B8] text-sm">Gewonnen</p>
-                <p className="text-2xl font-bold text-white">{wonBids}</p>
+                <p className="text-gray-500 text-sm">Gewonnen</p>
+                <p className="text-2xl font-bold text-gray-800">{wonBids}</p>
               </div>
             </div>
           </div>
@@ -88,8 +88,8 @@ export default function BidHistory() {
                 <TrendingUp className="w-6 h-6 text-[#7C3AED]" />
               </div>
               <div>
-                <p className="text-[#94A3B8] text-sm">Erfolgsquote</p>
-                <p className="text-2xl font-bold text-white">
+                <p className="text-gray-500 text-sm">Erfolgsquote</p>
+                <p className="text-2xl font-bold text-gray-800">
                   {totalBids > 0 ? ((wonBids / totalBids) * 100).toFixed(1) : 0}%
                 </p>
               </div>
@@ -110,7 +110,7 @@ export default function BidHistory() {
               className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                 filter === f.id
                   ? 'bg-[#FFD700] text-black'
-                  : 'bg-white/5 text-[#94A3B8] hover:bg-white/10 hover:text-white'
+                  : 'bg-white/5 text-gray-500 hover:bg-white/10 hover:text-gray-800'
               }`}
             >
               {f.label}
@@ -125,9 +125,9 @@ export default function BidHistory() {
           </div>
         ) : filteredBids.length === 0 ? (
           <div className="glass-card rounded-2xl p-12 text-center">
-            <Zap className="w-16 h-16 text-[#94A3B8] mx-auto mb-4 opacity-50" />
-            <h3 className="text-xl font-bold text-white mb-2">Keine Gebote gefunden</h3>
-            <p className="text-[#94A3B8] mb-6">
+            <Zap className="w-16 h-16 text-gray-500 mx-auto mb-4 opacity-50" />
+            <h3 className="text-xl font-bold text-gray-800 mb-2">Keine Gebote gefunden</h3>
+            <p className="text-gray-500 mb-6">
               {filter === 'all' 
                 ? 'Sie haben noch keine Gebote abgegeben.' 
                 : filter === 'won'
@@ -143,12 +143,12 @@ export default function BidHistory() {
           <div className="glass-card rounded-2xl overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-[#181824]">
+                <thead className="bg-white">
                   <tr>
-                    <th className="px-6 py-4 text-left text-[#94A3B8] font-medium">Produkt</th>
-                    <th className="px-6 py-4 text-left text-[#94A3B8] font-medium">Gebotspreis</th>
-                    <th className="px-6 py-4 text-left text-[#94A3B8] font-medium">Zeitpunkt</th>
-                    <th className="px-6 py-4 text-left text-[#94A3B8] font-medium">Status</th>
+                    <th className="px-6 py-4 text-left text-gray-500 font-medium">Produkt</th>
+                    <th className="px-6 py-4 text-left text-gray-500 font-medium">Gebotspreis</th>
+                    <th className="px-6 py-4 text-left text-gray-500 font-medium">Zeitpunkt</th>
+                    <th className="px-6 py-4 text-left text-gray-500 font-medium">Status</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/10">
@@ -162,8 +162,8 @@ export default function BidHistory() {
                             className="w-12 h-12 rounded-lg object-cover"
                           />
                           <div>
-                            <p className="text-white font-medium">{bid.product?.name || 'Produkt'}</p>
-                            <p className="text-[#94A3B8] text-sm">Auktion #{bid.auction_id?.slice(0, 8)}</p>
+                            <p className="text-gray-800 font-medium">{bid.product?.name || 'Produkt'}</p>
+                            <p className="text-gray-500 text-sm">Auktion #{bid.auction_id?.slice(0, 8)}</p>
                           </div>
                         </div>
                       </td>
@@ -173,7 +173,7 @@ export default function BidHistory() {
                         </span>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="flex items-center gap-2 text-[#94A3B8]">
+                        <div className="flex items-center gap-2 text-gray-500">
                           <Clock className="w-4 h-4" />
                           {new Date(bid.timestamp).toLocaleString('de-DE', {
                             dateStyle: 'short',

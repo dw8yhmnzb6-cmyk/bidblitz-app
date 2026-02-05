@@ -87,16 +87,16 @@ export default function BuyItNowPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0D0D14] py-8 px-4" data-testid="buy-it-now-page">
+    <div className="min-h-screen bg-gradient-to-b from-cyan-50 to-cyan-100 py-8 px-4" data-testid="buy-it-now-page">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-[#F59E0B] to-[#EF4444] mb-4">
-            <ShoppingBag className="w-10 h-10 text-white" />
+            <ShoppingBag className="w-10 h-10 text-gray-800" />
           </div>
-          <h1 className="text-3xl font-bold text-white mb-2">{t.title}</h1>
+          <h1 className="text-3xl font-bold text-gray-800 mb-2">{t.title}</h1>
           <p className="text-xl text-[#F59E0B]">{t.subtitle}</p>
-          <p className="text-[#94A3B8] mt-2">{t.description}</p>
+          <p className="text-gray-500 mt-2">{t.description}</p>
         </div>
 
         {/* Info Banner */}
@@ -104,27 +104,27 @@ export default function BuyItNowPage() {
           <CardContent className="p-4 flex items-center">
             <Tag className="w-8 h-8 text-[#F59E0B] mr-4" />
             <div>
-              <p className="text-white font-medium">Jedes Gebot = €0,50 Guthaben</p>
-              <p className="text-[#94A3B8] text-sm">Deine platzierten Gebote werden als Rabatt auf den Kaufpreis angerechnet!</p>
+              <p className="text-gray-800 font-medium">Jedes Gebot = €0,50 Guthaben</p>
+              <p className="text-gray-500 text-sm">Deine platzierten Gebote werden als Rabatt auf den Kaufpreis angerechnet!</p>
             </div>
           </CardContent>
         </Card>
 
         {/* Offers */}
         {loading ? (
-          <div className="text-center py-12 text-[#94A3B8]">Laden...</div>
+          <div className="text-center py-12 text-gray-500">Laden...</div>
         ) : offers.length === 0 ? (
-          <Card className="bg-[#1A1A2E] border-white/10">
+          <Card className="bg-[#1A1A2E] border-gray-200">
             <CardContent className="p-8 text-center">
-              <ShoppingBag className="w-16 h-16 text-[#94A3B8] mx-auto mb-4" />
-              <h3 className="text-white text-xl mb-2">{t.noOffers}</h3>
-              <p className="text-[#94A3B8]">{t.noOffersDesc}</p>
+              <ShoppingBag className="w-16 h-16 text-gray-500 mx-auto mb-4" />
+              <h3 className="text-gray-800 text-xl mb-2">{t.noOffers}</h3>
+              <p className="text-gray-500">{t.noOffersDesc}</p>
             </CardContent>
           </Card>
         ) : (
           <div className="space-y-4">
             {offers.map((offer) => (
-              <Card key={offer.auction_id} className="bg-[#1A1A2E] border-white/10 overflow-hidden">
+              <Card key={offer.auction_id} className="bg-[#1A1A2E] border-gray-200 overflow-hidden">
                 <CardContent className="p-0">
                   <div className="flex flex-col md:flex-row">
                     {/* Image */}
@@ -140,29 +140,29 @@ export default function BuyItNowPage() {
                     
                     {/* Content */}
                     <div className="flex-1 p-4">
-                      <h3 className="text-white text-lg font-bold mb-3">{offer.product_name}</h3>
+                      <h3 className="text-gray-800 text-lg font-bold mb-3">{offer.product_name}</h3>
                       
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
                         <div>
-                          <p className="text-[#94A3B8] text-xs">{t.retailPrice}</p>
-                          <p className="text-white line-through">€{offer.retail_price}</p>
+                          <p className="text-gray-500 text-xs">{t.retailPrice}</p>
+                          <p className="text-gray-800 line-through">€{offer.retail_price}</p>
                         </div>
                         <div>
-                          <p className="text-[#94A3B8] text-xs">{t.yourBids}</p>
-                          <p className="text-white">{offer.bids_placed} Gebote</p>
+                          <p className="text-gray-500 text-xs">{t.yourBids}</p>
+                          <p className="text-gray-800">{offer.bids_placed} Gebote</p>
                         </div>
                         <div>
-                          <p className="text-[#94A3B8] text-xs">{t.bidCredit}</p>
+                          <p className="text-gray-500 text-xs">{t.bidCredit}</p>
                           <p className="text-[#10B981]">-€{offer.applied_credit}</p>
                         </div>
                         <div>
-                          <p className="text-[#94A3B8] text-xs">{t.finalPrice}</p>
+                          <p className="text-gray-500 text-xs">{t.finalPrice}</p>
                           <p className="text-[#F59E0B] text-xl font-bold">€{offer.final_price}</p>
                         </div>
                       </div>
                       
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center text-[#94A3B8] text-sm">
+                        <div className="flex items-center text-gray-500 text-sm">
                           <Clock className="w-4 h-4 mr-1" />
                           {t.validUntil}: {new Date(offer.valid_until).toLocaleDateString()}
                         </div>

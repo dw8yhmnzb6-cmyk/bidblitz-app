@@ -357,10 +357,10 @@ export default function InfluencerBecome() {
       <div className="min-h-screen pt-24 pb-12 px-4 flex items-center justify-center">
         <div className="text-center max-w-md">
           <div className="w-24 h-24 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center mx-auto mb-6">
-            <Check className="w-12 h-12 text-white" />
+            <Check className="w-12 h-12 text-gray-800" />
           </div>
-          <h1 className="text-3xl font-bold text-white mb-4">{t.successTitle}</h1>
-          <p className="text-gray-400 mb-6">{t.successDesc}</p>
+          <h1 className="text-3xl font-bold text-gray-800 mb-4">{t.successTitle}</h1>
+          <p className="text-gray-500 mb-6">{t.successDesc}</p>
           <Link to="/">
             <Button className="bg-gradient-to-r from-cyan-500 to-cyan-600">
               {t.backToHome}
@@ -382,11 +382,11 @@ export default function InfluencerBecome() {
             {t.badge}
           </div>
           
-          <h1 className="text-4xl md:text-5xl font-black text-white mb-6">
+          <h1 className="text-4xl md:text-5xl font-black text-gray-800 mb-6">
             {t.heroTitle} <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-amber-500">{t.heroTitleHighlight}</span>
           </h1>
           
-          <p className="text-xl text-gray-300 mb-8 max-w-2xl mx-auto">
+          <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
             {t.heroDesc} <span className="text-yellow-400 font-bold">{t.commission}</span> {t.heroDescEnd}
           </p>
           
@@ -399,7 +399,7 @@ export default function InfluencerBecome() {
               {t.applyNow}
             </Button>
             <Link to="/influencer-login">
-              <Button variant="outline" className="border-white/30 text-white hover:bg-white/10 px-8 py-3">
+              <Button variant="outline" className="border-white/30 text-gray-800 hover:bg-white/10 px-8 py-3">
                 {t.alreadyPartner}
               </Button>
             </Link>
@@ -412,27 +412,27 @@ export default function InfluencerBecome() {
         <div className="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="glass-card rounded-xl p-5 text-center">
             <p className="text-3xl font-black text-yellow-400">15%</p>
-            <p className="text-gray-400 text-sm">{t.maxCommission}</p>
+            <p className="text-gray-500 text-sm">{t.maxCommission}</p>
           </div>
           <div className="glass-card rounded-xl p-5 text-center">
             <p className="text-3xl font-black text-cyan-400">50+</p>
-            <p className="text-gray-400 text-sm">{t.activePartners}</p>
+            <p className="text-gray-500 text-sm">{t.activePartners}</p>
           </div>
           <div className="glass-card rounded-xl p-5 text-center">
             <p className="text-3xl font-black text-green-400">€10K+</p>
-            <p className="text-gray-400 text-sm">{t.paidOut}</p>
+            <p className="text-gray-500 text-sm">{t.paidOut}</p>
           </div>
           <div className="glass-card rounded-xl p-5 text-center">
             <p className="text-3xl font-black text-purple-400">24h</p>
-            <p className="text-gray-400 text-sm">{t.activation}</p>
+            <p className="text-gray-500 text-sm">{t.activation}</p>
           </div>
         </div>
       </section>
       
       {/* Benefits */}
-      <section className="py-16 px-4 bg-[#0F0F16]/50">
+      <section className="py-16 px-4 bg-gradient-to-b from-cyan-50 to-cyan-100/50">
         <div className="max-w-5xl mx-auto">
-          <h2 className="text-3xl font-bold text-white text-center mb-12">
+          <h2 className="text-3xl font-bold text-gray-800 text-center mb-12">
             {t.benefitsTitle}
           </h2>
           
@@ -442,8 +442,8 @@ export default function InfluencerBecome() {
                 <div className="w-12 h-12 rounded-lg bg-yellow-400/20 flex items-center justify-center text-yellow-400 mb-4">
                   {benefit.icon}
                 </div>
-                <h3 className="text-lg font-bold text-white mb-2">{benefit.title}</h3>
-                <p className="text-gray-400">{benefit.desc}</p>
+                <h3 className="text-lg font-bold text-gray-800 mb-2">{benefit.title}</h3>
+                <p className="text-gray-500">{benefit.desc}</p>
               </div>
             ))}
           </div>
@@ -453,7 +453,7 @@ export default function InfluencerBecome() {
       {/* How it works */}
       <section className="py-16 px-4">
         <div className="max-w-5xl mx-auto">
-          <h2 className="text-3xl font-bold text-white text-center mb-12">
+          <h2 className="text-3xl font-bold text-gray-800 text-center mb-12">
             {t.howItWorks}
           </h2>
           
@@ -463,8 +463,8 @@ export default function InfluencerBecome() {
                 <div className="w-16 h-16 rounded-full bg-gradient-to-br from-yellow-400 to-amber-500 flex items-center justify-center text-2xl font-black text-black mx-auto mb-4">
                   {step.num}
                 </div>
-                <h3 className="text-lg font-bold text-white mb-1">{step.title}</h3>
-                <p className="text-gray-400 text-sm">{step.desc}</p>
+                <h3 className="text-lg font-bold text-gray-800 mb-1">{step.title}</h3>
+                <p className="text-gray-500 text-sm">{step.desc}</p>
               </div>
             ))}
           </div>
@@ -476,7 +476,7 @@ export default function InfluencerBecome() {
         <section id="apply" className="py-16 px-4">
           <div className="max-w-xl mx-auto">
             <div className="glass-card rounded-2xl p-8">
-              <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
+              <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
                 <Star className="w-6 h-6 text-yellow-400" />
                 {t.becomePartner}
               </h2>
@@ -484,23 +484,23 @@ export default function InfluencerBecome() {
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-white">{t.name} *</Label>
+                    <Label className="text-gray-800">{t.name} *</Label>
                     <Input
                       value={form.name}
                       onChange={(e) => setForm({...form, name: e.target.value})}
                       placeholder={t.yourName}
-                      className="bg-[#181824] border-white/10 text-white"
+                      className="bg-white border-gray-200 text-gray-800"
                       required
                     />
                   </div>
                   <div>
-                    <Label className="text-white">{t.email} *</Label>
+                    <Label className="text-gray-800">{t.email} *</Label>
                     <Input
                       type="email"
                       value={form.email}
                       onChange={(e) => setForm({...form, email: e.target.value})}
                       placeholder={t.yourEmail}
-                      className="bg-[#181824] border-white/10 text-white"
+                      className="bg-white border-gray-200 text-gray-800"
                       required
                     />
                   </div>
@@ -508,56 +508,56 @@ export default function InfluencerBecome() {
                 
                 <div className="grid grid-cols-3 gap-4">
                   <div>
-                    <Label className="text-white flex items-center gap-1">
+                    <Label className="text-gray-800 flex items-center gap-1">
                       <Instagram className="w-4 h-4" /> {t.instagram}
                     </Label>
                     <Input
                       value={form.instagram}
                       onChange={(e) => setForm({...form, instagram: e.target.value})}
                       placeholder={t.username}
-                      className="bg-[#181824] border-white/10 text-white"
+                      className="bg-white border-gray-200 text-gray-800"
                     />
                   </div>
                   <div>
-                    <Label className="text-white flex items-center gap-1">
+                    <Label className="text-gray-800 flex items-center gap-1">
                       <Youtube className="w-4 h-4" /> {t.youtube}
                     </Label>
                     <Input
                       value={form.youtube}
                       onChange={(e) => setForm({...form, youtube: e.target.value})}
                       placeholder={t.channel}
-                      className="bg-[#181824] border-white/10 text-white"
+                      className="bg-white border-gray-200 text-gray-800"
                     />
                   </div>
                   <div>
-                    <Label className="text-white">{t.tiktok}</Label>
+                    <Label className="text-gray-800">{t.tiktok}</Label>
                     <Input
                       value={form.tiktok}
                       onChange={(e) => setForm({...form, tiktok: e.target.value})}
                       placeholder={t.username}
-                      className="bg-[#181824] border-white/10 text-white"
+                      className="bg-white border-gray-200 text-gray-800"
                     />
                   </div>
                 </div>
                 
                 <div>
-                  <Label className="text-white">{t.followers} *</Label>
+                  <Label className="text-gray-800">{t.followers} *</Label>
                   <Input
                     value={form.followers}
                     onChange={(e) => setForm({...form, followers: e.target.value})}
                     placeholder={t.followersPlaceholder}
-                    className="bg-[#181824] border-white/10 text-white"
+                    className="bg-white border-gray-200 text-gray-800"
                     required
                   />
                 </div>
                 
                 <div>
-                  <Label className="text-white">{t.message}</Label>
+                  <Label className="text-gray-800">{t.message}</Label>
                   <textarea
                     value={form.message}
                     onChange={(e) => setForm({...form, message: e.target.value})}
                     placeholder={t.messagePlaceholder}
-                    className="w-full bg-[#181824] border border-white/10 text-white rounded-md p-3 h-24 resize-none"
+                    className="w-full bg-white border border-gray-200 text-gray-800 rounded-md p-3 h-24 resize-none"
                   />
                 </div>
                 

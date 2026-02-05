@@ -23,9 +23,9 @@ const StatCard = ({ icon: Icon, label, value, subValue, color, trend }) => (
   <div className="glass-card rounded-xl p-4 sm:p-6">
     <div className="flex items-start justify-between">
       <div>
-        <p className="text-[#94A3B8] text-xs sm:text-sm">{label}</p>
-        <p className={`text-xl sm:text-2xl font-bold ${color || 'text-white'} mt-1`}>{value}</p>
-        {subValue && <p className="text-[#94A3B8] text-xs mt-1">{subValue}</p>}
+        <p className="text-gray-500 text-xs sm:text-sm">{label}</p>
+        <p className={`text-xl sm:text-2xl font-bold ${color || 'text-gray-800'} mt-1`}>{value}</p>
+        {subValue && <p className="text-gray-500 text-xs mt-1">{subValue}</p>}
       </div>
       <div className={`p-2 sm:p-3 rounded-xl bg-white/5`}>
         <Icon className={`w-5 h-5 sm:w-6 sm:h-6 ${color}`} />
@@ -47,18 +47,18 @@ const PackageCard = ({ pkg, selected, onSelect, onInvest, loading, t = {} }) => 
   return (
     <div 
       className={`relative glass-card rounded-2xl p-6 border-2 transition-all cursor-pointer ${
-        selected ? 'border-[#7C3AED] bg-[#7C3AED]/10' : 'border-transparent hover:border-white/20'
+        selected ? 'border-[#7C3AED] bg-[#7C3AED]/10' : 'border-transparent hover:border-gray-300'
       }`}
       onClick={() => onSelect(pkg.id)}
     >
       {isPopular && (
-        <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-[#7C3AED] rounded-full text-xs font-bold text-white">
+        <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-[#7C3AED] rounded-full text-xs font-bold text-gray-800">
           {t.popular || 'BELIEBT'}
         </div>
       )}
       
       <div className="text-center mb-4">
-        <h3 className="text-xl font-bold text-white">{pkg.label}</h3>
+        <h3 className="text-xl font-bold text-gray-800">{pkg.label}</h3>
         <p className="text-3xl font-bold text-[#FFD700] mt-2">
           €{pkg.amount.toLocaleString('de-DE')}
         </p>
@@ -67,7 +67,7 @@ const PackageCard = ({ pkg, selected, onSelect, onInvest, loading, t = {} }) => 
       
       <div className="space-y-2 mb-6">
         {pkg.perks.map((perk, i) => (
-          <div key={i} className="flex items-center gap-2 text-sm text-[#94A3B8]">
+          <div key={i} className="flex items-center gap-2 text-sm text-gray-500">
             <Check className="w-4 h-4 text-[#10B981]" />
             {perk}
           </div>
@@ -208,22 +208,22 @@ export default function InvestorPortal() {
   
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0D0D14] flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-b from-cyan-50 to-cyan-100 flex items-center justify-center">
         <div className="animate-spin rounded-full h-10 w-10 border-4 border-[#7C3AED] border-t-transparent" />
       </div>
     );
   }
   
   return (
-    <div className="min-h-screen bg-[#0D0D14] pt-20 pb-12 px-4" data-testid="investor-portal">
+    <div className="min-h-screen bg-gradient-to-b from-cyan-50 to-cyan-100 pt-20 pb-12 px-4" data-testid="investor-portal">
       <div className="max-w-7xl mx-auto">
         
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl sm:text-4xl font-bold text-white mb-2">
+          <h1 className="text-3xl sm:text-4xl font-bold text-gray-800 mb-2">
             💼 {t.title || 'Investor Portal'}
           </h1>
-          <p className="text-[#94A3B8]">
+          <p className="text-gray-500">
             {t.subtitle || 'Investieren Sie in die Zukunft von BidBlitz'}
           </p>
         </div>
@@ -240,8 +240,8 @@ export default function InvestorPortal() {
               onClick={() => setActiveTab(tab.id)}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg whitespace-nowrap transition-all ${
                 activeTab === tab.id
-                  ? 'bg-[#7C3AED] text-white'
-                  : 'bg-[#181824] text-[#94A3B8] hover:bg-[#1A1A2E]'
+                  ? 'bg-[#7C3AED] text-gray-800'
+                  : 'bg-white text-gray-500 hover:bg-[#1A1A2E]'
               }`}
             >
               <tab.icon className="w-4 h-4" />
@@ -288,7 +288,7 @@ export default function InvestorPortal() {
             
             {/* Growth Chart */}
             <div className="glass-card rounded-xl p-6">
-              <h3 className="text-white font-bold text-lg mb-4 flex items-center gap-2">
+              <h3 className="text-gray-800 font-bold text-lg mb-4 flex items-center gap-2">
                 <TrendingUp className="w-5 h-5 text-[#7C3AED]" />
                 {t.growthChart || 'Wachstumskurve (12 Monate)'}
               </h3>
@@ -331,32 +331,32 @@ export default function InvestorPortal() {
             
             {/* Why Invest Section */}
             <div className="glass-card rounded-xl p-6">
-              <h3 className="text-white font-bold text-lg mb-4">{t.whyInvest || 'Warum in BidBlitz investieren?'}</h3>
+              <h3 className="text-gray-800 font-bold text-lg mb-4">{t.whyInvest || 'Warum in BidBlitz investieren?'}</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="p-4 bg-[#181824] rounded-lg">
+                <div className="p-4 bg-white rounded-lg">
                   <div className="w-10 h-10 bg-[#7C3AED]/20 rounded-lg flex items-center justify-center mb-3">
                     <TrendingUp className="w-5 h-5 text-[#7C3AED]" />
                   </div>
-                  <h4 className="text-white font-medium mb-1">{t.strongGrowth || 'Starkes Wachstum'}</h4>
-                  <p className="text-[#94A3B8] text-sm">
+                  <h4 className="text-gray-800 font-medium mb-1">{t.strongGrowth || 'Starkes Wachstum'}</h4>
+                  <p className="text-gray-500 text-sm">
                     {stats.growth_indicators?.monthly_growth_rate || 0}% {t.monthlyGrowth || 'monatliches Nutzerwachstum'}
                   </p>
                 </div>
-                <div className="p-4 bg-[#181824] rounded-lg">
+                <div className="p-4 bg-white rounded-lg">
                   <div className="w-10 h-10 bg-[#06B6D4]/20 rounded-lg flex items-center justify-center mb-3">
                     <Building2 className="w-5 h-5 text-[#06B6D4]" />
                   </div>
-                  <h4 className="text-white font-medium mb-1">{t.provenModel || 'Bewährtes Modell'}</h4>
-                  <p className="text-[#94A3B8] text-sm">
+                  <h4 className="text-gray-800 font-medium mb-1">{t.provenModel || 'Bewährtes Modell'}</h4>
+                  <p className="text-gray-500 text-sm">
                     {t.provenModelDesc || 'Penny-Auktionen sind ein etabliertes Geschäftsmodell'}
                   </p>
                 </div>
-                <div className="p-4 bg-[#181824] rounded-lg">
+                <div className="p-4 bg-white rounded-lg">
                   <div className="w-10 h-10 bg-[#10B981]/20 rounded-lg flex items-center justify-center mb-3">
                     <Target className="w-5 h-5 text-[#10B981]" />
                   </div>
-                  <h4 className="text-white font-medium mb-1">{t.clearStrategy || 'Klare Strategie'}</h4>
-                  <p className="text-[#94A3B8] text-sm">
+                  <h4 className="text-gray-800 font-medium mb-1">{t.clearStrategy || 'Klare Strategie'}</h4>
+                  <p className="text-gray-500 text-sm">
                     {t.clearStrategyDesc || 'Expansion in neue Märkte und Produktkategorien'}
                   </p>
                 </div>
@@ -365,8 +365,8 @@ export default function InvestorPortal() {
             
             {/* CTA */}
             <div className="glass-card rounded-xl p-6 text-center bg-gradient-to-r from-[#7C3AED]/20 to-[#06B6D4]/20 border border-[#7C3AED]/30">
-              <h3 className="text-2xl font-bold text-white mb-2">{t.bePartOf || 'Werden Sie Teil unserer Erfolgsgeschichte'}</h3>
-              <p className="text-[#94A3B8] mb-4">{t.investAndProfit || 'Investieren Sie jetzt und profitieren Sie vom Wachstum'}</p>
+              <h3 className="text-2xl font-bold text-gray-800 mb-2">{t.bePartOf || 'Werden Sie Teil unserer Erfolgsgeschichte'}</h3>
+              <p className="text-gray-500 mb-4">{t.investAndProfit || 'Investieren Sie jetzt und profitieren Sie vom Wachstum'}</p>
               <Button 
                 onClick={() => setActiveTab('invest')}
                 className="btn-primary text-lg px-8"
@@ -383,62 +383,62 @@ export default function InvestorPortal() {
             
             {/* Vision Section */}
             <div className="glass-card rounded-2xl p-8 bg-gradient-to-br from-[#7C3AED]/10 to-[#06B6D4]/10 border border-[#7C3AED]/20">
-              <h2 className="text-2xl font-bold text-white mb-4 text-center">🚀 {t.ourVision || 'Unsere Vision'}</h2>
-              <p className="text-[#94A3B8] text-center max-w-3xl mx-auto mb-6">
+              <h2 className="text-2xl font-bold text-gray-800 mb-4 text-center">🚀 {t.ourVision || 'Unsere Vision'}</h2>
+              <p className="text-gray-500 text-center max-w-3xl mx-auto mb-6">
                 {t.visionDesc || 'BidBlitz revolutioniert den E-Commerce durch spannende Penny-Auktionen. Mit Ihrer Investition helfen Sie uns, europaweit zu expandieren und die führende Plattform für Schnäppchenjäger zu werden.'}
               </p>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="text-center p-4">
                   <div className="text-3xl font-bold text-[#FFD700]">€5M+</div>
-                  <div className="text-[#94A3B8] text-sm">{t.targetRevenue || 'Zielumsatz'} 2027</div>
+                  <div className="text-gray-500 text-sm">{t.targetRevenue || 'Zielumsatz'} 2027</div>
                 </div>
                 <div className="text-center p-4">
                   <div className="text-3xl font-bold text-[#10B981]">100K+</div>
-                  <div className="text-[#94A3B8] text-sm">{t.userTarget || 'Nutzer-Ziel'}</div>
+                  <div className="text-gray-500 text-sm">{t.userTarget || 'Nutzer-Ziel'}</div>
                 </div>
                 <div className="text-center p-4">
                   <div className="text-3xl font-bold text-[#06B6D4]">10+</div>
-                  <div className="text-[#94A3B8] text-sm">{t.countriesBy || 'Länder bis'} 2028</div>
+                  <div className="text-gray-500 text-sm">{t.countriesBy || 'Länder bis'} 2028</div>
                 </div>
               </div>
             </div>
             
             {/* What Investors Get */}
             <div className="glass-card rounded-2xl p-8">
-              <h2 className="text-2xl font-bold text-white mb-6 text-center">💎 {t.whatYouGet || 'Was Sie als Investor erhalten'}</h2>
+              <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">💎 {t.whatYouGet || 'Was Sie als Investor erhalten'}</h2>
               
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {/* Rendite */}
-                <div className="p-5 bg-[#181824] rounded-xl border border-[#10B981]/30">
+                <div className="p-5 bg-white rounded-xl border border-[#10B981]/30">
                   <div className="w-12 h-12 bg-[#10B981]/20 rounded-xl flex items-center justify-center mb-4">
                     <TrendingUp className="w-6 h-6 text-[#10B981]" />
                   </div>
-                  <h3 className="text-white font-bold mb-2">📈 {t.returnPotential || 'Rendite-Potenzial'}</h3>
-                  <p className="text-[#94A3B8] text-sm mb-3">
+                  <h3 className="text-gray-800 font-bold mb-2">📈 {t.returnPotential || 'Rendite-Potenzial'}</h3>
+                  <p className="text-gray-500 text-sm mb-3">
                     {t.returnDesc || 'Profitieren Sie vom Wachstum. Bei erfolgreicher Expansion steigt der Wert Ihrer Anteile.'}
                   </p>
                   <div className="text-[#10B981] font-bold">{t.targetReturn || 'Ziel'}: 20-50% p.a.*</div>
                 </div>
                 
                 {/* Anteile */}
-                <div className="p-5 bg-[#181824] rounded-xl border border-[#7C3AED]/30">
+                <div className="p-5 bg-white rounded-xl border border-[#7C3AED]/30">
                   <div className="w-12 h-12 bg-[#7C3AED]/20 rounded-xl flex items-center justify-center mb-4">
                     <Star className="w-6 h-6 text-[#7C3AED]" />
                   </div>
-                  <h3 className="text-white font-bold mb-2">🏆 {t.companyShares || 'Unternehmensanteile'}</h3>
-                  <p className="text-[#94A3B8] text-sm mb-3">
+                  <h3 className="text-gray-800 font-bold mb-2">🏆 {t.companyShares || 'Unternehmensanteile'}</h3>
+                  <p className="text-gray-500 text-sm mb-3">
                     {t.sharesDesc || 'Sie werden Miteigentümer von BidBlitz mit Stimmrecht bei wichtigen Entscheidungen.'}
                   </p>
                   <div className="text-[#7C3AED] font-bold">0.01% - 1% {t.equity || 'Equity'}</div>
                 </div>
                 
                 {/* Exklusive Vorteile */}
-                <div className="p-5 bg-[#181824] rounded-xl border border-[#FFD700]/30">
+                <div className="p-5 bg-white rounded-xl border border-[#FFD700]/30">
                   <div className="w-12 h-12 bg-[#FFD700]/20 rounded-xl flex items-center justify-center mb-4">
                     <Gift className="w-6 h-6 text-[#FFD700]" />
                   </div>
-                  <h3 className="text-white font-bold mb-2">🎁 {t.exclusiveBenefits || 'Exklusive Vorteile'}</h3>
-                  <ul className="text-[#94A3B8] text-sm space-y-1">
+                  <h3 className="text-gray-800 font-bold mb-2">🎁 {t.exclusiveBenefits || 'Exklusive Vorteile'}</h3>
+                  <ul className="text-gray-500 text-sm space-y-1">
                     <li>✓ {t.vipAccessLifetime || 'VIP-Zugang lebenslang'}</li>
                     <li>✓ {t.monthlyFreeBids || 'Monatliche Gratis-Gebote'}</li>
                     <li>✓ {t.exclusiveAuctions || 'Exklusive Auktionen'}</li>
@@ -447,12 +447,12 @@ export default function InvestorPortal() {
                 </div>
                 
                 {/* Transparenz */}
-                <div className="p-5 bg-[#181824] rounded-xl border border-[#06B6D4]/30">
+                <div className="p-5 bg-white rounded-xl border border-[#06B6D4]/30">
                   <div className="w-12 h-12 bg-[#06B6D4]/20 rounded-xl flex items-center justify-center mb-4">
                     <BarChart3 className="w-6 h-6 text-[#06B6D4]" />
                   </div>
-                  <h3 className="text-white font-bold mb-2">📊 {t.fullTransparency || 'Volle Transparenz'}</h3>
-                  <ul className="text-[#94A3B8] text-sm space-y-1">
+                  <h3 className="text-gray-800 font-bold mb-2">📊 {t.fullTransparency || 'Volle Transparenz'}</h3>
+                  <ul className="text-gray-500 text-sm space-y-1">
                     <li>✓ {t.monthlyReports || 'Monatliche Reports'}</li>
                     <li>✓ {t.realtimeDashboard || 'Echtzeit-Dashboard'}</li>
                     <li>✓ {t.quarterlyMeetings || 'Quartals-Meetings'}</li>
@@ -464,8 +464,8 @@ export default function InvestorPortal() {
             
             {/* Package Selection */}
             <div>
-              <h2 className="text-2xl font-bold text-white mb-2 text-center">{t.choosePackage || 'Wählen Sie Ihr Investment-Paket'}</h2>
-              <p className="text-[#94A3B8] text-center mb-6">{t.transparentTerms || 'Transparente Konditionen • Sofortige Zahlung • Sichere Abwicklung'}</p>
+              <h2 className="text-2xl font-bold text-gray-800 mb-2 text-center">{t.choosePackage || 'Wählen Sie Ihr Investment-Paket'}</h2>
+              <p className="text-gray-500 text-center mb-6">{t.transparentTerms || 'Transparente Konditionen • Sofortige Zahlung • Sichere Abwicklung'}</p>
               
               {/* Package Cards */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -485,15 +485,15 @@ export default function InvestorPortal() {
             
             {/* Trust Badges */}
             <div className="flex flex-wrap justify-center gap-6">
-              <div className="flex items-center gap-2 text-[#94A3B8]">
+              <div className="flex items-center gap-2 text-gray-500">
                 <Shield className="w-5 h-5 text-[#10B981]" />
                 <span className="text-sm">{t.sslEncrypted || 'SSL-verschlüsselt'}</span>
               </div>
-              <div className="flex items-center gap-2 text-[#94A3B8]">
+              <div className="flex items-center gap-2 text-gray-500">
                 <Star className="w-5 h-5 text-[#F59E0B]" />
                 <span className="text-sm">{t.stripePayments || 'Stripe-Zahlungen'}</span>
               </div>
-              <div className="flex items-center gap-2 text-[#94A3B8]">
+              <div className="flex items-center gap-2 text-gray-500">
                 <CheckCircle className="w-5 h-5 text-[#7C3AED]" />
                 <span className="text-sm">{t.gdprCompliant || 'DSGVO-konform'}</span>
               </div>
@@ -511,9 +511,9 @@ export default function InvestorPortal() {
           <div className="space-y-6">
             {!token ? (
               <div className="glass-card rounded-xl p-8 text-center">
-                <Briefcase className="w-12 h-12 text-[#94A3B8] mx-auto mb-3" />
-                <p className="text-white font-medium">{t.pleaseLogin || 'Bitte melden Sie sich an'}</p>
-                <p className="text-[#94A3B8] text-sm mt-1">
+                <Briefcase className="w-12 h-12 text-gray-500 mx-auto mb-3" />
+                <p className="text-gray-800 font-medium">{t.pleaseLogin || 'Bitte melden Sie sich an'}</p>
+                <p className="text-gray-500 text-sm mt-1">
                   {t.loginToSee || 'Um Ihre Investitionen zu sehen, müssen Sie angemeldet sein'}
                 </p>
                 <Button 
@@ -525,8 +525,8 @@ export default function InvestorPortal() {
               </div>
             ) : myInvestments.length === 0 ? (
               <div className="glass-card rounded-xl p-8 text-center">
-                <Briefcase className="w-12 h-12 text-[#94A3B8] mx-auto mb-3" />
-                <p className="text-[#94A3B8]">{t.noInvestmentsYet || 'Sie haben noch keine Investitionen'}</p>
+                <Briefcase className="w-12 h-12 text-gray-500 mx-auto mb-3" />
+                <p className="text-gray-500">{t.noInvestmentsYet || 'Sie haben noch keine Investitionen'}</p>
                 <Button 
                   onClick={() => setActiveTab('invest')}
                   className="btn-primary mt-4"
@@ -540,24 +540,24 @@ export default function InvestorPortal() {
                 <div className="glass-card rounded-xl p-6">
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div>
-                      <p className="text-[#94A3B8] text-sm">{t.totalInvestment || 'Gesamtinvestition'}</p>
+                      <p className="text-gray-500 text-sm">{t.totalInvestment || 'Gesamtinvestition'}</p>
                       <p className="text-2xl font-bold text-[#10B981]">
                         €{myInvestments.reduce((sum, inv) => sum + (inv.amount || 0), 0).toLocaleString('de-DE')}
                       </p>
                     </div>
                     <div>
-                      <p className="text-[#94A3B8] text-sm">{t.share || 'Anteil'}</p>
+                      <p className="text-gray-500 text-sm">{t.share || 'Anteil'}</p>
                       <p className="text-2xl font-bold text-[#7C3AED]">
                         {myInvestments[0]?.equity || '0%'}
                       </p>
                     </div>
                     <div>
-                      <p className="text-[#94A3B8] text-sm">{t.status || 'Status'}</p>
-                      <p className="text-2xl font-bold text-white">{t.active || 'Aktiv'}</p>
+                      <p className="text-gray-500 text-sm">{t.status || 'Status'}</p>
+                      <p className="text-2xl font-bold text-gray-800">{t.active || 'Aktiv'}</p>
                     </div>
                     <div>
-                      <p className="text-[#94A3B8] text-sm">{t.since || 'Seit'}</p>
-                      <p className="text-2xl font-bold text-white">
+                      <p className="text-gray-500 text-sm">{t.since || 'Seit'}</p>
+                      <p className="text-2xl font-bold text-gray-800">
                         {myInvestments[0] ? new Date(myInvestments[0].created_at).toLocaleDateString('de-DE', {month: 'short', year: 'numeric'}) : '-'}
                       </p>
                     </div>
@@ -565,13 +565,13 @@ export default function InvestorPortal() {
                 </div>
                 
                 {/* Investment History */}
-                <h3 className="text-white font-bold text-lg">{t.investmentHistory || 'Investitions-Historie'}</h3>
+                <h3 className="text-gray-800 font-bold text-lg">{t.investmentHistory || 'Investitions-Historie'}</h3>
                 {myInvestments.map(inv => (
                   <div key={inv.id} className="glass-card rounded-xl p-4">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-white font-medium">€{inv.amount?.toLocaleString('de-DE')}</p>
-                        <p className="text-[#94A3B8] text-xs">
+                        <p className="text-gray-800 font-medium">€{inv.amount?.toLocaleString('de-DE')}</p>
+                        <p className="text-gray-500 text-xs">
                           {new Date(inv.created_at).toLocaleDateString('de-DE')} • {inv.investment_type}
                         </p>
                       </div>
@@ -587,7 +587,7 @@ export default function InvestorPortal() {
                     {inv.perks && (
                       <div className="mt-3 flex flex-wrap gap-2">
                         {inv.perks.map((perk, i) => (
-                          <span key={i} className="px-2 py-1 bg-white/5 rounded text-xs text-[#94A3B8]">
+                          <span key={i} className="px-2 py-1 bg-white/5 rounded text-xs text-gray-500">
                             {perk}
                           </span>
                         ))}

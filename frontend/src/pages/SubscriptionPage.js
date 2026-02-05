@@ -182,16 +182,16 @@ export default function SubscriptionPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0D0D14] py-8 px-4" data-testid="subscription-page">
+    <div className="min-h-screen bg-gradient-to-b from-cyan-50 to-cyan-100 py-8 px-4" data-testid="subscription-page">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="text-center mb-12">
           <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-[#7C3AED] to-[#F59E0B] mb-4">
-            <Calendar className="w-10 h-10 text-white" />
+            <Calendar className="w-10 h-10 text-gray-800" />
           </div>
-          <h1 className="text-4xl font-bold text-white mb-2">{t.title}</h1>
+          <h1 className="text-4xl font-bold text-gray-800 mb-2">{t.title}</h1>
           <p className="text-xl text-[#7C3AED]">{t.subtitle}</p>
-          <p className="text-[#94A3B8] mt-2 max-w-xl mx-auto">{t.description}</p>
+          <p className="text-gray-500 mt-2 max-w-xl mx-auto">{t.description}</p>
         </div>
 
         {/* Current Subscription */}
@@ -204,8 +204,8 @@ export default function SubscriptionPage() {
                     {getPlanIcon(mySubscription.plan_id)}
                   </div>
                   <div>
-                    <h3 className="text-white text-xl font-bold">{t.currentPlan}: {mySubscription.plan_name}</h3>
-                    <p className="text-[#94A3B8]">
+                    <h3 className="text-gray-800 text-xl font-bold">{t.currentPlan}: {mySubscription.plan_name}</h3>
+                    <p className="text-gray-500">
                       {mySubscription.bids_remaining} Gebote übrig • {mySubscription.days_until_renewal} {t.daysLeft}
                     </p>
                     {mySubscription.status === 'canceling' && (
@@ -238,19 +238,19 @@ export default function SubscriptionPage() {
 
         {/* Plans Grid */}
         {loading ? (
-          <div className="text-center py-12 text-[#94A3B8]">Laden...</div>
+          <div className="text-center py-12 text-gray-500">Laden...</div>
         ) : (
           <div className="grid md:grid-cols-3 gap-6">
             {plans.map((plan) => (
               <Card 
                 key={plan.id} 
-                className={`bg-[#1A1A2E] border-white/10 relative overflow-hidden ${
+                className={`bg-[#1A1A2E] border-gray-200 relative overflow-hidden ${
                   plan.popular ? 'ring-2 ring-[#7C3AED] scale-105' : ''
                 }`}
               >
                 {plan.popular && (
                   <div className="absolute top-4 right-4">
-                    <Badge className="bg-[#7C3AED] text-white">
+                    <Badge className="bg-[#7C3AED] text-gray-800">
                       <Star className="w-3 h-3 mr-1" />
                       {t.popular}
                     </Badge>
@@ -258,26 +258,26 @@ export default function SubscriptionPage() {
                 )}
                 
                 <CardHeader className="text-center pb-0">
-                  <div className={`w-16 h-16 rounded-full bg-gradient-to-br ${getPlanColor(plan.id)} mx-auto mb-4 flex items-center justify-center text-white`}>
+                  <div className={`w-16 h-16 rounded-full bg-gradient-to-br ${getPlanColor(plan.id)} mx-auto mb-4 flex items-center justify-center text-gray-800`}>
                     {getPlanIcon(plan.id)}
                   </div>
-                  <CardTitle className="text-white text-2xl">
+                  <CardTitle className="text-gray-800 text-2xl">
                     {language === 'de' ? plan.name_de : plan.name}
                   </CardTitle>
                   <div className="mt-2">
-                    <span className="text-4xl font-bold text-white">€{plan.price}</span>
-                    <span className="text-[#94A3B8]">{t.perMonth}</span>
+                    <span className="text-4xl font-bold text-gray-800">€{plan.price}</span>
+                    <span className="text-gray-500">{t.perMonth}</span>
                   </div>
                 </CardHeader>
                 
                 <CardContent className="pt-6">
                   {/* Total Bids */}
-                  <div className="bg-[#0D0D14] rounded-lg p-4 mb-4 text-center">
-                    <p className="text-[#94A3B8] text-sm">{t.total}</p>
+                  <div className="bg-gradient-to-b from-cyan-50 to-cyan-100 rounded-lg p-4 mb-4 text-center">
+                    <p className="text-gray-500 text-sm">{t.total}</p>
                     <p className="text-3xl font-bold text-[#10B981]">
                       {plan.total_bids}
                     </p>
-                    <p className="text-[#94A3B8] text-xs">
+                    <p className="text-gray-500 text-xs">
                       {plan.bids_per_month} + {plan.bonus_bids} Bonus
                     </p>
                   </div>
@@ -285,7 +285,7 @@ export default function SubscriptionPage() {
                   {/* Features */}
                   <ul className="space-y-3 mb-6">
                     {(language === 'de' ? plan.features_de : plan.features_en)?.map((feature, i) => (
-                      <li key={i} className="flex items-center text-[#94A3B8]">
+                      <li key={i} className="flex items-center text-gray-500">
                         <Check className="w-4 h-4 text-[#10B981] mr-2 flex-shrink-0" />
                         {feature}
                       </li>

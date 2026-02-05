@@ -65,9 +65,9 @@ export default function PaymentSuccess() {
               <div className="w-20 h-20 rounded-full bg-[#7C3AED]/20 flex items-center justify-center mx-auto mb-6">
                 <Loader2 className="w-10 h-10 text-[#7C3AED] animate-spin" />
               </div>
-              <h1 className="text-2xl font-bold text-white mb-2">Zahlung wird verarbeitet...</h1>
-              <p className="text-[#94A3B8] mb-4">Bitte warten Sie einen Moment</p>
-              <div className="h-2 bg-[#181824] rounded-full overflow-hidden">
+              <h1 className="text-2xl font-bold text-gray-800 mb-2">Zahlung wird verarbeitet...</h1>
+              <p className="text-gray-500 mb-4">Bitte warten Sie einen Moment</p>
+              <div className="h-2 bg-white rounded-full overflow-hidden">
                 <div 
                   className="h-full bg-gradient-to-r from-[#7C3AED] to-[#06B6D4] transition-all duration-500"
                   style={{ width: `${(attempts / 10) * 100}%` }}
@@ -81,14 +81,14 @@ export default function PaymentSuccess() {
               <div className="w-20 h-20 rounded-full bg-[#10B981]/20 flex items-center justify-center mx-auto mb-6">
                 <CheckCircle className="w-10 h-10 text-[#10B981]" />
               </div>
-              <h1 className="text-2xl font-bold text-white mb-2">Zahlung erfolgreich!</h1>
-              <p className="text-[#94A3B8] mb-6">Ihre Gebote wurden Ihrem Konto gutgeschrieben</p>
+              <h1 className="text-2xl font-bold text-gray-800 mb-2">Zahlung erfolgreich!</h1>
+              <p className="text-gray-500 mb-6">Ihre Gebote wurden Ihrem Konto gutgeschrieben</p>
               
               {bidsAdded > 0 && (
-                <div className="flex items-center justify-center gap-3 p-4 rounded-lg bg-[#181824] mb-6">
+                <div className="flex items-center justify-center gap-3 p-4 rounded-lg bg-white mb-6">
                   <Zap className="w-8 h-8 text-[#F59E0B]" />
                   <div className="text-left">
-                    <p className="text-[#94A3B8] text-sm">Hinzugefügt</p>
+                    <p className="text-gray-500 text-sm">Hinzugefügt</p>
                     <p className="text-2xl font-bold text-[#06B6D4]">+{bidsAdded} Gebote</p>
                   </div>
                 </div>
@@ -102,7 +102,7 @@ export default function PaymentSuccess() {
                   </Button>
                 </Link>
                 <Link to="/dashboard" className="block">
-                  <Button variant="outline" className="w-full border-white/10 text-white hover:bg-white/10">
+                  <Button variant="outline" className="w-full border-gray-200 text-gray-800 hover:bg-white/10">
                     Zum Dashboard
                   </Button>
                 </Link>
@@ -115,10 +115,10 @@ export default function PaymentSuccess() {
               <div className="w-20 h-20 rounded-full bg-[#EF4444]/20 flex items-center justify-center mx-auto mb-6">
                 <XCircle className="w-10 h-10 text-[#EF4444]" />
               </div>
-              <h1 className="text-2xl font-bold text-white mb-2">
+              <h1 className="text-2xl font-bold text-gray-800 mb-2">
                 {status === 'timeout' ? 'Zeitüberschreitung' : 'Zahlung fehlgeschlagen'}
               </h1>
-              <p className="text-[#94A3B8] mb-6">
+              <p className="text-gray-500 mb-6">
                 {status === 'timeout' 
                   ? 'Die Zahlungsüberprüfung hat zu lange gedauert. Bitte überprüfen Sie Ihr E-Mail-Postfach.'
                   : 'Die Zahlung konnte nicht verarbeitet werden. Bitte versuchen Sie es erneut.'

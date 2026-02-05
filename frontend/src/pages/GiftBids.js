@@ -343,8 +343,8 @@ export default function GiftBids() {
       <div className="min-h-screen pt-24 pb-12 px-4">
         <div className="max-w-lg mx-auto text-center">
           <Gift className="w-16 h-16 text-pink-400 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-white mb-4">{t.title}</h1>
-          <p className="text-gray-400 mb-6">{t.loginToGift}</p>
+          <h1 className="text-2xl font-bold text-gray-800 mb-4">{t.title}</h1>
+          <p className="text-gray-500 mb-6">{t.loginToGift}</p>
           <Button onClick={() => window.location.href = '/login'} className="bg-pink-500 hover:bg-pink-600">
             {t.login}
           </Button>
@@ -359,17 +359,17 @@ export default function GiftBids() {
         {/* Header */}
         <div className="text-center mb-8">
           <div className="w-20 h-20 rounded-full bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center mx-auto mb-4">
-            <Gift className="w-10 h-10 text-white" />
+            <Gift className="w-10 h-10 text-gray-800" />
           </div>
-          <h1 className="text-3xl font-bold text-white mb-2">{t.title}</h1>
-          <p className="text-gray-400">{t.subtitle}</p>
+          <h1 className="text-3xl font-bold text-gray-800 mb-2">{t.title}</h1>
+          <p className="text-gray-500">{t.subtitle}</p>
         </div>
 
         {/* Customer Number Card */}
         <div className="glass-card rounded-xl p-6 mb-6 bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border border-cyan-500/30">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-              <p className="text-gray-400 text-sm mb-1">{t.yourCustomerNumber}</p>
+              <p className="text-gray-500 text-sm mb-1">{t.yourCustomerNumber}</p>
               <div className="flex items-center gap-3">
                 <code className="text-3xl font-bold text-cyan-400 tracking-wider">{customerNumber || '--------'}</code>
                 <button 
@@ -382,8 +382,8 @@ export default function GiftBids() {
               <p className="text-gray-500 text-xs mt-2">{t.shareNumber}</p>
             </div>
             <div className="text-right">
-              <p className="text-gray-400 text-sm">{t.yourBalance}</p>
-              <p className="text-2xl font-bold text-white">{user?.bids_balance || 0} {t.bids}</p>
+              <p className="text-gray-500 text-sm">{t.yourBalance}</p>
+              <p className="text-2xl font-bold text-gray-800">{user?.bids_balance || 0} {t.bids}</p>
             </div>
           </div>
         </div>
@@ -393,8 +393,8 @@ export default function GiftBids() {
           <Button
             onClick={() => setActiveTab('send')}
             className={`flex-1 ${activeTab === 'send' 
-              ? 'bg-pink-500 text-white' 
-              : 'bg-[#181824] text-gray-400 border border-white/10'}`}
+              ? 'bg-pink-500 text-gray-800' 
+              : 'bg-white text-gray-500 border border-gray-200'}`}
           >
             <Send className="w-4 h-4 mr-2" />
             {t.sendBids}
@@ -402,8 +402,8 @@ export default function GiftBids() {
           <Button
             onClick={() => setActiveTab('history')}
             className={`flex-1 ${activeTab === 'history' 
-              ? 'bg-purple-500 text-white' 
-              : 'bg-[#181824] text-gray-400 border border-white/10'}`}
+              ? 'bg-purple-500 text-gray-800' 
+              : 'bg-white text-gray-500 border border-gray-200'}`}
           >
             <History className="w-4 h-4 mr-2" />
             {t.history}
@@ -413,14 +413,14 @@ export default function GiftBids() {
         {/* Send Tab */}
         {activeTab === 'send' && (
           <div className="glass-card rounded-xl p-6">
-            <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+            <h2 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
               <Heart className="w-6 h-6 text-pink-400" />
               {t.giftBids}
             </h2>
 
             {/* Step 1: Find Recipient */}
             <div className="mb-6">
-              <Label className="text-white mb-2 block">1. {t.findRecipient}</Label>
+              <Label className="text-gray-800 mb-2 block">1. {t.findRecipient}</Label>
               <div className="flex gap-2">
                 <Input
                   value={recipientNumber}
@@ -429,7 +429,7 @@ export default function GiftBids() {
                     setRecipientInfo(null);
                   }}
                   placeholder={t.enterCustomerNumber}
-                  className="bg-[#181824] border-white/10 text-white font-mono text-lg tracking-wider"
+                  className="bg-white border-gray-200 text-gray-800 font-mono text-lg tracking-wider"
                   maxLength={8}
                 />
                 <Button
@@ -448,7 +448,7 @@ export default function GiftBids() {
                   </div>
                   <div>
                     <p className="text-green-400 font-semibold">{recipientInfo.name}</p>
-                    <p className="text-gray-400 text-sm">{t.customerNumberLabel}: {recipientInfo.customer_number}</p>
+                    <p className="text-gray-500 text-sm">{t.customerNumberLabel}: {recipientInfo.customer_number}</p>
                   </div>
                   <Check className="w-6 h-6 text-green-400 ml-auto" />
                 </div>
@@ -457,15 +457,15 @@ export default function GiftBids() {
 
             {/* Step 2: Amount */}
             <div className="mb-6">
-              <Label className="text-white mb-2 block">2. {t.numberOfBids}</Label>
+              <Label className="text-gray-800 mb-2 block">2. {t.numberOfBids}</Label>
               <div className="flex gap-2 flex-wrap mb-3">
                 {[5, 10, 25, 50, 100].map((amount) => (
                   <Button
                     key={amount}
                     onClick={() => setGiftAmount(amount.toString())}
                     className={`${giftAmount === amount.toString() 
-                      ? 'bg-pink-500 text-white' 
-                      : 'bg-[#181824] text-gray-400 border border-white/10'}`}
+                      ? 'bg-pink-500 text-gray-800' 
+                      : 'bg-white text-gray-500 border border-gray-200'}`}
                   >
                     {amount}
                   </Button>
@@ -478,7 +478,7 @@ export default function GiftBids() {
                 placeholder={t.orEnterCustom}
                 min="1"
                 max={user?.bids_balance || 0}
-                className="bg-[#181824] border-white/10 text-white"
+                className="bg-white border-gray-200 text-gray-800"
               />
               <p className="text-gray-500 text-xs mt-1">
                 {t.available}: {user?.bids_balance || 0} {t.bids}
@@ -487,12 +487,12 @@ export default function GiftBids() {
 
             {/* Step 3: Message (optional) */}
             <div className="mb-6">
-              <Label className="text-white mb-2 block">3. {t.messageOptional}</Label>
+              <Label className="text-gray-800 mb-2 block">3. {t.messageOptional}</Label>
               <Input
                 value={giftMessage}
                 onChange={(e) => setGiftMessage(e.target.value)}
                 placeholder={t.messagePlaceholder}
-                className="bg-[#181824] border-white/10 text-white"
+                className="bg-white border-gray-200 text-gray-800"
                 maxLength={200}
               />
             </div>
@@ -501,7 +501,7 @@ export default function GiftBids() {
             <Button
               onClick={sendGift}
               disabled={loading || !recipientInfo || !giftAmount || parseInt(giftAmount) < 1}
-              className="w-full py-4 bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-400 hover:to-purple-400 text-white font-bold text-lg"
+              className="w-full py-4 bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-400 hover:to-purple-400 text-gray-800 font-bold text-lg"
             >
               {loading ? (
                 t.sending
@@ -526,7 +526,7 @@ export default function GiftBids() {
               <div className="glass-card rounded-xl p-5">
                 <div className="flex items-center gap-3 mb-2">
                   <ArrowRight className="w-5 h-5 text-orange-400" />
-                  <span className="text-gray-400 text-sm">{t.sent}</span>
+                  <span className="text-gray-500 text-sm">{t.sent}</span>
                 </div>
                 <p className="text-3xl font-bold text-orange-400">{history.total_sent}</p>
                 <p className="text-gray-500 text-xs">{t.giftsGiven}</p>
@@ -534,7 +534,7 @@ export default function GiftBids() {
               <div className="glass-card rounded-xl p-5">
                 <div className="flex items-center gap-3 mb-2">
                   <ArrowLeft className="w-5 h-5 text-green-400" />
-                  <span className="text-gray-400 text-sm">{t.received}</span>
+                  <span className="text-gray-500 text-sm">{t.received}</span>
                 </div>
                 <p className="text-3xl font-bold text-green-400">{history.total_received}</p>
                 <p className="text-gray-500 text-xs">{t.giftsReceived}</p>
@@ -543,20 +543,20 @@ export default function GiftBids() {
 
             {/* Sent Gifts */}
             <div className="glass-card rounded-xl p-6">
-              <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+              <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
                 <ArrowRight className="w-5 h-5 text-orange-400" />
                 {t.sentGifts}
               </h3>
               {history.sent.length > 0 ? (
                 <div className="space-y-3">
                   {history.sent.map((gift, idx) => (
-                    <div key={idx} className="flex items-center justify-between p-3 rounded-lg bg-[#181824] border border-white/5">
+                    <div key={idx} className="flex items-center justify-between p-3 rounded-lg bg-white border border-white/5">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-orange-500/20 flex items-center justify-center">
                           <Gift className="w-5 h-5 text-orange-400" />
                         </div>
                         <div>
-                          <p className="text-white font-medium">{t.to}: {gift.recipient_name}</p>
+                          <p className="text-gray-800 font-medium">{t.to}: {gift.recipient_name}</p>
                           <p className="text-gray-500 text-xs flex items-center gap-1">
                             <Clock className="w-3 h-3" />
                             {new Date(gift.created_at).toLocaleDateString(language === 'de' ? 'de-DE' : 'en-US')}
@@ -579,20 +579,20 @@ export default function GiftBids() {
 
             {/* Received Gifts */}
             <div className="glass-card rounded-xl p-6">
-              <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+              <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
                 <ArrowLeft className="w-5 h-5 text-green-400" />
                 {t.receivedGifts}
               </h3>
               {history.received.length > 0 ? (
                 <div className="space-y-3">
                   {history.received.map((gift, idx) => (
-                    <div key={idx} className="flex items-center justify-between p-3 rounded-lg bg-[#181824] border border-white/5">
+                    <div key={idx} className="flex items-center justify-between p-3 rounded-lg bg-white border border-white/5">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center">
                           <Sparkles className="w-5 h-5 text-green-400" />
                         </div>
                         <div>
-                          <p className="text-white font-medium">{t.from}: {gift.sender_name}</p>
+                          <p className="text-gray-800 font-medium">{t.from}: {gift.sender_name}</p>
                           <p className="text-gray-500 text-xs flex items-center gap-1">
                             <Clock className="w-3 h-3" />
                             {new Date(gift.created_at).toLocaleDateString(language === 'de' ? 'de-DE' : 'en-US')}

@@ -158,20 +158,20 @@ export default function GiftCards() {
   // Redeem UI
   if (redeemMode) {
     return (
-      <div className="min-h-screen bg-[#0F0F16] py-12 px-4" data-testid="giftcard-redeem-page">
+      <div className="min-h-screen bg-gradient-to-b from-cyan-50 to-cyan-100 py-12 px-4" data-testid="giftcard-redeem-page">
         <div className="max-w-lg mx-auto">
           <div className="text-center mb-8">
             <div className="w-20 h-20 rounded-full bg-gradient-to-r from-[#7C3AED] to-[#F59E0B] flex items-center justify-center mx-auto mb-4">
-              <Gift className="w-10 h-10 text-white" />
+              <Gift className="w-10 h-10 text-gray-800" />
             </div>
-            <h1 className="text-3xl font-bold text-white mb-2">Geschenkkarte einlösen</h1>
-            <p className="text-[#94A3B8]">Geben Sie Ihren Code ein und wählen Sie, wie Sie ihn einlösen möchten</p>
+            <h1 className="text-3xl font-bold text-gray-800 mb-2">Geschenkkarte einlösen</h1>
+            <p className="text-gray-500">Geben Sie Ihren Code ein und wählen Sie, wie Sie ihn einlösen möchten</p>
           </div>
 
           <div className="glass-card p-8 rounded-2xl space-y-6">
             {/* Code Input */}
             <div>
-              <Label className="text-white mb-2 block">Geschenkkarten-Code</Label>
+              <Label className="text-gray-800 mb-2 block">Geschenkkarten-Code</Label>
               <Input
                 value={redeemCode}
                 onChange={(e) => {
@@ -181,7 +181,7 @@ export default function GiftCards() {
                   }
                 }}
                 placeholder="XXXX-XXXX-XXXX-XXXX"
-                className="bg-[#1E1E2D] border-[#2D2D3D] text-white text-center font-mono text-lg tracking-widest"
+                className="bg-white shadow-md border-[#2D2D3D] text-gray-800 text-center font-mono text-lg tracking-widest"
                 data-testid="redeem-code-input"
               />
             </div>
@@ -195,12 +195,12 @@ export default function GiftCards() {
                 {validationResult.valid && (
                   <div className="flex justify-center gap-8 mt-4">
                     <div className="text-center">
-                      <p className="text-2xl font-bold text-white">€{validationResult.amount}</p>
-                      <p className="text-xs text-[#94A3B8]">Wert</p>
+                      <p className="text-2xl font-bold text-gray-800">€{validationResult.amount}</p>
+                      <p className="text-xs text-gray-500">Wert</p>
                     </div>
                     <div className="text-center">
                       <p className="text-2xl font-bold text-[#F59E0B]">{validationResult.bids_value}</p>
-                      <p className="text-xs text-[#94A3B8]">Gebote</p>
+                      <p className="text-xs text-gray-500">Gebote</p>
                     </div>
                   </div>
                 )}
@@ -210,18 +210,18 @@ export default function GiftCards() {
             {/* Redeem As Selection */}
             {validationResult?.valid && (
               <div className="space-y-3">
-                <Label className="text-white mb-2 block">Einlösen als:</Label>
+                <Label className="text-gray-800 mb-2 block">Einlösen als:</Label>
                 <div className="grid grid-cols-2 gap-3">
                   <button
                     onClick={() => setRedeemAs('bids')}
                     className={`p-4 rounded-xl border-2 transition-all ${
                       redeemAs === 'bids'
                         ? 'border-[#7C3AED] bg-[#7C3AED]/10'
-                        : 'border-[#2D2D3D] bg-[#1E1E2D] hover:border-[#3D3D4D]'
+                        : 'border-[#2D2D3D] bg-white shadow-md hover:border-[#3D3D4D]'
                     }`}
                   >
-                    <Sparkles className={`w-6 h-6 mx-auto mb-2 ${redeemAs === 'bids' ? 'text-[#7C3AED]' : 'text-[#94A3B8]'}`} />
-                    <p className={`font-bold ${redeemAs === 'bids' ? 'text-white' : 'text-[#94A3B8]'}`}>
+                    <Sparkles className={`w-6 h-6 mx-auto mb-2 ${redeemAs === 'bids' ? 'text-[#7C3AED]' : 'text-gray-500'}`} />
+                    <p className={`font-bold ${redeemAs === 'bids' ? 'text-gray-800' : 'text-gray-500'}`}>
                       {validationResult.bids_value} Gebote
                     </p>
                     <p className="text-xs text-[#666]">Sofort verfügbar</p>
@@ -232,11 +232,11 @@ export default function GiftCards() {
                     className={`p-4 rounded-xl border-2 transition-all ${
                       redeemAs === 'balance'
                         ? 'border-[#10B981] bg-[#10B981]/10'
-                        : 'border-[#2D2D3D] bg-[#1E1E2D] hover:border-[#3D3D4D]'
+                        : 'border-[#2D2D3D] bg-white shadow-md hover:border-[#3D3D4D]'
                     }`}
                   >
-                    <CreditCard className={`w-6 h-6 mx-auto mb-2 ${redeemAs === 'balance' ? 'text-[#10B981]' : 'text-[#94A3B8]'}`} />
-                    <p className={`font-bold ${redeemAs === 'balance' ? 'text-white' : 'text-[#94A3B8]'}`}>
+                    <CreditCard className={`w-6 h-6 mx-auto mb-2 ${redeemAs === 'balance' ? 'text-[#10B981]' : 'text-gray-500'}`} />
+                    <p className={`font-bold ${redeemAs === 'balance' ? 'text-gray-800' : 'text-gray-500'}`}>
                       €{validationResult.amount} Guthaben
                     </p>
                     <p className="text-xs text-[#666]">Für Gebotspakete</p>
@@ -249,14 +249,14 @@ export default function GiftCards() {
             <Button
               onClick={handleRedeem}
               disabled={loading || !validationResult?.valid}
-              className="w-full bg-gradient-to-r from-[#7C3AED] to-[#F59E0B] hover:opacity-90 text-white py-6 text-lg"
+              className="w-full bg-gradient-to-r from-[#7C3AED] to-[#F59E0B] hover:opacity-90 text-gray-800 py-6 text-lg"
               data-testid="redeem-button"
             >
               {loading ? 'Wird eingelöst...' : 'Jetzt einlösen'}
             </Button>
 
             {/* Switch to purchase */}
-            <p className="text-center text-[#94A3B8] text-sm">
+            <p className="text-center text-gray-500 text-sm">
               Noch keine Geschenkkarte?{' '}
               <button
                 onClick={() => setRedeemMode(false)}
@@ -273,15 +273,15 @@ export default function GiftCards() {
 
   // Purchase UI
   return (
-    <div className="min-h-screen bg-[#0F0F16] py-12 px-4" data-testid="giftcard-page">
+    <div className="min-h-screen bg-gradient-to-b from-cyan-50 to-cyan-100 py-12 px-4" data-testid="giftcard-page">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="text-center mb-12">
           <div className="w-20 h-20 rounded-full bg-gradient-to-r from-[#7C3AED] to-[#F59E0B] flex items-center justify-center mx-auto mb-4">
-            <Gift className="w-10 h-10 text-white" />
+            <Gift className="w-10 h-10 text-gray-800" />
           </div>
-          <h1 className="text-4xl font-bold text-white mb-2">Geschenkkarten</h1>
-          <p className="text-[#94A3B8] text-lg">Verschenken Sie Freude mit BidBlitz Geschenkkarten</p>
+          <h1 className="text-4xl font-bold text-gray-800 mb-2">Geschenkkarten</h1>
+          <p className="text-gray-500 text-lg">Verschenken Sie Freude mit BidBlitz Geschenkkarten</p>
           
           {/* Toggle to redeem */}
           <button
@@ -300,8 +300,8 @@ export default function GiftCards() {
                 <div
                   className={`w-10 h-10 rounded-full flex items-center justify-center font-bold transition-all ${
                     step >= s
-                      ? 'bg-gradient-to-r from-[#7C3AED] to-[#F59E0B] text-white'
-                      : 'bg-[#1E1E2D] text-[#666]'
+                      ? 'bg-gradient-to-r from-[#7C3AED] to-[#F59E0B] text-gray-800'
+                      : 'bg-white shadow-md text-[#666]'
                   }`}
                 >
                   {step > s ? <Check className="w-5 h-5" /> : s}
@@ -318,7 +318,7 @@ export default function GiftCards() {
           {/* Step 1: Select Amount */}
           {step === 1 && (
             <div className="space-y-8" data-testid="step-1">
-              <h2 className="text-2xl font-bold text-white text-center">Wählen Sie einen Betrag</h2>
+              <h2 className="text-2xl font-bold text-gray-800 text-center">Wählen Sie einen Betrag</h2>
               
               {/* Fixed Packages */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -332,16 +332,16 @@ export default function GiftCards() {
                     className={`relative p-6 rounded-xl border-2 transition-all ${
                       selectedPackage?.id === pkg.id && !useCustom
                         ? 'border-[#7C3AED] bg-[#7C3AED]/10 scale-105'
-                        : 'border-[#2D2D3D] bg-[#1E1E2D] hover:border-[#3D3D4D] hover:scale-102'
+                        : 'border-[#2D2D3D] bg-white shadow-md hover:border-[#3D3D4D] hover:scale-102'
                     }`}
                     data-testid={`package-${pkg.id}`}
                   >
                     {pkg.popular && (
-                      <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-[#F59E0B] text-white text-xs font-bold rounded-full">
+                      <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-[#F59E0B] text-gray-800 text-xs font-bold rounded-full">
                         BELIEBT
                       </span>
                     )}
-                    <p className="text-3xl font-bold text-white mb-1">€{pkg.amount}</p>
+                    <p className="text-3xl font-bold text-gray-800 mb-1">€{pkg.amount}</p>
                     <p className="text-[#F59E0B] font-medium">{pkg.bids} Gebote</p>
                   </button>
                 ))}
@@ -354,10 +354,10 @@ export default function GiftCards() {
                   className={`w-full p-4 rounded-xl border-2 transition-all ${
                     useCustom
                       ? 'border-[#7C3AED] bg-[#7C3AED]/10'
-                      : 'border-[#2D2D3D] bg-[#1E1E2D] hover:border-[#3D3D4D]'
+                      : 'border-[#2D2D3D] bg-white shadow-md hover:border-[#3D3D4D]'
                   }`}
                 >
-                  <p className="text-white font-medium mb-2">Eigenen Betrag wählen (€5 - €500)</p>
+                  <p className="text-gray-800 font-medium mb-2">Eigenen Betrag wählen (€5 - €500)</p>
                   {useCustom && (
                     <div className="flex items-center gap-4 mt-4">
                       <Input
@@ -367,7 +367,7 @@ export default function GiftCards() {
                         value={customAmount}
                         onChange={(e) => setCustomAmount(e.target.value)}
                         placeholder="Betrag eingeben"
-                        className="bg-[#0F0F16] border-[#3D3D4D] text-white text-center text-xl"
+                        className="bg-gradient-to-b from-cyan-50 to-cyan-100 border-[#3D3D4D] text-gray-800 text-center text-xl"
                         data-testid="custom-amount-input"
                       />
                       <div className="text-center min-w-[100px]">
@@ -382,7 +382,7 @@ export default function GiftCards() {
               <Button
                 onClick={() => setStep(2)}
                 disabled={!getAmount()}
-                className="w-full bg-gradient-to-r from-[#7C3AED] to-[#F59E0B] hover:opacity-90 text-white py-6 text-lg"
+                className="w-full bg-gradient-to-r from-[#7C3AED] to-[#F59E0B] hover:opacity-90 text-gray-800 py-6 text-lg"
               >
                 Weiter <ArrowRight className="w-5 h-5 ml-2" />
               </Button>
@@ -392,12 +392,12 @@ export default function GiftCards() {
           {/* Step 2: Recipient Details */}
           {step === 2 && (
             <div className="space-y-6" data-testid="step-2">
-              <h2 className="text-2xl font-bold text-white text-center">Empfänger-Details</h2>
-              <p className="text-[#94A3B8] text-center">Optional - Sie können die Karte auch für sich selbst kaufen</p>
+              <h2 className="text-2xl font-bold text-gray-800 text-center">Empfänger-Details</h2>
+              <p className="text-gray-500 text-center">Optional - Sie können die Karte auch für sich selbst kaufen</p>
 
               <div className="space-y-4">
                 <div>
-                  <Label className="text-white mb-2 block">
+                  <Label className="text-gray-800 mb-2 block">
                     <User className="w-4 h-4 inline mr-2" />
                     Name des Empfängers
                   </Label>
@@ -405,12 +405,12 @@ export default function GiftCards() {
                     value={recipientName}
                     onChange={(e) => setRecipientName(e.target.value)}
                     placeholder="Max Mustermann"
-                    className="bg-[#1E1E2D] border-[#2D2D3D] text-white"
+                    className="bg-white shadow-md border-[#2D2D3D] text-gray-800"
                   />
                 </div>
 
                 <div>
-                  <Label className="text-white mb-2 block">
+                  <Label className="text-gray-800 mb-2 block">
                     <Mail className="w-4 h-4 inline mr-2" />
                     E-Mail des Empfängers
                   </Label>
@@ -419,12 +419,12 @@ export default function GiftCards() {
                     value={recipientEmail}
                     onChange={(e) => setRecipientEmail(e.target.value)}
                     placeholder="empfaenger@email.de"
-                    className="bg-[#1E1E2D] border-[#2D2D3D] text-white"
+                    className="bg-white shadow-md border-[#2D2D3D] text-gray-800"
                   />
                 </div>
 
                 <div>
-                  <Label className="text-white mb-2 block">
+                  <Label className="text-gray-800 mb-2 block">
                     <User className="w-4 h-4 inline mr-2" />
                     Ihr Name (Absender)
                   </Label>
@@ -432,12 +432,12 @@ export default function GiftCards() {
                     value={senderName}
                     onChange={(e) => setSenderName(e.target.value)}
                     placeholder="Ihr Name"
-                    className="bg-[#1E1E2D] border-[#2D2D3D] text-white"
+                    className="bg-white shadow-md border-[#2D2D3D] text-gray-800"
                   />
                 </div>
 
                 <div>
-                  <Label className="text-white mb-2 block">
+                  <Label className="text-gray-800 mb-2 block">
                     <MessageSquare className="w-4 h-4 inline mr-2" />
                     Persönliche Nachricht (optional)
                   </Label>
@@ -446,19 +446,19 @@ export default function GiftCards() {
                     onChange={(e) => setMessage(e.target.value)}
                     placeholder="Alles Gute zum Geburtstag! Viel Spaß beim Bieten..."
                     rows={3}
-                    className="w-full bg-[#1E1E2D] border border-[#2D2D3D] text-white rounded-lg p-3 resize-none"
+                    className="w-full bg-white shadow-md border border-[#2D2D3D] text-gray-800 rounded-lg p-3 resize-none"
                   />
                 </div>
 
                 {recipientEmail && (
-                  <label className="flex items-center gap-3 p-4 bg-[#1E1E2D] rounded-lg cursor-pointer">
+                  <label className="flex items-center gap-3 p-4 bg-white shadow-md rounded-lg cursor-pointer">
                     <input
                       type="checkbox"
                       checked={sendEmail}
                       onChange={(e) => setSendEmail(e.target.checked)}
                       className="w-5 h-5 rounded"
                     />
-                    <span className="text-white">Geschenkkarte sofort per E-Mail senden</span>
+                    <span className="text-gray-800">Geschenkkarte sofort per E-Mail senden</span>
                   </label>
                 )}
               </div>
@@ -467,13 +467,13 @@ export default function GiftCards() {
                 <Button
                   onClick={() => setStep(1)}
                   variant="outline"
-                  className="flex-1 border-[#3D3D4D] text-white hover:bg-[#2D2D3D]"
+                  className="flex-1 border-[#3D3D4D] text-gray-800 hover:bg-[#2D2D3D]"
                 >
                   Zurück
                 </Button>
                 <Button
                   onClick={() => setStep(3)}
-                  className="flex-1 bg-gradient-to-r from-[#7C3AED] to-[#F59E0B] hover:opacity-90 text-white"
+                  className="flex-1 bg-gradient-to-r from-[#7C3AED] to-[#F59E0B] hover:opacity-90 text-gray-800"
                 >
                   Weiter <ArrowRight className="w-5 h-5 ml-2" />
                 </Button>
@@ -484,7 +484,7 @@ export default function GiftCards() {
           {/* Step 3: Confirmation & Payment */}
           {step === 3 && (
             <div className="space-y-6" data-testid="step-3">
-              <h2 className="text-2xl font-bold text-white text-center">Zusammenfassung</h2>
+              <h2 className="text-2xl font-bold text-gray-800 text-center">Zusammenfassung</h2>
 
               {/* Summary Card */}
               <div className="bg-gradient-to-r from-[#7C3AED]/20 to-[#F59E0B]/20 p-6 rounded-xl border border-[#7C3AED]/30">
@@ -492,12 +492,12 @@ export default function GiftCards() {
                   <div className="flex items-center gap-3">
                     <Gift className="w-8 h-8 text-[#F59E0B]" />
                     <div>
-                      <p className="text-white font-bold text-xl">BidBlitz Geschenkkarte</p>
-                      <p className="text-[#94A3B8] text-sm">Digitale Geschenkkarte</p>
+                      <p className="text-gray-800 font-bold text-xl">BidBlitz Geschenkkarte</p>
+                      <p className="text-gray-500 text-sm">Digitale Geschenkkarte</p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-3xl font-bold text-white">€{getAmount()}</p>
+                    <p className="text-3xl font-bold text-gray-800">€{getAmount()}</p>
                     <p className="text-[#F59E0B]">{getBidsValue()} Gebote</p>
                   </div>
                 </div>
@@ -505,25 +505,25 @@ export default function GiftCards() {
                 {(recipientName || recipientEmail) && (
                   <div className="border-t border-[#3D3D4D] pt-4 mt-4 space-y-2">
                     {recipientName && (
-                      <p className="text-[#94A3B8]">
-                        <span className="text-white">Empfänger:</span> {recipientName}
+                      <p className="text-gray-500">
+                        <span className="text-gray-800">Empfänger:</span> {recipientName}
                       </p>
                     )}
                     {recipientEmail && (
-                      <p className="text-[#94A3B8]">
-                        <span className="text-white">E-Mail:</span> {recipientEmail}
+                      <p className="text-gray-500">
+                        <span className="text-gray-800">E-Mail:</span> {recipientEmail}
                       </p>
                     )}
                     {message && (
-                      <p className="text-[#94A3B8] italic">"{message}"</p>
+                      <p className="text-gray-500 italic">"{message}"</p>
                     )}
                   </div>
                 )}
               </div>
 
               {/* Info Box */}
-              <div className="bg-[#1E1E2D] p-4 rounded-lg">
-                <p className="text-[#94A3B8] text-sm">
+              <div className="bg-white shadow-md p-4 rounded-lg">
+                <p className="text-gray-500 text-sm">
                   <Package className="w-4 h-4 inline mr-2 text-[#7C3AED]" />
                   Die Geschenkkarte kann als Gebote oder Guthaben eingelöst werden. 
                   Das Guthaben ist nicht auszahlbar.
@@ -534,14 +534,14 @@ export default function GiftCards() {
                 <Button
                   onClick={() => setStep(2)}
                   variant="outline"
-                  className="flex-1 border-[#3D3D4D] text-white hover:bg-[#2D2D3D]"
+                  className="flex-1 border-[#3D3D4D] text-gray-800 hover:bg-[#2D2D3D]"
                 >
                   Zurück
                 </Button>
                 <Button
                   onClick={handlePurchase}
                   disabled={loading}
-                  className="flex-1 bg-gradient-to-r from-[#7C3AED] to-[#F59E0B] hover:opacity-90 text-white py-6"
+                  className="flex-1 bg-gradient-to-r from-[#7C3AED] to-[#F59E0B] hover:opacity-90 text-gray-800 py-6"
                   data-testid="purchase-button"
                 >
                   <CreditCard className="w-5 h-5 mr-2" />

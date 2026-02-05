@@ -160,15 +160,15 @@ export default function WishlistPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0D0D14] py-8 px-4" data-testid="wishlist-page">
+    <div className="min-h-screen bg-gradient-to-b from-cyan-50 to-cyan-100 py-8 px-4" data-testid="wishlist-page">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-[#F59E0B] to-[#EF4444] mb-4">
-            <Lightbulb className="w-10 h-10 text-white" />
+            <Lightbulb className="w-10 h-10 text-gray-800" />
           </div>
-          <h1 className="text-3xl font-bold text-white mb-2">{t.title}</h1>
-          <p className="text-[#94A3B8]">{t.subtitle}</p>
+          <h1 className="text-3xl font-bold text-gray-800 mb-2">{t.title}</h1>
+          <p className="text-gray-500">{t.subtitle}</p>
         </div>
 
         {/* Suggest Button */}
@@ -184,20 +184,20 @@ export default function WishlistPage() {
 
         {/* Suggest Form */}
         {showSuggest && (
-          <Card className="bg-[#1A1A2E] border-white/10 mb-6">
+          <Card className="bg-[#1A1A2E] border-gray-200 mb-6">
             <CardContent className="p-6">
-              <h3 className="text-white font-bold mb-4">{t.suggest}</h3>
+              <h3 className="text-gray-800 font-bold mb-4">{t.suggest}</h3>
               <div className="space-y-4">
                 <Input
                   value={newWish.product_name}
                   onChange={(e) => setNewWish({...newWish, product_name: e.target.value})}
                   placeholder={t.productName}
-                  className="bg-[#0D0D14] border-white/10 text-white"
+                  className="bg-gradient-to-b from-cyan-50 to-cyan-100 border-gray-200 text-gray-800"
                 />
                 <select
                   value={newWish.category}
                   onChange={(e) => setNewWish({...newWish, category: e.target.value})}
-                  className="w-full bg-[#0D0D14] border border-white/10 rounded-md p-2 text-white"
+                  className="w-full bg-gradient-to-b from-cyan-50 to-cyan-100 border border-gray-200 rounded-md p-2 text-gray-800"
                 >
                   {categories.map(cat => (
                     <option key={cat.id} value={cat.id}>{cat.icon} {cat.name}</option>
@@ -207,7 +207,7 @@ export default function WishlistPage() {
                   value={newWish.description}
                   onChange={(e) => setNewWish({...newWish, description: e.target.value})}
                   placeholder={t.description}
-                  className="bg-[#0D0D14] border-white/10 text-white"
+                  className="bg-gradient-to-b from-cyan-50 to-cyan-100 border-gray-200 text-gray-800"
                   rows={3}
                 />
                 <div className="flex gap-2">
@@ -225,27 +225,27 @@ export default function WishlistPage() {
         )}
 
         {/* Wishes List */}
-        <Card className="bg-[#1A1A2E] border-white/10">
+        <Card className="bg-[#1A1A2E] border-gray-200">
           <CardHeader>
-            <CardTitle className="text-white flex items-center">
+            <CardTitle className="text-gray-800 flex items-center">
               <TrendingUp className="w-5 h-5 mr-2 text-[#F59E0B]" />
               {t.topWishes}
             </CardTitle>
           </CardHeader>
           <CardContent>
             {loading ? (
-              <div className="text-center py-8 text-[#94A3B8]">Laden...</div>
+              <div className="text-center py-8 text-gray-500">Laden...</div>
             ) : wishes.length === 0 ? (
               <div className="text-center py-8">
-                <Lightbulb className="w-12 h-12 text-[#94A3B8] mx-auto mb-3 opacity-50" />
-                <p className="text-[#94A3B8]">{t.noWishes}</p>
+                <Lightbulb className="w-12 h-12 text-gray-500 mx-auto mb-3 opacity-50" />
+                <p className="text-gray-500">{t.noWishes}</p>
               </div>
             ) : (
               <div className="space-y-3">
                 {wishes.map((wish, i) => (
                   <div 
                     key={wish.id} 
-                    className="flex items-center justify-between bg-[#0D0D14] rounded-lg p-4"
+                    className="flex items-center justify-between bg-gradient-to-b from-cyan-50 to-cyan-100 rounded-lg p-4"
                   >
                     <div className="flex items-center gap-4">
                       <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xl ${
@@ -255,7 +255,7 @@ export default function WishlistPage() {
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
-                          <p className="text-white font-medium">{wish.product_name}</p>
+                          <p className="text-gray-800 font-medium">{wish.product_name}</p>
                           {wish.status === 'approved' && (
                             <Badge className="bg-[#10B981]/20 text-[#10B981] text-xs">
                               <Check className="w-3 h-3 mr-1" />
@@ -263,7 +263,7 @@ export default function WishlistPage() {
                             </Badge>
                           )}
                         </div>
-                        <p className="text-[#94A3B8] text-sm">
+                        <p className="text-gray-500 text-sm">
                           {t.suggestedBy} {wish.suggested_by_name}
                         </p>
                       </div>

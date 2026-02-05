@@ -125,23 +125,23 @@ export default function ReferralPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0D0D14] py-8 px-4" data-testid="referral-page">
+    <div className="min-h-screen bg-gradient-to-b from-cyan-50 to-cyan-100 py-8 px-4" data-testid="referral-page">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-[#10B981] to-[#059669] mb-4">
-            <Users className="w-10 h-10 text-white" />
+            <Users className="w-10 h-10 text-gray-800" />
           </div>
-          <h1 className="text-3xl font-bold text-white mb-2">{t.title}</h1>
-          <p className="text-[#94A3B8]">{t.subtitle}</p>
+          <h1 className="text-3xl font-bold text-gray-800 mb-2">{t.title}</h1>
+          <p className="text-gray-500">{t.subtitle}</p>
         </div>
 
         {/* Referral Code Card */}
         <Card className="bg-gradient-to-r from-[#10B981]/20 to-[#059669]/20 border-[#10B981]/30 mb-6">
           <CardContent className="p-6">
-            <p className="text-[#94A3B8] text-sm mb-2">{t.yourCode}</p>
+            <p className="text-gray-500 text-sm mb-2">{t.yourCode}</p>
             <div className="flex flex-col sm:flex-row gap-3">
-              <div className="flex-1 bg-[#0D0D14] rounded-lg px-4 py-3 font-mono text-2xl text-[#10B981] text-center">
+              <div className="flex-1 bg-gradient-to-b from-cyan-50 to-cyan-100 rounded-lg px-4 py-3 font-mono text-2xl text-[#10B981] text-center">
                 {referralCode || '...'}
               </div>
               <div className="flex gap-2">
@@ -160,33 +160,33 @@ export default function ReferralPage() {
 
         {/* Stats */}
         <div className="grid grid-cols-3 gap-4 mb-6">
-          <Card className="bg-[#1A1A2E] border-white/10">
+          <Card className="bg-[#1A1A2E] border-gray-200">
             <CardContent className="p-4 text-center">
               <Users className="w-8 h-8 text-[#7C3AED] mx-auto mb-2" />
-              <p className="text-3xl font-bold text-white">{stats.total_referrals}</p>
-              <p className="text-[#94A3B8] text-sm">{t.totalReferrals}</p>
+              <p className="text-3xl font-bold text-gray-800">{stats.total_referrals}</p>
+              <p className="text-gray-500 text-sm">{t.totalReferrals}</p>
             </CardContent>
           </Card>
-          <Card className="bg-[#1A1A2E] border-white/10">
+          <Card className="bg-[#1A1A2E] border-gray-200">
             <CardContent className="p-4 text-center">
               <CheckCircle className="w-8 h-8 text-[#10B981] mx-auto mb-2" />
-              <p className="text-3xl font-bold text-white">{stats.successful_referrals}</p>
-              <p className="text-[#94A3B8] text-sm">{t.successfulReferrals}</p>
+              <p className="text-3xl font-bold text-gray-800">{stats.successful_referrals}</p>
+              <p className="text-gray-500 text-sm">{t.successfulReferrals}</p>
             </CardContent>
           </Card>
-          <Card className="bg-[#1A1A2E] border-white/10">
+          <Card className="bg-[#1A1A2E] border-gray-200">
             <CardContent className="p-4 text-center">
               <Gift className="w-8 h-8 text-[#F59E0B] mx-auto mb-2" />
-              <p className="text-3xl font-bold text-white">{stats.total_bids_earned}</p>
-              <p className="text-[#94A3B8] text-sm">{t.bidsEarned}</p>
+              <p className="text-3xl font-bold text-gray-800">{stats.total_bids_earned}</p>
+              <p className="text-gray-500 text-sm">{t.bidsEarned}</p>
             </CardContent>
           </Card>
         </div>
 
         {/* How It Works */}
-        <Card className="bg-[#1A1A2E] border-white/10 mb-6">
+        <Card className="bg-[#1A1A2E] border-gray-200 mb-6">
           <CardHeader>
-            <CardTitle className="text-white flex items-center">
+            <CardTitle className="text-gray-800 flex items-center">
               <Star className="w-5 h-5 mr-2 text-[#F59E0B]" />
               {t.howItWorks}
             </CardTitle>
@@ -194,11 +194,11 @@ export default function ReferralPage() {
           <CardContent>
             <div className="grid md:grid-cols-3 gap-4">
               {[t.step1, t.step2, t.step3].map((step, i) => (
-                <div key={i} className="flex items-start gap-3 bg-[#0D0D14] rounded-lg p-4">
+                <div key={i} className="flex items-start gap-3 bg-gradient-to-b from-cyan-50 to-cyan-100 rounded-lg p-4">
                   <div className="w-8 h-8 rounded-full bg-[#7C3AED]/20 flex items-center justify-center flex-shrink-0">
                     <span className="text-[#7C3AED] font-bold">{i + 1}</span>
                   </div>
-                  <p className="text-[#94A3B8] text-sm">{step}</p>
+                  <p className="text-gray-500 text-sm">{step}</p>
                 </div>
               ))}
             </div>
@@ -206,20 +206,20 @@ export default function ReferralPage() {
         </Card>
 
         {/* Rewards Info */}
-        <Card className="bg-[#1A1A2E] border-white/10 mb-6">
+        <Card className="bg-[#1A1A2E] border-gray-200 mb-6">
           <CardHeader>
-            <CardTitle className="text-white flex items-center">
+            <CardTitle className="text-gray-800 flex items-center">
               <Gift className="w-5 h-5 mr-2 text-[#10B981]" />
               {t.rewards}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              <div className="flex items-center gap-3 text-[#94A3B8]">
+              <div className="flex items-center gap-3 text-gray-500">
                 <CheckCircle className="w-5 h-5 text-[#10B981]" />
                 {t.reward1}
               </div>
-              <div className="flex items-center gap-3 text-[#94A3B8]">
+              <div className="flex items-center gap-3 text-gray-500">
                 <CheckCircle className="w-5 h-5 text-[#10B981]" />
                 {t.reward2}
               </div>
@@ -232,29 +232,29 @@ export default function ReferralPage() {
         </Card>
 
         {/* Recent Referrals */}
-        <Card className="bg-[#1A1A2E] border-white/10">
+        <Card className="bg-[#1A1A2E] border-gray-200">
           <CardHeader>
-            <CardTitle className="text-white">{t.recentReferrals}</CardTitle>
+            <CardTitle className="text-gray-800">{t.recentReferrals}</CardTitle>
           </CardHeader>
           <CardContent>
             {loading ? (
-              <div className="text-center py-8 text-[#94A3B8]">Laden...</div>
+              <div className="text-center py-8 text-gray-500">Laden...</div>
             ) : referrals.length === 0 ? (
-              <div className="text-center py-8 text-[#94A3B8]">
+              <div className="text-center py-8 text-gray-500">
                 <Users className="w-12 h-12 mx-auto mb-3 opacity-50" />
                 {t.noReferrals}
               </div>
             ) : (
               <div className="space-y-3">
                 {referrals.map((ref, i) => (
-                  <div key={i} className="flex items-center justify-between bg-[#0D0D14] rounded-lg p-3">
+                  <div key={i} className="flex items-center justify-between bg-gradient-to-b from-cyan-50 to-cyan-100 rounded-lg p-3">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full bg-[#7C3AED]/20 flex items-center justify-center">
                         <Users className="w-5 h-5 text-[#7C3AED]" />
                       </div>
                       <div>
-                        <p className="text-white">{ref.username || 'Benutzer'}</p>
-                        <p className="text-[#94A3B8] text-xs">
+                        <p className="text-gray-800">{ref.username || 'Benutzer'}</p>
+                        <p className="text-gray-500 text-xs">
                           {new Date(ref.registered_at).toLocaleDateString()}
                         </p>
                       </div>

@@ -107,7 +107,7 @@ export default function Achievements() {
       <div className="min-h-screen bg-gradient-to-b from-[#0a1628] to-[#0d2137] py-8 px-4">
         <div className="max-w-4xl mx-auto text-center py-20">
           <Trophy className="w-20 h-20 text-[#7C3AED] mx-auto mb-6 opacity-50" />
-          <h1 className="text-2xl font-bold text-white mb-4">{t.loginRequired}</h1>
+          <h1 className="text-2xl font-bold text-gray-800 mb-4">{t.loginRequired}</h1>
           <Link to="/login">
             <Button className="bg-[#7C3AED] hover:bg-[#6D28D9]">
               Anmelden
@@ -123,7 +123,7 @@ export default function Achievements() {
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <Link to="/dashboard" className="inline-flex items-center gap-2 text-[#94A3B8] hover:text-white mb-4">
+          <Link to="/dashboard" className="inline-flex items-center gap-2 text-gray-500 hover:text-gray-800 mb-4">
             <ArrowLeft className="w-4 h-4" />
             {t.backToAuctions}
           </Link>
@@ -131,11 +131,11 @@ export default function Achievements() {
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div className="flex items-center gap-4">
               <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#7C3AED] to-[#06B6D4] flex items-center justify-center">
-                <Trophy className="w-8 h-8 text-white" />
+                <Trophy className="w-8 h-8 text-gray-800" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-white">{t.title}</h1>
-                <p className="text-[#94A3B8]">{t.subtitle}</p>
+                <h1 className="text-3xl font-bold text-gray-800">{t.title}</h1>
+                <p className="text-gray-500">{t.subtitle}</p>
               </div>
             </div>
             
@@ -143,13 +143,13 @@ export default function Achievements() {
             <div className="flex gap-4">
               <div className="glass-card rounded-xl px-6 py-4 text-center">
                 <p className="text-3xl font-bold text-[#7C3AED]">{achievements?.total_earned || 0}</p>
-                <p className="text-[#94A3B8] text-sm">/ {achievements?.total_available || 12}</p>
-                <p className="text-white text-xs mt-1">{t.totalEarned}</p>
+                <p className="text-gray-500 text-sm">/ {achievements?.total_available || 12}</p>
+                <p className="text-gray-800 text-xs mt-1">{t.totalEarned}</p>
               </div>
               <div className="glass-card rounded-xl px-6 py-4 text-center">
                 <p className="text-3xl font-bold text-[#10B981]">+{totalBidsEarned}</p>
-                <p className="text-[#94A3B8] text-sm">{t.bids}</p>
-                <p className="text-white text-xs mt-1">{t.totalRewards}</p>
+                <p className="text-gray-500 text-sm">{t.bids}</p>
+                <p className="text-gray-800 text-xs mt-1">{t.totalRewards}</p>
               </div>
             </div>
           </div>
@@ -161,8 +161,8 @@ export default function Achievements() {
             onClick={() => setSelectedCategory('all')}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
               selectedCategory === 'all'
-                ? 'bg-[#7C3AED] text-white'
-                : 'bg-[#181824] text-[#94A3B8] hover:text-white'
+                ? 'bg-[#7C3AED] text-gray-800'
+                : 'bg-white text-gray-500 hover:text-gray-800'
             }`}
           >
             {t.all} ({ALL_ACHIEVEMENTS.length})
@@ -173,8 +173,8 @@ export default function Achievements() {
               onClick={() => setSelectedCategory(cat)}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 selectedCategory === cat
-                  ? 'bg-[#7C3AED] text-white'
-                  : 'bg-[#181824] text-[#94A3B8] hover:text-white'
+                  ? 'bg-[#7C3AED] text-gray-800'
+                  : 'bg-white text-gray-500 hover:text-gray-800'
               }`}
             >
               {catLabels[cat]} ({ALL_ACHIEVEMENTS.filter(a => a.category === cat).length})
@@ -185,12 +185,12 @@ export default function Achievements() {
         {/* Progress Bar */}
         <div className="glass-card rounded-xl p-4 mb-8">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-white font-medium">{t.progress}</span>
+            <span className="text-gray-800 font-medium">{t.progress}</span>
             <span className="text-[#7C3AED] font-bold">
               {achievements?.total_earned || 0} / {achievements?.total_available || 12}
             </span>
           </div>
-          <div className="h-3 bg-[#181824] rounded-full overflow-hidden">
+          <div className="h-3 bg-white rounded-full overflow-hidden">
             <div 
               className="h-full bg-gradient-to-r from-[#7C3AED] to-[#06B6D4] rounded-full transition-all duration-500"
               style={{ width: `${((achievements?.total_earned || 0) / (achievements?.total_available || 12)) * 100}%` }}
@@ -224,28 +224,28 @@ export default function Achievements() {
                     <div className={`w-16 h-16 rounded-xl flex items-center justify-center text-3xl ${
                       isEarned 
                         ? 'bg-gradient-to-br from-[#7C3AED] to-[#06B6D4]' 
-                        : 'bg-[#181824]'
+                        : 'bg-white'
                     }`}>
                       {isEarned ? (
                         achievement.icon
                       ) : (
-                        <Lock className="w-6 h-6 text-[#94A3B8]" />
+                        <Lock className="w-6 h-6 text-gray-500" />
                       )}
                     </div>
                     
                     {/* Content */}
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
-                        <h3 className="text-white font-bold">{name}</h3>
+                        <h3 className="text-gray-800 font-bold">{name}</h3>
                         {isEarned && (
                           <CheckCircle className="w-4 h-4 text-[#10B981]" />
                         )}
                       </div>
-                      <p className="text-[#94A3B8] text-sm mb-3">{description}</p>
+                      <p className="text-gray-500 text-sm mb-3">{description}</p>
                       
                       {/* Reward */}
                       <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg ${
-                        isEarned ? 'bg-[#10B981]/20 text-[#10B981]' : 'bg-[#181824] text-[#94A3B8]'
+                        isEarned ? 'bg-[#10B981]/20 text-[#10B981]' : 'bg-white text-gray-500'
                       }`}>
                         <Gift className="w-4 h-4" />
                         <span className="text-sm font-medium">
@@ -265,16 +265,16 @@ export default function Achievements() {
 
         {/* Tips Section */}
         <div className="mt-8 glass-card rounded-xl p-6 border-l-4 border-[#F59E0B]">
-          <h3 className="text-white font-bold mb-3 flex items-center gap-2">
+          <h3 className="text-gray-800 font-bold mb-3 flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-[#F59E0B]" />
             Tipps zum Freischalten
           </h3>
-          <ul className="space-y-2 text-[#94A3B8] text-sm">
-            <li>🎯 <strong className="text-white">Erster Sieg:</strong> Nimm an einer Auktion teil und gewinne!</li>
-            <li>🔥 <strong className="text-white">Streak-Bonus:</strong> Melde dich 7 Tage hintereinander an</li>
-            <li>🦉 <strong className="text-white">Nachteule:</strong> Gewinne Auktionen zwischen 22:00 und 6:00 Uhr</li>
-            <li>🍀 <strong className="text-white">Glückspilz:</strong> Manchmal reicht ein einziges Gebot zum Sieg!</li>
-            <li>👥 <strong className="text-white">Werber:</strong> Teile deinen Empfehlungscode mit Freunden</li>
+          <ul className="space-y-2 text-gray-500 text-sm">
+            <li>🎯 <strong className="text-gray-800">Erster Sieg:</strong> Nimm an einer Auktion teil und gewinne!</li>
+            <li>🔥 <strong className="text-gray-800">Streak-Bonus:</strong> Melde dich 7 Tage hintereinander an</li>
+            <li>🦉 <strong className="text-gray-800">Nachteule:</strong> Gewinne Auktionen zwischen 22:00 und 6:00 Uhr</li>
+            <li>🍀 <strong className="text-gray-800">Glückspilz:</strong> Manchmal reicht ein einziges Gebot zum Sieg!</li>
+            <li>👥 <strong className="text-gray-800">Werber:</strong> Teile deinen Empfehlungscode mit Freunden</li>
           </ul>
         </div>
       </div>

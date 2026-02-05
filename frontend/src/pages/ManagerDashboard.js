@@ -266,37 +266,37 @@ export default function ManagerDashboard() {
   // Login Screen
   if (!manager) {
     return (
-      <div className="min-h-screen bg-[#0D0D14] py-12 px-4" data-testid="manager-login-page">
+      <div className="min-h-screen bg-gradient-to-b from-cyan-50 to-cyan-100 py-12 px-4" data-testid="manager-login-page">
         <div className="max-w-md mx-auto">
-          <Card className="bg-[#1A1A2E] border-white/10">
+          <Card className="bg-[#1A1A2E] border-gray-200">
             <CardHeader className="text-center">
               <div className="mx-auto w-16 h-16 rounded-full bg-gradient-to-br from-[#7C3AED] to-[#10B981] flex items-center justify-center mb-4">
-                <Building2 className="w-8 h-8 text-white" />
+                <Building2 className="w-8 h-8 text-gray-800" />
               </div>
-              <CardTitle className="text-2xl text-white">{t.title}</CardTitle>
-              <CardDescription className="text-[#94A3B8]">{t.subtitle}</CardDescription>
+              <CardTitle className="text-2xl text-gray-800">{t.title}</CardTitle>
+              <CardDescription className="text-gray-500">{t.subtitle}</CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleLogin} className="space-y-4">
                 <div>
-                  <label className="text-sm text-[#94A3B8] mb-1 block">{t.email}</label>
+                  <label className="text-sm text-gray-500 mb-1 block">{t.email}</label>
                   <Input
                     type="email"
                     value={loginForm.email}
                     onChange={(e) => setLoginForm({ ...loginForm, email: e.target.value })}
-                    className="bg-[#0D0D14] border-white/10 text-white"
+                    className="bg-gradient-to-b from-cyan-50 to-cyan-100 border-gray-200 text-gray-800"
                     placeholder="manager@bidblitz.de"
                     required
                     data-testid="manager-email-input"
                   />
                 </div>
                 <div>
-                  <label className="text-sm text-[#94A3B8] mb-1 block">{t.password}</label>
+                  <label className="text-sm text-gray-500 mb-1 block">{t.password}</label>
                   <Input
                     type="password"
                     value={loginForm.password}
                     onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
-                    className="bg-[#0D0D14] border-white/10 text-white"
+                    className="bg-gradient-to-b from-cyan-50 to-cyan-100 border-gray-200 text-gray-800"
                     placeholder="••••••••"
                     required
                     data-testid="manager-password-input"
@@ -320,15 +320,15 @@ export default function ManagerDashboard() {
 
   // Dashboard
   return (
-    <div className="min-h-screen bg-[#0D0D14] py-8 px-4" data-testid="manager-dashboard">
+    <div className="min-h-screen bg-gradient-to-b from-cyan-50 to-cyan-100 py-8 px-4" data-testid="manager-dashboard">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-white">{t.title}</h1>
-            <p className="text-[#94A3B8]">{manager.name}</p>
+            <h1 className="text-3xl font-bold text-gray-800">{t.title}</h1>
+            <p className="text-gray-500">{manager.name}</p>
           </div>
-          <Button variant="outline" onClick={handleLogout} className="border-white/20 text-white">
+          <Button variant="outline" onClick={handleLogout} className="border-gray-300 text-gray-800">
             <LogOut className="w-4 h-4 mr-2" />
             {t.logout}
           </Button>
@@ -338,46 +338,46 @@ export default function ManagerDashboard() {
         {dashboard && (
           <>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
-              <Card className="bg-[#1A1A2E] border-white/10">
+              <Card className="bg-[#1A1A2E] border-gray-200">
                 <CardContent className="p-4 text-center">
                   <Users className="w-6 h-6 text-[#7C3AED] mx-auto mb-2" />
-                  <p className="text-2xl font-bold text-white">{dashboard.statistics.total_influencers}</p>
-                  <p className="text-xs text-[#94A3B8]">{t.totalInfluencers}</p>
+                  <p className="text-2xl font-bold text-gray-800">{dashboard.statistics.total_influencers}</p>
+                  <p className="text-xs text-gray-500">{t.totalInfluencers}</p>
                 </CardContent>
               </Card>
-              <Card className="bg-[#1A1A2E] border-white/10">
+              <Card className="bg-[#1A1A2E] border-gray-200">
                 <CardContent className="p-4 text-center">
                   <CheckCircle className="w-6 h-6 text-[#10B981] mx-auto mb-2" />
-                  <p className="text-2xl font-bold text-white">{dashboard.statistics.active_influencers}</p>
-                  <p className="text-xs text-[#94A3B8]">{t.activeInfluencers}</p>
+                  <p className="text-2xl font-bold text-gray-800">{dashboard.statistics.active_influencers}</p>
+                  <p className="text-xs text-gray-500">{t.activeInfluencers}</p>
                 </CardContent>
               </Card>
-              <Card className="bg-[#1A1A2E] border-white/10">
+              <Card className="bg-[#1A1A2E] border-gray-200">
                 <CardContent className="p-4 text-center">
                   <Euro className="w-6 h-6 text-[#F59E0B] mx-auto mb-2" />
-                  <p className="text-2xl font-bold text-white">€{dashboard.statistics.total_influencer_revenue}</p>
-                  <p className="text-xs text-[#94A3B8]">{t.totalRevenue}</p>
+                  <p className="text-2xl font-bold text-gray-800">€{dashboard.statistics.total_influencer_revenue}</p>
+                  <p className="text-xs text-gray-500">{t.totalRevenue}</p>
                 </CardContent>
               </Card>
-              <Card className="bg-[#1A1A2E] border-white/10">
+              <Card className="bg-[#1A1A2E] border-gray-200">
                 <CardContent className="p-4 text-center">
                   <TrendingUp className="w-6 h-6 text-[#3B82F6] mx-auto mb-2" />
-                  <p className="text-2xl font-bold text-white">€{dashboard.statistics.total_influencer_commission}</p>
-                  <p className="text-xs text-[#94A3B8]">{t.totalCommission}</p>
+                  <p className="text-2xl font-bold text-gray-800">€{dashboard.statistics.total_influencer_commission}</p>
+                  <p className="text-xs text-gray-500">{t.totalCommission}</p>
                 </CardContent>
               </Card>
-              <Card className="bg-[#1A1A2E] border-white/10 border-[#10B981]/30">
+              <Card className="bg-[#1A1A2E] border-gray-200 border-[#10B981]/30">
                 <CardContent className="p-4 text-center">
                   <Euro className="w-6 h-6 text-[#10B981] mx-auto mb-2" />
                   <p className="text-2xl font-bold text-[#10B981]">€{dashboard.statistics.manager_commission.toFixed(2)}</p>
-                  <p className="text-xs text-[#94A3B8]">{t.yourCommission}</p>
+                  <p className="text-xs text-gray-500">{t.yourCommission}</p>
                 </CardContent>
               </Card>
-              <Card className="bg-[#1A1A2E] border-white/10">
+              <Card className="bg-[#1A1A2E] border-gray-200">
                 <CardContent className="p-4 text-center">
                   <Euro className="w-6 h-6 text-[#EC4899] mx-auto mb-2" />
-                  <p className="text-2xl font-bold text-white">€{dashboard.statistics.pending_payout.toFixed(2)}</p>
-                  <p className="text-xs text-[#94A3B8]">{t.pendingPayout}</p>
+                  <p className="text-2xl font-bold text-gray-800">€{dashboard.statistics.pending_payout.toFixed(2)}</p>
+                  <p className="text-xs text-gray-500">{t.pendingPayout}</p>
                 </CardContent>
               </Card>
             </div>
@@ -397,40 +397,40 @@ export default function ManagerDashboard() {
             )}
 
             {/* Influencers List */}
-            <Card className="bg-[#1A1A2E] border-white/10">
+            <Card className="bg-[#1A1A2E] border-gray-200">
               <CardHeader>
-                <CardTitle className="text-white">{t.influencers}</CardTitle>
+                <CardTitle className="text-gray-800">{t.influencers}</CardTitle>
               </CardHeader>
               <CardContent>
                 {dashboard.influencers.length === 0 ? (
-                  <p className="text-[#94A3B8] text-center py-8">{t.noInfluencers}</p>
+                  <p className="text-gray-500 text-center py-8">{t.noInfluencers}</p>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full">
                       <thead>
-                        <tr className="border-b border-white/10">
-                          <th className="text-left text-[#94A3B8] py-3 px-2 text-sm">Name</th>
-                          <th className="text-left text-[#94A3B8] py-3 px-2 text-sm">Code</th>
-                          <th className="text-left text-[#94A3B8] py-3 px-2 text-sm">{t.city}</th>
-                          <th className="text-right text-[#94A3B8] py-3 px-2 text-sm">{t.customers}</th>
-                          <th className="text-right text-[#94A3B8] py-3 px-2 text-sm">{t.revenue}</th>
-                          <th className="text-right text-[#94A3B8] py-3 px-2 text-sm">{t.commission}</th>
-                          <th className="text-center text-[#94A3B8] py-3 px-2 text-sm">Status</th>
-                          <th className="text-right text-[#94A3B8] py-3 px-2 text-sm">Aktionen</th>
+                        <tr className="border-b border-gray-200">
+                          <th className="text-left text-gray-500 py-3 px-2 text-sm">Name</th>
+                          <th className="text-left text-gray-500 py-3 px-2 text-sm">Code</th>
+                          <th className="text-left text-gray-500 py-3 px-2 text-sm">{t.city}</th>
+                          <th className="text-right text-gray-500 py-3 px-2 text-sm">{t.customers}</th>
+                          <th className="text-right text-gray-500 py-3 px-2 text-sm">{t.revenue}</th>
+                          <th className="text-right text-gray-500 py-3 px-2 text-sm">{t.commission}</th>
+                          <th className="text-center text-gray-500 py-3 px-2 text-sm">Status</th>
+                          <th className="text-right text-gray-500 py-3 px-2 text-sm">Aktionen</th>
                         </tr>
                       </thead>
                       <tbody>
                         {dashboard.influencers.map((inf) => (
                           <tr key={inf.id} className="border-b border-white/5 hover:bg-white/5">
-                            <td className="py-3 px-2 text-white font-medium">{inf.name}</td>
+                            <td className="py-3 px-2 text-gray-800 font-medium">{inf.name}</td>
                             <td className="py-3 px-2">
                               <code className="bg-[#7C3AED]/20 text-[#7C3AED] px-2 py-0.5 rounded text-sm">
                                 {inf.code}
                               </code>
                             </td>
-                            <td className="py-3 px-2 text-[#94A3B8]">{inf.city || '-'}</td>
-                            <td className="py-3 px-2 text-white text-right">{inf.total_customers}</td>
-                            <td className="py-3 px-2 text-white text-right">€{inf.total_revenue}</td>
+                            <td className="py-3 px-2 text-gray-500">{inf.city || '-'}</td>
+                            <td className="py-3 px-2 text-gray-800 text-right">{inf.total_customers}</td>
+                            <td className="py-3 px-2 text-gray-800 text-right">€{inf.total_revenue}</td>
                             <td className="py-3 px-2 text-[#10B981] text-right">€{inf.total_commission}</td>
                             <td className="py-3 px-2 text-center">
                               {inf.is_active ? (
@@ -488,9 +488,9 @@ export default function ManagerDashboard() {
         {/* Edit Influencer Modal */}
         {showEditModal && selectedInfluencer && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-[#1A1A2E] rounded-xl p-6 max-w-md w-full border border-white/10">
+            <div className="bg-[#1A1A2E] rounded-xl p-6 max-w-md w-full border border-gray-200">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
                   <Edit className="w-5 h-5 text-[#7C3AED]" />
                   {t.editInfluencer}
                 </h3>
@@ -499,15 +499,15 @@ export default function ManagerDashboard() {
                     setShowEditModal(false);
                     setSelectedInfluencer(null);
                   }}
-                  className="text-[#94A3B8] hover:text-white"
+                  className="text-gray-500 hover:text-gray-800"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
               
               {/* Influencer Info */}
-              <div className="mb-4 p-3 bg-[#0D0D14] rounded-lg">
-                <p className="text-white font-medium">{selectedInfluencer.name}</p>
+              <div className="mb-4 p-3 bg-gradient-to-b from-cyan-50 to-cyan-100 rounded-lg">
+                <p className="text-gray-800 font-medium">{selectedInfluencer.name}</p>
                 <code className="bg-[#7C3AED]/20 text-[#7C3AED] px-2 py-0.5 rounded text-sm">
                   {selectedInfluencer.code}
                 </code>
@@ -515,20 +515,20 @@ export default function ManagerDashboard() {
 
               <div className="space-y-4">
                 <div>
-                  <Label className="text-white flex items-center gap-1 mb-2">
+                  <Label className="text-gray-800 flex items-center gap-1 mb-2">
                     <MapPin className="w-3 h-3" /> {t.city}
                   </Label>
                   <select
                     value={editForm.city}
                     onChange={(e) => setEditForm({...editForm, city: e.target.value})}
-                    className="w-full bg-[#0D0D14] border border-white/10 text-white rounded-lg px-3 py-2"
+                    className="w-full bg-gradient-to-b from-cyan-50 to-cyan-100 border border-gray-200 text-gray-800 rounded-lg px-3 py-2"
                   >
                     <option value="">-- Stadt wählen --</option>
                     {manager.cities.map((city) => (
                       <option key={city} value={city}>{city}</option>
                     ))}
                   </select>
-                  <p className="text-[#94A3B8] text-xs mt-1">
+                  <p className="text-gray-500 text-xs mt-1">
                     Sie können nur Städte aus Ihrem Bereich zuweisen
                   </p>
                 </div>
@@ -541,7 +541,7 @@ export default function ManagerDashboard() {
                     setShowEditModal(false);
                     setSelectedInfluencer(null);
                   }}
-                  className="border-white/20 text-white"
+                  className="border-gray-300 text-gray-800"
                 >
                   {t.cancel}
                 </Button>

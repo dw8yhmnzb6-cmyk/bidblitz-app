@@ -154,18 +154,18 @@ export default function ExcitementAdminPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0D0D14] py-8 px-4">
+    <div className="min-h-screen bg-gradient-to-b from-cyan-50 to-cyan-100 py-8 px-4">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-white flex items-center gap-2">
+            <h1 className="text-3xl font-bold text-gray-800 flex items-center gap-2">
               <Sparkles className="w-8 h-8 text-[#FFD700]" />
               Spannung-Features
             </h1>
-            <p className="text-[#94A3B8]">Verwalten Sie Jackpots, Turbo & Mystery-Auktionen</p>
+            <p className="text-gray-500">Verwalten Sie Jackpots, Turbo & Mystery-Auktionen</p>
           </div>
-          <Button onClick={fetchData} variant="outline" className="border-white/20 text-white">
+          <Button onClick={fetchData} variant="outline" className="border-gray-300 text-gray-800">
             <RefreshCw className="w-4 h-4 mr-2" />
             Aktualisieren
           </Button>
@@ -177,10 +177,10 @@ export default function ExcitementAdminPage() {
             <Card className={`border-0 ${status.happy_hour.is_active ? 'bg-gradient-to-br from-[#FFD700] to-[#F59E0B]' : 'bg-[#1A1A2E]'}`}>
               <CardContent className="p-4 text-center">
                 <Zap className={`w-8 h-8 mx-auto mb-2 ${status.happy_hour.is_active ? 'text-black' : 'text-[#FFD700]'}`} />
-                <p className={`font-bold ${status.happy_hour.is_active ? 'text-black' : 'text-white'}`}>
+                <p className={`font-bold ${status.happy_hour.is_active ? 'text-black' : 'text-gray-800'}`}>
                   Happy Hour
                 </p>
-                <p className={`text-sm ${status.happy_hour.is_active ? 'text-black/70' : 'text-[#94A3B8]'}`}>
+                <p className={`text-sm ${status.happy_hour.is_active ? 'text-black/70' : 'text-gray-500'}`}>
                   {status.happy_hour.is_active ? 'AKTIV!' : 'Inaktiv'}
                 </p>
               </CardContent>
@@ -189,8 +189,8 @@ export default function ExcitementAdminPage() {
             <Card className="bg-[#1A1A2E] border-0">
               <CardContent className="p-4 text-center">
                 <Gift className="w-8 h-8 text-[#7C3AED] mx-auto mb-2" />
-                <p className="text-white font-bold">Lucky Bid</p>
-                <p className="text-[#94A3B8] text-sm">
+                <p className="text-gray-800 font-bold">Lucky Bid</p>
+                <p className="text-gray-500 text-sm">
                   In {status.lucky_bid.bids_until_lucky} Geboten
                 </p>
               </CardContent>
@@ -199,8 +199,8 @@ export default function ExcitementAdminPage() {
             <Card className="bg-[#1A1A2E] border-0">
               <CardContent className="p-4 text-center">
                 <Trophy className="w-8 h-8 text-[#F59E0B] mx-auto mb-2" />
-                <p className="text-white font-bold">Jackpots</p>
-                <p className="text-[#94A3B8] text-sm">
+                <p className="text-gray-800 font-bold">Jackpots</p>
+                <p className="text-gray-500 text-sm">
                   {status.active_counts.jackpot_auctions} aktiv
                 </p>
               </CardContent>
@@ -209,8 +209,8 @@ export default function ExcitementAdminPage() {
             <Card className="bg-[#1A1A2E] border-0">
               <CardContent className="p-4 text-center">
                 <Target className="w-8 h-8 text-[#EC4899] mx-auto mb-2" />
-                <p className="text-white font-bold">Turbo/Mystery</p>
-                <p className="text-[#94A3B8] text-sm">
+                <p className="text-gray-800 font-bold">Turbo/Mystery</p>
+                <p className="text-gray-500 text-sm">
                   {status.active_counts.turbo_auctions + status.active_counts.mystery_auctions} aktiv
                 </p>
               </CardContent>
@@ -221,29 +221,29 @@ export default function ExcitementAdminPage() {
         {/* Creation Forms */}
         <div className="grid md:grid-cols-3 gap-6 mb-8">
           {/* Jackpot Auction */}
-          <Card className="bg-[#1A1A2E] border-white/10">
+          <Card className="bg-[#1A1A2E] border-gray-200">
             <CardHeader>
-              <CardTitle className="text-white flex items-center gap-2">
+              <CardTitle className="text-gray-800 flex items-center gap-2">
                 <Trophy className="w-5 h-5 text-[#FFD700]" />
                 Jackpot-Auktion
               </CardTitle>
-              <CardDescription className="text-[#94A3B8]">
+              <CardDescription className="text-gray-500">
                 Gewinner erhält Jackpot-Gebote
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <Label className="text-white">Auktion</Label>
+                <Label className="text-gray-800">Auktion</Label>
                 <Select
                   value={jackpotForm.auction_id}
                   onValueChange={(v) => setJackpotForm({...jackpotForm, auction_id: v})}
                 >
-                  <SelectTrigger className="bg-[#0D0D14] border-white/10 text-white">
+                  <SelectTrigger className="bg-gradient-to-b from-cyan-50 to-cyan-100 border-gray-200 text-gray-800">
                     <SelectValue placeholder="Auktion wählen" />
                   </SelectTrigger>
-                  <SelectContent className="bg-[#1A1A2E] border-white/10">
+                  <SelectContent className="bg-[#1A1A2E] border-gray-200">
                     {auctions.map((a) => (
-                      <SelectItem key={a.id} value={a.id} className="text-white">
+                      <SelectItem key={a.id} value={a.id} className="text-gray-800">
                         {a.title}
                       </SelectItem>
                     ))}
@@ -252,21 +252,21 @@ export default function ExcitementAdminPage() {
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <Label className="text-white text-xs">Start-Jackpot</Label>
+                  <Label className="text-gray-800 text-xs">Start-Jackpot</Label>
                   <Input
                     type="number"
                     value={jackpotForm.initial_jackpot}
                     onChange={(e) => setJackpotForm({...jackpotForm, initial_jackpot: parseInt(e.target.value) || 0})}
-                    className="bg-[#0D0D14] border-white/10 text-white"
+                    className="bg-gradient-to-b from-cyan-50 to-cyan-100 border-gray-200 text-gray-800"
                   />
                 </div>
                 <div>
-                  <Label className="text-white text-xs">+Gebote/Bid</Label>
+                  <Label className="text-gray-800 text-xs">+Gebote/Bid</Label>
                   <Input
                     type="number"
                     value={jackpotForm.bid_contribution}
                     onChange={(e) => setJackpotForm({...jackpotForm, bid_contribution: parseInt(e.target.value) || 1})}
-                    className="bg-[#0D0D14] border-white/10 text-white"
+                    className="bg-gradient-to-b from-cyan-50 to-cyan-100 border-gray-200 text-gray-800"
                   />
                 </div>
               </div>
@@ -282,29 +282,29 @@ export default function ExcitementAdminPage() {
           </Card>
 
           {/* Turbo Auction */}
-          <Card className="bg-[#1A1A2E] border-white/10">
+          <Card className="bg-[#1A1A2E] border-gray-200">
             <CardHeader>
-              <CardTitle className="text-white flex items-center gap-2">
+              <CardTitle className="text-gray-800 flex items-center gap-2">
                 <Zap className="w-5 h-5 text-[#EC4899]" />
                 Turbo-Auktion
               </CardTitle>
-              <CardDescription className="text-[#94A3B8]">
+              <CardDescription className="text-gray-500">
                 Ultra-schnelle 30-Sekunden-Auktion
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <Label className="text-white">Produkt</Label>
+                <Label className="text-gray-800">Produkt</Label>
                 <Select
                   value={turboForm.product_id}
                   onValueChange={(v) => setTurboForm({...turboForm, product_id: v})}
                 >
-                  <SelectTrigger className="bg-[#0D0D14] border-white/10 text-white">
+                  <SelectTrigger className="bg-gradient-to-b from-cyan-50 to-cyan-100 border-gray-200 text-gray-800">
                     <SelectValue placeholder="Produkt wählen" />
                   </SelectTrigger>
-                  <SelectContent className="bg-[#1A1A2E] border-white/10">
+                  <SelectContent className="bg-[#1A1A2E] border-gray-200">
                     {products.map((p) => (
-                      <SelectItem key={p.id} value={p.id} className="text-white">
+                      <SelectItem key={p.id} value={p.id} className="text-gray-800">
                         {p.name} (€{p.retail_price})
                       </SelectItem>
                     ))}
@@ -312,18 +312,18 @@ export default function ExcitementAdminPage() {
                 </Select>
               </div>
               <div>
-                <Label className="text-white">Dauer (Sekunden)</Label>
+                <Label className="text-gray-800">Dauer (Sekunden)</Label>
                 <Input
                   type="number"
                   value={turboForm.duration_seconds}
                   onChange={(e) => setTurboForm({...turboForm, duration_seconds: parseInt(e.target.value) || 30})}
-                  className="bg-[#0D0D14] border-white/10 text-white"
+                  className="bg-gradient-to-b from-cyan-50 to-cyan-100 border-gray-200 text-gray-800"
                 />
               </div>
               <Button
                 onClick={createTurboAuction}
                 disabled={loading}
-                className="w-full bg-gradient-to-r from-[#8B5CF6] to-[#EC4899] text-white font-bold"
+                className="w-full bg-gradient-to-r from-[#8B5CF6] to-[#EC4899] text-gray-800 font-bold"
               >
                 <Plus className="w-4 h-4 mr-1" />
                 Turbo erstellen
@@ -332,29 +332,29 @@ export default function ExcitementAdminPage() {
           </Card>
 
           {/* Mystery Auction */}
-          <Card className="bg-[#1A1A2E] border-white/10">
+          <Card className="bg-[#1A1A2E] border-gray-200">
             <CardHeader>
-              <CardTitle className="text-white flex items-center gap-2">
+              <CardTitle className="text-gray-800 flex items-center gap-2">
                 <Sparkles className="w-5 h-5 text-[#6366F1]" />
                 Mystery-Auktion
               </CardTitle>
-              <CardDescription className="text-[#94A3B8]">
+              <CardDescription className="text-gray-500">
                 Verstecktes Produkt - Spannung pur!
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <Label className="text-white">Produkt (versteckt)</Label>
+                <Label className="text-gray-800">Produkt (versteckt)</Label>
                 <Select
                   value={mysteryForm.product_id}
                   onValueChange={(v) => setMysteryForm({...mysteryForm, product_id: v})}
                 >
-                  <SelectTrigger className="bg-[#0D0D14] border-white/10 text-white">
+                  <SelectTrigger className="bg-gradient-to-b from-cyan-50 to-cyan-100 border-gray-200 text-gray-800">
                     <SelectValue placeholder="Produkt wählen" />
                   </SelectTrigger>
-                  <SelectContent className="bg-[#1A1A2E] border-white/10">
+                  <SelectContent className="bg-[#1A1A2E] border-gray-200">
                     {products.map((p) => (
-                      <SelectItem key={p.id} value={p.id} className="text-white">
+                      <SelectItem key={p.id} value={p.id} className="text-gray-800">
                         {p.name} (€{p.retail_price})
                       </SelectItem>
                     ))}
@@ -362,18 +362,18 @@ export default function ExcitementAdminPage() {
                 </Select>
               </div>
               <div>
-                <Label className="text-white">Hinweis für Spieler</Label>
+                <Label className="text-gray-800">Hinweis für Spieler</Label>
                 <Input
                   value={mysteryForm.hint}
                   onChange={(e) => setMysteryForm({...mysteryForm, hint: e.target.value})}
                   placeholder="z.B. Wert: €100-€500"
-                  className="bg-[#0D0D14] border-white/10 text-white"
+                  className="bg-gradient-to-b from-cyan-50 to-cyan-100 border-gray-200 text-gray-800"
                 />
               </div>
               <Button
                 onClick={createMysteryAuction}
                 disabled={loading}
-                className="w-full bg-gradient-to-r from-[#6366F1] to-[#8B5CF6] text-white font-bold"
+                className="w-full bg-gradient-to-r from-[#6366F1] to-[#8B5CF6] text-gray-800 font-bold"
               >
                 <Plus className="w-4 h-4 mr-1" />
                 Mystery erstellen
@@ -383,30 +383,30 @@ export default function ExcitementAdminPage() {
         </div>
 
         {/* Lucky Bid History */}
-        <Card className="bg-[#1A1A2E] border-white/10">
+        <Card className="bg-[#1A1A2E] border-gray-200">
           <CardHeader>
-            <CardTitle className="text-white flex items-center gap-2">
+            <CardTitle className="text-gray-800 flex items-center gap-2">
               <Gift className="w-5 h-5 text-[#7C3AED]" />
               Lucky Bid Gewinner
             </CardTitle>
           </CardHeader>
           <CardContent>
             {luckyHistory.length === 0 ? (
-              <p className="text-[#94A3B8] text-center py-4">Noch keine Lucky Bid Gewinner</p>
+              <p className="text-gray-500 text-center py-4">Noch keine Lucky Bid Gewinner</p>
             ) : (
               <div className="space-y-2">
                 {luckyHistory.map((winner, i) => (
-                  <div key={i} className="flex items-center justify-between p-3 bg-[#0D0D14] rounded-lg">
+                  <div key={i} className="flex items-center justify-between p-3 bg-gradient-to-b from-cyan-50 to-cyan-100 rounded-lg">
                     <div className="flex items-center gap-3">
                       <Gift className="w-5 h-5 text-[#7C3AED]" />
                       <div>
-                        <p className="text-white font-medium">{winner.user_name}</p>
-                        <p className="text-[#94A3B8] text-xs">Gebot #{winner.bid_number}</p>
+                        <p className="text-gray-800 font-medium">{winner.user_name}</p>
+                        <p className="text-gray-500 text-xs">Gebot #{winner.bid_number}</p>
                       </div>
                     </div>
                     <div className="text-right">
                       <p className="text-[#10B981] font-bold">+{winner.reward} Gebote</p>
-                      <p className="text-[#94A3B8] text-xs">
+                      <p className="text-gray-500 text-xs">
                         {new Date(winner.created_at).toLocaleString('de-DE')}
                       </p>
                     </div>
