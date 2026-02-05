@@ -161,7 +161,9 @@ class TestAuthenticatedEndpoints:
         data = response.json()
         # User may or may not be in a team
         assert "team" in data or "message" in data
-        print(f"✓ My team: {data.get('team', {}).get('name', 'Not in a team')}")
+        team = data.get('team')
+        team_name = team.get('name') if team else 'Not in a team'
+        print(f"✓ My team: {team_name}")
 
 
 class TestDealRadar:
