@@ -93,8 +93,8 @@ const SocialSharePage = () => {
       <div className="min-h-screen bg-gradient-to-b from-cyan-50 to-cyan-100 py-8 px-4 flex items-center justify-center">
         <div className="text-center">
           <Share2 className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-          <h2 className="text-xl text-white mb-2">Bitte anmelden</h2>
-          <p className="text-gray-400">Du musst angemeldet sein um deine Gewinne zu teilen.</p>
+          <h2 className="text-xl text-gray-800 mb-2">Bitte anmelden</h2>
+          <p className="text-gray-500">Du musst angemeldet sein um deine Gewinne zu teilen.</p>
         </div>
       </div>
     );
@@ -125,8 +125,8 @@ const SocialSharePage = () => {
             <Share2 className="w-5 h-5 text-blue-400" />
             <span className="text-blue-400 font-bold">Social Bonus</span>
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold text-white mb-3">{t.title}</h1>
-          <p className="text-gray-400 text-lg">{t.subtitle}</p>
+          <h1 className="text-4xl md:text-5xl font-bold text-gray-800 mb-3">{t.title}</h1>
+          <p className="text-gray-500 text-lg">{t.subtitle}</p>
         </div>
 
         {/* Stats */}
@@ -134,12 +134,12 @@ const SocialSharePage = () => {
           <div className="glass-card rounded-xl p-6 text-center bg-gradient-to-br from-green-500/10 to-emerald-500/10 border-green-500/30">
             <Coins className="w-8 h-8 text-green-400 mx-auto mb-2" />
             <p className="text-3xl font-bold text-green-400">{totalEarned}</p>
-            <p className="text-sm text-gray-400">{t.totalEarned}</p>
+            <p className="text-sm text-gray-500">{t.totalEarned}</p>
           </div>
           <div className="glass-card rounded-xl p-6 text-center bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border-blue-500/30">
             <Share2 className="w-8 h-8 text-blue-400 mx-auto mb-2" />
             <p className="text-3xl font-bold text-blue-400">{shareHistory.length}</p>
-            <p className="text-sm text-gray-400">{t.totalShares}</p>
+            <p className="text-sm text-gray-500">{t.totalShares}</p>
           </div>
         </div>
 
@@ -147,14 +147,14 @@ const SocialSharePage = () => {
         <div className="glass-card rounded-xl p-4 mb-8 bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border-yellow-500/30">
           <div className="flex items-center justify-center gap-3">
             <Gift className="w-6 h-6 text-yellow-400" />
-            <span className="text-white">{t.bonusPerShare}:</span>
+            <span className="text-gray-800">{t.bonusPerShare}:</span>
             <span className="text-2xl font-bold text-yellow-400">3 {t.bids}</span>
           </div>
         </div>
 
         {/* Shareable Wins */}
         <div className="mb-8">
-          <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+          <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
             <Trophy className="w-5 h-5 text-yellow-400" />
             {t.shareableWins} ({shareableWins.length})
           </h2>
@@ -162,8 +162,8 @@ const SocialSharePage = () => {
           {wins.length === 0 ? (
             <div className="glass-card rounded-xl p-12 text-center">
               <Trophy className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-              <h3 className="text-xl text-white mb-2">{t.noWins}</h3>
-              <p className="text-gray-400">{t.noWinsDesc}</p>
+              <h3 className="text-xl text-gray-800 mb-2">{t.noWins}</h3>
+              <p className="text-gray-500">{t.noWinsDesc}</p>
             </div>
           ) : (
             <div className="space-y-4">
@@ -188,13 +188,13 @@ const SocialSharePage = () => {
                         </div>
                       )}
                       <div>
-                        <h4 className="text-white font-bold">{win.product_name || 'Produkt'}</h4>
+                        <h4 className="text-gray-800 font-bold">{win.product_name || 'Produkt'}</h4>
                         <div className="flex items-center gap-3 text-sm">
                           <span className="text-green-400">
                             {t.wonFor}: €{win.final_price?.toFixed(2)}
                           </span>
                           {win.retail_price && (
-                            <span className="text-gray-400">
+                            <span className="text-gray-500">
                               {t.savings}: €{(win.retail_price - win.final_price).toFixed(2)}
                             </span>
                           )}
@@ -214,14 +214,14 @@ const SocialSharePage = () => {
                               onClick={() => handleShare(win.auction_id, platform.id)}
                               disabled={sharing?.auctionId === win.auction_id}
                               style={{ backgroundColor: platform.color }}
-                              className="text-white"
+                              className="text-gray-800"
                             >
                               <platform.icon className="w-4 h-4" />
                             </Button>
                           ))}
                         </>
                       ) : (
-                        <span className="flex items-center gap-2 text-gray-400 text-sm">
+                        <span className="flex items-center gap-2 text-gray-500 text-sm">
                           <CheckCircle className="w-4 h-4 text-green-400" />
                           {t.alreadyShared}
                         </span>
@@ -237,14 +237,14 @@ const SocialSharePage = () => {
         {/* Share History */}
         {shareHistory.length > 0 && (
           <div>
-            <h2 className="text-xl font-bold text-white mb-4">{t.shareHistory}</h2>
+            <h2 className="text-xl font-bold text-gray-800 mb-4">{t.shareHistory}</h2>
             <div className="glass-card rounded-xl overflow-hidden">
               <table className="w-full">
                 <thead className="bg-white/5">
                   <tr>
-                    <th className="px-4 py-3 text-left text-sm text-gray-400">{t.platform}</th>
-                    <th className="px-4 py-3 text-left text-sm text-gray-400">Datum</th>
-                    <th className="px-4 py-3 text-right text-sm text-gray-400">{t.earnedBids}</th>
+                    <th className="px-4 py-3 text-left text-sm text-gray-500">{t.platform}</th>
+                    <th className="px-4 py-3 text-left text-sm text-gray-500">Datum</th>
+                    <th className="px-4 py-3 text-right text-sm text-gray-500">{t.earnedBids}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -255,10 +255,10 @@ const SocialSharePage = () => {
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2">
                             {platform && <platform.icon className="w-4 h-4" style={{ color: platform.color }} />}
-                            <span className="text-white">{platform?.name || share.platform}</span>
+                            <span className="text-gray-800">{platform?.name || share.platform}</span>
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-gray-400 text-sm">
+                        <td className="px-4 py-3 text-gray-500 text-sm">
                           {new Date(share.created_at).toLocaleDateString()}
                         </td>
                         <td className="px-4 py-3 text-right">

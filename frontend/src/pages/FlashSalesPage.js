@@ -171,10 +171,10 @@ const FlashSalesPage = () => {
             <Zap className="w-5 h-5" />
             <span className="font-bold">⚡ FLASH SALE ⚡</span>
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
+          <h1 className="text-4xl md:text-5xl font-bold text-gray-800 mb-4">
             {t.title}
           </h1>
-          <p className="text-gray-400 text-lg">{t.subtitle}</p>
+          <p className="text-gray-500 text-lg">{t.subtitle}</p>
         </div>
 
         {/* Active Sales */}
@@ -182,7 +182,7 @@ const FlashSalesPage = () => {
           <section className="mb-12">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-              <h2 className="text-2xl font-bold text-white">{t.active}</h2>
+              <h2 className="text-2xl font-bold text-gray-800">{t.active}</h2>
             </div>
 
             {activeSales.map(sale => (
@@ -192,13 +192,13 @@ const FlashSalesPage = () => {
               >
                 <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
                   <div>
-                    <h3 className="text-2xl font-bold text-white">{sale.title}</h3>
+                    <h3 className="text-2xl font-bold text-gray-800">{sale.title}</h3>
                     <div className="flex items-center gap-2 mt-2">
                       <Timer className="w-5 h-5 text-red-400" />
                       <span className="text-red-400 font-mono text-xl font-bold">
                         {formatCountdown(countdowns[sale.id] || 0)}
                       </span>
-                      <span className="text-gray-400">{t.endsIn}</span>
+                      <span className="text-gray-500">{t.endsIn}</span>
                     </div>
                   </div>
                 </div>
@@ -219,15 +219,15 @@ const FlashSalesPage = () => {
 
                       <div className="text-center mb-3 pt-2">
                         <div className="w-14 h-14 mx-auto rounded-xl bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center mb-2">
-                          <Zap className="w-7 h-7 text-white" />
+                          <Zap className="w-7 h-7 text-gray-800" />
                         </div>
-                        <h4 className="text-white font-bold">{pkg.name}</h4>
+                        <h4 className="text-gray-800 font-bold">{pkg.name}</h4>
                         <p className="text-yellow-400 font-bold text-lg">{pkg.bids} {t.bids}</p>
                       </div>
 
                       <div className="text-center mb-3">
                         <span className="text-gray-500 line-through text-sm">€{pkg.original_price}</span>
-                        <span className="text-2xl font-bold text-white ml-2">€{pkg.flash_price}</span>
+                        <span className="text-2xl font-bold text-gray-800 ml-2">€{pkg.flash_price}</span>
                         <div className="inline-flex items-center gap-1 ml-2 px-2 py-0.5 bg-green-500/20 rounded-full">
                           <Percent className="w-3 h-3 text-green-400" />
                           <span className="text-green-400 text-sm font-bold">-{pkg.discount_percent}%</span>
@@ -252,8 +252,8 @@ const FlashSalesPage = () => {
         {activeSales.length === 0 && (
           <div className="glass-card rounded-xl p-12 text-center mb-12">
             <Zap className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-            <h3 className="text-xl font-bold text-white mb-2">{t.noSales}</h3>
-            <p className="text-gray-400">{t.checkBack}</p>
+            <h3 className="text-xl font-bold text-gray-800 mb-2">{t.noSales}</h3>
+            <p className="text-gray-500">{t.checkBack}</p>
           </div>
         )}
 
@@ -262,7 +262,7 @@ const FlashSalesPage = () => {
           <section>
             <div className="flex items-center gap-3 mb-6">
               <Clock className="w-6 h-6 text-purple-400" />
-              <h2 className="text-2xl font-bold text-white">{t.upcoming}</h2>
+              <h2 className="text-2xl font-bold text-gray-800">{t.upcoming}</h2>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -270,8 +270,8 @@ const FlashSalesPage = () => {
                 <div key={sale.id} className="glass-card rounded-xl p-5">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="text-white font-bold">{sale.title}</h3>
-                      <p className="text-gray-400 text-sm flex items-center gap-1 mt-1">
+                      <h3 className="text-gray-800 font-bold">{sale.title}</h3>
+                      <p className="text-gray-500 text-sm flex items-center gap-1 mt-1">
                         <Clock className="w-4 h-4" />
                         {t.startsIn}: {new Date(sale.start_time).toLocaleString()}
                       </p>

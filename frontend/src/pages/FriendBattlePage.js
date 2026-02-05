@@ -172,7 +172,7 @@ const FriendBattlePage = () => {
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <span className="text-2xl">{battleType?.icon || '⚔️'}</span>
-            <span className="text-white font-bold">{battleType?.name || battle.challenge_type}</span>
+            <span className="text-gray-800 font-bold">{battleType?.name || battle.challenge_type}</span>
           </div>
           <div className="px-2 py-1 rounded bg-purple-500/20 text-purple-400 text-sm">
             {battle.stake_bids} {t.bids}
@@ -182,7 +182,7 @@ const FriendBattlePage = () => {
         {/* VS Display */}
         <div className="flex items-center justify-between py-3">
           <div className="text-center flex-1">
-            <p className="text-white font-bold">{t.you}</p>
+            <p className="text-gray-800 font-bold">{t.you}</p>
             {type === 'active' && (
               <p className="text-2xl font-bold text-green-400">{myScore}</p>
             )}
@@ -191,7 +191,7 @@ const FriendBattlePage = () => {
             <Swords className="w-8 h-8 text-purple-400" />
           </div>
           <div className="text-center flex-1">
-            <p className="text-white font-bold">{opponentName}</p>
+            <p className="text-gray-800 font-bold">{opponentName}</p>
             {type === 'active' && (
               <p className="text-2xl font-bold text-red-400">{theirScore}</p>
             )}
@@ -220,7 +220,7 @@ const FriendBattlePage = () => {
         )}
         
         {type === 'active' && battle.end_time && (
-          <div className="text-center text-sm text-gray-400 mt-2">
+          <div className="text-center text-sm text-gray-500 mt-2">
             <Clock className="w-4 h-4 inline mr-1" />
             {t.endsIn}: {new Date(battle.end_time).toLocaleString()}
           </div>
@@ -245,7 +245,7 @@ const FriendBattlePage = () => {
       <div className="min-h-screen bg-gradient-to-b from-cyan-50 to-cyan-100 flex items-center justify-center">
         <div className="text-center">
           <Swords className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-          <p className="text-gray-400">Bitte anmelden</p>
+          <p className="text-gray-500">Bitte anmelden</p>
         </div>
       </div>
     );
@@ -275,8 +275,8 @@ const FriendBattlePage = () => {
             <Swords className="w-5 h-5 text-purple-400" />
             <span className="text-purple-400 font-bold">Battle</span>
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold text-white mb-3">{t.title}</h1>
-          <p className="text-gray-400 text-lg">{t.subtitle}</p>
+          <h1 className="text-4xl md:text-5xl font-bold text-gray-800 mb-3">{t.title}</h1>
+          <p className="text-gray-500 text-lg">{t.subtitle}</p>
         </div>
 
         {/* Challenge Button */}
@@ -293,26 +293,26 @@ const FriendBattlePage = () => {
         {/* Challenge Form */}
         {showChallenge && (
           <div className="glass-card rounded-xl p-6 mb-8 border border-purple-500/30">
-            <h3 className="text-lg font-bold text-white mb-4">{t.challengeFriend}</h3>
+            <h3 className="text-lg font-bold text-gray-800 mb-4">{t.challengeFriend}</h3>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="text-sm text-gray-400">{t.friendId}</label>
+                <label className="text-sm text-gray-500">{t.friendId}</label>
                 <input
                   type="text"
                   value={challengeForm.friendId}
                   onChange={(e) => setChallengeForm({...challengeForm, friendId: e.target.value})}
-                  className="w-full mt-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white"
+                  className="w-full mt-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-gray-800"
                   placeholder="abc123..."
                 />
               </div>
               
               <div>
-                <label className="text-sm text-gray-400">{t.battleType}</label>
+                <label className="text-sm text-gray-500">{t.battleType}</label>
                 <select
                   value={challengeForm.type}
                   onChange={(e) => setChallengeForm({...challengeForm, type: e.target.value})}
-                  className="w-full mt-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white"
+                  className="w-full mt-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-gray-800"
                 >
                   {battleTypes.map(bt => (
                     <option key={bt.id} value={bt.id}>{bt.icon} {bt.name}</option>
@@ -321,11 +321,11 @@ const FriendBattlePage = () => {
               </div>
               
               <div>
-                <label className="text-sm text-gray-400">{t.duration} ({t.hours})</label>
+                <label className="text-sm text-gray-500">{t.duration} ({t.hours})</label>
                 <select
                   value={challengeForm.duration}
                   onChange={(e) => setChallengeForm({...challengeForm, duration: parseInt(e.target.value)})}
-                  className="w-full mt-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white"
+                  className="w-full mt-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-gray-800"
                 >
                   <option value={6}>6 {t.hours}</option>
                   <option value={12}>12 {t.hours}</option>
@@ -335,11 +335,11 @@ const FriendBattlePage = () => {
               </div>
               
               <div>
-                <label className="text-sm text-gray-400">{t.stake} ({t.bids})</label>
+                <label className="text-sm text-gray-500">{t.stake} ({t.bids})</label>
                 <select
                   value={challengeForm.stake}
                   onChange={(e) => setChallengeForm({...challengeForm, stake: parseInt(e.target.value)})}
-                  className="w-full mt-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white"
+                  className="w-full mt-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-gray-800"
                 >
                   <option value={5}>5 {t.bids}</option>
                   <option value={10}>10 {t.bids}</option>
@@ -362,30 +362,30 @@ const FriendBattlePage = () => {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           <div className="glass-card rounded-xl p-4 text-center">
             <Trophy className="w-6 h-6 text-yellow-400 mx-auto mb-2" />
-            <p className="text-2xl font-bold text-white">{battles.total_wins || 0}</p>
-            <p className="text-xs text-gray-400">{t.wins}</p>
+            <p className="text-2xl font-bold text-gray-800">{battles.total_wins || 0}</p>
+            <p className="text-xs text-gray-500">{t.wins}</p>
           </div>
           <div className="glass-card rounded-xl p-4 text-center">
             <Swords className="w-6 h-6 text-purple-400 mx-auto mb-2" />
-            <p className="text-2xl font-bold text-white">{battles.total_battles || 0}</p>
-            <p className="text-xs text-gray-400">{t.completedBattles}</p>
+            <p className="text-2xl font-bold text-gray-800">{battles.total_battles || 0}</p>
+            <p className="text-xs text-gray-500">{t.completedBattles}</p>
           </div>
           <div className="glass-card rounded-xl p-4 text-center">
             <Flame className="w-6 h-6 text-orange-400 mx-auto mb-2" />
-            <p className="text-2xl font-bold text-white">{battles.active?.length || 0}</p>
-            <p className="text-xs text-gray-400">{t.activeBattles}</p>
+            <p className="text-2xl font-bold text-gray-800">{battles.active?.length || 0}</p>
+            <p className="text-xs text-gray-500">{t.activeBattles}</p>
           </div>
           <div className="glass-card rounded-xl p-4 text-center">
             <Clock className="w-6 h-6 text-blue-400 mx-auto mb-2" />
-            <p className="text-2xl font-bold text-white">{battles.pending_received?.length || 0}</p>
-            <p className="text-xs text-gray-400">{t.pendingReceived}</p>
+            <p className="text-2xl font-bold text-gray-800">{battles.pending_received?.length || 0}</p>
+            <p className="text-xs text-gray-500">{t.pendingReceived}</p>
           </div>
         </div>
 
         {/* Pending Received */}
         {battles.pending_received?.length > 0 && (
           <div className="mb-8">
-            <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+            <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
               <Gift className="w-5 h-5 text-green-400" />
               {t.pendingReceived}
             </h2>
@@ -400,7 +400,7 @@ const FriendBattlePage = () => {
         {/* Active Battles */}
         {battles.active?.length > 0 && (
           <div className="mb-8">
-            <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+            <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
               <Flame className="w-5 h-5 text-orange-400" />
               {t.activeBattles}
             </h2>
@@ -415,7 +415,7 @@ const FriendBattlePage = () => {
         {/* Leaderboard */}
         {leaderboard.length > 0 && (
           <div className="glass-card rounded-xl p-6">
-            <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+            <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
               <Crown className="w-5 h-5 text-yellow-400" />
               {t.leaderboard}
             </h2>
@@ -427,15 +427,15 @@ const FriendBattlePage = () => {
                       idx === 0 ? 'bg-yellow-500 text-black' :
                       idx === 1 ? 'bg-gray-400 text-black' :
                       idx === 2 ? 'bg-amber-600 text-black' :
-                      'bg-white/10 text-white'
+                      'bg-white/10 text-gray-800'
                     }`}>
                       {idx + 1}
                     </span>
-                    <span className="text-white">{entry.name}</span>
+                    <span className="text-gray-800">{entry.name}</span>
                   </div>
                   <div className="text-right">
                     <span className="text-yellow-400 font-bold">{entry.wins} {t.wins}</span>
-                    <span className="text-gray-400 text-sm ml-2">(+{entry.total_winnings} {t.bids})</span>
+                    <span className="text-gray-500 text-sm ml-2">(+{entry.total_winnings} {t.bids})</span>
                   </div>
                 </div>
               ))}

@@ -160,14 +160,14 @@ export default function WholesaleApply() {
       <div className="min-h-screen bg-gradient-to-b from-cyan-50 to-cyan-100 py-20 px-4">
         <div className="max-w-2xl mx-auto text-center">
           <div className="w-20 h-20 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6">
-            <CheckCircle className="w-10 h-10 text-white" />
+            <CheckCircle className="w-10 h-10 text-gray-800" />
           </div>
-          <h1 className="text-3xl font-bold text-white mb-4">{wt.successTitle || 'Application Submitted!'}</h1>
-          <p className="text-gray-400 mb-8">
+          <h1 className="text-3xl font-bold text-gray-800 mb-4">{wt.successTitle || 'Application Submitted!'}</h1>
+          <p className="text-gray-500 mb-8">
             {wt.successMessage || 'Thank you for your application. Our team will review your request within 24-48 hours and contact you.'}
           </p>
           <Link to="/">
-            <Button className="bg-gradient-to-r from-cyan-500 to-blue-600 text-white">
+            <Button className="bg-gradient-to-r from-cyan-500 to-blue-600 text-gray-800">
               {wt.backToHome || 'Back to Homepage'}
             </Button>
           </Link>
@@ -185,8 +185,8 @@ export default function WholesaleApply() {
             <Building2 className="w-5 h-5 text-cyan-400" />
             <span className="text-cyan-400 font-medium">{wt.badge || 'B2B Wholesale Area'}</span>
           </div>
-          <h1 className="text-4xl font-bold text-white mb-4">{wt.title || 'Become a Wholesale Customer'}</h1>
-          <p className="text-gray-400 text-lg max-w-2xl mx-auto">
+          <h1 className="text-4xl font-bold text-gray-800 mb-4">{wt.title || 'Become a Wholesale Customer'}</h1>
+          <p className="text-gray-500 text-lg max-w-2xl mx-auto">
             {wt.subtitle || 'Benefit from exclusive discounts, personal support and flexible payment terms for your business.'}
           </p>
         </div>
@@ -194,46 +194,46 @@ export default function WholesaleApply() {
         <div className="grid lg:grid-cols-2 gap-12">
           {/* Benefits Section */}
           <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-white mb-6">{wt.benefits || 'Your Benefits'}</h2>
+            <h2 className="text-2xl font-bold text-gray-800 mb-6">{wt.benefits || 'Your Benefits'}</h2>
             
             <div className="grid gap-4">
               <div className="glass-card p-6 rounded-xl flex items-start gap-4">
                 <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center flex-shrink-0">
-                  <Percent className="w-6 h-6 text-white" />
+                  <Percent className="w-6 h-6 text-gray-800" />
                 </div>
                 <div>
-                  <h3 className="text-white font-bold mb-1">{wt.benefit1Title || 'Exclusive Discounts'}</h3>
-                  <p className="text-gray-400">{wt.benefit1Desc || 'Up to 40% discount on all bid packages'}</p>
+                  <h3 className="text-gray-800 font-bold mb-1">{wt.benefit1Title || 'Exclusive Discounts'}</h3>
+                  <p className="text-gray-500">{wt.benefit1Desc || 'Up to 40% discount on all bid packages'}</p>
                 </div>
               </div>
 
               <div className="glass-card p-6 rounded-xl flex items-start gap-4">
                 <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center flex-shrink-0">
-                  <Users className="w-6 h-6 text-white" />
+                  <Users className="w-6 h-6 text-gray-800" />
                 </div>
                 <div>
-                  <h3 className="text-white font-bold mb-1">{wt.benefit2Title || 'Personal Account Manager'}</h3>
-                  <p className="text-gray-400">{wt.benefit2Desc || 'Direct contact person for all your needs'}</p>
+                  <h3 className="text-gray-800 font-bold mb-1">{wt.benefit2Title || 'Personal Account Manager'}</h3>
+                  <p className="text-gray-500">{wt.benefit2Desc || 'Direct contact person for all your needs'}</p>
                 </div>
               </div>
 
               <div className="glass-card p-6 rounded-xl flex items-start gap-4">
                 <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center flex-shrink-0">
-                  <CreditCard className="w-6 h-6 text-white" />
+                  <CreditCard className="w-6 h-6 text-gray-800" />
                 </div>
                 <div>
-                  <h3 className="text-white font-bold mb-1">{wt.benefit3Title || 'Flexible Payment'}</h3>
-                  <p className="text-gray-400">{wt.benefit3Desc || 'Purchase on invoice with 30 days payment terms'}</p>
+                  <h3 className="text-gray-800 font-bold mb-1">{wt.benefit3Title || 'Flexible Payment'}</h3>
+                  <p className="text-gray-500">{wt.benefit3Desc || 'Purchase on invoice with 30 days payment terms'}</p>
                 </div>
               </div>
 
               <div className="glass-card p-6 rounded-xl flex items-start gap-4">
                 <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center flex-shrink-0">
-                  <HeadphonesIcon className="w-6 h-6 text-white" />
+                  <HeadphonesIcon className="w-6 h-6 text-gray-800" />
                 </div>
                 <div>
-                  <h3 className="text-white font-bold mb-1">{wt.benefit4Title || 'Priority Support'}</h3>
-                  <p className="text-gray-400">{wt.benefit4Desc || 'Preferred handling of all requests'}</p>
+                  <h3 className="text-gray-800 font-bold mb-1">{wt.benefit4Title || 'Priority Support'}</h3>
+                  <p className="text-gray-500">{wt.benefit4Desc || 'Preferred handling of all requests'}</p>
                 </div>
               </div>
             </div>
@@ -241,58 +241,58 @@ export default function WholesaleApply() {
 
           {/* Application Form */}
           <div className="glass-card p-8 rounded-xl">
-            <h2 className="text-2xl font-bold text-white mb-6">{wt.formTitle || 'Application Form'}</h2>
+            <h2 className="text-2xl font-bold text-gray-800 mb-6">{wt.formTitle || 'Application Form'}</h2>
             
             <form onSubmit={handleSubmit} className="space-y-5">
               <div className="space-y-2">
-                <label className="text-gray-300 text-sm font-medium">{wt.companyName || 'Company Name'} *</label>
+                <label className="text-gray-600 text-sm font-medium">{wt.companyName || 'Company Name'} *</label>
                 <div className="relative">
                   <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
                   <Input
                     type="text"
                     value={formData.company_name}
                     onChange={(e) => setFormData({...formData, company_name: e.target.value})}
-                    className="pl-10 bg-[#0F0F16] border-white/10 text-white"
+                    className="pl-10 bg-[#0F0F16] border-white/10 text-gray-800"
                     required
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <label className="text-gray-300 text-sm font-medium">{wt.contactPerson || 'Contact Person'} *</label>
+                <label className="text-gray-600 text-sm font-medium">{wt.contactPerson || 'Contact Person'} *</label>
                 <Input
                   type="text"
                   value={formData.contact_name}
                   onChange={(e) => setFormData({...formData, contact_name: e.target.value})}
-                  className="bg-[#0F0F16] border-white/10 text-white"
+                  className="bg-[#0F0F16] border-white/10 text-gray-800"
                   required
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-gray-300 text-sm font-medium">{wt.email || 'Email'} *</label>
+                  <label className="text-gray-600 text-sm font-medium">{wt.email || 'Email'} *</label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
                     <Input
                       type="email"
                       value={formData.email}
                       onChange={(e) => setFormData({...formData, email: e.target.value})}
-                      className="pl-10 bg-[#0F0F16] border-white/10 text-white"
+                      className="pl-10 bg-[#0F0F16] border-white/10 text-gray-800"
                       required
                     />
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-gray-300 text-sm font-medium">{wt.phone || 'Phone'} *</label>
+                  <label className="text-gray-600 text-sm font-medium">{wt.phone || 'Phone'} *</label>
                   <div className="relative">
                     <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
                     <Input
                       type="tel"
                       value={formData.phone}
                       onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                      className="pl-10 bg-[#0F0F16] border-white/10 text-white"
+                      className="pl-10 bg-[#0F0F16] border-white/10 text-gray-800"
                       required
                     />
                   </div>
@@ -300,27 +300,27 @@ export default function WholesaleApply() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-gray-300 text-sm font-medium">{wt.website || 'Website (optional)'}</label>
+                <label className="text-gray-600 text-sm font-medium">{wt.website || 'Website (optional)'}</label>
                 <div className="relative">
                   <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
                   <Input
                     type="url"
                     value={formData.website}
                     onChange={(e) => setFormData({...formData, website: e.target.value})}
-                    className="pl-10 bg-[#0F0F16] border-white/10 text-white"
+                    className="pl-10 bg-[#0F0F16] border-white/10 text-gray-800"
                     placeholder="https://"
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <label className="text-gray-300 text-sm font-medium">{wt.expectedVolume || 'Expected Monthly Volume'} *</label>
+                <label className="text-gray-600 text-sm font-medium">{wt.expectedVolume || 'Expected Monthly Volume'} *</label>
                 <div className="relative">
                   <Package className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
                   <select
                     value={formData.expected_volume}
                     onChange={(e) => setFormData({...formData, expected_volume: e.target.value})}
-                    className="w-full pl-10 pr-4 py-2 bg-[#0F0F16] border border-white/10 rounded-md text-white appearance-none"
+                    className="w-full pl-10 pr-4 py-2 bg-[#0F0F16] border border-white/10 rounded-md text-gray-800 appearance-none"
                     required
                   >
                     <option value="">{wt.selectVolume || 'Please select'}</option>
@@ -333,13 +333,13 @@ export default function WholesaleApply() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-gray-300 text-sm font-medium">{wt.message || 'Message (optional)'}</label>
+                <label className="text-gray-600 text-sm font-medium">{wt.message || 'Message (optional)'}</label>
                 <div className="relative">
                   <MessageSquare className="absolute left-3 top-3 w-5 h-5 text-gray-500" />
                   <textarea
                     value={formData.message}
                     onChange={(e) => setFormData({...formData, message: e.target.value})}
-                    className="w-full pl-10 pr-4 py-2 bg-[#0F0F16] border border-white/10 rounded-md text-white min-h-[100px] resize-none"
+                    className="w-full pl-10 pr-4 py-2 bg-[#0F0F16] border border-white/10 rounded-md text-gray-800 min-h-[100px] resize-none"
                     placeholder={wt.messagePlaceholder || 'Tell us more about your company...'}
                   />
                 </div>
@@ -348,7 +348,7 @@ export default function WholesaleApply() {
               <Button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white py-3"
+                className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-gray-800 py-3"
               >
                 {loading ? (
                   <span>{wt.submitting || 'Submitting...'}</span>

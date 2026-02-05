@@ -140,10 +140,10 @@ const LevelsPage = () => {
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-purple-500/20 to-pink-500/20 mb-4">
             <Crown className="w-5 h-5 text-yellow-400" />
-            <span className="text-white font-bold">Level System</span>
+            <span className="text-gray-800 font-bold">Level System</span>
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold text-white mb-2">{t.title}</h1>
-          <p className="text-gray-400 text-lg">{t.subtitle}</p>
+          <h1 className="text-4xl md:text-5xl font-bold text-gray-800 mb-2">{t.title}</h1>
+          <p className="text-gray-500 text-lg">{t.subtitle}</p>
         </div>
 
         {/* Current Level Card */}
@@ -153,8 +153,8 @@ const LevelsPage = () => {
               <LevelBadge level={currentLevel} size="lg" />
               
               <div className="flex-1 text-center md:text-left">
-                <p className="text-gray-400 text-sm mb-1">{t.currentLevel}</p>
-                <h2 className="text-3xl font-bold text-white mb-2">
+                <p className="text-gray-500 text-sm mb-1">{t.currentLevel}</p>
+                <h2 className="text-3xl font-bold text-gray-800 mb-2">
                   {levelNames[currentLevel]?.[language] || currentLevel}
                 </h2>
                 <p className="text-purple-400 font-bold">{currentXp} XP</p>
@@ -163,8 +163,8 @@ const LevelsPage = () => {
               {nextLevel && (
                 <div className="flex-1">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-gray-400">{t.xpProgress}</span>
-                    <span className="text-white font-bold">{progressPercent}%</span>
+                    <span className="text-gray-500">{t.xpProgress}</span>
+                    <span className="text-gray-800 font-bold">{progressPercent}%</span>
                   </div>
                   <div className="h-4 bg-white/10 rounded-full overflow-hidden mb-2">
                     <div 
@@ -173,7 +173,7 @@ const LevelsPage = () => {
                     />
                   </div>
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-400">{t.nextLevel}: {levelNames[nextLevel.name?.toLowerCase()]?.[language]}</span>
+                    <span className="text-gray-500">{t.nextLevel}: {levelNames[nextLevel.name?.toLowerCase()]?.[language]}</span>
                     <span className="text-purple-400">{xpToNext} {t.xpNeeded}</span>
                   </div>
                 </div>
@@ -183,7 +183,7 @@ const LevelsPage = () => {
             {/* Current Perks */}
             {levelData.perks && (
               <div className="mt-6 pt-6 border-t border-white/10">
-                <h3 className="text-white font-bold mb-3">{t.yourPerks}</h3>
+                <h3 className="text-gray-800 font-bold mb-3">{t.yourPerks}</h3>
                 <div className="flex flex-wrap gap-3">
                   {allLevels[currentLevel]?.perks_de?.map((perk, i) => (
                     <span key={i} className="px-3 py-1 bg-purple-500/20 text-purple-300 rounded-full text-sm">
@@ -198,46 +198,46 @@ const LevelsPage = () => {
 
         {/* How to Earn XP */}
         <div className="glass-card rounded-xl p-6 mb-8">
-          <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+          <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-yellow-400" />
             {t.howToEarn}
           </h3>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
             <div className="p-3 bg-white/5 rounded-lg text-center">
               <Zap className="w-6 h-6 text-blue-400 mx-auto mb-1" />
-              <p className="text-white font-bold">1 {t.xp}</p>
-              <p className="text-gray-400 text-xs">{t.perBid}</p>
+              <p className="text-gray-800 font-bold">1 {t.xp}</p>
+              <p className="text-gray-500 text-xs">{t.perBid}</p>
             </div>
             <div className="p-3 bg-white/5 rounded-lg text-center">
               <Trophy className="w-6 h-6 text-yellow-400 mx-auto mb-1" />
-              <p className="text-white font-bold">50 {t.xp}</p>
-              <p className="text-gray-400 text-xs">{t.perWin}</p>
+              <p className="text-gray-800 font-bold">50 {t.xp}</p>
+              <p className="text-gray-500 text-xs">{t.perWin}</p>
             </div>
             <div className="p-3 bg-white/5 rounded-lg text-center">
               <Gift className="w-6 h-6 text-green-400 mx-auto mb-1" />
-              <p className="text-white font-bold">10 {t.xp}</p>
-              <p className="text-gray-400 text-xs">{t.perPurchase}</p>
+              <p className="text-gray-800 font-bold">10 {t.xp}</p>
+              <p className="text-gray-500 text-xs">{t.perPurchase}</p>
             </div>
             <div className="p-3 bg-white/5 rounded-lg text-center">
               <Star className="w-6 h-6 text-orange-400 mx-auto mb-1" />
-              <p className="text-white font-bold">5 {t.xp}</p>
-              <p className="text-gray-400 text-xs">{t.perLogin}</p>
+              <p className="text-gray-800 font-bold">5 {t.xp}</p>
+              <p className="text-gray-500 text-xs">{t.perLogin}</p>
             </div>
             <div className="p-3 bg-white/5 rounded-lg text-center">
               <Award className="w-6 h-6 text-purple-400 mx-auto mb-1" />
-              <p className="text-white font-bold">15 {t.xp}</p>
-              <p className="text-gray-400 text-xs">{t.perReview}</p>
+              <p className="text-gray-800 font-bold">15 {t.xp}</p>
+              <p className="text-gray-500 text-xs">{t.perReview}</p>
             </div>
             <div className="p-3 bg-white/5 rounded-lg text-center">
               <TrendingUp className="w-6 h-6 text-pink-400 mx-auto mb-1" />
-              <p className="text-white font-bold">100 {t.xp}</p>
-              <p className="text-gray-400 text-xs">{t.perReferral}</p>
+              <p className="text-gray-800 font-bold">100 {t.xp}</p>
+              <p className="text-gray-500 text-xs">{t.perReferral}</p>
             </div>
           </div>
         </div>
 
         {/* All Levels */}
-        <h3 className="text-xl font-bold text-white mb-4">{t.allLevels}</h3>
+        <h3 className="text-xl font-bold text-gray-800 mb-4">{t.allLevels}</h3>
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
           {levelOrder.map((level, index) => {
             const levelInfo = allLevels[level] || {};
@@ -256,16 +256,16 @@ const LevelsPage = () => {
                 }`}
               >
                 <LevelBadge level={level} size="md" />
-                <h4 className="text-white font-bold mt-3">
+                <h4 className="text-gray-800 font-bold mt-3">
                   {levelNames[level]?.[language] || level}
                 </h4>
-                <p className="text-gray-400 text-sm mb-3">
+                <p className="text-gray-500 text-sm mb-3">
                   {levelInfo.min_xp || 0}+ {t.xp}
                 </p>
                 
                 <div className="space-y-1 text-left">
                   {levelInfo.perks_de?.slice(0, 3).map((perk, i) => (
-                    <p key={i} className="text-xs text-gray-400 truncate">
+                    <p key={i} className="text-xs text-gray-500 truncate">
                       • {perk}
                     </p>
                   ))}
@@ -290,7 +290,7 @@ const LevelsPage = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Leaderboard */}
           <div className="glass-card rounded-xl p-6">
-            <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+            <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
               <Trophy className="w-5 h-5 text-yellow-400" />
               {t.leaderboard}
             </h3>
@@ -301,12 +301,12 @@ const LevelsPage = () => {
                 }`}>
                   <div className="flex items-center gap-3">
                     <span className={`w-6 text-center font-bold ${
-                      i === 0 ? 'text-yellow-400' : i === 1 ? 'text-gray-300' : i === 2 ? 'text-amber-600' : 'text-gray-500'
+                      i === 0 ? 'text-yellow-400' : i === 1 ? 'text-gray-600' : i === 2 ? 'text-amber-600' : 'text-gray-500'
                     }`}>
                       {entry.rank}
                     </span>
                     <span className="text-xl">{entry.level_icon}</span>
-                    <span className="text-white">{entry.user_name}</span>
+                    <span className="text-gray-800">{entry.user_name}</span>
                   </div>
                   <span className="text-purple-400 font-bold">{entry.xp} XP</span>
                 </div>
@@ -317,7 +317,7 @@ const LevelsPage = () => {
           {/* XP History */}
           {isAuthenticated && xpHistory.length > 0 && (
             <div className="glass-card rounded-xl p-6">
-              <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+              <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
                 <TrendingUp className="w-5 h-5 text-green-400" />
                 {t.recentXp}
               </h3>
@@ -325,7 +325,7 @@ const LevelsPage = () => {
                 {xpHistory.map((tx, i) => (
                   <div key={i} className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
                     <div>
-                      <p className="text-white text-sm">{tx.description}</p>
+                      <p className="text-gray-800 text-sm">{tx.description}</p>
                       <p className="text-gray-500 text-xs">
                         {new Date(tx.created_at).toLocaleDateString()}
                       </p>

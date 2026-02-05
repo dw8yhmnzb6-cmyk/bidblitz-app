@@ -163,10 +163,10 @@ const DailyRewardsPage = () => {
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-orange-500/20 to-red-500/20 mb-4">
             <Calendar className="w-5 h-5 text-orange-400" />
-            <span className="text-white font-bold">Daily Rewards</span>
+            <span className="text-gray-800 font-bold">Daily Rewards</span>
           </div>
-          <h1 className="text-4xl font-bold text-white mb-2">{t.title}</h1>
-          <p className="text-gray-400">{t.subtitle}</p>
+          <h1 className="text-4xl font-bold text-gray-800 mb-2">{t.title}</h1>
+          <p className="text-gray-500">{t.subtitle}</p>
         </div>
 
         {/* Power Hour Banner */}
@@ -177,7 +177,7 @@ const DailyRewardsPage = () => {
                 <Zap className="w-8 h-8 text-yellow-400" />
                 <div>
                   <h3 className="text-yellow-400 font-bold">{t.powerHourActive}</h3>
-                  <p className="text-white">{powerHour.name} - {powerHour.multiplier}x XP!</p>
+                  <p className="text-gray-800">{powerHour.name} - {powerHour.multiplier}x XP!</p>
                 </div>
               </div>
               <div className="text-right">
@@ -192,11 +192,11 @@ const DailyRewardsPage = () => {
         {/* Daily Quests */}
         <div className="glass-card rounded-2xl p-6 mb-8">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-bold text-white flex items-center gap-2">
+            <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
               <Target className="w-6 h-6 text-blue-400" />
               {t.dailyQuests}
             </h2>
-            <div className="flex items-center gap-2 text-gray-400">
+            <div className="flex items-center gap-2 text-gray-500">
               <Clock className="w-4 h-4" />
               <span>{t.resetsIn}: {formatTime(timeUntilReset)}</span>
             </div>
@@ -216,8 +216,8 @@ const DailyRewardsPage = () => {
                   <div className="flex items-center gap-4">
                     <span className="text-3xl">{quest.icon}</span>
                     <div>
-                      <h3 className="text-white font-bold">{quest.name}</h3>
-                      <p className="text-gray-400 text-sm">{quest.description}</p>
+                      <h3 className="text-gray-800 font-bold">{quest.name}</h3>
+                      <p className="text-gray-500 text-sm">{quest.description}</p>
                       <div className="flex items-center gap-4 mt-2">
                         <span className="text-yellow-400 text-sm">+{quest.reward_bids} Gebote</span>
                         <span className="text-purple-400 text-sm">+{quest.reward_xp} XP</span>
@@ -228,10 +228,10 @@ const DailyRewardsPage = () => {
                   <div className="flex items-center gap-4">
                     {/* Progress */}
                     <div className="text-right">
-                      <p className={`font-bold ${quest.completed ? 'text-green-400' : 'text-white'}`}>
+                      <p className={`font-bold ${quest.completed ? 'text-green-400' : 'text-gray-800'}`}>
                         {quest.progress}/{quest.target}
                       </p>
-                      <p className="text-xs text-gray-400">
+                      <p className="text-xs text-gray-500">
                         {quest.completed ? t.completed : t.inProgress}
                       </p>
                     </div>
@@ -247,7 +247,7 @@ const DailyRewardsPage = () => {
                       </Button>
                     )}
                     {quest.claimed && (
-                      <div className="px-4 py-2 bg-gray-700 rounded-lg text-gray-400">
+                      <div className="px-4 py-2 bg-gray-700 rounded-lg text-gray-500">
                         <Check className="w-5 h-5" />
                       </div>
                     )}
@@ -274,7 +274,7 @@ const DailyRewardsPage = () => {
                 <div className="flex items-center gap-3">
                   <Crown className="w-8 h-8 text-yellow-400" />
                   <div>
-                    <h3 className="text-white font-bold">{t.allCompleted}</h3>
+                    <h3 className="text-gray-800 font-bold">{t.allCompleted}</h3>
                     <p className="text-purple-400">+5 Gebote, +50 XP {t.bonusReward}!</p>
                   </div>
                 </div>
@@ -288,7 +288,7 @@ const DailyRewardsPage = () => {
                     {t.claim}
                   </Button>
                 ) : (
-                  <div className="px-4 py-2 bg-gray-700 rounded-lg text-gray-400 flex items-center gap-2">
+                  <div className="px-4 py-2 bg-gray-700 rounded-lg text-gray-500 flex items-center gap-2">
                     <Check className="w-5 h-5" />
                     {t.claimed}
                   </div>
@@ -301,13 +301,13 @@ const DailyRewardsPage = () => {
         {/* Login Calendar */}
         <div className="glass-card rounded-2xl p-6">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-bold text-white flex items-center gap-2">
+            <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
               <Calendar className="w-6 h-6 text-orange-400" />
               {t.loginCalendar}
             </h2>
             <div className="flex items-center gap-2">
               <Star className="w-5 h-5 text-yellow-400" />
-              <span className="text-white font-bold">{t.day} {calendar?.current_day || 0}</span>
+              <span className="text-gray-800 font-bold">{t.day} {calendar?.current_day || 0}</span>
             </div>
           </div>
 
@@ -320,7 +320,7 @@ const DailyRewardsPage = () => {
                     <span className="text-2xl">{calendar?.next_reward?.icon || '🎁'}</span>
                   </div>
                   <div>
-                    <h3 className="text-white font-bold">{t.today}: {t.day} {(calendar?.current_day || 0) + 1}</h3>
+                    <h3 className="text-gray-800 font-bold">{t.today}: {t.day} {(calendar?.current_day || 0) + 1}</h3>
                     <p className="text-green-400">+{calendar?.next_reward?.amount || 0} Gebote</p>
                   </div>
                 </div>
@@ -340,7 +340,7 @@ const DailyRewardsPage = () => {
             <div className="mb-6 p-4 rounded-xl bg-gray-800/50 border border-gray-700">
               <div className="flex items-center gap-3">
                 <Check className="w-6 h-6 text-green-400" />
-                <span className="text-gray-400">{t.alreadyClaimed}</span>
+                <span className="text-gray-500">{t.alreadyClaimed}</span>
               </div>
             </div>
           )}
@@ -367,7 +367,7 @@ const DailyRewardsPage = () => {
                 >
                   <span className={`text-lg ${isPast ? 'opacity-50' : ''}`}>{day.icon}</span>
                   <span className={`text-xs font-bold ${
-                    isPast ? 'text-green-400' : isCurrent ? 'text-yellow-400' : 'text-gray-400'
+                    isPast ? 'text-green-400' : isCurrent ? 'text-yellow-400' : 'text-gray-500'
                   }`}>
                     +{day.amount}
                   </span>
@@ -381,15 +381,15 @@ const DailyRewardsPage = () => {
           <div className="mt-4 flex items-center justify-center gap-6 text-sm">
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 rounded bg-green-500/20 border border-green-500/30"></div>
-              <span className="text-gray-400">Abgeholt</span>
+              <span className="text-gray-500">Abgeholt</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 rounded bg-yellow-500/20 border border-yellow-500"></div>
-              <span className="text-gray-400">{t.today}</span>
+              <span className="text-gray-500">{t.today}</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 rounded bg-purple-500/10 border border-purple-500/30"></div>
-              <span className="text-gray-400">Wochen-Bonus</span>
+              <span className="text-gray-500">Wochen-Bonus</span>
             </div>
           </div>
         </div>

@@ -125,25 +125,25 @@ const LoyaltyPage = () => {
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-yellow-500/20 to-orange-500/20 mb-4">
             <Coins className="w-5 h-5 text-yellow-400" />
-            <span className="text-white font-bold">Loyalty Program</span>
+            <span className="text-gray-800 font-bold">Loyalty Program</span>
           </div>
-          <h1 className="text-4xl font-bold text-white mb-2">{t.title}</h1>
-          <p className="text-gray-400">{t.subtitle}</p>
+          <h1 className="text-4xl font-bold text-gray-800 mb-2">{t.title}</h1>
+          <p className="text-gray-500">{t.subtitle}</p>
         </div>
 
         {/* Balance Card */}
         <div className="glass-card rounded-2xl p-8 mb-8 bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border border-yellow-500/30">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
             <div>
-              <p className="text-gray-400 text-sm mb-1">{t.availablePoints}</p>
+              <p className="text-gray-500 text-sm mb-1">{t.availablePoints}</p>
               <p className="text-4xl font-bold text-yellow-400">{balance.available_points || 0}</p>
             </div>
             <div>
-              <p className="text-gray-400 text-sm mb-1">{t.lifetimePoints}</p>
-              <p className="text-4xl font-bold text-white">{balance.lifetime_points || 0}</p>
+              <p className="text-gray-500 text-sm mb-1">{t.lifetimePoints}</p>
+              <p className="text-4xl font-bold text-gray-800">{balance.lifetime_points || 0}</p>
             </div>
             <div>
-              <p className="text-gray-400 text-sm mb-1">{t.level}</p>
+              <p className="text-gray-500 text-sm mb-1">{t.level}</p>
               <p className="text-4xl font-bold text-orange-400">{balance.level || 'Bronze'}</p>
             </div>
           </div>
@@ -151,7 +151,7 @@ const LoyaltyPage = () => {
           {loyaltyData?.next_tier && (
             <div className="mt-6 pt-6 border-t border-white/10">
               <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-400">{t.nextReward}: {loyaltyData.next_tier.description}</span>
+                <span className="text-gray-500">{t.nextReward}: {loyaltyData.next_tier.description}</span>
                 <span className="text-yellow-400 font-bold">
                   {loyaltyData.points_to_next} {t.points}
                 </span>
@@ -170,7 +170,7 @@ const LoyaltyPage = () => {
 
         {/* How to Earn */}
         <div className="glass-card rounded-xl p-6 mb-8">
-          <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+          <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-yellow-400" />
             {t.howToEarn}
           </h3>
@@ -180,7 +180,7 @@ const LoyaltyPage = () => {
                 <Coins className="w-5 h-5 text-green-400" />
               </div>
               <div>
-                <p className="text-white font-bold">10 {t.perEuro}</p>
+                <p className="text-gray-800 font-bold">10 {t.perEuro}</p>
               </div>
             </div>
             <div className="flex items-center gap-3 p-3 bg-white/5 rounded-lg">
@@ -188,14 +188,14 @@ const LoyaltyPage = () => {
                 <Award className="w-5 h-5 text-purple-400" />
               </div>
               <div>
-                <p className="text-white font-bold">50 {t.perWin}</p>
+                <p className="text-gray-800 font-bold">50 {t.perWin}</p>
               </div>
             </div>
           </div>
         </div>
 
         {/* Rewards Grid */}
-        <h3 className="text-xl font-bold text-white mb-4">{t.rewards}</h3>
+        <h3 className="text-xl font-bold text-gray-800 mb-4">{t.rewards}</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
           {tiers.map((tier, index) => {
             const canRedeem = (balance.available_points || 0) >= tier.points;
@@ -209,12 +209,12 @@ const LoyaltyPage = () => {
               >
                 <div className="flex items-center gap-3 mb-4">
                   <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                    canRedeem ? 'bg-yellow-500/20 text-yellow-400' : 'bg-gray-700 text-gray-400'
+                    canRedeem ? 'bg-yellow-500/20 text-yellow-400' : 'bg-gray-700 text-gray-500'
                   }`}>
                     {getTierIcon(tier.reward)}
                   </div>
                   <div>
-                    <p className="text-white font-bold">{tier.description}</p>
+                    <p className="text-gray-800 font-bold">{tier.description}</p>
                     <p className="text-yellow-400 font-medium">{tier.points} Punkte</p>
                   </div>
                 </div>
@@ -225,7 +225,7 @@ const LoyaltyPage = () => {
                   className={`w-full ${
                     canRedeem 
                       ? 'bg-gradient-to-r from-yellow-400 to-orange-500 text-black hover:from-yellow-300'
-                      : 'bg-gray-700 text-gray-400'
+                      : 'bg-gray-700 text-gray-500'
                   }`}
                 >
                   {canRedeem ? t.redeem : t.notEnough}
@@ -238,15 +238,15 @@ const LoyaltyPage = () => {
         {/* Transaction History */}
         {transactions.length > 0 && (
           <div className="glass-card rounded-xl p-6">
-            <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-              <History className="w-5 h-5 text-gray-400" />
+            <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+              <History className="w-5 h-5 text-gray-500" />
               {t.history}
             </h3>
             <div className="space-y-3 max-h-64 overflow-y-auto">
               {transactions.map((tx, i) => (
                 <div key={i} className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
                   <div>
-                    <p className="text-white text-sm">{tx.description}</p>
+                    <p className="text-gray-800 text-sm">{tx.description}</p>
                     <p className="text-gray-500 text-xs">
                       {new Date(tx.created_at).toLocaleDateString()}
                     </p>

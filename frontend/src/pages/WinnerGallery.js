@@ -179,7 +179,7 @@ const WinnerGallery = () => {
       case 'approved': return 'bg-green-500/20 text-green-400';
       case 'pending': return 'bg-yellow-500/20 text-yellow-400';
       case 'rejected': return 'bg-red-500/20 text-red-400';
-      default: return 'bg-gray-500/20 text-gray-400';
+      default: return 'bg-gray-500/20 text-gray-500';
     }
   };
 
@@ -207,12 +207,12 @@ const WinnerGallery = () => {
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-purple-500/20 to-pink-500/20 mb-4">
             <Trophy className="w-5 h-5 text-yellow-400" />
-            <span className="text-white font-bold">Winner Gallery</span>
+            <span className="text-gray-800 font-bold">Winner Gallery</span>
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
+          <h1 className="text-4xl md:text-5xl font-bold text-gray-800 mb-4">
             {t.title}
           </h1>
-          <p className="text-gray-400 text-lg max-w-2xl mx-auto">
+          <p className="text-gray-500 text-lg max-w-2xl mx-auto">
             {t.subtitle}
           </p>
         </div>
@@ -252,7 +252,7 @@ const WinnerGallery = () => {
         {entries.length === 0 ? (
           <div className="glass-card rounded-xl p-12 text-center">
             <Image className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-            <p className="text-gray-400 text-lg">{t.noEntries}</p>
+            <p className="text-gray-500 text-lg">{t.noEntries}</p>
           </div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -277,14 +277,14 @@ const WinnerGallery = () => {
                 {/* Overlay */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
                   <div className="absolute bottom-0 left-0 right-0 p-4">
-                    <p className="text-white font-bold truncate">{entry.product_name}</p>
+                    <p className="text-gray-800 font-bold truncate">{entry.product_name}</p>
                     <div className="flex items-center justify-between mt-2">
                       <span className="text-green-400 font-bold">
                         -{((entry.savings / entry.retail_price) * 100).toFixed(0)}%
                       </span>
                       <div className="flex items-center gap-1">
                         <Heart className="w-4 h-4 text-pink-400" />
-                        <span className="text-white">{entry.likes}</span>
+                        <span className="text-gray-800">{entry.likes}</span>
                       </div>
                     </div>
                   </div>
@@ -304,7 +304,7 @@ const WinnerGallery = () => {
         {/* My Submissions */}
         {isAuthenticated && mySubmissions.length > 0 && (
           <section className="mt-12">
-            <h2 className="text-xl font-bold text-white mb-4">{t.mySubmissions}</h2>
+            <h2 className="text-xl font-bold text-gray-800 mb-4">{t.mySubmissions}</h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {mySubmissions.map(sub => (
                 <div key={sub.id} className="glass-card rounded-xl p-4">
@@ -315,7 +315,7 @@ const WinnerGallery = () => {
                       <Camera className="w-8 h-8 text-gray-600" />
                     )}
                   </div>
-                  <p className="text-white font-medium text-sm truncate">{sub.product_name}</p>
+                  <p className="text-gray-800 font-medium text-sm truncate">{sub.product_name}</p>
                   <span className={`inline-block mt-2 px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(sub.status)}`}>
                     {t[sub.status]}
                   </span>
@@ -330,7 +330,7 @@ const WinnerGallery = () => {
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80">
             <div className="glass-card rounded-2xl p-6 max-w-lg w-full">
               <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-bold text-white">{t.uploadPhoto}</h3>
+                <h3 className="text-xl font-bold text-gray-800">{t.uploadPhoto}</h3>
                 <Button variant="ghost" size="sm" onClick={() => setShowUpload(false)}>
                   <X className="w-5 h-5" />
                 </Button>
@@ -339,7 +339,7 @@ const WinnerGallery = () => {
               <div className="space-y-4">
                 {/* Auction Select - would need won auctions data */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-gray-600 mb-2">
                     {t.selectAuction}
                   </label>
                   <input
@@ -347,13 +347,13 @@ const WinnerGallery = () => {
                     placeholder="Auktion-ID eingeben"
                     value={uploadData.auction_id}
                     onChange={(e) => setUploadData(prev => ({ ...prev, auction_id: e.target.value }))}
-                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-purple-500"
+                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-gray-800 focus:outline-none focus:border-purple-500"
                   />
                 </div>
 
                 {/* Image Upload */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-gray-600 mb-2">
                     {t.selectImage}
                   </label>
                   <div 
@@ -365,7 +365,7 @@ const WinnerGallery = () => {
                     ) : (
                       <>
                         <Upload className="w-12 h-12 text-gray-500 mx-auto mb-2" />
-                        <p className="text-gray-400">Klicken zum Auswählen</p>
+                        <p className="text-gray-500">Klicken zum Auswählen</p>
                       </>
                     )}
                     <input
@@ -380,7 +380,7 @@ const WinnerGallery = () => {
 
                 {/* Caption */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-gray-600 mb-2">
                     {t.caption}
                   </label>
                   <textarea
@@ -388,7 +388,7 @@ const WinnerGallery = () => {
                     value={uploadData.caption}
                     onChange={(e) => setUploadData(prev => ({ ...prev, caption: e.target.value }))}
                     rows={3}
-                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-purple-500 resize-none"
+                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-gray-800 focus:outline-none focus:border-purple-500 resize-none"
                   />
                 </div>
 
@@ -396,7 +396,7 @@ const WinnerGallery = () => {
                 <div className="flex items-center gap-2 p-3 bg-green-500/10 rounded-lg">
                   <Sparkles className="w-5 h-5 text-green-400" />
                   <span className="text-green-400 font-medium">{t.bonusBids}</span>
-                  <span className="text-gray-400 text-sm">nach Freigabe</span>
+                  <span className="text-gray-500 text-sm">nach Freigabe</span>
                 </div>
 
                 {/* Submit */}
@@ -418,8 +418,8 @@ const WinnerGallery = () => {
             <div className="glass-card rounded-2xl p-6 max-w-2xl w-full" onClick={e => e.stopPropagation()}>
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h3 className="text-xl font-bold text-white">{selectedEntry.product_name}</h3>
-                  <p className="text-gray-400">von {selectedEntry.user_name}</p>
+                  <h3 className="text-xl font-bold text-gray-800">{selectedEntry.product_name}</h3>
+                  <p className="text-gray-500">von {selectedEntry.user_name}</p>
                 </div>
                 <Button variant="ghost" size="sm" onClick={() => setSelectedEntry(null)}>
                   <X className="w-5 h-5" />
@@ -435,20 +435,20 @@ const WinnerGallery = () => {
               )}
 
               {selectedEntry.caption && (
-                <p className="text-gray-300 mb-4">"{selectedEntry.caption}"</p>
+                <p className="text-gray-600 mb-4">"{selectedEntry.caption}"</p>
               )}
 
               <div className="grid grid-cols-3 gap-4">
                 <div className="text-center p-4 bg-white/5 rounded-xl">
-                  <p className="text-gray-400 text-sm">Endpreis</p>
-                  <p className="text-2xl font-bold text-white">€{selectedEntry.final_price?.toFixed(2)}</p>
+                  <p className="text-gray-500 text-sm">Endpreis</p>
+                  <p className="text-2xl font-bold text-gray-800">€{selectedEntry.final_price?.toFixed(2)}</p>
                 </div>
                 <div className="text-center p-4 bg-white/5 rounded-xl">
-                  <p className="text-gray-400 text-sm">UVP</p>
-                  <p className="text-2xl font-bold text-gray-400">€{selectedEntry.retail_price?.toFixed(2)}</p>
+                  <p className="text-gray-500 text-sm">UVP</p>
+                  <p className="text-2xl font-bold text-gray-500">€{selectedEntry.retail_price?.toFixed(2)}</p>
                 </div>
                 <div className="text-center p-4 bg-green-500/10 rounded-xl">
-                  <p className="text-gray-400 text-sm">{t.saved}</p>
+                  <p className="text-gray-500 text-sm">{t.saved}</p>
                   <p className="text-2xl font-bold text-green-400">€{selectedEntry.savings?.toFixed(2)}</p>
                 </div>
               </div>

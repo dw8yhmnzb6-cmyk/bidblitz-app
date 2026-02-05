@@ -161,10 +161,10 @@ const BattlePassPage = () => {
             style={{ backgroundColor: `${season.theme?.color}20` }}
           >
             <span className="text-2xl">{season.theme?.icon}</span>
-            <span className="text-white font-bold">{season.name}</span>
+            <span className="text-gray-800 font-bold">{season.name}</span>
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold text-white mb-2">{t.title}</h1>
-          <div className="flex items-center justify-center gap-4 text-gray-400">
+          <h1 className="text-4xl md:text-5xl font-bold text-gray-800 mb-2">{t.title}</h1>
+          <div className="flex items-center justify-center gap-4 text-gray-500">
             <div className="flex items-center gap-2">
               <Clock className="w-5 h-5" />
               <span>{season.days_remaining} {t.daysLeft}</span>
@@ -177,7 +177,7 @@ const BattlePassPage = () => {
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             {/* Current Tier */}
             <div className="text-center">
-              <p className="text-gray-400 text-sm mb-1">{t.currentTier}</p>
+              <p className="text-gray-500 text-sm mb-1">{t.currentTier}</p>
               <div 
                 className="w-20 h-20 rounded-2xl flex items-center justify-center text-3xl font-bold"
                 style={{ backgroundColor: `${season.theme?.color}30`, color: season.theme?.color }}
@@ -189,8 +189,8 @@ const BattlePassPage = () => {
             {/* XP Progress */}
             <div className="flex-1 w-full">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-white font-bold">{t.tier} {currentTier}</span>
-                <span className="text-white font-bold">
+                <span className="text-gray-800 font-bold">{t.tier} {currentTier}</span>
+                <span className="text-gray-800 font-bold">
                   {currentTier < maxTier ? `${t.tier} ${currentTier + 1}` : t.maxTier}
                 </span>
               </div>
@@ -210,7 +210,7 @@ const BattlePassPage = () => {
                 </div>
               </div>
               {currentTier < maxTier && (
-                <p className="text-center text-gray-400 text-sm mt-2">
+                <p className="text-center text-gray-500 text-sm mt-2">
                   {progress.xp_to_next_tier} {t.xpToNext}
                 </p>
               )}
@@ -259,15 +259,15 @@ const BattlePassPage = () => {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="flex items-center gap-2">
                 <Check className="w-5 h-5 text-green-400" />
-                <span className="text-gray-300 text-sm">{t.perk1}</span>
+                <span className="text-gray-600 text-sm">{t.perk1}</span>
               </div>
               <div className="flex items-center gap-2">
                 <Check className="w-5 h-5 text-green-400" />
-                <span className="text-gray-300 text-sm">{t.perk2}</span>
+                <span className="text-gray-600 text-sm">{t.perk2}</span>
               </div>
               <div className="flex items-center gap-2">
                 <Check className="w-5 h-5 text-green-400" />
-                <span className="text-gray-300 text-sm">{t.perk3}</span>
+                <span className="text-gray-600 text-sm">{t.perk3}</span>
               </div>
               <div className="flex items-center gap-2">
                 <Sparkles className="w-5 h-5 text-yellow-400" />
@@ -287,7 +287,7 @@ const BattlePassPage = () => {
           >
             <ChevronLeft className="w-5 h-5" />
           </Button>
-          <span className="text-gray-400">
+          <span className="text-gray-500">
             {t.tier} {visibleTiers.start + 1} - {Math.min(visibleTiers.end, maxTier)}
           </span>
           <Button
@@ -329,7 +329,7 @@ const BattlePassPage = () => {
 
             {/* Free Track */}
             <div className="flex gap-2 mb-2">
-              <div className="w-16 flex items-center justify-center text-gray-400 font-bold text-sm">
+              <div className="w-16 flex items-center justify-center text-gray-500 font-bold text-sm">
                 {t.free}
               </div>
               {rewards.slice(visibleTiers.start, visibleTiers.end).map((reward, index) => {
@@ -355,7 +355,7 @@ const BattlePassPage = () => {
                     {freeReward ? (
                       <>
                         <span className="text-2xl mb-1">{freeReward.icon}</span>
-                        <span className="text-xs text-center text-gray-300 line-clamp-2">
+                        <span className="text-xs text-center text-gray-600 line-clamp-2">
                           {freeReward.name}
                         </span>
                         {isClaimed && <Check className="w-4 h-4 text-green-400 mt-1" />}
@@ -428,7 +428,7 @@ const BattlePassPage = () => {
         {/* Tier 50 Special */}
         {currentTier >= 45 && (
           <div className="mt-8 glass-card rounded-2xl p-8 bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-500/30 text-center">
-            <h3 className="text-2xl font-bold text-white mb-4">
+            <h3 className="text-2xl font-bold text-gray-800 mb-4">
               🏆 Tier 50 MEGA BELOHNUNG
             </h3>
             <p className="text-purple-400 text-lg mb-4">

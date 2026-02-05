@@ -71,8 +71,8 @@ const PriceAlertsPage = () => {
       <div className="min-h-screen bg-gradient-to-b from-cyan-50 to-cyan-100 py-8 px-4 flex items-center justify-center">
         <div className="text-center">
           <Bell className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-          <h2 className="text-xl text-white mb-2">Bitte anmelden</h2>
-          <p className="text-gray-400">Du musst angemeldet sein um Preisalarme zu verwalten.</p>
+          <h2 className="text-xl text-gray-800 mb-2">Bitte anmelden</h2>
+          <p className="text-gray-500">Du musst angemeldet sein um Preisalarme zu verwalten.</p>
         </div>
       </div>
     );
@@ -101,25 +101,25 @@ const PriceAlertsPage = () => {
             <Bell className="w-5 h-5 text-yellow-400" />
             <span className="text-yellow-400 font-bold">Alerts</span>
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold text-white mb-3">{t.title}</h1>
-          <p className="text-gray-400 text-lg">{t.subtitle}</p>
+          <h1 className="text-4xl md:text-5xl font-bold text-gray-800 mb-3">{t.title}</h1>
+          <p className="text-gray-500 text-lg">{t.subtitle}</p>
         </div>
 
         {/* How it Works */}
         <div className="glass-card rounded-xl p-6 mb-8 bg-gradient-to-r from-yellow-500/5 to-orange-500/5 border border-yellow-500/20">
-          <h3 className="text-lg font-bold text-white mb-4">{t.howItWorks}</h3>
+          <h3 className="text-lg font-bold text-gray-800 mb-4">{t.howItWorks}</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="flex items-start gap-3">
               <div className="w-8 h-8 rounded-full bg-yellow-500/20 flex items-center justify-center text-yellow-400 font-bold">1</div>
-              <p className="text-gray-300 text-sm">{t.step1}</p>
+              <p className="text-gray-600 text-sm">{t.step1}</p>
             </div>
             <div className="flex items-start gap-3">
               <div className="w-8 h-8 rounded-full bg-yellow-500/20 flex items-center justify-center text-yellow-400 font-bold">2</div>
-              <p className="text-gray-300 text-sm">{t.step2}</p>
+              <p className="text-gray-600 text-sm">{t.step2}</p>
             </div>
             <div className="flex items-start gap-3">
               <div className="w-8 h-8 rounded-full bg-yellow-500/20 flex items-center justify-center text-yellow-400 font-bold">3</div>
-              <p className="text-gray-300 text-sm">{t.step3}</p>
+              <p className="text-gray-600 text-sm">{t.step3}</p>
             </div>
           </div>
         </div>
@@ -128,8 +128,8 @@ const PriceAlertsPage = () => {
         {alerts.length === 0 ? (
           <div className="glass-card rounded-xl p-12 text-center">
             <BellOff className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-            <h3 className="text-xl text-white mb-2">{t.noAlerts}</h3>
-            <p className="text-gray-400 mb-6">{t.noAlertsDesc}</p>
+            <h3 className="text-xl text-gray-800 mb-2">{t.noAlerts}</h3>
+            <p className="text-gray-500 mb-6">{t.noAlertsDesc}</p>
             <Button asChild>
               <a href="/auctions">{t.goToAuctions}</a>
             </Button>
@@ -157,8 +157,8 @@ const PriceAlertsPage = () => {
                       </div>
                     )}
                     <div>
-                      <h4 className="text-white font-bold">{alert.product_name || 'Produkt'}</h4>
-                      <p className="text-sm text-gray-400">
+                      <h4 className="text-gray-800 font-bold">{alert.product_name || 'Produkt'}</h4>
+                      <p className="text-sm text-gray-500">
                         {t.targetPrice}: <span className="text-yellow-400 font-bold">€{alert.target_price?.toFixed(2)}</span>
                       </p>
                       {alert.triggered && (
@@ -220,20 +220,20 @@ const PriceAlertsPage = () => {
           <div className="glass-card rounded-xl p-4 mt-6">
             <div className="flex items-center justify-around text-center">
               <div>
-                <p className="text-2xl font-bold text-white">{alerts.length}</p>
-                <p className="text-xs text-gray-400">Alarme gesamt</p>
+                <p className="text-2xl font-bold text-gray-800">{alerts.length}</p>
+                <p className="text-xs text-gray-500">Alarme gesamt</p>
               </div>
               <div>
                 <p className="text-2xl font-bold text-green-400">
                   {alerts.filter(a => a.triggered).length}
                 </p>
-                <p className="text-xs text-gray-400">Ausgelöst</p>
+                <p className="text-xs text-gray-500">Ausgelöst</p>
               </div>
               <div>
                 <p className="text-2xl font-bold text-yellow-400">
                   {alerts.filter(a => !a.triggered).length}
                 </p>
-                <p className="text-xs text-gray-400">Aktiv</p>
+                <p className="text-xs text-gray-500">Aktiv</p>
               </div>
             </div>
           </div>

@@ -187,8 +187,8 @@ const ReviewsPage = () => {
             <Star className="w-5 h-5 text-yellow-400 fill-yellow-400" />
             <span className="text-yellow-400 font-bold">{t.verified}</span>
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold text-white mb-3">{t.title}</h1>
-          <p className="text-gray-400 text-lg">{t.subtitle}</p>
+          <h1 className="text-4xl md:text-5xl font-bold text-gray-800 mb-3">{t.title}</h1>
+          <p className="text-gray-500 text-lg">{t.subtitle}</p>
           
           {/* Average Rating */}
           <div className="mt-6 flex items-center justify-center gap-4">
@@ -196,7 +196,7 @@ const ReviewsPage = () => {
               <span className="text-4xl font-bold text-yellow-400">{stats.average.toFixed(1)}</span>
               <StarRating rating={Math.round(stats.average)} />
             </div>
-            <span className="text-gray-400">({stats.total} {t.allReviews})</span>
+            <span className="text-gray-500">({stats.total} {t.allReviews})</span>
           </div>
         </div>
 
@@ -206,10 +206,10 @@ const ReviewsPage = () => {
             <div className="glass-card rounded-xl p-6 border border-green-500/30 bg-gradient-to-r from-green-500/10 to-emerald-500/10">
               <div className="flex items-center gap-2 mb-4">
                 <Gift className="w-5 h-5 text-green-400" />
-                <h2 className="text-lg font-bold text-white">{t.pendingReviews}</h2>
+                <h2 className="text-lg font-bold text-gray-800">{t.pendingReviews}</h2>
                 <span className="px-2 py-0.5 bg-green-500/20 text-green-400 text-xs rounded">{t.bonusHint}</span>
               </div>
-              <p className="text-gray-400 text-sm mb-4">{t.pendingDesc}</p>
+              <p className="text-gray-500 text-sm mb-4">{t.pendingDesc}</p>
               
               <div className="space-y-3">
                 {pendingReviews.map(item => (
@@ -222,7 +222,7 @@ const ReviewsPage = () => {
                           <div className="w-12 h-12 rounded bg-gray-700" />
                         )}
                         <div>
-                          <h4 className="text-white font-medium">{item.product?.name}</h4>
+                          <h4 className="text-gray-800 font-medium">{item.product?.name}</h4>
                           <p className="text-sm text-green-400">{t.wonFor} €{item.final_price?.toFixed(2)}</p>
                         </div>
                       </div>
@@ -240,7 +240,7 @@ const ReviewsPage = () => {
                     {showForm === item.auction_id && (
                       <div className="mt-4 pt-4 border-t border-white/10 space-y-4">
                         <div>
-                          <label className="text-sm text-gray-400 block mb-2">{t.rating}</label>
+                          <label className="text-sm text-gray-500 block mb-2">{t.rating}</label>
                           <StarRating 
                             rating={formData.rating} 
                             onRate={(r) => setFormData({...formData, rating: r})}
@@ -249,22 +249,22 @@ const ReviewsPage = () => {
                         </div>
                         
                         <div>
-                          <label className="text-sm text-gray-400 block mb-1">{t.reviewTitle}</label>
+                          <label className="text-sm text-gray-500 block mb-1">{t.reviewTitle}</label>
                           <input
                             type="text"
                             value={formData.title}
                             onChange={(e) => setFormData({...formData, title: e.target.value})}
-                            className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-white"
+                            className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-gray-800"
                             placeholder="Super Erfahrung!"
                           />
                         </div>
                         
                         <div>
-                          <label className="text-sm text-gray-400 block mb-1">{t.reviewContent}</label>
+                          <label className="text-sm text-gray-500 block mb-1">{t.reviewContent}</label>
                           <Textarea
                             value={formData.content}
                             onChange={(e) => setFormData({...formData, content: e.target.value})}
-                            className="bg-white/5 border-white/10 text-white"
+                            className="bg-white/5 border-white/10 text-gray-800"
                             placeholder="Erzähl uns von deiner Erfahrung..."
                             rows={3}
                           />
@@ -272,7 +272,7 @@ const ReviewsPage = () => {
                         
                         <div className="grid grid-cols-2 gap-4">
                           <div>
-                            <label className="text-sm text-gray-400 block mb-1">{t.deliveryRating}</label>
+                            <label className="text-sm text-gray-500 block mb-1">{t.deliveryRating}</label>
                             <StarRating 
                               rating={formData.delivery_rating}
                               onRate={(r) => setFormData({...formData, delivery_rating: r})}
@@ -280,7 +280,7 @@ const ReviewsPage = () => {
                             />
                           </div>
                           <div>
-                            <label className="text-sm text-gray-400 block mb-1">{t.qualityRating}</label>
+                            <label className="text-sm text-gray-500 block mb-1">{t.qualityRating}</label>
                             <StarRating 
                               rating={formData.product_quality_rating}
                               onRate={(r) => setFormData({...formData, product_quality_rating: r})}
@@ -290,7 +290,7 @@ const ReviewsPage = () => {
                         </div>
                         
                         <div>
-                          <label className="text-sm text-gray-400 block mb-2">{t.wouldRecommend}</label>
+                          <label className="text-sm text-gray-500 block mb-2">{t.wouldRecommend}</label>
                           <div className="flex gap-3">
                             <Button
                               type="button"
@@ -328,12 +328,12 @@ const ReviewsPage = () => {
 
         {/* Public Reviews */}
         <div>
-          <h2 className="text-xl font-bold text-white mb-4">{t.allReviews}</h2>
+          <h2 className="text-xl font-bold text-gray-800 mb-4">{t.allReviews}</h2>
           
           {reviews.length === 0 ? (
             <div className="glass-card rounded-xl p-12 text-center">
               <Star className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-              <p className="text-gray-400">{t.noReviews}</p>
+              <p className="text-gray-500">{t.noReviews}</p>
             </div>
           ) : (
             <div className="space-y-4">
@@ -361,13 +361,13 @@ const ReviewsPage = () => {
                         </span>
                       </div>
                       
-                      <h4 className="text-white font-bold">{review.title}</h4>
-                      <p className="text-gray-400 text-sm">{review.product_name}</p>
+                      <h4 className="text-gray-800 font-bold">{review.title}</h4>
+                      <p className="text-gray-500 text-sm">{review.product_name}</p>
                       
-                      <p className="text-gray-300 mt-2">{review.content}</p>
+                      <p className="text-gray-600 mt-2">{review.content}</p>
                       
                       <div className="flex items-center justify-between mt-4 pt-3 border-t border-white/10">
-                        <div className="flex items-center gap-4 text-sm text-gray-400">
+                        <div className="flex items-center gap-4 text-sm text-gray-500">
                           <span>{review.user_name}</span>
                           <span>{new Date(review.created_at).toLocaleDateString()}</span>
                           {review.final_price > 0 && (
@@ -381,7 +381,7 @@ const ReviewsPage = () => {
                           variant="ghost"
                           size="sm"
                           onClick={() => handleHelpful(review.id)}
-                          className="text-gray-400 hover:text-white"
+                          className="text-gray-500 hover:text-gray-800"
                         >
                           <ThumbsUp className="w-4 h-4 mr-1" />
                           {review.helpful_count || 0} {t.helpful}

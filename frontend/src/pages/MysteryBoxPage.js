@@ -88,28 +88,28 @@ const MysteryBoxPage = () => {
             <Gift className="w-5 h-5 text-purple-400" />
             <span className="text-purple-400 font-bold">Mystery</span>
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold text-white mb-3">{t.title}</h1>
-          <p className="text-gray-400 text-lg">{t.subtitle}</p>
+          <h1 className="text-4xl md:text-5xl font-bold text-gray-800 mb-3">{t.title}</h1>
+          <p className="text-gray-500 text-lg">{t.subtitle}</p>
         </div>
 
         {/* How it Works */}
         <div className="glass-card rounded-xl p-6 mb-8 bg-gradient-to-r from-purple-500/5 to-pink-500/5 border border-purple-500/20">
-          <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+          <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
             <HelpCircle className="w-5 h-5 text-purple-400" />
             {t.howItWorks}
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="flex items-start gap-3">
               <div className="w-8 h-8 rounded-full bg-purple-500/20 flex items-center justify-center text-purple-400 font-bold">1</div>
-              <p className="text-gray-300 text-sm">{t.step1}</p>
+              <p className="text-gray-600 text-sm">{t.step1}</p>
             </div>
             <div className="flex items-start gap-3">
               <div className="w-8 h-8 rounded-full bg-purple-500/20 flex items-center justify-center text-purple-400 font-bold">2</div>
-              <p className="text-gray-300 text-sm">{t.step2}</p>
+              <p className="text-gray-600 text-sm">{t.step2}</p>
             </div>
             <div className="flex items-start gap-3">
               <div className="w-8 h-8 rounded-full bg-purple-500/20 flex items-center justify-center text-purple-400 font-bold">3</div>
-              <p className="text-gray-300 text-sm">{t.step3}</p>
+              <p className="text-gray-600 text-sm">{t.step3}</p>
             </div>
           </div>
         </div>
@@ -148,7 +148,7 @@ const MysteryBoxPage = () => {
         {filteredAuctions.length === 0 && (
           <div className="text-center py-12">
             <Gift className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-            <p className="text-gray-400 text-lg mb-6">{t.noAuctions}</p>
+            <p className="text-gray-500 text-lg mb-6">{t.noAuctions}</p>
             
             {/* Show tier info */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto">
@@ -162,7 +162,7 @@ const MysteryBoxPage = () => {
                     style={{ borderColor: `${tierInfo.color}50` }}
                   >
                     <span className="text-4xl mb-2 block">{tierInfo.icon}</span>
-                    <h4 className="text-white font-bold">{tierInfo.name.replace(' Mystery Box', '')}</h4>
+                    <h4 className="text-gray-800 font-bold">{tierInfo.name.replace(' Mystery Box', '')}</h4>
                     <p className="text-sm" style={{ color: tierInfo.color }}>
                       €{tierInfo.min_value} - €{tierInfo.max_value}
                     </p>
@@ -193,7 +193,7 @@ const MysteryBoxPage = () => {
                   >
                     <div className="text-center">
                       <span className="text-7xl block mb-2">{tierInfo.icon}</span>
-                      <div className="flex items-center justify-center gap-2 text-gray-400">
+                      <div className="flex items-center justify-center gap-2 text-gray-500">
                         <EyeOff className="w-4 h-4" />
                         <span className="text-sm">Produkt versteckt</span>
                       </div>
@@ -210,17 +210,17 @@ const MysteryBoxPage = () => {
                   
                   {/* Content */}
                   <div className="p-4">
-                    <h3 className="text-lg font-bold text-white mb-2" style={{ color: tierInfo.color }}>
+                    <h3 className="text-lg font-bold text-gray-800 mb-2" style={{ color: tierInfo.color }}>
                       {tierInfo.name}
                     </h3>
                     
                     {/* Hint */}
                     <div className="bg-white/5 rounded-lg p-3 mb-4">
-                      <div className="flex items-center gap-2 text-gray-400 text-xs mb-1">
+                      <div className="flex items-center gap-2 text-gray-500 text-xs mb-1">
                         <Sparkles className="w-3 h-3" />
                         {t.hint}
                       </div>
-                      <p className="text-gray-300 text-sm italic">"{auction.hint}"</p>
+                      <p className="text-gray-600 text-sm italic">"{auction.hint}"</p>
                     </div>
                     
                     {/* Stats */}
@@ -231,7 +231,7 @@ const MysteryBoxPage = () => {
                       </div>
                       <div className="text-right">
                         <span className="text-gray-500">{t.endsIn}</span>
-                        <p className="text-white font-mono flex items-center gap-1">
+                        <p className="text-gray-800 font-mono flex items-center gap-1">
                           <Clock className="w-4 h-4 text-yellow-400" />
                           {formatTime(auction.end_time)}
                         </p>
@@ -239,7 +239,7 @@ const MysteryBoxPage = () => {
                     </div>
                     
                     {/* Bid Count */}
-                    <div className="flex items-center justify-between text-sm text-gray-400 mb-4">
+                    <div className="flex items-center justify-between text-sm text-gray-500 mb-4">
                       <span className="flex items-center gap-1">
                         <Users className="w-4 h-4" />
                         {auction.bid_count || 0} {t.bids}

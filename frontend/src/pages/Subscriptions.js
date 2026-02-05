@@ -170,12 +170,12 @@ const Subscriptions = () => {
         <div className="text-center mb-12">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-purple-500/20 to-pink-500/20 mb-4">
             <Gift className="w-5 h-5 text-purple-400" />
-            <span className="text-white font-bold">Abo-Pläne</span>
+            <span className="text-gray-800 font-bold">Abo-Pläne</span>
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
+          <h1 className="text-4xl md:text-5xl font-bold text-gray-800 mb-4">
             {t.title}
           </h1>
-          <p className="text-gray-400 text-lg max-w-2xl mx-auto">
+          <p className="text-gray-500 text-lg max-w-2xl mx-auto">
             {t.subtitle}
           </p>
         </div>
@@ -189,16 +189,16 @@ const Subscriptions = () => {
                   {getPlanIcon(currentSub.subscription?.plan_id)}
                 </div>
                 <div>
-                  <p className="text-gray-400 text-sm">{t.currentPlan}</p>
-                  <h3 className="text-xl font-bold text-white">{currentSub.plan?.name}</h3>
+                  <p className="text-gray-500 text-sm">{t.currentPlan}</p>
+                  <h3 className="text-xl font-bold text-gray-800">{currentSub.plan?.name}</h3>
                 </div>
               </div>
               <div className="flex items-center gap-4">
                 <div className="text-right">
-                  <p className="text-gray-400 text-sm">
+                  <p className="text-gray-500 text-sm">
                     {currentSub.subscription?.cancel_at_period_end ? t.cancelingAt : t.renewsOn}
                   </p>
-                  <p className="text-white font-medium">
+                  <p className="text-gray-800 font-medium">
                     {new Date(currentSub.subscription?.current_period_end).toLocaleDateString()}
                   </p>
                 </div>
@@ -233,7 +233,7 @@ const Subscriptions = () => {
                 {/* Popular Badge */}
                 {isPro && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full">
-                    <span className="text-white text-sm font-bold">{t.popular}</span>
+                    <span className="text-gray-800 text-sm font-bold">{t.popular}</span>
                   </div>
                 )}
 
@@ -249,17 +249,17 @@ const Subscriptions = () => {
                   <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${getPlanGradient(plan.id)} flex items-center justify-center mx-auto mb-4`}>
                     {getPlanIcon(plan.id)}
                   </div>
-                  <h3 className="text-2xl font-bold text-white mb-1">{plan.name}</h3>
+                  <h3 className="text-2xl font-bold text-gray-800 mb-1">{plan.name}</h3>
                   {isVipPlus && (
-                    <p className="text-gray-400 text-sm">{t.vipPlusDesc}</p>
+                    <p className="text-gray-500 text-sm">{t.vipPlusDesc}</p>
                   )}
                 </div>
 
                 {/* Pricing */}
                 <div className="text-center mb-6">
                   <div className="flex items-baseline justify-center gap-1">
-                    <span className="text-4xl font-bold text-white">€{plan.price}</span>
-                    <span className="text-gray-400">{t.monthly}</span>
+                    <span className="text-4xl font-bold text-gray-800">€{plan.price}</span>
+                    <span className="text-gray-500">{t.monthly}</span>
                   </div>
                   <div className="flex items-center justify-center gap-2 mt-2">
                     <Sparkles className="w-4 h-4 text-yellow-400" />
@@ -279,7 +279,7 @@ const Subscriptions = () => {
                       <Check className={`w-5 h-5 flex-shrink-0 ${
                         isVipPlus ? 'text-yellow-400' : isPro ? 'text-purple-400' : 'text-green-400'
                       }`} />
-                      <span className="text-gray-300 text-sm">{feature}</span>
+                      <span className="text-gray-600 text-sm">{feature}</span>
                     </div>
                   ))}
                 </div>
@@ -316,7 +316,7 @@ const Subscriptions = () => {
         {/* VIP+ Benefits Section */}
         <div className="mt-16">
           <div className="text-center mb-8">
-            <h2 className="text-2xl font-bold text-white mb-2">
+            <h2 className="text-2xl font-bold text-gray-800 mb-2">
               <Crown className="w-8 h-8 text-yellow-400 inline-block mr-2" />
               {t.vipPlus} - Exklusive Vorteile
             </h2>
@@ -327,32 +327,32 @@ const Subscriptions = () => {
               <div className="w-12 h-12 rounded-xl bg-yellow-500/20 flex items-center justify-center mx-auto mb-3">
                 <Sparkles className="w-6 h-6 text-yellow-400" />
               </div>
-              <h4 className="text-white font-bold">3x Glücksrad</h4>
-              <p className="text-gray-400 text-sm">Pro Tag drehen</p>
+              <h4 className="text-gray-800 font-bold">3x Glücksrad</h4>
+              <p className="text-gray-500 text-sm">Pro Tag drehen</p>
             </div>
 
             <div className="glass-card rounded-xl p-4 text-center border border-yellow-500/20">
               <div className="w-12 h-12 rounded-xl bg-yellow-500/20 flex items-center justify-center mx-auto mb-3">
                 <Gift className="w-6 h-6 text-yellow-400" />
               </div>
-              <h4 className="text-white font-bold">15% Rabatt</h4>
-              <p className="text-gray-400 text-sm">Auf Sofort-Kauf</p>
+              <h4 className="text-gray-800 font-bold">15% Rabatt</h4>
+              <p className="text-gray-500 text-sm">Auf Sofort-Kauf</p>
             </div>
 
             <div className="glass-card rounded-xl p-4 text-center border border-yellow-500/20">
               <div className="w-12 h-12 rounded-xl bg-yellow-500/20 flex items-center justify-center mx-auto mb-3">
                 <Crown className="w-6 h-6 text-yellow-400" />
               </div>
-              <h4 className="text-white font-bold">VIP+ Auktionen</h4>
-              <p className="text-gray-400 text-sm">Exklusiver Zugang</p>
+              <h4 className="text-gray-800 font-bold">VIP+ Auktionen</h4>
+              <p className="text-gray-500 text-sm">Exklusiver Zugang</p>
             </div>
 
             <div className="glass-card rounded-xl p-4 text-center border border-yellow-500/20">
               <div className="w-12 h-12 rounded-xl bg-yellow-500/20 flex items-center justify-center mx-auto mb-3">
                 <Clock className="w-6 h-6 text-yellow-400" />
               </div>
-              <h4 className="text-white font-bold">5min Vorsprung</h4>
-              <p className="text-gray-400 text-sm">Bei Flash-Auktionen</p>
+              <h4 className="text-gray-800 font-bold">5min Vorsprung</h4>
+              <p className="text-gray-500 text-sm">Bei Flash-Auktionen</p>
             </div>
           </div>
         </div>

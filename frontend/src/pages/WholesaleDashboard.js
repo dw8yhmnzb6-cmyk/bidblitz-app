@@ -76,8 +76,8 @@ export default function WholesaleDashboard() {
           
           {status?.application_status === 'pending' ? (
             <>
-              <h1 className="text-3xl font-bold text-white mb-4">Bewerbung in Prüfung</h1>
-              <p className="text-gray-400 mb-8">
+              <h1 className="text-3xl font-bold text-gray-800 mb-4">Bewerbung in Prüfung</h1>
+              <p className="text-gray-500 mb-8">
                 Ihre Großkunden-Bewerbung wird derzeit geprüft. 
                 Wir melden uns innerhalb von 24-48 Stunden bei Ihnen.
               </p>
@@ -88,8 +88,8 @@ export default function WholesaleDashboard() {
             </>
           ) : status?.application_status === 'rejected' ? (
             <>
-              <h1 className="text-3xl font-bold text-white mb-4">Bewerbung abgelehnt</h1>
-              <p className="text-gray-400 mb-8">
+              <h1 className="text-3xl font-bold text-gray-800 mb-4">Bewerbung abgelehnt</h1>
+              <p className="text-gray-500 mb-8">
                 Leider können wir Ihre Bewerbung derzeit nicht genehmigen. 
                 Bei Fragen kontaktieren Sie uns bitte.
               </p>
@@ -102,8 +102,8 @@ export default function WholesaleDashboard() {
             </>
           ) : (
             <>
-              <h1 className="text-3xl font-bold text-white mb-4">Großkundenbereich</h1>
-              <p className="text-gray-400 mb-8">
+              <h1 className="text-3xl font-bold text-gray-800 mb-4">Großkundenbereich</h1>
+              <p className="text-gray-500 mb-8">
                 Sie sind noch kein Großkunde. Bewerben Sie sich jetzt und profitieren Sie 
                 von exklusiven Rabatten und Vorteilen!
               </p>
@@ -132,8 +132,8 @@ export default function WholesaleDashboard() {
               <Building2 className="w-6 h-6 text-black" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-white">{data?.company_name}</h1>
-              <p className="text-gray-400 text-sm">Großkunden-Dashboard</p>
+              <h1 className="text-2xl font-bold text-gray-800">{data?.company_name}</h1>
+              <p className="text-gray-500 text-sm">Großkunden-Dashboard</p>
             </div>
           </div>
         </div>
@@ -145,9 +145,9 @@ export default function WholesaleDashboard() {
               <div className="w-10 h-10 rounded-lg bg-green-500/20 flex items-center justify-center">
                 <Euro className="w-5 h-5 text-green-500" />
               </div>
-              <span className="text-gray-400 text-sm">Gesamtumsatz</span>
+              <span className="text-gray-500 text-sm">Gesamtumsatz</span>
             </div>
-            <p className="text-2xl font-bold text-white">€{data?.stats?.total_spent?.toLocaleString()}</p>
+            <p className="text-2xl font-bold text-gray-800">€{data?.stats?.total_spent?.toLocaleString()}</p>
           </div>
 
           <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-5 border border-white/10">
@@ -155,9 +155,9 @@ export default function WholesaleDashboard() {
               <div className="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center">
                 <Package className="w-5 h-5 text-blue-500" />
               </div>
-              <span className="text-gray-400 text-sm">Gebote gekauft</span>
+              <span className="text-gray-500 text-sm">Gebote gekauft</span>
             </div>
-            <p className="text-2xl font-bold text-white">{data?.stats?.total_bids_bought?.toLocaleString()}</p>
+            <p className="text-2xl font-bold text-gray-800">{data?.stats?.total_bids_bought?.toLocaleString()}</p>
           </div>
 
           <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-5 border border-white/10">
@@ -165,7 +165,7 @@ export default function WholesaleDashboard() {
               <div className="w-10 h-10 rounded-lg bg-[#FFD700]/20 flex items-center justify-center">
                 <Percent className="w-5 h-5 text-[#FFD700]" />
               </div>
-              <span className="text-gray-400 text-sm">Ihr Rabatt</span>
+              <span className="text-gray-500 text-sm">Ihr Rabatt</span>
             </div>
             <p className="text-2xl font-bold text-[#FFD700]">{data?.discount_percent}%</p>
           </div>
@@ -175,7 +175,7 @@ export default function WholesaleDashboard() {
               <div className="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center">
                 <TrendingUp className="w-5 h-5 text-purple-500" />
               </div>
-              <span className="text-gray-400 text-sm">Ersparnis</span>
+              <span className="text-gray-500 text-sm">Ersparnis</span>
             </div>
             <p className="text-2xl font-bold text-green-500">€{data?.stats?.savings_from_discount?.toLocaleString()}</p>
           </div>
@@ -185,19 +185,19 @@ export default function WholesaleDashboard() {
         <div className="grid lg:grid-cols-3 gap-6">
           {/* Account Info */}
           <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
-            <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+            <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
               <CreditCard className="w-5 h-5 text-[#FFD700]" />
               Konditionen
             </h2>
             
             <div className="space-y-4">
               <div className="flex justify-between items-center py-3 border-b border-white/10">
-                <span className="text-gray-400">Rabatt</span>
+                <span className="text-gray-500">Rabatt</span>
                 <span className="text-[#FFD700] font-semibold">{data?.discount_percent}%</span>
               </div>
               <div className="flex justify-between items-center py-3 border-b border-white/10">
-                <span className="text-gray-400">Zahlungsziel</span>
-                <span className="text-white font-semibold">
+                <span className="text-gray-500">Zahlungsziel</span>
+                <span className="text-gray-800 font-semibold">
                   {data?.payment_terms === 'prepaid' ? 'Vorkasse' : 
                    data?.payment_terms === 'net15' ? '15 Tage' : 
                    data?.payment_terms === 'net30' ? '30 Tage' : data?.payment_terms}
@@ -206,18 +206,18 @@ export default function WholesaleDashboard() {
               {data?.credit_limit > 0 && (
                 <>
                   <div className="flex justify-between items-center py-3 border-b border-white/10">
-                    <span className="text-gray-400">Kreditlimit</span>
-                    <span className="text-white font-semibold">€{data?.credit_limit?.toLocaleString()}</span>
+                    <span className="text-gray-500">Kreditlimit</span>
+                    <span className="text-gray-800 font-semibold">€{data?.credit_limit?.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between items-center py-3 border-b border-white/10">
-                    <span className="text-gray-400">Verfügbar</span>
+                    <span className="text-gray-500">Verfügbar</span>
                     <span className="text-green-500 font-semibold">€{data?.credit_available?.toLocaleString()}</span>
                   </div>
                 </>
               )}
               <div className="flex justify-between items-center py-3">
-                <span className="text-gray-400">Transaktionen</span>
-                <span className="text-white font-semibold">{data?.stats?.total_transactions}</span>
+                <span className="text-gray-500">Transaktionen</span>
+                <span className="text-gray-800 font-semibold">{data?.stats?.total_transactions}</span>
               </div>
             </div>
 
@@ -232,7 +232,7 @@ export default function WholesaleDashboard() {
 
           {/* Recent Transactions */}
           <div className="lg:col-span-2 bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
-            <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+            <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
               <ShoppingBag className="w-5 h-5 text-[#FFD700]" />
               Letzte Transaktionen
             </h2>
@@ -250,14 +250,14 @@ export default function WholesaleDashboard() {
                         }`} />
                       </div>
                       <div>
-                        <p className="text-white font-medium">{tx.bids} Gebote</p>
-                        <p className="text-gray-400 text-sm">
+                        <p className="text-gray-800 font-medium">{tx.bids} Gebote</p>
+                        <p className="text-gray-500 text-sm">
                           {new Date(tx.created_at).toLocaleDateString('de-DE')}
                         </p>
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-white font-semibold">€{tx.amount?.toFixed(2)}</p>
+                      <p className="text-gray-800 font-semibold">€{tx.amount?.toFixed(2)}</p>
                       <p className={`text-sm ${
                         tx.status === 'completed' ? 'text-green-500' : 'text-yellow-500'
                       }`}>
@@ -268,7 +268,7 @@ export default function WholesaleDashboard() {
                 ))}
               </div>
             ) : (
-              <div className="text-center py-8 text-gray-400">
+              <div className="text-center py-8 text-gray-500">
                 Noch keine Transaktionen
               </div>
             )}
@@ -278,7 +278,7 @@ export default function WholesaleDashboard() {
         {/* Invoices Section */}
         {data?.invoices?.length > 0 && (
           <div className="mt-6 bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
-            <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+            <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
               <FileText className="w-5 h-5 text-[#FFD700]" />
               Rechnungen
             </h2>
@@ -286,7 +286,7 @@ export default function WholesaleDashboard() {
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="text-left text-gray-400 text-sm border-b border-white/10">
+                  <tr className="text-left text-gray-500 text-sm border-b border-white/10">
                     <th className="pb-3">Rechnung</th>
                     <th className="pb-3">Datum</th>
                     <th className="pb-3">Betrag</th>
@@ -297,11 +297,11 @@ export default function WholesaleDashboard() {
                 <tbody>
                   {data.invoices.map((invoice, i) => (
                     <tr key={i} className="border-b border-white/5">
-                      <td className="py-4 text-white">{invoice.invoice_number}</td>
-                      <td className="py-4 text-gray-400">
+                      <td className="py-4 text-gray-800">{invoice.invoice_number}</td>
+                      <td className="py-4 text-gray-500">
                         {new Date(invoice.created_at).toLocaleDateString('de-DE')}
                       </td>
-                      <td className="py-4 text-white">€{invoice.amount?.toFixed(2)}</td>
+                      <td className="py-4 text-gray-800">€{invoice.amount?.toFixed(2)}</td>
                       <td className="py-4">
                         <span className={`px-2 py-1 rounded-full text-xs ${
                           invoice.status === 'paid' 

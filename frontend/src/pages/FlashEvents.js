@@ -144,10 +144,10 @@ const FlashEvents = () => {
             <Zap className="w-5 h-5" />
             <span className="font-bold">Flash Events</span>
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
+          <h1 className="text-4xl md:text-5xl font-bold text-gray-800 mb-4">
             {t.title}
           </h1>
-          <p className="text-gray-400 text-lg max-w-2xl mx-auto">
+          <p className="text-gray-500 text-lg max-w-2xl mx-auto">
             {t.subtitle}
           </p>
         </div>
@@ -157,7 +157,7 @@ const FlashEvents = () => {
           <section className="mb-12">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-              <h2 className="text-2xl font-bold text-white">{t.activeNow}</h2>
+              <h2 className="text-2xl font-bold text-gray-800">{t.activeNow}</h2>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {activeFlash.map(auction => (
@@ -180,20 +180,20 @@ const FlashEvents = () => {
                       />
                     )}
                     
-                    <h3 className="text-white font-bold text-lg mb-2">
+                    <h3 className="text-gray-800 font-bold text-lg mb-2">
                       {auction.flash_title || auction.product?.name}
                     </h3>
                     
                     <div className="flex items-center justify-between">
                       <div>
-                        <span className="text-gray-400 text-sm">{t.endsIn}</span>
+                        <span className="text-gray-500 text-sm">{t.endsIn}</span>
                         <div className="text-2xl font-bold text-green-400">
                           {formatTimeUntil(auction.end_time)}
                         </div>
                       </div>
                       <div className="text-right">
-                        <span className="text-gray-400 text-sm">Preis</span>
-                        <div className="text-2xl font-bold text-white">
+                        <span className="text-gray-500 text-sm">Preis</span>
+                        <div className="text-2xl font-bold text-gray-800">
                           €{auction.current_price?.toFixed(2)}
                         </div>
                       </div>
@@ -214,13 +214,13 @@ const FlashEvents = () => {
         <section>
           <div className="flex items-center gap-3 mb-6">
             <Calendar className="w-6 h-6 text-purple-400" />
-            <h2 className="text-2xl font-bold text-white">{t.upcoming}</h2>
+            <h2 className="text-2xl font-bold text-gray-800">{t.upcoming}</h2>
           </div>
 
           {upcomingEvents.length === 0 ? (
             <div className="glass-card rounded-xl p-12 text-center">
               <Sparkles className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-              <p className="text-gray-400 text-lg">{t.noEvents}</p>
+              <p className="text-gray-500 text-lg">{t.noEvents}</p>
               <p className="text-gray-500 mt-2">Schau später nochmal vorbei!</p>
             </div>
           ) : (
@@ -233,11 +233,11 @@ const FlashEvents = () => {
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center gap-3">
                       <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
-                        <Zap className="w-6 h-6 text-white" />
+                        <Zap className="w-6 h-6 text-gray-800" />
                       </div>
                       <div>
-                        <h3 className="text-white font-bold">{event.title}</h3>
-                        <p className="text-gray-400 text-sm">{event.description}</p>
+                        <h3 className="text-gray-800 font-bold">{event.title}</h3>
+                        <p className="text-gray-500 text-sm">{event.description}</p>
                       </div>
                     </div>
                     <Button
@@ -268,22 +268,22 @@ const FlashEvents = () => {
                         className="w-16 h-16 object-contain"
                       />
                       <div>
-                        <p className="text-white font-medium">{event.product.name}</p>
-                        <p className="text-gray-400 text-sm">UVP: €{event.product.retail_price?.toFixed(2)}</p>
+                        <p className="text-gray-800 font-medium">{event.product.name}</p>
+                        <p className="text-gray-500 text-sm">UVP: €{event.product.retail_price?.toFixed(2)}</p>
                       </div>
                     </div>
                   )}
 
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <Timer className="w-4 h-4 text-gray-400" />
-                      <span className="text-gray-400">{t.startsIn}:</span>
-                      <span className="text-white font-bold">{formatTimeUntil(event.start_time)}</span>
+                      <Timer className="w-4 h-4 text-gray-500" />
+                      <span className="text-gray-500">{t.startsIn}:</span>
+                      <span className="text-gray-800 font-bold">{formatTimeUntil(event.start_time)}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Clock className="w-4 h-4 text-gray-400" />
-                      <span className="text-gray-400">{t.duration}:</span>
-                      <span className="text-white font-medium">
+                      <Clock className="w-4 h-4 text-gray-500" />
+                      <span className="text-gray-500">{t.duration}:</span>
+                      <span className="text-gray-800 font-medium">
                         {Math.round((new Date(event.end_time) - new Date(event.start_time)) / 60000)} {t.minutes}
                       </span>
                     </div>

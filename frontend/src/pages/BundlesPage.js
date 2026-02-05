@@ -144,8 +144,8 @@ const BundlesPage = () => {
             <Package className="w-5 h-5 text-purple-400" />
             <span className="text-purple-400 font-bold">Bundles</span>
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold text-white mb-3">{t.title}</h1>
-          <p className="text-gray-400 text-lg">{t.subtitle}</p>
+          <h1 className="text-4xl md:text-5xl font-bold text-gray-800 mb-3">{t.title}</h1>
+          <p className="text-gray-500 text-lg">{t.subtitle}</p>
         </div>
 
         {/* Bundles Grid */}
@@ -178,8 +178,8 @@ const BundlesPage = () => {
                   style={{ background: `linear-gradient(180deg, ${bundle.color}20 0%, transparent 100%)` }}
                 >
                   <span className="text-5xl mb-3 block">{bundle.icon}</span>
-                  <h3 className="text-xl font-bold text-white">{language === 'de' ? bundle.name_de : bundle.name}</h3>
-                  <p className="text-gray-400 text-sm mt-1">
+                  <h3 className="text-xl font-bold text-gray-800">{language === 'de' ? bundle.name_de : bundle.name}</h3>
+                  <p className="text-gray-500 text-sm mt-1">
                     {language === 'de' ? bundle.description_de : bundle.description}
                   </p>
                 </div>
@@ -189,7 +189,7 @@ const BundlesPage = () => {
                   <div className="text-gray-500 line-through text-sm">
                     {t.originalPrice} €{bundle.original_price?.toFixed(2)}
                   </div>
-                  <div className="text-3xl font-bold text-white">
+                  <div className="text-3xl font-bold text-gray-800">
                     €{bundle.price?.toFixed(2)}
                   </div>
                   <div 
@@ -202,30 +202,30 @@ const BundlesPage = () => {
                 
                 {/* Features */}
                 <div className="px-6 py-4 space-y-3">
-                  <div className="flex items-center gap-2 text-white">
+                  <div className="flex items-center gap-2 text-gray-800">
                     <Check className="w-4 h-4 text-green-400" />
                     <span>{bundle.bids} {t.bids}</span>
                     {bundle.bids_monthly && (
-                      <span className="text-xs text-gray-400">+{bundle.bids_monthly} {t.monthlyBids}</span>
+                      <span className="text-xs text-gray-500">+{bundle.bids_monthly} {t.monthlyBids}</span>
                     )}
                   </div>
                   
                   {bundle.vip_days > 0 && (
-                    <div className="flex items-center gap-2 text-white">
+                    <div className="flex items-center gap-2 text-gray-800">
                       <Check className="w-4 h-4 text-green-400" />
                       <span>{bundle.vip_days} {t.vipDays}</span>
                     </div>
                   )}
                   
                   {bundle.battle_pass && (
-                    <div className="flex items-center gap-2 text-white">
+                    <div className="flex items-center gap-2 text-gray-800">
                       <Check className="w-4 h-4 text-green-400" />
                       <span>{t.battlePass} {bundle.battle_pass_premium ? 'Premium' : ''}</span>
                     </div>
                   )}
                   
                   {bundle.wheel_spins > 0 && (
-                    <div className="flex items-center gap-2 text-white">
+                    <div className="flex items-center gap-2 text-gray-800">
                       <Check className="w-4 h-4 text-green-400" />
                       <span>{bundle.wheel_spins} {t.wheelSpins}</span>
                     </div>
@@ -263,7 +263,7 @@ const BundlesPage = () => {
         </div>
 
         {/* Trust Badges */}
-        <div className="mt-12 flex flex-wrap justify-center gap-6 text-gray-400 text-sm">
+        <div className="mt-12 flex flex-wrap justify-center gap-6 text-gray-500 text-sm">
           <div className="flex items-center gap-2">
             <Shield className="w-5 h-5 text-green-400" />
             <span>Sichere Zahlung</span>

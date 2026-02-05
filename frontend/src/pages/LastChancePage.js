@@ -130,12 +130,12 @@ const LastChancePage = () => {
             
             {/* Info */}
             <div className="flex-grow min-w-0">
-              <h4 className="text-white font-bold truncate">{auction.product?.name}</h4>
+              <h4 className="text-gray-800 font-bold truncate">{auction.product?.name}</h4>
               <div className="flex items-center gap-4 mt-1">
                 <span className="text-green-400 font-bold">
                   €{(auction.current_price || 0).toFixed(2)}
                 </span>
-                <span className="text-gray-400 text-sm flex items-center gap-1">
+                <span className="text-gray-500 text-sm flex items-center gap-1">
                   <Users className="w-3 h-3" />
                   {auction.bid_count || 0} {t.bids}
                 </span>
@@ -144,7 +144,7 @@ const LastChancePage = () => {
             
             {/* Timer & CTA */}
             <div className="text-right flex-shrink-0">
-              <div className={`px-3 py-2 rounded-lg bg-gradient-to-r ${urgencyColors[urgency]} text-white font-mono font-bold text-lg`}>
+              <div className={`px-3 py-2 rounded-lg bg-gradient-to-r ${urgencyColors[urgency]} text-gray-800 font-mono font-bold text-lg`}>
                 {formatTime(remaining)}
               </div>
               <Button 
@@ -165,8 +165,8 @@ const LastChancePage = () => {
     <div className="mb-8">
       <div className="flex items-center gap-2 mb-4">
         <Icon className={`w-5 h-5 ${color}`} />
-        <h2 className="text-xl font-bold text-white">{title}</h2>
-        <span className="px-2 py-1 rounded-full bg-white/10 text-sm text-gray-300">
+        <h2 className="text-xl font-bold text-gray-800">{title}</h2>
+        <span className="px-2 py-1 rounded-full bg-white/10 text-sm text-gray-600">
           {auctions.length}
         </span>
       </div>
@@ -209,8 +209,8 @@ const LastChancePage = () => {
             <AlertTriangle className="w-5 h-5 text-red-400" />
             <span className="text-red-400 font-bold">{t.title}</span>
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold text-white mb-3">{t.title}</h1>
-          <p className="text-gray-400 text-lg">{t.subtitle}</p>
+          <h1 className="text-4xl md:text-5xl font-bold text-gray-800 mb-3">{t.title}</h1>
+          <p className="text-gray-500 text-lg">{t.subtitle}</p>
         </div>
 
         {/* Under 1 Minute - CRITICAL */}
@@ -236,8 +236,8 @@ const LastChancePage = () => {
           <div className="mb-8">
             <div className="flex items-center gap-2 mb-4">
               <Flame className="w-5 h-5 text-orange-500" />
-              <h2 className="text-xl font-bold text-white">{t.hotAuctions}</h2>
-              <span className="text-gray-400 text-sm">({t.hotDesc})</span>
+              <h2 className="text-xl font-bold text-gray-800">{t.hotAuctions}</h2>
+              <span className="text-gray-500 text-sm">({t.hotDesc})</span>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -253,11 +253,11 @@ const LastChancePage = () => {
                         )}
                       </div>
                       <div className="flex-grow">
-                        <h4 className="text-white font-bold truncate">{auction.product?.name}</h4>
+                        <h4 className="text-gray-800 font-bold truncate">{auction.product?.name}</h4>
                         <div className="flex items-center gap-2 mt-1">
                           <span className={`px-2 py-0.5 rounded text-xs font-bold ${
-                            auction.heat_level === 'fire' ? 'bg-red-500 text-white animate-pulse' :
-                            auction.heat_level === 'hot' ? 'bg-orange-500 text-white' :
+                            auction.heat_level === 'fire' ? 'bg-red-500 text-gray-800 animate-pulse' :
+                            auction.heat_level === 'hot' ? 'bg-orange-500 text-gray-800' :
                             'bg-yellow-500 text-black'
                           }`}>
                             {auction.heat_level === 'fire' ? '🔥 ' : ''}{auction.recent_bids} {t.recentBids}
@@ -266,7 +266,7 @@ const LastChancePage = () => {
                       </div>
                       <div className="text-right">
                         <div className="text-green-400 font-bold">€{(auction.current_price || 0).toFixed(2)}</div>
-                        <div className="text-gray-400 text-sm">{formatTime(auction.remaining_seconds)}</div>
+                        <div className="text-gray-500 text-sm">{formatTime(auction.remaining_seconds)}</div>
                       </div>
                     </div>
                   </div>

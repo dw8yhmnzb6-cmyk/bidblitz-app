@@ -122,29 +122,29 @@ const MyStatsPage = () => {
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-blue-500/20 to-purple-500/20 mb-4">
             <BarChart3 className="w-5 h-5 text-blue-400" />
-            <span className="text-white font-bold">Statistiken</span>
+            <span className="text-gray-800 font-bold">Statistiken</span>
           </div>
-          <h1 className="text-4xl font-bold text-white mb-2">{t.title}</h1>
-          <p className="text-gray-400">{t.subtitle}</p>
+          <h1 className="text-4xl font-bold text-gray-800 mb-2">{t.title}</h1>
+          <p className="text-gray-500">{t.subtitle}</p>
         </div>
 
         {/* Savings Overview */}
         <div className="glass-card rounded-2xl p-8 mb-8 bg-gradient-to-r from-green-500/10 to-emerald-500/10 border border-green-500/30">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
             <div>
-              <p className="text-gray-400 text-sm mb-1">{t.totalSavings}</p>
+              <p className="text-gray-500 text-sm mb-1">{t.totalSavings}</p>
               <p className="text-4xl font-bold text-green-400">€{overview.total_savings?.toFixed(2) || '0.00'}</p>
             </div>
             <div>
-              <p className="text-gray-400 text-sm mb-1">{t.retailValue}</p>
-              <p className="text-3xl font-bold text-white">€{overview.total_retail_value?.toFixed(2) || '0.00'}</p>
+              <p className="text-gray-500 text-sm mb-1">{t.retailValue}</p>
+              <p className="text-3xl font-bold text-gray-800">€{overview.total_retail_value?.toFixed(2) || '0.00'}</p>
             </div>
             <div>
-              <p className="text-gray-400 text-sm mb-1">{t.totalPaid}</p>
-              <p className="text-3xl font-bold text-gray-400">€{overview.total_paid?.toFixed(2) || '0.00'}</p>
+              <p className="text-gray-500 text-sm mb-1">{t.totalPaid}</p>
+              <p className="text-3xl font-bold text-gray-500">€{overview.total_paid?.toFixed(2) || '0.00'}</p>
             </div>
             <div>
-              <p className="text-gray-400 text-sm mb-1">{t.savingsPercent}</p>
+              <p className="text-gray-500 text-sm mb-1">{t.savingsPercent}</p>
               <p className="text-4xl font-bold text-green-400">{overview.savings_percentage || 0}%</p>
             </div>
           </div>
@@ -157,8 +157,8 @@ const MyStatsPage = () => {
             <div className="w-12 h-12 mx-auto rounded-xl bg-yellow-500/20 flex items-center justify-center mb-3">
               <Trophy className="w-6 h-6 text-yellow-400" />
             </div>
-            <p className="text-3xl font-bold text-white">{auctions.total_won || 0}</p>
-            <p className="text-gray-400 text-sm">{t.auctionsWon}</p>
+            <p className="text-3xl font-bold text-gray-800">{auctions.total_won || 0}</p>
+            <p className="text-gray-500 text-sm">{t.auctionsWon}</p>
           </div>
 
           {/* Participated */}
@@ -166,8 +166,8 @@ const MyStatsPage = () => {
             <div className="w-12 h-12 mx-auto rounded-xl bg-blue-500/20 flex items-center justify-center mb-3">
               <Target className="w-6 h-6 text-blue-400" />
             </div>
-            <p className="text-3xl font-bold text-white">{auctions.total_participated || 0}</p>
-            <p className="text-gray-400 text-sm">{t.participated}</p>
+            <p className="text-3xl font-bold text-gray-800">{auctions.total_participated || 0}</p>
+            <p className="text-gray-500 text-sm">{t.participated}</p>
           </div>
 
           {/* Win Rate */}
@@ -175,8 +175,8 @@ const MyStatsPage = () => {
             <div className="w-12 h-12 mx-auto rounded-xl bg-purple-500/20 flex items-center justify-center mb-3">
               <TrendingUp className="w-6 h-6 text-purple-400" />
             </div>
-            <p className="text-3xl font-bold text-white">{auctions.win_rate || 0}%</p>
-            <p className="text-gray-400 text-sm">{t.winRate}</p>
+            <p className="text-3xl font-bold text-gray-800">{auctions.win_rate || 0}%</p>
+            <p className="text-gray-500 text-sm">{t.winRate}</p>
           </div>
 
           {/* Current Balance */}
@@ -184,8 +184,8 @@ const MyStatsPage = () => {
             <div className="w-12 h-12 mx-auto rounded-xl bg-green-500/20 flex items-center justify-center mb-3">
               <Zap className="w-6 h-6 text-green-400" />
             </div>
-            <p className="text-3xl font-bold text-white">{bids.current_balance || 0}</p>
-            <p className="text-gray-400 text-sm">{t.currentBalance}</p>
+            <p className="text-3xl font-bold text-gray-800">{bids.current_balance || 0}</p>
+            <p className="text-gray-500 text-sm">{t.currentBalance}</p>
           </div>
 
           {/* Bids Placed */}
@@ -193,8 +193,8 @@ const MyStatsPage = () => {
             <div className="w-12 h-12 mx-auto rounded-xl bg-orange-500/20 flex items-center justify-center mb-3">
               <BarChart3 className="w-6 h-6 text-orange-400" />
             </div>
-            <p className="text-3xl font-bold text-white">{bids.total_placed || 0}</p>
-            <p className="text-gray-400 text-sm">{t.bidsPlaced}</p>
+            <p className="text-3xl font-bold text-gray-800">{bids.total_placed || 0}</p>
+            <p className="text-gray-500 text-sm">{t.bidsPlaced}</p>
           </div>
 
           {/* Login Streak */}
@@ -202,8 +202,8 @@ const MyStatsPage = () => {
             <div className="w-12 h-12 mx-auto rounded-xl bg-red-500/20 flex items-center justify-center mb-3">
               <Calendar className="w-6 h-6 text-red-400" />
             </div>
-            <p className="text-3xl font-bold text-white">{streaks.current_login_streak || 0}</p>
-            <p className="text-gray-400 text-sm">{t.loginStreak}</p>
+            <p className="text-3xl font-bold text-gray-800">{streaks.current_login_streak || 0}</p>
+            <p className="text-gray-500 text-sm">{t.loginStreak}</p>
           </div>
 
           {/* Loyalty Points */}
@@ -211,8 +211,8 @@ const MyStatsPage = () => {
             <div className="w-12 h-12 mx-auto rounded-xl bg-yellow-500/20 flex items-center justify-center mb-3">
               <Star className="w-6 h-6 text-yellow-400" />
             </div>
-            <p className="text-3xl font-bold text-white">{loyalty.available_points || 0}</p>
-            <p className="text-gray-400 text-sm">{t.loyaltyPoints}</p>
+            <p className="text-3xl font-bold text-gray-800">{loyalty.available_points || 0}</p>
+            <p className="text-gray-500 text-sm">{t.loyaltyPoints}</p>
           </div>
 
           {/* Level */}
@@ -220,8 +220,8 @@ const MyStatsPage = () => {
             <div className="w-12 h-12 mx-auto rounded-xl bg-cyan-500/20 flex items-center justify-center mb-3">
               <Crown className="w-6 h-6 text-cyan-400" />
             </div>
-            <p className="text-2xl font-bold text-white">{loyalty.level || 'Bronze'}</p>
-            <p className="text-gray-400 text-sm">{t.level}</p>
+            <p className="text-2xl font-bold text-gray-800">{loyalty.level || 'Bronze'}</p>
+            <p className="text-gray-500 text-sm">{t.level}</p>
           </div>
         </div>
 
@@ -229,11 +229,11 @@ const MyStatsPage = () => {
         {achievements && (
           <div className="glass-card rounded-xl p-6 mb-8">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold text-white flex items-center gap-2">
+              <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
                 <Award className="w-6 h-6 text-yellow-400" />
                 {t.achievements}
               </h3>
-              <span className="text-gray-400">
+              <span className="text-gray-500">
                 {achievements.unlocked_count}/{achievements.total_count} {t.unlocked}
               </span>
             </div>
@@ -250,7 +250,7 @@ const MyStatsPage = () => {
                   title={ach.description}
                 >
                   <span className="text-3xl">{ach.icon}</span>
-                  <p className={`text-sm font-medium mt-2 ${ach.unlocked ? 'text-white' : 'text-gray-500'}`}>
+                  <p className={`text-sm font-medium mt-2 ${ach.unlocked ? 'text-gray-800' : 'text-gray-500'}`}>
                     {ach.name}
                   </p>
                 </div>
@@ -261,18 +261,18 @@ const MyStatsPage = () => {
 
         {/* Recent Activity */}
         <div className="glass-card rounded-xl p-6">
-          <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-            <Clock className="w-5 h-5 text-gray-400" />
+          <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+            <Clock className="w-5 h-5 text-gray-500" />
             {t.recentActivity}
           </h3>
           <div className="grid grid-cols-2 gap-4">
             <div className="p-4 bg-white/5 rounded-lg text-center">
-              <p className="text-2xl font-bold text-white">{recent.bids_last_30_days || 0}</p>
-              <p className="text-gray-400 text-sm">Gebote platziert</p>
+              <p className="text-2xl font-bold text-gray-800">{recent.bids_last_30_days || 0}</p>
+              <p className="text-gray-500 text-sm">Gebote platziert</p>
             </div>
             <div className="p-4 bg-white/5 rounded-lg text-center">
               <p className="text-2xl font-bold text-green-400">{recent.wins_last_30_days || 0}</p>
-              <p className="text-gray-400 text-sm">Auktionen gewonnen</p>
+              <p className="text-gray-500 text-sm">Auktionen gewonnen</p>
             </div>
           </div>
         </div>
