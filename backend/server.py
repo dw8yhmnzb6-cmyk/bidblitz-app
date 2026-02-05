@@ -281,19 +281,31 @@ async def websocket_all_auctions_legacy(websocket: WebSocket):
 # ==================== BOT BACKGROUND TASK ====================
 
 async def bot_last_second_bidder():
-    """Background task - bots bid continuously until auction price reaches minimum.
+    """Background task - bots bid with REALISTIC human-like patterns.
     
     LOGIK:
     1. STANDARD (normale Auktionen): Bots bieten bis €20
     2. GUTSCHEIN-AUKTIONEN: Bots bieten bis 30% des Gutscheinwertes
        - z.B. €100 Gutschein = Mindestpreis €30
     3. MIT ZIELPREIS: Bots bieten bis zum höheren Wert
+    
+    VERHALTEN:
+    - Verschiedene Bieter pro Auktion (nicht immer derselbe Bot)
+    - Zufällige Intervalle zwischen 15-90 Sekunden (realistisch)
+    - Gestaffelte Gebote (nicht alle Auktionen gleichzeitig)
+    - Pause-Perioden (manchmal 1-3 Minuten ohne Gebot)
     """
     global bot_task_running
     
-    logger.info("Bot bidder started - Mindestpreis: €20 oder 30% bei Gutscheinen")
+    logger.info("Bot bidder started - Mindestpreis: €20 oder 30% bei Gutscheinen (REALISTIC MODE)")
+    
+    # Track last bot and bid time per auction
     last_bot_per_auction = {}
     last_bid_time_per_auction = {}
+    next_bid_time_per_auction = {}  # When to place next bid
+    
+    # Track which bots have bid on which auctions (for rotation)
+    auction_bot_history = {}  # auction_id -> list of last 5 bot IDs
     
     # MINIMUM price for NORMAL auctions - €20
     MINIMUM_AUCTION_PRICE = 20.00
@@ -305,8 +317,10 @@ async def bot_last_second_bidder():
     DEFAULT_MIN_PRICE = 20.00
     DEFAULT_MAX_PRICE = 25.00
     
-    # Minimum time between bot bids on same auction
-    MIN_BID_INTERVAL = 4.0  # 4 seconds between bids
+    # REALISTIC timing - vary between auctions
+    MIN_BID_INTERVAL = 15.0   # Minimum 15 seconds between bids
+    MAX_BID_INTERVAL = 90.0   # Maximum 90 seconds between bids
+    PAUSE_CHANCE = 0.15       # 15% chance of longer pause (1-3 minutes)
     
     while bot_task_running:
         try:
@@ -316,8 +330,15 @@ async def bot_last_second_bidder():
             }, {"_id": 0}).to_list(200)
             
             now = datetime.now(timezone.utc)
+            now_ts = now.timestamp()
             
-            for auction in active_auctions:
+            # Shuffle auctions to process them in random order (not all at once)
+            random.shuffle(active_auctions)
+            
+            # Only process a subset of auctions per cycle (staggered)
+            auctions_to_process = active_auctions[:min(5, len(active_auctions))]
+            
+            for auction in auctions_to_process:
                 try:
                     end_time = datetime.fromisoformat(auction["end_time"].replace("Z", "+00:00"))
                     seconds_left = (end_time - now).total_seconds()
@@ -337,8 +358,10 @@ async def bot_last_second_bidder():
                     if guaranteed_winner_id and auction.get("last_bidder_id") == guaranteed_winner_id:
                         continue
                     
-                    last_bid_time = last_bid_time_per_auction.get(auction_id, 0)
-                    time_since_last_bid = (now.timestamp() - last_bid_time)
+                    # Check if it's time for next bid on this auction
+                    next_bid_at = next_bid_time_per_auction.get(auction_id, 0)
+                    if now_ts < next_bid_at:
+                        continue  # Not time yet
                     
                     should_bid = False
                     target_price = 0
@@ -356,7 +379,7 @@ async def bot_last_second_bidder():
                     effective_target = max(explicit_target or 0, effective_minimum)
                     
                     if explicit_target and explicit_target > 0:
-                        if current_price < effective_target and time_since_last_bid >= MIN_BID_INTERVAL:
+                        if current_price < effective_target:
                             target_price = effective_target
                             should_bid = True
                     else:
@@ -370,18 +393,46 @@ async def bot_last_second_bidder():
                             default_target = DEFAULT_MIN_PRICE + (hash_val / 100) * (DEFAULT_MAX_PRICE - DEFAULT_MIN_PRICE)
                         default_target = round(default_target, 2)
                         
-                        if current_price < default_target and time_since_last_bid >= MIN_BID_INTERVAL:
+                        if current_price < default_target:
                             target_price = default_target
                             should_bid = True
                     
                     if should_bid:
                         bots = await db.bots.find({}, {"_id": 0}).to_list(100)
                         if bots:
+                            # Get history of bots that already bid on this auction
+                            history = auction_bot_history.get(auction_id, [])
                             last_bot_id = last_bot_per_auction.get(auction_id)
-                            available = [b for b in bots if b["id"] != last_bot_id] or bots
+                            
+                            # Exclude bots that bid recently on this auction
+                            available = [b for b in bots if b["id"] not in history[-3:] and b["id"] != last_bot_id]
+                            if not available:
+                                available = [b for b in bots if b["id"] != last_bot_id]
+                            if not available:
+                                available = bots
+                            
                             bot = random.choice(available)
+                            
+                            # Update tracking
                             last_bot_per_auction[auction_id] = bot["id"]
-                            last_bid_time_per_auction[auction_id] = now.timestamp()
+                            last_bid_time_per_auction[auction_id] = now_ts
+                            
+                            # Update bot history for this auction
+                            if auction_id not in auction_bot_history:
+                                auction_bot_history[auction_id] = []
+                            auction_bot_history[auction_id].append(bot["id"])
+                            if len(auction_bot_history[auction_id]) > 10:
+                                auction_bot_history[auction_id] = auction_bot_history[auction_id][-10:]
+                            
+                            # Calculate NEXT bid time (realistic interval)
+                            if random.random() < PAUSE_CHANCE:
+                                # Longer pause (1-3 minutes)
+                                next_interval = random.uniform(60, 180)
+                            else:
+                                # Normal interval (15-90 seconds)
+                                next_interval = random.uniform(MIN_BID_INTERVAL, MAX_BID_INTERVAL)
+                            
+                            next_bid_time_per_auction[auction_id] = now_ts + next_interval
                             
                             new_price = round(current_price + bid_increment, 2)
                             
@@ -435,16 +486,17 @@ async def bot_last_second_bidder():
                                 "bidder_message": f"{bot['name']} hat geboten!"
                             })
                             
-                            logger.info(f"🤖 Bot '{bot['name']}' bid €{new_price:.2f} (target: €{target_price:.2f})")
+                            logger.info(f"🤖 Bot '{bot['name']}' bid €{new_price:.2f} (target: €{target_price:.2f}, next in {next_interval:.0f}s)")
                             
                 except Exception as e:
                     logger.error(f"Bot bid error for {auction.get('id')}: {e}")
             
-            await asyncio.sleep(0.5)
+            # Small sleep between cycles
+            await asyncio.sleep(2)
             
         except Exception as e:
             logger.error(f"Bot bidder error: {e}")
-            await asyncio.sleep(1)
+            await asyncio.sleep(5)
     
     logger.info("Bot bidder stopped")
 
