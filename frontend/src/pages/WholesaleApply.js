@@ -252,7 +252,7 @@ export default function WholesaleApply() {
                     type="text"
                     value={formData.company_name}
                     onChange={(e) => setFormData({...formData, company_name: e.target.value})}
-                    className="pl-10 bg-[#0F0F16] border-white/10 text-gray-800"
+                    className="pl-10 bg-white border-gray-200 text-gray-800"
                     required
                   />
                 </div>
@@ -264,7 +264,7 @@ export default function WholesaleApply() {
                   type="text"
                   value={formData.contact_name}
                   onChange={(e) => setFormData({...formData, contact_name: e.target.value})}
-                  className="bg-[#0F0F16] border-white/10 text-gray-800"
+                  className="bg-white border-gray-200 text-gray-800"
                   required
                 />
               </div>
@@ -278,7 +278,7 @@ export default function WholesaleApply() {
                       type="email"
                       value={formData.email}
                       onChange={(e) => setFormData({...formData, email: e.target.value})}
-                      className="pl-10 bg-[#0F0F16] border-white/10 text-gray-800"
+                      className="pl-10 bg-white border-gray-200 text-gray-800"
                       required
                     />
                   </div>
@@ -292,7 +292,7 @@ export default function WholesaleApply() {
                       type="tel"
                       value={formData.phone}
                       onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                      className="pl-10 bg-[#0F0F16] border-white/10 text-gray-800"
+                      className="pl-10 bg-white border-gray-200 text-gray-800"
                       required
                     />
                   </div>
@@ -307,7 +307,7 @@ export default function WholesaleApply() {
                     type="url"
                     value={formData.website}
                     onChange={(e) => setFormData({...formData, website: e.target.value})}
-                    className="pl-10 bg-[#0F0F16] border-white/10 text-gray-800"
+                    className="pl-10 bg-white border-gray-200 text-gray-800"
                     placeholder="https://"
                   />
                 </div>
@@ -320,7 +320,7 @@ export default function WholesaleApply() {
                   <select
                     value={formData.expected_volume}
                     onChange={(e) => setFormData({...formData, expected_volume: e.target.value})}
-                    className="w-full pl-10 pr-4 py-2 bg-[#0F0F16] border border-white/10 rounded-md text-gray-800 appearance-none"
+                    className="w-full pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-md text-gray-800 appearance-none"
                     required
                   >
                     <option value="">{wt.selectVolume || 'Please select'}</option>
@@ -339,7 +339,7 @@ export default function WholesaleApply() {
                   <textarea
                     value={formData.message}
                     onChange={(e) => setFormData({...formData, message: e.target.value})}
-                    className="w-full pl-10 pr-4 py-2 bg-[#0F0F16] border border-white/10 rounded-md text-gray-800 min-h-[100px] resize-none"
+                    className="w-full pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-md text-gray-800 min-h-[100px] resize-none"
                     placeholder={wt.messagePlaceholder || 'Tell us more about your company...'}
                   />
                 </div>

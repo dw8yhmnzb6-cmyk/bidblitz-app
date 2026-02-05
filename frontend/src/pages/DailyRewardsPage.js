@@ -143,9 +143,9 @@ const DailyRewardsPage = () => {
       <div className="min-h-screen bg-gradient-to-b from-cyan-50 to-cyan-100 py-8 px-4">
         <div className="max-w-4xl mx-auto">
           <div className="animate-pulse space-y-6">
-            <div className="h-12 bg-gray-800 rounded w-1/3 mx-auto"></div>
-            <div className="h-64 bg-gray-800 rounded-xl"></div>
-            <div className="h-48 bg-gray-800 rounded-xl"></div>
+            <div className="h-12 bg-white rounded w-1/3 mx-auto"></div>
+            <div className="h-64 bg-white rounded-xl"></div>
+            <div className="h-48 bg-white rounded-xl"></div>
           </div>
         </div>
       </div>
@@ -337,7 +337,7 @@ const DailyRewardsPage = () => {
           )}
 
           {!calendar?.can_claim_today && (
-            <div className="mb-6 p-4 rounded-xl bg-gray-800/50 border border-gray-700">
+            <div className="mb-6 p-4 rounded-xl bg-white shadow-md border border-gray-700">
               <div className="flex items-center gap-3">
                 <Check className="w-6 h-6 text-green-400" />
                 <span className="text-gray-500">{t.alreadyClaimed}</span>

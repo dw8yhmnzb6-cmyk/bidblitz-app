@@ -140,7 +140,7 @@ export default function WholesaleDashboard() {
 
         {/* Stats Grid */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-5 border border-white/10">
+          <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-5 border border-gray-200">
             <div className="flex items-center gap-3 mb-3">
               <div className="w-10 h-10 rounded-lg bg-green-500/20 flex items-center justify-center">
                 <Euro className="w-5 h-5 text-green-500" />
@@ -150,7 +150,7 @@ export default function WholesaleDashboard() {
             <p className="text-2xl font-bold text-gray-800">€{data?.stats?.total_spent?.toLocaleString()}</p>
           </div>
 
-          <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-5 border border-white/10">
+          <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-5 border border-gray-200">
             <div className="flex items-center gap-3 mb-3">
               <div className="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center">
                 <Package className="w-5 h-5 text-blue-500" />
@@ -160,7 +160,7 @@ export default function WholesaleDashboard() {
             <p className="text-2xl font-bold text-gray-800">{data?.stats?.total_bids_bought?.toLocaleString()}</p>
           </div>
 
-          <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-5 border border-white/10">
+          <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-5 border border-gray-200">
             <div className="flex items-center gap-3 mb-3">
               <div className="w-10 h-10 rounded-lg bg-[#FFD700]/20 flex items-center justify-center">
                 <Percent className="w-5 h-5 text-[#FFD700]" />
@@ -170,7 +170,7 @@ export default function WholesaleDashboard() {
             <p className="text-2xl font-bold text-[#FFD700]">{data?.discount_percent}%</p>
           </div>
 
-          <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-5 border border-white/10">
+          <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-5 border border-gray-200">
             <div className="flex items-center gap-3 mb-3">
               <div className="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center">
                 <TrendingUp className="w-5 h-5 text-purple-500" />
@@ -184,18 +184,18 @@ export default function WholesaleDashboard() {
         {/* Main Content Grid */}
         <div className="grid lg:grid-cols-3 gap-6">
           {/* Account Info */}
-          <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
+          <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-gray-200">
             <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
               <CreditCard className="w-5 h-5 text-[#FFD700]" />
               Konditionen
             </h2>
             
             <div className="space-y-4">
-              <div className="flex justify-between items-center py-3 border-b border-white/10">
+              <div className="flex justify-between items-center py-3 border-b border-gray-200">
                 <span className="text-gray-500">Rabatt</span>
                 <span className="text-[#FFD700] font-semibold">{data?.discount_percent}%</span>
               </div>
-              <div className="flex justify-between items-center py-3 border-b border-white/10">
+              <div className="flex justify-between items-center py-3 border-b border-gray-200">
                 <span className="text-gray-500">Zahlungsziel</span>
                 <span className="text-gray-800 font-semibold">
                   {data?.payment_terms === 'prepaid' ? 'Vorkasse' : 
@@ -205,11 +205,11 @@ export default function WholesaleDashboard() {
               </div>
               {data?.credit_limit > 0 && (
                 <>
-                  <div className="flex justify-between items-center py-3 border-b border-white/10">
+                  <div className="flex justify-between items-center py-3 border-b border-gray-200">
                     <span className="text-gray-500">Kreditlimit</span>
                     <span className="text-gray-800 font-semibold">€{data?.credit_limit?.toLocaleString()}</span>
                   </div>
-                  <div className="flex justify-between items-center py-3 border-b border-white/10">
+                  <div className="flex justify-between items-center py-3 border-b border-gray-200">
                     <span className="text-gray-500">Verfügbar</span>
                     <span className="text-green-500 font-semibold">€{data?.credit_available?.toLocaleString()}</span>
                   </div>
@@ -231,7 +231,7 @@ export default function WholesaleDashboard() {
           </div>
 
           {/* Recent Transactions */}
-          <div className="lg:col-span-2 bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
+          <div className="lg:col-span-2 bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-gray-200">
             <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
               <ShoppingBag className="w-5 h-5 text-[#FFD700]" />
               Letzte Transaktionen
@@ -277,7 +277,7 @@ export default function WholesaleDashboard() {
 
         {/* Invoices Section */}
         {data?.invoices?.length > 0 && (
-          <div className="mt-6 bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
+          <div className="mt-6 bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-gray-200">
             <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
               <FileText className="w-5 h-5 text-[#FFD700]" />
               Rechnungen
@@ -286,7 +286,7 @@ export default function WholesaleDashboard() {
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="text-left text-gray-500 text-sm border-b border-white/10">
+                  <tr className="text-left text-gray-500 text-sm border-b border-gray-200">
                     <th className="pb-3">Rechnung</th>
                     <th className="pb-3">Datum</th>
                     <th className="pb-3">Betrag</th>

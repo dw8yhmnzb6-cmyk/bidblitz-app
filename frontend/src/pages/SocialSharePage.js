@@ -105,8 +105,8 @@ const SocialSharePage = () => {
       <div className="min-h-screen bg-gradient-to-b from-cyan-50 to-cyan-100 py-8 px-4">
         <div className="max-w-4xl mx-auto">
           <div className="animate-pulse space-y-4">
-            <div className="h-12 bg-gray-800 rounded w-1/3 mx-auto"></div>
-            <div className="h-32 bg-gray-800 rounded-xl"></div>
+            <div className="h-12 bg-white rounded w-1/3 mx-auto"></div>
+            <div className="h-32 bg-white rounded-xl"></div>
           </div>
         </div>
       </div>
@@ -183,7 +183,7 @@ const SocialSharePage = () => {
                           className="w-16 h-16 rounded-lg object-cover"
                         />
                       ) : (
-                        <div className="w-16 h-16 rounded-lg bg-gray-800 flex items-center justify-center">
+                        <div className="w-16 h-16 rounded-lg bg-white flex items-center justify-center">
                           <Trophy className="w-8 h-8 text-yellow-400" />
                         </div>
                       )}

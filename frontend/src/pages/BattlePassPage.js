@@ -135,9 +135,9 @@ const BattlePassPage = () => {
       <div className="min-h-screen bg-gradient-to-b from-cyan-50 to-cyan-100 py-8 px-4">
         <div className="max-w-6xl mx-auto">
           <div className="animate-pulse space-y-6">
-            <div className="h-12 bg-gray-800 rounded w-1/3 mx-auto"></div>
-            <div className="h-32 bg-gray-800 rounded-xl"></div>
-            <div className="h-64 bg-gray-800 rounded-xl"></div>
+            <div className="h-12 bg-white rounded w-1/3 mx-auto"></div>
+            <div className="h-32 bg-white rounded-xl"></div>
+            <div className="h-64 bg-white rounded-xl"></div>
           </div>
         </div>
       </div>
@@ -343,12 +343,12 @@ const BattlePassPage = () => {
                     key={`free-${tier}`}
                     className={`w-24 h-24 rounded-xl flex flex-col items-center justify-center p-2 transition-all ${
                       !freeReward 
-                        ? 'bg-white/5 border border-white/10'
+                        ? 'bg-white/5 border border-gray-200'
                         : isClaimed 
                           ? 'bg-green-500/10 border border-green-500/30'
                           : isUnlocked 
                             ? 'bg-blue-500/10 border-2 border-blue-500/50 cursor-pointer hover:border-blue-500'
-                            : 'bg-white/5 border border-white/10'
+                            : 'bg-white/5 border border-gray-200'
                     }`}
                     onClick={() => freeReward && isUnlocked && !isClaimed && handleClaim(tier, 'free')}
                   >

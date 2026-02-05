@@ -188,10 +188,10 @@ const WinnerGallery = () => {
       <div className="min-h-screen bg-gradient-to-b from-cyan-50 to-cyan-100 py-8 px-4">
         <div className="max-w-6xl mx-auto">
           <div className="animate-pulse space-y-6">
-            <div className="h-12 bg-gray-800 rounded w-1/3"></div>
+            <div className="h-12 bg-white rounded w-1/3"></div>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {[...Array(8)].map((_, i) => (
-                <div key={i} className="aspect-square bg-gray-800 rounded-xl"></div>
+                <div key={i} className="aspect-square bg-white rounded-xl"></div>
               ))}
             </div>
           </div>
@@ -347,7 +347,7 @@ const WinnerGallery = () => {
                     placeholder="Auktion-ID eingeben"
                     value={uploadData.auction_id}
                     onChange={(e) => setUploadData(prev => ({ ...prev, auction_id: e.target.value }))}
-                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-gray-800 focus:outline-none focus:border-purple-500"
+                    className="w-full px-4 py-3 bg-white/5 border border-gray-200 rounded-xl text-gray-800 focus:outline-none focus:border-purple-500"
                   />
                 </div>
 
@@ -357,7 +357,7 @@ const WinnerGallery = () => {
                     {t.selectImage}
                   </label>
                   <div 
-                    className="border-2 border-dashed border-white/20 rounded-xl p-8 text-center cursor-pointer hover:border-purple-500/50 transition-colors"
+                    className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center cursor-pointer hover:border-purple-500/50 transition-colors"
                     onClick={() => document.getElementById('image-input').click()}
                   >
                     {uploadData.preview ? (
@@ -388,7 +388,7 @@ const WinnerGallery = () => {
                     value={uploadData.caption}
                     onChange={(e) => setUploadData(prev => ({ ...prev, caption: e.target.value }))}
                     rows={3}
-                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-gray-800 focus:outline-none focus:border-purple-500 resize-none"
+                    className="w-full px-4 py-3 bg-white/5 border border-gray-200 rounded-xl text-gray-800 focus:outline-none focus:border-purple-500 resize-none"
                   />
                 </div>
 

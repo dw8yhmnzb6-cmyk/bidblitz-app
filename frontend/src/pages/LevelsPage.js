@@ -113,11 +113,11 @@ const LevelsPage = () => {
       <div className="min-h-screen bg-gradient-to-b from-cyan-50 to-cyan-100 py-8 px-4">
         <div className="max-w-6xl mx-auto">
           <div className="animate-pulse space-y-6">
-            <div className="h-12 bg-gray-800 rounded w-1/3 mx-auto"></div>
-            <div className="h-48 bg-gray-800 rounded-xl"></div>
+            <div className="h-12 bg-white rounded w-1/3 mx-auto"></div>
+            <div className="h-48 bg-white rounded-xl"></div>
             <div className="grid grid-cols-5 gap-4">
               {[...Array(5)].map((_, i) => (
-                <div key={i} className="h-40 bg-gray-800 rounded-xl"></div>
+                <div key={i} className="h-40 bg-white rounded-xl"></div>
               ))}
             </div>
           </div>
@@ -182,7 +182,7 @@ const LevelsPage = () => {
 
             {/* Current Perks */}
             {levelData.perks && (
-              <div className="mt-6 pt-6 border-t border-white/10">
+              <div className="mt-6 pt-6 border-t border-gray-200">
                 <h3 className="text-gray-800 font-bold mb-3">{t.yourPerks}</h3>
                 <div className="flex flex-wrap gap-3">
                   {allLevels[currentLevel]?.perks_de?.map((perk, i) => (

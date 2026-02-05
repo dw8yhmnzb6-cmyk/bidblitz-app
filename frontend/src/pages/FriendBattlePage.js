@@ -255,10 +255,10 @@ const FriendBattlePage = () => {
     return (
       <div className="min-h-screen bg-gradient-to-b from-cyan-50 to-cyan-100 py-8 px-4">
         <div className="max-w-4xl mx-auto animate-pulse space-y-6">
-          <div className="h-12 bg-gray-800 rounded w-1/3 mx-auto"></div>
+          <div className="h-12 bg-white rounded w-1/3 mx-auto"></div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {[1,2,3,4].map(i => (
-              <div key={i} className="h-40 bg-gray-800 rounded-xl"></div>
+              <div key={i} className="h-40 bg-white rounded-xl"></div>
             ))}
           </div>
         </div>
@@ -302,7 +302,7 @@ const FriendBattlePage = () => {
                   type="text"
                   value={challengeForm.friendId}
                   onChange={(e) => setChallengeForm({...challengeForm, friendId: e.target.value})}
-                  className="w-full mt-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-gray-800"
+                  className="w-full mt-1 px-3 py-2 bg-white/5 border border-gray-200 rounded-lg text-gray-800"
                   placeholder="abc123..."
                 />
               </div>
@@ -312,7 +312,7 @@ const FriendBattlePage = () => {
                 <select
                   value={challengeForm.type}
                   onChange={(e) => setChallengeForm({...challengeForm, type: e.target.value})}
-                  className="w-full mt-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-gray-800"
+                  className="w-full mt-1 px-3 py-2 bg-white/5 border border-gray-200 rounded-lg text-gray-800"
                 >
                   {battleTypes.map(bt => (
                     <option key={bt.id} value={bt.id}>{bt.icon} {bt.name}</option>
@@ -325,7 +325,7 @@ const FriendBattlePage = () => {
                 <select
                   value={challengeForm.duration}
                   onChange={(e) => setChallengeForm({...challengeForm, duration: parseInt(e.target.value)})}
-                  className="w-full mt-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-gray-800"
+                  className="w-full mt-1 px-3 py-2 bg-white/5 border border-gray-200 rounded-lg text-gray-800"
                 >
                   <option value={6}>6 {t.hours}</option>
                   <option value={12}>12 {t.hours}</option>
@@ -339,7 +339,7 @@ const FriendBattlePage = () => {
                 <select
                   value={challengeForm.stake}
                   onChange={(e) => setChallengeForm({...challengeForm, stake: parseInt(e.target.value)})}
-                  className="w-full mt-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-gray-800"
+                  className="w-full mt-1 px-3 py-2 bg-white/5 border border-gray-200 rounded-lg text-gray-800"
                 >
                   <option value={5}>5 {t.bids}</option>
                   <option value={10}>10 {t.bids}</option>

@@ -127,7 +127,7 @@ const BundlesPage = () => {
         <div className="max-w-6xl mx-auto">
           <div className="animate-pulse grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {[1,2,3,4].map(i => (
-              <div key={i} className="h-96 bg-gray-800 rounded-xl"></div>
+              <div key={i} className="h-96 bg-white rounded-xl"></div>
             ))}
           </div>
         </div>
@@ -185,7 +185,7 @@ const BundlesPage = () => {
                 </div>
                 
                 {/* Price */}
-                <div className="px-6 py-4 text-center border-t border-white/10">
+                <div className="px-6 py-4 text-center border-t border-gray-200">
                   <div className="text-gray-500 line-through text-sm">
                     {t.originalPrice} €{bundle.original_price?.toFixed(2)}
                   </div>

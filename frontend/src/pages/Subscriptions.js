@@ -151,10 +151,10 @@ const Subscriptions = () => {
       <div className="min-h-screen bg-gradient-to-b from-cyan-50 to-cyan-100 py-8 px-4">
         <div className="max-w-6xl mx-auto">
           <div className="animate-pulse space-y-6">
-            <div className="h-12 bg-gray-800 rounded w-1/3 mx-auto"></div>
+            <div className="h-12 bg-white rounded w-1/3 mx-auto"></div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {[...Array(3)].map((_, i) => (
-                <div key={i} className="h-96 bg-gray-800 rounded-xl"></div>
+                <div key={i} className="h-96 bg-white rounded-xl"></div>
               ))}
             </div>
           </div>
@@ -227,7 +227,7 @@ const Subscriptions = () => {
                     ? 'border-2 border-yellow-500/50 hover:border-yellow-500' 
                     : isPro 
                       ? 'border-2 border-purple-500/50 hover:border-purple-500'
-                      : 'hover:border-white/20'
+                      : 'hover:border-gray-300'
                 }`}
               >
                 {/* Popular Badge */}

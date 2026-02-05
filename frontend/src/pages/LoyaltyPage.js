@@ -102,10 +102,10 @@ const LoyaltyPage = () => {
       <div className="min-h-screen bg-gradient-to-b from-cyan-50 to-cyan-100 py-8 px-4">
         <div className="max-w-4xl mx-auto">
           <div className="animate-pulse space-y-6">
-            <div className="h-32 bg-gray-800 rounded-xl"></div>
+            <div className="h-32 bg-white rounded-xl"></div>
             <div className="grid grid-cols-3 gap-4">
               {[...Array(6)].map((_, i) => (
-                <div key={i} className="h-40 bg-gray-800 rounded-xl"></div>
+                <div key={i} className="h-40 bg-white rounded-xl"></div>
               ))}
             </div>
           </div>
@@ -149,7 +149,7 @@ const LoyaltyPage = () => {
           </div>
 
           {loyaltyData?.next_tier && (
-            <div className="mt-6 pt-6 border-t border-white/10">
+            <div className="mt-6 pt-6 border-t border-gray-200">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-gray-500">{t.nextReward}: {loyaltyData.next_tier.description}</span>
                 <span className="text-yellow-400 font-bold">
