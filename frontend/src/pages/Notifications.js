@@ -432,7 +432,7 @@ export default function Notifications() {
                       )}
                       <button
                         onClick={() => deleteNotification(notif.id)}
-                        className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-400/10 rounded"
+                        className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded"
                         title="Löschen"
                       >
                         <Trash2 className="w-4 h-4" />
