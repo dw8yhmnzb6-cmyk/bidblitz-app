@@ -133,22 +133,22 @@ export const CookieConsent = () => {
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center p-4 pointer-events-none">
       <div 
-        className="w-full max-w-3xl bg-obsidian-paper border border-white/10 rounded-xl shadow-2xl pointer-events-auto animate-in slide-in-from-bottom duration-500"
+        className="w-full max-w-3xl bg-white border border-gray-200 rounded-xl shadow-2xl pointer-events-auto animate-in slide-in-from-bottom duration-500"
         data-testid="cookie-consent-banner"
       >
         {!showSettings ? (
           <div className="p-6">
             <div className="flex items-start gap-4">
-              <div className="w-12 h-12 rounded-md bg-acid/20 flex items-center justify-center flex-shrink-0 border border-acid/30">
-                <Cookie className="w-6 h-6 text-acid" />
+              <div className="w-12 h-12 rounded-md bg-amber-100 flex items-center justify-center flex-shrink-0 border border-amber-200">
+                <Cookie className="w-6 h-6 text-amber-600" />
               </div>
               <div className="flex-1">
-                <h3 className="text-lg font-heading font-bold text-white mb-2">{t.title}</h3>
-                <p className="text-gray-400 text-sm mb-4 font-body">{t.description}</p>
+                <h3 className="text-lg font-bold text-gray-800 mb-2">{t.title}</h3>
+                <p className="text-gray-600 text-sm mb-4">{t.description}</p>
                 <div className="flex flex-wrap gap-3">
                   <Button 
                     onClick={handleAcceptAll}
-                    className="bg-acid hover:bg-acid-hover text-black font-heading font-bold uppercase tracking-wider hover:shadow-neon-acid transition-all"
+                    className="bg-amber-500 hover:bg-amber-600 text-white font-bold transition-all"
                     data-testid="accept-all-cookies"
                   >
                     <CheckCircle className="w-4 h-4 mr-2" />
@@ -157,7 +157,7 @@ export const CookieConsent = () => {
                   <Button 
                     onClick={handleDeclineAll}
                     variant="outline"
-                    className="border-white/20 text-white hover:bg-white/10 hover:border-acid/30 font-body"
+                    className="border-gray-300 text-gray-700 hover:bg-gray-50"
                     data-testid="decline-cookies"
                   >
                     {t.declineAll}
@@ -165,7 +165,7 @@ export const CookieConsent = () => {
                   <Button 
                     onClick={() => setShowSettings(true)}
                     variant="ghost"
-                    className="text-gray-400 hover:text-acid font-body"
+                    className="text-gray-500 hover:text-amber-600"
                     data-testid="cookie-settings"
                   >
                     <Settings className="w-4 h-4 mr-2" />
@@ -175,7 +175,7 @@ export const CookieConsent = () => {
               </div>
               <button 
                 onClick={handleDeclineAll}
-                className="text-gray-500 hover:text-acid transition-colors"
+                className="text-gray-400 hover:text-gray-600 transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -184,10 +184,10 @@ export const CookieConsent = () => {
         ) : (
           <div className="p-6">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-heading font-bold text-white">{t.title}</h3>
+              <h3 className="text-lg font-bold text-gray-800">{t.title}</h3>
               <button 
                 onClick={() => setShowSettings(false)}
-                className="text-gray-500 hover:text-acid transition-colors"
+                className="text-gray-400 hover:text-gray-600 transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -195,45 +195,45 @@ export const CookieConsent = () => {
             
             <div className="space-y-4 mb-6">
               {/* Necessary */}
-              <div className="flex items-center justify-between p-4 rounded-md bg-obsidian-subtle border border-white/5">
+              <div className="flex items-center justify-between p-4 rounded-md bg-gray-50 border border-gray-200">
                 <div>
-                  <h4 className="text-white font-heading font-medium">{t.necessary}</h4>
-                  <p className="text-gray-500 text-sm font-body">{t.necessaryDesc}</p>
+                  <h4 className="text-gray-800 font-medium">{t.necessary}</h4>
+                  <p className="text-gray-500 text-sm">{t.necessaryDesc}</p>
                 </div>
-                <div className="w-12 h-6 rounded-full bg-acid flex items-center justify-end px-1">
-                  <div className="w-4 h-4 rounded-full bg-black"></div>
+                <div className="w-12 h-6 rounded-full bg-amber-500 flex items-center justify-end px-1">
+                  <div className="w-4 h-4 rounded-full bg-white"></div>
                 </div>
               </div>
 
               {/* Analytics */}
-              <div className="flex items-center justify-between p-4 rounded-md bg-obsidian-subtle border border-white/5">
+              <div className="flex items-center justify-between p-4 rounded-md bg-gray-50 border border-gray-200">
                 <div>
-                  <h4 className="text-white font-heading font-medium">{t.analytics}</h4>
-                  <p className="text-gray-500 text-sm font-body">{t.analyticsDesc}</p>
+                  <h4 className="text-gray-800 font-medium">{t.analytics}</h4>
+                  <p className="text-gray-500 text-sm">{t.analyticsDesc}</p>
                 </div>
                 <button 
                   onClick={() => setPreferences({...preferences, analytics: !preferences.analytics})}
                   className={`w-12 h-6 rounded-full flex items-center px-1 transition-colors ${
-                    preferences.analytics ? 'bg-acid justify-end' : 'bg-obsidian border border-white/20 justify-start'
+                    preferences.analytics ? 'bg-amber-500 justify-end' : 'bg-gray-300 justify-start'
                   }`}
                 >
-                  <div className={`w-4 h-4 rounded-full ${preferences.analytics ? 'bg-black' : 'bg-white'}`}></div>
+                  <div className="w-4 h-4 rounded-full bg-white"></div>
                 </button>
               </div>
 
               {/* Marketing */}
-              <div className="flex items-center justify-between p-4 rounded-md bg-obsidian-subtle border border-white/5">
+              <div className="flex items-center justify-between p-4 rounded-md bg-gray-50 border border-gray-200">
                 <div>
-                  <h4 className="text-white font-heading font-medium">{t.marketing}</h4>
-                  <p className="text-gray-500 text-sm font-body">{t.marketingDesc}</p>
+                  <h4 className="text-gray-800 font-medium">{t.marketing}</h4>
+                  <p className="text-gray-500 text-sm">{t.marketingDesc}</p>
                 </div>
                 <button 
                   onClick={() => setPreferences({...preferences, marketing: !preferences.marketing})}
                   className={`w-12 h-6 rounded-full flex items-center px-1 transition-colors ${
-                    preferences.marketing ? 'bg-acid justify-end' : 'bg-obsidian border border-white/20 justify-start'
+                    preferences.marketing ? 'bg-amber-500 justify-end' : 'bg-gray-300 justify-start'
                   }`}
                 >
-                  <div className={`w-4 h-4 rounded-full ${preferences.marketing ? 'bg-black' : 'bg-white'}`}></div>
+                  <div className="w-4 h-4 rounded-full bg-white"></div>
                 </button>
               </div>
             </div>
@@ -241,14 +241,14 @@ export const CookieConsent = () => {
             <div className="flex gap-3">
               <Button 
                 onClick={handleAcceptSelected}
-                className="bg-acid hover:bg-acid-hover text-black font-heading font-bold uppercase tracking-wider flex-1 hover:shadow-neon-acid transition-all"
+                className="bg-amber-500 hover:bg-amber-600 text-white font-bold flex-1 transition-all"
               >
                 {t.saveSelection}
               </Button>
               <Button 
                 onClick={handleAcceptAll}
                 variant="outline"
-                className="border-white/20 text-white hover:bg-white/10 hover:border-acid/30 flex-1 font-body"
+                className="border-gray-300 text-gray-700 hover:bg-gray-50 flex-1"
               >
                 {t.acceptAll}
               </Button>
