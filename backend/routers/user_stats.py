@@ -196,7 +196,7 @@ async def get_achievements(user: dict = Depends(get_current_user)):
     # Calculate savings
     won_auctions = await db.won_auctions.find({"user_id": user_id}, {"_id": 0}).to_list(1000)
     total_savings = sum(
-        max(0, a.get("retail_price", 0) - a.get("final_price", 0) - a.get("bids_cost", 0))
+        max(0, (a.get("retail_price") or 0) - (a.get("final_price") or 0) - (a.get("bids_cost") or 0))
         for a in won_auctions
     )
     
