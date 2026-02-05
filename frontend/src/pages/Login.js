@@ -144,24 +144,18 @@ export default function Login() {
   }, []);
 
   return (
-    <div className="min-h-screen pt-24 pb-12 px-4 flex items-center justify-center bg-obsidian" data-testid="login-page">
-      {/* Background Effects */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-acid/5 rounded-full blur-[120px]" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-cyber/5 rounded-full blur-[120px]" />
-      </div>
-      
-      <div className="w-full max-w-md relative z-10">
-        <div className="backdrop-blur-xl bg-obsidian-paper/90 border border-white/10 rounded-xl p-8 shadow-2xl">
-          {/* Logo - Cyber Style */}
+    <div className="min-h-screen pt-24 pb-12 px-4 flex items-center justify-center" data-testid="login-page">
+      <div className="w-full max-w-md">
+        <div className="glass-card rounded-2xl p-8">
+          {/* Logo */}
           <div className="text-center mb-8">
             <Link to="/" className="inline-flex items-center gap-2">
-              <div className="w-12 h-12 rounded-md bg-acid flex items-center justify-center shadow-neon-acid">
-                <Zap className="w-7 h-7 text-black" />
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#7C3AED] to-[#06B6D4] flex items-center justify-center">
+                <Zap className="w-7 h-7 text-white" />
               </div>
             </Link>
-            <h1 className="text-2xl font-heading font-black text-white mt-4 uppercase tracking-wider">{texts.welcomeBack}</h1>
-            <p className="text-gray-400 mt-2 font-body">
+            <h1 className="text-2xl font-bold text-white mt-4">{texts.welcomeBack}</h1>
+            <p className="text-[#94A3B8] mt-2">
               {requires2FA ? texts.twoFactorAuth : texts.loginToContinue}
             </p>
           </div>
@@ -170,9 +164,9 @@ export default function Login() {
             {!requires2FA ? (
               <>
                 <div className="space-y-2">
-                  <Label htmlFor="email" className="text-white font-body">{texts.email}</Label>
+                  <Label htmlFor="email" className="text-white">{texts.email}</Label>
                   <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#94A3B8]" />
                     <Input
                       id="email"
                       type="email"
@@ -181,7 +175,7 @@ export default function Login() {
                       onChange={(e) => setEmail(e.target.value)}
                       required
                       autoComplete="email"
-                      className="pl-10 h-12 bg-obsidian border-white/10 text-white placeholder:text-gray-600 focus:border-acid focus:ring-acid/20 font-body"
+                      className="pl-10 h-12 bg-[#181824] border-white/10 text-white placeholder:text-[#475569]"
                       data-testid="email-input"
                     />
                   </div>
@@ -189,13 +183,13 @@ export default function Login() {
 
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="password" className="text-white font-body">{texts.password}</Label>
-                    <Link to="/forgot-password" className="text-sm text-acid hover:text-acid-hover transition-colors font-body">
+                    <Label htmlFor="password" className="text-white">{texts.password}</Label>
+                    <Link to="/forgot-password" className="text-sm text-[#7C3AED] hover:underline">
                       {texts.forgotPassword}
                     </Link>
                   </div>
                   <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#94A3B8]" />
                     <Input
                       id="password"
                       type={showPassword ? 'text' : 'password'}
@@ -204,13 +198,13 @@ export default function Login() {
                       onChange={(e) => setPassword(e.target.value)}
                       required
                       autoComplete="current-password"
-                      className="pl-10 pr-10 h-12 bg-obsidian border-white/10 text-white placeholder:text-gray-600 focus:border-acid focus:ring-acid/20 font-body"
+                      className="pl-10 pr-10 h-12 bg-[#181824] border-white/10 text-white placeholder:text-[#475569]"
                       data-testid="password-input"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-acid transition-colors"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[#94A3B8] hover:text-white"
                     >
                       {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                     </button>
