@@ -498,6 +498,10 @@ export default function Home() {
     fetchData();
   }, [fetchData]);
   
+  // Get translations with language mapping (xk -> sq)
+  const mappedLang = getMappedLanguage(language);
+  const ht = homeTexts[mappedLang] || homeTexts[language] || homeTexts.de;
+  
   // Handle bid
   const handleBid = async (auctionId) => {
     if (!isAuthenticated) {
