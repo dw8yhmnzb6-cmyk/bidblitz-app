@@ -918,15 +918,15 @@ export default function Auctions() {
   }
   
   return (
-    <div className="min-h-screen bg-gradient-to-b from-cyan-200 to-cyan-300 p-2 pt-16 sm:pt-20" data-testid="auctions-page">
+    <div className="min-h-screen bg-gradient-to-b from-cyan-200 to-cyan-300 p-2 pt-16 sm:pt-20 overflow-x-hidden" data-testid="auctions-page">
       
       {/* Global Jackpot - Top of Page */}
-      <div className="max-w-4xl mx-auto mb-4">
+      <div className="max-w-4xl mx-auto mb-4 px-2">
         <GlobalJackpot />
       </div>
       
       {/* Excitement Status Bar */}
-      <div className="max-w-7xl mx-auto mb-3">
+      <div className="max-w-7xl mx-auto mb-3 px-2">
         <ExcitementStatusBar />
       </div>
       
@@ -935,7 +935,7 @@ export default function Auctions() {
       </div>
       
       {/* Filter Buttons */}
-      <div className="max-w-7xl mx-auto mb-3">
+      <div className="max-w-7xl mx-auto mb-3 px-2 overflow-x-auto scrollbar-hide">
         <div className="flex flex-wrap gap-1.5 justify-center">
           {filterButtons.map(btn => (
             <button
