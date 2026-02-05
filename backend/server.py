@@ -241,6 +241,14 @@ app.include_router(beginner_guarantee_router, prefix="/api")
 app.include_router(whatsapp_router, prefix="/api")
 app.include_router(countdown_emails_router, prefix="/api")
 app.include_router(team_auctions_router, prefix="/api")
+app.include_router(ai_bid_router, prefix="/api")
+app.include_router(auction_preview_router, prefix="/api")
+app.include_router(social_betting_router, prefix="/api")
+app.include_router(personalized_router, prefix="/api")
+app.include_router(livestream_router, prefix="/api")
+app.include_router(crypto_router, prefix="/api")
+app.include_router(influencer_auctions_router, prefix="/api")
+app.include_router(ar_preview_router, prefix="/api")
 
 # ==================== HEALTH & BASIC ENDPOINTS ====================
 
