@@ -501,7 +501,7 @@ export default function Home() {
   // Handle bid
   const handleBid = async (auctionId) => {
     if (!isAuthenticated) {
-      toast.error('Bitte anmelden um zu bieten');
+      toast.error(ht.pleaseLogin);
       navigate('/login');
       return;
     }
@@ -512,12 +512,12 @@ export default function Home() {
         {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      toast.success('Gebot platziert!');
+      toast.success(ht.bidPlaced);
       if (res.data.bids_remaining !== undefined) {
         updateBidsBalance(res.data.bids_remaining);
       }
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Fehler beim Bieten');
+      toast.error(error.response?.data?.detail || ht.bidError);
     }
   };
   
