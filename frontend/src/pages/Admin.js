@@ -438,11 +438,11 @@ export default function Admin() {
         ...newProduct,
         retail_price: parseFloat(newProduct.retail_price)
       }, { headers: { Authorization: `Bearer ${token}` } });
-      toast.success('Produkt erstellt');
+      toast.success(at('productCreated'));
       setNewProduct({ name: '', description: '', image_url: '', retail_price: '', category: '' });
       fetchData();
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Fehler');
+      toast.error(error.response?.data?.detail || at('error'));
     }
   };
 
@@ -451,24 +451,24 @@ export default function Admin() {
       await axios.put(`${API}/admin/products/${productId}`, editingProduct, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      toast.success('Produkt aktualisiert');
+      toast.success(at('productUpdated'));
       setEditingProduct(null);
       fetchData();
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Fehler');
+      toast.error(error.response?.data?.detail || at('error'));
     }
   };
 
   const handleDeleteProduct = async (productId) => {
-    if (!confirm('Produkt wirklich löschen?')) return;
+    if (!confirm(at('confirmDeleteProduct'))) return;
     try {
       await axios.delete(`${API}/admin/products/${productId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      toast.success('Produkt gelöscht');
+      toast.success(at('productDeleted'));
       fetchData();
     } catch (error) {
-      toast.error('Fehler beim Löschen');
+      toast.error(at('errorDeleting'));
     }
   };
 
