@@ -310,7 +310,7 @@ export default function Login() {
                   : 'Apple Login requires Apple Developer Credentials. Please configure in .env.'
                 )}
                 variant="outline"
-                className="w-full h-12 border-white/20 text-white hover:bg-white/5 hover:border-acid/30 mt-3 font-body transition-all"
+                className="w-full h-12 border-white/20 text-white hover:bg-white/5 mt-3"
                 data-testid="apple-login-btn"
               >
                 <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="currentColor">
@@ -323,9 +323,9 @@ export default function Login() {
 
           {!requires2FA && (
             <div className="mt-6 text-center">
-              <p className="text-gray-400 font-body">
+              <p className="text-[#94A3B8]">
                 {texts.noAccount}{' '}
-                <Link to="/register" className="text-acid hover:text-acid-hover font-bold transition-colors">
+                <Link to="/register" className="text-[#7C3AED] hover:underline font-medium">
                   {texts.registerNow}
                 </Link>
               </p>
