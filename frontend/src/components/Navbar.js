@@ -351,7 +351,7 @@ export const Navbar = () => {
             </Link>
             <Link 
               to="/vip-auctions" 
-              className="block text-[#FFA500] hover:text-[#FFD700] py-2 font-medium flex items-center gap-2"
+              className="block text-orange-500 hover:text-orange-600 py-2 font-medium flex items-center gap-2"
               onClick={() => setMobileMenuOpen(false)}
             >
               <Crown className="w-4 h-4" />
@@ -359,7 +359,7 @@ export const Navbar = () => {
             </Link>
             <Link 
               to="/winners" 
-              className="block text-[#94A3B8] hover:text-white py-2 flex items-center gap-2"
+              className="block text-gray-600 hover:text-gray-900 py-2 flex items-center gap-2"
               onClick={() => setMobileMenuOpen(false)}
             >
               <Trophy className="w-4 h-4" />
@@ -367,7 +367,7 @@ export const Navbar = () => {
             </Link>
             <Link 
               to="/leaderboard" 
-              className="block text-[#A855F7] hover:text-[#C084FC] py-2 flex items-center gap-2"
+              className="block text-purple-600 hover:text-purple-700 py-2 flex items-center gap-2"
               onClick={() => setMobileMenuOpen(false)}
             >
               <Trophy className="w-4 h-4" />
@@ -376,7 +376,7 @@ export const Navbar = () => {
             {isAuthenticated && (
               <button 
                 onClick={() => { setWheelOpen(true); setMobileMenuOpen(false); }}
-                className="block text-[#F59E0B] hover:text-[#FFD700] py-2 flex items-center gap-2 w-full text-left"
+                className="block text-amber-500 hover:text-amber-600 py-2 flex items-center gap-2 w-full text-left"
               >
                 <Sparkles className="w-4 h-4" />
                 {language === 'de' ? 'Glücksrad' : 'Lucky Wheel'}
