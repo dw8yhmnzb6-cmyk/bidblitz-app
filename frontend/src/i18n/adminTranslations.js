@@ -383,7 +383,89 @@ export const adminTranslations = {
     refresh: 'Refresh',
     export: 'Export',
     filter: 'Filter',
-    search: 'Search'
+    search: 'Search',
+    
+    // Toast Messages - Products
+    productCreated: 'Product created',
+    productUpdated: 'Product updated',
+    productDeleted: 'Product deleted',
+    confirmDeleteProduct: 'Really delete this product?',
+    errorDeleting: 'Error deleting',
+    
+    // Toast Messages - Auctions
+    auctionCreated: 'Auction created',
+    auctionExtended: 'Auction extended',
+    auctionEnded: 'Auction ended',
+    auctionRestarted: 'Auction restarted!',
+    auctionDeleted: 'Auction deleted',
+    autoRestartEnabled: 'Auto-restart enabled',
+    botsWillBidTo: 'Bots will bid up to',
+    botBidFailed: 'Bot bidding failed - create bots first?',
+    confirmDeleteAuction: 'Really delete this auction?',
+    errorRestarting: 'Error restarting',
+    vipStatusRemoved: 'VIP status removed',
+    markedAsVip: 'Marked as VIP auction',
+    vipOnlyRemoved: 'VIP-Only status removed',
+    markedAsVipOnly: 'Marked as VIP-Only',
+    setAsAotd: '🏆 Set as Auction of the Day!',
+    
+    // Toast Messages - Users
+    adminStatusChanged: 'Admin status changed',
+    userBlocked: 'User blocked',
+    userUnblocked: 'User unblocked',
+    guaranteedWinnerEnabled: 'Guaranteed winner enabled 🏆',
+    guaranteedWinnerDisabled: 'Guaranteed winner disabled',
+    bidsAdded: 'Bids added',
+    userUpdated: 'User updated',
+    enterBidsAmount: 'Enter number of bids to add:',
+    
+    // Toast Messages - Vouchers
+    voucherCreated: 'Voucher created',
+    voucherStatusChanged: 'Voucher status changed',
+    voucherDeleted: 'Voucher deleted',
+    confirmDeleteVoucher: 'Really delete this voucher?',
+    
+    // Toast Messages - Bots
+    botCreated: 'Bot created',
+    botDeleted: 'Bot deleted',
+    confirmDeleteBot: 'Really delete this bot?',
+    testDataCreated: 'Test data created',
+    
+    // Toast Messages - Influencers
+    influencerCreated: '🌟 Influencer created!',
+    influencerDeleted: 'Influencer deleted',
+    influencerActivated: 'Influencer activated',
+    influencerDeactivated: 'Influencer deactivated',
+    confirmDeleteInfluencer: 'Really delete this influencer?',
+    errorCreatingInfluencer: 'Error creating',
+    
+    // Toast Messages - Wholesale
+    wholesaleApproved: 'Wholesale customer approved!',
+    wholesaleRejected: 'Application rejected',
+    wholesaleUpdated: 'Wholesale customer updated',
+    wholesaleRemoved: 'Wholesale status removed',
+    confirmRejectApplication: 'Really reject this application?',
+    confirmRemoveWholesale: 'Really remove wholesale status?',
+    errorApproving: 'Error approving',
+    
+    // Toast Messages - Pages
+    pageSaved: 'Page saved',
+    pageReset: 'Page reset',
+    confirmResetPage: 'Reset page to default content?',
+    errorSavingPage: 'Error saving page',
+    errorResettingPage: 'Error resetting page',
+    
+    // Toast Messages - Settings
+    settingsSaved: 'Settings saved!',
+    errorSavingSettings: 'Error saving settings',
+    
+    // Prompts
+    promptExtendTime: 'Extend time by (seconds):',
+    promptDurationMinutes: 'Duration in minutes:',
+    promptBotTarget: 'Bots will bid up to (€):',
+    promptBotTargetDesc: 'Bots will continuously bid until this price is reached.\nLeave empty = Default €2-3:',
+    promptAutoRestartDuration: 'Auto-restart duration in minutes (0 = disabled):',
+    promptBotTargetAutoRestart: 'Bot target price (€) for auto-restart:\n\nBots will bid up to this price.\nEmpty = Default €2-3:'
   }
 };
 
