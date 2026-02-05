@@ -93,8 +93,8 @@ const ProtectedRoute = ({ children, requireAdmin = false }) => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-obsidian">
-        <div className="w-12 h-12 border-4 border-acid border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen flex items-center justify-center bg-[#050509]">
+        <div className="w-12 h-12 border-4 border-[#7C3AED] border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
