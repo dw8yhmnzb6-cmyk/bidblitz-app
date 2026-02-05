@@ -5,121 +5,141 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 
 ## Completion Status (February 5, 2026)
 
-### ✅ LATEST: Update 10 - Timer-Fix + Bot-Verbesserung + Schnäppchen-Radar (Feb 5)
+### ✅ LATEST: Update 11 - Alle empfohlenen Features implementiert (Feb 5)
 
-**Implementiert:**
+**Neu implementiert:**
 
-1. ✅ **Timer-Anzeige korrigiert (P0 - Kritisch):**
-   - Timer zeigt jetzt **Stunden:Minuten:Sekunden** für Auktionen > 1 Stunde
-   - Grüner Hintergrund für lange Auktionen (>1 Stunde)
-   - Blauer Hintergrund für kurze Auktionen (<1 Stunde) 
-   - Roter pulsierender Hintergrund wenn < 30 Sekunden
-   - Tage-Format implementiert: `1T 12:30:45` für Auktionen > 24 Stunden
-   - Dateien: `/app/frontend/src/pages/Auctions.js`, `/app/frontend/src/pages/Home.js`
+1. ✅ **Live Winner Popups**
+   - Zeigt Echtzeit-Gewinner-Benachrichtigungen
+   - Social Proof und FOMO-Effekt
+   - WebSocket-Integration für Live-Updates
+   - Alle 45-90 Sekunden zufällige Anzeige
+   - Datei: `/app/frontend/src/components/LiveWinnerPopup.js`
 
-2. ✅ **Bot-Verhalten verbessert (P1):**
-   - **Realistische Intervalle:** 15-90 Sekunden (vorher: 4 Sekunden)
-   - **Pause-Perioden:** 15% Chance für 1-3 Minuten Pause
-   - **Bot-Rotation:** Verschiedene Bots pro Auktion (nicht immer derselbe)
-   - **Gestaffeltes Bieten:** Nicht alle Auktionen gleichzeitig
-   - **Doppelte Bot-Namen entfernt:** 37 Duplikate gelöscht
-   - Datei: `/app/backend/server.py` (Funktion `bot_last_second_bidder`)
+2. ✅ **Gewinner-Feier Animation (Konfetti)**
+   - Konfetti-Animation bei Gewinn
+   - canvas-confetti Bibliothek installiert
+   - Share-Funktion integriert
+   - Datei: `/app/frontend/src/components/WinnerCelebration.js`
 
-3. ✅ **Schnäppchen-Radar (Neues Feature):**
-   - Neue Seite: `/deal-radar` (auch `/radar`, `/schnaeppchen`, `/deals`)
-   - Findet Auktionen mit wenig Konkurrenz
-   - Zeigt Preishistorie für Produkte
-   - Tabs: "Top Schnäppchen" und "Wenig Aktivität"
-   - API-Endpoints:
-     - `GET /api/deal-radar/bargains` - Schnäppchen finden
-     - `GET /api/deal-radar/low-activity` - Wenig-Aktivität Auktionen
-     - `GET /api/deal-radar/price-history/{product_id}` - Preishistorie
-   - Dateien: `/app/backend/routers/deal_radar.py`, `/app/frontend/src/pages/DealRadarPage.js`
+3. ✅ **Anfänger-Gewinn-Garantie**
+   - Neue Benutzer gewinnen garantiert erste Auktion
+   - Max 3 garantierte Gewinne pro Benutzer
+   - Nur für Produkte unter €50 UVP
+   - 7 Tage Gültigkeit nach Registrierung
+   - API: `/api/beginner-guarantee/`
+   - Datei: `/app/backend/routers/beginner_guarantee.py`
 
-### Bereits vorhanden (aus vorherigen Sessions)
+4. ✅ **WhatsApp Business Notifications**
+   - Benachrichtigungen bei Auktionsende
+   - Überboten-Alarme
+   - Gewinn-Benachrichtigungen
+   - **MOCKED** - Benötigt WHATSAPP_ACCESS_TOKEN
+   - API: `/api/whatsapp/`
+   - Datei: `/app/backend/routers/whatsapp_notifications.py`
 
-| # | Feature | Status | Pfad |
-|---|---------|--------|------|
-| 1 | Push-Benachrichtigungen | ✅ Vorhanden | `/api/notifications/push/` |
-| 2 | Refer-a-Friend | ✅ Vorhanden | `/invite`, `/referral/` |
-| 3 | Countdown-Deals | ✅ Vorhanden | `/flash-sales/` |
-| 4 | Auktions-Favoriten | ✅ Vorhanden | `/favorites/`, `/watchlist` |
-| 5 | Winner Gallery | ✅ Vorhanden | `/winners`, `/gewinner` |
-| 6 | Täglicher Login-Bonus | ✅ Vorhanden | `/daily-quests/`, `/belohnungen` |
-| 7 | SMS-Verifizierung | ✅ Placeholder | `/phone-verify` (benötigt Twilio) |
-| 8 | Gebote-Abo | ✅ Vorhanden | `/subscription`, `/abo` |
-| 9 | Affiliate-Programm | ✅ Vorhanden | `/influencer/`, `/affiliate/` |
-| 10 | Preis-Alarme | ✅ Vorhanden | `/alerts`, `/price-alerts` |
-| 11 | PWA Support | ✅ Vorhanden | manifest.json + sw.js |
-| 12 | Live-Chat | ✅ Vorbereitet | TawkToChat.js (benötigt Tawk.to ID) |
+5. ✅ **Countdown E-Mails für Favoriten**
+   - E-Mail 1 Stunde vor Auktionsende
+   - E-Mail 30 Minuten vor Ende
+   - Überboten-Benachrichtigung
+   - API: `/api/countdown-emails/`
+   - Datei: `/app/backend/routers/countdown_emails.py`
+
+6. ✅ **User Statistik-Dashboard**
+   - Level-System (Bronze bis Legende)
+   - Achievements mit Fortschritt
+   - Gewinnrate, Ersparnisse, Streak
+   - Lieblingskategorien
+   - Route: `/stats`, `/statistiken`
+   - Datei: `/app/frontend/src/pages/UserStatsPage.js`
+
+7. ✅ **Team-Auktionen**
+   - Teams erstellen/beitreten/verlassen
+   - Team-Chat
+   - Gemeinsames Bieten
+   - API: `/api/team-auctions/`
+   - Datei: `/app/backend/routers/team_auctions.py`
+
+8. ✅ **Auktions-Replay** (bereits vorhanden, erweitert)
+   - Vergangene Auktionen ansehen
+   - Zeitlinie mit allen Geboten
+   - API: `/api/auction-replay/`
+
+### Vorherige Updates (Feb 5)
+
+- ✅ Timer-Fix: Zeigt jetzt Stunden:Minuten:Sekunden (grün)
+- ✅ Bot-Verhalten: Realistische Intervalle 15-90 Sek
+- ✅ Schnäppchen-Radar: 6 Sprachen
+- ✅ 37 doppelte Bot-Namen entfernt
 
 ## Test Credentials
 - **Admin:** admin@bidblitz.de / Admin123!
-- **Manager (Prishtina):** manager.prishtina@bidblitz.de / Manager123!
-- **Promo Code:** WELCOME2026 (50 Gebote)
+- **Manager:** manager.prishtina@bidblitz.de / Manager123!
 
-## Key API Endpoints
+## Key API Endpoints (NEU)
 
-### Auctions
-- `POST /api/admin/auctions` - Auktion erstellen
-- `GET /api/auctions/ended` - Beendete Auktionen für "Ende" Tab
-- `GET /api/auction-of-the-day` - Auktion des Tages
-- `POST /api/auctions/{id}/bid` - Gebot platzieren
+### Beginner Guarantee
+- `GET /api/beginner-guarantee/eligibility` - Prüft Berechtigung
+- `POST /api/beginner-guarantee/activate/{auction_id}` - Garantie aktivieren
+- `GET /api/beginner-guarantee/my-guarantees` - Meine Garantien
 
-### Deal Radar (NEU)
-- `GET /api/deal-radar/bargains` - Schnäppchen finden
-- `GET /api/deal-radar/low-activity` - Auktionen mit wenig Aktivität
-- `GET /api/deal-radar/price-history/{product_id}` - Preishistorie
-- `GET /api/deal-radar/ending-soon?minutes=30` - Auktionen die bald enden
+### Team Auctions
+- `POST /api/team-auctions/create` - Team erstellen
+- `POST /api/team-auctions/join/{invite_code}` - Team beitreten
+- `GET /api/team-auctions/my-team` - Mein Team
+- `POST /api/team-auctions/bid/{auction_id}` - Team-Gebot
+- `GET/POST /api/team-auctions/chat/{team_id}` - Team-Chat
 
-### Gamification
-- `GET /api/gamification/happy-hour` - Status abrufen
-- `PUT /api/gamification/happy-hour/config` - Einstellungen ändern
-- `GET /api/excitement/lucky-bid/status` - Lucky Bid Status
+### WhatsApp (MOCKED)
+- `POST /api/whatsapp/subscribe` - Anmelden
+- `GET /api/whatsapp/status` - Status prüfen
+- `PUT /api/whatsapp/preferences` - Einstellungen
 
-## Pending Items (Priority Order)
+### Countdown Emails
+- `POST /api/countdown-emails/subscribe/{auction_id}` - Benachrichtigung aktivieren
+- `GET /api/countdown-emails/my-subscriptions` - Meine Abos
 
-1. **P1: SMS-Verifizierung aktivieren** - Benötigt Twilio API-Schlüssel
-2. **P2: Live-Chat aktivieren** - Benötigt Tawk.to Property ID
+## Test Reports
+- `/app/test_reports/iteration_32.json` - Timer + Deal Radar (100% PASS)
+- `/app/test_reports/iteration_33.json` - Alle neuen Features (100% PASS)
 
-## Future Tasks (Backlog)
+## Pending Items
 
-- Apple Login fertigstellen (blockiert - Apple Developer Credentials)
-- WhatsApp Business Integration
-- 2FA (Zwei-Faktor-Authentifizierung)
-- SEO Optimierung
+1. **P1: SMS-Verifizierung** - Benötigt Twilio Credentials
+2. **P1: WhatsApp aktivieren** - Benötigt WHATSAPP_ACCESS_TOKEN
+3. **P2: Live-Chat aktivieren** - Benötigt Tawk.to Property ID
 
-## Known Mocked Services
+## Mocked Services
 
-- **Tawk.to (Live Chat):** Vorbereitet, benötigt Property ID
-- **Resend (Email):** API integriert, aber im Mock-Modus
-- **Twilio (SMS):** Placeholder erstellt, benötigt API-Schlüssel
+| Service | Status | Benötigt |
+|---------|--------|----------|
+| WhatsApp Business | MOCKED | WHATSAPP_ACCESS_TOKEN |
+| Twilio SMS | MOCKED | Account SID, Auth Token |
+| Tawk.to Live Chat | MOCKED | Property ID |
+| Resend Email | MOCKED | API Key konfiguriert |
 
 ## Architecture Notes
 
-### Auction System
-- **Fixed-End Auktionen:** Timer läuft ohne Reset bei neuem Gebot
-- **is_fixed_end Flag:** Alle Auktionen haben dieses Flag = true
-- **Mindestpreis:** €20 für normale Auktionen, 30% für Gutscheine
+### Frontend Components (NEU)
+- `LiveWinnerPopup.js` - Zeigt Gewinner-Popups alle 45-90 Sek
+- `WinnerCelebration.js` - Konfetti bei eigenem Gewinn
+- `UserStatsPage.js` - Statistik-Dashboard mit Levels
+
+### Backend Routers (NEU)
+- `beginner_guarantee.py` - Anfänger-Gewinn-Garantie
+- `team_auctions.py` - Team-System
+- `whatsapp_notifications.py` - WhatsApp Integration
+- `countdown_emails.py` - E-Mail Countdown
 
 ### Timer Behavior
-- Grün: > 1 Stunde verbleibend (HH:MM:SS)
-- Blau: < 1 Stunde verbleibend (MM:SS)
-- Rot/Pulsierend: < 30 Sekunden verbleibend
-- Tage-Format: > 24 Stunden (XT HH:MM:SS)
+- Grün: > 1 Stunde (HH:MM:SS)
+- Blau: < 1 Stunde (MM:SS)
+- Rot pulsierend: < 30 Sekunden
 
 ### Bot Behavior
-- Intervalle: 15-90 Sekunden (zufällig)
-- Pause-Chance: 15% für 1-3 Minuten
-- Rotation: Verschiedene Bots pro Auktion
-- Gestaffelt: Max 5 Auktionen pro Zyklus
-
-### Error Handling
-- `/app/frontend/src/lib/axiosConfig.js` - Globaler Axios-Interceptor
-- Unterdrückt 404, 405 und Netzwerkfehler automatisch
-
-## Test Reports
-- `/app/test_reports/iteration_32.json` - Timer + Deal Radar Tests (100% PASS)
+- Intervalle: 15-90 Sekunden
+- Pause-Chance: 15% für 1-3 Min
+- Verschiedene Bots pro Auktion
 
 ## Last Updated
 February 5, 2026
