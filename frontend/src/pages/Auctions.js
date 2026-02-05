@@ -283,7 +283,7 @@ const ProductInfo = memo(({ name, retailPrice, imageUrl, discount }) => (
   </>
 ));
 
-// Auction Card - Cyber Style - Only Timer and Price update, rest is static
+// Auction Card - Only Timer and Price update, rest is static
 const AuctionCard = memo(({ auction, product, onBid, t, language }) => {
   if (!auction || !product) return null;
   
@@ -299,7 +299,7 @@ const AuctionCard = memo(({ auction, product, onBid, t, language }) => {
   
   // Discount badge (always show)
   badges.push(
-    <span key="discount" className="bg-acid text-black px-1.5 py-0.5 rounded text-[8px] font-heading font-bold">
+    <span key="discount" className="bg-red-500 text-white px-1.5 py-0.5 rounded text-[8px] font-bold">
       -{discount}%
     </span>
   );
@@ -307,7 +307,7 @@ const AuctionCard = memo(({ auction, product, onBid, t, language }) => {
   // Special auction type badges
   if (auction.is_vip_only) {
     badges.push(
-      <span key="vip" className="bg-hot-pink text-white px-1.5 py-0.5 rounded text-[8px] font-heading font-bold">
+      <span key="vip" className="bg-yellow-500 text-black px-1.5 py-0.5 rounded text-[8px] font-bold">
         VIP
       </span>
     );
@@ -315,7 +315,7 @@ const AuctionCard = memo(({ auction, product, onBid, t, language }) => {
   
   if (auction.is_beginner_only) {
     badges.push(
-      <span key="beginner" className="bg-cyber text-black px-1.5 py-0.5 rounded text-[8px] font-heading font-bold">
+      <span key="beginner" className="bg-purple-500 text-white px-1.5 py-0.5 rounded text-[8px] font-bold">
         🎓
       </span>
     );
@@ -323,7 +323,7 @@ const AuctionCard = memo(({ auction, product, onBid, t, language }) => {
   
   if (auction.is_free_auction) {
     badges.push(
-      <span key="free" className="bg-acid text-black px-1.5 py-0.5 rounded text-[8px] font-heading font-bold" title={t('auctionPage.freeBidPayEnd')}>
+      <span key="free" className="bg-green-500 text-white px-1.5 py-0.5 rounded text-[8px] font-bold" title={t('auctionPage.freeBidPayEnd')}>
         🎁 {t('auctionPage.filters.free').toUpperCase()}
       </span>
     );
@@ -331,7 +331,7 @@ const AuctionCard = memo(({ auction, product, onBid, t, language }) => {
   
   if (auction.is_night_auction) {
     badges.push(
-      <span key="night" className="bg-hot-pink text-white px-1.5 py-0.5 rounded text-[8px] font-heading font-bold" title={t('auctionPage.nightTime')}>
+      <span key="night" className="bg-indigo-600 text-white px-1.5 py-0.5 rounded text-[8px] font-bold" title={t('auctionPage.nightTime')}>
         🌙 {t('auctionPage.filters.night').toUpperCase()}
       </span>
     );
@@ -340,28 +340,24 @@ const AuctionCard = memo(({ auction, product, onBid, t, language }) => {
   // Check if night auction is paused (daytime)
   const isNightPaused = auction.is_night_paused;
   
-  // Header background color based on primary type - Cyber gradient
-  let headerBg = 'bg-gradient-to-r from-obsidian-subtle to-obsidian-paper border-b border-acid/30';
-  if (auction.is_vip_only) headerBg = 'bg-gradient-to-r from-hot-pink/20 to-obsidian-paper border-b border-hot-pink/30';
-  else if (auction.is_night_auction) headerBg = 'bg-gradient-to-r from-hot-pink/20 to-obsidian-paper border-b border-hot-pink/30';
-  else if (auction.is_free_auction) headerBg = 'bg-gradient-to-r from-acid/20 to-obsidian-paper border-b border-acid/30';
-  else if (auction.is_beginner_only) headerBg = 'bg-gradient-to-r from-cyber/20 to-obsidian-paper border-b border-cyber/30';
+  // Header background color based on primary type
+  let headerBg = 'bg-gradient-to-r from-cyan-500 to-cyan-600';
+  if (auction.is_vip_only) headerBg = 'bg-gradient-to-r from-yellow-400 to-yellow-500';
+  else if (auction.is_night_auction) headerBg = 'bg-gradient-to-r from-indigo-600 to-purple-600';
+  else if (auction.is_free_auction) headerBg = 'bg-gradient-to-r from-green-500 to-emerald-500';
+  else if (auction.is_beginner_only) headerBg = 'bg-gradient-to-r from-purple-500 to-violet-500';
   
   return (
-    <div className={`group relative bg-obsidian-paper rounded-md overflow-hidden border border-white/10 cursor-pointer hover:border-acid/50 hover:shadow-neon-acid transition-all duration-300 ${isNightPaused ? 'opacity-60' : ''}`}
-         onClick={() => window.location.href = `/auctions/${auction.id}`}
-         data-testid={`auction-card-${auction.id}`}>
-      
-      {/* Animated Border on Hover */}
-      <div className="absolute inset-0 rounded-md bg-gradient-to-r from-acid via-cyber to-hot-pink opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-sm -z-10" />
+    <div className={`bg-gradient-to-b from-cyan-50 to-cyan-100 rounded-lg overflow-hidden border border-cyan-300 cursor-pointer hover:shadow-lg transition-shadow ${isNightPaused ? 'opacity-60' : ''}`}
+         onClick={() => window.location.href = `/auctions/${auction.id}`}>
       
       {/* Header with Badges + Timer */}
-      <div className={`${headerBg} text-[9px] font-bold py-1.5 px-2 flex items-center justify-between`}>
+      <div className={`${headerBg} text-white text-[9px] font-bold py-1 px-2 flex items-center justify-between`}>
         <div className="flex items-center gap-1 flex-wrap">
           {badges}
         </div>
         {isNightPaused ? (
-          <span className="text-[8px] text-gray-500 font-mono">{auction.night_message || '🌙 23:30-06:00'}</span>
+          <span className="text-[8px] opacity-80">{auction.night_message || '🌙 23:30-06:00'}</span>
         ) : (
           <LiveTimer endTime={auction.end_time} />
         )}
@@ -369,17 +365,17 @@ const AuctionCard = memo(({ auction, product, onBid, t, language }) => {
       
       {/* Free Auction Notice */}
       {auction.is_free_auction && (
-        <div className="bg-acid/10 text-acid text-[8px] px-2 py-0.5 text-center border-b border-acid/20 font-body">
+        <div className="bg-green-100 text-green-800 text-[8px] px-2 py-0.5 text-center border-b border-green-200">
           ✓ {t('auctionPage.freeBidPayEnd')}
         </div>
       )}
       
       {/* Content */}
-      <div className="p-2.5">
-        <h3 className="text-[10px] font-heading font-bold text-white uppercase leading-tight mb-1.5 line-clamp-2 min-h-[24px]">
+      <div className="p-2">
+        <h3 className="text-[10px] font-bold text-gray-800 uppercase leading-tight mb-1 line-clamp-2 min-h-[24px]">
           {productName}
         </h3>
-        <p className="text-[8px] text-gray-500 mb-1.5 font-mono">
+        <p className="text-[8px] text-gray-500 mb-1">
           {t('auctionPage.uvp')}: € {product.retail_price?.toLocaleString('de-DE')},-
         </p>
         
@@ -390,14 +386,13 @@ const AuctionCard = memo(({ auction, product, onBid, t, language }) => {
             <button 
               onClick={(e) => { e.stopPropagation(); onBid(auction.id); }}
               disabled={isNightPaused}
-              className={`mt-2 w-full py-1.5 ${isNightPaused ? 'bg-gray-600 cursor-not-allowed' : 'bg-acid hover:bg-acid-hover hover:shadow-neon-acid'} text-black font-heading font-bold text-[10px] rounded uppercase tracking-wider transition-all`}
-              data-testid={`bid-btn-${auction.id}`}
+              className={`mt-2 w-full py-1.5 ${isNightPaused ? 'bg-gray-400 cursor-not-allowed' : 'bg-gradient-to-b from-cyan-400 to-cyan-500 hover:from-cyan-300 hover:to-cyan-400'} text-white font-bold text-[10px] rounded`}
             >
               {isNightPaused ? `🌙 ${t('auctionPage.nightOnly')}` : t('auctionPage.bid')}
             </button>
           </div>
           
-          <div className="w-14 h-14 bg-obsidian-subtle rounded flex items-center justify-center flex-shrink-0 border border-white/5">
+          <div className="w-14 h-14 bg-white rounded flex items-center justify-center shadow-sm flex-shrink-0">
             <img src={product.image_url || 'https://via.placeholder.com/56'} alt="" className="max-w-full max-h-full object-contain" />
           </div>
         </div>
@@ -405,9 +400,9 @@ const AuctionCard = memo(({ auction, product, onBid, t, language }) => {
         <ActivityIndex auctionId={auction.id} t={t} />
       </div>
       
-      <div className="bg-obsidian-subtle/50 px-2 py-1.5 text-center border-t border-white/5">
-        <p className="text-[8px] text-gray-500 font-body">
-          {t('auctionPage.lastSoldFor')} <span className="text-acid font-bold font-mono">€ {(product.retail_price * 0.03).toFixed(2).replace('.', ',')}</span>
+      <div className="bg-cyan-200/50 px-2 py-1 text-center">
+        <p className="text-[8px] text-gray-600">
+          {t('auctionPage.lastSoldFor')} <span className="text-green-600 font-bold">€ {(product.retail_price * 0.03).toFixed(2).replace('.', ',')}</span>
         </p>
       </div>
     </div>
