@@ -28,8 +28,8 @@ async def get_stats_overview(user: dict = Depends(get_current_user)):
     total_paid = 0
     
     for auction in won_auctions:
-        retail = auction.get("retail_price", 0)
-        paid = auction.get("final_price", 0) + auction.get("bids_cost", 0)
+        retail = auction.get("retail_price") or 0
+        paid = (auction.get("final_price") or 0) + (auction.get("bids_cost") or 0)
         total_retail_value += retail
         total_paid += paid
         total_savings += max(0, retail - paid)
