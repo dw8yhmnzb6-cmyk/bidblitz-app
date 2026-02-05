@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Gavel, Mail, Phone, MapPin, Facebook, Twitter, Instagram, Youtube } from 'lucide-react';
+import { Zap, Mail, Phone, MapPin, Facebook, Twitter, Instagram, Youtube, TrendingUp, Radar, Crown } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 
 // Footer translations
@@ -18,6 +18,9 @@ const footerTexts = {
     vipMembership: 'VIP Mitgliedschaft',
     investors: 'Für Investoren',
     winners: 'Gewinner',
+    features: 'Features',
+    dealRadar: 'Deal Radar',
+    aiRecommendations: 'KI-Empfehlungen',
     legal: 'Rechtliches',
     imprint: 'Impressum',
     privacy: 'Datenschutz',
@@ -39,6 +42,9 @@ const footerTexts = {
     vipMembership: 'VIP Membership',
     investors: 'For Investors',
     winners: 'Winners',
+    features: 'Features',
+    dealRadar: 'Deal Radar',
+    aiRecommendations: 'AI Recommendations',
     legal: 'Legal',
     imprint: 'Imprint',
     privacy: 'Privacy Policy',
@@ -59,6 +65,9 @@ const footerTexts = {
     wholesale: 'Klientë B2B',
     vipMembership: 'Anëtarësim VIP',
     winners: 'Fituesit',
+    features: 'Veçoritë',
+    dealRadar: 'Deal Radar',
+    aiRecommendations: 'Rekomandimet KI',
     legal: 'Ligjore',
     imprint: 'Impresi',
     privacy: 'Privatësia',
@@ -79,6 +88,9 @@ const footerTexts = {
     wholesale: 'Toptan (B2B)',
     vipMembership: 'VIP Üyelik',
     winners: 'Kazananlar',
+    features: 'Özellikler',
+    dealRadar: 'Fırsat Radarı',
+    aiRecommendations: 'YZ Önerileri',
     legal: 'Yasal',
     imprint: 'Künye',
     privacy: 'Gizlilik Politikası',
@@ -99,6 +111,9 @@ const footerTexts = {
     wholesale: 'Grossistes (B2B)',
     vipMembership: 'Adhésion VIP',
     winners: 'Gagnants',
+    features: 'Fonctionnalités',
+    dealRadar: 'Radar Bons Plans',
+    aiRecommendations: 'Recommandations IA',
     legal: 'Juridique',
     imprint: 'Mentions Légales',
     privacy: 'Politique de Confidentialité',
@@ -114,127 +129,134 @@ export const Footer = () => {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer className="bg-[#0A0A0F] border-t border-white/10 mt-20">
+    <footer className="bg-obsidian border-t border-white/10 mt-20" data-testid="footer">
       <div className="max-w-7xl mx-auto px-6 py-12">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10">
-          {/* Brand */}
+          {/* Brand - Cyber Style */}
           <div className="space-y-4">
-            <Link to="/" className="flex items-center gap-2">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#FFD700] to-[#FF4D4D] flex items-center justify-center">
-                <Gavel className="w-5 h-5 text-black" />
+            <Link to="/" className="flex items-center gap-2 group">
+              <div className="w-10 h-10 rounded-md bg-acid flex items-center justify-center shadow-neon-acid transition-all group-hover:shadow-[0_0_30px_rgba(212,255,0,0.5)]">
+                <Zap className="w-5 h-5 text-black" />
               </div>
-              <span className="text-xl font-bold text-white">BidBlitz</span>
+              <span className="text-xl font-heading font-black text-white">
+                Bid<span className="text-acid">Blitz</span>
+              </span>
             </Link>
-            <p className="text-[#94A3B8] text-sm">
+            <p className="text-gray-400 text-sm font-body">
               {ft.description}
             </p>
-            {/* Social Links */}
+            {/* Social Links - Cyber Style */}
             <div className="flex gap-3">
-              <a href="#" className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center text-[#94A3B8] hover:bg-[#FFD700] hover:text-black transition-colors">
+              <a href="#" className="w-10 h-10 rounded-md bg-obsidian-subtle border border-white/10 flex items-center justify-center text-gray-400 hover:bg-acid hover:text-black hover:border-acid hover:shadow-neon-acid transition-all">
                 <Facebook className="w-5 h-5" />
               </a>
-              <a href="#" className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center text-[#94A3B8] hover:bg-[#FFD700] hover:text-black transition-colors">
+              <a href="#" className="w-10 h-10 rounded-md bg-obsidian-subtle border border-white/10 flex items-center justify-center text-gray-400 hover:bg-cyber hover:text-black hover:border-cyber hover:shadow-neon-cyber transition-all">
                 <Twitter className="w-5 h-5" />
               </a>
-              <a href="#" className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center text-[#94A3B8] hover:bg-[#FFD700] hover:text-black transition-colors">
+              <a href="#" className="w-10 h-10 rounded-md bg-obsidian-subtle border border-white/10 flex items-center justify-center text-gray-400 hover:bg-hot-pink hover:text-white hover:border-hot-pink hover:shadow-neon-pink transition-all">
                 <Instagram className="w-5 h-5" />
               </a>
-              <a href="#" className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center text-[#94A3B8] hover:bg-[#FFD700] hover:text-black transition-colors">
+              <a href="#" className="w-10 h-10 rounded-md bg-obsidian-subtle border border-white/10 flex items-center justify-center text-gray-400 hover:bg-acid hover:text-black hover:border-acid hover:shadow-neon-acid transition-all">
                 <Youtube className="w-5 h-5" />
               </a>
             </div>
           </div>
 
-          {/* Quick Links */}
+          {/* Quick Links - Cyber Style */}
           <div className="space-y-4">
-            <h4 className="text-white font-bold">{ft.quickLinks}</h4>
+            <h4 className="text-white font-heading font-bold uppercase tracking-wider text-sm">{ft.quickLinks}</h4>
             <nav className="flex flex-col gap-2">
-              <Link to="/auctions" className="text-[#94A3B8] hover:text-[#FFD700] transition-colors">
+              <Link to="/auctions" className="text-gray-400 hover:text-acid transition-colors font-body text-sm">
                 {ft.liveAuctions}
               </Link>
-              <Link to="/buy-bids" className="text-[#94A3B8] hover:text-[#FFD700] transition-colors">
+              <Link to="/buy-bids" className="text-gray-400 hover:text-acid transition-colors font-body text-sm">
                 {ft.buyBids}
               </Link>
-              <Link to="/register" className="text-[#94A3B8] hover:text-[#FFD700] transition-colors">
+              <Link to="/register" className="text-gray-400 hover:text-acid transition-colors font-body text-sm">
                 {ft.register}
               </Link>
-              <Link to="/login" className="text-[#94A3B8] hover:text-[#FFD700] transition-colors">
+              <Link to="/login" className="text-gray-400 hover:text-acid transition-colors font-body text-sm">
                 {ft.login}
               </Link>
             </nav>
           </div>
 
-          {/* Extras */}
+          {/* Features - NEW */}
           <div className="space-y-4">
-            <h4 className="text-white font-bold">{ft.extras}</h4>
+            <h4 className="text-white font-heading font-bold uppercase tracking-wider text-sm">{ft.features || 'Features'}</h4>
             <nav className="flex flex-col gap-2">
-              <Link to="/influencer-werden" className="text-[#94A3B8] hover:text-[#FFD700] transition-colors">
-                {ft.becomeInfluencer}
+              <Link to="/deal-radar" className="text-cyber hover:text-cyber-hover transition-colors font-body text-sm flex items-center gap-1">
+                <Radar className="w-3 h-3" />
+                {ft.dealRadar || 'Deal Radar'}
               </Link>
-              <Link to="/influencer-login" className="text-[#94A3B8] hover:text-[#FFD700] transition-colors">
-                {ft.influencerLogin}
+              <Link to="/ai-bids" className="text-cyber hover:text-cyber-hover transition-colors font-body text-sm flex items-center gap-1">
+                <TrendingUp className="w-3 h-3" />
+                {ft.aiRecommendations || 'KI-Empfehlungen'}
               </Link>
-              <Link to="/wholesale/apply" className="text-[#94A3B8] hover:text-[#FFD700] transition-colors">
-                {ft.wholesale}
+              <Link to="/vip-auctions" className="text-hot-pink hover:text-hot-pink-hover transition-colors font-body text-sm flex items-center gap-1">
+                <Crown className="w-3 h-3" />
+                VIP Auktionen
               </Link>
-              <Link to="/vip" className="text-[#94A3B8] hover:text-[#FFD700] transition-colors">
+              <Link to="/vip" className="text-gray-400 hover:text-acid transition-colors font-body text-sm">
                 {ft.vipMembership}
               </Link>
-              <Link to="/investor" className="text-[#94A3B8] hover:text-[#FFD700] transition-colors flex items-center gap-1">
-                <span>💼</span> {ft.investors}
-              </Link>
-              <Link to="/winners" className="text-[#94A3B8] hover:text-[#FFD700] transition-colors">
+              <Link to="/winners" className="text-gray-400 hover:text-acid transition-colors font-body text-sm">
                 {ft.winners}
               </Link>
             </nav>
           </div>
+
+          {/* Legal - Cyber Style */}
           <div className="space-y-4">
-            <h4 className="text-white font-bold">{ft.legal}</h4>
+            <h4 className="text-white font-heading font-bold uppercase tracking-wider text-sm">{ft.legal}</h4>
             <nav className="flex flex-col gap-2">
-              <Link to="/impressum" className="text-[#94A3B8] hover:text-[#FFD700] transition-colors">
+              <Link to="/impressum" className="text-gray-400 hover:text-acid transition-colors font-body text-sm">
                 {ft.imprint}
               </Link>
-              <Link to="/datenschutz" className="text-[#94A3B8] hover:text-[#FFD700] transition-colors">
+              <Link to="/datenschutz" className="text-gray-400 hover:text-acid transition-colors font-body text-sm">
                 {ft.privacy}
               </Link>
-              <Link to="/agb" className="text-[#94A3B8] hover:text-[#FFD700] transition-colors">
+              <Link to="/agb" className="text-gray-400 hover:text-acid transition-colors font-body text-sm">
                 {ft.terms}
+              </Link>
+              <Link to="/faq" className="text-gray-400 hover:text-acid transition-colors font-body text-sm">
+                FAQ
               </Link>
             </nav>
           </div>
 
-          {/* Contact */}
+          {/* Contact - Cyber Style */}
           <div className="space-y-4">
-            <h4 className="text-white font-bold">{ft.contact}</h4>
+            <h4 className="text-white font-heading font-bold uppercase tracking-wider text-sm">{ft.contact}</h4>
             <div className="space-y-3">
-              <div className="flex items-center gap-3 text-[#94A3B8]">
-                <Mail className="w-5 h-5 text-[#FFD700]" />
-                <a href="mailto:info@bidblitz.ae" className="hover:text-[#FFD700] transition-colors">
+              <div className="flex items-center gap-3 text-gray-400">
+                <Mail className="w-4 h-4 text-acid" />
+                <a href="mailto:info@bidblitz.ae" className="hover:text-acid transition-colors font-body text-sm">
                   info@bidblitz.ae
                 </a>
               </div>
-              <div className="flex items-center gap-3 text-[#94A3B8]">
-                <Phone className="w-5 h-5 text-[#FFD700]" />
-                <span>+971 4 501 2345</span>
+              <div className="flex items-center gap-3 text-gray-400">
+                <Phone className="w-4 h-4 text-cyber" />
+                <span className="font-body text-sm">+971 4 501 2345</span>
               </div>
-              <div className="flex items-start gap-3 text-[#94A3B8]">
-                <MapPin className="w-5 h-5 text-[#FFD700] flex-shrink-0" />
-                <span>Dubai Silicon Oasis<br />DDP Building A1, Dubai, UAE</span>
+              <div className="flex items-start gap-3 text-gray-400">
+                <MapPin className="w-4 h-4 text-hot-pink flex-shrink-0 mt-0.5" />
+                <span className="font-body text-sm">Dubai Silicon Oasis<br />DDP Building A1, Dubai, UAE</span>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Bottom */}
+        {/* Bottom - Cyber Style */}
         <div className="mt-12 pt-8 border-t border-white/10 flex flex-col md:flex-row justify-between items-center gap-4">
-          <p className="text-[#94A3B8] text-sm">
+          <p className="text-gray-500 text-sm font-body">
             © {currentYear} BidBlitz FZCO. {ft.allRights}. CEO: Afrim Krasniqi
           </p>
           <div className="flex items-center gap-4">
-            <img src="https://cdn-icons-png.flaticon.com/128/349/349221.png" alt="Visa" className="h-6 opacity-70" />
-            <img src="https://cdn-icons-png.flaticon.com/128/349/349228.png" alt="Mastercard" className="h-6 opacity-70" />
-            <img src="https://cdn-icons-png.flaticon.com/128/5968/5968382.png" alt="PayPal" className="h-6 opacity-70" />
-            <img src="https://cdn-icons-png.flaticon.com/128/5968/5968382.png" alt="Stripe" className="h-6 opacity-70" />
+            <img src="https://cdn-icons-png.flaticon.com/128/349/349221.png" alt="Visa" className="h-5 opacity-50 hover:opacity-100 transition-opacity" />
+            <img src="https://cdn-icons-png.flaticon.com/128/349/349228.png" alt="Mastercard" className="h-5 opacity-50 hover:opacity-100 transition-opacity" />
+            <img src="https://cdn-icons-png.flaticon.com/128/5968/5968382.png" alt="PayPal" className="h-5 opacity-50 hover:opacity-100 transition-opacity" />
+            <img src="https://cdn-icons-png.flaticon.com/128/5968/5968382.png" alt="Stripe" className="h-5 opacity-50 hover:opacity-100 transition-opacity" />
           </div>
         </div>
       </div>
