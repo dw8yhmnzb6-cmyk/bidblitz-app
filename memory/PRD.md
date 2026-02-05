@@ -5,27 +5,25 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 
 ## Completion Status (February 5, 2026)
 
-### ✅ LATEST: Update 6 - Bug Fixes (Feb 5)
+### ✅ LATEST: Update 7 - Übersetzungs-Audit (Feb 5)
 
-**Repariert:**
+**Implementiert:**
 
-1. ✅ **"Not Found" Toast-Unterdrückung:**
-   - Verbesserter Axios-Interceptor in `/app/frontend/src/lib/axiosConfig.js`
-   - 404-Fehler werden jetzt konsequent unterdrückt
-   - Keine störenden "Not Found" Meldungen mehr für Benutzer
+1. ✅ **Admin-Panel vollständig internationalisiert:**
+   - 70+ neue Übersetzungsschlüssel in `adminTranslations.js`
+   - Alle Toast-Meldungen verwenden jetzt Übersetzungsfunktion
+   - Alle Bestätigungsdialoge übersetzt
+   - Deutsche UND englische Versionen
 
-2. ✅ **Auktionsdauer-Bug untersucht:**
-   - Backend-API funktioniert korrekt (86400 Sekunden = 24 Stunden)
-   - Frontend-Logik in `AdminAuctions.js` konvertiert korrekt:
-     - `minutes` → `× 60`
-     - `hours` → `× 3600`
-     - `days` → `× 86400`
-   - Mindestdauer von 10 Stunden wird durchgesetzt
+2. ✅ **Geänderte Dateien:**
+   - `/app/frontend/src/i18n/adminTranslations.js` - Erweitert
+   - `/app/frontend/src/pages/Admin.js` - Alle hardcodierten Texte ersetzt
 
-3. ✅ **Penny-Auktion Timer erklärt:**
-   - Timer zeigt Zeit bis aktuelles Gebot gewinnt (~10-15 Sekunden)
-   - Reset bei jedem neuen Gebot - das ist normales Penny-Auktion-Verhalten
-   - Keine Änderung erforderlich - funktioniert wie beabsichtigt
+### ✅ Update 6 - Bug Fixes (Feb 5)
+
+1. ✅ **"Not Found" Toast-Unterdrückung** - Axios-Interceptor verbessert
+2. ✅ **Auktionsdauer-Bug** - Funktioniert korrekt
+3. ✅ **Penny-Auktion Timer** - Funktioniert wie beabsichtigt
 
 ### ✅ Update 5 - iPad Fixes + Happy Hour/Lucky Admin (Feb 4)
 
