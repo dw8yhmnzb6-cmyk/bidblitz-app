@@ -176,7 +176,7 @@ const ActivityIndex = memo(({ auctionId = '', t }) => {
   );
 });
 
-// ISOLATED Timer Component - Shows DD:HH:MM:SS for long auctions, HH:MM:SS for short
+// ISOLATED Timer Component - Shows DD:HH:MM:SS for long auctions, HH:MM:SS for short - Cyber Style
 const LiveTimer = memo(({ endTime }) => {
   const [display, setDisplay] = useState('--:--:--');
   const [isLow, setIsLow] = useState(false);
@@ -232,23 +232,23 @@ const LiveTimer = memo(({ endTime }) => {
   }, [endTime]);
   
   return (
-    <span className={`font-mono text-[9px] font-bold px-1 py-0.5 rounded transition-colors duration-300 ${
-      isLow ? 'bg-red-500 text-white animate-pulse' : 
-      isLong ? 'bg-green-600 text-white' : 
-      'bg-blue-600 text-white'
+    <span className={`font-mono text-[9px] font-bold px-1.5 py-0.5 rounded transition-colors duration-300 ${
+      isLow ? 'bg-hot-pink text-white animate-pulse' : 
+      isLong ? 'bg-acid/20 text-acid border border-acid/30' : 
+      'bg-cyber/20 text-cyber border border-cyber/30'
     }`}>
       {display}
     </span>
   );
 });
 
-// ISOLATED Price Component - Only updates when price changes via WebSocket
+// ISOLATED Price Component - Cyber Style - Only updates when price changes via WebSocket
 const LivePrice = memo(({ price, bidderName, t }) => (
   <div>
-    <span className="text-lg font-black text-gray-800">
+    <span className="text-lg font-heading font-black text-acid">
       € {price?.toFixed(2).replace('.', ',')}
     </span>
-    <p className="text-[9px] text-cyan-700 truncate">{bidderName || t('auctionPage.startPrice')}</p>
+    <p className="text-[9px] text-cyber font-mono truncate">{bidderName || t('auctionPage.startPrice')}</p>
   </div>
 ));
 
