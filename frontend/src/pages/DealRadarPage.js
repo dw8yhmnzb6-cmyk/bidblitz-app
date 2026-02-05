@@ -459,7 +459,7 @@ export default function DealRadarPage() {
           <Button
             variant={activeTab === 'bargains' ? 'default' : 'outline'}
             onClick={() => setActiveTab('bargains')}
-            className={activeTab === 'bargains' ? 'bg-cyan-500' : ''}
+            className={activeTab === 'bargains' ? 'bg-cyan-500 text-white' : 'border-gray-300 text-gray-700'}
           >
             <TrendingDown className="w-4 h-4 mr-1" />
             {t.bargains} ({bargains.length})
@@ -467,7 +467,7 @@ export default function DealRadarPage() {
           <Button
             variant={activeTab === 'lowActivity' ? 'default' : 'outline'}
             onClick={() => setActiveTab('lowActivity')}
-            className={activeTab === 'lowActivity' ? 'bg-blue-500' : ''}
+            className={activeTab === 'lowActivity' ? 'bg-blue-500 text-white' : 'border-gray-300 text-gray-700'}
           >
             <Activity className="w-4 h-4 mr-1" />
             {t.lowActivity} ({lowActivity.length})
@@ -476,6 +476,7 @@ export default function DealRadarPage() {
             variant="outline"
             onClick={handleRefresh}
             disabled={refreshing}
+            className="border-gray-300 text-gray-700"
           >
             <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
           </Button>
@@ -485,10 +486,10 @@ export default function DealRadarPage() {
         {activeTab === 'bargains' && (
           <>
             {bargains.length === 0 ? (
-              <div className="bg-gray-800/50 rounded-xl p-12 text-center">
-                <Radar className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-                <h3 className="text-xl text-white mb-2">{t.noBargains}</h3>
-                <p className="text-gray-400 mb-4">{t.noBargainsDesc}</p>
+              <div className="bg-white rounded-xl p-12 text-center shadow-lg border border-gray-200">
+                <Radar className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-xl text-gray-800 mb-2">{t.noBargains}</h3>
+                <p className="text-gray-600 mb-4">{t.noBargainsDesc}</p>
                 <p className="text-gray-500 text-sm">{t.checkBack}</p>
               </div>
             ) : (
