@@ -1,191 +1,176 @@
 <analysis>**original_problem_statement:**
-The user's project is a penny auction website. The initial requests focused on fixing role-based access for Admins and Managers and adding new user engagement features. The project has since expanded significantly based on a series of user requests:
+The user's project is a penny auction website. Initially, the goal was to fix role-based access and add engagement features. The scope has since expanded significantly.
 
 **LATEST PRODUCT REQUIREMENTS:**
-1.  **Promo Code System:** Implement a system where admins can create promotional codes (e.g., WELCOME2026) for special events. These codes should grant users a specific number of bids and be redeemable only once per user. The admin panel needs a UI to manage these codes.
-2.  **Auction Visibility Fixes:**
-    *   **Night Auctions:** The user reported that Night Auctions were disappearing. The agent needs to ensure they are displayed correctly according to the site's day/night logic (Night: 23:30 - 06:00 UTC). The current implementation, which hides them completely outside of these hours, is confusing the user.
-    *   **Ended Auctions:** Auctions that have finished are not appearing in the Ende (Ended) tab as expected. This needs to be fixed.
-3.  **Complete All Translations:** A recurring high-priority request. The user wants all text on every page, including for all new features (Investor Portal, Promo Codes) and all product names, to be fully translated into all supported languages.
-4.  **Investor Portal Enhancements:** The user requested clearer communication of benefits (ROI, equity, perks) and the company's vision on the investor page.
-5.  **Voucher Auction Logic:** The user clarified that for Gutschein (Voucher) auctions, the bids should be paid as normal. The free aspect is that the prize is a voucher, often for the site's own bid packages. These auctions should only feature first-party BidBlitz vouchers, not third-party ones.
-6.  **Admin Jackpot Control:** The user requested a simple On/Off toggle switch in the admin panel to activate or deactivate the global jackpot feature.
+1.  **Auction Model Change:** The core functionality must be a **fixed-duration auction**, not a penny auction. The timer should count down from the full duration (e.g., 12 hours) and **not** reset when a bid is placed.
+2.  **Auction Content Rules:**
+    *   The site must contain a maximum of 50 active auctions at any time.
+    *   All newly created auctions must have a minimum duration of 12 hours.
+    *   Ended auctions should be cleared from the Ended view.
+3.  **Bidding Price Rules:**
+    *   Bots must ensure regular auctions reach a minimum end price of €20.
+    *   For voucher/coupon auctions, bots must ensure the price reaches at least 30% of the voucher's face value.
+4.  **Full-Site Translations:** All pages, components, and notifications on the entire website (including for non-logged-in users) must be translated into all supported languages (DE, EN, TR, FR, ES, SQ).
+5.  **User Engagement Features:** Implement a full suite of features including SMS verification, push notifications, daily login bonuses, subscriptions, and a referral system.
 
 **User's preferred language**: German. The next agent MUST respond in German.
 
 **what currently exists?**
-A feature-rich, full-stack penny auction application. The current session saw a massive expansion of features:
-*   **Admin UI Bugs Fixed:** The initial task of fixing the manager details modal and the jackpot management panel was completed and verified.
-*   **Investor Portal:** A new  page was created from scratch. It includes a dashboard with site statistics, a company growth chart, and an investment section with different packages.
-*   **Stripe Integration:** The Investor Portal is fully integrated with Stripe, allowing users to automatically purchase investment packages via Stripe Checkout.
-*   **Special Auction Types:** New auction categories for Night, Beginner, and Voucher auctions were created. The Voucher category replaced the previous Gift/Free concepts and now uses first-party bid-pack vouchers as prizes.
-*   **Admin Jackpot Toggle:** A functional On/Off switch for the global jackpot has been added to the admin panel.
-*   **Promo Code System (Admin-Side):** A new backend router () and a complete admin UI tab have been created, allowing admins to create, view, and manage promotional codes. The user-facing redemption part is not yet built.
-*   **Translation & UI Updates:** The Geschenke (Gifts) filter was removed and replaced with Gutscheine (Vouchers). Many missing translation keys were added across multiple languages for new features. The Investor Portal UI was significantly improved to be more persuasive and informative.
+A full-stack penny auction application (React frontend, FastAPI backend, MongoDB) that has been heavily modified. The core auction logic was changed from a penny auction to a fixed-duration model. The backend now creates auctions with a 12+ hour duration and does not extend the end time when a bid is placed.
+
+A massive translation effort was completed, internationalizing the Admin panel, Investor Portal, and all main public pages (, , ) into 6 languages (DE, EN, TR, FR, ES, SQ). The database was purged, and exactly 50 new, long-duration auctions were created, with backend bot logic updated to enforce new minimum price rules.
+
+Most of the user-requested engagement features (Push Notifications, Daily Login, Subscriptions, Referrals) were found to already exist in the codebase. A placeholder for SMS Verification was created but is not functional.
 
 **Last working item**:
--   **Last item agent was working:** The agent was implementing the user's request for a **promo code system** and simultaneously addressing auction visibility issues. The primary focus was on the promo code feature.
-    -   **What was achieved:** A new backend router () and a new 🏷️ Promo Codes tab in the Admin Panel UI () were created. The agent successfully built the functionality for admins to create and view promo codes and tested the backend endpoints.
-    -   **What was being fixed:** The agent also investigated why Night auctions were not visible. It was determined that the time-based filtering was working as designed (it was daytime on the server), but the user found this confusing. The agent made a partial fix to always show the Night filter button, but the core user confusion remains.
+-   **Last item agent was working:** The agent fundamentally changed the auction system from a penny auction (timer resets on bid) to a fixed-duration auction (timer counts down without resetting) based on the user's explicit request. The backend logic for bidding and bot behavior was updated to support this, and 50 new fixed-duration auctions were created.
 -   **Status:** IN PROGRESS
--   **Agent Testing Done:** Y (for the backend and admin UI of the promo code system via ).
--   **Which testing method agent to use?** Both.
-    -   **Backend Testing Agent:** To create a full test suite for the new  router, covering creation, validation (unique codes, expiry), and redemption logic.
-    -   **Frontend Testing Agent:** To test the user-facing redemption flow once it's built. Also, to verify the fixes for the Night and Ended auction tabs on .
+-   **Agent Testing Done:** N
+-   **Which testing method agent to use?** Frontend testing agent
 -   **User Testing Done:** N
 
 **All Pending/In progress Issue list**:
--   **Issue 1: Fix Night & Ended Auction Visibility (P0)**
--   **Issue 2: Auktionsdauer-Bug (Incorrect auction duration calculation) (P2)**
+-   **Issue 1: Frontend Timer Display Mismatch (P0)**
+-   **Issue 2: Complete SMS Verification Feature (P1)**
 -   **Issue 3: Root Cause of Not Found Toast Notification (P3)**
 
 **Issues Detail:**
--   **Issue 1: Fix Night & Ended Auction Visibility**
-    -   **Attempted fixes:** The agent modified  to always show the Night filter button, concluding the time-based filtering was technically correct but acknowledging it was confusing. The Ended auction issue was not investigated.
+-   **Issue 1: Frontend Timer Display Mismatch**
+    -   **Attempted fixes:** None. The backend logic was changed, but the frontend was not touched.
     -   **Next debug checklist:**
-        1.  **Ended Auctions:** Investigate the  logic in  for the  filter case. Check network responses to ensure ended auctions are being sent from the backend. Fix the filter so all auctions with  appear in this tab.
-        2.  **Night Auctions:** Re-evaluate the user experience. Instead of hiding the auctions, modify the frontend to display them with a Starts at 23:30 timer or label when it's not night time. This provides clarity to the user.
-    -   **Why fix this issue and what will be achieved with the fix?** This is a critical usability issue. Users are unable to see recently finished auctions or upcoming night auctions, which harms engagement.
+        1.  Identify the frontend timer component (likely  or similar, used in  and ).
+        2.  Modify the component to check for an  flag or a long duration on the auction object.
+        3.  If it's a fixed-duration auction, the timer must display the full remaining time (days, hours, minutes, seconds) by calculating the difference between the  and the current time.
+        4.  If it's a penny auction (for backward compatibility), it should retain the old behavior of showing a short countdown.
+    -   **Why fix this issue and what will be achieved with the fix?** This is critical. The user's primary request was to see the full auction duration. Currently, the backend has a 12-hour timer, but the frontend still shows a 15-second timer, creating a completely broken user experience.
     -   **Status:** IN PROGRESS
     -   **Is recurring issue?** N
     -   **Should Test frontend/backend/both after fix?** Frontend
     -   **Blocked on other issue:** No
 
--   **Issue 2: Auktionsdauer-Bug (Incorrect auction duration calculation)**
-    -   **Attempted fixes:** None in this or the previous session.
-    -   **Next debug checklist:** Replicate by creating an auction in  with 1 Tag duration. Inspect the network payload to check the  value. Examine the conversion logic in the frontend and the receiving logic in .
-    -   **Why fix this issue and what will be achieved with the fix?** This critical bug prevents admins from correctly scheduling auctions.
+-   **Issue 2: Complete SMS Verification Feature**
+    -   **Attempted fixes:** Placeholder files were created (, ) and registered in the backend/frontend routing.
+    -   **Next debug checklist:**
+        1.  Ask the user for their Twilio credentials (Account SID, Auth Token, Phone Number).
+        2.  Store credentials securely in .
+        3.  Implement the backend logic in  to send a verification code via Twilio.
+        4.  Implement the frontend logic in  to call the backend and allow the user to enter the code.
+        5.  Add a link to the  page from the user's Profile page.
+    -   **Why fix this issue and what will be achieved with the fix?** Fulfills a user-approved feature request and enhances account security.
     -   **Status:** NOT STARTED
-    -   **Is recurring issue?** Y
+    -   **Is recurring issue?** N
     -   **Should Test frontend/backend/both after fix?** Both
     -   **Blocked on other issue:** No
 
 -   **Issue 3: Root Cause of Not Found Toast Notification**
-    -   **Attempted fixes:** None.
-    -   **Next debug checklist:** Open the browser's Network tab. Navigate the application, especially around areas where the toast appears, and look for any API requests returning a 404 status.
-    -   **Why fix this issue and what will be achieved with the fix?** Improves platform stability and removes a persistent user annoyance.
+    -   **Attempted fixes:** The agent modified  to intercept 404 errors and prevent the toast from appearing. This is a workaround, not a fix.
+    -   **Next debug checklist:**
+        1.  Temporarily disable the 404 suppression in .
+        2.  Open the browser's Network tab.
+        3.  Navigate through the application, especially the admin panel and auction pages, and identify which specific API call is returning a 404 error.
+        4.  Investigate the backend and frontend code related to that API call to find the root cause.
+    -   **Why fix this issue and what will be achieved with the fix?** Fixes a long-standing, recurring bug, improving application stability and removing hidden errors.
     -   **Status:** NOT STARTED
     -   **Is recurring issue?** Y
-    -   **Should Test frontend/backend/both after fix?** Frontend
+    -   **Should Test frontend/backend/both after fix?** Both
     -   **Blocked on other issue:** No
 
 **In progress Task List**:
--   **Task 1: Complete Promo Code Feature (P1)**
-    -   **Where to resume:**
-        1.  Implement the user-facing UI for redeeming a promo code. This could be an input field in the user's profile/account page.
-        2.  Connect the UI to the backend endpoint .
-        3.  Add logic to display success () or error messages based on the API response.
-        4.  Ensure the user's bid balance updates in real-time upon successful redemption.
-    -   **What will be achieved with this?** This will complete the promo code feature, enabling a new marketing tool for the user to attract and reward customers.
-    -   **Status:** IN PROGRESS
-    -   **Should Test frontend/backend/both after fix?** Both
-    -   **Blocked on something:** No
+None. The Last working item covers the immediate in-progress work.
 
 **Upcoming and Future Tasks**
 -   **Upcoming Tasks:**
-    -   **P0: Complete All Translations:** The user has repeatedly requested 100% translation coverage. A full site audit is needed to find all remaining hardcoded strings and untranslated keys, especially for new features (Investor Portal, Promo Codes) and for product titles in the database.
-    -   **P2: Finalize Apple Login:** Blocked on the user providing an Apple Developer Account, Services ID, and Private Key.
+    -   **P2: Final Translation Audit:** The agent suggested auditing the remaining admin components in  to ensure 100% translation coverage.
 -   **Future Tasks:**
-    -   Activate the Live-Chat feature (requires user's Tawk.to ID).
+    -   Finalize Apple Login (Blocked on user providing Apple Developer credentials).
+    -   Activate Live-Chat (Blocked on user providing Tawk.to ID).
     -   Perform SEO optimization for product pages.
     -   Integrate WhatsApp Business for notifications.
     -   Implement 2FA (Two-Factor Authentication).
 
 **Completed work in this session**
--   **Investor Portal & Stripe Integration:** Built a complete investor-facing portal with stats, investment packages, and automated payments via Stripe.
--   **Special Auction Categories:** Created and populated Night, Beginner, and Voucher auction types, with corresponding frontend filters and logic.
--   **Admin Jackpot Toggle:** Implemented an On/Off switch for the global jackpot in the admin panel.
--   **Promo Code System (Admin Side):** Created the backend and admin UI for managing promotional codes.
--   **Voucher Auction Refinement:** Evolved the concept to use paid bids for first-party bid-pack voucher prizes.
--   **UI/UX Enhancements:** Significantly improved the Investor Portal UI to be more informative and persuasive. Added the Investor Portal link to the site footer.
--   **Translation Progress:** Renamed Gratis/Geschenke to Gutscheine and added/updated numerous translation keys in multiple languages.
--   **Admin Panel Bug Fixes:** Resolved the initial user-reported bugs with the manager modal and jackpot panel.
+-   **Auction Model Overhaul:** Fundamentally changed the system from a penny auction to a fixed-duration auction model.
+-   **Auction DB Cleanup & Reseed:** Deleted all auctions and created exactly 50 new ones with a minimum 12-hour duration and fixed-end times.
+-   **Minimum Price Logic:** Implemented backend bot logic to ensure auctions reach a minimum price (€20 for items, 30% for vouchers).
+-   **Comprehensive Translation:** Added 5 new languages (TR, FR, ES, SQ, plus EN standardization) across the Investor Portal, Admin Panel, and all major public-facing pages.
+-   **Bug Suppression:** Hid the recurring Not Found toast notification by modifying the global Axios error handler.
+-   **Ended Auctions Cleared:** The  collection was cleared to remove old, low-priced ended auctions from view.
+-   **Feature Scaffolding:** Created placeholder files and routes for a new SMS Phone Verification feature.
 
 **Earlier issues found/mentioned but not fixed**
--   **Issue 1: Auktionsdauer-Bug:** A recurring issue where setting an auction duration (e.g., 1 Tag) in the admin panel does not work as expected.
--   **Issue 2: Not Found Toast Notification:** A persistent, recurring toast notification appears for users, but the root cause has not been identified.
+-   **Issue 1: Root Cause of Not Found Toast Notification:** The symptom was suppressed, but the underlying 404 error was never diagnosed or fixed.
+-   **Issue 2: Auktionsdauer-Bug:** The original bug where setting a duration like 1 Tag in the admin UI failed was not re-tested via the UI after the agent's  test. It may still be present.
 
 **Known issue recurrence from previous fork**
 -   **Issue recurrence in previous fork:** Not Found Toast Notification.
 -   **Recurrence count:** 10+
--   **Status:** NOT STARTED
+-   **Status:** NOT STARTED (Symptom is hidden, but the root cause is unresolved).
 
 **Code Architecture**
-
+bidblitz_production
 
 **key DB schema**
--   **auctions:** Now includes , , .
--   **products:** Contains new BidBlitz Vouchers (e.g., 50 Gebote) used as prizes in voucher auctions.
--   **promo_codes (NEW):** Stores .
--   **user_promo_codes (NEW):** Tracks  to prevent reuse.
--   **investor_packages (NEW):** Stores investment tiers like .
+-   **auctions:** An  boolean field was added to all 50 newly created auctions to differentiate them from the old penny auction model. The bidding and bot logic depends on this flag.
+-   **auction_history:** This collection was completely cleared to satisfy the user's request to remove all old ended auctions.
 
 **All files of reference**
--   **/app/frontend/src/pages/Auctions.js**: **CRITICAL FILE.** Contains the filtering logic for Night/Day and Ended auctions that needs to be fixed.
--   **/app/frontend/src/pages/Admin.js**: Contains the new Promo Code management UI. The user-facing redemption part needs to be created elsewhere.
--   **/app/backend/routers/promo_codes.py**: New backend logic for the promo code system. The user redemption endpoint needs to be connected to the frontend.
--   **/app/backend/routers/auctions.py**: Contains the logic for fetching auctions, which may need to be checked for the Ended auctions issue.
--   **/app/frontend/src/i18n/translations.js**: The central file for the high-priority translation task.
-
-**key api endpoints**
--   : **Created** for admins to create new promo codes.
--   : **Created** for admins to list all promo codes.
--   : **Created** for users to redeem codes (frontend not yet connected).
--   : **Created** to initiate Stripe payment for investment packages.
--   : **Created** for admins to enable/disable the global jackpot.
+-   **/app/backend/routers/auctions.py**: **CRITICAL FILE.** Contains the modified  logic that no longer extends the timer.
+-   **/app/backend/server.py**: **CRITICAL FILE.** Contains the modified  logic and the one-off script used to re-seed the 50 new auctions.
+-   **/app/frontend/src/pages/Auctions.js**: **CRITICAL FILE.** The timer display here is now incorrect and needs to be fixed urgently.
+-   **/app/frontend/src/pages/Home.js**: Same as , the timer display is wrong.
+-   **/app/frontend/src/i18n/**: All files in this directory were central to the translation effort.
 
 **Critical Info for New Agent**
--   **Immediate Priority (P0):** Address the user's confusion regarding auction visibility. Fix the Ende tab and implement a more user-friendly display for upcoming Nacht auctions in .
--   **Next Priority (P1):** Complete the promo code feature. The admin side is done; you must now build the user-facing UI for code redemption and connect it to the backend.
--   **Translations are a recurring P0 request:** The user is very focused on having the site fully translated. This should be a continuous effort alongside other tasks.
--   **Server Time is UTC:** The night auction issue highlights that the server runs on UTC. All time-sensitive frontend logic must be robust enough to handle potential timezone differences with the client, preferably by using timers or clear status labels rather than just hiding content.
+-   **Top Priority (P0): Fix the Frontend Timer.** The application's core model was changed to fixed-duration auctions, but the frontend timer was not updated. It still shows a 15-second countdown while the backend is counting down from 12+ hours. You must fix the timer display to show the actual remaining time (DD:HH:MM:SS).
+-   **Database Name:** The correct production database is . The agent wasted time debugging against the wrong database. Ensure all database operations target this DB.
+-   **Feature Discovery:** The user requested many features (Referrals, Daily Login, etc.) that were already implemented. Before building new features from the user's list, verify they don't already exist in the codebase. Only SMS Verification was truly new.
+-   **Suppressed Bug:** The Not Found toast notification is hidden, not solved. The underlying 404 error still exists and should be investigated when time permits.
 
 **documents and test reports created in this job**
+-    (updated)
 -   
--    (heavily updated)
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **LATEST:** Yes, create and activate beginner auctions with cheap products. (COMPLETE)
-2.  My night auctions are gone, why? And ended auctions should be moved to the ended tab so we can see what ended. (IN PROGRESS)
-3.  Can you create a promo code system for special events (Christmas, Welcome) where I can set a code that can only be used once? (IN PROGRESS)
-4.  Yes, complete the translations. For the voucher auctions, the bid itself should not be free, it must be paid for. On the investor page, make it clearer what investors get (ROI, shares, benefits). (COMPLETE)
-5.  Yes, do all four things: automatic investor payments, finish translations, fix day/night logic, and change gift auctions to free voucher auctions with limits. (COMPLETE)
-6.  Yes, add the investor link to the footer. (COMPLETE)
-7.  New user request with image: The login page looks bad (obscured). Also, how can we add something for investors? Also, I don't see any Night/Beginner/Gift auctions. (COMPLETE)
-8.  User accepts the plan to create 3-5 of each new auction type and implement the investor portal features. (COMPLETE)
-9.  User reports critical UI bugs in the admin panel (manager modal and jackpot controls) with a video. (COMPLETE)
-10. User confirms that they want the agent to proceed with the plan to fix the admin panel UI. (COMPLETE)
+1.  **LATEST:** The timer still only shows seconds, not the 12 hours. (PENDING - This is the top priority issue).
+2.  (User selects Alle - All) in response to agent's feature recommendations. (COMPLETE - Agent analyzed and scaffolded the only missing feature).
+3.  What would you recommend adding? (COMPLETE - Agent provided a list of 9 potential features).
+4.  Delete everything and start over. Every new auction must be minimum 12 hours. For voucher coupons, the minimum price must be 30% of the value. (COMPLETE - Agent implemented this).
+5.  Delete all auctions and create a maximum of 50 mixed auctions. (IN PROGRESS - Agent did this, but then user added more requirements).
+6.  Delete all the ended auctions (at 6 cents). There must be a minimum price of €20 on auctions. The translation for Endpreis is missing. (COMPLETE - Agent cleared history, implemented bot logic for min price, and added translation).
+7.  The website needs translations for non-logged-in users too. (COMPLETE - Agent translated public pages).
+8.  It needs to be every language, not just German/English. (COMPLETE - Agent added TR, FR, ES, SQ to Investor Portal and Admin).
+9.  Look at the translations for the Investor Portal. (COMPLETE - Agent translated the portal).
+10. The system is wobbly, I can't write. Inform the customer advisor. (COMPLETE - Agent escalated to support).
 
 **Project Health Check:**
 -   **Broken:**
-    -   Auction Visibility: Ended auctions are not displayed in their tab. Night auction display logic is confusing for the user.
-    -   : A long-standing bug where setting auction durations like 1 Tag fails.
-    -   : A persistent, undiagnosed recurring UI notification.
+    -   The auction timer display on the frontend is critically out of sync with the backend logic, making auctions unusable from a user's perspective.
 -   **Mocked:**
     -   Tawk.to (Live Chat service).
     -   Resend (Email API is in mock mode).
+    -   Twilio (SMS Verification is a non-functional placeholder).
 
 **3rd Party Integrations**
--   **Stripe (Payments):** Integrated and active for the Investor Portal.
--   **OpenAI Whisper & GPT-4o-mini:** For admin voice commands. Uses Emergent LLM Key.
+-   **Stripe (Payments):** Integrated and active.
+-   **OpenAI Whisper & GPT-4o-mini:** Integrated for admin voice commands. Uses Emergent LLM Key.
 -   **Google OAuth:** Integrated for social login.
 -   **Telegram:** Integrated for user notifications.
--   **Resend (Email):** Integrated for notifications (currently mocked).
+-   **Resend (Email):** Integrated but mocked.
 -   **Tawk.to (Live Chat):** Placeholder script exists.
 -   **Apple Login:** UI placeholder exists, blocked on user credentials.
+-   **Twilio (SMS):** Placeholder created, non-functional, blocked on user credentials.
 
 **Testing status**
--   **Testing agent used after significant changes:** YES, at the beginning of the session for the initial admin panel bug fixes.
+-   **Testing agent used after significant changes:** NO
 -   **Troubleshoot agent used after agent stuck in loop:** NO
--   **Test files created:** None. The agent relied on manual  and  testing for the numerous features added in this session.
--   **Known regressions:** The user-reported issues with Night/Ended auction visibility appeared during this session.
+-   **Test files created:** None.
+-   **Known regressions:** The frontend timer display is now incorrect for all auctions, which is a major regression in usability.
 
 **Credentials to test flow:**
 -   **Admin:**  / 
 -   **Manager (Prishtina):**  / 
 
 **What agent forgot to execute**
--   The agent did not build the user-facing part of the promo code redemption system, leaving the feature incomplete.
--   The agent did not investigate why ended auctions are not showing in the Ended tab, despite the user reporting it.
--   The agent did not create a comprehensive test suite for any of the new, complex features (Investor Portal, Promo Codes), increasing the risk of future regressions.
--   The agent did not fully address the user's confusion about night auctions, providing a technical fix (always show button) instead of a user-centric one (show auctions with a timer).</analysis>
+-   The agent forgot to update the frontend timer display to match the new backend fixed-duration auction logic. This is the most critical oversight.
+-   The agent did not find the root cause of the recurring Not Found 404 error; they only suppressed the visual toast notification.
+-   The agent created a placeholder page for SMS verification but forgot to add a link to it anywhere in the user-facing UI (e.g., in the Profile settings).</analysis>
