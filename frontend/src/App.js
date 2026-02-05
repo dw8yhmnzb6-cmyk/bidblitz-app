@@ -82,6 +82,8 @@ import ExcitementAdminPage from "./pages/ExcitementAdminPage";
 import InvestorPortal from "./pages/InvestorPortal";
 import PhoneVerification from "./pages/PhoneVerification";
 import DealRadarPage from "./pages/DealRadarPage";
+import UserStatsPage from "./pages/UserStatsPage";
+import LiveWinnerPopup from "./components/LiveWinnerPopup";
 
 // Protected Route Component
 const ProtectedRoute = ({ children, requireAdmin = false }) => {
