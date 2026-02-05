@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { usePageTranslations } from '../i18n/pageTranslations';
+import { getFeatureTranslation } from '../i18n/featureTranslations';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -15,6 +16,7 @@ const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 export default function Register() {
   const { language } = useLanguage();
   const texts = usePageTranslations(language);
+  const commonT = getFeatureTranslation('common', language);
   const { register } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
