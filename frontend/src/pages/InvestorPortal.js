@@ -184,7 +184,7 @@ export default function InvestorPortal() {
   
   const handleInvest = async (packageId) => {
     if (!token) {
-      toast.error('Bitte melden Sie sich an, um zu investieren');
+      toast.error(t.pleaseLoginToInvest || 'Bitte melden Sie sich an, um zu investieren');
       return;
     }
     
@@ -201,7 +201,7 @@ export default function InvestorPortal() {
       // Redirect to Stripe
       window.location.href = res.data.checkout_url;
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Fehler bei der Zahlungsverarbeitung');
+      toast.error(error.response?.data?.detail || t.paymentError || 'Fehler bei der Zahlungsverarbeitung');
       setCheckoutLoading(false);
     }
   };
