@@ -147,11 +147,11 @@ const LiveWinnerPopup = ({ language = 'de' }) => {
       data-testid="winner-popup"
     >
       <div className="bg-gradient-to-r from-yellow-400 via-amber-400 to-yellow-500 rounded-xl p-1 shadow-2xl max-w-sm">
-        <div className="bg-gray-900 rounded-lg p-4 relative">
+        <div className="bg-white rounded-lg p-4 relative">
           {/* Close button */}
           <button 
             onClick={() => setIsVisible(false)}
-            className="absolute top-2 right-2 text-gray-500 hover:text-white"
+            className="absolute top-2 right-2 text-gray-400 hover:text-gray-700"
           >
             <X className="w-4 h-4" />
           </button>
@@ -162,7 +162,7 @@ const LiveWinnerPopup = ({ language = 'de' }) => {
               <Trophy className="w-5 h-5 text-white" />
             </div>
             <div>
-              <p className="text-yellow-400 font-bold text-sm flex items-center gap-1">
+              <p className="text-amber-600 font-bold text-sm flex items-center gap-1">
                 <Sparkles className="w-4 h-4" />
                 {t.congrats}
               </p>
@@ -172,7 +172,7 @@ const LiveWinnerPopup = ({ language = 'de' }) => {
           {/* Winner Info */}
           <div className="flex gap-3">
             {/* Product Image */}
-            <div className="w-16 h-16 bg-white rounded-lg flex items-center justify-center flex-shrink-0">
+            <div className="w-16 h-16 bg-gray-50 rounded-lg flex items-center justify-center flex-shrink-0 border border-gray-100">
               {product.image_url ? (
                 <img 
                   src={product.image_url} 
@@ -186,14 +186,14 @@ const LiveWinnerPopup = ({ language = 'de' }) => {
             
             {/* Details */}
             <div className="flex-1 min-w-0">
-              <p className="text-white font-bold text-sm">
+              <p className="text-gray-800 font-bold text-sm">
                 {currentWinner.winner_name} {t.justWon}
               </p>
-              <p className="text-gray-400 text-xs truncate">
+              <p className="text-gray-500 text-xs truncate">
                 {product.name || 'Premium Produkt'}
               </p>
               <div className="flex items-center gap-2 mt-1">
-                <span className="text-green-400 font-bold">
+                <span className="text-green-600 font-bold">
                   {t.for} €{(currentWinner.final_price || 0).toFixed(2)}
                 </span>
                 <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full font-bold">
@@ -206,7 +206,7 @@ const LiveWinnerPopup = ({ language = 'de' }) => {
           {/* View All Winners Link */}
           <button 
             onClick={() => navigate('/winners')}
-            className="mt-3 w-full py-2 bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-400 hover:to-amber-400 text-black font-bold text-xs rounded-lg transition-all"
+            className="mt-3 w-full py-2 bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-400 hover:to-amber-400 text-white font-bold text-xs rounded-lg transition-all"
           >
             {t.viewWinners} →
           </button>
