@@ -114,12 +114,9 @@ function AppContent() {
   const { language, mappedLanguage } = useLanguage();
   
   return (
-    <div className="App bg-[#050509] min-h-screen flex flex-col overflow-x-hidden">
+    <div className="App bg-gradient-to-b from-cyan-50 to-cyan-100 min-h-screen flex flex-col overflow-x-hidden">
       {/* Scroll to top on route change */}
       <ScrollToTopOnNavigate />
-      
-      {/* Noise overlay */}
-      <div className="noise-overlay" />
       
       {/* Happy Hour Banner */}
       <HappyHourBanner />
