@@ -42,6 +42,7 @@ import {
   AdminInfluencers,
   AdminWholesale,
   AdminGameConfig,
+  AdminDebugReports,
   AdminQuickActions,
   AdminLiveWidgets,
   AdminGlobalSearch,
