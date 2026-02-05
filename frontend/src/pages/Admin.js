@@ -815,10 +815,10 @@ export default function Admin() {
       await axios.put(`${API}/admin/users/${userId}/toggle-admin`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      toast.success('Admin-Status geändert');
+      toast.success(at('adminStatusChanged'));
       fetchData();
     } catch (error) {
-      toast.error('Fehler');
+      toast.error(at('error'));
     }
   };
 
@@ -827,10 +827,10 @@ export default function Admin() {
       await axios.put(`${API}/admin/users/${userId}/block`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      toast.success(currentStatus ? 'Benutzer entsperrt' : 'Benutzer gesperrt');
+      toast.success(currentStatus ? at('userUnblocked') : at('userBlocked'));
       fetchData();
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Fehler');
+      toast.error(error.response?.data?.detail || at('error'));
     }
   };
 
@@ -839,10 +839,10 @@ export default function Admin() {
       await axios.put(`${API}/admin/users/${userId}/guaranteed-winner`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      toast.success(currentStatus ? 'Garantierter Gewinner deaktiviert' : 'Garantierter Gewinner aktiviert 🏆');
+      toast.success(currentStatus ? at('guaranteedWinnerDisabled') : at('guaranteedWinnerEnabled'));
       fetchData();
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Fehler');
+      toast.error(error.response?.data?.detail || at('error'));
     }
   };
 
@@ -854,21 +854,21 @@ export default function Admin() {
       toast.success(response.data.message);
       fetchData();
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Fehler');
+      toast.error(error.response?.data?.detail || at('error'));
     }
   };
 
   const handleAddBids = async (userId) => {
-    const amount = prompt('Anzahl der Gebote hinzufügen:', '10');
+    const amount = prompt(at('enterBidsAmount'), '10');
     if (!amount) return;
     try {
       await axios.put(`${API}/admin/users/${userId}/add-bids?bids=${amount}`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      toast.success(`${amount} Gebote hinzugefügt`);
+      toast.success(`${amount} ${at('bidsAdded')}`);
       fetchData();
     } catch (error) {
-      toast.error('Fehler');
+      toast.error(at('error'));
     }
   };
 
@@ -877,11 +877,11 @@ export default function Admin() {
       await axios.put(`${API}/admin/users/${userId}`, editingUser, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      toast.success('Benutzer aktualisiert');
+      toast.success(at('userUpdated'));
       setEditingUser(null);
       fetchData();
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Fehler');
+      toast.error(error.response?.data?.detail || at('error'));
     }
   };
 
