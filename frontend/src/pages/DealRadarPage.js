@@ -356,12 +356,12 @@ const PriceHistoryMini = ({ productId, t }) => {
   if (!history || history.total_sold === 0) return null;
   
   return (
-    <div className="bg-gray-800/50 rounded-lg p-2 mt-2">
-      <p className="text-[10px] text-gray-400 mb-1">{t.priceHistory} ({history.total_sold}x {t.soldTimes})</p>
+    <div className="bg-gray-50 rounded-lg p-2 mt-2 border border-gray-100">
+      <p className="text-[10px] text-gray-500 mb-1">{t.priceHistory} ({history.total_sold}x {t.soldTimes})</p>
       <div className="flex justify-between text-xs">
-        <span className="text-gray-400">{t.avgPrice}: <span className="text-white font-bold">€{history.avg_price}</span></span>
-        <span className="text-green-400">{t.minPrice}: €{history.min_price}</span>
-        <span className="text-red-400">{t.maxPrice}: €{history.max_price}</span>
+        <span className="text-gray-500">{t.avgPrice}: <span className="text-gray-800 font-bold">€{history.avg_price}</span></span>
+        <span className="text-green-600">{t.minPrice}: €{history.min_price}</span>
+        <span className="text-red-600">{t.maxPrice}: €{history.max_price}</span>
       </div>
     </div>
   );
