@@ -16,7 +16,7 @@ import {
   Bot, Play, Target, Calendar, Clock, TrendingUp, Activity, Menu,
   Mail, Send, Eye, Star, Crown, FileText, RotateCcw, Repeat,
   Gift, Trophy, Moon, Wifi, WifiOff, Building2, Percent, CreditCard,
-  Mic, Command, Search
+  Mic, Command, Search, Bug
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { 
@@ -47,6 +47,9 @@ import {
   AdminGlobalSearch,
   AdminAIChat
 } from '../components/admin';
+
+// Import Voice Debug Assistant
+import VoiceDebugAssistant from '../components/VoiceDebugAssistant';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
