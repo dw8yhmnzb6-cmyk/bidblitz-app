@@ -390,9 +390,9 @@ export default function Admin() {
       await axios.put(`${API}/admin/config/game`, gameConfig, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      toast.success('Einstellungen gespeichert!');
+      toast.success(at('settingsSaved'));
     } catch (error) {
-      toast.error('Fehler beim Speichern');
+      toast.error(at('errorSavingSettings'));
     } finally {
       setSavingConfig(false);
     }
