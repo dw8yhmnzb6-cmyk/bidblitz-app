@@ -512,26 +512,26 @@ export default function InvestorPortal() {
             {!token ? (
               <div className="glass-card rounded-xl p-8 text-center">
                 <Briefcase className="w-12 h-12 text-[#94A3B8] mx-auto mb-3" />
-                <p className="text-white font-medium">Bitte melden Sie sich an</p>
+                <p className="text-white font-medium">{t.pleaseLogin || 'Bitte melden Sie sich an'}</p>
                 <p className="text-[#94A3B8] text-sm mt-1">
-                  Um Ihre Investitionen zu sehen, müssen Sie angemeldet sein
+                  {t.loginToSee || 'Um Ihre Investitionen zu sehen, müssen Sie angemeldet sein'}
                 </p>
                 <Button 
                   onClick={() => window.location.href = '/login'}
                   className="btn-primary mt-4"
                 >
-                  Anmelden
+                  {t.login || 'Anmelden'}
                 </Button>
               </div>
             ) : myInvestments.length === 0 ? (
               <div className="glass-card rounded-xl p-8 text-center">
                 <Briefcase className="w-12 h-12 text-[#94A3B8] mx-auto mb-3" />
-                <p className="text-[#94A3B8]">Sie haben noch keine Investitionen</p>
+                <p className="text-[#94A3B8]">{t.noInvestmentsYet || 'Sie haben noch keine Investitionen'}</p>
                 <Button 
                   onClick={() => setActiveTab('invest')}
                   className="btn-primary mt-4"
                 >
-                  Jetzt investieren
+                  {t.investNow || 'Jetzt investieren'}
                 </Button>
               </div>
             ) : (
@@ -540,23 +540,23 @@ export default function InvestorPortal() {
                 <div className="glass-card rounded-xl p-6">
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div>
-                      <p className="text-[#94A3B8] text-sm">Gesamtinvestition</p>
+                      <p className="text-[#94A3B8] text-sm">{t.totalInvestment || 'Gesamtinvestition'}</p>
                       <p className="text-2xl font-bold text-[#10B981]">
                         €{myInvestments.reduce((sum, inv) => sum + (inv.amount || 0), 0).toLocaleString('de-DE')}
                       </p>
                     </div>
                     <div>
-                      <p className="text-[#94A3B8] text-sm">Anteil</p>
+                      <p className="text-[#94A3B8] text-sm">{t.share || 'Anteil'}</p>
                       <p className="text-2xl font-bold text-[#7C3AED]">
                         {myInvestments[0]?.equity || '0%'}
                       </p>
                     </div>
                     <div>
-                      <p className="text-[#94A3B8] text-sm">Status</p>
-                      <p className="text-2xl font-bold text-white">Aktiv</p>
+                      <p className="text-[#94A3B8] text-sm">{t.status || 'Status'}</p>
+                      <p className="text-2xl font-bold text-white">{t.active || 'Aktiv'}</p>
                     </div>
                     <div>
-                      <p className="text-[#94A3B8] text-sm">Seit</p>
+                      <p className="text-[#94A3B8] text-sm">{t.since || 'Seit'}</p>
                       <p className="text-2xl font-bold text-white">
                         {myInvestments[0] ? new Date(myInvestments[0].created_at).toLocaleDateString('de-DE', {month: 'short', year: 'numeric'}) : '-'}
                       </p>
@@ -565,7 +565,7 @@ export default function InvestorPortal() {
                 </div>
                 
                 {/* Investment History */}
-                <h3 className="text-white font-bold text-lg">Investitions-Historie</h3>
+                <h3 className="text-white font-bold text-lg">{t.investmentHistory || 'Investitions-Historie'}</h3>
                 {myInvestments.map(inv => (
                   <div key={inv.id} className="glass-card rounded-xl p-4">
                     <div className="flex items-center justify-between">
@@ -580,8 +580,8 @@ export default function InvestorPortal() {
                         inv.status === 'pending' ? 'bg-[#F59E0B]/20 text-[#F59E0B]' :
                         'bg-red-500/20 text-red-500'
                       }`}>
-                        {inv.status === 'completed' ? 'Abgeschlossen' :
-                         inv.status === 'pending' ? 'Ausstehend' : inv.status}
+                        {inv.status === 'completed' ? (t.completedStatus || 'Abgeschlossen') :
+                         inv.status === 'pending' ? (t.pendingStatus || 'Ausstehend') : inv.status}
                       </span>
                     </div>
                     {inv.perks && (
