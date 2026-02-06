@@ -357,46 +357,46 @@ export default function HowItWorks() {
           
           <div className="grid md:grid-cols-3 gap-8">
             <div className="text-center">
-              <div className="w-20 h-20 rounded-full bg-[#FFD700]/20 flex items-center justify-center mx-auto mb-4">
-                <span className="text-3xl font-bold text-[#FFD700]">0,01€</span>
+              <div className="w-20 h-20 rounded-full bg-amber-500/20 flex items-center justify-center mx-auto mb-4">
+                <span className="text-3xl font-bold text-amber-500">0,01€</span>
               </div>
-              <h4 className="text-white font-semibold mb-2">{t.priceIncrease}</h4>
-              <p className="text-gray-400 text-sm">{t.priceIncreaseDesc}</p>
+              <h4 className={`font-semibold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>{t.priceIncrease}</h4>
+              <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{t.priceIncreaseDesc}</p>
             </div>
             
             <div className="text-center">
               <div className="w-20 h-20 rounded-full bg-cyan-500/20 flex items-center justify-center mx-auto mb-4">
-                <span className="text-3xl font-bold text-cyan-400">+10s</span>
+                <span className="text-3xl font-bold text-cyan-500">+10s</span>
               </div>
-              <h4 className="text-white font-semibold mb-2">{t.timeBonus}</h4>
-              <p className="text-gray-400 text-sm">{t.timeBonusDesc}</p>
+              <h4 className={`font-semibold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>{t.timeBonus}</h4>
+              <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{t.timeBonusDesc}</p>
             </div>
             
             <div className="text-center">
               <div className="w-20 h-20 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-4">
-                <span className="text-3xl font-bold text-green-400">99%</span>
+                <span className="text-3xl font-bold text-green-500">99%</span>
               </div>
-              <h4 className="text-white font-semibold mb-2">{t.savings}</h4>
-              <p className="text-gray-400 text-sm">{t.savingsDesc}</p>
+              <h4 className={`font-semibold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>{t.savings}</h4>
+              <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{t.savingsDesc}</p>
             </div>
           </div>
         </div>
 
         {/* Features */}
         <div className="mb-16">
-          <h2 className="text-2xl font-bold text-white mb-8 text-center">{t.whyBidBlitz}</h2>
+          <h2 className={`text-2xl font-bold mb-8 text-center ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>{t.whyBidBlitz}</h2>
           <div className="grid md:grid-cols-3 gap-6">
             {features.map((feature, index) => (
               <div 
                 key={index}
                 className="flex items-start gap-4 p-4"
               >
-                <div className="w-10 h-10 rounded-lg bg-[#FFD700]/20 flex items-center justify-center flex-shrink-0">
-                  <feature.icon className="w-5 h-5 text-[#FFD700]" />
+                <div className="w-10 h-10 rounded-lg bg-amber-500/20 flex items-center justify-center flex-shrink-0">
+                  <feature.icon className="w-5 h-5 text-amber-500" />
                 </div>
                 <div>
-                  <h4 className="text-white font-semibold mb-1">{feature.title}</h4>
-                  <p className="text-gray-400 text-sm">{feature.description}</p>
+                  <h4 className={`font-semibold mb-1 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>{feature.title}</h4>
+                  <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{feature.description}</p>
                 </div>
               </div>
             ))}
@@ -404,8 +404,12 @@ export default function HowItWorks() {
         </div>
 
         {/* Example Calculation */}
-        <div className="bg-gradient-to-r from-[#FFD700]/10 to-[#FF4D4D]/10 rounded-2xl p-8 mb-16 border border-[#FFD700]/30">
-          <h2 className="text-2xl font-bold text-white mb-6 text-center">
+        <div className={`rounded-2xl p-8 mb-16 border ${
+          isDarkMode 
+            ? 'bg-gradient-to-r from-amber-500/10 to-red-500/10 border-amber-500/30' 
+            : 'bg-gradient-to-r from-amber-50 to-orange-50 border-amber-200'
+        }`}>
+          <h2 className={`text-2xl font-bold mb-6 text-center ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>
             {t.exampleCalc}
           </h2>
           
@@ -419,24 +423,24 @@ export default function HowItWorks() {
               />
             </div>
             
-            <div className="flex justify-between items-center py-3 border-b border-gray-700/50">
-              <span className="text-gray-400">{t.retailPrice}</span>
-              <span className="text-white font-semibold">1.299,00 €</span>
+            <div className={`flex justify-between items-center py-3 border-b ${isDarkMode ? 'border-white/10' : 'border-gray-200'}`}>
+              <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>{t.retailPrice}</span>
+              <span className={`font-semibold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>1.299,00 €</span>
             </div>
-            <div className="flex justify-between items-center py-3 border-b border-gray-700/50">
-              <span className="text-gray-400">{t.auctionEndPrice}</span>
-              <span className="text-[#FFD700] font-semibold">14,87 €</span>
+            <div className={`flex justify-between items-center py-3 border-b ${isDarkMode ? 'border-white/10' : 'border-gray-200'}`}>
+              <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>{t.auctionEndPrice}</span>
+              <span className="text-amber-500 font-semibold">14,87 €</span>
             </div>
-            <div className="flex justify-between items-center py-3 border-b border-gray-700/50">
-              <span className="text-gray-400">{t.yourBids}</span>
-              <span className="text-white font-semibold">12,50 €</span>
+            <div className={`flex justify-between items-center py-3 border-b ${isDarkMode ? 'border-white/10' : 'border-gray-200'}`}>
+              <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>{t.yourBids}</span>
+              <span className={`font-semibold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>12,50 €</span>
             </div>
             <div className="flex justify-between items-center py-3 text-lg">
-              <span className="text-white font-bold">{t.totalPrice}</span>
-              <span className="text-green-400 font-bold">27,37 €</span>
+              <span className={`font-bold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>{t.totalPrice}</span>
+              <span className="text-green-500 font-bold">27,37 €</span>
             </div>
             <div className="text-center mt-4">
-              <span className="inline-block bg-green-500/20 text-green-400 px-4 py-2 rounded-full text-sm font-semibold">
+              <span className="inline-block bg-green-500/20 text-green-500 px-4 py-2 rounded-full text-sm font-semibold">
                 {t.youSave}: 1.271,63 € (98%)
               </span>
             </div>
@@ -445,66 +449,66 @@ export default function HowItWorks() {
 
         {/* Badges Explained Section */}
         <div className="mb-16">
-          <h2 className="text-2xl font-bold text-white mb-4 text-center">{t.badgesTitle || "Auktions-Badges erklärt"}</h2>
-          <p className="text-gray-400 text-center mb-8">{t.badgesSubtitle || "Diese Symbole zeigen dir spezielle Auktionstypen:"}</p>
+          <h2 className={`text-2xl font-bold mb-4 text-center ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>{t.badgesTitle || "Auktions-Badges erklärt"}</h2>
+          <p className={`text-center mb-8 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{t.badgesSubtitle || "Diese Symbole zeigen dir spezielle Auktionstypen:"}</p>
           
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {/* Discount Badge */}
-            <div className="bg-[#1E293B] rounded-xl p-4 border border-gray-700/50">
+            <div className={`rounded-xl p-4 border ${isDarkMode ? 'bg-[#1E293B] border-white/10' : 'bg-white border-gray-200 shadow-sm'}`}>
               <div className="flex items-center gap-3 mb-2">
                 <span className="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded">-95%</span>
-                <span className="text-white font-semibold text-sm">{t.badgeDiscount || "Rabatt-Badge"}</span>
+                <span className={`font-semibold text-sm ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>{t.badgeDiscount || "Rabatt-Badge"}</span>
               </div>
-              <p className="text-gray-400 text-sm">{t.badgeDiscountDesc || "Zeigt den aktuellen Rabatt gegenüber dem UVP"}</p>
+              <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{t.badgeDiscountDesc || "Zeigt den aktuellen Rabatt gegenüber dem UVP"}</p>
             </div>
             
             {/* Beginner Badge */}
-            <div className="bg-[#1E293B] rounded-xl p-4 border border-gray-700/50">
+            <div className={`rounded-xl p-4 border ${isDarkMode ? 'bg-[#1E293B] border-white/10' : 'bg-white border-gray-200 shadow-sm'}`}>
               <div className="flex items-center gap-3 mb-2">
                 <span className="bg-purple-500 text-white text-xs font-bold px-2 py-1 rounded">🎓</span>
-                <span className="text-white font-semibold text-sm">{t.badgeBeginner || "Anfänger-Auktion"}</span>
+                <span className={`font-semibold text-sm ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>{t.badgeBeginner || "Anfänger-Auktion"}</span>
               </div>
-              <p className="text-gray-400 text-sm">{t.badgeBeginnerDesc || "Nur für Nutzer mit weniger als 10 gewonnenen Auktionen"}</p>
+              <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{t.badgeBeginnerDesc || "Nur für Nutzer mit weniger als 10 gewonnenen Auktionen"}</p>
             </div>
             
             {/* Free Badge */}
-            <div className="bg-[#1E293B] rounded-xl p-4 border border-gray-700/50">
+            <div className={`rounded-xl p-4 border ${isDarkMode ? 'bg-[#1E293B] border-white/10' : 'bg-white border-gray-200 shadow-sm'}`}>
               <div className="flex items-center gap-3 mb-2">
                 <span className="bg-green-500 text-white text-xs font-bold px-2 py-1 rounded">🎁</span>
-                <span className="text-white font-semibold text-sm">{t.badgeFree || "Gratis-Auktion"}</span>
+                <span className={`font-semibold text-sm ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>{t.badgeFree || "Gratis-Auktion"}</span>
               </div>
-              <p className="text-gray-400 text-sm">{t.badgeFreeDesc || "Keine Gebote erforderlich! Kostenlose Teilnahme."}</p>
+              <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{t.badgeFreeDesc || "Keine Gebote erforderlich! Kostenlose Teilnahme."}</p>
             </div>
             
             {/* VIP Badge */}
-            <div className="bg-[#1E293B] rounded-xl p-4 border border-gray-700/50">
+            <div className={`rounded-xl p-4 border ${isDarkMode ? 'bg-[#1E293B] border-white/10' : 'bg-white border-gray-200 shadow-sm'}`}>
               <div className="flex items-center gap-3 mb-2">
                 <span className="bg-yellow-500 text-black text-xs font-bold px-2 py-1 rounded">⭐ VIP</span>
-                <span className="text-white font-semibold text-sm">{t.badgeVip || "VIP-Auktion"}</span>
+                <span className={`font-semibold text-sm ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>{t.badgeVip || "VIP-Auktion"}</span>
               </div>
-              <p className="text-gray-400 text-sm">{t.badgeVipDesc || "Exklusiv für VIP-Mitglieder"}</p>
+              <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{t.badgeVipDesc || "Exklusiv für VIP-Mitglieder"}</p>
             </div>
             
             {/* Night Badge */}
-            <div className="bg-[#1E293B] rounded-xl p-4 border border-gray-700/50">
+            <div className={`rounded-xl p-4 border ${isDarkMode ? 'bg-[#1E293B] border-white/10' : 'bg-white border-gray-200 shadow-sm'}`}>
               <div className="flex items-center gap-3 mb-2">
                 <span className="bg-indigo-500 text-white text-xs font-bold px-2 py-1 rounded">🌙</span>
-                <span className="text-white font-semibold text-sm">{t.badgeNight || "Nacht-Auktion"}</span>
+                <span className={`font-semibold text-sm ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>{t.badgeNight || "Nacht-Auktion"}</span>
               </div>
-              <p className="text-gray-400 text-sm">{t.badgeNightDesc || "Läuft zwischen 22:00 und 6:00 Uhr"}</p>
+              <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{t.badgeNightDesc || "Läuft zwischen 22:00 und 6:00 Uhr"}</p>
             </div>
             
             {/* Reminder Badge */}
-            <div className="bg-[#1E293B] rounded-xl p-4 border border-gray-700/50">
+            <div className={`rounded-xl p-4 border ${isDarkMode ? 'bg-[#1E293B] border-white/10' : 'bg-white border-gray-200 shadow-sm'}`}>
               <div className="flex items-center gap-3 mb-2">
                 <span className="bg-gray-600 text-white text-xs font-bold px-2 py-1 rounded">🔔</span>
-                <span className="text-white font-semibold text-sm">{t.badgeReminder || "Erinnerung"}</span>
+                <span className={`font-semibold text-sm ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>{t.badgeReminder || "Erinnerung"}</span>
               </div>
-              <p className="text-gray-400 text-sm">{t.badgeReminderDesc || "Benachrichtigung 5 Min. vor Ende"}</p>
+              <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{t.badgeReminderDesc || "Benachrichtigung 5 Min. vor Ende"}</p>
             </div>
             
             {/* Activity Index */}
-            <div className="bg-[#1E293B] rounded-xl p-4 border border-gray-700/50 sm:col-span-2 lg:col-span-3">
+            <div className={`rounded-xl p-4 border sm:col-span-2 lg:col-span-3 ${isDarkMode ? 'bg-[#1E293B] border-white/10' : 'bg-white border-gray-200 shadow-sm'}`}>
               <div className="flex items-center gap-3 mb-3">
                 <div style={{ 
                   width: '80px', 
@@ -512,9 +516,9 @@ export default function HowItWorks() {
                   borderRadius: '4px',
                   background: 'linear-gradient(to right, #22C55E 0%, #84CC16 25%, #EAB308 50%, #F97316 75%, #EF4444 100%)'
                 }} />
-                <span className="text-white font-semibold text-sm">📊 {language === 'en' ? 'Activity Index' : language === 'sq' ? 'Indeksi i Aktivitetit' : language === 'tr' ? 'Aktivite Endeksi' : language === 'fr' ? "Indice d'Activité" : 'Aktivitätsindex'}</span>
+                <span className={`font-semibold text-sm ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>📊 {language === 'en' ? 'Activity Index' : language === 'sq' ? 'Indeksi i Aktivitetit' : language === 'tr' ? 'Aktivite Endeksi' : language === 'fr' ? "Indice d'Activité" : 'Aktivitätsindex'}</span>
               </div>
-              <p className="text-gray-400 text-sm mb-3">
+              <p className={`text-sm mb-3 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
                 {language === 'en' ? 'The activity index shows you how active an auction currently is:' : 
                  language === 'sq' ? 'Indeksi i aktivitetit tregon se sa aktiv është një ankand:' :
                  language === 'tr' ? 'Aktivite endeksi size bir açık artırmanın ne kadar aktif olduğunu gösterir:' :
@@ -524,19 +528,19 @@ export default function HowItWorks() {
               <div className="grid grid-cols-2 gap-2 text-xs">
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                  <span className="text-gray-300">{language === 'en' ? 'Green = Low Activity' : language === 'sq' ? 'Jeshile = Aktivitet i Ulët' : language === 'tr' ? 'Yeşil = Düşük Aktivite' : language === 'fr' ? 'Vert = Faible Activité' : 'Grün = Wenig Aktivität'}</span>
+                  <span className={isDarkMode ? 'text-gray-300' : 'text-gray-600'}>{language === 'en' ? 'Green = Low Activity' : language === 'sq' ? 'Jeshile = Aktivitet i Ulët' : language === 'tr' ? 'Yeşil = Düşük Aktivite' : language === 'fr' ? 'Vert = Faible Activité' : 'Grün = Wenig Aktivität'}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
-                  <span className="text-gray-300">{language === 'en' ? 'Yellow = Medium Activity' : language === 'sq' ? 'Verdhë = Aktivitet Mesatar' : language === 'tr' ? 'Sarı = Orta Aktivite' : language === 'fr' ? 'Jaune = Activité Moyenne' : 'Gelb = Mittlere Aktivität'}</span>
+                  <span className={isDarkMode ? 'text-gray-300' : 'text-gray-600'}>{language === 'en' ? 'Yellow = Medium Activity' : language === 'sq' ? 'Verdhë = Aktivitet Mesatar' : language === 'tr' ? 'Sarı = Orta Aktivite' : language === 'fr' ? 'Jaune = Activité Moyenne' : 'Gelb = Mittlere Aktivität'}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-full bg-orange-500"></div>
-                  <span className="text-gray-300">{language === 'en' ? 'Orange = High Activity' : language === 'sq' ? 'Portokalli = Aktivitet i Lartë' : language === 'tr' ? 'Turuncu = Yüksek Aktivite' : language === 'fr' ? 'Orange = Haute Activité' : 'Orange = Hohe Aktivität'}</span>
+                  <span className={isDarkMode ? 'text-gray-300' : 'text-gray-600'}>{language === 'en' ? 'Orange = High Activity' : language === 'sq' ? 'Portokalli = Aktivitet i Lartë' : language === 'tr' ? 'Turuncu = Yüksek Aktivite' : language === 'fr' ? 'Orange = Haute Activité' : 'Orange = Hohe Aktivität'}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-full bg-red-500"></div>
-                  <span className="text-gray-300">{language === 'en' ? 'Red = Very High Activity' : language === 'sq' ? 'Kuq = Aktivitet Shumë i Lartë' : language === 'tr' ? 'Kırmızı = Çok Yüksek Aktivite' : language === 'fr' ? 'Rouge = Très Haute Activité' : 'Rot = Sehr hohe Aktivität'}</span>
+                  <span className={isDarkMode ? 'text-gray-300' : 'text-gray-600'}>{language === 'en' ? 'Red = Very High Activity' : language === 'sq' ? 'Kuq = Aktivitet Shumë i Lartë' : language === 'tr' ? 'Kırmızı = Çok Yüksek Aktivite' : language === 'fr' ? 'Rouge = Très Haute Activité' : 'Rot = Sehr hohe Aktivität'}</span>
                 </div>
               </div>
               <p className="text-gray-500 text-xs mt-3">
@@ -552,21 +556,21 @@ export default function HowItWorks() {
 
         {/* CTA */}
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-white mb-4">
+          <h2 className={`text-2xl font-bold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>
             {t.readyToSave}
           </h2>
-          <p className="text-gray-400 mb-6">
+          <p className={`mb-6 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
             {t.registerNowCTA}
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link to="/register">
-              <Button className="bg-[#FFD700] hover:bg-[#FCD34D] text-black font-bold px-8 py-3 text-lg">
+              <Button className="bg-amber-500 hover:bg-amber-600 text-white font-bold px-8 py-3 text-lg">
                 {t.registerButton}
                 <ArrowRight className="w-5 h-5 ml-2" />
               </Button>
             </Link>
             <Link to="/auctions">
-              <Button variant="outline" className="border-gray-600 text-white hover:bg-white/10 px-8 py-3 text-lg">
+              <Button variant="outline" className={`px-8 py-3 text-lg ${isDarkMode ? 'border-gray-600 text-white hover:bg-white/10' : 'border-gray-300 text-gray-800 hover:bg-gray-100'}`}>
                 {t.viewAuctions}
               </Button>
             </Link>
