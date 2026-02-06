@@ -40,6 +40,17 @@ const widgetTexts = {
     joinNow: 'Bashkohu tani!',
     prize: 'Çmimi'
   },
+  xk: {
+    title: 'Kampionët Javore',
+    subtitle: 'Ofertuesit kryesorë këtë javë',
+    viewAll: 'Shiko të gjithë',
+    points: 'Pikë',
+    wins: 'Fitore',
+    bids: 'Oferta',
+    noData: 'Ende asnjë pjesëmarrës',
+    joinNow: 'Bashkohu tani!',
+    prize: 'Çmimi'
+  },
   tr: {
     title: 'Haftalık Şampiyonlar',
     subtitle: 'Bu haftanın en iyi teklif verenleri',
