@@ -13,9 +13,23 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 3. ✅ **Admin Auktionsdauer-Bug** - Verified working - backend correctly handles 1 Tag (86400s) duration
 4. ✅ **Lint Errors** - Fixed VoiceDebugAssistant.js unescaped entities error
 
+### ✅ Phase 2 Feature Additions Completed
+
+**New Features:**
+1. ✅ **Leaderboard Widget "Wöchentliche Champions"** - Added to homepage showing top 3 weekly tournament participants
+   - Shows user rankings with points and wins
+   - "Jetzt mitmachen!" CTA button
+   - Links to full /tournaments page
+   - File: `/app/frontend/src/components/LeaderboardWidget.js`
+
+2. ✅ **Albanian (Kosovar) Language Support** - Full translation support already existed
+   - `sq` = Albanisch (Albanien) 🇦🇱
+   - `xk` = Kosovë (Kosovo) 🇽🇰
+   - All UI elements properly translated
+
 **Testing Status:**
-- All Phase 1 fixes verified by testing agent (iteration_36.json)
-- 100% success rate on frontend tests
+- Phase 1: All fixes verified by testing agent (iteration_36.json)
+- Phase 2: Leaderboard widget visually verified, Albanian language tested
 
 ---
 
@@ -33,6 +47,7 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 - Shadcn/UI components
 - Dynamic Light/Dark theme system
 - Real-time WebSocket updates
+- 20+ language support including Albanian
 
 ---
 
@@ -45,8 +60,8 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 - Battle Pass
 - Lucky Wheel
 - Streak Protection
-- **Weekly Tournaments** (NEW)
-- **Winner Gallery** (NEW)
+- **Weekly Tournaments** with Leaderboard Widget
+- **Winner Gallery**
 
 ### Monetization ✅
 - Stripe Payments
@@ -59,7 +74,7 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 - Friend Battle
 - Team Auctions
 - **Referral System** (with ReferFriendsPage)
-- Leaderboard
+- **Leaderboard Widget on Homepage**
 - Winner Gallery
 
 ### AI & Personalization ✅
@@ -74,7 +89,7 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 - User management
 - Bot management
 - Voice Debug Assistant (iOS/Safari compatible)
-- **Debug Reports Dashboard** (NEW)
+- **Debug Reports Dashboard**
 - AI Chat Assistant
 
 ---
@@ -96,7 +111,10 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 
 ---
 
-## Files Modified (Phase 1)
+## Files Modified/Created (This Session)
+
+### New Components:
+- `/app/frontend/src/components/LeaderboardWidget.js` - Weekly Champions widget
 
 ### Route Fix:
 - `/app/frontend/src/App.js` - Removed duplicate `/freunde-werben` route
@@ -106,30 +124,47 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 - `/app/frontend/src/pages/FAQ.js` - Added useTheme hook
 - `/app/frontend/src/pages/HowItWorks.js` - Added useTheme hook
 
+### Homepage Integration:
+- `/app/frontend/src/pages/Auctions.js` - Added LeaderboardWidget import and render
+
 ### Lint Fixes:
 - `/app/frontend/src/components/VoiceDebugAssistant.js` - Fixed unescaped entities
-- `/app/frontend/src/pages/VIPAuctions.js` - Added comment to empty catch block
 
 ---
 
-## Next Tasks (Phase 2 - Features)
+## Language Support
 
-### Priority 1: Build Missing Frontend UIs
-1. 🔶 Admin Analytics Dashboard
-2. 🔶 Admin Surveys Management Dashboard
-3. 🔶 Admin Tournaments Management
+### Currently Supported (20+ languages):
+- German (de) 🇩🇪
+- English (en) 🇬🇧
+- **Albanian (sq) 🇦🇱** ✅
+- **Kosovo (xk) 🇽🇰** ✅
+- Turkish (tr) 🇹🇷
+- French (fr) 🇫🇷
+- Spanish (es) 🇪🇸
+- Arabic (ar) 🇸🇦
+- Russian (ru) 🇷🇺
+- Japanese (ja) 🇯🇵
+- Korean (ko) 🇰🇷
+- Hindi (hi) 🇮🇳
+- And more...
 
-### Priority 2: Feature Integration
-1. 🔶 Integrate FOMO components into auction pages
-2. 🔶 E-Mail Marketing Automation
+---
 
-### Priority 3: Pending Integrations
-1. 🔶 Tawk.to Live-Chat (Property ID needed)
-2. 🔶 Apple Login (credentials needed)
-3. 🔶 WhatsApp/SMS notifications (API keys needed)
+## Next Tasks (Backlog)
 
-### Priority 4: Refactoring
-1. 🔶 Admin.js refactoring (>1200 lines - split into components)
+### Priority 1: Admin Dashboards
+- 🔶 Admin Analytics Dashboard
+- 🔶 Admin Surveys Management Dashboard
+- 🔶 Admin Tournaments Management
+
+### Priority 2: Pending Integrations
+- 🔶 Tawk.to Live-Chat (Property ID needed)
+- 🔶 Apple Login (credentials needed)
+- 🔶 WhatsApp/SMS notifications (API keys needed)
+
+### Priority 3: Refactoring
+- 🔶 Admin.js refactoring (>1200 lines - split into components)
 
 ---
 
@@ -142,21 +177,10 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 ## Last Updated
 February 6, 2026
 
-## Completed Features
-1. ✅ Voice Debug Assistant iOS/Safari kompatibel
-2. ✅ Debug Reports in MongoDB + Dashboard
-3. ✅ Verbesserte Bidding-Fehlermeldungen
-4. ✅ Theme-Konsistenz (Contact, FAQ, HowItWorks)
-5. ✅ Refer-a-Friend Route Fix
-6. ✅ User Statistics Dashboard
-7. ✅ Daily Rewards System
-8. ✅ Achievements System
-9. ✅ Leaderboard System
-10. ✅ Weekly Tournaments
-11. ✅ Winner Gallery
-12. ✅ Referral System
-13. ✅ AI Optimal Bidding Times
-14. ✅ Analytics API
-15. ✅ User Surveys API
-16. ✅ FOMO Elements Components
-17. ✅ Rate Limiting (slowapi)
+## Completed Features This Session
+1. ✅ Freunde-werben Route Fix
+2. ✅ Theme-Konsistenz (Contact, FAQ, HowItWorks)
+3. ✅ Admin Auktionsdauer verifiziert
+4. ✅ Lint-Fehler behoben
+5. ✅ **Leaderboard Widget "Wöchentliche Champions"**
+6. ✅ **Albanian/Kosovo Sprachunterstützung verifiziert**
