@@ -156,16 +156,60 @@ Debug reports are now saved to MongoDB and viewable in Admin Panel:
 
 ---
 
-## Last Updated
-February 5, 2026
+## NEW FEATURES (February 6, 2026)
 
-## Next Steps (Priority Order)
+### 1. User Statistics Dashboard (`/my-stats`)
+Complete gamification and statistics page:
+- **Stats Cards:** Wins, Bids placed, Savings, Win rate
+- **Savings Overview:** Retail value vs. paid with % saved
+- **Streaks & Loyalty:** Login streak, max streak, loyalty points, level
+- **Recent Activity:** Last 30 days bids and wins
+- **Achievements Tab:** 12+ achievements with unlock status
+- **Leaderboard Tab:** Weekly rankings
+
+### 2. Daily Rewards System
+- Claim daily free bids (2 base + up to 7 streak bonus)
+- Milestone bonuses: 7-day (+10), 14-day (+20), 30-day (+50), 60-day (+100), 90-day (+200)
+- XP rewards increasing with streak
+- API: `GET/POST /api/user-stats/daily-reward-status`, `/claim-daily-reward`
+
+### 3. Leaderboard System
+- Weekly/Monthly/All-time rankings
+- By wins and by XP
+- API: `GET /api/user-stats/leaderboard`
+
+### 4. Celebration Components
+- `WinCelebration`: Confetti animation for auction wins
+- `NewAchievementToast`: Toast when unlocking achievements
+- `DailyRewardPopup`: Reminder to claim daily rewards
+
+### 5. Rate Limiting (Security)
+- Slowapi integration for API protection
+- Prevents abuse and bot attacks
+
+### 6. PWA Updates
+- Updated theme colors for light mode
+- New shortcuts including My Stats
+
+---
+
+## Last Updated
+February 6, 2026
+
+## Completed Features
 1. ✅ Voice Debug Assistant iOS/Safari kompatibel
-2. ✅ Debug Reports in MongoDB speichern
+2. ✅ Debug Reports in MongoDB speichern + Dashboard
 3. ✅ Verbesserte Bidding-Fehlermeldungen
-4. ✅ Theme-Konsistenz (Notifications, Invoices Seiten)
-5. 🔶 Remaining theme fixes (Contact, FAQ, HowItWorks, VIP pages)
-6. 🔶 Activate WhatsApp/SMS notifications (API keys required)
-7. 🔶 Implement Apple Sign-In (credentials required)
-8. 🔶 Investigate 404 error root cause (currently suppressed)
-9. 🔶 Admin.js refactoring (>1200 lines)
+4. ✅ Theme-Konsistenz (Notifications, Invoices)
+5. ✅ User Statistics Dashboard
+6. ✅ Daily Rewards System
+7. ✅ Achievements System
+8. ✅ Leaderboard System
+9. ✅ Celebration Animations
+10. ✅ Rate Limiting
+
+## Next Steps
+1. 🔶 Remaining theme fixes (Contact, FAQ, HowItWorks, VIP pages)
+2. 🔶 Activate WhatsApp/SMS notifications (API keys required)
+3. 🔶 Implement Apple Sign-In (credentials required)
+4. 🔶 Admin.js refactoring (>1200 lines)
