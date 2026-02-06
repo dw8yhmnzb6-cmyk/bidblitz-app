@@ -2,7 +2,7 @@
 BidBlitz Auction Platform - Main Server
 Refactored modular architecture with routers
 """
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Depends, HTTPException
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from starlette.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
@@ -12,6 +12,11 @@ import random
 import uuid
 import io
 from datetime import datetime, timezone, timedelta
+
+# Rate Limiting
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
 # Config and DB
 from config import db, logger, BID_PACKAGES
