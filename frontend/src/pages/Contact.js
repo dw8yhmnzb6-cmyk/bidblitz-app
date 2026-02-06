@@ -124,21 +124,21 @@ export default function Contact() {
 
   if (submitted) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-[#0a1929] to-[#0d2538] pt-20 pb-16">
+      <div className={`min-h-screen pt-20 pb-16 ${isDarkMode ? 'bg-[#050509]' : 'bg-gradient-to-b from-cyan-50 to-cyan-100'}`}>
         <div className="max-w-xl mx-auto px-4 text-center">
-          <div className="bg-[#1a3a52]/50 rounded-2xl p-12 border border-gray-700/50">
+          <div className={`rounded-2xl p-12 border ${isDarkMode ? 'bg-[#181824] border-white/10' : 'bg-white border-gray-200 shadow-lg'}`}>
             <div className="w-20 h-20 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-6">
               <CheckCircle className="w-10 h-10 text-green-500" />
             </div>
-            <h2 className="text-2xl font-bold text-white mb-4">
+            <h2 className={`text-2xl font-bold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>
               {successText.title}
             </h2>
-            <p className="text-gray-400 mb-6">
+            <p className={`mb-6 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
               {successText.desc}
             </p>
             <Button 
               onClick={() => setSubmitted(false)}
-              className="bg-[#FFD700] hover:bg-[#FCD34D] text-black font-bold"
+              className="bg-amber-500 hover:bg-amber-600 text-white font-bold"
             >
               {successText.button}
             </Button>
