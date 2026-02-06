@@ -316,15 +316,15 @@ export default function HowItWorks() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#0a1929] to-[#0d2538] pt-20 pb-16">
+    <div className={`min-h-screen pt-20 pb-16 ${isDarkMode ? 'bg-[#050509]' : 'bg-gradient-to-b from-cyan-50 to-cyan-100'}`}>
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Hero Section */}
         <div className="text-center mb-16">
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-4">
-            {t.title} <span className="text-[#FFD700]">BidBlitz</span>
+          <h1 className={`text-3xl sm:text-4xl lg:text-5xl font-bold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>
+            {t.title} <span className="text-amber-500">BidBlitz</span>
           </h1>
-          <p className="text-gray-400 text-lg max-w-2xl mx-auto">
+          <p className={`text-lg max-w-2xl mx-auto ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
             {t.subtitle}
           </p>
         </div>
@@ -334,20 +334,24 @@ export default function HowItWorks() {
           {steps.map((step, index) => (
             <div 
               key={index}
-              className="bg-[#1a3a52]/50 rounded-2xl p-6 border border-gray-700/50 hover:border-[#FFD700]/30 transition-all group"
+              className={`rounded-2xl p-6 border transition-all group ${
+                isDarkMode 
+                  ? 'bg-[#181824]/50 border-white/10 hover:border-amber-500/30' 
+                  : 'bg-white border-gray-200 shadow-sm hover:border-amber-300 hover:shadow-md'
+              }`}
             >
               <div className={`w-16 h-16 rounded-xl bg-gradient-to-br ${step.color} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
                 <step.icon className="w-8 h-8 text-white" />
               </div>
-              <h3 className="text-xl font-bold text-white mb-2">{step.title}</h3>
-              <p className="text-gray-400 text-sm leading-relaxed">{step.description}</p>
+              <h3 className={`text-xl font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>{step.title}</h3>
+              <p className={`text-sm leading-relaxed ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{step.description}</p>
             </div>
           ))}
         </div>
 
         {/* How Bidding Works */}
-        <div className="bg-[#1a3a52]/30 rounded-2xl p-8 mb-16 border border-gray-700/50">
-          <h2 className="text-2xl font-bold text-white mb-6 text-center">
+        <div className={`rounded-2xl p-8 mb-16 border ${isDarkMode ? 'bg-[#181824]/30 border-white/10' : 'bg-white border-gray-200 shadow-sm'}`}>
+          <h2 className={`text-2xl font-bold mb-6 text-center ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>
             {t.howBiddingWorks}
           </h2>
           
