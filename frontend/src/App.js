@@ -78,6 +78,8 @@ import VideoTestimonialsPage from "./pages/VideoTestimonialsPage";
 import TeamAuctionsPage from "./pages/TeamAuctionsPage";
 import BirthdayBonusPage from "./pages/BirthdayBonusPage";
 import WishlistPage from "./pages/WishlistPage";
+import TournamentsPage from "./pages/Tournaments";
+import ReferFriendsPage from "./pages/ReferFriends";
 import StreakProtectionPage from "./pages/StreakProtectionPage";
 import ExcitementAdminPage from "./pages/ExcitementAdminPage";
 import InvestorPortal from "./pages/InvestorPortal";
