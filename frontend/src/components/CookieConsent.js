@@ -47,6 +47,20 @@ const cookieTranslations = {
     marketingDesc: "Përdoren për të shfaqur reklama relevante.",
     saveSelection: "Ruaj zgjedhjen"
   },
+  xk: {
+    title: "Cilësimet e Cookie-ve",
+    description: "Ne përdorim cookies për t'ju ofruar përvojën më të mirë të mundshme në faqen tonë. Disa cookies janë të nevojshme për funksionimin e faqes, ndërsa të tjerat na ndihmojnë të përmirësojmë faqen dhe përvojën tuaj.",
+    acceptAll: "Prano të gjitha",
+    declineAll: "Vetëm të nevojshme",
+    settings: "Cilësimet",
+    necessary: "Cookies të nevojshme",
+    necessaryDesc: "Këto cookies janë të nevojshme për funksionimin e faqes.",
+    analytics: "Cookies analitike",
+    analyticsDesc: "Na ndihmojnë të kuptojmë se si vizitorët bashkëveprojnë me faqen.",
+    marketing: "Cookies marketing",
+    marketingDesc: "Përdoren për të shfaqur reklama relevante.",
+    saveSelection: "Ruaj zgjedhjen"
+  },
   tr: {
     title: "Çerez Ayarları",
     description: "Web sitemizde size mümkün olan en iyi deneyimi sunmak için çerezler kullanıyoruz. Bazı çerezler sitenin çalışması için gereklidir, diğerleri ise web sitesini ve deneyiminizi geliştirmemize yardımcı olur.",
