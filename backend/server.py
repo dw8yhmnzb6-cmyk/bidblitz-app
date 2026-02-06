@@ -265,6 +265,8 @@ app.include_router(crypto_router, prefix="/api")
 app.include_router(influencer_auctions_router, prefix="/api")
 app.include_router(ar_preview_router, prefix="/api")
 app.include_router(voice_debug_router)
+app.include_router(tournaments_router, prefix="/api")
+app.include_router(winner_gallery_router, prefix="/api")
 
 # ==================== HEALTH & BASIC ENDPOINTS ====================
 
