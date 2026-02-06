@@ -61,6 +61,22 @@ const purchasesTexts = {
     paid: "Paguar",
     pending: "Në Pritje"
   },
+  xk: {
+    title: "Blerjet e Mia",
+    subtitle: "Përmbledhje e të gjitha paketave të blera",
+    backToDashboard: "Kthehu te Paneli",
+    buyBids: "Bli Oferta",
+    totalPurchases: "Blerje Gjithsej",
+    totalSpent: "Shpenzuar",
+    bidsBought: "Oferta të Blera",
+    noPurchases: "Ende pa Blerje",
+    noPurchasesDesc: "Ju nuk keni blerë ende asnjë paketë ofertash.",
+    bidPackage: "Paketë Ofertash",
+    bids: "Oferta",
+    price: "Çmimi",
+    paid: "Paguar",
+    pending: "Në Pritje"
+  },
   tr: {
     title: "Satın Alımlarım",
     subtitle: "Satın alınan tüm teklif paketlerine genel bakış",

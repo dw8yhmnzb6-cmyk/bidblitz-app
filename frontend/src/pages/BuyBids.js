@@ -78,6 +78,28 @@ const buyBidsTexts = {
     cancel: "Anulo",
     securePayment: "Pagesë e sigurt përmes Stripe"
   },
+  xk: {
+    title: "Bli Oferta",
+    subtitle: "Zgjidhni një paketë dhe filloni të ofroni",
+    cryptoSuccess: "Pagesa kripto me sukses! Ofertat po kreditohen.",
+    cryptoCancel: "Pagesa kripto u anulua",
+    loadError: "Gabim në ngarkimin e paketave",
+    loginRequired: "Ju lutem hyni për të blerë oferta",
+    mostPopular: "Më i Popullarizuar",
+    bestValue: "Vlera më e Mirë",
+    bids: "Oferta",
+    bonus: "Bonus",
+    perBid: "për ofertë",
+    selectPackage: "Zgjidh Paketën",
+    paymentMethod: "Metoda e Pagesës",
+    card: "Kartë",
+    crypto: "Kripto",
+    cryptoUnavailable: "Pagesat kripto aktualisht nuk janë të disponueshme",
+    pay: "Paguaj",
+    processing: "Duke procesuar...",
+    cancel: "Anulo",
+    securePayment: "Pagesë e sigurt përmes Stripe"
+  },
   tr: {
     title: "Teklif Satın Al",
     subtitle: "Bir paket seçin ve teklif vermeye başlayın",
