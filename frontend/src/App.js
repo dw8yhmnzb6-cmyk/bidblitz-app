@@ -257,7 +257,6 @@ function AppContent() {
           } />
           {/* Referral System */}
           <Route path="/referral" element={<ReferralDashboard />} />
-          <Route path="/freunde-werben" element={<ReferralDashboard />} />
           <Route path="/empfehlen" element={<ReferralDashboard />} />
           {/* Flash Events & Gallery */}
           <Route path="/events" element={<FlashEvents />} />
@@ -504,17 +503,9 @@ function AppContent() {
           {/* Tournaments */}
           <Route path="/turniere" element={<TournamentsPage />} />
           <Route path="/tournaments" element={<TournamentsPage />} />
-          {/* Refer Friends */}
-          <Route path="/freunde-werben" element={
-            <ProtectedRoute>
-              <ReferFriendsPage />
-            </ProtectedRoute>
-          } />
-          <Route path="/refer" element={
-            <ProtectedRoute>
-              <ReferFriendsPage />
-            </ProtectedRoute>
-          } />
+          {/* Refer Friends - Freunde werben */}
+          <Route path="/freunde-werben" element={<ReferFriendsPage />} />
+          <Route path="/refer" element={<ReferFriendsPage />} />
           {/* Excitement Admin */}
           <Route path="/admin/excitement" element={
             <ProtectedRoute requireAdmin={true}>
