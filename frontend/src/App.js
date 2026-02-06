@@ -501,6 +501,20 @@ function AppContent() {
               <StreakProtectionPage />
             </ProtectedRoute>
           } />
+          {/* Tournaments */}
+          <Route path="/turniere" element={<TournamentsPage />} />
+          <Route path="/tournaments" element={<TournamentsPage />} />
+          {/* Refer Friends */}
+          <Route path="/freunde-werben" element={
+            <ProtectedRoute>
+              <ReferFriendsPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/refer" element={
+            <ProtectedRoute>
+              <ReferFriendsPage />
+            </ProtectedRoute>
+          } />
           {/* Excitement Admin */}
           <Route path="/admin/excitement" element={
             <ProtectedRoute requireAdmin={true}>
