@@ -6,6 +6,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { toast } from 'sonner';
 import GlobalJackpot from '../components/GlobalJackpot';
 import { HappyHourBanner, LuckyBidCounter, ExcitementStatusBar } from '../components/ExcitementFeatures';
+import LeaderboardWidget from '../components/LeaderboardWidget';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
