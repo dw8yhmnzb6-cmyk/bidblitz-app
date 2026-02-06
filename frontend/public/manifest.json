@@ -4,18 +4,18 @@
   "description": "Penny Auktion Plattform - Biete und gewinne Produkte zu unglaublichen Preisen!",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#050509",
-  "theme_color": "#FFD700",
+  "background_color": "#E0F7FA",
+  "theme_color": "#0891B2",
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%23FFD700' rx='15' width='100' height='100'/><text x='50' y='65' font-size='50' text-anchor='middle' fill='%23000'>⚡</text></svg>",
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%230891B2' rx='15' width='100' height='100'/><text x='50' y='65' font-size='50' text-anchor='middle' fill='%23FFF'>⚡</text></svg>",
       "sizes": "192x192",
       "type": "image/svg+xml",
       "purpose": "any maskable"
     },
     {
-      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%23FFD700' rx='15' width='100' height='100'/><text x='50' y='65' font-size='50' text-anchor='middle' fill='%23000'>⚡</text></svg>",
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%230891B2' rx='15' width='100' height='100'/><text x='50' y='65' font-size='50' text-anchor='middle' fill='%23FFF'>⚡</text></svg>",
       "sizes": "512x512",
       "type": "image/svg+xml",
       "purpose": "any maskable"
@@ -38,9 +38,9 @@
       "icons": [{"src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='75' font-size='75'>💰</text></svg>", "sizes": "96x96"}]
     },
     {
-      "name": "Dashboard",
-      "short_name": "Dashboard",
-      "url": "/dashboard",
+      "name": "Meine Stats",
+      "short_name": "Stats",
+      "url": "/my-stats",
       "icons": [{"src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='75' font-size='75'>📊</text></svg>", "sizes": "96x96"}]
     }
   ]
