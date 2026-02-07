@@ -2115,6 +2115,16 @@ export default function Admin() {
             </div>
           )}
 
+          {/* Analytics Tab */}
+          {activeTab === 'analytics' && (
+            <AdminAnalytics token={token} />
+          )}
+
+          {/* Surveys Tab */}
+          {activeTab === 'surveys' && (
+            <AdminSurveys token={token} />
+          )}
+
           {/* Logs Tab */}
           {activeTab === 'logs' && (
             <div className="space-y-8">
