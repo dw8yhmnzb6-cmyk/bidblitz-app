@@ -175,14 +175,14 @@ export default function GlobalJackpot({ className = '' }) {
               </AnimatePresence>
             </div>
             <p className="text-amber-100 text-[9px] sm:text-[10px]">
-              Jedes Gebot = +1 zum Jackpot
+              {t.everyBid}
             </p>
           </div>
 
           {/* Right: Value */}
           <div className="flex-shrink-0 text-right">
             <div className="bg-white/90 rounded-lg px-2 py-1 shadow-inner">
-              <p className="text-amber-900 text-[8px] sm:text-[9px] uppercase tracking-wider font-bold">Wert</p>
+              <p className="text-amber-900 text-[8px] sm:text-[9px] uppercase tracking-wider font-bold">{t.value}</p>
               <p className="text-amber-600 font-black text-sm sm:text-base">
                 €{(jackpot.current_amount * 0.50).toFixed(0)}
               </p>
@@ -194,7 +194,7 @@ export default function GlobalJackpot({ className = '' }) {
         {jackpot.last_winner && (
           <div className="mt-2 pt-2 border-t border-amber-300 text-center">
             <p className="text-amber-100 text-[9px] sm:text-[10px]">
-              ♪ Letzter Gewinner: <span className="font-bold text-white">{jackpot.last_winner}</span>
+              🎉 {t.lastWinner}: <span className="font-bold text-white">{jackpot.last_winner}</span>
             </p>
           </div>
         )}
