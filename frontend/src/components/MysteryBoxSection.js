@@ -177,12 +177,17 @@ const MysteryBoxCard = memo(({ box, onBid, t }) => {
         
         {/* Bid Button */}
         <button
-          onClick={() => onBid(box)}
-          className="w-full py-3 bg-white text-gray-800 font-bold rounded-lg hover:bg-gray-100 transition-colors flex items-center justify-center gap-2"
+          onClick={() => !isPreview && onBid(box)}
+          disabled={isPreview}
+          className={`w-full py-3 font-bold rounded-lg transition-colors flex items-center justify-center gap-2 ${
+            isPreview 
+              ? 'bg-white/50 text-gray-600 cursor-not-allowed' 
+              : 'bg-white text-gray-800 hover:bg-gray-100'
+          }`}
           data-testid={`mystery-box-bid-${box.id}`}
         >
           <Gift className="w-5 h-5" />
-          {t.bidNow}
+          {isPreview ? (t.comingSoon || 'Demnächst') : t.bidNow}
         </button>
       </div>
     </div>
