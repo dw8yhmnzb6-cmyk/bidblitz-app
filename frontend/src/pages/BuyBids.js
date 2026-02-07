@@ -389,7 +389,7 @@ export default function BuyBids() {
                   onClick={() => openPaymentModal(pkg)}
                   disabled={purchasing === pkg.id}
                   className={`w-full py-3 h-auto ${
-                    pkg.popular ? 'btn-bid' : 'bg-white/10 hover:bg-white/20 text-gray-800'
+                    pkg.popular ? 'btn-bid' : 'bg-white hover:bg-gray-100 text-gray-800 border border-gray-200'
                   }`}
                   data-testid={`buy-${pkg.id}`}
                 >
@@ -398,7 +398,7 @@ export default function BuyBids() {
                   ) : (
                     <>
                       <CreditCard className="w-4 h-4 mr-2" />
-                      {language === 'en' ? 'Buy Now' : language === 'sq' ? 'Bli Tani' : language === 'tr' ? 'Şimdi Satın Al' : language === 'fr' ? 'Acheter' : 'Jetzt kaufen'}
+                      {{ de: 'Jetzt kaufen', en: 'Buy Now', sq: 'Bli Tani', xk: 'Bli Tani', tr: 'Şimdi Satın Al', fr: 'Acheter' }[language] || 'Jetzt kaufen'}
                     </>
                   )}
                 </Button>
