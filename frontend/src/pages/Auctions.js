@@ -12,6 +12,8 @@ import WinnerGallery from '../components/WinnerGallery';
 import ExitIntentPopup from '../components/ExitIntentPopup';
 import DailyQuestsWidget from '../components/DailyQuestsWidget';
 import { VIPPromoBanner } from '../components/VIPBadge';
+import FlashSaleBanner from '../components/FlashSaleBanner';
+import MysteryBoxSection from '../components/MysteryBoxSection';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
