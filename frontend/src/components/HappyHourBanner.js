@@ -27,6 +27,22 @@ const HappyHourBanner = () => {
       startsIn: 'Starts in',
       buyNow: 'Buy Bids Now!'
     },
+    sq: {
+      happyHour: 'ORA E LUMTUR',
+      active: 'AKTIVE TANI!',
+      multiplier: 'OFERTA',
+      endsIn: 'Përfundon në',
+      startsIn: 'Fillon në',
+      buyNow: 'Bli Oferta Tani!'
+    },
+    xk: {
+      happyHour: 'ORA E LUMTUR',
+      active: 'AKTIVE TANI!',
+      multiplier: 'OFERTA',
+      endsIn: 'Përfundon në',
+      startsIn: 'Fillon në',
+      buyNow: 'Bli Oferta Tani!'
+    },
     tr: {
       happyHour: 'MUTLU SAAT',
       active: 'ŞİMDİ AKTİF!',
@@ -34,6 +50,14 @@ const HappyHourBanner = () => {
       endsIn: 'Bitiş',
       startsIn: 'Başlangıç',
       buyNow: 'Şimdi Teklif Al!'
+    },
+    fr: {
+      happyHour: 'HAPPY HOUR',
+      active: 'ACTIF MAINTENANT!',
+      multiplier: 'OFFRES',
+      endsIn: 'Se termine dans',
+      startsIn: 'Commence dans',
+      buyNow: 'Acheter des Offres!'
     }
   };
   const t = texts[language] || texts.de;
