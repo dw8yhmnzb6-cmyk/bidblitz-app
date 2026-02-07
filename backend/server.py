@@ -410,42 +410,25 @@ async def bot_last_second_bidder():
                     
                     # Check if it's time for next bid on this auction
                     next_bid_at = next_bid_time_per_auction.get(auction_id, 0)
-                    if now_ts < next_bid_at:
-                        continue  # Not time yet
+                    
+                    # CRITICAL: If < 15 seconds left and price < €20, bid IMMEDIATELY
+                    is_urgent = seconds_left < 15 and current_price < 20.0
+                    
+                    if now_ts < next_bid_at and not is_urgent:
+                        continue  # Not time yet (unless urgent)
                     
                     should_bid = False
                     target_price = 0
                     
-                    # BERECHNE MINDESTPREIS basierend auf Auktionstyp
-                    if is_free_auction and retail_price > 0:
-                        # GUTSCHEIN-AUKTION: 30% des Gutscheinwertes
-                        voucher_min = retail_price * VOUCHER_MIN_PERCENTAGE
-                        effective_minimum = max(voucher_min, 10.00)  # Mindestens €10
-                    else:
-                        # NORMALE AUKTION: €20
-                        effective_minimum = MINIMUM_AUCTION_PRICE
+                    # MINDESTPREIS: Immer €20 für echte Einnahmen
+                    effective_minimum = MINIMUM_AUCTION_PRICE  # €20
                     
                     # Verwende das Maximum aus explicit_target und effective_minimum
                     effective_target = max(explicit_target or 0, effective_minimum)
                     
-                    if explicit_target and explicit_target > 0:
-                        if current_price < effective_target:
-                            target_price = effective_target
-                            should_bid = True
-                    else:
-                        # Kein Zielpreis - verwende berechnetes Minimum
-                        hash_val = hash(auction_id) % 100
-                        if is_free_auction:
-                            # Gutschein: 30-35% des Wertes
-                            default_target = effective_minimum + (hash_val / 100) * (effective_minimum * 0.15)
-                        else:
-                            # Normal: €20-25
-                            default_target = DEFAULT_MIN_PRICE + (hash_val / 100) * (DEFAULT_MAX_PRICE - DEFAULT_MIN_PRICE)
-                        default_target = round(default_target, 2)
-                        
-                        if current_price < default_target:
-                            target_price = default_target
-                            should_bid = True
+                    if current_price < effective_target:
+                        target_price = effective_target
+                        should_bid = True
                     
                     if should_bid:
                         bots = await db.bots.find({}, {"_id": 0}).to_list(100)
