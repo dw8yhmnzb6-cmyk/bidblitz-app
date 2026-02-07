@@ -130,6 +130,7 @@ const MysteryBoxCard = memo(({ box, onBid, t }) => {
   const tier = box.tier || 'bronze';
   const colorClass = tierColors[tier] || tierColors.bronze;
   const icon = tierIcons[tier] || '📦';
+  const isPreview = box.id?.startsWith('preview_');
   
   return (
     <div className={`relative bg-gradient-to-br ${colorClass} rounded-xl p-4 text-white overflow-hidden group`}>
