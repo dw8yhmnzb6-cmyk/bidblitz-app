@@ -208,25 +208,45 @@ export const Footer = () => {
 
           {/* Features - NEW */}
           <div className="space-y-4">
+            <h4 className="text-white font-heading font-bold uppercase tracking-wider text-sm">{ft.extras || 'Extras'}</h4>
+            <nav className="flex flex-col gap-2">
+              <Link to="/influencer" className="text-hot-pink hover:text-hot-pink-hover transition-colors font-body text-sm">
+                {ft.becomeInfluencer}
+              </Link>
+              <Link to="/influencer-login" className="text-gray-400 hover:text-acid transition-colors font-body text-sm">
+                {ft.influencerLogin}
+              </Link>
+              <Link to="/wholesale" className="text-gray-400 hover:text-acid transition-colors font-body text-sm">
+                {ft.wholesale}
+              </Link>
+              <Link to="/investoren" className="text-cyber hover:text-cyber-hover transition-colors font-body text-sm flex items-center gap-1">
+                <TrendingUp className="w-3 h-3" />
+                {ft.investors}
+              </Link>
+              <Link to="/vip" className="text-gray-400 hover:text-acid transition-colors font-body text-sm flex items-center gap-1">
+                <Crown className="w-3 h-3" />
+                {ft.vipMembership}
+              </Link>
+            </nav>
+          </div>
+
+          {/* Features */}
+          <div className="space-y-4">
             <h4 className="text-white font-heading font-bold uppercase tracking-wider text-sm">{ft.features || 'Features'}</h4>
             <nav className="flex flex-col gap-2">
               <Link to="/deal-radar" className="text-cyber hover:text-cyber-hover transition-colors font-body text-sm flex items-center gap-1">
                 <Radar className="w-3 h-3" />
                 {ft.dealRadar || 'Deal Radar'}
               </Link>
-              <Link to="/ai-bids" className="text-cyber hover:text-cyber-hover transition-colors font-body text-sm flex items-center gap-1">
-                <TrendingUp className="w-3 h-3" />
-                {ft.aiRecommendations || 'KI-Empfehlungen'}
-              </Link>
               <Link to="/vip-auctions" className="text-hot-pink hover:text-hot-pink-hover transition-colors font-body text-sm flex items-center gap-1">
                 <Crown className="w-3 h-3" />
                 VIP Auktionen
               </Link>
-              <Link to="/vip" className="text-gray-400 hover:text-acid transition-colors font-body text-sm">
-                {ft.vipMembership}
-              </Link>
               <Link to="/winners" className="text-gray-400 hover:text-acid transition-colors font-body text-sm">
                 {ft.winners}
+              </Link>
+              <Link to="/leaderboard" className="text-gray-400 hover:text-acid transition-colors font-body text-sm">
+                {language === 'de' ? 'Rangliste' : language === 'sq' || language === 'xk' ? 'Renditja' : 'Leaderboard'}
               </Link>
             </nav>
           </div>
