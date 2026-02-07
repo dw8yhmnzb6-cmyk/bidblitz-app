@@ -725,7 +725,7 @@ export const translations = {
     }
   },
   fr: {
-    nav: { language: "Langue", auctions: "Enchères", buyBids: "Acheter des offres", dashboard: "Tableau de bord", admin: "Admin", login: "Connexion", register: "S'inscrire", logout: "Déconnexion", bids: "Offres", winners: "Gagnants", inviteFriends: "Inviter des amis", wishlist: "Liste de souhaits", howItWorks: "Comment ça marche", vip: "Adhésion VIP", faq: "FAQ", contact: "Contact", giftCards: "Cartes Cadeaux", vipAuctions: "Enchères VIP" },
+    nav: { language: "Langue", auctions: "Enchères", buyBids: "Acheter des offres", dashboard: "Tableau de bord", admin: "Admin", login: "Connexion", register: "S'inscrire", logout: "Déconnexion", bids: "Offres", winners: "Gagnants", inviteFriends: "Inviter des amis", wishlist: "Liste de souhaits", howItWorks: "Comment ça marche", vip: "Adhésion VIP", faq: "FAQ", contact: "Contact", giftCards: "Cartes Cadeaux", vipAuctions: "Enchères VIP", leaderboard: "Classement", luckyWheel: "Roue de la Chance" },
     home: {
       badge: "10 offres gratuites à l'inscription",
       heroTitle1: "Gagnez",
