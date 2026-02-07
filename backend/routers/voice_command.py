@@ -1200,7 +1200,7 @@ Antworte auf Deutsch und sei präzise und hilfreich."""
                 api_key=api_key,
                 session_id=f"media-analysis-{uuid.uuid4()}",
                 system_message=system_prompt_with_action
-            ).with_model("openai", "gpt-4o")
+            ).with_model("openai", "gpt-4.1")
             
             media_content = ImageContent(
                 image_base64=base64_content
