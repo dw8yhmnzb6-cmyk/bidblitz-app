@@ -461,6 +461,8 @@ export const translations = {
       code: "Your Code",
       loginButton: "Login",
       logout: "Logout",
+      apply: "Apply Now",
+      noAccount: "Not an influencer yet?",
       yourCode: "Your Influencer Code",
       shareCode: "Share this code with your community - they get a discount, you earn commission!",
       currentCommission: "Current Commission",
