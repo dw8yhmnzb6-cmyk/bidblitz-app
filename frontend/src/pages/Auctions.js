@@ -342,7 +342,6 @@ const AuctionCard = memo(({ auction, product, onBid, t, language }) => {
   let headerBg = 'bg-gradient-to-r from-cyan-500 to-cyan-600';
   if (auction.is_vip_only) headerBg = 'bg-gradient-to-r from-yellow-400 to-yellow-500';
   else if (auction.is_night_auction) headerBg = 'bg-gradient-to-r from-indigo-600 to-purple-600';
-  else if (auction.is_free_auction) headerBg = 'bg-gradient-to-r from-green-500 to-emerald-500';
   else if (auction.is_beginner_only) headerBg = 'bg-gradient-to-r from-purple-500 to-violet-500';
   
   return (
