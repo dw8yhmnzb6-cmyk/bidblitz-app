@@ -22,10 +22,35 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
    - Links to full /tournaments page
    - File: `/app/frontend/src/components/LeaderboardWidget.js`
 
-2. ✅ **Albanian (Kosovar) Language Support** - Full translation support already existed
-   - `sq` = Albanisch (Albanien) 🇦🇱
-   - `xk` = Kosovë (Kosovo) 🇽🇰
-   - All UI elements properly translated
+2. ✅ **Albanian/Kosovo Sprachunterstützung vollständig** 🇦🇱🇽🇰
+   - Alle UI-Komponenten auf Albanisch übersetzt
+   - `xk` (Kosovo) zu allen lokalen Übersetzungsobjekten hinzugefügt:
+     - Footer, CookieConsent, LeaderboardWidget, LiveWinnerPopup
+     - BuyBids, InviteFriends, Profile, Purchases, VIP Seiten
+   - Navigation vollständig: Renditja, Rrota e Fatit, Kartat Dhuratë, etc.
+
+3. ✅ **Turnier-Push-Benachrichtigungen implementiert** 🔔
+   - API-Endpunkte: `/api/tournaments/subscribe`, `/api/tournaments/notification-status`
+   - Benachrichtigungen bei Position-Änderungen (Top-3 Abstieg/Aufstieg)
+   - Benachrichtigungen bei Turnier-Start
+   - Benachrichtigungen wenn Turnier endet (24h vorher)
+   - Admin-Endpunkt für manuelle Turnier-Benachrichtigungen
+
+4. ✅ **Admin Analytics Dashboard** 📊
+   - KPI-Karten: Umsatz, Bestellungen, Neue Nutzer, Aktive Nutzer
+   - Umsatzentwicklung Chart (AreaChart)
+   - Conversion Funnel (BarChart): Besuche → Registrierungen → Gebote → Käufe
+   - Auktionsstatistik, Engagement-Metriken, Top Seiten
+   - Zeitraum-Filter (7, 14, 30, 90 Tage)
+   - File: `/app/frontend/src/components/admin/AdminAnalytics.js`
+
+5. ✅ **Admin Surveys Dashboard** 📋
+   - Net Promoter Score (NPS) mit Trend-Chart
+   - Promoter/Passiv/Kritiker Verteilung (PieChart)
+   - Durchschnittliche Bewertung mit Sterne-Rating
+   - Bewertungsverteilung (Balkendiagramm)
+   - Neuestes Feedback Liste
+   - File: `/app/frontend/src/components/admin/AdminSurveys.js`
 
 **Testing Status:**
 - Phase 1: All fixes verified by testing agent (iteration_36.json)
