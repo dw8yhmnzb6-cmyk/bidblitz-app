@@ -362,48 +362,48 @@ const AuctionCard = memo(({ auction, product, onBid, t, language }) => {
       
       {/* Free Auction Notice */}
       {auction.is_free_auction && (
-        <div className="bg-green-100 text-green-800 text-[8px] px-2 py-0.5 text-center border-b border-green-200">
+        <div className="bg-green-100 text-green-800 text-xs px-2 py-1 text-center border-b border-green-200">
           ✓ {t('auctionPage.freeBidPayEnd')}
         </div>
       )}
       
       {/* Content */}
-      <div className="p-2">
-        <h3 className="text-[10px] font-bold text-gray-800 uppercase leading-tight mb-0.5 line-clamp-2 min-h-[24px]">
+      <div className="p-3">
+        <h3 className="text-sm font-bold text-gray-800 leading-tight mb-1 line-clamp-2 min-h-[40px]">
           {productName}
         </h3>
         {productDescription && (
-          <p className="text-[8px] text-gray-600 line-clamp-2 mb-1 italic">
+          <p className="text-xs text-gray-600 line-clamp-2 mb-2 italic">
             {productDescription}
           </p>
         )}
-        <p className="text-[8px] text-gray-500 mb-1">
+        <p className="text-xs text-gray-500 mb-2">
           {t('auctionPage.uvp')}: € {product.retail_price?.toLocaleString('de-DE')},-
         </p>
         
-        <div className="flex gap-2">
+        <div className="flex gap-3">
           <div className="flex-1">
             <LivePrice price={auction.current_price} bidderName={auction.last_bidder_name} t={t} />
             
             <button 
               onClick={(e) => { e.stopPropagation(); onBid(auction.id); }}
               disabled={isNightPaused}
-              className={`mt-2 w-full py-1.5 ${isNightPaused ? 'bg-gray-400 cursor-not-allowed' : 'bg-gradient-to-b from-cyan-400 to-cyan-500 hover:from-cyan-300 hover:to-cyan-400'} text-white font-bold text-[10px] rounded`}
+              className={`mt-2 w-full py-2 ${isNightPaused ? 'bg-gray-400 cursor-not-allowed' : 'bg-gradient-to-b from-cyan-400 to-cyan-500 hover:from-cyan-300 hover:to-cyan-400'} text-white font-bold text-sm rounded-lg`}
             >
               {isNightPaused ? `🌙 ${t('auctionPage.nightOnly')}` : t('auctionPage.bid')}
             </button>
           </div>
           
-          <div className="w-14 h-14 bg-white rounded flex items-center justify-center shadow-sm flex-shrink-0">
-            <img src={product.image_url || 'https://via.placeholder.com/56'} alt="" className="max-w-full max-h-full object-contain" />
+          <div className="w-16 h-16 bg-white rounded-lg flex items-center justify-center shadow-sm flex-shrink-0">
+            <img src={product.image_url || 'https://via.placeholder.com/64'} alt="" className="max-w-full max-h-full object-contain" />
           </div>
         </div>
         
         <ActivityIndex auctionId={auction.id} t={t} />
       </div>
       
-      <div className="bg-cyan-200/50 px-2 py-1 text-center">
-        <p className="text-[8px] text-gray-600">
+      <div className="bg-cyan-200/50 px-3 py-2 text-center">
+        <p className="text-xs text-gray-600">
           {t('auctionPage.lastSoldFor')} <span className="text-green-600 font-bold">€ {(product.retail_price * 0.03).toFixed(2).replace('.', ',')}</span>
         </p>
       </div>
