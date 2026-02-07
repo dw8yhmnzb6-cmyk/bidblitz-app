@@ -84,10 +84,6 @@ axios.interceptors.response.use(
       if (!isExpected && error?.response?.status === 404) {
         console.warn('[Axios] Unexpected 404:', requestUrl);
       }
-      // Log ALL 404s temporarily for debugging
-      if (error?.response?.status === 404) {
-        console.log('[DEBUG-404]', requestUrl);
-      }
     }
     
     return Promise.reject(error);
