@@ -410,7 +410,7 @@ export default function BuyBids() {
         {/* Info Section */}
         <div className="mt-16 glass-card rounded-2xl p-8">
           <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">
-            {language === 'en' ? 'How do bids work?' : language === 'sq' ? 'Si funksionojnë ofertat?' : language === 'tr' ? 'Teklifler nasıl çalışır?' : language === 'fr' ? 'Comment fonctionnent les enchères?' : 'Wie funktionieren Gebote?'}
+            {{ de: 'Wie funktionieren Gebote?', en: 'How do bids work?', sq: 'Si funksionojnë ofertat?', xk: 'Si funksionojnë ofertat?', tr: 'Teklifler nasıl çalışır?', fr: 'Comment fonctionnent les enchères?' }[language] || 'Wie funktionieren Gebote?'}
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="text-center">
