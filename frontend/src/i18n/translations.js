@@ -1182,7 +1182,7 @@ export const translations = {
     common: { loading: "Ładowanie...", error: "Błąd", success: "Sukces", save: "Zapisz", cancel: "Anuluj" }
   },
   tr: {
-    nav: { language: "Dil", auctions: "Müzayedeler", buyBids: "Teklif satın al", dashboard: "Panel", admin: "Yönetici", login: "Giriş", register: "Kayıt ol", logout: "Çıkış", bids: "Teklifler", winners: "Kazananlar", inviteFriends: "Arkadaşları davet et", wishlist: "İstek listesi", howItWorks: "Nasıl çalışır", vip: "VIP Üyelik", faq: "SSS", contact: "İletişim", giftCards: "Hediye Kartları", vipAuctions: "VIP Müzayedeler" },
+    nav: { language: "Dil", auctions: "Müzayedeler", buyBids: "Teklif satın al", dashboard: "Panel", admin: "Yönetici", login: "Giriş", register: "Kayıt ol", logout: "Çıkış", bids: "Teklifler", winners: "Kazananlar", inviteFriends: "Arkadaşları davet et", wishlist: "İstek listesi", howItWorks: "Nasıl çalışır", vip: "VIP Üyelik", faq: "SSS", contact: "İletişim", giftCards: "Hediye Kartları", vipAuctions: "VIP Müzayedeler", leaderboard: "Sıralama", luckyWheel: "Şans Çarkı" },
     home: {
       badge: "Kayıtta 10 ücretsiz teklif",
       heroTitle1: "Kazan",
