@@ -8,7 +8,7 @@ import pytest
 import requests
 import os
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://penny-battles.preview.emergentagent.com')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://bidblitz-auction.preview.emergentagent.com')
 
 class TestVoiceCommandTranslation:
     """Voice command translation tests"""
