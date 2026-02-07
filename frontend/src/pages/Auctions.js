@@ -916,7 +916,7 @@ export default function Auctions() {
   const filterButtons = [
     { id: 'live', label: t('auctionPage.filters.live') || 'Live', count: auctionCounts.live, color: 'from-cyan-500 to-cyan-600' },
     { id: 'anfaenger', label: t('auctionPage.filters.beginner') || 'Anfänger', count: auctionCounts.anfaenger, color: 'from-purple-500 to-violet-500', icon: '🎓' },
-    { id: 'gratis', label: t('auctionPage.filters.free') || 'Gutscheine', count: auctionCounts.gratis, color: 'from-green-500 to-emerald-500', icon: '🎫' },
+    { id: 'gratis', label: t('auctionPage.filters.free') || 'Gutschein', count: auctionCounts.gratis, color: 'from-green-500 to-emerald-500', icon: '🎫' },
     { id: 'nacht', label: t('auctionPage.filters.night') || 'Nacht', count: auctionCounts.nacht, color: 'from-indigo-600 to-purple-600', icon: '🌙' },
     { id: 'ende', label: t('auctionPage.filters.ending') || 'Ende', count: auctionCounts.ende, color: 'from-gray-500 to-gray-600' },
     { id: 'vip', label: t('auctionPage.filters.vip') || 'VIP', count: auctionCounts.vip, color: 'from-yellow-400 to-amber-500', icon: '⭐' }
