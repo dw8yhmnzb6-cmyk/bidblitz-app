@@ -82,7 +82,11 @@ axios.interceptors.response.use(
       const requestUrl = error?.config?.url || '';
       const isExpected = EXPECTED_404_PATTERNS.some(p => requestUrl.includes(p));
       if (!isExpected && error?.response?.status === 404) {
-        console.debug('[Axios] Silent 404:', requestUrl);
+        console.warn('[Axios] Unexpected 404:', requestUrl);
+      }
+      // Log ALL 404s temporarily for debugging
+      if (error?.response?.status === 404) {
+        console.log('[DEBUG-404]', requestUrl);
       }
     }
     
