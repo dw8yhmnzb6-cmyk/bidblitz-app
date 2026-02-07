@@ -210,7 +210,7 @@ export const Footer = () => {
           <div className="space-y-4">
             <h4 className="text-white font-heading font-bold uppercase tracking-wider text-sm">{ft.extras || 'Extras'}</h4>
             <nav className="flex flex-col gap-2">
-              <Link to="/influencer" className="text-hot-pink hover:text-hot-pink-hover transition-colors font-body text-sm">
+              <Link to="/influencer-werden" className="text-hot-pink hover:text-hot-pink-hover transition-colors font-body text-sm">
                 {ft.becomeInfluencer}
               </Link>
               <Link to="/influencer-login" className="text-gray-400 hover:text-acid transition-colors font-body text-sm">
