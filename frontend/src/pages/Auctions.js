@@ -483,9 +483,9 @@ const PremiumCard = memo(({ auction, product, onBid, t, language }) => {
   const productName = product.name_translations?.[language] || product.name;
   
   return (
-    <div className="bg-gradient-to-b from-cyan-100 to-cyan-200 rounded-lg p-3 border-2 border-cyan-400">
-      <h2 className="text-sm font-bold text-gray-800 uppercase leading-tight mb-1">{productName}</h2>
-      <p className="text-[10px] text-gray-600 mb-2">{t('auctionPage.comparePrice')}: € {product.retail_price?.toLocaleString('de-DE')},-</p>
+    <div className="bg-gradient-to-b from-cyan-100 to-cyan-200 rounded-xl p-4 border-2 border-cyan-400">
+      <h2 className="text-base font-bold text-gray-800 leading-tight mb-1">{productName}</h2>
+      <p className="text-xs text-gray-600 mb-2">{t('auctionPage.comparePrice')}: € {product.retail_price?.toLocaleString('de-DE')},-</p>
       
       <div className="flex gap-3">
         <div className="flex-1">
@@ -496,22 +496,22 @@ const PremiumCard = memo(({ auction, product, onBid, t, language }) => {
           <div className="text-2xl font-black text-gray-800">
             € {auction.current_price?.toFixed(2).replace('.', ',')}
           </div>
-          <p className="text-[10px] text-cyan-700">{auction.last_bidder_name || t('auctionPage.startPrice')}</p>
+          <p className="text-xs text-cyan-700">{auction.last_bidder_name || t('auctionPage.startPrice')}</p>
           
           <button onClick={() => onBid(auction.id)}
-            className="mt-2 w-full py-2 bg-gradient-to-b from-cyan-400 to-cyan-500 hover:from-cyan-300 hover:to-cyan-400 text-white font-bold text-sm rounded shadow-md">
+            className="mt-2 w-full py-2.5 bg-gradient-to-b from-cyan-400 to-cyan-500 hover:from-cyan-300 hover:to-cyan-400 text-white font-bold text-sm rounded-lg shadow-md">
             {t('auctionPage.bid')}
           </button>
           
           <ActivityIndex auctionId={auction.id} t={t} />
         </div>
         
-        <div className="w-24 h-24 bg-white rounded flex items-center justify-center shadow">
-          <img src={product.image_url || 'https://via.placeholder.com/96'} alt="" className="max-w-full max-h-full object-contain p-1" />
+        <div className="w-28 h-28 bg-white rounded-lg flex items-center justify-center shadow">
+          <img src={product.image_url || 'https://via.placeholder.com/112'} alt="" className="max-w-full max-h-full object-contain p-1" />
         </div>
       </div>
       
-      <p className="text-[9px] text-gray-500 mt-2 text-center">
+      <p className="text-xs text-gray-500 mt-2 text-center">
         {t('auctionPage.lastSoldFor')} <span className="text-green-600 font-bold">€ {(product.retail_price * 0.02).toFixed(2).replace('.', ',')}</span>
       </p>
     </div>
