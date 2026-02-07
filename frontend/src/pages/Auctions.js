@@ -436,8 +436,11 @@ const EndedAuctionCard = memo(({ auction, product, t, language }) => {
     ? Math.round((1 - auction.final_price / product.retail_price) * 100)
     : 99;
   
+  // Handle both end_time (from active auctions) and ended_at (from auction history)
+  const endTime = auction.ended_at || auction.end_time;
+  
   return (
-    <div className="bg-gradient-to-b from-gray-100 to-gray-200 rounded-xl overflow-hidden border border-gray-300 opacity-80"
+    <div className="bg-gradient-to-b from-gray-100 to-gray-200 rounded-xl overflow-hidden border border-gray-300 opacity-80 cursor-pointer hover:opacity-100 transition-opacity"
          onClick={() => window.location.href = `/auctions/${auction.id || auction.auction_id}`}>
       
       <div className="bg-gradient-to-r from-gray-400 to-gray-500 text-white text-xs font-bold py-1.5 px-3 flex items-center justify-between">
@@ -473,9 +476,9 @@ const EndedAuctionCard = memo(({ auction, product, t, language }) => {
       
       <div className="bg-gray-300/50 px-3 py-2 text-center">
         <p className="text-xs text-gray-500">
-          {t('auctionPage.endedAt')} {new Date(auction.end_time).toLocaleString('de-DE', { 
+          {t('auctionPage.endedAt')} {endTime ? new Date(endTime).toLocaleString('de-DE', { 
             day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' 
-          })}
+          }) : '---'}
         </p>
       </div>
     </div>
