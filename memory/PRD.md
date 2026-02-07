@@ -179,8 +179,8 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 ## Next Tasks (Backlog)
 
 ### Priority 1: Admin Dashboards
-- 🔶 Admin Analytics Dashboard
-- 🔶 Admin Surveys Management Dashboard
+- ✅ Admin Analytics Dashboard
+- ✅ Admin Surveys Management Dashboard
 - 🔶 Admin Tournaments Management
 
 ### Priority 2: Pending Integrations
