@@ -176,14 +176,14 @@ const ActivityIndex = memo(({ auctionId, t }) => {
   }
   
   return (
-    <div className="mt-2 flex items-center gap-1">
-      <div className="flex-1 bg-gray-200 rounded-full h-1 overflow-hidden">
+    <div className="mt-2 flex items-center gap-2">
+      <div className="flex-1 bg-gray-200 rounded-full h-1.5 overflow-hidden min-w-[40px]">
         <div 
           className={`h-full ${activity > 80 ? 'bg-red-500' : activity > 50 ? 'bg-yellow-400' : 'bg-gray-400'}`}
           style={{ width: `${activity}%` }}
         />
       </div>
-      <span className={`text-xs px-1.5 py-0.5 rounded font-bold ${activityColor}`}>
+      <span className={`text-[10px] sm:text-xs px-1.5 py-0.5 rounded font-bold whitespace-nowrap ${activityColor}`}>
         {activityLevel}
       </span>
     </div>
