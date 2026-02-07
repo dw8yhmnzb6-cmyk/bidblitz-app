@@ -77,6 +77,8 @@ export const translations = {
       nightAuctions: "Nacht-Auktionen",
       vipAuctions: "VIP-Auktionen",
       endedAuctions: "Beendete Auktionen",
+      recentWinners: "Kürzlich Beendet",
+      showAll: "Alle anzeigen",
       showAllLive: "Alle Live-Auktionen anzeigen",
       noAuctionsInCategory: "Keine Auktionen in dieser Kategorie",
       topOffer: "Unser Top-Angebot heute!",
