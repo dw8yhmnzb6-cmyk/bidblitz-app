@@ -344,8 +344,8 @@ const AuctionCard = memo(({ auction, product, onBid, t, language }) => {
     );
   }
   
-  // Check if night auction is paused (daytime)
-  const isNightPaused = auction.is_night_paused;
+  // Check if night auction is paused (daytime) - check both is_night_paused flag and status
+  const isNightPaused = auction.is_night_paused || auction.status === 'night_paused';
   
   // Header background color based on primary type
   let headerBg = 'bg-gradient-to-r from-cyan-500 to-cyan-600';
