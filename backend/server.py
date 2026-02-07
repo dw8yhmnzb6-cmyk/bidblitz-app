@@ -382,11 +382,15 @@ async def bot_last_second_bidder():
             now = datetime.now(timezone.utc)
             now_ts = now.timestamp()
             
-            # Shuffle auctions to process them in random order (not all at once)
-            random.shuffle(active_auctions)
+            # PRIORITIZE auctions ending soon (< 30 seconds) - process ALL of them
+            urgent_auctions = [a for a in active_auctions if (datetime.fromisoformat(a["end_time"].replace("Z", "+00:00")) - now).total_seconds() < 30]
             
-            # Only process a subset of auctions per cycle (staggered)
-            auctions_to_process = active_auctions[:min(5, len(active_auctions))]
+            # Then shuffle and take some non-urgent ones
+            non_urgent = [a for a in active_auctions if a not in urgent_auctions]
+            random.shuffle(non_urgent)
+            
+            # Process ALL urgent + 5 non-urgent per cycle
+            auctions_to_process = urgent_auctions + non_urgent[:5]
             
             for auction in auctions_to_process:
                 try:
