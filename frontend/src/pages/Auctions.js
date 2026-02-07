@@ -191,12 +191,20 @@ const ActivityIndex = memo(({ auctionId, t }) => {
 });
 
 // ISOLATED Timer Component - Shows DD:HH:MM:SS for long auctions, HH:MM:SS for short
-const LiveTimer = memo(({ endTime }) => {
+const LiveTimer = memo(({ endTime, isPaused }) => {
   const [display, setDisplay] = useState('--:--:--');
   const [isLow, setIsLow] = useState(false);
   const [isLong, setIsLong] = useState(false); // For auctions > 1 hour
   
   useEffect(() => {
+    // If paused, show pause indicator
+    if (isPaused) {
+      setDisplay('⏸️');
+      setIsLow(false);
+      setIsLong(false);
+      return;
+    }
+    
     if (!endTime) {
       setDisplay('--:--:--');
       return;
@@ -243,10 +251,11 @@ const LiveTimer = memo(({ endTime }) => {
     updateTimer(); // Initial update
     const interval = setInterval(updateTimer, 1000);
     return () => clearInterval(interval);
-  }, [endTime]);
+  }, [endTime, isPaused]);
   
   return (
     <span className={`font-mono text-xs font-bold px-1.5 py-0.5 rounded transition-colors duration-300 ${
+      isPaused ? 'bg-indigo-600 text-white' :
       isLow ? 'bg-red-500 text-white animate-pulse' : 
       isLong ? 'bg-green-600 text-white' : 
       'bg-blue-600 text-white'
