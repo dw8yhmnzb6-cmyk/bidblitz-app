@@ -1143,6 +1143,45 @@ export default function Auctions() {
       </div>
       
       <p className="text-center text-[8px] text-gray-500 mt-2">{t('auctionPage.priceNote')}</p>
+      
+      {/* Horizontal Ended Auctions Carousel - Only on live filter */}
+      {activeFilter === 'live' && endedAuctions.length > 0 && (
+        <div className="max-w-7xl mx-auto mt-6 px-2" data-testid="ended-auctions-carousel">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-bold text-gray-800 flex items-center gap-2">
+              <span className="text-gray-500">🏆</span>
+              {t('auctionPage.recentWinners') || 'Kürzlich Beendet'}
+            </h2>
+            <button 
+              onClick={() => setActiveFilter('ende')}
+              className="text-xs text-cyan-600 hover:text-cyan-800 font-medium"
+            >
+              {t('auctionPage.showAll') || 'Alle anzeigen'} →
+            </button>
+          </div>
+          <div className="relative">
+            <div 
+              className="flex gap-3 overflow-x-auto scrollbar-hide pb-2 scroll-smooth"
+              style={{ scrollSnapType: 'x mandatory' }}
+            >
+              {endedAuctions.slice(0, 10).map((auction) => (
+                <div 
+                  key={auction.id || auction.auction_id} 
+                  className="flex-shrink-0 w-48"
+                  style={{ scrollSnapAlign: 'start' }}
+                >
+                  <EndedAuctionCard 
+                    auction={auction} 
+                    product={products[auction.product_id] || auction.product}
+                    t={t}
+                    language={language}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
