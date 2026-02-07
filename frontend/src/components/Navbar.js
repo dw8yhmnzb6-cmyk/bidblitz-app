@@ -45,8 +45,8 @@ export const Navbar = () => {
             </span>
           </Link>
 
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-6">
+          {/* Desktop Navigation - Only on large screens */}
+          <div className="hidden lg:flex items-center gap-6">
             <Link 
               to="/auctions" 
               className={`${isDarkMode ? 'text-gray-300 hover:text-white' : 'text-gray-600 hover:text-gray-900'} transition-colors font-medium`}
