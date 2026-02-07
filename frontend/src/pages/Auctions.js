@@ -520,43 +520,43 @@ const PremiumCard = memo(({ auction, product, onBid, t, language }) => {
 
 // Trust Badges - Compact for mobile
 const TrustBadges = memo(({ t }) => (
-  <div className="bg-white rounded-lg p-2 border border-gray-200 shadow-sm">
-    <h3 className="text-[9px] font-bold text-gray-800 mb-2">{t('auctionPage.secure')}</h3>
+  <div className="bg-white rounded-xl p-3 border border-gray-200 shadow-sm">
+    <h3 className="text-xs font-bold text-gray-800 mb-2">{t('auctionPage.secure')}</h3>
     <div className="grid grid-cols-2 gap-2">
-      <div className="flex items-center gap-1.5 p-1.5 bg-green-50 rounded border border-green-200">
-        <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
-          <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <div className="flex items-center gap-2 p-2 bg-green-50 rounded-lg border border-green-200">
+        <div className="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
+          <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
           </svg>
         </div>
-        <p className="text-[8px] font-bold text-green-800">SSL</p>
+        <p className="text-xs font-bold text-green-800">SSL</p>
       </div>
       
-      <div className="flex items-center gap-1.5 p-1.5 bg-blue-50 rounded border border-blue-200">
-        <div className="w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
-          <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <div className="flex items-center gap-2 p-2 bg-blue-50 rounded-lg border border-blue-200">
+        <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
+          <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
           </svg>
         </div>
-        <p className="text-[8px] font-bold text-blue-800">Stripe</p>
+        <p className="text-xs font-bold text-blue-800">Stripe</p>
       </div>
       
-      <div className="flex items-center gap-1.5 p-1.5 bg-amber-50 rounded border border-amber-200">
-        <div className="w-4 h-4 bg-amber-500 rounded-full flex items-center justify-center flex-shrink-0">
-          <svg className="w-2.5 h-2.5 text-white" viewBox="0 0 24 24" fill="currentColor">
+      <div className="flex items-center gap-2 p-2 bg-amber-50 rounded-lg border border-amber-200">
+        <div className="w-5 h-5 bg-amber-500 rounded-full flex items-center justify-center flex-shrink-0">
+          <svg className="w-3 h-3 text-white" viewBox="0 0 24 24" fill="currentColor">
             <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
           </svg>
         </div>
-        <p className="text-[8px] font-bold text-amber-800">Dubai</p>
+        <p className="text-xs font-bold text-amber-800">Dubai</p>
       </div>
       
-      <div className="flex items-center gap-1.5 p-1.5 bg-purple-50 rounded border border-purple-200">
-        <div className="w-4 h-4 bg-purple-500 rounded-full flex items-center justify-center flex-shrink-0">
-          <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <div className="flex items-center gap-2 p-2 bg-purple-50 rounded-lg border border-purple-200">
+        <div className="w-5 h-5 bg-purple-500 rounded-full flex items-center justify-center flex-shrink-0">
+          <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
           </svg>
         </div>
-        <p className="text-[8px] font-bold text-purple-800">50K+</p>
+        <p className="text-xs font-bold text-purple-800">50K+</p>
       </div>
     </div>
   </div>
