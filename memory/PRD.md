@@ -95,7 +95,39 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 
 ## New Features Added (February 7, 2026)
 
-### Homepage Enhancements - "Mach alles rein"
+### Homepage Enhancements - "Mach alles rein" Phase 2
+14. ✅ **Flash Sales Banner** ⚡
+   - Blitzangebote mit Countdown-Timer
+   - Rabatt-Anzeige und "Jetzt kaufen" Button
+   - File: `/app/frontend/src/components/FlashSaleBanner.js`
+   - API: `/api/flash-sales/active`
+
+15. ✅ **Mystery Box Section** 📦
+   - Bronze, Silber, Gold, Diamant Boxen
+   - Wertbereich-Anzeige (€50-€5000)
+   - "Jetzt bieten" Button
+   - File: `/app/frontend/src/components/MysteryBoxSection.js`
+   - API: `/api/mystery-box/active`
+
+16. ✅ **Social Share Popup** 📱
+   - +3 Gebote für Teilen auf Facebook/Twitter/WhatsApp/Telegram
+   - Nach-Gewinn-Dialog für Sharing
+   - File: `/app/frontend/src/components/SocialSharePopup.js`
+   - API: `/api/social/share/{auction_id}`
+
+17. ✅ **Auction Alarm System** 🔔
+   - Benachrichtigung X Minuten vor Auktionsende
+   - Inline-Button auf Auktionskarten
+   - File: `/app/frontend/src/components/AuctionAlarm.js`
+   - API: `/api/countdown-alarm/{auction_id}`
+
+### i18n Übersetzungen (Phase 2)
+18. ✅ **Vollständige Navigation-Übersetzungen**
+   - `leaderboard` und `luckyWheel` zu allen Sprachen hinzugefügt
+   - Sprachen aktualisiert: DE, EN, FR, ES, IT, RU, TR, ZH, JA, SQ, XK
+   - Alle neuen Komponenten mehrsprachig (6+ Sprachen)
+
+### Homepage Enhancements - "Mach alles rein" Phase 1
 9. ✅ **Winner Gallery** 🏆
    - Zeigt echte Gewinner mit Fotos und Ersparnissen
    - Social Proof für bessere Conversion
