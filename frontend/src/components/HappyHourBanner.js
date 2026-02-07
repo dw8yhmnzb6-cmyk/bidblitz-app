@@ -132,39 +132,43 @@ const HappyHourBanner = () => {
         {/* Animated background */}
         <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxjaXJjbGUgY3g9IjIwIiBjeT0iMjAiIHI9IjMiIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iLjIiLz48L2c+PC9zdmc+')] opacity-30 animate-pulse"></div>
         
-        <div className="max-w-6xl mx-auto flex flex-wrap items-center justify-center gap-4 relative z-10">
-          {/* Left: Icon and Title */}
-          <div className="flex items-center gap-2">
-            <Zap className="w-6 h-6 animate-bounce" />
-            <span className="font-black text-lg tracking-wider">{t.happyHour}</span>
-            <span className="bg-white/20 px-2 py-0.5 rounded-full text-sm font-bold animate-pulse">
-              {t.active}
-            </span>
+        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row flex-wrap items-center justify-center gap-2 sm:gap-4 relative z-10">
+          {/* Top Row on Mobile: Title + Multiplier */}
+          <div className="flex items-center gap-3 w-full sm:w-auto justify-center">
+            {/* Icon and Title */}
+            <div className="flex items-center gap-1">
+              <Zap className="w-5 h-5 sm:w-6 sm:h-6 animate-bounce" />
+              <span className="font-black text-base sm:text-lg tracking-wider">{t.happyHour}</span>
+            </div>
+
+            {/* Multiplier */}
+            <div className="flex items-center gap-1 bg-white/20 rounded-full px-3 py-0.5">
+              <span className="text-2xl sm:text-3xl font-black">{status.multiplier}x</span>
+              <span className="text-xs sm:text-sm font-bold">{t.multiplier}</span>
+            </div>
           </div>
 
-          {/* Center: Multiplier */}
-          <div className="flex items-center gap-2 bg-white/20 rounded-full px-4 py-1">
-            <span className="text-3xl font-black">{status.multiplier}x</span>
-            <span className="text-sm font-bold">{t.multiplier}</span>
-          </div>
+          {/* Bottom Row on Mobile: Timer + CTA */}
+          <div className="flex items-center gap-3 w-full sm:w-auto justify-center">
+            {/* Timer */}
+            <div className="flex items-center gap-1">
+              <Clock className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span className="text-xs sm:text-sm">{t.endsIn}:</span>
+              <span className="font-mono font-bold text-sm sm:text-lg bg-black/30 px-2 rounded">
+                {timeLeft}
+              </span>
+            </div>
 
-          {/* Right: Timer */}
-          <div className="flex items-center gap-2">
-            <Clock className="w-5 h-5" />
-            <span className="text-sm">{t.endsIn}:</span>
-            <span className="font-mono font-bold text-lg bg-black/30 px-2 rounded">
-              {timeLeft}
-            </span>
+            {/* CTA Button */}
+            <a 
+              href="/buy-bids"
+              className="flex items-center gap-1 bg-white text-orange-600 font-bold px-3 py-1.5 sm:px-4 sm:py-2 rounded-full hover:bg-yellow-100 transition-all transform hover:scale-105 text-sm sm:text-base"
+            >
+              <Gift className="w-4 h-4" />
+              <span className="hidden sm:inline">{t.buyNow}</span>
+              <span className="sm:hidden">Kaufen!</span>
+            </a>
           </div>
-
-          {/* CTA Button */}
-          <a 
-            href="/buy-bids"
-            className="flex items-center gap-2 bg-white text-orange-600 font-bold px-4 py-2 rounded-full hover:bg-yellow-100 transition-all transform hover:scale-105"
-          >
-            <Gift className="w-4 h-4" />
-            {t.buyNow}
-          </a>
         </div>
       </div>
     );
