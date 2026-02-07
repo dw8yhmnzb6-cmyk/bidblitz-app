@@ -759,7 +759,7 @@ export const translations = {
       filters: {
         live: "En Direct",
         beginner: "Débutant",
-        free: "Bons",
+        free: "Bon",
         night: "Nuit",
         ending: "Fin",
         vip: "VIP"
