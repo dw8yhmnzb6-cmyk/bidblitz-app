@@ -52,6 +52,20 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
    - Neuestes Feedback Liste
    - File: `/app/frontend/src/components/admin/AdminSurveys.js`
 
+6. ✅ **Automatische NPS-Umfrage nach Auktionsgewinn** 🎉
+   - Popup erscheint im Dashboard nach Gewinn
+   - 0-10 NPS Skala mit farblicher Kennzeichnung
+   - Optionales Feedback-Feld
+   - +5 Gratis-Gebote als Dankeschön
+   - Mehrsprachig: DE, EN, SQ, XK, TR, FR
+   - File: `/app/frontend/src/components/WinSurveyPopup.js`
+
+7. ✅ **Produktbeschreibungen auf Auktionskarten** 📝
+   - Beschreibungen werden unter Produktnamen angezeigt
+   - Kursiver, grauer Text für bessere Lesbarkeit
+   - Mehrsprachige Beschreibungsunterstützung
+   - Modified: `/app/frontend/src/pages/Auctions.js` (AuctionCard)
+
 **Testing Status:**
 - Phase 1: All fixes verified by testing agent (iteration_36.json)
 - Phase 2: Leaderboard widget visually verified, Albanian language tested
