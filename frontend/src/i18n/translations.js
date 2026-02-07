@@ -159,6 +159,8 @@ export const translations = {
       code: "Ihr Code",
       loginButton: "Einloggen",
       logout: "Abmelden",
+      apply: "Jetzt bewerben",
+      noAccount: "Noch kein Influencer?",
       yourCode: "Dein Influencer-Code",
       shareCode: "Teile diesen Code mit deiner Community - sie erhalten Rabatt, du verdienst Provision!",
       currentCommission: "Aktuelle Provision",
