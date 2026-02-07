@@ -258,6 +258,17 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen pt-24 pb-12 px-4" data-testid="dashboard-page">
+      {/* Win Survey Popup */}
+      <WinSurveyPopup
+        isOpen={showWinSurvey}
+        onClose={() => setShowWinSurvey(false)}
+        auctionId={surveyAuction?.id}
+        productName={surveyAuction?.productName}
+        productImage={surveyAuction?.productImage}
+        language={language}
+        token={token}
+      />
+      
       <div className="max-w-7xl mx-auto">
         {/* Header with User Info */}
         <div className="glass-card rounded-2xl p-6 mb-8">
