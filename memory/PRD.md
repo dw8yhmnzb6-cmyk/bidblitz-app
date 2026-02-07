@@ -12,6 +12,10 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 2. ✅ **Theme Consistency** - Updated Contact.js, FAQ.js, HowItWorks.js to use dynamic light/dark theme via `useTheme` hook
 3. ✅ **Admin Auktionsdauer-Bug** - Verified working - backend correctly handles 1 Tag (86400s) duration
 4. ✅ **Lint Errors** - Fixed VoiceDebugAssistant.js unescaped entities error
+5. ✅ **Tournament API 520 Error** (NEU - 7. Feb 2026) - Fixed MongoDB BSON error in `/api/tournaments/current`
+   - Problem: Integer keys in PRIZES dictionary caused `bson.errors.InvalidDocument`
+   - Lösung: Konvertierung aller Keys zu Strings (1 → "1", 2 → "2", etc.)
+   - Datei: `/app/backend/routers/tournaments.py`
 
 ### ✅ Phase 2 Feature Additions Completed
 
