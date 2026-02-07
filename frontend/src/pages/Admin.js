@@ -46,7 +46,9 @@ import {
   AdminQuickActions,
   AdminLiveWidgets,
   AdminGlobalSearch,
-  AdminAIChat
+  AdminAIChat,
+  AdminAnalytics,
+  AdminSurveys
 } from '../components/admin';
 
 // Import Voice Debug Assistant
