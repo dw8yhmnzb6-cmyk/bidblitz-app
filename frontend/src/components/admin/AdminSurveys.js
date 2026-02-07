@@ -339,11 +339,12 @@ const AdminSurveys = ({ token }) => {
                   </span>
                 </div>
                 {feedback.feedback && (
-                  <p className="text-gray-400 text-sm italic">"{feedback.feedback}"</p>
+                  <p className="text-gray-400 text-sm italic">&ldquo;{feedback.feedback}&rdquo;</p>
                 )}
               </div>
             </div>
-          ))}
+          ))
+          )}
         </div>
       </div>
     </div>
