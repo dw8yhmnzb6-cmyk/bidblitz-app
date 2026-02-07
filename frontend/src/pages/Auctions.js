@@ -430,42 +430,42 @@ const EndedAuctionCard = memo(({ auction, product, t, language }) => {
     : 99;
   
   return (
-    <div className="bg-gradient-to-b from-gray-100 to-gray-200 rounded-lg overflow-hidden border border-gray-300 opacity-80"
+    <div className="bg-gradient-to-b from-gray-100 to-gray-200 rounded-xl overflow-hidden border border-gray-300 opacity-80"
          onClick={() => window.location.href = `/auctions/${auction.id || auction.auction_id}`}>
       
-      <div className="bg-gradient-to-r from-gray-400 to-gray-500 text-white text-[9px] font-bold py-1 px-2 flex items-center justify-between">
-        <span className="bg-gray-600 text-white px-1.5 py-0.5 rounded text-[8px]">
+      <div className="bg-gradient-to-r from-gray-400 to-gray-500 text-white text-xs font-bold py-1.5 px-3 flex items-center justify-between">
+        <span className="bg-gray-600 text-white px-2 py-0.5 rounded text-xs">
           {t('auctionPage.ended')}
         </span>
-        <span className="text-[8px]">
+        <span className="text-xs">
           -{discount}%
         </span>
       </div>
       
-      <div className="p-2">
-        <h3 className="text-[10px] font-bold text-gray-600 uppercase leading-tight mb-1 line-clamp-2 min-h-[24px]">
+      <div className="p-3">
+        <h3 className="text-sm font-bold text-gray-600 leading-tight mb-1 line-clamp-2 min-h-[40px]">
           {productName}
         </h3>
         
-        <div className="flex gap-2">
+        <div className="flex gap-3">
           <div className="flex-1">
-            <p className="text-[8px] text-gray-500">{t('auctionPage.soldFor')}</p>
-            <span className="text-base font-black text-gray-700">
+            <p className="text-xs text-gray-500">{t('auctionPage.soldFor')}</p>
+            <span className="text-xl font-black text-gray-700">
               € {auction.final_price?.toFixed(2).replace('.', ',')}
             </span>
-            <p className="text-[9px] text-green-600 mt-1">
+            <p className="text-xs text-green-600 mt-1">
               👤 {auction.winner_name || '---'}
             </p>
           </div>
           
-          <div className="w-12 h-12 bg-white rounded flex items-center justify-center shadow-sm flex-shrink-0">
-            <img src={product.image_url || 'https://via.placeholder.com/48'} alt="" className="max-w-full max-h-full object-contain grayscale" />
+          <div className="w-16 h-16 bg-white rounded-lg flex items-center justify-center shadow-sm flex-shrink-0">
+            <img src={product.image_url || 'https://via.placeholder.com/64'} alt="" className="max-w-full max-h-full object-contain grayscale" />
           </div>
         </div>
       </div>
       
-      <div className="bg-gray-300/50 px-2 py-1 text-center">
-        <p className="text-[8px] text-gray-500">
+      <div className="bg-gray-300/50 px-3 py-2 text-center">
+        <p className="text-xs text-gray-500">
           {t('auctionPage.endedAt')} {new Date(auction.end_time).toLocaleString('de-DE', { 
             day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' 
           })}
