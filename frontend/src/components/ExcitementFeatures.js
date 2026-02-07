@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Zap, Gift, Clock, Target, Swords, AlertTriangle, Sparkles, Trophy } from 'lucide-react';
+import { useLanguage } from '../context/LanguageContext';
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
