@@ -349,12 +349,12 @@ const AuctionCard = memo(({ auction, product, onBid, t, language }) => {
          onClick={() => window.location.href = `/auctions/${auction.id}`}>
       
       {/* Header with Badges + Timer */}
-      <div className={`${headerBg} text-white text-[9px] font-bold py-1 px-2 flex items-center justify-between`}>
+      <div className={`${headerBg} text-white text-xs font-bold py-1.5 px-3 flex items-center justify-between`}>
         <div className="flex items-center gap-1 flex-wrap">
           {badges}
         </div>
         {isNightPaused ? (
-          <span className="text-[8px] opacity-80">{auction.night_message || '🌙 23:30-06:00'}</span>
+          <span className="text-xs opacity-80">{auction.night_message || '🌙 23:30-06:00'}</span>
         ) : (
           <LiveTimer endTime={auction.end_time} />
         )}
