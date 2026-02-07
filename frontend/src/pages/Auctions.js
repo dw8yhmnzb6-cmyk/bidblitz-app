@@ -380,7 +380,7 @@ const AuctionCard = memo(({ auction, product, onBid, t, language }) => {
           {productName}
         </h3>
         {productDescription && (
-          <p className="text-xs text-gray-600 line-clamp-2 mb-2 italic">
+          <p className="text-xs text-gray-600 line-clamp-1 sm:line-clamp-2 mb-2 italic" title={productDescription}>
             {productDescription}
           </p>
         )}
