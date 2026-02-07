@@ -66,6 +66,21 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
    - Mehrsprachige Beschreibungsunterstützung
    - Modified: `/app/frontend/src/pages/Auctions.js` (AuctionCard)
 
+8. ✅ **Personalisierte Produktempfehlungen** 🎯 (NEU - 7. Feb 2026)
+   - **"Für dich empfohlen"** Widget auf der Hauptseite
+   - **5 Sektionen:**
+     - Weiterbieten (Auktionen auf denen User schon geboten hat)
+     - Speziell für dich (basierend auf Lieblingskateorien)
+     - Endet bald (Auktionen die in < 1 Stunde enden)
+     - Gerade beliebt (meist gebotene Auktionen)
+     - Ähnlich zu deinen Gewinnen
+   - **Personalisierte Begrüßung** (Guten Morgen/Tag/Abend + Benutzername)
+   - **Horizontales Scrollen** für Produktkarten
+   - **Login-Aufforderung** für nicht eingeloggte Benutzer
+   - Files: `/app/frontend/src/components/PersonalizedRecommendations.js`, `/app/backend/routers/personalized_homepage.py`
+   - Backend API: `/api/personalized/homepage`
+   - 100% getestet und funktionsfähig ✅
+
 **Testing Status:**
 - Phase 1: All fixes verified by testing agent (iteration_36.json)
 - Phase 2: Leaderboard widget visually verified, Albanian language tested
