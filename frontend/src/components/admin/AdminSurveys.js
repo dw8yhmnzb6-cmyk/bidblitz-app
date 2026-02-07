@@ -104,11 +104,16 @@ const AdminSurveys = ({ token }) => {
 
   if (!data) return null;
 
+  // Safe access with defaults
+  const nps = data.nps || { score: 0, promoters: 0, passives: 0, detractors: 0, total_responses: 0, trend: [] };
+  const satisfaction = data.satisfaction || { avg_rating: 0, total_ratings: 0, distribution: [] };
+  const recentFeedback = data.recent_feedback || [];
+
   // NPS Distribution for Pie Chart
   const npsDistribution = [
-    { name: 'Promoter (9-10)', value: data.nps.promoters, color: CHART_COLORS.promoter },
-    { name: 'Passiv (7-8)', value: data.nps.passives, color: CHART_COLORS.passive },
-    { name: 'Kritiker (0-6)', value: data.nps.detractors, color: CHART_COLORS.detractor }
+    { name: 'Promoter (9-10)', value: nps.promoters, color: CHART_COLORS.promoter },
+    { name: 'Passiv (7-8)', value: nps.passives, color: CHART_COLORS.passive },
+    { name: 'Kritiker (0-6)', value: nps.detractors, color: CHART_COLORS.detractor }
   ];
 
   return (
