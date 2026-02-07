@@ -88,6 +88,44 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 **Testing Status:**
 - Phase 1: All fixes verified by testing agent (iteration_36.json)
 - Phase 2: Leaderboard widget visually verified, Albanian language tested
+- Phase 3: Personalized Recommendations verified (iteration_37.json) - 100% passed
+- Phase 4: All new homepage features verified (iteration_38.json) - 100% passed
+
+---
+
+## New Features Added (February 7, 2026)
+
+### Homepage Enhancements - "Mach alles rein"
+9. ✅ **Winner Gallery** 🏆
+   - Zeigt echte Gewinner mit Fotos und Ersparnissen
+   - Social Proof für bessere Conversion
+   - Horizontales Karussell mit Navigation
+   - File: `/app/frontend/src/components/WinnerGallery.js`
+   - API: `/api/winners`
+
+10. ✅ **Exit-Intent Popup** 🎁
+   - Zeigt "5 Gratis-Gebote" für neue Besucher
+   - Triggt bei Mausverlassen (oben) oder nach 30 Sekunden
+   - Nur für nicht-eingeloggte Benutzer
+   - File: `/app/frontend/src/components/ExitIntentPopup.js`
+
+11. ✅ **Daily Quests Widget** 🎯
+   - Zeigt tägliche Aufgaben mit Fortschrittsbalken
+   - Belohnungen in Geboten
+   - Streak-Anzeige für Login-Serie
+   - File: `/app/frontend/src/components/DailyQuestsWidget.js`
+   - API: `/api/daily/quests`
+
+12. ✅ **VIP Promo Banner** 👑
+   - Zeigt VIP-Vorteile für nicht-VIP-Mitglieder
+   - Exklusive Auktionen, VIP-Badge, Bonus-Gebote
+   - -20% Rabatt-Badge
+   - File: `/app/frontend/src/components/VIPBadge.js`
+
+13. ✅ **VIP Badge Komponente** 💎
+   - 5 Tier-Level: Bronze, Silber, Gold, Platin, Diamant
+   - Anzeige neben Benutzernamen
+   - Files: `/app/frontend/src/components/VIPBadge.js`
 
 ---
 
