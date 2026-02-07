@@ -433,7 +433,7 @@ async def notify_tournament_start(tournament: dict):
     user_ids = [p["user_id"] for p in subscribed_prefs]
     
     title = f"🏆 Neues Turnier: {tournament['name']}"
-    body = f"{tournament['description']} Kämpfe um Preise bis zu {PRIZES[1]['bids']} Gebote!"
+    body = f"{tournament['description']} Kämpfe um Preise bis zu {PRIZES['1']['bids']} Gebote!"
     
     # Create in-app notifications
     now = datetime.now(timezone.utc).isoformat()
