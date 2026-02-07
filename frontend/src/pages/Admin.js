@@ -1247,8 +1247,8 @@ export default function Admin() {
       </div>
 
       <div className="flex">
-        {/* Tablet/Desktop Sidebar - visible on md and up */}
-        <aside className="hidden md:block w-56 lg:w-64 min-h-screen bg-gradient-to-b from-cyan-50 to-cyan-100 border-r border-gray-200 fixed left-0 top-16 pt-6 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 64px)' }}>
+        {/* Desktop Sidebar - visible on lg (1024px) and up */}
+        <aside className="hidden lg:block w-56 lg:w-64 min-h-screen bg-gradient-to-b from-cyan-50 to-cyan-100 border-r border-gray-200 fixed left-0 top-16 pt-6 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 64px)', WebkitOverflowScrolling: 'touch' }}>
           <div className="px-3 lg:px-4 mb-6">
             <h2 className="text-base lg:text-lg font-bold text-gray-800 flex items-center gap-2">
               <Settings className="w-4 h-4 lg:w-5 lg:h-5 text-[#7C3AED]" />
