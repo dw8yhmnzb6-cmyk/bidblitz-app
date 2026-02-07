@@ -1255,7 +1255,7 @@ Antworte auf Deutsch und sei präzise und hilfreich."""
             api_key=api_key,
             session_id=f"media-analysis-{uuid.uuid4()}",
             system_message=system_prompt
-        ).with_model("openai", "gpt-4o")
+        ).with_model("openai", "gpt-4.1")
         
         # Create content object
         media_content = ImageContent(
