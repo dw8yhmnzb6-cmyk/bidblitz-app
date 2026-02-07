@@ -12,10 +12,23 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 2. ✅ **Theme Consistency** - Updated Contact.js, FAQ.js, HowItWorks.js to use dynamic light/dark theme via `useTheme` hook
 3. ✅ **Admin Auktionsdauer-Bug** - Verified working - backend correctly handles 1 Tag (86400s) duration
 4. ✅ **Lint Errors** - Fixed VoiceDebugAssistant.js unescaped entities error
-5. ✅ **Tournament API 520 Error** (NEU - 7. Feb 2026) - Fixed MongoDB BSON error in `/api/tournaments/current`
+5. ✅ **Tournament API 520 Error** (7. Feb 2026) - Fixed MongoDB BSON error in `/api/tournaments/current`
    - Problem: Integer keys in PRIZES dictionary caused `bson.errors.InvalidDocument`
    - Lösung: Konvertierung aller Keys zu Strings (1 → "1", 2 → "2", etc.)
    - Datei: `/app/backend/routers/tournaments.py`
+6. ✅ **Horizontales Scrollen für Beendete Auktionen** (7. Feb 2026)
+   - Neuer "Kürzlich Beendet" Carousel-Bereich am Seitenende
+   - CSS: `overflow-x-auto`, `scrollbar-hide`, `scroll-smooth`
+   - Datei: `/app/frontend/src/pages/Auctions.js` (Lines 1155-1188)
+7. ✅ **Gutschein-Filter Logik** (7. Feb 2026)
+   - Filtert jetzt nach Produkt-Kategorie statt `is_free_auction`
+   - Erkennt Kategorien: "gutschein", "voucher", "gift"
+   - Neue `isVoucherProduct()` Hilfsfunktion
+   - Datei: `/app/frontend/src/pages/Auctions.js` (Lines 855-865)
+8. ✅ **EndedAuctionCard Datum-Fix** (7. Feb 2026)
+   - Problem: `end_time` vs `ended_at` Feldname
+   - Lösung: Fallback zu beiden Feldern
+   - Neue Übersetzungsschlüssel: `ended`, `endedAt`
 
 ### ✅ Phase 2 Feature Additions Completed
 
