@@ -417,6 +417,8 @@ export const translations = {
       endPrice: "Final Price",
       winner: "Winner",
       soldFor: "Sold for",
+      ended: "Ended",
+      endedAt: "Ended at",
       vipLabel: "VIP",
       night: "Night",
       alarm: "Alarm",
