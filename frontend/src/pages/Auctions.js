@@ -360,13 +360,6 @@ const AuctionCard = memo(({ auction, product, onBid, t, language }) => {
         )}
       </div>
       
-      {/* Free Auction Notice */}
-      {auction.is_free_auction && (
-        <div className="bg-green-100 text-green-800 text-xs px-2 py-1 text-center border-b border-green-200">
-          ✓ {t('auctionPage.freeBidPayEnd')}
-        </div>
-      )}
-      
       {/* Content */}
       <div className="p-3">
         <h3 className="text-sm font-bold text-gray-800 leading-tight mb-1 line-clamp-2 min-h-[40px]">
