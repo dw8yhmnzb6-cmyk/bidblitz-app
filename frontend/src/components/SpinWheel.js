@@ -330,8 +330,10 @@ const SpinWheel = ({ isOpen, onClose }) => {
             {canSpin ? (
               <Button
                 onClick={handleSpin}
+                onTouchEnd={(e) => { e.preventDefault(); handleSpin(); }}
                 disabled={spinning}
-                className="w-full bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-white font-bold text-lg py-6"
+                className="w-full bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-white font-bold text-lg py-6 touch-manipulation"
+                style={{ WebkitTapHighlightColor: 'transparent' }}
                 data-testid="spin-btn"
               >
                 {spinning ? (
