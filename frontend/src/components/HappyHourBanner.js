@@ -116,14 +116,18 @@ const HappyHourBanner = () => {
     return () => clearInterval(interval);
   }, [status]);
 
-  if (!status) return null;
+  if (!status) {
+    // Debug: Show loading state briefly
+    return null;
+  }
 
   // Show active Happy Hour banner
   if (status.active) {
     return (
       <div 
-        className="relative overflow-hidden bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 text-white py-3 px-4"
+        className="relative overflow-hidden bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 text-white py-3 px-4 z-50"
         data-testid="happy-hour-banner"
+        style={{ position: 'relative' }}
       >
         {/* Animated background */}
         <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxjaXJjbGUgY3g9IjIwIiBjeT0iMjAiIHI9IjMiIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iLjIiLz48L2c+PC9zdmc+')] opacity-30 animate-pulse"></div>
