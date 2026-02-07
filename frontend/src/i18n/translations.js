@@ -73,6 +73,7 @@ export const translations = {
       },
       beginnerAuctions: "Anfänger-Auktionen",
       freeAuctions: "Gutschein-Auktionen",
+      voucherAuctions: "Gebote-Gutscheine",
       freeAuctionInfo: "Bieten Sie mit gekauften Geboten - Gutschein ist GRATIS bei Gewinn!",
       nightAuctions: "Nacht-Auktionen",
       vipAuctions: "VIP-Auktionen",
