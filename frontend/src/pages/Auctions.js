@@ -8,6 +8,10 @@ import GlobalJackpot from '../components/GlobalJackpot';
 import { HappyHourBanner, LuckyBidCounter, ExcitementStatusBar } from '../components/ExcitementFeatures';
 import LeaderboardWidget from '../components/LeaderboardWidget';
 import PersonalizedRecommendations from '../components/PersonalizedRecommendations';
+import WinnerGallery from '../components/WinnerGallery';
+import ExitIntentPopup from '../components/ExitIntentPopup';
+import DailyQuestsWidget from '../components/DailyQuestsWidget';
+import { VIPPromoBanner } from '../components/VIPBadge';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
