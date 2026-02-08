@@ -891,93 +891,39 @@ async def send_night_auction_notifications(night_auctions: list):
 
 
 async def day_night_auction_scheduler():
-    """Background task - Automatically pause/resume auctions based on day/night schedule
+    """Background task - DISABLED: Auktionen laufen jetzt 24/7
     
-    Schedule (Berlin Time):
-    - 23:30 (Night Start): Pause day auctions, resume night auctions
-    - 06:00 (Day Start): Pause night auctions, resume day auctions
+    Die Day/Night Logik wurde deaktiviert. Alle Auktionen sind jetzt durchgehend aktiv.
     """
     global bot_task_running
     
-    logger.info("🌓 Day/Night auction scheduler started")
+    logger.info("🌓 Day/Night scheduler DISABLED - Auktionen laufen 24/7")
     
-    last_mode = None  # Track last mode to avoid duplicate switches
+    # Reaktiviere alle pausierten Auktionen einmalig beim Start
+    try:
+        # Resume ALL paused auctions (day_paused and night_paused)
+        paused_auctions = await db.auctions.find(
+            {"status": {"$in": ["day_paused", "night_paused"]}},
+            {"_id": 0, "id": 1}
+        ).to_list(500)
+        
+        for auction in paused_auctions:
+            await db.auctions.update_one(
+                {"id": auction["id"]},
+                {"$set": {
+                    "status": "active",
+                    "end_time": (datetime.now(timezone.utc) + timedelta(minutes=10)).isoformat()
+                }}
+            )
+        
+        if paused_auctions:
+            logger.info(f"✅ Reactivated {len(paused_auctions)} paused auctions - now running 24/7")
+    except Exception as e:
+        logger.error(f"Error reactivating auctions: {e}")
     
+    # Keep task alive but do nothing (in case it's awaited elsewhere)
     while bot_task_running:
-        try:
-            # Get current Berlin time
-            now_berlin = datetime.now(timezone.utc) + timedelta(hours=1)
-            current_hour = now_berlin.hour + now_berlin.minute / 60
-            
-            # Determine if it's night time (23:30 - 06:00)
-            is_night_time = current_hour >= 23.5 or current_hour < 6
-            current_mode = "night" if is_night_time else "day"
-            
-            # Only switch if mode changed
-            if current_mode != last_mode:
-                if is_night_time:
-                    # NIGHT MODE: Pause day auctions, resume night auctions
-                    logger.info("🌙 Switching to NIGHT MODE - Pausing day auctions, activating night auctions")
-                    
-                    # Pause all day auctions (not night auctions)
-                    day_result = await db.auctions.update_many(
-                        {"status": "active", "is_night_auction": {"$ne": True}},
-                        {"$set": {"status": "day_paused", "paused_at": datetime.now(timezone.utc).isoformat()}}
-                    )
-                    
-                    # Get night auctions that will be resumed (for notifications)
-                    night_auctions_to_resume = await db.auctions.find(
-                        {"status": "night_paused", "is_night_auction": True},
-                        {"_id": 0, "id": 1, "product_id": 1}
-                    ).to_list(100)
-                    
-                    # Resume night auctions
-                    night_result = await db.auctions.update_many(
-                        {"status": "night_paused", "is_night_auction": True},
-                        {"$set": {
-                            "status": "active",
-                            "end_time": (datetime.now(timezone.utc) + timedelta(minutes=10)).isoformat()
-                        }}
-                    )
-                    
-                    logger.info(f"🌙 Night mode: Paused {day_result.modified_count} day auctions, Resumed {night_result.modified_count} night auctions")
-                    
-                    # Send notifications to users who bid on night auctions
-                    if night_auctions_to_resume:
-                        await send_night_auction_notifications(night_auctions_to_resume)
-                    
-                else:
-                    # DAY MODE: Resume day auctions, pause night auctions
-                    logger.info("☀️ Switching to DAY MODE - Resuming day auctions, pausing night auctions")
-                    
-                    # Pause all night auctions
-                    night_result = await db.auctions.update_many(
-                        {"status": "active", "is_night_auction": True},
-                        {"$set": {"status": "night_paused", "paused_at": datetime.now(timezone.utc).isoformat()}}
-                    )
-                    
-                    # Resume day auctions with fresh timer
-                    day_auctions = await db.auctions.find(
-                        {"status": "day_paused"},
-                        {"_id": 0, "id": 1}
-                    ).to_list(500)
-                    
-                    for auction in day_auctions:
-                        await db.auctions.update_one(
-                            {"id": auction["id"]},
-                            {"$set": {
-                                "status": "active",
-                                "end_time": (datetime.now(timezone.utc) + timedelta(minutes=10)).isoformat()
-                            }}
-                        )
-                    
-                    logger.info(f"☀️ Day mode: Resumed {len(day_auctions)} day auctions, Paused {night_result.modified_count} night auctions")
-                
-                last_mode = current_mode
-            
-            await asyncio.sleep(60)  # Check every minute
-            
-        except Exception as e:
+        await asyncio.sleep(3600)  # Sleep 1 hour, do nothing
             logger.error(f"Day/Night scheduler error: {e}")
             await asyncio.sleep(60)
     
