@@ -29,4 +29,7 @@ export { default as AdminAIChat } from './AdminAIChat';
 export { default as AdminAnalytics } from './AdminAnalytics';
 export { default as AdminSurveys } from './AdminSurveys';
 
+// Maintenance Mode
+export { AdminMaintenance } from './AdminMaintenance';
+
 // All components have been extracted!
