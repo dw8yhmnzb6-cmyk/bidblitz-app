@@ -229,43 +229,59 @@ export default function VIPAuctions() {
           </div>
         </div>
 
-        {/* VIP Status Banner */}
+        {/* VIP Status Banner - Premium Design for Non-VIP */}
         {!isVip && (
-          <div className="bg-gradient-to-r from-purple-900/50 to-orange-900/50 border border-yellow-500/30 rounded-2xl p-6 mb-8">
-            <div className="flex flex-col md:flex-row items-center gap-6">
+          <div className="bg-gradient-to-br from-purple-900/60 via-[#1a2a42] to-orange-900/40 border border-yellow-500/30 rounded-3xl p-8 mb-10 shadow-2xl shadow-yellow-500/5 relative overflow-hidden">
+            {/* Decorative Background Elements */}
+            <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-yellow-500/10 to-transparent rounded-full -translate-y-1/2 translate-x-1/2"></div>
+            <div className="absolute bottom-0 left-0 w-48 h-48 bg-gradient-to-tr from-purple-500/10 to-transparent rounded-full translate-y-1/2 -translate-x-1/2"></div>
+            
+            <div className="relative z-10 flex flex-col lg:flex-row items-center gap-8">
+              {/* Icon */}
               <div className="flex-shrink-0">
-                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center">
-                  <Lock className="w-10 h-10 text-black" />
+                <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-yellow-400 via-amber-500 to-orange-500 flex items-center justify-center shadow-lg shadow-yellow-500/30 transform rotate-3 hover:rotate-0 transition-transform">
+                  <Lock className="w-12 h-12 text-black" />
                 </div>
               </div>
-              <div className="flex-1 text-center md:text-left">
-                <h2 className="text-2xl font-bold text-white mb-2">
-                  Werden Sie VIP-Mitglied!
+              
+              {/* Content */}
+              <div className="flex-1 text-center lg:text-left">
+                <h2 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-300 mb-3">
+                  🔓 Werden Sie VIP-Mitglied!
                 </h2>
-                <p className="text-gray-300 mb-4">
-                  Erhalten Sie Zugang zu exklusiven Auktionen, monatliche Bonus-Gebote und weniger Konkurrenz bei Premium-Produkten.
+                <p className="text-gray-300 mb-6 text-lg">
+                  Erhalten Sie exklusiven Zugang zu Premium-Auktionen mit bis zu 50% weniger Konkurrenz.
                 </p>
-                <div className="flex flex-wrap gap-4 justify-center md:justify-start">
-                  <div className="flex items-center gap-2 text-yellow-400">
-                    <Sparkles className="w-4 h-4" />
-                    <span>Exklusive Auktionen</span>
+                
+                {/* Benefits Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+                  <div className="bg-white/5 rounded-xl p-4 border border-white/10 hover:border-yellow-500/30 transition-colors">
+                    <Sparkles className="w-6 h-6 text-yellow-400 mb-2 mx-auto lg:mx-0" />
+                    <span className="text-white font-semibold block">Exklusive Auktionen</span>
+                    <span className="text-gray-400 text-sm">Nur für VIP-Mitglieder</span>
                   </div>
-                  <div className="flex items-center gap-2 text-yellow-400">
-                    <Zap className="w-4 h-4" />
-                    <span>Monatliche Bonus-Gebote</span>
+                  <div className="bg-white/5 rounded-xl p-4 border border-white/10 hover:border-yellow-500/30 transition-colors">
+                    <Zap className="w-6 h-6 text-yellow-400 mb-2 mx-auto lg:mx-0" />
+                    <span className="text-white font-semibold block">Bonus-Gebote</span>
+                    <span className="text-gray-400 text-sm">Bis zu 50 pro Monat</span>
                   </div>
-                  <div className="flex items-center gap-2 text-yellow-400">
-                    <Star className="w-4 h-4" />
-                    <span>Weniger Konkurrenz</span>
+                  <div className="bg-white/5 rounded-xl p-4 border border-white/10 hover:border-yellow-500/30 transition-colors">
+                    <Star className="w-6 h-6 text-yellow-400 mb-2 mx-auto lg:mx-0" />
+                    <span className="text-white font-semibold block">Weniger Bieter</span>
+                    <span className="text-gray-400 text-sm">Höhere Gewinnchancen</span>
                   </div>
                 </div>
               </div>
+              
+              {/* CTA Button */}
               <div className="flex-shrink-0">
                 <Link to="/vip">
-                  <Button className="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 text-black font-bold py-3 px-8 text-lg">
-                    VIP werden
+                  <Button className="bg-gradient-to-r from-yellow-500 via-amber-500 to-orange-500 hover:from-yellow-400 hover:via-amber-400 hover:to-orange-400 text-black font-black py-4 px-10 text-lg rounded-xl shadow-lg shadow-yellow-500/30 hover:shadow-yellow-500/50 transition-all transform hover:scale-105">
+                    <Crown className="w-5 h-5 mr-2" />
+                    JETZT VIP WERDEN
                   </Button>
                 </Link>
+                <p className="text-gray-400 text-sm text-center mt-2">Ab €9.99/Monat</p>
               </div>
             </div>
           </div>
