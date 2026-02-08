@@ -173,14 +173,14 @@ async def approve_wholesale_application(
     
     # Find associated user account
     user = await db.users.find_one({"email": application["email"]})
-    if not user:
-        raise HTTPException(status_code=400, detail="Kein Benutzerkonto mit dieser E-Mail gefunden")
+    user_id = user["id"] if user else None
     
-    # Create wholesale customer record
+    # Create wholesale customer record even without user account
+    # User can be linked later when they register
     wholesale_id = str(uuid.uuid4())
     wholesale_doc = {
         "id": wholesale_id,
-        "user_id": user["id"],
+        "user_id": user_id,  # Can be None if user hasn't registered yet
         "company_name": application["company_name"],
         "contact_name": application["contact_name"],
         "email": application["email"],
@@ -205,15 +205,22 @@ async def approve_wholesale_application(
         {"$set": {"status": "approved", "approved_at": datetime.now(timezone.utc).isoformat()}}
     )
     
-    # Mark user as wholesale
-    await db.users.update_one(
-        {"id": user["id"]},
-        {"$set": {"is_wholesale": True, "wholesale_id": wholesale_id}}
-    )
+    # Mark user as wholesale if user exists
+    if user:
+        await db.users.update_one(
+            {"id": user["id"]},
+            {"$set": {"is_wholesale": True, "wholesale_id": wholesale_id}}
+        )
+        logger.info(f"🏢 Wholesale customer approved: {application['company_name']} (linked to user)")
+    else:
+        logger.info(f"🏢 Wholesale customer approved: {application['company_name']} (no user account yet - will be linked on registration)")
     
-    logger.info(f"🏢 Wholesale customer approved: {application['company_name']}")
-    
-    return {"success": True, "message": "Großkunde erfolgreich freigeschaltet", "wholesale_id": wholesale_id}
+    return {
+        "success": True, 
+        "message": "Großkunde erfolgreich freigeschaltet" + (" (Benutzerkonto wird bei Registrierung verknüpft)" if not user else ""), 
+        "wholesale_id": wholesale_id,
+        "user_linked": user is not None
+    }
 
 @router.post("/admin/wholesale/reject/{application_id}")
 async def reject_wholesale_application(application_id: str, admin: dict = Depends(get_admin_user)):
