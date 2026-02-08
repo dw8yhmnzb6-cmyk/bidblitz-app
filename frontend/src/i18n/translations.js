@@ -2292,7 +2292,18 @@ export const translations = {
       offersFound: "προσφορές βρέθηκαν",
       noOffers: "Δεν βρέθηκαν προσφορές",
       tryAnother: "Δοκιμάστε άλλη κατηγορία ή αναζήτηση",
-      priceNote: "Τιμή σύγκρισης = RRP κατασκευαστή"
+      priceNote: "Τιμή σύγκρισης = RRP κατασκευαστή",
+      uvp: "ΛΤΛ",
+      bid: "ΠΡΟΣΦΟΡΑ",
+      lastSoldFor: "Πωλήθηκε για",
+      activity: "Δραστηριότητα",
+      currentPrice: "Τρέχουσα τιμή",
+      nightOnly: "ΝΥΧΤΑ",
+      startPrice: "Τιμή εκκίνησης",
+      activityLow: "Χαμηλή",
+      activityMedium: "Μέτρια",
+      activityHigh: "Υψηλή",
+      activityHot: "Καυτή"
     },
     auctionCard: {
       liveNow: "ΖΩΝΤΑΝΑ ΤΩΡΑ", comingSoon: "ΣΎΝΤΟΜΑ", ended: "ΤΕΛΕΙΩΣΕ",
