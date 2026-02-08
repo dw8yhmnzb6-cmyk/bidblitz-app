@@ -476,6 +476,18 @@ const StatRow = ({ label, value, danger }) => (
   </div>
 );
 
+// Device Card Component
+const DeviceCard = ({ icon: Icon, label, count, percentage, color, bgColor }) => (
+  <div className={`${bgColor} rounded-xl p-3 sm:p-4 border border-gray-700/30`}>
+    <div className="flex items-center gap-2 mb-2">
+      <Icon className={`w-4 h-4 sm:w-5 sm:h-5 ${color}`} />
+      <span className="text-white text-xs sm:text-sm font-medium">{label}</span>
+    </div>
+    <div className="text-xl sm:text-2xl font-bold text-white">{count.toLocaleString()}</div>
+    <div className={`text-xs sm:text-sm ${color} font-medium`}>{percentage}%</div>
+  </div>
+);
+
 // Format duration in seconds to mm:ss
 const formatDuration = (seconds) => {
   const mins = Math.floor(seconds / 60);
