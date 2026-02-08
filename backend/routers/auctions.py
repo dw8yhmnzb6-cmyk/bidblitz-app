@@ -439,18 +439,33 @@ async def place_bid(auction_id: str, user: dict = Depends(get_current_user)):
     
     # Check VIP-ONLY AUCTION restriction
     if auction.get("is_vip_only"):
-        # Check user's VIP status
-        vip_sub = await db.vip_subscriptions.find_one({"user_id": user["id"]}, {"_id": 0})
-        is_user_vip = False
-        if vip_sub:
-            expiry = datetime.fromisoformat(vip_sub.get("next_renewal", "2000-01-01").replace('Z', '+00:00'))
-            is_user_vip = vip_sub.get("status") == "active" and expiry > datetime.now(timezone.utc)
+        # Admins, Managers, and Influencers have automatic VIP access
+        is_admin = user.get("is_admin", False)
+        is_manager = user.get("is_manager", False) or user.get("role") == "manager"
+        is_influencer = user.get("is_influencer", False)
         
-        if not is_user_vip:
-            raise HTTPException(
-                status_code=403, 
-                detail="Diese Auktion ist nur für VIP-Mitglieder. Werden Sie jetzt VIP, um mitzubieten!"
-            )
+        if is_admin or is_manager or is_influencer:
+            # Automatic VIP access - proceed
+            pass
+        else:
+            # Check user's VIP subscription
+            vip_sub = await db.vip_subscriptions.find_one({"user_id": user["id"]}, {"_id": 0})
+            is_user_vip = False
+            if vip_sub:
+                next_renewal = vip_sub.get("next_renewal")
+                if next_renewal:
+                    expiry = datetime.fromisoformat(next_renewal.replace('Z', '+00:00'))
+                    is_user_vip = vip_sub.get("status") == "active" and expiry > datetime.now(timezone.utc)
+                else:
+                    # No expiry date means it's admin-granted VIP
+                    is_user_vip = vip_sub.get("status") == "active"
+            
+            # Also check if user has is_vip flag
+            if not is_user_vip and not user.get("is_vip", False):
+                raise HTTPException(
+                    status_code=403, 
+                    detail="Diese Auktion ist nur für VIP-Mitglieder. Werden Sie jetzt VIP, um mitzubieten!"
+                )
     
     # Check if auction has ended
     end_time = datetime.fromisoformat(auction["end_time"].replace('Z', '+00:00'))
