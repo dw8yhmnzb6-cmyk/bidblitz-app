@@ -1,339 +1,455 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { 
-  Building2, Package, CreditCard, FileText, TrendingUp, 
-  Euro, ShoppingBag, Percent, Clock, Download, ArrowRight 
-} from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/button';
+import { 
+  Building2, Package, ShoppingCart, FileText, User, LogOut, 
+  TrendingUp, CreditCard, Percent, Clock, CheckCircle, RefreshCw,
+  ChevronRight, AlertCircle
+} from 'lucide-react';
 import { toast } from 'sonner';
-import axios from 'axios';
-import { useAuth } from '../context/AuthContext';
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
 export default function WholesaleDashboard() {
-  const { token, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
-  const [data, setData] = useState(null);
-  const [status, setStatus] = useState(null);
+  const [customer, setCustomer] = useState(null);
+  const [pricing, setPricing] = useState(null);
+  const [orders, setOrders] = useState([]);
+  const [activeTab, setActiveTab] = useState('dashboard');
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      navigate('/login');
+    const token = localStorage.getItem('wholesale_token');
+    if (!token) {
+      navigate('/b2b/login');
       return;
     }
-    checkStatus();
-  }, [isAuthenticated, navigate]);
+    fetchData();
+  }, [navigate]);
 
-  const checkStatus = async () => {
+  const fetchData = async () => {
+    const token = localStorage.getItem('wholesale_token');
     try {
-      const response = await axios.get(`${API}/api/wholesale/status`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setStatus(response.data);
-      
-      if (response.data.is_wholesale) {
-        fetchDashboard();
-      } else {
-        setLoading(false);
+      const [profileRes, pricingRes, ordersRes] = await Promise.all([
+        fetch(`${API}/api/wholesale/auth/me`, {
+          headers: { Authorization: `Bearer ${token}` }
+        }),
+        fetch(`${API}/api/wholesale/auth/pricing`, {
+          headers: { Authorization: `Bearer ${token}` }
+        }),
+        fetch(`${API}/api/wholesale/auth/orders`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+      ]);
+
+      if (!profileRes.ok) {
+        throw new Error('Nicht autorisiert');
       }
-    } catch (error) {
-      console.error('Error checking wholesale status:', error);
-      setLoading(false);
-    }
-  };
 
-  const fetchDashboard = async () => {
-    try {
-      const response = await axios.get(`${API}/api/wholesale/dashboard`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setData(response.data);
+      const [profile, pricingData, ordersData] = await Promise.all([
+        profileRes.json(),
+        pricingRes.json(),
+        ordersRes.json()
+      ]);
+
+      setCustomer(profile);
+      setPricing(pricingData);
+      setOrders(ordersData.orders || []);
     } catch (error) {
-      toast.error('Fehler beim Laden der Daten');
+      toast.error('Sitzung abgelaufen');
+      localStorage.removeItem('wholesale_token');
+      localStorage.removeItem('wholesale_customer');
+      navigate('/b2b/login');
     } finally {
       setLoading(false);
     }
   };
 
+  const handleLogout = () => {
+    localStorage.removeItem('wholesale_token');
+    localStorage.removeItem('wholesale_customer');
+    toast.success('Erfolgreich ausgeloggt');
+    navigate('/b2b/login');
+  };
+
+  const handleOrder = async (packageId) => {
+    const token = localStorage.getItem('wholesale_token');
+    try {
+      const res = await fetch(`${API}/api/wholesale/auth/order?package_id=${packageId}&quantity=1`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      const data = await res.json();
+      
+      if (!res.ok) {
+        throw new Error(data.detail || 'Bestellung fehlgeschlagen');
+      }
+      
+      toast.success(`Bestellung erfolgreich! ${data.total_bids} Gebote für €${data.total_price}`);
+      fetchData();
+    } catch (error) {
+      toast.error(error.message);
+    }
+  };
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-cyan-50 to-cyan-100 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#FFD700]"></div>
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-cyan-900 flex items-center justify-center">
+        <RefreshCw className="w-8 h-8 text-cyan-400 animate-spin" />
       </div>
     );
   }
 
-  // Not a wholesale customer
-  if (!status?.is_wholesale) {
-    return (
-      <div className="min-h-screen bg-gradient-to-b from-cyan-50 to-cyan-100 py-20 px-4">
-        <div className="max-w-2xl mx-auto text-center">
-          <div className="w-20 h-20 bg-gradient-to-br from-[#FFD700]/20 to-[#FF4D4D]/20 rounded-full flex items-center justify-center mx-auto mb-6">
-            <Building2 className="w-10 h-10 text-[#FFD700]" />
-          </div>
-          
-          {status?.application_status === 'pending' ? (
-            <>
-              <h1 className="text-3xl font-bold text-gray-800 mb-4">Bewerbung in Prüfung</h1>
-              <p className="text-gray-500 mb-8">
-                Ihre Großkunden-Bewerbung wird derzeit geprüft. 
-                Wir melden uns innerhalb von 24-48 Stunden bei Ihnen.
-              </p>
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-yellow-500/10 text-yellow-500">
-                <Clock className="w-4 h-4" />
-                Status: Ausstehend
-              </div>
-            </>
-          ) : status?.application_status === 'rejected' ? (
-            <>
-              <h1 className="text-3xl font-bold text-gray-800 mb-4">Bewerbung abgelehnt</h1>
-              <p className="text-gray-500 mb-8">
-                Leider können wir Ihre Bewerbung derzeit nicht genehmigen. 
-                Bei Fragen kontaktieren Sie uns bitte.
-              </p>
-              <Button 
-                onClick={() => navigate('/contact')}
-                className="bg-gradient-to-r from-[#FFD700] to-[#FFA500] text-black"
-              >
-                Kontakt aufnehmen
-              </Button>
-            </>
-          ) : (
-            <>
-              <h1 className="text-3xl font-bold text-gray-800 mb-4">Großkundenbereich</h1>
-              <p className="text-gray-500 mb-8">
-                Sie sind noch kein Großkunde. Bewerben Sie sich jetzt und profitieren Sie 
-                von exklusiven Rabatten und Vorteilen!
-              </p>
-              <Button 
-                onClick={() => navigate('/wholesale/apply')}
-                className="bg-gradient-to-r from-[#FFD700] to-[#FFA500] text-black"
-              >
-                Jetzt bewerben
-                <ArrowRight className="w-4 h-4 ml-2" />
-              </Button>
-            </>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  // Wholesale customer dashboard
   return (
-    <div className="min-h-screen bg-gradient-to-b from-cyan-50 to-cyan-100 py-8 px-4">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#FFD700] to-[#FFA500] flex items-center justify-center">
-              <Building2 className="w-6 h-6 text-black" />
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-cyan-900">
+      {/* Header */}
+      <div className="bg-slate-900/80 border-b border-slate-700 sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center">
+              <Building2 className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-gray-800">{data?.company_name}</h1>
-              <p className="text-gray-500 text-sm">Großkunden-Dashboard</p>
+              <span className="text-xl font-bold text-white">BidBlitz</span>
+              <span className="text-cyan-400 font-bold ml-1">B2B</span>
             </div>
+          </div>
+          
+          <div className="flex items-center gap-4">
+            <div className="hidden md:block text-right">
+              <p className="text-white font-medium">{customer?.company_name}</p>
+              <p className="text-slate-400 text-sm">{customer?.contact_name}</p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleLogout}
+              className="border-slate-600 text-slate-300 hover:bg-slate-800"
+            >
+              <LogOut className="w-4 h-4 mr-2" />
+              Ausloggen
+            </Button>
           </div>
         </div>
+      </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-5 border border-gray-200">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 rounded-lg bg-green-500/20 flex items-center justify-center">
-                <Euro className="w-5 h-5 text-green-500" />
-              </div>
-              <span className="text-gray-500 text-sm">Gesamtumsatz</span>
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        {/* Welcome Banner */}
+        <div className="bg-gradient-to-r from-cyan-500/20 to-blue-500/20 rounded-2xl p-6 border border-cyan-500/30 mb-8">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-bold text-white">
+                Willkommen zurück, {customer?.company_name}!
+              </h1>
+              <p className="text-slate-300 mt-1">
+                Ihr persönlicher Rabatt: <span className="text-cyan-400 font-bold">{customer?.discount_percent}%</span> auf alle Pakete
+              </p>
             </div>
-            <p className="text-2xl font-bold text-gray-800">€{data?.stats?.total_spent?.toLocaleString()}</p>
-          </div>
-
-          <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-5 border border-gray-200">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center">
-                <Package className="w-5 h-5 text-blue-500" />
+            <div className="flex gap-3">
+              <div className="px-4 py-2 rounded-xl bg-slate-800/50 text-center">
+                <p className="text-slate-400 text-xs">Kreditlimit</p>
+                <p className="text-white font-bold">€{customer?.credit_limit?.toLocaleString() || 0}</p>
               </div>
-              <span className="text-gray-500 text-sm">Gebote gekauft</span>
-            </div>
-            <p className="text-2xl font-bold text-gray-800">{data?.stats?.total_bids_bought?.toLocaleString()}</p>
-          </div>
-
-          <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-5 border border-gray-200">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 rounded-lg bg-[#FFD700]/20 flex items-center justify-center">
-                <Percent className="w-5 h-5 text-[#FFD700]" />
-              </div>
-              <span className="text-gray-500 text-sm">Ihr Rabatt</span>
-            </div>
-            <p className="text-2xl font-bold text-[#FFD700]">{data?.discount_percent}%</p>
-          </div>
-
-          <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-5 border border-gray-200">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center">
-                <TrendingUp className="w-5 h-5 text-purple-500" />
-              </div>
-              <span className="text-gray-500 text-sm">Ersparnis</span>
-            </div>
-            <p className="text-2xl font-bold text-green-500">€{data?.stats?.savings_from_discount?.toLocaleString()}</p>
-          </div>
-        </div>
-
-        {/* Main Content Grid */}
-        <div className="grid lg:grid-cols-3 gap-6">
-          {/* Account Info */}
-          <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-              <CreditCard className="w-5 h-5 text-[#FFD700]" />
-              Konditionen
-            </h2>
-            
-            <div className="space-y-4">
-              <div className="flex justify-between items-center py-3 border-b border-gray-200">
-                <span className="text-gray-500">Rabatt</span>
-                <span className="text-[#FFD700] font-semibold">{data?.discount_percent}%</span>
-              </div>
-              <div className="flex justify-between items-center py-3 border-b border-gray-200">
-                <span className="text-gray-500">Zahlungsziel</span>
-                <span className="text-gray-800 font-semibold">
-                  {data?.payment_terms === 'prepaid' ? 'Vorkasse' : 
-                   data?.payment_terms === 'net15' ? '15 Tage' : 
-                   data?.payment_terms === 'net30' ? '30 Tage' : data?.payment_terms}
-                </span>
-              </div>
-              {data?.credit_limit > 0 && (
-                <>
-                  <div className="flex justify-between items-center py-3 border-b border-gray-200">
-                    <span className="text-gray-500">Kreditlimit</span>
-                    <span className="text-gray-800 font-semibold">€{data?.credit_limit?.toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between items-center py-3 border-b border-gray-200">
-                    <span className="text-gray-500">Verfügbar</span>
-                    <span className="text-green-500 font-semibold">€{data?.credit_available?.toLocaleString()}</span>
-                  </div>
-                </>
-              )}
-              <div className="flex justify-between items-center py-3">
-                <span className="text-gray-500">Transaktionen</span>
-                <span className="text-gray-800 font-semibold">{data?.stats?.total_transactions}</span>
-              </div>
-            </div>
-
-            {data?.special_conditions && (
-              <div className="mt-4 p-4 bg-[#FFD700]/10 rounded-xl">
-                <p className="text-sm text-[#FFD700]">
-                  <strong>Sonderkonditionen:</strong> {data?.special_conditions}
+              <div className="px-4 py-2 rounded-xl bg-slate-800/50 text-center">
+                <p className="text-slate-400 text-xs">Verfügbar</p>
+                <p className="text-emerald-400 font-bold">
+                  €{((customer?.credit_limit || 0) - (customer?.credit_used || 0)).toLocaleString()}
                 </p>
               </div>
-            )}
-          </div>
-
-          {/* Recent Transactions */}
-          <div className="lg:col-span-2 bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-              <ShoppingBag className="w-5 h-5 text-[#FFD700]" />
-              Letzte Transaktionen
-            </h2>
-            
-            {data?.recent_transactions?.length > 0 ? (
-              <div className="space-y-3">
-                {data.recent_transactions.map((tx, i) => (
-                  <div key={i} className="flex items-center justify-between p-4 bg-white/5 rounded-xl">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                        tx.status === 'completed' ? 'bg-green-500/20' : 'bg-yellow-500/20'
-                      }`}>
-                        <Package className={`w-5 h-5 ${
-                          tx.status === 'completed' ? 'text-green-500' : 'text-yellow-500'
-                        }`} />
-                      </div>
-                      <div>
-                        <p className="text-gray-800 font-medium">{tx.bids} Gebote</p>
-                        <p className="text-gray-500 text-sm">
-                          {new Date(tx.created_at).toLocaleDateString('de-DE')}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-gray-800 font-semibold">€{tx.amount?.toFixed(2)}</p>
-                      <p className={`text-sm ${
-                        tx.status === 'completed' ? 'text-green-500' : 'text-yellow-500'
-                      }`}>
-                        {tx.status === 'completed' ? 'Abgeschlossen' : 'Ausstehend'}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8 text-gray-500">
-                Noch keine Transaktionen
-              </div>
-            )}
+            </div>
           </div>
         </div>
 
-        {/* Invoices Section */}
-        {data?.invoices?.length > 0 && (
-          <div className="mt-6 bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-              <FileText className="w-5 h-5 text-[#FFD700]" />
-              Rechnungen
-            </h2>
-            
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="text-left text-gray-500 text-sm border-b border-gray-200">
-                    <th className="pb-3">Rechnung</th>
-                    <th className="pb-3">Datum</th>
-                    <th className="pb-3">Betrag</th>
-                    <th className="pb-3">Status</th>
-                    <th className="pb-3"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.invoices.map((invoice, i) => (
-                    <tr key={i} className="border-b border-white/5">
-                      <td className="py-4 text-gray-800">{invoice.invoice_number}</td>
-                      <td className="py-4 text-gray-500">
-                        {new Date(invoice.created_at).toLocaleDateString('de-DE')}
-                      </td>
-                      <td className="py-4 text-gray-800">€{invoice.amount?.toFixed(2)}</td>
-                      <td className="py-4">
-                        <span className={`px-2 py-1 rounded-full text-xs ${
-                          invoice.status === 'paid' 
-                            ? 'bg-green-500/20 text-green-500' 
-                            : 'bg-yellow-500/20 text-yellow-500'
-                        }`}>
-                          {invoice.status === 'paid' ? 'Bezahlt' : 'Offen'}
-                        </span>
-                      </td>
-                      <td className="py-4">
-                        <Button variant="ghost" size="sm" className="text-[#FFD700]">
-                          <Download className="w-4 h-4" />
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+        {/* Navigation Tabs */}
+        <div className="flex gap-2 mb-8 overflow-x-auto pb-2">
+          {[
+            { id: 'dashboard', label: 'Übersicht', icon: TrendingUp },
+            { id: 'order', label: 'Gebote kaufen', icon: ShoppingCart },
+            { id: 'orders', label: 'Bestellungen', icon: Package },
+            { id: 'profile', label: 'Profil', icon: User }
+          ].map(tab => (
+            <Button
+              key={tab.id}
+              variant={activeTab === tab.id ? 'default' : 'outline'}
+              onClick={() => setActiveTab(tab.id)}
+              className={activeTab === tab.id 
+                ? 'bg-cyan-500 hover:bg-cyan-600 text-white' 
+                : 'border-slate-600 text-slate-300 hover:bg-slate-800'
+              }
+            >
+              <tab.icon className="w-4 h-4 mr-2" />
+              {tab.label}
+            </Button>
+          ))}
+        </div>
+
+        {/* Dashboard Tab */}
+        {activeTab === 'dashboard' && (
+          <div className="space-y-8">
+            {/* Stats Grid */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="bg-slate-800/50 rounded-2xl p-5 border border-slate-700">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center">
+                    <Percent className="w-5 h-5 text-emerald-400" />
+                  </div>
+                </div>
+                <p className="text-slate-400 text-sm">Ihr Rabatt</p>
+                <p className="text-3xl font-bold text-white">{customer?.discount_percent}%</p>
+              </div>
+              
+              <div className="bg-slate-800/50 rounded-2xl p-5 border border-slate-700">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-xl bg-cyan-500/20 flex items-center justify-center">
+                    <CreditCard className="w-5 h-5 text-cyan-400" />
+                  </div>
+                </div>
+                <p className="text-slate-400 text-sm">Kredit verfügbar</p>
+                <p className="text-3xl font-bold text-white">
+                  €{((customer?.credit_limit || 0) - (customer?.credit_used || 0)).toLocaleString()}
+                </p>
+              </div>
+              
+              <div className="bg-slate-800/50 rounded-2xl p-5 border border-slate-700">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center">
+                    <Package className="w-5 h-5 text-amber-400" />
+                  </div>
+                </div>
+                <p className="text-slate-400 text-sm">Bestellungen</p>
+                <p className="text-3xl font-bold text-white">{customer?.total_orders || 0}</p>
+              </div>
+              
+              <div className="bg-slate-800/50 rounded-2xl p-5 border border-slate-700">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-xl bg-violet-500/20 flex items-center justify-center">
+                    <TrendingUp className="w-5 h-5 text-violet-400" />
+                  </div>
+                </div>
+                <p className="text-slate-400 text-sm">Gesamtumsatz</p>
+                <p className="text-3xl font-bold text-white">€{(customer?.total_spent || 0).toLocaleString()}</p>
+              </div>
+            </div>
+
+            {/* Quick Actions */}
+            <div className="bg-slate-800/50 rounded-2xl p-6 border border-slate-700">
+              <h3 className="text-lg font-bold text-white mb-4">Schnellaktionen</h3>
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <Button
+                  onClick={() => setActiveTab('order')}
+                  className="h-auto py-4 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400"
+                >
+                  <ShoppingCart className="w-5 h-5 mr-2" />
+                  <div className="text-left">
+                    <p className="font-semibold">Gebote kaufen</p>
+                    <p className="text-xs opacity-80">Mit {customer?.discount_percent}% Rabatt</p>
+                  </div>
+                  <ChevronRight className="w-5 h-5 ml-auto" />
+                </Button>
+                
+                <Button
+                  onClick={() => setActiveTab('orders')}
+                  variant="outline"
+                  className="h-auto py-4 border-slate-600 text-slate-300 hover:bg-slate-700"
+                >
+                  <FileText className="w-5 h-5 mr-2" />
+                  <div className="text-left">
+                    <p className="font-semibold">Bestellungen</p>
+                    <p className="text-xs opacity-80">{orders.length} Bestellungen</p>
+                  </div>
+                  <ChevronRight className="w-5 h-5 ml-auto" />
+                </Button>
+                
+                <Link to="/" className="block">
+                  <Button
+                    variant="outline"
+                    className="w-full h-auto py-4 border-slate-600 text-slate-300 hover:bg-slate-700"
+                  >
+                    <TrendingUp className="w-5 h-5 mr-2" />
+                    <div className="text-left">
+                      <p className="font-semibold">Zu den Auktionen</p>
+                      <p className="text-xs opacity-80">Jetzt bieten</p>
+                    </div>
+                    <ChevronRight className="w-5 h-5 ml-auto" />
+                  </Button>
+                </Link>
+              </div>
             </div>
           </div>
         )}
 
-        {/* Quick Action */}
-        <div className="mt-6 flex justify-center">
-          <Button 
-            onClick={() => navigate('/buy-bids')}
-            className="bg-gradient-to-r from-[#FFD700] to-[#FFA500] text-black px-8 py-6 text-lg"
-          >
-            <Package className="w-5 h-5 mr-2" />
-            Gebote kaufen (mit {data?.discount_percent}% Rabatt)
-          </Button>
-        </div>
+        {/* Order Tab */}
+        {activeTab === 'order' && pricing && (
+          <div className="space-y-6">
+            <div className="bg-emerald-500/10 rounded-xl p-4 border border-emerald-500/30 flex items-center gap-3">
+              <CheckCircle className="w-5 h-5 text-emerald-400" />
+              <p className="text-emerald-300">
+                Ihr Rabatt von <span className="font-bold">{pricing.discount_percent}%</span> wurde bereits abgezogen!
+              </p>
+            </div>
+            
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {pricing.packages?.map((pkg, idx) => (
+                <div 
+                  key={idx} 
+                  className={`bg-slate-800/50 rounded-2xl p-6 border ${
+                    pkg.popular ? 'border-cyan-500' : 'border-slate-700'
+                  } relative`}
+                >
+                  {pkg.popular && (
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-cyan-500 rounded-full text-xs font-bold text-white">
+                      BELIEBT
+                    </div>
+                  )}
+                  
+                  <div className="text-center mb-4">
+                    <p className="text-4xl font-bold text-white">{pkg.bids}</p>
+                    <p className="text-slate-400">Gebote</p>
+                  </div>
+                  
+                  <div className="space-y-2 mb-4">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-slate-400">Originalpreis:</span>
+                      <span className="text-slate-500 line-through">€{pkg.original_price?.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-300 font-medium">Ihr Preis:</span>
+                      <span className="text-emerald-400 font-bold text-xl">€{pkg.discounted_price?.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-slate-400">Sie sparen:</span>
+                      <span className="text-emerald-400">€{pkg.savings?.toFixed(2)}</span>
+                    </div>
+                  </div>
+                  
+                  <Button
+                    onClick={() => handleOrder(String(pkg.bids))}
+                    className={`w-full ${
+                      pkg.popular 
+                        ? 'bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400' 
+                        : 'bg-slate-700 hover:bg-slate-600'
+                    }`}
+                  >
+                    <ShoppingCart className="w-4 h-4 mr-2" />
+                    Bestellen
+                  </Button>
+                </div>
+              ))}
+            </div>
+            
+            {customer?.payment_terms !== 'prepaid' && (
+              <div className="bg-cyan-500/10 rounded-xl p-4 border border-cyan-500/30 flex items-center gap-3">
+                <Clock className="w-5 h-5 text-cyan-400" />
+                <p className="text-cyan-300">
+                  Zahlungsziel: <span className="font-bold">
+                    {customer?.payment_terms === 'net15' ? 'Netto 15 Tage' : 
+                     customer?.payment_terms === 'net30' ? 'Netto 30 Tage' : 'Vorkasse'}
+                  </span>
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Orders Tab */}
+        {activeTab === 'orders' && (
+          <div className="space-y-4">
+            {orders.length === 0 ? (
+              <div className="bg-slate-800/50 rounded-2xl p-12 border border-slate-700 text-center">
+                <Package className="w-12 h-12 text-slate-600 mx-auto mb-4" />
+                <p className="text-slate-400">Noch keine Bestellungen vorhanden</p>
+                <Button
+                  onClick={() => setActiveTab('order')}
+                  className="mt-4 bg-cyan-500 hover:bg-cyan-600"
+                >
+                  Erste Bestellung aufgeben
+                </Button>
+              </div>
+            ) : (
+              orders.map(order => (
+                <div key={order.id} className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                      <p className="text-white font-semibold">{order.package_name} × {order.quantity}</p>
+                      <p className="text-slate-400 text-sm">
+                        {new Date(order.created_at).toLocaleDateString('de-DE')}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="text-right">
+                        <p className="text-emerald-400 font-bold">€{order.total_price?.toFixed(2)}</p>
+                        <p className="text-slate-400 text-sm">{order.total_bids} Gebote</p>
+                      </div>
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                        order.status === 'completed' ? 'bg-emerald-500/20 text-emerald-400' :
+                        order.status === 'pending' ? 'bg-amber-500/20 text-amber-400' :
+                        'bg-slate-500/20 text-slate-400'
+                      }`}>
+                        {order.status === 'completed' ? 'Abgeschlossen' :
+                         order.status === 'pending' ? 'Ausstehend' :
+                         order.status === 'awaiting_payment' ? 'Zahlung ausstehend' : order.status}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+
+        {/* Profile Tab */}
+        {activeTab === 'profile' && (
+          <div className="bg-slate-800/50 rounded-2xl p-6 border border-slate-700">
+            <h3 className="text-lg font-bold text-white mb-6">Firmenprofil</h3>
+            
+            <div className="grid sm:grid-cols-2 gap-6">
+              <div>
+                <p className="text-slate-400 text-sm">Firmenname</p>
+                <p className="text-white font-medium">{customer?.company_name}</p>
+              </div>
+              <div>
+                <p className="text-slate-400 text-sm">Ansprechpartner</p>
+                <p className="text-white font-medium">{customer?.contact_name}</p>
+              </div>
+              <div>
+                <p className="text-slate-400 text-sm">E-Mail</p>
+                <p className="text-white font-medium">{customer?.email}</p>
+              </div>
+              <div>
+                <p className="text-slate-400 text-sm">Telefon</p>
+                <p className="text-white font-medium">{customer?.phone || '-'}</p>
+              </div>
+              <div>
+                <p className="text-slate-400 text-sm">Website</p>
+                <p className="text-white font-medium">{customer?.website || '-'}</p>
+              </div>
+              <div>
+                <p className="text-slate-400 text-sm">Steuernummer</p>
+                <p className="text-white font-medium">{customer?.tax_id || '-'}</p>
+              </div>
+              <div>
+                <p className="text-slate-400 text-sm">Zahlungsziel</p>
+                <p className="text-white font-medium">
+                  {customer?.payment_terms === 'prepaid' ? 'Vorkasse' :
+                   customer?.payment_terms === 'net15' ? 'Netto 15 Tage' :
+                   customer?.payment_terms === 'net30' ? 'Netto 30 Tage' : customer?.payment_terms}
+                </p>
+              </div>
+              <div>
+                <p className="text-slate-400 text-sm">Mitglied seit</p>
+                <p className="text-white font-medium">
+                  {customer?.created_at ? new Date(customer.created_at).toLocaleDateString('de-DE') : '-'}
+                </p>
+              </div>
+            </div>
+            
+            <div className="mt-6 pt-6 border-t border-slate-700">
+              <p className="text-slate-400 text-sm mb-2">Für Änderungen an Ihrem Profil kontaktieren Sie bitte:</p>
+              <p className="text-cyan-400">b2b@bidblitz.de</p>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
