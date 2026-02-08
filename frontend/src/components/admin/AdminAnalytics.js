@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { 
   BarChart3, TrendingUp, Users, DollarSign, ShoppingCart, 
-  Eye, MousePointer, UserPlus, RefreshCw, Calendar, ArrowUp, ArrowDown
+  Eye, MousePointer, UserPlus, RefreshCw, Calendar, ArrowUp, ArrowDown,
+  Smartphone, Monitor, Tablet, Globe
 } from 'lucide-react';
 import { 
   AreaChart, Area, BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
@@ -18,11 +19,15 @@ const CHART_COLORS = {
   secondary: '#06B6D4',
   success: '#10B981',
   danger: '#EF4444',
-  purple: '#8B5CF6'
+  purple: '#8B5CF6',
+  mobile: '#EC4899',
+  tablet: '#8B5CF6',
+  desktop: '#06B6D4'
 };
 
 const AdminAnalytics = ({ token }) => {
   const [data, setData] = useState(null);
+  const [deviceData, setDeviceData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState(7);
 
