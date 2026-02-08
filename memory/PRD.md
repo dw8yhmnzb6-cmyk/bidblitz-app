@@ -373,8 +373,12 @@ February 8, 2026
 - **Backend**: Freischaltung funktioniert jetzt ohne existierendes User-Konto
 - **Info-Banner**: Zeigt Hinweis, dass Verknüpfung bei Registrierung erfolgt
 - **API Response**: `user_linked: false` bei Freischaltung ohne Konto
+- **Automatische Verknüpfung**: Bei Registrierung wird Großkunde automatisch verknüpft
+- **Willkommens-E-Mail**: Automatischer Versand mit Vorteilen und Registrierungsaufforderung
 - Files:
-  - `/app/backend/routers/wholesale.py` - API angepasst
+  - `/app/backend/routers/wholesale.py` - API angepasst + E-Mail-Versand
+  - `/app/backend/routers/auth.py` - Automatische Verknüpfung bei Registrierung
+  - `/app/backend/utils/email.py` - `send_wholesale_welcome_email()` hinzugefügt
   - `/app/frontend/src/components/admin/AdminWholesale.js` - Komplett neu mit hellem Theme
 
 ### 6. ✅ Vollständige Übersetzungen für Auktionskarten (P1) 🌍
