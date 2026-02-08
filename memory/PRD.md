@@ -335,9 +335,38 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 ---
 
 ## Last Updated
-February 7, 2026
+February 8, 2026
 
-## Completed Features This Session
+## Completed Features This Session (February 8, 2026)
+
+### 1. ✅ Admin Wartungsmodus (Maintenance Mode) 🔧
+- **Neuer Admin-Tab** "Wartung" mit Schraubenschlüssel-Icon
+- **Toggle-Funktion** zum Aktivieren/Deaktivieren
+- **Konfigurierbare Nachricht** für Benutzer
+- **Geschätzte Dauer** mit Countdown
+- **Wartungsseite** für nicht-Admin-Benutzer
+- Files:
+  - `/app/backend/routers/maintenance.py` - API-Endpunkte
+  - `/app/frontend/src/components/admin/AdminMaintenance.js` - Admin UI
+  - `/app/frontend/src/pages/MaintenancePage.js` - Benutzer-Wartungsseite
+  - `/app/frontend/src/pages/Admin.js` - Tab hinzugefügt
+
+### 2. ✅ "Freunde werben" Link sichtbar 🎁
+- **Desktop**: Link in der Navbar nach Glücksrad (pink, mit Gift-Icon)
+- **Mobile**: Link im mobilen Menü
+- **Route**: `/referral` Seite
+- File: `/app/frontend/src/components/Navbar.js`
+
+### 3. ✅ Admin Influencer Tab funktioniert
+- UI mit hellem Theme korrekt dargestellt
+- Alle Funktionen (Liste, Erstellen, Bearbeiten) funktionsfähig
+
+### Testing Status
+- `/app/test_reports/iteration_41.json` - 100% Backend & Frontend Tests bestanden
+
+---
+
+## Previous Session Completed Features
 1. ✅ Freunde-werben Route Fix
 2. ✅ Theme-Konsistenz (Contact, FAQ, HowItWorks)
 3. ✅ Admin Auktionsdauer verifiziert
