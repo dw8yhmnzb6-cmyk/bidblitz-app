@@ -274,6 +274,89 @@ const vipTexts = {
   }
 };
 
+// Benefit translations - from German backend to other languages
+const benefitTranslations = {
+  de: {
+    "Gratis-Gebote pro Monat": "Gratis-Gebote pro Monat",
+    "Rabatt auf Gebotspakete": "Rabatt auf Gebotspakete",
+    "VIP Badge im Profil": "VIP Badge im Profil",
+    "Zugang zu VIP-Auktionen": "Zugang zu VIP-Auktionen",
+    "Prioritäts-Support": "Prioritäts-Support",
+    "Exklusive Rabattcodes": "Exklusive Rabattcodes",
+    "Persönlicher Berater": "Persönlicher Berater"
+  },
+  en: {
+    "Gratis-Gebote pro Monat": "Free bids per month",
+    "Rabatt auf Gebotspakete": "Discount on bid packages",
+    "VIP Badge im Profil": "VIP Badge in profile",
+    "Zugang zu VIP-Auktionen": "Access to VIP auctions",
+    "Prioritäts-Support": "Priority support",
+    "Exklusive Rabattcodes": "Exclusive discount codes",
+    "Persönlicher Berater": "Personal advisor"
+  },
+  sq: {
+    "Gratis-Gebote pro Monat": "Oferta falas për muaj",
+    "Rabatt auf Gebotspakete": "Zbritje në paketat e ofertave",
+    "VIP Badge im Profil": "Distinktiv VIP në profil",
+    "Zugang zu VIP-Auktionen": "Qasje në ankandet VIP",
+    "Prioritäts-Support": "Mbështetje me prioritet",
+    "Exklusive Rabattcodes": "Kode zbritje ekskluzive",
+    "Persönlicher Berater": "Këshilltar personal"
+  },
+  xk: {
+    "Gratis-Gebote pro Monat": "Oferta falas për muaj",
+    "Rabatt auf Gebotspakete": "Zbritje në paketat e ofertave",
+    "VIP Badge im Profil": "Distinktiv VIP në profil",
+    "Zugang zu VIP-Auktionen": "Qasje në ankandet VIP",
+    "Prioritäts-Support": "Mbështetje me prioritet",
+    "Exklusive Rabattcodes": "Kode zbritje ekskluzive",
+    "Persönlicher Berater": "Këshilltar personal"
+  },
+  tr: {
+    "Gratis-Gebote pro Monat": "Aylık ücretsiz teklifler",
+    "Rabatt auf Gebotspakete": "Teklif paketlerinde indirim",
+    "VIP Badge im Profil": "Profilde VIP rozeti",
+    "Zugang zu VIP-Auktionen": "VIP açık artırmalara erişim",
+    "Prioritäts-Support": "Öncelikli destek",
+    "Exklusive Rabattcodes": "Özel indirim kodları",
+    "Persönlicher Berater": "Kişisel danışman"
+  },
+  fr: {
+    "Gratis-Gebote pro Monat": "Offres gratuites par mois",
+    "Rabatt auf Gebotspakete": "Réduction sur les forfaits",
+    "VIP Badge im Profil": "Badge VIP dans le profil",
+    "Zugang zu VIP-Auktionen": "Accès aux enchères VIP",
+    "Prioritäts-Support": "Support prioritaire",
+    "Exklusive Rabattcodes": "Codes de réduction exclusifs",
+    "Persönlicher Berater": "Conseiller personnel"
+  },
+  es: {
+    "Gratis-Gebote pro Monat": "Ofertas gratis por mes",
+    "Rabatt auf Gebotspakete": "Descuento en paquetes de ofertas",
+    "VIP Badge im Profil": "Insignia VIP en perfil",
+    "Zugang zu VIP-Auktionen": "Acceso a subastas VIP",
+    "Prioritäts-Support": "Soporte prioritario",
+    "Exklusive Rabattcodes": "Códigos de descuento exclusivos",
+    "Persönlicher Berater": "Asesor personal"
+  }
+};
+
+// Helper function to translate benefit text
+const translateBenefit = (benefit, language) => {
+  const langTranslations = benefitTranslations[language] || benefitTranslations['de'];
+  
+  // Try to match the benefit text (it contains numbers, so we need partial matching)
+  for (const [key, value] of Object.entries(langTranslations)) {
+    if (benefit.includes(key) || benefit.toLowerCase().includes(key.toLowerCase())) {
+      // Replace the German part with translated version
+      return benefit.replace(key, value);
+    }
+  }
+  
+  // If no match, return original
+  return benefit;
+};
+
 const VIPBadge = ({ color, size = 'md' }) => {
   const sizes = {
     sm: 'w-4 h-4',
