@@ -10,6 +10,7 @@ import { ScrollToTop } from "./components/ScrollToTop";
 import { ScrollToTopOnNavigate } from "./components/ScrollToTopOnNavigate";
 import { Toaster } from "./components/ui/sonner";
 import HappyHourBanner from "./components/HappyHourBanner";
+import PWAInstallBanner from "./components/PWAInstallBanner";
 
 // Pages
 import Home from "./pages/Home";
