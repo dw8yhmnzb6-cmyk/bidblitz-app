@@ -97,11 +97,13 @@ const translations = {
 // Inline alarm button for auction cards
 const AuctionAlarmButton = memo(({ auctionId, endTime, isAlarmSet = false, onToggle }) => {
   const { isAuthenticated, token } = useAuth();
-  const { language } = useLanguage();
+  const { language , mappedLanguage } = useLanguage();
+  // Use mappedLanguage for regional variants (e.g., xk -> sq)
+  const langKey = mappedLanguage || language;
   const [hasAlarm, setHasAlarm] = useState(isAlarmSet);
   const [loading, setLoading] = useState(false);
   
-  const t = translations[language] || translations.de;
+  const t = translations[langKey] || translations.de;
   
   const handleToggle = async () => {
     if (!isAuthenticated) {
@@ -153,11 +155,13 @@ const AuctionAlarmButton = memo(({ auctionId, endTime, isAlarmSet = false, onTog
 // Alarms list widget for dashboard
 const AlarmsWidget = memo(() => {
   const { isAuthenticated, token } = useAuth();
-  const { language } = useLanguage();
+  const { language , mappedLanguage } = useLanguage();
+  // Use mappedLanguage for regional variants (e.g., xk -> sq)
+  const langKey = mappedLanguage || language;
   const [alarms, setAlarms] = useState([]);
   const [loading, setLoading] = useState(true);
   
-  const t = translations[language] || translations.de;
+  const t = translations[langKey] || translations.de;
   
   useEffect(() => {
     const fetchAlarms = async () => {

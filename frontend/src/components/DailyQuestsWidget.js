@@ -197,12 +197,14 @@ const QuestItem = memo(({ quest, t, onClaim, language }) => {
 
 const DailyQuestsWidget = memo(() => {
   const { isAuthenticated, token } = useAuth();
-  const { language } = useLanguage();
+  const { language , mappedLanguage } = useLanguage();
+  // Use mappedLanguage for regional variants (e.g., xk -> sq)
+  const langKey = mappedLanguage || language;
   const [quests, setQuests] = useState([]);
   const [streak, setStreak] = useState(0);
   const [loading, setLoading] = useState(true);
   
-  const t = translations[language] || translations.de;
+  const t = translations[langKey] || translations.de;
   
   useEffect(() => {
     const fetchQuests = async () => {

@@ -37,7 +37,7 @@ const CyberHero = ({ auctionOfDay, stats, onBid, language = 'de' }) => {
       totalSaved: 'Total Saved',
       happyWinners: 'Happy Winners'
     }
-  }[language] || t.de;
+  }[langKey] || t.de;
   
   // Timer for auction of day
   useEffect(() => {

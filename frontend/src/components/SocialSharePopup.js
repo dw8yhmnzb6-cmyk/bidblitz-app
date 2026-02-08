@@ -103,11 +103,13 @@ const platforms = [
 
 const SocialSharePopup = memo(({ isOpen, onClose, auctionId, productName, winPrice }) => {
   const { token } = useAuth();
-  const { language } = useLanguage();
+  const { language , mappedLanguage } = useLanguage();
+  // Use mappedLanguage for regional variants (e.g., xk -> sq)
+  const langKey = mappedLanguage || language;
   const [bonusEarned, setBonusEarned] = useState(false);
   const [sharedPlatforms, setSharedPlatforms] = useState([]);
   
-  const t = translations[language] || translations.de;
+  const t = translations[langKey] || translations.de;
   
   if (!isOpen) return null;
   
@@ -201,8 +203,10 @@ const SocialSharePopup = memo(({ isOpen, onClose, auctionId, productName, winPri
 // Small share button for inline use
 const ShareWinButton = memo(({ auctionId, productName, winPrice }) => {
   const [showPopup, setShowPopup] = useState(false);
-  const { language } = useLanguage();
-  const t = translations[language] || translations.de;
+  const { language , mappedLanguage } = useLanguage();
+  // Use mappedLanguage for regional variants (e.g., xk -> sq)
+  const langKey = mappedLanguage || language;
+  const t = translations[langKey] || translations.de;
   
   return (
     <>

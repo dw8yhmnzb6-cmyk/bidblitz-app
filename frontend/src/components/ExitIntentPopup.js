@@ -62,11 +62,13 @@ const translations = {
 
 const ExitIntentPopup = memo(() => {
   const { isAuthenticated } = useAuth();
-  const { language } = useLanguage();
+  const { language , mappedLanguage } = useLanguage();
+  // Use mappedLanguage for regional variants (e.g., xk -> sq)
+  const langKey = mappedLanguage || language;
   const [isVisible, setIsVisible] = useState(false);
   const [hasShown, setHasShown] = useState(false);
   
-  const t = translations[language] || translations.de;
+  const t = translations[langKey] || translations.de;
   
   useEffect(() => {
     // Don't show to authenticated users

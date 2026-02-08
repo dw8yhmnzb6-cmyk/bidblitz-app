@@ -99,8 +99,10 @@ const severityIcons = {
 
 export const VoiceDebugAssistant = ({ isOpen, onClose }) => {
   const { token } = useAuth();
-  const { language } = useLanguage();
-  const t = translations[language] || translations.de;
+  const { language , mappedLanguage } = useLanguage();
+  // Use mappedLanguage for regional variants (e.g., xk -> sq)
+  const langKey = mappedLanguage || language;
+  const t = translations[langKey] || translations.de;
   
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);

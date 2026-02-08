@@ -123,13 +123,15 @@ const WinnerCard = memo(({ winner, t }) => {
 });
 
 const WinnerGallery = memo(() => {
-  const { language } = useLanguage();
+  const { language , mappedLanguage } = useLanguage();
+  // Use mappedLanguage for regional variants (e.g., xk -> sq)
+  const langKey = mappedLanguage || language;
   const [winners, setWinners] = useState([]);
   const [loading, setLoading] = useState(true);
   const [scrollPosition, setScrollPosition] = useState(0);
   const scrollRef = React.useRef(null);
   
-  const t = translations[language] || translations.de;
+  const t = translations[langKey] || translations.de;
   
   useEffect(() => {
     const fetchWinners = async () => {

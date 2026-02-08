@@ -66,7 +66,7 @@ const LiveWinnerPopup = ({ language = 'de' }) => {
   const [currentWinner, setCurrentWinner] = useState(null);
   const [isVisible, setIsVisible] = useState(false);
   const navigate = useNavigate();
-  const t = translations[language] || translations.de;
+  const t = translations[langKey] || translations.de;
 
   // Fetch recent winners
   const fetchWinners = useCallback(async () => {

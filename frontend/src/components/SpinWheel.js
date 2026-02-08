@@ -22,7 +22,9 @@ const SEGMENTS = [
 
 const SpinWheel = ({ isOpen, onClose }) => {
   const { token, user, refreshUser } = useAuth();
-  const { language } = useLanguage();
+  const { language , mappedLanguage } = useLanguage();
+  // Use mappedLanguage for regional variants (e.g., xk -> sq)
+  const langKey = mappedLanguage || language;
   const [spinning, setSpinning] = useState(false);
   const [canSpin, setCanSpin] = useState(false);
   const [nextSpinTime, setNextSpinTime] = useState(null);
@@ -105,7 +107,7 @@ const SpinWheel = ({ isOpen, onClose }) => {
       loginRequired: 'Veuillez vous connecter pour tourner',
     }
   };
-  const text = t[language] || t.de;
+  const text = t[langKey] || t.de;
 
   useEffect(() => {
     if (isOpen && token) {

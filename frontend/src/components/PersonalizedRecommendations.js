@@ -230,7 +230,9 @@ const RecommendationSection = memo(({ title, icon: Icon, items, onBid, t, color 
 // Main component
 const PersonalizedRecommendations = memo(({ onBid }) => {
   const { isAuthenticated, token } = useAuth();
-  const { language } = useLanguage();
+  const { language , mappedLanguage } = useLanguage();
+  // Use mappedLanguage for regional variants (e.g., xk -> sq)
+  const langKey = mappedLanguage || language;
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -333,7 +335,7 @@ const PersonalizedRecommendations = memo(({ onBid }) => {
       {/* Greeting */}
       {greeting && (
         <p className="text-sm text-gray-600 mb-4">
-          {greeting[language] || greeting.de || greeting.en}
+          {greeting[langKey] || greeting.de || greeting.en}
         </p>
       )}
       

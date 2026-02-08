@@ -223,11 +223,13 @@ const MysteryBoxCard = memo(({ box, onBid, t }) => {
 });
 
 const MysteryBoxSection = memo(() => {
-  const { language } = useLanguage();
+  const { language , mappedLanguage } = useLanguage();
+  // Use mappedLanguage for regional variants (e.g., xk -> sq)
+  const langKey = mappedLanguage || language;
   const [boxes, setBoxes] = useState([]);
   const [loading, setLoading] = useState(true);
   
-  const t = translations[language] || translations.de;
+  const t = translations[langKey] || translations.de;
   
   useEffect(() => {
     const fetchBoxes = async () => {

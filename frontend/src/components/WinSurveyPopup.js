@@ -88,7 +88,7 @@ const WinSurveyPopup = ({ isOpen, onClose, auctionId, productName, productImage,
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   
-  const t = translations[language] || translations.de;
+  const t = translations[langKey] || translations.de;
 
   // Reset state when popup opens
   useEffect(() => {

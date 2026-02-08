@@ -201,11 +201,13 @@ const FlashSaleCard = memo(({ sale, onBuy, t }) => {
 
 const FlashSaleBanner = memo(() => {
   const { isAuthenticated, token } = useAuth();
-  const { language } = useLanguage();
+  const { language , mappedLanguage } = useLanguage();
+  // Use mappedLanguage for regional variants (e.g., xk -> sq)
+  const langKey = mappedLanguage || language;
   const [flashSales, setFlashSales] = useState([]);
   const [loading, setLoading] = useState(true);
   
-  const t = translations[language] || translations.de;
+  const t = translations[langKey] || translations.de;
   
   useEffect(() => {
     const fetchFlashSales = async () => {

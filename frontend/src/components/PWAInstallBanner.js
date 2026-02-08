@@ -31,13 +31,15 @@ const translations = {
 };
 
 export default function PWAInstallBanner() {
-  const { language } = useLanguage();
+  const { language , mappedLanguage } = useLanguage();
+  // Use mappedLanguage for regional variants (e.g., xk -> sq)
+  const langKey = mappedLanguage || language;
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [showBanner, setShowBanner] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
   
-  const t = translations[language] || translations.de;
+  const t = translations[langKey] || translations.de;
 
   useEffect(() => {
     // Check if already installed

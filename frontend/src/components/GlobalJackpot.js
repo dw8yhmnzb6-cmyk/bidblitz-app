@@ -87,12 +87,14 @@ const translations = {
 };
 
 export default function GlobalJackpot({ className = '' }) {
-  const { language } = useLanguage();
+  const { language , mappedLanguage } = useLanguage();
+  // Use mappedLanguage for regional variants (e.g., xk -> sq)
+  const langKey = mappedLanguage || language;
   const [jackpot, setJackpot] = useState(null);
   const [showIncrease, setShowIncrease] = useState(false);
   
   // Get translations
-  const t = translations[language] || translations.de;
+  const t = translations[langKey] || translations.de;
 
   useEffect(() => {
     const fetchJackpot = async () => {
