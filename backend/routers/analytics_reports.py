@@ -9,11 +9,9 @@ from datetime import datetime, timedelta, timezone
 import uuid
 import os
 import asyncio
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
 
-from database import db
-from auth import get_current_user
+from config import db
+from dependencies import get_current_user
 
 router = APIRouter(prefix="/api/analytics-reports", tags=["analytics-reports"])
 
