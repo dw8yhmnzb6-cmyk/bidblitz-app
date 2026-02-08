@@ -186,16 +186,16 @@ const AdminAnalytics = ({ token }) => {
         </div>
 
         {/* Conversion Funnel */}
-        <div className="bg-gray-800/50 rounded-xl p-6 border border-gray-700/50">
-          <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-            <MousePointer className="w-5 h-5 text-cyan-500" />
+        <div className="bg-gray-800/50 rounded-xl p-4 sm:p-6 border border-gray-700/50">
+          <h3 className="text-base sm:text-lg font-semibold text-white mb-3 sm:mb-4 flex items-center gap-2">
+            <MousePointer className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-500" />
             Conversion Funnel
           </h3>
-          <ResponsiveContainer width="100%" height={250}>
+          <ResponsiveContainer width="100%" height={200}>
             <BarChart data={funnelData} layout="vertical">
               <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-              <XAxis type="number" stroke="#9CA3AF" />
-              <YAxis type="category" dataKey="stage" stroke="#9CA3AF" width={100} />
+              <XAxis type="number" stroke="#9CA3AF" tick={{ fontSize: 10 }} />
+              <YAxis type="category" dataKey="stage" stroke="#9CA3AF" width={80} tick={{ fontSize: 10 }} />
               <Tooltip 
                 contentStyle={{ backgroundColor: '#1F2937', border: 'none', borderRadius: '8px' }}
                 formatter={(value, name, props) => [value.toLocaleString(), `${props.payload.rate}%`]}
@@ -207,11 +207,11 @@ const AdminAnalytics = ({ token }) => {
       </div>
 
       {/* Charts Row 2 */}
-      <div className="grid lg:grid-cols-3 gap-6">
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         {/* Auction Stats */}
-        <div className="bg-gray-800/50 rounded-xl p-6 border border-gray-700/50">
-          <h3 className="text-lg font-semibold text-white mb-4">Auktionsstatistik</h3>
-          <div className="space-y-4">
+        <div className="bg-gray-800/50 rounded-xl p-4 sm:p-6 border border-gray-700/50">
+          <h3 className="text-base sm:text-lg font-semibold text-white mb-3 sm:mb-4">Auktionsstatistik</h3>
+          <div className="space-y-3 sm:space-y-4">
             <StatRow label="Erstellt" value={data.auctions.created} />
             <StatRow label="Abgeschlossen" value={data.auctions.completed} />
             <StatRow label="Gesamt Gebote" value={data.auctions.total_bids.toLocaleString()} />
@@ -220,9 +220,9 @@ const AdminAnalytics = ({ token }) => {
         </div>
 
         {/* Engagement Metrics */}
-        <div className="bg-gray-800/50 rounded-xl p-6 border border-gray-700/50">
-          <h3 className="text-lg font-semibold text-white mb-4">Engagement</h3>
-          <div className="space-y-4">
+        <div className="bg-gray-800/50 rounded-xl p-4 sm:p-6 border border-gray-700/50">
+          <h3 className="text-base sm:text-lg font-semibold text-white mb-3 sm:mb-4">Engagement</h3>
+          <div className="space-y-3 sm:space-y-4">
             <StatRow label="Bounce Rate" value={`${data.engagement?.bounce_rate || 42.5}%`} danger={data.engagement?.bounce_rate > 50} />
             <StatRow label="Ø Sitzungsdauer" value={formatDuration(data.engagement?.avg_session_duration || 285)} />
             <StatRow label="Seiten/Sitzung" value={data.engagement?.pages_per_session || 4.2} />
@@ -231,16 +231,16 @@ const AdminAnalytics = ({ token }) => {
         </div>
 
         {/* Top Pages */}
-        <div className="bg-gray-800/50 rounded-xl p-6 border border-gray-700/50">
-          <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-            <Eye className="w-5 h-5 text-amber-500" />
+        <div className="bg-gray-800/50 rounded-xl p-4 sm:p-6 border border-gray-700/50 sm:col-span-2 lg:col-span-1">
+          <h3 className="text-base sm:text-lg font-semibold text-white mb-3 sm:mb-4 flex items-center gap-2">
+            <Eye className="w-4 h-4 sm:w-5 sm:h-5 text-amber-500" />
             Top Seiten
           </h3>
-          <div className="space-y-3">
+          <div className="space-y-2 sm:space-y-3">
             {(data.top_pages || []).slice(0, 5).map((page, i) => (
               <div key={i} className="flex items-center justify-between">
-                <span className="text-gray-300 text-sm truncate max-w-[150px]">{page._id || '/'}</span>
-                <span className="text-white font-medium">{page.views?.toLocaleString()}</span>
+                <span className="text-gray-300 text-xs sm:text-sm truncate max-w-[120px] sm:max-w-[150px]">{page._id || '/'}</span>
+                <span className="text-white text-sm font-medium">{page.views?.toLocaleString()}</span>
               </div>
             ))}
           </div>
