@@ -41,6 +41,7 @@ from routers.pages import router as pages_router
 from routers.influencer import router as influencer_router
 from routers.wholesale import router as wholesale_router
 from routers.wholesale_auth import router as wholesale_auth_router
+from routers.friends_battle import router as friends_battle_router
 from routers.gifts import router as gifts_router
 from routers.voice_command import router as voice_command_router
 from routers.giftcards import router as giftcards_router
