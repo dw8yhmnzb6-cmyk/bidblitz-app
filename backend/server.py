@@ -415,6 +415,11 @@ async def bot_last_second_bidder():
                     # Check if it's time for next bid on this auction
                     next_bid_at = next_bid_time_per_auction.get(auction_id, 0)
                     
+                    # BOTS ONLY BID IN THE LAST 5 MINUTES!
+                    # Don't bid if more than 5 minutes remaining (let real users bid first)
+                    if seconds_left > 300:  # 5 minutes = 300 seconds
+                        continue  # Skip - auction still has time for real users
+                    
                     # CRITICAL: If < 15 seconds left and price < €25, bid IMMEDIATELY
                     is_urgent = seconds_left < 15 and current_price < 25.0
                     
