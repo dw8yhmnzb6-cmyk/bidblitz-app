@@ -189,7 +189,6 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 ### P1 (High Priority)
 - [ ] Admin.js weiter refactoren (Dashboard-Tab, Jackpot-Tab, etc.)
 - [ ] Auctions.js Refactoring (>1100 Zeilen)
-- [ ] Test all new features with Testing Agent
 
 ### P2 (Medium Priority)
 - [ ] Tawk.to Live Chat finalisieren (Credentials benötigt)
