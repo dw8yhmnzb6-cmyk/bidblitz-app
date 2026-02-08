@@ -6,9 +6,12 @@ import axios from 'axios';
 const API = process.env.REACT_APP_BACKEND_URL;
 
 const HappyHourBanner = () => {
-  const { language } = useLanguage();
+  const { language, mappedLanguage } = useLanguage();
   const [status, setStatus] = useState(null);
   const [timeLeft, setTimeLeft] = useState('');
+
+  // Use mappedLanguage for regional variants (e.g., xk -> sq)
+  const langKey = mappedLanguage || language;
 
   const texts = {
     de: {

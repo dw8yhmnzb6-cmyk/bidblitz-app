@@ -13,7 +13,7 @@ const API = process.env.REACT_APP_BACKEND_URL;
 
 const TelegramConnect = () => {
   const { token } = useAuth();
-  const { language } = useLanguage();
+  const { language, mappedLanguage } = useLanguage();
   const [status, setStatus] = useState(null);
   const [linkCode, setLinkCode] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -23,6 +23,9 @@ const TelegramConnect = () => {
     won: true,
     deals: true
   });
+
+  // Use mappedLanguage for regional variants (e.g., xk -> sq)
+  const langKey = mappedLanguage || language;
 
   const texts = {
     de: {

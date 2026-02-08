@@ -15,12 +15,15 @@ const MILESTONES = {
 };
 
 const StreakIndicator = ({ auctionId, currentStreak = 0, onStreakUpdate }) => {
-  const { language } = useLanguage();
+  const { language, mappedLanguage } = useLanguage();
   const { token } = useAuth();
   const [streak, setStreak] = useState(currentStreak);
   const [nextMilestone, setNextMilestone] = useState(null);
   const [showReward, setShowReward] = useState(false);
   const [rewardAmount, setRewardAmount] = useState(0);
+
+  // Use mappedLanguage for regional variants (e.g., xk -> sq)
+  const langKey = mappedLanguage || language;
 
   const texts = {
     de: {

@@ -13,10 +13,13 @@ const API = process.env.REACT_APP_BACKEND_URL;
 
 const WeeklyChallenges = () => {
   const { token, isAuthenticated } = useAuth();
-  const { language } = useLanguage();
+  const { language, mappedLanguage } = useLanguage();
   const [challenges, setChallenges] = useState([]);
   const [daysRemaining, setDaysRemaining] = useState(0);
   const [loading, setLoading] = useState(true);
+
+  // Use mappedLanguage for regional variants (e.g., xk -> sq)
+  const langKey = mappedLanguage || language;
 
   const texts = {
     de: {
