@@ -167,8 +167,60 @@ async def approve_wholesale_application(
     settings: WholesaleUpdate,
     admin: dict = Depends(get_admin_user)
 ):
-    """Approve a wholesale application and create customer account"""
+    """Approve a wholesale application and activate customer account"""
     application = await db.wholesale_applications.find_one({"id": application_id})
+    
+    # Check if this is a self-registered customer (has wholesale_id)
+    if application and application.get("wholesale_id"):
+        # Self-registered customer - update existing wholesale_customers record
+        wholesale_id = application["wholesale_id"]
+        
+        await db.wholesale_customers.update_one(
+            {"id": wholesale_id},
+            {"$set": {
+                "discount_percent": settings.discount_percent or 10,
+                "credit_limit": settings.credit_limit or 0,
+                "payment_terms": settings.payment_terms or "prepaid",
+                "notes": settings.notes or "",
+                "status": "active",
+                "approved_by": admin["id"],
+                "approved_at": datetime.now(timezone.utc).isoformat()
+            }}
+        )
+        
+        await db.wholesale_applications.update_one(
+            {"id": application_id},
+            {"$set": {"status": "approved", "approved_at": datetime.now(timezone.utc).isoformat()}}
+        )
+        
+        customer = await db.wholesale_customers.find_one({"id": wholesale_id})
+        
+        # Send welcome/activation email
+        try:
+            await send_wholesale_welcome_email(
+                to_email=customer["email"],
+                contact_name=customer["contact_name"],
+                company_name=customer["company_name"],
+                discount_percent=settings.discount_percent or 10,
+                credit_limit=settings.credit_limit or 0,
+                payment_terms=settings.payment_terms or "prepaid",
+                has_user_account=True  # They have a B2B account
+            )
+            logger.info(f"📧 Wholesale activation email sent to {customer['email']}")
+        except Exception as e:
+            logger.error(f"❌ Failed to send wholesale activation email: {e}")
+        
+        logger.info(f"🏢 Wholesale customer activated: {customer['company_name']}")
+        
+        return {
+            "success": True, 
+            "message": "Großkunde erfolgreich freigeschaltet",
+            "wholesale_id": wholesale_id,
+            "user_linked": True,
+            "email_sent": True
+        }
+    
+    # Legacy flow - application without wholesale_id (old system)
     if not application:
         raise HTTPException(status_code=404, detail="Bewerbung nicht gefunden")
     
