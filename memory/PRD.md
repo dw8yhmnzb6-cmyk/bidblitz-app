@@ -341,7 +341,25 @@ February 8, 2026
 
 ## Completed Features This Session (February 8, 2026)
 
-### 1. ✅ Admin Wartungsmodus (Maintenance Mode) 🔧
+### 1. ✅ B2B Großkunden-Portal (NEU!) 🏢
+- **Separates Portal** unter /b2b mit eigenem Design (cyan/blau Theme)
+- **Registrierung** (/b2b/register): Firma, Kontakt, E-Mail, Passwort, Steuernummer, erwartetes Volumen
+- **Admin-Freischaltung**: Admin kann Rabatt (%), Kreditlimit (€), Zahlungsziel (Vorkasse/Netto 15/30) festlegen
+- **Login** (/b2b/login): Separater Login für B2B-Kunden
+- **Dashboard** (/b2b/dashboard) mit Tabs:
+  - Übersicht: Rabatt, Kreditlimit, Verfügbar, Bestellungen, Gesamtumsatz
+  - Gebote kaufen: Alle Pakete mit automatisch berechnetem Rabatt
+  - Bestellungen: Bestellhistorie
+  - Profil: Firmendaten
+- **Backend APIs**: `/api/wholesale/auth/*`
+- **Testing**: 100% bestanden (15/15 Backend, 11/11 Frontend)
+- Files:
+  - `/app/backend/routers/wholesale_auth.py` - Neue Auth-Endpunkte
+  - `/app/frontend/src/pages/WholesaleRegister.js`
+  - `/app/frontend/src/pages/WholesaleLogin.js`
+  - `/app/frontend/src/pages/WholesaleDashboard.js`
+
+### 2. ✅ Admin Wartungsmodus (Maintenance Mode) 🔧
 - **Neuer Admin-Tab** "Wartung" mit Schraubenschlüssel-Icon
 - **Toggle-Funktion** zum Aktivieren/Deaktivieren
 - **Konfigurierbare Nachricht** für Benutzer
@@ -351,48 +369,34 @@ February 8, 2026
   - `/app/backend/routers/maintenance.py` - API-Endpunkte
   - `/app/frontend/src/components/admin/AdminMaintenance.js` - Admin UI
   - `/app/frontend/src/pages/MaintenancePage.js` - Benutzer-Wartungsseite
-  - `/app/frontend/src/pages/Admin.js` - Tab hinzugefügt
 
-### 2. ✅ "Freunde werben" Link sichtbar 🎁
+### 3. ✅ "Freunde werben" Link sichtbar 🎁
 - **Desktop**: Link in der Navbar nach Glücksrad (pink, mit Gift-Icon)
 - **Mobile**: Link im mobilen Menü
 - **Route**: `/referral` Seite
 - File: `/app/frontend/src/components/Navbar.js`
 
-### 3. ✅ Admin Influencer Tab funktioniert
-- UI mit hellem Theme korrekt dargestellt
-- Alle Funktionen (Liste, Erstellen, Bearbeiten) funktionsfähig
+### 4. ✅ Admin Panel Mobile Responsive 📱
+- **Großkunden Tab**: Tabelle durch mobile-freundliche Karten ersetzt
+- **Influencer Tab**: Tabelle durch mobile-freundliche Karten ersetzt
+- Alle Informationen (Rabatt, Status, Aktionen) sichtbar auf mobilen Geräten
 
-### 4. ✅ PWA Install Banner für iOS verbessert 📱
-- **Detailliertere Anweisungen** in Schritten
-- **"Verstanden" Button** hinzugefügt
-- **Besseres Teilen-Icon** SVG
-- File: `/app/frontend/src/components/PWAInstallBanner.js`
-
-### 5. ✅ Großkunden-Freischaltung ohne Benutzerkonto 🏢
-- **Backend**: Freischaltung funktioniert jetzt ohne existierendes User-Konto
-- **Info-Banner**: Zeigt Hinweis, dass Verknüpfung bei Registrierung erfolgt
-- **API Response**: `user_linked: false` bei Freischaltung ohne Konto
-- **Automatische Verknüpfung**: Bei Registrierung wird Großkunde automatisch verknüpft
-- **Willkommens-E-Mail**: Automatischer Versand mit Vorteilen und Registrierungsaufforderung
+### 5. ✅ Großkunden-Freischaltung verbessert 🏢
+- Freischaltung funktioniert ohne existierendes User-Konto
+- Automatische Willkommens-E-Mail mit Registrierungsaufforderung
+- Automatische Verknüpfung bei Registrierung
 - Files:
-  - `/app/backend/routers/wholesale.py` - API angepasst + E-Mail-Versand
-  - `/app/backend/routers/auth.py` - Automatische Verknüpfung bei Registrierung
-  - `/app/backend/utils/email.py` - `send_wholesale_welcome_email()` hinzugefügt
-  - `/app/frontend/src/components/admin/AdminWholesale.js` - Komplett neu mit hellem Theme
+  - `/app/backend/routers/wholesale.py` - Erweiterte approve-Funktion
+  - `/app/backend/utils/email.py` - `send_wholesale_welcome_email()`
 
-### 6. ✅ Vollständige Übersetzungen für Auktionskarten (P1) 🌍
-- **24 Sprachen** haben jetzt alle wichtigen Keys:
-  - `uvp` (UVP/RRP/PVP/etc.)
-  - `bid` (BIETEN/BID/OFERTAR/etc.)
-  - `lastSoldFor` (Zuletzt für/Last sold for/etc.)
-  - `activity` (Aktivität/Activity/etc.)
-  - `activityLow/Medium/High/Hot` (Niedrig/Mittel/Hoch/Heiß)
-- File: `/app/frontend/src/i18n/translations.js`
+### 6. ✅ Vollständige Übersetzungen für Auktionskarten 🌍
+- **24 Sprachen** haben jetzt alle wichtigen Keys: uvp, bid, lastSoldFor, activity
 
 ### Testing Status
 - `/app/test_reports/iteration_41.json` - Wartungsmodus & Freunde werben (100% passed)
 - `/app/test_reports/iteration_42.json` - Großkunden & Übersetzungen (100% passed)
+- `/app/test_reports/iteration_43.json` - Mobile Responsive (100% passed)
+- `/app/test_reports/iteration_44.json` - B2B Portal (100% passed - 26/26 Tests)
 
 ---
 
