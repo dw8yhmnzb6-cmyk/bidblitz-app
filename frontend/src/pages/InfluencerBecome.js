@@ -468,43 +468,43 @@ export default function InfluencerBecome() {
         </div>
       </section>
       
-      {/* Stats */}
-      <section className="py-12 px-4">
-        <div className="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="glass-card rounded-xl p-5 text-center">
-            <p className="text-3xl font-black text-yellow-400">30%</p>
-            <p className="text-gray-500 text-sm">{t.maxCommission}</p>
+      {/* Stats - Improved Cards */}
+      <section className="py-14 px-4">
+        <div className="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-5">
+          <div className="bg-white rounded-2xl p-6 text-center shadow-lg shadow-slate-200/50 border border-slate-100 hover:shadow-xl transition-shadow">
+            <p className="text-4xl font-black bg-gradient-to-r from-amber-500 to-orange-500 bg-clip-text text-transparent">30%</p>
+            <p className="text-slate-500 text-sm font-medium mt-1">{t.maxCommission}</p>
           </div>
-          <div className="glass-card rounded-xl p-5 text-center">
-            <p className="text-3xl font-black text-cyan-400">50+</p>
-            <p className="text-gray-500 text-sm">{t.activePartners}</p>
+          <div className="bg-white rounded-2xl p-6 text-center shadow-lg shadow-slate-200/50 border border-slate-100 hover:shadow-xl transition-shadow">
+            <p className="text-4xl font-black text-cyan-500">50+</p>
+            <p className="text-slate-500 text-sm font-medium mt-1">{t.activePartners}</p>
           </div>
-          <div className="glass-card rounded-xl p-5 text-center">
-            <p className="text-3xl font-black text-green-400">€10K+</p>
-            <p className="text-gray-500 text-sm">{t.paidOut}</p>
+          <div className="bg-white rounded-2xl p-6 text-center shadow-lg shadow-slate-200/50 border border-slate-100 hover:shadow-xl transition-shadow">
+            <p className="text-4xl font-black text-emerald-500">€10K+</p>
+            <p className="text-slate-500 text-sm font-medium mt-1">{t.paidOut}</p>
           </div>
-          <div className="glass-card rounded-xl p-5 text-center">
-            <p className="text-3xl font-black text-purple-400">24h</p>
-            <p className="text-gray-500 text-sm">{t.activation}</p>
+          <div className="bg-white rounded-2xl p-6 text-center shadow-lg shadow-slate-200/50 border border-slate-100 hover:shadow-xl transition-shadow">
+            <p className="text-4xl font-black text-violet-500">24h</p>
+            <p className="text-slate-500 text-sm font-medium mt-1">{t.activation}</p>
           </div>
         </div>
       </section>
       
-      {/* Benefits */}
-      <section className="py-16 px-4 bg-gradient-to-b from-cyan-50 to-cyan-100/50">
+      {/* Benefits - Modern Cards */}
+      <section className="py-16 px-4 bg-gradient-to-b from-white via-slate-50/50 to-amber-50/30">
         <div className="max-w-5xl mx-auto">
-          <h2 className="text-3xl font-bold text-gray-800 text-center mb-12">
+          <h2 className="text-3xl md:text-4xl font-bold text-slate-800 text-center mb-14">
             {t.benefitsTitle}
           </h2>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {benefits.map((benefit, index) => (
-              <div key={index} className="glass-card rounded-xl p-6 hover:border-yellow-400/30 transition-colors">
-                <div className="w-12 h-12 rounded-lg bg-yellow-400/20 flex items-center justify-center text-yellow-400 mb-4">
+              <div key={index} className="bg-white rounded-2xl p-7 shadow-lg shadow-slate-200/40 border border-slate-100 hover:shadow-xl hover:border-amber-200 transition-all group">
+                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-amber-100 to-orange-100 flex items-center justify-center text-amber-600 mb-5 group-hover:scale-110 transition-transform">
                   {benefit.icon}
                 </div>
-                <h3 className="text-lg font-bold text-gray-800 mb-2">{benefit.title}</h3>
-                <p className="text-gray-500">{benefit.desc}</p>
+                <h3 className="text-lg font-bold text-slate-800 mb-2">{benefit.title}</h3>
+                <p className="text-slate-500 leading-relaxed">{benefit.desc}</p>
               </div>
             ))}
           </div>
