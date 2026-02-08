@@ -123,16 +123,38 @@ export default function PWAInstallBanner() {
             
             {/* iOS Instructions */}
             {isIOS ? (
-              <div className="mt-3 bg-white/20 rounded-lg p-3 text-sm">
-                <p>
-                  {t.iosInstructions}{' '}
-                  <span className="inline-flex items-center justify-center w-6 h-6 bg-white/30 rounded">
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M15 8a1 1 0 01-1 1h-4v4a1 1 0 11-2 0V9H4a1 1 0 110-2h4V3a1 1 0 112 0v4h4a1 1 0 011 1z"/>
-                    </svg>
-                  </span>{' '}
-                  {t.thenAddToHome}
-                </p>
+              <div className="mt-3">
+                <div className="bg-white/20 rounded-lg p-3 text-sm space-y-2">
+                  <p className="font-medium">So installieren Sie die App:</p>
+                  <ol className="list-decimal list-inside space-y-1">
+                    <li>
+                      Tippen Sie auf{' '}
+                      <span className="inline-flex items-center justify-center w-6 h-6 bg-white/30 rounded mx-1">
+                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M3 4a1 1 0 011-1h4a1 1 0 010 2H5v10h10v-3a1 1 0 112 0v3a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2zm9 1a1 1 0 010-2h4a1 1 0 011 1v4a1 1 0 01-2 0V5.414l-5.293 5.293a1 1 0 01-1.414-1.414L13.586 4H12z" clipRule="evenodd"/>
+                        </svg>
+                      </span>
+                      {' '}(Teilen-Symbol) unten
+                    </li>
+                    <li>Scrollen Sie zu "{t.thenAddToHome.replace('dann ', '').replace('then ', '')}"</li>
+                    <li>Bestätigen Sie mit "Hinzufügen"</li>
+                  </ol>
+                </div>
+                <div className="flex gap-2 mt-3">
+                  <Button
+                    onClick={handleDismiss}
+                    className="flex-1 bg-white text-amber-600 hover:bg-white/90 font-semibold"
+                  >
+                    Verstanden
+                  </Button>
+                  <Button
+                    onClick={handleDismiss}
+                    variant="ghost"
+                    className="text-white hover:bg-white/20"
+                  >
+                    {t.later}
+                  </Button>
+                </div>
               </div>
             ) : (
               <div className="mt-3 flex gap-2">
