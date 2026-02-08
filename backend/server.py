@@ -281,6 +281,7 @@ app.include_router(tournaments_router, prefix="/api")
 app.include_router(winner_gallery_router, prefix="/api")
 app.include_router(referrals_router, prefix="/api")
 app.include_router(analytics_router, prefix="/api")
+app.include_router(analytics_reports_router)  # Has its own prefix
 app.include_router(surveys_router, prefix="/api")
 app.include_router(maintenance_router, prefix="/api")
 app.include_router(push_notifications_router, prefix="/api")
