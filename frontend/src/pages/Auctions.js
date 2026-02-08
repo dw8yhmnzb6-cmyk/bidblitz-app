@@ -429,7 +429,6 @@ const AuctionCard = memo(({ auction, product, onBid, t, language, isAuthenticate
             >
               {isNightPaused ? `🌙 ${t('auctionPage.nightOnly')}` : buttonConfig.text}
             </button>
-            </button>
           </div>
           
           <div className="w-16 h-16 sm:w-20 sm:h-20 bg-white rounded-lg flex items-center justify-center shadow-sm flex-shrink-0">
