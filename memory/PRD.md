@@ -38,6 +38,12 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
    - Problem: "Invalid base64 image_url" mit gpt-4o Modell
    - Lösung: Modell von gpt-4o auf gpt-4.1 aktualisiert
    - Datei: `/app/backend/routers/voice_command.py` (Lines 1199-1263)
+11. ✅ **Nacht-Auktionen Benachrichtigung** (8. Feb 2026)
+   - Benutzer werden automatisch benachrichtigt, wenn Nacht-Auktionen um 23:30 starten
+   - Nur für Auktionen, auf die der Benutzer bereits geboten hat
+   - Opt-out möglich über Benachrichtigungs-Einstellungen
+   - Backend: `/app/backend/server.py` - `send_night_auction_notifications()` Funktion
+   - Frontend: `/app/frontend/src/pages/Notifications.js` - Neue "🌙 Nacht-Auktionen starten" Option
 
 ### ✅ Phase 2 Feature Additions Completed
 
