@@ -146,6 +146,7 @@ const LeaderboardWidget = memo(({ className = '', language = 'de' }) => {
   const navigate = useNavigate();
   const [leaderboard, setLeaderboard] = useState([]);
   const [loading, setLoading] = useState(true);
+  const langKey = getMappedLang(language);
   const t = widgetTexts[langKey] || widgetTexts.de;
   
   useEffect(() => {
