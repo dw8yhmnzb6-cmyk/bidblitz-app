@@ -419,10 +419,34 @@ async def bot_last_second_bidder():
                     retail_price = auction.get("retail_price", 0)
                     is_free_auction = auction.get("is_free_auction", False)
                     
-                    # GUARANTEED WINNER CHECK
+                    # ============================================
+                    # GEWINNER-KONTROLLE SYSTEM
+                    # - guaranteed_winner_bidding: Manuell vom Admin gesetzter Gewinner
+                    # - let_customer_win: Automatisch - dieser Kunde soll gewinnen (10%)
+                    # - Wenn keins gesetzt: Bots gewinnen (90%)
+                    # ============================================
+                    
                     guaranteed_winner_id = auction.get("guaranteed_winner_bidding")
-                    if guaranteed_winner_id and auction.get("last_bidder_id") == guaranteed_winner_id:
-                        continue
+                    let_customer_win_id = auction.get("let_customer_win")
+                    
+                    # Wenn ein garantierter Gewinner gesetzt ist und dieser gerade führt -> nicht bieten
+                    if guaranteed_winner_id:
+                        if auction.get("last_bidder_id") == guaranteed_winner_id:
+                            # Gewinner führt bereits - Bots stoppen
+                            continue
+                        # Gewinner führt nicht - Bots bieten NICHT, warten dass Gewinner bietet
+                        # Aber nur in den letzten 30 Sekunden stoppen
+                        if seconds_left < 30:
+                            continue
+                    
+                    # Wenn ein Kunde gewinnen soll (automatisch 10%)
+                    if let_customer_win_id:
+                        if auction.get("last_bidder_id") == let_customer_win_id:
+                            # Kunde führt - Bots stoppen
+                            continue
+                        # In letzten 30 Sekunden nicht mehr bieten wenn Kunde gewinnen soll
+                        if seconds_left < 30:
+                            continue
                     
                     # Check if it's time for next bid on this auction
                     next_bid_at = next_bid_time_per_auction.get(auction_id, 0)
