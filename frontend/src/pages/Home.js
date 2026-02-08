@@ -4,7 +4,7 @@ import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { getMappedLanguage } from '../i18n/translations';
-import { Clock, Trophy, TrendingUp, Users, Zap } from 'lucide-react';
+import { Clock, Crown, Trophy, TrendingUp, Users, Zap } from 'lucide-react';
 import { toast } from 'sonner';
 import GlobalJackpot from '../components/GlobalJackpot';
 import { HappyHourBanner, LuckyBidCounter, ExcitementStatusBar } from '../components/ExcitementFeatures';
