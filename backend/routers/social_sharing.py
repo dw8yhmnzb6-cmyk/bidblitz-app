@@ -11,7 +11,7 @@ import uuid
 from config import db, logger
 from dependencies import get_current_user
 
-router = APIRouter(prefix="/social", tags=["Social Sharing"])
+router = APIRouter(prefix="/social-rewards", tags=["Social Sharing Rewards"])
 
 # ==================== SCHEMAS ====================
 
