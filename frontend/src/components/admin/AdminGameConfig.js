@@ -65,28 +65,30 @@ export function AdminGameConfig({ token, gameConfig, setGameConfig, isConnected 
       {gameConfig ? (
         <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2">
           {/* Daily Rewards Config */}
-          <div className="glass-card rounded-xl p-6">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#F59E0B] to-[#EF4444] flex items-center justify-center">
-                <Gift className="w-5 h-5 text-white" />
+          <div className="glass-card rounded-xl p-4 sm:p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4 sm:mb-6">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#F59E0B] to-[#EF4444] flex items-center justify-center flex-shrink-0">
+                  <Gift className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-white font-bold text-sm sm:text-base">Tägliche Belohnungen</h3>
+                  <p className="text-[#94A3B8] text-xs sm:text-sm">Daily Login Rewards</p>
+                </div>
               </div>
-              <div>
-                <h3 className="text-white font-bold">Tägliche Belohnungen</h3>
-                <p className="text-[#94A3B8] text-sm">Daily Login Rewards</p>
-              </div>
-              <label className="ml-auto flex items-center gap-2">
+              <label className="sm:ml-auto flex items-center gap-2">
                 <input
                   type="checkbox"
                   checked={gameConfig.daily_reward_enabled}
                   onChange={(e) => setGameConfig({...gameConfig, daily_reward_enabled: e.target.checked})}
                   className="w-5 h-5 rounded"
                 />
-                <span className="text-white">Aktiv</span>
+                <span className="text-white text-sm">Aktiv</span>
               </label>
             </div>
             
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3 sm:gap-4">
                 <div>
                   <Label className="text-white">Min. Gebote</Label>
                   <Input
