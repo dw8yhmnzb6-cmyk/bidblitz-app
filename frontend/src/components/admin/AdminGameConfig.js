@@ -63,7 +63,7 @@ export function AdminGameConfig({ token, gameConfig, setGameConfig, isConnected 
       </div>
 
       {gameConfig ? (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2">
           {/* Daily Rewards Config */}
           <div className="glass-card rounded-xl p-6">
             <div className="flex items-center gap-3 mb-6">
