@@ -50,6 +50,24 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
      - `/app/frontend/src/components/admin/AdminVIPAuctions.js` - Neue md:hidden Card-View
      - `/app/frontend/src/components/admin/AdminWholesale.js` - Applications-Grid optimiert
 
+5. ✅ **B2B Stripe Checkout Integration** (User-Reported Issue)
+   - Problem: Prepaid B2B-Kunden konnten keine Gebote kaufen (Bestellungen blieben auf "awaiting_payment")
+   - Lösung: Stripe Checkout Session für Prepaid-Kunden implementiert
+   - Kredit-Kunden können weiterhin direkt bestellen (Kreditlimit)
+   - Webhook für automatische Gebot-Gutschrift nach Zahlung
+   - Neue Endpoints:
+     - `POST /api/wholesale/auth/checkout` - Erstellt Stripe Checkout Session
+     - `POST /api/wholesale/auth/webhook/payment` - Verarbeitet Zahlungsbestätigung
+     - `GET /api/wholesale/auth/order/{order_id}/status` - Bestellstatus abrufen
+   - Geänderte Dateien:
+     - `/app/backend/routers/wholesale_auth.py` - Stripe Checkout hinzugefügt
+     - `/app/frontend/src/pages/WholesaleDashboard.js` - Checkout-Redirect implementiert
+
+6. ✅ **Wartungsmodus verifiziert** (User-Reported Issue)
+   - Backend-API funktioniert korrekt (toggle, status)
+   - Frontend AdminMaintenance.js funktioniert korrekt
+   - Toggle zwischen "System Online" und "Wartungsmodus AKTIV" funktioniert
+
 ---
 
 ### ✅ Session Update - February 8, 2026 (Session 1)
