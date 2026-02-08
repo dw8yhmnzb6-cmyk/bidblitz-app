@@ -271,8 +271,8 @@ const KPICard = ({ title, value, change, subtext, icon: Icon, color }) => (
 // Stat Row Component
 const StatRow = ({ label, value, danger }) => (
   <div className="flex items-center justify-between">
-    <span className="text-gray-400">{label}</span>
-    <span className={`font-semibold ${danger ? 'text-red-500' : 'text-white'}`}>{value}</span>
+    <span className="text-gray-400 text-xs sm:text-sm">{label}</span>
+    <span className={`font-semibold text-sm sm:text-base ${danger ? 'text-red-500' : 'text-white'}`}>{value}</span>
   </div>
 );
 
