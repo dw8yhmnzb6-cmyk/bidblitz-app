@@ -126,6 +126,44 @@ const AdminAnalytics = ({ token }) => {
     }
   };
 
+  const handleSubscribeReport = async () => {
+    if (!reportEmail || !reportEmail.includes('@')) {
+      toast.error('Bitte gültige E-Mail-Adresse eingeben');
+      return;
+    }
+    
+    try {
+      await axios.post(`${API}/api/analytics-reports/subscribe`, {
+        email: reportEmail,
+        frequency: 'weekly'
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success(`${reportEmail} für wöchentliche Reports abonniert!`);
+      setReportEmail('');
+    } catch (error) {
+      toast.error('Fehler beim Abonnieren');
+    }
+  };
+
+  const handleSendReportNow = async () => {
+    setSendingReport(true);
+    try {
+      const response = await axios.post(`${API}/api/analytics-reports/send-now`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (response.data.has_email_service) {
+        toast.success(`Report an ${response.data.recipients.length} Empfänger gesendet!`);
+      } else {
+        toast.info('E-Mail-Service nicht konfiguriert. Report wurde simuliert.');
+      }
+    } catch (error) {
+      toast.error('Fehler beim Senden des Reports');
+    } finally {
+      setSendingReport(false);
+    }
+  };
+
   useEffect(() => {
     fetchAnalytics();
     fetchDeviceAnalytics();
