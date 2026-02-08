@@ -421,6 +421,15 @@ function AppContent() {
           <Route path="/crypto" element={<CryptoPaymentPage />} />
           <Route path="/krypto" element={<CryptoPaymentPage />} />
           <Route path="/bitcoin" element={<CryptoPaymentPage />} />
+          
+          {/* B2B / Wholesale Portal */}
+          <Route path="/b2b/register" element={<WholesaleRegister />} />
+          <Route path="/b2b/login" element={<WholesaleLogin />} />
+          <Route path="/b2b/dashboard" element={<WholesaleDashboard />} />
+          <Route path="/b2b" element={<Navigate to="/b2b/login" replace />} />
+          <Route path="/grosshandel" element={<Navigate to="/b2b/login" replace />} />
+          <Route path="/wholesale" element={<Navigate to="/b2b/login" replace />} />
+          
           {/* Social Share */}
           <Route path="/share" element={
             <ProtectedRoute>
