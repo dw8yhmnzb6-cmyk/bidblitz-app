@@ -427,29 +427,53 @@ async def bot_last_second_bidder():
                     # Check if it's time for next bid on this auction
                     next_bid_at = next_bid_time_per_auction.get(auction_id, 0)
                     
-                    # BOTS ONLY BID IN THE LAST 5 MINUTES!
-                    # Don't bid if more than 5 minutes remaining (let real users bid first)
-                    if seconds_left > 300:  # 5 minutes = 300 seconds
-                        continue  # Skip - auction still has time for real users
+                    # ============================================
+                    # NEUE BOT-LOGIK: 2-Phasen-System
+                    # Phase 1: Früh bieten bis €3
+                    # Pause: Zwischen €3 und letzten 3 Minuten
+                    # Phase 2: Endspurt - letzte 3 Minuten bis €25
+                    # ============================================
+                    
+                    PHASE1_TARGET = 3.00  # Bots bieten früh bis €3
+                    ENDSPURT_TIME = 180   # Letzten 3 Minuten = 180 Sekunden
+                    FINAL_TARGET = 25.00  # Endpreis-Ziel
+                    
+                    # Determine which phase we're in
+                    in_phase1 = current_price < PHASE1_TARGET
+                    in_endspurt = seconds_left <= ENDSPURT_TIME
                     
                     # CRITICAL: If < 15 seconds left and price < €25, bid IMMEDIATELY
-                    is_urgent = seconds_left < 15 and current_price < 25.0
+                    is_urgent = seconds_left < 15 and current_price < FINAL_TARGET
                     
+                    # Skip if not time yet (unless urgent)
                     if now_ts < next_bid_at and not is_urgent:
-                        continue  # Not time yet (unless urgent)
+                        continue
                     
                     should_bid = False
                     target_price = 0
                     
-                    # MINDESTPREIS: Immer €25 für echte Einnahmen
-                    effective_minimum = MINIMUM_AUCTION_PRICE  # €25
-                    
-                    # Verwende das Maximum aus explicit_target und effective_minimum
-                    effective_target = max(explicit_target or 0, effective_minimum)
-                    
-                    if current_price < effective_target:
-                        target_price = effective_target
+                    # PHASE 1: Frühes Bieten bis €3
+                    if in_phase1 and not in_endspurt:
+                        # Bots bieten langsam bis €3
+                        target_price = PHASE1_TARGET
                         should_bid = True
+                    
+                    # PAUSE PHASE: Zwischen €3 und Endspurt - NICHT bieten
+                    elif current_price >= PHASE1_TARGET and not in_endspurt:
+                        # Warten auf Endspurt - echte Nutzer sollen bieten
+                        should_bid = False
+                    
+                    # PHASE 2: Endspurt - letzte 3 Minuten
+                    elif in_endspurt and current_price < FINAL_TARGET:
+                        # Aggressiv bieten bis €25
+                        target_price = FINAL_TARGET
+                        should_bid = True
+                    
+                    # Override mit explicit_target wenn höher
+                    if explicit_target and explicit_target > target_price:
+                        target_price = explicit_target
+                        if current_price < target_price and in_endspurt:
+                            should_bid = True
                     
                     if should_bid:
                         bots = await db.bots.find({}, {"_id": 0}).to_list(100)
