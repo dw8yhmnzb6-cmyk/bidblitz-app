@@ -2607,6 +2607,11 @@ export default function Admin() {
             </div>
           )}
 
+          {/* Winner Control Tab */}
+          {activeTab === 'winner-control' && (
+            <AdminWinnerControl />
+          )}
+
           {/* Promo Codes Tab */}
           {activeTab === 'promo-codes' && (
             <div className="space-y-6">
