@@ -199,116 +199,105 @@ export function AdminInfluencers({ token, influencers, setInfluencers, fetchData
         </div>
       </div>
 
-      {/* Influencer List */}
+      {/* Influencer List - Mobile-friendly cards */}
       <div className="bg-white rounded-2xl shadow-lg border border-slate-100 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="bg-slate-50 border-b border-slate-200">
-                <th className="text-left px-4 py-4 text-slate-600 font-semibold text-sm">Name</th>
-                <th className="text-left px-4 py-4 text-slate-600 font-semibold text-sm">Code</th>
-                <th className="text-left px-4 py-4 text-slate-600 font-semibold text-sm">Stadt</th>
-                <th className="text-left px-4 py-4 text-slate-600 font-semibold text-sm">Tier</th>
-                <th className="text-left px-4 py-4 text-slate-600 font-semibold text-sm">Provision</th>
-                <th className="text-left px-4 py-4 text-slate-600 font-semibold text-sm">Kunden</th>
-                <th className="text-left px-4 py-4 text-slate-600 font-semibold text-sm">Umsatz</th>
-                <th className="text-left px-4 py-4 text-slate-600 font-semibold text-sm">Status</th>
-                <th className="text-left px-4 py-4 text-slate-600 font-semibold text-sm">Aktionen</th>
-              </tr>
-            </thead>
-            <tbody>
-              {influencers.map((influencer) => (
-                <tr key={influencer.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
-                  <td className="px-4 py-4">
-                    <div>
-                      <p className="text-slate-800 font-medium">{influencer.name}</p>
-                      {influencer.instagram && (
-                        <p className="text-slate-400 text-xs">@{influencer.instagram}</p>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-4 py-4">
-                    <code className="bg-gradient-to-r from-amber-100 to-orange-100 text-amber-700 px-3 py-1.5 rounded-lg text-sm font-bold border border-amber-200">
-                      {influencer.code}
-                    </code>
-                  </td>
-                  <td className="px-4 py-4">
-                    {influencer.city ? (
-                      <span className="flex items-center gap-1 text-violet-600 text-sm font-medium">
-                        <MapPin className="w-3 h-3" />
-                        {influencer.city}
-                      </span>
-                    ) : (
-                      <span className="text-slate-300 text-sm">-</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-4">
-                    <span className={`px-3 py-1.5 rounded-lg text-xs font-bold ${
-                      influencer.commission_tier === 'Platin' ? 'bg-violet-100 text-violet-700 border border-violet-200' :
-                      influencer.commission_tier === 'Gold' ? 'bg-amber-100 text-amber-700 border border-amber-200' :
-                      influencer.commission_tier === 'Silber' ? 'bg-slate-200 text-slate-600 border border-slate-300' :
-                      'bg-amber-700/10 text-amber-700 border border-amber-700/20'
-                    }`}>
-                      {influencer.commission_tier === 'Platin' ? '💎' : 
-                       influencer.commission_tier === 'Gold' ? '🥇' :
-                       influencer.commission_tier === 'Silber' ? '🥈' : '🥉'} {influencer.commission_tier || 'Bronze'}
-                    </span>
-                  </td>
-                  <td className="px-4 py-4">
-                    <div>
-                      <span className="text-slate-800 font-bold">{influencer.effective_commission || influencer.commission_percent}%</span>
-                      {influencer.tier_bonus > 0 && (
-                        <span className="text-emerald-500 text-xs ml-1 font-medium">(+{influencer.tier_bonus}%)</span>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-4 py-4 text-cyan-600 font-semibold">{influencer.total_customers || 0}</td>
-                  <td className="px-4 py-4 text-emerald-600 font-semibold">€{(influencer.total_revenue || 0).toFixed(2)}</td>
-                  <td className="px-4 py-4">
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+        <div className="p-4 md:p-6 space-y-4">
+          {influencers.map((influencer) => (
+            <div key={influencer.id} className="bg-slate-50 rounded-xl p-4 border border-slate-200">
+              {/* Header with name, status, and actions */}
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="text-slate-800 font-semibold">{influencer.name}</h3>
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                       influencer.is_active 
-                        ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' 
-                        : 'bg-red-100 text-red-600 border border-red-200'
+                        ? 'bg-emerald-100 text-emerald-700' 
+                        : 'bg-red-100 text-red-600'
                     }`}>
                       {influencer.is_active ? '✓ Aktiv' : '✗ Inaktiv'}
                     </span>
-                  </td>
-                  <td className="px-4 py-4">
-                    <div className="flex items-center gap-1">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => handleEditInfluencer(influencer)}
-                        className="text-violet-600 hover:bg-violet-100 hover:text-violet-700"
-                        title="Bearbeiten"
-                        data-testid={`edit-influencer-${influencer.id}`}
-                      >
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => handleToggleInfluencer(influencer.id, influencer.is_active)}
-                        className={influencer.is_active ? 'text-emerald-500 hover:bg-emerald-100' : 'text-slate-400 hover:bg-slate-100'}
-                        title={influencer.is_active ? 'Deaktivieren' : 'Aktivieren'}
-                      >
-                        <CheckCircle className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => handleDeleteInfluencer(influencer.id)}
-                        className="text-red-400 hover:bg-red-100 hover:text-red-600"
-                        title="Löschen"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  </div>
+                  {influencer.instagram && (
+                    <p className="text-slate-400 text-xs">@{influencer.instagram}</p>
+                  )}
+                  {influencer.city && (
+                    <span className="flex items-center gap-1 text-violet-600 text-xs font-medium mt-1">
+                      <MapPin className="w-3 h-3" />
+                      {influencer.city}
+                    </span>
+                  )}
+                </div>
+                {/* Tier Badge */}
+                <span className={`px-3 py-1.5 rounded-lg text-xs font-bold flex-shrink-0 ${
+                  influencer.commission_tier === 'Platin' ? 'bg-violet-100 text-violet-700 border border-violet-200' :
+                  influencer.commission_tier === 'Gold' ? 'bg-amber-100 text-amber-700 border border-amber-200' :
+                  influencer.commission_tier === 'Silber' ? 'bg-slate-200 text-slate-600 border border-slate-300' :
+                  'bg-amber-700/10 text-amber-700 border border-amber-700/20'
+                }`}>
+                  {influencer.commission_tier === 'Platin' ? '💎' : 
+                   influencer.commission_tier === 'Gold' ? '🥇' :
+                   influencer.commission_tier === 'Silber' ? '🥈' : '🥉'} {influencer.commission_tier || 'Bronze'}
+                </span>
+              </div>
+              
+              {/* Code Badge */}
+              <div className="mb-3">
+                <code className="bg-gradient-to-r from-amber-100 to-orange-100 text-amber-700 px-3 py-1.5 rounded-lg text-sm font-bold border border-amber-200">
+                  {influencer.code}
+                </code>
+              </div>
+              
+              {/* Stats Grid */}
+              <div className="grid grid-cols-3 gap-2 mb-3">
+                <div className="bg-white rounded-lg p-2 text-center">
+                  <p className="text-xs text-slate-400">Provision</p>
+                  <p className="text-lg font-bold text-slate-800">{influencer.effective_commission || influencer.commission_percent}%</p>
+                  {influencer.tier_bonus > 0 && (
+                    <p className="text-emerald-500 text-xs font-medium">+{influencer.tier_bonus}%</p>
+                  )}
+                </div>
+                <div className="bg-white rounded-lg p-2 text-center">
+                  <p className="text-xs text-slate-400">Kunden</p>
+                  <p className="text-lg font-bold text-cyan-600">{influencer.total_customers || 0}</p>
+                </div>
+                <div className="bg-white rounded-lg p-2 text-center">
+                  <p className="text-xs text-slate-400">Umsatz</p>
+                  <p className="text-sm font-bold text-emerald-600">€{(influencer.total_revenue || 0).toFixed(0)}</p>
+                </div>
+              </div>
+              
+              {/* Action Buttons */}
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  onClick={() => handleEditInfluencer(influencer)}
+                  className="flex-1 bg-violet-500 hover:bg-violet-600 text-white"
+                  data-testid={`edit-influencer-${influencer.id}`}
+                >
+                  <Edit className="w-4 h-4 mr-1" />
+                  Bearbeiten
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleToggleInfluencer(influencer.id, influencer.is_active)}
+                  className={`px-3 ${influencer.is_active ? 'border-emerald-200 text-emerald-600' : 'border-slate-200 text-slate-400'}`}
+                  title={influencer.is_active ? 'Deaktivieren' : 'Aktivieren'}
+                >
+                  <CheckCircle className="w-4 h-4" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={() => handleDeleteInfluencer(influencer.id)}
+                  className="px-3"
+                  title="Löschen"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          ))}
         </div>
         
         {influencers.length === 0 && (
