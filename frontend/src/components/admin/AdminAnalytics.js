@@ -487,6 +487,61 @@ const AdminAnalytics = ({ token }) => {
           </div>
         </div>
       )}
+
+      {/* Email Report Subscription Section */}
+      <div className="bg-gradient-to-br from-violet-900/50 to-cyan-900/50 rounded-xl p-4 sm:p-6 border border-violet-500/30">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-violet-500 to-cyan-500 flex items-center justify-center flex-shrink-0">
+              <Mail className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+            </div>
+            <div>
+              <h3 className="text-white font-bold text-sm sm:text-base">Wöchentliche E-Mail-Reports</h3>
+              <p className="text-gray-400 text-xs sm:text-sm">Erhalten Sie jeden Montag eine Zusammenfassung</p>
+            </div>
+          </div>
+        </div>
+        
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="flex-1">
+            <Input
+              type="email"
+              placeholder="E-Mail-Adresse eingeben..."
+              value={reportEmail}
+              onChange={(e) => setReportEmail(e.target.value)}
+              className="bg-white/10 border-white/20 text-white placeholder:text-gray-400"
+            />
+          </div>
+          <div className="flex gap-2">
+            <Button
+              onClick={handleSubscribeReport}
+              className="flex-1 sm:flex-none bg-violet-600 hover:bg-violet-700 text-white"
+            >
+              <Mail className="w-4 h-4 mr-2" />
+              Abonnieren
+            </Button>
+            <Button
+              onClick={handleSendReportNow}
+              disabled={sendingReport}
+              variant="outline"
+              className="flex-1 sm:flex-none border-cyan-500/50 text-cyan-400 hover:bg-cyan-500/10"
+            >
+              {sendingReport ? (
+                <RefreshCw className="w-4 h-4 animate-spin" />
+              ) : (
+                <>
+                  <Send className="w-4 h-4 mr-2" />
+                  Jetzt senden
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+        
+        <p className="text-gray-500 text-xs mt-3">
+          Reports enthalten: Nutzer-Statistiken, Umsatz, Auktionen, und Geräte-Verteilung.
+        </p>
+      </div>
     </div>
   );
 };
