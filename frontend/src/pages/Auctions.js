@@ -18,7 +18,7 @@ import MysteryBoxSection from '../components/MysteryBoxSection';
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 // Auction of the Day Component - Special highlight
-const AuctionOfTheDay = memo(({ auction, product, onBid, t, language }) => {
+const AuctionOfTheDay = memo(({ auction, product, onBid, t, language, isAuthenticated = false, isVip = false, navigate }) => {
   if (!auction || !product) return null;
   
   // Check if auction is still active (not expired)
@@ -39,6 +39,34 @@ const AuctionOfTheDay = memo(({ auction, product, onBid, t, language }) => {
   const productName = product.name_translations?.[language] || product.name;
   const productDescription = product.description_translations?.[language] || product.description;
   
+  // Check if VIP auction
+  const isVipAuction = auction.is_vip_only;
+  
+  // Determine button config
+  const getButtonConfig = () => {
+    if (!isAuthenticated) {
+      return {
+        text: '🔒 ' + (language === 'de' ? 'Anmelden zum Bieten' : 'Login to Bid'),
+        action: () => navigate('/login'),
+        style: 'bg-gray-500 hover:bg-gray-600'
+      };
+    }
+    if (isVipAuction && !isVip) {
+      return {
+        text: '⭐ ' + (language === 'de' ? 'VIP werden zum Bieten' : 'Get VIP to Bid'),
+        action: () => navigate('/vip'),
+        style: 'bg-gradient-to-r from-yellow-600 to-amber-600 hover:from-yellow-500 hover:to-amber-500'
+      };
+    }
+    return {
+      text: '🔥 ' + t('auctionPage.bidNow'),
+      action: () => onBid(auction.id),
+      style: 'bg-gradient-to-b from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400'
+    };
+  };
+  
+  const buttonConfig = getButtonConfig();
+  
   return (
     <div 
       className="bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-400 rounded-xl p-1 mb-4 shadow-lg cursor-pointer" 
@@ -55,8 +83,15 @@ const AuctionOfTheDay = memo(({ auction, product, onBid, t, language }) => {
               <p className="text-[10px] sm:text-xs text-amber-600">{t('auctionPage.topOffer')}</p>
             </div>
           </div>
-          <div className="bg-red-500 text-white px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-xs sm:text-sm font-bold animate-pulse">
-            -{discount}%
+          <div className="flex items-center gap-2">
+            {isVipAuction && (
+              <span className="bg-gradient-to-r from-yellow-500 to-amber-500 text-black px-2 py-0.5 rounded-full text-xs font-bold flex items-center gap-1">
+                ⭐ VIP
+              </span>
+            )}
+            <div className="bg-red-500 text-white px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-xs sm:text-sm font-bold animate-pulse">
+              -{discount}%
+            </div>
           </div>
         </div>
         
@@ -96,11 +131,11 @@ const AuctionOfTheDay = memo(({ auction, product, onBid, t, language }) => {
             </div>
             
             <button 
-              onClick={(e) => { e.stopPropagation(); onBid(auction.id); }}
-              className="mt-2 sm:mt-3 w-full py-2 sm:py-2.5 bg-gradient-to-b from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-white font-bold text-xs sm:text-sm rounded-lg shadow-md transition-all hover:shadow-lg"
+              onClick={(e) => { e.stopPropagation(); buttonConfig.action(); }}
+              className={`mt-2 sm:mt-3 w-full py-2 sm:py-2.5 ${buttonConfig.style} text-white font-bold text-xs sm:text-sm rounded-lg shadow-md transition-all hover:shadow-lg`}
               data-testid="aotd-bid-button"
             >
-              🔥 {t('auctionPage.bidNow')}
+              {buttonConfig.text}
             </button>
           </div>
         </div>
