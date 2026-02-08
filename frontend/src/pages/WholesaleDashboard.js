@@ -417,6 +417,254 @@ export default function WholesaleDashboard() {
           </div>
         )}
 
+        {/* Customers Tab - B2B Customer Management */}
+        {activeTab === 'customers' && (
+          <div className="space-y-6">
+            {/* Add Customer Form */}
+            <div className="bg-slate-800/50 rounded-2xl p-6 border border-slate-700">
+              <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                <UserPlus className="w-5 h-5 text-cyan-400" />
+                Kunden hinzufügen
+              </h3>
+              <p className="text-slate-400 text-sm mb-4">
+                Fügen Sie Ihre Kunden über deren 8-stellige Kundennummer hinzu, um ihnen Gebote zu senden.
+              </p>
+              <div className="grid sm:grid-cols-3 gap-4">
+                <div>
+                  <Label className="text-slate-300 text-sm">Kundennummer</Label>
+                  <Input
+                    value={newCustomerNumber}
+                    onChange={(e) => setNewCustomerNumber(e.target.value.replace(/\D/g, '').slice(0, 8))}
+                    placeholder="12345678"
+                    className="bg-slate-900/50 border-slate-600 text-white placeholder:text-slate-500"
+                    maxLength={8}
+                  />
+                </div>
+                <div>
+                  <Label className="text-slate-300 text-sm">Spitzname (optional)</Label>
+                  <Input
+                    value={newCustomerNickname}
+                    onChange={(e) => setNewCustomerNickname(e.target.value)}
+                    placeholder="z.B. Filiale München"
+                    className="bg-slate-900/50 border-slate-600 text-white placeholder:text-slate-500"
+                  />
+                </div>
+                <div className="flex items-end">
+                  <Button
+                    onClick={handleAddCustomer}
+                    className="w-full bg-cyan-500 hover:bg-cyan-600"
+                    disabled={newCustomerNumber.length !== 8}
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Hinzufügen
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {/* Stats Cards */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
+                <p className="text-slate-400 text-sm">Verknüpfte Kunden</p>
+                <p className="text-2xl font-bold text-white">{b2bCustomers.length}</p>
+              </div>
+              <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
+                <p className="text-slate-400 text-sm">Gesendete Gebote</p>
+                <p className="text-2xl font-bold text-cyan-400">
+                  {bidTransfers.reduce((sum, t) => sum + (t.amount || 0), 0)}
+                </p>
+              </div>
+              <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
+                <p className="text-slate-400 text-sm">Transfers gesamt</p>
+                <p className="text-2xl font-bold text-white">{bidTransfers.length}</p>
+              </div>
+              <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
+                <p className="text-slate-400 text-sm">Kosten gesamt</p>
+                <p className="text-2xl font-bold text-emerald-400">
+                  €{bidTransfers.reduce((sum, t) => sum + (t.cost || 0), 0).toFixed(2)}
+                </p>
+              </div>
+            </div>
+
+            {/* Customer List */}
+            <div className="bg-slate-800/50 rounded-2xl border border-slate-700 overflow-hidden">
+              <div className="p-4 border-b border-slate-700">
+                <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                  <Users className="w-5 h-5 text-cyan-400" />
+                  Ihre Kunden ({b2bCustomers.length})
+                </h3>
+              </div>
+              
+              {b2bCustomers.length === 0 ? (
+                <div className="p-12 text-center">
+                  <Users className="w-12 h-12 text-slate-600 mx-auto mb-4" />
+                  <p className="text-slate-400">Noch keine Kunden verknüpft</p>
+                  <p className="text-slate-500 text-sm mt-1">
+                    Fügen Sie Kunden über deren Kundennummer hinzu
+                  </p>
+                </div>
+              ) : (
+                <div className="divide-y divide-slate-700">
+                  {b2bCustomers.map((c) => (
+                    <div key={c.customer_number} className="p-4 hover:bg-slate-700/30 transition-colors">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center text-white font-bold">
+                            {c.user_name?.charAt(0) || '?'}
+                          </div>
+                          <div>
+                            <p className="text-white font-medium">
+                              {c.nickname || c.user_name || 'Unbekannt'}
+                            </p>
+                            {c.nickname && (
+                              <p className="text-slate-400 text-sm">{c.user_name}</p>
+                            )}
+                            <p className="text-slate-500 text-xs">
+                              #{c.customer_number} • {c.total_bids_sent || 0} Gebote gesendet
+                            </p>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center gap-2">
+                          <div className="text-right mr-4 hidden sm:block">
+                            <p className="text-slate-400 text-sm">Aktuelles Guthaben</p>
+                            <p className="text-cyan-400 font-bold">{c.current_bids || 0} Gebote</p>
+                          </div>
+                          
+                          <Button
+                            onClick={() => setSendBidsTarget(c)}
+                            className="bg-emerald-500 hover:bg-emerald-600"
+                            size="sm"
+                          >
+                            <Send className="w-4 h-4 mr-1" />
+                            Senden
+                          </Button>
+                          
+                          <Button
+                            onClick={() => handleRemoveCustomer(c.customer_number)}
+                            variant="outline"
+                            size="sm"
+                            className="border-slate-600 text-slate-400 hover:bg-red-500/20 hover:text-red-400 hover:border-red-500/50"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Transfer History */}
+            <div className="bg-slate-800/50 rounded-2xl border border-slate-700 overflow-hidden">
+              <div className="p-4 border-b border-slate-700">
+                <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                  <History className="w-5 h-5 text-cyan-400" />
+                  Transfer-Historie
+                </h3>
+              </div>
+              
+              {bidTransfers.length === 0 ? (
+                <div className="p-8 text-center">
+                  <Gift className="w-10 h-10 text-slate-600 mx-auto mb-3" />
+                  <p className="text-slate-400">Noch keine Transfers</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-slate-700 max-h-80 overflow-y-auto">
+                  {bidTransfers.slice(0, 20).map((t) => (
+                    <div key={t.id} className="p-4 hover:bg-slate-700/30">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-white font-medium">
+                            {t.amount} Gebote an {t.recipient_name}
+                          </p>
+                          {t.message && (
+                            <p className="text-slate-400 text-sm">"{t.message}"</p>
+                          )}
+                          <p className="text-slate-500 text-xs">
+                            {new Date(t.created_at).toLocaleString('de-DE')}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-emerald-400 font-bold">€{t.cost?.toFixed(2)}</p>
+                          <p className="text-slate-500 text-xs">#{t.customer_number}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            
+            {/* Send Bids Modal */}
+            {sendBidsTarget && (
+              <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+                <div className="bg-slate-800 rounded-2xl p-6 max-w-md w-full border border-slate-700">
+                  <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                    <Send className="w-5 h-5 text-cyan-400" />
+                    Gebote senden
+                  </h3>
+                  
+                  <div className="bg-slate-900/50 rounded-xl p-4 mb-4">
+                    <p className="text-slate-400 text-sm">Empfänger</p>
+                    <p className="text-white font-medium">
+                      {sendBidsTarget.nickname || sendBidsTarget.user_name}
+                    </p>
+                    <p className="text-slate-500 text-sm">#{sendBidsTarget.customer_number}</p>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <div>
+                      <Label className="text-slate-300">Anzahl Gebote</Label>
+                      <Input
+                        type="number"
+                        value={sendBidsAmount}
+                        onChange={(e) => setSendBidsAmount(e.target.value)}
+                        placeholder="z.B. 100"
+                        className="bg-slate-900/50 border-slate-600 text-white"
+                        min="1"
+                        max="10000"
+                      />
+                      <p className="text-slate-500 text-xs mt-1">
+                        Kosten: ca. €{((parseInt(sendBidsAmount) || 0) * 0.10 * (1 - (customer?.discount_percent || 0) / 100)).toFixed(2)}
+                      </p>
+                    </div>
+                    
+                    <div>
+                      <Label className="text-slate-300">Nachricht (optional)</Label>
+                      <Input
+                        value={sendBidsMessage}
+                        onChange={(e) => setSendBidsMessage(e.target.value)}
+                        placeholder="z.B. Viel Erfolg beim Bieten!"
+                        className="bg-slate-900/50 border-slate-600 text-white"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="flex gap-3 mt-6">
+                    <Button
+                      onClick={() => setSendBidsTarget(null)}
+                      variant="outline"
+                      className="flex-1 border-slate-600 text-slate-300"
+                    >
+                      Abbrechen
+                    </Button>
+                    <Button
+                      onClick={handleSendBids}
+                      className="flex-1 bg-emerald-500 hover:bg-emerald-600"
+                      disabled={!sendBidsAmount || parseInt(sendBidsAmount) < 1}
+                    >
+                      <Zap className="w-4 h-4 mr-2" />
+                      Senden
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Order Tab */}
         {activeTab === 'order' && pricing && (
           <div className="space-y-6">
