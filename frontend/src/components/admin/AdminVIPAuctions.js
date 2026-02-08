@@ -347,14 +347,39 @@ export function AdminVIPAuctions({ token, vipAuctions, auctions, fetchData }) {
       </div>
 
       {/* Add Auction to VIP */}
-      <div className="glass-card rounded-xl p-6">
-        <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+      <div className="glass-card rounded-xl p-4 sm:p-6">
+        <h3 className="text-base sm:text-lg font-semibold text-white mb-4 flex items-center gap-2">
           <Plus className="w-5 h-5 text-green-400" />
           Auktion zu VIP hinzufügen
         </h3>
-        <p className="text-gray-400 text-sm mb-4">Wählen Sie eine normale Auktion aus:</p>
+        <p className="text-gray-400 text-xs sm:text-sm mb-4">Wählen Sie eine normale Auktion aus:</p>
         
-        <div className="overflow-x-auto">
+        {/* Mobile Card View */}
+        <div className="md:hidden space-y-3">
+          {(auctions || []).filter(a => !a.is_vip_only && a.status === 'active').slice(0, 10).map((auction) => (
+            <div key={auction.id} className="bg-slate-800/50 rounded-xl p-3 border border-slate-700/50 flex items-center gap-3">
+              <div className="flex-1 min-w-0">
+                <p className="text-white font-medium text-sm truncate">{auction.product?.name || 'N/A'}</p>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="text-cyan-400 font-mono text-xs">€{auction.current_price?.toFixed(2)}</span>
+                  {auction.bot_target_price > 0 && (
+                    <span className="text-yellow-400 font-mono text-xs">Bot: €{auction.bot_target_price.toFixed(2)}</span>
+                  )}
+                </div>
+              </div>
+              <Button size="sm" className="bg-yellow-500 hover:bg-yellow-400 text-black text-xs flex-shrink-0"
+                onClick={() => handleSetVipOnly(auction.id, false)}>
+                <Crown className="w-3 h-3 mr-1" />VIP
+              </Button>
+            </div>
+          ))}
+          {(auctions || []).filter(a => !a.is_vip_only && a.status === 'active').length === 0 && (
+            <p className="text-gray-400 text-center py-4 text-sm">Keine Auktionen verfügbar</p>
+          )}
+        </div>
+        
+        {/* Desktop Table View */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full">
             <thead className="bg-[#181824]">
               <tr>
