@@ -423,11 +423,12 @@ const AuctionCard = memo(({ auction, product, onBid, t, language, isAuthenticate
             <LivePrice price={auction.current_price} bidderName={auction.last_bidder_name} t={t} />
             
             <button 
-              onClick={(e) => { e.stopPropagation(); onBid(auction.id); }}
-              disabled={isNightPaused}
-              className={`mt-2 w-full py-2 ${isNightPaused ? 'bg-gray-400 cursor-not-allowed' : 'bg-gradient-to-b from-cyan-400 to-cyan-500 hover:from-cyan-300 hover:to-cyan-400'} text-white font-bold text-sm rounded-lg`}
+              onClick={(e) => { e.stopPropagation(); buttonConfig.action(); }}
+              disabled={isNightPaused || buttonConfig.disabled}
+              className={`mt-2 w-full py-2 ${isNightPaused ? 'bg-gray-400 cursor-not-allowed' : buttonConfig.style} text-white font-bold text-sm rounded-lg`}
             >
-              {isNightPaused ? `🌙 ${t('auctionPage.nightOnly')}` : t('auctionPage.bid')}
+              {isNightPaused ? `🌙 ${t('auctionPage.nightOnly')}` : buttonConfig.text}
+            </button>
             </button>
           </div>
           
