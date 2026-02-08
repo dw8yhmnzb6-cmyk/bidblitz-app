@@ -423,6 +423,191 @@ async def create_wholesale_order(
     }
 
 
+@router.post("/checkout")
+async def create_wholesale_checkout(
+    package_id: str,
+    quantity: int = 1,
+    customer = Depends(get_wholesale_user)
+):
+    """Create a Stripe checkout session for wholesale prepaid orders"""
+    import os
+    import stripe
+    
+    STRIPE_API_KEY = os.environ.get("STRIPE_API_KEY")
+    if not STRIPE_API_KEY:
+        raise HTTPException(status_code=500, detail="Zahlungssystem nicht konfiguriert")
+    
+    stripe.api_key = STRIPE_API_KEY
+    
+    from config import BID_PACKAGES
+    
+    # Find package
+    package = next((p for p in BID_PACKAGES if p.get("id") == package_id or str(p.get("bids")) == package_id), None)
+    if not package:
+        raise HTTPException(status_code=404, detail="Paket nicht gefunden")
+    
+    discount = customer.get("discount_percent", 0)
+    unit_price = package["price"] * (1 - discount / 100)
+    total_price = unit_price * quantity
+    total_bids = package["bids"] * quantity
+    
+    # Create pending order first
+    order_id = str(uuid.uuid4())
+    order_doc = {
+        "id": order_id,
+        "wholesale_id": customer["id"],
+        "company_name": customer["company_name"],
+        "package_name": f"{package['bids']} Gebote",
+        "package_bids": package["bids"],
+        "quantity": quantity,
+        "unit_price": round(unit_price, 2),
+        "total_price": round(total_price, 2),
+        "total_bids": total_bids,
+        "discount_percent": discount,
+        "payment_terms": "prepaid",
+        "status": "awaiting_payment",
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.wholesale_orders.insert_one(order_doc)
+    
+    # Create Stripe checkout session
+    FRONTEND_URL = os.environ.get("FRONTEND_URL", "https://penny-bidding-1.preview.emergentagent.com")
+    
+    try:
+        session = stripe.checkout.Session.create(
+            payment_method_types=["card"],
+            line_items=[{
+                "price_data": {
+                    "currency": "eur",
+                    "product_data": {
+                        "name": f"B2B: {total_bids} Gebote",
+                        "description": f"Großkundenrabatt: {discount}%"
+                    },
+                    "unit_amount": int(total_price * 100)  # Amount in cents
+                },
+                "quantity": 1
+            }],
+            mode="payment",
+            success_url=f"{FRONTEND_URL}/b2b/dashboard?payment=success&order_id={order_id}",
+            cancel_url=f"{FRONTEND_URL}/b2b/dashboard?payment=cancelled&order_id={order_id}",
+            metadata={
+                "order_id": order_id,
+                "wholesale_id": customer["id"],
+                "total_bids": str(total_bids),
+                "order_type": "wholesale"
+            },
+            customer_email=customer.get("email")
+        )
+        
+        # Update order with stripe session id
+        await db.wholesale_orders.update_one(
+            {"id": order_id},
+            {"$set": {"stripe_session_id": session.id}}
+        )
+        
+        logger.info(f"🏢 Wholesale checkout created: {customer['company_name']} - {total_bids} bids (€{total_price:.2f})")
+        
+        return {
+            "success": True,
+            "checkout_url": session.url,
+            "order_id": order_id,
+            "total_bids": total_bids,
+            "total_price": round(total_price, 2)
+        }
+        
+    except stripe.error.StripeError as e:
+        logger.error(f"Stripe error: {str(e)}")
+        # Delete the pending order
+        await db.wholesale_orders.delete_one({"id": order_id})
+        raise HTTPException(status_code=500, detail=f"Zahlungsfehler: {str(e)}")
+
+
+@router.post("/webhook/payment")
+async def wholesale_payment_webhook(request: Request):
+    """Handle Stripe webhook for wholesale payment completion"""
+    import os
+    import stripe
+    
+    STRIPE_API_KEY = os.environ.get("STRIPE_API_KEY")
+    STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET")
+    
+    if not STRIPE_API_KEY:
+        raise HTTPException(status_code=500, detail="Stripe not configured")
+    
+    stripe.api_key = STRIPE_API_KEY
+    
+    payload = await request.body()
+    sig_header = request.headers.get("stripe-signature")
+    
+    try:
+        if STRIPE_WEBHOOK_SECRET:
+            event = stripe.Webhook.construct_event(payload, sig_header, STRIPE_WEBHOOK_SECRET)
+        else:
+            event = stripe.Event.construct_from(await request.json(), stripe.api_key)
+    except Exception as e:
+        logger.error(f"Webhook error: {str(e)}")
+        raise HTTPException(status_code=400, detail=str(e))
+    
+    if event["type"] == "checkout.session.completed":
+        session = event["data"]["object"]
+        metadata = session.get("metadata", {})
+        
+        if metadata.get("order_type") == "wholesale":
+            order_id = metadata.get("order_id")
+            wholesale_id = metadata.get("wholesale_id")
+            total_bids = int(metadata.get("total_bids", 0))
+            
+            # Update order status
+            order = await db.wholesale_orders.find_one({"id": order_id})
+            if order:
+                await db.wholesale_orders.update_one(
+                    {"id": order_id},
+                    {"$set": {
+                        "status": "completed",
+                        "paid_at": datetime.now(timezone.utc).isoformat(),
+                        "stripe_payment_id": session.get("payment_intent")
+                    }}
+                )
+                
+                # Get customer and add bids
+                customer = await db.wholesale_customers.find_one({"id": wholesale_id})
+                if customer and customer.get("user_id"):
+                    await db.users.update_one(
+                        {"id": customer["user_id"]},
+                        {"$inc": {"bids": total_bids}}
+                    )
+                
+                # Update customer stats
+                await db.wholesale_customers.update_one(
+                    {"id": wholesale_id},
+                    {"$inc": {
+                        "total_orders": 1,
+                        "total_spent": order.get("total_price", 0)
+                    }}
+                )
+                
+                logger.info(f"🏢 Wholesale payment completed: Order {order_id} - {total_bids} bids")
+    
+    return {"received": True}
+
+
+@router.get("/order/{order_id}/status")
+async def get_order_status(
+    order_id: str,
+    customer = Depends(get_wholesale_user)
+):
+    """Get status of a specific order"""
+    order = await db.wholesale_orders.find_one({
+        "id": order_id,
+        "wholesale_id": customer["id"]
+    }, {"_id": 0})
+    
+    if not order:
+        raise HTTPException(status_code=404, detail="Bestellung nicht gefunden")
+    
+    return order
+
+
 # ==================== B2B CUSTOMER MANAGEMENT ====================
 
 class B2BCustomerAdd(BaseModel):
