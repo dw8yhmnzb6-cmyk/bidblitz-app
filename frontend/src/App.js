@@ -94,7 +94,6 @@ import CryptoPaymentPage from "./pages/CryptoPaymentPage";
 import MaintenancePage from "./pages/MaintenancePage";
 import WholesaleRegister from "./pages/WholesaleRegister";
 import WholesaleLogin from "./pages/WholesaleLogin";
-import WholesaleDashboard from "./pages/WholesaleDashboard";
 
 // Protected Route Component
 const ProtectedRoute = ({ children, requireAdmin = false }) => {
