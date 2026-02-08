@@ -48,7 +48,8 @@ import {
   AdminGlobalSearch,
   AdminAIChat,
   AdminAnalytics,
-  AdminSurveys
+  AdminSurveys,
+  AdminMaintenance
 } from '../components/admin';
 
 // Import Voice Debug Assistant
