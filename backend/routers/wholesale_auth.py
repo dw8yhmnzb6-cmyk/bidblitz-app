@@ -421,3 +421,279 @@ async def create_wholesale_order(
         "status": order_doc["status"],
         "message": "Bestellung erfolgreich erstellt"
     }
+
+
+# ==================== B2B CUSTOMER MANAGEMENT ====================
+
+class B2BCustomerAdd(BaseModel):
+    """Schema for adding a customer to B2B wholesale account"""
+    customer_number: str  # 8-digit customer number
+    nickname: Optional[str] = None  # Optional nickname for the customer
+
+class B2BSendBids(BaseModel):
+    """Schema for sending bids to a customer"""
+    customer_number: str
+    amount: int
+    message: Optional[str] = None
+
+@router.get("/my-customers")
+async def get_b2b_customers(customer = Depends(get_wholesale_user)):
+    """Get all customers linked to this B2B wholesale account"""
+    # Get linked customers
+    linked_customers = await db.b2b_customer_links.find(
+        {"wholesale_id": customer["id"]},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(100)
+    
+    # Enrich with user data
+    enriched = []
+    for link in linked_customers:
+        user = await db.users.find_one(
+            {"customer_number": link["customer_number"]},
+            {"_id": 0, "id": 1, "name": 1, "email": 1, "customer_number": 1, "bids_balance": 1}
+        )
+        if user:
+            enriched.append({
+                **link,
+                "user_name": user.get("name", "Unbekannt"),
+                "user_email": user.get("email"),
+                "current_bids": user.get("bids_balance", 0)
+            })
+        else:
+            enriched.append({
+                **link,
+                "user_name": "Nicht gefunden",
+                "user_email": None,
+                "current_bids": 0
+            })
+    
+    return {"customers": enriched, "total": len(enriched)}
+
+
+@router.post("/add-customer")
+async def add_b2b_customer(data: B2BCustomerAdd, customer = Depends(get_wholesale_user)):
+    """Add a customer to B2B wholesale account by customer number"""
+    # Find user by customer number
+    user = await db.users.find_one(
+        {"customer_number": data.customer_number},
+        {"_id": 0}
+    )
+    
+    if not user:
+        raise HTTPException(status_code=404, detail="Kundennummer nicht gefunden")
+    
+    # Check if already linked
+    existing = await db.b2b_customer_links.find_one({
+        "wholesale_id": customer["id"],
+        "customer_number": data.customer_number
+    })
+    
+    if existing:
+        raise HTTPException(status_code=400, detail="Dieser Kunde ist bereits verknüpft")
+    
+    # Create link
+    link_doc = {
+        "id": str(uuid.uuid4()),
+        "wholesale_id": customer["id"],
+        "wholesale_company": customer["company_name"],
+        "user_id": user["id"],
+        "customer_number": data.customer_number,
+        "nickname": data.nickname,
+        "total_bids_sent": 0,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.b2b_customer_links.insert_one(link_doc)
+    
+    logger.info(f"🏢 B2B customer linked: {customer['company_name']} -> {user.get('name', 'Unknown')} ({data.customer_number})")
+    
+    return {
+        "success": True,
+        "message": f"Kunde {user.get('name', 'Unbekannt')} erfolgreich hinzugefügt",
+        "customer": {
+            "customer_number": data.customer_number,
+            "user_name": user.get("name", "Unbekannt"),
+            "nickname": data.nickname
+        }
+    }
+
+
+@router.delete("/remove-customer/{customer_number}")
+async def remove_b2b_customer(customer_number: str, customer = Depends(get_wholesale_user)):
+    """Remove a customer from B2B wholesale account"""
+    result = await db.b2b_customer_links.delete_one({
+        "wholesale_id": customer["id"],
+        "customer_number": customer_number
+    })
+    
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Kundenverknüpfung nicht gefunden")
+    
+    return {"success": True, "message": "Kunde entfernt"}
+
+
+@router.post("/send-bids")
+async def send_bids_to_customer(data: B2BSendBids, customer = Depends(get_wholesale_user)):
+    """Send bids from B2B wholesale account to a linked customer"""
+    # Validate amount
+    if data.amount < 1:
+        raise HTTPException(status_code=400, detail="Mindestens 1 Gebot erforderlich")
+    
+    if data.amount > 10000:
+        raise HTTPException(status_code=400, detail="Maximal 10.000 Gebote pro Übertragung")
+    
+    # Check if customer is linked
+    link = await db.b2b_customer_links.find_one({
+        "wholesale_id": customer["id"],
+        "customer_number": data.customer_number
+    })
+    
+    if not link:
+        raise HTTPException(status_code=403, detail="Dieser Kunde ist nicht mit Ihrem Konto verknüpft")
+    
+    # Find the recipient user
+    recipient = await db.users.find_one({"customer_number": data.customer_number})
+    if not recipient:
+        raise HTTPException(status_code=404, detail="Empfänger nicht gefunden")
+    
+    # Check B2B account has enough credit/balance
+    # For B2B, we use credit system - check available credit
+    credit_available = customer.get("credit_limit", 0) - customer.get("credit_used", 0)
+    
+    # Calculate cost (simplified: 1 bid = 0.10€ for B2B)
+    bid_cost = 0.10  # Can be customized based on discount
+    total_cost = data.amount * bid_cost * (1 - customer.get("discount_percent", 0) / 100)
+    
+    if customer.get("payment_terms") != "prepaid" and total_cost > credit_available:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Nicht genügend Kredit verfügbar. Benötigt: €{total_cost:.2f}, Verfügbar: €{credit_available:.2f}"
+        )
+    
+    # Create transfer record
+    transfer_id = str(uuid.uuid4())
+    transfer_doc = {
+        "id": transfer_id,
+        "wholesale_id": customer["id"],
+        "wholesale_company": customer["company_name"],
+        "recipient_id": recipient["id"],
+        "recipient_name": recipient.get("name", "Unbekannt"),
+        "customer_number": data.customer_number,
+        "amount": data.amount,
+        "cost": round(total_cost, 2),
+        "message": data.message,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.b2b_bid_transfers.insert_one(transfer_doc)
+    
+    # Add bids to recipient
+    await db.users.update_one(
+        {"id": recipient["id"]},
+        {"$inc": {"bids_balance": data.amount}}
+    )
+    
+    # Update B2B credit used (if not prepaid)
+    if customer.get("payment_terms") != "prepaid":
+        await db.wholesale_customers.update_one(
+            {"id": customer["id"]},
+            {"$inc": {"credit_used": total_cost, "total_spent": total_cost}}
+        )
+    
+    # Update link statistics
+    await db.b2b_customer_links.update_one(
+        {"wholesale_id": customer["id"], "customer_number": data.customer_number},
+        {"$inc": {"total_bids_sent": data.amount}}
+    )
+    
+    # Create notification for recipient
+    notification_doc = {
+        "id": str(uuid.uuid4()),
+        "user_id": recipient["id"],
+        "type": "bids_received",
+        "title": "Gebote erhalten!",
+        "message": f"Sie haben {data.amount} Gebote von {customer['company_name']} erhalten" + 
+                   (f": \"{data.message}\"" if data.message else ""),
+        "read": False,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.notifications.insert_one(notification_doc)
+    
+    logger.info(f"🎁 B2B bid transfer: {customer['company_name']} -> {recipient.get('name')} ({data.amount} bids)")
+    
+    return {
+        "success": True,
+        "message": f"{data.amount} Gebote erfolgreich an {recipient.get('name', 'Unbekannt')} gesendet",
+        "transfer": {
+            "id": transfer_id,
+            "amount": data.amount,
+            "cost": round(total_cost, 2),
+            "recipient": recipient.get("name", "Unbekannt")
+        }
+    }
+
+
+@router.get("/bid-transfers")
+async def get_bid_transfers(customer = Depends(get_wholesale_user)):
+    """Get history of bid transfers for this B2B account"""
+    transfers = await db.b2b_bid_transfers.find(
+        {"wholesale_id": customer["id"]},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(100)
+    
+    # Calculate totals
+    total_bids_sent = sum(t.get("amount", 0) for t in transfers)
+    total_cost = sum(t.get("cost", 0) for t in transfers)
+    
+    return {
+        "transfers": transfers,
+        "total_transfers": len(transfers),
+        "total_bids_sent": total_bids_sent,
+        "total_cost": round(total_cost, 2)
+    }
+
+
+@router.get("/customer-stats/{customer_number}")
+async def get_customer_stats(customer_number: str, customer = Depends(get_wholesale_user)):
+    """Get stats for a specific linked customer"""
+    # Check if customer is linked
+    link = await db.b2b_customer_links.find_one({
+        "wholesale_id": customer["id"],
+        "customer_number": customer_number
+    })
+    
+    if not link:
+        raise HTTPException(status_code=403, detail="Dieser Kunde ist nicht mit Ihrem Konto verknüpft")
+    
+    # Get user data
+    user = await db.users.find_one(
+        {"customer_number": customer_number},
+        {"_id": 0, "id": 1, "name": 1, "email": 1, "bids_balance": 1, "total_deposits": 1, "created_at": 1}
+    )
+    
+    if not user:
+        raise HTTPException(status_code=404, detail="Benutzer nicht gefunden")
+    
+    # Get transfers to this customer
+    transfers = await db.b2b_bid_transfers.find({
+        "wholesale_id": customer["id"],
+        "customer_number": customer_number
+    }, {"_id": 0}).sort("created_at", -1).to_list(50)
+    
+    return {
+        "customer": {
+            "customer_number": customer_number,
+            "name": user.get("name", "Unbekannt"),
+            "email": user.get("email"),
+            "current_bids": user.get("bids_balance", 0),
+            "member_since": user.get("created_at"),
+            "nickname": link.get("nickname")
+        },
+        "stats": {
+            "total_bids_sent": link.get("total_bids_sent", 0),
+            "linked_since": link.get("created_at"),
+            "transfer_count": len(transfers)
+        },
+        "recent_transfers": transfers[:10]
+    }
+
