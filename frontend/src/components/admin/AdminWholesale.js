@@ -106,8 +106,8 @@ export function AdminWholesale({
       </div>
 
       {/* Applications Section */}
-      <div className="bg-white rounded-2xl p-6 shadow-lg border border-slate-100">
-        <h2 className="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
+      <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-lg border border-slate-100">
+        <h2 className="text-base sm:text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
           <Mail className="w-5 h-5 text-amber-500" />
           Offene Bewerbungen ({(wholesaleApplications || []).filter(a => a.status === 'pending').length})
         </h2>
@@ -118,36 +118,43 @@ export function AdminWholesale({
           <div className="space-y-4">
             {(wholesaleApplications || []).filter(a => a.status === 'pending').map(app => (
               <div key={app.id} className="bg-slate-50 rounded-xl p-4 border border-slate-200">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h3 className="text-slate-800 font-semibold">{app.company_name}</h3>
-                    <p className="text-slate-500 text-sm">{app.contact_name}</p>
-                    <div className="flex flex-wrap gap-4 mt-2 text-sm">
-                      <span className="text-slate-600 flex items-center gap-1">
-                        <Mail className="w-4 h-4 text-slate-400" />
-                        {app.email}
-                      </span>
-                      <span className="text-slate-600 flex items-center gap-1">
-                        <Clock className="w-4 h-4 text-slate-400" />
-                        {app.phone}
-                      </span>
-                      <span className="text-amber-600 flex items-center gap-1 font-medium">
-                        <Package className="w-4 h-4" />
-                        {app.expected_volume} Gebote/Monat
-                      </span>
-                    </div>
-                    {app.message && (
-                      <p className="text-slate-500 text-sm mt-2 italic bg-white p-2 rounded-lg">"{app.message}"</p>
-                    )}
+                {/* Mobile-optimized layout */}
+                <div className="flex flex-col gap-3">
+                  {/* Company Info */}
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-slate-800 font-semibold text-sm sm:text-base truncate">{app.company_name}</h3>
+                    <p className="text-slate-500 text-xs sm:text-sm truncate">{app.contact_name}</p>
                   </div>
-                  <div className="flex gap-2">
+                  
+                  {/* Contact Details - Mobile Card Style */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs sm:text-sm">
+                    <div className="flex items-center gap-2 bg-white rounded-lg px-3 py-2">
+                      <Mail className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                      <span className="text-slate-600 truncate">{app.email}</span>
+                    </div>
+                    <div className="flex items-center gap-2 bg-white rounded-lg px-3 py-2">
+                      <Clock className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                      <span className="text-slate-600 truncate">{app.phone}</span>
+                    </div>
+                    <div className="flex items-center gap-2 bg-amber-50 rounded-lg px-3 py-2">
+                      <Package className="w-4 h-4 text-amber-500 flex-shrink-0" />
+                      <span className="text-amber-600 font-medium truncate">{app.expected_volume} Gebote/Mo.</span>
+                    </div>
+                  </div>
+                  
+                  {app.message && (
+                    <p className="text-slate-500 text-xs sm:text-sm italic bg-white p-2 rounded-lg">"{app.message}"</p>
+                  )}
+                  
+                  {/* Action Buttons - Full Width on Mobile */}
+                  <div className="flex gap-2 mt-1">
                     <Button
                       size="sm"
                       onClick={() => {
                         setSelectedWholesale(app);
                         setShowWholesaleModal(true);
                       }}
-                      className="bg-emerald-500 hover:bg-emerald-600 text-white"
+                      className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white text-xs sm:text-sm"
                       data-testid={`approve-wholesale-${app.id}`}
                     >
                       <CheckCircle className="w-4 h-4 mr-1" />
@@ -157,6 +164,7 @@ export function AdminWholesale({
                       size="sm"
                       variant="destructive"
                       onClick={() => handleRejectWholesale(app.id)}
+                      className="px-3"
                     >
                       <X className="w-4 h-4" />
                     </Button>
