@@ -247,6 +247,7 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 - Voice Debug Assistant (iOS/Safari compatible)
 - **Debug Reports Dashboard**
 - AI Chat Assistant
+- **Wartungsmodus (Maintenance Mode)** - NEU!
 
 ---
 
