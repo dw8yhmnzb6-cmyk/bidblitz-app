@@ -86,7 +86,7 @@ export const Navbar = () => {
                 data-testid="nav-referral"
               >
                 <Gift className="w-4 h-4" />
-                <span className="hidden xl:inline">{t('nav.referFriends') || 'Freunde werben'}</span>
+                <span className="hidden xl:inline">{t('nav.inviteFriends') || 'Freunde werben'}</span>
               </Link>
             )}
             <Link 
