@@ -987,7 +987,7 @@ Beschreibung (Deutsch): {german_desc if german_desc else "Keine Beschreibung vor
         missing_by_language = {lang: 0 for lang in languages}
         
         for product in products:
-            name_trans = product.get("name_translations", {})
+            name_trans = product.get("name_translations") or {}
             
             if not name_trans:
                 not_translated += 1
