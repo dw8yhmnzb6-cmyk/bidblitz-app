@@ -291,7 +291,7 @@ const PremiumAuction = memo(({ auction, product, onBid, onRefresh, language = 'd
 });
 
 // Small Auction Card - Snipster Style
-const AuctionCard = memo(({ auction, product, onBid, onRefresh, language = 'de' }) => {
+const AuctionCard = memo(({ auction, product, onBid, onRefresh, language = 'de', isAuthenticated = false, isVip = false }) => {
   const navigate = useNavigate();
   const ht = homeTexts[language] || homeTexts.de;
   
@@ -300,14 +300,55 @@ const AuctionCard = memo(({ auction, product, onBid, onRefresh, language = 'de' 
   // Get translated product name
   const productName = product.name_translations?.[language] || product.name;
   
+  // Check if this is a VIP-only auction
+  const isVipAuction = auction.is_vip_only;
+  
+  // Determine if user can bid
+  const canBid = isAuthenticated && (!isVipAuction || isVip);
+  
+  // Button text based on auth/VIP status
+  const getButtonConfig = () => {
+    if (!isAuthenticated) {
+      return {
+        text: language === 'de' ? '🔒 Anmelden' : '🔒 Login',
+        action: () => navigate('/login'),
+        style: 'bg-gray-400 hover:bg-gray-500'
+      };
+    }
+    if (isVipAuction && !isVip) {
+      return {
+        text: language === 'de' ? '⭐ VIP werden' : '⭐ Become VIP',
+        action: () => navigate('/vip'),
+        style: 'bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-400 hover:to-amber-400'
+      };
+    }
+    return {
+      text: ht.bid,
+      action: () => onBid(auction.id),
+      style: 'bg-gradient-to-r from-cyan-400 to-cyan-500 hover:from-cyan-300 hover:to-cyan-400'
+    };
+  };
+  
+  const buttonConfig = getButtonConfig();
+  
   return (
     <div 
       onClick={() => navigate(`/auctions/${auction.id}`)}
-      className="rounded-xl overflow-hidden cursor-pointer hover:shadow-2xl transition-all"
+      className="rounded-xl overflow-hidden cursor-pointer hover:shadow-2xl transition-all relative"
       style={{
-        background: 'linear-gradient(180deg, #4A7C9B 0%, #2D5A7B 100%)'
+        background: isVipAuction 
+          ? 'linear-gradient(180deg, #B8860B 0%, #8B6914 100%)'
+          : 'linear-gradient(180deg, #4A7C9B 0%, #2D5A7B 100%)'
       }}
     >
+      {/* VIP Badge */}
+      {isVipAuction && (
+        <div className="absolute top-2 left-2 z-10 bg-gradient-to-r from-yellow-400 to-amber-500 px-2 py-1 rounded-full flex items-center gap-1 shadow-lg">
+          <Crown className="w-3 h-3 text-black" />
+          <span className="text-black font-bold text-xs">VIP</span>
+        </div>
+      )}
+      
       {/* Header with Timer */}
       <div className="p-3 flex justify-end">
         <LiveTimer endTime={auction.end_time} onExpired={onRefresh} language={language} />
@@ -333,15 +374,15 @@ const AuctionCard = memo(({ auction, product, onBid, onRefresh, language = 'de' 
               {auction.last_bidder_name || ht.startPrice}
             </p>
             
-            {/* Bid Button */}
+            {/* Bid Button - Dynamic based on auth/VIP status */}
             <button 
               onClick={(e) => {
                 e.stopPropagation();
-                onBid(auction.id);
+                buttonConfig.action();
               }}
-              className="mt-3 w-full py-2 bg-gradient-to-r from-cyan-400 to-cyan-500 hover:from-cyan-300 hover:to-cyan-400 text-white font-bold text-sm rounded-full transition-all"
+              className={`mt-3 w-full py-2 ${buttonConfig.style} text-white font-bold text-sm rounded-full transition-all`}
             >
-              {ht.bid}
+              {buttonConfig.text}
             </button>
           </div>
           
@@ -360,7 +401,7 @@ const AuctionCard = memo(({ auction, product, onBid, onRefresh, language = 'de' 
       </div>
       
       {/* Last Sold Footer */}
-      <div className="bg-cyan-600 px-3 py-2 text-center">
+      <div className={`${isVipAuction ? 'bg-amber-600' : 'bg-cyan-600'} px-3 py-2 text-center`}>
         <p className="text-white text-xs">
           {ht.lastSold} <span className="font-bold">€ {(product.retail_price * 0.025).toFixed(2).replace('.', ',')}</span>
         </p>
