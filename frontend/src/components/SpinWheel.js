@@ -323,6 +323,15 @@ const SpinWheel = ({ isOpen, onClose }) => {
                     Code: {result.code}
                   </p>
                 )}
+                {result.type === 'retry' && (
+                  <p className="text-green-600 mt-2 text-sm font-medium">
+                    {language === 'de' ? 'Du kannst nochmal drehen!' : 
+                     language === 'sq' || language === 'xk' ? 'Mund të rrotullosh përsëri!' :
+                     language === 'tr' ? 'Tekrar çevirebilirsin!' :
+                     language === 'fr' ? 'Tu peux tourner à nouveau!' :
+                     'You can spin again!'}
+                  </p>
+                )}
               </div>
             )}
             
