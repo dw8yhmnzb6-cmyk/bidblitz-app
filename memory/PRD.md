@@ -363,8 +363,32 @@ February 8, 2026
 - UI mit hellem Theme korrekt dargestellt
 - Alle Funktionen (Liste, Erstellen, Bearbeiten) funktionsfähig
 
+### 4. ✅ PWA Install Banner für iOS verbessert 📱
+- **Detailliertere Anweisungen** in Schritten
+- **"Verstanden" Button** hinzugefügt
+- **Besseres Teilen-Icon** SVG
+- File: `/app/frontend/src/components/PWAInstallBanner.js`
+
+### 5. ✅ Großkunden-Freischaltung ohne Benutzerkonto 🏢
+- **Backend**: Freischaltung funktioniert jetzt ohne existierendes User-Konto
+- **Info-Banner**: Zeigt Hinweis, dass Verknüpfung bei Registrierung erfolgt
+- **API Response**: `user_linked: false` bei Freischaltung ohne Konto
+- Files:
+  - `/app/backend/routers/wholesale.py` - API angepasst
+  - `/app/frontend/src/components/admin/AdminWholesale.js` - Komplett neu mit hellem Theme
+
+### 6. ✅ Vollständige Übersetzungen für Auktionskarten (P1) 🌍
+- **24 Sprachen** haben jetzt alle wichtigen Keys:
+  - `uvp` (UVP/RRP/PVP/etc.)
+  - `bid` (BIETEN/BID/OFERTAR/etc.)
+  - `lastSoldFor` (Zuletzt für/Last sold for/etc.)
+  - `activity` (Aktivität/Activity/etc.)
+  - `activityLow/Medium/High/Hot` (Niedrig/Mittel/Hoch/Heiß)
+- File: `/app/frontend/src/i18n/translations.js`
+
 ### Testing Status
-- `/app/test_reports/iteration_41.json` - 100% Backend & Frontend Tests bestanden
+- `/app/test_reports/iteration_41.json` - Wartungsmodus & Freunde werben (100% passed)
+- `/app/test_reports/iteration_42.json` - Großkunden & Übersetzungen (100% passed)
 
 ---
 
