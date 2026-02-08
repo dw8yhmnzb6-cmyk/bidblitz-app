@@ -406,3 +406,159 @@ async def send_admin_payout_notification(
     )
 
 
+# ==================== WHOLESALE EMAIL NOTIFICATIONS ====================
+
+async def send_wholesale_welcome_email(
+    to_email: str,
+    contact_name: str,
+    company_name: str,
+    discount_percent: float,
+    credit_limit: float,
+    payment_terms: str,
+    has_user_account: bool = False
+):
+    """Send welcome email to newly approved wholesale customer."""
+    
+    # Payment terms translation
+    payment_terms_text = {
+        'prepaid': 'Vorkasse',
+        'net15': 'Netto 15 Tage',
+        'net30': 'Netto 30 Tage'
+    }.get(payment_terms, payment_terms)
+    
+    # Credit limit display
+    credit_display = f"€{credit_limit:,.0f}" if credit_limit > 0 else "Auf Anfrage"
+    
+    # Registration CTA if no account yet
+    registration_section = ""
+    if not has_user_account:
+        registration_section = """
+        <div style="background:linear-gradient(135deg,#06B6D4,#0891B2); padding:25px; border-radius:15px; margin:25px 0; text-align:center;">
+            <h3 style="color:#fff; margin:0 0 10px 0; font-size:18px;">🚀 Jetzt registrieren & loslegen!</h3>
+            <p style="color:#E0F2FE; margin:0 0 20px 0; font-size:14px;">
+                Erstellen Sie Ihr Konto, um sofort von Ihren Großkundenvorteilen zu profitieren.
+            </p>
+            <a href="https://bidblitz.de/register" style="display:inline-block; background:#fff; color:#0891B2; padding:15px 40px; text-decoration:none; border-radius:10px; font-weight:bold; font-size:16px;">
+                Kostenlos registrieren →
+            </a>
+        </div>
+        <p style="font-size:13px; color:#64748B; text-align:center; margin-top:-10px;">
+            Verwenden Sie bei der Registrierung diese E-Mail-Adresse: <strong>{email}</strong>
+        </p>
+        """.replace("{email}", to_email)
+    
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset="utf-8"></head>
+    <body style="margin:0; padding:0; font-family:Arial,sans-serif; background-color:#f4f4f4;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px; margin:0 auto; background:#ffffff; border-radius:15px; overflow:hidden; box-shadow:0 4px 6px rgba(0,0,0,0.1);">
+            <!-- Header -->
+            <tr>
+                <td style="background:linear-gradient(135deg,#1E293B,#334155); padding:40px 30px; text-align:center;">
+                    <h1 style="color:#fff; margin:0; font-size:28px;">🏢 Willkommen als Großkunde!</h1>
+                    <p style="color:#94A3B8; margin:10px 0 0; font-size:14px;">Ihre B2B-Partnerschaft mit BidBlitz</p>
+                </td>
+            </tr>
+            
+            <!-- Content -->
+            <tr>
+                <td style="padding:30px;">
+                    <p style="font-size:18px; color:#1E293B;">Hallo <strong>{contact_name}</strong>,</p>
+                    <p style="font-size:15px; color:#475569; line-height:1.6;">
+                        Herzlich willkommen bei BidBlitz! Wir freuen uns, <strong>{company_name}</strong> als Großkunden begrüßen zu dürfen. 
+                        Ihre Bewerbung wurde genehmigt und Sie können ab sofort von exklusiven B2B-Vorteilen profitieren.
+                    </p>
+                    
+                    <!-- Benefits Card -->
+                    <div style="background:#F8FAFC; border-radius:15px; padding:25px; margin:25px 0; border:1px solid #E2E8F0;">
+                        <h3 style="color:#1E293B; margin:0 0 20px 0; font-size:16px;">📋 Ihre Großkundenkonditionen</h3>
+                        
+                        <table width="100%" cellpadding="0" cellspacing="0">
+                            <tr>
+                                <td style="padding:12px 0; border-bottom:1px solid #E2E8F0;">
+                                    <span style="color:#64748B; font-size:13px;">Dauerhafter Rabatt</span><br>
+                                    <span style="color:#10B981; font-size:24px; font-weight:bold;">{discount_percent:.0f}%</span>
+                                </td>
+                                <td style="padding:12px 0; border-bottom:1px solid #E2E8F0; text-align:right;">
+                                    <span style="color:#64748B; font-size:13px;">Auf alle Gebote-Pakete</span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding:12px 0; border-bottom:1px solid #E2E8F0;">
+                                    <span style="color:#64748B; font-size:13px;">Kreditlimit</span><br>
+                                    <span style="color:#1E293B; font-size:18px; font-weight:bold;">{credit_display}</span>
+                                </td>
+                                <td style="padding:12px 0; border-bottom:1px solid #E2E8F0; text-align:right;">
+                                    <span style="color:#64748B; font-size:13px;">Flexibler Einkaufsrahmen</span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding:12px 0;">
+                                    <span style="color:#64748B; font-size:13px;">Zahlungsziel</span><br>
+                                    <span style="color:#1E293B; font-size:18px; font-weight:bold;">{payment_terms_text}</span>
+                                </td>
+                                <td style="padding:12px 0; text-align:right;">
+                                    <span style="color:#64748B; font-size:13px;">Bequeme Abrechnung</span>
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                    
+                    {registration_section}
+                    
+                    <!-- Benefits List -->
+                    <div style="margin:25px 0;">
+                        <h3 style="color:#1E293B; margin:0 0 15px 0; font-size:16px;">✨ Ihre exklusiven Vorteile</h3>
+                        <table cellpadding="0" cellspacing="0">
+                            <tr>
+                                <td style="padding:8px 15px 8px 0; vertical-align:top;">✅</td>
+                                <td style="padding:8px 0; color:#475569; font-size:14px;">Dauerhafter Rabatt auf alle Gebote-Pakete</td>
+                            </tr>
+                            <tr>
+                                <td style="padding:8px 15px 8px 0; vertical-align:top;">✅</td>
+                                <td style="padding:8px 0; color:#475569; font-size:14px;">Prioritärer Kundensupport</td>
+                            </tr>
+                            <tr>
+                                <td style="padding:8px 15px 8px 0; vertical-align:top;">✅</td>
+                                <td style="padding:8px 0; color:#475569; font-size:14px;">Monatliche Sammelrechnung</td>
+                            </tr>
+                            <tr>
+                                <td style="padding:8px 15px 8px 0; vertical-align:top;">✅</td>
+                                <td style="padding:8px 0; color:#475569; font-size:14px;">Dedizierter Account Manager</td>
+                            </tr>
+                            <tr>
+                                <td style="padding:8px 15px 8px 0; vertical-align:top;">✅</td>
+                                <td style="padding:8px 0; color:#475569; font-size:14px;">Exklusive B2B-Angebote und Aktionen</td>
+                            </tr>
+                        </table>
+                    </div>
+                    
+                    <!-- Contact -->
+                    <div style="background:#EFF6FF; border-radius:10px; padding:20px; margin-top:25px; text-align:center;">
+                        <p style="margin:0; color:#1E40AF; font-size:14px;">
+                            <strong>Fragen?</strong> Unser B2B-Team steht Ihnen gerne zur Verfügung:<br>
+                            📧 b2b@bidblitz.de | 📞 +49 123 456 7890
+                        </p>
+                    </div>
+                </td>
+            </tr>
+            
+            <!-- Footer -->
+            <tr>
+                <td style="background:#F8FAFC; padding:20px 30px; text-align:center; border-top:1px solid #E2E8F0;">
+                    <p style="margin:0; color:#64748B; font-size:12px;">
+                        © 2026 BidBlitz GmbH | Ihr Partner für Penny-Auktionen
+                    </p>
+                </td>
+            </tr>
+        </table>
+    </body>
+    </html>
+    """
+    
+    return await send_email(
+        to_email=to_email,
+        subject=f"🏢 Willkommen bei BidBlitz, {company_name}! Ihre Großkundenvorteile sind aktiviert",
+        html_content=html_content
+    )
