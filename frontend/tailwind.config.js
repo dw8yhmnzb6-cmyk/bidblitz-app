@@ -6,6 +6,14 @@ module.exports = {
     "./public/index.html"
   ],
   theme: {
+        screens: {
+            'xs': '375px',  // Small phones (iPhone SE, etc.)
+            'sm': '640px',  // Default small
+            'md': '768px',  // Tablets
+            'lg': '1024px', // Desktop
+            'xl': '1280px',
+            '2xl': '1536px'
+        },
         extend: {
                 fontFamily: {
                         'heading': ['Barlow Condensed', 'Impact', 'Arial Narrow', 'sans-serif'],
