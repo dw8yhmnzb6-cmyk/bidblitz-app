@@ -112,11 +112,11 @@ export default function AdminMobileNav({
             <span className="text-[10px] font-medium">Auktionen</span>
           </button>
 
-          {/* Settings */}
+          {/* Settings / More - Opens All Tabs */}
           <button 
-            onClick={() => onTabChange('settings')}
+            onClick={() => setShowQuickMenu(true)}
             className={`flex-1 flex flex-col items-center py-2 rounded-lg transition-colors ${
-              activeTab === 'settings' 
+              ['settings', 'wholesale', 'manager', 'staff', 'game-config', 'influencers', 'analytics', 'bots', 'vouchers', 'payments'].includes(activeTab)
                 ? 'text-slate-800 bg-slate-100' 
                 : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100'
             }`}
