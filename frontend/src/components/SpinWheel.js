@@ -151,7 +151,13 @@ const SpinWheel = ({ isOpen, onClose }) => {
       setTimeout(() => {
         setResult(res.data.prize);
         setSpinning(false);
-        setCanSpin(false);
+        
+        // If it's a retry, allow spinning again
+        if (res.data.prize.type === 'retry') {
+          setCanSpin(true);
+        } else {
+          setCanSpin(false);
+        }
         
         // Refresh user to update bid balance
         if (refreshUser) refreshUser();
