@@ -296,7 +296,7 @@ const ProductInfo = memo(({ name, retailPrice, imageUrl, discount }) => (
 ));
 
 // Auction Card - Only Timer and Price update, rest is static
-const AuctionCard = memo(({ auction, product, onBid, t, language }) => {
+const AuctionCard = memo(({ auction, product, onBid, t, language, isAuthenticated = false, isVip = false, navigate }) => {
   if (!auction || !product) return null;
   
   // Get translated product name and description (fallback to default)
@@ -306,6 +306,37 @@ const AuctionCard = memo(({ auction, product, onBid, t, language }) => {
   const discount = product.retail_price 
     ? Math.round((1 - auction.current_price / product.retail_price) * 100)
     : 99;
+  
+  // Check if this is a VIP-only auction
+  const isVipAuction = auction.is_vip_only;
+  
+  // Determine button configuration based on auth/VIP status
+  const getButtonConfig = () => {
+    if (!isAuthenticated) {
+      return {
+        text: '🔒 ' + (language === 'de' ? 'Anmelden' : language === 'sq' ? 'Hyr' : 'Login'),
+        action: () => navigate('/login'),
+        style: 'bg-gray-500 hover:bg-gray-600',
+        disabled: false
+      };
+    }
+    if (isVipAuction && !isVip) {
+      return {
+        text: '⭐ ' + (language === 'de' ? 'VIP werden' : language === 'sq' ? 'Bëhu VIP' : 'Get VIP'),
+        action: () => navigate('/vip'),
+        style: 'bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-400 hover:to-amber-400',
+        disabled: false
+      };
+    }
+    return {
+      text: t('auctionPage.bid'),
+      action: () => onBid(auction.id),
+      style: 'bg-gradient-to-b from-cyan-400 to-cyan-500 hover:from-cyan-300 hover:to-cyan-400',
+      disabled: false
+    };
+  };
+  
+  const buttonConfig = getButtonConfig();
   
   // Collect all badges for this auction
   const badges = [];
