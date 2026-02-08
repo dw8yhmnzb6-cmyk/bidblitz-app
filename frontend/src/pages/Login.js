@@ -109,9 +109,20 @@ export default function Login() {
       toast.success(texts.loginSuccess);
       
       // Check user role and redirect accordingly
-      const redirectPath = (userData?.is_manager || userData?.role === 'manager') 
-        ? '/manager-dashboard' 
-        : (userData?.is_admin ? '/admin' : '/dashboard');
+      // First check for URL redirect parameter
+      const urlParams = new URLSearchParams(location.search);
+      const redirectParam = urlParams.get('redirect');
+      
+      let redirectPath;
+      if (redirectParam) {
+        // Redirect to the specified path
+        redirectPath = redirectParam;
+      } else {
+        // Default redirect based on role
+        redirectPath = (userData?.is_manager || userData?.role === 'manager') 
+          ? '/manager-dashboard' 
+          : (userData?.is_admin ? '/admin' : '/dashboard');
+      }
       
       // Force navigation with window.location as fallback
       setTimeout(() => {
