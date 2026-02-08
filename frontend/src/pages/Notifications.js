@@ -46,7 +46,8 @@ export default function Notifications() {
     outbid: true,
     daily_deals: true,
     new_auctions: false,
-    marketing: false
+    marketing: false,
+    night_auction_start: true
   });
   const [pushSupported, setPushSupported] = useState(false);
   const [pushSubscribed, setPushSubscribed] = useState(false);
