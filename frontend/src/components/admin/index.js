@@ -19,6 +19,9 @@ export { AdminWholesale } from './AdminWholesale';
 export { AdminGameConfig } from './AdminGameConfig';
 export { AdminDebugReports } from './AdminDebugReports';
 
+// Staff Management
+export { default as AdminStaff } from './AdminStaff';
+
 // New Dashboard Widgets
 export { default as AdminQuickActions } from './AdminQuickActions';
 export { default as AdminLiveWidgets } from './AdminLiveWidgets';
