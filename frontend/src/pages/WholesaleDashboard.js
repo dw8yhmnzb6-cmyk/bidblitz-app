@@ -20,6 +20,15 @@ export default function WholesaleDashboard() {
   const [pricing, setPricing] = useState(null);
   const [orders, setOrders] = useState([]);
   const [activeTab, setActiveTab] = useState('dashboard');
+  
+  // B2B Customer Management State
+  const [b2bCustomers, setB2bCustomers] = useState([]);
+  const [bidTransfers, setBidTransfers] = useState([]);
+  const [newCustomerNumber, setNewCustomerNumber] = useState('');
+  const [newCustomerNickname, setNewCustomerNickname] = useState('');
+  const [sendBidsTarget, setSendBidsTarget] = useState(null);
+  const [sendBidsAmount, setSendBidsAmount] = useState('');
+  const [sendBidsMessage, setSendBidsMessage] = useState('');
 
   useEffect(() => {
     const token = localStorage.getItem('wholesale_token');
