@@ -414,3 +414,151 @@ async def get_heatmap_data(
         "click_points": [{"x": c["metadata"]["x"], "y": c["metadata"]["y"]} for c in clicks if "metadata" in c],
         "top_elements": sorted(element_clicks.items(), key=lambda x: x[1], reverse=True)[:20]
     }
+
+
+# ==================== DEVICE & MOBILE ANALYTICS ====================
+
+class DeviceTrackEvent(BaseModel):
+    device_type: str  # mobile, tablet, desktop
+    os: Optional[str] = None  # iOS, Android, Windows, macOS, Linux
+    browser: Optional[str] = None  # Chrome, Safari, Firefox, Edge
+    screen_width: Optional[int] = None
+    screen_height: Optional[int] = None
+    is_touch: Optional[bool] = None
+    user_agent: Optional[str] = None
+
+
+@router.post("/track-device")
+async def track_device(
+    device: DeviceTrackEvent,
+    user: dict = Depends(get_current_user)
+):
+    """Track device/browser info for analytics"""
+    user_id = user.get("id") if user else None
+    
+    device_doc = {
+        "id": str(uuid.uuid4()),
+        "user_id": user_id,
+        "device_type": device.device_type,
+        "os": device.os,
+        "browser": device.browser,
+        "screen_width": device.screen_width,
+        "screen_height": device.screen_height,
+        "is_touch": device.is_touch,
+        "user_agent": device.user_agent,
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.device_analytics.insert_one(device_doc)
+    return {"success": True}
+
+
+@router.get("/devices")
+async def get_device_analytics(
+    days: int = 7,
+    user: dict = Depends(get_current_user)
+):
+    """Get device/mobile analytics (Admin only)"""
+    if user.get("role") not in ["admin", "manager"]:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    start_date = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+    
+    # Device type breakdown
+    device_pipeline = [
+        {"$match": {"timestamp": {"$gte": start_date}}},
+        {"$group": {"_id": "$device_type", "count": {"$sum": 1}}},
+        {"$sort": {"count": -1}}
+    ]
+    device_breakdown = await db.device_analytics.aggregate(device_pipeline).to_list(length=10)
+    
+    # OS breakdown
+    os_pipeline = [
+        {"$match": {"timestamp": {"$gte": start_date}, "os": {"$ne": None}}},
+        {"$group": {"_id": "$os", "count": {"$sum": 1}}},
+        {"$sort": {"count": -1}}
+    ]
+    os_breakdown = await db.device_analytics.aggregate(os_pipeline).to_list(length=10)
+    
+    # Browser breakdown
+    browser_pipeline = [
+        {"$match": {"timestamp": {"$gte": start_date}, "browser": {"$ne": None}}},
+        {"$group": {"_id": "$browser", "count": {"$sum": 1}}},
+        {"$sort": {"count": -1}}
+    ]
+    browser_breakdown = await db.device_analytics.aggregate(browser_pipeline).to_list(length=10)
+    
+    # Screen size categories
+    screen_pipeline = [
+        {"$match": {"timestamp": {"$gte": start_date}, "screen_width": {"$ne": None}}},
+        {"$project": {
+            "category": {
+                "$switch": {
+                    "branches": [
+                        {"case": {"$lt": ["$screen_width", 576]}, "then": "xs (<576px)"},
+                        {"case": {"$lt": ["$screen_width", 768]}, "then": "sm (576-768px)"},
+                        {"case": {"$lt": ["$screen_width", 992]}, "then": "md (768-992px)"},
+                        {"case": {"$lt": ["$screen_width", 1200]}, "then": "lg (992-1200px)"},
+                    ],
+                    "default": "xl (>1200px)"
+                }
+            }
+        }},
+        {"$group": {"_id": "$category", "count": {"$sum": 1}}},
+        {"$sort": {"_id": 1}}
+    ]
+    screen_breakdown = await db.device_analytics.aggregate(screen_pipeline).to_list(length=10)
+    
+    # Daily device trends
+    daily_pipeline = [
+        {"$match": {"timestamp": {"$gte": start_date}}},
+        {"$group": {
+            "_id": {
+                "date": {"$substr": ["$timestamp", 0, 10]},
+                "device": "$device_type"
+            },
+            "count": {"$sum": 1}
+        }},
+        {"$sort": {"_id.date": 1}}
+    ]
+    daily_data = await db.device_analytics.aggregate(daily_pipeline).to_list(length=100)
+    
+    # Process daily data into chart format
+    daily_trends = {}
+    for item in daily_data:
+        date = item["_id"]["date"]
+        device = item["_id"]["device"] or "unknown"
+        if date not in daily_trends:
+            daily_trends[date] = {"date": date, "mobile": 0, "tablet": 0, "desktop": 0}
+        daily_trends[date][device] = item["count"]
+    
+    # Calculate totals and percentages
+    total_sessions = sum(d["count"] for d in device_breakdown) if device_breakdown else 0
+    mobile_sessions = next((d["count"] for d in device_breakdown if d["_id"] == "mobile"), 0)
+    tablet_sessions = next((d["count"] for d in device_breakdown if d["_id"] == "tablet"), 0)
+    desktop_sessions = next((d["count"] for d in device_breakdown if d["_id"] == "desktop"), 0)
+    
+    return {
+        "period_days": days,
+        "summary": {
+            "total_sessions": total_sessions,
+            "mobile": {
+                "count": mobile_sessions,
+                "percentage": round(mobile_sessions / max(1, total_sessions) * 100, 1)
+            },
+            "tablet": {
+                "count": tablet_sessions,
+                "percentage": round(tablet_sessions / max(1, total_sessions) * 100, 1)
+            },
+            "desktop": {
+                "count": desktop_sessions,
+                "percentage": round(desktop_sessions / max(1, total_sessions) * 100, 1)
+            }
+        },
+        "device_breakdown": [{"device": d["_id"] or "unknown", "count": d["count"]} for d in device_breakdown],
+        "os_breakdown": [{"os": o["_id"], "count": o["count"]} for o in os_breakdown],
+        "browser_breakdown": [{"browser": b["_id"], "count": b["count"]} for b in browser_breakdown],
+        "screen_breakdown": [{"category": s["_id"], "count": s["count"]} for s in screen_breakdown],
+        "daily_trends": list(daily_trends.values())
+    }
+
