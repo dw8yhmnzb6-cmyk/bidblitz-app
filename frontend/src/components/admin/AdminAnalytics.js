@@ -300,6 +300,152 @@ const AdminAnalytics = ({ token }) => {
           </div>
         </div>
       </div>
+
+      {/* Device Analytics Section */}
+      {deviceData && (
+        <div className="space-y-4 sm:space-y-6">
+          <h3 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
+            <Smartphone className="w-5 h-5 sm:w-6 sm:h-6 text-pink-500" />
+            Geräte & Mobile Traffic
+          </h3>
+          
+          {/* Device Summary Cards */}
+          <div className="grid grid-cols-3 gap-2 sm:gap-4">
+            <DeviceCard
+              icon={Smartphone}
+              label="Mobile"
+              count={deviceData.summary.mobile.count}
+              percentage={deviceData.summary.mobile.percentage}
+              color="text-pink-500"
+              bgColor="bg-pink-500/10"
+            />
+            <DeviceCard
+              icon={Tablet}
+              label="Tablet"
+              count={deviceData.summary.tablet.count}
+              percentage={deviceData.summary.tablet.percentage}
+              color="text-purple-500"
+              bgColor="bg-purple-500/10"
+            />
+            <DeviceCard
+              icon={Monitor}
+              label="Desktop"
+              count={deviceData.summary.desktop.count}
+              percentage={deviceData.summary.desktop.percentage}
+              color="text-cyan-500"
+              bgColor="bg-cyan-500/10"
+            />
+          </div>
+
+          {/* Device Charts Row */}
+          <div className="grid lg:grid-cols-2 gap-4 sm:gap-6">
+            {/* Device Trend Chart */}
+            <div className="bg-gray-800/50 rounded-xl p-4 sm:p-6 border border-gray-700/50">
+              <h3 className="text-base sm:text-lg font-semibold text-white mb-3 sm:mb-4 flex items-center gap-2">
+                <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-pink-500" />
+                Geräte-Trend
+              </h3>
+              <ResponsiveContainer width="100%" height={200}>
+                <AreaChart data={deviceData.daily_trends}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                  <XAxis dataKey="date" stroke="#9CA3AF" tick={{ fontSize: 10 }} />
+                  <YAxis stroke="#9CA3AF" tick={{ fontSize: 10 }} />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: '#1F2937', border: 'none', borderRadius: '8px' }}
+                  />
+                  <Legend wrapperStyle={{ fontSize: '12px' }} />
+                  <Area type="monotone" dataKey="mobile" stackId="1" stroke={CHART_COLORS.mobile} fill={CHART_COLORS.mobile} fillOpacity={0.6} name="Mobile" />
+                  <Area type="monotone" dataKey="tablet" stackId="1" stroke={CHART_COLORS.tablet} fill={CHART_COLORS.tablet} fillOpacity={0.6} name="Tablet" />
+                  <Area type="monotone" dataKey="desktop" stackId="1" stroke={CHART_COLORS.desktop} fill={CHART_COLORS.desktop} fillOpacity={0.6} name="Desktop" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Device Pie Chart */}
+            <div className="bg-gray-800/50 rounded-xl p-4 sm:p-6 border border-gray-700/50">
+              <h3 className="text-base sm:text-lg font-semibold text-white mb-3 sm:mb-4 flex items-center gap-2">
+                <Globe className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-500" />
+                Geräte-Verteilung
+              </h3>
+              <ResponsiveContainer width="100%" height={200}>
+                <PieChart>
+                  <Pie
+                    data={deviceData.device_breakdown}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={50}
+                    outerRadius={80}
+                    paddingAngle={5}
+                    dataKey="count"
+                    nameKey="device"
+                    label={({ device, percent }) => `${device} ${(percent * 100).toFixed(0)}%`}
+                  >
+                    {deviceData.device_breakdown.map((entry, index) => (
+                      <Cell 
+                        key={`cell-${index}`} 
+                        fill={entry.device === 'mobile' ? CHART_COLORS.mobile : 
+                              entry.device === 'tablet' ? CHART_COLORS.tablet : 
+                              CHART_COLORS.desktop} 
+                      />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: '#1F2937', border: 'none', borderRadius: '8px' }}
+                    formatter={(value) => [value.toLocaleString(), 'Sessions']}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* OS & Browser Stats */}
+          <div className="grid sm:grid-cols-2 gap-4 sm:gap-6">
+            {/* OS Breakdown */}
+            <div className="bg-gray-800/50 rounded-xl p-4 sm:p-6 border border-gray-700/50">
+              <h3 className="text-base sm:text-lg font-semibold text-white mb-3 sm:mb-4">Betriebssysteme</h3>
+              <div className="space-y-2">
+                {(deviceData.os_breakdown || []).slice(0, 5).map((os, i) => (
+                  <div key={i} className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className={`w-2 h-2 rounded-full ${
+                        os.os === 'iOS' ? 'bg-gray-400' :
+                        os.os === 'Android' ? 'bg-green-500' :
+                        os.os === 'Windows' ? 'bg-blue-500' :
+                        os.os === 'macOS' ? 'bg-gray-500' :
+                        'bg-orange-500'
+                      }`} />
+                      <span className="text-gray-300 text-xs sm:text-sm">{os.os}</span>
+                    </div>
+                    <span className="text-white text-sm font-medium">{os.count?.toLocaleString()}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Browser Breakdown */}
+            <div className="bg-gray-800/50 rounded-xl p-4 sm:p-6 border border-gray-700/50">
+              <h3 className="text-base sm:text-lg font-semibold text-white mb-3 sm:mb-4">Browser</h3>
+              <div className="space-y-2">
+                {(deviceData.browser_breakdown || []).slice(0, 5).map((browser, i) => (
+                  <div key={i} className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className={`w-2 h-2 rounded-full ${
+                        browser.browser === 'Chrome' ? 'bg-yellow-500' :
+                        browser.browser === 'Safari' ? 'bg-blue-400' :
+                        browser.browser === 'Firefox' ? 'bg-orange-500' :
+                        browser.browser === 'Edge' ? 'bg-blue-600' :
+                        'bg-gray-500'
+                      }`} />
+                      <span className="text-gray-300 text-xs sm:text-sm">{browser.browser}</span>
+                    </div>
+                    <span className="text-white text-sm font-medium">{browser.count?.toLocaleString()}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
