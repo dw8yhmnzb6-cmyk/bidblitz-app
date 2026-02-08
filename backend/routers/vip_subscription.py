@@ -251,10 +251,27 @@ async def get_subscription_status(user: dict = Depends(get_current_user)):
         plan = VIP_PLANS.get(subscription.get("plan_id"), {})
         subscription["plan_details"] = plan
     
+    # Manager and Influencer get FREE VIP access
+    is_manager = user.get("is_manager", False) or user.get("role") == "manager"
+    is_influencer = user.get("is_influencer", False)
+    is_admin = user.get("is_admin", False)
+    
+    # Grant VIP status to admins, managers, and influencers
+    has_vip = user.get("is_vip", False) or is_admin or is_manager or is_influencer
+    
     return {
         "has_subscription": subscription is not None,
         "subscription": subscription,
-        "is_vip": user.get("is_vip", False)
+        "is_vip": has_vip,
+        "is_admin": is_admin,
+        "is_manager": is_manager,
+        "is_influencer": is_influencer,
+        "plan": {
+            "name": "VIP (Admin)" if is_admin else "VIP (Manager)" if is_manager else "VIP (Influencer)" if is_influencer else subscription.get("plan_details", {}).get("name") if subscription else None
+        } if has_vip else None,
+        "monthly_bids_remaining": subscription.get("monthly_bids_remaining", 0) if subscription else (999 if is_admin or is_manager or is_influencer else 0),
+        "next_renewal": subscription.get("next_renewal") if subscription else None,
+        "badge_color": "#FFD700"
     }
 
 
