@@ -138,6 +138,14 @@ const MysteryBoxCard = memo(({ box, onBid, t }) => {
   const icon = tierIcons[tier] || '📦';
   const isPreview = box.id?.startsWith('preview_');
   
+  const handleClick = () => {
+    if (isPreview) {
+      toast.info(t.comingSoonMessage || 'Diese Mystery Box ist noch nicht verfügbar. Bleib dran!');
+    } else {
+      onBid(box);
+    }
+  };
+  
   return (
     <div className={`relative bg-gradient-to-br ${colorClass} rounded-xl p-4 text-white overflow-hidden group`}>
       {/* Sparkle Effect */}
@@ -183,17 +191,25 @@ const MysteryBoxCard = memo(({ box, onBid, t }) => {
         
         {/* Bid Button */}
         <button
-          onClick={() => !isPreview && onBid(box)}
-          disabled={isPreview}
+          onClick={handleClick}
           className={`w-full py-3 font-bold rounded-lg transition-colors flex items-center justify-center gap-2 ${
             isPreview 
-              ? 'bg-white/50 text-gray-600 cursor-not-allowed' 
+              ? 'bg-white/70 text-gray-700 hover:bg-white/90 cursor-pointer' 
               : 'bg-white text-gray-800 hover:bg-gray-100'
           }`}
           data-testid={`mystery-box-bid-${box.id}`}
         >
-          <Gift className="w-5 h-5" />
-          {isPreview ? (t.comingSoon || 'Demnächst') : t.bidNow}
+          {isPreview ? (
+            <>
+              <Lock className="w-5 h-5" />
+              {t.comingSoon || 'Demnächst'}
+            </>
+          ) : (
+            <>
+              <Gift className="w-5 h-5" />
+              {t.bidNow}
+            </>
+          )}
         </button>
       </div>
     </div>
