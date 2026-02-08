@@ -140,7 +140,7 @@ export default function SocialSharingRewards() {
 
     // Track the share
     try {
-      const res = await fetch(`${API}/api/social/track-share`, {
+      const res = await fetch(`${API}/api/social-rewards/track-share`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
