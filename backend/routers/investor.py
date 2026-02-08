@@ -16,11 +16,12 @@ router = APIRouter(prefix="/investor", tags=["Investor Portal"])
 STRIPE_API_KEY = os.environ.get("STRIPE_API_KEY")
 
 # Investment packages (fixed amounts for security)
+# Using perk keys instead of translated strings - frontend will handle translation
 INVESTMENT_PACKAGES = {
-    "starter": {"amount": 500.0, "label": "Starter", "equity": "0.01%", "perks": ["Monatliche Updates", "Investor Badge"]},
-    "standard": {"amount": 2500.0, "label": "Standard", "equity": "0.05%", "perks": ["Monatliche Updates", "Investor Badge", "VIP-Zugang"]},
-    "premium": {"amount": 10000.0, "label": "Premium", "equity": "0.2%", "perks": ["Wöchentliche Updates", "Investor Badge", "VIP-Zugang", "Exklusive Events"]},
-    "partner": {"amount": 50000.0, "label": "Partner", "equity": "1%", "perks": ["Direkter Kontakt", "Advisory Board", "Alle Premium-Vorteile"]}
+    "starter": {"amount": 500.0, "label": "Starter", "equity": "0.01%", "perks": ["monthlyUpdates", "investorBadge"]},
+    "standard": {"amount": 2500.0, "label": "Standard", "equity": "0.05%", "perks": ["monthlyUpdates", "investorBadge", "vipAccess"]},
+    "premium": {"amount": 10000.0, "label": "Premium", "equity": "0.2%", "perks": ["weeklyUpdates", "investorBadge", "vipAccess", "exclusiveEvents"]},
+    "partner": {"amount": 50000.0, "label": "Partner", "equity": "1%", "perks": ["directContact", "advisoryBoard", "allPremiumPerks"]}
 }
 
 # ==================== MODELS ====================
