@@ -300,7 +300,7 @@ const AdminWinnerControl = () => {
               {/* Divider */}
               <div className="flex items-center gap-3 my-4">
                 <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
-                <span className="text-xs sm:text-sm text-gray-500">oder Kunde</span>
+                <span className="text-xs sm:text-sm text-gray-500 whitespace-nowrap">Kunde als Gewinner</span>
                 <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
               </div>
 
@@ -322,8 +322,10 @@ const AdminWinnerControl = () => {
                   ))}
                 </div>
               ) : (
-                <div className="text-center text-gray-500 py-8">
-                  Keine echten Bieter
+                <div className="text-center py-8 bg-gray-50 dark:bg-gray-700/30 rounded-xl">
+                  <Users className="w-12 h-12 mx-auto text-gray-300 dark:text-gray-600 mb-2" />
+                  <p className="text-gray-500 dark:text-gray-400">Keine echten Bieter</p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Nur Bots haben geboten</p>
                 </div>
               )}
             </div>
