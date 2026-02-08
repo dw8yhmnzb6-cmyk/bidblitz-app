@@ -564,7 +564,9 @@ async def bot_last_second_bidder():
                                 "bidder_message": f"{bot['name']} hat geboten!"
                             })
                             
-                            logger.info(f"🤖 Bot '{bot['name']}' bid €{new_price:.2f} (target: €{target_price:.2f}, next in {next_interval:.0f}s)")
+                            # Determine phase for logging
+                            phase_name = "Phase1 (bis €3)" if current_price < 3.0 else "Endspurt (bis €25)"
+                            logger.info(f"🤖 Bot '{bot['name']}' bid €{new_price:.2f} [{phase_name}] (target: €{target_price:.2f}, {seconds_left:.0f}s left, next in {next_interval:.0f}s)")
                             
                 except Exception as e:
                     logger.error(f"Bot bid error for {auction.get('id')}: {e}")
