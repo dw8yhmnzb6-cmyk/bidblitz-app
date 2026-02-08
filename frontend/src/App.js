@@ -575,6 +575,14 @@ function AppContent() {
           <Route path="/phone-verify" element={<PhoneVerification />} />
           <Route path="/telefon" element={<PhoneVerification />} />
           
+          {/* Social Sharing Rewards */}
+          <Route path="/social-rewards" element={<SocialSharingRewards />} />
+          <Route path="/teilen-belohnungen" element={<SocialSharingRewards />} />
+          
+          {/* Friends Battle */}
+          <Route path="/friends-battle" element={<FriendsBattle />} />
+          <Route path="/freunde-battle" element={<FriendsBattle />} />
+          
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
