@@ -326,18 +326,39 @@ export default function VIPAuctions() {
                   
                   {/* Bid Button */}
                   <Button 
-                    onClick={() => handleBid(auction.id)}
-                    disabled={!isVip || !businessHours.is_open}
+                    onClick={() => {
+                      if (!token) {
+                        // Not logged in - redirect to login
+                        toast.error('Bitte melden Sie sich an');
+                        navigate('/login');
+                        return;
+                      }
+                      if (!isVip) {
+                        // Logged in but not VIP - redirect to VIP purchase
+                        navigate('/vip');
+                        return;
+                      }
+                      // VIP user - allow bid
+                      handleBid(auction.id);
+                    }}
                     className={`w-full ${
                       !businessHours.is_open
                         ? 'bg-orange-600/50 text-orange-200 cursor-not-allowed'
-                        : isVip 
-                          ? 'bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 text-black' 
-                          : 'bg-gray-700 text-gray-400 cursor-not-allowed'
+                        : !token
+                          ? 'bg-gray-600 hover:bg-gray-500 text-white'
+                          : isVip 
+                            ? 'bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 text-black' 
+                            : 'bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white'
                     } font-bold`}
+                    disabled={!businessHours.is_open}
                   >
                     {!businessHours.is_open ? (
                       <>⏸ PAUSIERT</>
+                    ) : !token ? (
+                      <>
+                        <Lock className="w-4 h-4 mr-1" />
+                        ANMELDEN
+                      </>
                     ) : isVip ? (
                       <>
                         <Zap className="w-4 h-4 mr-1" />
@@ -345,8 +366,8 @@ export default function VIPAuctions() {
                       </>
                     ) : (
                       <>
-                        <Lock className="w-4 h-4 mr-1" />
-                        VIP ERFORDERLICH
+                        <Crown className="w-4 h-4 mr-1" />
+                        VIP WERDEN
                       </>
                     )}
                   </Button>
