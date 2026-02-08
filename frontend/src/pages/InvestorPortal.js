@@ -40,9 +40,79 @@ const StatCard = ({ icon: Icon, label, value, subValue, color, trend }) => (
   </div>
 );
 
+// Perk key translations - will be translated in component
+const perkTranslations = {
+  de: {
+    monthlyUpdates: 'Monatliche Updates',
+    investorBadge: 'Investor Badge',
+    vipAccess: 'VIP-Zugang',
+    weeklyUpdates: 'Wöchentliche Updates',
+    exclusiveEvents: 'Exklusive Events',
+    directContact: 'Direkter Kontakt',
+    advisoryBoard: 'Advisory Board',
+    allPremiumPerks: 'Alle Premium-Vorteile'
+  },
+  en: {
+    monthlyUpdates: 'Monthly Updates',
+    investorBadge: 'Investor Badge',
+    vipAccess: 'VIP Access',
+    weeklyUpdates: 'Weekly Updates',
+    exclusiveEvents: 'Exclusive Events',
+    directContact: 'Direct Contact',
+    advisoryBoard: 'Advisory Board',
+    allPremiumPerks: 'All Premium Perks'
+  },
+  sq: {
+    monthlyUpdates: 'Përditësime Mujore',
+    investorBadge: 'Distinktiv Investitori',
+    vipAccess: 'Qasje VIP',
+    weeklyUpdates: 'Përditësime Javore',
+    exclusiveEvents: 'Evente Ekskluzive',
+    directContact: 'Kontakt i Drejtpërdrejtë',
+    advisoryBoard: 'Bordi Këshillimor',
+    allPremiumPerks: 'Të gjitha Përfitimet Premium'
+  },
+  tr: {
+    monthlyUpdates: 'Aylık Güncellemeler',
+    investorBadge: 'Yatırımcı Rozeti',
+    vipAccess: 'VIP Erişim',
+    weeklyUpdates: 'Haftalık Güncellemeler',
+    exclusiveEvents: 'Özel Etkinlikler',
+    directContact: 'Doğrudan İletişim',
+    advisoryBoard: 'Danışma Kurulu',
+    allPremiumPerks: 'Tüm Premium Avantajlar'
+  },
+  fr: {
+    monthlyUpdates: 'Mises à jour mensuelles',
+    investorBadge: 'Badge Investisseur',
+    vipAccess: 'Accès VIP',
+    weeklyUpdates: 'Mises à jour hebdomadaires',
+    exclusiveEvents: 'Événements exclusifs',
+    directContact: 'Contact direct',
+    advisoryBoard: 'Conseil consultatif',
+    allPremiumPerks: 'Tous les avantages Premium'
+  },
+  es: {
+    monthlyUpdates: 'Actualizaciones Mensuales',
+    investorBadge: 'Insignia de Inversor',
+    vipAccess: 'Acceso VIP',
+    weeklyUpdates: 'Actualizaciones Semanales',
+    exclusiveEvents: 'Eventos Exclusivos',
+    directContact: 'Contacto Directo',
+    advisoryBoard: 'Junta Asesora',
+    allPremiumPerks: 'Todos los Beneficios Premium'
+  }
+};
+
 // Package Card Component
-const PackageCard = ({ pkg, selected, onSelect, onInvest, loading, t = {} }) => {
+const PackageCard = ({ pkg, selected, onSelect, onInvest, loading, t = {}, language = 'de' }) => {
   const isPopular = pkg.id === 'standard';
+  
+  // Get perk translations for current language
+  const getPerkText = (perkKey) => {
+    const langPerks = perkTranslations[language] || perkTranslations['de'];
+    return langPerks[perkKey] || perkKey;
+  };
   
   return (
     <div 
@@ -69,7 +139,7 @@ const PackageCard = ({ pkg, selected, onSelect, onInvest, loading, t = {} }) => 
         {pkg.perks.map((perk, i) => (
           <div key={i} className="flex items-center gap-2 text-sm text-gray-500">
             <Check className="w-4 h-4 text-[#10B981]" />
-            {perk}
+            {getPerkText(perk)}
           </div>
         ))}
       </div>
