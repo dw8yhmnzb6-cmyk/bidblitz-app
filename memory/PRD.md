@@ -31,6 +31,17 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
      - `/app/frontend/src/App.js` - Device-Tracking Hook integriert
      - `/app/frontend/src/components/admin/AdminAnalytics.js` - Widget hinzugefügt
 
+3. ✅ **NEUES FEATURE: Wöchentliche E-Mail-Analytics-Reports**
+   - E-Mail-Abonnement für wöchentliche Zusammenfassungen
+   - HTML-E-Mail-Template mit Nutzer-, Umsatz-, Auktions- und Geräte-Statistiken
+   - "Jetzt senden" Button für manuellen Versand
+   - Resend-Integration für E-Mail-Versand
+   - Neue Dateien:
+     - `/app/backend/routers/analytics_reports.py` - Neue Endpoints: `/subscribe`, `/send-now`, `/settings`
+   - Geänderte Dateien:
+     - `/app/backend/server.py` - Router registriert
+     - `/app/frontend/src/components/admin/AdminAnalytics.js` - E-Mail-Widget hinzugefügt
+
 ---
 
 ### ✅ Session Update - February 8, 2026 (Session 1)
