@@ -61,11 +61,21 @@ const translations = {
   }
 };
 
+// Language mapping for regional variants
+const langMapping = {
+  'xk': 'sq',  // Kosovo -> Albanian
+  'us': 'en',  // US English -> English  
+  'ae': 'ar', // UAE -> Arabic
+};
+
+const getMappedLang = (lang) => langMapping[lang] || lang;
+
 const LiveWinnerPopup = ({ language = 'de' }) => {
   const [winners, setWinners] = useState([]);
   const [currentWinner, setCurrentWinner] = useState(null);
   const [isVisible, setIsVisible] = useState(false);
   const navigate = useNavigate();
+  const langKey = getMappedLang(language);
   const t = translations[langKey] || translations.de;
 
   // Fetch recent winners
