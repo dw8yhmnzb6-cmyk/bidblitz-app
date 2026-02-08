@@ -421,7 +421,7 @@ export const Navbar = () => {
                 onClick={() => setMobileMenuOpen(false)}
               >
                 <Gift className="w-4 h-4" />
-                {t('nav.referFriends') || 'Freunde werben'}
+                {t('nav.inviteFriends') || 'Freunde werben'}
               </Link>
             )}
           </div>
