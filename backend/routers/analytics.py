@@ -290,7 +290,7 @@ async def get_user_behavior(
         try:
             hour = datetime.fromisoformat(bid["created_at"].replace("Z", "+00:00")).hour
             bid_hours[hour] = bid_hours.get(hour, 0) + 1
-        except:
+        except (ValueError, KeyError, AttributeError):
             continue
     
     # Won auctions
