@@ -1,47 +1,77 @@
 {
-  "name": "BidBlitz",
+  "name": "BidBlitz - Penny Auktionen",
   "short_name": "BidBlitz",
   "description": "Penny Auktion Plattform - Biete und gewinne Produkte zu unglaublichen Preisen!",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#E0F7FA",
-  "theme_color": "#0891B2",
+  "background_color": "#FFFFFF",
+  "theme_color": "#F59E0B",
   "orientation": "portrait-primary",
+  "scope": "/",
+  "id": "/",
   "icons": [
     {
-      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%230891B2' rx='15' width='100' height='100'/><text x='50' y='65' font-size='50' text-anchor='middle' fill='%23FFF'>⚡</text></svg>",
-      "sizes": "192x192",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "src": "https://static.prod-images.emergentagent.com/jobs/c06a809b-0544-4c06-aed9-1ffa762eed1f/images/7b0d0da66bfd29d4c1b2a0b40c438989272ac3c5e4abbbbee74b0ed4c654a120.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
     },
     {
-      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%230891B2' rx='15' width='100' height='100'/><text x='50' y='65' font-size='50' text-anchor='middle' fill='%23FFF'>⚡</text></svg>",
+      "src": "https://static.prod-images.emergentagent.com/jobs/c06a809b-0544-4c06-aed9-1ffa762eed1f/images/7b0d0da66bfd29d4c1b2a0b40c438989272ac3c5e4abbbbee74b0ed4c654a120.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "https://static.prod-images.emergentagent.com/jobs/c06a809b-0544-4c06-aed9-1ffa762eed1f/images/7b0d0da66bfd29d4c1b2a0b40c438989272ac3c5e4abbbbee74b0ed4c654a120.png",
       "sizes": "512x512",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ],
-  "categories": ["shopping", "entertainment"],
+  "categories": ["shopping", "entertainment", "lifestyle"],
   "lang": "de",
   "dir": "ltr",
+  "prefer_related_applications": false,
   "shortcuts": [
     {
       "name": "Auktionen",
       "short_name": "Auktionen",
+      "description": "Alle aktiven Auktionen anzeigen",
       "url": "/auctions",
       "icons": [{"src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='75' font-size='75'>🏷️</text></svg>", "sizes": "96x96"}]
     },
     {
       "name": "Gebote kaufen",
       "short_name": "Kaufen",
+      "description": "Gebotspakete kaufen",
       "url": "/buy-bids",
       "icons": [{"src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='75' font-size='75'>💰</text></svg>", "sizes": "96x96"}]
     },
     {
-      "name": "Meine Stats",
-      "short_name": "Stats",
-      "url": "/my-stats",
-      "icons": [{"src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='75' font-size='75'>📊</text></svg>", "sizes": "96x96"}]
+      "name": "VIP Auktionen",
+      "short_name": "VIP",
+      "description": "Exklusive VIP Auktionen",
+      "url": "/vip-auctions",
+      "icons": [{"src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='75' font-size='75'>👑</text></svg>", "sizes": "96x96"}]
+    },
+    {
+      "name": "Deal Radar",
+      "short_name": "Deals",
+      "description": "Beste Schnäppchen finden",
+      "url": "/deal-radar",
+      "icons": [{"src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='75' font-size='75'>📡</text></svg>", "sizes": "96x96"}]
     }
-  ]
+  ],
+  "screenshots": [
+    {
+      "src": "https://static.prod-images.emergentagent.com/jobs/c06a809b-0544-4c06-aed9-1ffa762eed1f/images/7b0d0da66bfd29d4c1b2a0b40c438989272ac3c5e4abbbbee74b0ed4c654a120.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "BidBlitz App"
+    }
+  ],
+  "related_applications": [],
+  "handle_links": "preferred"
 }
