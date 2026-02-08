@@ -1178,6 +1178,7 @@ export default function Admin() {
 
   const tabs = [
     { id: 'dashboard', label: at('dashboard'), icon: <LayoutDashboard className="w-5 h-5" /> },
+    { id: 'maintenance', label: language === 'en' ? 'Maintenance' : 'Wartung', icon: <Wrench className="w-5 h-5" />, highlight: true },
     { id: 'voice', label: language === 'en' ? 'Voice Commands' : 'Sprachbefehle', icon: <Mic className="w-5 h-5" />, highlight: true },
     { id: 'debug-reports', label: language === 'en' ? 'Debug Reports' : 'Debug Reports', icon: <Bug className="w-5 h-5" />, highlight: true },
     { id: 'products', label: at('products'), icon: <Package className="w-5 h-5" /> },
