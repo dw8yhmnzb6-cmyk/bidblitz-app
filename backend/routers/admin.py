@@ -1375,7 +1375,7 @@ class SetGuaranteedWinner(BaseModel):
     user_id: Optional[str] = None  # None = Bots gewinnen, user_id = dieser Kunde gewinnt
 
 @router.get("/winner-control/settings")
-async def get_winner_control_settings(current_user: dict = Depends(get_current_admin)):
+async def get_winner_control_settings(current_user: dict = Depends(get_admin_user)):
     """Get current winner control settings"""
     settings = await db.settings.find_one({"type": "winner_control"}, {"_id": 0})
     if not settings:
@@ -1390,7 +1390,7 @@ async def get_winner_control_settings(current_user: dict = Depends(get_current_a
 @router.post("/winner-control/settings")
 async def update_winner_control_settings(
     settings: WinnerControlSettings,
-    current_user: dict = Depends(get_current_admin)
+    current_user: dict = Depends(get_admin_user)
 ):
     """Update winner control settings (bot win rate)"""
     await db.settings.update_one(
@@ -1404,7 +1404,7 @@ async def update_winner_control_settings(
     return {"success": True, "bot_win_rate": settings.bot_win_rate}
 
 @router.get("/winner-control/auctions")
-async def get_auctions_for_winner_control(current_user: dict = Depends(get_current_admin)):
+async def get_auctions_for_winner_control(current_user: dict = Depends(get_admin_user)):
     """Get all active auctions with their winner control status"""
     auctions = await db.auctions.find(
         {"status": "active"},
@@ -1438,7 +1438,7 @@ async def get_auctions_for_winner_control(current_user: dict = Depends(get_curre
 @router.post("/winner-control/set-winner")
 async def set_guaranteed_winner(
     data: SetGuaranteedWinner,
-    current_user: dict = Depends(get_current_admin)
+    current_user: dict = Depends(get_admin_user)
 ):
     """Set a guaranteed winner for an auction (or let bots win)"""
     auction = await db.auctions.find_one({"id": data.auction_id}, {"_id": 0})
@@ -1488,7 +1488,7 @@ async def set_guaranteed_winner(
 @router.post("/winner-control/clear-winner/{auction_id}")
 async def clear_guaranteed_winner(
     auction_id: str,
-    current_user: dict = Depends(get_current_admin)
+    current_user: dict = Depends(get_admin_user)
 ):
     """Clear the guaranteed winner for an auction"""
     result = await db.auctions.update_one(
