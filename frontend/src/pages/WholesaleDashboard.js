@@ -108,6 +108,107 @@ export default function WholesaleDashboard() {
     navigate('/b2b/login');
   };
 
+  // B2B Customer Management Functions
+  const handleAddCustomer = async () => {
+    if (!newCustomerNumber || newCustomerNumber.length !== 8) {
+      toast.error('Bitte geben Sie eine gültige 8-stellige Kundennummer ein');
+      return;
+    }
+    
+    const token = localStorage.getItem('wholesale_token');
+    try {
+      const res = await fetch(`${API}/api/wholesale/auth/add-customer`, {
+        method: 'POST',
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          customer_number: newCustomerNumber,
+          nickname: newCustomerNickname || null
+        })
+      });
+      
+      const data = await res.json();
+      
+      if (!res.ok) {
+        throw new Error(data.detail || 'Fehler beim Hinzufügen');
+      }
+      
+      toast.success(data.message);
+      setNewCustomerNumber('');
+      setNewCustomerNickname('');
+      fetchData();
+    } catch (error) {
+      toast.error(error.message);
+    }
+  };
+
+  const handleRemoveCustomer = async (customerNumber) => {
+    if (!window.confirm('Möchten Sie diesen Kunden wirklich entfernen?')) return;
+    
+    const token = localStorage.getItem('wholesale_token');
+    try {
+      const res = await fetch(`${API}/api/wholesale/auth/remove-customer/${customerNumber}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.detail || 'Fehler beim Entfernen');
+      }
+      
+      toast.success('Kunde entfernt');
+      fetchData();
+    } catch (error) {
+      toast.error(error.message);
+    }
+  };
+
+  const handleSendBids = async () => {
+    if (!sendBidsTarget || !sendBidsAmount) {
+      toast.error('Bitte wählen Sie einen Kunden und Betrag');
+      return;
+    }
+    
+    const amount = parseInt(sendBidsAmount);
+    if (isNaN(amount) || amount < 1) {
+      toast.error('Bitte geben Sie eine gültige Anzahl ein');
+      return;
+    }
+    
+    const token = localStorage.getItem('wholesale_token');
+    try {
+      const res = await fetch(`${API}/api/wholesale/auth/send-bids`, {
+        method: 'POST',
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          customer_number: sendBidsTarget.customer_number,
+          amount: amount,
+          message: sendBidsMessage || null
+        })
+      });
+      
+      const data = await res.json();
+      
+      if (!res.ok) {
+        throw new Error(data.detail || 'Fehler beim Senden');
+      }
+      
+      toast.success(data.message);
+      setSendBidsTarget(null);
+      setSendBidsAmount('');
+      setSendBidsMessage('');
+      fetchData();
+    } catch (error) {
+      toast.error(error.message);
+    }
+  };
+
   const handleOrder = async (packageId) => {
     const token = localStorage.getItem('wholesale_token');
     try {
