@@ -16,7 +16,9 @@ const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 export default function AuctionDetail() {
   const { id } = useParams();
   const { isAuthenticated, token, user, updateBidsBalance } = useAuth();
-  const { t, language } = useLanguage();
+  const { t, language , mappedLanguage } = useLanguage();
+  // Use mappedLanguage for regional variants (e.g., xk -> sq)
+  const langKey = mappedLanguage || language;
   const [auction, setAuction] = useState(null);
   const [loading, setLoading] = useState(true);
   const [bidding, setBidding] = useState(false);
@@ -56,7 +58,7 @@ export default function AuctionDetail() {
     tr: { pleaseLogin: 'Lütfen giriş yapın', linkCopied: 'Link kopyalandı!', copyError: 'Kopyalama hatası', checkoutAuction: 'Bu açık artırmaya göz atın', auctionTitle: 'Açık Artırma', buyNow: 'Şimdi Satın Al', bidBuddy: 'Bid Buddy', bidBuddyActivated: 'Bid Buddy aktif! Sizin için otomatik teklif verecek.', bidBuddyDesc: 'Bid Buddy son saniyelerde sizin için otomatik teklif verecek!', scheduledAuction: 'Bu açık artırma planlandı ve başlıyor', noBidsAvailable: 'Teklif kalmadı. Lütfen daha fazla teklif satın alın.', notEnoughBids: 'Yeterli teklif yok', beingPurchased: 'Satın alınıyor...', bidCredit: 'Teklif Kredisi', yourPrice: 'Fiyatınız', savingsMessage: 'Teklifleriniz sayesinde tasarruf ediyorsunuz!', savingsNote: 'Her teklif satın alma fiyatına €0,15 kredi olarak eklenir.' },
     fr: { pleaseLogin: 'Veuillez vous connecter', linkCopied: 'Lien copié!', copyError: 'Erreur de copie', checkoutAuction: 'Découvrez cette enchère', auctionTitle: 'Enchère', buyNow: 'Acheter Maintenant', bidBuddy: 'Bid Buddy', bidBuddyActivated: 'Bid Buddy activé! Il enchérira automatiquement pour vous.', bidBuddyDesc: 'Votre Bid Buddy enchérira automatiquement dans les dernières secondes!', scheduledAuction: 'Cette enchère est programmée et commence le', noBidsAvailable: 'Plus d\'enchères disponibles. Veuillez acheter plus d\'enchères.', notEnoughBids: 'Pas assez d\'enchères', beingPurchased: 'Achat en cours...', bidCredit: 'Crédit d\'enchère', yourPrice: 'Votre Prix', savingsMessage: 'Vous économisez grâce à vos enchères!', savingsNote: 'Chaque enchère est créditée de €0,15 sur le prix d\'achat.' }
   };
-  const dtl = detailTexts[language] || detailTexts.de;
+  const dtl = detailTexts[langKey] || detailTexts.de;
 
   // Simulated viewer count (minimum 12, based on auction ID for consistency)
   const [simulatedViewers] = useState(() => {

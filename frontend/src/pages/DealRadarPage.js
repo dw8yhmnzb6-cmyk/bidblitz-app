@@ -391,11 +391,13 @@ const PriceHistoryMini = ({ productId, t }) => {
 export default function DealRadarPage() {
   const { isAuthenticated, token } = useAuth();
   const { language, mappedLanguage } = useLanguage();
+  // Use mappedLanguage for regional variants (e.g., xk -> sq)
+  const langKey = mappedLanguage || language;
   const navigate = useNavigate();
   
   // Get mapped language for translation (handle language codes like 'xk' -> 'sq')
   const langCode = mappedLanguage || language || 'de';
-  const t = translations[langCode] || translations[language] || translations.de;
+  const t = translations[langCode] || translations[langKey] || translations.de;
   
   const [bargains, setBargains] = useState([]);
   const [lowActivity, setLowActivity] = useState([]);

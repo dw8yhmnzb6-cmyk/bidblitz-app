@@ -39,8 +39,10 @@ const translations = {
 
 export default function PhoneVerification() {
   const { token } = useAuth();
-  const { language } = useLanguage();
-  const t = translations[language] || translations.de;
+  const { language , mappedLanguage } = useLanguage();
+  // Use mappedLanguage for regional variants (e.g., xk -> sq)
+  const langKey = mappedLanguage || language;
+  const t = translations[langKey] || translations.de;
   
   const [phone, setPhone] = useState('');
   const [code, setCode] = useState('');

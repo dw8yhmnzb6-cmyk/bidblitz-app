@@ -14,7 +14,9 @@ export const AuctionOfTheDay = () => {
   const [auction, setAuction] = useState(null);
   const [timeLeft, setTimeLeft] = useState('');
   const [loading, setLoading] = useState(true);
-  const { t, language } = useLanguage();
+  const { t, language , mappedLanguage } = useLanguage();
+  // Use mappedLanguage for regional variants (e.g., xk -> sq)
+  const langKey = mappedLanguage || language;
 
   useEffect(() => {
     fetchAuctionOfTheDay();
@@ -113,7 +115,7 @@ export const AuctionOfTheDay = () => {
           <div className="relative w-full md:w-48 h-48 flex-shrink-0">
             <img
               src={product.image_url || 'https://via.placeholder.com/200'}
-              alt={product.name_translations?.[language] || product.name}
+              alt={product.name_translations?.[langKey] || product.name}
               className="w-full h-full object-contain rounded-xl bg-white/5 p-2"
             />
             {savings > 0 && (
@@ -128,7 +130,7 @@ export const AuctionOfTheDay = () => {
             <div>
               <p className="text-[#94A3B8] text-sm mb-1">{product.category}</p>
               <h3 className="text-xl md:text-2xl font-bold text-white">
-                {product.name_translations?.[language] || product.name}
+                {product.name_translations?.[langKey] || product.name}
               </h3>
             </div>
 

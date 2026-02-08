@@ -37,8 +37,8 @@ const AuctionOfTheDay = memo(({ auction, product, onBid, t, language, isAuthenti
   const lastBidder = auction.last_bidder_name || auction.last_bidder;
   
   // Get translated product name (fallback to default name)
-  const productName = product.name_translations?.[language] || product.name;
-  const productDescription = product.description_translations?.[language] || product.description;
+  const productName = product.name_translations?.[langKey] || product.name;
+  const productDescription = product.description_translations?.[langKey] || product.description;
   
   // Check if VIP auction
   const isVipAuction = auction.is_vip_only;
@@ -336,8 +336,8 @@ const AuctionCard = memo(({ auction, product, onBid, t, language, isAuthenticate
   if (!auction || !product) return null;
   
   // Get translated product name and description (fallback to default)
-  const productName = product.name_translations?.[language] || product.name;
-  const productDescription = product.description_translations?.[language] || product.description || product.short_description;
+  const productName = product.name_translations?.[langKey] || product.name;
+  const productDescription = product.description_translations?.[langKey] || product.description || product.short_description;
   
   const discount = product.retail_price 
     ? Math.round((1 - auction.current_price / product.retail_price) * 100)
@@ -496,7 +496,7 @@ const EndedAuctionCard = memo(({ auction, product, t, language }) => {
   if (!auction || !product) return null;
   
   // Get translated product name (fallback to default name)
-  const productName = product.name_translations?.[language] || product.name;
+  const productName = product.name_translations?.[langKey] || product.name;
   
   const discount = product.retail_price 
     ? Math.round((1 - auction.final_price / product.retail_price) * 100)
@@ -557,7 +557,7 @@ const PremiumCard = memo(({ auction, product, onBid, t, language }) => {
   if (!auction || !product) return null;
   
   // Get translated product name (fallback to default name)
-  const productName = product.name_translations?.[language] || product.name;
+  const productName = product.name_translations?.[langKey] || product.name;
   
   return (
     <div className="bg-gradient-to-b from-cyan-100 to-cyan-200 rounded-xl p-4 border-2 border-cyan-400">
@@ -721,7 +721,9 @@ const InfoSidebar = memo(({ t }) => (
 
 export default function Auctions() {
   const { isAuthenticated, token, updateBidsBalance, user, isVip } = useAuth();
-  const { t, language } = useLanguage();
+  const { t, language , mappedLanguage } = useLanguage();
+  // Use mappedLanguage for regional variants (e.g., xk -> sq)
+  const langKey = mappedLanguage || language;
   const navigate = useNavigate();
   
   const [auctions, setAuctions] = useState([]);

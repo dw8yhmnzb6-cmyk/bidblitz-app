@@ -15,7 +15,9 @@ const API = process.env.REACT_APP_BACKEND_URL;
 
 export default function FriendsBattle() {
   const { isAuthenticated, token, user } = useAuth();
-  const { language } = useLanguage();
+  const { language , mappedLanguage } = useLanguage();
+  // Use mappedLanguage for regional variants (e.g., xk -> sq)
+  const langKey = mappedLanguage || language;
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('active');
   const [challenges, setChallenges] = useState({ received: [], sent: [], active: [] });
@@ -82,7 +84,7 @@ export default function FriendsBattle() {
       wagerBids: 'Wager (bids)',
       sendChallenge: 'Send Challenge'
     }
-  }[language] || {};
+  }[langKey] || {};
 
   useEffect(() => {
     if (isAuthenticated) {

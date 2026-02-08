@@ -83,7 +83,9 @@ const AchievementBadge = ({ achievement, t }) => (
 export default function UserStatsPage() {
   const { isAuthenticated, token } = useAuth();
   const { language, mappedLanguage } = useLanguage();
-  const t = translations[mappedLanguage] || translations[language] || translations.de;
+  // Use mappedLanguage for regional variants (e.g., xk -> sq)
+  const langKey = mappedLanguage || language;
+  const t = translations[mappedLanguage] || translations[langKey] || translations.de;
   
   const [stats, setStats] = useState(null);
   const [achievements, setAchievements] = useState({ unlocked: [], locked: [] });

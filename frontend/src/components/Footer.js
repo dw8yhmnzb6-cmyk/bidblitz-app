@@ -149,8 +149,10 @@ const footerTexts = {
 };
 
 export const Footer = () => {
-  const { language } = useLanguage();
-  const ft = footerTexts[language] || footerTexts.de;
+  const { language , mappedLanguage } = useLanguage();
+  // Use mappedLanguage for regional variants (e.g., xk -> sq)
+  const langKey = mappedLanguage || language;
+  const ft = footerTexts[langKey] || footerTexts.de;
   const currentYear = new Date().getFullYear();
 
   return (

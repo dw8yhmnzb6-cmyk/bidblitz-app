@@ -10,7 +10,9 @@ import { Link } from 'react-router-dom';
 const API = process.env.REACT_APP_BACKEND_URL;
 
 export default function WholesaleApply() {
-  const { t, language } = useLanguage();
+  const { t, language , mappedLanguage } = useLanguage();
+  // Use mappedLanguage for regional variants (e.g., xk -> sq)
+  const langKey = mappedLanguage || language;
   const [formData, setFormData] = useState({
     company_name: '',
     contact_name: '',
@@ -134,7 +136,7 @@ export default function WholesaleApply() {
   
   // ALWAYS use local translations for wholesale page - more reliable than global translations
   // This ensures Albanian, US English, and other languages work correctly
-  const wt = wholesaleTranslations[language] || wholesaleTranslations.en;
+  const wt = wholesaleTranslations[langKey] || wholesaleTranslations.en;
 
   const handleSubmit = async (e) => {
     e.preventDefault();

@@ -1444,8 +1444,10 @@ const translations = {
 };
 
 export default function InfluencerBecome() {
-  const { language } = useLanguage();
-  const t = translations[language] || translations.de;
+  const { language , mappedLanguage } = useLanguage();
+  // Use mappedLanguage for regional variants (e.g., xk -> sq)
+  const langKey = mappedLanguage || language;
+  const t = translations[langKey] || translations.de;
   
   const [showForm, setShowForm] = useState(false);
   const [loading, setLoading] = useState(false);

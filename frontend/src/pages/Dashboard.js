@@ -23,7 +23,9 @@ const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 export default function Dashboard() {
   const { user, token, refreshUser, updateBidsBalance, isManager } = useAuth();
-  const { t, language } = useLanguage();
+  const { t, language , mappedLanguage } = useLanguage();
+  // Use mappedLanguage for regional variants (e.g., xk -> sq)
+  const langKey = mappedLanguage || language;
   const navigate = useNavigate();
   const [activeAuctions, setActiveAuctions] = useState([]);
   const [myBidAuctions, setMyBidAuctions] = useState([]);
@@ -57,8 +59,8 @@ export default function Dashboard() {
   
   // Map regional languages to their base language (Kosovo -> Albanian)
   const langMapping = { 'xk': 'sq', 'us': 'en', 'ae': 'ar' };
-  const mappedLang = langMapping[language] || language;
-  const dt = dashTexts[mappedLang] || dashTexts[language] || dashTexts.de;
+  const mappedLang = langMapping[langKey] || language;
+  const dt = dashTexts[mappedLang] || dashTexts[langKey] || dashTexts.de;
 
   useEffect(() => {
     if (user) fetchData();

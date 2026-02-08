@@ -77,7 +77,7 @@ const widgetTexts = {
 
 // Leaderboard entry component
 const LeaderboardEntry = memo(({ entry, rank, language = 'de' }) => {
-  const t = widgetTexts[language] || widgetTexts.de;
+  const t = widgetTexts[langKey] || widgetTexts.de;
   
   const getRankIcon = (r) => {
     switch(r) {
@@ -137,7 +137,7 @@ const LeaderboardWidget = memo(({ className = '', language = 'de' }) => {
   const navigate = useNavigate();
   const [leaderboard, setLeaderboard] = useState([]);
   const [loading, setLoading] = useState(true);
-  const t = widgetTexts[language] || widgetTexts.de;
+  const t = widgetTexts[langKey] || widgetTexts.de;
   
   useEffect(() => {
     const fetchLeaderboard = async () => {

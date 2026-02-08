@@ -14,7 +14,9 @@ const API = process.env.REACT_APP_BACKEND_URL;
 
 export default function SocialSharing() {
   const { isAuthenticated, token, user } = useAuth();
-  const { language } = useLanguage();
+  const { language , mappedLanguage } = useLanguage();
+  // Use mappedLanguage for regional variants (e.g., xk -> sq)
+  const langKey = mappedLanguage || language;
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     total_shares: 0,
@@ -74,7 +76,7 @@ export default function SocialSharing() {
       shared: 'Shared! Reward will be credited.',
       noAuctions: 'No active auctions to share'
     }
-  }[language] || {};
+  }[langKey] || {};
 
   useEffect(() => {
     fetchData();

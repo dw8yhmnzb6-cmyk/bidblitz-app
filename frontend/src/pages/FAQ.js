@@ -214,13 +214,15 @@ const faqContent = {
 };
 
 export default function FAQ() {
-  const { language } = useLanguage();
+  const { language , mappedLanguage } = useLanguage();
+  // Use mappedLanguage for regional variants (e.g., xk -> sq)
+  const langKey = mappedLanguage || language;
   const { isDarkMode } = useTheme();
   const [openIndex, setOpenIndex] = useState('0-0');
   const [searchQuery, setSearchQuery] = useState('');
 
   // Get FAQ content for current language
-  const content = faqContent[language] || faqContent.de;
+  const content = faqContent[langKey] || faqContent.de;
   const faqCategories = content.categories;
 
   // Flatten FAQs for search

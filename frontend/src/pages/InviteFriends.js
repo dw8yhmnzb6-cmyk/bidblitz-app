@@ -182,8 +182,10 @@ const inviteTexts = {
 
 export default function InviteFriends() {
   const { isAuthenticated, token, user } = useAuth();
-  const { language } = useLanguage();
-  const texts = inviteTexts[language] || inviteTexts.de;
+  const { language , mappedLanguage } = useLanguage();
+  // Use mappedLanguage for regional variants (e.g., xk -> sq)
+  const langKey = mappedLanguage || language;
+  const texts = inviteTexts[langKey] || inviteTexts.de;
   const [referralData, setReferralData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);

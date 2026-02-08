@@ -232,8 +232,10 @@ const affiliateTexts = {
 
 export default function Affiliate() {
   const { isAuthenticated, token } = useAuth();
-  const { language } = useLanguage();
-  const texts = affiliateTexts[language] || affiliateTexts.de;
+  const { language , mappedLanguage } = useLanguage();
+  // Use mappedLanguage for regional variants (e.g., xk -> sq)
+  const langKey = mappedLanguage || language;
+  const texts = affiliateTexts[langKey] || affiliateTexts.de;
   const [affiliateData, setAffiliateData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [registering, setRegistering] = useState(false);

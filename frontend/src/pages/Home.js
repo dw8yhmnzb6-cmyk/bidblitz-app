@@ -40,7 +40,7 @@ const ActivityIndex = memo(({ auctionId = '', language = 'de' }) => {
   return (
     <div className="mt-3">
       <div className="flex items-center gap-2">
-        <span className="text-[11px] text-gray-400">{activityLabel[language] || activityLabel.de}</span>
+        <span className="text-[11px] text-gray-400">{activityLabel[langKey] || activityLabel.de}</span>
         <div className="flex gap-0.5">
           {[...Array(10)].map((_, i) => (
             <div 
@@ -111,13 +111,13 @@ const homeTexts = {
 const LiveTimer = memo(({ endTime, onExpired, language = 'de' }) => {
   const [time, setTime] = useState({ d: 0, h: 0, m: 0, s: 0, expired: false });
   const expiredCalled = useRef(false);
-  const ht = homeTexts[language] || homeTexts.de;
+  const ht = homeTexts[langKey] || homeTexts.de;
   
   // Day labels per language
   const dayLabels = {
     de: 'T', en: 'D', sq: 'D', tr: 'G', fr: 'J', es: 'D'
   };
-  const dayLabel = dayLabels[language] || 'T';
+  const dayLabel = dayLabels[langKey] || 'T';
   
   useEffect(() => {
     if (!endTime) return;
@@ -190,7 +190,7 @@ const LiveTimer = memo(({ endTime, onExpired, language = 'de' }) => {
 
 // Live Price Display - Only updates price and bidder
 const LivePrice = memo(({ price, bidderName, language = 'de' }) => {
-  const ht = homeTexts[language] || homeTexts.de;
+  const ht = homeTexts[langKey] || homeTexts.de;
   return (
     <div className="text-center my-4">
       <p className="text-4xl font-black text-gray-800">
@@ -206,12 +206,12 @@ const LivePrice = memo(({ price, bidderName, language = 'de' }) => {
 // Premium Featured Auction - Snipster Style
 const PremiumAuction = memo(({ auction, product, onBid, onRefresh, language = 'de' }) => {
   const navigate = useNavigate();
-  const ht = homeTexts[language] || homeTexts.de;
+  const ht = homeTexts[langKey] || homeTexts.de;
   
   if (!auction || !product) return null;
   
   // Get translated product name
-  const productName = product.name_translations?.[language] || product.name;
+  const productName = product.name_translations?.[langKey] || product.name;
   
   return (
     <div 
@@ -293,12 +293,12 @@ const PremiumAuction = memo(({ auction, product, onBid, onRefresh, language = 'd
 // Small Auction Card - Snipster Style
 const AuctionCard = memo(({ auction, product, onBid, onRefresh, language = 'de', isAuthenticated = false, isVip = false }) => {
   const navigate = useNavigate();
-  const ht = homeTexts[language] || homeTexts.de;
+  const ht = homeTexts[langKey] || homeTexts.de;
   
   if (!auction || !product) return null;
   
   // Get translated product name
-  const productName = product.name_translations?.[language] || product.name;
+  const productName = product.name_translations?.[langKey] || product.name;
   
   // Check if this is a VIP-only auction
   const isVipAuction = auction.is_vip_only;
@@ -419,7 +419,7 @@ const StatsBar = memo(({ totalBids, activeUsers, activeAuctions, language = 'de'
     tr: { liveAuctions: 'Canlı Açık Artırmalar', activeBidders: 'Aktif Teklifçiler', bidsToday: 'Bugünkü Teklifler' },
     fr: { liveAuctions: 'Enchères en Direct', activeBidders: 'Enchérisseurs Actifs', bidsToday: 'Enchères Aujourd\'hui' }
   };
-  const st = statsTexts[language] || statsTexts.de;
+  const st = statsTexts[langKey] || statsTexts.de;
   
   return (
     <div className="bg-gradient-to-r from-[#2D5A7B] to-[#4A7C9B] rounded-xl p-4 mb-6">
@@ -454,7 +454,9 @@ const StatsBar = memo(({ totalBids, activeUsers, activeAuctions, language = 'de'
 
 export default function Home() {
   const { isAuthenticated, token, updateBidsBalance, isVip } = useAuth();
-  const { language } = useLanguage();
+  const { language , mappedLanguage } = useLanguage();
+  // Use mappedLanguage for regional variants (e.g., xk -> sq)
+  const langKey = mappedLanguage || language;
   const navigate = useNavigate();
   
   const [auctions, setAuctions] = useState([]);
@@ -560,7 +562,7 @@ export default function Home() {
   
   // Get translations with language mapping (xk -> sq)
   const mappedLang = getMappedLanguage(language);
-  const ht = homeTexts[mappedLang] || homeTexts[language] || homeTexts.de;
+  const ht = homeTexts[mappedLang] || homeTexts[langKey] || homeTexts.de;
   
   // Handle bid
   const handleBid = async (auctionId) => {

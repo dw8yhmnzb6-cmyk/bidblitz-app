@@ -343,7 +343,7 @@ const benefitTranslations = {
 
 // Helper function to translate benefit text
 const translateBenefit = (benefit, language) => {
-  const langTranslations = benefitTranslations[language] || benefitTranslations['de'];
+  const langTranslations = benefitTranslations[langKey] || benefitTranslations['de'];
   
   // Try to match the benefit text (it contains numbers, so we need partial matching)
   for (const [key, value] of Object.entries(langTranslations)) {
@@ -376,8 +376,10 @@ const VIPBadge = ({ color, size = 'md' }) => {
 
 export default function VIP() {
   const { user, token } = useAuth();
-  const { language } = useLanguage();
-  const texts = vipTexts[language] || vipTexts.de;
+  const { language , mappedLanguage } = useLanguage();
+  // Use mappedLanguage for regional variants (e.g., xk -> sq)
+  const langKey = mappedLanguage || language;
+  const texts = vipTexts[langKey] || vipTexts.de;
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [plans, setPlans] = useState([]);

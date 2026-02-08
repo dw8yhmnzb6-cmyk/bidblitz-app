@@ -159,8 +159,10 @@ const WinnerCard = ({ winner, texts, language }) => {
 };
 
 export default function Winners() {
-  const { language } = useLanguage();
-  const texts = winnersTexts[language] || winnersTexts.de;
+  const { language , mappedLanguage } = useLanguage();
+  // Use mappedLanguage for regional variants (e.g., xk -> sq)
+  const langKey = mappedLanguage || language;
+  const texts = winnersTexts[langKey] || winnersTexts.de;
   const [winners, setWinners] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -213,7 +215,7 @@ export default function Winners() {
     tr: { happyWinners: 'Mutlu Kazananlar', totalSaved: 'Toplam tasarruf', avgSavings: 'Ortalama tasarruf', realWinners: 'Gerçek kazananlar, gerçek tasarruflar', ourWinners: 'Kazananlarımız', subtitle: 'Bu kullanıcılar BidBlitz\'de harika fırsatlar yakaladı. Sıradaki siz olabilirsiniz!', bidNow: 'Şimdi Teklif Ver' },
     fr: { happyWinners: 'Gagnants Heureux', totalSaved: 'Total économisé', avgSavings: 'Économie moyenne', realWinners: 'Vrais gagnants, vraies économies', ourWinners: 'Nos', subtitle: 'Ces utilisateurs ont fait de super affaires sur BidBlitz. Vous pourriez être le prochain!', bidNow: 'Enchérir' }
   };
-  const stats = statsLabels[language] || statsLabels.de;
+  const stats = statsLabels[langKey] || statsLabels.de;
 
   return (
     <div className="min-h-screen pt-24 pb-12 px-4 bg-gradient-to-b from-cyan-50 to-cyan-100" data-testid="winners-page">

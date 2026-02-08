@@ -106,7 +106,9 @@ const cookieTranslations = {
 };
 
 export const CookieConsent = () => {
-  const { language } = useLanguage();
+  const { language , mappedLanguage } = useLanguage();
+  // Use mappedLanguage for regional variants (e.g., xk -> sq)
+  const langKey = mappedLanguage || language;
   const [visible, setVisible] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [preferences, setPreferences] = useState({
@@ -116,7 +118,7 @@ export const CookieConsent = () => {
   });
 
   // Get translations for current language, fallback to German
-  const t = cookieTranslations[language] || cookieTranslations.de;
+  const t = cookieTranslations[langKey] || cookieTranslations.de;
 
   useEffect(() => {
     const consent = localStorage.getItem('cookieConsent');

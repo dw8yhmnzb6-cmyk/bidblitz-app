@@ -264,11 +264,13 @@ const howItWorksTranslations = {
 };
 
 export default function HowItWorks() {
-  const { language } = useLanguage();
+  const { language , mappedLanguage } = useLanguage();
+  // Use mappedLanguage for regional variants (e.g., xk -> sq)
+  const langKey = mappedLanguage || language;
   const { isDarkMode } = useTheme();
   
   // Get translations for current language, fallback to German
-  const t = howItWorksTranslations[language] || howItWorksTranslations.de;
+  const t = howItWorksTranslations[langKey] || howItWorksTranslations.de;
 
   const steps = [
     {

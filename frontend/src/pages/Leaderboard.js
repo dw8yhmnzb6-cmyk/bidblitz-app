@@ -12,7 +12,9 @@ const API = process.env.REACT_APP_BACKEND_URL;
 
 const Leaderboard = () => {
   const { token, user } = useAuth();
-  const { language } = useLanguage();
+  const { language , mappedLanguage } = useLanguage();
+  // Use mappedLanguage for regional variants (e.g., xk -> sq)
+  const langKey = mappedLanguage || language;
   const [leaderboard, setLeaderboard] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
   const [weekInfo, setWeekInfo] = useState({ start: null, end: null });
@@ -72,7 +74,7 @@ const Leaderboard = () => {
       vip: 'VIP',
     }
   };
-  const text = t[language] || t.de;
+  const text = t[langKey] || t.de;
 
   useEffect(() => {
     fetchLeaderboard();

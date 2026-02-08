@@ -281,8 +281,10 @@ const translations = {
 
 export default function GiftBids() {
   const { user, token, updateBidsBalance } = useAuth();
-  const { language } = useLanguage();
-  const t = translations[language] || translations.de;
+  const { language , mappedLanguage } = useLanguage();
+  // Use mappedLanguage for regional variants (e.g., xk -> sq)
+  const langKey = mappedLanguage || language;
+  const t = translations[langKey] || translations.de;
   
   const [customerNumber, setCustomerNumber] = useState('');
   const [recipientNumber, setRecipientNumber] = useState('');

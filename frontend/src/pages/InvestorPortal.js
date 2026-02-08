@@ -110,7 +110,7 @@ const PackageCard = ({ pkg, selected, onSelect, onInvest, loading, t = {}, langu
   
   // Get perk translations for current language
   const getPerkText = (perkKey) => {
-    const langPerks = perkTranslations[language] || perkTranslations['de'];
+    const langPerks = perkTranslations[langKey] || perkTranslations['de'];
     return langPerks[perkKey] || perkKey;
   };
   
@@ -160,7 +160,9 @@ const PackageCard = ({ pkg, selected, onSelect, onInvest, loading, t = {}, langu
 
 export default function InvestorPortal() {
   const { user, token } = useAuth();
-  const { language } = useLanguage();
+  const { language , mappedLanguage } = useLanguage();
+  // Use mappedLanguage for regional variants (e.g., xk -> sq)
+  const langKey = mappedLanguage || language;
   const [searchParams] = useSearchParams();
   
   // Get translations

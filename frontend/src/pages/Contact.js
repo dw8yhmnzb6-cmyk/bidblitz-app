@@ -15,7 +15,9 @@ import { Button } from '../components/ui/button';
 import { toast } from 'sonner';
 
 export default function Contact() {
-  const { t, language } = useLanguage();
+  const { t, language , mappedLanguage } = useLanguage();
+  // Use mappedLanguage for regional variants (e.g., xk -> sq)
+  const langKey = mappedLanguage || language;
   const { isDarkMode } = useTheme();
   const texts = usePageTranslations(language);
   const [formData, setFormData] = useState({
@@ -120,7 +122,7 @@ export default function Contact() {
     tr: { title: "Mesaj gönderildi!", desc: "Mesajınız için teşekkürler. 24 saat içinde size döneceğiz.", button: "Başka mesaj gönder" },
     fr: { title: "Message envoyé!", desc: "Merci pour votre message. Nous vous répondrons dans les 24 heures.", button: "Envoyer un autre message" }
   };
-  const successText = successMessages[language] || successMessages.de;
+  const successText = successMessages[langKey] || successMessages.de;
 
   if (submitted) {
     return (
@@ -156,7 +158,7 @@ export default function Contact() {
     tr: { title: "İletişim", subtitle: "Sorularınız veya önerileriniz mi var? Mesajınızı bekliyoruz!" },
     fr: { title: "Contact", subtitle: "Des questions ou suggestions? Nous avons hâte de vous lire!" }
   };
-  const pageText = pageTexts[language] || pageTexts.de;
+  const pageText = pageTexts[langKey] || pageTexts.de;
 
   return (
     <div className={`min-h-screen pt-20 pb-16 ${isDarkMode ? 'bg-[#050509]' : 'bg-gradient-to-b from-cyan-50 to-cyan-100'}`}>

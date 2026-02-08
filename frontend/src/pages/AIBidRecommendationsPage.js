@@ -749,8 +749,10 @@ const OpportunityCard = ({ opportunity, t, onBid }) => {
 export default function AIBidRecommendationsPage() {
   const { isAuthenticated, token } = useAuth();
   const { language, mappedLanguage } = useLanguage();
+  // Use mappedLanguage for regional variants (e.g., xk -> sq)
+  const langKey = mappedLanguage || language;
   const navigate = useNavigate();
-  const t = translations[mappedLanguage] || translations[language] || translations.de;
+  const t = translations[mappedLanguage] || translations[langKey] || translations.de;
   
   const [opportunities, setOpportunities] = useState([]);
   const [loading, setLoading] = useState(true);

@@ -370,8 +370,10 @@ const statusTranslations = {
 };
 
 export function ExcitementStatusBar({ className = '' }) {
-  const { language } = useLanguage();
-  const t = statusTranslations[language] || statusTranslations.de;
+  const { language , mappedLanguage } = useLanguage();
+  // Use mappedLanguage for regional variants (e.g., xk -> sq)
+  const langKey = mappedLanguage || language;
+  const t = statusTranslations[langKey] || statusTranslations.de;
   
   // Dynamic excitement level (35-90%)
   const [excitement, setExcitement] = useState(() => {

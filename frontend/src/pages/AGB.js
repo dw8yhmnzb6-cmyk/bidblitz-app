@@ -7,7 +7,9 @@ import { useLanguage } from '../context/LanguageContext';
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 export default function AGB() {
-  const { language, t } = useLanguage();
+  const { language, t , mappedLanguage } = useLanguage();
+  // Use mappedLanguage for regional variants (e.g., xk -> sq)
+  const langKey = mappedLanguage || language;
   const [pageContent, setPageContent] = useState(null);
   const [loading, setLoading] = useState(true);
 

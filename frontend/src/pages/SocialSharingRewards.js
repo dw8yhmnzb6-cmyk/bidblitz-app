@@ -15,7 +15,9 @@ const API = process.env.REACT_APP_BACKEND_URL;
 
 export default function SocialSharingRewards() {
   const { isAuthenticated, token, user } = useAuth();
-  const { language } = useLanguage();
+  const { language , mappedLanguage } = useLanguage();
+  // Use mappedLanguage for regional variants (e.g., xk -> sq)
+  const langKey = mappedLanguage || language;
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({ total_shares: 0, total_rewards: 0, shares_this_week: 0 });
   const [shareHistory, setShareHistory] = useState([]);
@@ -81,7 +83,7 @@ export default function SocialSharingRewards() {
       streakBonus: 'Streak Bonus',
       streakBonusDesc: '7 days in a row = 100 bids'
     }
-  }[language] || {};
+  }[langKey] || {};
 
   const referralLink = `${window.location.origin}/register?ref=${user?.referral_code || 'BIDBLITZ'}`;
 

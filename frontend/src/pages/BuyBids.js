@@ -147,8 +147,10 @@ const buyBidsTexts = {
 };
 
 export default function BuyBids() {
-  const { language } = useLanguage();
-  const texts = buyBidsTexts[language] || buyBidsTexts.de;
+  const { language , mappedLanguage } = useLanguage();
+  // Use mappedLanguage for regional variants (e.g., xk -> sq)
+  const langKey = mappedLanguage || language;
+  const texts = buyBidsTexts[langKey] || buyBidsTexts.de;
   const { isAuthenticated, token } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -247,7 +249,7 @@ export default function BuyBids() {
     
     if (pkg.bonus > 0) {
       const freeText = { de: 'GRATIS', en: 'FREE', sq: 'FALAS', xk: 'FALAS', tr: 'ÜCRETSİZ', fr: 'GRATUIT' };
-      features.push(`+${pkg.bonus} ${freeText[language] || freeText.de} ${texts.bids}`);
+      features.push(`+${pkg.bonus} ${freeText[langKey] || freeText.de} ${texts.bids}`);
     }
     
     features.push(`€${pricePerBid} ${texts.perBid}`);
@@ -261,7 +263,7 @@ export default function BuyBids() {
       tr: 'Anında kullanılabilir',
       fr: 'Disponible immédiatement'
     };
-    features.push(instantlyAvailable[language] || instantlyAvailable.de);
+    features.push(instantlyAvailable[langKey] || instantlyAvailable.de);
     
     // "Kein Ablaufdatum" / "No expiry date"
     const noExpiry = {
@@ -272,7 +274,7 @@ export default function BuyBids() {
       tr: 'Son kullanma tarihi yok',
       fr: "Pas de date d'expiration"
     };
-    features.push(noExpiry[language] || noExpiry.de);
+    features.push(noExpiry[langKey] || noExpiry.de);
     
     return features;
   };
@@ -285,7 +287,7 @@ export default function BuyBids() {
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-gray-200 mb-6">
             <Sparkles className="w-4 h-4 text-[#F59E0B]" />
             <span className="text-sm text-gray-500">
-              {{ de: 'Beste Preise garantiert', en: 'Best prices guaranteed', sq: 'Çmimet më të mira të garantuara', xk: 'Çmimet më të mira të garantuara', tr: 'En iyi fiyatlar garantili', fr: 'Meilleurs prix garantis' }[language] || 'Beste Preise garantiert'}
+              {{ de: 'Beste Preise garantiert', en: 'Best prices guaranteed', sq: 'Çmimet më të mira të garantuara', xk: 'Çmimet më të mira të garantuara', tr: 'En iyi fiyatlar garantili', fr: 'Meilleurs prix garantis' }[langKey] || 'Beste Preise garantiert'}
             </span>
           </div>
           <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-800 mb-4">
@@ -300,7 +302,7 @@ export default function BuyBids() {
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white border border-gray-200">
               <CreditCard className="w-4 h-4 text-[#7C3AED]" />
               <span className="text-xs text-gray-500">
-                {{ de: 'Kreditkarte', en: 'Credit Card', sq: 'Kartë Krediti', xk: 'Kartë Krediti', tr: 'Kredi Kartı', fr: 'Carte de Crédit' }[language] || 'Kreditkarte'}
+                {{ de: 'Kreditkarte', en: 'Credit Card', sq: 'Kartë Krediti', xk: 'Kartë Krediti', tr: 'Kredi Kartı', fr: 'Carte de Crédit' }[langKey] || 'Kreditkarte'}
               </span>
             </div>
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white border border-gray-200">
@@ -364,7 +366,7 @@ export default function BuyBids() {
                   <div className="text-center mb-4">
                     <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-green-500/20 text-green-400 text-sm font-semibold">
                       <Sparkles className="w-4 h-4" />
-                      +{pkg.bonus} {{ de: 'GRATIS Gebote!', en: 'FREE Bids!', sq: 'Oferta FALAS!', xk: 'Oferta FALAS!', tr: 'ÜCRETSİZ Teklif!', fr: 'Enchères GRATUITES!' }[language] || 'GRATIS Gebote!'}
+                      +{pkg.bonus} {{ de: 'GRATIS Gebote!', en: 'FREE Bids!', sq: 'Oferta FALAS!', xk: 'Oferta FALAS!', tr: 'ÜCRETSİZ Teklif!', fr: 'Enchères GRATUITES!' }[langKey] || 'GRATIS Gebote!'}
                     </span>
                   </div>
                 )}
@@ -372,7 +374,7 @@ export default function BuyBids() {
                 {/* Price per bid */}
                 {pkg.per_bid && (
                   <div className="text-center text-gray-500 text-sm mb-4">
-                    {{ de: 'Nur', en: 'Only', sq: 'Vetëm', xk: 'Vetëm', tr: 'Sadece', fr: 'Seulement' }[language] || 'Nur'} €{pkg.per_bid.toFixed(2)} {texts.perBid}
+                    {{ de: 'Nur', en: 'Only', sq: 'Vetëm', xk: 'Vetëm', tr: 'Sadece', fr: 'Seulement' }[langKey] || 'Nur'} €{pkg.per_bid.toFixed(2)} {texts.perBid}
                   </div>
                 )}
 
@@ -398,7 +400,7 @@ export default function BuyBids() {
                   ) : (
                     <>
                       <CreditCard className="w-4 h-4 mr-2" />
-                      {{ de: 'Jetzt kaufen', en: 'Buy Now', sq: 'Bli Tani', xk: 'Bli Tani', tr: 'Şimdi Satın Al', fr: 'Acheter' }[language] || 'Jetzt kaufen'}
+                      {{ de: 'Jetzt kaufen', en: 'Buy Now', sq: 'Bli Tani', xk: 'Bli Tani', tr: 'Şimdi Satın Al', fr: 'Acheter' }[langKey] || 'Jetzt kaufen'}
                     </>
                   )}
                 </Button>
@@ -410,7 +412,7 @@ export default function BuyBids() {
         {/* Info Section */}
         <div className="mt-16 glass-card rounded-2xl p-8">
           <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">
-            {{ de: 'Wie funktionieren Gebote?', en: 'How do bids work?', sq: 'Si funksionojnë ofertat?', xk: 'Si funksionojnë ofertat?', tr: 'Teklifler nasıl çalışır?', fr: 'Comment fonctionnent les enchères?' }[language] || 'Wie funktionieren Gebote?'}
+            {{ de: 'Wie funktionieren Gebote?', en: 'How do bids work?', sq: 'Si funksionojnë ofertat?', xk: 'Si funksionojnë ofertat?', tr: 'Teklifler nasıl çalışır?', fr: 'Comment fonctionnent les enchères?' }[langKey] || 'Wie funktionieren Gebote?'}
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="text-center">

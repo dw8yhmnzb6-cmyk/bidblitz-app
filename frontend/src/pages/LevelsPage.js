@@ -36,7 +36,9 @@ const LevelBadge = ({ level, size = 'md' }) => {
 
 const LevelsPage = () => {
   const { token, isAuthenticated } = useAuth();
-  const { language } = useLanguage();
+  const { language , mappedLanguage } = useLanguage();
+  // Use mappedLanguage for regional variants (e.g., xk -> sq)
+  const langKey = mappedLanguage || language;
   const [levelData, setLevelData] = useState(null);
   const [leaderboard, setLeaderboard] = useState([]);
   const [xpHistory, setXpHistory] = useState([]);
@@ -155,7 +157,7 @@ const LevelsPage = () => {
               <div className="flex-1 text-center md:text-left">
                 <p className="text-gray-500 text-sm mb-1">{t.currentLevel}</p>
                 <h2 className="text-3xl font-bold text-gray-800 mb-2">
-                  {levelNames[currentLevel]?.[language] || currentLevel}
+                  {levelNames[currentLevel]?.[langKey] || currentLevel}
                 </h2>
                 <p className="text-purple-400 font-bold">{currentXp} XP</p>
               </div>
@@ -257,7 +259,7 @@ const LevelsPage = () => {
               >
                 <LevelBadge level={level} size="md" />
                 <h4 className="text-gray-800 font-bold mt-3">
-                  {levelNames[level]?.[language] || level}
+                  {levelNames[level]?.[langKey] || level}
                 </h4>
                 <p className="text-gray-500 text-sm mb-3">
                   {levelInfo.min_xp || 0}+ {t.xp}

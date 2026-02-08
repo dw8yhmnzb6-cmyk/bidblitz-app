@@ -113,8 +113,10 @@ const purchasesTexts = {
 
 export default function Purchases() {
   const { token } = useAuth();
-  const { language } = useLanguage();
-  const texts = purchasesTexts[language] || purchasesTexts.de;
+  const { language , mappedLanguage } = useLanguage();
+  // Use mappedLanguage for regional variants (e.g., xk -> sq)
+  const langKey = mappedLanguage || language;
+  const texts = purchasesTexts[langKey] || purchasesTexts.de;
   const [purchases, setPurchases] = useState([]);
   const [loading, setLoading] = useState(true);
 
