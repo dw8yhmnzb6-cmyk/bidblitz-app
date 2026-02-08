@@ -1436,7 +1436,18 @@ export const translations = {
       offersFound: "предложений найдено",
       noOffers: "Предложения не найдены",
       tryAnother: "Попробуйте другую категорию или поиск",
-      priceNote: "Сравнительная цена = Рекомендованная цена"
+      priceNote: "Сравнительная цена = Рекомендованная цена",
+      uvp: "РРЦ",
+      bid: "СТАВКА",
+      lastSoldFor: "Продано за",
+      activity: "Активность",
+      currentPrice: "Текущая цена",
+      nightOnly: "НОЧЬ",
+      startPrice: "Начальная цена",
+      activityLow: "Низкая",
+      activityMedium: "Средняя",
+      activityHigh: "Высокая",
+      activityHot: "Горячо"
     },
     auctionCard: {
       liveNow: "СЕЙЧАС", comingSoon: "СКОРО", ended: "ЗАВЕРШЁН",
