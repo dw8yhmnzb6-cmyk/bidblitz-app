@@ -14,7 +14,7 @@ import DailyQuestsWidget from '../components/DailyQuestsWidget';
 import { VIPPromoBanner } from '../components/VIPBadge';
 import FlashSaleBanner from '../components/FlashSaleBanner';
 import MysteryBoxSection from '../components/MysteryBoxSection';
-import { LiveTimer, LivePrice, ProductInfo } from '../components/auction';
+// Note: LiveTimer, LivePrice, ProductInfo, ActivityIndex, TrustBadges are defined locally for this page
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
