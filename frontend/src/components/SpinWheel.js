@@ -58,30 +58,6 @@ const SpinWheel = ({ isOpen, onClose }) => {
       congrats: 'Congratulations!',
       loginRequired: 'Please login to spin',
     },
-    sq: {
-      title: 'Rrota e Fatit',
-      subtitle: 'Rrotulloje çdo ditë për çmime falas!',
-      spin: 'Rrotullo!',
-      spinning: 'Duke u rrotulluar...',
-      alreadySpun: 'Tashmë rrotulluar!',
-      nextSpin: 'Rrotullimi tjetër:',
-      won: 'Fitove!',
-      close: 'Mbyll',
-      congrats: 'Urime!',
-      loginRequired: 'Ju lutem kyçuni për të rrotulluar',
-    },
-    xk: {
-      title: 'Rrota e Fatit',
-      subtitle: 'Rrotulloje çdo ditë për çmime falas!',
-      spin: 'Rrotullo!',
-      spinning: 'Duke u rrotulluar...',
-      alreadySpun: 'Tashmë rrotulluar!',
-      nextSpin: 'Rrotullimi tjetër:',
-      won: 'Fitove!',
-      close: 'Mbyll',
-      congrats: 'Urime!',
-      loginRequired: 'Ju lutem kyçuni për të rrotulluar',
-    },
     tr: {
       title: 'Şans Çarkı',
       subtitle: 'Günlük çevir, ücretsiz ödüller kazan!',
@@ -107,6 +83,7 @@ const SpinWheel = ({ isOpen, onClose }) => {
       loginRequired: 'Veuillez vous connecter pour tourner',
     }
   };
+  // For Albanian (sq/xk) fall back to German since we're a German platform
   const text = t[langKey] || t.de;
 
   useEffect(() => {
