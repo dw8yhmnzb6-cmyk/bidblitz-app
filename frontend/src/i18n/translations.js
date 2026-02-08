@@ -1180,7 +1180,18 @@ export const translations = {
       offersFound: "ofertas encontradas",
       noOffers: "Nenhuma oferta encontrada",
       tryAnother: "Tente outra categoria ou pesquisa",
-      priceNote: "Preço de referência = Preço sugerido"
+      priceNote: "Preço de referência = Preço sugerido",
+      uvp: "PVP",
+      bid: "LANCE",
+      lastSoldFor: "Vendido por",
+      activity: "Atividade",
+      currentPrice: "Preço Atual",
+      nightOnly: "NOITE",
+      startPrice: "Preço inicial",
+      activityLow: "Baixa",
+      activityMedium: "Média",
+      activityHigh: "Alta",
+      activityHot: "Quente"
     },
     auctionCard: {
       liveNow: "AO VIVO", comingSoon: "EM BREVE", ended: "ENCERRADO",
