@@ -886,8 +886,8 @@ async def execute_command(action: str, parameters: dict, admin: dict) -> dict:
                 continue
             
             # Check if already has all requested translations (unless force is enabled)
-            existing_name_trans = product.get("name_translations", {})
-            existing_desc_trans = product.get("description_translations", {})
+            existing_name_trans = product.get("name_translations") or {}
+            existing_desc_trans = product.get("description_translations") or {}
             
             if not force_retranslate and all(lang in existing_name_trans for lang in target_languages):
                 skipped_count += 1
