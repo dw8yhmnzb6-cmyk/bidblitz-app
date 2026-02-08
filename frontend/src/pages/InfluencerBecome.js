@@ -429,34 +429,38 @@ export default function InfluencerBecome() {
   }
   
   return (
-    <div className="min-h-screen pt-20 pb-12" data-testid="influencer-become">
-      {/* Hero Section */}
-      <section className="relative overflow-hidden py-16 px-4">
-        <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/20 via-amber-500/10 to-transparent" />
+    <div className="min-h-screen pt-20 pb-12 bg-gradient-to-b from-slate-50 via-white to-amber-50/30" data-testid="influencer-become">
+      {/* Hero Section - Improved Design */}
+      <section className="relative overflow-hidden py-20 px-4">
+        {/* Modern gradient background */}
+        <div className="absolute inset-0 bg-gradient-to-br from-amber-100/60 via-orange-50/40 to-yellow-50/50" />
+        <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-bl from-orange-300/20 to-transparent rounded-full blur-3xl" />
+        <div className="absolute bottom-0 left-0 w-80 h-80 bg-gradient-to-tr from-amber-400/15 to-transparent rounded-full blur-3xl" />
+        
         <div className="max-w-5xl mx-auto text-center relative z-10">
-          <div className="inline-flex items-center gap-2 bg-yellow-400/20 text-yellow-400 px-4 py-2 rounded-full text-sm font-medium mb-6">
-            <Star className="w-4 h-4" />
+          <div className="inline-flex items-center gap-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white px-5 py-2.5 rounded-full text-sm font-semibold mb-8 shadow-lg shadow-amber-500/25">
+            <Star className="w-4 h-4" fill="currentColor" />
             {t.badge}
           </div>
           
-          <h1 className="text-4xl md:text-5xl font-black text-gray-800 mb-6">
-            {t.heroTitle} <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-amber-500">{t.heroTitleHighlight}</span>
+          <h1 className="text-4xl md:text-6xl font-black text-slate-800 mb-6 tracking-tight">
+            {t.heroTitle} <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600">{t.heroTitleHighlight}</span>
           </h1>
           
-          <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
-            {t.heroDesc} <span className="text-yellow-400 font-bold">{t.commission}</span> {t.heroDescEnd}
+          <p className="text-lg md:text-xl text-slate-600 mb-10 max-w-2xl mx-auto leading-relaxed">
+            {t.heroDesc} <span className="text-amber-600 font-bold">{t.commission}</span> {t.heroDescEnd}
           </p>
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button 
               onClick={() => setShowForm(true)}
-              className="bg-gradient-to-r from-yellow-400 to-amber-500 hover:from-yellow-300 hover:to-amber-400 text-black font-bold px-8 py-3"
+              className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white font-bold px-10 py-4 text-lg rounded-xl shadow-lg shadow-amber-500/30 transition-all hover:scale-105"
             >
-              <Star className="w-5 h-5 mr-2" />
+              <Star className="w-5 h-5 mr-2" fill="currentColor" />
               {t.applyNow}
             </Button>
             <Link to="/influencer-login">
-              <Button variant="outline" className="border-white/30 text-gray-800 hover:bg-white/10 px-8 py-3">
+              <Button variant="outline" className="border-2 border-slate-300 text-slate-700 hover:bg-slate-100 hover:border-slate-400 px-10 py-4 text-lg rounded-xl transition-all">
                 {t.alreadyPartner}
               </Button>
             </Link>
