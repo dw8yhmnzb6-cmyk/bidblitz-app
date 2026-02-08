@@ -1916,90 +1916,182 @@ export default function Admin() {
                   : 'Manager verwalten Influencer in ihren zugewiesenen Städten und erhalten 15% der Influencer-Provisionen.'}
               </p>
 
-              {/* Manager List */}
-              <div className="bg-[#1A1A2E] rounded-xl border border-gray-200 overflow-hidden">
-                <table className="w-full">
-                  <thead className="bg-white/5">
-                    <tr>
-                      <th className="text-left text-gray-500 py-3 px-4 text-sm">Name</th>
-                      <th className="text-left text-gray-500 py-3 px-4 text-sm">E-Mail</th>
-                      <th className="text-left text-gray-500 py-3 px-4 text-sm">{language === 'en' ? 'Cities' : 'Städte'}</th>
-                      <th className="text-right text-gray-500 py-3 px-4 text-sm">Influencer</th>
-                      <th className="text-right text-gray-500 py-3 px-4 text-sm">{language === 'en' ? 'Inf. Commission' : 'Inf. Provision'}</th>
-                      <th className="text-right text-gray-500 py-3 px-4 text-sm">{language === 'en' ? 'Manager 15%' : 'Manager 15%'}</th>
-                      <th className="text-center text-gray-500 py-3 px-4 text-sm">Status</th>
-                      <th className="text-right text-gray-500 py-3 px-4 text-sm">Aktionen</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {managers.map((mgr) => (
-                      <tr key={mgr.id} className="border-t border-white/5 hover:bg-white/5">
-                        <td className="py-3 px-4 text-gray-800 font-medium">{mgr.name}</td>
-                        <td className="py-3 px-4 text-gray-500">{mgr.email}</td>
-                        <td className="py-3 px-4">
-                          <div className="flex flex-wrap gap-1">
-                            {mgr.cities?.map((city) => (
-                              <span key={city} className="px-2 py-0.5 bg-[#7C3AED]/20 text-[#7C3AED] rounded text-xs">
-                                {city}
-                              </span>
-                            ))}
-                          </div>
-                        </td>
-                        <td className="py-3 px-4 text-gray-800 text-right">{mgr.influencer_count || 0}</td>
-                        <td className="py-3 px-4 text-[#F59E0B] text-right">€{(mgr.total_influencer_commission || 0).toFixed(2)}</td>
-                        <td className="py-3 px-4 text-[#10B981] text-right font-medium">€{(mgr.manager_commission || 0).toFixed(2)}</td>
-                        <td className="py-3 px-4 text-center">
-                          {mgr.is_active ? (
-                            <span className="px-2 py-1 bg-[#10B981]/20 text-[#10B981] rounded text-xs">Aktiv</span>
-                          ) : (
-                            <span className="px-2 py-1 bg-red-500/20 text-red-500 rounded text-xs">Inaktiv</span>
-                          )}
-                        </td>
-                        <td className="py-3 px-4 text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              onClick={() => {
-                                setSelectedManager(mgr);
-                                setShowManagerDetails(true);
-                              }}
-                              className="border-[#7C3AED]/30 text-[#7C3AED] hover:bg-[#7C3AED]/10"
-                            >
-                              <Eye className="w-3 h-3 mr-1" />
-                              Details
-                            </Button>
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              onClick={async () => {
-                                try {
-                                  await axios.delete(`${API}/manager/admin/${mgr.id}`, {
-                                    headers: { Authorization: `Bearer ${token}` }
-                                  });
-                                  toast.success('Manager deaktiviert');
-                                  fetchData();
-                                } catch (err) {
-                                  toast.error('Fehler');
-                                }
-                              }}
-                              className="border-red-500/30 text-red-500 hover:bg-red-500/10"
-                            >
-                              <Ban className="w-3 h-3" />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                    {managers.length === 0 && (
+              {/* Manager List - Mobile Card View */}
+              <div className="md:hidden space-y-3">
+                {managers.map((mgr) => (
+                  <div key={mgr.id} className="bg-white rounded-xl p-4 shadow-sm border border-slate-100">
+                    {/* Header with name and status */}
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-slate-800 truncate">{mgr.name}</p>
+                        <p className="text-slate-400 text-xs truncate">{mgr.email}</p>
+                      </div>
+                      {mgr.is_active ? (
+                        <span className="px-2 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-bold flex-shrink-0">Aktiv</span>
+                      ) : (
+                        <span className="px-2 py-1 bg-red-100 text-red-700 rounded-full text-xs font-bold flex-shrink-0">Inaktiv</span>
+                      )}
+                    </div>
+                    
+                    {/* Cities */}
+                    <div className="mb-3">
+                      <p className="text-xs text-slate-400 mb-1">{language === 'en' ? 'Cities' : 'Städte'}</p>
+                      <div className="flex flex-wrap gap-1">
+                        {mgr.cities?.slice(0, 3).map((city) => (
+                          <span key={city} className="px-2 py-0.5 bg-violet-100 text-violet-600 rounded text-xs">
+                            {city}
+                          </span>
+                        ))}
+                        {(mgr.cities?.length || 0) > 3 && (
+                          <span className="px-2 py-0.5 bg-slate-100 text-slate-500 rounded text-xs">
+                            +{mgr.cities.length - 3}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {/* Stats Grid */}
+                    <div className="grid grid-cols-3 gap-2 mb-3">
+                      <div className="bg-slate-50 rounded-lg p-2 text-center">
+                        <p className="text-xs text-slate-400">Influencer</p>
+                        <p className="text-lg font-bold text-slate-700">{mgr.influencer_count || 0}</p>
+                      </div>
+                      <div className="bg-slate-50 rounded-lg p-2 text-center">
+                        <p className="text-xs text-slate-400">{language === 'en' ? 'Inf. Comm.' : 'Inf. Prov.'}</p>
+                        <p className="text-sm font-bold text-amber-600">€{(mgr.total_influencer_commission || 0).toFixed(0)}</p>
+                      </div>
+                      <div className="bg-slate-50 rounded-lg p-2 text-center">
+                        <p className="text-xs text-slate-400">Manager 15%</p>
+                        <p className="text-sm font-bold text-emerald-600">€{(mgr.manager_commission || 0).toFixed(0)}</p>
+                      </div>
+                    </div>
+                    
+                    {/* Action Buttons */}
+                    <div className="flex gap-2">
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => {
+                          setSelectedManager(mgr);
+                          setShowManagerDetails(true);
+                        }}
+                        className="flex-1 border-violet-300 text-violet-600"
+                      >
+                        <Eye className="w-4 h-4 mr-1" />
+                        Details
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={async () => {
+                          try {
+                            await axios.delete(`${API}/manager/admin/${mgr.id}`, {
+                              headers: { Authorization: `Bearer ${token}` }
+                            });
+                            toast.success('Manager deaktiviert');
+                            fetchData();
+                          } catch (err) {
+                            toast.error('Fehler');
+                          }
+                        }}
+                        className="border-red-300 text-red-500 px-3"
+                      >
+                        <Ban className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+                {managers.length === 0 && (
+                  <p className="text-center text-slate-400 py-8">
+                    {language === 'en' ? 'No managers yet' : 'Noch keine Manager'}
+                  </p>
+                )}
+              </div>
+
+              {/* Manager List - Desktop Table View */}
+              <div className="hidden md:block bg-white rounded-xl border border-slate-100 overflow-hidden shadow-sm">
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-slate-50 border-b border-slate-100">
                       <tr>
-                        <td colSpan="8" className="py-8 text-center text-gray-500">
-                          {language === 'en' ? 'No managers yet' : 'Noch keine Manager'}
-                        </td>
+                        <th className="text-left text-slate-600 py-3 px-4 text-sm font-medium">Name</th>
+                        <th className="text-left text-slate-600 py-3 px-4 text-sm font-medium">E-Mail</th>
+                        <th className="text-left text-slate-600 py-3 px-4 text-sm font-medium">{language === 'en' ? 'Cities' : 'Städte'}</th>
+                        <th className="text-right text-slate-600 py-3 px-4 text-sm font-medium">Influencer</th>
+                        <th className="text-right text-slate-600 py-3 px-4 text-sm font-medium">{language === 'en' ? 'Inf. Commission' : 'Inf. Provision'}</th>
+                        <th className="text-right text-slate-600 py-3 px-4 text-sm font-medium">{language === 'en' ? 'Manager 15%' : 'Manager 15%'}</th>
+                        <th className="text-center text-slate-600 py-3 px-4 text-sm font-medium">Status</th>
+                        <th className="text-right text-slate-600 py-3 px-4 text-sm font-medium">Aktionen</th>
                       </tr>
-                    )}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {managers.map((mgr) => (
+                        <tr key={mgr.id} className="hover:bg-slate-50">
+                          <td className="py-3 px-4 text-slate-800 font-medium">{mgr.name}</td>
+                          <td className="py-3 px-4 text-slate-500 truncate max-w-[180px]">{mgr.email}</td>
+                          <td className="py-3 px-4">
+                            <div className="flex flex-wrap gap-1">
+                              {mgr.cities?.map((city) => (
+                                <span key={city} className="px-2 py-0.5 bg-violet-100 text-violet-600 rounded text-xs">
+                                  {city}
+                                </span>
+                              ))}
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 text-slate-800 text-right">{mgr.influencer_count || 0}</td>
+                          <td className="py-3 px-4 text-amber-600 text-right font-medium">€{(mgr.total_influencer_commission || 0).toFixed(2)}</td>
+                          <td className="py-3 px-4 text-emerald-600 text-right font-bold">€{(mgr.manager_commission || 0).toFixed(2)}</td>
+                          <td className="py-3 px-4 text-center">
+                            {mgr.is_active ? (
+                              <span className="px-2 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-bold">Aktiv</span>
+                            ) : (
+                              <span className="px-2 py-1 bg-red-100 text-red-700 rounded-full text-xs font-bold">Inaktiv</span>
+                            )}
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            <div className="flex justify-end gap-2">
+                              <Button 
+                                size="sm" 
+                                variant="ghost"
+                                onClick={() => {
+                                  setSelectedManager(mgr);
+                                  setShowManagerDetails(true);
+                                }}
+                                className="text-violet-600 hover:bg-violet-50"
+                              >
+                                <Eye className="w-4 h-4 mr-1" />
+                                Details
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                variant="ghost"
+                                onClick={async () => {
+                                  try {
+                                    await axios.delete(`${API}/manager/admin/${mgr.id}`, {
+                                      headers: { Authorization: `Bearer ${token}` }
+                                    });
+                                    toast.success('Manager deaktiviert');
+                                    fetchData();
+                                  } catch (err) {
+                                    toast.error('Fehler');
+                                  }
+                                }}
+                                className="text-red-500 hover:bg-red-50"
+                              >
+                                <Ban className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {managers.length === 0 && (
+                  <p className="text-center text-slate-400 py-8">
+                    {language === 'en' ? 'No managers yet' : 'Noch keine Manager'}
+                  </p>
+                )}
               </div>
 
               {/* Create Manager Modal */}

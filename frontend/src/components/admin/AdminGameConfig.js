@@ -31,31 +31,33 @@ export function AdminGameConfig({ token, gameConfig, setGameConfig, isConnected 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <Settings className="w-8 h-8 text-[#7C3AED]" />
-          <div>
-            <h1 className="text-2xl font-bold text-white">Spiel-Einstellungen</h1>
-            <p className="text-[#94A3B8]">Konfigurieren Sie Rewards, Auktionstypen und Achievements</p>
+          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg flex-shrink-0">
+            <Settings className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+          </div>
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-2xl font-bold text-white truncate">Spiel-Einstellungen</h1>
+            <p className="text-[#94A3B8] text-xs sm:text-sm hidden sm:block">Konfigurieren Sie Rewards, Auktionstypen und Achievements</p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           {isConnected ? (
-            <span className="flex items-center gap-1 text-green-400 text-sm">
-              <Wifi className="w-4 h-4" /> Live
+            <span className="flex items-center gap-1 text-green-400 text-xs sm:text-sm">
+              <Wifi className="w-3 h-3 sm:w-4 sm:h-4" /> Live
             </span>
           ) : (
-            <span className="flex items-center gap-1 text-gray-500 text-sm">
-              <WifiOff className="w-4 h-4" /> Offline
+            <span className="flex items-center gap-1 text-gray-500 text-xs sm:text-sm">
+              <WifiOff className="w-3 h-3 sm:w-4 sm:h-4" /> Offline
             </span>
           )}
           <Button
             onClick={handleSaveGameConfig}
             disabled={savingConfig || !gameConfig}
-            className="bg-[#10B981] hover:bg-[#059669]"
+            className="bg-[#10B981] hover:bg-[#059669] text-sm"
+            size="sm"
           >
-            {savingConfig ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-            Speichern
+            {savingConfig ? <RefreshCw className="w-4 h-4 animate-spin" /> : <><Save className="w-4 h-4 mr-1 sm:mr-2" /><span className="hidden xs:inline">Speichern</span></>}
           </Button>
         </div>
       </div>
