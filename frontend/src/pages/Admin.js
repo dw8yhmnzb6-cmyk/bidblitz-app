@@ -54,6 +54,9 @@ import {
   AdminMobileNav
 } from '../components/admin';
 
+// Import Winner Control
+import AdminWinnerControl from '../components/admin/AdminWinnerControl';
+
 // Import Voice Debug Assistant
 import VoiceDebugAssistant from '../components/VoiceDebugAssistant';
 
