@@ -916,7 +916,7 @@ async def redeem_b2b_voucher(data: B2BVoucherRedeem, customer = Depends(get_whol
             expiry = datetime.fromisoformat(voucher["valid_until"].replace("Z", "+00:00"))
             if datetime.now(timezone.utc) > expiry:
                 raise HTTPException(status_code=400, detail="Dieser Gutschein ist abgelaufen")
-        except:
+        except (ValueError, KeyError, TypeError):
             pass
     
     # Check usage limit
