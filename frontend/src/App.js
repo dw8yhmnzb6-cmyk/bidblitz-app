@@ -90,6 +90,7 @@ import UserStatsPage from "./pages/UserStatsPage";
 import LiveWinnerPopup from "./components/LiveWinnerPopup";
 import AIBidRecommendationsPage from "./pages/AIBidRecommendationsPage";
 import CryptoPaymentPage from "./pages/CryptoPaymentPage";
+import MaintenancePage from "./pages/MaintenancePage";
 
 // Protected Route Component
 const ProtectedRoute = ({ children, requireAdmin = false }) => {
