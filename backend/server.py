@@ -581,16 +581,29 @@ async def bot_last_second_bidder():
                             if len(auction_bot_history[auction_id]) > 10:
                                 auction_bot_history[auction_id] = auction_bot_history[auction_id][-10:]
                             
-                            # Calculate NEXT bid time (realistic interval)
+                            # Calculate NEXT bid time (REALISTISCHES Intervall)
+                            # Verschiedene Bot-Persönlichkeiten
+                            bot_personality = hash(bot["id"]) % 3  # 0=schnell, 1=normal, 2=langsam
+                            
                             if random.random() < PAUSE_CHANCE:
-                                # Longer pause (1-3 minutes)
-                                next_interval = random.uniform(60, 180)
+                                # Längere Pause (1-4 Minuten) - wie echte Nutzer
+                                next_interval = random.uniform(60, 240)
                             else:
-                                # Normal interval (20-120 seconds) with extra randomness
-                                base_interval = random.uniform(MIN_BID_INTERVAL, MAX_BID_INTERVAL)
-                                # Add per-auction variation
-                                auction_variation = random.uniform(0.8, 1.3)
+                                # Bot-Persönlichkeit bestimmt Biet-Geschwindigkeit
+                                if bot_personality == 0:  # Schneller Bieter
+                                    base_interval = random.uniform(15, 60)
+                                elif bot_personality == 1:  # Normaler Bieter
+                                    base_interval = random.uniform(30, 120)
+                                else:  # Langsamer/Vorsichtiger Bieter
+                                    base_interval = random.uniform(60, 180)
+                                
+                                # Add per-auction variation für Realismus
+                                auction_variation = random.uniform(0.7, 1.4)
                                 next_interval = base_interval * auction_variation
+                            
+                            # Im Endspurt schneller bieten
+                            if in_endspurt and seconds_left < 60:
+                                next_interval = random.uniform(5, 20)  # Letzte Minute: schnell!
                             
                             next_bid_time_per_auction[auction_id] = now_ts + next_interval
                             
