@@ -13,26 +13,62 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
    - Vollständige React Native / Expo Mobile App für iOS und Android
    - Projekt: `/app/mobile-app/BidBlitz/`
    - Tech Stack: React Native 0.81.5, Expo 54, React Navigation 7
-   - Features implementiert:
-     - **Login Screen** - E-Mail/Passwort Login mit Gradient-UI
-     - **Register Screen** - Neue Kontoerstellung mit Bonus-Gebote Banner
-     - **Home Screen** - Dashboard mit Willkommensbanner, Live-Auktionen, Jackpot, Quick Actions
-     - **Auktionen Screen** - Auktionsliste mit Suche, Filtern (Alle/Nacht/VIP), Live-Countdown
-     - **Auction Detail Screen** - Produktbilder, Countdown, Bieten-Button, Preis-Vergleich
-     - **Buy Bids Screen** - Gebote-Pakete kaufen mit Stripe-Checkout-Integration
-     - **Profile Screen** - Benutzerstatistiken, VIP-Badge, Referral-Code, Menu-Items
-   - Navigation: Bottom Tab Navigator (Home, Auktionen, Gebote, Profil)
-   - Styling: Dark Theme (#111827), Purple Gradients (#8B5CF6, #6366F1)
-   - Auth: JWT Token-basiert mit localStorage (Web) / SecureStore (Native)
-   - API: Verbunden mit bestehender Backend-API
-   - Getestet: Login, Navigation, Auktionsliste funktioniert
-   - Neue Dateien:
-     - `/app/mobile-app/BidBlitz/App.js` - App Entry Point
-     - `/app/mobile-app/BidBlitz/src/context/AuthContext.js` - Auth State Management
-     - `/app/mobile-app/BidBlitz/src/navigation/AppNavigator.js` - Navigation Setup
-     - `/app/mobile-app/BidBlitz/src/services/api.js` - API Client
-     - `/app/mobile-app/BidBlitz/src/screens/*.js` - Alle 7 Screens
-     - `/app/mobile-app/BidBlitz/README.md` - Dokumentation
+   - Core Features:
+     - **Login/Register Screens** - Authentifizierung
+     - **Home Screen** - Dashboard mit Stats und Feature-Grid
+     - **Auktionen Screen** - Liste mit Suche & Filtern
+     - **Auction Detail** - Produktansicht mit Favorit-Button
+     - **Profil Screen** - Benutzerinfos & Einstellungen
+     - **Favoriten Screen** - Gespeicherte Auktionen
+     - **Buy Bids Screen** - Gebote kaufen
+
+2. ✅ **5 NEUE INNOVATIVE FEATURES IMPLEMENTIERT:**
+
+   **📺 Live Stream Auktionen**
+   - TikTok-style Live-Auktionen
+   - Echtzeit-Chat während Auktionen
+   - Viewer-Counter und Reaktionen
+   - Backend: `/app/backend/routers/live_stream.py`
+   - Frontend: `/app/mobile-app/BidBlitz/src/screens/LiveStreamScreen.js`
+
+   **👥 Team Bidding (Gruppen-Auktionen)**
+   - Teams mit bis zu 5 Freunden
+   - Gemeinsamer Gebote-Pool
+   - Einladungs-Codes zum Teilen
+   - Team-Chat
+   - Backend: `/app/backend/routers/team_bidding.py`
+   - Frontend: `/app/mobile-app/BidBlitz/src/screens/TeamBiddingScreen.js`
+
+   **🧠 KI-Preisberater**
+   - Preis-Vorhersagen mit ML
+   - Gewinnwahrscheinlichkeit
+   - Empfehlungen (WAIT/BID_NOW/CONSIDER)
+   - Hot Auctions mit besten Chancen
+   - Backend: `/app/backend/routers/ai_advisor.py`
+   - Frontend: `/app/mobile-app/BidBlitz/src/screens/AIAdvisorScreen.js`
+
+   **⚔️ Auktions-Duell (1v1)**
+   - Direkte 1-gegen-1 Kämpfe
+   - 4-stellige Duell-Codes
+   - Max Gebote Limit pro Spieler
+   - Duell-Rangliste
+   - Backend: `/app/backend/routers/duel.py`
+   - Frontend: `/app/mobile-app/BidBlitz/src/screens/DuelScreen.js`
+
+   **📦 Mystery Box**
+   - Blind-Auktionen mit unbekannten Produkten
+   - 4 Stufen: Bronze, Silber, Gold, Diamant
+   - Wert-Range pro Stufe
+   - Voting zum Enthüllen
+   - Backend: `/app/backend/routers/mystery_box.py`
+   - Frontend: `/app/mobile-app/BidBlitz/src/screens/MysteryBoxScreen.js`
+
+3. ✅ **ZUSÄTZLICHE MOBILE APP FEATURES:**
+   - **Push Notifications** - Benachrichtigungs-System
+   - **Face ID / Touch ID** - Biometrischer Login
+   - **Favoriten-System** - Auktionen merken
+   - **Einstellungen Screen** - App-Konfiguration
+   - Haptic Feedback bei Interaktionen
 
 ---
 
@@ -41,7 +77,7 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 Um die Mobile App für iOS/Android zu veröffentlichen:
 
 **iOS (App Store):**
-1. Apple Developer Account ($99/Jahr) erstellen
+1. Apple Developer Account ($99/Jahr) erstellen: https://developer.apple.com/programs/enroll
 2. `eas build --platform ios` ausführen
 3. App via App Store Connect hochladen
 4. App Store Review abwarten
@@ -53,7 +89,7 @@ Um die Mobile App für iOS/Android zu veröffentlichen:
 4. Review abwarten
 
 **Web Preview:**
-- Die Mobile App kann auch im Web getestet werden: `cd /app/mobile-app/BidBlitz && yarn web`
+- Die Mobile App kann im Web getestet werden: `cd /app/mobile-app/BidBlitz && yarn web`
 - Läuft auf Port 3001
 
 ---
