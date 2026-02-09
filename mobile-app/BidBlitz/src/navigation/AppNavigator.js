@@ -26,6 +26,16 @@ import DailySpinScreen from '../screens/DailySpinScreen';
 import BuyItNowScreen from '../screens/BuyItNowScreen';
 import AchievementsScreen from '../screens/AchievementsScreen';
 import WinnerGalleryScreen from '../screens/WinnerGalleryScreen';
+// 9 NEW Feature Screens
+import BidAlarmScreen from '../screens/BidAlarmScreen';
+import WelcomeBonusScreen from '../screens/WelcomeBonusScreen';
+import ActivityFeedScreen from '../screens/ActivityFeedScreen';
+import TournamentScreen from '../screens/TournamentScreen';
+import AuctionChatScreen from '../screens/AuctionChatScreen';
+import RecommendationsScreen from '../screens/RecommendationsScreen';
+import WatchersScreen from '../screens/WatchersScreen';
+import RevengeBidScreen from '../screens/RevengeBidScreen';
+import WalletScreen from '../screens/WalletScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
