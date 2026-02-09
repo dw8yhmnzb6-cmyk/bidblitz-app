@@ -596,7 +596,7 @@ export default function VIP() {
                   {plan.benefits.map((benefit, i) => (
                     <li key={i} className="flex items-start gap-2 text-sm">
                       <Check className="w-4 h-4 text-green-400 flex-shrink-0 mt-0.5" />
-                      <span className="text-gray-300">{translateBenefit(benefit, language)}</span>
+                      <span className="text-gray-300">{translateBenefit(benefit, langKey)}</span>
                     </li>
                   ))}
                 </ul>
