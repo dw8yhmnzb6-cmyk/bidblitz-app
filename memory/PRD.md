@@ -88,7 +88,7 @@ Um B2B Zahlungen vollständig zu aktivieren, muss der Stripe Webhook im Stripe D
 
 1. Gehe zu **Stripe Dashboard** → **Developers** → **Webhooks**
 2. Klicke auf "Add endpoint"
-3. URL: `https://bidblitz-portal.preview.emergentagent.com/api/wholesale/auth/webhook/payment`
+3. URL: `https://bidblitz-mobile.preview.emergentagent.com/api/wholesale/auth/webhook/payment`
 4. Events: Wähle `checkout.session.completed`
 5. Kopiere das **Webhook Signing Secret** und füge es in `backend/.env` als `STRIPE_WEBHOOK_SECRET=whsec_...` ein
 6. Starte Backend neu: `sudo supervisorctl restart backend`
