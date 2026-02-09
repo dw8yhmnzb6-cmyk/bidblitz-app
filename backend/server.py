@@ -332,6 +332,18 @@ app.include_router(watchers_router, prefix="/api")
 app.include_router(revenge_bid_router, prefix="/api")
 app.include_router(wallet_router, prefix="/api")
 
+# NEW: 10 additional features (batch 2)
+app.include_router(email_marketing_router, prefix="/api")
+app.include_router(winner_media_router, prefix="/api")
+app.include_router(bid_bundles_router, prefix="/api")
+app.include_router(vip_plans_router, prefix="/api")
+app.include_router(transparency_router, prefix="/api")
+app.include_router(user_reviews_router, prefix="/api")
+app.include_router(app_store_router, prefix="/api")
+app.include_router(affiliate_dashboard_router, prefix="/api")
+app.include_router(social_media_share_router, prefix="/api")
+app.include_router(user_reports_router, prefix="/api")
+
 # ==================== HEALTH & BASIC ENDPOINTS ====================
 
 @app.get("/")
