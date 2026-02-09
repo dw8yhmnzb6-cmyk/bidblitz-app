@@ -501,6 +501,7 @@ async def bot_last_second_bidder():
                     # Phase 1: Früh bieten bis €3-3,50 (variiert pro Bot)
                     # Pause: Zwischen €3,50 und letzten 2-3 Minuten
                     # Phase 2: Endspurt - letzte 2-3 Minuten bis €25
+                    # WICHTIG: Wenn Zeit knapp wird, IMMER bieten!
                     # ============================================
                     
                     # Bot-spezifische Variation für Realismus
@@ -519,19 +520,32 @@ async def bot_last_second_bidder():
                     in_phase1 = current_price < PHASE1_TARGET
                     in_endspurt = seconds_left <= ENDSPURT_TIME
                     
-                    # CRITICAL: If < 15 seconds left and price < €25, bid IMMEDIATELY
-                    is_urgent = seconds_left < 15 and current_price < FINAL_TARGET
+                    # CRITICAL: Wenn Zeit knapp wird, SOFORT bieten!
+                    # < 60 Sekunden und Preis unter Ziel = URGENT
+                    is_urgent = seconds_left < 60 and current_price < FINAL_TARGET
+                    # < 15 Sekunden = SUPER URGENT
+                    is_super_urgent = seconds_left < 15 and current_price < FINAL_TARGET
                     
                     # Skip if not time yet (unless urgent) - apply offset
                     effective_next_bid = next_bid_at + (auction_offset if next_bid_at == 0 else 0)
-                    if now_ts < effective_next_bid and not is_urgent:
+                    if now_ts < effective_next_bid and not is_urgent and not is_super_urgent:
                         continue
                     
                     should_bid = False
-                    target_price = 0
+                    target_price = FINAL_TARGET  # Default target ist immer €25
+                    
+                    # SUPER URGENT: Wenn weniger als 15 Sekunden, SOFORT bieten!
+                    if is_super_urgent:
+                        should_bid = True
+                        target_price = FINAL_TARGET
+                    
+                    # URGENT: Wenn weniger als 60 Sekunden, schnell bieten!
+                    elif is_urgent:
+                        should_bid = True
+                        target_price = FINAL_TARGET
                     
                     # PHASE 1: Frühes Bieten bis €3-3,50
-                    if in_phase1 and not in_endspurt:
+                    elif in_phase1 and not in_endspurt:
                         # Bots bieten langsam bis Phase 1 Target
                         target_price = PHASE1_TARGET
                         should_bid = True
