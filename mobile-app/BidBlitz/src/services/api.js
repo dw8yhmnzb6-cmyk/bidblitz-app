@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 
 // API Base URL - Change this to your production URL
@@ -12,10 +13,18 @@ const api = axios.create({
   },
 });
 
+// Storage abstraction for web and native
+const getToken = async () => {
+  if (Platform.OS === 'web') {
+    return localStorage.getItem('token');
+  }
+  return SecureStore.getItemAsync('token');
+};
+
 // Add auth token to requests
 api.interceptors.request.use(async (config) => {
   try {
-    const token = await SecureStore.getItemAsync('token');
+    const token = await getToken();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
