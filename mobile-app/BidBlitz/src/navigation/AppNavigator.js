@@ -231,6 +231,36 @@ const AppNavigator = () => {
                 title: '🎡 Glücksrad',
               }}
             />
+            <Stack.Screen 
+              name="BuyItNow" 
+              component={BuyItNowScreen}
+              options={{ 
+                headerShown: true,
+                headerStyle: { backgroundColor: '#10B981' },
+                headerTintColor: '#fff',
+                title: '🛒 Sofortkauf',
+              }}
+            />
+            <Stack.Screen 
+              name="Achievements" 
+              component={AchievementsScreen}
+              options={{ 
+                headerShown: true,
+                headerStyle: { backgroundColor: '#8B5CF6' },
+                headerTintColor: '#fff',
+                title: '🏆 Achievements',
+              }}
+            />
+            <Stack.Screen 
+              name="WinnerGallery" 
+              component={WinnerGalleryScreen}
+              options={{ 
+                headerShown: true,
+                headerStyle: { backgroundColor: '#F59E0B' },
+                headerTintColor: '#fff',
+                title: '🏆 Gewinner-Galerie',
+              }}
+            />
           </>
         ) : (
           <Stack.Screen name="Auth" component={AuthStack} />

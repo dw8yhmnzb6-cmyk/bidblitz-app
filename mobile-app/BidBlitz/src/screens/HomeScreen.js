@@ -239,6 +239,24 @@ const HomeScreen = ({ navigation }) => {
             <Text style={styles.featureTitle}>Glücksrad</Text>
             <Text style={styles.featureDesc}>Täglich drehen!</Text>
           </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={[styles.featureCard, { backgroundColor: '#059669' }]}
+            onPress={() => navigation.navigate('Achievements')}
+          >
+            <Text style={styles.featureEmoji}>🏆</Text>
+            <Text style={styles.featureTitle}>Achievements</Text>
+            <Text style={styles.featureDesc}>Level up!</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={[styles.featureCard, { backgroundColor: '#DC2626' }]}
+            onPress={() => navigation.navigate('WinnerGallery')}
+          >
+            <Text style={styles.featureEmoji}>🎉</Text>
+            <Text style={styles.featureTitle}>Gewinner</Text>
+            <Text style={styles.featureDesc}>Galerie ansehen</Text>
+          </TouchableOpacity>
         </View>
       </View>
     </ScrollView>
