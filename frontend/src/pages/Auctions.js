@@ -333,12 +333,13 @@ const ProductInfo = memo(({ name, retailPrice, imageUrl, discount }) => (
 ));
 
 // Auction Card - Only Timer and Price update, rest is static
-const AuctionCard = memo(({ auction, product, onBid, t, language, isAuthenticated = false, isVip = false, navigate }) => {
+const AuctionCard = memo(({ auction, product, onBid, t, language, langKey, isAuthenticated = false, isVip = false, navigate }) => {
   if (!auction || !product) return null;
   
   // Get translated product name and description (fallback to default)
-  const productName = product.name_translations?.[langKey] || product.name;
-  const productDescription = product.description_translations?.[langKey] || product.description || product.short_description;
+  const effectiveLangKey = langKey || language;
+  const productName = product.name_translations?.[effectiveLangKey] || product.name;
+  const productDescription = product.description_translations?.[effectiveLangKey] || product.description || product.short_description;
   
   const discount = product.retail_price 
     ? Math.round((1 - auction.current_price / product.retail_price) * 100)
