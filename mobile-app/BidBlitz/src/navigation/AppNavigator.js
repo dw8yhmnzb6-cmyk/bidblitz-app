@@ -36,6 +36,17 @@ import RecommendationsScreen from '../screens/RecommendationsScreen';
 import WatchersScreen from '../screens/WatchersScreen';
 import RevengeBidScreen from '../screens/RevengeBidScreen';
 import WalletScreen from '../screens/WalletScreen';
+// 10 NEW Feature Screens (Batch 2)
+import EmailPreferencesScreen from '../screens/EmailPreferencesScreen';
+import WinnerMediaScreen from '../screens/WinnerMediaScreen';
+import BidBundlesScreen from '../screens/BidBundlesScreen';
+import VIPPlansScreen from '../screens/VIPPlansScreen';
+import TransparencyScreen from '../screens/TransparencyScreen';
+import UserReviewsScreen from '../screens/UserReviewsScreen';
+import AppStoreScreen from '../screens/AppStoreScreen';
+import AffiliateDashboardScreen from '../screens/AffiliateDashboardScreen';
+import SocialShareScreen from '../screens/SocialShareScreen';
+import UserReportsScreen from '../screens/UserReportsScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
