@@ -107,7 +107,8 @@ async def send_chat_message(stream_id: str, data: StreamChatMessage):
     
     result = await db.stream_chat.insert_one(message)
     message["id"] = str(result.inserted_id)
-    del message["_id"] if "_id" in message else None
+    if "_id" in message:
+        del message["_id"]
     
     return message
 
