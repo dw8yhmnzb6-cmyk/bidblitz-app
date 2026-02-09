@@ -13,6 +13,8 @@ import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import BuyBidsScreen from '../screens/BuyBidsScreen';
+import FavoritesScreen from '../screens/FavoritesScreen';
+import SettingsScreen from '../screens/SettingsScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -66,9 +68,13 @@ const TabNavigator = () => {
         component={AuctionsScreen}
       />
       <Tab.Screen 
-        name="Gebote" 
-        component={BuyBidsScreen}
-        options={{ title: `Gebote (${user?.bids || 0})` }}
+        name="Favoriten" 
+        component={FavoritesScreen}
+        options={{
+          tabBarIcon: ({ focused, color, size }) => (
+            <Ionicons name={focused ? 'heart' : 'heart-outline'} size={size} color={color} />
+          ),
+        }}
       />
       <Tab.Screen 
         name="Profil" 
@@ -121,6 +127,26 @@ const AppNavigator = () => {
                 headerStyle: { backgroundColor: '#1F2937' },
                 headerTintColor: '#fff',
                 title: 'Auktion',
+              }}
+            />
+            <Stack.Screen 
+              name="Settings" 
+              component={SettingsScreen}
+              options={{ 
+                headerShown: true,
+                headerStyle: { backgroundColor: '#1F2937' },
+                headerTintColor: '#fff',
+                title: 'Einstellungen',
+              }}
+            />
+            <Stack.Screen 
+              name="BuyBids" 
+              component={BuyBidsScreen}
+              options={{ 
+                headerShown: true,
+                headerStyle: { backgroundColor: '#1F2937' },
+                headerTintColor: '#fff',
+                title: 'Gebote kaufen',
               }}
             />
           </>
