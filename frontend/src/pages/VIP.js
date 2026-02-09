@@ -343,7 +343,7 @@ const benefitTranslations = {
 
 // Helper function to translate benefit text
 const translateBenefit = (benefit, language) => {
-  const langTranslations = benefitTranslations[langKey] || benefitTranslations['de'];
+  const langTranslations = benefitTranslations[language] || benefitTranslations['de'];
   
   // Try to match the benefit text (it contains numbers, so we need partial matching)
   for (const [key, value] of Object.entries(langTranslations)) {
