@@ -45,12 +45,23 @@ export const productsAPI = {
 
 export const userAPI = {
   getBids: () => api.get('/user/bids'),
-  getStats: () => api.get('/user/stats'),
+  getStats: () => api.get('/user-stats/my-stats'),
+  getWonAuctions: () => api.get('/auctions/won'),
   buyBids: (packageId) => api.post('/payments/buy-bids', { package_id: packageId }),
 };
 
 export const jackpotAPI = {
-  getStatus: () => api.get('/jackpot/status'),
+  getStatus: () => api.get('/wheel/jackpot'),
+};
+
+export const checkoutAPI = {
+  createSession: (packageId) => api.post('/checkout/create-session', { package_id: packageId }),
+  getPaymentMethods: () => api.get('/checkout/payment-methods'),
+};
+
+export const dailyRewardAPI = {
+  getStatus: () => api.get('/auth/daily-reward-status'),
+  claim: () => api.post('/auth/claim-daily-reward'),
 };
 
 export default api;
