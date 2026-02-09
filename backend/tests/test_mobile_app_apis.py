@@ -176,15 +176,16 @@ class TestJackpotAPI:
     
     def test_get_jackpot_status(self):
         """Test getting jackpot status"""
-        response = requests.get(f"{BASE_URL}/api/wheel/jackpot")
+        response = requests.get(f"{BASE_URL}/api/excitement/global-jackpot")
         
         assert response.status_code == 200, f"Jackpot fetch failed: {response.text}"
         
         data = response.json()
-        # Jackpot should have current_amount or similar field
+        assert "current_amount" in data
+        assert "is_active" in data
         print(f"✓ Jackpot status fetched")
-        if data:
-            print(f"  - Data: {data}")
+        print(f"  - Current amount: {data.get('current_amount')}")
+        print(f"  - Last winner: {data.get('last_winner')}")
 
 
 class TestUserStatsAPI:
