@@ -1482,10 +1482,8 @@ export const featureTranslations = {
   }
 };
 
-// Language mapping for regional variants (Kosovo uses Albanian)
+// Language mapping for regional variants
 const languageMapping = {
-  'xk': 'de',
-  'sq': 'de',  // Kosovo -> Albanian
   'us': 'en',  // US English -> English
   'ae': 'ar', // UAE -> Arabic
 };
