@@ -118,7 +118,7 @@ const ProfileScreen = ({ navigation }) => {
       <View style={styles.quickActions}>
         <TouchableOpacity 
           style={styles.quickAction}
-          onPress={() => navigation.navigate('Gebote')}
+          onPress={() => navigation.navigate('BuyBids')}
         >
           <View style={[styles.quickActionIcon, { backgroundColor: '#10B98120' }]}>
             <Ionicons name="cart" size={24} color="#10B981" />
@@ -126,11 +126,14 @@ const ProfileScreen = ({ navigation }) => {
           <Text style={styles.quickActionText}>Gebote kaufen</Text>
         </TouchableOpacity>
         
-        <TouchableOpacity style={styles.quickAction}>
-          <View style={[styles.quickActionIcon, { backgroundColor: '#F59E0B20' }]}>
-            <Ionicons name="trophy" size={24} color="#F59E0B" />
+        <TouchableOpacity 
+          style={styles.quickAction}
+          onPress={() => navigation.navigate('Favoriten')}
+        >
+          <View style={[styles.quickActionIcon, { backgroundColor: '#EF444420' }]}>
+            <Ionicons name="heart" size={24} color="#EF4444" />
           </View>
-          <Text style={styles.quickActionText}>Gewinne</Text>
+          <Text style={styles.quickActionText}>Favoriten</Text>
         </TouchableOpacity>
       </View>
 
@@ -165,6 +168,11 @@ const ProfileScreen = ({ navigation }) => {
       <View style={styles.menuSection}>
         <Text style={styles.sectionTitle}>Einstellungen</Text>
         
+        <MenuItem 
+          icon="settings-outline" 
+          label="App-Einstellungen" 
+          onPress={() => navigation.navigate('Settings')}
+        />
         <MenuItem 
           icon="notifications-outline" 
           label="Benachrichtigungen" 
