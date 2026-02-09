@@ -309,6 +309,17 @@ app.include_router(ai_advisor_router, prefix="/api")
 app.include_router(duel_router, prefix="/api")
 app.include_router(mystery_box_router, prefix="/api")
 
+# NEW: 9 additional features
+app.include_router(bid_alarm_router, prefix="/api")
+app.include_router(welcome_bonus_router, prefix="/api")
+app.include_router(activity_feed_router, prefix="/api")
+app.include_router(tournament_router, prefix="/api")
+app.include_router(auction_chat_router, prefix="/api")
+app.include_router(recommendations_router, prefix="/api")
+app.include_router(watchers_router, prefix="/api")
+app.include_router(revenge_bid_router, prefix="/api")
+app.include_router(wallet_router, prefix="/api")
+
 # ==================== HEALTH & BASIC ENDPOINTS ====================
 
 @app.get("/")
