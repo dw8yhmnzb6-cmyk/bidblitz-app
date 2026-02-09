@@ -19,7 +19,7 @@ import MysteryBoxSection from '../components/MysteryBoxSection';
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 // Auction of the Day Component - Special highlight
-const AuctionOfTheDay = memo(({ auction, product, onBid, t, language, isAuthenticated = false, isVip = false, navigate }) => {
+const AuctionOfTheDay = memo(({ auction, product, onBid, t, language, langKey, isAuthenticated = false, isVip = false, navigate }) => {
   if (!auction || !product) return null;
   
   // Check if auction is still active (not expired)
@@ -37,8 +37,9 @@ const AuctionOfTheDay = memo(({ auction, product, onBid, t, language, isAuthenti
   const lastBidder = auction.last_bidder_name || auction.last_bidder;
   
   // Get translated product name (fallback to default name)
-  const productName = product.name_translations?.[langKey] || product.name;
-  const productDescription = product.description_translations?.[langKey] || product.description;
+  const effectiveLangKey = langKey || language;
+  const productName = product.name_translations?.[effectiveLangKey] || product.name;
+  const productDescription = product.description_translations?.[effectiveLangKey] || product.description;
   
   // Check if VIP auction
   const isVipAuction = auction.is_vip_only;
