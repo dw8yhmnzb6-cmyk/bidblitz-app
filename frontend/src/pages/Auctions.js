@@ -556,11 +556,12 @@ const EndedAuctionCard = memo(({ auction, product, t, language, langKey }) => {
 });
 
 // Premium Card
-const PremiumCard = memo(({ auction, product, onBid, t, language }) => {
+const PremiumCard = memo(({ auction, product, onBid, t, language, langKey }) => {
   if (!auction || !product) return null;
   
   // Get translated product name (fallback to default name)
-  const productName = product.name_translations?.[langKey] || product.name;
+  const effectiveLangKey = langKey || language;
+  const productName = product.name_translations?.[effectiveLangKey] || product.name;
   
   return (
     <div className="bg-gradient-to-b from-cyan-100 to-cyan-200 rounded-xl p-4 border-2 border-cyan-400">
