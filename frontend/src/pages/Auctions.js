@@ -494,11 +494,12 @@ const AuctionCard = memo(({ auction, product, onBid, t, language, langKey, isAut
 });
 
 // Ended Auction Card
-const EndedAuctionCard = memo(({ auction, product, t, language }) => {
+const EndedAuctionCard = memo(({ auction, product, t, language, langKey }) => {
   if (!auction || !product) return null;
   
   // Get translated product name (fallback to default name)
-  const productName = product.name_translations?.[langKey] || product.name;
+  const effectiveLangKey = langKey || language;
+  const productName = product.name_translations?.[effectiveLangKey] || product.name;
   
   const discount = product.retail_price 
     ? Math.round((1 - auction.final_price / product.retail_price) * 100)
