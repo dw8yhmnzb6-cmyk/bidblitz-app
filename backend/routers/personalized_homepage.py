@@ -197,7 +197,12 @@ async def get_personalized_homepage(user: dict = Depends(get_current_user)):
                                 "product_name": sim_product.get("name") if sim_product else "Produkt",
                                 "product_image": sim_product.get("image_url") if sim_product else None,
                                 "current_price": sim_auction.get("current_price", 0),
-                                "reason": "Ähnlich zu deinen Gewinnen"
+                                "reason": {
+                                    "de": "Ähnlich zu deinen Gewinnen",
+                                    "en": "Similar to your wins",
+                                    "sq": "Ngjashëm me fitimet e tua",
+                                    "xk": "Ngjashëm me fitimet e tua"
+                                }
                             })
     
     return {
