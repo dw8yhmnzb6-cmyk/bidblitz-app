@@ -13,6 +13,56 @@ router = APIRouter(prefix="/watchers", tags=["Auction Watchers"])
 auction_watchers: Dict[str, int] = {}
 
 # ==================== ENDPOINTS ====================
+# NOTE: Specific routes must come BEFORE parameterized routes to avoid conflicts
+
+@router.get("/hot-auctions")
+async def get_most_watched_auctions(limit: int = 10):
+    """Get auctions with most watchers"""
+    five_mins_ago = (datetime.now(timezone.utc) - timedelta(minutes=5)).isoformat()
+    
+    # Aggregate watcher counts
+    pipeline = [
+        {"$match": {"last_seen": {"$gte": five_mins_ago}}},
+        {"$group": {"_id": "$auction_id", "watcher_count": {"$sum": 1}}},
+        {"$sort": {"watcher_count": -1}},
+        {"$limit": limit}
+    ]
+    
+    hot = await db.auction_views.aggregate(pipeline).to_list(limit)
+    
+    # Get auction details
+    results = []
+    for h in hot:
+        auction = await db.auctions.find_one(
+            {"id": h["_id"], "status": "active"},
+            {"_id": 0}
+        )
+        if auction:
+            auction["watchers"] = h["watcher_count"]
+            results.append(auction)
+    
+    return {"hot_auctions": results}
+
+@router.get("/stats")
+async def get_watcher_stats():
+    """Get overall watcher statistics"""
+    five_mins_ago = (datetime.now(timezone.utc) - timedelta(minutes=5)).isoformat()
+    
+    # Total active viewers
+    total_viewers = await db.auction_views.count_documents({
+        "last_seen": {"$gte": five_mins_ago}
+    })
+    
+    # Unique auctions being watched
+    unique_auctions = await db.auction_views.distinct("auction_id", {
+        "last_seen": {"$gte": five_mins_ago}
+    })
+    
+    return {
+        "total_viewers": total_viewers,
+        "auctions_being_watched": len(unique_auctions),
+        "average_per_auction": round(total_viewers / len(unique_auctions), 1) if unique_auctions else 0
+    }
 
 @router.get("/{auction_id}")
 async def get_watcher_count(auction_id: str):
@@ -86,55 +136,6 @@ async def leave_auction_view(auction_id: str, user: dict = Depends(get_current_u
         auction_watchers[auction_id] = max(0, auction_watchers[auction_id] - 1)
     
     return {"success": True}
-
-@router.get("/hot-auctions")
-async def get_most_watched_auctions(limit: int = 10):
-    """Get auctions with most watchers"""
-    five_mins_ago = (datetime.now(timezone.utc) - timedelta(minutes=5)).isoformat()
-    
-    # Aggregate watcher counts
-    pipeline = [
-        {"$match": {"last_seen": {"$gte": five_mins_ago}}},
-        {"$group": {"_id": "$auction_id", "watcher_count": {"$sum": 1}}},
-        {"$sort": {"watcher_count": -1}},
-        {"$limit": limit}
-    ]
-    
-    hot = await db.auction_views.aggregate(pipeline).to_list(limit)
-    
-    # Get auction details
-    results = []
-    for h in hot:
-        auction = await db.auctions.find_one(
-            {"id": h["_id"], "status": "active"},
-            {"_id": 0}
-        )
-        if auction:
-            auction["watchers"] = h["watcher_count"]
-            results.append(auction)
-    
-    return {"hot_auctions": results}
-
-@router.get("/stats")
-async def get_watcher_stats():
-    """Get overall watcher statistics"""
-    five_mins_ago = (datetime.now(timezone.utc) - timedelta(minutes=5)).isoformat()
-    
-    # Total active viewers
-    total_viewers = await db.auction_views.count_documents({
-        "last_seen": {"$gte": five_mins_ago}
-    })
-    
-    # Unique auctions being watched
-    unique_auctions = await db.auction_views.distinct("auction_id", {
-        "last_seen": {"$gte": five_mins_ago}
-    })
-    
-    return {
-        "total_viewers": total_viewers,
-        "auctions_being_watched": len(unique_auctions),
-        "average_per_auction": round(total_viewers / len(unique_auctions), 1) if unique_auctions else 0
-    }
 
 
 watchers_router = router
