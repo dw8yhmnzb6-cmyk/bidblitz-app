@@ -27,12 +27,17 @@ const LoginScreen = ({ navigation }) => {
       return;
     }
 
+    console.log('Starting login with:', email);
     setLoading(true);
     const result = await login(email, password);
+    console.log('Login result:', result);
     setLoading(false);
 
     if (!result.success) {
+      console.log('Login failed:', result.error);
       Alert.alert('Fehler', result.error);
+    } else {
+      console.log('Login successful!');
     }
   };
 
