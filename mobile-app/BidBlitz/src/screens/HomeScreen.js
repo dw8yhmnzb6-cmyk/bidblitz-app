@@ -221,6 +221,24 @@ const HomeScreen = ({ navigation }) => {
             <Text style={styles.featureTitle}>Mystery Box</Text>
             <Text style={styles.featureDesc}>Überraschung!</Text>
           </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={[styles.featureCard, { backgroundColor: '#10B981' }]}
+            onPress={() => navigation.navigate('BidBuddy')}
+          >
+            <Text style={styles.featureEmoji}>🤖</Text>
+            <Text style={styles.featureTitle}>Bid Buddy</Text>
+            <Text style={styles.featureDesc}>Auto-Bieter</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={[styles.featureCard, { backgroundColor: '#EC4899' }]}
+            onPress={() => navigation.navigate('DailySpin')}
+          >
+            <Text style={styles.featureEmoji}>🎡</Text>
+            <Text style={styles.featureTitle}>Glücksrad</Text>
+            <Text style={styles.featureDesc}>Täglich drehen!</Text>
+          </TouchableOpacity>
         </View>
       </View>
     </ScrollView>
