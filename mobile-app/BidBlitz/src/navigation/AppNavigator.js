@@ -15,6 +15,12 @@ import ProfileScreen from '../screens/ProfileScreen';
 import BuyBidsScreen from '../screens/BuyBidsScreen';
 import FavoritesScreen from '../screens/FavoritesScreen';
 import SettingsScreen from '../screens/SettingsScreen';
+// New Feature Screens
+import LiveStreamScreen from '../screens/LiveStreamScreen';
+import TeamBiddingScreen from '../screens/TeamBiddingScreen';
+import AIAdvisorScreen from '../screens/AIAdvisorScreen';
+import DuelScreen from '../screens/DuelScreen';
+import MysteryBoxScreen from '../screens/MysteryBoxScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
