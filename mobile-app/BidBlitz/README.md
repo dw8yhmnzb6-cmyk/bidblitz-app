@@ -72,7 +72,7 @@ yarn android
 Die API-URL wird in `/src/services/api.js` konfiguriert:
 
 ```javascript
-const API_BASE_URL = 'https://penny-bidding-2.preview.emergentagent.com/api';
+const API_BASE_URL = 'https://penny-auction-app.preview.emergentagent.com/api';
 ```
 
 ## 📂 Projektstruktur
