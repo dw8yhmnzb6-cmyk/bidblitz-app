@@ -599,7 +599,16 @@ async def bot_last_second_bidder():
                             # Verschiedene Bot-Persönlichkeiten
                             bot_personality = hash(bot["id"]) % 3  # 0=schnell, 1=normal, 2=langsam
                             
-                            if random.random() < PAUSE_CHANCE:
+                            # SUPER URGENT: Wenn < 30 Sekunden, SEHR schnell bieten
+                            if seconds_left < 30:
+                                next_interval = random.uniform(2, 5)  # Sehr schnell!
+                            # URGENT: Wenn < 60 Sekunden, schnell bieten
+                            elif seconds_left < 60:
+                                next_interval = random.uniform(3, 10)  # Schnell!
+                            # Im Endspurt generell schneller
+                            elif in_endspurt and seconds_left < 120:
+                                next_interval = random.uniform(5, 20)  # Letzte 2 Minuten
+                            elif random.random() < PAUSE_CHANCE:
                                 # Längere Pause (1-4 Minuten) - wie echte Nutzer
                                 next_interval = random.uniform(60, 240)
                             else:
@@ -614,10 +623,6 @@ async def bot_last_second_bidder():
                                 # Add per-auction variation für Realismus
                                 auction_variation = random.uniform(0.7, 1.4)
                                 next_interval = base_interval * auction_variation
-                            
-                            # Im Endspurt schneller bieten
-                            if in_endspurt and seconds_left < 60:
-                                next_interval = random.uniform(5, 20)  # Letzte Minute: schnell!
                             
                             next_bid_time_per_auction[auction_id] = now_ts + next_interval
                             
