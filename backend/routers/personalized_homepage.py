@@ -92,7 +92,12 @@ async def get_personalized_homepage(user: dict = Depends(get_current_user)):
                         "category": product_info.get("category") if product_info else None,
                         "current_price": auction.get("current_price", 0),
                         "end_time": auction.get("end_time"),
-                        "reason": f"Basierend auf deinem Interesse an {category}"
+                        "reason": {
+                            "de": f"Basierend auf deinem Interesse an {category}",
+                            "en": f"Based on your interest in {category}",
+                            "sq": f"Bazuar në interesin tënd për {category}",
+                            "xk": f"Bazuar në interesin tënd për {category}"
+                        }
                     })
     
     # Section 2: Continue bidding (auctions user has bid on)
