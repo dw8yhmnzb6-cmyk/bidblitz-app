@@ -57,10 +57,9 @@ export default function Dashboard() {
     es: { welcome: 'Bienvenido', profile: 'Perfil', buyBids: 'Comprar Pujas', balance: 'Saldo', bids: 'Pujas', won: 'Ganadas', auctions: 'Subastas', active: 'Activas', watching: 'Observando', voucherCode: 'Código de Cupón', redeem: 'Canjear', myAuctions: 'Mis Subastas', recentBids: 'Pujas Recientes', autobidder: 'Auto-Puja', noBids: 'Sin pujas aún', startBidding: 'Empezar a Pujar', noAutobidder: 'Sin auto-puja', createAutobidder: 'Crear Auto-Puja', viewAll: 'Ver Todo', dailyReward: 'Recompensa Diaria', claimNow: '¡Reclamar!', alreadyClaimed: 'Reclamado Hoy', streak: 'Racha', days: 'Días', achievements: 'Logros', bidsAvailable: 'Pujas disponibles', redeemVoucher: 'Canjear cupón', pay: 'Pagar', paid: 'Pagado', paymentDeadline: 'Fecha límite', freeAuctionNote: 'Subasta gratis - Pagar precio final', showAllWon: 'Ver todas las subastas ganadas', myAutobidders: 'Mis Auto-Pujas', noAutobidderMsg: 'Sin auto-pujas activas. ¡Crea una en la página de detalles!', giftBids: 'Regalar Pujas', giftBidsDesc: 'Regala pujas a amigos con su número de cliente', giftNow: 'Regalar Ahora', statistics: 'Estadísticas' }
   };
   
-  // Map regional languages to their base language (Kosovo -> Albanian)
-  const langMapping = { 'xk': 'de',
-  'sq': 'de', 'us': 'en', 'ae': 'ar' };
-  const mappedLang = langMapping[langKey] || language;
+  // Map regional languages to their base language
+  const langMapping = { 'us': 'en', 'ae': 'ar' };
+  const mappedLang = langMapping[langKey] || langKey;
   const dt = dashTexts[mappedLang] || dashTexts[langKey] || dashTexts.de;
 
   useEffect(() => {
