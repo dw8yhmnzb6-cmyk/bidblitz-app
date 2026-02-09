@@ -373,6 +373,107 @@ const AppNavigator = () => {
                 title: '📱 Digital Wallet',
               }}
             />
+            {/* 10 NEW Feature Screens (Batch 2) */}
+            <Stack.Screen 
+              name="EmailPreferences" 
+              component={EmailPreferencesScreen}
+              options={{ 
+                headerShown: true,
+                headerStyle: { backgroundColor: '#8B5CF6' },
+                headerTintColor: '#fff',
+                title: '📧 E-Mail Einstellungen',
+              }}
+            />
+            <Stack.Screen 
+              name="WinnerMedia" 
+              component={WinnerMediaScreen}
+              options={{ 
+                headerShown: true,
+                headerStyle: { backgroundColor: '#F59E0B' },
+                headerTintColor: '#fff',
+                title: '📸 Gewinner-Galerie',
+              }}
+            />
+            <Stack.Screen 
+              name="BidBundles" 
+              component={BidBundlesScreen}
+              options={{ 
+                headerShown: true,
+                headerStyle: { backgroundColor: '#8B5CF6' },
+                headerTintColor: '#fff',
+                title: '📦 Gebote-Pakete',
+              }}
+            />
+            <Stack.Screen 
+              name="VIPPlans" 
+              component={VIPPlansScreen}
+              options={{ 
+                headerShown: true,
+                headerStyle: { backgroundColor: '#F59E0B' },
+                headerTintColor: '#fff',
+                title: '👑 VIP-Mitgliedschaft',
+              }}
+            />
+            <Stack.Screen 
+              name="Transparency" 
+              component={TransparencyScreen}
+              options={{ 
+                headerShown: true,
+                headerStyle: { backgroundColor: '#10B981' },
+                headerTintColor: '#fff',
+                title: '📊 Transparenz',
+              }}
+            />
+            <Stack.Screen 
+              name="UserReviews" 
+              component={UserReviewsScreen}
+              options={{ 
+                headerShown: true,
+                headerStyle: { backgroundColor: '#F59E0B' },
+                headerTintColor: '#fff',
+                title: '⭐ Bewertungen',
+              }}
+            />
+            <Stack.Screen 
+              name="AppStore" 
+              component={AppStoreScreen}
+              options={{ 
+                headerShown: true,
+                headerStyle: { backgroundColor: '#8B5CF6' },
+                headerTintColor: '#fff',
+                title: '📱 App Download',
+              }}
+            />
+            <Stack.Screen 
+              name="AffiliateDashboard" 
+              component={AffiliateDashboardScreen}
+              options={{ 
+                headerShown: true,
+                headerStyle: { backgroundColor: '#10B981' },
+                headerTintColor: '#fff',
+                title: '💼 Affiliate-Dashboard',
+              }}
+            />
+            <Stack.Screen 
+              name="SocialShare" 
+              component={SocialShareScreen}
+              options={{ 
+                headerShown: true,
+                headerStyle: { backgroundColor: '#EC4899' },
+                headerTintColor: '#fff',
+                title: '🔗 Teilen & Verdienen',
+              }}
+            />
+            <Stack.Screen 
+              name="UserReports" 
+              component={UserReportsScreen}
+              options={{ 
+                headerShown: true,
+                headerStyle: { backgroundColor: '#8B5CF6' },
+                headerTintColor: '#fff',
+                title: '🎫 Support',
+              }}
+            />
           </>
         ) : (
           <Stack.Screen name="Auth" component={AuthStack} />
