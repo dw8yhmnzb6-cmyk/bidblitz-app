@@ -372,6 +372,36 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 4,
   },
+  featuresGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: 10,
+  },
+  featureCard: {
+    width: '31%',
+    aspectRatio: 1,
+    borderRadius: 12,
+    margin: '1%',
+    padding: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  featureEmoji: {
+    fontSize: 28,
+    marginBottom: 5,
+  },
+  featureTitle: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  featureDesc: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 9,
+    textAlign: 'center',
+    marginTop: 2,
+  },
 });
 
 export default HomeScreen;
