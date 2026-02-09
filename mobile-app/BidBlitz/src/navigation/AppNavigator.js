@@ -155,6 +155,57 @@ const AppNavigator = () => {
                 title: 'Gebote kaufen',
               }}
             />
+            {/* New Feature Screens */}
+            <Stack.Screen 
+              name="LiveStream" 
+              component={LiveStreamScreen}
+              options={{ 
+                headerShown: true,
+                headerStyle: { backgroundColor: '#EF4444' },
+                headerTintColor: '#fff',
+                title: '📺 Live Auktionen',
+              }}
+            />
+            <Stack.Screen 
+              name="TeamBidding" 
+              component={TeamBiddingScreen}
+              options={{ 
+                headerShown: true,
+                headerStyle: { backgroundColor: '#8B5CF6' },
+                headerTintColor: '#fff',
+                title: '👥 Team Bidding',
+              }}
+            />
+            <Stack.Screen 
+              name="AIAdvisor" 
+              component={AIAdvisorScreen}
+              options={{ 
+                headerShown: true,
+                headerStyle: { backgroundColor: '#8B5CF6' },
+                headerTintColor: '#fff',
+                title: '🧠 KI-Berater',
+              }}
+            />
+            <Stack.Screen 
+              name="Duel" 
+              component={DuelScreen}
+              options={{ 
+                headerShown: true,
+                headerStyle: { backgroundColor: '#EF4444' },
+                headerTintColor: '#fff',
+                title: '⚔️ Duell',
+              }}
+            />
+            <Stack.Screen 
+              name="MysteryBox" 
+              component={MysteryBoxScreen}
+              options={{ 
+                headerShown: true,
+                headerStyle: { backgroundColor: '#8B5CF6' },
+                headerTintColor: '#fff',
+                title: '📦 Mystery Box',
+              }}
+            />
           </>
         ) : (
           <Stack.Screen name="Auth" component={AuthStack} />
