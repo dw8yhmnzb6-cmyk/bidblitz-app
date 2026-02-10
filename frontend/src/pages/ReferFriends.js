@@ -115,12 +115,42 @@ export default function ReferFriends() {
     }
   };
 
-  const copyLink = () => {
+  // Safe clipboard function that works on all devices
+  const safeCopyToClipboard = async (text) => {
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text);
+        return true;
+      } else {
+        // Fallback for older browsers / iOS Safari
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-9999px';
+        textArea.style.top = '-9999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        const result = document.execCommand('copy');
+        document.body.removeChild(textArea);
+        return result;
+      }
+    } catch (err) {
+      console.error('Copy failed:', err);
+      return false;
+    }
+  };
+
+  const copyLink = async () => {
     if (stats?.link) {
-      navigator.clipboard.writeText(stats.link);
-      setCopied(true);
-      toast.success(t.linkCopied);
-      setTimeout(() => setCopied(false), 2000);
+      const success = await safeCopyToClipboard(stats.link);
+      if (success) {
+        setCopied(true);
+        toast.success(t.linkCopied);
+        setTimeout(() => setCopied(false), 2000);
+      } else {
+        toast.error('Kopieren fehlgeschlagen');
+      }
     }
   };
 
