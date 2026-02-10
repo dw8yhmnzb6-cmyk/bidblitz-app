@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
+import { safeCopyToClipboard } from '../utils/clipboard';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { Button } from '../components/ui/button';
@@ -177,11 +178,15 @@ const ReferralDashboard = () => {
     }
   };
 
-  const copyToClipboard = (text) => {
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    toast.success(t.copied);
-    setTimeout(() => setCopied(false), 2000);
+  const copyToClipboard = async (text) => {
+    const success = await safeCopyToClipboard(text);
+    if (success) {
+      setCopied(true);
+      toast.success(t.copied);
+      setTimeout(() => setCopied(false), 2000);
+    } else {
+      toast.error('Kopieren fehlgeschlagen');
+    }
   };
 
   const shareLink = () => {
