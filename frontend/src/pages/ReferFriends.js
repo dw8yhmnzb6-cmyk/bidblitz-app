@@ -61,7 +61,7 @@ export default function ReferFriends() {
       try {
         await navigator.share({
           title: 'BidBlitz - Penny Auktionen',
-          text: 'Melde dich bei BidBlitz an und erhalte 10 Gratis-Gebote!',
+          text: t.shareText,
           url: stats.link
         });
       } catch (err) {
@@ -77,10 +77,10 @@ export default function ReferFriends() {
       <div className="min-h-screen pt-24 pb-12 px-4 flex items-center justify-center bg-gradient-to-b from-cyan-50 to-cyan-100">
         <div className="bg-white p-8 rounded-xl text-center max-w-md shadow-lg border border-gray-200">
           <Users className="w-16 h-16 text-amber-500 mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-gray-800 mb-4">Freunde werben</h2>
-          <p className="text-gray-600 mb-6">Melde dich an und lade Freunde ein!</p>
+          <h2 className="text-xl font-bold text-gray-800 mb-4">{t.loginTitle}</h2>
+          <p className="text-gray-600 mb-6">{t.loginDesc}</p>
           <Button className="bg-amber-500 hover:bg-amber-600 text-white" onClick={() => navigate('/login')}>
-            Anmelden
+            {t.login}
           </Button>
         </div>
       </div>
@@ -104,8 +104,8 @@ export default function ReferFriends() {
           <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-purple-500 to-indigo-600 shadow-lg mb-4">
             <UserPlus className="w-10 h-10 text-white" />
           </div>
-          <h1 className="text-3xl font-bold text-gray-800">Freunde werben</h1>
-          <p className="text-gray-500 mt-2">Teile BidBlitz und verdiene Gebote!</p>
+          <h1 className="text-3xl font-bold text-gray-800">{t.title}</h1>
+          <p className="text-gray-500 mt-2">{t.subtitle}</p>
         </div>
 
         {/* Reward Info */}
@@ -114,14 +114,14 @@ export default function ReferFriends() {
             <div className="text-center p-4 bg-white/10 rounded-xl">
               <Gift className="w-10 h-10 mx-auto mb-2" />
               <p className="text-3xl font-bold">{stats?.reward_per_referral || 20}</p>
-              <p className="text-purple-200">Gebote für dich</p>
-              <p className="text-xs text-purple-300 mt-1">pro erfolgreicher Empfehlung</p>
+              <p className="text-purple-200">{t.bidsForYou}</p>
+              <p className="text-xs text-purple-300 mt-1">{t.perReferral}</p>
             </div>
             <div className="text-center p-4 bg-white/10 rounded-xl">
               <Coins className="w-10 h-10 mx-auto mb-2" />
               <p className="text-3xl font-bold">10</p>
-              <p className="text-purple-200">Gebote für deinen Freund</p>
-              <p className="text-xs text-purple-300 mt-1">nach erstem Kauf</p>
+              <p className="text-purple-200">{t.bidsForFriend}</p>
+              <p className="text-xs text-purple-300 mt-1">{t.afterFirstPurchase}</p>
             </div>
           </div>
         </div>
