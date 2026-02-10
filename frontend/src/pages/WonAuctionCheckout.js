@@ -105,7 +105,7 @@ export default function WonAuctionCheckout() {
       setWonAuction(response.data);
     } catch (error) {
       console.error('Error:', error);
-      toast.error('Gewonnene Auktion nicht gefunden');
+      toast.error(t.errorNotFound);
       navigate('/dashboard');
     } finally {
       setLoading(false);
@@ -127,7 +127,7 @@ export default function WonAuctionCheckout() {
           { headers: { Authorization: `Bearer ${token}` } }
         );
         
-        toast.success(`🎉 ${response.data.bids_credited} Gebote wurden gutgeschrieben!`);
+        toast.success(`🎉 ${response.data.bids_credited} ${t.bidsCredited}`);
         refreshUser();
         navigate('/dashboard');
         return;
@@ -143,11 +143,11 @@ export default function WonAuctionCheckout() {
       if (response.data.checkout_url) {
         window.location.href = response.data.checkout_url;
       } else {
-        toast.success('Zahlung erfolgreich!');
+        toast.success(t.paymentSuccess);
         navigate('/dashboard');
       }
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Zahlung fehlgeschlagen');
+      toast.error(error.response?.data?.detail || t.paymentFailed);
     } finally {
       setProcessing(false);
     }
@@ -166,10 +166,10 @@ export default function WonAuctionCheckout() {
       <div className="min-h-screen pt-24 px-4 flex items-center justify-center">
         <div className="text-center">
           <AlertTriangle className="w-16 h-16 text-amber-500 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-white mb-2">Auktion nicht gefunden</h1>
-          <p className="text-gray-400 mb-6">Diese gewonnene Auktion existiert nicht oder gehört nicht zu Ihrem Konto.</p>
+          <h1 className="text-2xl font-bold text-white mb-2">{t.auctionNotFound}</h1>
+          <p className="text-gray-400 mb-6">{t.notYourAuction}</p>
           <Link to="/dashboard">
-            <Button className="btn-primary">Zurück zum Dashboard</Button>
+            <Button className="btn-primary">{t.backToDashboard}</Button>
           </Link>
         </div>
       </div>
@@ -189,7 +189,7 @@ export default function WonAuctionCheckout() {
         {/* Back Button */}
         <Link to="/dashboard" className="inline-flex items-center text-gray-400 hover:text-white mb-6">
           <ArrowLeft className="w-4 h-4 mr-2" />
-          Zurück zum Dashboard
+          {t.backToDashboard}
         </Link>
         
         {/* Header */}
@@ -198,10 +198,10 @@ export default function WonAuctionCheckout() {
             <Trophy className="w-10 h-10 text-white" />
           </div>
           <h1 className="text-3xl font-bold text-white mb-2">
-            🎉 Herzlichen Glückwunsch!
+            🎉 {t.congratulations}
           </h1>
           <p className="text-gray-400">
-            Sie haben diese Auktion gewonnen
+            {t.youWon}
           </p>
         </div>
         
@@ -232,7 +232,7 @@ export default function WonAuctionCheckout() {
                 
                 {!isBidVoucher && (
                   <p className="text-gray-400 text-sm mb-3">
-                    UVP: <span className="line-through">€ {wonAuction.retail_price?.toFixed(2)}</span>
+                    {t.rrp} <span className="line-through">€ {wonAuction.retail_price?.toFixed(2)}</span>
                   </p>
                 )}
                 
@@ -240,14 +240,14 @@ export default function WonAuctionCheckout() {
                 {!isBidVoucher && savings > 0 && (
                   <div className="inline-flex items-center gap-2 bg-green-500/20 text-green-400 px-3 py-1 rounded-full text-sm">
                     <CheckCircle className="w-4 h-4" />
-                    Sie sparen € {savings.toFixed(2)} ({savingsPercent}%)
+                    {t.youSave} € {savings.toFixed(2)} ({savingsPercent}%)
                   </div>
                 )}
                 
                 {isBidVoucher && (
                   <div className="bg-cyan-500/20 text-cyan-400 px-4 py-2 rounded-lg">
-                    <p className="font-bold">🎁 100 Gratis-Gebote</p>
-                    <p className="text-sm">Werden sofort Ihrem Konto gutgeschrieben!</p>
+                    <p className="font-bold">🎁 100 {t.freeBids}</p>
+                    <p className="text-sm">{t.creditedImmediately}</p>
                   </div>
                 )}
               </div>
@@ -259,17 +259,17 @@ export default function WonAuctionCheckout() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-white/80 text-sm">
-                  {isBidVoucher ? 'Preis (GRATIS gewonnen)' : 'Ihr Endpreis'}
+                  {isBidVoucher ? t.priceFree : t.yourFinalPrice}
                 </p>
                 <p className="text-4xl font-black text-white">
-                  {isBidVoucher ? 'GRATIS' : `€ ${wonAuction.final_price?.toFixed(2)}`}
+                  {isBidVoucher ? t.free : `€ ${wonAuction.final_price?.toFixed(2)}`}
                 </p>
               </div>
               
               {isPaid && (
                 <div className="flex items-center gap-2 bg-white/20 px-4 py-2 rounded-full">
                   <CheckCircle className="w-5 h-5 text-white" />
-                  <span className="text-white font-bold">Bezahlt</span>
+                  <span className="text-white font-bold">{t.paid}</span>
                 </div>
               )}
             </div>
@@ -285,13 +285,13 @@ export default function WonAuctionCheckout() {
                 <div className="flex items-start gap-3">
                   <Clock className="w-5 h-5 text-amber-500 mt-0.5" />
                   <div>
-                    <p className="text-amber-500 font-medium">Zahlungsfrist</p>
+                    <p className="text-amber-500 font-medium">{t.paymentDeadline}</p>
                     <p className="text-gray-400 text-sm">
-                      Bitte bezahlen Sie innerhalb von 7 Tagen, sonst verfällt Ihr Gewinn.
+                      {t.paymentDeadlineInfo}
                     </p>
                     {wonAuction.payment_deadline && (
                       <p className="text-white font-bold mt-1">
-                        Frist: {new Date(wonAuction.payment_deadline).toLocaleDateString('de-DE')}
+                        {t.deadline} {new Date(wonAuction.payment_deadline).toLocaleDateString('de-DE')}
                       </p>
                     )}
                   </div>
@@ -302,7 +302,7 @@ export default function WonAuctionCheckout() {
             {/* Payment Methods (only for non-bid-voucher) */}
             {!isBidVoucher && (
               <div className="glass-card rounded-xl p-6 mb-6">
-                <h3 className="text-white font-bold mb-4">Zahlungsmethode</h3>
+                <h3 className="text-white font-bold mb-4">{t.paymentMethod}</h3>
                 
                 <div className="space-y-3">
                   <label className={`flex items-center gap-4 p-4 rounded-lg border-2 cursor-pointer transition-all ${paymentMethod === 'stripe' ? 'border-cyan-500 bg-cyan-500/10' : 'border-white/10 hover:border-white/30'}`}>
@@ -316,8 +316,8 @@ export default function WonAuctionCheckout() {
                     />
                     <CreditCard className="w-6 h-6 text-white" />
                     <div className="flex-1">
-                      <p className="text-white font-medium">Kreditkarte / Debitkarte</p>
-                      <p className="text-gray-400 text-sm">Visa, Mastercard, American Express</p>
+                      <p className="text-white font-medium">{t.creditDebitCard}</p>
+                      <p className="text-gray-400 text-sm">{t.cardTypes}</p>
                     </div>
                     <div className="flex gap-1">
                       <div className="w-8 h-5 bg-blue-600 rounded text-[8px] text-white flex items-center justify-center font-bold">VISA</div>
@@ -331,7 +331,7 @@ export default function WonAuctionCheckout() {
             {/* Security Info */}
             <div className="flex items-center gap-3 text-gray-400 text-sm mb-6">
               <ShieldCheck className="w-5 h-5 text-green-500" />
-              <span>Sichere Zahlung über Stripe - SSL verschlüsselt</span>
+              <span>{t.securePayment}</span>
             </div>
             
             {/* Pay Button */}
@@ -344,17 +344,17 @@ export default function WonAuctionCheckout() {
               {processing ? (
                 <span className="flex items-center gap-2">
                   <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" />
-                  Wird verarbeitet...
+                  {t.processing}
                 </span>
               ) : isBidVoucher ? (
                 <span className="flex items-center gap-2">
                   <Gift className="w-5 h-5" />
-                  100 Gebote jetzt abholen!
+                  {t.claimBids}
                 </span>
               ) : (
                 <span className="flex items-center gap-2">
                   <CreditCard className="w-5 h-5" />
-                  Jetzt € {wonAuction.final_price?.toFixed(2)} bezahlen
+                  {t.payNow} € {wonAuction.final_price?.toFixed(2)} {t.pay}
                 </span>
               )}
             </Button>
@@ -365,15 +365,15 @@ export default function WonAuctionCheckout() {
         {isPaid && (
           <div className="glass-card rounded-xl p-6 text-center">
             <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
-            <h3 className="text-xl font-bold text-white mb-2">Zahlung abgeschlossen!</h3>
+            <h3 className="text-xl font-bold text-white mb-2">{t.paymentComplete}</h3>
             <p className="text-gray-400 mb-4">
               {isBidVoucher 
-                ? 'Die 100 Gebote wurden Ihrem Konto gutgeschrieben.' 
-                : 'Ihr Produkt wird in Kürze versandt.'}
+                ? t.bidsAddedToAccount 
+                : t.productWillShip}
             </p>
             <Link to="/dashboard">
               <Button variant="outline" className="border-white/20 text-white">
-                Zurück zum Dashboard
+                {t.backToDashboard}
               </Button>
             </Link>
           </div>
