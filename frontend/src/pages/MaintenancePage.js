@@ -88,12 +88,12 @@ export default function MaintenancePage() {
 
         {/* Title */}
         <h1 className="text-4xl font-bold text-slate-800 mb-4">
-          Wartungsarbeiten
+          {t.title}
         </h1>
         
         {/* Message */}
         <p className="text-lg text-slate-600 mb-8 leading-relaxed">
-          {maintenanceData?.message || 'Wir führen gerade Wartungsarbeiten durch, um BidBlitz noch besser zu machen. Bitte versuchen Sie es in Kürze erneut.'}
+          {maintenanceData?.message || t.defaultMessage}
         </p>
 
         {/* Countdown */}
@@ -101,20 +101,20 @@ export default function MaintenancePage() {
           <div className="mb-8">
             <p className="text-sm text-slate-500 mb-3 flex items-center justify-center gap-2">
               <Clock className="w-4 h-4" />
-              Geschätzte Restzeit:
+              {t.estimatedTime}
             </p>
             <div className="flex justify-center gap-4">
               <div className="bg-white rounded-xl p-4 shadow-lg min-w-[80px]">
                 <p className="text-3xl font-bold text-amber-600">{countdown.hours}</p>
-                <p className="text-xs text-slate-500">Stunden</p>
+                <p className="text-xs text-slate-500">{t.hours}</p>
               </div>
               <div className="bg-white rounded-xl p-4 shadow-lg min-w-[80px]">
                 <p className="text-3xl font-bold text-amber-600">{countdown.minutes}</p>
-                <p className="text-xs text-slate-500">Minuten</p>
+                <p className="text-xs text-slate-500">{t.minutes}</p>
               </div>
               <div className="bg-white rounded-xl p-4 shadow-lg min-w-[80px]">
                 <p className="text-3xl font-bold text-amber-600">{countdown.seconds}</p>
-                <p className="text-xs text-slate-500">Sekunden</p>
+                <p className="text-xs text-slate-500">{t.seconds}</p>
               </div>
             </div>
           </div>
@@ -126,7 +126,7 @@ export default function MaintenancePage() {
           className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white shadow-lg"
         >
           <RefreshCw className="w-4 h-4 mr-2" />
-          Erneut versuchen
+          {t.retry}
         </Button>
 
         {/* BidBlitz Logo */}
@@ -135,7 +135,7 @@ export default function MaintenancePage() {
             <span className="text-[#7C3AED]">Bid</span>
             <span className="text-amber-500">Blitz</span>
           </p>
-          <p className="text-xs mt-1">Wir sind bald zurück!</p>
+          <p className="text-xs mt-1">{t.backSoon}</p>
         </div>
       </div>
     </div>
