@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
+import { safeCopyToClipboard } from '../utils/clipboard';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
@@ -195,10 +196,10 @@ export default function TeamAuctionsPage() {
     }
   };
 
-  const copyTeamCode = () => {
+  const copyTeamCode = async () => {
     if (myTeam?.code) {
-      navigator.clipboard.writeText(myTeam.code);
-      toast.success('Code kopiert!');
+      const success = await safeCopyToClipboard(myTeam.code);
+      if (success) toast.success('Code kopiert!');
     }
   };
 
