@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
+import { safeCopyToClipboard } from '../utils/clipboard';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -288,12 +289,14 @@ export default function Affiliate() {
     }
   };
 
-  const copyLink = () => {
+  const copyLink = async () => {
     const link = `https://bidblitz.de/register?ref=${affiliateData?.affiliate?.referral_code}`;
-    navigator.clipboard.writeText(link);
-    setCopied(true);
-    toast.success(texts.linkCopied);
-    setTimeout(() => setCopied(false), 2000);
+    const success = await safeCopyToClipboard(link);
+    if (success) {
+      setCopied(true);
+      toast.success(texts.linkCopied);
+      setTimeout(() => setCopied(false), 2000);
+    }
   };
 
   const commissionTiers = [
