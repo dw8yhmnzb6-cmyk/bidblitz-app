@@ -77,7 +77,7 @@ export default function GiftCardSuccess() {
         setGiftcard(response.data.giftcard);
       }
     } catch (error) {
-      toast.error('Fehler beim Laden der Geschenkkarte');
+      toast.error(t.errorLoading);
     } finally {
       setLoading(false);
     }
@@ -87,7 +87,7 @@ export default function GiftCardSuccess() {
     if (giftcard?.code) {
       navigator.clipboard.writeText(giftcard.code);
       setCopied(true);
-      toast.success('Code kopiert!');
+      toast.success(t.codeCopied);
       setTimeout(() => setCopied(false), 2000);
     }
   };
@@ -104,9 +104,9 @@ export default function GiftCardSuccess() {
     return (
       <div className="min-h-screen bg-gradient-to-b from-cyan-50 to-cyan-100 flex items-center justify-center px-4">
         <div className="text-center">
-          <p className="text-gray-800 text-xl mb-4">Geschenkkarte nicht gefunden</p>
+          <p className="text-gray-800 text-xl mb-4">{t.notFound}</p>
           <Link to="/giftcards" className="text-[#7C3AED] hover:underline">
-            Zurück zu Geschenkkarten
+            {t.backToGiftcards}
           </Link>
         </div>
       </div>
@@ -121,8 +121,8 @@ export default function GiftCardSuccess() {
           <div className="w-24 h-24 rounded-full bg-gradient-to-r from-[#10B981] to-[#059669] flex items-center justify-center mx-auto mb-6 animate-bounce">
             <Check className="w-12 h-12 text-gray-800" />
           </div>
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">Kauf erfolgreich!</h1>
-          <p className="text-gray-500">Ihre Geschenkkarte ist bereit</p>
+          <h1 className="text-3xl font-bold text-gray-800 mb-2">{t.purchaseSuccess}</h1>
+          <p className="text-gray-500">{t.cardReady}</p>
         </div>
 
         {/* Gift Card Display */}
@@ -136,12 +136,12 @@ export default function GiftCardSuccess() {
                   <Gift className="w-8 h-8 text-[#F59E0B]" />
                   <span className="text-gray-800 font-bold text-xl">BidBlitz</span>
                 </div>
-                <span className="text-gray-500 text-sm">GESCHENKKARTE</span>
+                <span className="text-gray-500 text-sm">{t.giftCard}</span>
               </div>
 
               {/* Code */}
               <div className="text-center mb-8">
-                <p className="text-gray-500 text-sm mb-2">Geschenkkarten-Code</p>
+                <p className="text-gray-500 text-sm mb-2">{t.giftcardCode}</p>
                 <div className="flex items-center justify-center gap-3">
                   <p className="font-mono text-2xl md:text-3xl font-bold text-gray-800 tracking-widest">
                     {giftcard.code}
@@ -149,7 +149,7 @@ export default function GiftCardSuccess() {
                   <button
                     onClick={copyCode}
                     className="p-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors"
-                    title="Code kopieren"
+                    title={t.copyCode}
                   >
                     {copied ? (
                       <Check className="w-5 h-5 text-[#10B981]" />
@@ -163,11 +163,11 @@ export default function GiftCardSuccess() {
               {/* Value */}
               <div className="flex justify-between items-end">
                 <div>
-                  <p className="text-gray-500 text-xs">Wert</p>
+                  <p className="text-gray-500 text-xs">{t.value}</p>
                   <p className="text-3xl font-bold text-gray-800">€{giftcard.amount}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-gray-500 text-xs">Gebote</p>
+                  <p className="text-gray-500 text-xs">{t.bids}</p>
                   <p className="text-3xl font-bold text-[#F59E0B]">{giftcard.bids_value}</p>
                 </div>
               </div>
@@ -184,7 +184,7 @@ export default function GiftCardSuccess() {
           <div className="flex items-center gap-3 p-4 bg-[#10B981]/10 border border-[#10B981]/30 rounded-xl mb-6">
             <Mail className="w-5 h-5 text-[#10B981]" />
             <p className="text-[#10B981]">
-              E-Mail wurde an <strong>{giftcard.recipient_email}</strong> gesendet
+              {t.emailSent} <strong>{giftcard.recipient_email}</strong> {t.sent}
             </p>
           </div>
         )}
@@ -197,19 +197,19 @@ export default function GiftCardSuccess() {
             className="w-full border-[#3D3D4D] text-gray-800 hover:bg-[#2D2D3D] py-6"
           >
             <Copy className="w-5 h-5 mr-2" />
-            Code kopieren
+            {t.copyCode}
           </Button>
 
           <Link to="/giftcards" className="block">
             <Button className="w-full bg-gradient-to-r from-[#7C3AED] to-[#F59E0B] hover:opacity-90 text-gray-800 py-6">
-              Weitere Geschenkkarte kaufen
+              {t.buyAnother}
               <ArrowRight className="w-5 h-5 ml-2" />
             </Button>
           </Link>
 
           <Link to="/dashboard" className="block text-center">
             <span className="text-gray-500 hover:text-gray-800 transition-colors">
-              Zurück zum Dashboard
+              {t.backToDashboard}
             </span>
           </Link>
         </div>
