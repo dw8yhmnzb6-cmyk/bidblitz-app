@@ -440,11 +440,11 @@ const ReferralDashboard = () => {
                     {ref.has_purchased ? (
                       <span className="px-2 py-1 rounded-full bg-green-500/20 text-green-400 text-sm flex items-center gap-1">
                         <Check className="w-3 h-3" />
-                        +{ref.reward_bids} Gebote
+                        +{ref.reward_bids} {t.bids}
                       </span>
                     ) : (
                       <span className="px-2 py-1 rounded-full bg-gray-500/20 text-gray-500 text-sm">
-                        Warte auf Kauf
+                        {t.waitingForPurchase}
                       </span>
                     )}
                   </div>
