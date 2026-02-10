@@ -247,7 +247,7 @@ export default function Dashboard() {
     } catch (error) {
       // Check if it's an authentication error
       if (error.response?.status === 401 || error.response?.status === 403) {
-        toast.error(language === 'en' ? 'Please log in to bid' : 'Bitte anmelden um zu bieten');
+        toast.error(language === 'en' ? 'Please log in to bid' : (language === 'sq' || language === 'xk') ? 'Ju lutem hyni për të bërë ofertë' : 'Bitte anmelden um zu bieten');
         return;
       }
       toast.error(error.response?.data?.detail || (language === 'en' ? 'Error bidding' : 'Fehler beim Bieten'));
