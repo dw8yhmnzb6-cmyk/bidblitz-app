@@ -46,16 +46,26 @@ const AuctionOfTheDay = memo(({ auction, product, onBid, t, language, langKey, i
   
   // Determine button config
   const getButtonConfig = () => {
+    const buttonTexts = {
+      de: { loginToBid: 'Anmelden zum Bieten', getVipToBid: 'VIP werden zum Bieten' },
+      en: { loginToBid: 'Login to Bid', getVipToBid: 'Get VIP to Bid' },
+      sq: { loginToBid: 'Hyr për të ofruar', getVipToBid: 'Bëhu VIP për të ofruar' },
+      xk: { loginToBid: 'Hyr për të ofruar', getVipToBid: 'Bëhu VIP për të ofruar' },
+      tr: { loginToBid: 'Teklif vermek için giriş yapın', getVipToBid: 'Teklif vermek için VIP olun' },
+      fr: { loginToBid: 'Connectez-vous pour enchérir', getVipToBid: 'Devenez VIP pour enchérir' }
+    };
+    const btnT = buttonTexts[language] || buttonTexts.de;
+    
     if (!isAuthenticated) {
       return {
-        text: '🔒 ' + (language === 'de' ? 'Anmelden zum Bieten' : 'Login to Bid'),
+        text: '🔒 ' + btnT.loginToBid,
         action: () => navigate('/login'),
         style: 'bg-gray-500 hover:bg-gray-600'
       };
     }
     if (isVipAuction && !isVip) {
       return {
-        text: '⭐ ' + (language === 'de' ? 'VIP werden zum Bieten' : 'Get VIP to Bid'),
+        text: '⭐ ' + btnT.getVipToBid,
         action: () => navigate('/vip'),
         style: 'bg-gradient-to-r from-yellow-600 to-amber-600 hover:from-yellow-500 hover:to-amber-500'
       };
@@ -350,9 +360,19 @@ const AuctionCard = memo(({ auction, product, onBid, t, language, langKey, isAut
   
   // Determine button configuration based on auth/VIP status
   const getButtonConfig = () => {
+    const buttonTexts = {
+      de: { login: 'Anmelden', getVip: 'VIP werden' },
+      en: { login: 'Login', getVip: 'Get VIP' },
+      sq: { login: 'Hyr', getVip: 'Bëhu VIP' },
+      xk: { login: 'Hyr', getVip: 'Bëhu VIP' },
+      tr: { login: 'Giriş', getVip: 'VIP Ol' },
+      fr: { login: 'Connexion', getVip: 'Devenir VIP' }
+    };
+    const btnT = buttonTexts[language] || buttonTexts.de;
+    
     if (!isAuthenticated) {
       return {
-        text: '🔒 ' + (language === 'de' ? 'Anmelden' : language === 'sq' ? 'Hyr' : 'Login'),
+        text: '🔒 ' + btnT.login,
         action: () => navigate('/login'),
         style: 'bg-gray-500 hover:bg-gray-600',
         disabled: false
@@ -360,7 +380,7 @@ const AuctionCard = memo(({ auction, product, onBid, t, language, langKey, isAut
     }
     if (isVipAuction && !isVip) {
       return {
-        text: '⭐ ' + (language === 'de' ? 'VIP werden' : language === 'sq' ? 'Bëhu VIP' : 'Get VIP'),
+        text: '⭐ ' + btnT.getVip,
         action: () => navigate('/vip'),
         style: 'bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-400 hover:to-amber-400',
         disabled: false
