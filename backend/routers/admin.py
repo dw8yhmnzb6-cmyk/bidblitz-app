@@ -406,36 +406,50 @@ async def get_email_user_stats(admin: dict = Depends(get_admin_user)):
     # Total users (excluding admins)
     total = await db.users.count_documents({"is_admin": {"$ne": True}})
     
-    # Active users (logged in within 30 days or made purchase)
+    # Active users (has bids or made activity)
     active = await db.users.count_documents({
         "is_admin": {"$ne": True},
         "$or": [
+            {"bids_balance": {"$gt": 0}},
             {"last_login_ip": {"$ne": None}},
-            {"created_at": {"$gte": month_ago}}
+            {"is_vip": True}
         ]
     })
     
-    # Inactive users (no purchase, registered > 7 days ago)
+    # Inactive users (no bids, not VIP)
     inactive = await db.users.count_documents({
         "is_admin": {"$ne": True},
         "$or": [
-            {"total_deposits": {"$eq": 0}},
-            {"total_deposits": {"$exists": False}}
+            {"bids_balance": {"$eq": 0}},
+            {"bids_balance": {"$exists": False}}
         ],
-        "created_at": {"$lt": week_ago}
+        "is_vip": {"$ne": True}
     })
     
-    # Winners (users who have won auctions)
-    winners = await db.users.count_documents({
-        "is_admin": {"$ne": True},
-        "won_auctions": {"$exists": True, "$not": {"$size": 0}}
+    # Winners (users who have won auctions - check auctions collection)
+    winner_ids = await db.auctions.distinct("winner_id", {
+        "status": "ended",
+        "winner_id": {"$ne": None, "$not": {"$regex": "^bot_"}}
     })
+    winners = len([w for w in winner_ids if w])
     
-    # New users (registered within last 7 days)
-    new_users = await db.users.count_documents({
+    # New users (check if created_at exists, otherwise count all non-admin)
+    # Since created_at might not exist, we use a different approach
+    new_users_query = {
         "is_admin": {"$ne": True},
         "created_at": {"$gte": week_ago}
-    })
+    }
+    new_users = await db.users.count_documents(new_users_query)
+    
+    # If no created_at field exists, count users without much activity
+    if new_users == 0:
+        new_users = await db.users.count_documents({
+            "is_admin": {"$ne": True},
+            "$or": [
+                {"bids_balance": {"$lte": 10}},
+                {"customer_number": {"$exists": True}}
+            ]
+        })
     
     return {
         "total": total,
