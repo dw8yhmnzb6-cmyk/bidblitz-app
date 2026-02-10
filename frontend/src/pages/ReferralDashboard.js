@@ -307,7 +307,7 @@ const ReferralDashboard = () => {
                     {referralData?.stats?.rank_title}
                   </p>
                   <p className="text-gray-500 text-sm">
-                    {referralData?.stats?.total_referrals || 0} Empfehlungen
+                    {referralData?.stats?.total_referrals || 0} {t.referralsCount}
                   </p>
                 </div>
               </div>
