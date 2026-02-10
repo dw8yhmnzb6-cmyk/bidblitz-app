@@ -98,10 +98,11 @@ export default function Wishlist() {
         axios.get(`${API}/products`),
         axios.get(`${API}/categories`)
       ]);
-      setWishlist(wishlistRes.data);
-      setProducts(productsRes.data);
+      // Ensure wishlist is always an array
+      setWishlist(Array.isArray(wishlistRes.data) ? wishlistRes.data : wishlistRes.data?.items || []);
+      setProducts(Array.isArray(productsRes.data) ? productsRes.data : []);
       // Extract category names from the API response
-      const cats = categoriesRes.data.map(c => c.name || c);
+      const cats = (Array.isArray(categoriesRes.data) ? categoriesRes.data : []).map(c => c.name || c);
       setCategories(cats);
     } catch (error) {
       console.error('Error fetching data:', error);
