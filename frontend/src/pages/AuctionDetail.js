@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
+import { safeCopyToClipboard } from '../utils/clipboard';
 import { useAuctionWebSocket } from '../hooks/useAuctionWebSocket';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -93,10 +94,14 @@ export default function AuctionDetail() {
 
   const handleCopyLink = async () => {
     try {
-      await navigator.clipboard.writeText(getShareUrl());
-      setCopied(true);
-      toast.success(dtl.linkCopied);
-      setTimeout(() => setCopied(false), 2000);
+      const success = await safeCopyToClipboard(getShareUrl());
+      if (success) {
+        setCopied(true);
+        toast.success(dtl.linkCopied);
+        setTimeout(() => setCopied(false), 2000);
+      } else {
+        toast.error(dtl.copyError);
+      }
     } catch (error) {
       toast.error(dtl.copyError);
     }
