@@ -12,17 +12,27 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 1. ✅ **Übersetzungs-Refaktorierung - Albanisch (sq/xk) Unterstützung erweitert**
    - **Profile.js**: 7 hardcodierte ternäre Operatoren durch zentrale Übersetzungen ersetzt
    - **BundlesPage.js**: Trust Badges und fehlende Übersetzungen für sq/xk/tr/fr hinzugefügt
-   - **Login.js**: Apple Login und "oder"-Text für alle Sprachen übersetzt
+   - **Login.js**: Apple/Google Login und "oder"-Text für alle Sprachen übersetzt
    - **Register.js**: "oder"-Text für alle Sprachen übersetzt
    - **BeginnerAuctions.js**: Vollständige sq/xk/fr Übersetzungen hinzugefügt + hardcodierte Texte ersetzt
    - **SpinWheel.js**: sq/xk Übersetzungen für Glücksrad hinzugefügt
    - **Dashboard.js**: weeklyLeaderboard/weeklyLeaderboardDesc Übersetzungen + xk Sprache hinzugefügt
    - **BattlePassPage.js**: Alle hardcodierten Texte in zentrales Übersetzungs-Objekt migriert
-   - **Home.js**: Bug gefixt - `langKey` war undefiniert in ActivityIndex Komponente
+   - **Home.js**: Bug gefixt (`langKey` undefiniert) + getButtonConfig für alle Sprachen übersetzt
+   - **DailyRewardsPage.js**: Vollständige sq/xk/tr/fr Übersetzungen hinzugefügt
+   - **Auctions.js**: getButtonConfig für Login/VIP-Buttons für alle Sprachen übersetzt
+   - **VIP.js**: "unlimited" und "active" Übersetzungen für alle Sprachen hinzugefügt
+   - **WinSurveyPopup.js**: Bewertungsfehler-Nachricht für alle Sprachen übersetzt
+   - **Navbar.js**: Rangliste/Glücksrad Übersetzungen für alle Sprachen hinzugefügt
 
 2. ✅ **Home.js ActivityIndex Bug behoben**
    - **Problem:** `langKey` wurde im memo Component verwendet, aber nicht definiert
    - **Fix:** `langKey` durch `language` (prop) ersetzt
+
+**Verbleibende hardcodierte Stellen (akzeptabel):**
+- Datum-Formatierungen (`toLocaleDateString`, `toLocaleString`) - nutzen locale-spezifische Formate
+- Datenbank-Inhalte (`plan.name_de`, `quest.name_de`) - werden backend-seitig übersetzt
+- API-Language-Parameter (`apiLang`) - korrekt für Backend-Kommunikation
 
 ---
 
