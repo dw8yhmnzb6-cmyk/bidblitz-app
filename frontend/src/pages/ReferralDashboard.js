@@ -314,7 +314,7 @@ const ReferralDashboard = () => {
               {referralData?.stats?.next_rank && (
                 <div className="text-right">
                   <p className="text-gray-500 text-sm">
-                    Noch {referralData.stats.next_rank.referrals_needed} bis
+                    {t.stillNeeded} {referralData.stats.next_rank.referrals_needed} {t.until}
                   </p>
                   <p className={`font-bold ${RANK_COLORS[referralData.stats.next_rank.title]}`}>
                     {referralData.stats.next_rank.icon} {referralData.stats.next_rank.title}
