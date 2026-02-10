@@ -11,6 +11,7 @@ import { HappyHourBanner, LuckyBidCounter, ExcitementStatusBar } from '../compon
 import LeaderboardWidget from '../components/LeaderboardWidget';
 import LiveWinnerTicker from '../components/LiveWinnerTicker';
 import VIPBenefitsBanner from '../components/VIPBenefitsBanner';
+import DailyLoginStreak from '../components/DailyLoginStreak';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
