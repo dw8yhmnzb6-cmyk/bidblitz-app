@@ -241,7 +241,7 @@ export default function Dashboard() {
         {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      toast.success(language === 'en' ? 'Bid placed!' : 'Gebot platziert!');
+      toast.success(language === 'en' ? 'Bid placed!' : (language === 'sq' || language === 'xk') ? 'Oferta u vendos!' : 'Gebot platziert!');
       updateBidsBalance(response.data.bids_remaining);
       fetchData();
     } catch (error) {
