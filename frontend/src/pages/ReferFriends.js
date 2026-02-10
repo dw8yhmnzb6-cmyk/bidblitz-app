@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import axios from 'axios';
 import { Button } from '../components/ui/button';
 import { toast } from 'sonner';
@@ -11,8 +12,75 @@ import {
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
+const pageTexts = {
+  de: {
+    loginTitle: 'Freunde werben',
+    loginDesc: 'Melden Sie sich an, um Ihre Empfehlungen zu verwalten.',
+    login: 'Anmelden',
+    title: 'Freunde werben',
+    subtitle: 'Verdiene Gratis-Gebote für jede erfolgreiche Empfehlung!',
+    bidsForYou: 'Gebote für dich',
+    perReferral: 'pro erfolgreiche Empfehlung',
+    bidsForFriend: 'Gebote für deinen Freund',
+    afterFirstPurchase: 'nach erstem Kauf',
+    yourLink: 'Dein Empfehlungslink',
+    linkLoading: 'Link wird geladen...',
+    share: 'Teilen',
+    shareText: 'Melde dich bei BidBlitz an und erhalte 10 Gratis-Gebote:',
+    linkCopied: 'Link kopiert!',
+    totalReferrals: 'Gesamt',
+    successful: 'Erfolgreich',
+    earnings: 'Verdient',
+    bids: 'Gebote',
+    pending: 'Ausstehend',
+    invitedUsers: 'Eingeladene Nutzer',
+    topReferrers: 'Top Empfehler',
+    referrals: 'Empfehlungen',
+    howItWorks: 'So funktioniert\'s',
+    step1Title: 'Link teilen',
+    step1Desc: 'Sende deinen Link an Freunde',
+    step2Title: 'Freund registriert sich',
+    step2Desc: 'Und tätigt einen Kauf',
+    step3Title: 'Beide profitieren',
+    step3Desc: 'Du bekommst 20, dein Freund 10 Gebote'
+  },
+  sq: {
+    loginTitle: 'Ftoni miq',
+    loginDesc: 'Identifikohuni për të menaxhuar rekomandimet tuaja.',
+    login: 'Identifikohu',
+    title: 'Ftoni miq',
+    subtitle: 'Fitoni oferta falas për çdo rekomandim të suksesshëm!',
+    bidsForYou: 'Oferta për ju',
+    perReferral: 'për rekomandim të suksesshëm',
+    bidsForFriend: 'Oferta për mikun tuaj',
+    afterFirstPurchase: 'pas blerjes së parë',
+    yourLink: 'Linku juaj i rekomandimit',
+    linkLoading: 'Linku po ngarkohet...',
+    share: 'Ndaj',
+    shareText: 'Regjistrohu në BidBlitz dhe merr 10 oferta falas:',
+    linkCopied: 'Linku u kopjua!',
+    totalReferrals: 'Totali',
+    successful: 'I suksesshëm',
+    earnings: 'Fituar',
+    bids: 'Oferta',
+    pending: 'Në pritje',
+    invitedUsers: 'Përdoruesit e ftuar',
+    topReferrers: 'Rekomanduesit kryesorë',
+    referrals: 'Rekomandimet',
+    howItWorks: 'Si funksionon',
+    step1Title: 'Ndani linkun',
+    step1Desc: 'Dërgoni linkun miqve',
+    step2Title: 'Miku regjistrohet',
+    step2Desc: 'Dhe bën një blerje',
+    step3Title: 'Të dy përfitoni',
+    step3Desc: 'Ju merrni 20, miku juaj 10 oferta'
+  }
+};
+
 export default function ReferFriends() {
   const { isAuthenticated, token } = useAuth();
+  const { language } = useLanguage();
+  const t = pageTexts[language] || pageTexts.de;
   const navigate = useNavigate();
   const [stats, setStats] = useState(null);
   const [referrals, setReferrals] = useState([]);
@@ -51,7 +119,7 @@ export default function ReferFriends() {
     if (stats?.link) {
       navigator.clipboard.writeText(stats.link);
       setCopied(true);
-      toast.success('Link kopiert!');
+      toast.success(t.linkCopied);
       setTimeout(() => setCopied(false), 2000);
     }
   };
@@ -135,7 +203,7 @@ export default function ReferFriends() {
           
           <div className="flex gap-3">
             <div className="flex-1 bg-gray-100 rounded-xl p-4 font-mono text-sm text-gray-600 break-all">
-              {stats?.link || 'Link wird geladen...'}
+              {stats?.link || t.linkLoading}
             </div>
             <Button
               onClick={copyLink}
@@ -222,9 +290,9 @@ export default function ReferFriends() {
                   </div>
                   <div className="text-right">
                     {ref.status === 'completed' ? (
-                      <span className="text-green-600 font-bold">+{ref.reward_earned} Gebote</span>
+                      <span className="text-green-600 font-bold">+{ref.reward_earned} {t.bids}</span>
                     ) : (
-                      <span className="text-amber-600 text-sm">Ausstehend</span>
+                      <span className="text-amber-600 text-sm">{t.pending}</span>
                     )}
                   </div>
                 </div>
@@ -238,7 +306,7 @@ export default function ReferFriends() {
           <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-200">
             <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
               <Crown className="w-5 h-5 text-amber-500" />
-              Top Empfehler
+              {t.topReferrers}
             </h3>
             <div className="space-y-2">
               {leaderboard.map((entry, index) => (
@@ -258,8 +326,8 @@ export default function ReferFriends() {
                     <p className="font-medium text-gray-800">{entry.username}</p>
                   </div>
                   <div className="text-right">
-                    <p className="font-bold text-amber-600">{entry.total_referrals} Empfehlungen</p>
-                    <p className="text-xs text-gray-500">+{entry.total_earned} Gebote</p>
+                    <p className="font-bold text-amber-600">{entry.total_referrals} {t.referrals}</p>
+                    <p className="text-xs text-gray-500">+{entry.total_earned} {t.bids}</p>
                   </div>
                 </div>
               ))}
@@ -269,28 +337,28 @@ export default function ReferFriends() {
 
         {/* How it works */}
         <div className="mt-6 bg-white rounded-2xl p-6 shadow-lg border border-gray-200">
-          <h3 className="font-bold text-gray-800 mb-4">So funktioniert's</h3>
+          <h3 className="font-bold text-gray-800 mb-4">{t.howItWorks}</h3>
           <div className="grid md:grid-cols-3 gap-4">
             <div className="text-center p-4">
               <div className="w-12 h-12 bg-cyan-100 rounded-full flex items-center justify-center mx-auto mb-3">
                 <span className="text-cyan-600 font-bold">1</span>
               </div>
-              <p className="font-medium text-gray-800">Link teilen</p>
-              <p className="text-sm text-gray-500">Sende deinen Link an Freunde</p>
+              <p className="font-medium text-gray-800">{t.step1Title}</p>
+              <p className="text-sm text-gray-500">{t.step1Desc}</p>
             </div>
             <div className="text-center p-4">
               <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-3">
                 <span className="text-amber-600 font-bold">2</span>
               </div>
-              <p className="font-medium text-gray-800">Freund registriert sich</p>
-              <p className="text-sm text-gray-500">Und tätigt einen Kauf</p>
+              <p className="font-medium text-gray-800">{t.step2Title}</p>
+              <p className="text-sm text-gray-500">{t.step2Desc}</p>
             </div>
             <div className="text-center p-4">
               <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
                 <span className="text-green-600 font-bold">3</span>
               </div>
-              <p className="font-medium text-gray-800">Beide profitieren</p>
-              <p className="text-sm text-gray-500">Du bekommst 20, dein Freund 10 Gebote</p>
+              <p className="font-medium text-gray-800">{t.step3Title}</p>
+              <p className="text-sm text-gray-500">{t.step3Desc}</p>
             </div>
           </div>
         </div>
