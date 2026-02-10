@@ -15,11 +15,12 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
    - **Fix:** `/api/admin/email/user-stats` in `admin.py` mit robusten Fallback-Queries
    - **Ergebnis:** Zeigt jetzt korrekt 7 Benutzer an
 
-2. ✅ **Bot-Logik verifiziert**
+2. ✅ **Bot-Logik verifiziert & gefixt**
    - **Urgent Mode funktioniert:** Bots bieten alle 2-5 Sekunden wenn < 60s übrig
-   - **Problem gefunden:** 30 abgelaufene Auktionen waren noch als "active" markiert
-   - **Fix:** Manuelle Bereinigung + Auktionsstatus-Check verbessert
-   - **Wichtig:** Der Background-Task für Auktions-Ablauf muss weiter debuggt werden
+   - **Fix implementiert:** Bots prüfen jetzt vor jedem Gebot, ob die Auktion noch aktiv ist in der DB
+   - **Timer Extension ist Designprinzip:** Jedes Gebot verlängert die Auktion um 10-15 Sekunden (gewolltes Penny-Auction Verhalten)
+   - **Datenbank-Bereinigung:** Alte unused Datenbanken (`bidblitz`, `penny_auction`, `test_database`) wurden gelöscht
+   - **Aktive DB:** Nur `bidblitz_production` wird verwendet
 
 3. ✅ **Stripe Webhook Secret** 
    - Platzhalter-Wert in `backend/.env` konfiguriert
