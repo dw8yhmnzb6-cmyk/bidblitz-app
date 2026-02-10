@@ -60,7 +60,7 @@ export default function Invoices() {
       setInvoices(res.data.invoices || []);
     } catch (error) {
       console.error('Error fetching invoices:', error);
-      toast.error('Fehler beim Laden der Rechnungen');
+      toast.error(t.errorLoading);
     } finally {
       setLoading(false);
     }
@@ -87,10 +87,10 @@ export default function Invoices() {
       link.remove();
       window.URL.revokeObjectURL(url);
       
-      toast.success('Rechnung heruntergeladen');
+      toast.success(t.downloadSuccess);
     } catch (error) {
       console.error('Error downloading invoice:', error);
-      toast.error('Fehler beim Download');
+      toast.error(t.downloadError);
     }
   };
 
@@ -99,10 +99,10 @@ export default function Invoices() {
       <div className="min-h-screen pt-24 pb-12 px-4 flex items-center justify-center bg-gradient-to-b from-cyan-50 to-cyan-100">
         <div className="bg-white p-8 rounded-xl text-center max-w-md shadow-lg border border-gray-200">
           <FileText className="w-16 h-16 text-amber-500 mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-gray-800 mb-4">Meine Rechnungen</h2>
-          <p className="text-gray-600 mb-6">Melden Sie sich an, um Ihre Rechnungen zu sehen.</p>
+          <h2 className="text-xl font-bold text-gray-800 mb-4">{t.pageTitle}</h2>
+          <p className="text-gray-600 mb-6">{t.loginPrompt}</p>
           <Button className="bg-amber-500 hover:bg-amber-600 text-white" onClick={() => window.location.href = '/login'}>
-            Anmelden
+            {t.login}
           </Button>
         </div>
       </div>
@@ -119,8 +119,8 @@ export default function Invoices() {
             <FileText className="w-6 h-6 text-white" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-gray-800">Meine Rechnungen</h1>
-            <p className="text-sm text-gray-500">{invoices.length} Rechnungen</p>
+            <h1 className="text-xl font-bold text-gray-800">{t.pageTitle}</h1>
+            <p className="text-sm text-gray-500">{invoices.length} {t.invoicesCount}</p>
           </div>
         </div>
 
@@ -132,8 +132,8 @@ export default function Invoices() {
         ) : invoices.length === 0 ? (
           <div className="text-center py-12 bg-white rounded-xl shadow-sm border border-gray-200">
             <FileText className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-            <p className="text-gray-800 font-medium">Keine Rechnungen</p>
-            <p className="text-gray-500 text-sm mt-1">Ihre Rechnungen erscheinen hier nach dem Kauf</p>
+            <p className="text-gray-800 font-medium">{t.noInvoices}</p>
+            <p className="text-gray-500 text-sm mt-1">{t.invoicesAppear}</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -169,7 +169,7 @@ export default function Invoices() {
                             ? 'bg-green-100 text-green-600'
                             : 'bg-blue-100 text-blue-600'
                         }`}>
-                          {invoice.type === 'auction_win' ? 'Gewinn' : 'Kauf'}
+                          {invoice.type === 'auction_win' ? t.auctionWin : t.purchase}
                         </span>
                       </div>
                     </div>
@@ -198,8 +198,7 @@ export default function Invoices() {
         {/* Info Note */}
         <div className="mt-6 p-4 bg-white rounded-xl border border-gray-200 shadow-sm">
           <p className="text-gray-500 text-xs text-center">
-            Alle Rechnungen enthalten die gesetzlich vorgeschriebene Mehrwertsteuer (19%).
-            Bei Fragen wenden Sie sich an support@bidblitz.de
+            {t.vatInfo}
           </p>
         </div>
       </div>
