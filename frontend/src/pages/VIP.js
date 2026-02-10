@@ -533,8 +533,8 @@ export default function VIP() {
                   {vipStatus.next_renewal && new Date(vipStatus.next_renewal).getFullYear() > 1970
                     ? new Date(vipStatus.next_renewal).toLocaleDateString(language === 'de' ? 'de-DE' : language === 'fr' ? 'fr-FR' : 'en-US')
                     : vipStatus.is_admin || vipStatus.is_manager || vipStatus.is_influencer
-                      ? '∞ ' + (language === 'de' ? 'Unbegrenzt' : 'Unlimited')
-                      : language === 'de' ? 'Aktiv' : 'Active'
+                      ? '∞ ' + (language === 'de' ? 'Unbegrenzt' : (language === 'sq' || language === 'xk') ? 'Pa limit' : 'Unlimited')
+                      : language === 'de' ? 'Aktiv' : (language === 'sq' || language === 'xk') ? 'Aktiv' : 'Active'
                   }
                 </p>
                 {!vipStatus.is_admin && !vipStatus.is_manager && !vipStatus.is_influencer && (
