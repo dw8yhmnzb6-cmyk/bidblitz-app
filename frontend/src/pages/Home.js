@@ -308,16 +308,26 @@ const AuctionCard = memo(({ auction, product, onBid, onRefresh, language = 'de',
   
   // Button text based on auth/VIP status
   const getButtonConfig = () => {
+    const btnTexts = {
+      de: { login: '🔒 Anmelden', getVip: '⭐ VIP werden' },
+      en: { login: '🔒 Login', getVip: '⭐ Become VIP' },
+      sq: { login: '🔒 Hyr', getVip: '⭐ Bëhu VIP' },
+      xk: { login: '🔒 Hyr', getVip: '⭐ Bëhu VIP' },
+      tr: { login: '🔒 Giriş', getVip: '⭐ VIP Ol' },
+      fr: { login: '🔒 Connexion', getVip: '⭐ Devenir VIP' }
+    };
+    const btnT = btnTexts[language] || btnTexts.de;
+    
     if (!isAuthenticated) {
       return {
-        text: language === 'de' ? '🔒 Anmelden' : '🔒 Login',
+        text: btnT.login,
         action: () => navigate('/login'),
         style: 'bg-gray-400 hover:bg-gray-500'
       };
     }
     if (isVipAuction && !isVip) {
       return {
-        text: language === 'de' ? '⭐ VIP werden' : '⭐ Become VIP',
+        text: btnT.getVip,
         action: () => navigate('/vip'),
         style: 'bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-400 hover:to-amber-400'
       };

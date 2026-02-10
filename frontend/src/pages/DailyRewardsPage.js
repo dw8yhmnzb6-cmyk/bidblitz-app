@@ -24,30 +24,114 @@ const DailyRewardsPage = () => {
 
   // Use centralized translations with local fallback
   const ft = getFeatureTranslation('dailyRewards', language);
+  
+  // Daily Rewards page texts
+  const dailyTexts = {
+    de: {
+      subtitle: 'Komm jeden Tag vorbei und hol dir deine Boni!',
+      inProgress: 'In Arbeit',
+      allCompleted: 'Alle Quests erledigt!',
+      bonusReward: 'Bonus-Belohnung',
+      resetsIn: 'Reset in',
+      claimToday: 'Heute abholen',
+      alreadyClaimed: 'Bereits abgeholt',
+      nextReward: 'Nächste Belohnung',
+      powerHourActive: 'Power Hour aktiv!',
+      powerHourNext: 'Nächste Power Hour',
+      hours: 'Stunden'
+    },
+    en: {
+      subtitle: 'Come back every day and claim your bonuses!',
+      inProgress: 'In Progress',
+      allCompleted: 'All quests completed!',
+      bonusReward: 'Bonus Reward',
+      resetsIn: 'Resets in',
+      claimToday: 'Claim Today',
+      alreadyClaimed: 'Already Claimed',
+      nextReward: 'Next Reward',
+      powerHourActive: 'Power Hour Active!',
+      powerHourNext: 'Next Power Hour',
+      hours: 'Hours'
+    },
+    sq: {
+      subtitle: 'Kthehuni çdo ditë dhe merrni bonuset tuaja!',
+      inProgress: 'Në progres',
+      allCompleted: 'Të gjitha detyrat u përfunduan!',
+      bonusReward: 'Shpërblim Bonus',
+      resetsIn: 'Rifreskim në',
+      claimToday: 'Merr Sot',
+      alreadyClaimed: 'Tashmë Marrë',
+      nextReward: 'Shpërblimi i Ardhshëm',
+      powerHourActive: 'Power Hour aktiv!',
+      powerHourNext: 'Power Hour i ardhshëm',
+      hours: 'Orë'
+    },
+    xk: {
+      subtitle: 'Kthehuni çdo ditë dhe merrni bonuset tuaja!',
+      inProgress: 'Në progres',
+      allCompleted: 'Të gjitha detyrat u përfunduan!',
+      bonusReward: 'Shpërblim Bonus',
+      resetsIn: 'Rifreskim në',
+      claimToday: 'Merr Sot',
+      alreadyClaimed: 'Tashmë Marrë',
+      nextReward: 'Shpërblimi i Ardhshëm',
+      powerHourActive: 'Power Hour aktiv!',
+      powerHourNext: 'Power Hour i ardhshëm',
+      hours: 'Orë'
+    },
+    tr: {
+      subtitle: 'Her gün gelin ve bonuslarınızı alın!',
+      inProgress: 'Devam Ediyor',
+      allCompleted: 'Tüm görevler tamamlandı!',
+      bonusReward: 'Bonus Ödül',
+      resetsIn: 'Sıfırlanma',
+      claimToday: 'Bugün Al',
+      alreadyClaimed: 'Zaten Alındı',
+      nextReward: 'Sonraki Ödül',
+      powerHourActive: 'Power Hour aktif!',
+      powerHourNext: 'Sonraki Power Hour',
+      hours: 'Saat'
+    },
+    fr: {
+      subtitle: 'Revenez chaque jour et réclamez vos bonus!',
+      inProgress: 'En cours',
+      allCompleted: 'Toutes les quêtes terminées!',
+      bonusReward: 'Récompense Bonus',
+      resetsIn: 'Réinitialisation dans',
+      claimToday: 'Réclamer Aujourd\'hui',
+      alreadyClaimed: 'Déjà réclamé',
+      nextReward: 'Prochaine récompense',
+      powerHourActive: 'Power Hour actif!',
+      powerHourNext: 'Prochain Power Hour',
+      hours: 'Heures'
+    }
+  };
+  const dT = dailyTexts[language] || dailyTexts.de;
+  
   const t = {
     ...ft,
     title: ft.title || 'Daily Rewards',
-    subtitle: language === 'de' ? 'Komm jeden Tag vorbei und hol dir deine Boni!' : 'Come back every day and claim your bonuses!',
+    subtitle: dT.subtitle,
     dailyQuests: ft.dailyQuests || 'Daily Quests',
     loginCalendar: ft.loginCalendar || 'Login Calendar',
     powerHour: ft.powerHour || 'Power Hour',
     claim: ft.claim || 'Claim',
     claimed: ft.claimed || 'Claimed',
     completed: ft.completed || 'Completed',
-    inProgress: language === 'de' ? 'In Arbeit' : 'In Progress',
-    allCompleted: language === 'de' ? 'Alle Quests erledigt!' : 'All quests completed!',
-    bonusReward: language === 'de' ? 'Bonus-Belohnung' : 'Bonus Reward',
+    inProgress: dT.inProgress,
+    allCompleted: dT.allCompleted,
+    bonusReward: dT.bonusReward,
     day: ft.day || 'Day',
     today: ft.today || 'Today',
-    resetsIn: language === 'de' ? 'Reset in' : 'Resets in',
-    claimToday: language === 'de' ? 'Heute abholen' : 'Claim Today',
-    alreadyClaimed: language === 'de' ? 'Bereits abgeholt' : 'Already Claimed',
+    resetsIn: dT.resetsIn,
+    claimToday: dT.claimToday,
+    alreadyClaimed: dT.alreadyClaimed,
     streak: ft.streak || 'Streak',
-    nextReward: language === 'de' ? 'Nächste Belohnung' : 'Next Reward',
-    powerHourActive: language === 'de' ? 'Power Hour aktiv!' : 'Power Hour Active!',
-    powerHourNext: language === 'de' ? 'Nächste Power Hour' : 'Next Power Hour',
+    nextReward: dT.nextReward,
+    powerHourActive: dT.powerHourActive,
+    powerHourNext: dT.powerHourNext,
     doubleXp: ft.doubleXp || 'Double XP',
-    hours: language === 'de' ? 'Stunden' : 'Hours'
+    hours: dT.hours
   };
 
   useEffect(() => {
