@@ -377,7 +377,7 @@ export default function Notifications() {
       await subscribeToPush(token);
       setPushSubscribed(true);
       setPushPermission('granted');
-      toast.success('Push-Benachrichtigungen aktiviert! 🔔');
+      toast.success(t.pushEnabled + ' 🔔');
       
       // Send test notification
       setTimeout(async () => {
@@ -390,10 +390,10 @@ export default function Notifications() {
     } catch (error) {
       console.error('Push subscribe error:', error);
       if (error.message.includes('denied')) {
-        toast.error('Berechtigung verweigert. Bitte erlauben Sie Benachrichtigungen in Ihren Browser-Einstellungen.');
+        toast.error(t.pushDenied);
         setPushPermission('denied');
       } else {
-        toast.error('Fehler beim Aktivieren: ' + error.message);
+        toast.error(t.pushError + error.message);
       }
     } finally {
       setPushLoading(false);
@@ -405,9 +405,9 @@ export default function Notifications() {
     try {
       await unsubscribeFromPush(token);
       setPushSubscribed(false);
-      toast.success('Push-Benachrichtigungen deaktiviert');
+      toast.success(t.pushDisabled);
     } catch (error) {
-      toast.error('Fehler beim Deaktivieren');
+      toast.error(t.errorSaving);
     } finally {
       setPushLoading(false);
     }
@@ -432,7 +432,7 @@ export default function Notifications() {
       );
       setUnreadCount(prev => Math.max(0, prev - 1));
     } catch (error) {
-      toast.error('Fehler beim Markieren');
+      toast.error(t.errorMarking);
     }
   };
 
@@ -443,9 +443,9 @@ export default function Notifications() {
       });
       setNotifications(prev => prev.map(n => ({...n, read: true})));
       setUnreadCount(0);
-      toast.success('Alle als gelesen markiert');
+      toast.success(t.allMarkedRead);
     } catch (error) {
-      toast.error('Fehler');
+      toast.error(t.errorMarking);
     }
   };
 
@@ -455,9 +455,9 @@ export default function Notifications() {
         headers: { Authorization: `Bearer ${token}` }
       });
       setNotifications(prev => prev.filter(n => n.id !== id));
-      toast.success('Gelöscht');
+      toast.success(t.deleted);
     } catch (error) {
-      toast.error('Fehler beim Löschen');
+      toast.error(t.errorDeleting);
     }
   };
 
@@ -467,9 +467,9 @@ export default function Notifications() {
         headers: { Authorization: `Bearer ${token}` }
       });
       setPreferences(prev => ({...prev, ...newPrefs}));
-      toast.success('Einstellungen gespeichert');
+      toast.success(t.savedSettings);
     } catch (error) {
-      toast.error('Fehler beim Speichern');
+      toast.error(t.errorSaving);
     }
   };
 
@@ -479,10 +479,10 @@ export default function Notifications() {
     const now = new Date();
     const diff = now - date;
     
-    if (diff < 60000) return 'Gerade eben';
-    if (diff < 3600000) return `vor ${Math.floor(diff/60000)} Min.`;
-    if (diff < 86400000) return `vor ${Math.floor(diff/3600000)} Std.`;
-    return date.toLocaleDateString('de-DE');
+    if (diff < 60000) return t.justNow;
+    if (diff < 3600000) return t.minAgo.replace('{n}', Math.floor(diff/60000));
+    if (diff < 86400000) return t.hoursAgo.replace('{n}', Math.floor(diff/3600000));
+    return date.toLocaleDateString(language === 'de' ? 'de-DE' : language === 'fr' ? 'fr-FR' : language === 'tr' ? 'tr-TR' : 'en-US');
   };
 
   if (!isAuthenticated) {
@@ -490,10 +490,10 @@ export default function Notifications() {
       <div className="min-h-screen pt-24 pb-12 px-4 flex items-center justify-center bg-gradient-to-b from-cyan-50 to-cyan-100">
         <div className="bg-white p-8 rounded-xl text-center max-w-md shadow-lg border border-gray-200">
           <Bell className="w-16 h-16 text-amber-500 mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-gray-800 mb-4">Benachrichtigungen</h2>
-          <p className="text-gray-600 mb-6">Melden Sie sich an, um Ihre Benachrichtigungen zu sehen.</p>
+          <h2 className="text-xl font-bold text-gray-800 mb-4">{t.title}</h2>
+          <p className="text-gray-600 mb-6">{t.loginRequired}</p>
           <Button className="bg-amber-500 hover:bg-amber-600 text-white" onClick={() => window.location.href = '/login'}>
-            Anmelden
+            {t.login}
           </Button>
         </div>
       </div>
@@ -511,9 +511,9 @@ export default function Notifications() {
               <Bell className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-gray-800">Benachrichtigungen</h1>
+              <h1 className="text-xl font-bold text-gray-800">{t.title}</h1>
               {unreadCount > 0 && (
-                <p className="text-sm text-amber-600">{unreadCount} ungelesen</p>
+                <p className="text-sm text-amber-600">{unreadCount} {t.unread}</p>
               )}
             </div>
           </div>
@@ -527,7 +527,7 @@ export default function Notifications() {
                 className="text-cyan-600 hover:text-cyan-700"
               >
                 <Check className="w-4 h-4 mr-1" />
-                Alle lesen
+                {t.markAllRead}
               </Button>
             )}
             <Button 
@@ -545,7 +545,7 @@ export default function Notifications() {
         {showSettings && (
           <div className="bg-white rounded-xl p-4 mb-6 border border-gray-200 shadow-sm">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-gray-800 font-semibold">Benachrichtigungs-Einstellungen</h3>
+              <h3 className="text-gray-800 font-semibold">{t.settingsTitle}</h3>
               <button onClick={() => setShowSettings(false)}>
                 <X className="w-5 h-5 text-gray-400 hover:text-gray-600" />
               </button>
@@ -555,11 +555,11 @@ export default function Notifications() {
             <div className="mb-4 p-3 bg-gray-50 rounded-lg">
               <div className="flex items-center justify-between mb-2">
                 <div>
-                  <p className="text-gray-800 font-medium">Push-Benachrichtigungen</p>
+                  <p className="text-gray-800 font-medium">{t.pushNotifications}</p>
                   <p className="text-gray-500 text-xs">
                     {pushPermission === 'denied' 
-                      ? 'Blockiert - Bitte in Browser-Einstellungen erlauben'
-                      : 'Im Browser benachrichtigt werden'
+                      ? t.pushBlocked
+                      : t.pushDesc
                     }
                   </p>
                 </div>
@@ -570,7 +570,7 @@ export default function Notifications() {
                         <button
                           onClick={handleTestPush}
                           className="px-2 py-1.5 rounded text-xs font-medium bg-cyan-100 text-cyan-600 hover:bg-cyan-200"
-                          title="Test-Benachrichtigung senden"
+                          title="Test"
                         >
                           <Send className="w-3 h-3" />
                         </button>
@@ -579,7 +579,7 @@ export default function Notifications() {
                           disabled={pushLoading}
                           className="px-3 py-1.5 rounded text-xs font-medium bg-green-100 text-green-600 hover:bg-red-100 hover:text-red-600"
                         >
-                          {pushLoading ? '...' : '✓ Aktiviert'}
+                          {pushLoading ? '...' : t.activated}
                         </button>
                       </>
                     ) : (
@@ -592,17 +592,17 @@ export default function Notifications() {
                             : 'bg-cyan-500 text-white hover:bg-cyan-600'
                         }`}
                       >
-                        {pushLoading ? 'Aktiviere...' : 'Aktivieren'}
+                        {pushLoading ? t.activating : t.activate}
                       </button>
                     )}
                   </div>
                 ) : (
-                  <span className="text-gray-400 text-xs">Nicht unterstützt</span>
+                  <span className="text-gray-400 text-xs">{t.notSupported}</span>
                 )}
               </div>
               {pushSubscribed && (
                 <p className="text-green-600 text-[10px]">
-                  ✓ Sie erhalten Push-Benachrichtigungen auf diesem Gerät
+                  ✓ {t.pushReceive}
                 </p>
               )}
             </div>
@@ -610,13 +610,13 @@ export default function Notifications() {
             {/* Notification Types */}
             <div className="space-y-2">
               {[
-                { key: 'auction_ending', label: 'Auktion endet bald' },
-                { key: 'auction_won', label: 'Auktion gewonnen' },
-                { key: 'outbid', label: 'Überboten' },
-                { key: 'night_auction_start', label: '🌙 Nacht-Auktionen starten', hint: 'Um 23:30 benachrichtigt werden' },
-                { key: 'daily_deals', label: 'Tägliche Angebote' },
-                { key: 'new_auctions', label: 'Neue Auktionen' },
-                { key: 'marketing', label: 'Aktionen & Newsletter' },
+                { key: 'auction_ending', label: t.auctionEnding },
+                { key: 'auction_won', label: t.auctionWon },
+                { key: 'outbid', label: t.outbid },
+                { key: 'night_auction_start', label: t.nightAuctions, hint: t.nightAuctionsHint },
+                { key: 'daily_deals', label: t.dailyDeals },
+                { key: 'new_auctions', label: t.newAuctions },
+                { key: 'marketing', label: t.marketing },
               ].map(({ key, label, hint }) => (
                 <label key={key} className="flex items-center justify-between p-2 hover:bg-gray-100 rounded cursor-pointer">
                   <div>
@@ -643,7 +643,7 @@ export default function Notifications() {
         ) : notifications.length === 0 ? (
           <div className="text-center py-12 bg-white rounded-xl shadow-sm border border-gray-200">
             <Bell className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-            <p className="text-gray-500">Keine Benachrichtigungen</p>
+            <p className="text-gray-500">{t.noNotifications}</p>
           </div>
         ) : (
           <div className="space-y-2">
@@ -680,7 +680,7 @@ export default function Notifications() {
                           href={notif.link}
                           className="text-cyan-600 text-xs mt-2 inline-block hover:underline"
                         >
-                          Mehr erfahren →
+                          {t.learnMore}
                         </a>
                       )}
                     </div>
@@ -690,7 +690,7 @@ export default function Notifications() {
                         <button
                           onClick={() => markAsRead(notif.id)}
                           className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded"
-                          title="Als gelesen markieren"
+                          title={t.markRead}
                         >
                           <Check className="w-4 h-4" />
                         </button>
@@ -698,7 +698,7 @@ export default function Notifications() {
                       <button
                         onClick={() => deleteNotification(notif.id)}
                         className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded"
-                        title="Löschen"
+                        title={t.delete}
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
