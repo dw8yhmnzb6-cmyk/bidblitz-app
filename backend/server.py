@@ -492,9 +492,11 @@ async def bot_last_second_bidder():
                     if seconds_left <= 0:
                         continue
                     
-                    current_price = auction.get("current_price", 0)
-                    auction_id = auction.get("id")
-                    bid_increment = auction.get("bid_increment", 0.01)
+                    # Use fresh data from current_auction
+                    current_price = current_auction.get("current_price", 0)
+                    bid_increment = current_auction.get("bid_increment", 0.01)
+                    
+                    # These can still come from the original auction object (less critical)
                     explicit_target = auction.get("bot_target_price", 0)
                     retail_price = auction.get("retail_price", 0)
                     is_free_auction = auction.get("is_free_auction", False)
