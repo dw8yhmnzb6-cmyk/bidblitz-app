@@ -498,9 +498,9 @@ export default function Dashboard() {
                   <Trophy className="w-7 h-7 text-gray-800" />
                 </div>
                 <div>
-                  <h3 className="text-gray-800 font-bold text-lg">{language === 'de' ? 'Wochen-Rangliste' : language === 'en' ? 'Weekly Leaderboard' : language === 'tr' ? 'Haftalık Sıralama' : (language === 'sq' || language === 'xk') ? 'Renditja Javore' : 'Wochen-Rangliste'}</h3>
+                  <h3 className="text-gray-800 font-bold text-lg">{dt.weeklyLeaderboard || (language === 'de' ? 'Wochen-Rangliste' : language === 'en' ? 'Weekly Leaderboard' : language === 'tr' ? 'Haftalık Sıralama' : (language === 'sq' || language === 'xk') ? 'Renditja Javore' : 'Wochen-Rangliste')}</h3>
                   <p className="text-gray-500 text-sm">
-                    {language === 'de' ? 'Top 10 gewinnen Gratis-Gebote!' : language === 'en' ? 'Top 10 win free bids!' : language === 'tr' ? 'İlk 10 ücretsiz teklif kazanır!' : (language === 'sq' || language === 'xk') ? 'Top 10 fitojnë oferta falas!' : 'Top 10 gewinnen Gratis-Gebote!'}
+                    {dt.weeklyLeaderboardDesc || (language === 'de' ? 'Top 10 gewinnen Gratis-Gebote!' : language === 'en' ? 'Top 10 win free bids!' : language === 'tr' ? 'İlk 10 ücretsiz teklif kazanır!' : (language === 'sq' || language === 'xk') ? 'Top 10 fitojnë oferta falas!' : 'Top 10 gewinnen Gratis-Gebote!')}
                   </p>
                 </div>
               </div>

@@ -23,6 +23,83 @@ const BattlePassPage = () => {
   const [purchasing, setPurchasing] = useState(false);
   const [visibleTiers, setVisibleTiers] = useState({ start: 0, end: 10 });
 
+  // BattlePass text translations
+  const bpTexts = {
+    de: {
+      getPremium: 'Premium holen',
+      getPremiumPlus: 'Premium+ (inkl. 25 Tier-Skips)',
+      owned: 'Besitzt',
+      xpToNext: 'XP zum nächsten Tier',
+      maxTier: 'MAX erreicht!',
+      rewards: 'Belohnungen',
+      purchaseSuccess: 'Battle Pass erfolgreich gekauft!',
+      premiumPerks: 'Premium Vorteile',
+      perk4: 'Premium+ enthält 25 Tier-Skips!',
+      purchaseError: 'Fehler beim Kauf'
+    },
+    en: {
+      getPremium: 'Get Premium',
+      getPremiumPlus: 'Premium+ (incl. 25 Tier Skips)',
+      owned: 'Owned',
+      xpToNext: 'XP to next tier',
+      maxTier: 'MAX reached!',
+      rewards: 'Rewards',
+      purchaseSuccess: 'Battle Pass purchased successfully!',
+      premiumPerks: 'Premium Perks',
+      perk4: 'Premium+ includes 25 Tier Skips!',
+      purchaseError: 'Purchase error'
+    },
+    sq: {
+      getPremium: 'Merr Premium',
+      getPremiumPlus: 'Premium+ (përfshi 25 Tier Skips)',
+      owned: 'Zotëruar',
+      xpToNext: 'XP për tierin e ardhshëm',
+      maxTier: 'MAX arritur!',
+      rewards: 'Shpërblimet',
+      purchaseSuccess: 'Battle Pass u ble me sukses!',
+      premiumPerks: 'Përfitimet Premium',
+      perk4: 'Premium+ përfshin 25 Tier Skips!',
+      purchaseError: 'Gabim në blerje'
+    },
+    xk: {
+      getPremium: 'Merr Premium',
+      getPremiumPlus: 'Premium+ (përfshi 25 Tier Skips)',
+      owned: 'Zotëruar',
+      xpToNext: 'XP për tierin e ardhshëm',
+      maxTier: 'MAX arritur!',
+      rewards: 'Shpërblimet',
+      purchaseSuccess: 'Battle Pass u ble me sukses!',
+      premiumPerks: 'Përfitimet Premium',
+      perk4: 'Premium+ përfshin 25 Tier Skips!',
+      purchaseError: 'Gabim në blerje'
+    },
+    tr: {
+      getPremium: 'Premium Al',
+      getPremiumPlus: 'Premium+ (25 Tier Atlamalı)',
+      owned: 'Sahipsiniz',
+      xpToNext: 'Sonraki tier için XP',
+      maxTier: 'MAX ulaşıldı!',
+      rewards: 'Ödüller',
+      purchaseSuccess: 'Battle Pass başarıyla satın alındı!',
+      premiumPerks: 'Premium Avantajları',
+      perk4: 'Premium+ 25 Tier Atlama içerir!',
+      purchaseError: 'Satın alma hatası'
+    },
+    fr: {
+      getPremium: 'Obtenir Premium',
+      getPremiumPlus: 'Premium+ (incl. 25 sauts de tier)',
+      owned: 'Possédé',
+      xpToNext: 'XP pour le prochain tier',
+      maxTier: 'MAX atteint!',
+      rewards: 'Récompenses',
+      purchaseSuccess: 'Battle Pass acheté avec succès!',
+      premiumPerks: 'Avantages Premium',
+      perk4: 'Premium+ inclut 25 sauts de tier!',
+      purchaseError: 'Erreur d\'achat'
+    }
+  };
+  const bpT = bpTexts[language] || bpTexts.de;
+
   // Use centralized translations with fallback for specific keys
   const ft = getFeatureTranslation('battlePass', language);
   const t = {
@@ -32,23 +109,24 @@ const BattlePassPage = () => {
     tier: ft.tier || 'Tier',
     free: ft.free || 'Free',
     premium: ft.premium || 'Premium',
-    getPremium: language === 'de' ? 'Premium holen' : 'Get Premium',
-    getPremiumPlus: language === 'de' ? 'Premium+ (inkl. 25 Tier-Skips)' : 'Premium+ (incl. 25 Tier Skips)',
-    owned: language === 'de' ? 'Besitzt' : 'Owned',
+    getPremium: bpT.getPremium,
+    getPremiumPlus: bpT.getPremiumPlus,
+    owned: bpT.owned,
     claim: ft.claimReward || 'Claim',
     claimed: ft.claimed || 'Claimed',
     locked: ft.locked || 'Locked',
     daysLeft: ft.daysLeft || 'days left',
     currentTier: ft.currentTier || 'Current Tier',
-    xpToNext: language === 'de' ? 'XP zum nächsten Tier' : 'XP to next tier',
-    maxTier: language === 'de' ? 'MAX erreicht!' : 'MAX reached!',
-    rewards: language === 'de' ? 'Belohnungen' : 'Rewards',
-    purchaseSuccess: language === 'de' ? 'Battle Pass erfolgreich gekauft!' : 'Battle Pass purchased successfully!',
-    premiumPerks: language === 'de' ? 'Premium Vorteile' : 'Premium Perks',
+    xpToNext: bpT.xpToNext,
+    maxTier: bpT.maxTier,
+    rewards: bpT.rewards,
+    purchaseSuccess: bpT.purchaseSuccess,
+    premiumPerks: bpT.premiumPerks,
     perk1: ft.exclusiveRewards || 'Unlock all Premium rewards',
     perk2: ft.megaReward || 'Exclusive Tier 50 Mega reward',
     perk3: ft.vipDays || 'VIP days and bonus bids',
-    perk4: language === 'de' ? 'Premium+ enthält 25 Tier-Skips!' : 'Premium+ includes 25 Tier Skips!'
+    perk4: bpT.perk4,
+    purchaseError: bpT.purchaseError
   };
 
   useEffect(() => {
@@ -93,7 +171,7 @@ const BattlePassPage = () => {
         window.location.href = res.data.checkout_url;
       }
     } catch (err) {
-      toast.error(err.response?.data?.detail || 'Fehler beim Kauf');
+      toast.error(err.response?.data?.detail || t.purchaseError);
     } finally {
       setPurchasing(false);
     }
