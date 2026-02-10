@@ -40,7 +40,10 @@ const BundlesPage = () => {
       processing: 'Verarbeitung...',
       originalPrice: 'Statt',
       monthlyBids: 'Gebote/Monat',
-      subscription: 'Abo'
+      subscription: 'Abo',
+      securePayment: 'Sichere Zahlung',
+      instantActivation: 'Sofortige Aktivierung',
+      exclusiveDiscounts: 'Exklusive Rabatte'
     },
     en: {
       title: 'Bidder Bundles',
@@ -59,7 +62,98 @@ const BundlesPage = () => {
       processing: 'Processing...',
       originalPrice: 'Was',
       monthlyBids: 'Bids/month',
-      subscription: 'Subscription'
+      subscription: 'Subscription',
+      securePayment: 'Secure Payment',
+      instantActivation: 'Instant Activation',
+      exclusiveDiscounts: 'Exclusive Discounts'
+    },
+    sq: {
+      title: 'Paketat e Ofertuesve',
+      subtitle: 'Kurse deri në 50% me paketat tona kombi!',
+      popular: 'Popullor',
+      bestValue: 'Vlera më e Mirë',
+      bids: 'Oferta',
+      vipDays: 'Ditë VIP',
+      battlePass: 'Battle Pass',
+      wheelSpins: 'Rrotullime Glücksrad',
+      save: 'Kurse',
+      buyNow: 'Bli Tani',
+      includes: 'Përfshin',
+      loginToBuy: 'Hyni për të Blerë',
+      purchaseSuccess: 'Paketa u aktivizua me sukses!',
+      processing: 'Duke u përpunuar...',
+      originalPrice: 'Ishte',
+      monthlyBids: 'Oferta/muaj',
+      subscription: 'Abonim',
+      securePayment: 'Pagesë e Sigurt',
+      instantActivation: 'Aktivizim i Menjëhershëm',
+      exclusiveDiscounts: 'Zbritje Ekskluzive'
+    },
+    xk: {
+      title: 'Paketat e Ofertuesve',
+      subtitle: 'Kurse deri në 50% me paketat tona kombi!',
+      popular: 'Popullor',
+      bestValue: 'Vlera më e Mirë',
+      bids: 'Oferta',
+      vipDays: 'Ditë VIP',
+      battlePass: 'Battle Pass',
+      wheelSpins: 'Rrotullime Glücksrad',
+      save: 'Kurse',
+      buyNow: 'Bli Tani',
+      includes: 'Përfshin',
+      loginToBuy: 'Hyni për të Blerë',
+      purchaseSuccess: 'Paketa u aktivizua me sukses!',
+      processing: 'Duke u përpunuar...',
+      originalPrice: 'Ishte',
+      monthlyBids: 'Oferta/muaj',
+      subscription: 'Abonim',
+      securePayment: 'Pagesë e Sigurt',
+      instantActivation: 'Aktivizim i Menjëhershëm',
+      exclusiveDiscounts: 'Zbritje Ekskluzive'
+    },
+    tr: {
+      title: 'Teklif Paketleri',
+      subtitle: 'Kombi paketlerimizle %50\'ye kadar tasarruf edin!',
+      popular: 'Popüler',
+      bestValue: 'En İyi Değer',
+      bids: 'Teklifler',
+      vipDays: 'Gün VIP',
+      battlePass: 'Battle Pass',
+      wheelSpins: 'Şans Çarkı Dönüşleri',
+      save: 'Tasarruf',
+      buyNow: 'Şimdi Al',
+      includes: 'İçerir',
+      loginToBuy: 'Satın Almak için Giriş Yapın',
+      purchaseSuccess: 'Paket başarıyla aktifleştirildi!',
+      processing: 'İşleniyor...',
+      originalPrice: 'Önceki',
+      monthlyBids: 'Teklif/ay',
+      subscription: 'Abonelik',
+      securePayment: 'Güvenli Ödeme',
+      instantActivation: 'Anında Aktivasyon',
+      exclusiveDiscounts: 'Özel İndirimler'
+    },
+    fr: {
+      title: 'Packs Enchérisseur',
+      subtitle: 'Économisez jusqu\'à 50% avec nos packs combo!',
+      popular: 'Populaire',
+      bestValue: 'Meilleure Valeur',
+      bids: 'Enchères',
+      vipDays: 'Jours VIP',
+      battlePass: 'Battle Pass',
+      wheelSpins: 'Tours de Roue',
+      save: 'Économisez',
+      buyNow: 'Acheter',
+      includes: 'Inclus',
+      loginToBuy: 'Connectez-vous pour Acheter',
+      purchaseSuccess: 'Pack activé avec succès!',
+      processing: 'Traitement...',
+      originalPrice: 'Avant',
+      monthlyBids: 'Enchères/mois',
+      subscription: 'Abonnement',
+      securePayment: 'Paiement Sécurisé',
+      instantActivation: 'Activation Instantanée',
+      exclusiveDiscounts: 'Réductions Exclusives'
     }
   };
   const t = texts[langKey] || texts.de;
@@ -268,15 +362,15 @@ const BundlesPage = () => {
         <div className="mt-12 flex flex-wrap justify-center gap-6 text-gray-500 text-sm">
           <div className="flex items-center gap-2">
             <Shield className="w-5 h-5 text-green-400" />
-            <span>Sichere Zahlung</span>
+            <span>{t.securePayment}</span>
           </div>
           <div className="flex items-center gap-2">
             <Zap className="w-5 h-5 text-yellow-400" />
-            <span>Sofortige Aktivierung</span>
+            <span>{t.instantActivation}</span>
           </div>
           <div className="flex items-center gap-2">
             <Gift className="w-5 h-5 text-purple-400" />
-            <span>Exklusive Rabatte</span>
+            <span>{t.exclusiveDiscounts}</span>
           </div>
         </div>
       </div>
