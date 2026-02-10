@@ -130,7 +130,7 @@ export default function ReferFriends() {
         <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-200 mb-6">
           <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
             <Share2 className="w-5 h-5 text-cyan-500" />
-            Dein Empfehlungslink
+            {t.yourLink}
           </h3>
           
           <div className="flex gap-3">
@@ -151,10 +151,10 @@ export default function ReferFriends() {
               className="flex-1 bg-gradient-to-r from-purple-500 to-indigo-600 text-white"
             >
               <Share2 className="w-4 h-4 mr-2" />
-              Link teilen
+              {t.share}
             </Button>
             <Button
-              onClick={() => window.open(`https://wa.me/?text=Melde%20dich%20bei%20BidBlitz%20an%20und%20erhalte%20Gratis-Gebote!%20${encodeURIComponent(stats?.link || '')}`, '_blank')}
+              onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(t.shareText + ' ' + (stats?.link || ''))}`, '_blank')}
               className="bg-green-500 hover:bg-green-600 text-white"
             >
               WhatsApp
@@ -162,7 +162,7 @@ export default function ReferFriends() {
           </div>
           
           <p className="text-xs text-gray-400 mt-3 text-center">
-            Dein Code: <span className="font-mono font-bold">{stats?.code}</span>
+            Code: <span className="font-mono font-bold">{stats?.code}</span>
           </p>
         </div>
 
@@ -170,25 +170,25 @@ export default function ReferFriends() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           <StatCard 
             icon={<Users className="w-5 h-5" />}
-            label="Eingeladen"
+            label={t.totalReferrals}
             value={stats?.total_referrals || 0}
             color="blue"
           />
           <StatCard 
             icon={<Check className="w-5 h-5" />}
-            label="Erfolgreich"
+            label={t.successful}
             value={stats?.successful_referrals || 0}
             color="green"
           />
           <StatCard 
             icon={<Gift className="w-5 h-5" />}
-            label="Verdient"
-            value={`${stats?.total_earned || 0} Gebote`}
+            label={t.earnings}
+            value={`${stats?.total_earned || 0} ${t.bids}`}
             color="amber"
           />
           <StatCard 
             icon={<Trophy className="w-5 h-5" />}
-            label="Ausstehend"
+            label={t.pending}
             value={stats?.pending_referrals || 0}
             color="purple"
           />
@@ -199,7 +199,7 @@ export default function ReferFriends() {
           <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-200 mb-6">
             <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
               <Users className="w-5 h-5 text-cyan-500" />
-              Deine Empfehlungen
+              {t.invitedUsers}
             </h3>
             <div className="space-y-3">
               {referrals.map((ref) => (
@@ -216,7 +216,7 @@ export default function ReferFriends() {
                     <div>
                       <p className="font-medium text-gray-800">{ref.name}</p>
                       <p className="text-xs text-gray-500">
-                        {new Date(ref.created_at).toLocaleDateString('de-DE')}
+                        {new Date(ref.created_at).toLocaleDateString(language === 'de' ? 'de-DE' : language === 'fr' ? 'fr-FR' : language === 'tr' ? 'tr-TR' : 'en-US')}
                       </p>
                     </div>
                   </div>
