@@ -277,14 +277,13 @@ export default function Login() {
               )}
             </Button>
 
-            {/* Google Login */}
             {!requires2FA && (
               <div className="relative my-4">
                 <div className="absolute inset-0 flex items-center">
                   <div className="w-full border-t border-gray-200"></div>
                 </div>
                 <div className="relative flex justify-center text-sm">
-                  <span className="px-2 bg-white text-gray-500">{language === 'de' ? 'oder' : 'or'}</span>
+                  <span className="px-2 bg-white text-gray-500">{texts.orText || (language === 'de' ? 'oder' : language === 'sq' ? 'ose' : language === 'tr' ? 'veya' : language === 'fr' ? 'ou' : 'or')}</span>
                 </div>
               </div>
             )}
@@ -316,9 +315,12 @@ export default function Login() {
             {!requires2FA && (
               <Button
                 type="button"
-                onClick={() => toast.info(language === 'de' 
+                onClick={() => toast.info(texts.appleLoginInfo || (language === 'de' 
                   ? 'Apple Login erfordert Apple Developer Credentials. Bitte in .env konfigurieren.' 
-                  : 'Apple Login requires Apple Developer Credentials. Please configure in .env.'
+                  : language === 'sq' ? 'Apple Login kërkon kredenciale Apple Developer. Ju lutem konfiguroni në .env.'
+                  : language === 'tr' ? 'Apple Giriş, Apple Developer Kimlik Bilgileri gerektirir. Lütfen .env\'de yapılandırın.'
+                  : language === 'fr' ? 'Apple Login nécessite les identifiants Apple Developer. Veuillez configurer dans .env.'
+                  : 'Apple Login requires Apple Developer Credentials. Please configure in .env.')
                 )}
                 variant="outline"
                 className="w-full h-12 border-gray-300 bg-gray-800 text-white hover:bg-gray-700 mt-3"
@@ -327,7 +329,7 @@ export default function Login() {
                 <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
                 </svg>
-                {language === 'de' ? 'Mit Apple anmelden' : 'Sign in with Apple'}
+                {commonT.loginWithApple || (language === 'de' ? 'Mit Apple anmelden' : language === 'sq' ? 'Hyni me Apple' : language === 'tr' ? 'Apple ile Giriş' : language === 'fr' ? 'Se connecter avec Apple' : 'Sign in with Apple')}
               </Button>
             )}
           </form>

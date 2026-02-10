@@ -204,7 +204,7 @@ export default function Register() {
                 <div className="w-full border-t border-gray-200"></div>
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">{language === 'de' ? 'oder' : 'or'}</span>
+                <span className="px-2 bg-white text-gray-500">{texts.orText || (language === 'de' ? 'oder' : language === 'sq' ? 'ose' : language === 'tr' ? 'veya' : language === 'fr' ? 'ou' : 'or')}</span>
               </div>
             </div>
 
