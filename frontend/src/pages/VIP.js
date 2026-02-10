@@ -531,10 +531,10 @@ export default function VIP() {
                 <p className="text-gray-400 text-sm">{texts.validUntil}</p>
                 <p className="text-white font-semibold">
                   {vipStatus.next_renewal && new Date(vipStatus.next_renewal).getFullYear() > 1970
-                    ? new Date(vipStatus.next_renewal).toLocaleDateString(language === 'de' ? 'de-DE' : language === 'fr' ? 'fr-FR' : 'en-US')
+                    ? new Date(vipStatus.next_renewal).toLocaleDateString(language === 'de' ? 'de-DE' : language === 'fr' ? 'fr-FR' : language === 'sq' || language === 'xk' ? 'sq-AL' : language === 'tr' ? 'tr-TR' : 'en-US')
                     : vipStatus.is_admin || vipStatus.is_manager || vipStatus.is_influencer
-                      ? '∞ ' + (language === 'de' ? 'Unbegrenzt' : (language === 'sq' || language === 'xk') ? 'Pa limit' : 'Unlimited')
-                      : language === 'de' ? 'Aktiv' : (language === 'sq' || language === 'xk') ? 'Aktiv' : 'Active'
+                      ? '∞ ' + (texts.unlimited || 'Unbegrenzt')
+                      : texts.active
                   }
                 </p>
                 {!vipStatus.is_admin && !vipStatus.is_manager && !vipStatus.is_influencer && (
