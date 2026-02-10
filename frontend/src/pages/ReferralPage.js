@@ -74,6 +74,31 @@ export default function ReferralPage() {
       reward3: '+5 bonus after 5 referrals',
       copied: 'Code copied!',
       shareText: 'Sign up at BidBlitz and get 10 free bids with my code:'
+    },
+    sq: {
+      title: 'Bonusi i miqve',
+      subtitle: 'Ftoni miq dhe fitoni oferta falas!',
+      yourCode: 'Kodi juaj i rekomandimit',
+      copyCode: 'Kopjo kodin',
+      shareLink: 'Ndaj linkun',
+      howItWorks: 'Si funksionon',
+      step1: 'Ndani kodin tuaj me miqtë',
+      step2: 'Miku juaj regjistrohet me kodin tuaj',
+      step3: 'Të dy merrni 10 oferta falas!',
+      yourStats: 'Statistikat tuaja',
+      totalReferrals: 'Ftesat',
+      successfulReferrals: 'Të suksesshme',
+      bidsEarned: 'Oferta të fituara',
+      recentReferrals: 'Rekomandimet e fundit',
+      noReferrals: 'Ende asnjë rekomandim. Ftoni miqtë tuaj!',
+      pending: 'Në pritje',
+      completed: 'Përfunduar',
+      rewards: 'Shpërblimet',
+      reward1: '10 oferta për ju',
+      reward2: '10 oferta për mikun tuaj',
+      reward3: '+5 bonus pas 5 rekomandimeve',
+      copied: 'Kodi u kopjua!',
+      shareText: 'Regjistrohuni në BidBlitz dhe merrni 10 oferta falas me kodin tim:'
     }
   };
 
