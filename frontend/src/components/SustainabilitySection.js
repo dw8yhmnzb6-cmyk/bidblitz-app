@@ -5,7 +5,8 @@ import { Leaf, Heart, Globe, TreePine, Users, Sparkles } from 'lucide-react';
 const API = process.env.REACT_APP_BACKEND_URL;
 
 const SustainabilitySection = () => {
-  const { language } = useLanguage();
+  const { language, mappedLanguage } = useLanguage();
+  const langKey = mappedLanguage || language;
   const [stats, setStats] = useState({
     trees_planted: 0,
     projects_supported: 0,
@@ -28,7 +29,7 @@ const SustainabilitySection = () => {
     fetchStats();
   }, []);
   
-  const t = {
+  const translations = {
     de: {
       title: 'Innovation mit Verantwortung',
       subtitle: 'BidBlitz – Weil Erfolg nur zählt, wenn er nachhaltig ist',
