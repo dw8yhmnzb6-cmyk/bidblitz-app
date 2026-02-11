@@ -38,7 +38,7 @@ export default function AchievementsPage() {
 
   const texts = {
     de: {
-      title: 'Achievements',
+      title: 'Erfolge',
       subtitle: 'Sammle Abzeichen & verdiene Bonus-Gebote',
       earned: 'Verdient',
       locked: 'Gesperrt',
@@ -53,7 +53,7 @@ export default function AchievementsPage() {
       loyalty: 'Treue',
       totalEarned: 'Gesamt verdient',
       completion: 'Abgeschlossen',
-      nextUp: 'Nächste Achievements',
+      nextUp: 'Nächste Erfolge',
       almostThere: 'Fast geschafft!'
     },
     en: {
