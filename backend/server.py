@@ -358,6 +358,19 @@ app.include_router(affiliate_dashboard_router, prefix="/api")
 app.include_router(social_media_share_router, prefix="/api")
 app.include_router(user_reports_router, prefix="/api")
 app.include_router(daily_streak_router, prefix="/api")
+# New gamification and revenue routers
+app.include_router(vip_tiers_router, prefix="/api")
+app.include_router(coupons_router, prefix="/api")
+app.include_router(duels_router, prefix="/api")
+app.include_router(flash_sales_router, prefix="/api")
+app.include_router(price_alerts_router, prefix="/api")
+app.include_router(bid_combo_router, prefix="/api")
+app.include_router(weekly_challenge_router, prefix="/api")
+app.include_router(birthday_router, prefix="/api")
+app.include_router(ab_testing_router, prefix="/api")
+app.include_router(fraud_detection_router, prefix="/api")
+app.include_router(winback_router, prefix="/api")
+app.include_router(abandoned_cart_router, prefix="/api")
 
 # ==================== HEALTH & BASIC ENDPOINTS ====================
 
