@@ -337,7 +337,7 @@ export const Navbar = () => {
                 <Globe className="w-4 h-4" />
                 {t('nav.language') || 'Sprache'}
               </p>
-              <div className="grid grid-cols-4 gap-1.5 max-h-48 overflow-y-auto">
+              <div className="grid grid-cols-4 gap-1.5 max-h-64 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300">
                 {Object.entries(languageList).map(([code, { flag, name }]) => (
                   <button
                     key={code}
