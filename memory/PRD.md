@@ -9,6 +9,18 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 
 **Abgeschlossen in dieser Session:**
 
+#### SEITEN-AUFTEILUNG ✅
+Die Auktionen-Seite wurde in zwei separate Seiten aufgeteilt:
+
+| Seite | Route | Inhalt |
+|-------|-------|--------|
+| **Auktionen** | `/auktionen` | Nur Auktionen: Jackpot, Status Bar, Filter, Auktion des Tages, Auktions-Grid |
+| **Features & Extras** | `/features` | Alle Gamification-Features, Sustainability, Winner Gallery, etc. |
+
+- Neuer Link-Banner auf Auktionen-Seite: "✨ Entdecke alle Features & Extras →"
+- Features-Seite zeigt alle Feature-Karten mit NEU-Badges
+- Übersetzungen für DE, EN, SQ hinzugefügt
+
 #### 7 NEUE FRONTEND-SEITEN IMPLEMENTIERT ✅
 
 | Seite | Route(s) | Typ | Features |
