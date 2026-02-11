@@ -478,6 +478,13 @@ async def bot_last_second_bidder():
     
     while bot_task_running:
         try:
+            # Refresh products cache every 5 minutes
+            if now_ts - products_cache_time > CACHE_TTL:
+                all_products = await db.products.find({}, {"_id": 0, "id": 1, "retail_price": 1, "name": 1, "category": 1}).to_list(500)
+                products_cache = {p["id"]: p for p in all_products}
+                products_cache_time = now_ts
+                logger.info(f"Products cache refreshed: {len(products_cache)} products")
+            
             # Get ALL active auctions
             active_auctions = await db.auctions.find({
                 "status": "active"
