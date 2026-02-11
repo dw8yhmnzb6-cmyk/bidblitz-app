@@ -2643,6 +2643,11 @@ export default function Admin() {
             <AdminSustainability />
           )}
 
+          {/* Mystery Box Tab */}
+          {activeTab === 'mystery-box' && (
+            <AdminMysteryBox />
+          )}
+
           {/* Promo Codes Tab */}
           {activeTab === 'promo-codes' && (
             <div className="space-y-6">
