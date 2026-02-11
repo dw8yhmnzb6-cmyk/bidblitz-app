@@ -1,26 +1,12 @@
 import React, { useState, useEffect, useCallback, useRef, memo, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { toast } from 'sonner';
 import GlobalJackpot from '../components/GlobalJackpot';
-import { HappyHourBanner, LuckyBidCounter, ExcitementStatusBar } from '../components/ExcitementFeatures';
-import LeaderboardWidget from '../components/LeaderboardWidget';
-import PersonalizedRecommendations from '../components/PersonalizedRecommendations';
-import WinnerGallery from '../components/WinnerGallery';
+import { HappyHourBanner, ExcitementStatusBar } from '../components/ExcitementFeatures';
 import ExitIntentPopup from '../components/ExitIntentPopup';
-import DailyQuestsWidget from '../components/DailyQuestsWidget';
-import { VIPPromoBanner } from '../components/VIPBadge';
-import FlashSaleBanner from '../components/FlashSaleBanner';
-import MysteryBoxSection from '../components/MysteryBoxSection';
-// New gamification and social proof components
-import LiveWinnerTicker from '../components/LiveWinnerTicker';
-import VIPBenefitsBanner from '../components/VIPBenefitsBanner';
-import DailyLoginStreak from '../components/DailyLoginStreak';
-import ShareAndWin from '../components/ShareAndWin';
-import WinnerGalleryHome from '../components/WinnerGalleryHome';
-import SustainabilitySection from '../components/SustainabilitySection';
 // Note: LiveTimer, LivePrice, ProductInfo, ActivityIndex, TrustBadges are defined locally for this page
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
