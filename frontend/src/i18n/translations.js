@@ -1967,7 +1967,8 @@ export const translations = {
       step3: "Fitoni",
       pleaseLogin: "Ju lutem hyni",
       bidPlaced: "Oferta u vendos!",
-      error: "Gabim"
+      error: "Gabim",
+      ended: "Përfundoi"
     },
     auctionCard: {
       liveNow: "LIVE TANI", comingSoon: "SË SHPEJTI", ended: "PËRFUNDOI",
@@ -2290,7 +2291,8 @@ export const translations = {
       step3: "Fitoni",
       pleaseLogin: "Ju lutem hyni",
       bidPlaced: "Oferta u vendos!",
-      error: "Gabim"
+      error: "Gabim",
+      ended: "Përfundoi"
     },
     auctionCard: {
       liveNow: "LIVE TANI", comingSoon: "SË SHPEJTI", ended: "PËRFUNDOI",
