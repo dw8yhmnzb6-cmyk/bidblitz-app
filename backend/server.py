@@ -456,6 +456,11 @@ async def bot_last_second_bidder():
     auction_bot_history = {}  # auction_id -> list of last 5 bot IDs
     auction_start_offset = {}  # auction_id -> random offset in seconds (0-60)
     
+    # Products cache - refreshed every 5 minutes
+    products_cache = {}
+    products_cache_time = 0
+    CACHE_TTL = 300  # 5 minutes
+    
     # MINIMUM price for NORMAL auctions - €25 (für echte Einnahmen)
     MINIMUM_AUCTION_PRICE = 25.00
     
