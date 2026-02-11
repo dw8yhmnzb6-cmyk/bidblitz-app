@@ -116,7 +116,7 @@ const homeTexts = {
 const LiveTimer = memo(({ endTime, onExpired, language = 'de' }) => {
   const [time, setTime] = useState({ d: 0, h: 0, m: 0, s: 0, expired: false });
   const expiredCalled = useRef(false);
-  const ht = homeTexts[langKey] || homeTexts.de;
+  const ht = homeTexts[language] || homeTexts.de;
   
   // Day labels per language
   const dayLabels = {
@@ -195,7 +195,7 @@ const LiveTimer = memo(({ endTime, onExpired, language = 'de' }) => {
 
 // Live Price Display - Only updates price and bidder
 const LivePrice = memo(({ price, bidderName, language = 'de' }) => {
-  const ht = homeTexts[langKey] || homeTexts.de;
+  const ht = homeTexts[language] || homeTexts.de;
   return (
     <div className="text-center my-4">
       <p className="text-4xl font-black text-gray-800">
@@ -211,7 +211,7 @@ const LivePrice = memo(({ price, bidderName, language = 'de' }) => {
 // Premium Featured Auction - Snipster Style
 const PremiumAuction = memo(({ auction, product, onBid, onRefresh, language = 'de' }) => {
   const navigate = useNavigate();
-  const ht = homeTexts[langKey] || homeTexts.de;
+  const ht = homeTexts[language] || homeTexts.de;
   
   if (!auction || !product) return null;
   
@@ -298,7 +298,7 @@ const PremiumAuction = memo(({ auction, product, onBid, onRefresh, language = 'd
 // Small Auction Card - Snipster Style
 const AuctionCard = memo(({ auction, product, onBid, onRefresh, language = 'de', isAuthenticated = false, isVip = false }) => {
   const navigate = useNavigate();
-  const ht = homeTexts[langKey] || homeTexts.de;
+  const ht = homeTexts[language] || homeTexts.de;
   
   if (!auction || !product) return null;
   
@@ -434,7 +434,7 @@ const StatsBar = memo(({ totalBids, activeUsers, activeAuctions, language = 'de'
     tr: { liveAuctions: 'Canlı Açık Artırmalar', activeBidders: 'Aktif Teklifçiler', bidsToday: 'Bugünkü Teklifler' },
     fr: { liveAuctions: 'Enchères en Direct', activeBidders: 'Enchérisseurs Actifs', bidsToday: 'Enchères Aujourd\'hui' }
   };
-  const st = statsTexts[langKey] || statsTexts.de;
+  const st = statsTexts[language] || statsTexts.de;
   
   return (
     <div className="bg-gradient-to-r from-[#2D5A7B] to-[#4A7C9B] rounded-xl p-4 mb-6">
@@ -468,7 +468,7 @@ const StatsBar = memo(({ totalBids, activeUsers, activeAuctions, language = 'de'
 });
 
 export default function Home() {
-  const { isAuthenticated, token, updateBidsBalance, isVip } = useAuth();
+  const { isAuthenticated, token, updateBidsBalance, isVip, user } = useAuth();
   const { language , mappedLanguage } = useLanguage();
   // Use mappedLanguage for regional variants (e.g., xk -> sq)
   const langKey = mappedLanguage || language;
@@ -638,7 +638,7 @@ export default function Home() {
         {isAuthenticated && <DailyLoginStreak />}
         
         {/* VIP Benefits Banner - Only for non-VIP users */}
-        {!user?.is_vip && <VIPBenefitsBanner isVIP={user?.is_vip} />}
+        {!isVip && <VIPBenefitsBanner isVIP={isVip} />}
         
         {/* Share & Win Feature */}
         {isAuthenticated && <ShareAndWin />}
