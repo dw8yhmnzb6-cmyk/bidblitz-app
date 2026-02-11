@@ -72,7 +72,7 @@ yarn android
 Die API-URL wird in `/src/services/api.js` konfiguriert:
 
 ```javascript
-const API_BASE_URL = 'https://bidstorm-1.preview.emergentagent.com/api';
+const API_BASE_URL = 'https://auction-hub-72.preview.emergentagent.com/api';
 ```
 
 ## 📂 Projektstruktur

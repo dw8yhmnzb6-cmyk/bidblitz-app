@@ -64,7 +64,7 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 
 #### 7. MOBILE APP - BEREIT ZUM TESTEN
 - **Verzeichnis:** `/app/mobile-app/BidBlitz`
-- **API:** Korrekt konfiguriert auf `https://bidstorm-1.preview.emergentagent.com/api`
+- **API:** Korrekt konfiguriert auf `https://auction-hub-72.preview.emergentagent.com/api`
 - **Anleitung:** README.md mit Expo Go Instruktionen
 
 #### 4. Admin Mobile Responsiveness - Verifiziert
