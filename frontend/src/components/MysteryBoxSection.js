@@ -141,8 +141,9 @@ const tierIcons = {
 const MysteryBoxCard = memo(({ box, onBid, t }) => {
   const tier = box.tier || 'bronze';
   const colorClass = tierColors[tier] || tierColors.bronze;
-  const icon = tierIcons[tier] || '📦';
-  const isPreview = box.id?.startsWith('preview_');
+  const icon = box.emoji || tierIcons[tier] || '📦';
+  const isPreview = box.id?.startsWith('preview_') || !box.auction_id;
+  const hasPrice = box.current_price !== undefined && box.current_price !== null;
   
   const handleClick = () => {
     if (isPreview) {
@@ -150,6 +151,15 @@ const MysteryBoxCard = memo(({ box, onBid, t }) => {
     } else {
       onBid(box);
     }
+  };
+  
+  // Format time remaining
+  const formatTime = (seconds) => {
+    if (!seconds) return '';
+    const hours = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    if (hours > 0) return `${hours}h ${mins}m`;
+    return `${mins}m`;
   };
   
   return (
