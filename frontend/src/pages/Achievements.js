@@ -44,7 +44,7 @@ export default function Achievements() {
 
   const texts = {
     de: {
-      title: "Achievements",
+      title: "Erfolge",
       subtitle: "Sammle Badges und verdiene Bonus-Gebote!",
       earned: "Verdient",
       locked: "Noch nicht freigeschaltet",
@@ -52,7 +52,7 @@ export default function Achievements() {
       bids: "Gebote",
       progress: "Fortschritt",
       all: "Alle",
-      loginRequired: "Melde dich an, um deine Achievements zu sehen",
+      loginRequired: "Melde dich an, um deine Erfolge zu sehen",
       totalEarned: "Verdiente Badges",
       totalRewards: "Bonus-Gebote verdient",
       backToAuctions: "Zurück zu Auktionen"
