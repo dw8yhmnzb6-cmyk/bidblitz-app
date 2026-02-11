@@ -14,6 +14,12 @@ import DailyQuestsWidget from '../components/DailyQuestsWidget';
 import { VIPPromoBanner } from '../components/VIPBadge';
 import FlashSaleBanner from '../components/FlashSaleBanner';
 import MysteryBoxSection from '../components/MysteryBoxSection';
+// New gamification and social proof components
+import LiveWinnerTicker from '../components/LiveWinnerTicker';
+import VIPBenefitsBanner from '../components/VIPBenefitsBanner';
+import DailyLoginStreak from '../components/DailyLoginStreak';
+import ShareAndWin from '../components/ShareAndWin';
+import WinnerGalleryHome from '../components/WinnerGalleryHome';
 // Note: LiveTimer, LivePrice, ProductInfo, ActivityIndex, TrustBadges are defined locally for this page
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
