@@ -478,6 +478,9 @@ async def bot_last_second_bidder():
     
     while bot_task_running:
         try:
+            now = datetime.now(timezone.utc)
+            now_ts = now.timestamp()
+            
             # Refresh products cache every 5 minutes
             if now_ts - products_cache_time > CACHE_TTL:
                 all_products = await db.products.find({}, {"_id": 0, "id": 1, "retail_price": 1, "name": 1, "category": 1}).to_list(500)
@@ -489,9 +492,6 @@ async def bot_last_second_bidder():
             active_auctions = await db.auctions.find({
                 "status": "active"
             }, {"_id": 0}).to_list(200)
-            
-            now = datetime.now(timezone.utc)
-            now_ts = now.timestamp()
             
             # Initialize random offsets for new auctions (to desync bot bidding)
             for auction in active_auctions:
