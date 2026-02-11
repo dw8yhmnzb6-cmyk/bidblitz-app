@@ -128,11 +128,11 @@ const SustainabilitySection = () => {
   
   const text = t[language] || t.de;
   
-  // Sample impact numbers (these could be fetched from backend)
+  // Use real stats from backend
   const impactStats = {
-    trees: 2847,
-    projects: 23,
-    co2: 15420
+    trees: stats.trees_planted || 0,
+    projects: stats.projects_supported || 0,
+    co2: stats.co2_offset_kg || 0
   };
 
   return (
