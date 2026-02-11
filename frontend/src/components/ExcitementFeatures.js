@@ -129,7 +129,43 @@ export function LuckyBidCelebration({ show, reward, onClose }) {
 }
 
 // ==================== HAPPY HOUR BANNER ====================
+const happyHourTexts = {
+  de: {
+    title: 'HAPPY HOUR!',
+    subtitle: 'DOPPELTE GEBOTE beim Kauf!',
+    endsIn: 'Endet in'
+  },
+  en: {
+    title: 'HAPPY HOUR!',
+    subtitle: 'DOUBLE BIDS on purchase!',
+    endsIn: 'Ends in'
+  },
+  sq: {
+    title: 'ORA E LUMTUR!',
+    subtitle: 'OFERTA TË DYFISHTA me blerje!',
+    endsIn: 'Përfundon në'
+  },
+  xk: {
+    title: 'ORA E LUMTUR!',
+    subtitle: 'OFERTA TË DYFISHTA me blerje!',
+    endsIn: 'Përfundon në'
+  },
+  tr: {
+    title: 'MUTLU SAAT!',
+    subtitle: 'Satın almada ÇİFT TEKLİF!',
+    endsIn: 'Bitiş'
+  },
+  fr: {
+    title: 'HAPPY HOUR!',
+    subtitle: 'DOUBLE ENCHÈRES à l\'achat!',
+    endsIn: 'Finit dans'
+  }
+};
+
 export function HappyHourBanner({ className = '' }) {
+  const { language, mappedLanguage } = useLanguage();
+  const langKey = mappedLanguage || language;
+  const t = happyHourTexts[langKey] || happyHourTexts.de;
   const [status, setStatus] = useState(null);
 
   useEffect(() => {
@@ -167,12 +203,12 @@ export function HappyHourBanner({ className = '' }) {
             <Zap className="w-8 h-8 text-black" />
           </motion.div>
           <div>
-            <p className="text-black font-black text-lg">🔥 HAPPY HOUR!</p>
-            <p className="text-black/80 font-bold">DOPPELTE GEBOTE beim Kauf!</p>
+            <p className="text-black font-black text-lg">🔥 {t.title}</p>
+            <p className="text-black/80 font-bold">{t.subtitle}</p>
           </div>
         </div>
         <div className="text-right">
-          <p className="text-black/60 text-sm">Endet in</p>
+          <p className="text-black/60 text-sm">{t.endsIn}</p>
           <p className="text-black font-black text-2xl">
             {minutes}:{seconds.toString().padStart(2, '0')}
           </p>
