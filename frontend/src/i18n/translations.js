@@ -116,6 +116,7 @@ export const translations = {
       activityHot: "Heiß",
       activityActive: "Aktiv",
       activityCalm: "Ruhig",
+      discoverFeatures: "Entdecke alle Features & Extras",
       howItWorks: "SO GEHT'S",
       step1: "Kaufen",
       step2: "Bieten",
