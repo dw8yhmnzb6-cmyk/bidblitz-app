@@ -1,9 +1,32 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import { Leaf, Heart, Globe, TreePine, Users, Sparkles } from 'lucide-react';
 
+const API = process.env.REACT_APP_BACKEND_URL;
+
 const SustainabilitySection = () => {
   const { language } = useLanguage();
+  const [stats, setStats] = useState({
+    trees_planted: 0,
+    projects_supported: 0,
+    co2_offset_kg: 0
+  });
+  
+  useEffect(() => {
+    // Fetch real stats from backend
+    const fetchStats = async () => {
+      try {
+        const response = await fetch(`${API}/api/sustainability/stats`);
+        if (response.ok) {
+          const data = await response.json();
+          setStats(data);
+        }
+      } catch (err) {
+        console.error('Error fetching sustainability stats:', err);
+      }
+    };
+    fetchStats();
+  }, []);
   
   const t = {
     de: {
