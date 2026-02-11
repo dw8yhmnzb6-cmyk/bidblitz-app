@@ -2409,6 +2409,7 @@ export const translations = {
 
 // Language display names with flags
 export const languageList = {
+  ae: { name: 'الإمارات', flag: '🇦🇪' },
   de: { name: 'Deutsch', flag: '🇩🇪' },
   en: { name: 'English (UK)', flag: '🇬🇧' },
   sq: { name: 'Shqip', flag: '🇦🇱' },
@@ -2422,7 +2423,6 @@ export const languageList = {
   nl: { name: 'Nederlands', flag: '🇳🇱' },
   pl: { name: 'Polski', flag: '🇵🇱' },
   ru: { name: 'Русский', flag: '🇷🇺' },
-  ae: { name: 'الإمارات', flag: '🇦🇪' },
   ar: { name: 'العربية', flag: '🇸🇦' },
   zh: { name: '中文', flag: '🇨🇳' },
   ja: { name: '日本語', flag: '🇯🇵' },
