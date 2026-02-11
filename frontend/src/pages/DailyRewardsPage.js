@@ -28,6 +28,7 @@ const DailyRewardsPage = () => {
   // Daily Rewards page texts
   const dailyTexts = {
     de: {
+      dailyRewards: 'Tägliche Belohnungen',
       subtitle: 'Komm jeden Tag vorbei und hol dir deine Boni!',
       inProgress: 'In Arbeit',
       allCompleted: 'Alle Quests erledigt!',
