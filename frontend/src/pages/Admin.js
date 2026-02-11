@@ -2634,6 +2634,11 @@ export default function Admin() {
             <AdminCoupons />
           )}
 
+          {/* Sustainability Tab */}
+          {activeTab === 'sustainability' && (
+            <AdminSustainability />
+          )}
+
           {/* Promo Codes Tab */}
           {activeTab === 'promo-codes' && (
             <div className="space-y-6">
