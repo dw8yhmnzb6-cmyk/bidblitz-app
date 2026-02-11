@@ -1211,9 +1211,6 @@ export default function Auctions() {
       
       <p className="text-center text-[8px] text-gray-500 mt-2">{t('auctionPage.priceNote')}</p>
       
-      {/* Sustainability Section - BidBlitz Social Responsibility */}
-      <SustainabilitySection />
-      
       {/* Horizontal Ended Auctions Carousel - Only on live filter */}
       {activeFilter === 'live' && endedAuctions.length > 0 && (
         <div className="max-w-7xl mx-auto mt-6 px-2" data-testid="ended-auctions-carousel">
