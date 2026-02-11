@@ -65,7 +65,7 @@ async def get_sustainability_stats():
 @router.put("/stats")
 async def update_sustainability_stats(
     update: SustainabilityUpdate,
-    current_user: dict = Depends(require_admin)
+    current_user: dict = Depends(get_admin_user)
 ):
     """Update sustainability statistics (Admin only)"""
     update_data = {k: v for k, v in update.dict().items() if v is not None}
@@ -88,7 +88,7 @@ async def update_sustainability_stats(
 async def increment_stats(
     trees: int = 0,
     co2: int = 0,
-    current_user: dict = Depends(require_admin)
+    current_user: dict = Depends(get_admin_user)
 ):
     """Increment specific stats (Admin only)"""
     update = {}
@@ -125,7 +125,7 @@ async def get_projects():
 @router.post("/projects")
 async def create_project(
     project: ProjectCreate,
-    current_user: dict = Depends(require_admin)
+    current_user: dict = Depends(get_admin_user)
 ):
     """Create a new sustainability project (Admin only)"""
     import uuid
@@ -169,7 +169,7 @@ async def create_project(
 @router.delete("/projects/{project_id}")
 async def delete_project(
     project_id: str,
-    current_user: dict = Depends(require_admin)
+    current_user: dict = Depends(get_admin_user)
 ):
     """Delete a sustainability project (Admin only)"""
     result = await db.sustainability_projects.delete_one({"id": project_id})
