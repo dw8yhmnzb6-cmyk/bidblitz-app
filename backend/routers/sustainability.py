@@ -153,14 +153,14 @@ async def create_project(
         await db.sustainability_stats.update_one(
             {"type": "global"},
             {
-                "$inc": update,
-                "$inc": {"projects_supported": 1},
+                "$inc": {**update, "projects_supported": 1},
                 "$set": {"last_updated": datetime.now(timezone.utc).isoformat()}
             },
             upsert=True
         )
     
-    del project_data["_id"] if "_id" in project_data else None
+    if "_id" in project_data:
+        del project_data["_id"]
     logger.info(f"Admin {current_user['email']} created sustainability project: {project.name}")
     
     return {"message": "Projekt erstellt", "project": project_data}
