@@ -152,12 +152,12 @@ export default function LiveWinnerTicker() {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-bold text-amber-500">{winner.username}</span>
-            <span className="text-gray-500 text-sm">aus {winner.city}</span>
+            <span className="text-gray-500 text-sm">{t.from} {winner.city}</span>
             <span className="text-gray-400 text-sm">{t.justWon}</span>
           </div>
           <div className="flex items-center gap-2 mt-0.5">
             <span className="text-gray-800 font-medium truncate">{winner.product_name}</span>
-            <span className="text-xs text-gray-500">für nur</span>
+            <span className="text-xs text-gray-500">{t.forOnly}</span>
             <span className="text-green-500 font-bold">€{winner.final_price?.toFixed(2)}</span>
           </div>
         </div>
