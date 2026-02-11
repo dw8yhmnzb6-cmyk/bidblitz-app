@@ -6,7 +6,7 @@ import pytest
 import requests
 import os
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://bidblitz-app.preview.emergentagent.com')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://bidstorm-1.preview.emergentagent.com')
 
 class TestPublicEndpoints:
     """Test public API endpoints that don't require authentication"""
