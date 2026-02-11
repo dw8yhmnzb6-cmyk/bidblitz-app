@@ -1090,6 +1090,11 @@ export default function Auctions() {
         <WinnerGallery />
       </div>
       
+      {/* Winner Gallery Home - Enhanced with Testimonials */}
+      <div className="max-w-7xl mx-auto mb-4 px-2">
+        <WinnerGalleryHome />
+      </div>
+      
       {/* Leaderboard Widget - Weekly Champions */}
       <div className="max-w-4xl mx-auto mb-4 px-2">
         <LeaderboardWidget language={language} />
