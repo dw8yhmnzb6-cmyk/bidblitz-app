@@ -5,6 +5,36 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 
 ## Current Status (February 11, 2026)
 
+### ✅ Session Update - February 11, 2026 (Session 11) - BUG FIXES & SUSTAINABILITY
+
+**Abgeschlossen in dieser Session:**
+
+#### 1. GLÜCKSRAD-BUG VOLLSTÄNDIG GEFIXT ✅
+- **Problem:** Das Rad zeigte ein anderes Segment als der tatsächliche Gewinn
+- **Ursache:** Falsche Rotation-Berechnung in `SpinWheel.js`
+- **Fix:** Rotation-Algorithmus korrigiert - Rad stoppt jetzt exakt auf dem Backend-Gewinn
+- **Getestet:** Mit Test-Account `spinner@bidblitz.de` erfolgreich verifiziert
+- **Ergebnis:** Rad zeigt "10% Rabatt" → Popup zeigt "10% Rabatt" → Toast zeigt "10% Rabatt" ✓
+
+#### 2. SPRACH-BUG VERIFIZIERT ✅
+- Homepage zeigt korrektes Deutsch mit 🇩🇪 ausgewählt
+- Alle UI-Elemente auf Deutsch: Navigation, Buttons, Texte
+
+#### 3. NACHHALTIGKEITS-SEKTION NEU ERSTELLT ✅
+- **Komponente:** `/app/frontend/src/components/SustainabilitySection.js`
+- **Features:**
+  - "Innovation mit Verantwortung" - Corporate Social Responsibility
+  - 4 Bereiche: Projekte, Spenden & Helfen, Klimaschutz, Community
+  - Impact-Statistiken: 2,847 Bäume, 23 Projekte, 15,420 kg CO₂
+  - Vollständig mehrsprachig (DE, EN, SQ, TR, FR)
+  - Auf Homepage integriert nach Trust-Badges
+- **Zitat:** "Gemeinsam für eine nachhaltige Zukunft"
+
+#### 4. TEST-ACCOUNTS ERSTELLT
+- `spinner@bidblitz.de` / `Spinner123!` - Für Glücksrad-Tests
+
+---
+
 ### ✅ Session Update - February 11, 2026 (Session 10) - MASSIVE FEATURE SESSION
 
 **Abgeschlossen in dieser Session:**
