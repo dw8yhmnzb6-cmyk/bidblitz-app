@@ -137,18 +137,30 @@ const SpinWheel = ({ isOpen, onClose }) => {
     setSpinning(true);
     setResult(null);
     
-    // Start spinning animation
-    const randomSpins = 5 + Math.random() * 3;
-    const randomSegment = Math.floor(Math.random() * SEGMENTS.length);
-    const segmentAngle = 360 / SEGMENTS.length;
-    const targetRotation = rotation + (randomSpins * 360) + (randomSegment * segmentAngle) + (segmentAngle / 2);
-    
-    setRotation(targetRotation);
-    
     try {
+      // First get the result from backend
       const res = await axios.post(`${API}/api/wheel/spin`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
+      
+      // Find the segment index that matches the prize
+      const prizeLabel = res.data.prize?.label;
+      let targetSegmentIndex = SEGMENTS.findIndex(s => s.label === prizeLabel);
+      if (targetSegmentIndex === -1) {
+        // Fallback to first matching type
+        if (res.data.prize?.type === 'bids') {
+          targetSegmentIndex = SEGMENTS.findIndex(s => s.label.includes(`${res.data.prize?.value} Gebot`));
+        }
+        if (targetSegmentIndex === -1) targetSegmentIndex = 0;
+      }
+      
+      // Calculate rotation to land on the correct segment
+      const randomSpins = 5 + Math.random() * 3;
+      const segmentAngle = 360 / SEGMENTS.length;
+      // Add offset to center on segment, account for wheel orientation
+      const targetRotation = rotation + (randomSpins * 360) + (targetSegmentIndex * segmentAngle) + (segmentAngle / 2);
+      
+      setRotation(targetRotation);
       
       // Wait for animation to complete
       setTimeout(() => {
