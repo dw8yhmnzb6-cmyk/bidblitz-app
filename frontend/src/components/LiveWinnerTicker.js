@@ -9,17 +9,44 @@ const tickerTexts = {
   de: {
     justWon: 'hat gerade gewonnen!',
     savings: 'gespart',
-    congrats: 'Herzlichen Glückwunsch!'
-  },
-  sq: {
-    justWon: 'sapo fitoi!',
-    savings: 'kursyer',
-    congrats: 'Urime!'
+    congrats: 'Herzlichen Glückwunsch!',
+    from: 'aus',
+    forOnly: 'für nur'
   },
   en: {
     justWon: 'just won!',
     savings: 'saved',
-    congrats: 'Congratulations!'
+    congrats: 'Congratulations!',
+    from: 'from',
+    forOnly: 'for only'
+  },
+  sq: {
+    justWon: 'sapo fitoi!',
+    savings: 'kursyer',
+    congrats: 'Urime!',
+    from: 'nga',
+    forOnly: 'për vetëm'
+  },
+  xk: {
+    justWon: 'sapo fitoi!',
+    savings: 'kursyer',
+    congrats: 'Urime!',
+    from: 'nga',
+    forOnly: 'për vetëm'
+  },
+  tr: {
+    justWon: 'az önce kazandı!',
+    savings: 'tasarruf',
+    congrats: 'Tebrikler!',
+    from: 'şehrinden',
+    forOnly: 'sadece'
+  },
+  fr: {
+    justWon: 'vient de gagner!',
+    savings: 'économisé',
+    congrats: 'Félicitations!',
+    from: 'de',
+    forOnly: 'pour seulement'
   }
 };
 
