@@ -98,6 +98,11 @@ import WholesaleRegister from "./pages/WholesaleRegister";
 import WholesaleLogin from "./pages/WholesaleLogin";
 import SocialSharingRewards from "./pages/SocialSharingRewards";
 import FriendsBattle from "./pages/FriendsBattle";
+import SocialBettingPage from "./pages/SocialBettingPage";
+import BidAlarmPage from "./pages/BidAlarmPage";
+import AIAdvisorPage from "./pages/AIAdvisorPage";
+import VoucherAuctionsPage from "./pages/VoucherAuctionsPage";
+import DuelsPage from "./pages/DuelsPage";
 
 // Protected Route Component
 const ProtectedRoute = ({ children, requireAdmin = false }) => {
