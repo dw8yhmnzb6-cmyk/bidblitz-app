@@ -636,9 +636,9 @@ async def bot_last_second_bidder():
                         target_price = FINAL_TARGET
                         should_bid = True
                     
-                    # SAFETY NET: Wenn Zeit < 60 Sek und Preis < €5, IMMER bieten!
+                    # SAFETY NET: Wenn Zeit < 60 Sek und Preis < €10, IMMER bieten!
                     # Verhindert zu niedrige Endpreise
-                    if seconds_left < 60 and current_price < 5.00:
+                    if seconds_left < 60 and current_price < 10.00:
                         should_bid = True
                         target_price = FINAL_TARGET
                         logger.warning(f"⚠️ SAFETY BID: Auction {auction_id[:8]} at €{current_price:.2f} with only {seconds_left:.0f}s left!")
