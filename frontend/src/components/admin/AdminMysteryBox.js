@@ -331,73 +331,71 @@ const AdminMysteryBox = () => {
         </h3>
 
         {boxes.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
-            <Gift className="w-12 h-12 mx-auto mb-3 opacity-30" />
-            <p>Noch keine Mystery Boxes erstellt</p>
-            <p className="text-sm">Klicke oben auf "Neue Mystery Box"</p>
+          <div className="text-center py-6 sm:py-8 text-gray-500">
+            <Gift className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-2 sm:mb-3 opacity-30" />
+            <p className="text-sm sm:text-base">Noch keine Mystery Boxes</p>
+            <p className="text-xs sm:text-sm">Klicke auf "Neu"</p>
           </div>
         ) : (
           <div className="space-y-3">
             {boxes.map((box) => (
-              <div key={box.id} className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                {/* Tier Badge */}
-                <div className={`w-14 h-14 bg-gradient-to-br ${tierColors[box.tier]} rounded-lg flex items-center justify-center text-2xl`}>
-                  {box.tier_emoji}
-                </div>
-                
-                {/* Info */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-medium text-gray-800">{box.tier_name}</span>
-                    {getStatusBadge(box.status)}
-                    {box.revealed && (
-                      <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs rounded-full flex items-center gap-1">
-                        <Eye className="w-3 h-3" /> Enthüllt
-                      </span>
+              <div key={box.id} className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 sm:p-4 bg-gray-50 rounded-lg border border-gray-200">
+                {/* Top Row: Tier Badge + Info */}
+                <div className="flex items-start gap-3 flex-1 min-w-0">
+                  {/* Tier Badge */}
+                  <div className={`w-10 h-10 sm:w-14 sm:h-14 bg-gradient-to-br ${tierColors[box.tier]} rounded-lg flex items-center justify-center text-xl sm:text-2xl flex-shrink-0`}>
+                    {box.tier_emoji}
+                  </div>
+                  
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-1 sm:gap-2 mb-1">
+                      <span className="font-medium text-gray-800 text-sm sm:text-base">{box.tier_name}</span>
+                      {getStatusBadge(box.status)}
+                      {box.revealed && (
+                        <span className="px-1.5 py-0.5 bg-purple-100 text-purple-700 text-xs rounded-full flex items-center gap-1">
+                          <Eye className="w-3 h-3" /> Enthüllt
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-xs sm:text-sm text-gray-600">
+                      <div className="truncate">{box.product_name}</div>
+                      <div className="flex flex-wrap items-center gap-2 mt-0.5">
+                        <span>€{box.retail_value}</span>
+                        <span>{box.total_bids} Gebote</span>
+                      </div>
+                    </div>
+                    {box.hint && (
+                      <div className="text-xs text-purple-600 mt-1 italic truncate">💡 {box.hint}</div>
                     )}
                   </div>
-                  <div className="text-sm text-gray-600 flex items-center gap-3">
-                    <span className="flex items-center gap-1">
-                      <Package className="w-4 h-4" />
-                      {box.product_name}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <DollarSign className="w-4 h-4" />
-                      €{box.retail_value}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Users className="w-4 h-4" />
-                      {box.total_bids} Gebote
-                    </span>
+                </div>
+
+                {/* Bottom Row: Price + Actions */}
+                <div className="flex items-center justify-between sm:justify-end gap-3 pl-13 sm:pl-0">
+                  {/* Current Price */}
+                  <div className="text-left sm:text-right">
+                    <div className="text-base sm:text-lg font-bold text-green-600">€{box.current_price?.toFixed(2)}</div>
+                    {box.last_bidder && (
+                      <div className="text-xs text-gray-500">von {box.last_bidder}</div>
+                    )}
                   </div>
-                  {box.hint && (
-                    <div className="text-xs text-purple-600 mt-1 italic">💡 {box.hint}</div>
-                  )}
-                </div>
 
-                {/* Current Price */}
-                <div className="text-right">
-                  <div className="text-lg font-bold text-green-600">€{box.current_price?.toFixed(2)}</div>
-                  {box.last_bidder && (
-                    <div className="text-xs text-gray-500">von {box.last_bidder}</div>
-                  )}
-                </div>
-
-                {/* Actions */}
-                <div className="flex gap-2">
-                  {box.status === 'active' && (
+                  {/* Actions */}
+                  <div className="flex gap-1 sm:gap-2">
+                    {box.status === 'active' && (
+                      <Button 
+                        onClick={() => handleEndBox(box.id)} 
+                        variant="outline" 
+                        size="sm"
+                        className="text-orange-600 hover:bg-orange-50 p-2"
+                      >
+                        <Clock className="w-4 h-4" />
+                      </Button>
+                    )}
                     <Button 
-                      onClick={() => handleEndBox(box.id)} 
-                      variant="outline" 
-                      size="sm"
-                      className="text-orange-600 hover:bg-orange-50"
-                    >
-                      <Clock className="w-4 h-4" />
-                    </Button>
-                  )}
-                  <Button 
-                    onClick={() => handleDeleteBox(box.id)} 
-                    variant="ghost" 
+                      onClick={() => handleDeleteBox(box.id)} 
+                      variant="ghost" 
                     size="sm"
                     className="text-red-500 hover:text-red-700 hover:bg-red-50"
                   >
