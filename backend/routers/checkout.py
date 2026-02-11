@@ -345,3 +345,272 @@ async def process_referral_reward_checkout(user_id: str, amount: float, is_subsc
 async def process_referral_reward(user_id: str, amount: float):
     """Wrapper for backwards compatibility"""
     await process_referral_reward_checkout(user_id, amount, is_subscription=False)
+
+
+# ==================== WON AUCTION CHECKOUT ====================
+
+class ShippingAddress(BaseModel):
+    name: str
+    street: str
+    city: str
+    postal_code: str
+    country: str = "Deutschland"
+    phone: Optional[str] = None
+
+class WonAuctionCheckout(BaseModel):
+    auction_id: str
+    shipping_address: Optional[ShippingAddress] = None
+
+from pydantic import BaseModel
+
+@router.post("/won-auction")
+async def create_won_auction_checkout(data: WonAuctionCheckout, user: dict = Depends(get_current_user)):
+    """Create Stripe checkout session for a won auction"""
+    if not STRIPE_API_KEY:
+        raise HTTPException(status_code=503, detail="Zahlungsservice nicht verfügbar")
+    
+    # Find the won auction
+    auction = await db.auctions.find_one({
+        "id": data.auction_id,
+        "winner_id": user["id"],
+        "status": "ended"
+    }, {"_id": 0})
+    
+    if not auction:
+        raise HTTPException(status_code=404, detail="Gewonnene Auktion nicht gefunden oder bereits bezahlt")
+    
+    # Check if already paid
+    existing_payment = await db.auction_payments.find_one({
+        "auction_id": data.auction_id,
+        "status": "paid"
+    })
+    if existing_payment:
+        raise HTTPException(status_code=400, detail="Auktion bereits bezahlt")
+    
+    # Get product info
+    product = await db.products.find_one({"id": auction.get("product_id")}, {"_id": 0})
+    product_name = product.get("name", "Auktionsgewinn") if product else "Auktionsgewinn"
+    product_image = product.get("image_url") if product else None
+    
+    # Calculate prices
+    final_price = auction.get("final_price") or auction.get("current_price", 0)
+    shipping_cost = 4.99  # Fixed shipping cost
+    total_amount = final_price + shipping_cost
+    
+    try:
+        # Create payment record
+        payment_id = str(uuid.uuid4())
+        
+        # Save shipping address if provided
+        shipping_data = None
+        if data.shipping_address:
+            shipping_data = data.shipping_address.dict()
+        
+        await db.auction_payments.insert_one({
+            "id": payment_id,
+            "auction_id": data.auction_id,
+            "user_id": user["id"],
+            "user_email": user.get("email"),
+            "product_name": product_name,
+            "product_id": auction.get("product_id"),
+            "final_price": final_price,
+            "shipping_cost": shipping_cost,
+            "total_amount": total_amount,
+            "shipping_address": shipping_data,
+            "status": "pending",
+            "created_at": datetime.now(timezone.utc).isoformat()
+        })
+        
+        # Prepare line items for Stripe
+        line_items = [
+            {
+                "price_data": {
+                    "currency": "eur",
+                    "unit_amount": int(final_price * 100),
+                    "product_data": {
+                        "name": product_name,
+                        "description": f"Auktionsgewinn - Endpreis €{final_price:.2f}",
+                        "images": [product_image] if product_image else []
+                    }
+                },
+                "quantity": 1
+            },
+            {
+                "price_data": {
+                    "currency": "eur",
+                    "unit_amount": int(shipping_cost * 100),
+                    "product_data": {
+                        "name": "Versandkosten",
+                        "description": "Standardversand innerhalb Deutschlands"
+                    }
+                },
+                "quantity": 1
+            }
+        ]
+        
+        # Create Stripe session
+        session = stripe.checkout.Session.create(
+            payment_method_types=["card"],
+            line_items=line_items,
+            mode="payment",
+            success_url=f"{FRONTEND_URL}/won-auction/{data.auction_id}/success?session_id={{CHECKOUT_SESSION_ID}}",
+            cancel_url=f"{FRONTEND_URL}/won-auction/{data.auction_id}?canceled=true",
+            customer_email=user.get("email"),
+            shipping_address_collection={
+                "allowed_countries": ["DE", "AT", "CH"]
+            } if not data.shipping_address else None,
+            metadata={
+                "type": "auction_win",
+                "auction_id": data.auction_id,
+                "user_id": user["id"],
+                "payment_id": payment_id,
+                "product_name": product_name
+            }
+        )
+        
+        # Update payment with session ID
+        await db.auction_payments.update_one(
+            {"id": payment_id},
+            {"$set": {"stripe_session_id": session.id}}
+        )
+        
+        logger.info(f"Won auction checkout created: {data.auction_id} for user {user['id']}, total €{total_amount:.2f}")
+        
+        return {
+            "session_id": session.id,
+            "url": session.url,
+            "payment_id": payment_id,
+            "final_price": final_price,
+            "shipping_cost": shipping_cost,
+            "total_amount": total_amount
+        }
+        
+    except stripe.error.StripeError as e:
+        logger.error(f"Stripe won auction checkout error: {e}")
+        raise HTTPException(status_code=500, detail=f"Zahlungsfehler: {str(e)}")
+    except Exception as e:
+        logger.error(f"Won auction checkout error: {e}")
+        raise HTTPException(status_code=500, detail=f"Fehler: {str(e)}")
+
+
+@router.get("/won-auction/{auction_id}/status")
+async def get_won_auction_payment_status(auction_id: str, session_id: str, user: dict = Depends(get_current_user)):
+    """Check payment status for won auction and complete if paid"""
+    if not STRIPE_API_KEY:
+        raise HTTPException(status_code=503, detail="Zahlungsservice nicht verfügbar")
+    
+    try:
+        # Get Stripe session
+        session = stripe.checkout.Session.retrieve(session_id)
+        
+        if session.payment_status == "paid":
+            # Find pending payment
+            payment = await db.auction_payments.find_one({
+                "auction_id": auction_id,
+                "stripe_session_id": session_id,
+                "status": "pending"
+            })
+            
+            if payment:
+                now = datetime.now(timezone.utc).isoformat()
+                
+                # Get shipping address from Stripe if collected
+                shipping_address = None
+                if session.shipping_details:
+                    shipping_address = {
+                        "name": session.shipping_details.name,
+                        "street": session.shipping_details.address.line1,
+                        "city": session.shipping_details.address.city,
+                        "postal_code": session.shipping_details.address.postal_code,
+                        "country": session.shipping_details.address.country
+                    }
+                
+                # Mark payment as complete
+                await db.auction_payments.update_one(
+                    {"id": payment["id"]},
+                    {"$set": {
+                        "status": "paid",
+                        "paid_at": now,
+                        "stripe_payment_intent": session.payment_intent,
+                        "shipping_address": shipping_address or payment.get("shipping_address")
+                    }}
+                )
+                
+                # Update auction status
+                await db.auctions.update_one(
+                    {"id": auction_id},
+                    {"$set": {
+                        "payment_status": "paid",
+                        "paid_at": now
+                    }}
+                )
+                
+                # Create invoice record
+                invoice_number = f"WIN-{auction_id[:8].upper()}"
+                await db.invoices.insert_one({
+                    "id": str(uuid.uuid4()),
+                    "invoice_number": invoice_number,
+                    "type": "auction_win",
+                    "user_id": user["id"],
+                    "auction_id": auction_id,
+                    "payment_id": payment["id"],
+                    "product_name": payment.get("product_name"),
+                    "final_price": payment.get("final_price"),
+                    "shipping_cost": payment.get("shipping_cost"),
+                    "total_amount": payment.get("total_amount"),
+                    "shipping_address": shipping_address or payment.get("shipping_address"),
+                    "status": "paid",
+                    "created_at": now
+                })
+                
+                logger.info(f"Won auction payment completed: {auction_id}, total €{payment.get('total_amount'):.2f}")
+        
+        return {
+            "status": session.status,
+            "payment_status": session.payment_status,
+            "auction_id": auction_id
+        }
+        
+    except stripe.error.StripeError as e:
+        logger.error(f"Stripe status check error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/won-auction/{auction_id}/payment")
+async def get_won_auction_payment(auction_id: str, user: dict = Depends(get_current_user)):
+    """Get payment info for a won auction"""
+    # Get auction
+    auction = await db.auctions.find_one({
+        "id": auction_id,
+        "winner_id": user["id"]
+    }, {"_id": 0})
+    
+    if not auction:
+        raise HTTPException(status_code=404, detail="Gewonnene Auktion nicht gefunden")
+    
+    # Get payment if exists
+    payment = await db.auction_payments.find_one({
+        "auction_id": auction_id,
+        "user_id": user["id"]
+    }, {"_id": 0})
+    
+    # Get product
+    product = await db.products.find_one({"id": auction.get("product_id")}, {"_id": 0})
+    
+    final_price = auction.get("final_price") or auction.get("current_price", 0)
+    shipping_cost = 4.99
+    
+    return {
+        "auction_id": auction_id,
+        "product_name": product.get("name") if product else "Produkt",
+        "product_image": product.get("image_url") if product else None,
+        "retail_price": product.get("retail_price", 0) if product else 0,
+        "final_price": final_price,
+        "shipping_cost": shipping_cost,
+        "total_amount": final_price + shipping_cost,
+        "payment_status": payment.get("status") if payment else "unpaid",
+        "paid_at": payment.get("paid_at") if payment else None,
+        "shipping_address": payment.get("shipping_address") if payment else None,
+        "invoice_available": payment.get("status") == "paid" if payment else False
+    }
+
