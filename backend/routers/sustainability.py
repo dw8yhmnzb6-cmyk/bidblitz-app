@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime, timezone
 from config import db, logger
-from utils.auth import get_current_user, require_admin
+from utils.auth import get_current_user, get_admin_user
 
 router = APIRouter(prefix="/api/sustainability", tags=["sustainability"])
 
