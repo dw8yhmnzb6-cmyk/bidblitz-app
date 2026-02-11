@@ -259,31 +259,32 @@ const AdminMysteryBox = () => {
                 <select
                   value={newBox.duration_hours}
                   onChange={(e) => setNewBox({...newBox, duration_hours: parseInt(e.target.value)})}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
               >
-                <option value={6}>6 Stunden</option>
-                <option value={12}>12 Stunden</option>
-                <option value={24}>24 Stunden</option>
-                <option value={48}>48 Stunden</option>
-                <option value={72}>72 Stunden</option>
+                <option value={6}>6h</option>
+                <option value={12}>12h</option>
+                <option value={24}>24h</option>
+                <option value={48}>48h</option>
+                <option value={72}>72h</option>
               </select>
             </div>
 
             {/* Hint */}
             <div>
-              <label className="text-sm font-medium text-gray-700 mb-2 block">Hinweis (optional)</label>
+              <label className="text-sm font-medium text-gray-700 mb-2 block">Hinweis</label>
               <input
                 type="text"
                 value={newBox.hint}
                 onChange={(e) => setNewBox({...newBox, hint: e.target.value})}
-                placeholder="z.B. 'Perfekt für Technik-Fans'"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                placeholder="z.B. Technik-Fans"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
               />
+            </div>
             </div>
           </div>
 
           {/* Start Option */}
-          <div className="mt-4 flex items-center gap-2">
+          <div className="mt-3 flex items-center gap-2">
             <input
               type="checkbox"
               id="start_immediately"
@@ -296,12 +297,12 @@ const AdminMysteryBox = () => {
             </label>
           </div>
 
-          <div className="flex gap-2 mt-4">
-            <Button onClick={handleCreateBox} className="bg-purple-600 hover:bg-purple-700">
-              <Gift className="w-4 h-4 mr-2" />
-              Mystery Box erstellen
+          <div className="flex flex-wrap gap-2 mt-4">
+            <Button onClick={handleCreateBox} className="bg-purple-600 hover:bg-purple-700" size="sm">
+              <Gift className="w-4 h-4 mr-1" />
+              Erstellen
             </Button>
-            <Button onClick={() => setShowCreate(false)} variant="outline">
+            <Button onClick={() => setShowCreate(false)} variant="outline" size="sm">
               Abbrechen
             </Button>
           </div>
@@ -309,13 +310,13 @@ const AdminMysteryBox = () => {
       )}
 
       {/* Tier Overview */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4">
         {Object.entries(tiers).map(([key, tier]) => (
-          <div key={key} className={`bg-gradient-to-br ${tierColors[key]} rounded-xl p-4 text-white`}>
-            <div className="text-3xl mb-2">{tier.emoji}</div>
-            <div className="font-bold">{tier.name}</div>
-            <div className="text-sm opacity-80">€{tier.min_value} - €{tier.max_value}</div>
-            <div className="text-xs mt-2 opacity-70">
+          <div key={key} className={`bg-gradient-to-br ${tierColors[key]} rounded-xl p-3 sm:p-4 text-white`}>
+            <div className="text-2xl sm:text-3xl mb-1 sm:mb-2">{tier.emoji}</div>
+            <div className="font-bold text-sm sm:text-base truncate">{tier.name}</div>
+            <div className="text-xs sm:text-sm opacity-80">€{tier.min_value}-{tier.max_value}</div>
+            <div className="text-xs mt-1 sm:mt-2 opacity-70">
               {productsByTier[key]?.length || 0} Produkte
             </div>
           </div>
