@@ -66,6 +66,9 @@ import AdminCoupons from '../components/admin/AdminCoupons';
 // Import Sustainability
 import AdminSustainability from '../components/admin/AdminSustainability';
 
+// Import Mystery Box
+import AdminMysteryBox from '../components/admin/AdminMysteryBox';
+
 // Import Voice Debug Assistant
 import VoiceDebugAssistant from '../components/VoiceDebugAssistant';
 
