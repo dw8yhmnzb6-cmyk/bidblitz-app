@@ -57,6 +57,9 @@ import {
 // Import Winner Control
 import AdminWinnerControl from '../components/admin/AdminWinnerControl';
 
+// Import Weekly Challenges
+import AdminWeeklyChallenges from '../components/admin/AdminWeeklyChallenges';
+
 // Import Voice Debug Assistant
 import VoiceDebugAssistant from '../components/VoiceDebugAssistant';
 
