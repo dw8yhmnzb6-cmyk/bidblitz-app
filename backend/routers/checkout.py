@@ -362,7 +362,6 @@ class WonAuctionCheckout(BaseModel):
     auction_id: str
     shipping_address: Optional[ShippingAddress] = None
 
-from pydantic import BaseModel
 
 @router.post("/won-auction")
 async def create_won_auction_checkout(data: WonAuctionCheckout, user: dict = Depends(get_current_user)):
