@@ -34,7 +34,25 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 
 ---
 
-### ✅ Session Update - February 10, 2026 (Session 9) - MEGA FEATURE SESSION
+## Pending Tasks (Priority Order)
+
+### P0 - Critical
+- ✅ ~~Homepage Features Bug~~ (Fixed Session 10)
+
+### P1 - High Priority  
+- ⏳ Backend-Logik für 15+ neue Router implementieren
+- ⏳ Mobile App via Expo Go testen
+- ⏳ Push-Notifications
+
+### P2 - Medium Priority
+- ⏳ Admin.js Refactoring
+- ⏳ Stripe Webhook Secret konfigurieren
+
+### P3 - Low Priority
+- ⏳ Tawk.to Integration
+- ⏳ Apple Login
+
+---
 
 **Abgeschlossen in dieser Session:**
 
