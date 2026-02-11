@@ -266,6 +266,7 @@ function AppContent() {
           <Route path="/contact" element={<Contact />} />
           <Route path="/vip" element={<VIP />} />
           <Route path="/vip/success" element={<VIP />} />
+          <Route path="/vip-dashboard" element={<VIPDashboard />} />
           {/* Influencer Pages */}
           <Route path="/influencer-login" element={<InfluencerDashboard />} />
           <Route path="/influencer-dashboard" element={<InfluencerDashboard />} />
