@@ -188,20 +188,37 @@ const MysteryBoxCard = memo(({ box, onBid, t }) => {
         
         {/* Mystery Content */}
         <div className="bg-white/20 backdrop-blur rounded-lg p-3 mb-3 text-center">
-          <div className="flex items-center justify-center gap-2 mb-2">
-            <HelpCircle className="w-5 h-5" />
-            <span className="font-semibold">{t.whatInside}</span>
-          </div>
-          <p className="text-sm opacity-90">
-            {t.valueBetween} €{box.min_value} - €{box.max_value}
-          </p>
+          {box.hint ? (
+            <>
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <Sparkles className="w-5 h-5" />
+                <span className="font-semibold">{t.hint || 'Hinweis'}</span>
+              </div>
+              <p className="text-sm opacity-90 italic">{box.hint}</p>
+            </>
+          ) : (
+            <>
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <HelpCircle className="w-5 h-5" />
+                <span className="font-semibold">{t.whatInside}</span>
+              </div>
+              <p className="text-sm opacity-90">
+                {t.valueBetween} €{box.min_value} - €{box.max_value}
+              </p>
+            </>
+          )}
         </div>
         
-        {/* Current Bid */}
-        {box.current_price !== undefined && (
+        {/* Current Bid & Time */}
+        {hasPrice && (
           <div className="text-center mb-3">
             <p className="text-xs opacity-80">{t.currentBid}</p>
             <p className="text-2xl font-black">€{box.current_price?.toFixed(2)}</p>
+            {box.time_remaining > 0 && (
+              <p className="text-xs opacity-80 mt-1">
+                ⏱️ {formatTime(box.time_remaining)} {t.left || 'übrig'}
+              </p>
+            )}
           </div>
         )}
         
@@ -223,7 +240,7 @@ const MysteryBoxCard = memo(({ box, onBid, t }) => {
           ) : (
             <>
               <Gift className="w-5 h-5" />
-              {t.bidNow}
+              {t.bidNow} {box.total_bids > 0 && `(${box.total_bids})`}
             </>
           )}
         </button>
