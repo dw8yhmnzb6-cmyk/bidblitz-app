@@ -203,23 +203,23 @@ const AdminMysteryBox = () => {
             Neue Mystery Box erstellen
           </h3>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4">
             {/* Tier Selection */}
             <div>
               <label className="text-sm font-medium text-gray-700 mb-2 block">Stufe wählen</label>
-              <div className="grid grid-cols-4 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 {Object.entries(tiers).map(([key, tier]) => (
                   <button
                     key={key}
                     onClick={() => setNewBox({...newBox, tier: key, product_id: ''})}
-                    className={`p-3 rounded-lg border-2 transition-all ${
+                    className={`p-2 sm:p-3 rounded-lg border-2 transition-all ${
                       newBox.tier === key 
                         ? 'border-purple-500 bg-purple-50' 
                         : 'border-gray-200 hover:border-gray-300'
                     }`}
                   >
-                    <div className="text-2xl mb-1">{tier.emoji}</div>
-                    <div className="text-xs font-medium">{tier.name?.replace(' Box', '')}</div>
+                    <div className="text-xl sm:text-2xl mb-1">{tier.emoji}</div>
+                    <div className="text-xs font-medium truncate">{tier.name?.replace(' Box', '')}</div>
                     <div className="text-xs text-gray-500">€{tier.min_value}-{tier.max_value}</div>
                   </button>
                 ))}
@@ -229,18 +229,18 @@ const AdminMysteryBox = () => {
             {/* Product Selection */}
             <div>
               <label className="text-sm font-medium text-gray-700 mb-2 block">
-                Produkt wählen ({availableProducts.length} verfügbar)
+                Produkt ({availableProducts.length})
               </label>
               {availableProducts.length === 0 ? (
-                <div className="p-4 bg-yellow-50 rounded-lg border border-yellow-200 text-yellow-700 text-sm flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4" />
-                  Keine Produkte für diese Stufe verfügbar
+                <div className="p-3 bg-yellow-50 rounded-lg border border-yellow-200 text-yellow-700 text-sm flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                  <span className="text-xs">Keine Produkte für diese Stufe</span>
                 </div>
               ) : (
                 <select
                   value={newBox.product_id}
                   onChange={(e) => setNewBox({...newBox, product_id: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-sm"
                 >
                   <option value="">Produkt auswählen...</option>
                   {availableProducts.map((prod) => (
@@ -252,12 +252,13 @@ const AdminMysteryBox = () => {
               )}
             </div>
 
-            {/* Duration */}
-            <div>
-              <label className="text-sm font-medium text-gray-700 mb-2 block">Dauer (Stunden)</label>
-              <select
-                value={newBox.duration_hours}
-                onChange={(e) => setNewBox({...newBox, duration_hours: parseInt(e.target.value)})}
+            <div className="grid grid-cols-2 gap-4">
+              {/* Duration */}
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-2 block">Dauer</label>
+                <select
+                  value={newBox.duration_hours}
+                  onChange={(e) => setNewBox({...newBox, duration_hours: parseInt(e.target.value)})}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg"
               >
                 <option value={6}>6 Stunden</option>
