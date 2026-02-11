@@ -121,8 +121,11 @@ const testimonials = [
     rating: 5,
     text: {
       de: 'Unglaublich! Ich habe ein MacBook für nur 24€ gewonnen. Am Anfang war ich skeptisch, aber jetzt bin ich süchtig!',
+      en: 'Incredible! I won a MacBook for only €24. I was skeptical at first, but now I\'m hooked!',
       sq: 'E pabesueshme! Fitova një MacBook për vetëm 24€. Në fillim isha skeptik, por tani jam i varur!',
-      en: 'Incredible! I won a MacBook for only €24. I was skeptical at first, but now I\'m hooked!'
+      xk: 'E pabesueshme! Fitova një MacBook për vetëm 24€. Në fillim isha skeptik, por tani jam i varur!',
+      tr: 'İnanılmaz! Sadece 24€\'ya bir MacBook kazandım. Başta şüpheciydim ama şimdi bağımlıyım!',
+      fr: 'Incroyable! J\'ai gagné un MacBook pour seulement 24€. J\'étais sceptique au début, mais maintenant je suis accro!'
     }
   },
   {
@@ -133,8 +136,11 @@ const testimonials = [
     rating: 5,
     text: {
       de: 'Die Bid Buddy Funktion ist genial. Ich habe im Schlaf einen TV gewonnen!',
+      en: 'The Bid Buddy feature is genius. I won a TV while sleeping!',
       sq: 'Funksioni Bid Buddy është genial. Fitova një TV ndërsa flija!',
-      en: 'The Bid Buddy feature is genius. I won a TV while sleeping!'
+      xk: 'Funksioni Bid Buddy është genial. Fitova një TV ndërsa flija!',
+      tr: 'Bid Buddy özelliği harika. Uyurken bir TV kazandım!',
+      fr: 'La fonction Bid Buddy est géniale. J\'ai gagné une TV en dormant!'
     }
   },
   {
@@ -145,8 +151,11 @@ const testimonials = [
     rating: 5,
     text: {
       de: 'Beste Penny Auction Seite! Der Support ist super und die Lieferung war schnell.',
+      en: 'Best penny auction site! Support is great and delivery was fast.',
       sq: 'Faqja më e mirë e ankandeve! Mbështetja është super dhe dërgesa ishte e shpejtë.',
-      en: 'Best penny auction site! Support is great and delivery was fast.'
+      xk: 'Faqja më e mirë e ankandeve! Mbështetja është super dhe dërgesa ishte e shpejtë.',
+      tr: 'En iyi açık artırma sitesi! Destek harika ve teslimat hızlıydı.',
+      fr: 'Meilleur site d\'enchères! Le support est super et la livraison était rapide.'
     }
   }
 ];
