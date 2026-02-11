@@ -155,10 +155,22 @@ const SpinWheel = ({ isOpen, onClose }) => {
       }
       
       // Calculate rotation to land on the correct segment
-      const randomSpins = 5 + Math.random() * 3;
+      // The pointer is at the top (12 o'clock position)
+      // Wheel segments start from 3 o'clock and go clockwise
+      // To land segment N under the pointer, we need to rotate so segment N is at top
+      const randomSpins = 5 + Math.floor(Math.random() * 3);
       const segmentAngle = 360 / SEGMENTS.length;
-      // Add offset to center on segment, account for wheel orientation
-      const targetRotation = rotation + (randomSpins * 360) + (targetSegmentIndex * segmentAngle) + (segmentAngle / 2);
+      
+      // Calculate the angle needed to bring the target segment to the top (under the pointer)
+      // Segments are drawn starting at -90deg (top), so segment 0 is already at top
+      // For segment N, we need to rotate N * segmentAngle degrees clockwise
+      // But since CSS rotation goes clockwise, and we want the segment to move TO the top,
+      // we need to rotate by -(targetSegmentIndex * segmentAngle) to bring it to the pointer
+      // Add half segment angle to center on the segment
+      const baseAngle = -(targetSegmentIndex * segmentAngle) - (segmentAngle / 2);
+      // Normalize to positive rotation (CSS prefers positive)
+      const normalizedAngle = ((baseAngle % 360) + 360) % 360;
+      const targetRotation = rotation + (randomSpins * 360) + normalizedAngle;
       
       setRotation(targetRotation);
       
