@@ -76,29 +76,52 @@ async def get_active_mystery_boxes():
     """Get all active mystery box auctions"""
     from server import db
     
+    # Find active mystery boxes
+    now = datetime.now(timezone.utc).isoformat()
     boxes = await db.mystery_boxes.find({
-        "status": "active",
-        "end_time": {"$gt": datetime.now(timezone.utc).isoformat()}
+        "status": "active"
     }).sort("end_time", 1).to_list(20)
     
+    auctions = []
     for box in boxes:
-        box["id"] = str(box.pop("_id"))
-        box["tier_info"] = MYSTERY_TIERS.get(box.get("tier"), MYSTERY_TIERS["bronze"])
+        box_id = str(box.pop("_id"))
+        tier = box.get("tier", "bronze")
+        tier_info = MYSTERY_TIERS.get(tier, MYSTERY_TIERS["bronze"])
         
         # Calculate time remaining
-        end_time = datetime.fromisoformat(box["end_time"].replace("Z", "+00:00"))
-        time_remaining = max(0, (end_time - datetime.now(timezone.utc)).total_seconds())
-        box["time_remaining"] = int(time_remaining)
+        end_time_str = box.get("end_time", now)
+        try:
+            end_time = datetime.fromisoformat(end_time_str.replace("Z", "+00:00"))
+            time_remaining = max(0, int((end_time - datetime.now(timezone.utc)).total_seconds()))
+        except:
+            time_remaining = 0
         
-        # Hide actual product info
-        if "product" in box and not box.get("revealed"):
-            box["product"] = {
-                "name": "??? Mystery Produkt ???",
-                "image_url": None,
-                "category": "Mystery"
-            }
+        # Skip if expired
+        if time_remaining <= 0:
+            continue
+        
+        # Build auction data for frontend
+        auctions.append({
+            "id": box_id,
+            "auction_id": box_id,
+            "tier": tier,
+            "name": tier_info["name"],
+            "emoji": tier_info["emoji"],
+            "min_value": tier_info["min_value"],
+            "max_value": tier_info["max_value"],
+            "current_price": box.get("current_price", 0),
+            "total_bids": box.get("total_bids", 0),
+            "last_bidder": box.get("last_bidder"),
+            "hint": box.get("hint"),
+            "revealed": box.get("revealed", False),
+            "time_remaining": time_remaining,
+            "end_time": end_time_str
+        })
     
-    return boxes
+    return {
+        "auctions": auctions,
+        "tiers": MYSTERY_TIERS
+    }
 
 @router.get("/{box_id}")
 async def get_mystery_box(box_id: str):
