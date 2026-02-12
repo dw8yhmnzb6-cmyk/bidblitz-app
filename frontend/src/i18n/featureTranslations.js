@@ -1486,6 +1486,7 @@ export const featureTranslations = {
 const languageMapping = {
   'us': 'en',  // US English -> English
   'ae': 'ar', // UAE -> Arabic
+  'xk': 'sq', // Kosovo -> Albanian
 };
 
 // Helper function to get feature translation
