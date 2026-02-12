@@ -373,6 +373,7 @@ export function AdminAuctions({ token, t, auctions, products, fetchData }) {
                       </SelectContent>
                     </Select>
                   </div>
+                  <p className="text-[#94A3B8] text-xs">Mindestens 5 Minuten (300 Sekunden)</p>
                 </div>
               </div>
             )}
