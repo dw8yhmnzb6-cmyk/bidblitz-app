@@ -137,14 +137,14 @@ const translations = {
   }
 };
 
-const FeatureCard = ({ icon: Icon, title, description, route, colorClass, isNew, navigate }) => (
+const FeatureCard = ({ icon: Icon, title, description, route, colorClass, isNew, navigate, newBadge }) => (
   <div
     onClick={() => navigate(route)}
     className={`relative bg-gray-800/80 backdrop-blur rounded-xl p-4 border border-gray-700 hover:border-opacity-50 transition-all cursor-pointer group hover:shadow-lg ${colorClass.hover}`}
   >
     {isNew && (
       <span className="absolute -top-2 -right-2 px-2 py-0.5 bg-green-500 text-white text-xs font-bold rounded-full">
-        NEU
+        {newBadge || 'NEU'}
       </span>
     )}
     <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform ${colorClass.bg}`}>
