@@ -166,6 +166,8 @@ const translations = {
     giftsDesc: 'Dhuro ofertat BidBlitz',
     alarm: 'Alarmi i Ofertave',
     alarmDesc: 'Njoftime për ankande',
+    restaurantVouchers: 'Kuponat e Restoranteve',
+    restaurantVouchersDesc: 'Kurse te restorantet partnere',
     dailyQuests: 'Detyrat Ditore',
     dailyRewards: 'Shpërblimet Ditore',
     battlePass: 'Pasaporta e Sezonit',
