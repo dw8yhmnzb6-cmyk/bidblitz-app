@@ -320,7 +320,7 @@ const AdminRestaurantApplications = () => {
 
                   {/* Action Buttons */}
                   {app.status === 'pending' && (
-                    <div className="flex gap-3 pt-2 border-t border-gray-700">
+                    <div className="flex gap-3 pt-4 border-t border-gray-200">
                       <Button
                         onClick={() => handleReview(app.id, 'approve')}
                         disabled={processing === app.id}
@@ -339,7 +339,7 @@ const AdminRestaurantApplications = () => {
                         onClick={() => handleReview(app.id, 'reject')}
                         disabled={processing === app.id}
                         variant="outline"
-                        className="flex-1 border-red-500 text-red-400 hover:bg-red-500/10"
+                        className="flex-1 border-red-300 text-red-600 hover:bg-red-50"
                       >
                         <X className="w-4 h-4 mr-2" />
                         Ablehnen
@@ -348,12 +348,12 @@ const AdminRestaurantApplications = () => {
                   )}
 
                   {app.status !== 'pending' && (
-                    <div className="flex justify-end pt-2 border-t border-gray-700">
+                    <div className="flex justify-end pt-4 border-t border-gray-200">
                       <Button
                         onClick={() => handleDelete(app.id)}
                         variant="ghost"
                         size="sm"
-                        className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                        className="text-red-500 hover:text-red-600 hover:bg-red-50"
                       >
                         <Trash2 className="w-4 h-4 mr-2" />
                         Löschen
