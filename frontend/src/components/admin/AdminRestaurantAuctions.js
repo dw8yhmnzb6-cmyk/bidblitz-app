@@ -335,6 +335,60 @@ export default function AdminRestaurantAuctions({ token, API }) {
               />
             </div>
           </div>
+
+          {/* Restaurant Fotos */}
+          <div className="mb-6">
+            <Label className="text-gray-700 text-sm flex items-center gap-1 mb-2">
+              <Image className="w-3 h-3" />
+              Restaurant-Fotos (bis zu 5)
+            </Label>
+            
+            {/* Existing Images */}
+            {newAuction.restaurant_images && newAuction.restaurant_images.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-3">
+                {newAuction.restaurant_images.map((img, idx) => (
+                  <div key={idx} className="relative group">
+                    <img 
+                      src={img} 
+                      alt={`Restaurant ${idx + 1}`}
+                      className="w-20 h-20 object-cover rounded-lg border border-gray-200"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeRestaurantImage(idx)}
+                      className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            
+            {/* Add Image */}
+            {(!newAuction.restaurant_images || newAuction.restaurant_images.length < 5) && (
+              <div className="flex gap-2">
+                <Input 
+                  value={imageUrlInput}
+                  onChange={(e) => setImageUrlInput(e.target.value)}
+                  className="bg-white border-gray-200 flex-1"
+                  placeholder="Bild-URL einfügen (https://...)"
+                  type="url"
+                />
+                <Button
+                  type="button"
+                  onClick={addRestaurantImage}
+                  variant="outline"
+                  className="border-orange-300 text-orange-600"
+                >
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
+            )}
+            <p className="text-xs text-gray-400 mt-1">
+              Fügen Sie Fotos vom Restaurant hinzu (Innenraum, Essen, Außenansicht)
+            </p>
+          </div>
           
           <div className="flex gap-3">
             <Button
