@@ -1,11 +1,13 @@
 """Vouchers router - Voucher management with bulk creation and euro values"""
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Form
 from datetime import datetime, timezone, timedelta
 from typing import List, Optional
 from pydantic import BaseModel
 import uuid
 import random
 import string
+import base64
+import os
 
 from config import db, logger
 from dependencies import get_admin_user, get_current_user
