@@ -70,6 +70,20 @@ export default function Achievements() {
       totalEarned: "Badges Earned",
       totalRewards: "Bonus Bids Earned",
       backToAuctions: "Back to Auctions"
+    },
+    sq: {
+      title: "Arritjet",
+      subtitle: "Mblidh distinktive dhe fito oferta bonus!",
+      earned: "Fituar",
+      locked: "Nuk është hapur ende",
+      reward: "Shpërblimi",
+      bids: "Oferta",
+      progress: "Progresi",
+      all: "Të gjitha",
+      loginRequired: "Kyçu për të parë arritjet e tua",
+      totalEarned: "Distinktive të Fituara",
+      totalRewards: "Oferta Bonus të Fituara",
+      backToAuctions: "Kthehu te Ankandat"
     }
   };
   const t = texts[langKey] || texts.de;
