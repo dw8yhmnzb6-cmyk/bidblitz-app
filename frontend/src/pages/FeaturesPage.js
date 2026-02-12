@@ -48,6 +48,8 @@ const translations = {
     giftsDesc: 'Verschenke BidBlitz Gebote',
     alarm: 'Gebot-Alarm',
     alarmDesc: 'Benachrichtigungen für Auktionen',
+    restaurantVouchers: 'Restaurant-Gutscheine',
+    restaurantVouchersDesc: 'Spare bei Partner-Restaurants',
     dailyQuests: 'Tägliche Aufgaben',
     dailyRewards: 'Tägliche Belohnungen',
     battlePass: 'Saison-Pass',
