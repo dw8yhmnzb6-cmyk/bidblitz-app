@@ -567,7 +567,11 @@ async def bot_last_second_bidder():
                     
                     if is_emergency:
                         # EMERGENCY BID - No other checks, just bid NOW!
-                        random_bot = random.choice(active_bots)
+                        # Get a random bot from the bots list
+                        if not bots:
+                            logger.error("No bots available for emergency bid!")
+                            continue
+                        random_bot = random.choice(bots)
                         new_price = round(current_price + bid_increment, 2)
                         
                         # Extend timer by 10-15 seconds
