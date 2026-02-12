@@ -1,125 +1,93 @@
 # BidBlitz Mobile App
 
-Native Mobile App für iOS und Android, entwickelt mit React Native und Expo.
+Eine React Native App für die BidBlitz Penny Auction Plattform.
 
-## 🚀 Features
+## 🚀 Lokale Installation
 
-- **Login & Registrierung** - Sichere Authentifizierung mit Token-basiertem Login
-- **Live Auktionen** - Echtzeit-Auktionsansicht mit automatischen Updates
-- **Bieten** - Direkt in der App bieten
-- **Gebote kaufen** - In-App-Käufe über Stripe
-- **Profil** - Benutzerprofil mit Statistiken und Einstellungen
-- **Push-Benachrichtigungen** - Benachrichtigungen bei Auktionsende und Gewinnen
+### Voraussetzungen
+- Node.js 18+ 
+- npm oder yarn
+- Expo Go App auf deinem Smartphone (iOS/Android)
 
-## 📱 Screens
-
-| Screen | Beschreibung |
-|--------|--------------|
-| `LoginScreen` | Anmeldung mit E-Mail und Passwort |
-| `RegisterScreen` | Neues Konto erstellen mit Bonus-Geboten |
-| `HomeScreen` | Dashboard mit Live-Auktionen und Jackpot |
-| `AuctionsScreen` | Alle Auktionen durchsuchen und filtern |
-| `AuctionDetailScreen` | Einzelne Auktion mit Bieten-Funktion |
-| `BuyBidsScreen` | Gebote-Pakete kaufen |
-| `ProfileScreen` | Benutzerprofil und Einstellungen |
-
-## 🛠️ Technologie-Stack
-
-- **React Native** - Cross-Platform Framework
-- **Expo** - Development Toolkit
-- **React Navigation** - Navigation und Routing
-- **Axios** - HTTP Client für API-Aufrufe
-- **Expo Secure Store** - Sichere Token-Speicherung
-- **Expo Linear Gradient** - Gradient-Effekte
-- **Expo Notifications** - Push-Benachrichtigungen
-
-## 📦 Installation
+### Installation
 
 ```bash
-# In das Mobile App Verzeichnis wechseln
+# In den App-Ordner wechseln
 cd /app/mobile-app/BidBlitz
 
 # Dependencies installieren
 yarn install
 
+# oder mit npm
+npm install
+```
+
+### App starten
+
+```bash
 # Expo starten
-yarn start
+npx expo start
+
+# Oder für spezifische Plattform:
+npx expo start --ios
+npx expo start --android
 ```
 
-## 🧪 Testen
+### Mit Expo Go verbinden
 
-### Web (für schnelles Testen)
-```bash
-yarn web
-```
+1. Öffne die **Expo Go** App auf deinem Smartphone
+2. Scanne den QR-Code aus dem Terminal
+3. Die App lädt automatisch
 
-### iOS Simulator (macOS erforderlich)
-```bash
-yarn ios
-```
+## 📱 Features
 
-### Android Emulator
-```bash
-yarn android
-```
-
-### Physisches Gerät
-1. Expo Go App installieren
-2. QR-Code scannen
+- **Auktionen**: Live-Auktionen mit Echtzeit-Updates
+- **Bieten**: One-Tap Bieten mit Haptic Feedback
+- **Profil**: Benutzerstatistiken und gewonnene Auktionen
+- **Gebote kaufen**: In-App Gebotspakete kaufen
+- **Push-Benachrichtigungen**: Über ablaufende Auktionen informiert werden
+- **Glücksrad**: Tägliche Belohnungen
+- **Mystery Boxes**: Überraschungsboxen öffnen
+- **Achievements**: Erfolge und Abzeichen sammeln
 
 ## 🔧 Konfiguration
 
-Die API-URL wird in `/src/services/api.js` konfiguriert:
+Die API-URL ist in `/src/services/api.js` konfiguriert:
 
 ```javascript
 const API_BASE_URL = 'https://auction-hub-76.preview.emergentagent.com/api';
 ```
 
-## 📂 Projektstruktur
+Für lokale Entwicklung ändern zu:
+```javascript
+const API_BASE_URL = 'http://localhost:8001/api';
+```
+
+## 📁 Projektstruktur
 
 ```
 BidBlitz/
-├── App.js                 # App Entry Point
-├── app.json               # Expo Konfiguration
-├── package.json           # Dependencies
-└── src/
-    ├── components/        # Wiederverwendbare Komponenten
-    ├── context/
-    │   └── AuthContext.js # Authentication State
-    ├── navigation/
-    │   └── AppNavigator.js # Navigation Setup
-    ├── screens/
-    │   ├── HomeScreen.js
-    │   ├── LoginScreen.js
-    │   ├── RegisterScreen.js
-    │   ├── AuctionsScreen.js
-    │   ├── AuctionDetailScreen.js
-    │   ├── BuyBidsScreen.js
-    │   └── ProfileScreen.js
-    └── services/
-        └── api.js         # API Client
+├── App.js                 # Haupt-App-Komponente
+├── src/
+│   ├── components/        # Wiederverwendbare UI-Komponenten
+│   ├── context/           # React Context (Auth, Notifications)
+│   ├── navigation/        # React Navigation Setup
+│   ├── screens/           # App-Screens
+│   └── services/          # API-Services
+├── assets/                # App-Icons und Splash-Screens
+└── package.json
 ```
 
-## 🚀 Deployment
+## 🛠 Technologie-Stack
 
-### iOS (App Store)
-1. Apple Developer Account erforderlich
-2. `eas build --platform ios`
-3. Upload via App Store Connect
+- **React Native** 0.81
+- **Expo** 54
+- **React Navigation** 7
+- **Axios** für API-Calls
+- **Expo Secure Store** für Token-Speicherung
 
-### Android (Play Store)
-1. Google Play Developer Account erforderlich
-2. `eas build --platform android`
-3. Upload via Google Play Console
+## 📝 Hinweise
 
-## 🔐 Test-Credentials
-
-- **Admin:** `admin@bidblitz.de` / `Admin123!`
-
-## 📝 Nächste Schritte
-
-- [ ] Push Notifications integrieren
-- [ ] Apple Pay / Google Pay hinzufügen
-- [ ] Offline-Modus implementieren
-- [ ] Deep Linking einrichten
-- [ ] App Store Deployment
+- Die App benötigt eine aktive Internetverbindung
+- Für Push-Benachrichtigungen muss die App auf einem physischen Gerät laufen
+- Test-Account: `spinner@bidblitz.de` / `Spinner123!`
