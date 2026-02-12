@@ -23,36 +23,36 @@ export default function AdminPayments({ payments, fetchData }) {
 
       {/* Payment Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-        <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-100">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center">
-              <DollarSign className="w-6 h-6 text-emerald-600" />
+        <div className="bg-white rounded-xl p-4 sm:p-5 shadow-sm border border-slate-100">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-emerald-100 flex items-center justify-center flex-shrink-0">
+              <DollarSign className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-600" />
             </div>
-            <div>
-              <p className="text-slate-500 text-sm">Umsatz gesamt</p>
-              <p className="text-2xl font-bold text-slate-800">€{(payments || []).reduce((sum, p) => sum + (p.amount || 0), 0).toFixed(2)}</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-100">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-violet-100 flex items-center justify-center">
-              <CheckCircle className="w-6 h-6 text-violet-600" />
-            </div>
-            <div>
-              <p className="text-slate-500 text-sm">Transaktionen</p>
-              <p className="text-2xl font-bold text-slate-800">{(payments || []).length}</p>
+            <div className="min-w-0">
+              <p className="text-slate-500 text-xs sm:text-sm">Umsatz gesamt</p>
+              <p className="text-xl sm:text-2xl font-bold text-slate-800">€{(payments || []).reduce((sum, p) => sum + (p.amount || 0), 0).toFixed(2)}</p>
             </div>
           </div>
         </div>
-        <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-100">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center">
-              <Zap className="w-6 h-6 text-amber-600" />
+        <div className="bg-white rounded-xl p-4 sm:p-5 shadow-sm border border-slate-100">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-violet-100 flex items-center justify-center flex-shrink-0">
+              <CheckCircle className="w-5 h-5 sm:w-6 sm:h-6 text-violet-600" />
             </div>
-            <div>
-              <p className="text-slate-500 text-sm">Gebote verkauft</p>
-              <p className="text-2xl font-bold text-slate-800">{(payments || []).reduce((sum, p) => sum + (p.bids || 0), 0)}</p>
+            <div className="min-w-0">
+              <p className="text-slate-500 text-xs sm:text-sm">Transaktionen</p>
+              <p className="text-xl sm:text-2xl font-bold text-slate-800">{(payments || []).length}</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white rounded-xl p-4 sm:p-5 shadow-sm border border-slate-100">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
+              <Zap className="w-5 h-5 sm:w-6 sm:h-6 text-amber-600" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-slate-500 text-xs sm:text-sm">Gebote verkauft</p>
+              <p className="text-xl sm:text-2xl font-bold text-slate-800">{(payments || []).reduce((sum, p) => sum + (p.bids || 0), 0)}</p>
             </div>
           </div>
         </div>
