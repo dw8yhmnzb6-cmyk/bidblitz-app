@@ -36,6 +36,8 @@ const AdminRestaurantApplications = () => {
         const data = await response.json();
         setApplications(data.applications || []);
         setStats(data.stats || { total: 0, pending: 0, approved: 0, rejected: 0 });
+      } else {
+        console.error('Failed to fetch applications:', response.status);
       }
     } catch (error) {
       console.error('Error fetching applications:', error);
