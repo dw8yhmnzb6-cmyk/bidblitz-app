@@ -1127,6 +1127,7 @@ export default function Auctions() {
             {activeFilter === 'live' && t('auctionPage.liveAuctions')}
             {activeFilter === 'anfaenger' && `🎓 ${t('auctionPage.beginnerAuctions')}`}
             {activeFilter === 'gratis' && `🎫 ${t('auctionPage.voucherAuctions') || 'Gebote-Gutscheine'}`}
+            {activeFilter === 'restaurant' && `🍽️ Restaurant-Gutscheine`}
             {activeFilter === 'nacht' && `🌙 ${t('auctionPage.nightAuctions')}`}
             {activeFilter === 'ende' && t('auctionPage.endedAuctions')}
             {activeFilter === 'vip' && `⭐ ${t('auctionPage.vipAuctions')}`}
