@@ -74,6 +74,44 @@ export default function AchievementsPage() {
       completion: 'Completed',
       nextUp: 'Next Achievements',
       almostThere: 'Almost there!'
+    },
+    sq: {
+      title: 'Arritjet',
+      subtitle: 'Mblidh distinktive & fito oferta bonus',
+      earned: 'Fituar',
+      locked: 'Bllokuar',
+      progress: 'Progresi',
+      reward: 'Shpërblimi',
+      bids: 'oferta',
+      all: 'Të gjitha',
+      bidding: 'Ofertimi',
+      winning: 'Fitimi',
+      special: 'Speciale',
+      social: 'Sociale',
+      loyalty: 'Besnikëria',
+      totalEarned: 'Totali i fituar',
+      completion: 'Përfunduar',
+      nextUp: 'Arritjet e Ardhshme',
+      almostThere: 'Pothuajse!'
+    },
+    xk: {
+      title: 'Arritjet',
+      subtitle: 'Mblidh distinktive & fito oferta bonus',
+      earned: 'Fituar',
+      locked: 'Bllokuar',
+      progress: 'Progresi',
+      reward: 'Shpërblimi',
+      bids: 'oferta',
+      all: 'Të gjitha',
+      bidding: 'Ofertimi',
+      winning: 'Fitimi',
+      special: 'Speciale',
+      social: 'Sociale',
+      loyalty: 'Besnikëria',
+      totalEarned: 'Totali i fituar',
+      completion: 'Përfunduar',
+      nextUp: 'Arritjet e Ardhshme',
+      almostThere: 'Pothuajse!'
     }
   };
 
