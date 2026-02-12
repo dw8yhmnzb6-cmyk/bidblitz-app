@@ -56,7 +56,8 @@ export default function Achievements() {
       loginRequired: "Melde dich an, um deine Erfolge zu sehen",
       totalEarned: "Verdiente Badges",
       totalRewards: "Bonus-Gebote verdient",
-      backToAuctions: "Zurück zu Auktionen"
+      backToAuctions: "Zurück zu Auktionen",
+      login: "Anmelden"
     },
     en: {
       title: "Achievements",
@@ -70,7 +71,8 @@ export default function Achievements() {
       loginRequired: "Log in to see your achievements",
       totalEarned: "Badges Earned",
       totalRewards: "Bonus Bids Earned",
-      backToAuctions: "Back to Auctions"
+      backToAuctions: "Back to Auctions",
+      login: "Login"
     },
     sq: {
       title: "Arritjet",
@@ -84,7 +86,8 @@ export default function Achievements() {
       loginRequired: "Kyçu për të parë arritjet e tua",
       totalEarned: "Distinktive të Fituara",
       totalRewards: "Oferta Bonus të Fituara",
-      backToAuctions: "Kthehu te Ankandat"
+      backToAuctions: "Kthehu te Ankandat",
+      login: "Kyçu"
     }
   };
   const t = texts[langKey] || texts.de;
