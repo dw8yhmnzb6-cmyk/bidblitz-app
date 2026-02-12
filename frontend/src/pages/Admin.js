@@ -32,6 +32,7 @@ import {
   AdminBots, 
   AdminVouchers,
   AdminRestaurantVouchers,
+  AdminRestaurantApplications,
   AdminPayments,
   AdminLogs,
   AdminAuctions,
