@@ -17,6 +17,7 @@ import PWAInstallBanner from "./components/PWAInstallBanner";
 import Home from "./pages/Home";
 import Auctions from "./pages/Auctions";
 import AuctionDetail from "./pages/AuctionDetail";
+import MysteryBoxDetail from "./pages/MysteryBoxDetail";
 import BuyBids from "./pages/BuyBids";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import Dashboard from "./pages/Dashboard";
