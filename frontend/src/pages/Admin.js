@@ -2678,14 +2678,102 @@ export default function Admin() {
           {/* Promo Codes Tab */}
           {activeTab === 'promo-codes' && (
             <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-bold text-gray-800">🎫 Gutschein-Codes</h2>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <h2 className="text-lg sm:text-xl font-bold text-gray-800">🎫 Gutschein-Codes</h2>
                 <Button
                   onClick={() => setShowPromoModal(true)}
-                  className="btn-primary"
+                  className="btn-primary w-full sm:w-auto"
                 >
                   + Neuen Code erstellen
                 </Button>
+              </div>
+
+              {/* Mobile Card View */}
+              <div className="md:hidden space-y-3">
+                {promoCodes.map(promo => (
+                  <div key={promo.id} className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+                    {/* Header: Code + Status */}
+                    <div className="flex items-start justify-between mb-3">
+                      <span className="font-mono text-[#FFD700] bg-[#FFD700]/10 px-2 py-1 rounded text-sm font-bold">
+                        {promo.code}
+                      </span>
+                      <span className={`px-2 py-1 rounded text-xs ${promo.is_active ? 'bg-[#10B981]/20 text-[#10B981]' : 'bg-red-500/20 text-red-500'}`}>
+                        {promo.is_active ? 'Aktiv' : 'Inaktiv'}
+                      </span>
+                    </div>
+                    
+                    {/* Name */}
+                    <p className="text-gray-800 font-medium mb-3">{promo.name}</p>
+                    
+                    {/* Stats Grid */}
+                    <div className="grid grid-cols-3 gap-2 mb-3">
+                      <div className="bg-gray-50 rounded-lg p-2 text-center">
+                        <p className="text-xs text-gray-400">Belohnung</p>
+                        <p className="text-sm font-bold text-[#10B981]">
+                          {promo.reward_amount} {promo.reward_type === 'bids' ? 'Gebote' : promo.reward_type === 'vip_days' ? 'VIP' : '%'}
+                        </p>
+                      </div>
+                      <div className="bg-gray-50 rounded-lg p-2 text-center">
+                        <p className="text-xs text-gray-400">Einlösungen</p>
+                        <p className="text-sm font-bold text-gray-800">
+                          {promo.current_uses || 0}
+                          {promo.max_uses && <span className="text-gray-400 font-normal">/{promo.max_uses}</span>}
+                        </p>
+                      </div>
+                      <div className="bg-gray-50 rounded-lg p-2 text-center">
+                        <p className="text-xs text-gray-400">Limit</p>
+                        <p className="text-sm font-bold">
+                          {promo.one_per_user !== false ? (
+                            <span className="text-blue-500">1x/Kunde</span>
+                          ) : (
+                            <span className="text-purple-500">Mehrfach</span>
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    {/* Actions */}
+                    <div className="flex gap-2">
+                      <button
+                        onClick={async () => {
+                          try {
+                            await axios.put(`${API}/promo-codes/admin/${promo.id}/toggle`, {}, {
+                              headers: { Authorization: `Bearer ${token}` }
+                            });
+                            toast.success(promo.is_active ? 'Code deaktiviert' : 'Code aktiviert');
+                            fetchData();
+                          } catch (err) {
+                            toast.error('Fehler');
+                          }
+                        }}
+                        className={`flex-1 px-3 py-2 rounded text-sm font-medium ${promo.is_active ? 'bg-red-100 text-red-600' : 'bg-[#10B981]/20 text-[#10B981]'}`}
+                      >
+                        {promo.is_active ? 'Deaktivieren' : 'Aktivieren'}
+                      </button>
+                      <button
+                        onClick={async () => {
+                          if (confirm('Code wirklich löschen?')) {
+                            try {
+                              await axios.delete(`${API}/promo-codes/admin/${promo.id}`, {
+                                headers: { Authorization: `Bearer ${token}` }
+                              });
+                              toast.success('Code gelöscht');
+                              fetchData();
+                            } catch (err) {
+                              toast.error('Fehler beim Löschen');
+                            }
+                          }
+                        }}
+                        className="px-4 py-2 rounded text-sm bg-red-100 text-red-600"
+                      >
+                        Löschen
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                {promoCodes.length === 0 && (
+                  <p className="text-center text-gray-500 py-8">Keine Gutschein-Codes vorhanden</p>
+                )}
               </div>
 
               {/* Promo Codes List */}
