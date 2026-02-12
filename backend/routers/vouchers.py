@@ -330,7 +330,7 @@ async def redeem_voucher(request: VoucherRedeemRequest, user: dict = Depends(get
             expires = datetime.fromisoformat(voucher["expires_at"].replace("Z", "+00:00"))
             if datetime.now(timezone.utc) > expires:
                 raise HTTPException(status_code=400, detail="Gutschein ist abgelaufen")
-        except:
+        except ValueError:
             pass
     
     # Process based on type
