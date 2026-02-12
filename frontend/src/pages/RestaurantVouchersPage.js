@@ -198,6 +198,24 @@ const RestaurantVouchersPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeFilter, setActiveFilter] = useState('all');
   const [totalVouchers, setTotalVouchers] = useState(0);
+  
+  // Partner Application Form State
+  const [showApplicationForm, setShowApplicationForm] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [applicationSuccess, setApplicationSuccess] = useState(false);
+  const [formData, setFormData] = useState({
+    restaurant_name: '',
+    contact_name: '',
+    email: '',
+    phone: '',
+    website: '',
+    address: '',
+    city: '',
+    description: '',
+    voucher_type: 'discount',
+    voucher_value: 10,
+    message: ''
+  });
 
   const langKey = mappedLanguage || language || 'de';
   const t = translations[langKey] || translations.de;
