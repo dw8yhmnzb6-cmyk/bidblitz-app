@@ -107,6 +107,7 @@ import GiftCardsPage from "./pages/GiftCardsPage";
 import FriendBattlesPage from "./pages/FriendBattlesPage";
 import TeamBiddingPage from "./pages/TeamBiddingPage";
 import FeaturesPage from "./pages/FeaturesPage";
+import RestaurantVouchersPage from "./pages/RestaurantVouchersPage";
 
 // Protected Route Component
 const ProtectedRoute = ({ children, requireAdmin = false }) => {
