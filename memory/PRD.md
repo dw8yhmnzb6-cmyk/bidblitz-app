@@ -5,29 +5,35 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 
 ## Current Status (February 12, 2026)
 
-### ✅ Session Update - February 12, 2026 (Session 15) - MOBILE UI FIXES
+### ✅ Session Update - February 12, 2026 (Session 15) - MOBILE UI FIXES + FOTO-UPLOAD + BEARBEITEN
+
+**Neue Features implementiert:**
+
+#### 📷 FOTO-UPLOAD VOM GERÄT ✅
+- Admin kann jetzt eigene Fotos vom Telefon/Computer hochladen
+- Unterstützte Formate: JPG, PNG, WebP, GIF
+- Max. 5MB pro Bild, bis zu 5 Bilder pro Auktion
+- Backend-Endpoints: `POST /api/admin/upload-image` und `POST /api/admin/upload-images`
+- Bilder werden als Base64-DataURL gespeichert
+
+#### ✏️ RESTAURANT-AUKTIONEN BEARBEITEN ✅
+- Neuer "Bearbeiten" Button bei jeder Restaurant-Auktion
+- Vollständiges Bearbeitungs-Modal mit allen Feldern:
+  - Restaurant-Name, Adresse, Website
+  - Gutscheinwert, Bot-Zielpreis, Beschreibung
+  - Restaurant-Fotos hinzufügen/entfernen
+- Backend-Endpoint: `PUT /api/admin/restaurant-auctions/{id}`
+- Löschen-Funktion: `DELETE /api/admin/restaurant-auctions/{id}`
 
 **Mobile Admin Panel UI-Optimierungen:**
 
-Die Mobile-Ansicht des Admin-Panels wurde komplett überarbeitet, um abgeschnittene Inhalte und schlecht formatierte Layouts zu beheben.
-
-**Behobene Probleme:**
-
 | Komponente | Problem | Lösung |
 |------------|---------|--------|
-| **AdminSustainability.js** | Stats-Karten auf rechter Seite abgeschnitten | Grid von `grid-cols-2 md:grid-cols-4` zu `grid-cols-1 sm:grid-cols-2 lg:grid-cols-4` geändert, farbige Hintergründe hinzugefügt |
-| **AdminCoupons.js** | Stats und Tabelle auf Mobile abgeschnitten | Mobile Card-Ansicht für Gutscheine hinzugefügt, Tabelle nur auf Desktop |
-| **AdminPayments.js** | Header und "Aktualisieren" Button abgeschnitten | Responsive Header mit `flex-col sm:flex-row`, Button volle Breite auf Mobile |
-| **AdminVouchers.js** | Form-Layout und Header zu klein | Responsive Header, verbesserte Button-Größen |
-| **Admin.js (Promo-Codes)** | Tabelle komplett abgeschnitten auf Mobile | Neue Mobile Card-Ansicht mit Stats-Grid hinzugefügt |
-| **AdminRestaurantAuctions.js** | Syntax-Fehler (fehlende schließende Tags) | JSX-Struktur korrigiert |
-
-**Neue Mobile-UI-Features:**
-- Vertikales Stacking von Stats-Karten auf kleinen Bildschirmen
-- Card-basierte Ansichten statt Tabellen auf Mobile
-- Responsive Button-Breiten (volle Breite auf Mobile)
-- Bessere Icon-Größen und Abstände
-- Truncation für lange Texte mit `truncate` und `min-w-0`
+| **AdminSustainability.js** | Stats-Karten abgeschnitten | Grid zu `grid-cols-1 sm:grid-cols-2 lg:grid-cols-4` |
+| **AdminCoupons.js** | Tabelle abgeschnitten | Mobile Card-Ansicht hinzugefügt |
+| **AdminPayments.js** | Button abgeschnitten | Responsive Header mit flex-col |
+| **AdminVouchers.js** | Übersetzungs-Keys sichtbar | Deutsche Texte direkt eingefügt |
+| **Admin.js (Promo-Codes)** | Tabelle abgeschnitten | Mobile Card-Ansicht hinzugefügt |
 
 ---
 
