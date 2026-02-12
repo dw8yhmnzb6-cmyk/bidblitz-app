@@ -453,7 +453,8 @@ export default function AdminRestaurantAuctions({ token, API }) {
                     className="border-orange-300 text-orange-600"
                   >
                     <Plus className="w-4 h-4" />
-                </Button>
+                  </Button>
+                </div>
               </div>
             )}
             <p className="text-xs text-gray-400 mt-1">
