@@ -735,7 +735,7 @@ export default function AdminRestaurantAuctions({ token, API }) {
             <div 
               key={auction.id}
               className={`bg-white rounded-xl border p-4 ${
-                auction.status === 'active' 
+                (auction.status === 'active' || auction.status === 'day_paused')
                   ? 'border-green-200 shadow-sm' 
                   : 'border-gray-200'
               }`}
@@ -744,7 +744,7 @@ export default function AdminRestaurantAuctions({ token, API }) {
                 <div className="flex items-start gap-4">
                   {/* Restaurant Icon/Logo */}
                   <div className={`w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                    auction.status === 'active' ? 'bg-orange-100' : 'bg-gray-100'
+                    (auction.status === 'active' || auction.status === 'day_paused') ? 'bg-orange-100' : 'bg-gray-100'
                   }`}>
                     {auction.restaurant_info?.logo ? (
                       <img 
