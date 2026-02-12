@@ -33,6 +33,7 @@ import {
   AdminVouchers,
   AdminRestaurantVouchers,
   AdminRestaurantApplications,
+  AdminRestaurantAuctions,
   AdminPayments,
   AdminLogs,
   AdminAuctions,
