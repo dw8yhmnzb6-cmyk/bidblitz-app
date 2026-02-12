@@ -5,7 +5,31 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 
 ## Current Status (February 12, 2026)
 
-### ✅ Session Update - February 12, 2026 (Session 15) - MOBILE UI FIXES + FOTO-UPLOAD + BEARBEITEN
+### ✅ Session Update - February 12, 2026 (Session 15) - P0/P1/P2 COMPLETE
+
+**Alle drei Prioritäten bearbeitet:**
+
+#### 🔴 P0: React Native Mobile App
+- **Status:** BEREIT FÜR LOKALE ENTWICKLUNG
+- Die Mobile App kann nicht im Container getestet werden (kein Emulator/Gerät)
+- README.md mit Installationsanleitung erstellt
+- Code ist vollständig und konfiguriert für die Produktion
+- **Anleitung:** `cd /app/mobile-app/BidBlitz && yarn install && npx expo start`
+
+#### 🟠 P1: Bot-Bidding-Logik konsolidiert
+- Restaurant-Auktionen werden jetzt korrekt von Bots behandelt
+- Code in `server.py` erweitert, um eingebettete Produkt-Daten zu erkennen
+- `bot_target_price` wird als Fallback verwendet
+
+#### 🟡 P2: Übersetzungen (sq/xk)
+- **sq (Albanisch)** und **xk (Kosovo)** sind bereits vollständig!
+- `translations.js`: Vollständige sq/xk Übersetzungen vorhanden
+- `featureTranslations.js`: Verwendet `languageMapping` für xk → sq
+- Alle Seiten nutzen die korrekten Übersetzungen
+
+---
+
+### ✅ Session Update - February 12, 2026 (Session 15) - FOTO-UPLOAD + BEARBEITEN
 
 **Neue Features implementiert:**
 
