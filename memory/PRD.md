@@ -5,11 +5,30 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 
 ## Current Status (February 12, 2026)
 
-### ✅ Session Update - February 12, 2026 (Session 14) - RESTAURANT PARTNER BEWERBUNGSSYSTEM
+### ✅ Session Update - February 12, 2026 (Session 14) - MYSTERY BOX FIX + RESTAURANT PARTNER
 
-**Abgeschlossen in dieser Session:**
+**Bug Fix: Mystery Box "Auktion nicht gefunden"**
 
-#### 🍽️ RESTAURANT-GUTSCHEINE PUBLIC PAGE ✅
+Das Problem war, dass Mystery Boxes (Gold Box, Diamant Box, etc.) eine eigene MongoDB Collection (`mystery_boxes`) verwenden, aber bei Klick zur falschen URL `/auctions/{id}` weitergeleitet wurden, wo die ID nicht existiert.
+
+**Lösung:**
+1. Neue Detail-Seite: `/app/frontend/src/pages/MysteryBoxDetail.js`
+2. Neue Route: `/mystery-box/:id`
+3. `MysteryBoxSection.js` aktualisiert: Weiterleitung zu `/mystery-box/{id}` statt `/auctions/{id}`
+
+**Features der neuen Mystery Box Detail-Seite:**
+- Tier-spezifische Farben (Bronze/Silber/Gold/Diamant)
+- Hinweis-Anzeige
+- Aktuelles Gebot und Timer
+- Gebotsverlauf
+- Responsive Design
+- Mehrsprachig (DE/EN/SQ/XK)
+
+---
+
+**Abgeschlossene Features in dieser Session:**
+
+#### 🍽️ RESTAURANT-GUTSCHEINE SYSTEM ✅
 
 **Feature:** Öffentliche Seite für Restaurant-Gutscheine mit Partner-Werbung
 
