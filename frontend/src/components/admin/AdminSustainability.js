@@ -263,13 +263,13 @@ const AdminSustainability = () => {
       </div>
 
       {/* Projects */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
-        <div className="flex items-center justify-between mb-4">
+      <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6 shadow-sm overflow-hidden">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
           <h3 className="font-bold text-gray-800 flex items-center gap-2">
             <Leaf className="w-5 h-5 text-emerald-600" />
             Projekte ({projects.length})
           </h3>
-          <Button onClick={() => setShowNewProject(!showNewProject)} variant="outline" size="sm">
+          <Button onClick={() => setShowNewProject(!showNewProject)} variant="outline" size="sm" className="w-full sm:w-auto">
             <Plus className="w-4 h-4 mr-2" />
             Neues Projekt
           </Button>
