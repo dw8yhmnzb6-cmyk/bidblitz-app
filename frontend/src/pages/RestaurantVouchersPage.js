@@ -566,6 +566,371 @@ const RestaurantVouchersPage = () => {
           </div>
         )}
       </div>
+
+      {/* Become a Partner Section */}
+      <div className={`py-16 ${isDarkMode ? 'bg-gradient-to-b from-orange-900/20 to-transparent' : 'bg-gradient-to-b from-orange-50 to-transparent'}`}>
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="text-center mb-12">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-orange-500/10 border border-orange-500/20 mb-4">
+              <Building2 className="w-5 h-5 text-orange-500" />
+              <span className={`font-medium ${isDarkMode ? 'text-orange-400' : 'text-orange-600'}`}>
+                {t.becomePartner}
+              </span>
+            </div>
+            <h2 className={`text-2xl sm:text-3xl font-bold mb-3 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+              {t.becomePartner}
+            </h2>
+            <p className={`text-base max-w-2xl mx-auto ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+              {t.becomePartnerSubtitle}
+            </p>
+          </div>
+
+          {/* Benefits Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-12">
+            {[
+              { icon: Gift, text: t.benefit1 },
+              { icon: Users, text: t.benefit2 },
+              { icon: FileText, text: t.benefit3 },
+              { icon: MapPin, text: t.benefit4 }
+            ].map((benefit, idx) => (
+              <div 
+                key={idx}
+                className={`p-4 rounded-xl flex items-start gap-3 ${
+                  isDarkMode ? 'bg-white/5 border border-white/10' : 'bg-white border border-gray-100 shadow-sm'
+                }`}
+              >
+                <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                  isDarkMode ? 'bg-orange-500/20' : 'bg-orange-100'
+                }`}>
+                  <benefit.icon className="w-5 h-5 text-orange-500" />
+                </div>
+                <p className={`text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                  {benefit.text}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          {/* Toggle Application Form Button */}
+          {!showApplicationForm && !applicationSuccess && (
+            <div className="text-center">
+              <Button
+                onClick={() => setShowApplicationForm(true)}
+                className="px-8 py-4 bg-gradient-to-r from-orange-500 to-amber-500 text-white font-bold rounded-xl hover:from-orange-600 hover:to-amber-600 transition-all text-lg"
+                data-testid="open-application-form"
+              >
+                <Send className="w-5 h-5 mr-2" />
+                {t.formTitle}
+              </Button>
+            </div>
+          )}
+
+          {/* Success Message */}
+          {applicationSuccess && (
+            <div className={`max-w-2xl mx-auto text-center p-8 rounded-2xl ${isDarkMode ? 'bg-green-500/10 border border-green-500/20' : 'bg-green-50 border border-green-200'}`}>
+              <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
+              <h3 className={`text-xl font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                {t.applicationSuccess}
+              </h3>
+              <Button
+                onClick={() => {
+                  setApplicationSuccess(false);
+                  setShowApplicationForm(false);
+                }}
+                variant="outline"
+                className="mt-4"
+              >
+                OK
+              </Button>
+            </div>
+          )}
+
+          {/* Application Form */}
+          {showApplicationForm && !applicationSuccess && (
+            <form 
+              onSubmit={handleSubmitApplication}
+              className={`max-w-3xl mx-auto p-6 sm:p-8 rounded-2xl ${
+                isDarkMode ? 'bg-white/5 border border-white/10' : 'bg-white border border-gray-100 shadow-lg'
+              }`}
+              data-testid="partner-application-form"
+            >
+              <h3 className={`text-xl font-bold mb-6 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                {t.formTitle}
+              </h3>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                {/* Restaurant Name */}
+                <div>
+                  <label className={`block text-sm font-medium mb-1.5 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                    {t.restaurantName} *
+                  </label>
+                  <div className="relative">
+                    <Utensils className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
+                    <input
+                      type="text"
+                      name="restaurant_name"
+                      value={formData.restaurant_name}
+                      onChange={handleInputChange}
+                      required
+                      className={`w-full pl-10 pr-4 py-2.5 rounded-lg border ${
+                        isDarkMode 
+                          ? 'bg-white/5 border-white/10 text-white placeholder-gray-500 focus:border-orange-500' 
+                          : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400 focus:border-orange-500'
+                      } outline-none transition-colors`}
+                      data-testid="input-restaurant-name"
+                    />
+                  </div>
+                </div>
+
+                {/* Contact Name */}
+                <div>
+                  <label className={`block text-sm font-medium mb-1.5 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                    {t.contactName} *
+                  </label>
+                  <div className="relative">
+                    <User className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
+                    <input
+                      type="text"
+                      name="contact_name"
+                      value={formData.contact_name}
+                      onChange={handleInputChange}
+                      required
+                      className={`w-full pl-10 pr-4 py-2.5 rounded-lg border ${
+                        isDarkMode 
+                          ? 'bg-white/5 border-white/10 text-white placeholder-gray-500 focus:border-orange-500' 
+                          : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400 focus:border-orange-500'
+                      } outline-none transition-colors`}
+                      data-testid="input-contact-name"
+                    />
+                  </div>
+                </div>
+
+                {/* Email */}
+                <div>
+                  <label className={`block text-sm font-medium mb-1.5 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                    {t.email} *
+                  </label>
+                  <div className="relative">
+                    <Mail className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
+                    <input
+                      type="email"
+                      name="email"
+                      value={formData.email}
+                      onChange={handleInputChange}
+                      required
+                      className={`w-full pl-10 pr-4 py-2.5 rounded-lg border ${
+                        isDarkMode 
+                          ? 'bg-white/5 border-white/10 text-white placeholder-gray-500 focus:border-orange-500' 
+                          : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400 focus:border-orange-500'
+                      } outline-none transition-colors`}
+                      data-testid="input-email"
+                    />
+                  </div>
+                </div>
+
+                {/* Phone */}
+                <div>
+                  <label className={`block text-sm font-medium mb-1.5 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                    {t.phone}
+                  </label>
+                  <div className="relative">
+                    <Phone className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
+                    <input
+                      type="tel"
+                      name="phone"
+                      value={formData.phone}
+                      onChange={handleInputChange}
+                      className={`w-full pl-10 pr-4 py-2.5 rounded-lg border ${
+                        isDarkMode 
+                          ? 'bg-white/5 border-white/10 text-white placeholder-gray-500 focus:border-orange-500' 
+                          : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400 focus:border-orange-500'
+                      } outline-none transition-colors`}
+                      data-testid="input-phone"
+                    />
+                  </div>
+                </div>
+
+                {/* Website */}
+                <div>
+                  <label className={`block text-sm font-medium mb-1.5 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                    {t.website}
+                  </label>
+                  <div className="relative">
+                    <Globe className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
+                    <input
+                      type="url"
+                      name="website"
+                      value={formData.website}
+                      onChange={handleInputChange}
+                      placeholder="https://"
+                      className={`w-full pl-10 pr-4 py-2.5 rounded-lg border ${
+                        isDarkMode 
+                          ? 'bg-white/5 border-white/10 text-white placeholder-gray-500 focus:border-orange-500' 
+                          : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400 focus:border-orange-500'
+                      } outline-none transition-colors`}
+                      data-testid="input-website"
+                    />
+                  </div>
+                </div>
+
+                {/* City */}
+                <div>
+                  <label className={`block text-sm font-medium mb-1.5 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                    {t.city} *
+                  </label>
+                  <div className="relative">
+                    <MapPin className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
+                    <input
+                      type="text"
+                      name="city"
+                      value={formData.city}
+                      onChange={handleInputChange}
+                      required
+                      className={`w-full pl-10 pr-4 py-2.5 rounded-lg border ${
+                        isDarkMode 
+                          ? 'bg-white/5 border-white/10 text-white placeholder-gray-500 focus:border-orange-500' 
+                          : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400 focus:border-orange-500'
+                      } outline-none transition-colors`}
+                      data-testid="input-city"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Address - Full Width */}
+              <div className="mb-4">
+                <label className={`block text-sm font-medium mb-1.5 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                  {t.addressField} *
+                </label>
+                <input
+                  type="text"
+                  name="address"
+                  value={formData.address}
+                  onChange={handleInputChange}
+                  required
+                  className={`w-full px-4 py-2.5 rounded-lg border ${
+                    isDarkMode 
+                      ? 'bg-white/5 border-white/10 text-white placeholder-gray-500 focus:border-orange-500' 
+                      : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400 focus:border-orange-500'
+                  } outline-none transition-colors`}
+                  data-testid="input-address"
+                />
+              </div>
+
+              {/* Description */}
+              <div className="mb-4">
+                <label className={`block text-sm font-medium mb-1.5 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                  {t.description} *
+                </label>
+                <textarea
+                  name="description"
+                  value={formData.description}
+                  onChange={handleInputChange}
+                  required
+                  rows={3}
+                  className={`w-full px-4 py-2.5 rounded-lg border resize-none ${
+                    isDarkMode 
+                      ? 'bg-white/5 border-white/10 text-white placeholder-gray-500 focus:border-orange-500' 
+                      : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400 focus:border-orange-500'
+                  } outline-none transition-colors`}
+                  data-testid="input-description"
+                />
+              </div>
+
+              {/* Voucher Type and Value */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className={`block text-sm font-medium mb-1.5 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                    {t.voucherType}
+                  </label>
+                  <select
+                    name="voucher_type"
+                    value={formData.voucher_type}
+                    onChange={handleInputChange}
+                    className={`w-full px-4 py-2.5 rounded-lg border ${
+                      isDarkMode 
+                        ? 'bg-white/5 border-white/10 text-white focus:border-orange-500' 
+                        : 'bg-white border-gray-200 text-gray-900 focus:border-orange-500'
+                    } outline-none transition-colors`}
+                    data-testid="select-voucher-type"
+                  >
+                    <option value="discount">{t.voucherTypeDiscount}</option>
+                    <option value="euro">{t.voucherTypeEuro}</option>
+                  </select>
+                </div>
+                <div>
+                  <label className={`block text-sm font-medium mb-1.5 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                    {t.voucherValueLabel} ({formData.voucher_type === 'discount' ? '%' : '€'})
+                  </label>
+                  <input
+                    type="number"
+                    name="voucher_value"
+                    value={formData.voucher_value}
+                    onChange={handleInputChange}
+                    min="1"
+                    max={formData.voucher_type === 'discount' ? 50 : 100}
+                    className={`w-full px-4 py-2.5 rounded-lg border ${
+                      isDarkMode 
+                        ? 'bg-white/5 border-white/10 text-white focus:border-orange-500' 
+                        : 'bg-white border-gray-200 text-gray-900 focus:border-orange-500'
+                    } outline-none transition-colors`}
+                    data-testid="input-voucher-value"
+                  />
+                </div>
+              </div>
+
+              {/* Additional Message */}
+              <div className="mb-6">
+                <label className={`block text-sm font-medium mb-1.5 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                  {t.message}
+                </label>
+                <textarea
+                  name="message"
+                  value={formData.message}
+                  onChange={handleInputChange}
+                  rows={2}
+                  className={`w-full px-4 py-2.5 rounded-lg border resize-none ${
+                    isDarkMode 
+                      ? 'bg-white/5 border-white/10 text-white placeholder-gray-500 focus:border-orange-500' 
+                      : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400 focus:border-orange-500'
+                  } outline-none transition-colors`}
+                  data-testid="input-message"
+                />
+              </div>
+
+              {/* Submit Button */}
+              <div className="flex gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowApplicationForm(false)}
+                  className={`flex-1 ${isDarkMode ? 'border-white/20 text-gray-300' : ''}`}
+                >
+                  Abbrechen
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={submitting}
+                  className="flex-1 bg-gradient-to-r from-orange-500 to-amber-500 text-white font-bold hover:from-orange-600 hover:to-amber-600"
+                  data-testid="submit-application"
+                >
+                  {submitting ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                      {t.submitting}
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-4 h-4 mr-2" />
+                      {t.submitApplication}
+                    </>
+                  )}
+                </Button>
+              </div>
+            </form>
+          )}
+        </div>
+      </div>
     </div>
   );
 };
