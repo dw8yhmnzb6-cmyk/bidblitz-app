@@ -54,6 +54,22 @@ export default function WishlistPage() {
       suggestedBy: 'Suggested by',
       loginRequired: 'Please log in to vote',
       noWishes: 'No wishes yet. Be the first!'
+    },
+    sq: {
+      title: 'Lista e Dëshirave',
+      subtitle: 'Voto për produktet që dëshiron të ankandohen!',
+      suggest: 'Sugjeroni Produkt',
+      topWishes: 'Dëshirat Top',
+      votes: 'Votat',
+      vote: 'Voto',
+      voted: 'Votuar',
+      productName: 'Emri i Produktit',
+      category: 'Kategoria',
+      description: 'Përshkrimi (opsionale)',
+      submit: 'Dorëzo',
+      suggestedBy: 'Sugjeruar nga',
+      loginRequired: 'Ju lutem kyçuni për të votuar',
+      noWishes: 'Asnjë dëshirë ende. Bëhu i pari!'
     }
   };
 
