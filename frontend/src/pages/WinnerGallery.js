@@ -78,6 +78,29 @@ const WinnerGallery = () => {
       submitSuccess: 'Photo submitted! You\'ll receive 5 bonus bids after approval.',
       bonusBids: '+5 Bonus Bids',
       close: 'Close'
+    },
+    sq: {
+      title: 'Galeria e Fituesve',
+      subtitle: 'Fitues të vërtetë, kursime të vërteta!',
+      featured: 'Të Theksuara',
+      all: 'Të gjitha',
+      uploadPhoto: 'Ngarko Foto',
+      mySubmissions: 'Fotot e Mia',
+      noEntries: 'Asnjë hyrje ende',
+      saved: 'Kursuar',
+      likes: 'Pëlqime',
+      pending: 'Në pritje',
+      approved: 'Aprovuar',
+      rejected: 'Refuzuar',
+      selectAuction: 'Zgjidh ankand të fituar',
+      caption: 'Përshkrim',
+      captionPlaceholder: 'Na trego për fitoren tënde...',
+      selectImage: 'Zgjidh Imazh',
+      submit: 'Dorëzo',
+      submitting: 'Duke dorëzuar...',
+      submitSuccess: 'Foto u dorëzua! Do të marrësh 5 oferta bonus pas aprovimit.',
+      bonusBids: '+5 Oferta Bonus',
+      close: 'Mbyll'
     }
   };
   const t = texts[langKey] || texts.de;
