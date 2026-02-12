@@ -382,3 +382,80 @@ async def redeem_voucher(request: VoucherRedeemRequest, user: dict = Depends(get
         "value": value,
         "bids_added": bids if voucher_type in ["bids", "euro"] else 0
     }
+
+
+# ==================== PUBLIC RESTAURANT VOUCHERS ====================
+
+@router.get("/vouchers/restaurants")
+async def get_public_restaurant_vouchers():
+    """Öffentliche Liste aller verfügbaren Restaurant-Gutscheine"""
+    vouchers = await db.vouchers.find(
+        {
+            "type": "restaurant",
+            "is_active": True,
+            "used_count": {"$lt": 1}  # Nur ungenutzte
+        },
+        {"_id": 0, "used_by": 0, "created_by": 0}
+    ).sort("created_at", -1).to_list(100)
+    
+    # Gruppiere nach Restaurant für bessere Anzeige
+    restaurants = {}
+    for v in vouchers:
+        name = v.get("merchant_name", "Unbekannt")
+        if name not in restaurants:
+            restaurants[name] = {
+                "name": name,
+                "url": v.get("merchant_url"),
+                "logo": v.get("merchant_logo"),
+                "address": v.get("merchant_address"),
+                "vouchers": []
+            }
+        restaurants[name]["vouchers"].append({
+            "id": v.get("id"),
+            "code": v.get("code"),
+            "value": v.get("value"),
+            "discount_percent": v.get("discount_percent"),
+            "description": v.get("description"),
+            "expires_at": v.get("expires_at")
+        })
+    
+    return {
+        "restaurants": list(restaurants.values()),
+        "total_vouchers": len(vouchers)
+    }
+
+
+@router.get("/vouchers/restaurant/{restaurant_name}")
+async def get_restaurant_voucher_details(restaurant_name: str):
+    """Details zu einem bestimmten Restaurant und seinen Gutscheinen"""
+    vouchers = await db.vouchers.find(
+        {
+            "type": "restaurant",
+            "merchant_name": {"$regex": restaurant_name, "$options": "i"},
+            "is_active": True
+        },
+        {"_id": 0, "used_by": 0, "created_by": 0}
+    ).to_list(50)
+    
+    if not vouchers:
+        raise HTTPException(status_code=404, detail="Restaurant nicht gefunden")
+    
+    # Nehme Restaurant-Info vom ersten Gutschein
+    first = vouchers[0]
+    return {
+        "restaurant": {
+            "name": first.get("merchant_name"),
+            "url": first.get("merchant_url"),
+            "logo": first.get("merchant_logo"),
+            "address": first.get("merchant_address")
+        },
+        "vouchers": [{
+            "id": v.get("id"),
+            "code": v.get("code"),
+            "value": v.get("value"),
+            "discount_percent": v.get("discount_percent"),
+            "description": v.get("description"),
+            "expires_at": v.get("expires_at"),
+            "is_available": v.get("used_count", 0) < v.get("max_uses", 1)
+        } for v in vouchers]
+    }
