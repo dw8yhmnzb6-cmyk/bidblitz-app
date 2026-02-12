@@ -30,7 +30,8 @@ const ALL_ACHIEVEMENTS = [
 
 const CATEGORY_LABELS = {
   de: { wins: "Siege", special: "Spezial", spending: "Einkäufe", streak: "Streak", social: "Sozial" },
-  en: { wins: "Wins", special: "Special", spending: "Spending", streak: "Streak", social: "Social" }
+  en: { wins: "Wins", special: "Special", spending: "Spending", streak: "Streak", social: "Social" },
+  sq: { wins: "Fitore", special: "Speciale", spending: "Blerje", streak: "Seri", social: "Sociale" }
 };
 
 export default function Achievements() {
