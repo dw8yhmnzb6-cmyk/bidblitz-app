@@ -252,40 +252,40 @@ const AdminRestaurantApplications = () => {
                     </div>
                     {app.phone && (
                       <div className="flex items-start gap-2">
-                        <Phone className="w-4 h-4 text-gray-500 mt-0.5" />
+                        <Phone className="w-4 h-4 text-gray-400 mt-0.5" />
                         <div>
-                          <p className="text-gray-400 text-xs">Telefon</p>
-                          <p className="text-white text-sm">{app.phone}</p>
+                          <p className="text-gray-500 text-xs">Telefon</p>
+                          <p className="text-gray-800 text-sm">{app.phone}</p>
                         </div>
                       </div>
                     )}
                     {app.website && (
                       <div className="flex items-start gap-2">
-                        <Globe className="w-4 h-4 text-gray-500 mt-0.5" />
+                        <Globe className="w-4 h-4 text-gray-400 mt-0.5" />
                         <div>
-                          <p className="text-gray-400 text-xs">Website</p>
-                          <a href={app.website} target="_blank" rel="noopener noreferrer" className="text-orange-400 text-sm hover:underline">
+                          <p className="text-gray-500 text-xs">Website</p>
+                          <a href={app.website} target="_blank" rel="noopener noreferrer" className="text-orange-500 text-sm hover:underline">
                             {app.website}
                           </a>
                         </div>
                       </div>
                     )}
                     <div className="flex items-start gap-2">
-                      <MapPin className="w-4 h-4 text-gray-500 mt-0.5" />
+                      <MapPin className="w-4 h-4 text-gray-400 mt-0.5" />
                       <div>
-                        <p className="text-gray-400 text-xs">Adresse</p>
-                        <p className="text-white text-sm">{app.address}, {app.city}</p>
+                        <p className="text-gray-500 text-xs">Adresse</p>
+                        <p className="text-gray-800 text-sm">{app.address}, {app.city}</p>
                       </div>
                     </div>
                     <div className="flex items-start gap-2">
                       {app.voucher_type === 'discount' ? (
-                        <Percent className="w-4 h-4 text-gray-500 mt-0.5" />
+                        <Percent className="w-4 h-4 text-gray-400 mt-0.5" />
                       ) : (
-                        <Euro className="w-4 h-4 text-gray-500 mt-0.5" />
+                        <Euro className="w-4 h-4 text-gray-400 mt-0.5" />
                       )}
                       <div>
-                        <p className="text-gray-400 text-xs">Gutschein-Angebot</p>
-                        <p className="text-white text-sm">
+                        <p className="text-gray-500 text-xs">Gutschein-Angebot</p>
+                        <p className="text-gray-800 text-sm">
                           {app.voucher_value}{app.voucher_type === 'discount' ? '%' : '€'} {app.voucher_type === 'discount' ? 'Rabatt' : 'Gutschein'}
                         </p>
                       </div>
@@ -293,19 +293,19 @@ const AdminRestaurantApplications = () => {
                   </div>
 
                   <div className="flex items-start gap-2">
-                    <FileText className="w-4 h-4 text-gray-500 mt-0.5" />
+                    <FileText className="w-4 h-4 text-gray-400 mt-0.5" />
                     <div>
-                      <p className="text-gray-400 text-xs">Beschreibung</p>
-                      <p className="text-white text-sm">{app.description}</p>
+                      <p className="text-gray-500 text-xs">Beschreibung</p>
+                      <p className="text-gray-800 text-sm">{app.description}</p>
                     </div>
                   </div>
 
                   {app.message && (
                     <div className="flex items-start gap-2">
-                      <FileText className="w-4 h-4 text-gray-500 mt-0.5" />
+                      <FileText className="w-4 h-4 text-gray-400 mt-0.5" />
                       <div>
-                        <p className="text-gray-400 text-xs">Nachricht</p>
-                        <p className="text-gray-300 text-sm italic">"{app.message}"</p>
+                        <p className="text-gray-500 text-xs">Nachricht</p>
+                        <p className="text-gray-600 text-sm italic">"{app.message}"</p>
                       </div>
                     </div>
                   )}
