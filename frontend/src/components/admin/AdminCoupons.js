@@ -231,87 +231,150 @@ export default function AdminCoupons() {
             <p className="text-sm mt-1">Erstelle deinen ersten Gutschein!</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 text-left">
-                <tr>
-                  <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase">Code</th>
-                  <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase">Rabatt</th>
-                  <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase hidden sm:table-cell">Beschreibung</th>
-                  <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase">Nutzungen</th>
-                  <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase hidden md:table-cell">Gültig bis</th>
-                  <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase">Status</th>
-                  <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase">Aktion</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {coupons.map((coupon) => (
-                  <tr key={coupon.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <code className="px-2 py-1 bg-purple-100 text-purple-700 rounded font-mono text-sm font-bold">
-                          {coupon.code}
-                        </code>
-                        <button
-                          onClick={() => copyCode(coupon.code)}
-                          className="p-1 hover:bg-gray-100 rounded"
-                        >
-                          {copiedCode === coupon.code ? (
-                            <Check className="w-4 h-4 text-green-500" />
-                          ) : (
-                            <Copy className="w-4 h-4 text-gray-400" />
-                          )}
-                        </button>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <span className={`p-1.5 rounded-lg ${
-                          coupon.discount_type === 'percent' ? 'bg-blue-100 text-blue-600' :
-                          coupon.discount_type === 'bids' ? 'bg-amber-100 text-amber-600' :
-                          'bg-green-100 text-green-600'
-                        }`}>
-                          {getDiscountIcon(coupon.discount_type)}
-                        </span>
-                        <span className="font-semibold text-gray-800">
-                          {getDiscountDisplay(coupon)}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 hidden sm:table-cell">
-                      <span className="text-gray-600 text-sm truncate max-w-[200px] block">
-                        {coupon.description || '-'}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="text-gray-800 font-medium">
-                        {coupon.current_uses || 0}
-                        {coupon.max_uses && <span className="text-gray-400">/{coupon.max_uses}</span>}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 hidden md:table-cell">
-                      <div className="flex items-center gap-1 text-gray-500 text-sm">
-                        <Calendar className="w-3 h-3" />
-                        {formatDate(coupon.expires_at)}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      {getStatusBadge(coupon)}
-                    </td>
-                    <td className="px-4 py-3">
+          <>
+            {/* Mobile Card View */}
+            <div className="md:hidden divide-y divide-gray-100">
+              {coupons.map((coupon) => (
+                <div key={coupon.id} className="p-4 space-y-3">
+                  {/* Header: Code + Status */}
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <code className="px-2 py-1 bg-purple-100 text-purple-700 rounded font-mono text-sm font-bold truncate">
+                        {coupon.code}
+                      </code>
                       <button
                         onClick={() => copyCode(coupon.code)}
-                        className="p-2 hover:bg-purple-100 rounded-lg text-purple-600 transition-colors"
-                        title="Code kopieren"
+                        className="p-1 hover:bg-gray-100 rounded flex-shrink-0"
                       >
-                        <Copy className="w-4 h-4" />
+                        {copiedCode === coupon.code ? (
+                          <Check className="w-4 h-4 text-green-500" />
+                        ) : (
+                          <Copy className="w-4 h-4 text-gray-400" />
+                        )}
                       </button>
-                    </td>
+                    </div>
+                    {getStatusBadge(coupon)}
+                  </div>
+                  
+                  {/* Stats Grid */}
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="bg-gray-50 rounded-lg p-2 text-center">
+                      <span className={`inline-flex p-1 rounded ${
+                        coupon.discount_type === 'percent' ? 'bg-blue-100 text-blue-600' :
+                        coupon.discount_type === 'bids' ? 'bg-amber-100 text-amber-600' :
+                        'bg-green-100 text-green-600'
+                      }`}>
+                        {getDiscountIcon(coupon.discount_type)}
+                      </span>
+                      <p className="text-xs text-gray-500 mt-1">Rabatt</p>
+                      <p className="text-sm font-bold text-gray-800">{getDiscountDisplay(coupon)}</p>
+                    </div>
+                    <div className="bg-gray-50 rounded-lg p-2 text-center">
+                      <Users className="w-4 h-4 mx-auto text-gray-400" />
+                      <p className="text-xs text-gray-500 mt-1">Nutzungen</p>
+                      <p className="text-sm font-bold text-gray-800">
+                        {coupon.current_uses || 0}
+                        {coupon.max_uses && <span className="text-gray-400 font-normal">/{coupon.max_uses}</span>}
+                      </p>
+                    </div>
+                    <div className="bg-gray-50 rounded-lg p-2 text-center">
+                      <Calendar className="w-4 h-4 mx-auto text-gray-400" />
+                      <p className="text-xs text-gray-500 mt-1">Gültig bis</p>
+                      <p className="text-xs font-medium text-gray-800">{formatDate(coupon.expires_at)}</p>
+                    </div>
+                  </div>
+                  
+                  {/* Description */}
+                  {coupon.description && (
+                    <p className="text-xs text-gray-500 truncate">{coupon.description}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+            
+            {/* Desktop Table View */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 text-left">
+                  <tr>
+                    <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase">Code</th>
+                    <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase">Rabatt</th>
+                    <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase">Beschreibung</th>
+                    <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase">Nutzungen</th>
+                    <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase">Gültig bis</th>
+                    <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase">Status</th>
+                    <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase">Aktion</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {coupons.map((coupon) => (
+                    <tr key={coupon.id} className="hover:bg-gray-50">
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <code className="px-2 py-1 bg-purple-100 text-purple-700 rounded font-mono text-sm font-bold">
+                            {coupon.code}
+                          </code>
+                          <button
+                            onClick={() => copyCode(coupon.code)}
+                            className="p-1 hover:bg-gray-100 rounded"
+                          >
+                            {copiedCode === coupon.code ? (
+                              <Check className="w-4 h-4 text-green-500" />
+                            ) : (
+                              <Copy className="w-4 h-4 text-gray-400" />
+                            )}
+                          </button>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <span className={`p-1.5 rounded-lg ${
+                            coupon.discount_type === 'percent' ? 'bg-blue-100 text-blue-600' :
+                            coupon.discount_type === 'bids' ? 'bg-amber-100 text-amber-600' :
+                            'bg-green-100 text-green-600'
+                          }`}>
+                            {getDiscountIcon(coupon.discount_type)}
+                          </span>
+                          <span className="font-semibold text-gray-800">
+                            {getDiscountDisplay(coupon)}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="text-gray-600 text-sm truncate max-w-[200px] block">
+                          {coupon.description || '-'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="text-gray-800 font-medium">
+                          {coupon.current_uses || 0}
+                          {coupon.max_uses && <span className="text-gray-400">/{coupon.max_uses}</span>}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-1 text-gray-500 text-sm">
+                          <Calendar className="w-3 h-3" />
+                          {formatDate(coupon.expires_at)}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        {getStatusBadge(coupon)}
+                      </td>
+                      <td className="px-4 py-3">
+                        <button
+                          onClick={() => copyCode(coupon.code)}
+                          className="p-2 hover:bg-purple-100 rounded-lg text-purple-600 transition-colors"
+                          title="Code kopieren"
+                        >
+                          <Copy className="w-4 h-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
 
