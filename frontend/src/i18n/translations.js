@@ -2446,6 +2446,7 @@ export const languageList = {
 export const langMapping = {
   'us': 'en',  // US English -> English  
   'ae': 'ar', // UAE -> Arabic
+  'xk': 'sq', // Kosovo -> Albanian (for pages with only sq translations)
 };
 
 // Helper function to get mapped language
