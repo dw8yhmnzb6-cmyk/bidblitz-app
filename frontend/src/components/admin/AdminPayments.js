@@ -6,23 +6,23 @@ export default function AdminPayments({ payments, fetchData }) {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg">
-            <DollarSign className="w-6 h-6 text-white" />
+          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg flex-shrink-0">
+            <DollarSign className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-slate-800">Zahlungsübersicht</h1>
-            <p className="text-slate-500 text-sm">Alle Transaktionen im Überblick</p>
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-800">Zahlungsübersicht</h1>
+            <p className="text-slate-500 text-xs sm:text-sm">Alle Transaktionen im Überblick</p>
           </div>
         </div>
-        <Button onClick={fetchData} variant="outline" className="border-slate-200 text-slate-700 hover:bg-slate-50">
+        <Button onClick={fetchData} variant="outline" className="border-slate-200 text-slate-700 hover:bg-slate-50 w-full sm:w-auto">
           <RefreshCw className="w-4 h-4 mr-2" />Aktualisieren
         </Button>
       </div>
 
       {/* Payment Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
         <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-100">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center">
