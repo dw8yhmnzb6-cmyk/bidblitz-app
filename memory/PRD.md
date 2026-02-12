@@ -5,7 +5,7 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 
 ## Current Status (February 12, 2026)
 
-### ✅ Session Update - February 12, 2026 (Session 14) - RESTAURANT VOUCHERS PUBLIC PAGE
+### ✅ Session Update - February 12, 2026 (Session 14) - RESTAURANT PARTNER BEWERBUNGSSYSTEM
 
 **Abgeschlossen in dieser Session:**
 
@@ -21,11 +21,6 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 | **Features** | Hero Section, Suchleiste, Filter (Alle/Hoher Wert), Restaurant-Karten |
 | **Übersetzungen** | DE, EN, SQ/XK vollständig |
 
-**Integrationen:**
-- ✅ Route in `App.js` hinzugefügt
-- ✅ Features-Seite: Neuer "Restaurant-Gutscheine" Link mit "NEU" Badge
-- ✅ Utensils-Icon importiert
-
 **UI-Features:**
 - Partner-Restaurant Statistiken (Anzahl, Gesamtersparnis)
 - "Empfohlener Partner" Badge für erste Restaurant
@@ -33,6 +28,46 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 - Ablaufdatum-Anzeige
 - "Website besuchen" Button für Restaurant-Link
 - Responsive Design (Mobile + Desktop)
+
+---
+
+#### 📋 PARTNER-BEWERBUNGSFORMULAR ✅
+
+**Feature:** Selbstbedienungs-Formular für Restaurant-Partner
+
+| Komponente | Details |
+|------------|---------|
+| **Frontend** | Integriert in `RestaurantVouchersPage.js` |
+| **API Endpoint** | `POST /api/vouchers/restaurant-partner/apply` |
+| **Felder** | Restaurant-Name, Kontakt, E-Mail, Telefon, Website, Adresse, Stadt, Beschreibung, Gutschein-Art/Wert |
+| **Übersetzungen** | DE, EN, SQ/XK vollständig |
+
+**Features:**
+- 4 Vorteile-Karten für Partner
+- "Jetzt bewerben" Button öffnet Formular
+- Pflichtfeld-Validierung
+- Erfolgs-Bestätigung nach Absendung
+- Duplikat-Erkennung (E-Mail bereits vorhanden)
+
+---
+
+#### 🔧 ADMIN PARTNER-BEWERBUNGEN ✅
+
+**Feature:** Admin-Panel zur Verwaltung von Partner-Anfragen
+
+| Komponente | Details |
+|------------|---------|
+| **Neue Komponente** | `/app/frontend/src/components/admin/AdminRestaurantApplications.js` |
+| **Tab** | "📋 Partner-Bewerbungen" im Admin-Panel |
+| **API Endpoints** | `GET /api/admin/restaurant-applications`, `PUT .../review`, `DELETE` |
+
+**Features:**
+- Statistik-Karten: Gesamt, Ausstehend, Genehmigt, Abgelehnt
+- Filter-Tabs: Alle, Ausstehend, Genehmigt, Abgelehnt
+- Klappbare Bewerbungs-Karten mit allen Details
+- "Genehmigen" / "Ablehnen" Buttons
+- Bei Genehmigung: Automatische Erstellung von 5 Gutscheinen
+- Löschen-Funktion für bearbeitete Bewerbungen
 
 ---
 
