@@ -114,7 +114,14 @@ async def create_voucher(voucher: VoucherCreate, admin: dict = Depends(get_admin
         "is_active": True,
         "expires_at": expires_at,
         "created_at": datetime.now(timezone.utc).isoformat(),
-        "created_by": admin.get("email", "admin")
+        "created_by": admin.get("email", "admin"),
+        # Restaurant/Partner fields
+        "merchant_name": voucher.merchant_name,
+        "merchant_url": voucher.merchant_url,
+        "merchant_logo": voucher.merchant_logo,
+        "merchant_address": voucher.merchant_address,
+        "merchant_category": voucher.merchant_category,
+        "description": voucher.description
     }
     await db.vouchers.insert_one(doc)
     
@@ -123,6 +130,70 @@ async def create_voucher(voucher: VoucherCreate, admin: dict = Depends(get_admin
     # Return without _id
     doc.pop("_id", None)
     return doc
+
+
+@router.post("/admin/vouchers/restaurant")
+async def create_restaurant_voucher(data: RestaurantVoucherCreate, admin: dict = Depends(get_admin_user)):
+    """Erstelle Restaurant-Gutscheine mit Link zum Restaurant"""
+    created_vouchers = []
+    
+    for i in range(data.quantity):
+        # Generiere einzigartigen Code mit Restaurant-Prefix
+        prefix = data.restaurant_name[:4].upper().replace(" ", "")
+        code = generate_voucher_code(prefix=prefix, length=6)
+        
+        # Prüfe ob Code existiert
+        while await db.vouchers.find_one({"code": code}):
+            code = generate_voucher_code(prefix=prefix, length=6)
+        
+        # Ablaufdatum berechnen
+        expires_at = (datetime.now(timezone.utc) + timedelta(days=data.valid_days)).isoformat()
+        
+        voucher_id = str(uuid.uuid4())
+        doc = {
+            "id": voucher_id,
+            "code": code,
+            "type": "restaurant",
+            "value": data.voucher_value,
+            "discount_percent": data.discount_percent,
+            "bids": 0,  # Restaurant-Gutscheine geben keine Gebote
+            "max_uses": 1,
+            "used_count": 0,
+            "used_by": [],
+            "is_active": True,
+            "expires_at": expires_at,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "created_by": admin.get("email", "admin"),
+            # Restaurant-spezifische Felder
+            "merchant_name": data.restaurant_name,
+            "merchant_url": data.restaurant_url,
+            "merchant_logo": data.restaurant_logo,
+            "merchant_address": data.restaurant_address,
+            "merchant_category": "restaurant",
+            "description": data.description
+        }
+        await db.vouchers.insert_one(doc)
+        doc.pop("_id", None)
+        created_vouchers.append(doc)
+    
+    logger.info(f"🍽️ {len(created_vouchers)} Restaurant-Gutscheine für '{data.restaurant_name}' erstellt")
+    
+    return {
+        "message": f"{len(created_vouchers)} Restaurant-Gutscheine erstellt",
+        "restaurant": data.restaurant_name,
+        "vouchers": created_vouchers
+    }
+
+
+@router.get("/admin/vouchers/restaurants")
+async def get_restaurant_vouchers(admin: dict = Depends(get_admin_user)):
+    """Alle Restaurant-Gutscheine abrufen"""
+    vouchers = await db.vouchers.find(
+        {"type": "restaurant"},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(500)
+    
+    return vouchers
 
 
 @router.post("/admin/vouchers/bulk")
