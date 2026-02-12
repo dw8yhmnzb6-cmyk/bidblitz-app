@@ -15,7 +15,8 @@ const AdminRestaurantApplications = () => {
   const [expandedId, setExpandedId] = useState(null);
   const [processing, setProcessing] = useState(null);
 
-  const token = localStorage.getItem('bidblitz_token');
+  // Try both storage keys for token
+  const token = localStorage.getItem('token') || sessionStorage.getItem('token') || localStorage.getItem('bidblitz_token');
 
   useEffect(() => {
     fetchApplications();
