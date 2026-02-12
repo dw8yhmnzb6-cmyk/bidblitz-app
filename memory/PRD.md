@@ -5,6 +5,37 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 
 ## Current Status (February 12, 2026)
 
+### ✅ Session Update - February 12, 2026 (Session 14) - RESTAURANT VOUCHERS PUBLIC PAGE
+
+**Abgeschlossen in dieser Session:**
+
+#### 🍽️ RESTAURANT-GUTSCHEINE PUBLIC PAGE ✅
+
+**Feature:** Öffentliche Seite für Restaurant-Gutscheine mit Partner-Werbung
+
+| Komponente | Details |
+|------------|---------|
+| **Neue Seite** | `/app/frontend/src/pages/RestaurantVouchersPage.js` |
+| **Routen** | `/restaurant-gutscheine`, `/restaurant-vouchers`, `/restaurants` |
+| **API Endpoint** | `GET /api/vouchers/restaurants` (bereits vorhanden) |
+| **Features** | Hero Section, Suchleiste, Filter (Alle/Hoher Wert), Restaurant-Karten |
+| **Übersetzungen** | DE, EN, SQ/XK vollständig |
+
+**Integrationen:**
+- ✅ Route in `App.js` hinzugefügt
+- ✅ Features-Seite: Neuer "Restaurant-Gutscheine" Link mit "NEU" Badge
+- ✅ Utensils-Icon importiert
+
+**UI-Features:**
+- Partner-Restaurant Statistiken (Anzahl, Gesamtersparnis)
+- "Empfohlener Partner" Badge für erste Restaurant
+- Gutschein-Wert und Rabatt-Anzeige
+- Ablaufdatum-Anzeige
+- "Website besuchen" Button für Restaurant-Link
+- Responsive Design (Mobile + Desktop)
+
+---
+
 ### ✅ Session Update - February 12, 2026 (Session 13) - ÜBERSETZUNGEN & BOT-FIX
 
 **Abgeschlossen in dieser Session:**
