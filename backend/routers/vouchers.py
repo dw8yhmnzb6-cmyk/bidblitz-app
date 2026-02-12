@@ -699,6 +699,7 @@ async def create_restaurant_voucher_auction(
         "merchant_url": data.restaurant_url,
         "merchant_address": data.restaurant_address,
         "merchant_logo": data.restaurant_logo,
+        "merchant_images": images,
         "description": data.description
     }
     await db.vouchers.insert_one(voucher_doc)
@@ -712,9 +713,10 @@ async def create_restaurant_voucher_auction(
             "id": voucher_doc["id"],
             "name": title,
             "description": data.description,
-            "retail_price": data.voucher_value or (data.discount_percent * 2),  # Schätzwert
+            "retail_price": data.voucher_value,
             "category": "restaurant_voucher",
-            "image_url": data.restaurant_logo or "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400",
+            "image_url": main_image,
+            "images": images,  # Alle Restaurant-Fotos
             "specifications": {
                 "restaurant": data.restaurant_name,
                 "address": data.restaurant_address,
@@ -739,13 +741,14 @@ async def create_restaurant_voucher_auction(
         "bid_history": [],
         "created_at": now.isoformat(),
         "created_by": admin.get("email", "admin"),
-        "bot_target_price": data.bot_target_price or (data.voucher_value * 0.3 if data.voucher_value else 10),
+        "bot_target_price": data.bot_target_price or (data.voucher_value * 0.3),
         "voucher_code": voucher_code,
         "restaurant_info": {
             "name": data.restaurant_name,
             "address": data.restaurant_address,
             "url": data.restaurant_url,
-            "logo": data.restaurant_logo
+            "logo": data.restaurant_logo,
+            "images": images
         },
         "auto_restart": True  # Kann neu gestartet werden
     }
