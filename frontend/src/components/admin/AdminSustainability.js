@@ -373,50 +373,71 @@ const AdminSustainability = () => {
         ) : (
           <div className="space-y-3">
             {projects.map((project) => (
-              <div key={project.id} className="flex items-start gap-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm">
-                  {categoryIcons[project.category] || <Leaf className="w-5 h-5 text-emerald-600" />}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h4 className="font-medium text-gray-800">{project.name}</h4>
-                    <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs rounded-full">
-                      {categoryLabels[project.category]}
-                    </span>
+              <div key={project.id} className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                {/* Header Row */}
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-3 min-w-0">
+                    <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm flex-shrink-0">
+                      {categoryIcons[project.category] || <Leaf className="w-5 h-5 text-emerald-600" />}
+                    </div>
+                    <div className="min-w-0">
+                      <h4 className="font-medium text-gray-800 truncate">{project.name}</h4>
+                      <span className="inline-block px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs rounded-full mt-1">
+                        {categoryLabels[project.category]}
+                      </span>
+                    </div>
                   </div>
-                  <p className="text-sm text-gray-600 line-clamp-2">{project.description}</p>
-                  <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
-                    {project.location && (
-                      <span className="flex items-center gap-1">
-                        <MapPin className="w-3 h-3" />
+                  <Button 
+                    onClick={() => handleDeleteProject(project.id)} 
+                    variant="ghost" 
+                    size="sm"
+                    className="text-red-500 hover:text-red-700 hover:bg-red-50 flex-shrink-0"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+                
+                {/* Description */}
+                {project.description && (
+                  <p className="text-sm text-gray-600 line-clamp-2 mt-3">{project.description}</p>
+                )}
+                
+                {/* Stats Grid - Mobile optimized */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3">
+                  {project.location && (
+                    <div className="bg-white rounded-lg p-2">
+                      <p className="text-[10px] text-gray-400 uppercase">Standort</p>
+                      <p className="text-xs text-gray-700 font-medium truncate flex items-center gap-1">
+                        <MapPin className="w-3 h-3 flex-shrink-0" />
                         {project.location}
-                      </span>
-                    )}
-                    {project.impact_value > 0 && (
-                      <span className="flex items-center gap-1">
-                        <TrendingUp className="w-3 h-3" />
-                        Impact: {project.impact_value.toLocaleString()}
-                      </span>
-                    )}
-                    {project.amount > 0 && (
-                      <span className="font-medium text-emerald-600">
+                      </p>
+                    </div>
+                  )}
+                  {project.impact_value > 0 && (
+                    <div className="bg-white rounded-lg p-2">
+                      <p className="text-[10px] text-gray-400 uppercase">Impact</p>
+                      <p className="text-xs text-gray-700 font-medium flex items-center gap-1">
+                        <TrendingUp className="w-3 h-3 flex-shrink-0 text-emerald-500" />
+                        {project.impact_value.toLocaleString()}
+                      </p>
+                    </div>
+                  )}
+                  {project.amount > 0 && (
+                    <div className="bg-emerald-50 rounded-lg p-2">
+                      <p className="text-[10px] text-gray-400 uppercase">Betrag</p>
+                      <p className="text-sm text-emerald-600 font-bold">
                         €{project.amount.toLocaleString()}
-                      </span>
-                    )}
-                    <span className="flex items-center gap-1">
-                      <Calendar className="w-3 h-3" />
+                      </p>
+                    </div>
+                  )}
+                  <div className="bg-white rounded-lg p-2">
+                    <p className="text-[10px] text-gray-400 uppercase">Erstellt</p>
+                    <p className="text-xs text-gray-700 font-medium flex items-center gap-1">
+                      <Calendar className="w-3 h-3 flex-shrink-0" />
                       {new Date(project.created_at).toLocaleDateString('de-DE')}
-                    </span>
+                    </p>
                   </div>
                 </div>
-                <Button 
-                  onClick={() => handleDeleteProject(project.id)} 
-                  variant="ghost" 
-                  size="sm"
-                  className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
               </div>
             ))}
           </div>
