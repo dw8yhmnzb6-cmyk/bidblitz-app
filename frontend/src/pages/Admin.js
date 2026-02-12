@@ -2880,8 +2880,8 @@ export default function Admin() {
               {/* Create Promo Modal */}
               {showPromoModal && (
                 <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
-                  <div className="bg-[#1A1A2E] rounded-xl border border-gray-200 max-w-md w-full p-6">
-                    <h3 className="text-xl font-bold text-gray-800 mb-4">Neuen Gutschein-Code erstellen</h3>
+                  <div className="bg-white rounded-xl border border-gray-200 max-w-md w-full p-4 sm:p-6 max-h-[90vh] overflow-y-auto">
+                    <h3 className="text-lg sm:text-xl font-bold text-gray-800 mb-4">Neuen Gutschein-Code erstellen</h3>
                     
                     <form onSubmit={async (e) => {
                       e.preventDefault();
