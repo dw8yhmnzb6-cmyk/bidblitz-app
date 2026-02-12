@@ -806,3 +806,245 @@ async def get_active_restaurant_auctions():
     
     return auctions
 
+
+
+# ==================== BILD UPLOAD ====================
+
+@router.post("/admin/upload-image")
+async def upload_image(
+    file: UploadFile = File(...),
+    admin: dict = Depends(get_admin_user)
+):
+    """
+    Lädt ein Bild hoch und gibt einen Base64-String oder URL zurück.
+    Unterstützt: JPEG, PNG, WebP, GIF
+    Max Größe: 5MB
+    """
+    # Prüfe Dateityp
+    allowed_types = ["image/jpeg", "image/png", "image/webp", "image/gif"]
+    if file.content_type not in allowed_types:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Ungültiger Dateityp. Erlaubt: {', '.join(allowed_types)}"
+        )
+    
+    # Lese Datei
+    contents = await file.read()
+    
+    # Prüfe Größe (max 5MB)
+    max_size = 5 * 1024 * 1024  # 5MB
+    if len(contents) > max_size:
+        raise HTTPException(
+            status_code=400,
+            detail="Datei ist zu groß (max. 5MB)"
+        )
+    
+    # Konvertiere zu Base64
+    base64_image = base64.b64encode(contents).decode('utf-8')
+    
+    # Erstelle Data-URL
+    data_url = f"data:{file.content_type};base64,{base64_image}"
+    
+    # Speichere in Datenbank für spätere Verwendung
+    image_id = str(uuid.uuid4())
+    image_doc = {
+        "id": image_id,
+        "filename": file.filename,
+        "content_type": file.content_type,
+        "size": len(contents),
+        "data_url": data_url,
+        "uploaded_by": admin.get("email", "admin"),
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.uploaded_images.insert_one(image_doc)
+    image_doc.pop("_id", None)
+    
+    logger.info(f"Image uploaded: {file.filename} ({len(contents)} bytes)")
+    
+    return {
+        "success": True,
+        "image_id": image_id,
+        "image_url": data_url,
+        "filename": file.filename,
+        "size": len(contents),
+        "message": "Bild erfolgreich hochgeladen!"
+    }
+
+
+@router.post("/admin/upload-images")
+async def upload_multiple_images(
+    files: List[UploadFile] = File(...),
+    admin: dict = Depends(get_admin_user)
+):
+    """
+    Lädt mehrere Bilder hoch (max. 5 gleichzeitig).
+    """
+    if len(files) > 5:
+        raise HTTPException(status_code=400, detail="Maximal 5 Bilder gleichzeitig erlaubt")
+    
+    uploaded = []
+    allowed_types = ["image/jpeg", "image/png", "image/webp", "image/gif"]
+    max_size = 5 * 1024 * 1024
+    
+    for file in files:
+        # Prüfe Dateityp
+        if file.content_type not in allowed_types:
+            continue
+        
+        # Lese Datei
+        contents = await file.read()
+        
+        # Prüfe Größe
+        if len(contents) > max_size:
+            continue
+        
+        # Konvertiere zu Base64
+        base64_image = base64.b64encode(contents).decode('utf-8')
+        data_url = f"data:{file.content_type};base64,{base64_image}"
+        
+        # Speichere
+        image_id = str(uuid.uuid4())
+        image_doc = {
+            "id": image_id,
+            "filename": file.filename,
+            "content_type": file.content_type,
+            "size": len(contents),
+            "data_url": data_url,
+            "uploaded_by": admin.get("email", "admin"),
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        
+        await db.uploaded_images.insert_one(image_doc)
+        
+        uploaded.append({
+            "image_id": image_id,
+            "image_url": data_url,
+            "filename": file.filename
+        })
+    
+    logger.info(f"Multiple images uploaded: {len(uploaded)} files")
+    
+    return {
+        "success": True,
+        "count": len(uploaded),
+        "images": uploaded,
+        "message": f"{len(uploaded)} Bilder hochgeladen!"
+    }
+
+
+# ==================== RESTAURANT AUKTION BEARBEITEN ====================
+
+class RestaurantAuctionUpdate(BaseModel):
+    """Schema für Restaurant-Auktion Update"""
+    restaurant_name: Optional[str] = None
+    restaurant_url: Optional[str] = None
+    restaurant_logo: Optional[str] = None
+    restaurant_address: Optional[str] = None
+    restaurant_images: Optional[List[str]] = None
+    voucher_value: Optional[int] = None
+    description: Optional[str] = None
+    bot_target_price: Optional[float] = None
+
+
+@router.put("/admin/restaurant-auctions/{auction_id}")
+async def update_restaurant_auction(
+    auction_id: str,
+    data: RestaurantAuctionUpdate,
+    admin: dict = Depends(get_admin_user)
+):
+    """Restaurant-Gutschein-Auktion bearbeiten (Admin)"""
+    
+    # Finde die Auktion
+    auction = await db.auctions.find_one({"id": auction_id, "auction_type": "restaurant_voucher"})
+    if not auction:
+        raise HTTPException(status_code=404, detail="Restaurant-Auktion nicht gefunden")
+    
+    # Baue Update-Dict
+    update_fields = {}
+    
+    if data.restaurant_name:
+        update_fields["title"] = f"🍽️ {data.restaurant_name} - €{data.voucher_value or auction.get('restaurant_info', {}).get('voucher_value', 25)} Gutschein"
+        if "restaurant_info" not in update_fields:
+            update_fields["restaurant_info"] = auction.get("restaurant_info", {})
+        update_fields["restaurant_info"]["name"] = data.restaurant_name
+    
+    if data.restaurant_url is not None:
+        if "restaurant_info" not in update_fields:
+            update_fields["restaurant_info"] = auction.get("restaurant_info", {})
+        update_fields["restaurant_info"]["url"] = data.restaurant_url
+    
+    if data.restaurant_logo is not None:
+        if "restaurant_info" not in update_fields:
+            update_fields["restaurant_info"] = auction.get("restaurant_info", {})
+        update_fields["restaurant_info"]["logo"] = data.restaurant_logo
+    
+    if data.restaurant_address is not None:
+        if "restaurant_info" not in update_fields:
+            update_fields["restaurant_info"] = auction.get("restaurant_info", {})
+        update_fields["restaurant_info"]["address"] = data.restaurant_address
+    
+    if data.restaurant_images is not None:
+        if "restaurant_info" not in update_fields:
+            update_fields["restaurant_info"] = auction.get("restaurant_info", {})
+        update_fields["restaurant_info"]["images"] = data.restaurant_images
+        # Auch das Hauptbild aktualisieren, wenn Bilder vorhanden
+        if data.restaurant_images:
+            update_fields["image_url"] = data.restaurant_images[0]
+    
+    if data.voucher_value is not None:
+        if "restaurant_info" not in update_fields:
+            update_fields["restaurant_info"] = auction.get("restaurant_info", {})
+        update_fields["restaurant_info"]["voucher_value"] = data.voucher_value
+        # Auch Titel aktualisieren
+        name = data.restaurant_name or auction.get("restaurant_info", {}).get("name", "Restaurant")
+        update_fields["title"] = f"🍽️ {name} - €{data.voucher_value} Gutschein"
+    
+    if data.description is not None:
+        update_fields["description"] = data.description
+    
+    if data.bot_target_price is not None:
+        update_fields["bot_target_price"] = data.bot_target_price
+    
+    if not update_fields:
+        return {"success": False, "message": "Keine Änderungen"}
+    
+    # Aktualisierung durchführen
+    update_fields["updated_at"] = datetime.now(timezone.utc).isoformat()
+    
+    await db.auctions.update_one(
+        {"id": auction_id},
+        {"$set": update_fields}
+    )
+    
+    # Aktualisierte Auktion zurückgeben
+    updated = await db.auctions.find_one({"id": auction_id}, {"_id": 0})
+    
+    logger.info(f"Restaurant auction updated: {auction_id}")
+    
+    return {
+        "success": True,
+        "auction": updated,
+        "message": "Restaurant-Auktion aktualisiert!"
+    }
+
+
+@router.delete("/admin/restaurant-auctions/{auction_id}")
+async def delete_restaurant_auction(
+    auction_id: str,
+    admin: dict = Depends(get_admin_user)
+):
+    """Restaurant-Gutschein-Auktion löschen (Admin)"""
+    
+    result = await db.auctions.delete_one({"id": auction_id, "auction_type": "restaurant_voucher"})
+    
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Restaurant-Auktion nicht gefunden")
+    
+    logger.info(f"Restaurant auction deleted: {auction_id}")
+    
+    return {
+        "success": True,
+        "message": "Restaurant-Auktion gelöscht!"
+    }
+
