@@ -20,6 +20,14 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 | **BidAlarmPage - URL sichtbar** | ✅ KEIN PROBLEM | Keine rohen URLs auf der Seite, nur Footer mit Kontakt-Links |
 | **AdminEmail - {name} Platzhalter** | ✅ OK | Das Admin-Panel ist auf Deutsch, `{name}` ist ein Template-Platzhalter (keine Übersetzung nötig) |
 
+#### ADMIN AUKTIONSDAUER-BUG BEHOBEN ✅
+| Problem | Lösung |
+|---------|--------|
+| "Sekunden" Option fehlte im Dropdown | ✅ "Sekunden" Option hinzugefügt |
+| Mindestdauer nicht kommuniziert | ✅ Hinweistext: "Mindestens 5 Minuten (300 Sekunden)" |
+
+**Datei geändert:** `/app/frontend/src/components/admin/AdminAuctions.js`
+
 #### TECHNISCHE ÄNDERUNGEN
 - **Datei geändert:** `/app/frontend/src/pages/DuelsPage.js`
   - Button wird nur gezeigt wenn `!showCreate`
