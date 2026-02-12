@@ -54,6 +54,22 @@ const FlashSalesPage = () => {
       noSales: 'No flash sales active',
       checkBack: 'Check back later!',
       popular: 'Popular'
+    },
+    sq: {
+      title: 'Shitje të Shpejta',
+      subtitle: 'Oferta të kufizuara në kohë - Bëhu i shpejtë!',
+      active: 'Aktive Tani',
+      upcoming: 'Së Shpejti',
+      endsIn: 'Përfundon në',
+      startsIn: 'Fillon në',
+      bids: 'oferta',
+      save: 'Kurse',
+      buyNow: 'Bli Tani',
+      notify: 'Njofto Mua',
+      notified: 'Do të njoftohesh',
+      noSales: 'Asnjë shitje e shpejtë aktive',
+      checkBack: 'Kthehu më vonë!',
+      popular: 'Popullore'
     }
   };
   const t = texts[langKey] || texts.de;
