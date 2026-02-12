@@ -637,3 +637,167 @@ async def delete_restaurant_application(
         raise HTTPException(status_code=404, detail="Bewerbung nicht gefunden")
     return {"message": "Bewerbung gelöscht"}
 
+
+# ==================== RESTAURANT VOUCHER AUCTIONS ====================
+
+class CreateRestaurantAuctionRequest(BaseModel):
+    """Schema für Restaurant-Gutschein-Auktion"""
+    restaurant_name: str
+    restaurant_url: Optional[str] = None
+    restaurant_logo: Optional[str] = None
+    restaurant_address: str
+    voucher_value: int = 25  # Euro-Wert des Gutscheins
+    discount_percent: Optional[int] = None  # Alternative: Prozent-Rabatt
+    description: str = "Genießen Sie ein leckeres Essen!"
+    duration_hours: int = 24
+    start_price: float = 0.01
+    bot_target_price: Optional[float] = None  # Min-Preis für Bots
+
+
+@router.post("/admin/restaurant-auctions/create")
+async def create_restaurant_voucher_auction(
+    data: CreateRestaurantAuctionRequest,
+    admin: dict = Depends(get_admin_user)
+):
+    """Erstellt eine Auktion für einen Restaurant-Gutschein (Admin)"""
+    
+    now = datetime.now(timezone.utc)
+    end_time = now + timedelta(hours=data.duration_hours)
+    auction_id = str(uuid.uuid4())
+    
+    # Titel erstellen
+    if data.discount_percent:
+        title = f"🍽️ {data.discount_percent}% Rabatt bei {data.restaurant_name}"
+        display_value = f"{data.discount_percent}% Rabatt"
+    else:
+        title = f"🍽️ {data.voucher_value}€ Gutschein bei {data.restaurant_name}"
+        display_value = f"{data.voucher_value}€"
+    
+    # Gutschein-Code generieren
+    prefix = data.restaurant_name[:4].upper().replace(" ", "")
+    voucher_code = generate_voucher_code(prefix=prefix, length=6)
+    while await db.vouchers.find_one({"code": voucher_code}):
+        voucher_code = generate_voucher_code(prefix=prefix, length=6)
+    
+    # Erstelle den Gutschein in der DB
+    voucher_doc = {
+        "id": str(uuid.uuid4()),
+        "code": voucher_code,
+        "type": "restaurant_auction",
+        "value": data.voucher_value if not data.discount_percent else 0,
+        "discount_percent": data.discount_percent,
+        "bids": 0,
+        "max_uses": 1,
+        "used_count": 0,
+        "used_by": [],
+        "is_active": False,  # Wird erst aktiv, wenn Auktion gewonnen
+        "auction_id": auction_id,
+        "expires_at": (now + timedelta(days=90)).isoformat(),
+        "created_at": now.isoformat(),
+        "created_by": admin.get("email", "admin"),
+        "merchant_name": data.restaurant_name,
+        "merchant_url": data.restaurant_url,
+        "merchant_address": data.restaurant_address,
+        "merchant_logo": data.restaurant_logo,
+        "description": data.description
+    }
+    await db.vouchers.insert_one(voucher_doc)
+    
+    # Erstelle die Auktion
+    auction_doc = {
+        "id": auction_id,
+        "title": title,
+        "product_id": voucher_doc["id"],
+        "product": {
+            "id": voucher_doc["id"],
+            "name": title,
+            "description": data.description,
+            "retail_price": data.voucher_value or (data.discount_percent * 2),  # Schätzwert
+            "category": "restaurant_voucher",
+            "image_url": data.restaurant_logo or "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400",
+            "specifications": {
+                "restaurant": data.restaurant_name,
+                "address": data.restaurant_address,
+                "website": data.restaurant_url,
+                "value": display_value,
+                "voucher_code": voucher_code
+            }
+        },
+        "category": "restaurant_voucher",
+        "auction_type": "restaurant_voucher",
+        "status": "active",
+        "start_time": now.isoformat(),
+        "end_time": end_time.isoformat(),
+        "current_price": data.start_price,
+        "bid_increment": 0.01,
+        "total_bids": 0,
+        "bid_count": 0,
+        "last_bidder": None,
+        "last_bidder_id": None,
+        "winner_id": None,
+        "winner_name": None,
+        "bid_history": [],
+        "created_at": now.isoformat(),
+        "created_by": admin.get("email", "admin"),
+        "bot_target_price": data.bot_target_price or (data.voucher_value * 0.3 if data.voucher_value else 10),
+        "voucher_code": voucher_code,
+        "restaurant_info": {
+            "name": data.restaurant_name,
+            "address": data.restaurant_address,
+            "url": data.restaurant_url,
+            "logo": data.restaurant_logo
+        },
+        "auto_restart": True  # Kann neu gestartet werden
+    }
+    
+    await db.auctions.insert_one(auction_doc)
+    auction_doc.pop("_id", None)
+    
+    logger.info(f"🍽️ Restaurant-Gutschein-Auktion erstellt: {title} (Code: {voucher_code})")
+    
+    return {
+        "success": True,
+        "auction": auction_doc,
+        "voucher_code": voucher_code,
+        "message": f"Restaurant-Gutschein-Auktion für {data.restaurant_name} erstellt!"
+    }
+
+
+@router.get("/admin/restaurant-auctions")
+async def get_restaurant_auctions(
+    status: Optional[str] = None,
+    admin: dict = Depends(get_admin_user)
+):
+    """Alle Restaurant-Gutschein-Auktionen abrufen (Admin)"""
+    query = {"auction_type": "restaurant_voucher"}
+    if status:
+        query["status"] = status
+    
+    auctions = await db.auctions.find(query, {"_id": 0}).sort("created_at", -1).to_list(100)
+    
+    stats = {
+        "total": await db.auctions.count_documents({"auction_type": "restaurant_voucher"}),
+        "active": await db.auctions.count_documents({"auction_type": "restaurant_voucher", "status": "active"}),
+        "ended": await db.auctions.count_documents({"auction_type": "restaurant_voucher", "status": "ended"})
+    }
+    
+    return {
+        "auctions": auctions,
+        "stats": stats
+    }
+
+
+@router.get("/restaurant-auctions/active")
+async def get_active_restaurant_auctions():
+    """Öffentlicher Endpoint: Alle aktiven Restaurant-Gutschein-Auktionen"""
+    
+    auctions = await db.auctions.find(
+        {
+            "auction_type": "restaurant_voucher",
+            "status": "active"
+        },
+        {"_id": 0}
+    ).sort("end_time", 1).to_list(50)
+    
+    return auctions
+
