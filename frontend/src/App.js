@@ -712,6 +712,11 @@ function AppContent() {
             </ProtectedRoute>
           } />
           
+          {/* Restaurant Vouchers - Public */}
+          <Route path="/restaurant-gutscheine" element={<RestaurantVouchersPage />} />
+          <Route path="/restaurant-vouchers" element={<RestaurantVouchersPage />} />
+          <Route path="/restaurants" element={<RestaurantVouchersPage />} />
+          
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
