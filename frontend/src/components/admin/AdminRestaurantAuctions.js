@@ -1,9 +1,9 @@
 // Admin Restaurant Voucher Auctions Component
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { 
   Utensils, Plus, ExternalLink, Trash2, Loader2, 
   MapPin, Globe, Gavel, Euro, Clock, Image,
-  TrendingUp, RefreshCw, X
+  TrendingUp, RefreshCw, X, Upload, Edit2, Save, Camera
 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -17,6 +17,16 @@ export default function AdminRestaurantAuctions({ token, API }) {
   const [creating, setCreating] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [filter, setFilter] = useState('all');
+  const [uploading, setUploading] = useState(false);
+  
+  // Edit mode state
+  const [editingId, setEditingId] = useState(null);
+  const [editData, setEditData] = useState(null);
+  
+  // File input ref
+  const fileInputRef = useRef(null);
+  const logoInputRef = useRef(null);
+  const editFileInputRef = useRef(null);
   
   const [newAuction, setNewAuction] = useState({
     restaurant_name: '',
@@ -35,6 +45,92 @@ export default function AdminRestaurantAuctions({ token, API }) {
   // Image URL input state
   const [imageUrlInput, setImageUrlInput] = useState('');
 
+  // Handle file upload
+  const handleFileUpload = async (e, isLogo = false, isEdit = false) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    
+    setUploading(true);
+    
+    try {
+      const formData = new FormData();
+      
+      if (files.length === 1) {
+        // Single file upload
+        formData.append('file', files[0]);
+        
+        const response = await fetch(`${API}/admin/upload-image`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` },
+          body: formData
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          
+          if (isEdit && editData) {
+            if (isLogo) {
+              setEditData({ ...editData, restaurant_logo: data.image_url });
+            } else {
+              const currentImages = editData.restaurant_images || [];
+              if (currentImages.length < 5) {
+                setEditData({ ...editData, restaurant_images: [...currentImages, data.image_url] });
+              }
+            }
+          } else {
+            if (isLogo) {
+              setNewAuction({ ...newAuction, restaurant_logo: data.image_url });
+            } else {
+              if (newAuction.restaurant_images.length < 5) {
+                setNewAuction({
+                  ...newAuction,
+                  restaurant_images: [...newAuction.restaurant_images, data.image_url]
+                });
+              }
+            }
+          }
+          toast.success(`${isLogo ? 'Logo' : 'Bild'} hochgeladen!`);
+        } else {
+          toast.error('Fehler beim Hochladen');
+        }
+      } else {
+        // Multiple files upload
+        for (let file of files) {
+          formData.append('files', file);
+        }
+        
+        const response = await fetch(`${API}/admin/upload-images`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` },
+          body: formData
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          const urls = data.images.map(img => img.image_url);
+          
+          if (isEdit && editData) {
+            const currentImages = editData.restaurant_images || [];
+            const newImages = [...currentImages, ...urls].slice(0, 5);
+            setEditData({ ...editData, restaurant_images: newImages });
+          } else {
+            const currentImages = newAuction.restaurant_images;
+            const newImages = [...currentImages, ...urls].slice(0, 5);
+            setNewAuction({ ...newAuction, restaurant_images: newImages });
+          }
+          toast.success(`${data.count} Bilder hochgeladen!`);
+        }
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Fehler beim Hochladen');
+    } finally {
+      setUploading(false);
+      // Reset file input
+      e.target.value = '';
+    }
+  };
+
   // Add image to restaurant images
   const addRestaurantImage = () => {
     if (imageUrlInput.trim() && newAuction.restaurant_images.length < 5) {
@@ -47,11 +143,18 @@ export default function AdminRestaurantAuctions({ token, API }) {
   };
 
   // Remove image from restaurant images
-  const removeRestaurantImage = (index) => {
-    setNewAuction({
-      ...newAuction,
-      restaurant_images: newAuction.restaurant_images.filter((_, i) => i !== index)
-    });
+  const removeRestaurantImage = (index, isEdit = false) => {
+    if (isEdit && editData) {
+      setEditData({
+        ...editData,
+        restaurant_images: editData.restaurant_images.filter((_, i) => i !== index)
+      });
+    } else {
+      setNewAuction({
+        ...newAuction,
+        restaurant_images: newAuction.restaurant_images.filter((_, i) => i !== index)
+      });
+    }
   };
 
   // Vordefinierte Restaurant-Bilder zur Auswahl
@@ -71,13 +174,70 @@ export default function AdminRestaurantAuctions({ token, API }) {
   ];
 
   // Add preset image
-  const addPresetImage = (url) => {
-    if (newAuction.restaurant_images.length < 5 && !newAuction.restaurant_images.includes(url)) {
-      setNewAuction({
-        ...newAuction,
-        restaurant_images: [...newAuction.restaurant_images, url]
-      });
+  const addPresetImage = (url, isEdit = false) => {
+    if (isEdit && editData) {
+      const currentImages = editData.restaurant_images || [];
+      if (currentImages.length < 5 && !currentImages.includes(url)) {
+        setEditData({ ...editData, restaurant_images: [...currentImages, url] });
+      }
+    } else {
+      if (newAuction.restaurant_images.length < 5 && !newAuction.restaurant_images.includes(url)) {
+        setNewAuction({
+          ...newAuction,
+          restaurant_images: [...newAuction.restaurant_images, url]
+        });
+      }
     }
+  };
+
+  // Start editing
+  const startEditing = (auction) => {
+    setEditingId(auction.id);
+    setEditData({
+      restaurant_name: auction.restaurant_info?.name || '',
+      restaurant_url: auction.restaurant_info?.url || '',
+      restaurant_logo: auction.restaurant_info?.logo || '',
+      restaurant_address: auction.restaurant_info?.address || '',
+      restaurant_images: auction.restaurant_info?.images || [],
+      voucher_value: auction.restaurant_info?.voucher_value || 25,
+      description: auction.description || '',
+      bot_target_price: auction.bot_target_price || 8
+    });
+  };
+
+  // Save edit
+  const saveEdit = async () => {
+    if (!editingId || !editData) return;
+    
+    try {
+      const response = await fetch(`${API}/admin/restaurant-auctions/${editingId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(editData)
+      });
+      
+      if (response.ok) {
+        toast.success('Auktion aktualisiert!');
+        setEditingId(null);
+        setEditData(null);
+        fetchAuctions();
+      } else {
+        const data = await response.json();
+        toast.error(data.detail || 'Fehler beim Speichern');
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Fehler beim Speichern');
+    }
+  };
+
+  // Cancel edit
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditData(null);
   };
 
   // Fetch existing restaurant auctions
