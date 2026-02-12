@@ -135,9 +135,9 @@ export default function AdminVouchers({
   };
 
   return (
-    <div className="space-y-8">
-      <h1 className="text-2xl font-bold text-white flex items-center gap-3">
-        <Ticket className="w-8 h-8 text-[#EC4899]" />
+    <div className="space-y-6 sm:space-y-8">
+      <h1 className="text-xl sm:text-2xl font-bold text-gray-800 flex items-center gap-2 sm:gap-3">
+        <Ticket className="w-6 h-6 sm:w-8 sm:h-8 text-[#EC4899]" />
         {t('admin.manageVouchers')}
       </h1>
       
@@ -146,26 +146,26 @@ export default function AdminVouchers({
         <Button 
           variant={!bulkMode ? "default" : "outline"}
           onClick={() => setBulkMode(false)}
-          className={!bulkMode ? "bg-[#EC4899]" : ""}
+          className={`flex-1 sm:flex-none text-sm ${!bulkMode ? "bg-[#EC4899]" : ""}`}
         >
           Einzeln erstellen
         </Button>
         <Button 
           variant={bulkMode ? "default" : "outline"}
           onClick={() => setBulkMode(true)}
-          className={bulkMode ? "bg-[#EC4899]" : ""}
+          className={`flex-1 sm:flex-none text-sm ${bulkMode ? "bg-[#EC4899]" : ""}`}
         >
           Mehrere erstellen
         </Button>
       </div>
       
       {/* Create Voucher Form */}
-      <div className="glass-card rounded-xl p-6">
-        <h3 className="text-lg font-bold text-white mb-4">
+      <div className="glass-card rounded-xl p-4 sm:p-6">
+        <h3 className="text-base sm:text-lg font-bold text-gray-800 mb-4">
           {bulkMode ? 'Mehrere Gutscheine erstellen' : t('admin.newVoucher')}
         </h3>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           {/* Code (only for single mode) */}
           {!bulkMode && (
             <div className="space-y-2">
