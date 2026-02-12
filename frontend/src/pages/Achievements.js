@@ -130,7 +130,7 @@ export default function Achievements() {
           <h1 className="text-2xl font-bold text-gray-800 mb-4">{t.loginRequired}</h1>
           <Link to="/login">
             <Button className="bg-[#7C3AED] hover:bg-[#6D28D9]">
-              Anmelden
+              {t.login}
             </Button>
           </Link>
         </div>
