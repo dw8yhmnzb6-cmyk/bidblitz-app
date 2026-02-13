@@ -36,9 +36,10 @@ const demoMessages = [
 ];
 
 export default function LiveAuctionChat({ auctionId }) {
-  const { language } = useLanguage();
+  const { language, mappedLanguage } = useLanguage();
   const { user, isAuthenticated } = useAuth();
-  const t = chatTexts[language] || chatTexts.de;
+  const langKey = mappedLanguage || language;
+  const t = chatTexts[langKey] || chatTexts.de;
   
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState(demoMessages);
