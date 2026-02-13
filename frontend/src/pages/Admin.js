@@ -2032,6 +2032,100 @@ export default function Admin() {
                 </div>
               )}
 
+              {/* Edit Manager Modal */}
+              {showEditManagerModal && selectedManager && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowEditManagerModal(false)}>
+                  <div className="bg-white rounded-xl p-6 max-w-md w-full shadow-xl" onClick={(e) => e.stopPropagation()}>
+                    <h2 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
+                      <Edit2 className="w-5 h-5 text-blue-500" />
+                      {language === 'en' ? 'Edit Manager' : 'Manager bearbeiten'}
+                    </h2>
+                    <p className="text-slate-500 text-sm mb-4">{selectedManager.email}</p>
+                    
+                    <form onSubmit={async (e) => {
+                      e.preventDefault();
+                      try {
+                        await axios.put(`${API}/manager/admin/${selectedManager.id}`, {
+                          name: editManagerForm.name,
+                          cities: editManagerForm.cities.split(',').map(c => c.trim()).filter(c => c),
+                          commission_percent: editManagerForm.commission_percent,
+                          is_active: editManagerForm.is_active
+                        }, {
+                          headers: { Authorization: `Bearer ${token}` }
+                        });
+                        toast.success(language === 'en' ? 'Manager updated!' : 'Manager aktualisiert!');
+                        setShowEditManagerModal(false);
+                        fetchData();
+                      } catch (err) {
+                        toast.error(err.response?.data?.detail || 'Fehler');
+                      }
+                    }} className="space-y-4">
+                      <div>
+                        <Label className="text-slate-700 font-medium">Name</Label>
+                        <Input 
+                          value={editManagerForm.name}
+                          onChange={(e) => setEditManagerForm({...editManagerForm, name: e.target.value})}
+                          className="bg-slate-50 border-slate-200 text-slate-800"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-slate-700 font-medium">{language === 'en' ? 'Cities (comma separated)' : 'Städte (Komma getrennt)'}</Label>
+                        <Input 
+                          value={editManagerForm.cities}
+                          onChange={(e) => setEditManagerForm({...editManagerForm, cities: e.target.value})}
+                          className="bg-slate-50 border-slate-200 text-slate-800"
+                          placeholder="Berlin, Hamburg, München"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-slate-700 font-medium">{language === 'en' ? 'Commission % (from Influencer earnings)' : 'Provision % (von Influencer-Einnahmen)'}</Label>
+                        <Input 
+                          type="number"
+                          value={editManagerForm.commission_percent}
+                          onChange={(e) => setEditManagerForm({...editManagerForm, commission_percent: parseFloat(e.target.value) || 0})}
+                          className="bg-slate-50 border-slate-200 text-slate-800"
+                          min="0"
+                          max="100"
+                          step="0.1"
+                        />
+                        <p className="text-xs text-slate-400 mt-1">
+                          {language === 'en' 
+                            ? 'Percentage the manager receives from their influencers\' commissions' 
+                            : 'Prozentsatz, den der Manager von den Provisionen seiner Influencer erhält'}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
+                        <input
+                          type="checkbox"
+                          id="manager-active"
+                          checked={editManagerForm.is_active}
+                          onChange={(e) => setEditManagerForm({...editManagerForm, is_active: e.target.checked})}
+                          className="w-4 h-4 rounded border-slate-300 text-emerald-500 focus:ring-emerald-500"
+                        />
+                        <Label htmlFor="manager-active" className="text-slate-700 cursor-pointer">
+                          {language === 'en' ? 'Active' : 'Aktiv'}
+                        </Label>
+                      </div>
+                      <div className="flex gap-2 pt-2">
+                        <Button 
+                          type="button" 
+                          variant="outline" 
+                          onClick={() => setShowEditManagerModal(false)} 
+                          className="flex-1 border-slate-200 text-slate-600"
+                        >
+                          {language === 'en' ? 'Cancel' : 'Abbrechen'}
+                        </Button>
+                        <Button type="submit" className="flex-1 bg-blue-600 hover:bg-blue-500 text-white">
+                          {language === 'en' ? 'Save' : 'Speichern'}
+                        </Button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              )}
+
               {/* Manager Details Modal */}
               {showManagerDetails && selectedManager && (
                 <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-2 sm:p-4">
