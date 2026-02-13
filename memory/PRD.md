@@ -5,9 +5,9 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 
 ## Current Status (February 13, 2026)
 
-### ✅ Session Update - February 13, 2026 (Session 16) - P0 COMPLETE
+### ✅ Session Update - February 13, 2026 (Session 16) - P0 + MANAGER EDIT COMPLETE
 
-**P0-Aufgaben abgeschlossen:**
+**P0-Aufgaben und Manager-Bearbeitung abgeschlossen:**
 
 #### 🔧 Geplanter Wartungsmodus ✅
 - **Feature:** Admin kann jetzt Wartungsarbeiten für einen bestimmten Zeitraum planen
@@ -30,11 +30,20 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
   - `handleLeaveTeam()`: `/api/teams/leave`
 - **Testing:** 19/19 Backend-Tests bestanden, UI verifiziert
 
+#### ✏️ Manager Bearbeiten & Flexible Provision ✅
+- **Neues Feature:** Manager können jetzt im Admin Panel bearbeitet werden
+- **Bearbeiten-Modal:** Name, Städte, Provision %, Aktiv-Status
+- **Flexible Provision:** Der Prozentsatz ist nicht mehr hardcoded auf 15%
+  - Jeder Manager kann einen individuellen Prozentsatz haben (0-100%)
+  - Die Anzeige zeigt den tatsächlichen Prozentsatz in der Tabelle
+- **Backend:** Nutzt bestehenden `PUT /api/manager/admin/{id}` Endpoint
+
 #### Geänderte Dateien:
 - `/app/backend/routers/maintenance.py` - Schedule-Endpoints hinzugefügt
 - `/app/backend/routers/auctions.py` - Wartungsmodus-Prüfung in `place_bid`
 - `/app/frontend/src/components/admin/AdminMaintenance.js` - Planungs-UI
 - `/app/frontend/src/pages/TeamBiddingPage.js` - API-Pfade korrigiert
+- `/app/frontend/src/pages/Admin.js` - Manager Edit Modal, dynamische Prozent-Anzeige
 
 ---
 
