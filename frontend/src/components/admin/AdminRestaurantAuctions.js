@@ -497,6 +497,20 @@ export default function AdminRestaurantAuctions({ token, API }) {
               />
             </div>
             
+            {/* Restaurant Kategorie - NEU */}
+            <div className="space-y-1">
+              <Label className="text-gray-700 text-sm">Kategorie *</Label>
+              <select
+                value={newAuction.restaurant_category}
+                onChange={(e) => handleCategoryChange(e.target.value)}
+                className="w-full h-10 px-3 rounded-md border border-gray-200 bg-white text-gray-800 focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+              >
+                {Object.entries(restaurantCategories).map(([key, cat]) => (
+                  <option key={key} value={key}>{cat.label}</option>
+                ))}
+              </select>
+            </div>
+            
             {/* Restaurant Address */}
             <div className="space-y-1">
               <Label className="text-gray-700 text-sm flex items-center gap-1">
