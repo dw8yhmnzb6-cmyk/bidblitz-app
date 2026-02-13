@@ -679,8 +679,11 @@ async def create_restaurant_voucher_auction(
     end_time = now + timedelta(hours=data.duration_hours)
     auction_id = str(uuid.uuid4())
     
-    # Titel erstellen - NUR Euro-Wert
-    title = f"🍽️ {data.voucher_value}€ Gutschein bei {data.restaurant_name}"
+    # Kategorie-Emoji holen
+    category_emoji = CATEGORY_EMOJIS.get(data.restaurant_category, "🍽️")
+    
+    # Titel erstellen mit richtigem Emoji
+    title = f"{category_emoji} {data.voucher_value}€ Gutschein bei {data.restaurant_name}"
     display_value = f"{data.voucher_value}€"
     
     # Gutschein-Code generieren
