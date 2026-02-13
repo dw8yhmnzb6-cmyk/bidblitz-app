@@ -1949,9 +1949,9 @@ export default function Admin() {
 
               {/* Create Manager Modal */}
               {showManagerModal && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowManagerModal(false)}>
-                  <div className="bg-[#1A1A2E] rounded-xl p-6 max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
-                    <h2 className="text-xl font-bold text-gray-800 mb-4">
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowManagerModal(false)}>
+                  <div className="bg-white rounded-xl p-6 max-w-md w-full shadow-xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+                    <h2 className="text-xl font-bold text-slate-800 mb-4">
                       {language === 'en' ? 'Create Manager' : 'Manager erstellen'}
                     </h2>
                     <form onSubmit={async (e) => {
@@ -1965,67 +1965,99 @@ export default function Admin() {
                         });
                         toast.success('Manager erstellt!');
                         setShowManagerModal(false);
-                        setManagerForm({ name: '', email: '', password: '', cities: '', commission_percent: 15 });
+                        setManagerForm({ name: '', email: '', password: '', cities: '', commission_percent: 15, company_commission_percent: 5 });
                         fetchData();
                       } catch (err) {
                         toast.error(err.response?.data?.detail || 'Fehler');
                       }
                     }} className="space-y-4">
                       <div>
-                        <Label className="text-gray-500">Name</Label>
+                        <Label className="text-slate-700 font-medium">Name</Label>
                         <Input 
                           value={managerForm.name}
                           onChange={(e) => setManagerForm({...managerForm, name: e.target.value})}
-                          className="bg-gradient-to-b from-cyan-50 to-cyan-100 border-gray-200 text-gray-800"
+                          className="bg-slate-50 border-slate-200 text-slate-800"
                           required
                         />
                       </div>
                       <div>
-                        <Label className="text-gray-500">E-Mail</Label>
+                        <Label className="text-slate-700 font-medium">E-Mail</Label>
                         <Input 
                           type="email"
                           value={managerForm.email}
                           onChange={(e) => setManagerForm({...managerForm, email: e.target.value})}
-                          className="bg-gradient-to-b from-cyan-50 to-cyan-100 border-gray-200 text-gray-800"
+                          className="bg-slate-50 border-slate-200 text-slate-800"
                           required
                         />
                       </div>
                       <div>
-                        <Label className="text-gray-500">{language === 'en' ? 'Password' : 'Passwort'}</Label>
+                        <Label className="text-slate-700 font-medium">{language === 'en' ? 'Password' : 'Passwort'}</Label>
                         <Input 
                           type="password"
                           value={managerForm.password}
                           onChange={(e) => setManagerForm({...managerForm, password: e.target.value})}
-                          className="bg-gradient-to-b from-cyan-50 to-cyan-100 border-gray-200 text-gray-800"
+                          className="bg-slate-50 border-slate-200 text-slate-800"
                           required
                         />
                       </div>
                       <div>
-                        <Label className="text-gray-500">{language === 'en' ? 'Cities (comma separated)' : 'Städte (Komma getrennt)'}</Label>
+                        <Label className="text-slate-700 font-medium">{language === 'en' ? 'Cities (comma separated)' : 'Städte (Komma getrennt)'}</Label>
                         <Input 
                           value={managerForm.cities}
                           onChange={(e) => setManagerForm({...managerForm, cities: e.target.value})}
-                          className="bg-gradient-to-b from-cyan-50 to-cyan-100 border-gray-200 text-gray-800"
+                          className="bg-slate-50 border-slate-200 text-slate-800"
                           placeholder="Berlin, Hamburg, München"
                           required
                         />
                       </div>
-                      <div>
-                        <Label className="text-gray-500">{language === 'en' ? 'Commission %' : 'Provision %'}</Label>
-                        <Input 
-                          type="number"
-                          value={managerForm.commission_percent}
-                          onChange={(e) => setManagerForm({...managerForm, commission_percent: parseFloat(e.target.value)})}
-                          className="bg-gradient-to-b from-cyan-50 to-cyan-100 border-gray-200 text-gray-800"
-                          min="0"
-                          max="50"
-                        />
+                      
+                      {/* Provision Settings */}
+                      <div className="bg-violet-50 rounded-lg p-4 space-y-3">
+                        <p className="text-sm font-bold text-violet-800 flex items-center gap-2">
+                          <Percent className="w-4 h-4" />
+                          {language === 'en' ? 'Commission Settings' : 'Provisions-Einstellungen'}
+                        </p>
+                        <div>
+                          <Label className="text-slate-700 text-sm">
+                            {language === 'en' ? 'From Influencer Earnings (%)' : 'Von Influencer-Einnahmen (%)'}
+                          </Label>
+                          <Input 
+                            type="number"
+                            value={managerForm.commission_percent}
+                            onChange={(e) => setManagerForm({...managerForm, commission_percent: parseFloat(e.target.value) || 0})}
+                            className="bg-white border-slate-200 text-slate-800"
+                            min="0"
+                            max="100"
+                            step="0.1"
+                          />
+                          <p className="text-xs text-slate-500 mt-1">
+                            Manager erhält diesen % von den Provisionen seiner Influencer
+                          </p>
+                        </div>
+                        <div>
+                          <Label className="text-slate-700 text-sm">
+                            {language === 'en' ? 'From BidBlitz/Company (%)' : 'Von BidBlitz/Firma (%)'}
+                          </Label>
+                          <Input 
+                            type="number"
+                            value={managerForm.company_commission_percent}
+                            onChange={(e) => setManagerForm({...managerForm, company_commission_percent: parseFloat(e.target.value) || 0})}
+                            className="bg-white border-slate-200 text-slate-800"
+                            min="0"
+                            max="100"
+                            step="0.1"
+                          />
+                          <p className="text-xs text-slate-500 mt-1">
+                            Zusätzlicher % direkt von BidBlitz
+                          </p>
+                        </div>
                       </div>
-                      <div className="flex gap-2">
-                        <Button type="button" variant="outline" onClick={() => setShowManagerModal(false)} className="flex-1 border-gray-200 text-gray-800">
+                      
+                      <div className="flex gap-2 pt-2">
+                        <Button type="button" variant="outline" onClick={() => setShowManagerModal(false)} className="flex-1 border-slate-200 text-slate-600">
                           {language === 'en' ? 'Cancel' : 'Abbrechen'}
                         </Button>
-                        <Button type="submit" className="flex-1 bg-[#7C3AED]">
+                        <Button type="submit" className="flex-1 bg-violet-600 hover:bg-violet-500 text-white">
                           {language === 'en' ? 'Create' : 'Erstellen'}
                         </Button>
                       </div>
