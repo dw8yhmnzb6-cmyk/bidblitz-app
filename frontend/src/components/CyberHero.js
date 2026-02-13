@@ -20,7 +20,7 @@ const CyberHero = ({ auctionOfDay, stats, onBid, language = 'de' }) => {
   const langKey = getMappedLang(language);
   
   // Translations
-  const t = {
+  const translations = {
     de: {
       headline: 'BIETE. GEWINNE. SPARE.',
       subheadline: 'Premium-Produkte ab €0,01',
@@ -44,8 +44,57 @@ const CyberHero = ({ auctionOfDay, stats, onBid, language = 'de' }) => {
       activeAuctions: 'Active Auctions',
       totalSaved: 'Total Saved',
       happyWinners: 'Happy Winners'
+    },
+    sq: {
+      headline: 'OFERONI. FITONI. KURSENI.',
+      subheadline: 'Produkte premium nga €0,01',
+      auctionOfDay: 'ANKANDI I DITËS',
+      currentPrice: 'Çmimi Aktual',
+      retailPrice: 'MSRP',
+      bidNow: 'OFERONI TANI',
+      viewAll: 'Shiko të Gjitha',
+      activeAuctions: 'Ankande Aktive',
+      totalSaved: 'Kursyer Gjithsej',
+      happyWinners: 'Fitues të Lumtur'
+    },
+    tr: {
+      headline: 'TEKLİF VER. KAZAN. TASARRUF ET.',
+      subheadline: 'Premium ürünler €0,01\'den başlayan fiyatlarla',
+      auctionOfDay: 'GÜNÜN AÇIK ARTIRMASI',
+      currentPrice: 'Güncel Fiyat',
+      retailPrice: 'PİYASA',
+      bidNow: 'ŞİMDİ TEKLİF VER',
+      viewAll: 'Tümünü Gör',
+      activeAuctions: 'Aktif Açık Artırmalar',
+      totalSaved: 'Toplam Tasarruf',
+      happyWinners: 'Mutlu Kazananlar'
+    },
+    fr: {
+      headline: 'ENCHÉRISSEZ. GAGNEZ. ÉCONOMISEZ.',
+      subheadline: 'Produits premium à partir de 0,01 €',
+      auctionOfDay: 'ENCHÈRE DU JOUR',
+      currentPrice: 'Prix Actuel',
+      retailPrice: 'PVC',
+      bidNow: 'ENCHÉRIR',
+      viewAll: 'Voir Tout',
+      activeAuctions: 'Enchères Actives',
+      totalSaved: 'Total Économisé',
+      happyWinners: 'Gagnants Heureux'
+    },
+    xk: {
+      headline: 'OFERONI. FITONI. KURSENI.',
+      subheadline: 'Produkte premium nga €0,01',
+      auctionOfDay: 'ANKANDI I DITËS',
+      currentPrice: 'Çmimi Aktual',
+      retailPrice: 'MSRP',
+      bidNow: 'OFERONI TANI',
+      viewAll: 'Shiko të Gjitha',
+      activeAuctions: 'Ankande Aktive',
+      totalSaved: 'Kursyer Gjithsej',
+      happyWinners: 'Fitues të Lumtur'
     }
-  }[langKey] || t.de;
+  };
+  const t = translations[langKey] || translations.de;
   
   // Timer for auction of day
   useEffect(() => {
