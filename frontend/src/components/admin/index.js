@@ -41,4 +41,7 @@ export { AdminMaintenance } from './AdminMaintenance';
 // Mobile Navigation
 export { default as AdminMobileNav } from './AdminMobileNav';
 
+// Promo Codes
+export { AdminPromoCodes } from './AdminPromoCodes';
+
 // All components have been extracted!
