@@ -2233,7 +2233,7 @@ export default function Admin() {
                         <div className="bg-gradient-to-b from-cyan-50 to-cyan-100 rounded-lg p-3 text-center">
                           <Crown className="w-5 h-5 text-[#7C3AED] mx-auto mb-1" />
                           <p className="text-lg font-bold text-[#7C3AED]">€{(selectedManager.manager_commission || 0).toFixed(2)}</p>
-                          <p className="text-gray-500 text-[10px]">{language === 'en' ? 'Manager 15%' : 'Manager 15%'}</p>
+                          <p className="text-gray-500 text-[10px]">Manager {selectedManager.commission_percent || 15}%</p>
                         </div>
                       </div>
 
