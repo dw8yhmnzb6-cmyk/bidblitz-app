@@ -1804,6 +1804,7 @@ export default function Admin() {
                             name: mgr.name || '',
                             cities: mgr.cities?.join(', ') || '',
                             commission_percent: mgr.commission_percent || 15,
+                            company_commission_percent: mgr.company_commission_percent || 5,
                             is_active: mgr.is_active !== false
                           });
                           setShowEditManagerModal(true);
