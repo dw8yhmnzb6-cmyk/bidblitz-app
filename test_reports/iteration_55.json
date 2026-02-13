@@ -1,0 +1,117 @@
+{
+  "summary": "Completed testing of Scheduled Maintenance Mode and Team Leave button fix. All 19 backend API tests PASSED. Frontend UI verified for both Admin Maintenance panel and Team Bidding page. The critical 'Leave Clan/Team' button fix has been verified - the frontend now correctly calls /api/teams/leave instead of the old /api/team-bidding/leave endpoint.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_results": {
+    "backend_tests": {
+      "total": 19,
+      "passed": 19,
+      "failed": 0,
+      "test_file": "/app/backend/tests/test_maintenance_teams.py"
+    },
+    "maintenance_schedule_tests": {
+      "GET /api/maintenance/status": "PASS - Returns maintenance status including scheduled field",
+      "POST /api/maintenance/schedule": "PASS - Admin can schedule maintenance with start_time and end_time",
+      "DELETE /api/maintenance/schedule": "PASS - Admin can cancel scheduled maintenance",
+      "GET /api/maintenance/admin/status": "PASS - Returns detailed admin status",
+      "Validation - end before start": "PASS - Returns 400 error",
+      "Validation - past start time": "PASS - Returns 400 error"
+    },
+    "team_tests": {
+      "POST /api/teams/create": "PASS - Creates team with code",
+      "GET /api/teams/my-team": "PASS - Returns user's team or has_team: false",
+      "POST /api/teams/leave": "PASS - CRITICAL FIX VERIFIED - User can leave team",
+      "GET /api/teams/leaderboard": "PASS - Returns team leaderboard",
+      "POST /api/teams/join/{code}": "PASS - Returns 404 for invalid code",
+      "Complete flow test": "PASS - Create -> View -> Leave works correctly"
+    },
+    "frontend_ui_tests": {
+      "Team Bidding Page": {
+        "status": "PASS",
+        "details": [
+          "Page loads with German translations (Team-Bieten)",
+          "data-testid='team-bidding-page' present",
+          "'Mein Team' and 'Team-Rangliste' tabs visible",
+          "'Team erstellen' and 'Team beitreten' buttons work",
+          "'So funktioniert es' section shows proper German content",
+          "Leave button has data-testid='leave-team-btn'"
+        ]
+      },
+      "Admin Maintenance Panel": {
+        "status": "PASS",
+        "details": [
+          "'Wartungsmodus' section accessible in admin panel",
+          "'Sofort aktivieren' section with message and duration fields",
+          "'Wartung planen' section with date/time inputs (2 date, 2 time)",
+          "Schedule button has data-testid='schedule-maintenance-btn'",
+          "Toggle button has data-testid='maintenance-toggle-btn'",
+          "'Wichtige Hinweise' warning section present"
+        ]
+      }
+    }
+  },
+  "critical_fix_verification": {
+    "issue": "Leave Clan/Team button not working",
+    "root_cause": "Frontend was calling /api/team-bidding/* endpoints but backend router was at /api/teams/*",
+    "fix_applied": "Changed all fetch calls in TeamBiddingPage.js to use /api/teams/ prefix",
+    "verification": "Backend API test POST /api/teams/leave returns 200 with success: true",
+    "status": "FIXED AND VERIFIED"
+  },
+  "scheduled_maintenance_feature": {
+    "status": "IMPLEMENTED AND WORKING",
+    "endpoints": [
+      "POST /api/maintenance/schedule - Schedule maintenance with start_time, end_time, message",
+      "DELETE /api/maintenance/schedule - Cancel scheduled maintenance",
+      "GET /api/maintenance/status - Returns scheduled maintenance info"
+    ],
+    "ui_elements": [
+      "Wartung planen section in Admin Panel",
+      "Start date/time and End date/time inputs",
+      "Schedule button (data-testid='schedule-maintenance-btn')",
+      "Cancel button (data-testid='cancel-schedule-btn') when scheduled"
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_maintenance_teams.py",
+    "/app/test_reports/pytest/pytest_maintenance_teams.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "TeamBiddingPage.js correctly uses /api/teams/ prefix for all API calls",
+    "maintenance.py has proper validation for schedule times (end > start, start not in past)",
+    "teams.py handles leader leaving correctly (transfers leadership or disbands team)",
+    "All interactive elements have proper data-testid attributes for testing"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_maintenance_teams.py"
+  ],
+  "success_rate": {
+    "backend": "100% (19/19 tests passed)",
+    "frontend": "100% (All UI elements verified)"
+  },
+  "test_credentials": {
+    "admin": {
+      "email": "admin@bidblitz.de",
+      "password": "Admin123!"
+    },
+    "test_user": {
+      "email": "spinner@bidblitz.de",
+      "password": "Spinner123!"
+    }
+  },
+  "seed_data_creation": "Test teams created during testing are automatically cleaned up (disbanded when single member leaves)",
+  "mocked_apis": {
+    "has_mocked_apis": false,
+    "mocked_apis_list": []
+  },
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Scheduled Maintenance and Team Leave features are fully implemented and tested. All 19 backend tests pass. The critical fix for the Leave button was the API path change from /api/team-bidding/* to /api/teams/*. Admin Maintenance UI has both 'Sofort aktivieren' and 'Wartung planen' sections working correctly."
+}
