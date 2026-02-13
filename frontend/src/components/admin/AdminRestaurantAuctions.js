@@ -615,6 +615,72 @@ export default function AdminRestaurantAuctions({ token, API }) {
               />
             </div>
           </div>
+          
+          {/* AUTO-RESTART OPTION - NEU */}
+          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                  <RefreshCw className="w-5 h-5 text-blue-600" />
+                </div>
+                <div>
+                  <h4 className="font-medium text-gray-800">Auto-Wiederholen</h4>
+                  <p className="text-xs text-gray-500">Auktion automatisch neu starten wenn sie endet</p>
+                </div>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={newAuction.auto_restart}
+                  onChange={(e) => setNewAuction({...newAuction, auto_restart: e.target.checked})}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+              </label>
+            </div>
+            
+            {newAuction.auto_restart && (
+              <div className="mt-4 pt-4 border-t border-blue-200">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-gray-700 text-xs">Wiederholungs-Dauer</Label>
+                    <select
+                      value={newAuction.auto_restart_duration || newAuction.duration_hours}
+                      onChange={(e) => setNewAuction({...newAuction, auto_restart_duration: parseInt(e.target.value)})}
+                      className="w-full h-9 px-3 rounded-md border border-blue-200 bg-white text-gray-800 text-sm focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value={newAuction.duration_hours}>⏱️ Gleiche Dauer ({newAuction.duration_hours}h)</option>
+                      <option value={1}>1 Stunde</option>
+                      <option value={2}>2 Stunden</option>
+                      <option value={4}>4 Stunden</option>
+                      <option value={8}>8 Stunden</option>
+                      <option value={12}>12 Stunden</option>
+                      <option value={24}>24 Stunden</option>
+                      <option value={48}>48 Stunden</option>
+                    </select>
+                  </div>
+                  <div>
+                    <Label className="text-gray-700 text-xs">Bot-Mindestpreis</Label>
+                    <div className="flex items-center gap-1">
+                      <span className="text-gray-500 text-sm">€</span>
+                      <Input
+                        type="number"
+                        step="0.5"
+                        value={newAuction.bot_target_price}
+                        onChange={(e) => setNewAuction({...newAuction, bot_target_price: parseFloat(e.target.value) || 8})}
+                        className="bg-white border-blue-200 h-9 text-sm"
+                        min="1"
+                      />
+                    </div>
+                  </div>
+                </div>
+                <p className="text-xs text-blue-600 mt-2 flex items-center gap-1">
+                  <RefreshCw className="w-3 h-3" />
+                  Auktion wird nach Ablauf automatisch mit diesen Einstellungen neu gestartet
+                </p>
+              </div>
+            )}
+          </div>
 
           {/* Restaurant Fotos */}
           <div className="mb-6">
