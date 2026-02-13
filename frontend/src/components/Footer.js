@@ -273,7 +273,7 @@ export const Footer = () => {
               </Link>
               <Link to="/vip-auctions" className="text-hot-pink hover:text-hot-pink-hover transition-colors font-body text-sm flex items-center gap-1">
                 <Crown className="w-3 h-3" />
-                VIP Auktionen
+                {ft.vipMembership || t('nav.vipAuctions') || 'VIP Auktionen'}
               </Link>
               <Link to="/winners" className="text-gray-400 hover:text-acid transition-colors font-body text-sm">
                 {ft.winners}
