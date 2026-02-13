@@ -123,6 +123,7 @@ async def create_manager(data: ManagerCreate, admin: dict = Depends(get_admin_us
         "password_hash": hash_password(data.password),
         "cities": data.cities,
         "commission_percent": data.commission_percent,
+        "company_commission_percent": data.company_commission_percent,
         "is_active": True,
         "total_paid_out": 0,
         "created_at": datetime.now(timezone.utc).isoformat()
