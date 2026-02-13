@@ -5,6 +5,60 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 
 ## Current Status (February 13, 2026)
 
+### ✅ Session Update - February 13, 2026 (Session 17) - ÜBERSETZUNGSSYSTEM VOLLSTÄNDIG REPARIERT
+
+**P0-Aufgabe: Globales Übersetzungssystem korrigiert:**
+
+Das Übersetzungssystem hatte mehrere kritische Probleme, die dazu führten, dass Text auf Deutsch erschien, obwohl andere Sprachen ausgewählt waren.
+
+#### 🌐 Verbesserungen am Übersetzungssystem ✅
+
+1. **Verbesserte `getTranslation()` Funktion** (`translations.js`)
+   - Neue Fallback-Logik: Zuerst Originalsprache → dann gemappte Sprache → dann Deutsch
+   - Prüft jetzt auf Schlüsselebene statt nur auf Sprachebene
+   - `ae` (Dubai) fällt korrekt auf `ar` (Arabisch) zurück bei fehlenden Keys
+
+2. **Navbar-Übersetzungen korrigiert** (`Navbar.js`)
+   - Hartkodierte Übersetzungen für "Rangliste" und "Glücksrad" durch `t()` ersetzt
+   - Mobile Menü verwendet jetzt auch die zentrale Übersetzungsfunktion
+
+3. **Fehlende Schlüssel hinzugefügt**:
+   - **Arabic (ar):** `leaderboard`, `luckyWheel` in nav
+   - **Arabic Dubai (ae):** Vollständige nav mit allen Schlüsseln
+   - **Portugiesisch (pt):** `leaderboard`, `luckyWheel`, `language`, etc.
+   - **Niederländisch (nl):** `leaderboard`, `luckyWheel`, `language`, etc.
+   - **Polnisch (pl):** `leaderboard`, `luckyWheel`, `language`, etc.
+   - **Türkisch (tr):** `discoverFeatures` in auctionPage
+
+4. **Footer-Übersetzungen** (`Footer.js`)
+   - Arabic (ar) Block hinzugefügt
+   - `leaderboard` zu allen Sprachblöcken hinzugefügt
+   - Hartkodiertes "VIP Auktionen" durch Übersetzung ersetzt
+
+5. **Status-Bar-Übersetzungen** (`ExcitementFeatures.js`)
+   - Arabic (ar, ae), Spanisch (es), Italienisch (it) hinzugefügt
+   - "HEISS" zeigt jetzt "ساخن" auf Arabisch
+
+6. **CyberHero-Übersetzungen** (`CyberHero.js`)
+   - Arabic (ar) Block mit allen Keys hinzugefügt
+
+#### Testing-Ergebnis:
+- ✅ Arabic (Dubai/ae): 100% übersetzt
+- ✅ Albanian (Kosovo/xk): 100% übersetzt
+- ✅ Turkish (tr): 100% übersetzt
+- ✅ French (fr): 100% übersetzt
+- ✅ German (de): Standard funktioniert
+- ✅ Fallback-Mechanismus: Griechisch (el) fällt auf Deutsch zurück
+
+#### Geänderte Dateien:
+- `/app/frontend/src/i18n/translations.js` - Neue getTranslation() Logik + fehlende Keys
+- `/app/frontend/src/components/Navbar.js` - t() statt hartkodierter Text
+- `/app/frontend/src/components/Footer.js` - Arabic + leaderboard für alle
+- `/app/frontend/src/components/ExcitementFeatures.js` - statusTranslations erweitert
+- `/app/frontend/src/components/CyberHero.js` - Arabic Übersetzungen
+
+---
+
 ### ✅ Session Update - February 13, 2026 (Session 16) - P0 + MANAGER EDIT + P1 PROGRESS
 
 **P0-Aufgaben und Manager-Bearbeitung abgeschlossen:**
