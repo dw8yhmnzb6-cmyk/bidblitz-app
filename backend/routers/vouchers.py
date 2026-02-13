@@ -51,6 +51,7 @@ class RestaurantVoucherCreate(BaseModel):
     restaurant_url: Optional[str] = None
     restaurant_logo: Optional[str] = None
     restaurant_address: Optional[str] = None
+    restaurant_category: str = "restaurant"  # NEU: restaurant, cafe, eiscafe, bar, pizzeria, fastfood
     voucher_value: int = 25  # Wert in Euro
     discount_percent: Optional[int] = None  # z.B. 20% Rabatt
     description: str = "Genießen Sie ein leckeres Essen"
