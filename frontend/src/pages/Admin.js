@@ -2069,7 +2069,7 @@ export default function Admin() {
               {/* Edit Manager Modal */}
               {showEditManagerModal && selectedManager && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowEditManagerModal(false)}>
-                  <div className="bg-white rounded-xl p-6 max-w-md w-full shadow-xl" onClick={(e) => e.stopPropagation()}>
+                  <div className="bg-white rounded-xl p-6 max-w-md w-full shadow-xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
                     <h2 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
                       <Edit2 className="w-5 h-5 text-blue-500" />
                       {language === 'en' ? 'Edit Manager' : 'Manager bearbeiten'}
@@ -2083,6 +2083,7 @@ export default function Admin() {
                           name: editManagerForm.name,
                           cities: editManagerForm.cities.split(',').map(c => c.trim()).filter(c => c),
                           commission_percent: editManagerForm.commission_percent,
+                          company_commission_percent: editManagerForm.company_commission_percent,
                           is_active: editManagerForm.is_active
                         }, {
                           headers: { Authorization: `Bearer ${token}` }
@@ -2113,23 +2114,49 @@ export default function Admin() {
                           required
                         />
                       </div>
-                      <div>
-                        <Label className="text-slate-700 font-medium">{language === 'en' ? 'Commission % (from Influencer earnings)' : 'Provision % (von Influencer-Einnahmen)'}</Label>
-                        <Input 
-                          type="number"
-                          value={editManagerForm.commission_percent}
-                          onChange={(e) => setEditManagerForm({...editManagerForm, commission_percent: parseFloat(e.target.value) || 0})}
-                          className="bg-slate-50 border-slate-200 text-slate-800"
-                          min="0"
-                          max="100"
-                          step="0.1"
-                        />
-                        <p className="text-xs text-slate-400 mt-1">
-                          {language === 'en' 
-                            ? 'Percentage the manager receives from their influencers\' commissions' 
-                            : 'Prozentsatz, den der Manager von den Provisionen seiner Influencer erhält'}
+                      
+                      {/* Provision Settings */}
+                      <div className="bg-violet-50 rounded-lg p-4 space-y-3">
+                        <p className="text-sm font-bold text-violet-800 flex items-center gap-2">
+                          <Percent className="w-4 h-4" />
+                          {language === 'en' ? 'Commission Settings' : 'Provisions-Einstellungen'}
                         </p>
+                        <div>
+                          <Label className="text-slate-700 text-sm">
+                            {language === 'en' ? 'From Influencer Earnings (%)' : 'Von Influencer-Einnahmen (%)'}
+                          </Label>
+                          <Input 
+                            type="number"
+                            value={editManagerForm.commission_percent}
+                            onChange={(e) => setEditManagerForm({...editManagerForm, commission_percent: parseFloat(e.target.value) || 0})}
+                            className="bg-white border-slate-200 text-slate-800"
+                            min="0"
+                            max="100"
+                            step="0.1"
+                          />
+                          <p className="text-xs text-slate-500 mt-1">
+                            Manager erhält diesen % von den Provisionen seiner Influencer
+                          </p>
+                        </div>
+                        <div>
+                          <Label className="text-slate-700 text-sm">
+                            {language === 'en' ? 'From BidBlitz/Company (%)' : 'Von BidBlitz/Firma (%)'}
+                          </Label>
+                          <Input 
+                            type="number"
+                            value={editManagerForm.company_commission_percent}
+                            onChange={(e) => setEditManagerForm({...editManagerForm, company_commission_percent: parseFloat(e.target.value) || 0})}
+                            className="bg-white border-slate-200 text-slate-800"
+                            min="0"
+                            max="100"
+                            step="0.1"
+                          />
+                          <p className="text-xs text-slate-500 mt-1">
+                            Zusätzlicher % direkt von BidBlitz
+                          </p>
+                        </div>
                       </div>
+                      
                       <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
                         <input
                           type="checkbox"
