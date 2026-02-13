@@ -40,7 +40,9 @@ export default function AdminRestaurantAuctions({ token, API }) {
     description: 'Genießen Sie ein leckeres Essen bei uns!',
     duration_hours: 24,
     start_price: 0.01,
-    bot_target_price: 8
+    bot_target_price: 8,
+    auto_restart: true,  // NEU: Auto-Wiederholen aktiviert
+    auto_restart_duration: 24  // NEU: Gleiche Dauer wie Original
   });
 
   // Restaurant Kategorien mit passenden Beschreibungen
