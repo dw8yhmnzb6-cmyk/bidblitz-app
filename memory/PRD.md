@@ -5,7 +5,7 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 
 ## Current Status (February 13, 2026)
 
-### ✅ Session Update - February 13, 2026 (Session 16) - P0 + MANAGER EDIT COMPLETE
+### ✅ Session Update - February 13, 2026 (Session 16) - P0 + MANAGER EDIT + P1 PROGRESS
 
 **P0-Aufgaben und Manager-Bearbeitung abgeschlossen:**
 
@@ -16,36 +16,41 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
   - `DELETE /api/maintenance/schedule` - Geplante Wartung abbrechen
   - `GET /api/maintenance/status` - Enthält jetzt `scheduled` Objekt mit Zeitfenster
 - **Frontend-UI:** Neuer "Wartung planen" Bereich im Admin Panel
-  - Startdatum & -zeit, Enddatum & -zeit
-  - Eigene Nachricht für Benutzer
-  - Abbrechen-Button für geplante Wartung
 - **Bieten blockiert:** `place_bid` in `auctions.py` prüft jetzt sowohl manuellen als auch geplanten Wartungsmodus
 
 #### 🔴 "Team verlassen" Button repariert ✅
 - **Root Cause:** Frontend rief `/api/team-bidding/*` auf, aber Backend nutzt `/api/teams/*`
-- **Fix:** Alle API-Aufrufe in `TeamBiddingPage.js` korrigiert:
-  - `fetchData()`: `/api/teams/my-team` & `/api/teams/leaderboard`
-  - `handleCreateTeam()`: `/api/teams/create`
-  - `handleJoinTeam()`: `/api/teams/join/{code}`
-  - `handleLeaveTeam()`: `/api/teams/leave`
-- **Testing:** 19/19 Backend-Tests bestanden, UI verifiziert
+- **Fix:** Alle API-Aufrufe in `TeamBiddingPage.js` korrigiert
+- **Testing:** 19/19 Backend-Tests bestanden
 
 #### ✏️ Manager Bearbeiten & Flexible Provision ✅
 - **Neues Feature:** Manager können jetzt im Admin Panel bearbeitet werden
-- **Bearbeiten-Modal:** Name, Städte, Provision %, Aktiv-Status
 - **ZWEI separate Provisions-Einstellungen:**
   - **Von Influencer-Einnahmen (%)** - Prozentsatz von Influencer-Provisionen
   - **Von BidBlitz/Firma (%)** - Zusätzlicher Prozentsatz direkt von der Firma
 - **Helle UI:** Modals haben jetzt hellen Hintergrund für bessere Lesbarkeit
 - **Backend:** `company_commission_percent` Feld zu ManagerCreate/ManagerUpdate hinzugefügt
 
+#### 🔄 Auto-Restart Backend-Logik verbessert ✅
+- **Fix:** Auto-Restart-Prozessor unterstützt jetzt beide Formate:
+  - Boolean: `auto_restart: true` (für Restaurant-Auktionen)
+  - Dict: `auto_restart: {enabled: true, ...}` (für reguläre Auktionen)
+- **Restaurant-Auktionen:** Nutzen jetzt `auto_restart_duration` (in Stunden)
+
+#### 🌐 Albanische Übersetzungen verifiziert ✅
+- Übersetzungen für `sq` (Albanisch) und `xk` (Kosovo) funktionieren korrekt
+- CyberHero Komponente: Albanische/Kosovo Übersetzungen hinzugefügt
+- getTranslation mit korrektem lang-mapping `xk` → `sq`
+
 #### Geänderte Dateien:
-- `/app/backend/routers/maintenance.py` - Schedule-Endpoints hinzugefügt
-- `/app/backend/routers/auctions.py` - Wartungsmodus-Prüfung in `place_bid`
-- `/app/backend/routers/manager.py` - `company_commission_percent` Feld hinzugefügt
+- `/app/backend/routers/maintenance.py` - Schedule-Endpoints
+- `/app/backend/routers/auctions.py` - Wartungsmodus-Prüfung
+- `/app/backend/routers/manager.py` - company_commission_percent
+- `/app/backend/server.py` - Auto-Restart für beide Formate
 - `/app/frontend/src/components/admin/AdminMaintenance.js` - Planungs-UI
 - `/app/frontend/src/pages/TeamBiddingPage.js` - API-Pfade korrigiert
-- `/app/frontend/src/pages/Admin.js` - Manager Edit Modal, zwei Prozent-Felder, helle Modals
+- `/app/frontend/src/pages/Admin.js` - Manager Edit Modal
+- `/app/frontend/src/components/CyberHero.js` - Albanische Übersetzungen
 
 ---
 
