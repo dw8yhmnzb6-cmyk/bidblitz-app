@@ -993,11 +993,26 @@ async def update_restaurant_auction(
     # Baue Update-Dict
     update_fields = {}
     
+    # Bestimme Kategorie-Emoji
+    category = data.restaurant_category or auction.get("restaurant_info", {}).get("category", "restaurant")
+    category_emoji = CATEGORY_EMOJIS.get(category, "🍽️")
+    
     if data.restaurant_name:
-        update_fields["title"] = f"🍽️ {data.restaurant_name} - €{data.voucher_value or auction.get('restaurant_info', {}).get('voucher_value', 25)} Gutschein"
+        voucher_value = data.voucher_value or auction.get('restaurant_info', {}).get('voucher_value', 25) or auction.get('product', {}).get('retail_price', 25)
+        update_fields["title"] = f"{category_emoji} {voucher_value}€ Gutschein bei {data.restaurant_name}"
         if "restaurant_info" not in update_fields:
             update_fields["restaurant_info"] = auction.get("restaurant_info", {})
         update_fields["restaurant_info"]["name"] = data.restaurant_name
+    
+    if data.restaurant_category:
+        if "restaurant_info" not in update_fields:
+            update_fields["restaurant_info"] = auction.get("restaurant_info", {})
+        update_fields["restaurant_info"]["category"] = data.restaurant_category
+        # Titel mit neuem Emoji aktualisieren
+        name = data.restaurant_name or auction.get("restaurant_info", {}).get("name", "Restaurant")
+        voucher_value = data.voucher_value or auction.get('product', {}).get('retail_price', 25)
+        new_emoji = CATEGORY_EMOJIS.get(data.restaurant_category, "🍽️")
+        update_fields["title"] = f"{new_emoji} {voucher_value}€ Gutschein bei {name}"
     
     if data.restaurant_url is not None:
         if "restaurant_info" not in update_fields:
