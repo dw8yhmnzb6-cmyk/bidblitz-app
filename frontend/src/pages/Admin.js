@@ -1725,8 +1725,8 @@ export default function Admin() {
               
               <p className="text-gray-500">
                 {language === 'en' 
-                  ? 'Managers supervise influencers in their assigned cities and receive 15% of influencer commissions.'
-                  : 'Manager verwalten Influencer in ihren zugewiesenen Städten und erhalten 15% der Influencer-Provisionen.'}
+                  ? 'Managers supervise influencers in their assigned cities and receive a configurable percentage of influencer commissions.'
+                  : 'Manager verwalten Influencer in ihren zugewiesenen Städten und erhalten einen einstellbaren Prozentsatz der Influencer-Provisionen.'}
               </p>
 
               {/* Manager List - Mobile Card View */}
