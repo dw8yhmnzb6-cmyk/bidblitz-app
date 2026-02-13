@@ -344,7 +344,7 @@ const TeamBiddingPage = () => {
               <>
                 {/* Team Card */}
                 <div className="bg-gradient-to-r from-green-600/20 to-emerald-600/20 backdrop-blur rounded-xl p-6 border border-green-500/30">
-                  <div className="flex items-center justify-between mb-6">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
                     <div className="flex items-center gap-4">
                       <div className="w-16 h-16 bg-green-500/30 rounded-xl flex items-center justify-center text-3xl">
                         🛡️
@@ -354,7 +354,12 @@ const TeamBiddingPage = () => {
                         <p className="text-gray-400">{t.teamCode}: <span className="text-green-400 font-mono">{myTeam.code}</span></p>
                       </div>
                     </div>
-                    <Button onClick={handleLeaveTeam} variant="outline" className="border-red-500 text-red-400 hover:bg-red-500/20">
+                    <Button 
+                      onClick={handleLeaveTeam} 
+                      variant="outline" 
+                      className="border-red-500 text-red-400 hover:bg-red-500/20"
+                      data-testid="leave-team-btn"
+                    >
                       {t.leave}
                     </Button>
                   </div>
@@ -362,15 +367,15 @@ const TeamBiddingPage = () => {
                   <div className="grid grid-cols-3 gap-4 mb-6">
                     <div className="bg-gray-800/50 rounded-lg p-4 text-center">
                       <p className="text-gray-400 text-sm">{t.members}</p>
-                      <p className="text-2xl font-bold text-white">{myTeam.member_count || 0}</p>
+                      <p className="text-2xl font-bold text-white">{myTeam.members?.length || 0}</p>
                     </div>
                     <div className="bg-gray-800/50 rounded-lg p-4 text-center">
                       <p className="text-gray-400 text-sm">{t.totalBids}</p>
-                      <p className="text-2xl font-bold text-green-400">{myTeam.total_bids || 0}</p>
+                      <p className="text-2xl font-bold text-green-400">{myTeam.shared_bids || 0}</p>
                     </div>
                     <div className="bg-gray-800/50 rounded-lg p-4 text-center">
                       <p className="text-gray-400 text-sm">{t.wins}</p>
-                      <p className="text-2xl font-bold text-yellow-400">{myTeam.wins || 0}</p>
+                      <p className="text-2xl font-bold text-yellow-400">{myTeam.total_wins || 0}</p>
                     </div>
                   </div>
 
@@ -385,16 +390,16 @@ const TeamBiddingPage = () => {
                         >
                           <div className="flex items-center gap-3">
                             <div className="w-8 h-8 bg-gray-600 rounded-full flex items-center justify-center text-sm">
-                              {member.is_captain ? '👑' : '👤'}
+                              {member.is_leader ? '👑' : '👤'}
                             </div>
-                            <span className="text-white">{member.name}</span>
-                            {member.is_captain && (
+                            <span className="text-white">{member.username || member.name}</span>
+                            {member.is_leader && (
                               <span className="px-2 py-0.5 bg-yellow-500/20 text-yellow-400 text-xs rounded-full">
                                 {t.captain}
                               </span>
                             )}
                           </div>
-                          <span className="text-green-400">{member.wins || 0} {t.wins}</span>
+                          <span className="text-green-400">{member.contributed_bids || 0} Gebote</span>
                         </div>
                       ))}
                     </div>
