@@ -54,6 +54,22 @@ const galleryTexts = {
     saved: 'économisé',
     viewAll: 'Voir tous les gagnants',
     testimonialTitle: 'Ce que disent nos gagnants'
+  },
+  ar: {
+    title: 'الفائزون الحقيقيون',
+    subtitle: 'شاهد ماذا فاز الآخرون',
+    wonFor: 'فاز بـ',
+    saved: 'وُفِّر',
+    viewAll: 'عرض كل الفائزين',
+    testimonialTitle: 'ماذا يقول فائزونا'
+  },
+  ae: {
+    title: 'الفائزون الحقيقيون',
+    subtitle: 'شاهد ماذا فاز الآخرون',
+    wonFor: 'فاز بـ',
+    saved: 'وُفِّر',
+    viewAll: 'عرض كل الفائزين',
+    testimonialTitle: 'ماذا يقول فائزونا'
   }
 };
 
