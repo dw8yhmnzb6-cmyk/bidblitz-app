@@ -656,6 +656,8 @@ class CreateRestaurantAuctionRequest(BaseModel):
     duration_hours: int = 24
     start_price: float = 0.01
     bot_target_price: Optional[float] = None  # Min-Preis für Bots
+    auto_restart: bool = True  # NEU: Auto-Wiederholen aktivieren
+    auto_restart_duration: Optional[int] = None  # NEU: Dauer für Wiederholung (gleiche wie duration_hours wenn None)
 
 # Kategorie-Emojis
 CATEGORY_EMOJIS = {
