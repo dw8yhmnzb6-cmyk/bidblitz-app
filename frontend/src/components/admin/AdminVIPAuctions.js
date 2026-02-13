@@ -355,26 +355,41 @@ export function AdminVIPAuctions({ token, vipAuctions, auctions, fetchData }) {
         <p className="text-gray-400 text-xs sm:text-sm mb-4">Wählen Sie eine normale Auktion aus:</p>
         
         {/* Mobile Card View */}
-        <div className="md:hidden space-y-3">
+        <div className="md:hidden space-y-4 px-1">
           {(auctions || []).filter(a => !a.is_vip_only && a.status === 'active').slice(0, 10).map((auction) => (
-            <div key={auction.id} className="bg-slate-800/50 rounded-xl p-3 border border-slate-700/50 flex items-center gap-3">
-              <div className="flex-1 min-w-0">
-                <p className="text-white font-medium text-sm truncate">{auction.product?.name || 'N/A'}</p>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className="text-cyan-400 font-mono text-xs">€{auction.current_price?.toFixed(2)}</span>
-                  {auction.bot_target_price > 0 && (
-                    <span className="text-yellow-400 font-mono text-xs">Bot: €{auction.bot_target_price.toFixed(2)}</span>
-                  )}
+            <div key={auction.id} className="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
+              {/* Header with product name */}
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex-1 min-w-0 pr-3">
+                  <p className="text-slate-800 font-semibold text-sm leading-tight">{auction.product?.name || 'N/A'}</p>
                 </div>
+                <Button 
+                  size="sm" 
+                  className="bg-amber-500 hover:bg-amber-400 text-white text-xs font-bold px-3 py-1.5 flex-shrink-0"
+                  onClick={() => handleSetVipOnly(auction.id, false)}
+                >
+                  <Crown className="w-3.5 h-3.5 mr-1" />
+                  VIP
+                </Button>
               </div>
-              <Button size="sm" className="bg-yellow-500 hover:bg-yellow-400 text-black text-xs flex-shrink-0"
-                onClick={() => handleSetVipOnly(auction.id, false)}>
-                <Crown className="w-3 h-3 mr-1" />VIP
-              </Button>
+              
+              {/* Stats Grid */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-slate-50 rounded-lg p-2.5 text-center">
+                  <p className="text-xs text-slate-400 mb-0.5">Preis</p>
+                  <p className="text-base font-bold text-cyan-600 font-mono">€{auction.current_price?.toFixed(2)}</p>
+                </div>
+                {auction.bot_target_price > 0 && (
+                  <div className="bg-slate-50 rounded-lg p-2.5 text-center">
+                    <p className="text-xs text-slate-400 mb-0.5">Bot-Ziel</p>
+                    <p className="text-base font-bold text-amber-600 font-mono">€{auction.bot_target_price.toFixed(2)}</p>
+                  </div>
+                )}
+              </div>
             </div>
           ))}
           {(auctions || []).filter(a => !a.is_vip_only && a.status === 'active').length === 0 && (
-            <p className="text-gray-400 text-center py-4 text-sm">Keine Auktionen verfügbar</p>
+            <p className="text-slate-400 text-center py-6 text-sm">Keine Auktionen verfügbar</p>
           )}
         </div>
         
