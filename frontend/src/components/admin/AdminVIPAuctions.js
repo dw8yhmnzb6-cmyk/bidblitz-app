@@ -138,7 +138,7 @@ export function AdminVIPAuctions({ token, vipAuctions, auctions, fetchData }) {
         {vipAuctions?.length > 0 ? (
           <>
             {/* Mobile Card View */}
-            <div className="md:hidden space-y-3">
+            <div className="md:hidden space-y-4 px-1">
               {vipAuctions.map((auction) => {
                 const botTarget = auction.bot_target_price || 0;
                 const currentPrice = auction.current_price || 0;
@@ -146,79 +146,79 @@ export function AdminVIPAuctions({ token, vipAuctions, auctions, fetchData }) {
                 const targetReached = botTarget > 0 && currentPrice >= botTarget;
                 
                 return (
-                  <div key={auction.id} className="bg-slate-800/50 rounded-xl p-4 border border-slate-700/50">
+                  <div key={auction.id} className="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
                     {/* Header with product and VIP badge */}
                     <div className="flex items-start gap-3 mb-3">
                       <div className="relative flex-shrink-0">
                         <img src={auction.product?.image_url || '/placeholder.png'} 
                           alt={auction.product?.name}
-                          className="w-14 h-14 object-contain bg-white/5 rounded" />
-                        <div className="absolute -top-1 -left-1 bg-gradient-to-r from-yellow-500 to-amber-400 rounded-full p-0.5">
-                          <Crown className="w-3 h-3 text-black" />
+                          className="w-14 h-14 object-contain bg-slate-50 rounded-lg border border-slate-100" />
+                        <div className="absolute -top-1 -left-1 bg-gradient-to-r from-yellow-500 to-amber-400 rounded-full p-1">
+                          <Crown className="w-3 h-3 text-white" />
                         </div>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-gradient-to-r from-yellow-500 to-amber-400 text-black">VIP</span>
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-gradient-to-r from-yellow-500 to-amber-400 text-white">VIP</span>
                           <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                            auction.status === 'active' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'
+                            auction.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
                           }`}>
                             {auction.status === 'active' ? 'Aktiv' : 'Beendet'}
                           </span>
                         </div>
-                        <p className="text-white font-medium text-sm truncate">{auction.product?.name || 'N/A'}</p>
-                        <p className="text-gray-400 text-xs">UVP: €{auction.product?.retail_price?.toFixed(2)}</p>
+                        <p className="text-slate-800 font-semibold text-sm leading-tight">{auction.product?.name || 'N/A'}</p>
+                        <p className="text-slate-400 text-xs mt-0.5">UVP: €{auction.product?.retail_price?.toFixed(2)}</p>
                       </div>
                     </div>
                     
                     {/* Stats Grid */}
                     <div className="grid grid-cols-3 gap-2 mb-3">
-                      <div className="bg-slate-900/50 rounded-lg p-2 text-center">
-                        <p className="text-[10px] text-gray-400">Preis</p>
-                        <p className="text-sm font-mono font-bold text-cyan-400">€{currentPrice.toFixed(2)}</p>
+                      <div className="bg-slate-50 rounded-lg p-2.5 text-center">
+                        <p className="text-[10px] text-slate-400 mb-0.5">Preis</p>
+                        <p className="text-base font-mono font-bold text-cyan-600">€{currentPrice.toFixed(2)}</p>
                       </div>
-                      <div className="bg-slate-900/50 rounded-lg p-2 text-center">
-                        <p className="text-[10px] text-gray-400">Bot-Ziel</p>
-                        <p className={`text-sm font-mono font-bold ${targetReached ? 'text-emerald-400' : botTarget > 0 ? 'text-yellow-400' : 'text-gray-500'}`}>
+                      <div className="bg-slate-50 rounded-lg p-2.5 text-center">
+                        <p className="text-[10px] text-slate-400 mb-0.5">Bot-Ziel</p>
+                        <p className={`text-base font-mono font-bold ${targetReached ? 'text-emerald-600' : botTarget > 0 ? 'text-amber-600' : 'text-slate-300'}`}>
                           {botTarget > 0 ? `€${botTarget.toFixed(2)}` : '-'}
                         </p>
-                        {botActive && <span className="text-[8px] text-yellow-400 animate-pulse">AKTIV</span>}
+                        {botActive && <span className="text-[8px] text-amber-500 animate-pulse font-bold">AKTIV</span>}
                       </div>
-                      <div className="bg-slate-900/50 rounded-lg p-2 text-center">
-                        <p className="text-[10px] text-gray-400">Gebote</p>
-                        <p className="text-sm font-bold text-white">{auction.total_bids}</p>
+                      <div className="bg-slate-50 rounded-lg p-2.5 text-center">
+                        <p className="text-[10px] text-slate-400 mb-0.5">Gebote</p>
+                        <p className="text-base font-bold text-slate-700">{auction.total_bids}</p>
                       </div>
                     </div>
                     
                     {/* Action Buttons */}
                     <div className="flex flex-wrap gap-2">
-                      <Button size="sm" variant="ghost" className="flex-1 text-yellow-400 bg-yellow-400/10 text-xs"
+                      <Button size="sm" variant="outline" className="flex-1 border-amber-200 text-amber-600 text-xs"
                         onClick={() => handleUpdateBotTarget(auction.id, botTarget)}>
                         <Target className="w-3 h-3 mr-1" />Bot
                       </Button>
-                      <Button size="sm" variant="ghost" 
-                        className={`flex-1 text-xs ${auction.auto_restart?.enabled ? 'text-violet-400 bg-violet-400/20' : 'text-gray-400 bg-gray-400/10'}`}
+                      <Button size="sm" variant="outline" 
+                        className={`flex-1 text-xs ${auction.auto_restart?.enabled ? 'border-violet-300 text-violet-600 bg-violet-50' : 'border-slate-200 text-slate-400'}`}
                         onClick={() => handleSetAutoRestart(auction.id, auction.auto_restart?.duration_minutes || 10)}>
                         <Repeat className="w-3 h-3 mr-1" />Auto
                       </Button>
                       {auction.status === 'active' ? (
                         <>
-                          <Button size="sm" variant="ghost" className="text-cyan-400 bg-cyan-400/10 text-xs px-2" 
+                          <Button size="sm" variant="outline" className="border-cyan-200 text-cyan-600 text-xs px-2" 
                             onClick={() => handleExtendAuction(auction.id)}>
                             <RefreshCw className="w-3 h-3" />
                           </Button>
-                          <Button size="sm" variant="ghost" className="text-amber-400 bg-amber-400/10 text-xs px-2" 
+                          <Button size="sm" variant="outline" className="border-amber-200 text-amber-600 text-xs px-2" 
                             onClick={() => handleEndAuction(auction.id)}>
                             <Square className="w-3 h-3" />
                           </Button>
                         </>
                       ) : (
-                        <Button size="sm" variant="ghost" className="text-emerald-400 bg-emerald-400/10 text-xs px-2" 
+                        <Button size="sm" variant="outline" className="border-emerald-200 text-emerald-600 text-xs px-2" 
                           onClick={() => handleRestartAuction(auction.id)}>
                           <Play className="w-3 h-3" />
                         </Button>
                       )}
-                      <Button size="sm" variant="ghost" className="text-red-400 bg-red-400/10 text-xs px-2"
+                      <Button size="sm" variant="outline" className="border-red-200 text-red-500 text-xs px-2"
                         onClick={() => handleSetVipOnly(auction.id, true)}>
                         <X className="w-3 h-3" />
                       </Button>
