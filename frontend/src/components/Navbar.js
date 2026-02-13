@@ -403,7 +403,7 @@ export const Navbar = () => {
               onClick={() => setMobileMenuOpen(false)}
             >
               <Trophy className="w-4 h-4" />
-              {language === 'de' ? 'Rangliste' : (language === 'sq' || language === 'xk') ? 'Renditja' : language === 'tr' ? 'Sıralama' : language === 'fr' ? 'Classement' : 'Leaderboard'}
+              {t('nav.leaderboard')}
             </Link>
             {isAuthenticated && (
               <button 
@@ -411,7 +411,7 @@ export const Navbar = () => {
                 className="block text-amber-500 hover:text-amber-600 py-2 flex items-center gap-2 w-full text-left"
               >
                 <Sparkles className="w-4 h-4" />
-                {language === 'de' ? 'Glücksrad' : (language === 'sq' || language === 'xk') ? 'Rrota e Fatit' : language === 'tr' ? 'Şans Çarkı' : language === 'fr' ? 'Roue de la Chance' : 'Lucky Wheel'}
+                {t('nav.luckyWheel')}
               </button>
             )}
             {isAuthenticated && (
