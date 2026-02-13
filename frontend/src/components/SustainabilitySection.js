@@ -87,6 +87,7 @@ const SustainabilitySection = () => {
       treesPlanted: 'Pemë të mbjella',
       projectsSupported: 'Projekte të mbështetura',
       co2Saved: 'kg CO₂ kompensuar',
+      donationsTotal: 'Donacione totale',
       cta: 'Mëso më shumë',
       quote: 'Së bashku për një të ardhme të qëndrueshme',
     },
@@ -106,6 +107,7 @@ const SustainabilitySection = () => {
       treesPlanted: 'Pemë të mbjella',
       projectsSupported: 'Projekte të mbështetura',
       co2Saved: 'kg CO₂ kompensuar',
+      donationsTotal: 'Donacione totale',
       cta: 'Mëso më shumë',
       quote: 'Së bashku për një të ardhme të qëndrueshme',
     },
@@ -125,6 +127,7 @@ const SustainabilitySection = () => {
       treesPlanted: 'Dikilen ağaçlar',
       projectsSupported: 'Desteklenen projeler',
       co2Saved: 'kg CO₂ dengelendi',
+      donationsTotal: 'Toplam bağışlar',
       cta: 'Daha fazla bilgi',
       quote: 'Sürdürülebilir bir gelecek için birlikte',
     },
@@ -144,6 +147,7 @@ const SustainabilitySection = () => {
       treesPlanted: 'Arbres plantés',
       projectsSupported: 'Projets soutenus',
       co2Saved: 'kg CO₂ compensé',
+      donationsTotal: 'Total des dons',
       cta: 'En savoir plus',
       quote: 'Ensemble pour un avenir durable',
     }
@@ -155,7 +159,8 @@ const SustainabilitySection = () => {
   const impactStats = {
     trees: stats.trees_planted || 0,
     projects: stats.projects_supported || 0,
-    co2: stats.co2_offset_kg || 0
+    co2: stats.co2_offset_kg || 0,
+    donations: stats.donations_total || 0
   };
 
   return (
