@@ -833,6 +833,12 @@ export default function AdminRestaurantAuctions({ token, API }) {
                       <h3 className="font-semibold text-gray-800 truncate">
                         {auction.restaurant_info?.name || 'Restaurant'}
                       </h3>
+                      {/* Kategorie Badge */}
+                      {auction.restaurant_info?.category && (
+                        <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-700">
+                          {restaurantCategories[auction.restaurant_info.category]?.label || '🍽️ Restaurant'}
+                        </span>
+                      )}
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                         (auction.status === 'active' || auction.status === 'day_paused')
                           ? 'bg-green-100 text-green-700' 
@@ -845,6 +851,13 @@ export default function AdminRestaurantAuctions({ token, API }) {
                     <p className="text-sm text-gray-500 mt-0.5 truncate">
                       {auction.product?.specifications?.value || `${auction.product?.retail_price}€`} Gutschein
                     </p>
+                    
+                    {/* Beschreibung anzeigen */}
+                    {auction.description && (
+                      <p className="text-xs text-gray-500 mt-1 italic truncate">
+                        "{auction.description}"
+                      </p>
+                    )}
                     
                     {auction.restaurant_info?.address && (
                       <p className="text-xs text-gray-400 flex items-center gap-1 mt-1">
