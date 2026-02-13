@@ -11,6 +11,7 @@ import { Zap, Clock, TrendingUp, ChevronRight } from 'lucide-react';
 const langMapping = {
   'us': 'en',  // US English -> English  
   'ae': 'ar', // UAE -> Arabic
+  'xk': 'sq', // Kosovo -> Albanian
 };
 const getMappedLang = (lang) => langMapping[lang] || lang;
 
