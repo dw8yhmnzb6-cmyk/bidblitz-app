@@ -24,11 +24,13 @@ class ManagerCreate(BaseModel):
     password: str
     cities: List[str] = []  # Cities the manager is responsible for
     commission_percent: float = MANAGER_COMMISSION_PERCENT
+    company_commission_percent: float = 5.0  # Additional % from BidBlitz/company
 
 class ManagerUpdate(BaseModel):
     name: Optional[str] = None
     cities: Optional[List[str]] = None
     commission_percent: Optional[float] = None
+    company_commission_percent: Optional[float] = None
     is_active: Optional[bool] = None
 
 class ManagerLogin(BaseModel):
