@@ -111,7 +111,7 @@ const demoWinners = [
   }
 ];
 
-// Demo testimonials
+// Demo testimonials with more variety and better Albanian translations
 const testimonials = [
   {
     id: '1',
@@ -125,7 +125,9 @@ const testimonials = [
       sq: 'E pabesueshme! Fitova një MacBook për vetëm 24€. Në fillim isha skeptik, por tani jam i varur!',
       xk: 'E pabesueshme! Fitova një MacBook për vetëm 24€. Në fillim isha skeptik, por tani jam i varur!',
       tr: 'İnanılmaz! Sadece 24€\'ya bir MacBook kazandım. Başta şüpheciydim ama şimdi bağımlıyım!',
-      fr: 'Incroyable! J\'ai gagné un MacBook pour seulement 24€. J\'étais sceptique au début, mais maintenant je suis accro!'
+      fr: 'Incroyable! J\'ai gagné un MacBook pour seulement 24€. J\'étais sceptique au début, mais maintenant je suis accro!',
+      ar: 'لا يصدق! فزت بجهاز MacBook بـ 24€ فقط. كنت متشككاً في البداية، لكن الآن أنا مدمن!',
+      ae: 'لا يصدق! فزت بجهاز MacBook بـ 24€ فقط. كنت متشككاً في البداية، لكن الآن أنا مدمن!'
     }
   },
   {
@@ -140,22 +142,111 @@ const testimonials = [
       sq: 'Funksioni Bid Buddy është genial. Fitova një TV ndërsa flija!',
       xk: 'Funksioni Bid Buddy është genial. Fitova një TV ndërsa flija!',
       tr: 'Bid Buddy özelliği harika. Uyurken bir TV kazandım!',
-      fr: 'La fonction Bid Buddy est géniale. J\'ai gagné une TV en dormant!'
+      fr: 'La fonction Bid Buddy est géniale. J\'ai gagné une TV en dormant!',
+      ar: 'ميزة Bid Buddy عبقرية. فزت بتلفزيون وأنا نائم!',
+      ae: 'ميزة Bid Buddy عبقرية. فزت بتلفزيون وأنا نائم!'
     }
   },
   {
     id: '3',
     name: 'Burim M.',
-    city: 'Prishtina',
+    city: 'Prishtinë',
     avatar: '👨‍🎓',
     rating: 5,
     text: {
       de: 'Beste Penny Auction Seite! Der Support ist super und die Lieferung war schnell.',
       en: 'Best penny auction site! Support is great and delivery was fast.',
-      sq: 'Faqja më e mirë e ankandeve! Mbështetja është super dhe dërgesa ishte e shpejtë.',
-      xk: 'Faqja më e mirë e ankandeve! Mbështetja është super dhe dërgesa ishte e shpejtë.',
+      sq: 'Faqja më e mirë e ankandeve! Mbështetja është e shkëlqyer dhe dërgesa ishte shumë e shpejtë.',
+      xk: 'Faqja më e mirë e ankandeve! Mbështetja është e shkëlqyer dhe dërgesa ishte shumë e shpejtë.',
       tr: 'En iyi açık artırma sitesi! Destek harika ve teslimat hızlıydı.',
-      fr: 'Meilleur site d\'enchères! Le support est super et la livraison était rapide.'
+      fr: 'Meilleur site d\'enchères! Le support est super et la livraison était rapide.',
+      ar: 'أفضل موقع مزادات! الدعم رائع والتوصيل كان سريعاً.',
+      ae: 'أفضل موقع مزادات! الدعم رائع والتوصيل كان سريعاً.'
+    }
+  },
+  {
+    id: '4',
+    name: 'Drita K.',
+    city: 'Tiranë',
+    avatar: '👩‍💻',
+    rating: 5,
+    text: {
+      de: 'Ich habe einen PlayStation 5 für 12€ gewonnen! Meine Freunde glauben mir immer noch nicht.',
+      en: 'I won a PlayStation 5 for €12! My friends still don\'t believe me.',
+      sq: 'Fitova një PlayStation 5 për 12€! Miqtë e mi ende nuk më besojnë.',
+      xk: 'Fitova një PlayStation 5 për 12€! Miqtë e mi ende nuk më besojnë.',
+      tr: 'PlayStation 5\'i 12€\'ya kazandım! Arkadaşlarım hala inanmıyor.',
+      fr: 'J\'ai gagné une PlayStation 5 pour 12€! Mes amis ne me croient toujours pas.',
+      ar: 'فزت بـ PlayStation 5 بـ 12€! أصدقائي لا يصدقونني حتى الآن.',
+      ae: 'فزت بـ PlayStation 5 بـ 12€! أصدقائي لا يصدقونني حتى الآن.'
+    }
+  },
+  {
+    id: '5',
+    name: 'Fatmir H.',
+    city: 'Prizren',
+    avatar: '👨‍🔧',
+    rating: 5,
+    text: {
+      de: 'Die App ist einfach zu benutzen und die Auktionen sind fair. Empfehle es jedem!',
+      en: 'The app is easy to use and the auctions are fair. Recommend it to everyone!',
+      sq: 'Aplikacioni është i lehtë për t\'u përdorur dhe ankandat janë të drejta. Ua rekomandoj të gjithëve!',
+      xk: 'Aplikacioni është i lehtë për t\'u përdorur dhe ankandat janë të drejta. Ua rekomandoj të gjithëve!',
+      tr: 'Uygulama kullanımı kolay ve açık artırmalar adil. Herkese tavsiye ederim!',
+      fr: 'L\'application est facile à utiliser et les enchères sont équitables. Je le recommande à tout le monde!',
+      ar: 'التطبيق سهل الاستخدام والمزادات عادلة. أنصح به للجميع!',
+      ae: 'التطبيق سهل الاستخدام والمزادات عادلة. أنصح به للجميع!'
+    }
+  },
+  {
+    id: '6',
+    name: 'Lisa M.',
+    city: 'Hamburg',
+    avatar: '👩‍🎨',
+    rating: 5,
+    text: {
+      de: 'Schon 3 Gewinne in einem Monat! Die Strategie-Tipps haben mir sehr geholfen.',
+      en: 'Already 3 wins in one month! The strategy tips helped me a lot.',
+      sq: 'Tashmë 3 fitore në një muaj! Këshillat e strategjisë më ndihmuan shumë.',
+      xk: 'Tashmë 3 fitore në një muaj! Këshillat e strategjisë më ndihmuan shumë.',
+      tr: 'Bir ayda zaten 3 kazanç! Strateji ipuçları çok yardımcı oldu.',
+      fr: 'Déjà 3 victoires en un mois! Les conseils de stratégie m\'ont beaucoup aidé.',
+      ar: 'بالفعل 3 فوزات في شهر واحد! نصائح الاستراتيجية ساعدتني كثيراً.',
+      ae: 'بالفعل 3 فوزات في شهر واحد! نصائح الاستراتيجية ساعدتني كثيراً.'
+    }
+  },
+  {
+    id: '7',
+    name: 'Arben S.',
+    city: 'Gjakovë',
+    avatar: '👨‍🏫',
+    rating: 5,
+    text: {
+      de: 'Die Restaurant-Gutscheine sind großartig! Spare jetzt regelmäßig beim Essen gehen.',
+      en: 'The restaurant vouchers are great! Now I regularly save money eating out.',
+      sq: 'Kuponat e restoranteve janë fantastike! Tani kursej rregullisht kur dal për të ngrënë.',
+      xk: 'Kuponat e restoranteve janë fantastike! Tani kursej rregullisht kur dal për të ngrënë.',
+      tr: 'Restoran kuponları harika! Artık dışarıda yemek yerken düzenli tasarruf ediyorum.',
+      fr: 'Les coupons de restaurant sont géniaux! J\'économise régulièrement maintenant quand je mange dehors.',
+      ar: 'قسائم المطاعم رائعة! الآن أوفر بانتظام عند تناول الطعام بالخارج.',
+      ae: 'قسائم المطاعم رائعة! الآن أوفر بانتظام عند تناول الطعام بالخارج.'
+    }
+  },
+  {
+    id: '8',
+    name: 'Vlora B.',
+    city: 'Ferizaj',
+    avatar: '👩‍⚕️',
+    rating: 5,
+    text: {
+      de: 'Mein iPhone kam schneller als erwartet und war originalverpackt. Top Service!',
+      en: 'My iPhone arrived faster than expected and was factory sealed. Top service!',
+      sq: 'iPhone im arriti më shpejt se sa prisja dhe ishte i paketuar në fabrikë. Shërbim i shkëlqyer!',
+      xk: 'iPhone im arriti më shpejt se sa prisja dhe ishte i paketuar në fabrikë. Shërbim i shkëlqyer!',
+      tr: 'iPhone\'um beklenenden hızlı geldi ve fabrika mühürlüydü. Harika servis!',
+      fr: 'Mon iPhone est arrivé plus vite que prévu et était scellé d\'usine. Service top!',
+      ar: 'وصل الآيفون الخاص بي أسرع من المتوقع وكان مغلفاً من المصنع. خدمة ممتازة!',
+      ae: 'وصل الآيفون الخاص بي أسرع من المتوقع وكان مغلفاً من المصنع. خدمة ممتازة!'
     }
   }
 ];
