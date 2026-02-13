@@ -382,12 +382,16 @@ export default function AdminRestaurantAuctions({ token, API }) {
         restaurant_url: '',
         restaurant_logo: '',
         restaurant_address: '',
+        restaurant_images: [],
+        restaurant_category: 'restaurant',
         voucher_value: 25,
         discount_percent: 0,
         description: 'Genießen Sie ein leckeres Essen bei uns!',
         duration_hours: 24,
         start_price: 0.01,
-        bot_target_price: 8
+        bot_target_price: 8,
+        auto_restart: true,
+        auto_restart_duration: 24
       });
       setShowForm(false);
       fetchAuctions();
