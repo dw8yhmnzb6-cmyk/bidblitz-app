@@ -54,9 +54,10 @@ const translations = {
 
 export default function VIPDashboard() {
   const { token, isAuthenticated } = useAuth();
-  const { language } = useLanguage();
+  const { language, mappedLanguage } = useLanguage();
   const navigate = useNavigate();
-  const t = translations[language] || translations.de;
+  const langKey = mappedLanguage || language;
+  const t = translations[langKey] || translations.de;
   
   const [status, setStatus] = useState(null);
   const [allTiers, setAllTiers] = useState({});
