@@ -1898,6 +1898,24 @@ export default function Admin() {
                               <Button 
                                 size="sm" 
                                 variant="ghost"
+                                onClick={() => {
+                                  setSelectedManager(mgr);
+                                  setEditManagerForm({
+                                    name: mgr.name || '',
+                                    cities: mgr.cities?.join(', ') || '',
+                                    commission_percent: mgr.commission_percent || 15,
+                                    is_active: mgr.is_active !== false
+                                  });
+                                  setShowEditManagerModal(true);
+                                }}
+                                className="text-blue-600 hover:bg-blue-50"
+                              >
+                                <Edit2 className="w-4 h-4 mr-1" />
+                                {language === 'en' ? 'Edit' : 'Bearbeiten'}
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                variant="ghost"
                                 onClick={async () => {
                                   try {
                                     await axios.delete(`${API}/manager/admin/${mgr.id}`, {
