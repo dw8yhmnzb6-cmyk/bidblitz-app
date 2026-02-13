@@ -93,6 +93,18 @@ const CyberHero = ({ auctionOfDay, stats, onBid, language = 'de' }) => {
       activeAuctions: 'Ankande Aktive',
       totalSaved: 'Kursyer Gjithsej',
       happyWinners: 'Fitues të Lumtur'
+    },
+    ar: {
+      headline: 'زايد. اربح. وفّر.',
+      subheadline: 'منتجات مميزة من €0,01',
+      auctionOfDay: 'مزاد اليوم',
+      currentPrice: 'السعر الحالي',
+      retailPrice: 'السعر الأصلي',
+      bidNow: 'زايد الآن',
+      viewAll: 'عرض الكل',
+      activeAuctions: 'مزادات نشطة',
+      totalSaved: 'إجمالي التوفير',
+      happyWinners: 'فائزون سعداء'
     }
   };
   const t = translations[langKey] || translations.de;
