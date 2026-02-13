@@ -683,15 +683,26 @@ async def bot_last_second_bidder():
                     # WICHTIG: Wenn Zeit knapp wird, IMMER bieten!
                     # ============================================
                     
-                    # Bot-spezifische Variation für Realismus
-                    # Jeder Bot hat ein leicht unterschiedliches Verhalten
-                    bot_seed = hash(auction_id) % 100
+                    # Get product info first for variability calculation
+                    product_id = auction.get("product_id")
+                    product = products_cache.get(product_id) if product_id else None
+                    retail_price = product.get("retail_price", 0) if product else 0
                     
-                    # Phase 1 Target: zwischen €3.00 und €3.50 (variiert pro Auktion)
-                    PHASE1_TARGET = 3.00 + (bot_seed % 50) / 100  # €3.00 - €3.49
+                    # RESTAURANT-AUKTIONEN: Prüfe eingebettetes Produkt
+                    if not retail_price and auction.get("product"):
+                        embedded_product = auction.get("product", {})
+                        retail_price = embedded_product.get("retail_price", 0)
                     
-                    # Endspurt Zeit: zwischen 120 und 180 Sekunden (variiert)
-                    ENDSPURT_TIME = 120 + (bot_seed % 60)  # 2-3 Minuten
+                    # Get auction-specific variability for natural behavior
+                    var = get_auction_variability(auction_id, retail_price)
+                    
+                    # Phase 1 Target: Now varies per auction (€2.50 - €4.50)
+                    PHASE1_TARGET = var['phase1_target']
+                    
+                    # Endspurt Zeit: varies between 100 and 200 seconds
+                    base_endspurt = 150
+                    ENDSPURT_TIME = int(base_endspurt * var['speed_factor'])
+                    ENDSPURT_TIME = max(100, min(200, ENDSPURT_TIME))
                     
                     # ============================================
                     # KURZE AUKTIONEN: Wenn Gesamtdauer < 15 Min, sofort aggressiv bieten!
@@ -704,18 +715,6 @@ async def bot_last_second_bidder():
                         PHASE1_TARGET = 0  # Überspringen Phase 1
                         ENDSPURT_TIME = auction_duration  # Immer im "Endspurt"
                         logger.debug(f"🚀 Short auction detected ({auction_duration}s): Aggressive bidding mode for {auction_id[:8]}")
-                    
-                    # ============================================
-                    # DYNAMISCHES TARGET basierend auf Produkt-UVP
-                    # ============================================
-                    product_id = auction.get("product_id")
-                    product = products_cache.get(product_id) if product_id else None
-                    retail_price = product.get("retail_price", 0) if product else 0
-                    
-                    # RESTAURANT-AUKTIONEN: Prüfe eingebettetes Produkt
-                    if not retail_price and auction.get("product"):
-                        embedded_product = auction.get("product", {})
-                        retail_price = embedded_product.get("retail_price", 0)
                     
                     # FALLBACK: Nutze bot_target_price wenn gesetzt
                     explicit_target = auction.get("bot_target_price")
