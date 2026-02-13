@@ -1774,7 +1774,7 @@ export default function Admin() {
                         <p className="text-sm font-bold text-amber-600">€{(mgr.total_influencer_commission || 0).toFixed(0)}</p>
                       </div>
                       <div className="bg-slate-50 rounded-lg p-2 text-center">
-                        <p className="text-xs text-slate-400">Manager 15%</p>
+                        <p className="text-xs text-slate-400">Manager {mgr.commission_percent || 15}%</p>
                         <p className="text-sm font-bold text-emerald-600">€{(mgr.manager_commission || 0).toFixed(0)}</p>
                       </div>
                     </div>
@@ -1792,6 +1792,23 @@ export default function Admin() {
                       >
                         <Eye className="w-4 h-4 mr-1" />
                         Details
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => {
+                          setSelectedManager(mgr);
+                          setEditManagerForm({
+                            name: mgr.name || '',
+                            cities: mgr.cities?.join(', ') || '',
+                            commission_percent: mgr.commission_percent || 15,
+                            is_active: mgr.is_active !== false
+                          });
+                          setShowEditManagerModal(true);
+                        }}
+                        className="border-blue-300 text-blue-600 px-3"
+                      >
+                        <Edit2 className="w-4 h-4" />
                       </Button>
                       <Button 
                         size="sm" 
