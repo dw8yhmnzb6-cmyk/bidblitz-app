@@ -402,7 +402,11 @@ const statusTranslations = {
   sq: { live: "LIVE", hot: "NXEHTË", warm: "NGROHTË", cold: "QETË" },
   xk: { live: "LIVE", hot: "NXEHTË", warm: "NGROHTË", cold: "QETË" },
   tr: { live: "CANLI", hot: "SICAK", warm: "ILIK", cold: "SAKİN" },
-  fr: { live: "EN DIRECT", hot: "CHAUD", warm: "TIÈDE", cold: "CALME" }
+  fr: { live: "EN DIRECT", hot: "CHAUD", warm: "TIÈDE", cold: "CALME" },
+  ar: { live: "مباشر", hot: "ساخن", warm: "دافئ", cold: "هادئ" },
+  ae: { live: "مباشر", hot: "ساخن", warm: "دافئ", cold: "هادئ" },
+  es: { live: "EN VIVO", hot: "CALIENTE", warm: "TIBIO", cold: "TRANQUILO" },
+  it: { live: "DAL VIVO", hot: "CALDO", warm: "TIEPIDO", cold: "CALMO" }
 };
 
 export function ExcitementStatusBar({ className = '' }) {
