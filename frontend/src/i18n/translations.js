@@ -2585,17 +2585,12 @@ export const languageList = {
   el: { name: 'Ελληνικά', flag: '🇬🇷' }
 };
 
-// Language mapping for regional variants
-// Kosovo (xk) uses Albanian translations directly (translations.xk exists)
-// Albanian (sq) also has its own translations
-export const langMapping = {
-  'us': 'en',  // US English -> English  
-  'ae': 'ar', // UAE -> Arabic
-  'xk': 'sq', // Kosovo -> Albanian (for pages with only sq translations)
-};
+// Import centralized language mapping
+import { langMapping as centralLangMapping, getMappedLanguage as centralGetMappedLanguage } from '../utils/languageUtils';
 
-// Helper function to get mapped language
-export const getMappedLanguage = (lang) => langMapping[lang] || lang;
+// Re-export for backward compatibility
+export const langMapping = centralLangMapping;
+export const getMappedLanguage = centralGetMappedLanguage;
 
 export const getTranslation = (lang, key) => {
   // Map regional languages to their base language
