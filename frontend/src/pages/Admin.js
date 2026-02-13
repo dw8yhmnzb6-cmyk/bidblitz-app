@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { 
   LayoutDashboard, Package, Gavel, Users, Plus, Trash2, 
   Settings, BarChart3, Zap, RefreshCw, Square, UserPlus,
-  Ban, CheckCircle, Check, DollarSign, Globe, Ticket, Edit, X, Save,
+  Ban, CheckCircle, Check, DollarSign, Globe, Ticket, Edit, Edit2, X, Save,
   Bot, Play, Target, Calendar, Clock, TrendingUp, Activity, Menu,
   Mail, Send, Eye, Star, Crown, FileText, RotateCcw, Repeat,
   Gift, Trophy, Moon, Wifi, WifiOff, Building2, Percent, CreditCard,
