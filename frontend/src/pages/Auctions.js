@@ -1288,6 +1288,7 @@ export default function Auctions() {
                     product={products[auction.product_id] || auction.product}
                     t={t}
                     language={language}
+                    langKey={langKey}
                   />
                 </div>
               ))}
