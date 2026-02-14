@@ -1139,6 +1139,7 @@ export default function Auctions() {
               onBid={handleBid}
               t={t}
               language={language}
+              langKey={langKey}
               isAuthenticated={isAuthenticated}
               isVip={isVip}
               navigate={navigate}
@@ -1147,7 +1148,7 @@ export default function Auctions() {
           
           {/* Premium Card only shows if NO AOTD and on 'live' filter */}
           {activeFilter === 'live' && !auctionOfTheDay && premiumAuction && products[premiumAuction.product_id] && (
-            <PremiumCard auction={premiumAuction} product={products[premiumAuction.product_id]} onBid={handleBid} t={t} language={language} />
+            <PremiumCard auction={premiumAuction} product={products[premiumAuction.product_id]} onBid={handleBid} t={t} language={language} langKey={langKey} />
           )}
           
           {/* Ad Banner - Only on live filter */}
@@ -1184,6 +1185,7 @@ export default function Auctions() {
                     product={products[auction.product_id] || auction.product}
                     t={t}
                     language={language}
+                    langKey={langKey}
                   />
                 ) : (
                   <AuctionCard 
@@ -1193,6 +1195,7 @@ export default function Auctions() {
                     onBid={handleBid}
                     t={t}
                     language={language}
+                    langKey={langKey}
                     isAuthenticated={isAuthenticated}
                     isVip={isVip}
                     navigate={navigate}
