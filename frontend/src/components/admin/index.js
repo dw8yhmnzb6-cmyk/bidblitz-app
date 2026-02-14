@@ -47,4 +47,7 @@ export { AdminPromoCodes } from './AdminPromoCodes';
 // Manager Management
 export { AdminManagers } from './AdminManagers';
 
+// Jackpot Management
+export { default as AdminJackpot } from './AdminJackpot';
+
 // All components have been extracted!
