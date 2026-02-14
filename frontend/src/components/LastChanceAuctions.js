@@ -243,6 +243,7 @@ const LastChanceSection = memo(({ language = 'de' }) => {
           const endTime = new Date(auction.end_time).getTime();
           const timeLeftSec = Math.max(0, Math.floor((endTime - Date.now()) / 1000));
           const product = auction.product || {};
+          const productName = getProductName(product, effectiveLang);
           
           return (
             <div 
@@ -264,7 +265,7 @@ const LastChanceSection = memo(({ language = 'de' }) => {
                 <div className="w-full h-20 mb-2 rounded-lg overflow-hidden bg-white/10">
                   <img 
                     src={product.image_url} 
-                    alt={product.name}
+                    alt={productName}
                     className="w-full h-full object-cover"
                   />
                 </div>
@@ -272,7 +273,7 @@ const LastChanceSection = memo(({ language = 'de' }) => {
               
               {/* Product name */}
               <p className="text-white text-sm font-medium truncate">
-                {product.name || 'Auktion'}
+                {productName || 'Auktion'}
               </p>
               
               {/* Price */}
