@@ -109,7 +109,7 @@ const AuctionOfTheDay = memo(({ auction, product, onBid, t, language, langKey, i
           <div className="w-full sm:w-28 h-24 sm:h-28 bg-white rounded-lg flex items-center justify-center shadow-inner border border-amber-200 flex-shrink-0">
             <img 
               src={product.image_url || 'https://via.placeholder.com/128'} 
-              alt={product.name}
+              alt={productName}
               className="max-w-full max-h-full object-contain p-2"
             />
           </div>
