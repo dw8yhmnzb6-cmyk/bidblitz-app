@@ -7,6 +7,8 @@ import { toast } from 'sonner';
 import GlobalJackpot from '../components/GlobalJackpot';
 import { HappyHourBanner, ExcitementStatusBar } from '../components/ExcitementFeatures';
 import { PriceGuaranteeSection } from '../components/PriceGuarantee';
+import { LastChanceSection } from '../components/LastChanceAuctions';
+import { TopBidderBadge } from '../components/TopBidderLeaderboard';
 import ExitIntentPopup from '../components/ExitIntentPopup';
 // Note: LiveTimer, LivePrice, ProductInfo, ActivityIndex, TrustBadges are defined locally for this page
 
