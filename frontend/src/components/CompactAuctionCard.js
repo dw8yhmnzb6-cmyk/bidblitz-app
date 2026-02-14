@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Timer, Zap, Flame, Clock } from 'lucide-react';
 import { Button } from './ui/button';
+import { useLanguage } from '../context/LanguageContext';
+import { getProductName } from '../utils/productTranslation';
 
 // Activity Index Component - Friendly colorful bars
 const ActivityIndex = ({ bids }) => {
@@ -24,6 +26,7 @@ const ActivityIndex = ({ bids }) => {
 };
 
 export const CompactAuctionCard = ({ auction, onBid, isAuthenticated, t }) => {
+  const { language } = useLanguage();
   const [timeLeft, setTimeLeft] = useState({ hours: 0, minutes: 0, seconds: 0 });
   const [isUrgent, setIsUrgent] = useState(false);
 
@@ -70,6 +73,7 @@ export const CompactAuctionCard = ({ auction, onBid, isAuthenticated, t }) => {
   }, [auction.end_time]);
 
   const product = auction.product || {};
+  const productName = getProductName(product, language);
   const isEnded = auction.status === 'ended' || (timeLeft.hours === 0 && timeLeft.minutes === 0 && timeLeft.seconds === 0);
   const isScheduled = auction.status === 'scheduled';
 
