@@ -5,6 +5,45 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 
 ## Current Status (February 14, 2026)
 
+### ✅ Session Update - February 14, 2026 (Session 19) - ÜBERSETZUNGSSYSTEM FÜR PRODUKTE REPARIERT 🌍
+
+**Bug Fix: Produktnamen wurden nicht übersetzt**
+
+Das Problem war, dass obwohl die UI-Elemente übersetzt wurden, die Produktnamen aus der Datenbank immer auf Deutsch blieben.
+
+#### 🔧 Behobene Probleme:
+
+1. **Home.js Fix** - `langKey` wurde nicht an Kind-Komponenten übergeben
+   - `PremiumAuction` erhält jetzt `langKey` prop
+   - `AuctionCard` erhält jetzt `langKey` prop
+
+2. **Auctions.js Fix** - `langKey` fehlte bei allen Auction-Karten
+   - `AuctionOfTheDay` erhält jetzt `langKey`
+   - `PremiumCard` erhält jetzt `langKey`
+   - `AuctionCard` erhält jetzt `langKey`
+   - `EndedAuctionCard` erhält jetzt `langKey`
+
+3. **LastChanceAuctions.js Fix** - Verwendete `product.name` direkt
+   - Importiert jetzt `getProductName()` Utility
+   - `LastChanceWidget` nutzt Übersetzungen
+   - `LastChanceSection` nutzt Übersetzungen
+
+4. **CompactAuctionCard.js Fix** - Verwendete `product.name` direkt
+   - Importiert jetzt `useLanguage` und `getProductName()`
+   - Produktnamen werden jetzt übersetzt
+
+#### ✅ Test-Ergebnisse (Testing Agent bestätigt):
+- **Produktübersetzungen:** ✅ PASS - Beschreibungen werden übersetzt, Markennamen bleiben unverändert
+- **Sprachauswahl:** ✅ PASS - Desktop und Mobile funktionieren
+- **Mobile Layout:** ✅ PASS - Keine großen leeren Flächen
+- **UI-Übersetzungen:** ✅ PASS - Navbar, Filter, Buttons sind übersetzt
+
+#### 📝 Minor Issues (nicht kritisch):
+- Page Title bleibt auf Deutsch (Minor)
+- Einige Restaurant-Gutscheine haben inkonsistente Übersetzungen (Minor)
+
+---
+
 ### ✅ Session Update - February 14, 2026 (Session 18) - 10 NEUE FEATURES IMPLEMENTIERT 🚀
 
 **Massive Feature-Erweiterung - Alle empfohlenen Features wurden implementiert:**
