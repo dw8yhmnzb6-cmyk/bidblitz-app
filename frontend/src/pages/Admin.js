@@ -150,31 +150,6 @@ export default function Admin() {
   // Voice Debug Assistant state
   const [showVoiceDebug, setShowVoiceDebug] = useState(false);
 
-  // Manager states
-  const [managers, setManagers] = useState([]);
-  const [showManagerModal, setShowManagerModal] = useState(false);
-  const [showManagerDetails, setShowManagerDetails] = useState(false);
-  const [showEditManagerModal, setShowEditManagerModal] = useState(false);
-  const [selectedManager, setSelectedManager] = useState(null);
-  const [managerInfluencers, setManagerInfluencers] = useState([]);
-  const [managerActivities, setManagerActivities] = useState([]);
-  const [loadingManagerDetails, setLoadingManagerDetails] = useState(false);
-  const [managerForm, setManagerForm] = useState({
-    name: '',
-    email: '',
-    password: '',
-    cities: '',
-    commission_percent: 15,
-    company_commission_percent: 5
-  });
-  const [editManagerForm, setEditManagerForm] = useState({
-    name: '',
-    cities: '',
-    commission_percent: 15,
-    company_commission_percent: 5,
-    is_active: true
-  });
-
   // Jackpot states
   const [jackpotData, setJackpotData] = useState(null);
   const [jackpotHistory, setJackpotHistory] = useState([]);
