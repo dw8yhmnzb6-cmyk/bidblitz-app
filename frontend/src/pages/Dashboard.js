@@ -471,6 +471,11 @@ export default function Dashboard() {
           <WhatsAppSettings language={langKey} />
         </div>
 
+        {/* Top Bidder Leaderboard */}
+        <div className="mb-8">
+          <TopBidderLeaderboard language={langKey} />
+        </div>
+
         {/* Lucky Wheel & Leaderboard Row */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
           {/* Lucky Wheel Card */}
