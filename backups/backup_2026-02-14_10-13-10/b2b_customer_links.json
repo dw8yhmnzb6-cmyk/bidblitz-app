@@ -1,0 +1,15 @@
+[
+  {
+    "_id": {
+      "$oid": "6988e23526c2b37dbd0cfe66"
+    },
+    "id": "e91723b2-c74c-4a45-84e6-96f7e71189ef",
+    "wholesale_id": "cfa238ee-4b8f-4801-9af7-81ee2c602100",
+    "wholesale_company": "Test Großhandel GmbH",
+    "user_id": "a1c3a84d-cd92-4674-87dd-8f3440cb5551",
+    "customer_number": "09519131",
+    "nickname": "VIP Kunde",
+    "total_bids_sent": 50,
+    "created_at": "2026-02-08T19:21:25.064245+00:00"
+  }
+]

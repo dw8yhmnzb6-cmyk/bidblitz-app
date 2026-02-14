@@ -1,0 +1,17 @@
+[
+  {
+    "_id": {
+      "$oid": "6974e6631f58b99a4823215d"
+    },
+    "id": "db59c5ef-3f59-489a-a5c9-cbe3b49c0554",
+    "name": "Test Influencer",
+    "email": "test@influencer.de",
+    "instagram": "@testinfluencer",
+    "youtube": null,
+    "tiktok": null,
+    "followers": "10000",
+    "message": null,
+    "status": "pending",
+    "created_at": "2026-01-24T15:33:55.976203+00:00"
+  }
+]

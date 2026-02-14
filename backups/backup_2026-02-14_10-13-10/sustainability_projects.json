@@ -1,0 +1,34 @@
+[
+  {
+    "_id": {
+      "$oid": "698cef1d9554fb776a85527c"
+    },
+    "id": "97403b58-6724-496a-bd2c-f407585ec0be",
+    "name": "Test",
+    "description": "Test 2 ",
+    "category": "donations",
+    "amount": 3000.0,
+    "impact_value": 0,
+    "location": "Pr",
+    "image_url": "",
+    "created_at": "2026-02-11T21:05:33.361846+00:00",
+    "created_by": "admin@bidblitz.de",
+    "status": "active"
+  },
+  {
+    "_id": {
+      "$oid": "698cf28b9554fb776a855290"
+    },
+    "id": "5ff29564-d729-424e-a08e-15f948aa4319",
+    "name": "Test Projekt",
+    "description": "Test Beschreibung",
+    "category": "trees",
+    "amount": 1000.0,
+    "impact_value": 100,
+    "location": "Berlin",
+    "image_url": "",
+    "created_at": "2026-02-11T21:20:11.481568+00:00",
+    "created_by": "admin@bidblitz.de",
+    "status": "active"
+  }
+]

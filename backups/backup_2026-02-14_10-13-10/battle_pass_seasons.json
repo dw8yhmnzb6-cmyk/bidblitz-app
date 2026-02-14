@@ -1,0 +1,604 @@
+[
+  {
+    "_id": {
+      "$oid": "69809e028f6c1ee3afb0e91a"
+    },
+    "id": "3564383b-0544-4350-b1d4-820bbb5703d8",
+    "season_number": 1,
+    "name": "Saison 1",
+    "theme": {
+      "name": "Frühlings-Fieber",
+      "color": "#22C55E",
+      "icon": "🌸"
+    },
+    "start_date": "2026-02-02T12:52:18.356568+00:00",
+    "end_date": "2026-03-04T12:52:18.356568+00:00",
+    "max_tier": 50,
+    "xp_per_tier": 100,
+    "rewards": [
+      {
+        "tier": 1,
+        "free": null,
+        "premium": {
+          "type": "bids",
+          "amount": 1,
+          "icon": "💎",
+          "name": "1 Premium-Gebote"
+        }
+      },
+      {
+        "tier": 2,
+        "free": null,
+        "premium": {
+          "type": "bids",
+          "amount": 1,
+          "icon": "💎",
+          "name": "1 Premium-Gebote"
+        }
+      },
+      {
+        "tier": 3,
+        "free": {
+          "type": "xp_boost",
+          "amount": 2,
+          "duration_hours": 24,
+          "icon": "⚡",
+          "name": "24h Doppel-XP"
+        },
+        "premium": {
+          "type": "bids",
+          "amount": 2,
+          "icon": "💎",
+          "name": "2 Premium-Gebote"
+        }
+      },
+      {
+        "tier": 4,
+        "free": null,
+        "premium": {
+          "type": "bids",
+          "amount": 2,
+          "icon": "💎",
+          "name": "2 Premium-Gebote"
+        }
+      },
+      {
+        "tier": 5,
+        "free": {
+          "type": "bids",
+          "amount": 2,
+          "icon": "🎁",
+          "name": "2 Gratis-Gebote"
+        },
+        "premium": {
+          "type": "bids",
+          "amount": 2,
+          "icon": "💎",
+          "name": "2 Premium-Gebote"
+        }
+      },
+      {
+        "tier": 6,
+        "free": null,
+        "premium": {
+          "type": "bids",
+          "amount": 3,
+          "icon": "💎",
+          "name": "3 Premium-Gebote"
+        }
+      },
+      {
+        "tier": 7,
+        "free": null,
+        "premium": {
+          "type": "bids",
+          "amount": 3,
+          "icon": "💎",
+          "name": "3 Premium-Gebote"
+        }
+      },
+      {
+        "tier": 8,
+        "free": null,
+        "premium": {
+          "type": "bids",
+          "amount": 3,
+          "icon": "💎",
+          "name": "3 Premium-Gebote"
+        }
+      },
+      {
+        "tier": 9,
+        "free": null,
+        "premium": {
+          "type": "bids",
+          "amount": 4,
+          "icon": "💎",
+          "name": "4 Premium-Gebote"
+        }
+      },
+      {
+        "tier": 10,
+        "free": {
+          "type": "bids",
+          "amount": 4,
+          "icon": "🎁",
+          "name": "4 Gratis-Gebote"
+        },
+        "premium": {
+          "type": "bids",
+          "amount": 4,
+          "icon": "💎",
+          "name": "4 Premium-Gebote"
+        }
+      },
+      {
+        "tier": 11,
+        "free": null,
+        "premium": {
+          "type": "bids",
+          "amount": 2,
+          "icon": "✨",
+          "name": "2 Gebote"
+        }
+      },
+      {
+        "tier": 12,
+        "free": null,
+        "premium": {
+          "type": "wheel_spin",
+          "amount": 1,
+          "icon": "🎡",
+          "name": "Bonus Glücksrad-Spin"
+        }
+      },
+      {
+        "tier": 13,
+        "free": {
+          "type": "xp_boost",
+          "amount": 2,
+          "duration_hours": 24,
+          "icon": "⚡",
+          "name": "24h Doppel-XP"
+        },
+        "premium": {
+          "type": "bids",
+          "amount": 2,
+          "icon": "✨",
+          "name": "2 Gebote"
+        }
+      },
+      {
+        "tier": 14,
+        "free": null,
+        "premium": {
+          "type": "bids",
+          "amount": 2,
+          "icon": "✨",
+          "name": "2 Gebote"
+        }
+      },
+      {
+        "tier": 15,
+        "free": {
+          "type": "bids",
+          "amount": 6,
+          "icon": "🎁",
+          "name": "6 Gratis-Gebote"
+        },
+        "premium": {
+          "type": "bids",
+          "amount": 7,
+          "icon": "💰",
+          "name": "7 Gebote"
+        }
+      },
+      {
+        "tier": 16,
+        "free": null,
+        "premium": {
+          "type": "bids",
+          "amount": 2,
+          "icon": "✨",
+          "name": "2 Gebote"
+        }
+      },
+      {
+        "tier": 17,
+        "free": null,
+        "premium": {
+          "type": "bids",
+          "amount": 2,
+          "icon": "✨",
+          "name": "2 Gebote"
+        }
+      },
+      {
+        "tier": 18,
+        "free": null,
+        "premium": {
+          "type": "wheel_spin",
+          "amount": 1,
+          "icon": "🎡",
+          "name": "Bonus Glücksrad-Spin"
+        }
+      },
+      {
+        "tier": 19,
+        "free": null,
+        "premium": {
+          "type": "bids",
+          "amount": 2,
+          "icon": "✨",
+          "name": "2 Gebote"
+        }
+      },
+      {
+        "tier": 20,
+        "free": {
+          "type": "bids",
+          "amount": 8,
+          "icon": "🎁",
+          "name": "8 Gratis-Gebote"
+        },
+        "premium": {
+          "type": "bids",
+          "amount": 10,
+          "icon": "💰",
+          "name": "10 Gebote"
+        }
+      },
+      {
+        "tier": 21,
+        "free": null,
+        "premium": {
+          "type": "wheel_spin",
+          "amount": 1,
+          "icon": "🎡",
+          "name": "Bonus Glücksrad-Spin"
+        }
+      },
+      {
+        "tier": 22,
+        "free": null,
+        "premium": {
+          "type": "bids",
+          "amount": 2,
+          "icon": "✨",
+          "name": "2 Gebote"
+        }
+      },
+      {
+        "tier": 23,
+        "free": {
+          "type": "xp_boost",
+          "amount": 2,
+          "duration_hours": 24,
+          "icon": "⚡",
+          "name": "24h Doppel-XP"
+        },
+        "premium": {
+          "type": "bids",
+          "amount": 2,
+          "icon": "✨",
+          "name": "2 Gebote"
+        }
+      },
+      {
+        "tier": 24,
+        "free": null,
+        "premium": {
+          "type": "wheel_spin",
+          "amount": 1,
+          "icon": "🎡",
+          "name": "Bonus Glücksrad-Spin"
+        }
+      },
+      {
+        "tier": 25,
+        "free": {
+          "type": "bids",
+          "amount": 10,
+          "icon": "🎁",
+          "name": "10 Gratis-Gebote"
+        },
+        "premium": {
+          "type": "bids",
+          "amount": 12,
+          "icon": "💰",
+          "name": "12 Gebote"
+        }
+      },
+      {
+        "tier": 26,
+        "free": null,
+        "premium": {
+          "type": "bids",
+          "amount": 5,
+          "icon": "💎",
+          "name": "5 Gebote"
+        }
+      },
+      {
+        "tier": 27,
+        "free": null,
+        "premium": {
+          "type": "bids",
+          "amount": 5,
+          "icon": "💎",
+          "name": "5 Gebote"
+        }
+      },
+      {
+        "tier": 28,
+        "free": null,
+        "premium": {
+          "type": "bids",
+          "amount": 5,
+          "icon": "💎",
+          "name": "5 Gebote"
+        }
+      },
+      {
+        "tier": 29,
+        "free": null,
+        "premium": {
+          "type": "bids",
+          "amount": 5,
+          "icon": "💎",
+          "name": "5 Gebote"
+        }
+      },
+      {
+        "tier": 30,
+        "free": {
+          "type": "bids",
+          "amount": 12,
+          "icon": "🎁",
+          "name": "12 Gratis-Gebote"
+        },
+        "premium": {
+          "type": "bids",
+          "amount": 15,
+          "icon": "👑",
+          "name": "15 Gebote"
+        }
+      },
+      {
+        "tier": 31,
+        "free": null,
+        "premium": {
+          "type": "bids",
+          "amount": 6,
+          "icon": "💎",
+          "name": "6 Gebote"
+        }
+      },
+      {
+        "tier": 32,
+        "free": null,
+        "premium": {
+          "type": "bids",
+          "amount": 6,
+          "icon": "💎",
+          "name": "6 Gebote"
+        }
+      },
+      {
+        "tier": 33,
+        "free": {
+          "type": "xp_boost",
+          "amount": 2,
+          "duration_hours": 24,
+          "icon": "⚡",
+          "name": "24h Doppel-XP"
+        },
+        "premium": {
+          "type": "bids",
+          "amount": 6,
+          "icon": "💎",
+          "name": "6 Gebote"
+        }
+      },
+      {
+        "tier": 34,
+        "free": null,
+        "premium": {
+          "type": "bids",
+          "amount": 6,
+          "icon": "💎",
+          "name": "6 Gebote"
+        }
+      },
+      {
+        "tier": 35,
+        "free": {
+          "type": "bids",
+          "amount": 14,
+          "icon": "🎁",
+          "name": "14 Gratis-Gebote"
+        },
+        "premium": {
+          "type": "bids",
+          "amount": 15,
+          "icon": "👑",
+          "name": "15 Gebote"
+        }
+      },
+      {
+        "tier": 36,
+        "free": null,
+        "premium": {
+          "type": "bids",
+          "amount": 6,
+          "icon": "💎",
+          "name": "6 Gebote"
+        }
+      },
+      {
+        "tier": 37,
+        "free": null,
+        "premium": {
+          "type": "bids",
+          "amount": 6,
+          "icon": "💎",
+          "name": "6 Gebote"
+        }
+      },
+      {
+        "tier": 38,
+        "free": null,
+        "premium": {
+          "type": "bids",
+          "amount": 6,
+          "icon": "💎",
+          "name": "6 Gebote"
+        }
+      },
+      {
+        "tier": 39,
+        "free": null,
+        "premium": {
+          "type": "bids",
+          "amount": 6,
+          "icon": "💎",
+          "name": "6 Gebote"
+        }
+      },
+      {
+        "tier": 40,
+        "free": {
+          "type": "bids",
+          "amount": 16,
+          "icon": "🎁",
+          "name": "16 Gratis-Gebote"
+        },
+        "premium": {
+          "type": "bids",
+          "amount": 15,
+          "icon": "👑",
+          "name": "15 Gebote"
+        }
+      },
+      {
+        "tier": 41,
+        "free": null,
+        "premium": {
+          "type": "bids",
+          "amount": 8,
+          "icon": "💰",
+          "name": "8 Gebote"
+        }
+      },
+      {
+        "tier": 42,
+        "free": null,
+        "premium": {
+          "type": "bids",
+          "amount": 8,
+          "icon": "💰",
+          "name": "8 Gebote"
+        }
+      },
+      {
+        "tier": 43,
+        "free": {
+          "type": "xp_boost",
+          "amount": 2,
+          "duration_hours": 24,
+          "icon": "⚡",
+          "name": "24h Doppel-XP"
+        },
+        "premium": {
+          "type": "bids",
+          "amount": 8,
+          "icon": "💰",
+          "name": "8 Gebote"
+        }
+      },
+      {
+        "tier": 44,
+        "free": null,
+        "premium": {
+          "type": "bids",
+          "amount": 8,
+          "icon": "💰",
+          "name": "8 Gebote"
+        }
+      },
+      {
+        "tier": 45,
+        "free": {
+          "type": "bids",
+          "amount": 18,
+          "icon": "🎁",
+          "name": "18 Gratis-Gebote"
+        },
+        "premium": {
+          "type": "vip_days",
+          "amount": 7,
+          "icon": "👑",
+          "name": "7 Tage VIP"
+        }
+      },
+      {
+        "tier": 46,
+        "free": null,
+        "premium": {
+          "type": "bids",
+          "amount": 8,
+          "icon": "💰",
+          "name": "8 Gebote"
+        }
+      },
+      {
+        "tier": 47,
+        "free": null,
+        "premium": {
+          "type": "bids",
+          "amount": 8,
+          "icon": "💰",
+          "name": "8 Gebote"
+        }
+      },
+      {
+        "tier": 48,
+        "free": null,
+        "premium": {
+          "type": "bids",
+          "amount": 8,
+          "icon": "💰",
+          "name": "8 Gebote"
+        }
+      },
+      {
+        "tier": 49,
+        "free": null,
+        "premium": {
+          "type": "bids",
+          "amount": 8,
+          "icon": "💰",
+          "name": "8 Gebote"
+        }
+      },
+      {
+        "tier": 50,
+        "free": {
+          "type": "bids",
+          "amount": 20,
+          "icon": "🎁",
+          "name": "20 Gratis-Gebote"
+        },
+        "premium": {
+          "type": "mega_bundle",
+          "bids": 50,
+          "vip_days": 14,
+          "icon": "🏆",
+          "name": "MEGA BUNDLE: 50 Gebote + 14 Tage VIP"
+        }
+      }
+    ],
+    "is_active": true,
+    "created_at": "2026-02-02T12:52:18.356568+00:00"
+  }
+]

@@ -1,0 +1,21 @@
+[
+  {
+    "_id": {
+      "$oid": "6980f72b405b9ea7deacb3b6"
+    },
+    "id": "6c33f7ba-4101-4eb0-9736-dc0a785db333",
+    "user_id": "93751cd4-fcd3-41da-82e2-8f455322ba24",
+    "product_id": null,
+    "category": "electronics",
+    "product_info": null,
+    "price_alert": 50.0,
+    "alert_settings": {
+      "push_enabled": true,
+      "email_enabled": false,
+      "alert_before_minutes": 5
+    },
+    "notified_auctions": [],
+    "created_at": "2026-02-02T19:12:43.077309+00:00",
+    "updated_at": "2026-02-02T19:16:38.601081+00:00"
+  }
+]

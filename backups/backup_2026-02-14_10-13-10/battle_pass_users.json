@@ -1,0 +1,44 @@
+[
+  {
+    "_id": {
+      "$oid": "69809e028f6c1ee3afb0e91b"
+    },
+    "id": "ac585870-3ee8-4df5-98fb-94ce25d053e7",
+    "user_id": "93751cd4-fcd3-41da-82e2-8f455322ba24",
+    "season_id": "3564383b-0544-4350-b1d4-820bbb5703d8",
+    "current_xp": 0,
+    "current_tier": 0,
+    "has_premium": false,
+    "claimed_free": [],
+    "claimed_premium": [],
+    "created_at": "2026-02-02T12:52:18.367209+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698d0502593947c5fbeacfcf"
+    },
+    "id": "f1db69a2-e0b4-491c-aa4a-5d295303baf6",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "season_id": "3564383b-0544-4350-b1d4-820bbb5703d8",
+    "current_xp": 0,
+    "current_tier": 0,
+    "has_premium": false,
+    "claimed_free": [],
+    "claimed_premium": [],
+    "created_at": "2026-02-11T22:38:58.748087+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698d0a4d593947c5fbead004"
+    },
+    "id": "b99a67d9-8ecf-421c-a8ce-b721b227b02d",
+    "user_id": "494c49c3-5194-480a-8402-58620a610020",
+    "season_id": "3564383b-0544-4350-b1d4-820bbb5703d8",
+    "current_xp": 0,
+    "current_tier": 0,
+    "has_premium": false,
+    "claimed_free": [],
+    "claimed_premium": [],
+    "created_at": "2026-02-11T23:01:33.777063+00:00"
+  }
+]

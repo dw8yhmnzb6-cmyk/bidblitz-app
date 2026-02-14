@@ -1,0 +1,180 @@
+[
+  {
+    "_id": {
+      "$oid": "698107a935549b1f3ec53485"
+    },
+    "id": "c983281e-d0de-45a3-abf7-e84b5963c0cb",
+    "manager_id": "b8bb850e-ad00-4bbc-84c7-2ef162347712",
+    "action": "login",
+    "description": "Manager eingeloggt",
+    "details": {},
+    "created_at": "2026-02-02T20:23:05.019583+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698107c135549b1f3ec53489"
+    },
+    "id": "986ecd85-c525-4ac5-ab8e-72cd2705ce97",
+    "manager_id": "b8bb850e-ad00-4bbc-84c7-2ef162347712",
+    "action": "influencer_blocked",
+    "description": "Influencer 'MaxPower' gesperrt",
+    "details": {
+      "influencer_id": "7e71b75d-8167-47c1-8992-66118a1a3e4e",
+      "influencer_name": "MaxPower",
+      "influencer_code": "maxpower"
+    },
+    "created_at": "2026-02-02T20:23:29.096925+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698107c135549b1f3ec5348a"
+    },
+    "id": "1cf8f315-a60b-411b-8368-8ef8216a0059",
+    "manager_id": "b8bb850e-ad00-4bbc-84c7-2ef162347712",
+    "action": "influencer_approved",
+    "description": "Influencer 'MaxPower' freigeschaltet",
+    "details": {
+      "influencer_id": "7e71b75d-8167-47c1-8992-66118a1a3e4e",
+      "influencer_name": "MaxPower",
+      "influencer_code": "maxpower"
+    },
+    "created_at": "2026-02-02T20:23:29.309841+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6981088635549b1f3ec5348f"
+    },
+    "id": "5f43ac65-b69f-4639-8348-e29d474e1042",
+    "manager_id": "b8bb850e-ad00-4bbc-84c7-2ef162347712",
+    "action": "login",
+    "description": "Manager eingeloggt",
+    "details": {},
+    "created_at": "2026-02-02T20:26:46.899986+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698108c935549b1f3ec53490"
+    },
+    "id": "edaed351-9aa8-43f3-b572-a4ee64a3c298",
+    "manager_id": "b8bb850e-ad00-4bbc-84c7-2ef162347712",
+    "action": "login",
+    "description": "Manager eingeloggt",
+    "details": {},
+    "created_at": "2026-02-02T20:27:53.345709+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698108f74b01d560a741b055"
+    },
+    "id": "8d245d73-9430-43c4-a18d-be27c9b3d084",
+    "manager_id": "b8bb850e-ad00-4bbc-84c7-2ef162347712",
+    "action": "login",
+    "description": "Manager eingeloggt",
+    "details": {},
+    "created_at": "2026-02-02T20:28:39.339910+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698108f94b01d560a741b05d"
+    },
+    "id": "3731329a-082c-4a86-878d-ca1186b13c98",
+    "manager_id": "b8bb850e-ad00-4bbc-84c7-2ef162347712",
+    "action": "login",
+    "description": "Manager eingeloggt",
+    "details": {},
+    "created_at": "2026-02-02T20:28:41.723439+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698109134b01d560a741b05e"
+    },
+    "id": "21d688dd-86f8-46d7-841d-a00526e61e91",
+    "manager_id": "b8bb850e-ad00-4bbc-84c7-2ef162347712",
+    "action": "login",
+    "description": "Manager eingeloggt",
+    "details": {},
+    "created_at": "2026-02-02T20:29:07.225597+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698113e46e240a1d017013af"
+    },
+    "id": "9ce508e7-b434-4f82-a7a9-cca8223449d6",
+    "manager_id": "b8bb850e-ad00-4bbc-84c7-2ef162347712",
+    "action": "influencer_updated",
+    "description": "Influencer 'MaxPower' bearbeitet: Stadt: Prishtina → Prizren",
+    "details": {
+      "influencer_id": "7e71b75d-8167-47c1-8992-66118a1a3e4e",
+      "changes": [
+        "Stadt: Prishtina → Prizren"
+      ]
+    },
+    "created_at": "2026-02-02T21:15:16.284545+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698114376e240a1d017013b2"
+    },
+    "id": "72ab1f4f-0dac-4643-ac5b-0cb33b71af06",
+    "manager_id": "b8bb850e-ad00-4bbc-84c7-2ef162347712",
+    "action": "login",
+    "description": "Manager eingeloggt",
+    "details": {},
+    "created_at": "2026-02-02T21:16:39.132039+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6981168652c1a4ef5d31d396"
+    },
+    "id": "0dd58331-1862-41a0-83e3-ff4c4eafa4db",
+    "manager_id": "b8bb850e-ad00-4bbc-84c7-2ef162347712",
+    "action": "login",
+    "description": "Manager eingeloggt",
+    "details": {},
+    "created_at": "2026-02-02T21:26:30.653322+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6981171daace93a6c7e9b693"
+    },
+    "id": "1a3dcf28-8248-43e1-8067-4f2a831f15a2",
+    "manager_id": "b8bb850e-ad00-4bbc-84c7-2ef162347712",
+    "action": "login",
+    "description": "Manager eingeloggt",
+    "details": {},
+    "created_at": "2026-02-02T21:29:01.459753+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6981187b8954fc90168b61f1"
+    },
+    "id": "6ea4da96-b972-4e18-a9f1-a7fcac6b5f04",
+    "manager_id": "b8bb850e-ad00-4bbc-84c7-2ef162347712",
+    "action": "login",
+    "description": "Manager eingeloggt",
+    "details": {},
+    "created_at": "2026-02-02T21:34:51.026049+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698118a68954fc90168b61f2"
+    },
+    "id": "b249f2fe-6d16-43c2-925f-e1cad7fd55f6",
+    "manager_id": "19c01e98-68c3-42d0-8f27-27391038b87d",
+    "action": "login",
+    "description": "Manager eingeloggt",
+    "details": {},
+    "created_at": "2026-02-02T21:35:34.781145+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698118b68954fc90168b61f3"
+    },
+    "id": "f5db707b-900f-4a4c-87fa-2f1530d4284c",
+    "manager_id": "19c01e98-68c3-42d0-8f27-27391038b87d",
+    "action": "login",
+    "description": "Manager eingeloggt",
+    "details": {},
+    "created_at": "2026-02-02T21:35:50.951467+00:00"
+  }
+]

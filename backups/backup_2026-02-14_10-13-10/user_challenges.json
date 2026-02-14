@@ -1,0 +1,410 @@
+[
+  {
+    "_id": {
+      "$oid": "69808504d450c9cfc61c1498"
+    },
+    "id": "7b2d0029-10bf-4946-b0ae-273d1c9efe8f",
+    "user_id": "93751cd4-fcd3-41da-82e2-8f455322ba24",
+    "week_start": "2026-02-02T00:00:00+00:00",
+    "week_end": "2026-02-09T00:00:00+00:00",
+    "challenges": [
+      {
+        "challenge_id": "place_50_bids",
+        "name": "Bieter-Marathon",
+        "description": "Platziere 50 Gebote diese Woche",
+        "icon": "⚡",
+        "goal": 50,
+        "progress": 2,
+        "reward_bids": 25,
+        "type": "bids",
+        "difficulty": "easy",
+        "completed": false,
+        "claimed": false
+      },
+      {
+        "challenge_id": "login_streak_7",
+        "name": "Treuer Besucher",
+        "description": "Logge dich 7 Tage hintereinander ein",
+        "icon": "📅",
+        "goal": 7,
+        "progress": 3,
+        "reward_bids": 20,
+        "type": "login_streak",
+        "difficulty": "easy",
+        "completed": false,
+        "claimed": false
+      },
+      {
+        "challenge_id": "win_under_5_euro",
+        "name": "Schnäppchen-König",
+        "description": "Gewinne eine Auktion unter €5",
+        "icon": "💰",
+        "goal": 1,
+        "progress": 0,
+        "reward_bids": 25,
+        "type": "cheap_wins",
+        "difficulty": "medium",
+        "completed": false,
+        "claimed": false
+      }
+    ],
+    "created_at": "2026-02-02T11:05:40.267247+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69808569d450c9cfc61c149b"
+    },
+    "id": "3c152e68-58bb-45d6-9ef1-38a50caf4a0f",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "week_start": "2026-02-02T00:00:00+00:00",
+    "week_end": "2026-02-09T00:00:00+00:00",
+    "challenges": [
+      {
+        "challenge_id": "login_streak_7",
+        "name": "Treuer Besucher",
+        "description": "Logge dich 7 Tage hintereinander ein",
+        "icon": "📅",
+        "goal": 7,
+        "progress": 1,
+        "reward_bids": 20,
+        "type": "login_streak",
+        "difficulty": "easy",
+        "completed": false,
+        "claimed": false
+      },
+      {
+        "challenge_id": "place_50_bids",
+        "name": "Bieter-Marathon",
+        "description": "Platziere 50 Gebote diese Woche",
+        "icon": "⚡",
+        "goal": 50,
+        "progress": 3,
+        "reward_bids": 25,
+        "type": "bids",
+        "difficulty": "easy",
+        "completed": false,
+        "claimed": false
+      },
+      {
+        "challenge_id": "spend_100_bids",
+        "name": "Großbieter",
+        "description": "Verwende 100 Gebote diese Woche",
+        "icon": "🔥",
+        "goal": 100,
+        "progress": 3,
+        "reward_bids": 35,
+        "type": "bids_spent",
+        "difficulty": "hard",
+        "completed": false,
+        "claimed": false
+      }
+    ],
+    "created_at": "2026-02-02T11:07:21.914796+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6981049625f0a21dca6c8acd"
+    },
+    "id": "adaf2fa4-7e45-4b0e-ace7-897d5a4ba0c7",
+    "user_id": "ce9b3522-6d70-49f9-a0ce-b1c9a112759d",
+    "week_start": "2026-02-02T00:00:00+00:00",
+    "week_end": "2026-02-09T00:00:00+00:00",
+    "challenges": [
+      {
+        "challenge_id": "spend_100_bids",
+        "name": "Großbieter",
+        "description": "Verwende 100 Gebote diese Woche",
+        "icon": "🔥",
+        "goal": 100,
+        "progress": 8,
+        "reward_bids": 35,
+        "type": "bids_spent",
+        "difficulty": "hard",
+        "completed": false,
+        "claimed": false
+      },
+      {
+        "challenge_id": "win_3_auctions",
+        "name": "Gewinner-Woche",
+        "description": "Gewinne 3 Auktionen diese Woche",
+        "icon": "🏆",
+        "goal": 3,
+        "progress": 0,
+        "reward_bids": 50,
+        "type": "wins",
+        "difficulty": "medium",
+        "completed": false,
+        "claimed": false
+      },
+      {
+        "challenge_id": "refer_friend",
+        "name": "Freunde-Finder",
+        "description": "Werbe einen Freund der kauft",
+        "icon": "👥",
+        "goal": 1,
+        "progress": 0,
+        "reward_bids": 40,
+        "type": "referrals",
+        "difficulty": "medium",
+        "completed": false,
+        "claimed": false
+      }
+    ],
+    "created_at": "2026-02-02T20:09:58.572657+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698793a139b40208a92eca88"
+    },
+    "id": "b9121424-e52d-439d-ad86-35162ee1f892",
+    "user_id": "c9e2304c-f3ca-49d7-8ce6-4ce3933ef963",
+    "week_start": "2026-02-02T00:00:00+00:00",
+    "week_end": "2026-02-09T00:00:00+00:00",
+    "challenges": [
+      {
+        "challenge_id": "win_3_auctions",
+        "name": "Gewinner-Woche",
+        "description": "Gewinne 3 Auktionen diese Woche",
+        "icon": "🏆",
+        "goal": 3,
+        "progress": 0,
+        "reward_bids": 50,
+        "type": "wins",
+        "difficulty": "medium",
+        "completed": false,
+        "claimed": false
+      },
+      {
+        "challenge_id": "first_bid_of_day",
+        "name": "Frühaufsteher",
+        "description": "Sei 5x der erste Bieter des Tages",
+        "icon": "🌅",
+        "goal": 5,
+        "progress": 0,
+        "reward_bids": 30,
+        "type": "first_bids",
+        "difficulty": "hard",
+        "completed": false,
+        "claimed": false
+      },
+      {
+        "challenge_id": "place_50_bids",
+        "name": "Bieter-Marathon",
+        "description": "Platziere 50 Gebote diese Woche",
+        "icon": "⚡",
+        "goal": 50,
+        "progress": 1,
+        "reward_bids": 25,
+        "type": "bids",
+        "difficulty": "easy",
+        "completed": false,
+        "claimed": false
+      }
+    ],
+    "created_at": "2026-02-07T19:33:53.079037+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6988e6683a1ab570f4c359d8"
+    },
+    "id": "a966cfc1-3534-412e-8963-12b36b3ffe38",
+    "user_id": "a1c3a84d-cd92-4674-87dd-8f3440cb5551",
+    "week_start": "2026-02-02T00:00:00+00:00",
+    "week_end": "2026-02-09T00:00:00+00:00",
+    "challenges": [
+      {
+        "challenge_id": "login_streak_7",
+        "name": "Treuer Besucher",
+        "description": "Logge dich 7 Tage hintereinander ein",
+        "icon": "📅",
+        "goal": 7,
+        "progress": 0,
+        "reward_bids": 20,
+        "type": "login_streak",
+        "difficulty": "easy",
+        "completed": false,
+        "claimed": false
+      },
+      {
+        "challenge_id": "spend_100_bids",
+        "name": "Großbieter",
+        "description": "Verwende 100 Gebote diese Woche",
+        "icon": "🔥",
+        "goal": 100,
+        "progress": 0,
+        "reward_bids": 35,
+        "type": "bids_spent",
+        "difficulty": "hard",
+        "completed": false,
+        "claimed": false
+      },
+      {
+        "challenge_id": "win_3_auctions",
+        "name": "Gewinner-Woche",
+        "description": "Gewinne 3 Auktionen diese Woche",
+        "icon": "🏆",
+        "goal": 3,
+        "progress": 0,
+        "reward_bids": 50,
+        "type": "wins",
+        "difficulty": "medium",
+        "completed": false,
+        "claimed": false
+      }
+    ],
+    "created_at": "2026-02-08T19:39:20.036004+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698a28e46c6d78192fba92e8"
+    },
+    "id": "ad8ed96e-c6d3-464c-a476-dc139cc8f3a6",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "week_start": "2026-02-09T00:00:00+00:00",
+    "week_end": "2026-02-16T00:00:00+00:00",
+    "challenges": [
+      {
+        "challenge_id": "win_vip_auction",
+        "name": "VIP-Jäger",
+        "description": "Gewinne eine VIP-Auktion",
+        "icon": "👑",
+        "goal": 1,
+        "progress": 0,
+        "reward_bids": 30,
+        "type": "vip_wins",
+        "difficulty": "medium",
+        "completed": false,
+        "claimed": false
+      },
+      {
+        "challenge_id": "refer_friend",
+        "name": "Freunde-Finder",
+        "description": "Werbe einen Freund der kauft",
+        "icon": "👥",
+        "goal": 1,
+        "progress": 0,
+        "reward_bids": 40,
+        "type": "referrals",
+        "difficulty": "medium",
+        "completed": false,
+        "claimed": false
+      },
+      {
+        "challenge_id": "place_50_bids",
+        "name": "Bieter-Marathon",
+        "description": "Platziere 50 Gebote diese Woche",
+        "icon": "⚡",
+        "goal": 50,
+        "progress": 0,
+        "reward_bids": 25,
+        "type": "bids",
+        "difficulty": "easy",
+        "completed": false,
+        "claimed": false
+      }
+    ],
+    "created_at": "2026-02-09T18:35:16.230243+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698cd5f693e286cede1aded4"
+    },
+    "id": "b3fa4c19-0ace-4dee-9eca-a71e11d9b008",
+    "user_id": "93751cd4-fcd3-41da-82e2-8f455322ba24",
+    "week_start": "2026-02-09T00:00:00+00:00",
+    "week_end": "2026-02-16T00:00:00+00:00",
+    "challenges": [
+      {
+        "challenge_id": "refer_friend",
+        "name": "Freunde-Finder",
+        "description": "Werbe einen Freund der kauft",
+        "icon": "👥",
+        "goal": 1,
+        "progress": 0,
+        "reward_bids": 40,
+        "type": "referrals",
+        "difficulty": "medium",
+        "completed": false,
+        "claimed": false
+      },
+      {
+        "challenge_id": "spend_100_bids",
+        "name": "Großbieter",
+        "description": "Verwende 100 Gebote diese Woche",
+        "icon": "🔥",
+        "goal": 100,
+        "progress": 0,
+        "reward_bids": 35,
+        "type": "bids_spent",
+        "difficulty": "hard",
+        "completed": false,
+        "claimed": false
+      },
+      {
+        "challenge_id": "win_vip_auction",
+        "name": "VIP-Jäger",
+        "description": "Gewinne eine VIP-Auktion",
+        "icon": "👑",
+        "goal": 1,
+        "progress": 0,
+        "reward_bids": 30,
+        "type": "vip_wins",
+        "difficulty": "medium",
+        "completed": false,
+        "claimed": false
+      }
+    ],
+    "created_at": "2026-02-11T19:18:14.736630+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698ce08b708f7da9b6f95687"
+    },
+    "id": "056a02e7-2084-48a2-8b41-2b5c195f7578",
+    "user_id": "494c49c3-5194-480a-8402-58620a610020",
+    "week_start": "2026-02-09T00:00:00+00:00",
+    "week_end": "2026-02-16T00:00:00+00:00",
+    "challenges": [
+      {
+        "challenge_id": "win_3_auctions",
+        "name": "Gewinner-Woche",
+        "description": "Gewinne 3 Auktionen diese Woche",
+        "icon": "🏆",
+        "goal": 3,
+        "progress": 0,
+        "reward_bids": 50,
+        "type": "wins",
+        "difficulty": "medium",
+        "completed": false,
+        "claimed": false
+      },
+      {
+        "challenge_id": "place_50_bids",
+        "name": "Bieter-Marathon",
+        "description": "Platziere 50 Gebote diese Woche",
+        "icon": "⚡",
+        "goal": 50,
+        "progress": 0,
+        "reward_bids": 25,
+        "type": "bids",
+        "difficulty": "easy",
+        "completed": false,
+        "claimed": false
+      },
+      {
+        "challenge_id": "login_streak_7",
+        "name": "Treuer Besucher",
+        "description": "Logge dich 7 Tage hintereinander ein",
+        "icon": "📅",
+        "goal": 7,
+        "progress": 0,
+        "reward_bids": 20,
+        "type": "login_streak",
+        "difficulty": "easy",
+        "completed": false,
+        "claimed": false
+      }
+    ],
+    "created_at": "2026-02-11T20:03:23.524788+00:00"
+  }
+]

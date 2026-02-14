@@ -1,0 +1,46 @@
+[
+  {
+    "_id": {
+      "$oid": "698de48878839a40a143e74a"
+    },
+    "id": "225fd10f-dd3c-41a4-996e-ed116c40fc17",
+    "restaurant_name": "Test Restaurant",
+    "contact_name": "Max Mustermann",
+    "email": "test@restaurant.de",
+    "phone": "+49 123 456789",
+    "website": "https://test-restaurant.de",
+    "address": "Teststraße 1",
+    "city": "Berlin",
+    "description": "Das beste italienische Restaurant in Berlin",
+    "voucher_type": "discount",
+    "voucher_value": 15,
+    "message": "Wir freuen uns auf die Partnerschaft!",
+    "status": "pending",
+    "created_at": "2026-02-12T14:32:40.279026+00:00",
+    "reviewed_at": null,
+    "reviewed_by": null,
+    "admin_notes": null
+  },
+  {
+    "_id": {
+      "$oid": "698de69a78839a40a143e750"
+    },
+    "id": "c206f1c7-24f1-4255-b37e-b83055d4e22c",
+    "restaurant_name": "Pizzeria Napoli",
+    "contact_name": "Luigi Verdi",
+    "email": "pizzeria1770907289@test.de",
+    "phone": "",
+    "website": "",
+    "address": "Friedrichstraße 100",
+    "city": "Berlin",
+    "description": "Beste Pizza in Berlin!",
+    "voucher_type": "discount",
+    "voucher_value": 10,
+    "message": "",
+    "status": "pending",
+    "created_at": "2026-02-12T14:41:30.700920+00:00",
+    "reviewed_at": null,
+    "reviewed_by": null,
+    "admin_notes": null
+  }
+]

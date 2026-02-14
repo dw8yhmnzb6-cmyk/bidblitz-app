@@ -1,0 +1,41 @@
+[
+  {
+    "_id": {
+      "$oid": "69808ec51525f39277631959"
+    },
+    "id": "03e62e1d-ea37-48a1-bb47-915c5ca20358",
+    "user_id": "93751cd4-fcd3-41da-82e2-8f455322ba24",
+    "total_points": 8,
+    "available_points": 8,
+    "lifetime_points": 8,
+    "level": "Bronze",
+    "created_at": "2026-02-02T11:47:17.205709+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69813370f9de2d023ac139c3"
+    },
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "available_points": 61,
+    "lifetime_points": 61,
+    "total_points": 61
+  },
+  {
+    "_id": {
+      "$oid": "698793dc0ec93b535bb97e96"
+    },
+    "user_id": "c9e2304c-f3ca-49d7-8ce6-4ce3933ef963",
+    "available_points": 1,
+    "lifetime_points": 1,
+    "total_points": 1
+  },
+  {
+    "_id": {
+      "$oid": "698856cbee0565631c5addc6"
+    },
+    "user_id": "ce9b3522-6d70-49f9-a0ce-b1c9a112759d",
+    "available_points": 8,
+    "lifetime_points": 8,
+    "total_points": 8
+  }
+]

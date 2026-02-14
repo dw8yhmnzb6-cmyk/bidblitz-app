@@ -1,0 +1,43 @@
+[
+  {
+    "_id": {
+      "$oid": "6990482da58709efb71a7a56"
+    },
+    "id": "global-jackpot",
+    "type": "global",
+    "current_amount": 500,
+    "contribution_per_bid": 1,
+    "last_winner": null,
+    "last_won_at": null,
+    "total_won": 0,
+    "is_active": true
+  },
+  {
+    "_id": {
+      "$oid": "6990436ecc1c4bd32d6530ba"
+    },
+    "id": "global-jackpot",
+    "type": "global",
+    "current_amount": 500,
+    "contribution_per_bid": 1,
+    "last_winner": null,
+    "last_won_at": null,
+    "total_won": 0,
+    "is_active": true
+  },
+  {
+    "_id": {
+      "$oid": "69811f22391a68d2621b4193"
+    },
+    "id": "global-jackpot",
+    "type": "global",
+    "current_amount": 10000,
+    "contribution_per_bid": 1,
+    "last_winner": "Albin",
+    "last_won_at": "2026-02-07T19:28:44.659589+00:00",
+    "total_won": 7000,
+    "last_winner_id": "cc39e3e7-d381-41ba-a555-e4b03a1e3f35",
+    "last_won_amount": 5000,
+    "is_active": true
+  }
+]

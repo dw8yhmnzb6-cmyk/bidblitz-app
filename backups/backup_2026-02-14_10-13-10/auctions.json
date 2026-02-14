@@ -1,0 +1,5117 @@
+[
+  {
+    "_id": {
+      "$oid": "698935fcdb196d3ae2d651f6"
+    },
+    "id": "071f3518-e859-4ad0-aabc-ee22542f5ee9",
+    "product_id": "prod-sony-a95m-55",
+    "title": "Sony Bravia A95M 55\" QD-OLED",
+    "current_price": 0.43,
+    "start_price": 0.01,
+    "bid_increment": 0.01,
+    "retail_price": 2499,
+    "status": "night_paused",
+    "start_time": "2026-02-14T08:38:43.355087+00:00",
+    "end_time": "2026-02-15T00:38:43.355087+00:00",
+    "original_end_time": "2026-02-09T17:18:52.521612+00:00",
+    "bid_count": 1519,
+    "total_bids": 42,
+    "last_bidder": "Thomas B.",
+    "last_bidder_id": "bot_35922ece-0c1a-4096-8c94-97d1bdb67234",
+    "last_bidder_name": "Jonas K.",
+    "is_vip_only": false,
+    "is_night_auction": true,
+    "is_beginner_only": false,
+    "is_beginner_auction": false,
+    "is_free_auction": false,
+    "is_fixed_end": true,
+    "bot_target_price": 25.0,
+    "created_at": "2026-02-09T01:18:52.521612+00:00",
+    "bids": [],
+    "bid_history": [
+      {
+        "user_id": "bot_d47e6b33-240c-4580-addd-3a2aa6787358",
+        "user_name": "Greta G.",
+        "price": 0.02,
+        "timestamp": "2026-02-14T08:38:49.480046+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_d2be66be-030e-4bb1-b241-740597071c24",
+        "user_name": "Violeta K.",
+        "price": 0.03,
+        "timestamp": "2026-02-14T08:41:59.198652+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_a88a9962-a8ba-491d-ad1b-4dbb04dac1cd",
+        "user_name": "Greta H.",
+        "price": 0.04,
+        "timestamp": "2026-02-14T08:42:35.545395+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_516e6027-8b4b-451d-bfe3-3cb07d975bbe",
+        "user_name": "Johanna C.",
+        "price": 0.05,
+        "timestamp": "2026-02-14T08:44:54.881382+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_3fa0ed00-6163-43c7-8f80-9fa1fb2eeec6",
+        "user_name": "Valdrin G.",
+        "price": 0.06,
+        "timestamp": "2026-02-14T08:47:25.513998+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_e4cd0543-1fbc-4bd1-9fe2-b1bf16637e41",
+        "user_name": "Albina O.",
+        "price": 0.07,
+        "timestamp": "2026-02-14T08:51:32.030351+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_d9625ea9-7732-48e2-b990-8be7546aa5e0",
+        "user_name": "Sarah L.",
+        "price": 0.08,
+        "timestamp": "2026-02-14T08:52:59.925655+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_376ecdce-b07c-40b2-98e9-29f565b70bc7",
+        "user_name": "Naim G.",
+        "price": 0.09,
+        "timestamp": "2026-02-14T08:54:32.271501+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_712adb23-cdc2-494f-bc36-d4dd40a3f8ac",
+        "user_name": "Moritz Z.",
+        "price": 0.1,
+        "timestamp": "2026-02-14T08:56:29.278383+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_14ba6335-4406-44af-a9c3-18b08b35e855",
+        "user_name": "Elias M.",
+        "price": 0.11,
+        "timestamp": "2026-02-14T08:57:32.901142+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_9eedf288-7863-4b01-b498-1749fb9572c7",
+        "user_name": "Stefan R.",
+        "price": 0.12,
+        "timestamp": "2026-02-14T08:59:20.063494+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_99e1961d-ea67-4ad6-b919-957ae485c013",
+        "user_name": "Violeta H.",
+        "price": 0.13,
+        "timestamp": "2026-02-14T09:00:45.803847+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_9d81ca72-f616-4464-8cea-90f446c50da6",
+        "user_name": "Ylber B.",
+        "price": 0.14,
+        "timestamp": "2026-02-14T09:01:36.808546+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_ec2ab893-8b97-4b76-865f-73fc601621fc",
+        "user_name": "Kujtim S.",
+        "price": 0.15,
+        "timestamp": "2026-02-14T09:02:11.506008+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_35858c90-e8c8-463e-8079-a4720f6050db",
+        "user_name": "Flora L.",
+        "price": 0.16,
+        "timestamp": "2026-02-14T09:03:00.461608+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_99e1961d-ea67-4ad6-b919-957ae485c013",
+        "user_name": "Violeta H.",
+        "price": 0.17,
+        "timestamp": "2026-02-14T09:03:20.884256+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_d47e6b33-240c-4580-addd-3a2aa6787358",
+        "user_name": "Greta G.",
+        "price": 0.18,
+        "timestamp": "2026-02-14T09:04:01.858483+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_06ac9d08-7c34-472e-8206-4e4be58d4402",
+        "user_name": "Erjona K.",
+        "price": 0.19,
+        "timestamp": "2026-02-14T09:05:01.590502+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_a2f98caa-b2e9-47da-a1c4-f87383c6703a",
+        "user_name": "Amelie L.",
+        "price": 0.2,
+        "timestamp": "2026-02-14T09:05:40.961361+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_e4cd0543-1fbc-4bd1-9fe2-b1bf16637e41",
+        "user_name": "Albina O.",
+        "price": 0.21,
+        "timestamp": "2026-02-14T09:06:54.831925+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_8a7d4553-35d4-40eb-a72d-a8132a18c195",
+        "user_name": "Rozafa L.",
+        "price": 0.22,
+        "timestamp": "2026-02-14T09:09:08.718838+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_880c502b-4be7-41c2-849b-79c66a895099",
+        "user_name": "Luan B.",
+        "price": 0.23,
+        "timestamp": "2026-02-14T09:09:56.001609+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_e88c85c9-be77-43da-831a-b6c4bcb8f6fb",
+        "user_name": "Luiza K.",
+        "price": 0.24,
+        "timestamp": "2026-02-14T09:10:49.162085+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_14ba6335-4406-44af-a9c3-18b08b35e855",
+        "user_name": "Elias M.",
+        "price": 0.25,
+        "timestamp": "2026-02-14T09:13:04.288703+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_eb4af683-1ce0-4882-9aa6-259293b97437",
+        "user_name": "Naim H.",
+        "price": 0.26,
+        "timestamp": "2026-02-14T09:15:25.364351+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_036609c2-eadf-4350-ba4f-d2e90f1851e7",
+        "user_name": "Erjona H.",
+        "price": 0.27,
+        "timestamp": "2026-02-14T09:19:00.129756+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_796f513f-dfea-483e-ba83-53095cd7319a",
+        "user_name": "Teuta M.",
+        "price": 0.28,
+        "timestamp": "2026-02-14T09:19:36.977723+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_8a7d4553-35d4-40eb-a72d-a8132a18c195",
+        "user_name": "Rozafa L.",
+        "price": 0.29,
+        "timestamp": "2026-02-14T09:20:17.847026+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_3ec41fc3-e660-4338-9fb5-e0beb74234a0",
+        "user_name": "Mentor A.",
+        "price": 0.3,
+        "timestamp": "2026-02-14T09:20:32.116297+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_994c9f09-f468-43b8-bb59-8bfdb75d571a",
+        "user_name": "Julia K.",
+        "price": 0.31,
+        "timestamp": "2026-02-14T09:21:55.793958+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_fe628a38-9976-4359-8712-0d24e2a2c957",
+        "user_name": "Pranvera K.",
+        "price": 0.32,
+        "timestamp": "2026-02-14T09:22:16.198128+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_8d9562f3-b465-419a-a2cd-80359ec9724e",
+        "user_name": "Andreas E.",
+        "price": 0.33,
+        "timestamp": "2026-02-14T09:23:03.147855+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_ac3935a7-bc2c-4d22-8544-43b581778cb6",
+        "user_name": "Besnik M.",
+        "price": 0.34,
+        "timestamp": "2026-02-14T09:24:29.043183+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_a6b56f9c-e86d-4243-96e3-952f06cbdec5",
+        "user_name": "Albina H.",
+        "price": 0.35,
+        "timestamp": "2026-02-14T09:26:05.223608+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_ff639f87-cdf4-4fcc-a7e9-e4048f194154",
+        "user_name": "Luan O.",
+        "price": 0.36,
+        "timestamp": "2026-02-14T09:26:21.541585+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_2e04f50a-8b1e-47c2-b5d9-3970931dae8f",
+        "user_name": "Driton H.",
+        "price": 0.37,
+        "timestamp": "2026-02-14T09:26:35.888575+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_1251f818-6962-42ac-acba-78bd8794da6e",
+        "user_name": "Erjona R.",
+        "price": 0.38,
+        "timestamp": "2026-02-14T09:28:18.115919+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_a4e33d22-ea9e-4239-b13e-c654602cd3de",
+        "user_name": "Tim R.",
+        "price": 0.39,
+        "timestamp": "2026-02-14T09:29:21.489176+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_67a2f437-a07f-418a-a068-43cff87faef3",
+        "user_name": "Marco G.",
+        "price": 0.4,
+        "timestamp": "2026-02-14T09:30:37.169706+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_ff06e1d8-c995-4fab-9d19-62a357762d5c",
+        "user_name": "Taulant L.",
+        "price": 0.41,
+        "timestamp": "2026-02-14T09:33:02.675309+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_bc5c6fac-8116-4734-8244-eed141c23fc4",
+        "user_name": "Xhevahire G.",
+        "price": 0.42,
+        "timestamp": "2026-02-14T09:33:53.966233+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_35922ece-0c1a-4096-8c94-97d1bdb67234",
+        "user_name": "Jonas K.",
+        "price": 0.43,
+        "timestamp": "2026-02-14T10:05:50.892022+00:00",
+        "is_bot": true
+      }
+    ],
+    "ended_at": null,
+    "final_price": null,
+    "winner_id": null,
+    "winner_name": null,
+    "auto_restart": {
+      "enabled": true,
+      "duration_minutes": 960,
+      "bot_target_price": 25.0,
+      "last_restart": "2026-02-14T08:38:43.355087+00:00",
+      "restart_count": 5
+    },
+    "paused_at": "2026-02-14T10:06:27.841664+00:00",
+    "five_min_notification_sent": true,
+    "original_start_time": "2026-02-09T01:18:52.521612+00:00",
+    "is_featured": false,
+    "last_bid_time": "2026-02-13T23:28:28.652347+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698935fcdb196d3ae2d651f7"
+    },
+    "id": "cac201c3-2d09-4a6d-9858-721d9a9ed163",
+    "product_id": "prod-steamdeck-oled-2tb",
+    "title": "Steam Deck OLED 2TB",
+    "current_price": 0.5,
+    "start_price": 0.01,
+    "bid_increment": 0.01,
+    "retail_price": 799,
+    "status": "night_paused",
+    "start_time": "2026-02-14T08:38:43.362197+00:00",
+    "end_time": "2026-02-15T00:38:43.362197+00:00",
+    "original_end_time": "2026-02-09T17:18:52.521612+00:00",
+    "bid_count": 1539,
+    "total_bids": 49,
+    "last_bidder": "Marco G.",
+    "last_bidder_id": "bot_516e6027-8b4b-451d-bfe3-3cb07d975bbe",
+    "last_bidder_name": "Johanna C.",
+    "is_vip_only": false,
+    "is_night_auction": true,
+    "is_beginner_only": false,
+    "is_beginner_auction": false,
+    "is_free_auction": false,
+    "is_fixed_end": true,
+    "bot_target_price": 25.0,
+    "created_at": "2026-02-09T01:18:52.521612+00:00",
+    "bids": [],
+    "bid_history": [
+      {
+        "user_id": "bot_87f4e35f-6dd9-431b-b4f3-24f82871f329",
+        "user_name": "Teuta B.",
+        "price": 0.02,
+        "timestamp": "2026-02-14T08:38:49.482961+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_f49bd0cb-a35b-4d9c-b15e-d35a0dae02e8",
+        "user_name": "Iliriana B.",
+        "price": 0.03,
+        "timestamp": "2026-02-14T08:39:05.618752+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_9d81ca72-f616-4464-8cea-90f446c50da6",
+        "user_name": "Ylber B.",
+        "price": 0.04,
+        "timestamp": "2026-02-14T08:39:58.092891+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_2e04f50a-8b1e-47c2-b5d9-3970931dae8f",
+        "user_name": "Driton H.",
+        "price": 0.05,
+        "timestamp": "2026-02-14T08:41:36.979282+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_d0ff69ac-3dee-43c5-8767-ab378fd7dba6",
+        "user_name": "Naim M.",
+        "price": 0.06,
+        "timestamp": "2026-02-14T08:42:43.625062+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_8549553b-c3dc-473e-b7f3-bbeaf55f81a7",
+        "user_name": "Xhevat R.",
+        "price": 0.07,
+        "timestamp": "2026-02-14T08:43:13.895721+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_b4659de3-7dbb-435e-9806-798b1e5d5474",
+        "user_name": "Nina P.",
+        "price": 0.08,
+        "timestamp": "2026-02-14T08:43:30.080427+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_67a2f437-a07f-418a-a068-43cff87faef3",
+        "user_name": "Marco G.",
+        "price": 0.09,
+        "timestamp": "2026-02-14T08:45:11.014987+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_5ecb5a66-021b-40d0-9ed6-de91db417435",
+        "user_name": "Finn V.",
+        "price": 0.1,
+        "timestamp": "2026-02-14T08:46:17.592016+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_712adb23-cdc2-494f-bc36-d4dd40a3f8ac",
+        "user_name": "Moritz Z.",
+        "price": 0.11,
+        "timestamp": "2026-02-14T08:48:25.326773+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_099c9525-eec4-4c54-ba9e-b3f76348def5",
+        "user_name": "Qamile S.",
+        "price": 0.12,
+        "timestamp": "2026-02-14T08:50:09.951260+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_236fd9f3-f375-40e9-bae7-f4e38515944b",
+        "user_name": "Thomas B.",
+        "price": 0.13,
+        "timestamp": "2026-02-14T08:52:35.419259+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_53d3e2a7-c14c-4ff3-b579-3c5eae487ec7",
+        "user_name": "Zamira K.",
+        "price": 0.14,
+        "timestamp": "2026-02-14T08:53:06.048339+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_d9625ea9-7732-48e2-b990-8be7546aa5e0",
+        "user_name": "Sarah L.",
+        "price": 0.15,
+        "timestamp": "2026-02-14T08:54:40.494974+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_254f4f78-3443-4a37-9043-abb962c3629a",
+        "user_name": "Driton K.",
+        "price": 0.16,
+        "timestamp": "2026-02-14T08:56:10.861366+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_d425dafe-ee29-4c38-80e9-5db379d0dad0",
+        "user_name": "Besa R.",
+        "price": 0.17,
+        "timestamp": "2026-02-14T08:57:16.417443+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_3b49602a-44c7-47a4-a1c5-6e13631d22e4",
+        "user_name": "Violeta M.",
+        "price": 0.18,
+        "timestamp": "2026-02-14T08:58:30.292799+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_6e5a0923-8fe5-4157-8ace-f40e2f156d49",
+        "user_name": "Maja C.",
+        "price": 0.19,
+        "timestamp": "2026-02-14T09:00:19.311318+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_60a7ab46-cd84-4c76-b0d5-cc7a1aa48614",
+        "user_name": "Anna S.",
+        "price": 0.2,
+        "timestamp": "2026-02-14T09:01:22.523231+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_6c4dd4e4-2817-4ce4-b03d-316798c2bbb3",
+        "user_name": "Greta B.",
+        "price": 0.21,
+        "timestamp": "2026-02-14T09:01:57.230669+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_a88a9962-a8ba-491d-ad1b-4dbb04dac1cd",
+        "user_name": "Greta H.",
+        "price": 0.22,
+        "timestamp": "2026-02-14T09:03:41.335707+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_e6057173-31bd-44cd-ba7d-d903a1ecfa79",
+        "user_name": "Luan H.",
+        "price": 0.23,
+        "timestamp": "2026-02-14T09:05:03.787945+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_e4cd0543-1fbc-4bd1-9fe2-b1bf16637e41",
+        "user_name": "Albina O.",
+        "price": 0.24,
+        "timestamp": "2026-02-14T09:05:47.188025+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_5ecb5a66-021b-40d0-9ed6-de91db417435",
+        "user_name": "Finn V.",
+        "price": 0.25,
+        "timestamp": "2026-02-14T09:07:42.194091+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_2bbd97b5-c0e9-457e-a9ed-b0d7d20940b0",
+        "user_name": "Hana R.",
+        "price": 0.26,
+        "timestamp": "2026-02-14T09:08:35.869987+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_d0ff69ac-3dee-43c5-8767-ab378fd7dba6",
+        "user_name": "Naim M.",
+        "price": 0.27,
+        "timestamp": "2026-02-14T09:09:12.935439+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_a2f98caa-b2e9-47da-a1c4-f87383c6703a",
+        "user_name": "Amelie L.",
+        "price": 0.28,
+        "timestamp": "2026-02-14T09:09:47.812906+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_fd6c2d6a-0246-4ee2-9e35-d13fd1497830",
+        "user_name": "Laura G.",
+        "price": 0.29,
+        "timestamp": "2026-02-14T09:11:19.797177+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_e6057173-31bd-44cd-ba7d-d903a1ecfa79",
+        "user_name": "Luan H.",
+        "price": 0.3,
+        "timestamp": "2026-02-14T09:12:27.434628+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_76654423-e07f-4cef-bdcd-34515a77761c",
+        "user_name": "Violeta S.",
+        "price": 0.31,
+        "timestamp": "2026-02-14T09:12:56.106617+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_6c4dd4e4-2817-4ce4-b03d-316798c2bbb3",
+        "user_name": "Greta B.",
+        "price": 0.32,
+        "timestamp": "2026-02-14T09:15:35.565997+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_621dd78a-a2b6-44a4-8dc1-00a786b3fceb",
+        "user_name": "Pranvera R.",
+        "price": 0.33,
+        "timestamp": "2026-02-14T09:18:08.918772+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_3b49602a-44c7-47a4-a1c5-6e13631d22e4",
+        "user_name": "Violeta M.",
+        "price": 0.34,
+        "timestamp": "2026-02-14T09:19:39.036446+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_d2be66be-030e-4bb1-b241-740597071c24",
+        "user_name": "Violeta K.",
+        "price": 0.35,
+        "timestamp": "2026-02-14T09:20:38.246240+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_2bbd97b5-c0e9-457e-a9ed-b0d7d20940b0",
+        "user_name": "Hana R.",
+        "price": 0.36,
+        "timestamp": "2026-02-14T09:21:00.699231+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_6e441465-129a-42ea-9535-7960b1c27770",
+        "user_name": "Zamira M.",
+        "price": 0.37,
+        "timestamp": "2026-02-14T09:22:14.163274+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_796f513f-dfea-483e-ba83-53095cd7319a",
+        "user_name": "Teuta M.",
+        "price": 0.38,
+        "timestamp": "2026-02-14T09:23:13.381612+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_3923a4a2-d710-426a-9438-24b621383961",
+        "user_name": "Valdrin M.",
+        "price": 0.39,
+        "timestamp": "2026-02-14T09:24:53.604791+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_d8e5842b-0add-416c-a283-249dbec81c4c",
+        "user_name": "Max M.",
+        "price": 0.4,
+        "timestamp": "2026-02-14T09:25:38.663558+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_afc9e233-9e2e-4986-8996-03a117cd9046",
+        "user_name": "Amelie H.",
+        "price": 0.41,
+        "timestamp": "2026-02-14T09:26:19.490734+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_fd6c2d6a-0246-4ee2-9e35-d13fd1497830",
+        "user_name": "Laura G.",
+        "price": 0.42,
+        "timestamp": "2026-02-14T09:28:28.334060+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_35858c90-e8c8-463e-8079-a4720f6050db",
+        "user_name": "Flora L.",
+        "price": 0.43,
+        "timestamp": "2026-02-14T09:30:26.949040+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_06ac9d08-7c34-472e-8206-4e4be58d4402",
+        "user_name": "Erjona K.",
+        "price": 0.44,
+        "timestamp": "2026-02-14T09:31:03.727112+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_0784464d-a8d2-4f36-be74-f459ca3c67f1",
+        "user_name": "Mentor S.",
+        "price": 0.45,
+        "timestamp": "2026-02-14T09:32:01.066677+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_d0ff69ac-3dee-43c5-8767-ab378fd7dba6",
+        "user_name": "Naim M.",
+        "price": 0.46,
+        "timestamp": "2026-02-14T09:32:36.019896+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_9eedf288-7863-4b01-b498-1749fb9572c7",
+        "user_name": "Stefan R.",
+        "price": 0.47,
+        "timestamp": "2026-02-14T09:32:56.512127+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_0453e96a-9886-42f9-bbc4-da7895530cfc",
+        "user_name": "Zamir H.",
+        "price": 0.48,
+        "timestamp": "2026-02-14T09:33:33.489705+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_ff06e1d8-c995-4fab-9d19-62a357762d5c",
+        "user_name": "Taulant L.",
+        "price": 0.49,
+        "timestamp": "2026-02-14T09:34:47.273897+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_516e6027-8b4b-451d-bfe3-3cb07d975bbe",
+        "user_name": "Johanna C.",
+        "price": 0.5,
+        "timestamp": "2026-02-14T10:06:11.466208+00:00",
+        "is_bot": true
+      }
+    ],
+    "guaranteed_winner_bidding": null,
+    "let_customer_win": null,
+    "ended_at": null,
+    "final_price": null,
+    "winner_id": null,
+    "winner_name": null,
+    "auto_restart": {
+      "enabled": true,
+      "duration_minutes": 960,
+      "bot_target_price": 25.0,
+      "last_restart": "2026-02-14T08:38:43.362197+00:00",
+      "restart_count": 5
+    },
+    "paused_at": "2026-02-14T10:06:27.841664+00:00",
+    "five_min_notification_sent": true,
+    "original_start_time": "2026-02-09T01:18:52.521612+00:00",
+    "is_featured": false,
+    "last_bid_time": "2026-02-13T23:28:28.653678+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698935fcdb196d3ae2d651f8"
+    },
+    "id": "0292a518-a2f7-4916-a702-6218bb01edf1",
+    "product_id": "prod-lg-oled-g5-77",
+    "title": "LG OLED G5 77\"",
+    "current_price": 0.33,
+    "start_price": 0.01,
+    "bid_increment": 0.01,
+    "retail_price": 4499,
+    "status": "night_paused",
+    "start_time": "2026-02-14T08:38:43.363181+00:00",
+    "end_time": "2026-02-15T00:38:43.363181+00:00",
+    "original_end_time": "2026-02-09T17:18:52.521612+00:00",
+    "bid_count": 1505,
+    "total_bids": 32,
+    "last_bidder": "Niklas K.",
+    "last_bidder_id": "bot_3f63d480-8443-4d07-80b6-333d5d9ed90a",
+    "last_bidder_name": "Rexhep H.",
+    "is_vip_only": false,
+    "is_night_auction": true,
+    "is_beginner_only": false,
+    "is_beginner_auction": false,
+    "is_free_auction": false,
+    "is_fixed_end": true,
+    "bot_target_price": 25.0,
+    "created_at": "2026-02-09T01:18:52.521612+00:00",
+    "bids": [],
+    "bid_history": [
+      {
+        "user_id": "bot_9d81ca72-f616-4464-8cea-90f446c50da6",
+        "user_name": "Ylber B.",
+        "price": 0.02,
+        "timestamp": "2026-02-14T08:38:57.539975+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_9eedf288-7863-4b01-b498-1749fb9572c7",
+        "user_name": "Stefan R.",
+        "price": 0.03,
+        "timestamp": "2026-02-14T08:42:39.582000+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_3b49602a-44c7-47a4-a1c5-6e13631d22e4",
+        "user_name": "Violeta M.",
+        "price": 0.04,
+        "timestamp": "2026-02-14T08:43:13.891465+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_d47e6b33-240c-4580-addd-3a2aa6787358",
+        "user_name": "Greta G.",
+        "price": 0.05,
+        "timestamp": "2026-02-14T08:46:33.838726+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_e88c85c9-be77-43da-831a-b6c4bcb8f6fb",
+        "user_name": "Luiza K.",
+        "price": 0.06,
+        "timestamp": "2026-02-14T08:48:25.324189+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_8d9562f3-b465-419a-a2cd-80359ec9724e",
+        "user_name": "Andreas E.",
+        "price": 0.07,
+        "timestamp": "2026-02-14T08:50:51.094051+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_254f4f78-3443-4a37-9043-abb962c3629a",
+        "user_name": "Driton K.",
+        "price": 0.08,
+        "timestamp": "2026-02-14T08:52:23.156754+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_b4659de3-7dbb-435e-9806-798b1e5d5474",
+        "user_name": "Nina P.",
+        "price": 0.09,
+        "timestamp": "2026-02-14T08:53:53.102717+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_f4d6e407-08ee-4475-9e38-b2ffd6ce6d34",
+        "user_name": "Yllka R.",
+        "price": 0.1,
+        "timestamp": "2026-02-14T08:55:35.973653+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_3b49602a-44c7-47a4-a1c5-6e13631d22e4",
+        "user_name": "Violeta M.",
+        "price": 0.11,
+        "timestamp": "2026-02-14T08:58:36.438698+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_35922ece-0c1a-4096-8c94-97d1bdb67234",
+        "user_name": "Jonas K.",
+        "price": 0.12,
+        "timestamp": "2026-02-14T09:02:01.294468+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_99e1961d-ea67-4ad6-b919-957ae485c013",
+        "user_name": "Violeta H.",
+        "price": 0.13,
+        "timestamp": "2026-02-14T09:02:40.073855+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_e4cd0543-1fbc-4bd1-9fe2-b1bf16637e41",
+        "user_name": "Albina O.",
+        "price": 0.14,
+        "timestamp": "2026-02-14T09:04:14.220294+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_1e12d927-ed2a-4a96-8a94-3009bd2be3be",
+        "user_name": "Tom P.",
+        "price": 0.15,
+        "timestamp": "2026-02-14T09:06:40.565017+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_60a7ab46-cd84-4c76-b0d5-cc7a1aa48614",
+        "user_name": "Anna S.",
+        "price": 0.16,
+        "timestamp": "2026-02-14T09:07:21.539032+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_5ecb5a66-021b-40d0-9ed6-de91db417435",
+        "user_name": "Finn V.",
+        "price": 0.17,
+        "timestamp": "2026-02-14T09:11:15.730054+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_f49bd0cb-a35b-4d9c-b15e-d35a0dae02e8",
+        "user_name": "Iliriana B.",
+        "price": 0.18,
+        "timestamp": "2026-02-14T09:12:21.326406+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_6c4dd4e4-2817-4ce4-b03d-316798c2bbb3",
+        "user_name": "Greta B.",
+        "price": 0.19,
+        "timestamp": "2026-02-14T09:13:43.157282+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_161e0d49-4ad2-483d-a5e7-e9e1c5dbe902",
+        "user_name": "Michael H.",
+        "price": 0.2,
+        "timestamp": "2026-02-14T09:14:34.354323+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_fd6c2d6a-0246-4ee2-9e35-d13fd1497830",
+        "user_name": "Laura G.",
+        "price": 0.21,
+        "timestamp": "2026-02-14T09:16:16.371675+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_cc337e99-13e8-432e-8656-9f928773e529",
+        "user_name": "Iliriana K.",
+        "price": 0.22,
+        "timestamp": "2026-02-14T09:18:47.811189+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_8d9562f3-b465-419a-a2cd-80359ec9724e",
+        "user_name": "Andreas E.",
+        "price": 0.23,
+        "timestamp": "2026-02-14T09:20:05.621283+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_afc9e233-9e2e-4986-8996-03a117cd9046",
+        "user_name": "Amelie H.",
+        "price": 0.24,
+        "timestamp": "2026-02-14T09:22:52.937683+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_67a2f437-a07f-418a-a068-43cff87faef3",
+        "user_name": "Marco G.",
+        "price": 0.25,
+        "timestamp": "2026-02-14T09:25:24.365008+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_ff06e1d8-c995-4fab-9d19-62a357762d5c",
+        "user_name": "Taulant L.",
+        "price": 0.26,
+        "timestamp": "2026-02-14T09:27:29.102645+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_516e6027-8b4b-451d-bfe3-3cb07d975bbe",
+        "user_name": "Johanna C.",
+        "price": 0.27,
+        "timestamp": "2026-02-14T09:28:22.217840+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_3923a4a2-d710-426a-9438-24b621383961",
+        "user_name": "Valdrin M.",
+        "price": 0.28,
+        "timestamp": "2026-02-14T09:30:57.586688+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_0f2c0412-2de7-4c0e-851a-fdbbc53a420c",
+        "user_name": "Jens K.",
+        "price": 0.29,
+        "timestamp": "2026-02-14T09:32:01.071520+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_cc337e99-13e8-432e-8656-9f928773e529",
+        "user_name": "Iliriana K.",
+        "price": 0.3,
+        "timestamp": "2026-02-14T09:32:46.252946+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_64d0ca78-1364-462d-aaaf-c60305070e1f",
+        "user_name": "Emily C.",
+        "price": 0.31,
+        "timestamp": "2026-02-14T09:33:04.732617+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_3fa0ed00-6163-43c7-8f80-9fa1fb2eeec6",
+        "user_name": "Valdrin G.",
+        "price": 0.32,
+        "timestamp": "2026-02-14T09:34:16.507365+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_3f63d480-8443-4d07-80b6-333d5d9ed90a",
+        "user_name": "Rexhep H.",
+        "price": 0.33,
+        "timestamp": "2026-02-14T10:05:46.888282+00:00",
+        "is_bot": true
+      }
+    ],
+    "guaranteed_winner_bidding": null,
+    "let_customer_win": null,
+    "ended_at": null,
+    "final_price": null,
+    "winner_id": null,
+    "winner_name": null,
+    "auto_restart": {
+      "enabled": true,
+      "duration_minutes": 960,
+      "bot_target_price": 25.0,
+      "last_restart": "2026-02-14T08:38:43.363181+00:00",
+      "restart_count": 5
+    },
+    "paused_at": "2026-02-14T10:06:27.841664+00:00",
+    "five_min_notification_sent": true,
+    "original_start_time": "2026-02-09T01:18:52.521612+00:00",
+    "is_featured": false,
+    "last_bid_time": "2026-02-13T23:28:28.654865+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698935fcdb196d3ae2d651f9"
+    },
+    "id": "b75a45fc-cd00-48ac-84fb-2127b59d530a",
+    "product_id": "prod-dyson-v20",
+    "title": "Dyson V20 Detect Absolute",
+    "current_price": 0.38,
+    "start_price": 0.01,
+    "bid_increment": 0.01,
+    "retail_price": 899,
+    "status": "night_paused",
+    "start_time": "2026-02-14T08:38:43.364487+00:00",
+    "end_time": "2026-02-15T00:38:43.364487+00:00",
+    "original_end_time": "2026-02-09T17:18:52.521612+00:00",
+    "bid_count": 1525,
+    "total_bids": 37,
+    "last_bidder": "Naim H.",
+    "last_bidder_id": "bot_099c9525-eec4-4c54-ba9e-b3f76348def5",
+    "last_bidder_name": "Qamile S.",
+    "is_vip_only": false,
+    "is_night_auction": true,
+    "is_beginner_only": false,
+    "is_beginner_auction": false,
+    "is_free_auction": false,
+    "is_fixed_end": true,
+    "bot_target_price": 25.0,
+    "created_at": "2026-02-09T01:18:52.521612+00:00",
+    "bids": [],
+    "bid_history": [
+      {
+        "user_id": "bot_6347837f-6449-4210-917f-c78eaae5628a",
+        "user_name": "Xhevahire K.",
+        "price": 0.02,
+        "timestamp": "2026-02-14T08:38:43.430402+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_796f513f-dfea-483e-ba83-53095cd7319a",
+        "user_name": "Teuta M.",
+        "price": 0.03,
+        "timestamp": "2026-02-14T08:40:12.232219+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_ff639f87-cdf4-4fcc-a7e9-e4048f194154",
+        "user_name": "Luan O.",
+        "price": 0.04,
+        "timestamp": "2026-02-14T08:41:51.127571+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_3ec41fc3-e660-4338-9fb5-e0beb74234a0",
+        "user_name": "Mentor A.",
+        "price": 0.05,
+        "timestamp": "2026-02-14T08:42:37.561020+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_b468337d-8e06-4821-89ee-99f678fc2307",
+        "user_name": "Besa H.",
+        "price": 0.06,
+        "timestamp": "2026-02-14T08:43:13.893871+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_516e6027-8b4b-451d-bfe3-3cb07d975bbe",
+        "user_name": "Johanna C.",
+        "price": 0.07,
+        "timestamp": "2026-02-14T08:46:09.513933+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_1e12d927-ed2a-4a96-8a94-3009bd2be3be",
+        "user_name": "Tom P.",
+        "price": 0.08,
+        "timestamp": "2026-02-14T08:48:41.721107+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_76654423-e07f-4cef-bdcd-34515a77761c",
+        "user_name": "Violeta S.",
+        "price": 0.09,
+        "timestamp": "2026-02-14T08:51:36.113927+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_53d3e2a7-c14c-4ff3-b579-3c5eae487ec7",
+        "user_name": "Zamira K.",
+        "price": 0.1,
+        "timestamp": "2026-02-14T08:53:24.453745+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_64d0ca78-1364-462d-aaaf-c60305070e1f",
+        "user_name": "Emily C.",
+        "price": 0.11,
+        "timestamp": "2026-02-14T08:54:38.443053+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_815f2eb7-a8de-4b16-937f-c31a6327f0d1",
+        "user_name": "Kaltrina H.",
+        "price": 0.12,
+        "timestamp": "2026-02-14T08:57:10.291255+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_60a7ab46-cd84-4c76-b0d5-cc7a1aa48614",
+        "user_name": "Anna S.",
+        "price": 0.13,
+        "timestamp": "2026-02-14T08:59:38.392170+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_5baacab6-c15c-4cf5-b836-d0bccd4bd6d2",
+        "user_name": "Flora A.",
+        "price": 0.14,
+        "timestamp": "2026-02-14T09:00:33.574593+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_a88a9962-a8ba-491d-ad1b-4dbb04dac1cd",
+        "user_name": "Greta H.",
+        "price": 0.15,
+        "timestamp": "2026-02-14T09:01:32.719694+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_1251f818-6962-42ac-acba-78bd8794da6e",
+        "user_name": "Erjona R.",
+        "price": 0.16,
+        "timestamp": "2026-02-14T09:02:40.076871+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_6e5a0923-8fe5-4157-8ace-f40e2f156d49",
+        "user_name": "Maja C.",
+        "price": 0.17,
+        "timestamp": "2026-02-14T09:03:00.463681+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_3f63d480-8443-4d07-80b6-333d5d9ed90a",
+        "user_name": "Rexhep H.",
+        "price": 0.18,
+        "timestamp": "2026-02-14T09:04:10.110935+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_eb4af683-1ce0-4882-9aa6-259293b97437",
+        "user_name": "Naim H.",
+        "price": 0.19,
+        "timestamp": "2026-02-14T09:04:51.332243+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_35858c90-e8c8-463e-8079-a4720f6050db",
+        "user_name": "Flora L.",
+        "price": 0.2,
+        "timestamp": "2026-02-14T09:06:28.264212+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_53d3e2a7-c14c-4ff3-b579-3c5eae487ec7",
+        "user_name": "Zamira K.",
+        "price": 0.21,
+        "timestamp": "2026-02-14T09:06:58.947921+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_621dd78a-a2b6-44a4-8dc1-00a786b3fceb",
+        "user_name": "Pranvera R.",
+        "price": 0.22,
+        "timestamp": "2026-02-14T09:09:10.883401+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_a4e33d22-ea9e-4239-b13e-c654602cd3de",
+        "user_name": "Tim R.",
+        "price": 0.23,
+        "timestamp": "2026-02-14T09:10:45.081887+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_0913894f-e976-4c91-9065-1f5cf5301e22",
+        "user_name": "Besa B.",
+        "price": 0.24,
+        "timestamp": "2026-02-14T09:13:16.569829+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_ff06e1d8-c995-4fab-9d19-62a357762d5c",
+        "user_name": "Taulant L.",
+        "price": 0.25,
+        "timestamp": "2026-02-14T09:15:11.088822+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_bb891561-cb66-48e8-ab38-a678437cabd7",
+        "user_name": "Zamira H.",
+        "price": 0.26,
+        "timestamp": "2026-02-14T09:16:55.250097+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_d8e5842b-0add-416c-a283-249dbec81c4c",
+        "user_name": "Max M.",
+        "price": 0.27,
+        "timestamp": "2026-02-14T09:19:12.388898+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_1e12d927-ed2a-4a96-8a94-3009bd2be3be",
+        "user_name": "Tom P.",
+        "price": 0.28,
+        "timestamp": "2026-02-14T09:20:21.928107+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_880c502b-4be7-41c2-849b-79c66a895099",
+        "user_name": "Luan B.",
+        "price": 0.29,
+        "timestamp": "2026-02-14T09:20:40.282059+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_236fd9f3-f375-40e9-bae7-f4e38515944b",
+        "user_name": "Thomas B.",
+        "price": 0.3,
+        "timestamp": "2026-02-14T09:21:08.864542+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_59a19b02-a18b-4eb3-b276-662dbb7a09af",
+        "user_name": "Erion H.",
+        "price": 0.31,
+        "timestamp": "2026-02-14T09:22:10.069401+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_06ac9d08-7c34-472e-8206-4e4be58d4402",
+        "user_name": "Erjona K.",
+        "price": 0.32,
+        "timestamp": "2026-02-14T09:23:27.699386+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_d2f6fa43-2442-4df6-b2f2-0f2ba9f07739",
+        "user_name": "Greta R.",
+        "price": 0.33,
+        "timestamp": "2026-02-14T09:24:47.480615+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_796f513f-dfea-483e-ba83-53095cd7319a",
+        "user_name": "Teuta M.",
+        "price": 0.34,
+        "timestamp": "2026-02-14T09:26:46.136479+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_cc337e99-13e8-432e-8656-9f928773e529",
+        "user_name": "Iliriana K.",
+        "price": 0.35,
+        "timestamp": "2026-02-14T09:28:05.842926+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_3fa0ed00-6163-43c7-8f80-9fa1fb2eeec6",
+        "user_name": "Valdrin G.",
+        "price": 0.36,
+        "timestamp": "2026-02-14T09:31:48.786158+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_6f68c8b7-d6e6-4012-86d4-306f65ec55d3",
+        "user_name": "Rexhep O.",
+        "price": 0.37,
+        "timestamp": "2026-02-14T09:34:00.141655+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_099c9525-eec4-4c54-ba9e-b3f76348def5",
+        "user_name": "Qamile S.",
+        "price": 0.38,
+        "timestamp": "2026-02-14T10:06:04.815216+00:00",
+        "is_bot": true
+      }
+    ],
+    "guaranteed_winner_bidding": null,
+    "let_customer_win": null,
+    "ended_at": null,
+    "final_price": null,
+    "winner_id": null,
+    "winner_name": null,
+    "auto_restart": {
+      "enabled": true,
+      "duration_minutes": 960,
+      "bot_target_price": 25.0,
+      "last_restart": "2026-02-14T08:38:43.364487+00:00",
+      "restart_count": 5
+    },
+    "paused_at": "2026-02-14T10:06:27.841664+00:00",
+    "five_min_notification_sent": true,
+    "original_start_time": "2026-02-09T01:18:52.521612+00:00",
+    "is_featured": false,
+    "last_bid_time": "2026-02-13T23:28:28.656039+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698935fcdb196d3ae2d651fa"
+    },
+    "id": "29f5b181-3f2f-47cd-ba5a-23a43c5a709c",
+    "product_id": "prod-s25-ultra",
+    "title": "Samsung Galaxy S25 Ultra 512GB",
+    "current_price": 0.36,
+    "start_price": 0.01,
+    "bid_increment": 0.01,
+    "retail_price": 1549,
+    "status": "night_paused",
+    "start_time": "2026-02-14T08:38:43.365589+00:00",
+    "end_time": "2026-02-15T00:38:43.365589+00:00",
+    "original_end_time": "2026-02-09T17:18:52.521612+00:00",
+    "bid_count": 1520,
+    "total_bids": 35,
+    "last_bidder": "Tim R.",
+    "last_bidder_id": "bot_f49bd0cb-a35b-4d9c-b15e-d35a0dae02e8",
+    "last_bidder_name": "Iliriana B.",
+    "is_vip_only": false,
+    "is_night_auction": true,
+    "is_beginner_only": false,
+    "is_beginner_auction": false,
+    "is_free_auction": false,
+    "is_fixed_end": true,
+    "bot_target_price": 25.0,
+    "created_at": "2026-02-09T01:18:52.521612+00:00",
+    "bids": [],
+    "bid_history": [
+      {
+        "user_id": "bot_0f2c0412-2de7-4c0e-851a-fdbbc53a420c",
+        "user_name": "Jens K.",
+        "price": 0.02,
+        "timestamp": "2026-02-14T08:39:01.584569+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_815f2eb7-a8de-4b16-937f-c31a6327f0d1",
+        "user_name": "Kaltrina H.",
+        "price": 0.03,
+        "timestamp": "2026-02-14T08:40:14.255071+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_a4e33d22-ea9e-4239-b13e-c654602cd3de",
+        "user_name": "Tim R.",
+        "price": 0.04,
+        "timestamp": "2026-02-14T08:41:16.814155+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_35922ece-0c1a-4096-8c94-97d1bdb67234",
+        "user_name": "Jonas K.",
+        "price": 0.05,
+        "timestamp": "2026-02-14T08:45:17.074792+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_3fa0ed00-6163-43c7-8f80-9fa1fb2eeec6",
+        "user_name": "Valdrin G.",
+        "price": 0.06,
+        "timestamp": "2026-02-14T08:45:43.284579+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_712adb23-cdc2-494f-bc36-d4dd40a3f8ac",
+        "user_name": "Moritz Z.",
+        "price": 0.07,
+        "timestamp": "2026-02-14T08:47:19.407616+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_621dd78a-a2b6-44a4-8dc1-00a786b3fceb",
+        "user_name": "Pranvera R.",
+        "price": 0.08,
+        "timestamp": "2026-02-14T08:49:49.198835+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_1e12d927-ed2a-4a96-8a94-3009bd2be3be",
+        "user_name": "Tom P.",
+        "price": 0.09,
+        "timestamp": "2026-02-14T08:52:27.244094+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_2bafc4de-4c4b-4f75-9304-173c7c19e140",
+        "user_name": "Niklas K.",
+        "price": 0.1,
+        "timestamp": "2026-02-14T08:54:34.326947+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_ff06e1d8-c995-4fab-9d19-62a357762d5c",
+        "user_name": "Taulant L.",
+        "price": 0.11,
+        "timestamp": "2026-02-14T08:56:10.866788+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_3ec41fc3-e660-4338-9fb5-e0beb74234a0",
+        "user_name": "Mentor A.",
+        "price": 0.12,
+        "timestamp": "2026-02-14T08:58:26.200693+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_8d9562f3-b465-419a-a2cd-80359ec9724e",
+        "user_name": "Andreas E.",
+        "price": 0.13,
+        "timestamp": "2026-02-14T09:01:28.639506+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_60a7ab46-cd84-4c76-b0d5-cc7a1aa48614",
+        "user_name": "Anna S.",
+        "price": 0.14,
+        "timestamp": "2026-02-14T09:02:52.305946+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_bb891561-cb66-48e8-ab38-a678437cabd7",
+        "user_name": "Zamira H.",
+        "price": 0.15,
+        "timestamp": "2026-02-14T09:05:34.781563+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_2bbd97b5-c0e9-457e-a9ed-b0d7d20940b0",
+        "user_name": "Hana R.",
+        "price": 0.16,
+        "timestamp": "2026-02-14T09:06:03.683571+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_236fd9f3-f375-40e9-bae7-f4e38515944b",
+        "user_name": "Thomas B.",
+        "price": 0.17,
+        "timestamp": "2026-02-14T09:08:15.205836+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_824575d9-26e5-4103-a79b-822fad271bcc",
+        "user_name": "Rexhep G.",
+        "price": 0.18,
+        "timestamp": "2026-02-14T09:09:06.670280+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_8e8c568a-6e5e-423f-aaab-e9052aa78e26",
+        "user_name": "Shpëtim R.",
+        "price": 0.19,
+        "timestamp": "2026-02-14T09:10:06.213084+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_0a481c62-ed50-47fb-a860-c2732e28697e",
+        "user_name": "Arben M.",
+        "price": 0.2,
+        "timestamp": "2026-02-14T09:12:11.128240+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_2bbd97b5-c0e9-457e-a9ed-b0d7d20940b0",
+        "user_name": "Hana R.",
+        "price": 0.21,
+        "timestamp": "2026-02-14T09:13:08.397217+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_516e6027-8b4b-451d-bfe3-3cb07d975bbe",
+        "user_name": "Johanna C.",
+        "price": 0.22,
+        "timestamp": "2026-02-14T09:14:44.550511+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_0f2c0412-2de7-4c0e-851a-fdbbc53a420c",
+        "user_name": "Jens K.",
+        "price": 0.23,
+        "timestamp": "2026-02-14T09:16:22.493712+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_2e04f50a-8b1e-47c2-b5d9-3970931dae8f",
+        "user_name": "Driton H.",
+        "price": 0.24,
+        "timestamp": "2026-02-14T09:16:59.341594+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_3b49602a-44c7-47a4-a1c5-6e13631d22e4",
+        "user_name": "Violeta M.",
+        "price": 0.25,
+        "timestamp": "2026-02-14T09:19:02.171283+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_59a19b02-a18b-4eb3-b276-662dbb7a09af",
+        "user_name": "Erion H.",
+        "price": 0.26,
+        "timestamp": "2026-02-14T09:21:02.734156+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_e63395c1-94bf-4bdc-be4f-43c91d3741f9",
+        "user_name": "Naim S.",
+        "price": 0.27,
+        "timestamp": "2026-02-14T09:22:50.899790+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_236fd9f3-f375-40e9-bae7-f4e38515944b",
+        "user_name": "Thomas B.",
+        "price": 0.28,
+        "timestamp": "2026-02-14T09:24:20.852413+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_3ec41fc3-e660-4338-9fb5-e0beb74234a0",
+        "user_name": "Mentor A.",
+        "price": 0.29,
+        "timestamp": "2026-02-14T09:25:32.536492+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_e4cd0543-1fbc-4bd1-9fe2-b1bf16637e41",
+        "user_name": "Albina O.",
+        "price": 0.3,
+        "timestamp": "2026-02-14T09:29:13.296933+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_aa5357bc-4fe9-455c-a034-f6c849be7949",
+        "user_name": "Ylber O.",
+        "price": 0.31,
+        "timestamp": "2026-02-14T09:30:35.120129+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_712adb23-cdc2-494f-bc36-d4dd40a3f8ac",
+        "user_name": "Moritz Z.",
+        "price": 0.32,
+        "timestamp": "2026-02-14T09:31:46.734513+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_14ba6335-4406-44af-a9c3-18b08b35e855",
+        "user_name": "Elias M.",
+        "price": 0.33,
+        "timestamp": "2026-02-14T09:32:11.370513+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_3923a4a2-d710-426a-9438-24b621383961",
+        "user_name": "Valdrin M.",
+        "price": 0.34,
+        "timestamp": "2026-02-14T09:32:50.347088+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_a4e33d22-ea9e-4239-b13e-c654602cd3de",
+        "user_name": "Tim R.",
+        "price": 0.35,
+        "timestamp": "2026-02-14T09:33:49.875734+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_f49bd0cb-a35b-4d9c-b15e-d35a0dae02e8",
+        "user_name": "Iliriana B.",
+        "price": 0.36,
+        "timestamp": "2026-02-14T10:05:49.999607+00:00",
+        "is_bot": true
+      }
+    ],
+    "guaranteed_winner_bidding": null,
+    "let_customer_win": null,
+    "ended_at": null,
+    "final_price": null,
+    "winner_id": null,
+    "winner_name": null,
+    "auto_restart": {
+      "enabled": true,
+      "duration_minutes": 960,
+      "bot_target_price": 25.0,
+      "last_restart": "2026-02-14T08:38:43.365589+00:00",
+      "restart_count": 5
+    },
+    "paused_at": "2026-02-14T10:06:27.841664+00:00",
+    "five_min_notification_sent": true,
+    "original_start_time": "2026-02-09T01:18:52.521612+00:00",
+    "is_featured": false,
+    "last_bid_time": "2026-02-13T23:28:28.657290+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698935fcdb196d3ae2d651fb"
+    },
+    "id": "0e3f12dc-23c0-4493-bdce-f4e7dde3dbe5",
+    "product_id": "prod-bang-olufsen-beolab-28",
+    "title": "Bang & Olufsen Beolab 28",
+    "current_price": 0.3,
+    "start_price": 0.01,
+    "bid_increment": 0.01,
+    "retail_price": 6990,
+    "status": "night_paused",
+    "start_time": "2026-02-14T08:38:43.366646+00:00",
+    "end_time": "2026-02-15T00:38:43.366646+00:00",
+    "original_end_time": "2026-02-09T17:18:52.521612+00:00",
+    "bid_count": 1515,
+    "total_bids": 29,
+    "last_bidder": "Emily C.",
+    "last_bidder_id": "bot_f4d6e407-08ee-4475-9e38-b2ffd6ce6d34",
+    "last_bidder_name": "Yllka R.",
+    "is_vip_only": false,
+    "is_night_auction": true,
+    "is_beginner_only": false,
+    "is_beginner_auction": false,
+    "is_free_auction": false,
+    "is_fixed_end": true,
+    "bot_target_price": 25.0,
+    "created_at": "2026-02-09T01:18:52.521612+00:00",
+    "bids": [],
+    "bid_history": [
+      {
+        "user_id": "bot_9eedf288-7863-4b01-b498-1749fb9572c7",
+        "user_name": "Stefan R.",
+        "price": 0.02,
+        "timestamp": "2026-02-14T08:38:55.521164+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_8549553b-c3dc-473e-b7f3-bbeaf55f81a7",
+        "user_name": "Xhevat R.",
+        "price": 0.03,
+        "timestamp": "2026-02-14T08:39:33.868879+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_0a481c62-ed50-47fb-a860-c2732e28697e",
+        "user_name": "Arben M.",
+        "price": 0.04,
+        "timestamp": "2026-02-14T08:43:01.779469+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_6e441465-129a-42ea-9535-7960b1c27770",
+        "user_name": "Zamira M.",
+        "price": 0.05,
+        "timestamp": "2026-02-14T08:43:24.009675+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_ff06e1d8-c995-4fab-9d19-62a357762d5c",
+        "user_name": "Taulant L.",
+        "price": 0.06,
+        "timestamp": "2026-02-14T08:45:15.059449+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_22e6f780-3776-484d-a4fd-d2c58cfa314f",
+        "user_name": "Erjona B.",
+        "price": 0.07,
+        "timestamp": "2026-02-14T08:48:33.490685+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_099c9525-eec4-4c54-ba9e-b3f76348def5",
+        "user_name": "Qamile S.",
+        "price": 0.08,
+        "timestamp": "2026-02-14T08:49:32.857010+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_254f4f78-3443-4a37-9043-abb962c3629a",
+        "user_name": "Driton K.",
+        "price": 0.09,
+        "timestamp": "2026-02-14T08:50:49.054061+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_9a103cbc-4caa-4794-adbc-1c6a5028aebb",
+        "user_name": "Fatmir G.",
+        "price": 0.1,
+        "timestamp": "2026-02-14T08:52:51.739518+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_d2f6fa43-2442-4df6-b2f2-0f2ba9f07739",
+        "user_name": "Greta R.",
+        "price": 0.11,
+        "timestamp": "2026-02-14T08:55:33.920935+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_fcf32a7f-0c65-4367-b381-82d71e4c33c0",
+        "user_name": "Niklas C.",
+        "price": 0.12,
+        "timestamp": "2026-02-14T08:58:57.116998+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_376ecdce-b07c-40b2-98e9-29f565b70bc7",
+        "user_name": "Naim G.",
+        "price": 0.13,
+        "timestamp": "2026-02-14T09:02:50.263124+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_a4e33d22-ea9e-4239-b13e-c654602cd3de",
+        "user_name": "Tim R.",
+        "price": 0.14,
+        "timestamp": "2026-02-14T09:05:26.517747+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_0913894f-e976-4c91-9065-1f5cf5301e22",
+        "user_name": "Besa B.",
+        "price": 0.15,
+        "timestamp": "2026-02-14T09:09:02.582582+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_824575d9-26e5-4103-a79b-822fad271bcc",
+        "user_name": "Rexhep G.",
+        "price": 0.16,
+        "timestamp": "2026-02-14T09:10:10.314411+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_ac3935a7-bc2c-4d22-8544-43b581778cb6",
+        "user_name": "Besnik M.",
+        "price": 0.17,
+        "timestamp": "2026-02-14T09:10:59.403830+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_e6057173-31bd-44cd-ba7d-d903a1ecfa79",
+        "user_name": "Luan H.",
+        "price": 0.18,
+        "timestamp": "2026-02-14T09:13:02.240073+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_53d3e2a7-c14c-4ff3-b579-3c5eae487ec7",
+        "user_name": "Zamira K.",
+        "price": 0.19,
+        "timestamp": "2026-02-14T09:13:34.983539+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_0784464d-a8d2-4f36-be74-f459ca3c67f1",
+        "user_name": "Mentor S.",
+        "price": 0.2,
+        "timestamp": "2026-02-14T09:16:38.873918+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_a88a9962-a8ba-491d-ad1b-4dbb04dac1cd",
+        "user_name": "Greta H.",
+        "price": 0.21,
+        "timestamp": "2026-02-14T09:17:56.638324+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_712adb23-cdc2-494f-bc36-d4dd40a3f8ac",
+        "user_name": "Moritz Z.",
+        "price": 0.22,
+        "timestamp": "2026-02-14T09:19:57.447186+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_35858c90-e8c8-463e-8079-a4720f6050db",
+        "user_name": "Flora L.",
+        "price": 0.23,
+        "timestamp": "2026-02-14T09:21:00.696193+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_8a7d4553-35d4-40eb-a72d-a8132a18c195",
+        "user_name": "Rozafa L.",
+        "price": 0.24,
+        "timestamp": "2026-02-14T09:21:45.596388+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_35922ece-0c1a-4096-8c94-97d1bdb67234",
+        "user_name": "Jonas K.",
+        "price": 0.25,
+        "timestamp": "2026-02-14T09:25:07.989065+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_8aabc2f2-fb11-430f-b650-90ee6fe6893c",
+        "user_name": "Shpëtim O.",
+        "price": 0.26,
+        "timestamp": "2026-02-14T09:28:16.068634+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_3923a4a2-d710-426a-9438-24b621383961",
+        "user_name": "Valdrin M.",
+        "price": 0.27,
+        "timestamp": "2026-02-14T09:31:32.427656+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_0a481c62-ed50-47fb-a860-c2732e28697e",
+        "user_name": "Arben M.",
+        "price": 0.28,
+        "timestamp": "2026-02-14T09:32:11.367318+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_d2f6fa43-2442-4df6-b2f2-0f2ba9f07739",
+        "user_name": "Greta R.",
+        "price": 0.29,
+        "timestamp": "2026-02-14T09:32:58.568440+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_f4d6e407-08ee-4475-9e38-b2ffd6ce6d34",
+        "user_name": "Yllka R.",
+        "price": 0.3,
+        "timestamp": "2026-02-14T10:05:50.451038+00:00",
+        "is_bot": true
+      }
+    ],
+    "guaranteed_winner_bidding": null,
+    "let_customer_win": null,
+    "ended_at": null,
+    "final_price": null,
+    "winner_id": null,
+    "winner_name": null,
+    "auto_restart": {
+      "enabled": true,
+      "duration_minutes": 960,
+      "bot_target_price": 25.0,
+      "last_restart": "2026-02-14T08:38:43.366646+00:00",
+      "restart_count": 5
+    },
+    "paused_at": "2026-02-14T10:06:27.841664+00:00",
+    "five_min_notification_sent": true,
+    "original_start_time": "2026-02-09T01:18:52.521612+00:00",
+    "is_featured": false,
+    "last_bid_time": "2026-02-13T23:28:28.659003+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698935fcdb196d3ae2d651fc"
+    },
+    "id": "eb8ec9eb-7bb7-4e45-85d5-e9635b1edfd3",
+    "product_id": "prod-delonghi-primadonna",
+    "title": "De'Longhi PrimaDonna Soul",
+    "current_price": 0.45,
+    "start_price": 0.01,
+    "bid_increment": 0.01,
+    "retail_price": 1299,
+    "status": "night_paused",
+    "start_time": "2026-02-14T08:38:43.367606+00:00",
+    "end_time": "2026-02-15T00:38:43.367606+00:00",
+    "original_end_time": "2026-02-09T17:18:52.521612+00:00",
+    "bid_count": 1521,
+    "total_bids": 44,
+    "last_bidder": "Lisa F.",
+    "last_bidder_id": "bot_53d3e2a7-c14c-4ff3-b579-3c5eae487ec7",
+    "last_bidder_name": "Zamira K.",
+    "is_vip_only": false,
+    "is_night_auction": true,
+    "is_beginner_only": false,
+    "is_beginner_auction": false,
+    "is_free_auction": false,
+    "is_fixed_end": true,
+    "bot_target_price": 25.0,
+    "created_at": "2026-02-09T01:18:52.521612+00:00",
+    "bids": [],
+    "bid_history": [
+      {
+        "user_id": "bot_3b49602a-44c7-47a4-a1c5-6e13631d22e4",
+        "user_name": "Violeta M.",
+        "price": 0.02,
+        "timestamp": "2026-02-14T08:38:47.461838+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_fc26e747-a238-4b2e-9ac9-7baae23f1232",
+        "user_name": "Fatmir M.",
+        "price": 0.03,
+        "timestamp": "2026-02-14T08:40:52.564258+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_a4e33d22-ea9e-4239-b13e-c654602cd3de",
+        "user_name": "Tim R.",
+        "price": 0.04,
+        "timestamp": "2026-02-14T08:42:19.391520+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_b468337d-8e06-4821-89ee-99f678fc2307",
+        "user_name": "Besa H.",
+        "price": 0.05,
+        "timestamp": "2026-02-14T08:43:26.027889+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_64d0ca78-1364-462d-aaaf-c60305070e1f",
+        "user_name": "Emily C.",
+        "price": 0.06,
+        "timestamp": "2026-02-14T08:44:12.517720+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_06ac9d08-7c34-472e-8206-4e4be58d4402",
+        "user_name": "Erjona K.",
+        "price": 0.07,
+        "timestamp": "2026-02-14T08:46:35.871273+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_3f63d480-8443-4d07-80b6-333d5d9ed90a",
+        "user_name": "Rexhep H.",
+        "price": 0.08,
+        "timestamp": "2026-02-14T08:47:46.157977+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_824575d9-26e5-4103-a79b-822fad271bcc",
+        "user_name": "Rexhep G.",
+        "price": 0.09,
+        "timestamp": "2026-02-14T08:48:08.933560+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_8e8c568a-6e5e-423f-aaab-e9052aa78e26",
+        "user_name": "Shpëtim R.",
+        "price": 0.1,
+        "timestamp": "2026-02-14T08:49:38.995614+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_6347837f-6449-4210-917f-c78eaae5628a",
+        "user_name": "Xhevahire K.",
+        "price": 0.11,
+        "timestamp": "2026-02-14T08:52:08.825901+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_e88c85c9-be77-43da-831a-b6c4bcb8f6fb",
+        "user_name": "Luiza K.",
+        "price": 0.12,
+        "timestamp": "2026-02-14T08:54:19.937911+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_d0ff69ac-3dee-43c5-8767-ab378fd7dba6",
+        "user_name": "Naim M.",
+        "price": 0.13,
+        "timestamp": "2026-02-14T08:55:23.685094+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_76654423-e07f-4cef-bdcd-34515a77761c",
+        "user_name": "Violeta S.",
+        "price": 0.14,
+        "timestamp": "2026-02-14T08:56:39.544031+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_3b49602a-44c7-47a4-a1c5-6e13631d22e4",
+        "user_name": "Violeta M.",
+        "price": 0.15,
+        "timestamp": "2026-02-14T08:58:26.198231+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_796f513f-dfea-483e-ba83-53095cd7319a",
+        "user_name": "Teuta M.",
+        "price": 0.16,
+        "timestamp": "2026-02-14T09:02:33.937042+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_994c9f09-f468-43b8-bb59-8bfdb75d571a",
+        "user_name": "Julia K.",
+        "price": 0.17,
+        "timestamp": "2026-02-14T09:03:29.056068+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_35858c90-e8c8-463e-8079-a4720f6050db",
+        "user_name": "Flora L.",
+        "price": 0.18,
+        "timestamp": "2026-02-14T09:03:51.564333+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_3ec41fc3-e660-4338-9fb5-e0beb74234a0",
+        "user_name": "Mentor A.",
+        "price": 0.19,
+        "timestamp": "2026-02-14T09:04:39.015422+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_0784464d-a8d2-4f36-be74-f459ca3c67f1",
+        "user_name": "Mentor S.",
+        "price": 0.2,
+        "timestamp": "2026-02-14T09:05:43.035533+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_2bbd97b5-c0e9-457e-a9ed-b0d7d20940b0",
+        "user_name": "Hana R.",
+        "price": 0.21,
+        "timestamp": "2026-02-14T09:09:15.030167+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_e88c85c9-be77-43da-831a-b6c4bcb8f6fb",
+        "user_name": "Luiza K.",
+        "price": 0.22,
+        "timestamp": "2026-02-14T09:10:22.538461+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_ff639f87-cdf4-4fcc-a7e9-e4048f194154",
+        "user_name": "Luan O.",
+        "price": 0.23,
+        "timestamp": "2026-02-14T09:12:54.060354+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_b886c991-1e5a-4639-aed9-f26f8f539ca7",
+        "user_name": "Matthias T.",
+        "price": 0.24,
+        "timestamp": "2026-02-14T09:13:34.981196+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_76654423-e07f-4cef-bdcd-34515a77761c",
+        "user_name": "Violeta S.",
+        "price": 0.25,
+        "timestamp": "2026-02-14T09:14:15.993111+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_d2be66be-030e-4bb1-b241-740597071c24",
+        "user_name": "Violeta K.",
+        "price": 0.26,
+        "timestamp": "2026-02-14T09:15:39.632851+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_3b49602a-44c7-47a4-a1c5-6e13631d22e4",
+        "user_name": "Violeta M.",
+        "price": 0.27,
+        "timestamp": "2026-02-14T09:16:32.733711+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_ac3935a7-bc2c-4d22-8544-43b581778cb6",
+        "user_name": "Besnik M.",
+        "price": 0.28,
+        "timestamp": "2026-02-14T09:18:15.120985+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_1251f818-6962-42ac-acba-78bd8794da6e",
+        "user_name": "Erjona R.",
+        "price": 0.29,
+        "timestamp": "2026-02-14T09:19:06.260852+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_76654423-e07f-4cef-bdcd-34515a77761c",
+        "user_name": "Violeta S.",
+        "price": 0.3,
+        "timestamp": "2026-02-14T09:19:45.185815+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_cc337e99-13e8-432e-8656-9f928773e529",
+        "user_name": "Iliriana K.",
+        "price": 0.31,
+        "timestamp": "2026-02-14T09:21:23.169825+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_b4659de3-7dbb-435e-9806-798b1e5d5474",
+        "user_name": "Nina P.",
+        "price": 0.32,
+        "timestamp": "2026-02-14T09:21:49.676102+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_0a481c62-ed50-47fb-a860-c2732e28697e",
+        "user_name": "Arben M.",
+        "price": 0.33,
+        "timestamp": "2026-02-14T09:22:30.504245+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_b886c991-1e5a-4639-aed9-f26f8f539ca7",
+        "user_name": "Matthias T.",
+        "price": 0.34,
+        "timestamp": "2026-02-14T09:23:17.480010+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_cc337e99-13e8-432e-8656-9f928773e529",
+        "user_name": "Iliriana K.",
+        "price": 0.35,
+        "timestamp": "2026-02-14T09:23:41.995641+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_59a19b02-a18b-4eb3-b276-662dbb7a09af",
+        "user_name": "Erion H.",
+        "price": 0.36,
+        "timestamp": "2026-02-14T09:24:43.383241+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_a4e33d22-ea9e-4239-b13e-c654602cd3de",
+        "user_name": "Tim R.",
+        "price": 0.37,
+        "timestamp": "2026-02-14T09:25:22.326776+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_3ec41fc3-e660-4338-9fb5-e0beb74234a0",
+        "user_name": "Mentor A.",
+        "price": 0.38,
+        "timestamp": "2026-02-14T09:26:33.850517+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_9a103cbc-4caa-4794-adbc-1c6a5028aebb",
+        "user_name": "Fatmir G.",
+        "price": 0.39,
+        "timestamp": "2026-02-14T09:27:53.611774+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_da2fe085-0c68-404f-98a3-ad19c74d6e39",
+        "user_name": "Zamir B.",
+        "price": 0.4,
+        "timestamp": "2026-02-14T09:29:58.322267+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_cbfffcf0-8666-43bf-905b-787059d7da53",
+        "user_name": "David W.",
+        "price": 0.41,
+        "timestamp": "2026-02-14T09:30:53.504184+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_d2be66be-030e-4bb1-b241-740597071c24",
+        "user_name": "Violeta K.",
+        "price": 0.42,
+        "timestamp": "2026-02-14T09:32:25.655365+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_f49bd0cb-a35b-4d9c-b15e-d35a0dae02e8",
+        "user_name": "Iliriana B.",
+        "price": 0.43,
+        "timestamp": "2026-02-14T09:33:12.974490+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_3fbbbefb-3d5b-465e-a485-31ac1d49a26a",
+        "user_name": "Anna B.",
+        "price": 0.44,
+        "timestamp": "2026-02-14T09:35:03.610921+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_53d3e2a7-c14c-4ff3-b579-3c5eae487ec7",
+        "user_name": "Zamira K.",
+        "price": 0.45,
+        "timestamp": "2026-02-14T10:05:58.123947+00:00",
+        "is_bot": true
+      }
+    ],
+    "ended_at": null,
+    "final_price": null,
+    "winner_id": null,
+    "winner_name": null,
+    "auto_restart": {
+      "enabled": true,
+      "duration_minutes": 960,
+      "bot_target_price": 25.0,
+      "last_restart": "2026-02-14T08:38:43.367606+00:00",
+      "restart_count": 5
+    },
+    "paused_at": "2026-02-14T10:06:27.841664+00:00",
+    "five_min_notification_sent": true,
+    "original_start_time": "2026-02-09T01:18:52.521612+00:00",
+    "is_featured": false,
+    "last_bid_time": "2026-02-13T23:28:28.660105+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698935fcdb196d3ae2d651fd"
+    },
+    "id": "a14e835b-e603-44de-808d-53b2119b3216",
+    "product_id": "2a907eec-de6c-407b-87f4-ae0bb42c8443",
+    "title": "Spotify Premium 3 Monate",
+    "current_price": 0.47,
+    "start_price": 0.01,
+    "bid_increment": 0.01,
+    "retail_price": 30.0,
+    "status": "night_paused",
+    "start_time": "2026-02-14T08:38:43.368569+00:00",
+    "end_time": "2026-02-15T00:38:43.368569+00:00",
+    "original_end_time": "2026-02-09T17:18:52.521612+00:00",
+    "bid_count": 1554,
+    "total_bids": 46,
+    "last_bidder": "Tim R.",
+    "last_bidder_id": "bot_d425dafe-ee29-4c38-80e9-5db379d0dad0",
+    "last_bidder_name": "Besa R.",
+    "is_vip_only": false,
+    "is_night_auction": true,
+    "is_beginner_only": false,
+    "is_beginner_auction": false,
+    "is_free_auction": false,
+    "is_fixed_end": true,
+    "bot_target_price": 25.0,
+    "created_at": "2026-02-09T01:18:52.521612+00:00",
+    "bids": [],
+    "bid_history": [
+      {
+        "user_id": "bot_e88c85c9-be77-43da-831a-b6c4bcb8f6fb",
+        "user_name": "Luiza K.",
+        "price": 0.02,
+        "timestamp": "2026-02-14T08:38:45.438621+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_0453e96a-9886-42f9-bbc4-da7895530cfc",
+        "user_name": "Zamir H.",
+        "price": 0.03,
+        "timestamp": "2026-02-14T08:40:38.449270+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_161e0d49-4ad2-483d-a5e7-e9e1c5dbe902",
+        "user_name": "Michael H.",
+        "price": 0.04,
+        "timestamp": "2026-02-14T08:42:03.244534+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_712adb23-cdc2-494f-bc36-d4dd40a3f8ac",
+        "user_name": "Moritz Z.",
+        "price": 0.05,
+        "timestamp": "2026-02-14T08:43:42.199598+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_bb891561-cb66-48e8-ab38-a678437cabd7",
+        "user_name": "Zamira H.",
+        "price": 0.06,
+        "timestamp": "2026-02-14T08:44:26.625658+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_2bafc4de-4c4b-4f75-9304-173c7c19e140",
+        "user_name": "Niklas K.",
+        "price": 0.07,
+        "timestamp": "2026-02-14T08:44:56.897945+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_eb4af683-1ce0-4882-9aa6-259293b97437",
+        "user_name": "Naim H.",
+        "price": 0.08,
+        "timestamp": "2026-02-14T08:46:15.566967+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_87f4e35f-6dd9-431b-b4f3-24f82871f329",
+        "user_name": "Teuta B.",
+        "price": 0.09,
+        "timestamp": "2026-02-14T08:47:54.451509+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_d0ff69ac-3dee-43c5-8767-ab378fd7dba6",
+        "user_name": "Naim M.",
+        "price": 0.1,
+        "timestamp": "2026-02-14T08:48:45.849400+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_6347837f-6449-4210-917f-c78eaae5628a",
+        "user_name": "Xhevahire K.",
+        "price": 0.11,
+        "timestamp": "2026-02-14T08:49:41.044949+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_099c9525-eec4-4c54-ba9e-b3f76348def5",
+        "user_name": "Qamile S.",
+        "price": 0.12,
+        "timestamp": "2026-02-14T08:50:34.607086+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_1251f818-6962-42ac-acba-78bd8794da6e",
+        "user_name": "Erjona R.",
+        "price": 0.13,
+        "timestamp": "2026-02-14T08:52:29.286717+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_a88a9962-a8ba-491d-ad1b-4dbb04dac1cd",
+        "user_name": "Greta H.",
+        "price": 0.14,
+        "timestamp": "2026-02-14T08:52:49.703294+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_ff06e1d8-c995-4fab-9d19-62a357762d5c",
+        "user_name": "Taulant L.",
+        "price": 0.15,
+        "timestamp": "2026-02-14T08:54:26.103819+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_64d0ca78-1364-462d-aaaf-c60305070e1f",
+        "user_name": "Emily C.",
+        "price": 0.16,
+        "timestamp": "2026-02-14T08:56:33.383395+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_99e1961d-ea67-4ad6-b919-957ae485c013",
+        "user_name": "Violeta H.",
+        "price": 0.17,
+        "timestamp": "2026-02-14T08:59:44.513627+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_2e04f50a-8b1e-47c2-b5d9-3970931dae8f",
+        "user_name": "Driton H.",
+        "price": 0.18,
+        "timestamp": "2026-02-14T09:00:49.876447+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_eb4af683-1ce0-4882-9aa6-259293b97437",
+        "user_name": "Naim H.",
+        "price": 0.19,
+        "timestamp": "2026-02-14T09:03:02.503137+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_67a2f437-a07f-418a-a068-43cff87faef3",
+        "user_name": "Marco G.",
+        "price": 0.2,
+        "timestamp": "2026-02-14T09:04:12.166948+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_1edc6947-c276-42fb-9665-94136acd4aa5",
+        "user_name": "Fatmir H.",
+        "price": 0.21,
+        "timestamp": "2026-02-14T09:05:43.038014+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_fe628a38-9976-4359-8712-0d24e2a2c957",
+        "user_name": "Pranvera K.",
+        "price": 0.22,
+        "timestamp": "2026-02-14T09:08:17.267177+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_6c4dd4e4-2817-4ce4-b03d-316798c2bbb3",
+        "user_name": "Greta B.",
+        "price": 0.23,
+        "timestamp": "2026-02-14T09:08:42.014512+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_161e0d49-4ad2-483d-a5e7-e9e1c5dbe902",
+        "user_name": "Michael H.",
+        "price": 0.24,
+        "timestamp": "2026-02-14T09:10:14.386584+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_a2f98caa-b2e9-47da-a1c4-f87383c6703a",
+        "user_name": "Amelie L.",
+        "price": 0.25,
+        "timestamp": "2026-02-14T09:10:43.047692+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_e63395c1-94bf-4bdc-be4f-43c91d3741f9",
+        "user_name": "Naim S.",
+        "price": 0.26,
+        "timestamp": "2026-02-14T09:12:29.471123+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_a6b56f9c-e86d-4243-96e3-952f06cbdec5",
+        "user_name": "Albina H.",
+        "price": 0.27,
+        "timestamp": "2026-02-14T09:13:32.939870+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_0913894f-e976-4c91-9065-1f5cf5301e22",
+        "user_name": "Besa B.",
+        "price": 0.28,
+        "timestamp": "2026-02-14T09:14:03.603140+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_3f63d480-8443-4d07-80b6-333d5d9ed90a",
+        "user_name": "Rexhep H.",
+        "price": 0.29,
+        "timestamp": "2026-02-14T09:14:30.274091+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_824575d9-26e5-4103-a79b-822fad271bcc",
+        "user_name": "Rexhep G.",
+        "price": 0.3,
+        "timestamp": "2026-02-14T09:14:52.711955+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_cbfffcf0-8666-43bf-905b-787059d7da53",
+        "user_name": "David W.",
+        "price": 0.31,
+        "timestamp": "2026-02-14T09:15:31.496613+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_aa5357bc-4fe9-455c-a034-f6c849be7949",
+        "user_name": "Ylber O.",
+        "price": 0.32,
+        "timestamp": "2026-02-14T09:16:20.454512+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_621dd78a-a2b6-44a4-8dc1-00a786b3fceb",
+        "user_name": "Pranvera R.",
+        "price": 0.33,
+        "timestamp": "2026-02-14T09:18:25.335916+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_22e6f780-3776-484d-a4fd-d2c58cfa314f",
+        "user_name": "Erjona B.",
+        "price": 0.34,
+        "timestamp": "2026-02-14T09:21:33.377175+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_53d3e2a7-c14c-4ff3-b579-3c5eae487ec7",
+        "user_name": "Zamira K.",
+        "price": 0.35,
+        "timestamp": "2026-02-14T09:22:10.073426+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_06ac9d08-7c34-472e-8206-4e4be58d4402",
+        "user_name": "Erjona K.",
+        "price": 0.36,
+        "timestamp": "2026-02-14T09:23:19.527325+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_994c9f09-f468-43b8-bb59-8bfdb75d571a",
+        "user_name": "Julia K.",
+        "price": 0.37,
+        "timestamp": "2026-02-14T09:23:58.378638+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_87f4e35f-6dd9-431b-b4f3-24f82871f329",
+        "user_name": "Teuta B.",
+        "price": 0.38,
+        "timestamp": "2026-02-14T09:24:22.898959+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_3f63d480-8443-4d07-80b6-333d5d9ed90a",
+        "user_name": "Rexhep H.",
+        "price": 0.39,
+        "timestamp": "2026-02-14T09:24:47.477619+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_59a19b02-a18b-4eb3-b276-662dbb7a09af",
+        "user_name": "Erion H.",
+        "price": 0.4,
+        "timestamp": "2026-02-14T09:25:18.240449+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_0a481c62-ed50-47fb-a860-c2732e28697e",
+        "user_name": "Arben M.",
+        "price": 0.41,
+        "timestamp": "2026-02-14T09:26:58.417334+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_0453e96a-9886-42f9-bbc4-da7895530cfc",
+        "user_name": "Zamir H.",
+        "price": 0.42,
+        "timestamp": "2026-02-14T09:27:29.098414+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_8aabc2f2-fb11-430f-b650-90ee6fe6893c",
+        "user_name": "Shpëtim O.",
+        "price": 0.43,
+        "timestamp": "2026-02-14T09:30:51.461104+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_b468337d-8e06-4821-89ee-99f678fc2307",
+        "user_name": "Besa H.",
+        "price": 0.44,
+        "timestamp": "2026-02-14T09:32:42.165223+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_b4659de3-7dbb-435e-9806-798b1e5d5474",
+        "user_name": "Nina P.",
+        "price": 0.45,
+        "timestamp": "2026-02-14T09:33:10.915135+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_d425dafe-ee29-4c38-80e9-5db379d0dad0",
+        "user_name": "Besa R.",
+        "price": 0.46,
+        "timestamp": "2026-02-14T09:34:43.183304+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_d425dafe-ee29-4c38-80e9-5db379d0dad0",
+        "user_name": "Besa R.",
+        "price": 0.47,
+        "timestamp": "2026-02-14T10:05:42.776279+00:00",
+        "is_bot": true
+      }
+    ],
+    "guaranteed_winner_bidding": null,
+    "let_customer_win": null,
+    "ended_at": null,
+    "final_price": null,
+    "winner_id": null,
+    "winner_name": null,
+    "auto_restart": {
+      "enabled": true,
+      "duration_minutes": 960,
+      "bot_target_price": 25.0,
+      "last_restart": "2026-02-14T08:38:43.368569+00:00",
+      "restart_count": 5
+    },
+    "paused_at": "2026-02-14T10:06:27.841664+00:00",
+    "five_min_notification_sent": true,
+    "original_start_time": "2026-02-09T01:18:52.521612+00:00",
+    "is_featured": false,
+    "last_bid_time": "2026-02-13T23:28:28.661193+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698935fcdb196d3ae2d651fe"
+    },
+    "id": "196b6f8b-e58a-4fce-9713-69c7a294baac",
+    "product_id": "859a095c-c9c3-4229-9f24-fa9b54682edf",
+    "title": "Netflix Gutschein €25",
+    "current_price": 0.31,
+    "start_price": 0.01,
+    "bid_increment": 0.01,
+    "retail_price": 25.0,
+    "status": "night_paused",
+    "start_time": "2026-02-14T08:38:43.369472+00:00",
+    "end_time": "2026-02-15T00:38:43.369472+00:00",
+    "original_end_time": "2026-02-09T17:18:52.521612+00:00",
+    "bid_count": 1509,
+    "total_bids": 30,
+    "last_bidder": "Iliriana K.",
+    "last_bidder_id": "bot_b4659de3-7dbb-435e-9806-798b1e5d5474",
+    "last_bidder_name": "Nina P.",
+    "is_vip_only": false,
+    "is_night_auction": true,
+    "is_beginner_only": false,
+    "is_beginner_auction": false,
+    "is_free_auction": false,
+    "is_fixed_end": true,
+    "bot_target_price": 25.0,
+    "created_at": "2026-02-09T01:18:52.521612+00:00",
+    "bids": [],
+    "bid_history": [
+      {
+        "user_id": "bot_d8e5842b-0add-416c-a283-249dbec81c4c",
+        "user_name": "Max M.",
+        "price": 0.02,
+        "timestamp": "2026-02-14T08:38:51.493562+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_53d3e2a7-c14c-4ff3-b579-3c5eae487ec7",
+        "user_name": "Zamira K.",
+        "price": 0.03,
+        "timestamp": "2026-02-14T08:40:20.307951+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_5baacab6-c15c-4cf5-b836-d0bccd4bd6d2",
+        "user_name": "Flora A.",
+        "price": 0.04,
+        "timestamp": "2026-02-14T08:42:27.486855+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_d9625ea9-7732-48e2-b990-8be7546aa5e0",
+        "user_name": "Sarah L.",
+        "price": 0.05,
+        "timestamp": "2026-02-14T08:45:31.184249+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_eb4af683-1ce0-4882-9aa6-259293b97437",
+        "user_name": "Naim H.",
+        "price": 0.06,
+        "timestamp": "2026-02-14T08:49:18.567159+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_3923a4a2-d710-426a-9438-24b621383961",
+        "user_name": "Valdrin M.",
+        "price": 0.07,
+        "timestamp": "2026-02-14T08:50:30.505238+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_76654423-e07f-4cef-bdcd-34515a77761c",
+        "user_name": "Violeta S.",
+        "price": 0.08,
+        "timestamp": "2026-02-14T08:51:15.658105+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_06ac9d08-7c34-472e-8206-4e4be58d4402",
+        "user_name": "Erjona K.",
+        "price": 0.09,
+        "timestamp": "2026-02-14T08:52:41.525611+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_fd6c2d6a-0246-4ee2-9e35-d13fd1497830",
+        "user_name": "Laura G.",
+        "price": 0.1,
+        "timestamp": "2026-02-14T08:54:32.274991+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_3fbbbefb-3d5b-465e-a485-31ac1d49a26a",
+        "user_name": "Anna B.",
+        "price": 0.11,
+        "timestamp": "2026-02-14T08:56:00.598758+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_1e12d927-ed2a-4a96-8a94-3009bd2be3be",
+        "user_name": "Tom P.",
+        "price": 0.12,
+        "timestamp": "2026-02-14T08:57:47.226502+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_8a7d4553-35d4-40eb-a72d-a8132a18c195",
+        "user_name": "Rozafa L.",
+        "price": 0.13,
+        "timestamp": "2026-02-14T08:58:26.195314+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_3fa0ed00-6163-43c7-8f80-9fa1fb2eeec6",
+        "user_name": "Valdrin G.",
+        "price": 0.14,
+        "timestamp": "2026-02-14T08:59:38.393888+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_5f8c7ace-6bcb-4739-bec9-16a79b90ca8b",
+        "user_name": "Shqipe A.",
+        "price": 0.15,
+        "timestamp": "2026-02-14T09:03:18.844444+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_59a19b02-a18b-4eb3-b276-662dbb7a09af",
+        "user_name": "Erion H.",
+        "price": 0.16,
+        "timestamp": "2026-02-14T09:05:45.112908+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_6e441465-129a-42ea-9535-7960b1c27770",
+        "user_name": "Zamira M.",
+        "price": 0.17,
+        "timestamp": "2026-02-14T09:07:13.268055+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_e4cd0543-1fbc-4bd1-9fe2-b1bf16637e41",
+        "user_name": "Albina O.",
+        "price": 0.18,
+        "timestamp": "2026-02-14T09:10:08.269884+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_87f4e35f-6dd9-431b-b4f3-24f82871f329",
+        "user_name": "Teuta B.",
+        "price": 0.19,
+        "timestamp": "2026-02-14T09:12:45.868670+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_5f8c7ace-6bcb-4739-bec9-16a79b90ca8b",
+        "user_name": "Shqipe A.",
+        "price": 0.2,
+        "timestamp": "2026-02-14T09:14:01.548132+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_161e0d49-4ad2-483d-a5e7-e9e1c5dbe902",
+        "user_name": "Michael H.",
+        "price": 0.21,
+        "timestamp": "2026-02-14T09:15:39.629459+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_3fa0ed00-6163-43c7-8f80-9fa1fb2eeec6",
+        "user_name": "Valdrin G.",
+        "price": 0.22,
+        "timestamp": "2026-02-14T09:17:46.410528+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_9eedf288-7863-4b01-b498-1749fb9572c7",
+        "user_name": "Stefan R.",
+        "price": 0.23,
+        "timestamp": "2026-02-14T09:20:42.331669+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_76654423-e07f-4cef-bdcd-34515a77761c",
+        "user_name": "Violeta S.",
+        "price": 0.24,
+        "timestamp": "2026-02-14T09:21:41.512879+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_e4cd0543-1fbc-4bd1-9fe2-b1bf16637e41",
+        "user_name": "Albina O.",
+        "price": 0.25,
+        "timestamp": "2026-02-14T09:22:28.465555+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_5a1c2452-a6a9-4a05-a418-6eb6eaec1ebc",
+        "user_name": "Lisa F.",
+        "price": 0.26,
+        "timestamp": "2026-02-14T09:23:35.871008+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_099c9525-eec4-4c54-ba9e-b3f76348def5",
+        "user_name": "Qamile S.",
+        "price": 0.27,
+        "timestamp": "2026-02-14T09:24:39.288430+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_2bafc4de-4c4b-4f75-9304-173c7c19e140",
+        "user_name": "Niklas K.",
+        "price": 0.28,
+        "timestamp": "2026-02-14T09:28:26.292526+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_f49bd0cb-a35b-4d9c-b15e-d35a0dae02e8",
+        "user_name": "Iliriana B.",
+        "price": 0.29,
+        "timestamp": "2026-02-14T09:31:22.222790+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_bb891561-cb66-48e8-ab38-a678437cabd7",
+        "user_name": "Zamira H.",
+        "price": 0.3,
+        "timestamp": "2026-02-14T09:32:31.803862+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_b4659de3-7dbb-435e-9806-798b1e5d5474",
+        "user_name": "Nina P.",
+        "price": 0.31,
+        "timestamp": "2026-02-14T09:34:18.565228+00:00",
+        "is_bot": true
+      }
+    ],
+    "guaranteed_winner_bidding": null,
+    "let_customer_win": null,
+    "ended_at": null,
+    "final_price": null,
+    "winner_id": null,
+    "winner_name": null,
+    "auto_restart": {
+      "enabled": true,
+      "duration_minutes": 960,
+      "bot_target_price": 25.0,
+      "last_restart": "2026-02-14T08:38:43.369472+00:00",
+      "restart_count": 5
+    },
+    "paused_at": "2026-02-14T10:06:27.841664+00:00",
+    "five_min_notification_sent": true,
+    "original_start_time": "2026-02-09T01:18:52.521612+00:00",
+    "is_featured": false,
+    "last_bid_time": "2026-02-13T23:28:28.662195+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698935fcdb196d3ae2d651ff"
+    },
+    "id": "cd967086-e9a7-4b63-8892-08433559a02c",
+    "product_id": "73792aef-e920-4ba1-aa5b-bce6ee8cdb18",
+    "title": "BidBlitz VIP 1 Jahr",
+    "current_price": 0.35,
+    "start_price": 0.01,
+    "bid_increment": 0.01,
+    "retail_price": 348.0,
+    "status": "night_paused",
+    "start_time": "2026-02-14T08:38:43.370353+00:00",
+    "end_time": "2026-02-15T00:38:43.370353+00:00",
+    "original_end_time": "2026-02-09T17:18:52.521612+00:00",
+    "bid_count": 1520,
+    "total_bids": 34,
+    "last_bidder": "Johanna C.",
+    "last_bidder_id": "bot_5cbea863-1d77-4632-aa26-c8fb6be99e4b",
+    "last_bidder_name": "Qamile H.",
+    "is_vip_only": false,
+    "is_night_auction": true,
+    "is_beginner_only": false,
+    "is_beginner_auction": false,
+    "is_free_auction": false,
+    "is_fixed_end": true,
+    "bot_target_price": 25.0,
+    "created_at": "2026-02-09T01:18:52.521612+00:00",
+    "bids": [],
+    "bid_history": [
+      {
+        "user_id": "bot_d2be66be-030e-4bb1-b241-740597071c24",
+        "user_name": "Violeta K.",
+        "price": 0.02,
+        "timestamp": "2026-02-14T08:38:47.465304+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_bc5c6fac-8116-4734-8244-eed141c23fc4",
+        "user_name": "Xhevahire G.",
+        "price": 0.03,
+        "timestamp": "2026-02-14T08:40:00.110675+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_d9625ea9-7732-48e2-b990-8be7546aa5e0",
+        "user_name": "Sarah L.",
+        "price": 0.04,
+        "timestamp": "2026-02-14T08:41:20.847666+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_6f68c8b7-d6e6-4012-86d4-306f65ec55d3",
+        "user_name": "Rexhep O.",
+        "price": 0.05,
+        "timestamp": "2026-02-14T08:43:36.147309+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_6e5a0923-8fe5-4157-8ace-f40e2f156d49",
+        "user_name": "Maja C.",
+        "price": 0.06,
+        "timestamp": "2026-02-14T08:45:39.248796+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_ea01c4bd-1739-42a8-9f21-43202975e437",
+        "user_name": "Shqipe H.",
+        "price": 0.07,
+        "timestamp": "2026-02-14T08:47:21.441849+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_6c4dd4e4-2817-4ce4-b03d-316798c2bbb3",
+        "user_name": "Greta B.",
+        "price": 0.08,
+        "timestamp": "2026-02-14T08:47:56.539628+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_a6b56f9c-e86d-4243-96e3-952f06cbdec5",
+        "user_name": "Albina H.",
+        "price": 0.09,
+        "timestamp": "2026-02-14T08:50:30.500670+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_e63395c1-94bf-4bdc-be4f-43c91d3741f9",
+        "user_name": "Naim S.",
+        "price": 0.1,
+        "timestamp": "2026-02-14T08:51:15.660987+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_9eedf288-7863-4b01-b498-1749fb9572c7",
+        "user_name": "Stefan R.",
+        "price": 0.11,
+        "timestamp": "2026-02-14T08:52:53.781306+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_3f63d480-8443-4d07-80b6-333d5d9ed90a",
+        "user_name": "Rexhep H.",
+        "price": 0.12,
+        "timestamp": "2026-02-14T08:56:04.705711+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_87f4e35f-6dd9-431b-b4f3-24f82871f329",
+        "user_name": "Teuta B.",
+        "price": 0.13,
+        "timestamp": "2026-02-14T08:57:02.096365+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_5f8c7ace-6bcb-4739-bec9-16a79b90ca8b",
+        "user_name": "Shqipe A.",
+        "price": 0.14,
+        "timestamp": "2026-02-14T08:58:07.751368+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_5baacab6-c15c-4cf5-b836-d0bccd4bd6d2",
+        "user_name": "Flora A.",
+        "price": 0.15,
+        "timestamp": "2026-02-14T09:00:41.733034+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_22e6f780-3776-484d-a4fd-d2c58cfa314f",
+        "user_name": "Erjona B.",
+        "price": 0.16,
+        "timestamp": "2026-02-14T09:03:24.976436+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_fd6c2d6a-0246-4ee2-9e35-d13fd1497830",
+        "user_name": "Laura G.",
+        "price": 0.17,
+        "timestamp": "2026-02-14T09:03:53.606744+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_e63395c1-94bf-4bdc-be4f-43c91d3741f9",
+        "user_name": "Naim S.",
+        "price": 0.18,
+        "timestamp": "2026-02-14T09:05:05.842876+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_35858c90-e8c8-463e-8079-a4720f6050db",
+        "user_name": "Flora L.",
+        "price": 0.19,
+        "timestamp": "2026-02-14T09:06:13.924004+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_a88a9962-a8ba-491d-ad1b-4dbb04dac1cd",
+        "user_name": "Greta H.",
+        "price": 0.2,
+        "timestamp": "2026-02-14T09:07:05.080006+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_ac3935a7-bc2c-4d22-8544-43b581778cb6",
+        "user_name": "Besnik M.",
+        "price": 0.21,
+        "timestamp": "2026-02-14T09:10:08.272379+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_cbfffcf0-8666-43bf-905b-787059d7da53",
+        "user_name": "David W.",
+        "price": 0.22,
+        "timestamp": "2026-02-14T09:12:43.823889+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_a4e33d22-ea9e-4239-b13e-c654602cd3de",
+        "user_name": "Tim R.",
+        "price": 0.23,
+        "timestamp": "2026-02-14T09:14:52.709823+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_5f8c7ace-6bcb-4739-bec9-16a79b90ca8b",
+        "user_name": "Shqipe A.",
+        "price": 0.24,
+        "timestamp": "2026-02-14T09:18:25.339881+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_d2f6fa43-2442-4df6-b2f2-0f2ba9f07739",
+        "user_name": "Greta R.",
+        "price": 0.25,
+        "timestamp": "2026-02-14T09:19:14.451091+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_0a481c62-ed50-47fb-a860-c2732e28697e",
+        "user_name": "Arben M.",
+        "price": 0.26,
+        "timestamp": "2026-02-14T09:22:30.507377+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_9a103cbc-4caa-4794-adbc-1c6a5028aebb",
+        "user_name": "Fatmir G.",
+        "price": 0.27,
+        "timestamp": "2026-02-14T09:23:46.084149+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_3f63d480-8443-4d07-80b6-333d5d9ed90a",
+        "user_name": "Rexhep H.",
+        "price": 0.28,
+        "timestamp": "2026-02-14T09:25:12.091434+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_d2be66be-030e-4bb1-b241-740597071c24",
+        "user_name": "Violeta K.",
+        "price": 0.29,
+        "timestamp": "2026-02-14T09:25:44.785359+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_ff06e1d8-c995-4fab-9d19-62a357762d5c",
+        "user_name": "Taulant L.",
+        "price": 0.3,
+        "timestamp": "2026-02-14T09:26:29.725929+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_22e6f780-3776-484d-a4fd-d2c58cfa314f",
+        "user_name": "Erjona B.",
+        "price": 0.31,
+        "timestamp": "2026-02-14T09:29:31.703220+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_2bafc4de-4c4b-4f75-9304-173c7c19e140",
+        "user_name": "Niklas K.",
+        "price": 0.32,
+        "timestamp": "2026-02-14T09:30:14.695008+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_3923a4a2-d710-426a-9438-24b621383961",
+        "user_name": "Valdrin M.",
+        "price": 0.33,
+        "timestamp": "2026-02-14T09:32:42.167842+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_3fbbbefb-3d5b-465e-a485-31ac1d49a26a",
+        "user_name": "Anna B.",
+        "price": 0.34,
+        "timestamp": "2026-02-14T09:33:45.783726+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_5cbea863-1d77-4632-aa26-c8fb6be99e4b",
+        "user_name": "Qamile H.",
+        "price": 0.35,
+        "timestamp": "2026-02-14T10:05:58.569617+00:00",
+        "is_bot": true
+      }
+    ],
+    "guaranteed_winner_bidding": null,
+    "let_customer_win": null,
+    "ended_at": null,
+    "final_price": null,
+    "winner_id": null,
+    "winner_name": null,
+    "auto_restart": {
+      "enabled": true,
+      "duration_minutes": 960,
+      "bot_target_price": 25.0,
+      "last_restart": "2026-02-14T08:38:43.370353+00:00",
+      "restart_count": 2
+    },
+    "paused_at": "2026-02-14T10:06:27.841664+00:00",
+    "five_min_notification_sent": true,
+    "original_start_time": "2026-02-09T01:18:52.521612+00:00",
+    "is_featured": false,
+    "last_bid_time": "2026-02-13T23:28:28.663230+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698935fcdb196d3ae2d65201"
+    },
+    "id": "3f3e618a-839c-4311-9350-52fd8646d2ff",
+    "product_id": "prod-vanmoof-s6",
+    "title": "VanMoof S6",
+    "current_price": 0.07,
+    "start_price": 0.01,
+    "bid_increment": 0.01,
+    "retail_price": 2998,
+    "status": "active",
+    "start_time": "2026-02-14T10:05:41.728976+00:00",
+    "end_time": "2026-02-15T02:05:41.728976+00:00",
+    "original_end_time": "2026-02-09T17:18:52.521612+00:00",
+    "bid_count": 3090,
+    "total_bids": 6,
+    "last_bidder": "Xhevahire G.",
+    "last_bidder_id": "bot_1e12d927-ed2a-4a96-8a94-3009bd2be3be",
+    "last_bidder_name": "Tom P.",
+    "is_vip_only": false,
+    "is_night_auction": false,
+    "is_beginner_only": false,
+    "is_beginner_auction": false,
+    "is_free_auction": false,
+    "is_fixed_end": true,
+    "bot_target_price": 25.0,
+    "created_at": "2026-02-09T01:18:52.521612+00:00",
+    "bids": [],
+    "bid_history": [
+      {
+        "user_id": "bot_e88c85c9-be77-43da-831a-b6c4bcb8f6fb",
+        "user_name": "Luiza K.",
+        "price": 0.02,
+        "timestamp": "2026-02-14T10:05:57.562453+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_d9625ea9-7732-48e2-b990-8be7546aa5e0",
+        "user_name": "Sarah L.",
+        "price": 0.03,
+        "timestamp": "2026-02-14T10:06:29.945747+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_376ecdce-b07c-40b2-98e9-29f565b70bc7",
+        "user_name": "Naim G.",
+        "price": 0.04,
+        "timestamp": "2026-02-14T10:08:53.278241+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_76654423-e07f-4cef-bdcd-34515a77761c",
+        "user_name": "Violeta S.",
+        "price": 0.05,
+        "timestamp": "2026-02-14T10:10:01.246228+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_3b49602a-44c7-47a4-a1c5-6e13631d22e4",
+        "user_name": "Violeta M.",
+        "price": 0.06,
+        "timestamp": "2026-02-14T10:10:18.576394+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_1e12d927-ed2a-4a96-8a94-3009bd2be3be",
+        "user_name": "Tom P.",
+        "price": 0.07,
+        "timestamp": "2026-02-14T10:11:53.454116+00:00",
+        "is_bot": true
+      }
+    ],
+    "guaranteed_winner_bidding": "93751cd4-fcd3-41da-82e2-8f455322ba24",
+    "let_customer_win": null,
+    "ended_at": null,
+    "final_price": null,
+    "winner_id": null,
+    "winner_name": null,
+    "auto_restart": {
+      "enabled": true,
+      "duration_minutes": 960,
+      "bot_target_price": 25.0,
+      "last_restart": "2026-02-14T10:05:41.728976+00:00",
+      "restart_count": 4
+    },
+    "paused_at": "2026-02-13T22:50:32.252060+00:00",
+    "five_min_notification_sent": true,
+    "original_start_time": "2026-02-09T01:18:52.521612+00:00",
+    "is_featured": false,
+    "last_bid_time": "2026-02-14T09:35:09.699851+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698935fcdb196d3ae2d65202"
+    },
+    "id": "49d06ea9-916f-4c1d-a06b-571d9707a734",
+    "product_id": "prod-mbp16-m4max",
+    "title": "MacBook Pro 16\" M4 Max",
+    "current_price": 0.07,
+    "start_price": 0.01,
+    "bid_increment": 0.01,
+    "retail_price": 4299,
+    "status": "active",
+    "start_time": "2026-02-14T10:05:41.978426+00:00",
+    "end_time": "2026-02-15T02:05:41.978426+00:00",
+    "original_end_time": "2026-02-09T17:18:52.521612+00:00",
+    "bid_count": 3118,
+    "total_bids": 6,
+    "last_bidder": "Emily C.",
+    "last_bidder_id": "bot_a88a9962-a8ba-491d-ad1b-4dbb04dac1cd",
+    "last_bidder_name": "Greta H.",
+    "is_vip_only": false,
+    "is_night_auction": false,
+    "is_beginner_only": false,
+    "is_beginner_auction": false,
+    "is_free_auction": false,
+    "is_fixed_end": true,
+    "bot_target_price": 25.0,
+    "created_at": "2026-02-09T01:18:52.521612+00:00",
+    "bids": [],
+    "bid_history": [
+      {
+        "user_id": "bot_9eedf288-7863-4b01-b498-1749fb9572c7",
+        "user_name": "Stefan R.",
+        "price": 0.02,
+        "timestamp": "2026-02-14T10:06:24.198962+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_d2f6fa43-2442-4df6-b2f2-0f2ba9f07739",
+        "user_name": "Greta R.",
+        "price": 0.03,
+        "timestamp": "2026-02-14T10:06:35.545285+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_76654423-e07f-4cef-bdcd-34515a77761c",
+        "user_name": "Violeta S.",
+        "price": 0.04,
+        "timestamp": "2026-02-14T10:08:31.961842+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_712adb23-cdc2-494f-bc36-d4dd40a3f8ac",
+        "user_name": "Moritz Z.",
+        "price": 0.05,
+        "timestamp": "2026-02-14T10:09:05.963129+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_35922ece-0c1a-4096-8c94-97d1bdb67234",
+        "user_name": "Jonas K.",
+        "price": 0.06,
+        "timestamp": "2026-02-14T10:09:35.398666+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_a88a9962-a8ba-491d-ad1b-4dbb04dac1cd",
+        "user_name": "Greta H.",
+        "price": 0.07,
+        "timestamp": "2026-02-14T10:11:28.803620+00:00",
+        "is_bot": true
+      }
+    ],
+    "guaranteed_winner_bidding": null,
+    "let_customer_win": null,
+    "ended_at": null,
+    "final_price": null,
+    "winner_id": null,
+    "winner_name": null,
+    "auto_restart": {
+      "enabled": true,
+      "duration_minutes": 960,
+      "bot_target_price": 25.0,
+      "last_restart": "2026-02-14T10:05:41.978426+00:00",
+      "restart_count": 4
+    },
+    "paused_at": "2026-02-13T22:50:32.252060+00:00",
+    "five_min_notification_sent": true,
+    "original_start_time": "2026-02-09T01:18:52.521612+00:00",
+    "is_featured": false,
+    "last_bid_time": "2026-02-14T09:35:09.702841+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698935fcdb196d3ae2d65203"
+    },
+    "id": "5d93ab7c-1b04-4e22-bdae-aad47a7cb1ce",
+    "product_id": "prod-oneplus14-pro",
+    "title": "OnePlus 14 Pro",
+    "current_price": 0.05,
+    "start_price": 0.01,
+    "bid_increment": 0.01,
+    "retail_price": 1099,
+    "status": "active",
+    "start_time": "2026-02-14T10:05:42.202822+00:00",
+    "end_time": "2026-02-15T02:05:42.202822+00:00",
+    "original_end_time": "2026-02-09T17:18:52.521612+00:00",
+    "bid_count": 3095,
+    "total_bids": 4,
+    "last_bidder": "Sarah L.",
+    "last_bidder_id": "bot_621dd78a-a2b6-44a4-8dc1-00a786b3fceb",
+    "last_bidder_name": "Pranvera R.",
+    "is_vip_only": false,
+    "is_night_auction": false,
+    "is_beginner_only": false,
+    "is_beginner_auction": false,
+    "is_free_auction": false,
+    "is_fixed_end": true,
+    "bot_target_price": 25.0,
+    "created_at": "2026-02-09T01:18:52.521612+00:00",
+    "bids": [],
+    "bid_history": [
+      {
+        "user_id": "bot_3f63d480-8443-4d07-80b6-333d5d9ed90a",
+        "user_name": "Rexhep H.",
+        "price": 0.02,
+        "timestamp": "2026-02-14T10:06:47.406149+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_815f2eb7-a8de-4b16-937f-c31a6327f0d1",
+        "user_name": "Kaltrina H.",
+        "price": 0.03,
+        "timestamp": "2026-02-14T10:09:26.696744+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_036609c2-eadf-4350-ba4f-d2e90f1851e7",
+        "user_name": "Erjona H.",
+        "price": 0.04,
+        "timestamp": "2026-02-14T10:11:16.917135+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_621dd78a-a2b6-44a4-8dc1-00a786b3fceb",
+        "user_name": "Pranvera R.",
+        "price": 0.05,
+        "timestamp": "2026-02-14T10:12:34.863565+00:00",
+        "is_bot": true
+      }
+    ],
+    "guaranteed_winner_bidding": null,
+    "let_customer_win": null,
+    "ended_at": null,
+    "final_price": null,
+    "winner_id": null,
+    "winner_name": null,
+    "auto_restart": {
+      "enabled": true,
+      "duration_minutes": 960,
+      "bot_target_price": 25.0,
+      "last_restart": "2026-02-14T10:05:42.202822+00:00",
+      "restart_count": 4
+    },
+    "paused_at": "2026-02-13T22:50:32.252060+00:00",
+    "five_min_notification_sent": true,
+    "original_start_time": "2026-02-09T01:18:52.521612+00:00",
+    "is_featured": false,
+    "last_bid_time": "2026-02-14T09:35:09.704278+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698935fcdb196d3ae2d65204"
+    },
+    "id": "6593cd10-2670-48ea-99cd-f44e588d71d8",
+    "product_id": "prod-zflip7",
+    "title": "Samsung Galaxy Z Flip 7",
+    "current_price": 0.05,
+    "start_price": 0.01,
+    "bid_increment": 0.01,
+    "retail_price": 1299,
+    "status": "active",
+    "start_time": "2026-02-14T10:05:42.431467+00:00",
+    "end_time": "2026-02-15T02:05:42.431467+00:00",
+    "original_end_time": "2026-02-09T17:18:52.521612+00:00",
+    "bid_count": 3093,
+    "total_bids": 4,
+    "last_bidder": "Flora A.",
+    "last_bidder_id": "bot_ff06e1d8-c995-4fab-9d19-62a357762d5c",
+    "last_bidder_name": "Taulant L.",
+    "is_vip_only": false,
+    "is_night_auction": false,
+    "is_beginner_only": false,
+    "is_beginner_auction": false,
+    "is_free_auction": false,
+    "is_fixed_end": true,
+    "bot_target_price": 25.0,
+    "created_at": "2026-02-09T01:18:52.521612+00:00",
+    "bids": [],
+    "bid_history": [
+      {
+        "user_id": "bot_a2f98caa-b2e9-47da-a1c4-f87383c6703a",
+        "user_name": "Amelie L.",
+        "price": 0.02,
+        "timestamp": "2026-02-14T10:06:16.819813+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_9d81ca72-f616-4464-8cea-90f446c50da6",
+        "user_name": "Ylber B.",
+        "price": 0.03,
+        "timestamp": "2026-02-14T10:06:30.403514+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_fd6c2d6a-0246-4ee2-9e35-d13fd1497830",
+        "user_name": "Laura G.",
+        "price": 0.04,
+        "timestamp": "2026-02-14T10:09:14.317456+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_ff06e1d8-c995-4fab-9d19-62a357762d5c",
+        "user_name": "Taulant L.",
+        "price": 0.05,
+        "timestamp": "2026-02-14T10:11:08.588228+00:00",
+        "is_bot": true
+      }
+    ],
+    "guaranteed_winner_bidding": null,
+    "let_customer_win": null,
+    "ended_at": null,
+    "final_price": null,
+    "winner_id": null,
+    "winner_name": null,
+    "auto_restart": {
+      "enabled": true,
+      "duration_minutes": 960,
+      "bot_target_price": 25.0,
+      "last_restart": "2026-02-14T10:05:42.431467+00:00",
+      "restart_count": 8
+    },
+    "paused_at": "2026-02-13T22:50:32.252060+00:00",
+    "five_min_notification_sent": true,
+    "original_start_time": "2026-02-09T01:18:52.521612+00:00",
+    "is_featured": false,
+    "last_bid_time": "2026-02-14T09:35:09.708719+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698935fcdb196d3ae2d65205"
+    },
+    "id": "dc679092-90f9-4248-9767-9f13b3110dcc",
+    "product_id": "prod-galaxy-watch-8-ultra",
+    "title": "Samsung Galaxy Watch 8 Ultra",
+    "current_price": 0.06,
+    "start_price": 0.01,
+    "bid_increment": 0.01,
+    "retail_price": 749,
+    "status": "active",
+    "start_time": "2026-02-14T10:05:54.343460+00:00",
+    "end_time": "2026-02-15T02:05:54.343460+00:00",
+    "original_end_time": "2026-02-09T17:18:52.521612+00:00",
+    "bid_count": 3118,
+    "total_bids": 5,
+    "last_bidder": "Anna S.",
+    "last_bidder_id": "bot_099c9525-eec4-4c54-ba9e-b3f76348def5",
+    "last_bidder_name": "Qamile S.",
+    "is_vip_only": false,
+    "is_night_auction": false,
+    "is_beginner_only": false,
+    "is_beginner_auction": false,
+    "is_free_auction": false,
+    "is_fixed_end": true,
+    "bot_target_price": 25.0,
+    "created_at": "2026-02-09T01:18:52.521612+00:00",
+    "bids": [],
+    "bid_history": [
+      {
+        "user_id": "bot_0a481c62-ed50-47fb-a860-c2732e28697e",
+        "user_name": "Arben M.",
+        "price": 0.02,
+        "timestamp": "2026-02-14T10:06:12.366936+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_ea01c4bd-1739-42a8-9f21-43202975e437",
+        "user_name": "Shqipe H.",
+        "price": 0.03,
+        "timestamp": "2026-02-14T10:07:18.903708+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_8549553b-c3dc-473e-b7f3-bbeaf55f81a7",
+        "user_name": "Xhevat R.",
+        "price": 0.04,
+        "timestamp": "2026-02-14T10:09:06.741540+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_afc9e233-9e2e-4986-8996-03a117cd9046",
+        "user_name": "Amelie H.",
+        "price": 0.05,
+        "timestamp": "2026-02-14T10:10:18.135754+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_099c9525-eec4-4c54-ba9e-b3f76348def5",
+        "user_name": "Qamile S.",
+        "price": 0.06,
+        "timestamp": "2026-02-14T10:11:53.896208+00:00",
+        "is_bot": true
+      }
+    ],
+    "guaranteed_winner_bidding": null,
+    "let_customer_win": null,
+    "ended_at": null,
+    "final_price": null,
+    "winner_id": null,
+    "winner_name": null,
+    "auto_restart": {
+      "enabled": true,
+      "duration_minutes": 960,
+      "bot_target_price": 25.0,
+      "last_restart": "2026-02-14T10:05:54.343460+00:00",
+      "restart_count": 8
+    },
+    "paused_at": "2026-02-13T22:50:32.252060+00:00",
+    "five_min_notification_sent": true,
+    "original_start_time": "2026-02-09T01:18:52.521612+00:00",
+    "is_featured": false,
+    "last_bid_time": "2026-02-14T09:35:09.710234+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698935fcdb196d3ae2d65206"
+    },
+    "id": "4c29fc9e-3772-435e-8bb6-4364367f94d9",
+    "product_id": "c658e2aa-e556-415c-9bbb-223b930ef01c",
+    "title": "Amazon Gutschein €50",
+    "current_price": 0.05,
+    "start_price": 0.01,
+    "bid_increment": 0.01,
+    "retail_price": 50.0,
+    "status": "active",
+    "start_time": "2026-02-14T10:05:55.799350+00:00",
+    "end_time": "2026-02-15T02:05:55.799350+00:00",
+    "original_end_time": "2026-02-09T17:18:52.521612+00:00",
+    "bid_count": 3123,
+    "total_bids": 4,
+    "last_bidder": "Teuta B.",
+    "last_bidder_id": "bot_d47e6b33-240c-4580-addd-3a2aa6787358",
+    "last_bidder_name": "Greta G.",
+    "is_vip_only": false,
+    "is_night_auction": false,
+    "is_beginner_only": false,
+    "is_beginner_auction": false,
+    "is_free_auction": false,
+    "is_fixed_end": true,
+    "bot_target_price": 25.0,
+    "created_at": "2026-02-09T01:18:52.521612+00:00",
+    "bids": [],
+    "bid_history": [
+      {
+        "user_id": "bot_e88c85c9-be77-43da-831a-b6c4bcb8f6fb",
+        "user_name": "Luiza K.",
+        "price": 0.02,
+        "timestamp": "2026-02-14T10:07:06.206605+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_e6057173-31bd-44cd-ba7d-d903a1ecfa79",
+        "user_name": "Luan H.",
+        "price": 0.03,
+        "timestamp": "2026-02-14T10:08:35.751531+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_824575d9-26e5-4103-a79b-822fad271bcc",
+        "user_name": "Rexhep G.",
+        "price": 0.04,
+        "timestamp": "2026-02-14T10:09:56.357703+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_d47e6b33-240c-4580-addd-3a2aa6787358",
+        "user_name": "Greta G.",
+        "price": 0.05,
+        "timestamp": "2026-02-14T10:11:33.345121+00:00",
+        "is_bot": true
+      }
+    ],
+    "guaranteed_winner_bidding": null,
+    "let_customer_win": null,
+    "ended_at": null,
+    "final_price": null,
+    "winner_id": null,
+    "winner_name": null,
+    "auto_restart": {
+      "enabled": true,
+      "duration_minutes": 960,
+      "bot_target_price": 25.0,
+      "last_restart": "2026-02-14T10:05:55.799350+00:00",
+      "restart_count": 8
+    },
+    "paused_at": "2026-02-13T22:50:32.252060+00:00",
+    "five_min_notification_sent": true,
+    "original_start_time": "2026-02-09T01:18:52.521612+00:00",
+    "is_featured": false,
+    "last_bid_time": "2026-02-14T09:35:09.711702+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698935fcdb196d3ae2d65207"
+    },
+    "id": "00f29d15-5c59-4851-bcc5-e406446942d1",
+    "product_id": "prod-pixel10-proxl",
+    "title": "Google Pixel 10 Pro XL",
+    "current_price": 0.06,
+    "start_price": 0.01,
+    "bid_increment": 0.01,
+    "retail_price": 1199,
+    "status": "active",
+    "start_time": "2026-02-14T10:05:56.021271+00:00",
+    "end_time": "2026-02-15T02:05:56.021271+00:00",
+    "original_end_time": "2026-02-09T17:18:52.521612+00:00",
+    "bid_count": 3126,
+    "total_bids": 5,
+    "last_bidder": "Fatmir H.",
+    "last_bidder_id": "bot_b468337d-8e06-4821-89ee-99f678fc2307",
+    "last_bidder_name": "Besa H.",
+    "is_vip_only": false,
+    "is_night_auction": false,
+    "is_beginner_only": false,
+    "is_beginner_auction": false,
+    "is_free_auction": false,
+    "is_fixed_end": true,
+    "bot_target_price": 25.0,
+    "created_at": "2026-02-09T01:18:52.521612+00:00",
+    "bids": [],
+    "bid_history": [
+      {
+        "user_id": "bot_9d81ca72-f616-4464-8cea-90f446c50da6",
+        "user_name": "Ylber B.",
+        "price": 0.02,
+        "timestamp": "2026-02-14T10:06:34.518401+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_9bf6fe0c-daab-48fd-99fa-24378ca3d43b",
+        "user_name": "Yllka S.",
+        "price": 0.03,
+        "timestamp": "2026-02-14T10:08:31.512575+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_53d3e2a7-c14c-4ff3-b579-3c5eae487ec7",
+        "user_name": "Zamira K.",
+        "price": 0.04,
+        "timestamp": "2026-02-14T10:10:47.396110+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_35858c90-e8c8-463e-8079-a4720f6050db",
+        "user_name": "Flora L.",
+        "price": 0.05,
+        "timestamp": "2026-02-14T10:12:22.559216+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_b468337d-8e06-4821-89ee-99f678fc2307",
+        "user_name": "Besa H.",
+        "price": 0.06,
+        "timestamp": "2026-02-14T10:12:38.975949+00:00",
+        "is_bot": true
+      }
+    ],
+    "guaranteed_winner_bidding": null,
+    "let_customer_win": null,
+    "ended_at": null,
+    "final_price": null,
+    "winner_id": null,
+    "winner_name": null,
+    "auto_restart": {
+      "enabled": true,
+      "duration_minutes": 960,
+      "bot_target_price": 25.0,
+      "last_restart": "2026-02-14T10:05:56.021271+00:00",
+      "restart_count": 8
+    },
+    "paused_at": "2026-02-13T22:50:32.252060+00:00",
+    "five_min_notification_sent": true,
+    "original_start_time": "2026-02-09T01:18:52.521612+00:00",
+    "is_featured": false,
+    "last_bid_time": "2026-02-14T09:35:09.713296+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698935fcdb196d3ae2d65208"
+    },
+    "id": "7f7ab375-9824-407a-9b7c-94458e71d347",
+    "product_id": "prod-ipad-pro-m5-11",
+    "title": "Apple iPad Pro 11\" M5",
+    "current_price": 0.08,
+    "start_price": 0.01,
+    "bid_increment": 0.01,
+    "retail_price": 1199,
+    "status": "active",
+    "start_time": "2026-02-14T10:05:56.913506+00:00",
+    "end_time": "2026-02-15T02:05:56.913506+00:00",
+    "original_end_time": "2026-02-09T17:18:52.521612+00:00",
+    "bid_count": 3094,
+    "total_bids": 7,
+    "last_bidder": "Greta G.",
+    "last_bidder_id": "bot_fe628a38-9976-4359-8712-0d24e2a2c957",
+    "last_bidder_name": "Pranvera K.",
+    "is_vip_only": false,
+    "is_night_auction": false,
+    "is_beginner_only": false,
+    "is_beginner_auction": false,
+    "is_free_auction": false,
+    "is_fixed_end": true,
+    "bot_target_price": 25.0,
+    "created_at": "2026-02-09T01:18:52.521612+00:00",
+    "bids": [],
+    "bid_history": [
+      {
+        "user_id": "bot_3f63d480-8443-4d07-80b6-333d5d9ed90a",
+        "user_name": "Rexhep H.",
+        "price": 0.02,
+        "timestamp": "2026-02-14T10:06:05.260258+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_d8e5842b-0add-416c-a283-249dbec81c4c",
+        "user_name": "Max M.",
+        "price": 0.03,
+        "timestamp": "2026-02-14T10:06:46.725948+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_cbfffcf0-8666-43bf-905b-787059d7da53",
+        "user_name": "David W.",
+        "price": 0.04,
+        "timestamp": "2026-02-14T10:08:36.305108+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_8549553b-c3dc-473e-b7f3-bbeaf55f81a7",
+        "user_name": "Xhevat R.",
+        "price": 0.05,
+        "timestamp": "2026-02-14T10:08:53.722181+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_99e1961d-ea67-4ad6-b919-957ae485c013",
+        "user_name": "Violeta H.",
+        "price": 0.06,
+        "timestamp": "2026-02-14T10:10:17.582748+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_3b49602a-44c7-47a4-a1c5-6e13631d22e4",
+        "user_name": "Violeta M.",
+        "price": 0.07,
+        "timestamp": "2026-02-14T10:11:58.223100+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_fe628a38-9976-4359-8712-0d24e2a2c957",
+        "user_name": "Pranvera K.",
+        "price": 0.08,
+        "timestamp": "2026-02-14T10:13:11.686996+00:00",
+        "is_bot": true
+      }
+    ],
+    "guaranteed_winner_bidding": null,
+    "let_customer_win": null,
+    "ended_at": null,
+    "final_price": null,
+    "winner_id": null,
+    "winner_name": null,
+    "auto_restart": {
+      "enabled": true,
+      "duration_minutes": 960,
+      "bot_target_price": 25.0,
+      "last_restart": "2026-02-14T10:05:56.913506+00:00",
+      "restart_count": 4
+    },
+    "paused_at": "2026-02-13T22:50:32.252060+00:00",
+    "five_min_notification_sent": true,
+    "original_start_time": "2026-02-09T01:18:52.521612+00:00",
+    "is_featured": false,
+    "last_bid_time": "2026-02-14T09:35:09.716248+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698935fcdb196d3ae2d65209"
+    },
+    "id": "d9e2119d-7537-4100-aa91-bf508f670b3e",
+    "product_id": "ac816572-07b1-4cbf-853a-4c22e76bf0ce",
+    "title": "BidBlitz VIP 1 Monat GRATIS",
+    "current_price": 0.05,
+    "start_price": 0.01,
+    "bid_increment": 0.01,
+    "retail_price": 29.0,
+    "status": "active",
+    "start_time": "2026-02-14T10:05:57.137814+00:00",
+    "end_time": "2026-02-15T02:05:57.137814+00:00",
+    "original_end_time": "2026-02-09T17:18:52.521612+00:00",
+    "bid_count": 3113,
+    "total_bids": 4,
+    "last_bidder": "Julia K.",
+    "last_bidder_id": "bot_bb891561-cb66-48e8-ab38-a678437cabd7",
+    "last_bidder_name": "Zamira H.",
+    "is_vip_only": false,
+    "is_night_auction": false,
+    "is_beginner_only": false,
+    "is_beginner_auction": false,
+    "is_free_auction": false,
+    "is_fixed_end": true,
+    "bot_target_price": 25.0,
+    "created_at": "2026-02-09T01:18:52.521612+00:00",
+    "bids": [],
+    "bid_history": [
+      {
+        "user_id": "bot_1edc6947-c276-42fb-9665-94136acd4aa5",
+        "user_name": "Fatmir H.",
+        "price": 0.02,
+        "timestamp": "2026-02-14T10:06:50.850163+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_b4659de3-7dbb-435e-9806-798b1e5d5474",
+        "user_name": "Nina P.",
+        "price": 0.03,
+        "timestamp": "2026-02-14T10:07:34.962424+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_5ecb5a66-021b-40d0-9ed6-de91db417435",
+        "user_name": "Finn V.",
+        "price": 0.04,
+        "timestamp": "2026-02-14T10:09:31.039971+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_bb891561-cb66-48e8-ab38-a678437cabd7",
+        "user_name": "Zamira H.",
+        "price": 0.05,
+        "timestamp": "2026-02-14T10:10:51.621724+00:00",
+        "is_bot": true
+      }
+    ],
+    "guaranteed_winner_bidding": null,
+    "let_customer_win": null,
+    "ended_at": null,
+    "final_price": null,
+    "winner_id": null,
+    "winner_name": null,
+    "auto_restart": {
+      "enabled": true,
+      "duration_minutes": 960,
+      "bot_target_price": 25.0,
+      "last_restart": "2026-02-14T10:05:57.137814+00:00",
+      "restart_count": 8
+    },
+    "paused_at": "2026-02-13T22:50:32.252060+00:00",
+    "five_min_notification_sent": true,
+    "original_start_time": "2026-02-09T01:18:52.521612+00:00",
+    "is_featured": false,
+    "last_bid_time": "2026-02-14T09:35:09.720485+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698935fcdb196d3ae2d6520a"
+    },
+    "id": "cafdea18-aa97-42b4-9436-57d9a2d6df34",
+    "product_id": "prod-ps5-slim",
+    "title": "Sony PlayStation 5 Slim",
+    "current_price": 0.05,
+    "start_price": 0.01,
+    "bid_increment": 0.01,
+    "retail_price": 449,
+    "status": "active",
+    "start_time": "2026-02-14T10:05:57.362761+00:00",
+    "end_time": "2026-02-15T02:05:57.362761+00:00",
+    "original_end_time": "2026-02-09T17:18:52.521612+00:00",
+    "bid_count": 3128,
+    "total_bids": 4,
+    "last_bidder": "Erjona H.",
+    "last_bidder_id": "bot_ea01c4bd-1739-42a8-9f21-43202975e437",
+    "last_bidder_name": "Shqipe H.",
+    "is_vip_only": false,
+    "is_night_auction": false,
+    "is_beginner_only": false,
+    "is_beginner_auction": false,
+    "is_free_auction": false,
+    "is_fixed_end": true,
+    "bot_target_price": 25.0,
+    "created_at": "2026-02-09T01:18:52.521612+00:00",
+    "bids": [],
+    "bid_history": [
+      {
+        "user_id": "bot_236fd9f3-f375-40e9-bae7-f4e38515944b",
+        "user_name": "Thomas B.",
+        "price": 0.02,
+        "timestamp": "2026-02-14T10:06:04.370772+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_6347837f-6449-4210-917f-c78eaae5628a",
+        "user_name": "Xhevahire K.",
+        "price": 0.03,
+        "timestamp": "2026-02-14T10:06:39.808803+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_376ecdce-b07c-40b2-98e9-29f565b70bc7",
+        "user_name": "Naim G.",
+        "price": 0.04,
+        "timestamp": "2026-02-14T10:08:07.494756+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_ea01c4bd-1739-42a8-9f21-43202975e437",
+        "user_name": "Shqipe H.",
+        "price": 0.05,
+        "timestamp": "2026-02-14T10:10:09.236608+00:00",
+        "is_bot": true
+      }
+    ],
+    "guaranteed_winner_bidding": null,
+    "let_customer_win": null,
+    "ended_at": null,
+    "final_price": null,
+    "winner_id": null,
+    "winner_name": null,
+    "auto_restart": {
+      "enabled": true,
+      "duration_minutes": 960,
+      "bot_target_price": 25.0,
+      "last_restart": "2026-02-14T10:05:57.362761+00:00",
+      "restart_count": 8
+    },
+    "paused_at": "2026-02-13T22:50:32.252060+00:00",
+    "five_min_notification_sent": true,
+    "original_start_time": "2026-02-09T01:18:52.521612+00:00",
+    "is_featured": false,
+    "last_bid_time": "2026-02-14T09:35:09.721860+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698935fcdb196d3ae2d6520b"
+    },
+    "id": "6d7dfb22-a25c-4a54-ad2f-62dffd3a4356",
+    "product_id": "prod-sony-a1-ii",
+    "title": "Sony Alpha A1 II",
+    "current_price": 0.05,
+    "start_price": 0.01,
+    "bid_increment": 0.01,
+    "retail_price": 6499,
+    "status": "active",
+    "start_time": "2026-02-14T10:05:57.589500+00:00",
+    "end_time": "2026-02-15T02:05:57.589500+00:00",
+    "original_end_time": "2026-02-09T17:18:52.521612+00:00",
+    "bid_count": 3085,
+    "total_bids": 4,
+    "last_bidder": "Erion H.",
+    "last_bidder_id": "bot_8a7d4553-35d4-40eb-a72d-a8132a18c195",
+    "last_bidder_name": "Rozafa L.",
+    "is_vip_only": false,
+    "is_night_auction": false,
+    "is_beginner_only": false,
+    "is_beginner_auction": false,
+    "is_free_auction": false,
+    "is_fixed_end": true,
+    "bot_target_price": 25.0,
+    "created_at": "2026-02-09T01:18:52.521612+00:00",
+    "bids": [],
+    "bid_history": [
+      {
+        "user_id": "bot_3ec41fc3-e660-4338-9fb5-e0beb74234a0",
+        "user_name": "Mentor A.",
+        "price": 0.02,
+        "timestamp": "2026-02-14T10:06:43.612370+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_516e6027-8b4b-451d-bfe3-3cb07d975bbe",
+        "user_name": "Johanna C.",
+        "price": 0.03,
+        "timestamp": "2026-02-14T10:08:49.284370+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_036609c2-eadf-4350-ba4f-d2e90f1851e7",
+        "user_name": "Erjona H.",
+        "price": 0.04,
+        "timestamp": "2026-02-14T10:09:43.618330+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_8a7d4553-35d4-40eb-a72d-a8132a18c195",
+        "user_name": "Rozafa L.",
+        "price": 0.05,
+        "timestamp": "2026-02-14T10:12:18.453023+00:00",
+        "is_bot": true
+      }
+    ],
+    "guaranteed_winner_bidding": "93751cd4-fcd3-41da-82e2-8f455322ba24",
+    "let_customer_win": null,
+    "ended_at": null,
+    "final_price": null,
+    "winner_id": null,
+    "winner_name": null,
+    "auto_restart": {
+      "enabled": true,
+      "duration_minutes": 960,
+      "bot_target_price": 25.0,
+      "last_restart": "2026-02-14T10:05:57.589500+00:00",
+      "restart_count": 8
+    },
+    "paused_at": "2026-02-13T22:50:32.252060+00:00",
+    "five_min_notification_sent": true,
+    "original_start_time": "2026-02-09T01:18:52.521612+00:00",
+    "is_featured": false,
+    "last_bid_time": "2026-02-14T09:35:09.723219+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698935fcdb196d3ae2d6520c"
+    },
+    "id": "5be781ff-8f41-4131-959c-ef0e9406345b",
+    "product_id": "d8f7b83f-4e32-4894-b68e-14b5a64e3944",
+    "title": "IKEA Gutschein €100",
+    "current_price": 0.06,
+    "start_price": 0.01,
+    "bid_increment": 0.01,
+    "retail_price": 100.0,
+    "status": "active",
+    "start_time": "2026-02-14T10:05:57.818988+00:00",
+    "end_time": "2026-02-15T02:05:57.818988+00:00",
+    "original_end_time": "2026-02-09T17:18:52.521612+00:00",
+    "bid_count": 3102,
+    "total_bids": 5,
+    "last_bidder": "Lisa F.",
+    "last_bidder_id": "bot_5ecb5a66-021b-40d0-9ed6-de91db417435",
+    "last_bidder_name": "Finn V.",
+    "is_vip_only": false,
+    "is_night_auction": false,
+    "is_beginner_only": false,
+    "is_beginner_auction": false,
+    "is_free_auction": false,
+    "is_fixed_end": true,
+    "bot_target_price": 25.0,
+    "created_at": "2026-02-09T01:18:52.521612+00:00",
+    "bids": [],
+    "bid_history": [
+      {
+        "user_id": "bot_fe628a38-9976-4359-8712-0d24e2a2c957",
+        "user_name": "Pranvera K.",
+        "price": 0.02,
+        "timestamp": "2026-02-14T10:06:05.704390+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_fcf32a7f-0c65-4367-b381-82d71e4c33c0",
+        "user_name": "Niklas C.",
+        "price": 0.03,
+        "timestamp": "2026-02-14T10:06:38.795538+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_99e1961d-ea67-4ad6-b919-957ae485c013",
+        "user_name": "Violeta H.",
+        "price": 0.04,
+        "timestamp": "2026-02-14T10:08:48.838050+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_bc5c6fac-8116-4734-8244-eed141c23fc4",
+        "user_name": "Xhevahire G.",
+        "price": 0.05,
+        "timestamp": "2026-02-14T10:09:52.111628+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_5ecb5a66-021b-40d0-9ed6-de91db417435",
+        "user_name": "Finn V.",
+        "price": 0.06,
+        "timestamp": "2026-02-14T10:11:16.253223+00:00",
+        "is_bot": true
+      }
+    ],
+    "guaranteed_winner_bidding": null,
+    "let_customer_win": null,
+    "ended_at": null,
+    "final_price": null,
+    "winner_id": null,
+    "winner_name": null,
+    "auto_restart": {
+      "enabled": true,
+      "duration_minutes": 960,
+      "bot_target_price": 25.0,
+      "last_restart": "2026-02-14T10:05:57.818988+00:00",
+      "restart_count": 8
+    },
+    "paused_at": "2026-02-13T22:50:32.252060+00:00",
+    "five_min_notification_sent": true,
+    "original_start_time": "2026-02-09T01:18:52.521612+00:00",
+    "is_featured": false,
+    "last_bid_time": "2026-02-14T09:35:09.724528+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698935fcdb196d3ae2d6520d"
+    },
+    "id": "db7ee055-87c4-44c2-82ec-bbf32373bda3",
+    "product_id": "prod-dellxps16-2025",
+    "title": "Dell XPS 16 OLED (2025)",
+    "current_price": 0.09,
+    "start_price": 0.01,
+    "bid_increment": 0.01,
+    "retail_price": 2499,
+    "status": "active",
+    "start_time": "2026-02-14T10:05:58.049717+00:00",
+    "end_time": "2026-02-15T02:05:58.049717+00:00",
+    "original_end_time": "2026-02-09T17:18:52.521612+00:00",
+    "bid_count": 3114,
+    "total_bids": 8,
+    "last_bidder": "Kujtim S.",
+    "last_bidder_id": "bot_fe628a38-9976-4359-8712-0d24e2a2c957",
+    "last_bidder_name": "Pranvera K.",
+    "is_vip_only": false,
+    "is_night_auction": false,
+    "is_beginner_only": false,
+    "is_beginner_auction": false,
+    "is_free_auction": false,
+    "is_fixed_end": true,
+    "bot_target_price": 25.0,
+    "created_at": "2026-02-09T01:18:52.521612+00:00",
+    "bids": [],
+    "bid_history": [
+      {
+        "user_id": "bot_06ac9d08-7c34-472e-8206-4e4be58d4402",
+        "user_name": "Erjona K.",
+        "price": 0.02,
+        "timestamp": "2026-02-14T10:06:03.927097+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_0784464d-a8d2-4f36-be74-f459ca3c67f1",
+        "user_name": "Mentor S.",
+        "price": 0.03,
+        "timestamp": "2026-02-14T10:06:35.088131+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_b468337d-8e06-4821-89ee-99f678fc2307",
+        "user_name": "Besa H.",
+        "price": 0.04,
+        "timestamp": "2026-02-14T10:07:15.112122+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_8e8c568a-6e5e-423f-aaab-e9052aa78e26",
+        "user_name": "Shpëtim R.",
+        "price": 0.05,
+        "timestamp": "2026-02-14T10:07:55.258138+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_87f4e35f-6dd9-431b-b4f3-24f82871f329",
+        "user_name": "Teuta B.",
+        "price": 0.06,
+        "timestamp": "2026-02-14T10:08:48.394893+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_eb4af683-1ce0-4882-9aa6-259293b97437",
+        "user_name": "Naim H.",
+        "price": 0.07,
+        "timestamp": "2026-02-14T10:10:05.023599+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_0f2c0412-2de7-4c0e-851a-fdbbc53a420c",
+        "user_name": "Jens K.",
+        "price": 0.08,
+        "timestamp": "2026-02-14T10:11:03.679610+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_fe628a38-9976-4359-8712-0d24e2a2c957",
+        "user_name": "Pranvera K.",
+        "price": 0.09,
+        "timestamp": "2026-02-14T10:13:15.695680+00:00",
+        "is_bot": true
+      }
+    ],
+    "guaranteed_winner_bidding": null,
+    "let_customer_win": null,
+    "ended_at": null,
+    "final_price": null,
+    "winner_id": null,
+    "winner_name": null,
+    "auto_restart": {
+      "enabled": true,
+      "duration_minutes": 960,
+      "bot_target_price": 25.0,
+      "last_restart": "2026-02-14T10:05:58.049717+00:00",
+      "restart_count": 8
+    },
+    "paused_at": "2026-02-13T22:50:32.252060+00:00",
+    "five_min_notification_sent": true,
+    "original_start_time": "2026-02-09T01:18:52.521612+00:00",
+    "is_featured": false,
+    "last_bid_time": "2026-02-14T09:35:09.725860+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698935fcdb196d3ae2d6520e"
+    },
+    "id": "4460c41c-7fcd-4535-a7c7-8993758634e3",
+    "product_id": "prod-gopro-13",
+    "title": "GoPro Hero 13 Black",
+    "current_price": 0.05,
+    "start_price": 0.01,
+    "bid_increment": 0.01,
+    "retail_price": 449,
+    "status": "active",
+    "start_time": "2026-02-14T10:05:58.277798+00:00",
+    "end_time": "2026-02-15T02:05:58.277798+00:00",
+    "original_end_time": "2026-02-09T17:18:52.521612+00:00",
+    "bid_count": 3077,
+    "total_bids": 4,
+    "last_bidder": "Besnik M.",
+    "last_bidder_id": "bot_3ec41fc3-e660-4338-9fb5-e0beb74234a0",
+    "last_bidder_name": "Mentor A.",
+    "is_vip_only": false,
+    "is_night_auction": false,
+    "is_beginner_only": false,
+    "is_beginner_auction": false,
+    "is_free_auction": false,
+    "is_fixed_end": true,
+    "bot_target_price": 25.0,
+    "created_at": "2026-02-09T01:18:52.521612+00:00",
+    "bids": [],
+    "bid_history": [
+      {
+        "user_id": "bot_796f513f-dfea-483e-ba83-53095cd7319a",
+        "user_name": "Teuta M.",
+        "price": 0.02,
+        "timestamp": "2026-02-14T10:06:54.289652+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_b4659de3-7dbb-435e-9806-798b1e5d5474",
+        "user_name": "Nina P.",
+        "price": 0.03,
+        "timestamp": "2026-02-14T10:07:50.687517+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_99e1961d-ea67-4ad6-b919-957ae485c013",
+        "user_name": "Violeta H.",
+        "price": 0.04,
+        "timestamp": "2026-02-14T10:09:22.576502+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_3ec41fc3-e660-4338-9fb5-e0beb74234a0",
+        "user_name": "Mentor A.",
+        "price": 0.05,
+        "timestamp": "2026-02-14T10:12:55.391702+00:00",
+        "is_bot": true
+      }
+    ],
+    "guaranteed_winner_bidding": null,
+    "let_customer_win": null,
+    "ended_at": null,
+    "final_price": null,
+    "winner_id": null,
+    "winner_name": null,
+    "auto_restart": {
+      "enabled": true,
+      "duration_minutes": 960,
+      "bot_target_price": 25.0,
+      "last_restart": "2026-02-14T10:05:58.277798+00:00",
+      "restart_count": 8
+    },
+    "paused_at": "2026-02-13T22:50:32.252060+00:00",
+    "five_min_notification_sent": true,
+    "original_start_time": "2026-02-09T01:18:52.521612+00:00",
+    "is_featured": false,
+    "last_bid_time": "2026-02-14T09:35:09.727297+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698935fcdb196d3ae2d6520f"
+    },
+    "id": "5f86fe12-bbbc-49e4-8281-0c9076e64da0",
+    "product_id": "prod-samsung-odyssey-g10-49",
+    "title": "Samsung Odyssey G10 49\"",
+    "current_price": 0.06,
+    "start_price": 0.01,
+    "bid_increment": 0.01,
+    "retail_price": 1999,
+    "status": "active",
+    "start_time": "2026-02-14T10:06:08.734335+00:00",
+    "end_time": "2026-02-15T02:06:08.734335+00:00",
+    "original_end_time": "2026-02-09T17:18:52.521612+00:00",
+    "bid_count": 3090,
+    "total_bids": 5,
+    "last_bidder": "Stefan R.",
+    "last_bidder_id": "bot_9eedf288-7863-4b01-b498-1749fb9572c7",
+    "last_bidder_name": "Stefan R.",
+    "is_vip_only": false,
+    "is_night_auction": false,
+    "is_beginner_only": false,
+    "is_beginner_auction": false,
+    "is_free_auction": false,
+    "is_fixed_end": true,
+    "bot_target_price": 25.0,
+    "created_at": "2026-02-09T01:18:52.521612+00:00",
+    "bids": [],
+    "bid_history": [
+      {
+        "user_id": "bot_6c4dd4e4-2817-4ce4-b03d-316798c2bbb3",
+        "user_name": "Greta B.",
+        "price": 0.02,
+        "timestamp": "2026-02-14T10:06:20.162207+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_5cbea863-1d77-4632-aa26-c8fb6be99e4b",
+        "user_name": "Qamile H.",
+        "price": 0.03,
+        "timestamp": "2026-02-14T10:06:39.246864+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_f49bd0cb-a35b-4d9c-b15e-d35a0dae02e8",
+        "user_name": "Iliriana B.",
+        "price": 0.04,
+        "timestamp": "2026-02-14T10:07:51.142056+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_ac3935a7-bc2c-4d22-8544-43b581778cb6",
+        "user_name": "Besnik M.",
+        "price": 0.05,
+        "timestamp": "2026-02-14T10:09:31.596625+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_9eedf288-7863-4b01-b498-1749fb9572c7",
+        "user_name": "Stefan R.",
+        "price": 0.06,
+        "timestamp": "2026-02-14T10:10:42.690396+00:00",
+        "is_bot": true
+      }
+    ],
+    "guaranteed_winner_bidding": "93751cd4-fcd3-41da-82e2-8f455322ba24",
+    "let_customer_win": null,
+    "ended_at": null,
+    "final_price": null,
+    "winner_id": null,
+    "winner_name": null,
+    "auto_restart": {
+      "enabled": true,
+      "duration_minutes": 960,
+      "bot_target_price": 25.0,
+      "last_restart": "2026-02-14T10:06:08.734335+00:00",
+      "restart_count": 8
+    },
+    "paused_at": "2026-02-13T22:50:32.252060+00:00",
+    "five_min_notification_sent": true,
+    "original_start_time": "2026-02-09T01:18:52.521612+00:00",
+    "is_featured": false,
+    "last_bid_time": "2026-02-14T09:35:09.728714+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698935fcdb196d3ae2d65210"
+    },
+    "id": "95e0b9e1-9afc-4e22-8fd0-6cbb30a09fe0",
+    "product_id": "prod-iphone17",
+    "title": "Apple iPhone 17 256GB",
+    "current_price": 0.07,
+    "start_price": 0.01,
+    "bid_increment": 0.01,
+    "retail_price": 999,
+    "status": "active",
+    "start_time": "2026-02-14T10:06:08.960760+00:00",
+    "end_time": "2026-02-15T02:06:08.960760+00:00",
+    "original_end_time": "2026-02-09T17:18:52.521612+00:00",
+    "bid_count": 3114,
+    "total_bids": 6,
+    "last_bidder": "Violeta K.",
+    "last_bidder_id": "bot_da2fe085-0c68-404f-98a3-ad19c74d6e39",
+    "last_bidder_name": "Zamir B.",
+    "is_vip_only": false,
+    "is_night_auction": false,
+    "is_beginner_only": false,
+    "is_beginner_auction": false,
+    "is_free_auction": false,
+    "is_fixed_end": true,
+    "bot_target_price": 25.0,
+    "created_at": "2026-02-09T01:18:52.521612+00:00",
+    "bids": [],
+    "bid_history": [
+      {
+        "user_id": "bot_1251f818-6962-42ac-acba-78bd8794da6e",
+        "user_name": "Erjona R.",
+        "price": 0.02,
+        "timestamp": "2026-02-14T10:06:34.073596+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_5baacab6-c15c-4cf5-b836-d0bccd4bd6d2",
+        "user_name": "Flora A.",
+        "price": 0.03,
+        "timestamp": "2026-02-14T10:07:14.444300+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_87f4e35f-6dd9-431b-b4f3-24f82871f329",
+        "user_name": "Teuta B.",
+        "price": 0.04,
+        "timestamp": "2026-02-14T10:08:44.251065+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_516e6027-8b4b-451d-bfe3-3cb07d975bbe",
+        "user_name": "Johanna C.",
+        "price": 0.05,
+        "timestamp": "2026-02-14T10:09:44.168428+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_3ec41fc3-e660-4338-9fb5-e0beb74234a0",
+        "user_name": "Mentor A.",
+        "price": 0.06,
+        "timestamp": "2026-02-14T10:11:07.924973+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_da2fe085-0c68-404f-98a3-ad19c74d6e39",
+        "user_name": "Zamir B.",
+        "price": 0.07,
+        "timestamp": "2026-02-14T10:13:07.706990+00:00",
+        "is_bot": true
+      }
+    ],
+    "guaranteed_winner_bidding": null,
+    "let_customer_win": null,
+    "ended_at": null,
+    "final_price": null,
+    "winner_id": null,
+    "winner_name": null,
+    "auto_restart": {
+      "enabled": true,
+      "duration_minutes": 960,
+      "bot_target_price": 25.0,
+      "last_restart": "2026-02-14T10:06:08.960760+00:00",
+      "restart_count": 8
+    },
+    "paused_at": "2026-02-13T22:50:32.252060+00:00",
+    "five_min_notification_sent": true,
+    "original_start_time": "2026-02-09T01:18:52.521612+00:00",
+    "is_featured": false,
+    "last_bid_time": "2026-02-14T09:35:09.731907+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698935fcdb196d3ae2d65211"
+    },
+    "id": "5e42c03e-5345-4253-8fc6-0ebdf6f21cb5",
+    "product_id": "prod-dji-mavic-4-pro",
+    "title": "DJI Mavic 4 Pro",
+    "current_price": 0.05,
+    "start_price": 0.01,
+    "bid_increment": 0.01,
+    "retail_price": 2199,
+    "status": "active",
+    "start_time": "2026-02-14T10:06:09.187964+00:00",
+    "end_time": "2026-02-15T02:06:09.187964+00:00",
+    "original_end_time": "2026-02-09T17:18:52.521612+00:00",
+    "bid_count": 3127,
+    "total_bids": 4,
+    "last_bidder": "Rexhep G.",
+    "last_bidder_id": "bot_da2fe085-0c68-404f-98a3-ad19c74d6e39",
+    "last_bidder_name": "Zamir B.",
+    "is_vip_only": false,
+    "is_night_auction": false,
+    "is_beginner_only": false,
+    "is_beginner_auction": false,
+    "is_free_auction": false,
+    "is_fixed_end": true,
+    "bot_target_price": 25.0,
+    "created_at": "2026-02-09T01:18:52.521612+00:00",
+    "bids": [],
+    "bid_history": [
+      {
+        "user_id": "bot_59a19b02-a18b-4eb3-b276-662dbb7a09af",
+        "user_name": "Erion H.",
+        "price": 0.02,
+        "timestamp": "2026-02-14T10:06:58.092608+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_e4cd0543-1fbc-4bd1-9fe2-b1bf16637e41",
+        "user_name": "Albina O.",
+        "price": 0.03,
+        "timestamp": "2026-02-14T10:08:54.385503+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_fc26e747-a238-4b2e-9ac9-7baae23f1232",
+        "user_name": "Fatmir M.",
+        "price": 0.04,
+        "timestamp": "2026-02-14T10:11:49.016433+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_da2fe085-0c68-404f-98a3-ad19c74d6e39",
+        "user_name": "Zamir B.",
+        "price": 0.05,
+        "timestamp": "2026-02-14T10:12:23.000770+00:00",
+        "is_bot": true
+      }
+    ],
+    "guaranteed_winner_bidding": null,
+    "let_customer_win": null,
+    "ended_at": null,
+    "final_price": null,
+    "winner_id": null,
+    "winner_name": null,
+    "auto_restart": {
+      "enabled": true,
+      "duration_minutes": 960,
+      "bot_target_price": 25.0,
+      "last_restart": "2026-02-14T10:06:09.187964+00:00",
+      "restart_count": 8
+    },
+    "paused_at": "2026-02-13T22:50:32.252060+00:00",
+    "five_min_notification_sent": true,
+    "original_start_time": "2026-02-09T01:18:52.521612+00:00",
+    "is_featured": false,
+    "last_bid_time": "2026-02-14T09:35:09.733465+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698935fcdb196d3ae2d65212"
+    },
+    "id": "31b5fe09-2565-4e74-b7a0-988be118a9b1",
+    "product_id": "prod-meta-quest-4",
+    "title": "Meta Quest 4",
+    "current_price": 0.07,
+    "start_price": 0.01,
+    "bid_increment": 0.01,
+    "retail_price": 599,
+    "status": "active",
+    "start_time": "2026-02-14T10:06:09.414671+00:00",
+    "end_time": "2026-02-15T02:06:09.414671+00:00",
+    "original_end_time": "2026-02-09T17:18:52.521612+00:00",
+    "bid_count": 3135,
+    "total_bids": 6,
+    "last_bidder": "Erion H.",
+    "last_bidder_id": "bot_f4d6e407-08ee-4475-9e38-b2ffd6ce6d34",
+    "last_bidder_name": "Yllka R.",
+    "is_vip_only": false,
+    "is_night_auction": false,
+    "is_beginner_only": false,
+    "is_beginner_auction": false,
+    "is_free_auction": false,
+    "is_fixed_end": true,
+    "bot_target_price": 25.0,
+    "created_at": "2026-02-09T01:18:52.521612+00:00",
+    "bids": [],
+    "bid_history": [
+      {
+        "user_id": "bot_06ac9d08-7c34-472e-8206-4e4be58d4402",
+        "user_name": "Erjona K.",
+        "price": 0.02,
+        "timestamp": "2026-02-14T10:06:20.851042+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_8e8c568a-6e5e-423f-aaab-e9052aa78e26",
+        "user_name": "Shpëtim R.",
+        "price": 0.03,
+        "timestamp": "2026-02-14T10:06:30.960645+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_0453e96a-9886-42f9-bbc4-da7895530cfc",
+        "user_name": "Zamir H.",
+        "price": 0.04,
+        "timestamp": "2026-02-14T10:08:30.832831+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_06ac9d08-7c34-472e-8206-4e4be58d4402",
+        "user_name": "Erjona K.",
+        "price": 0.05,
+        "timestamp": "2026-02-14T10:10:38.564782+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_cbfffcf0-8666-43bf-905b-787059d7da53",
+        "user_name": "David W.",
+        "price": 0.06,
+        "timestamp": "2026-02-14T10:12:10.017909+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_f4d6e407-08ee-4475-9e38-b2ffd6ce6d34",
+        "user_name": "Yllka R.",
+        "price": 0.07,
+        "timestamp": "2026-02-14T10:13:07.157476+00:00",
+        "is_bot": true
+      }
+    ],
+    "guaranteed_winner_bidding": null,
+    "let_customer_win": null,
+    "ended_at": null,
+    "final_price": null,
+    "winner_id": null,
+    "winner_name": null,
+    "auto_restart": {
+      "enabled": true,
+      "duration_minutes": 960,
+      "bot_target_price": 25.0,
+      "last_restart": "2026-02-14T10:06:09.414671+00:00",
+      "restart_count": 8
+    },
+    "paused_at": "2026-02-13T22:50:32.252060+00:00",
+    "five_min_notification_sent": true,
+    "original_start_time": "2026-02-09T01:18:52.521612+00:00",
+    "is_featured": false,
+    "last_bid_time": "2026-02-14T09:35:09.734918+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698935fcdb196d3ae2d65213"
+    },
+    "id": "79296a8b-aa75-4f34-b44c-29915566b9eb",
+    "product_id": "fc58942d-38dd-4042-a211-0705a9b76835",
+    "title": "MediaMarkt Gutschein €75",
+    "current_price": 0.06,
+    "start_price": 0.01,
+    "bid_increment": 0.01,
+    "retail_price": 75.0,
+    "status": "active",
+    "start_time": "2026-02-14T10:06:09.641855+00:00",
+    "end_time": "2026-02-15T02:06:09.641855+00:00",
+    "original_end_time": "2026-02-09T17:18:52.521612+00:00",
+    "bid_count": 3085,
+    "total_bids": 5,
+    "last_bidder": "Greta B.",
+    "last_bidder_id": "bot_99e1961d-ea67-4ad6-b919-957ae485c013",
+    "last_bidder_name": "Violeta H.",
+    "is_vip_only": false,
+    "is_night_auction": false,
+    "is_beginner_only": false,
+    "is_beginner_auction": false,
+    "is_free_auction": false,
+    "is_fixed_end": true,
+    "bot_target_price": 25.0,
+    "created_at": "2026-02-09T01:18:52.521612+00:00",
+    "bids": [],
+    "bid_history": [
+      {
+        "user_id": "bot_59a19b02-a18b-4eb3-b276-662dbb7a09af",
+        "user_name": "Erion H.",
+        "price": 0.02,
+        "timestamp": "2026-02-14T10:06:13.268775+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_9a103cbc-4caa-4794-adbc-1c6a5028aebb",
+        "user_name": "Fatmir G.",
+        "price": 0.03,
+        "timestamp": "2026-02-14T10:06:43.055796+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_3b49602a-44c7-47a4-a1c5-6e13631d22e4",
+        "user_name": "Violeta M.",
+        "price": 0.04,
+        "timestamp": "2026-02-14T10:07:10.317428+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_cbfffcf0-8666-43bf-905b-787059d7da53",
+        "user_name": "David W.",
+        "price": 0.05,
+        "timestamp": "2026-02-14T10:09:56.811243+00:00",
+        "is_bot": true
+      },
+      {
+        "user_id": "bot_99e1961d-ea67-4ad6-b919-957ae485c013",
+        "user_name": "Violeta H.",
+        "price": 0.06,
+        "timestamp": "2026-02-14T10:10:43.359790+00:00",
+        "is_bot": true
+      }
+    ],
+    "guaranteed_winner_bidding": null,
+    "let_customer_win": null,
+    "ended_at": null,
+    "final_price": null,
+    "winner_id": null,
+    "winner_name": null,
+    "auto_restart": {
+      "enabled": true,
+      "duration_minutes": 960,
+      "bot_target_price": 25.0,
+      "last_restart": "2026-02-14T10:06:09.641855+00:00",
+      "restart_count": 8
+    },
+    "paused_at": "2026-02-13T22:50:32.252060+00:00",
+    "five_min_notification_sent": true,
+    "original_start_time": "2026-02-09T01:18:52.521612+00:00",
+    "is_featured": false,
+    "last_bid_time": "2026-02-14T09:35:09.736300+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698af4e34dfa7490028b4087"
+    },
+    "id": "bc4cf3d1-9027-4a7b-b9da-c3879915688c",
+    "product_id": "prod-iphone17-promax",
+    "starting_price": 0.0,
+    "current_price": 0.93,
+    "bid_increment": 0.01,
+    "start_time": "2026-02-14T10:06:09.869143+00:00",
+    "end_time": "2026-02-14T10:13:29.794188+00:00",
+    "duration_seconds": 86400,
+    "status": "active",
+    "total_bids": 92,
+    "bid_count": 51408,
+    "last_bidder_id": "bot_994c9f09-f468-43b8-bb59-8bfdb75d571a",
+    "last_bidder_name": "Xhevahire G.",
+    "winner_id": null,
+    "winner_name": null,
+    "bid_history": [
+      {
+        "user_id": "bot_bc5c6fac-8116-4734-8244-eed141c23fc4",
+        "user_name": "Xhevahire G.",
+        "price": 0.02,
+        "timestamp": "2026-02-14T10:07:01.429542+00:00",
+        "is_bot": true
+      }
+    ],
+    "bot_target_price": null,
+    "buy_now_price": null,
+    "is_night_auction": false,
+    "is_vip_only": false,
+    "is_beginner_auction": false,
+    "is_gift_auction": false,
+    "is_free_auction": false,
+    "auction_type": "normal",
+    "created_at": "2026-02-10T09:05:39.240756+00:00",
+    "ended_at": null,
+    "final_price": null,
+    "auto_restart": {
+      "enabled": true,
+      "duration_minutes": 600,
+      "bot_target_price": null,
+      "last_restart": "2026-02-14T10:06:09.869143+00:00",
+      "restart_count": 109
+    },
+    "original_end_time": "2026-02-10T10:13:47.813549+00:00",
+    "original_start_time": "2026-02-10T09:05:39.240686+00:00",
+    "paused_at": "2026-02-13T22:50:32.252060+00:00",
+    "five_min_notification_sent": true,
+    "guaranteed_winner_bidding": "93751cd4-fcd3-41da-82e2-8f455322ba24",
+    "is_featured": false,
+    "last_bid_time": "2026-02-14T10:13:18.794188+00:00",
+    "last_bidder": "Julia K."
+  },
+  {
+    "_id": {
+      "$oid": "698e42b576c8a6d4456fbeef"
+    },
+    "id": "33b8e811-51c6-45d7-ab76-b7b30f450f62",
+    "title": "🍽️ 25€ Gutschein bei Pizza Roma",
+    "product_id": "23d4dfdd-125d-444e-9162-6bc7a911af92",
+    "product": {
+      "id": "23d4dfdd-125d-444e-9162-6bc7a911af92",
+      "name": "🍽️ 25€ Gutschein bei Pizza Roma",
+      "description": "Genießen Sie echte italienische Pizza!",
+      "retail_price": 25,
+      "category": "restaurant_voucher",
+      "image_url": "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400",
+      "specifications": {
+        "restaurant": "Pizza Roma",
+        "address": "Hauptstraße 123, Berlin",
+        "website": "https://pizzaroma.de",
+        "value": "25€",
+        "voucher_code": "PIZZ-M6YFQ9"
+      }
+    },
+    "category": "restaurant_voucher",
+    "auction_type": "restaurant_voucher",
+    "status": "active",
+    "start_time": "2026-02-14T10:06:10.095455+00:00",
+    "end_time": "2026-02-14T10:13:26.679849+00:00",
+    "current_price": 1.03,
+    "bid_increment": 0.01,
+    "total_bids": 102,
+    "bid_count": 14724,
+    "last_bidder": "Shpëtim R.",
+    "last_bidder_id": "bot_8e8c568a-6e5e-423f-aaab-e9052aa78e26",
+    "winner_id": null,
+    "winner_name": null,
+    "bid_history": [
+      {
+        "user_id": "bot_a2f98caa-b2e9-47da-a1c4-f87383c6703a",
+        "user_name": "Amelie L.",
+        "price": 0.02,
+        "timestamp": "2026-02-14T10:06:11.921093+00:00",
+        "is_bot": true
+      }
+    ],
+    "created_at": "2026-02-12T21:14:29.253662+00:00",
+    "created_by": "admin@bidblitz.de",
+    "bot_target_price": 8.0,
+    "voucher_code": "PIZZ-M6YFQ9",
+    "restaurant_info": {
+      "name": "Pizza Roma",
+      "address": "Hauptstraße 123, Berlin",
+      "url": "https://pizzaroma.de",
+      "logo": null
+    },
+    "auto_restart": {
+      "enabled": true,
+      "duration_minutes": 600,
+      "bot_target_price": 8.0,
+      "last_restart": "2026-02-14T10:06:10.095455+00:00",
+      "restart_count": 10
+    },
+    "last_bidder_name": "Amelie L.",
+    "last_bid_time": "2026-02-14T10:13:14.679849+00:00",
+    "ended_at": null,
+    "final_price": null,
+    "original_end_time": "2026-02-12T21:55:01.232235+00:00",
+    "original_start_time": "2026-02-12T21:14:29.253662+00:00",
+    "paused_at": "2026-02-13T22:50:32.252060+00:00",
+    "five_min_notification_sent": true
+  },
+  {
+    "_id": {
+      "$oid": "698e42bf76c8a6d4456fbef2"
+    },
+    "id": "ee7ec4f5-5aca-447e-b144-fbf2baa1dc2e",
+    "title": "🍽️ 20% Rabatt bei Sushi Paradise",
+    "product_id": "7a960c4a-64db-4db4-98b5-c7c85e2863e0",
+    "product": {
+      "id": "7a960c4a-64db-4db4-98b5-c7c85e2863e0",
+      "name": "🍽️ 20% Rabatt bei Sushi Paradise",
+      "description": "20% Rabatt auf alle Sushi-Menüs!",
+      "retail_price": 25,
+      "category": "restaurant_voucher",
+      "image_url": "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400",
+      "specifications": {
+        "restaurant": "Sushi Paradise",
+        "address": "Friedrichstraße 50, Berlin",
+        "website": "https://sushiparadise.de",
+        "value": "20% Rabatt",
+        "voucher_code": "SUSH-W2U8YQ"
+      }
+    },
+    "category": "restaurant_voucher",
+    "auction_type": "restaurant_voucher",
+    "status": "active",
+    "start_time": "2026-02-14T10:06:10.322730+00:00",
+    "end_time": "2026-02-14T10:13:25.901445+00:00",
+    "current_price": 0.92,
+    "bid_increment": 0.01,
+    "total_bids": 91,
+    "bid_count": 14695,
+    "last_bidder": "Niklas C.",
+    "last_bidder_id": "bot_fcf32a7f-0c65-4367-b381-82d71e4c33c0",
+    "winner_id": null,
+    "winner_name": null,
+    "bid_history": [
+      {
+        "user_id": "bot_9d81ca72-f616-4464-8cea-90f446c50da6",
+        "user_name": "Ylber B.",
+        "price": 0.02,
+        "timestamp": "2026-02-14T10:07:02.092932+00:00",
+        "is_bot": true
+      }
+    ],
+    "created_at": "2026-02-12T21:14:39.756636+00:00",
+    "created_by": "admin@bidblitz.de",
+    "bot_target_price": 5.0,
+    "voucher_code": "SUSH-W2U8YQ",
+    "restaurant_info": {
+      "name": "Sushi Paradise",
+      "address": "Friedrichstraße 50, Berlin",
+      "url": "https://sushiparadise.de",
+      "logo": null
+    },
+    "auto_restart": {
+      "enabled": true,
+      "duration_minutes": 600,
+      "bot_target_price": 5.0,
+      "last_restart": "2026-02-14T10:06:10.322730+00:00",
+      "restart_count": 11
+    },
+    "last_bidder_name": "Ylber B.",
+    "last_bid_time": "2026-02-14T10:13:14.901445+00:00",
+    "ended_at": null,
+    "final_price": null,
+    "original_end_time": "2026-02-12T21:55:01.233365+00:00",
+    "original_start_time": "2026-02-12T21:14:39.756636+00:00",
+    "paused_at": "2026-02-13T22:50:32.252060+00:00",
+    "five_min_notification_sent": true
+  },
+  {
+    "_id": {
+      "$oid": "698e49666e45bde558c7f913"
+    },
+    "id": "5c20235f-1ce2-40a5-8739-26c9a2eb562a",
+    "title": "🍽️ 50€ Gutschein bei Bella Italia",
+    "product_id": "93afb9c0-0093-4bf5-8835-660bc2407187",
+    "product": {
+      "id": "93afb9c0-0093-4bf5-8835-660bc2407187",
+      "name": "🍽️ 50€ Gutschein bei Bella Italia",
+      "description": "Authentische italienische Küche - Hausgemachte Pasta & Pizza!",
+      "retail_price": 50,
+      "category": "restaurant_voucher",
+      "image_url": "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400",
+      "images": [
+        "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400",
+        "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400",
+        "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400"
+      ],
+      "specifications": {
+        "restaurant": "Bella Italia",
+        "address": "Kurfürstendamm 50, Berlin",
+        "website": "https://bellaitalia.de",
+        "value": "50€",
+        "voucher_code": "BELL-VNNI5M"
+      }
+    },
+    "category": "restaurant_voucher",
+    "auction_type": "restaurant_voucher",
+    "status": "active",
+    "start_time": "2026-02-14T10:06:10.544852+00:00",
+    "end_time": "2026-02-14T10:13:29.123186+00:00",
+    "current_price": 1.03,
+    "bid_increment": 0.01,
+    "total_bids": 102,
+    "bid_count": 13900,
+    "last_bidder": "Michael H.",
+    "last_bidder_id": "bot_161e0d49-4ad2-483d-a5e7-e9e1c5dbe902",
+    "winner_id": null,
+    "winner_name": null,
+    "bid_history": [
+      {
+        "user_id": "bot_f49bd0cb-a35b-4d9c-b15e-d35a0dae02e8",
+        "user_name": "Iliriana B.",
+        "price": 0.02,
+        "timestamp": "2026-02-14T10:06:12.817454+00:00",
+        "is_bot": true
+      }
+    ],
+    "created_at": "2026-02-12T21:43:02.936284+00:00",
+    "created_by": "admin@bidblitz.de",
+    "bot_target_price": 15.0,
+    "voucher_code": "BELL-VNNI5M",
+    "restaurant_info": {
+      "name": "Bella Italia",
+      "address": "Kurfürstendamm 50, Berlin",
+      "url": "https://bellaitalia.de",
+      "logo": null,
+      "images": [
+        "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400",
+        "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400",
+        "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400"
+      ]
+    },
+    "auto_restart": {
+      "enabled": true,
+      "duration_minutes": 600,
+      "bot_target_price": 15.0,
+      "last_restart": "2026-02-14T10:06:10.544852+00:00",
+      "restart_count": 11
+    },
+    "last_bidder_name": "Iliriana B.",
+    "last_bid_time": "2026-02-14T10:13:15.123186+00:00",
+    "ended_at": null,
+    "final_price": null,
+    "original_end_time": "2026-02-12T21:55:00.234300+00:00",
+    "original_start_time": "2026-02-12T21:43:02.936284+00:00",
+    "paused_at": "2026-02-13T22:50:32.252060+00:00",
+    "five_min_notification_sent": true
+  },
+  {
+    "_id": {
+      "$oid": "698e4a336e45bde558c7f915"
+    },
+    "id": "c2082704-2893-47e4-99ad-b1d08476c6a9",
+    "title": "🍽️ Eiscafe Valentina  - €25 Gutschein",
+    "product_id": "2a418817-57cf-4e76-8a31-9d01d934b490",
+    "product": {
+      "id": "2a418817-57cf-4e76-8a31-9d01d934b490",
+      "name": "🍽️ 50€ Gutschein bei Eiscafe Valentina ",
+      "description": "Genießen Sie ein leckeres Essen bei uns!",
+      "retail_price": 50,
+      "category": "restaurant_voucher",
+      "image_url": "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400",
+      "images": [],
+      "specifications": {
+        "restaurant": "Eiscafe Valentina ",
+        "address": "Pristina ",
+        "website": "",
+        "value": "50€",
+        "voucher_code": "EISC-ZSI4XN"
+      }
+    },
+    "category": "restaurant_voucher",
+    "auction_type": "restaurant_voucher",
+    "status": "active",
+    "start_time": "2026-02-14T10:06:10.767920+00:00",
+    "end_time": "2026-02-14T10:13:28.363502+00:00",
+    "current_price": 0.91,
+    "bid_increment": 0.01,
+    "total_bids": 90,
+    "bid_count": 13764,
+    "last_bidder": "Thomas B.",
+    "last_bidder_id": "bot_236fd9f3-f375-40e9-bae7-f4e38515944b",
+    "winner_id": null,
+    "winner_name": null,
+    "bid_history": [
+      {
+        "user_id": "bot_fcf32a7f-0c65-4367-b381-82d71e4c33c0",
+        "user_name": "Niklas C.",
+        "price": 0.02,
+        "timestamp": "2026-02-14T10:07:05.651328+00:00",
+        "is_bot": true
+      }
+    ],
+    "created_at": "2026-02-12T21:46:27.948800+00:00",
+    "created_by": "admin@bidblitz.de",
+    "bot_target_price": 15.0,
+    "voucher_code": "EISC-ZSI4XN",
+    "restaurant_info": {
+      "name": "Eiscafe Valentina ",
+      "address": "Pristina ",
+      "url": "",
+      "logo": "",
+      "images": [],
+      "category": "eiscafe",
+      "voucher_value": 25
+    },
+    "auto_restart": {
+      "enabled": true,
+      "duration_minutes": 600,
+      "bot_target_price": 15.0,
+      "last_restart": "2026-02-14T10:06:10.767920+00:00",
+      "restart_count": 10
+    },
+    "last_bidder_name": "Niklas C.",
+    "last_bid_time": "2026-02-14T10:13:15.363502+00:00",
+    "ended_at": null,
+    "final_price": null,
+    "original_end_time": "2026-02-12T21:55:04.235237+00:00",
+    "original_start_time": "2026-02-12T21:46:27.948800+00:00",
+    "paused_at": "2026-02-13T22:50:32.252060+00:00",
+    "five_min_notification_sent": true,
+    "description": "Genießen Sie leckeres Eis bei uns!",
+    "updated_at": "2026-02-13T07:51:02.559960+00:00"
+  }
+]

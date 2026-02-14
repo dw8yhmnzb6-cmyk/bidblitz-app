@@ -1,0 +1,33 @@
+[
+  {
+    "_id": {
+      "$oid": "698c32a0f2e4d986d2c859eb"
+    },
+    "id": "a2cf5d0e-a4da-45ca-b6e3-65639adf3180",
+    "week_number": 7,
+    "year": 2026,
+    "title": "Woche 7 Challenge",
+    "description": "Wer spart diese Woche am meisten?",
+    "prize_bids": 100,
+    "start_date": "2026-02-11T07:41:20.827218+00:00",
+    "end_date": "2026-02-18T07:41:20.827218+00:00",
+    "status": "ended_early",
+    "ended_at": "2026-02-11T08:21:38.212118+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698c3c127d7f85a97934e647"
+    },
+    "id": "6f728bf0-281b-4690-84a2-4a4ecf740fbc",
+    "week_number": 7,
+    "year": 2026,
+    "title": "Woche 7 - Super Spar Challenge",
+    "description": "Die größten Sparer gewinnen!",
+    "prize_bids": 250,
+    "start_date": "2026-02-11T08:21:38.212118+00:00",
+    "end_date": "2026-02-18T08:21:38.212118+00:00",
+    "status": "active",
+    "created_by": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "created_at": "2026-02-11T08:21:38.212118+00:00"
+  }
+]

@@ -1,0 +1,20 @@
+[
+  {
+    "_id": {
+      "$oid": "6988faf4621595b234906485"
+    },
+    "id": "0a5f6a8a-983d-4ffa-9728-0601a5b4d0af",
+    "type": "weekly",
+    "sent_at": "2026-02-08T21:07:00.009542+00:00",
+    "recipients": [
+      "admin@bidblitz.de"
+    ],
+    "sent_count": 0,
+    "triggered_by": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "data_summary": {
+      "users_total": 8,
+      "revenue_total": 0,
+      "auctions_completed": 0
+    }
+  }
+]

@@ -1,0 +1,1083 @@
+[
+  {
+    "_id": {
+      "$oid": "697e80dfa7847b35efad45a6"
+    },
+    "id": "6fb605a3-c118-47c1-ae11-61b52381c8c6",
+    "admin_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "admin_name": "Admin",
+    "action": "batch",
+    "parameters": {
+      "actions": [
+        {
+          "action": "delete_auctions",
+          "parameters": {
+            "status": "all"
+          }
+        },
+        {
+          "action": "create_auctions",
+          "parameters": {
+            "count": 10
+          }
+        }
+      ]
+    },
+    "result": {
+      "success": true,
+      "message": "📦 Batch (2 Aktionen): ✅ 50 alle Auktionen gelöscht! | ✅ 10 neue Auktionen erfolgreich erstellt!",
+      "data": {
+        "results": [
+          {
+            "action": "delete_auctions",
+            "result": {
+              "success": true,
+              "message": "✅ 50 alle Auktionen gelöscht!"
+            }
+          },
+          {
+            "action": "create_auctions",
+            "result": {
+              "success": true,
+              "message": "✅ 10 neue Auktionen erfolgreich erstellt!"
+            }
+          }
+        ]
+      }
+    },
+    "created_at": "2026-01-31T22:23:27.148078+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697e80e6a7847b35efad45a9"
+    },
+    "id": "4572d37f-fa85-4625-af2f-8fdbf8a8f387",
+    "admin_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "admin_name": "Admin",
+    "action": "get_stats",
+    "parameters": {
+      "type": "users"
+    },
+    "result": {
+      "success": true,
+      "message": "📊 Statistiken:",
+      "data": {
+        "total_users": 5,
+        "vip_users": 4
+      }
+    },
+    "created_at": "2026-01-31T22:23:34.464461+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697e8218a7847b35efad45c1"
+    },
+    "id": "fda0f8e4-d14e-4dc1-b9d2-8d760c600be1",
+    "admin_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "admin_name": "Admin",
+    "action": "translate_products",
+    "parameters": {
+      "languages": [
+        "en",
+        "tr",
+        "fr"
+      ]
+    },
+    "result": {
+      "success": true,
+      "message": "🌐 100 Produkte in 3 Sprachen übersetzt!",
+      "data": {
+        "translated": 100,
+        "languages": [
+          "en",
+          "tr",
+          "fr"
+        ]
+      }
+    },
+    "created_at": "2026-01-31T22:28:40.969431+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697e8c0114d351088cda51d7"
+    },
+    "id": "ad9c9642-d2f9-478e-8c82-6d53418cab94",
+    "admin_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "admin_name": "Admin",
+    "action": "create_bots",
+    "parameters": {
+      "count": 5,
+      "nationality": "albanian"
+    },
+    "result": {
+      "success": true,
+      "message": "🤖 5 neue Bots mit albanischen Namen erstellt!",
+      "data": {
+        "created": 5,
+        "nationality": "albanian"
+      }
+    },
+    "created_at": "2026-01-31T23:10:57.336626+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697e90d4969406f01250dc4d"
+    },
+    "id": "5447ec79-97dd-4b24-8e49-d3b28d0ed8d7",
+    "admin_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "admin_name": "Admin",
+    "action": "create_bots",
+    "parameters": {
+      "count": 50,
+      "nationality": "albanian"
+    },
+    "result": {
+      "success": true,
+      "message": "🤖 50 neue Bots mit albanischen Namen erstellt!",
+      "data": {
+        "created": 50,
+        "nationality": "albanian"
+      }
+    },
+    "created_at": "2026-01-31T23:31:32.292767+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697e90fc969406f01250dcb2"
+    },
+    "id": "95e0b62a-9786-4a34-9d44-6ee6edb90b3b",
+    "admin_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "admin_name": "Admin",
+    "action": "create_bots",
+    "parameters": {
+      "count": 100,
+      "nationality": "albanian"
+    },
+    "result": {
+      "success": true,
+      "message": "🤖 100 neue Bots mit albanischen Namen erstellt!",
+      "data": {
+        "created": 100,
+        "nationality": "albanian"
+      }
+    },
+    "created_at": "2026-01-31T23:32:12.128301+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697e945daf42c0bed51adc4d"
+    },
+    "id": "7330f6ae-4268-44b9-9298-a4bea30f6de1",
+    "admin_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "admin_name": "Admin",
+    "action": "create_auctions",
+    "parameters": {
+      "count": 50
+    },
+    "result": {
+      "success": true,
+      "message": "✅ 50 neue Auktionen erfolgreich erstellt!"
+    },
+    "created_at": "2026-01-31T23:46:37.050270+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697e9aa9627c27c9443681fd"
+    },
+    "id": "843f4b48-ddcd-482f-ac80-533c98448f9f",
+    "admin_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "admin_name": "Admin",
+    "action": "translate_products",
+    "parameters": {
+      "languages": [
+        "en",
+        "tr",
+        "fr",
+        "sq",
+        "ar"
+      ]
+    },
+    "result": {
+      "success": true,
+      "message": "🌐 62 Produkte übersetzt in: Englisch, Türkisch, Französisch, Albanisch, Arabisch! (38 übersprungen)",
+      "data": {
+        "translated": 62,
+        "skipped": 38,
+        "languages": [
+          "en",
+          "tr",
+          "fr",
+          "sq",
+          "ar"
+        ]
+      }
+    },
+    "created_at": "2026-02-01T00:13:29.671615+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697e9d944f9301ad2a596498"
+    },
+    "id": "4eb53aa2-90c5-49d3-8c47-8f04ad8c4a21",
+    "admin_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "admin_name": "Admin",
+    "action": "check_translations",
+    "parameters": {},
+    "result": {
+      "success": true,
+      "message": "📊 **Übersetzungsstatus:**\n\n📦 Gesamt Produkte: 200\n✅ Vollständig übersetzt: 100\n⚠️ Teilweise übersetzt: 0\n❌ Nicht übersetzt: 100\n\n📝 **Fehlende Übersetzungen nach Sprache:**\n⚠️ Englisch: 100 fehlend\n⚠️ Türkisch: 100 fehlend\n⚠️ Französisch: 100 fehlend\n⚠️ Albanisch: 100 fehlend\n⚠️ Arabisch: 100 fehlend\n\n📈 Gesamtfortschritt: 50.0%\n\n💡 Tipp: Sagen Sie 'Übersetze alle Produkte' um fehlende Übersetzungen zu erstellen",
+      "data": {
+        "total_products": 200,
+        "fully_translated": 100,
+        "partially_translated": 0,
+        "not_translated": 100,
+        "missing_by_language": {
+          "de": 100,
+          "en": 100,
+          "tr": 100,
+          "fr": 100,
+          "sq": 100,
+          "ar": 100
+        },
+        "percentage": 50.0
+      }
+    },
+    "created_at": "2026-02-01T00:25:56.604615+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697e9f194f9301ad2a59649c"
+    },
+    "id": "783bc1e6-9767-4480-8650-d7debf9ee7cf",
+    "admin_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "admin_name": "Admin",
+    "action": "translate_products",
+    "parameters": {
+      "languages": [
+        "en",
+        "tr",
+        "fr",
+        "sq",
+        "ar"
+      ]
+    },
+    "result": {
+      "success": true,
+      "message": "🌐 0 Produkte übersetzt in: Englisch, Türkisch, Französisch, Albanisch, Arabisch! (100 übersprungen)",
+      "data": {
+        "translated": 0,
+        "skipped": 100,
+        "languages": [
+          "en",
+          "tr",
+          "fr",
+          "sq",
+          "ar"
+        ]
+      }
+    },
+    "created_at": "2026-02-01T00:32:25.006979+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697e9fcef3116ba53028b055"
+    },
+    "id": "86f3c3c1-5c10-4e6d-a3b3-e4507142ea24",
+    "admin_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "admin_name": "Admin",
+    "action": "translate_products",
+    "parameters": {
+      "languages": [
+        "en",
+        "tr",
+        "fr",
+        "sq",
+        "ar"
+      ]
+    },
+    "result": {
+      "success": true,
+      "message": "🌐 0 Produkte übersetzt in: Englisch, Türkisch, Französisch, Albanisch, Arabisch! (100 übersprungen)",
+      "data": {
+        "translated": 0,
+        "skipped": 100,
+        "languages": [
+          "en",
+          "tr",
+          "fr",
+          "sq",
+          "ar"
+        ]
+      }
+    },
+    "created_at": "2026-02-01T00:35:26.747182+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697e9fd8f3116ba53028b057"
+    },
+    "id": "4efea53c-88ea-488d-aaf5-fc05dc25e700",
+    "admin_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "admin_name": "Admin",
+    "action": "check_translations",
+    "parameters": {},
+    "result": {
+      "success": true,
+      "message": "📊 **Übersetzungsstatus:**\n\n📦 Gesamt Produkte: 200\n✅ Vollständig übersetzt: 100\n⚠️ Teilweise übersetzt: 0\n❌ Nicht übersetzt: 100\n\n📝 **Fehlende Übersetzungen nach Sprache:**\n⚠️ Englisch: 100 fehlend\n⚠️ Türkisch: 100 fehlend\n⚠️ Französisch: 100 fehlend\n⚠️ Albanisch: 100 fehlend\n⚠️ Arabisch: 100 fehlend\n\n📈 Gesamtfortschritt: 50.0%\n\n💡 Tipp: Sagen Sie 'Übersetze alle Produkte' um fehlende Übersetzungen zu erstellen",
+      "data": {
+        "total_products": 200,
+        "fully_translated": 100,
+        "partially_translated": 0,
+        "not_translated": 100,
+        "missing_by_language": {
+          "de": 100,
+          "en": 100,
+          "tr": 100,
+          "fr": 100,
+          "sq": 100,
+          "ar": 100
+        },
+        "percentage": 50.0
+      }
+    },
+    "created_at": "2026-02-01T00:35:36.223781+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697ea028f3116ba53028b059"
+    },
+    "id": "ad87054f-1059-47c7-b220-edc0e21a3d34",
+    "admin_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "admin_name": "Admin",
+    "action": "translate_products",
+    "parameters": {
+      "languages": [
+        "en",
+        "tr",
+        "fr",
+        "sq",
+        "ar"
+      ]
+    },
+    "result": {
+      "success": true,
+      "message": "🌐 0 Produkte übersetzt in: Englisch, Türkisch, Französisch, Albanisch, Arabisch! (100 übersprungen)",
+      "data": {
+        "translated": 0,
+        "skipped": 100,
+        "languages": [
+          "en",
+          "tr",
+          "fr",
+          "sq",
+          "ar"
+        ]
+      }
+    },
+    "created_at": "2026-02-01T00:36:56.982701+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697ea04dd28e75eaace45e88"
+    },
+    "id": "d910dad2-d000-43db-9ec3-18e72ee3a86a",
+    "admin_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "admin_name": "Admin",
+    "action": "check_translations",
+    "parameters": {},
+    "result": {
+      "success": true,
+      "message": "📊 **Übersetzungsstatus:**\n\n📦 Gesamt Produkte: 273\n✅ Vollständig übersetzt: 102\n⚠️ Teilweise übersetzt: 0\n❌ Nicht übersetzt: 171\n\n📝 **Fehlende Übersetzungen nach Sprache:**\n⚠️ Englisch: 171 fehlend\n⚠️ Türkisch: 171 fehlend\n⚠️ Französisch: 171 fehlend\n⚠️ Albanisch: 171 fehlend\n⚠️ Arabisch: 171 fehlend\n\n📈 Gesamtfortschritt: 38.7%\n\n💡 Tipp: Sagen Sie 'Übersetze alle Produkte' um fehlende Übersetzungen zu erstellen",
+      "data": {
+        "total_products": 273,
+        "fully_translated": 102,
+        "partially_translated": 0,
+        "not_translated": 171,
+        "missing_by_language": {
+          "de": 171,
+          "en": 171,
+          "tr": 171,
+          "fr": 171,
+          "sq": 171,
+          "ar": 171
+        },
+        "percentage": 38.7
+      }
+    },
+    "created_at": "2026-02-01T00:37:33.241059+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697ea46b10a642d3d82763bc"
+    },
+    "id": "0979e862-5215-4729-ad99-d6c524658ce9",
+    "admin_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "admin_name": "Admin",
+    "action": "translate_products",
+    "parameters": {
+      "languages": [
+        "en",
+        "tr",
+        "fr",
+        "sq",
+        "ar"
+      ]
+    },
+    "result": {
+      "success": true,
+      "message": "🌐 171 Produkte übersetzt in: Englisch, Türkisch, Französisch, Albanisch, Arabisch! (102 übersprungen)",
+      "data": {
+        "translated": 171,
+        "skipped": 102,
+        "languages": [
+          "en",
+          "tr",
+          "fr",
+          "sq",
+          "ar"
+        ]
+      }
+    },
+    "created_at": "2026-02-01T00:55:07.329009+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697eaf425c5815989ac902f5"
+    },
+    "id": "a36df281-3278-4e9a-b423-0e5ca27032b5",
+    "admin_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "admin_name": "Admin",
+    "action": "create_auctions",
+    "parameters": {
+      "count": 10
+    },
+    "result": {
+      "success": true,
+      "message": "✅ 10 neue Auktionen erfolgreich erstellt!"
+    },
+    "created_at": "2026-02-01T01:41:22.165908+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697eaf9b5c5815989ac902f9"
+    },
+    "id": "bf1cc08f-380e-44b4-b29e-e366d39e5ee6",
+    "admin_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "admin_name": "Admin",
+    "action": "set_auction_of_day",
+    "parameters": {},
+    "result": {
+      "success": true,
+      "message": "✅ Auktion des Tages gesetzt!"
+    },
+    "created_at": "2026-02-01T01:42:51.025015+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697eb3275c5815989ac90309"
+    },
+    "id": "053f6eb7-10c1-4e3f-b696-a76c0f827811",
+    "admin_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "admin_name": "Admin",
+    "action": "start_bots",
+    "parameters": {},
+    "result": {
+      "success": true,
+      "message": "🤖 Bots wurden gestartet!"
+    },
+    "created_at": "2026-02-01T01:57:59.453786+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697eb3285c5815989ac9030b"
+    },
+    "id": "34c28507-9139-4fa2-b9ac-ac70af70578a",
+    "admin_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "admin_name": "Admin",
+    "action": "stop_bots",
+    "parameters": {},
+    "result": {
+      "success": true,
+      "message": "🛑 Bots wurden gestoppt!"
+    },
+    "created_at": "2026-02-01T01:58:00.096684+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697eb3615c5815989ac9030e"
+    },
+    "id": "113a3154-4994-44b5-b615-57e92ffa7545",
+    "admin_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "admin_name": "Admin",
+    "action": "start_bots",
+    "parameters": {},
+    "result": {
+      "success": true,
+      "message": "🤖 Bots wurden gestartet!"
+    },
+    "created_at": "2026-02-01T01:58:57.671384+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f05fd48b001877a898707"
+    },
+    "id": "7e4248cf-ce6c-48fd-88c0-2b23707fb72e",
+    "admin_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "admin_name": "Admin",
+    "action": "translate_products",
+    "parameters": {
+      "languages": [
+        "en",
+        "tr"
+      ]
+    },
+    "result": {
+      "success": true,
+      "message": "🌐 0 Produkte übersetzt in: Englisch, Türkisch! (273 übersprungen)",
+      "data": {
+        "translated": 0,
+        "skipped": 273,
+        "languages": [
+          "en",
+          "tr"
+        ]
+      }
+    },
+    "created_at": "2026-02-01T07:51:25.037980+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f208005beabc7557c0bc1"
+    },
+    "id": "a9ef8ffa-0208-497f-8952-e27aff0bca47",
+    "admin_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "admin_name": "Admin",
+    "action": "chat",
+    "parameters": {
+      "response": "Die Seite zeigt verschiedene Zeichen und Symbole an, die jeweils bestimmte Bedeutungen haben. Zum Beispiel steht das Hammer-Symbol oft für 'Auktion starten', das Auge-Symbol könnte 'Auktion ansehen' bedeuten, und das Plus-Zeichen signalisiert, dass du Gebote hinzufügen kannst. Wenn du mehr Details zu spezifischen Symbolen benötigst, lass es mich wissen!"
+    },
+    "result": {
+      "success": true,
+      "message": "Die Seite zeigt verschiedene Zeichen und Symbole an, die jeweils bestimmte Bedeutungen haben. Zum Beispiel steht das Hammer-Symbol oft für 'Auktion starten', das Auge-Symbol könnte 'Auktion ansehen' bedeuten, und das Plus-Zeichen signalisiert, dass du Gebote hinzufügen kannst. Wenn du mehr Details zu spezifischen Symbolen benötigst, lass es mich wissen!",
+      "is_chat": true
+    },
+    "created_at": "2026-02-01T09:44:32.691355+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f20bd05beabc7557c0bc2"
+    },
+    "id": "8fc663da-4455-4383-bc0b-3461e589dc50",
+    "admin_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "admin_name": "Admin",
+    "action": "translate_products",
+    "parameters": {
+      "languages": [
+        "en",
+        "tr",
+        "fr",
+        "sq",
+        "ar"
+      ]
+    },
+    "result": {
+      "success": true,
+      "message": "🌐 0 Produkte übersetzt in: Englisch, Türkisch, Französisch, Albanisch, Arabisch! (273 übersprungen)",
+      "data": {
+        "translated": 0,
+        "skipped": 273,
+        "languages": [
+          "en",
+          "tr",
+          "fr",
+          "sq",
+          "ar"
+        ]
+      }
+    },
+    "created_at": "2026-02-01T09:45:33.173420+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f23ca05beabc7557c0bd4"
+    },
+    "id": "c52f475c-8589-4160-be71-99a8778213e5",
+    "admin_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "admin_name": "Admin",
+    "action": "translate_products",
+    "parameters": {
+      "languages": [
+        "en",
+        "tr",
+        "fr"
+      ]
+    },
+    "result": {
+      "success": true,
+      "message": "🌐 0 Produkte übersetzt in: Englisch, Türkisch, Französisch! (273 übersprungen)",
+      "data": {
+        "translated": 0,
+        "skipped": 273,
+        "languages": [
+          "en",
+          "tr",
+          "fr"
+        ]
+      }
+    },
+    "created_at": "2026-02-01T09:58:34.037338+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f240305beabc7557c0bdc"
+    },
+    "id": "8ed6254b-b0a2-40b0-ae8e-5f018a809bc2",
+    "admin_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "admin_name": "Admin",
+    "action": "stop_bots",
+    "parameters": {},
+    "result": {
+      "success": true,
+      "message": "🛑 Bots wurden gestoppt!"
+    },
+    "created_at": "2026-02-01T09:59:31.018230+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f240505beabc7557c0bdd"
+    },
+    "id": "56676af3-7c6b-4988-a4ce-4bc9b5ededda",
+    "admin_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "admin_name": "Admin",
+    "action": "start_bots",
+    "parameters": {},
+    "result": {
+      "success": true,
+      "message": "🤖 Bots wurden gestartet!"
+    },
+    "created_at": "2026-02-01T09:59:33.256603+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f240705beabc7557c0bde"
+    },
+    "id": "09905696-bbac-40c2-ad6b-d5b58b5d5e75",
+    "admin_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "admin_name": "Admin",
+    "action": "set_auction_of_day",
+    "parameters": {},
+    "result": {
+      "success": true,
+      "message": "✅ Auktion des Tages gesetzt!"
+    },
+    "created_at": "2026-02-01T09:59:35.412057+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f249a24dee46b1daa547e"
+    },
+    "id": "1be76cb8-0ea0-4f53-bf56-4760a759a57a",
+    "admin_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "admin_name": "Admin",
+    "action": "translate_products",
+    "parameters": {
+      "languages": [
+        "en",
+        "tr",
+        "fr"
+      ]
+    },
+    "result": {
+      "success": true,
+      "message": "✅ Alle 273 Produkte sind bereits in Englisch, Türkisch, Französisch übersetzt! Benutze 'erneut übersetzen' um sie neu zu übersetzen.",
+      "data": {
+        "translated": 0,
+        "skipped": 273,
+        "languages": [
+          "en",
+          "tr",
+          "fr"
+        ]
+      }
+    },
+    "created_at": "2026-02-01T10:02:02.497022+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f366a4a43d42b2f143e49"
+    },
+    "id": "4401eaf4-1df0-4edd-acd8-3dfab720919e",
+    "admin_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "admin_name": "Admin",
+    "action": "chat",
+    "parameters": {
+      "response": "Ich empfehle, mehr Produkte in verschiedenen Kategorien hinzuzufügen, um die Attraktivität der Auktionen zu erhöhen. Zudem könnten saisonale oder thematische Auktionen für mehr Vielfalt und Interesse bei den Nutzern sorgen. Auch die Implementierung von speziellen Gutscheinen oder Rabatten könnte Nutzer anziehen und die Teilnahme an den Auktionen steigern."
+    },
+    "result": {
+      "success": true,
+      "message": "Ich empfehle, mehr Produkte in verschiedenen Kategorien hinzuzufügen, um die Attraktivität der Auktionen zu erhöhen. Zudem könnten saisonale oder thematische Auktionen für mehr Vielfalt und Interesse bei den Nutzern sorgen. Auch die Implementierung von speziellen Gutscheinen oder Rabatten könnte Nutzer anziehen und die Teilnahme an den Auktionen steigern.",
+      "is_chat": true
+    },
+    "created_at": "2026-02-01T11:18:02.360630+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f368a4a43d42b2f143e4a"
+    },
+    "id": "005c0473-a2e9-407f-9095-a1c7aaead629",
+    "admin_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "admin_name": "Admin",
+    "action": "chat",
+    "parameters": {
+      "response": "Ich empfehle, mehr Produkte mit unterschiedlichen Preiskategorien hinzuzufügen, um eine breitere Zielgruppe anzusprechen. Darüber hinaus könnte die Integration von saisonalen oder thematischen Auktionen das Interesse der Benutzer erhöhen. Eine verstärkte Marketingkampagne und die Einführung von Sonderaktionen können ebenfalls nützlich sein, um die Nutzeraktivität zu steigern."
+    },
+    "result": {
+      "success": true,
+      "message": "Ich empfehle, mehr Produkte mit unterschiedlichen Preiskategorien hinzuzufügen, um eine breitere Zielgruppe anzusprechen. Darüber hinaus könnte die Integration von saisonalen oder thematischen Auktionen das Interesse der Benutzer erhöhen. Eine verstärkte Marketingkampagne und die Einführung von Sonderaktionen können ebenfalls nützlich sein, um die Nutzeraktivität zu steigern.",
+      "is_chat": true
+    },
+    "created_at": "2026-02-01T11:18:34.039925+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f36a34a43d42b2f143e4b"
+    },
+    "id": "9dac229c-d506-4c1f-a594-4039cbe74444",
+    "admin_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "admin_name": "Admin",
+    "action": "chat",
+    "parameters": {
+      "response": "Als KI-Assistent für BidBlitz empfehle ich, folgende Ergänzungen zu erwägen: 1) Neue Auktionstypen einführen, um die Vielfalt zu erhöhen, 2) Belohnungssysteme für aktive Nutzer zu implementieren, 3) Die Benutzeroberfläche zu optimieren, um die Navigationsfreundlichkeit zu verbessern, 4) Regelmäßige Sonderaktionen und Rabatte anbieten, um Kunden zu binden."
+    },
+    "result": {
+      "success": true,
+      "message": "Als KI-Assistent für BidBlitz empfehle ich, folgende Ergänzungen zu erwägen: 1) Neue Auktionstypen einführen, um die Vielfalt zu erhöhen, 2) Belohnungssysteme für aktive Nutzer zu implementieren, 3) Die Benutzeroberfläche zu optimieren, um die Navigationsfreundlichkeit zu verbessern, 4) Regelmäßige Sonderaktionen und Rabatte anbieten, um Kunden zu binden.",
+      "is_chat": true
+    },
+    "created_at": "2026-02-01T11:18:59.136064+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f7fc2f4234617bfb5e5e7"
+    },
+    "id": "298d624b-c030-4939-9bef-5bdc7c15c8f0",
+    "admin_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "admin_name": "Admin",
+    "action": "create_auctions",
+    "parameters": {
+      "count": 20,
+      "auction_type": "night"
+    },
+    "result": {
+      "success": true,
+      "message": "✅ 20 neue Auktionen erfolgreich erstellt!"
+    },
+    "created_at": "2026-02-01T16:30:58.414370+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f7ffdf4234617bfb5e600"
+    },
+    "id": "e548bbe6-6504-4f54-8c56-574df77677c5",
+    "admin_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "admin_name": "Admin",
+    "action": "create_auctions",
+    "parameters": {
+      "count": 20,
+      "auction_type": "night"
+    },
+    "result": {
+      "success": true,
+      "message": "✅ 20 neue Auktionen erfolgreich erstellt!"
+    },
+    "created_at": "2026-02-01T16:31:57.160802+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e66e"
+    },
+    "id": "a8f34377-531e-4806-bbf1-cf2104df7403",
+    "admin_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "admin_name": "Admin",
+    "action": "create_bots",
+    "parameters": {
+      "count": 100,
+      "nationality": "albanian"
+    },
+    "result": {
+      "success": true,
+      "message": "🤖 100 neue Bots mit albanischen Namen erstellt!",
+      "data": {
+        "created": 100,
+        "nationality": "albanian"
+      }
+    },
+    "created_at": "2026-02-01T16:33:12.251143+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f806ef4234617bfb5e674"
+    },
+    "id": "50e9e01b-348c-4d3a-860d-019b69d449af",
+    "admin_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "admin_name": "Admin",
+    "action": "check_translations",
+    "parameters": {},
+    "result": {
+      "success": true,
+      "message": "📊 **Übersetzungsstatus:**\n\n📦 Gesamt Produkte: 273\n✅ Vollständig übersetzt: 273\n⚠️ Teilweise übersetzt: 0\n❌ Nicht übersetzt: 0\n\n📝 **Fehlende Übersetzungen nach Sprache:**\n✅ Englisch: 0 fehlend\n✅ Türkisch: 0 fehlend\n✅ Französisch: 0 fehlend\n✅ Albanisch: 0 fehlend\n✅ Arabisch: 0 fehlend\n\n📈 Gesamtfortschritt: 101.3%",
+      "data": {
+        "total_products": 273,
+        "fully_translated": 273,
+        "partially_translated": 0,
+        "not_translated": 0,
+        "missing_by_language": {
+          "de": 0,
+          "en": 0,
+          "tr": 0,
+          "fr": 0,
+          "sq": 0,
+          "ar": 0
+        },
+        "percentage": 101.3
+      }
+    },
+    "created_at": "2026-02-01T16:33:50.364512+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f80c8f4234617bfb5e67f"
+    },
+    "id": "88a1d0d4-a0c1-4eba-bad3-c5afea6d40ed",
+    "admin_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "admin_name": "Admin",
+    "action": "chat",
+    "parameters": {
+      "response": "Es scheint, dass es ein Problem mit der Band-Detektion gibt, wenn kein Artikel angezeigt wird. Ich empfehle, die Artikel zu überprüfen und sicherzustellen, dass sie korrekt verlinkt oder zugewiesen sind. Außerdem könnten Sie versuchen, den Artikel erneut hinzuzufügen oder die Übersetzungen zu überprüfen, falls sie betroffen sind. Für detaillierte Unterstützung könnte auch ein Blick in die Systemprotokolle hilfreich sein."
+    },
+    "result": {
+      "success": true,
+      "message": "Es scheint, dass es ein Problem mit der Band-Detektion gibt, wenn kein Artikel angezeigt wird. Ich empfehle, die Artikel zu überprüfen und sicherzustellen, dass sie korrekt verlinkt oder zugewiesen sind. Außerdem könnten Sie versuchen, den Artikel erneut hinzuzufügen oder die Übersetzungen zu überprüfen, falls sie betroffen sind. Für detaillierte Unterstützung könnte auch ein Blick in die Systemprotokolle hilfreich sein.",
+      "is_chat": true
+    },
+    "created_at": "2026-02-01T16:35:20.041098+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698117fdfaeb686669f6e56e"
+    },
+    "id": "a581fd98-78b0-437f-9061-78fa3c93a28e",
+    "admin_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "admin_name": "Admin",
+    "action": "set_auction_of_day",
+    "parameters": {},
+    "result": {
+      "success": true,
+      "message": "✅ Auktion des Tages gesetzt!"
+    },
+    "created_at": "2026-02-02T21:32:45.038548+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6981219f391a68d2621b419f"
+    },
+    "id": "57f6abff-f8ca-4bff-a33c-a82e0e870c28",
+    "admin_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "admin_name": "Admin",
+    "action": "chat",
+    "parameters": {
+      "response": "Jackpot-Auktionen können auf der Hauptseite der Penny-Auction-Plattform BidBlitz eingesehen werden. In der Regel gibt es einen speziellen Abschnitt für Jackpot-Auktionen, wo Sie die aktuellen Jackpots und ihre Details finden können."
+    },
+    "result": {
+      "success": true,
+      "message": "Jackpot-Auktionen können auf der Hauptseite der Penny-Auction-Plattform BidBlitz eingesehen werden. In der Regel gibt es einen speziellen Abschnitt für Jackpot-Auktionen, wo Sie die aktuellen Jackpots und ihre Details finden können.",
+      "is_chat": true
+    },
+    "created_at": "2026-02-02T22:13:51.911796+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6981276f1eec19f471c57863"
+    },
+    "id": "894fbb26-b49f-4f70-b46a-78b72402d7b7",
+    "admin_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "admin_name": "Admin",
+    "action": "create_auctions",
+    "parameters": {
+      "count": 50,
+      "auction_type": "mixed"
+    },
+    "result": {
+      "success": true,
+      "message": "✅ 50 neue Auktionen erfolgreich erstellt!"
+    },
+    "created_at": "2026-02-02T22:38:39.613561+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69813872a769a34f66d773e9"
+    },
+    "id": "c3817ff4-3066-4253-8c2d-93e440825786",
+    "admin_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "admin_name": "Admin",
+    "action": "create_auctions",
+    "parameters": {
+      "count": 50,
+      "duration_days": 1
+    },
+    "result": {
+      "success": true,
+      "message": "✅ 50 neue Auktionen erfolgreich erstellt!"
+    },
+    "created_at": "2026-02-02T23:51:14.111903+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6983cfbfbfb92da9e1d6cb06"
+    },
+    "id": "0c9c4297-6b05-4cde-800c-f43caf6340d8",
+    "admin_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "admin_name": "Admin",
+    "action": "create_auctions",
+    "parameters": {
+      "count": 50
+    },
+    "result": {
+      "success": true,
+      "message": "✅ 50 neue Auktionen erfolgreich erstellt!"
+    },
+    "created_at": "2026-02-04T23:01:19.046082+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6985d19f415cafeaeaacf4cf"
+    },
+    "id": "a4911401-fbf7-44cf-a9c6-55f28ee31f6c",
+    "admin_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "admin_name": "Admin",
+    "action": "chat",
+    "parameters": {
+      "response": "Heute kann ich Ihnen die Informationen zu den Käufen noch nicht direkt zur Verfügung stellen. Die Daten über die Käufer und Käufe werden in den Statistiken erfasst, aber ich empfehle Ihnen, die Verkaufsstatistiken regelmäßig zu überprüfen oder Kontakt mit dem Support aufzunehmen, um solche spezifischen Informationen zu erhalten."
+    },
+    "result": {
+      "success": true,
+      "message": "Heute kann ich Ihnen die Informationen zu den Käufen noch nicht direkt zur Verfügung stellen. Die Daten über die Käufer und Käufe werden in den Statistiken erfasst, aber ich empfehle Ihnen, die Verkaufsstatistiken regelmäßig zu überprüfen oder Kontakt mit dem Support aufzunehmen, um solche spezifischen Informationen zu erhalten.",
+      "is_chat": true
+    },
+    "created_at": "2026-02-06T11:33:51.232947+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6988afd4f04d65bc70daf15c"
+    },
+    "id": "eeb8a656-0662-456e-b07d-ee5ac868aa56",
+    "admin_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "admin_name": "Admin",
+    "action": "chat",
+    "parameters": {
+      "response": "Wenn der Wartungsmodus nicht funktioniert, könnte es an verschiedenen Faktoren liegen, wie z.B. Serverkonfigurationen oder Cache-Problemen. Ich empfehle, die Serverlogs zu überprüfen und sicherzustellen, dass alle notwendigen Dienste aktiv sind. Hast du Fragen dazu oder benötigst du weitere Unterstützung?"
+    },
+    "result": {
+      "success": true,
+      "message": "Wenn der Wartungsmodus nicht funktioniert, könnte es an verschiedenen Faktoren liegen, wie z.B. Serverkonfigurationen oder Cache-Problemen. Ich empfehle, die Serverlogs zu überprüfen und sicherzustellen, dass alle notwendigen Dienste aktiv sind. Hast du Fragen dazu oder benötigst du weitere Unterstützung?",
+      "is_chat": true
+    },
+    "created_at": "2026-02-08T15:46:28.178927+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6988aff8f04d65bc70daf15d"
+    },
+    "id": "b0a3b094-f5c8-40f8-97bb-ff56afe27dec",
+    "admin_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "admin_name": "Admin",
+    "action": "chat",
+    "parameters": {
+      "response": "Der Wartungsmodus kann durch Aktivieren oder Deaktivieren in den Systemeinstellungen geregelt werden. Bitte stellen Sie sicher, dass die aktuellen Einstellungen korrekt sind. Möchten Sie, dass ich den Wartungsmodus aktiv oder deaktiviert setze? Wenn ja, teilen Sie mir bitte mit, welchen Status Sie möchten."
+    },
+    "result": {
+      "success": true,
+      "message": "Der Wartungsmodus kann durch Aktivieren oder Deaktivieren in den Systemeinstellungen geregelt werden. Bitte stellen Sie sicher, dass die aktuellen Einstellungen korrekt sind. Möchten Sie, dass ich den Wartungsmodus aktiv oder deaktiviert setze? Wenn ja, teilen Sie mir bitte mit, welchen Status Sie möchten.",
+      "is_chat": true
+    },
+    "created_at": "2026-02-08T15:47:04.150560+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6988eb58706825c047e9c460"
+    },
+    "id": "ff72825c-5722-4a5b-9de1-d0894c5441ec",
+    "admin_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "admin_name": "Admin",
+    "action": "check_translations",
+    "parameters": {},
+    "result": {
+      "success": true,
+      "message": "📊 **Übersetzungsstatus:**\n\n📦 Gesamt Produkte: 91\n✅ Vollständig übersetzt: 0\n⚠️ Teilweise übersetzt: 1\n❌ Nicht übersetzt: 90\n\n📝 **Fehlende Übersetzungen nach Sprache:**\n⚠️ Englisch: 90 fehlend\n⚠️ Türkisch: 91 fehlend\n⚠️ Französisch: 91 fehlend\n⚠️ Albanisch: 90 fehlend\n⚠️ Arabisch: 91 fehlend\n\n📈 Gesamtfortschritt: 0.7%\n\n💡 Tipp: Sagen Sie 'Übersetze alle Produkte' um fehlende Übersetzungen zu erstellen",
+      "data": {
+        "total_products": 91,
+        "fully_translated": 0,
+        "partially_translated": 1,
+        "not_translated": 90,
+        "missing_by_language": {
+          "de": 90,
+          "en": 90,
+          "tr": 91,
+          "fr": 91,
+          "sq": 90,
+          "ar": 91
+        },
+        "percentage": 0.7
+      }
+    },
+    "created_at": "2026-02-08T20:00:24.478419+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698bbec60256c70bf5028480"
+    },
+    "id": "7a09a357-4caa-441d-a50c-78937f1f2bec",
+    "admin_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "admin_name": "Admin",
+    "action": "chat",
+    "parameters": {
+      "response": "Leider kann ich die kompletten Locking-Daten aus Datenschutz- und Sicherheitsgründen nicht bereitstellen. Wenn du spezifische Informationen benötigst, lass es mich bitte wissen, und ich werde mein Bestes tun, um zu helfen."
+    },
+    "result": {
+      "success": true,
+      "message": "Leider kann ich die kompletten Locking-Daten aus Datenschutz- und Sicherheitsgründen nicht bereitstellen. Wenn du spezifische Informationen benötigst, lass es mich bitte wissen, und ich werde mein Bestes tun, um zu helfen.",
+      "is_chat": true
+    },
+    "created_at": "2026-02-10T23:27:02.087039+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698d0815593947c5fbeacff0"
+    },
+    "id": "0ba9240e-3005-4743-9270-ba2bcef60906",
+    "admin_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "admin_name": "Admin",
+    "action": "check_translations",
+    "parameters": {},
+    "result": {
+      "success": true,
+      "message": "📊 **Übersetzungsstatus:**\n\n📦 Gesamt Produkte: 91\n✅ Vollständig übersetzt: 0\n⚠️ Teilweise übersetzt: 1\n❌ Nicht übersetzt: 90\n\n📝 **Fehlende Übersetzungen nach Sprache:**\n⚠️ Englisch: 90 fehlend\n⚠️ Türkisch: 91 fehlend\n⚠️ Französisch: 91 fehlend\n⚠️ Albanisch: 90 fehlend\n⚠️ Arabisch: 91 fehlend\n\n📈 Gesamtfortschritt: 0.7%\n\n💡 Tipp: Sagen Sie 'Übersetze alle Produkte' um fehlende Übersetzungen zu erstellen",
+      "data": {
+        "total_products": 91,
+        "fully_translated": 0,
+        "partially_translated": 1,
+        "not_translated": 90,
+        "missing_by_language": {
+          "de": 90,
+          "en": 90,
+          "tr": 91,
+          "fr": 91,
+          "sq": 90,
+          "ar": 91
+        },
+        "percentage": 0.7
+      }
+    },
+    "created_at": "2026-02-11T22:52:05.092158+00:00"
+  }
+]

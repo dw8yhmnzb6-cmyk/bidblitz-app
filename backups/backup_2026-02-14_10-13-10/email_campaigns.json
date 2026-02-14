@@ -1,0 +1,14 @@
+[
+  {
+    "_id": {
+      "$oid": "698d0b2c593947c5fbead009"
+    },
+    "id": "153498b5-e986-4dd7-b894-a79876176122",
+    "subject": "Test ",
+    "target_group": "all",
+    "sent_count": 0,
+    "failed_count": 9,
+    "sent_by": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "created_at": "2026-02-11T23:05:16.872522+00:00"
+  }
+]

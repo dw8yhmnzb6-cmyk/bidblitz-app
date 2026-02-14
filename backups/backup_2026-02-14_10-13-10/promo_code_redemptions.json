@@ -1,0 +1,28 @@
+[
+  {
+    "_id": {
+      "$oid": "6981e1e12d7a1cefdbe0269f"
+    },
+    "id": "66cdd3bd-9d3c-4a90-a609-6c9c520aeb1c",
+    "promo_code_id": "1a762556-5b3a-4abc-afd2-72b03ecae277",
+    "promo_code": "WELCOME2026",
+    "user_id": "93751cd4-fcd3-41da-82e2-8f455322ba24",
+    "user_email": "kunde@bidblitz.de",
+    "reward_type": "bids",
+    "reward_amount": 50,
+    "redeemed_at": "2026-02-03T11:54:09.778590+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6981e2b32d7a1cefdbe0271e"
+    },
+    "id": "83ffddd8-6219-42e6-8f90-8c85c4cec1cf",
+    "promo_code_id": "1a762556-5b3a-4abc-afd2-72b03ecae277",
+    "promo_code": "WELCOME2026",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "user_email": "admin@bidblitz.de",
+    "reward_type": "bids",
+    "reward_amount": 50,
+    "redeemed_at": "2026-02-03T11:57:39.633509+00:00"
+  }
+]

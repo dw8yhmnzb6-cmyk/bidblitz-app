@@ -1,0 +1,11 @@
+[
+  {
+    "_id": {
+      "$oid": "697f60e8d7622adcb5d88e6b"
+    },
+    "user_id": "93751cd4-fcd3-41da-82e2-8f455322ba24",
+    "code": "LVL8ES9W",
+    "created_at": "2026-02-01T14:19:20.191169+00:00",
+    "used": false
+  }
+]

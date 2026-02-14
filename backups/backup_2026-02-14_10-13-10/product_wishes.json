@@ -1,0 +1,42 @@
+[
+  {
+    "_id": {
+      "$oid": "6980f80e18e31e6979983f15"
+    },
+    "id": "ca3dbf42-ff41-4548-92ae-4431db014332",
+    "product_name": "TestProduct123",
+    "category": "electronics",
+    "description": "Test",
+    "estimated_price": null,
+    "image_url": null,
+    "suggested_by": "93751cd4-fcd3-41da-82e2-8f455322ba24",
+    "suggested_by_name": "Benutzer",
+    "votes": [
+      "93751cd4-fcd3-41da-82e2-8f455322ba24"
+    ],
+    "vote_count": 1,
+    "status": "pending",
+    "admin_notes": null,
+    "created_at": "2026-02-02T19:16:30.594125+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6980f81918e31e6979983f1e"
+    },
+    "id": "fb318223-ddb6-4f9b-ba46-8566ea5f1ad4",
+    "product_name": "TestProduct_bd29d2",
+    "category": "electronics",
+    "description": "Test product suggestion",
+    "estimated_price": null,
+    "image_url": null,
+    "suggested_by": "93751cd4-fcd3-41da-82e2-8f455322ba24",
+    "suggested_by_name": "Benutzer",
+    "votes": [
+      "93751cd4-fcd3-41da-82e2-8f455322ba24"
+    ],
+    "vote_count": 1,
+    "status": "pending",
+    "admin_notes": null,
+    "created_at": "2026-02-02T19:16:41.309818+00:00"
+  }
+]

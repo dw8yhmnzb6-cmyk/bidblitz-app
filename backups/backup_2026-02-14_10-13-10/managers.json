@@ -1,0 +1,113 @@
+[
+  {
+    "_id": {
+      "$oid": "698bc1dae31743e1d3bf62fc"
+    },
+    "email": "manager@bidblitz.de",
+    "created_at": "2026-02-10T23:40:10.291612+00:00",
+    "id": "30b7155d-a825-40d6-a5b5-8adfdf3af959",
+    "name": "Test Manager",
+    "password": "$2b$12$Cla0DJs38WweuoDbmaI2K.csyzbZN9Kg2MyRJ7BtzcWWiViHfuJe6",
+    "permissions": [
+      "view_auctions",
+      "edit_auctions",
+      "view_users"
+    ],
+    "role": "manager",
+    "status": "active"
+  },
+  {
+    "_id": {
+      "$oid": "6980d26b6b5c513c0af5280a"
+    },
+    "id": "19c01e98-68c3-42d0-8f27-27391038b87d",
+    "name": "Max Mustermann",
+    "email": "manager.berlin@bidblitz.de",
+    "password_hash": "b9a9c0814e9d1a10eff04665d00546f83e2514499c7a43b5cc59d663878291f7",
+    "cities": [
+      "Berlin",
+      "Hamburg",
+      "München"
+    ],
+    "commission_percent": 15.0,
+    "is_active": true,
+    "total_paid_out": 0,
+    "created_at": "2026-02-02T16:35:55.304359+00:00",
+    "last_login": "2026-02-02T21:35:50.950897+00:00",
+    "company_commission_percent": 5.0
+  },
+  {
+    "_id": {
+      "$oid": "6980d4598e7a6b778855e733"
+    },
+    "id": "2fe4e430-6b5f-4ebb-901b-d632d7893d57",
+    "name": "Test Manager",
+    "email": "test.manager.90dc748e@bidblitz.de",
+    "password_hash": "ee23529ef795547a3bd21a6739a922f19fa661c55c7f2596a841504f199df29d",
+    "cities": [
+      "Frankfurt",
+      "Köln"
+    ],
+    "commission_percent": 15.0,
+    "is_active": true,
+    "total_paid_out": 0,
+    "created_at": "2026-02-02T16:44:09.728421+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6980d8204b6ab49d2d7170cf"
+    },
+    "id": "b8bb850e-ad00-4bbc-84c7-2ef162347712",
+    "name": "Prishtina Manager",
+    "email": "manager.prishtina@bidblitz.de",
+    "password_hash": "02be7e27772b7c687cd23c7b2e616fb889b66dc9932a7b53ae802000e58c8632",
+    "cities": [
+      "Prishtina",
+      "Prizren",
+      "Peja",
+      "Mitrovica",
+      "Gjilan"
+    ],
+    "commission_percent": 15.0,
+    "is_active": true,
+    "total_paid_out": 0,
+    "created_at": "2026-02-02T17:00:16.903005+00:00",
+    "last_login": "2026-02-02T21:34:51.025421+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6980fb6b42fe90da7debfbbc"
+    },
+    "id": "2159a384-3496-43a0-b5fd-28ad6aa2e056",
+    "user_id": "ce9b3522-6d70-49f9-a0ce-b1c9a112759d",
+    "email": "manager.prishtina@bidblitz.de",
+    "name": "Prishtina Manager",
+    "managed_cities": [
+      "Prishtina",
+      "Kosovo"
+    ],
+    "commission_rate": 0.15,
+    "total_earnings": 0,
+    "pending_payout": 0,
+    "status": "active",
+    "created_at": "2026-02-02T19:30:51.214048+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6980fb6b42fe90da7debfbbe"
+    },
+    "id": "686af05f-116e-4a73-a36c-c0f06a288617",
+    "user_id": "fd728c0c-ab58-4431-8177-213a3c96510c",
+    "email": "manager.berlin@bidblitz.de",
+    "name": "Berlin Manager",
+    "managed_cities": [
+      "Berlin",
+      "Brandenburg"
+    ],
+    "commission_rate": 0.15,
+    "total_earnings": 0,
+    "pending_payout": 0,
+    "status": "active",
+    "created_at": "2026-02-02T19:30:51.439264+00:00"
+  }
+]

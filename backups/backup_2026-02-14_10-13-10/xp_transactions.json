@@ -1,0 +1,871 @@
+[
+  {
+    "_id": {
+      "$oid": "69813370383eb6506d8d3d67"
+    },
+    "id": "0c58ce9c-da0b-4ba0-bcbe-a4928f9235cc",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "action": "place_bid",
+    "xp": 1,
+    "description": "Gebot platziert",
+    "created_at": "2026-02-02T23:29:52.983048+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69813371383eb6506d8d3d68"
+    },
+    "id": "85e4eced-0681-421d-b063-f7375e537d77",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "action": "place_bid",
+    "xp": 1,
+    "description": "Gebot platziert",
+    "created_at": "2026-02-02T23:29:53.774052+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6981395fa769a34f66d773f1"
+    },
+    "id": "34611bd2-fa70-4e0c-b10c-f723e6fc0749",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "action": "place_bid",
+    "xp": 1,
+    "description": "Gebot platziert",
+    "created_at": "2026-02-02T23:55:11.522921+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6981d0025f1284ca9e6a02a6"
+    },
+    "id": "ab91e76d-55f2-49c1-8aa0-2a91ef27de6f",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "action": "place_bid",
+    "xp": 1,
+    "description": "Gebot platziert",
+    "created_at": "2026-02-03T10:37:54.329243+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69827a1904cd2c8b2f69b6a9"
+    },
+    "id": "cf93bfcf-dd0c-4217-b98d-745ea48849f1",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "action": "place_bid",
+    "xp": 1,
+    "description": "Gebot platziert",
+    "created_at": "2026-02-03T22:43:37.829476+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6984f63aae2d7d2960dc516f"
+    },
+    "id": "4e58ceb8-26fb-4ea7-974d-053403d918d7",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "action": "place_bid",
+    "xp": 1,
+    "description": "Gebot platziert",
+    "created_at": "2026-02-05T19:57:46.732017+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6984f63cae2d7d2960dc5170"
+    },
+    "id": "89b7fca2-50f3-488a-ac2e-1c018e92892b",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "action": "place_bid",
+    "xp": 1,
+    "description": "Gebot platziert",
+    "created_at": "2026-02-05T19:57:48.675673+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6984f652ae2d7d2960dc5172"
+    },
+    "id": "ff47b722-7265-4de2-a94a-79fafdf2b806",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "action": "place_bid",
+    "xp": 1,
+    "description": "Gebot platziert",
+    "created_at": "2026-02-05T19:58:10.593549+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6984f655ae2d7d2960dc5173"
+    },
+    "id": "f54f9ae4-8cba-4af0-9b04-c12524a7b78a",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "action": "place_bid",
+    "xp": 1,
+    "description": "Gebot platziert",
+    "created_at": "2026-02-05T19:58:13.997192+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6984f65bae2d7d2960dc5174"
+    },
+    "id": "3b6e61f2-cc5f-4479-be18-0cfafcfc31e2",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "action": "place_bid",
+    "xp": 1,
+    "description": "Gebot platziert",
+    "created_at": "2026-02-05T19:58:19.067956+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69853d98cf28ae4874e0c831"
+    },
+    "id": "143721d0-2c2e-48da-82bf-7da20d6e4cd5",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "action": "place_bid",
+    "xp": 1,
+    "description": "Gebot platziert",
+    "created_at": "2026-02-06T01:02:16.989821+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69853da5cf28ae4874e0c832"
+    },
+    "id": "c142d6c6-31f9-4802-ae1f-51b4d030f21d",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "action": "place_bid",
+    "xp": 1,
+    "description": "Gebot platziert",
+    "created_at": "2026-02-06T01:02:29.104273+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69853da6cf28ae4874e0c833"
+    },
+    "id": "ce57bee8-60ea-4fc2-9a7d-d2efbf3c423f",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "action": "place_bid",
+    "xp": 1,
+    "description": "Gebot platziert",
+    "created_at": "2026-02-06T01:02:30.191811+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69853da7cf28ae4874e0c834"
+    },
+    "id": "096c714b-80eb-4a05-85a1-38858cf54778",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "action": "place_bid",
+    "xp": 1,
+    "description": "Gebot platziert",
+    "created_at": "2026-02-06T01:02:31.289171+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69853da8cf28ae4874e0c836"
+    },
+    "id": "555fc93e-4ce9-47b2-a640-7870c21fd975",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "action": "place_bid",
+    "xp": 1,
+    "description": "Gebot platziert",
+    "created_at": "2026-02-06T01:02:32.313401+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69853daacf28ae4874e0c838"
+    },
+    "id": "7423e264-0ba9-4dcd-a411-33d63a53fc6a",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "action": "place_bid",
+    "xp": 1,
+    "description": "Gebot platziert",
+    "created_at": "2026-02-06T01:02:34.717073+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69853dabcf28ae4874e0c83a"
+    },
+    "id": "84031844-da16-4fad-b0a6-ce465bb3c10d",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "action": "place_bid",
+    "xp": 1,
+    "description": "Gebot platziert",
+    "created_at": "2026-02-06T01:02:35.796141+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69853db5cf28ae4874e0c83b"
+    },
+    "id": "dbd49570-49db-4098-a54a-5f74443563f1",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "action": "place_bid",
+    "xp": 1,
+    "description": "Gebot platziert",
+    "created_at": "2026-02-06T01:02:45.375297+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69853db6cf28ae4874e0c83c"
+    },
+    "id": "89145181-4270-41e7-be8f-869c3fb75da6",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "action": "place_bid",
+    "xp": 1,
+    "description": "Gebot platziert",
+    "created_at": "2026-02-06T01:02:46.878354+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69876a761e0f565704e142cc"
+    },
+    "id": "bece68f1-05bd-4e9d-a4fd-309ae9a16b97",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "action": "place_bid",
+    "xp": 1,
+    "description": "Gebot platziert",
+    "created_at": "2026-02-07T16:38:14.859191+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69876f371e0f565704e142ec"
+    },
+    "id": "a1cb258f-5b88-4b7d-ace0-fe76d6f97498",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "action": "place_bid",
+    "xp": 1,
+    "description": "Gebot platziert",
+    "created_at": "2026-02-07T16:58:31.453073+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69877f0fee89b1f53f48fccb"
+    },
+    "id": "5af7c35f-d89d-43ad-9f1c-12fa6d378c4d",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "action": "place_bid",
+    "xp": 1,
+    "description": "Gebot platziert",
+    "created_at": "2026-02-07T18:06:07.348083+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69877f13ee89b1f53f48fccc"
+    },
+    "id": "3bd9f5d1-f2d7-4782-8189-0200307607cf",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "action": "place_bid",
+    "xp": 1,
+    "description": "Gebot platziert",
+    "created_at": "2026-02-07T18:06:11.175301+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69877f15ee89b1f53f48fccd"
+    },
+    "id": "b5974b8e-c06c-4050-90f3-b8953e0073c1",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "action": "place_bid",
+    "xp": 1,
+    "description": "Gebot platziert",
+    "created_at": "2026-02-07T18:06:13.732321+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69877f16ee89b1f53f48fcce"
+    },
+    "id": "3630c738-f38f-45e8-920e-bc622eba54b8",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "action": "place_bid",
+    "xp": 1,
+    "description": "Gebot platziert",
+    "created_at": "2026-02-07T18:06:14.731264+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69877f17ee89b1f53f48fcd0"
+    },
+    "id": "c41a9673-27d7-406f-a3b6-928b4ae15220",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "action": "place_bid",
+    "xp": 1,
+    "description": "Gebot platziert",
+    "created_at": "2026-02-07T18:06:15.421327+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69877f18ee89b1f53f48fcd1"
+    },
+    "id": "9f0cf7e4-f84a-41f3-ad88-944b578a7baf",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "action": "place_bid",
+    "xp": 1,
+    "description": "Gebot platziert",
+    "created_at": "2026-02-07T18:06:16.080754+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69877f1cee89b1f53f48fcd3"
+    },
+    "id": "74582014-f922-4156-9000-fe9fb21a0962",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "action": "place_bid",
+    "xp": 1,
+    "description": "Gebot platziert",
+    "created_at": "2026-02-07T18:06:20.741947+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69878105ee89b1f53f48fceb"
+    },
+    "id": "27e7f9db-2b85-4add-8daa-bc33a5735013",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "action": "place_bid",
+    "xp": 1,
+    "description": "Gebot platziert",
+    "created_at": "2026-02-07T18:14:29.932913+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698785ec1c16f538654b3b47"
+    },
+    "id": "d99d42fe-33ef-4a71-b708-925d505ac5b7",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "action": "place_bid",
+    "xp": 1,
+    "description": "Gebot platziert",
+    "created_at": "2026-02-07T18:35:24.742773+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698787131c16f538654b3b49"
+    },
+    "id": "b4752a40-177f-4056-a4e2-90b24e57acd3",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "action": "place_bid",
+    "xp": 1,
+    "description": "Gebot platziert",
+    "created_at": "2026-02-07T18:40:19.756124+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6987888d1c16f538654b3b4a"
+    },
+    "id": "4d9913f5-7a22-4bb8-bb4a-3d0eaadf84a8",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "action": "place_bid",
+    "xp": 1,
+    "description": "Gebot platziert",
+    "created_at": "2026-02-07T18:46:37.391843+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69878cad39b40208a92eca70"
+    },
+    "id": "9160c32f-a8ab-460b-a704-e72a26c3a369",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "action": "place_bid",
+    "xp": 1,
+    "description": "Gebot platziert",
+    "created_at": "2026-02-07T19:04:13.077415+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69878cb139b40208a92eca71"
+    },
+    "id": "04bbb27f-b06e-42cd-b1ee-1d6ed7f7c21c",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "action": "place_bid",
+    "xp": 1,
+    "description": "Gebot platziert",
+    "created_at": "2026-02-07T19:04:17.945385+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69878cb739b40208a92eca73"
+    },
+    "id": "3dc6cbe1-4bc7-46e4-8f9e-a686e7883661",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "action": "place_bid",
+    "xp": 1,
+    "description": "Gebot platziert",
+    "created_at": "2026-02-07T19:04:23.469483+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69878cc939b40208a92eca74"
+    },
+    "id": "f87a1d52-87c0-4bec-ac2b-69893a4b601f",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "action": "place_bid",
+    "xp": 1,
+    "description": "Gebot platziert",
+    "created_at": "2026-02-07T19:04:41.129598+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69878cca39b40208a92eca75"
+    },
+    "id": "b3ad4932-19ae-4725-a3c4-bcd16c8b1fc9",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "action": "place_bid",
+    "xp": 1,
+    "description": "Gebot platziert",
+    "created_at": "2026-02-07T19:04:42.502668+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69878ccb39b40208a92eca76"
+    },
+    "id": "88be35bf-618b-4752-a1a0-c1cb5049966e",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "action": "place_bid",
+    "xp": 1,
+    "description": "Gebot platziert",
+    "created_at": "2026-02-07T19:04:43.716579+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69878ccd39b40208a92eca78"
+    },
+    "id": "9e26b046-aedf-45eb-a41e-3c1d33df0348",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "action": "place_bid",
+    "xp": 1,
+    "description": "Gebot platziert",
+    "created_at": "2026-02-07T19:04:45.727318+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698793dc39b40208a92eca8d"
+    },
+    "id": "6bdf7b96-f9b3-4538-9774-cc10f3db84d7",
+    "user_id": "c9e2304c-f3ca-49d7-8ce6-4ce3933ef963",
+    "action": "place_bid",
+    "xp": 1,
+    "description": "Gebot platziert",
+    "created_at": "2026-02-07T19:34:52.518982+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698829e738b7e21795bfd664"
+    },
+    "id": "79de51fc-ad3d-46c9-a9d3-6aa5c7193488",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "action": "place_bid",
+    "xp": 1,
+    "description": "Gebot platziert",
+    "created_at": "2026-02-08T06:15:03.398979+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69883586862ec58f9484171d"
+    },
+    "id": "701d8205-645e-488c-b022-32c2c7c6f031",
+    "user_id": "93751cd4-fcd3-41da-82e2-8f455322ba24",
+    "action": "place_bid",
+    "xp": 1,
+    "description": "Gebot platziert",
+    "created_at": "2026-02-08T07:04:38.771377+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6988358c862ec58f9484171f"
+    },
+    "id": "7aa22aa4-78f3-436c-86b0-1284c864c964",
+    "user_id": "93751cd4-fcd3-41da-82e2-8f455322ba24",
+    "action": "place_bid",
+    "xp": 1,
+    "description": "Gebot platziert",
+    "created_at": "2026-02-08T07:04:44.482590+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698856a942b5fdb05815bc2f"
+    },
+    "id": "5a91d7cd-fe8b-47cf-8aab-32e52a6b0da4",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "action": "place_bid",
+    "xp": 1,
+    "description": "Gebot platziert",
+    "created_at": "2026-02-08T09:26:01.712397+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698856cb42b5fdb05815bc30"
+    },
+    "id": "cbe50a77-3e52-421e-8b84-94bb3b5c4f92",
+    "user_id": "ce9b3522-6d70-49f9-a0ce-b1c9a112759d",
+    "action": "place_bid",
+    "xp": 1,
+    "description": "Gebot platziert",
+    "created_at": "2026-02-08T09:26:35.040192+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698856cd42b5fdb05815bc32"
+    },
+    "id": "cb47a611-2d95-412a-8558-7197402d27de",
+    "user_id": "ce9b3522-6d70-49f9-a0ce-b1c9a112759d",
+    "action": "place_bid",
+    "xp": 1,
+    "description": "Gebot platziert",
+    "created_at": "2026-02-08T09:26:37.670048+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698856e342b5fdb05815bc33"
+    },
+    "id": "be11c7a4-5285-4c1e-8134-7d64cc1a9178",
+    "user_id": "ce9b3522-6d70-49f9-a0ce-b1c9a112759d",
+    "action": "place_bid",
+    "xp": 1,
+    "description": "Gebot platziert",
+    "created_at": "2026-02-08T09:26:59.692306+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698856e942b5fdb05815bc34"
+    },
+    "id": "9dcd421f-910f-4da3-84dc-fc058a5f45a9",
+    "user_id": "ce9b3522-6d70-49f9-a0ce-b1c9a112759d",
+    "action": "place_bid",
+    "xp": 1,
+    "description": "Gebot platziert",
+    "created_at": "2026-02-08T09:27:05.946321+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69885bf1de35e1b356f8c3cc"
+    },
+    "id": "f2c0abbb-c18c-426b-8f2f-c9654c7d7727",
+    "user_id": "ce9b3522-6d70-49f9-a0ce-b1c9a112759d",
+    "action": "place_bid",
+    "xp": 1,
+    "description": "Gebot platziert",
+    "created_at": "2026-02-08T09:48:33.178327+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69885bf5de35e1b356f8c3cd"
+    },
+    "id": "8054fb31-7a5d-4467-9f3a-6a1492bb8f41",
+    "user_id": "ce9b3522-6d70-49f9-a0ce-b1c9a112759d",
+    "action": "place_bid",
+    "xp": 1,
+    "description": "Gebot platziert",
+    "created_at": "2026-02-08T09:48:37.439218+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69885c4cde35e1b356f8c3ce"
+    },
+    "id": "43a4cb13-8fb5-4c05-8773-0e75dded8710",
+    "user_id": "ce9b3522-6d70-49f9-a0ce-b1c9a112759d",
+    "action": "place_bid",
+    "xp": 1,
+    "description": "Gebot platziert",
+    "created_at": "2026-02-08T09:50:04.656946+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69885ecfde35e1b356f8c3d0"
+    },
+    "id": "069760c9-03f4-4fd3-933f-0eac1ad181d3",
+    "user_id": "ce9b3522-6d70-49f9-a0ce-b1c9a112759d",
+    "action": "place_bid",
+    "xp": 1,
+    "description": "Gebot platziert",
+    "created_at": "2026-02-08T10:00:47.741946+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69886568de35e1b356f8c3d5"
+    },
+    "id": "b616dadc-c7bb-42ee-b9b9-13a9ba86a63f",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "action": "place_bid",
+    "xp": 1,
+    "description": "Gebot platziert",
+    "created_at": "2026-02-08T10:28:56.958485+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69886578de35e1b356f8c3d7"
+    },
+    "id": "f7513e95-8568-4940-a8ad-4c38ff562f49",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "action": "place_bid",
+    "xp": 1,
+    "description": "Gebot platziert",
+    "created_at": "2026-02-08T10:29:12.737477+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6988657bde35e1b356f8c3d8"
+    },
+    "id": "8391a987-058b-4dc9-823a-8a01ca95f314",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "action": "place_bid",
+    "xp": 1,
+    "description": "Gebot platziert",
+    "created_at": "2026-02-08T10:29:15.630814+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698869d1f68bdb4f7c89670f"
+    },
+    "id": "e873fe26-2166-45c5-9789-9823abf1f6b8",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "action": "place_bid",
+    "xp": 1,
+    "description": "Gebot platziert",
+    "created_at": "2026-02-08T10:47:45.204989+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69886c737f86caf35dcfdbbb"
+    },
+    "id": "1d32d8f9-9fe1-4291-a669-b2f50be2f6cb",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "action": "place_bid",
+    "xp": 1,
+    "description": "Gebot platziert",
+    "created_at": "2026-02-08T10:58:59.188710+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6988b031f04d65bc70daf15f"
+    },
+    "id": "4c6fbf62-bfa1-403b-a57e-7a4bba18248a",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "action": "place_bid",
+    "xp": 1,
+    "description": "Gebot platziert",
+    "created_at": "2026-02-08T15:48:01.968362+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6988e7a43a1ab570f4c359d9"
+    },
+    "id": "33bc707b-e2be-4231-9882-f27357004393",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "action": "place_bid",
+    "xp": 1,
+    "description": "Gebot platziert",
+    "created_at": "2026-02-08T19:44:36.416009+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6989186060e155eb86aca2fc"
+    },
+    "id": "9f869470-7f86-4504-b2d8-28309620fea2",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "action": "place_bid",
+    "xp": 1,
+    "description": "Gebot platziert",
+    "created_at": "2026-02-08T23:12:32.918781+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6989186b60e155eb86aca2fd"
+    },
+    "id": "3a18469f-e59b-4615-8e8b-baf9c56b1dad",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "action": "place_bid",
+    "xp": 1,
+    "description": "Gebot platziert",
+    "created_at": "2026-02-08T23:12:43.319462+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6989187c60e155eb86aca300"
+    },
+    "id": "7c0fe465-b54a-453f-9ad3-d9937689014a",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "action": "place_bid",
+    "xp": 1,
+    "description": "Gebot platziert",
+    "created_at": "2026-02-08T23:13:00.816577+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6989188560e155eb86aca301"
+    },
+    "id": "69340edf-96ed-4f71-baa6-95446126f5b2",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "action": "place_bid",
+    "xp": 1,
+    "description": "Gebot platziert",
+    "created_at": "2026-02-08T23:13:09.943850+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698a23ba6c6d78192fba92d6"
+    },
+    "id": "67677f5c-6cbd-486d-99a5-661498cabf05",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "action": "place_bid",
+    "xp": 1,
+    "description": "Gebot platziert",
+    "created_at": "2026-02-09T18:13:14.155687+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698a24ed6c6d78192fba92de"
+    },
+    "id": "109abcf3-f11a-4858-8d90-2a3cecf4c8c5",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "action": "place_bid",
+    "xp": 1,
+    "description": "Gebot platziert",
+    "created_at": "2026-02-09T18:18:21.203855+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698cfb6c593947c5fbeacf52"
+    },
+    "id": "ffaeb680-3169-4c1b-9226-bd9e9c92ea08",
+    "user_id": "93751cd4-fcd3-41da-82e2-8f455322ba24",
+    "action": "place_bid",
+    "xp": 1,
+    "description": "Gebot platziert",
+    "created_at": "2026-02-11T21:58:04.545531+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698cfb6e593947c5fbeacf54"
+    },
+    "id": "dcfb658b-220a-4184-83e8-007945903601",
+    "user_id": "93751cd4-fcd3-41da-82e2-8f455322ba24",
+    "action": "place_bid",
+    "xp": 1,
+    "description": "Gebot platziert",
+    "created_at": "2026-02-11T21:58:06.334137+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698cfdee593947c5fbeacf70"
+    },
+    "id": "2ba902cd-6415-433d-9f74-a3dd5ec79d61",
+    "user_id": "93751cd4-fcd3-41da-82e2-8f455322ba24",
+    "action": "place_bid",
+    "xp": 1,
+    "description": "Gebot platziert",
+    "created_at": "2026-02-11T22:08:46.398583+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698cfdf2593947c5fbeacf71"
+    },
+    "id": "c423c079-af46-42f2-9208-80bd258198a8",
+    "user_id": "93751cd4-fcd3-41da-82e2-8f455322ba24",
+    "action": "place_bid",
+    "xp": 1,
+    "description": "Gebot platziert",
+    "created_at": "2026-02-11T22:08:50.386692+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698cfdf3593947c5fbeacf72"
+    },
+    "id": "16bccbe8-ce81-499f-9121-98f804477d0e",
+    "user_id": "93751cd4-fcd3-41da-82e2-8f455322ba24",
+    "action": "place_bid",
+    "xp": 1,
+    "description": "Gebot platziert",
+    "created_at": "2026-02-11T22:08:51.310030+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698d0283593947c5fbeacfb8"
+    },
+    "id": "819f1567-c7b6-47ee-9f5f-c848de777cbc",
+    "user_id": "93751cd4-fcd3-41da-82e2-8f455322ba24",
+    "action": "place_bid",
+    "xp": 1,
+    "description": "Gebot platziert",
+    "created_at": "2026-02-11T22:28:19.607909+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698d0442593947c5fbeacfc5"
+    },
+    "id": "a4a7fbc1-4ef3-4d99-a052-ee5085830675",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "action": "place_bid",
+    "xp": 1,
+    "description": "Gebot platziert",
+    "created_at": "2026-02-11T22:35:46.577650+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698d04cf593947c5fbeacfce"
+    },
+    "id": "dccdb61c-5730-4d25-a412-27b030e5fbfc",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "action": "daily_login",
+    "xp": 5,
+    "description": "Täglicher Login-Bonus",
+    "created_at": "2026-02-11T22:38:07.409596+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698d0563593947c5fbeacfe9"
+    },
+    "id": "4c7d3e3c-7802-4f6f-9118-cd98cc8ba0e1",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "action": "place_bid",
+    "xp": 1,
+    "description": "Gebot platziert",
+    "created_at": "2026-02-11T22:40:35.805709+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698d056a593947c5fbeacfeb"
+    },
+    "id": "ebd19384-ea81-454f-aa3a-cf298602ff4a",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "action": "place_bid",
+    "xp": 1,
+    "description": "Gebot platziert",
+    "created_at": "2026-02-11T22:40:42.660969+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698d9eb15635fd3bf77e232a"
+    },
+    "id": "55a594da-2b09-43bf-bb9b-5f9d7cd0230d",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "action": "place_bid",
+    "xp": 1,
+    "description": "Gebot platziert",
+    "created_at": "2026-02-12T09:34:41.329245+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698e43dd76c8a6d4456fbefc"
+    },
+    "id": "291a4c4b-414c-468a-b3c2-bb22ae42a5dc",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "action": "place_bid",
+    "xp": 1,
+    "description": "Gebot platziert",
+    "created_at": "2026-02-12T21:19:25.654392+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698e5b44041895821a231bc7"
+    },
+    "id": "ecb9e92c-76f7-4b90-9f6d-38e8ac9c45f2",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "action": "place_bid",
+    "xp": 1,
+    "description": "Gebot platziert",
+    "created_at": "2026-02-12T22:59:16.268076+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698ed4003d365b4e98a4f203"
+    },
+    "id": "c54748bb-f5b0-4daa-8761-76f61b4e5761",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "action": "place_bid",
+    "xp": 1,
+    "description": "Gebot platziert",
+    "created_at": "2026-02-13T07:34:24.654140+00:00"
+  }
+]

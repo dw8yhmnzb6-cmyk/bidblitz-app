@@ -1,0 +1,1480 @@
+[
+  {
+    "_id": {
+      "$oid": "69715f33452bc0f67b7c2084"
+    },
+    "id": "0cabc514-2eef-4c29-b509-bd565e15632c",
+    "user_id": "bot_161e0d49-4ad2-483d-a5e7-e9e1c5dbe902",
+    "title": "⚡ Überboten: Apple iPhone 15 Pro Max 256GB",
+    "message": "Sie wurden von Admin überboten! Aktueller Preis: €1.32",
+    "type": "auction",
+    "link": "/auctions/394ef084-262e-4649-9436-61b9529da50d",
+    "read": false,
+    "created_at": "2026-01-21T23:20:19.703190+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6971612d451bc0a7d05a1b6f"
+    },
+    "id": "8a20201f-a7f7-4a9b-80bb-b4c9323523cb",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "title": "⏰ Auktion endet bald: Apple MacBook Pro 14\" M3",
+    "message": "Die Auktion endet in wenigen Minuten! Aktueller Preis: €1.64",
+    "type": "auction",
+    "link": "/auctions/e80267f6-3ea7-4553-aeff-480320f49cfc",
+    "read": false,
+    "created_at": "2026-01-21T23:28:45.149243+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69721da9678c13a8916dfb23"
+    },
+    "id": "f17206c2-da93-4075-8b8e-ffb95ffbd6b8",
+    "user_id": "bot_5",
+    "title": "⚡ Überboten: Xbox Series X",
+    "message": "Sie wurden von Kunde überboten! Aktueller Preis: €0.43",
+    "type": "auction",
+    "link": "/auctions/67e07cfe-657c-495a-9737-a937663b89fe",
+    "read": false,
+    "created_at": "2026-01-22T12:52:57.952493+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69722082678c13a8916dfb28"
+    },
+    "id": "47cc758c-a31b-4d59-a865-09fc16779009",
+    "user_id": "bot_9",
+    "title": "⚡ Überboten: Sony Alpha A7 IV",
+    "message": "Sie wurden von Kunde überboten! Aktueller Preis: €1.42",
+    "type": "auction",
+    "link": "/auctions/64d17e89-1c41-4196-af6c-cd3d7cccc498",
+    "read": false,
+    "created_at": "2026-01-22T13:05:06.514283+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69722880a486f957845404a4"
+    },
+    "id": "d9c39736-4916-4ecb-92bf-b2ec89418f16",
+    "user_id": "bot_8d9562f3-b465-419a-a2cd-80359ec9724e",
+    "title": "⚡ Überboten: Dyson V15 Detect Staubsauger",
+    "message": "Sie wurden von Admin überboten! Aktueller Preis: €0.91",
+    "type": "auction",
+    "link": "/auctions/46b22d78-9482-4b79-b489-ad0fb7351b29",
+    "read": false,
+    "created_at": "2026-01-22T13:39:12.367170+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69722921f15b476bac9d082c"
+    },
+    "id": "e1fcd2f8-856a-484a-b14a-689f015bdb66",
+    "user_id": "93751cd4-fcd3-41da-82e2-8f455322ba24",
+    "title": "⏰ Auktion endet in 5 Minuten",
+    "message": "Xbox Series X endet bald! Aktueller Preis: €0.44",
+    "type": "auction",
+    "link": "/auctions/67e07cfe-657c-495a-9737-a937663b89fe",
+    "read": false,
+    "created_at": "2026-01-22T13:41:53.833651+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69722a352c4ded0501815b73"
+    },
+    "id": "864060ff-d4a9-407c-985a-f76b46edd028",
+    "user_id": "bot_fcf32a7f-0c65-4367-b381-82d71e4c33c0",
+    "title": "⚡ Überboten: DJI Mavic 3 Pro Drohne",
+    "message": "Sie wurden von Admin überboten! Aktueller Preis: €1.29",
+    "type": "auction",
+    "link": "/auctions/90ec3746-2734-4c85-9ee5-a1de3fef1da3",
+    "read": false,
+    "created_at": "2026-01-22T13:46:29.279086+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69722b322c4ded0501815b78"
+    },
+    "id": "9dde9dfc-d8a1-4093-8707-919376afe389",
+    "user_id": "bot_2",
+    "title": "⚡ Überboten: GoPro Hero 12 Black",
+    "message": "Sie wurden von Admin überboten! Aktueller Preis: €0.30",
+    "type": "auction",
+    "link": "/auctions/3d7f0e2f-4088-408d-a319-f26a7b8b71e1",
+    "read": false,
+    "created_at": "2026-01-22T13:50:42.090827+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697233aa2c4ded0501815b89"
+    },
+    "id": "f14de053-f408-40ea-adac-35969dbb18d5",
+    "user_id": "93751cd4-fcd3-41da-82e2-8f455322ba24",
+    "title": "⏰ Auktion endet in 5 Minuten",
+    "message": "Sony Alpha A7 IV endet bald! Aktueller Preis: €1.61",
+    "type": "auction",
+    "link": "/auctions/64d17e89-1c41-4196-af6c-cd3d7cccc498",
+    "read": false,
+    "created_at": "2026-01-22T14:26:50.983902+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697235132c4ded0501815b8d"
+    },
+    "id": "b2207b95-ec89-41b1-8070-e1062bb51ff2",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "title": "⏰ Auktion endet in 5 Minuten",
+    "message": "GoPro Hero 12 Black endet bald! Aktueller Preis: €0.31",
+    "type": "auction",
+    "link": "/auctions/3d7f0e2f-4088-408d-a319-f26a7b8b71e1",
+    "read": false,
+    "created_at": "2026-01-22T14:32:51.022824+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6972c02745f242df2bdb3bbb"
+    },
+    "id": "df22f746-6f8c-4f3c-a969-5317e5b0c752",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "title": "⏰ Auktion endet in 5 Minuten",
+    "message": "Apple iPhone 15 Pro Max 256GB endet bald! Aktueller Preis: €0.02",
+    "type": "auction",
+    "link": "/auctions/ed992e2e-3f5d-4c98-8b34-49a301aae803",
+    "read": false,
+    "created_at": "2026-01-23T00:26:15.142877+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6973740abd4e3a42c4cb8fd2"
+    },
+    "id": "13174e65-a544-4765-82b5-eb4ccfef6590",
+    "user_id": "bot_9eedf288-7863-4b01-b498-1749fb9572c7",
+    "title": "⚡ Überboten: GoPro Hero 13 #1",
+    "message": "Sie wurden von Kunde überboten! Aktueller Preis: €2.52",
+    "type": "auction",
+    "link": "/auctions/6bcb6f08-be0f-48bc-9d25-8ee842872f1f",
+    "read": false,
+    "created_at": "2026-01-23T13:13:46.065302+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6973741ebd4e3a42c4cb8fdc"
+    },
+    "id": "bc2a30e2-f5ac-47a0-9112-37d52868d8dc",
+    "user_id": "bot_35922ece-0c1a-4096-8c94-97d1bdb67234",
+    "title": "⚡ Überboten: GoPro Hero 13 #1",
+    "message": "Sie wurden von Kunde überboten! Aktueller Preis: €2.57",
+    "type": "auction",
+    "link": "/auctions/6bcb6f08-be0f-48bc-9d25-8ee842872f1f",
+    "read": false,
+    "created_at": "2026-01-23T13:14:06.757180+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697392b99e61c08b41d9ca28"
+    },
+    "id": "19ef3591-8af8-4a63-ac90-2a562a29c56a",
+    "user_id": "bot_1e12d927-ed2a-4a96-8a94-3009bd2be3be",
+    "title": "⚡ Überboten: Amazon Echo Show 15 #22",
+    "message": "Sie wurden von Kunde überboten! Aktueller Preis: €0.76",
+    "type": "auction",
+    "link": "/auctions/2fe51cbe-6cf3-4897-b646-f85c22a96094",
+    "read": false,
+    "created_at": "2026-01-23T15:24:41.964794+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697392c49e61c08b41d9ca29"
+    },
+    "id": "ac17c9b4-a011-49cb-b6f9-6644859e7860",
+    "user_id": "bot_14ba6335-4406-44af-a9c3-18b08b35e855",
+    "title": "⚡ Überboten: Amazon Echo Show 15 #22",
+    "message": "Sie wurden von Kunde überboten! Aktueller Preis: €0.78",
+    "type": "auction",
+    "link": "/auctions/2fe51cbe-6cf3-4897-b646-f85c22a96094",
+    "read": false,
+    "created_at": "2026-01-23T15:24:52.051496+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6974a69fe8ed2cf2c3e64d02"
+    },
+    "id": "e0a1c3b2-9f76-48b4-a15f-980de07bb400",
+    "user_id": "bot_fcf32a7f-0c65-4367-b381-82d71e4c33c0",
+    "title": "⚡ Überboten: Samsung Galaxy S24 FE #3",
+    "message": "Sie wurden von Admin überboten! Aktueller Preis: €0.62",
+    "type": "auction",
+    "link": "/auctions/e771b862-8162-48c9-a7ef-6a059dac8e0e",
+    "read": false,
+    "created_at": "2026-01-24T11:01:51.058589+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6974ade37338a71f04c71758"
+    },
+    "id": "fe2374cf-7b92-47d1-8256-e4382f810f76",
+    "user_id": "bot_67a2f437-a07f-418a-a068-43cff87faef3",
+    "title": "⚡ Überboten: Samsung Galaxy S24 FE #3",
+    "message": "Sie wurden von Kunde überboten! Aktueller Preis: €0.20",
+    "type": "auction",
+    "link": "/auctions/e771b862-8162-48c9-a7ef-6a059dac8e0e",
+    "read": false,
+    "created_at": "2026-01-24T11:32:51.972125+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6974b062d57c526b9b96f3b3"
+    },
+    "id": "be584eb6-93dd-4bbc-b357-3024f02671bb",
+    "user_id": "bot_d9625ea9-7732-48e2-b990-8be7546aa5e0",
+    "title": "⚡ Überboten: GoPro Hero 13 #1",
+    "message": "Sie wurden von Kunde überboten! Aktueller Preis: €0.70",
+    "type": "auction",
+    "link": "/auctions/6bcb6f08-be0f-48bc-9d25-8ee842872f1f",
+    "read": false,
+    "created_at": "2026-01-24T11:43:30.438869+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6974b2c6d57c526b9b96f3da"
+    },
+    "id": "fda77d37-04ce-47b4-afa4-f1f826d4f8cd",
+    "user_id": "bot_35922ece-0c1a-4096-8c94-97d1bdb67234",
+    "title": "⚡ Überboten: GoPro Hero 13 #1",
+    "message": "Sie wurden von Kunde überboten! Aktueller Preis: €1.89",
+    "type": "auction",
+    "link": "/auctions/6bcb6f08-be0f-48bc-9d25-8ee842872f1f",
+    "read": false,
+    "created_at": "2026-01-24T11:53:42.394488+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6974b75e710df30b90cf4cbd"
+    },
+    "id": "91f70d47-6e3e-4510-8371-e812ae36f6ec",
+    "user_id": "bot_161e0d49-4ad2-483d-a5e7-e9e1c5dbe902",
+    "title": "⚡ Überboten: Sony Alpha A7 IV",
+    "message": "Sie wurden von Kunde überboten! Aktueller Preis: €0.36",
+    "type": "auction",
+    "link": "/auctions/64d17e89-1c41-4196-af6c-cd3d7cccc498",
+    "read": false,
+    "created_at": "2026-01-24T12:13:18.665661+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6974b88a1b801e3a922c7c18"
+    },
+    "id": "ad9cc7da-adca-406a-a186-ad67782bad22",
+    "user_id": "93751cd4-fcd3-41da-82e2-8f455322ba24",
+    "title": "⏰ Auktion endet in 5 Minuten",
+    "message": "Thermomix TM6 endet bald! Aktueller Preis: €0.02",
+    "type": "auction",
+    "link": "/auctions/903b1b20-ca73-4eb3-b295-cc46d82a6b65",
+    "read": false,
+    "created_at": "2026-01-24T12:18:18.368615+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6974b970aa10143bedc26160"
+    },
+    "id": "02599937-4af9-4352-8696-00f5d4d4d1e2",
+    "user_id": "bot_712adb23-cdc2-494f-bc36-d4dd40a3f8ac",
+    "title": "⚡ Überboten: Dyson V15 Detect",
+    "message": "Sie wurden von Kunde überboten! Aktueller Preis: €0.19",
+    "type": "auction",
+    "link": "/auctions/48da7509-8a0a-4ae0-81d0-b2a9c848e9ec",
+    "read": false,
+    "created_at": "2026-01-24T12:22:08.231113+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6974b9baaa10143bedc26165"
+    },
+    "id": "40c86d18-4036-45e2-9c6b-851ac05e488d",
+    "user_id": "93751cd4-fcd3-41da-82e2-8f455322ba24",
+    "title": "⏰ Auktion endet in 5 Minuten",
+    "message": "Dyson V15 Detect endet bald! Aktueller Preis: €0.02",
+    "type": "auction",
+    "link": "/auctions/7f172a2f-74c0-49f3-a219-06bdf6fc3023",
+    "read": false,
+    "created_at": "2026-01-24T12:23:22.428960+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6974b9baaa10143bedc26166"
+    },
+    "id": "6312b26d-1d54-403a-951e-4a7e34c6595e",
+    "user_id": "93751cd4-fcd3-41da-82e2-8f455322ba24",
+    "title": "⏰ Auktion endet in 5 Minuten",
+    "message": "Philips Hue Starter Kit endet bald! Aktueller Preis: €0.02",
+    "type": "auction",
+    "link": "/auctions/85cb96ef-1648-4ee5-81ea-e486a9ef8181",
+    "read": false,
+    "created_at": "2026-01-24T12:23:22.431327+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6974c0bbf8aa3a991b2959bc"
+    },
+    "id": "bac67578-75b1-46f1-accb-afebb322e86b",
+    "user_id": "bot_14ba6335-4406-44af-a9c3-18b08b35e855",
+    "title": "⚡ Überboten: Nintendo Switch OLED #29",
+    "message": "Sie wurden von Kunde überboten! Aktueller Preis: €0.64",
+    "type": "auction",
+    "link": "/auctions/d9c2690c-1eae-4c74-b1af-19a3a967a7de",
+    "read": false,
+    "created_at": "2026-01-24T12:53:15.303299+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6974c0bff8aa3a991b2959be"
+    },
+    "id": "199f4e02-7990-4702-be9c-70a1d6d03942",
+    "user_id": "bot_a2f98caa-b2e9-47da-a1c4-f87383c6703a",
+    "title": "⚡ Überboten: Apple Studio Display #27",
+    "message": "Sie wurden von Kunde überboten! Aktueller Preis: €0.91",
+    "type": "auction",
+    "link": "/auctions/535c6b57-8cb2-4589-9645-732a8e9c1ad3",
+    "read": false,
+    "created_at": "2026-01-24T12:53:19.838967+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6974c615f8aa3a991b295a0a"
+    },
+    "id": "8b7a1e3d-32eb-43f9-a9e3-8bcf26ae7c40",
+    "user_id": "bot_5ecb5a66-021b-40d0-9ed6-de91db417435",
+    "title": "⚡ Überboten: Apple MacBook Air M3 #14",
+    "message": "Sie wurden von Kunde überboten! Aktueller Preis: €2.59",
+    "type": "auction",
+    "link": "/auctions/23efa3d0-4c95-44e7-abd5-ee876658b527",
+    "read": false,
+    "created_at": "2026-01-24T13:16:05.326370+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6974e69d1f58b99a48232167"
+    },
+    "id": "5576ae3f-0b0c-4b38-80e4-eac4d7fc44fb",
+    "user_id": "bot_0f2c0412-2de7-4c0e-851a-fdbbc53a420c",
+    "title": "⚡ Überboten: GoPro Hero 13 #1",
+    "message": "Sie wurden von Admin überboten! Aktueller Preis: €2.63",
+    "type": "auction",
+    "link": "/auctions/6bcb6f08-be0f-48bc-9d25-8ee842872f1f",
+    "read": false,
+    "created_at": "2026-01-24T15:34:53.244238+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6974e6a41f58b99a48232168"
+    },
+    "id": "4ecd0186-0515-4e3e-954e-2cfb5d815603",
+    "user_id": "bot_5ecb5a66-021b-40d0-9ed6-de91db417435",
+    "title": "⚡ Überboten: Canon EOS R8 #17",
+    "message": "Sie wurden von Admin überboten! Aktueller Preis: €2.02",
+    "type": "auction",
+    "link": "/auctions/123335d3-cf36-4a90-9281-fbae7bd2c1ff",
+    "read": false,
+    "created_at": "2026-01-24T15:35:00.234044+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69753e0316e913e32e5f7673"
+    },
+    "id": "d00e438b-9732-47af-a29f-6ebc94a0a64c",
+    "user_id": "cc39e3e7-d381-41ba-a555-e4b03a1e3f35",
+    "title": "⚡ Überboten: GoPro Hero 13 #1",
+    "message": "Sie wurden von Admin überboten! Aktueller Preis: €0.03",
+    "type": "auction",
+    "link": "/auctions/6bcb6f08-be0f-48bc-9d25-8ee842872f1f",
+    "read": false,
+    "created_at": "2026-01-24T21:47:47.581190+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69753fac16e913e32e5f7680"
+    },
+    "id": "2bf2cfca-8370-4430-8673-f95b4cb42548",
+    "user_id": "cc39e3e7-d381-41ba-a555-e4b03a1e3f35",
+    "title": "⏰ Auktion endet in 5 Minuten",
+    "message": "Huawei MatePad Pro 12.6 endet bald! Aktueller Preis: €63.27",
+    "type": "auction",
+    "link": "/auctions/f25ea683-d8b9-4c51-afc1-d470696b4ffc",
+    "read": false,
+    "created_at": "2026-01-24T21:54:52.423832+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69753fe816e913e32e5f7683"
+    },
+    "id": "3fc531db-58a9-41e3-90d1-27eec0b2a0d0",
+    "user_id": "cc39e3e7-d381-41ba-a555-e4b03a1e3f35",
+    "title": "⏰ Auktion endet in 5 Minuten",
+    "message": "Lenovo Tab P12 Pro endet bald! Aktueller Preis: €26.71",
+    "type": "auction",
+    "link": "/auctions/deee752e-c907-4a0e-8228-411dfab36bc3",
+    "read": false,
+    "created_at": "2026-01-24T21:55:52.431586+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6975491402cb73904eb0c3d2"
+    },
+    "id": "79706175-a9ed-46e6-842f-f38d9396e858",
+    "user_id": "bot_cbfffcf0-8666-43bf-905b-787059d7da53",
+    "title": "⚡ Überboten: GoPro Hero 13 #1",
+    "message": "Sie wurden von Admin überboten! Aktueller Preis: €4.22",
+    "type": "auction",
+    "link": "/auctions/6bcb6f08-be0f-48bc-9d25-8ee842872f1f",
+    "read": false,
+    "created_at": "2026-01-24T22:35:00.809359+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69765dac5c4957b6f4b5e2fe"
+    },
+    "id": "c9a101bd-28da-414a-9902-91afb78e5741",
+    "user_id": "bot_67a2f437-a07f-418a-a068-43cff87faef3",
+    "title": "⚡ Überboten: iRobot Roomba j9+",
+    "message": "Sie wurden von Admin überboten! Aktueller Preis: €0.04",
+    "type": "auction",
+    "link": "/auctions/ed0ca261-e428-437e-ad53-c877af3c91ff",
+    "read": false,
+    "created_at": "2026-01-25T18:15:08.349963+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69766a97725dad7b02cec57f"
+    },
+    "id": "5b06798e-30d2-4ef3-b8cb-d195b8ec63c7",
+    "user_id": "bot_afc9e233-9e2e-4986-8996-03a117cd9046",
+    "title": "⚡ Überboten: Dell XPS 15",
+    "message": "Sie wurden von Admin überboten! Aktueller Preis: €1.00",
+    "type": "auction",
+    "link": "/auctions/2efa2516-dd29-4f55-834c-638ba92f27bc",
+    "read": false,
+    "created_at": "2026-01-25T19:10:15.771493+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69766a9d725dad7b02cec580"
+    },
+    "id": "671eeff2-2102-444e-8186-6ac19df95326",
+    "user_id": "bot_8d9562f3-b465-419a-a2cd-80359ec9724e",
+    "title": "⚡ Überboten: Apple MacBook Pro 14\" M3",
+    "message": "Sie wurden von Admin überboten! Aktueller Preis: €0.88",
+    "type": "auction",
+    "link": "/auctions/e80267f6-3ea7-4553-aeff-480320f49cfc",
+    "read": false,
+    "created_at": "2026-01-25T19:10:21.753829+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69767157ac0f6ed26dd1136a"
+    },
+    "id": "a81f2720-88cf-48a7-8639-f3d938358334",
+    "user_id": "bot_6e5a0923-8fe5-4157-8ace-f40e2f156d49",
+    "title": "⚡ Überboten: Razer Blade 16",
+    "message": "Sie wurden von Admin überboten! Aktueller Preis: €1.75",
+    "type": "auction",
+    "link": "/auctions/e67fdce0-1111-4f50-94bb-8b3431424710",
+    "read": false,
+    "created_at": "2026-01-25T19:39:03.542454+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6976719cac0f6ed26dd1136d"
+    },
+    "id": "1428baf2-5782-46f5-a2fc-44c1a9244dfc",
+    "user_id": "bot_2bbd97b5-c0e9-457e-a9ed-b0d7d20940b0",
+    "title": "⚡ Überboten: Samsung 65\" OLED Smart TV",
+    "message": "Sie wurden von Admin überboten! Aktueller Preis: €1.03",
+    "type": "auction",
+    "link": "/auctions/71ec13e2-b97a-4810-b9f5-b24ba56b6ab6",
+    "read": false,
+    "created_at": "2026-01-25T19:40:12.084930+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697671a1ac0f6ed26dd1136e"
+    },
+    "id": "9208b34e-3dd9-4fe2-9d67-82ec762b3ee2",
+    "user_id": "bot_b886c991-1e5a-4639-aed9-f26f8f539ca7",
+    "title": "⚡ Überboten: Spotify Premium 1 Jahr",
+    "message": "Sie wurden von Admin überboten! Aktueller Preis: €0.69",
+    "type": "auction",
+    "link": "/auctions/6cadd180-4f79-434d-8652-2b956b3538b2",
+    "read": false,
+    "created_at": "2026-01-25T19:40:17.144355+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69769c821f27cb7f800fa969"
+    },
+    "id": "436a035d-f2b5-4b01-9cb2-a0d197287b8e",
+    "user_id": "bot_516e6027-8b4b-451d-bfe3-3cb07d975bbe",
+    "title": "⚡ Überboten: Google Pixel 9 #84",
+    "message": "Sie wurden von Admin überboten! Aktueller Preis: €0.05",
+    "type": "auction",
+    "link": "/auctions/8916f92a-cdc7-498f-8fa9-22546834aa2f",
+    "read": false,
+    "created_at": "2026-01-25T22:43:14.859175+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69769c831f27cb7f800fa96a"
+    },
+    "id": "969f0ba4-aca3-4d96-8596-32b0eec809fe",
+    "user_id": "bot_1e12d927-ed2a-4a96-8a94-3009bd2be3be",
+    "title": "⚡ Überboten: Apple Watch Ultra 3 #68",
+    "message": "Sie wurden von Admin überboten! Aktueller Preis: €0.04",
+    "type": "auction",
+    "link": "/auctions/6ad91588-9d39-4057-9914-46fc85a7f5ff",
+    "read": false,
+    "created_at": "2026-01-25T22:43:15.607750+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69769c851f27cb7f800fa96b"
+    },
+    "id": "a689393c-dfc3-4513-82ad-1e93d1c02942",
+    "user_id": "bot_6e5a0923-8fe5-4157-8ace-f40e2f156d49",
+    "title": "⚡ Überboten: Peloton Bike+ #43",
+    "message": "Sie wurden von Admin überboten! Aktueller Preis: €0.03",
+    "type": "auction",
+    "link": "/auctions/90a7bc2a-c135-4f0c-bf22-256b24563c23",
+    "read": false,
+    "created_at": "2026-01-25T22:43:17.708172+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697e5fda4f187a92fbad2179"
+    },
+    "id": "3ffa932b-2df9-4be3-be6a-f3575e134b64",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "title": "⚡ Überboten: Luxusvilla mit Pool & Meerblick",
+    "message": "Sie wurden von Demo Influencer überboten! Aktueller Preis: €20.68",
+    "type": "auction",
+    "link": "/auctions/48e065c0-8925-46fc-bfc5-bdcd01050e29",
+    "read": false,
+    "created_at": "2026-01-31T20:02:34.839840+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697e606c4f187a92fbad217a"
+    },
+    "id": "34f35be8-9ef1-4a1e-8c06-d99975473268",
+    "user_id": "bot_2bbd97b5-c0e9-457e-a9ed-b0d7d20940b0",
+    "title": "⚡ Überboten: Razer Blade 16",
+    "message": "Sie wurden von Demo Influencer überboten! Aktueller Preis: €2.00",
+    "type": "auction",
+    "link": "/auctions/e67fdce0-1111-4f50-94bb-8b3431424710",
+    "read": false,
+    "created_at": "2026-01-31T20:05:00.839391+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697e676ae28d2b5929e6fa38"
+    },
+    "id": "5765646b-9fb2-4307-b3e9-6823d92f9ea2",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "type": "gift_received",
+    "title": "🎁 Geschenk erhalten!",
+    "message": "Kunde hat Ihnen 5 Gebote geschenkt! Nachricht: Test Geschenk!",
+    "read": false,
+    "created_at": "2026-01-31T20:34:50.250083+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697e732d9c2c6606b3ed2349"
+    },
+    "id": "628db1ee-1b30-4314-a5c4-76ac0248e171",
+    "user_id": "bot_cbfffcf0-8666-43bf-905b-787059d7da53",
+    "title": "⚡ Überboten: Razer Blade 16",
+    "message": "Sie wurden von Kunde überboten! Aktueller Preis: €0.59",
+    "type": "auction",
+    "link": "/auctions/e67fdce0-1111-4f50-94bb-8b3431424710",
+    "read": false,
+    "created_at": "2026-01-31T21:25:01.259745+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697e73309c2c6606b3ed234a"
+    },
+    "id": "ffcf4a38-073c-4dda-80d4-4ac3c432f1fe",
+    "user_id": "bot_236fd9f3-f375-40e9-bae7-f4e38515944b",
+    "title": "⚡ Überboten: Razer Blade 16",
+    "message": "Sie wurden von Kunde überboten! Aktueller Preis: €0.60",
+    "type": "auction",
+    "link": "/auctions/e67fdce0-1111-4f50-94bb-8b3431424710",
+    "read": false,
+    "created_at": "2026-01-31T21:25:04.141329+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697e733d9c2c6606b3ed234d"
+    },
+    "id": "854ed9a8-7af4-41f8-ac6e-43336a196bfb",
+    "user_id": "bot_236fd9f3-f375-40e9-bae7-f4e38515944b",
+    "title": "⚡ Überboten: Canon EOS R6 Mark II",
+    "message": "Sie wurden von Kunde überboten! Aktueller Preis: €0.72",
+    "type": "auction",
+    "link": "/auctions/21afe753-779f-4338-b036-0157e9c92239",
+    "read": false,
+    "created_at": "2026-01-31T21:25:17.553095+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697e7353f78400e0dcf52015"
+    },
+    "id": "6808088f-8099-4afe-8544-7e0f15436d65",
+    "user_id": "bot_0f2c0412-2de7-4c0e-851a-fdbbc53a420c",
+    "title": "⚡ Überboten: Canon EOS R6 Mark II",
+    "message": "Sie wurden von Kunde überboten! Aktueller Preis: €0.05",
+    "type": "auction",
+    "link": "/auctions/21afe753-779f-4338-b036-0157e9c92239",
+    "read": false,
+    "created_at": "2026-01-31T21:25:39.327136+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697e736bf78400e0dcf52022"
+    },
+    "id": "80b4d3e8-b633-4d29-9cb2-3bc86e89275e",
+    "user_id": "bot_1e12d927-ed2a-4a96-8a94-3009bd2be3be",
+    "title": "⚡ Überboten: Google Pixel 8 Pro",
+    "message": "Sie wurden von Kunde überboten! Aktueller Preis: €0.11",
+    "type": "auction",
+    "link": "/auctions/539a7c1f-3c3f-467c-8bb2-fb561ea8018f",
+    "read": false,
+    "created_at": "2026-01-31T21:26:03.869539+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697e7388f78400e0dcf5202f"
+    },
+    "id": "75923a7b-ca7a-4cb8-9311-30dbfa5a3a6d",
+    "user_id": "bot_5a1c2452-a6a9-4a05-a418-6eb6eaec1ebc",
+    "title": "⚡ Überboten: Google Pixel 8 Pro",
+    "message": "Sie wurden von Kunde überboten! Aktueller Preis: €0.06",
+    "type": "auction",
+    "link": "/auctions/539a7c1f-3c3f-467c-8bb2-fb561ea8018f",
+    "read": false,
+    "created_at": "2026-01-31T21:26:32.660758+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697e73a387de5daab790440c"
+    },
+    "id": "dd5465d6-ab1d-40d3-8c2a-23a1dcbaa0c3",
+    "user_id": "bot_5ecb5a66-021b-40d0-9ed6-de91db417435",
+    "title": "⚡ Überboten: Google Pixel 8 Pro",
+    "message": "Sie wurden von Kunde überboten! Aktueller Preis: €0.05",
+    "type": "auction",
+    "link": "/auctions/539a7c1f-3c3f-467c-8bb2-fb561ea8018f",
+    "read": false,
+    "created_at": "2026-01-31T21:26:59.250843+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697e8245a7847b35efad45c5"
+    },
+    "id": "64629783-aa11-4531-9c0c-19c5441ca606",
+    "user_id": "bot_fd6c2d6a-0246-4ee2-9e35-d13fd1497830",
+    "title": "⚡ Überboten: Canon EOS R6 Mark II",
+    "message": "Sie wurden von Admin überboten! Aktueller Preis: €0.11",
+    "type": "auction",
+    "link": "/auctions/107d7439-8605-44fc-bd25-30c01a4c327c",
+    "read": false,
+    "created_at": "2026-01-31T22:29:25.504227+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697e8255a7847b35efad45c6"
+    },
+    "id": "b0efc0c5-22e3-4137-a143-1f4f0369bb23",
+    "user_id": "bot_cbfffcf0-8666-43bf-905b-787059d7da53",
+    "title": "⚡ Überboten: Canon EOS R6 Mark II",
+    "message": "Sie wurden von Admin überboten! Aktueller Preis: €0.17",
+    "type": "auction",
+    "link": "/auctions/374bd11f-a9cd-4f9d-854a-c90a777db549",
+    "read": false,
+    "created_at": "2026-01-31T22:29:41.525480+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697e9128969406f01250dcb4"
+    },
+    "id": "a94ee3e6-eeec-4ffd-b23e-49b30fbb5372",
+    "user_id": "bot_a4e33d22-ea9e-4239-b13e-c654602cd3de",
+    "title": "⚡ Überboten: Dyson V15 Detect Staubsauger",
+    "message": "Sie wurden von Admin überboten! Aktueller Preis: €1.58",
+    "type": "auction",
+    "link": "/auctions/735bac7f-4c41-4263-ba8e-1684637086bf",
+    "read": false,
+    "created_at": "2026-01-31T23:32:56.693370+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f257a24dee46b1daa548a"
+    },
+    "id": "5ef31573-1f6a-4133-be6f-aac9c63ec167",
+    "user_id": "bot_6347837f-6449-4210-917f-c78eaae5628a",
+    "title": "⚡ Überboten: Canon EOS R6 Mark II",
+    "message": "Sie wurden von Admin überboten! Aktueller Preis: €1.83",
+    "type": "auction",
+    "link": "/auctions/374bd11f-a9cd-4f9d-854a-c90a777db549",
+    "read": false,
+    "created_at": "2026-02-01T10:05:46.246739+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f31df24dee46b1daa5557"
+    },
+    "id": "4a324885-9094-4f08-a7d1-a7ba9b4ad4ba",
+    "user_id": "bot_036609c2-eadf-4350-ba4f-d2e90f1851e7",
+    "title": "⚡ Überboten: Canon EOS R6 Mark II",
+    "message": "Sie wurden von Admin überboten! Aktueller Preis: €0.72",
+    "type": "auction",
+    "link": "/auctions/374bd11f-a9cd-4f9d-854a-c90a777db549",
+    "read": false,
+    "created_at": "2026-02-01T10:58:39.233126+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f60e7090b6f89b1ad7ec0"
+    },
+    "id": "119ccbf1-5af0-461b-a00c-99e3c4d1f6b8",
+    "user_id": "93751cd4-fcd3-41da-82e2-8f455322ba24",
+    "type": "achievement",
+    "title": "🎯 Achievement freigeschaltet!",
+    "message": "Erste Schritte: Erstes Gebot platziert (+5 Gebote)",
+    "read": false,
+    "created_at": "2026-02-01T14:19:19.888441+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f60e7090b6f89b1ad7ec2"
+    },
+    "id": "d345b7e2-1d67-48ef-af93-8d5e32813ef7",
+    "user_id": "93751cd4-fcd3-41da-82e2-8f455322ba24",
+    "type": "achievement",
+    "title": "👑 Achievement freigeschaltet!",
+    "message": "VIP Status: VIP-Mitglied geworden (+20 Gebote)",
+    "read": false,
+    "created_at": "2026-02-01T14:19:19.897663+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f70dba7a171fe31087c66"
+    },
+    "id": "7b4c3caa-077d-44dd-961f-977bcd2f6dc8",
+    "user_id": "bot_e88c85c9-be77-43da-831a-b6c4bcb8f6fb",
+    "title": "⚡ Überboten: Apple MacBook Pro 14\" M3",
+    "message": "Sie wurden von Kunde überboten! Aktueller Preis: €0.11",
+    "type": "auction",
+    "link": "/auctions/8177f85f-570b-4875-9389-cbf72ab7cb5b",
+    "read": false,
+    "created_at": "2026-02-01T15:27:23.521666+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8016f4234617bfb5e603"
+    },
+    "id": "0bfe09b4-c94b-4fab-a37e-75d34f41ccd3",
+    "user_id": "bot_d8e5842b-0add-416c-a283-249dbec81c4c",
+    "title": "⚡ Überboten: Canon EOS R6 Mark II",
+    "message": "Sie wurden von Admin überboten! Aktueller Preis: €1.38",
+    "type": "auction",
+    "link": "/auctions/374bd11f-a9cd-4f9d-854a-c90a777db549",
+    "read": false,
+    "created_at": "2026-02-01T16:32:22.226705+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69813370383eb6506d8d3d66"
+    },
+    "id": "1c24b5f3-e114-464a-9850-dcac0f9a2038",
+    "user_id": "bot_59a19b02-a18b-4eb3-b276-662dbb7a09af",
+    "title": "⚡ Überboten: Amazon Gutschein €100",
+    "message": "Sie wurden von Admin überboten! Aktueller Preis: €1.70",
+    "type": "auction",
+    "link": "/auctions/0f47c480-8e04-429d-9d53-4f678e5be283",
+    "read": false,
+    "created_at": "2026-02-02T23:29:52.956723+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6981395fa769a34f66d773f0"
+    },
+    "id": "cf64c65d-f53a-408f-9233-5c3b4dce32d9",
+    "user_id": "bot_3b49602a-44c7-47a4-a1c5-6e13631d22e4",
+    "title": "⚡ Überboten: Amazon Gutschein €100",
+    "message": "Sie wurden von Admin überboten! Aktueller Preis: €0.33",
+    "type": "auction",
+    "link": "/auctions/69fc3935-6fcb-4625-983e-ad5e20dbe217",
+    "read": false,
+    "created_at": "2026-02-02T23:55:11.520713+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6981d0025f1284ca9e6a02a5"
+    },
+    "id": "85585f5f-3e6f-430f-b8a0-5e26e50e982c",
+    "user_id": "bot_b4659de3-7dbb-435e-9806-798b1e5d5474",
+    "title": "⚡ Überboten: Hasselblad X2D 100C",
+    "message": "Sie wurden von Admin überboten! Aktueller Preis: €0.33",
+    "type": "auction",
+    "link": "/auctions/2634dcaa-4a12-4914-b8d5-1d605b9113af",
+    "read": false,
+    "created_at": "2026-02-03T10:37:54.321100+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69827a1904cd2c8b2f69b6a8"
+    },
+    "id": "85fbc072-a561-44ff-80ca-48850bab2701",
+    "user_id": "bot_0453e96a-9886-42f9-bbc4-da7895530cfc",
+    "title": "⚡ Überboten: Hasselblad X2D 100C",
+    "message": "Sie wurden von Admin überboten! Aktueller Preis: €0.54",
+    "type": "auction",
+    "link": "/auctions/2634dcaa-4a12-4914-b8d5-1d605b9113af",
+    "read": false,
+    "created_at": "2026-02-03T22:43:37.814400+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6984f63aae2d7d2960dc516e"
+    },
+    "id": "3daf65d9-05d6-45cf-b124-19581bfdf078",
+    "user_id": "bot_06ac9d08-7c34-472e-8206-4e4be58d4402",
+    "title": "⚡ Überboten: Samsung Galaxy S25 Ultra 512GB",
+    "message": "Sie wurden von Admin überboten! Aktueller Preis: €4.66",
+    "type": "auction",
+    "link": "/auctions/fa543c0f-3871-426b-a7a1-38a7ff67b4e8",
+    "read": false,
+    "created_at": "2026-02-05T19:57:46.709135+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6984f652ae2d7d2960dc5171"
+    },
+    "id": "8133dc54-c861-4ea0-a2df-647de9410b23",
+    "user_id": "bot_3ec41fc3-e660-4338-9fb5-e0beb74234a0",
+    "title": "⚡ Überboten: Apple iPhone 17 256GB",
+    "message": "Sie wurden von Admin überboten! Aktueller Preis: €4.77",
+    "type": "auction",
+    "link": "/auctions/752046ae-681c-48ac-99b8-313024406892",
+    "read": false,
+    "created_at": "2026-02-05T19:58:10.590291+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69853d98cf28ae4874e0c830"
+    },
+    "id": "1b9e8f28-05ff-4b9e-985c-3de16f8bd572",
+    "user_id": "bot_da2fe085-0c68-404f-98a3-ad19c74d6e39",
+    "title": "⚡ Überboten: Sony Alpha A1 II",
+    "message": "Sie wurden von Admin überboten! Aktueller Preis: €1.14",
+    "type": "auction",
+    "link": "/auctions/45421d9f-6095-4f4c-8f3c-253559fb9e7d",
+    "read": false,
+    "created_at": "2026-02-06T01:02:16.973400+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69853daacf28ae4874e0c837"
+    },
+    "id": "5dde15ff-aa03-494a-b685-8a3fd3768bfa",
+    "user_id": "bot_5baacab6-c15c-4cf5-b836-d0bccd4bd6d2",
+    "title": "⚡ Überboten: Apple Watch Ultra 3",
+    "message": "Sie wurden von Admin überboten! Aktueller Preis: €1.13",
+    "type": "auction",
+    "link": "/auctions/19d71b4c-0434-4c08-b14d-9917ed0dd651",
+    "read": false,
+    "created_at": "2026-02-06T01:02:34.714413+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69853dabcf28ae4874e0c839"
+    },
+    "id": "62037f12-30d0-495e-9edb-28dee1481c0e",
+    "user_id": "bot_3b49602a-44c7-47a4-a1c5-6e13631d22e4",
+    "title": "⚡ Überboten: Google Pixel 10 Pro",
+    "message": "Sie wurden von Admin überboten! Aktueller Preis: €1.09",
+    "type": "auction",
+    "link": "/auctions/a6a2ee41-70a0-4157-ac05-b4c717a5fc21",
+    "read": false,
+    "created_at": "2026-02-06T01:02:35.792145+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6985a3838c6352e35feea3ee"
+    },
+    "id": "58f4c74a-050f-47e3-bdd4-a996526d6cb7",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "title": "⏰ Auktion endet in 5 Minuten",
+    "message": "Apple iPhone 17 256GB endet bald! Aktueller Preis: €6.08",
+    "type": "auction",
+    "link": "/auctions/752046ae-681c-48ac-99b8-313024406892",
+    "read": false,
+    "created_at": "2026-02-06T08:17:07.621108+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6985a3838c6352e35feea3ef"
+    },
+    "id": "ff5470d3-5cf0-4129-9992-e295aa70b332",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "title": "⏰ Auktion endet in 5 Minuten",
+    "message": "Samsung Galaxy S25 Ultra 512GB endet bald! Aktueller Preis: €5.83",
+    "type": "auction",
+    "link": "/auctions/fa543c0f-3871-426b-a7a1-38a7ff67b4e8",
+    "read": false,
+    "created_at": "2026-02-06T08:17:07.629476+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69876a761e0f565704e142cb"
+    },
+    "id": "4db7299f-d965-4a33-a336-2ae985629d92",
+    "user_id": "bot_ff639f87-cdf4-4fcc-a7e9-e4048f194154",
+    "title": "⚡ Überboten: Canon EOS R1",
+    "message": "Sie wurden von Admin überboten! Aktueller Preis: €1.76",
+    "type": "auction",
+    "link": "/auctions/7b6db9c7-bf5e-403e-93f1-caa8f8c9472c",
+    "read": false,
+    "created_at": "2026-02-07T16:38:14.847366+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69876f371e0f565704e142eb"
+    },
+    "id": "042bdd85-6746-4f30-8b0e-88c7b430e30e",
+    "user_id": "bot_afc9e233-9e2e-4986-8996-03a117cd9046",
+    "title": "⚡ Überboten: Canon EOS R1",
+    "message": "Sie wurden von Admin überboten! Aktueller Preis: €1.94",
+    "type": "auction",
+    "link": "/auctions/7b6db9c7-bf5e-403e-93f1-caa8f8c9472c",
+    "read": false,
+    "created_at": "2026-02-07T16:58:31.445280+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69877f0fee89b1f53f48fcca"
+    },
+    "id": "4c7e272a-4c40-4ee1-b000-9296555274f2",
+    "user_id": "bot_9a103cbc-4caa-4794-adbc-1c6a5028aebb",
+    "title": "⚡ Überboten: Apple iPhone 17 256GB",
+    "message": "Sie wurden von Admin überboten! Aktueller Preis: €0.03",
+    "type": "auction",
+    "link": "/auctions/752603a8-675b-48b1-8186-da54b7fefd0e",
+    "read": false,
+    "created_at": "2026-02-07T18:06:07.327153+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69877f1cee89b1f53f48fcd2"
+    },
+    "id": "1da1eb08-1c77-4403-b46d-472fb2ca8397",
+    "user_id": "bot_880c502b-4be7-41c2-849b-79c66a895099",
+    "title": "⚡ Überboten: BidBlitz 50 Gratis-Gebote",
+    "message": "Sie wurden von Admin überboten! Aktueller Preis: €0.03",
+    "type": "auction",
+    "link": "/auctions/06d025bf-6da5-4334-abdb-ba8c6fe44f28",
+    "read": false,
+    "created_at": "2026-02-07T18:06:20.738975+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69878105ee89b1f53f48fcea"
+    },
+    "id": "8ccb0b04-7ea5-41fe-9feb-91a9511900a5",
+    "user_id": "f4d6e407-08ee-4475-9e38-b2ffd6ce6d34",
+    "title": "⚡ Überboten: BidBlitz 50 Gratis-Gebote",
+    "message": "Sie wurden von Admin überboten! Aktueller Preis: €20.01",
+    "type": "auction",
+    "link": "/auctions/06d025bf-6da5-4334-abdb-ba8c6fe44f28",
+    "read": false,
+    "created_at": "2026-02-07T18:14:29.928820+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698785ec1c16f538654b3b46"
+    },
+    "id": "19dc99f9-c66c-46e7-8120-a4584102fc1c",
+    "user_id": "bot_d2f6fa43-2442-4df6-b2f2-0f2ba9f07739",
+    "title": "⚡ Überboten: MacBook Air 15\" M4",
+    "message": "Sie wurden von Admin überboten! Aktueller Preis: €9.50",
+    "type": "auction",
+    "link": "/auctions/a6a334b2-e733-45a0-b24d-e1b0c2bb1d75",
+    "read": false,
+    "created_at": "2026-02-07T18:35:24.738790+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698787131c16f538654b3b48"
+    },
+    "id": "1aaa8faf-eca8-4684-9ebe-7d4b50b04b82",
+    "user_id": "bot_3b49602a-44c7-47a4-a1c5-6e13631d22e4",
+    "title": "⚡ Überboten: BidBlitz VIP 1 Monat GRATIS",
+    "message": "Sie wurden von Admin überboten! Aktueller Preis: €2.26",
+    "type": "auction",
+    "link": "/auctions/24d611e7-ba17-4110-bd58-a6b0176fb2b8",
+    "read": false,
+    "created_at": "2026-02-07T18:40:19.753436+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69878cad39b40208a92eca6f"
+    },
+    "id": "63b494f3-3abd-4498-ae8c-97118f3071e3",
+    "user_id": "bot_53d3e2a7-c14c-4ff3-b579-3c5eae487ec7",
+    "title": "⚡ Überboten: MacBook Air 15\" M4",
+    "message": "Sie wurden von Admin überboten! Aktueller Preis: €9.75",
+    "type": "auction",
+    "link": "/auctions/a6a334b2-e733-45a0-b24d-e1b0c2bb1d75",
+    "read": false,
+    "created_at": "2026-02-07T19:04:13.073122+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69878cb739b40208a92eca72"
+    },
+    "id": "0c00a1d1-08e6-40de-b8ef-a9efc7f172b0",
+    "user_id": "bot_1251f818-6962-42ac-acba-78bd8794da6e",
+    "title": "⚡ Überboten: MacBook Air 15\" M4",
+    "message": "Sie wurden von Admin überboten! Aktueller Preis: €9.78",
+    "type": "auction",
+    "link": "/auctions/a6a334b2-e733-45a0-b24d-e1b0c2bb1d75",
+    "read": false,
+    "created_at": "2026-02-07T19:04:23.466644+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698793dc39b40208a92eca8c"
+    },
+    "id": "6697fd50-df67-4139-b7b8-a244cbe29217",
+    "user_id": "bot_53d3e2a7-c14c-4ff3-b579-3c5eae487ec7",
+    "title": "⚡ Überboten: BidBlitz VIP 1 Jahr",
+    "message": "Sie wurden von Anes Gashi überboten! Aktueller Preis: €13.88",
+    "type": "auction",
+    "link": "/auctions/809b659e-d9a4-41ce-b9b6-082396c1e041",
+    "read": false,
+    "created_at": "2026-02-07T19:34:52.510040+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698856a942b5fdb05815bc2e"
+    },
+    "id": "930e795e-489c-4b1a-9453-4a1aec4718c9",
+    "user_id": "93751cd4-fcd3-41da-82e2-8f455322ba24",
+    "title": "⚡ Überboten: Google Pixel 9a",
+    "message": "Sie wurden von Admin überboten! Aktueller Preis: €0.04",
+    "type": "auction",
+    "link": "/auctions/fbbc11a9-a4e0-4352-8096-00b7e00f775c",
+    "read": false,
+    "created_at": "2026-02-08T09:26:01.425989+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698856cd42b5fdb05815bc31"
+    },
+    "id": "9265c119-904f-45c0-9721-6f7d9a637ad7",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "title": "⚡ Überboten: Google Pixel 9a",
+    "message": "Sie wurden von Prishtina Manager überboten! Aktueller Preis: €0.05",
+    "type": "auction",
+    "link": "/auctions/fbbc11a9-a4e0-4352-8096-00b7e00f775c",
+    "read": false,
+    "created_at": "2026-02-08T09:26:37.458547+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69885ecfde35e1b356f8c3cf"
+    },
+    "id": "c623a3b8-063e-468c-9694-74f6a5e728f6",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "title": "⚡ Überboten: MacBook Pro 14\" M4 Pro",
+    "message": "Sie wurden von Prishtina Manager überboten! Aktueller Preis: €0.03",
+    "type": "auction",
+    "link": "/auctions/d25e0bb2-6b3a-480d-b5e7-8dde4cf3b54f",
+    "read": false,
+    "created_at": "2026-02-08T10:00:47.403809+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69886568de35e1b356f8c3d4"
+    },
+    "id": "50ee20f2-616c-4152-b574-81bbe6f5d0c9",
+    "user_id": "ce9b3522-6d70-49f9-a0ce-b1c9a112759d",
+    "title": "⚡ Überboten: Google Pixel 9a",
+    "message": "Sie wurden von Admin überboten! Aktueller Preis: €0.06",
+    "type": "auction",
+    "link": "/auctions/fbbc11a9-a4e0-4352-8096-00b7e00f775c",
+    "read": false,
+    "created_at": "2026-02-08T10:28:56.691946+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69886578de35e1b356f8c3d6"
+    },
+    "id": "ff2fc917-6995-4947-b5eb-23e55038d7cf",
+    "user_id": "ce9b3522-6d70-49f9-a0ce-b1c9a112759d",
+    "title": "⚡ Überboten: Steam Guthaben €50",
+    "message": "Sie wurden von Admin überboten! Aktueller Preis: €0.03",
+    "type": "auction",
+    "link": "/auctions/8e6ff9bd-95d3-44a7-b7db-e7dd649cb765",
+    "read": false,
+    "created_at": "2026-02-08T10:29:12.515763+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698869d0f68bdb4f7c89670e"
+    },
+    "id": "9faad716-b178-4992-94e5-292d8df5a36e",
+    "user_id": "ce9b3522-6d70-49f9-a0ce-b1c9a112759d",
+    "title": "⚡ Überboten: Apple iPhone 17 Pro 256GB",
+    "message": "Sie wurden von Admin überboten! Aktueller Preis: €0.03",
+    "type": "auction",
+    "link": "/auctions/288685d4-34e2-4932-be29-6c3716159090",
+    "read": false,
+    "created_at": "2026-02-08T10:47:44.919888+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69886c727f86caf35dcfdbba"
+    },
+    "id": "d561e6df-c7bd-493b-8381-ef58ca2f37b6",
+    "user_id": "ce9b3522-6d70-49f9-a0ce-b1c9a112759d",
+    "title": "⚡ Überboten: MacBook Pro 14\" M4 Pro",
+    "message": "Sie wurden von Admin überboten! Aktueller Preis: €0.04",
+    "type": "auction",
+    "link": "/auctions/d25e0bb2-6b3a-480d-b5e7-8dde4cf3b54f",
+    "read": false,
+    "created_at": "2026-02-08T10:58:58.928796+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6988b031f04d65bc70daf15e"
+    },
+    "id": "07068de2-58b1-40a8-8b81-9699d8f08700",
+    "user_id": "ce9b3522-6d70-49f9-a0ce-b1c9a112759d",
+    "title": "⚡ Überboten: Apple iPhone 17 Pro Max 256GB",
+    "message": "Sie wurden von Admin überboten! Aktueller Preis: €0.04",
+    "type": "auction",
+    "link": "/auctions/c6d58896-d8ed-43ab-ac82-0dd502351bd0",
+    "read": false,
+    "created_at": "2026-02-08T15:48:01.674299+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6988e24026c2b37dbd0cfe69"
+    },
+    "id": "a0791b59-2748-400d-a70a-42b2549010f7",
+    "user_id": "a1c3a84d-cd92-4674-87dd-8f3440cb5551",
+    "type": "bids_received",
+    "title": "Gebote erhalten!",
+    "message": "Sie haben 50 Gebote von Test Großhandel GmbH erhalten: \"Viel Erfolg beim Bieten!\"",
+    "read": false,
+    "created_at": "2026-02-08T19:21:36.536673+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6988efa99567ee4dbeb14733"
+    },
+    "id": "b9efee3f-ef32-461a-8980-47111ec9a616",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "title": "⏰ Auktion endet in 5 Minuten",
+    "message": "Google Pixel 9a endet bald! Aktueller Preis: €0.06",
+    "type": "auction",
+    "link": "/auctions/fbbc11a9-a4e0-4352-8096-00b7e00f775c",
+    "read": false,
+    "created_at": "2026-02-08T20:18:49.497797+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6988efa99567ee4dbeb14734"
+    },
+    "id": "076d06b2-79b5-40be-b2f7-15aede2f3ae2",
+    "user_id": "ce9b3522-6d70-49f9-a0ce-b1c9a112759d",
+    "title": "⏰ Auktion endet in 5 Minuten",
+    "message": "Google Pixel 9a endet bald! Aktueller Preis: €0.06",
+    "type": "auction",
+    "link": "/auctions/fbbc11a9-a4e0-4352-8096-00b7e00f775c",
+    "read": false,
+    "created_at": "2026-02-08T20:18:49.504005+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6988efa99567ee4dbeb14735"
+    },
+    "id": "8d126c38-adbd-4100-8a5a-25f612787f24",
+    "user_id": "93751cd4-fcd3-41da-82e2-8f455322ba24",
+    "title": "⏰ Auktion endet in 5 Minuten",
+    "message": "Google Pixel 9a endet bald! Aktueller Preis: €0.06",
+    "type": "auction",
+    "link": "/auctions/fbbc11a9-a4e0-4352-8096-00b7e00f775c",
+    "read": false,
+    "created_at": "2026-02-08T20:18:49.504783+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6988f1119567ee4dbeb14736"
+    },
+    "id": "4f814607-3ba5-4e99-bdb6-ee5397989157",
+    "user_id": "ce9b3522-6d70-49f9-a0ce-b1c9a112759d",
+    "title": "⏰ Auktion endet in 5 Minuten",
+    "message": "Hasselblad X2D 100C endet bald! Aktueller Preis: €0.02",
+    "type": "auction",
+    "link": "/auctions/8734a1dc-aefd-41ab-bf48-212d5275c7c2",
+    "read": false,
+    "created_at": "2026-02-08T20:24:49.534972+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6988f8fed22d532b2b18e546"
+    },
+    "id": "560574cf-1764-4b8b-b7eb-6e569ca56636",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "title": "⏰ Auktion endet in 5 Minuten",
+    "message": "Apple iPhone 17 Pro Max 256GB endet bald! Aktueller Preis: €0.04",
+    "type": "auction",
+    "link": "/auctions/c6d58896-d8ed-43ab-ac82-0dd502351bd0",
+    "read": false,
+    "created_at": "2026-02-08T20:58:38.960489+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6988f8fed22d532b2b18e547"
+    },
+    "id": "a0eef28b-e11d-48dc-9da5-552b2501c130",
+    "user_id": "ce9b3522-6d70-49f9-a0ce-b1c9a112759d",
+    "title": "⏰ Auktion endet in 5 Minuten",
+    "message": "Apple iPhone 17 Pro Max 256GB endet bald! Aktueller Preis: €0.04",
+    "type": "auction",
+    "link": "/auctions/c6d58896-d8ed-43ab-ac82-0dd502351bd0",
+    "read": false,
+    "created_at": "2026-02-08T20:58:38.961356+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6988fb8b621595b234906486"
+    },
+    "id": "55459d89-2795-4f2b-914b-5b41698ee3bd",
+    "user_id": "ce9b3522-6d70-49f9-a0ce-b1c9a112759d",
+    "title": "⏰ Auktion endet in 5 Minuten",
+    "message": "MacBook Pro 14\" M4 Pro endet bald! Aktueller Preis: €0.04",
+    "type": "auction",
+    "link": "/auctions/d25e0bb2-6b3a-480d-b5e7-8dde4cf3b54f",
+    "read": false,
+    "created_at": "2026-02-08T21:09:31.986900+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6988fb8b621595b234906487"
+    },
+    "id": "c293f583-be9e-4b82-81e2-4dd62f264243",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "title": "⏰ Auktion endet in 5 Minuten",
+    "message": "MacBook Pro 14\" M4 Pro endet bald! Aktueller Preis: €0.04",
+    "type": "auction",
+    "link": "/auctions/d25e0bb2-6b3a-480d-b5e7-8dde4cf3b54f",
+    "read": false,
+    "created_at": "2026-02-08T21:09:31.987805+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69891dff14e649a87a1f0ad5"
+    },
+    "id": "0ca02fb6-ac07-40d0-b296-4f23181b962b",
+    "user_id": "ce9b3522-6d70-49f9-a0ce-b1c9a112759d",
+    "title": "⏰ Auktion endet in 5 Minuten",
+    "message": "Steam Guthaben €50 endet bald! Aktueller Preis: €7.97",
+    "type": "auction",
+    "link": "/auctions/8e6ff9bd-95d3-44a7-b7db-e7dd649cb765",
+    "read": false,
+    "created_at": "2026-02-08T23:36:31.659836+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69891dff14e649a87a1f0ad6"
+    },
+    "id": "cb6874a6-279a-4df1-8834-89f29092f225",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "title": "⏰ Auktion endet in 5 Minuten",
+    "message": "Steam Guthaben €50 endet bald! Aktueller Preis: €7.97",
+    "type": "auction",
+    "link": "/auctions/8e6ff9bd-95d3-44a7-b7db-e7dd649cb765",
+    "read": false,
+    "created_at": "2026-02-08T23:36:31.668741+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698a23ba6c6d78192fba92d5"
+    },
+    "id": "bb67fb61-c115-4741-b6e6-822dc827c79b",
+    "user_id": "bot_9d81ca72-f616-4464-8cea-90f446c50da6",
+    "title": "⚡ Überboten: Test Product",
+    "message": "Sie wurden von Admin überboten! Aktueller Preis: €2.32",
+    "type": "auction",
+    "link": "/auctions/e51f3d2e-0ac9-4b6e-81d5-ced413a00927",
+    "read": false,
+    "created_at": "2026-02-09T18:13:14.142011+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698a24ed6c6d78192fba92dd"
+    },
+    "id": "9b1c8278-3efb-4c81-9b7d-b8ab3f09ed09",
+    "user_id": "bot_fc26e747-a238-4b2e-9ac9-7baae23f1232",
+    "title": "⚡ Überboten: MacBook Pro 16\" M4 Max",
+    "message": "Sie wurden von Admin überboten! Aktueller Preis: €2.33",
+    "type": "auction",
+    "link": "/auctions/49d06ea9-916f-4c1d-a06b-571d9707a734",
+    "read": false,
+    "created_at": "2026-02-09T18:18:21.199826+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698cfb6c593947c5fbeacf51"
+    },
+    "id": "263ae550-21e0-40db-afe7-c708135ebcc5",
+    "user_id": "bot_0a481c62-ed50-47fb-a860-c2732e28697e",
+    "title": "⚡ Überboten: Apple iPhone 17 Pro Max 256GB",
+    "message": "Sie wurden von Kunde überboten! Aktueller Preis: €2.88",
+    "type": "auction",
+    "link": "/auctions/bc4cf3d1-9027-4a7b-b9da-c3879915688c",
+    "read": false,
+    "created_at": "2026-02-11T21:58:04.523176+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698cfb6e593947c5fbeacf53"
+    },
+    "id": "77ac67c4-0f43-437a-aa19-6b6e6226b4ab",
+    "user_id": "bot_afc9e233-9e2e-4986-8996-03a117cd9046",
+    "title": "⚡ Überboten: VanMoof S6",
+    "message": "Sie wurden von Kunde überboten! Aktueller Preis: €3.14",
+    "type": "auction",
+    "link": "/auctions/3f3e618a-839c-4311-9350-52fd8646d2ff",
+    "read": false,
+    "created_at": "2026-02-11T21:58:06.331205+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698cfdee593947c5fbeacf6f"
+    },
+    "id": "b0eb8789-b419-4af5-89d0-04c883718ba8",
+    "user_id": "bot_da2fe085-0c68-404f-98a3-ad19c74d6e39",
+    "title": "⚡ Überboten: Sony Alpha A1 II",
+    "message": "Sie wurden von Kunde überboten! Aktueller Preis: €3.13",
+    "type": "auction",
+    "link": "/auctions/6d7dfb22-a25c-4a54-ad2f-62dffd3a4356",
+    "read": false,
+    "created_at": "2026-02-11T22:08:46.395869+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698d0283593947c5fbeacfb7"
+    },
+    "id": "b3a99e4e-e77f-4cb2-ba8c-5651a503e152",
+    "user_id": "bot_6f68c8b7-d6e6-4012-86d4-306f65ec55d3",
+    "title": "⚡ Überboten: Samsung Odyssey G10 49\"",
+    "message": "Sie wurden von Kunde überboten! Aktueller Preis: €0.09",
+    "type": "auction",
+    "link": "/auctions/5f86fe12-bbbc-49e4-8281-0c9076e64da0",
+    "read": false,
+    "created_at": "2026-02-11T22:28:19.604644+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698d0442593947c5fbeacfc4"
+    },
+    "id": "039ec4d6-7f65-491c-9563-7ff3cd092917",
+    "user_id": "bot_036609c2-eadf-4350-ba4f-d2e90f1851e7",
+    "title": "⚡ Überboten: Steam Deck OLED 2TB",
+    "message": "Sie wurden von Admin überboten! Aktueller Preis: €0.61",
+    "type": "auction",
+    "link": "/auctions/cac201c3-2d09-4a6d-9858-721d9a9ed163",
+    "read": false,
+    "created_at": "2026-02-11T22:35:46.575049+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698d0563593947c5fbeacfe8"
+    },
+    "id": "b39a0ca1-a253-48f8-ac85-302dfab59fc1",
+    "user_id": "bot_516e6027-8b4b-451d-bfe3-3cb07d975bbe",
+    "title": "⚡ Überboten: Sony Bravia A95M 55\" QD-OLED",
+    "message": "Sie wurden von Admin überboten! Aktueller Preis: €0.03",
+    "type": "auction",
+    "link": "/auctions/071f3518-e859-4ad0-aabc-ee22542f5ee9",
+    "read": false,
+    "created_at": "2026-02-11T22:40:35.803147+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698d056a593947c5fbeacfea"
+    },
+    "id": "4357757b-adc0-4f1e-9db8-d4802b5cff4b",
+    "user_id": "bot_87f4e35f-6dd9-431b-b4f3-24f82871f329",
+    "title": "⚡ Überboten: Steam Deck OLED 2TB",
+    "message": "Sie wurden von Admin überboten! Aktueller Preis: €0.03",
+    "type": "auction",
+    "link": "/auctions/cac201c3-2d09-4a6d-9858-721d9a9ed163",
+    "read": false,
+    "created_at": "2026-02-11T22:40:42.658687+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698e43dd76c8a6d4456fbefb"
+    },
+    "id": "3380d846-f778-428a-aaac-877aa52d2a9f",
+    "user_id": "bot_14ba6335-4406-44af-a9c3-18b08b35e855",
+    "title": "⚡ Überboten: Sony Alpha A1 II",
+    "message": "Sie wurden von Admin überboten! Aktueller Preis: €0.08",
+    "type": "auction",
+    "link": "/auctions/6d7dfb22-a25c-4a54-ad2f-62dffd3a4356",
+    "read": false,
+    "created_at": "2026-02-12T21:19:25.623096+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698e5b44041895821a231bc6"
+    },
+    "id": "e95bea19-addb-42e8-a662-cc6074dc4e81",
+    "user_id": "bot_9bf6fe0c-daab-48fd-99fa-24378ca3d43b",
+    "title": "⚡ Überboten: Dyson V20 Detect Absolute",
+    "message": "Sie wurden von Admin überboten! Aktueller Preis: €0.08",
+    "type": "auction",
+    "link": "/auctions/b75a45fc-cd00-48ac-84fb-2127b59d530a",
+    "read": false,
+    "created_at": "2026-02-12T22:59:16.254417+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698ed4003d365b4e98a4f202"
+    },
+    "id": "93bf023c-18dd-4696-92f2-fb33b4b75781",
+    "user_id": "bot_d2be66be-030e-4bb1-b241-740597071c24",
+    "title": "⚡ Überboten: Auktion",
+    "message": "Sie wurden von Admin überboten! Aktueller Preis: €10.39",
+    "type": "auction",
+    "link": "/auctions/c2082704-2893-47e4-99ad-b1d08476c6a9",
+    "read": false,
+    "created_at": "2026-02-13T07:34:24.641822+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698ed4243d365b4e98a4f204"
+    },
+    "id": "770e7fbe-1b52-4db2-af1a-49e839104865",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "title": "⏰ Auktion endet in 5 Minuten",
+    "message": "Produkt endet bald! Aktueller Preis: €10.39",
+    "type": "auction",
+    "link": "/auctions/c2082704-2893-47e4-99ad-b1d08476c6a9",
+    "read": false,
+    "created_at": "2026-02-13T07:35:00.216307+00:00"
+  }
+]

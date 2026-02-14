@@ -1,0 +1,182 @@
+[
+  {
+    "_id": {
+      "$oid": "69721d46678c13a8916dfb21"
+    },
+    "id": "b81f11dc-332c-4011-be02-a70d5de69b8b",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "bids_given": 4,
+    "base_reward": 4,
+    "streak_bonus": 0,
+    "streak_day": 1,
+    "claimed_at": "2026-01-22T12:51:18.614081+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69753c48bdcd898380bcfa88"
+    },
+    "id": "080a5582-f9b9-462c-9a29-ecfcef151745",
+    "user_id": "cc39e3e7-d381-41ba-a555-e4b03a1e3f35",
+    "bids_given": 1,
+    "base_reward": 1,
+    "streak_bonus": 0,
+    "streak_day": 1,
+    "claimed_at": "2026-01-24T21:40:24.467389+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697543de16e913e32e5f76a1"
+    },
+    "id": "90e5f35a-7e8a-4a84-b749-20590b8d78e7",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "bids_given": 1,
+    "base_reward": 1,
+    "streak_bonus": 0,
+    "streak_day": 1,
+    "claimed_at": "2026-01-24T22:12:46.870967+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697e64cf86483569377d688b"
+    },
+    "id": "89cf7e05-7530-4f74-b63d-98f05ab19da7",
+    "user_id": "d4ed9901-ab91-4cb0-85cd-0ea40008a73f",
+    "bids_given": 1,
+    "base_reward": 1,
+    "streak_bonus": 0,
+    "streak_day": 1,
+    "claimed_at": "2026-01-31T20:23:43.516299+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697e6822e28d2b5929e6fa4b"
+    },
+    "id": "97387368-ee80-4baf-9fad-80f3a6feff20",
+    "user_id": "93751cd4-fcd3-41da-82e2-8f455322ba24",
+    "bids_given": 5,
+    "base_reward": 5,
+    "streak_bonus": 0,
+    "streak_day": 1,
+    "claimed_at": "2026-01-31T20:37:54.528354+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f1654cf2c7094b013aea6"
+    },
+    "id": "bc4178e8-5375-4ea1-9164-48e314ad2b7c",
+    "user_id": "d4ed9901-ab91-4cb0-85cd-0ea40008a73f",
+    "bids_given": 2,
+    "base_reward": 2,
+    "streak_bonus": 0,
+    "streak_day": 2,
+    "claimed_at": "2026-02-01T09:01:08.994608+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f59fe7b9680d548c2520d"
+    },
+    "id": "1daac558-a8e6-4c92-98b9-42a6b75bc7d7",
+    "user_id": "93751cd4-fcd3-41da-82e2-8f455322ba24",
+    "bids_given": 3,
+    "base_reward": 3,
+    "streak_bonus": 0,
+    "streak_day": 2,
+    "claimed_at": "2026-02-01T13:49:50.973462+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69806bc13350eabc356e4062"
+    },
+    "id": "ed8e4858-4255-40db-b1f0-36ce82a0ae8e",
+    "user_id": "93751cd4-fcd3-41da-82e2-8f455322ba24",
+    "bids_given": 3,
+    "base_reward": 3,
+    "streak_bonus": 0,
+    "streak_day": 3,
+    "claimed_at": "2026-02-02T09:17:53.493988+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69810c9f4b01d560a741b067"
+    },
+    "id": "6b8ae1bc-e6df-4c7b-821a-228c0cdb6538",
+    "user_id": "ce9b3522-6d70-49f9-a0ce-b1c9a112759d",
+    "bids_given": 1,
+    "base_reward": 1,
+    "streak_bonus": 0,
+    "streak_day": 1,
+    "claimed_at": "2026-02-02T20:44:15.921685+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69878fe239b40208a92eca80"
+    },
+    "id": "48da3501-2ea3-47bc-883e-a2af3133d588",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "bids_given": 1,
+    "base_reward": 1,
+    "streak_bonus": 0,
+    "streak_day": 1,
+    "claimed_at": "2026-02-07T19:17:54.331848+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698793b039b40208a92eca89"
+    },
+    "id": "4a350ca5-226e-4b99-920e-c2c4aebe6656",
+    "user_id": "c9e2304c-f3ca-49d7-8ce6-4ce3933ef963",
+    "bids_given": 2,
+    "base_reward": 2,
+    "streak_bonus": 0,
+    "streak_day": 1,
+    "claimed_at": "2026-02-07T19:34:08.653707+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69890de4512c7452236796d1"
+    },
+    "id": "98b4c03f-74c0-4371-bf8f-75969788fe4e",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "bids_given": 5,
+    "base_reward": 5,
+    "streak_bonus": 0,
+    "streak_day": 2,
+    "claimed_at": "2026-02-08T22:27:48.568467+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698a29166c6d78192fba92e9"
+    },
+    "id": "f24851d8-92c6-4794-9d93-49631c58e0f6",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "bids_given": 4,
+    "base_reward": 4,
+    "streak_bonus": 0,
+    "streak_day": 3,
+    "claimed_at": "2026-02-09T18:36:06.424672+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698b3474a52338412aa3e20b"
+    },
+    "id": "42675517-d6ff-4ccd-80b4-39278314085f",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "bids_given": 5,
+    "base_reward": 5,
+    "streak_bonus": 0,
+    "streak_day": 4,
+    "claimed_at": "2026-02-10T13:36:52.852720+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698cf0ca9554fb776a855283"
+    },
+    "id": "3c845bce-6bd1-406d-82ed-1032688cead8",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "bids_given": 5,
+    "base_reward": 5,
+    "streak_bonus": 0,
+    "streak_day": 5,
+    "claimed_at": "2026-02-11T21:12:42.328020+00:00"
+  }
+]

@@ -1,0 +1,134 @@
+[
+  {
+    "_id": {
+      "$oid": "697f54c56b26c6131033fc88"
+    },
+    "user_id": "93751cd4-fcd3-41da-82e2-8f455322ba24",
+    "prize_type": "bids",
+    "prize_value": 3,
+    "prize_label": "3 Gebote",
+    "created_at": {
+      "$date": "2026-02-01T13:27:33.554Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "69809e4e8f6c1ee3afb0e921"
+    },
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "prize_type": "bids",
+    "prize_value": 2,
+    "prize_label": "2 Gebote",
+    "created_at": {
+      "$date": "2026-02-02T12:53:34.777Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6980ba5070a7b79bf050a0aa"
+    },
+    "user_id": "93751cd4-fcd3-41da-82e2-8f455322ba24",
+    "prize_type": "bids",
+    "prize_value": 3,
+    "prize_label": "3 Gebote",
+    "created_at": {
+      "$date": "2026-02-02T14:53:04.324Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "69878fed39b40208a92eca81"
+    },
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "prize_type": "bids",
+    "prize_value": 1,
+    "prize_label": "1 Gebot",
+    "created_at": {
+      "$date": "2026-02-07T19:18:05.967Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "698793b939b40208a92eca8a"
+    },
+    "user_id": "c9e2304c-f3ca-49d7-8ce6-4ce3933ef963",
+    "prize_type": "bids",
+    "prize_value": 5,
+    "prize_label": "5 Gebote",
+    "created_at": {
+      "$date": "2026-02-07T19:34:17.052Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "698860d8de35e1b356f8c3d2"
+    },
+    "user_id": "93751cd4-fcd3-41da-82e2-8f455322ba24",
+    "prize_type": "bids",
+    "prize_value": 3,
+    "prize_label": "3 Gebote",
+    "created_at": {
+      "$date": "2026-02-08T10:09:28.286Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "69890df0512c7452236796d2"
+    },
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "prize_type": "discount",
+    "prize_value": 10,
+    "prize_label": "10% Rabatt",
+    "created_at": {
+      "$date": "2026-02-08T22:28:00.993Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "698b347fa52338412aa3e20c"
+    },
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "prize_type": "bids",
+    "prize_value": 3,
+    "prize_label": "3 Gebote",
+    "created_at": {
+      "$date": "2026-02-10T13:37:03.304Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "698cd64d93e286cede1adedc"
+    },
+    "user_id": "93751cd4-fcd3-41da-82e2-8f455322ba24",
+    "prize_type": "bids",
+    "prize_value": 3,
+    "prize_label": "3 Gebote",
+    "created_at": {
+      "$date": "2026-02-11T19:19:41.907Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "698cdc38eaee1a5eb6fa01cb"
+    },
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "prize_type": "bids",
+    "prize_value": 3,
+    "prize_label": "3 Gebote",
+    "created_at": {
+      "$date": "2026-02-11T19:44:56.563Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "698ce0b6708f7da9b6f9568e"
+    },
+    "user_id": "494c49c3-5194-480a-8402-58620a610020",
+    "prize_type": "discount",
+    "prize_value": 10,
+    "prize_label": "10% Rabatt",
+    "created_at": {
+      "$date": "2026-02-11T20:04:06.351Z"
+    }
+  }
+]

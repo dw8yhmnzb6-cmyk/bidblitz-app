@@ -1,0 +1,213 @@
+[
+  {
+    "_id": {
+      "$oid": "69755f41ff37f26cece1f2ba"
+    },
+    "id": "b5e9f404-7dd1-49d5-af25-47d25df077c8",
+    "company_name": "Test GmbH",
+    "contact_name": "Max Mustermann",
+    "email": "test@testgmbh.de",
+    "phone": "+49 123 456789",
+    "website": null,
+    "expected_volume": "1000-2500",
+    "message": "Wir möchten Großkunde werden",
+    "status": "pending",
+    "created_at": "2026-01-25T00:09:37.129703+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69886639de35e1b356f8c3d9"
+    },
+    "id": "5291f450-68a5-4179-8a31-b777c744047a",
+    "company_name": "Afrim Krasniqi ",
+    "contact_name": "Hallo ",
+    "email": "taiga_zirkumflex.9q@icloud.com",
+    "phone": "01777846138",
+    "website": "",
+    "expected_volume": "1000-5000",
+    "message": "",
+    "status": "approved",
+    "created_at": "2026-02-08T10:32:25.800957+00:00",
+    "approved_at": "2026-02-08T11:05:30.994842+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69886e547f86caf35dcfdbc0"
+    },
+    "id": "c0d0c490-0a58-42c4-8480-35944977ab66",
+    "company_name": "TEST_NoUserAccount GmbH",
+    "contact_name": "Test Person",
+    "email": "test_no_user_account_1770548820@example.com",
+    "phone": "+49 111 222333",
+    "website": null,
+    "expected_volume": "500-1000",
+    "message": "Testing wholesale approval without user account",
+    "status": "approved",
+    "created_at": "2026-02-08T11:07:00.286418+00:00",
+    "approved_at": "2026-02-08T11:07:07.248329+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69886f465e8d8f422f3601cc"
+    },
+    "id": "526166d9-9cc8-480f-818d-1659177fd93c",
+    "company_name": "TEST_WholesaleNoUser GmbH",
+    "contact_name": "Test Contact",
+    "email": "test_wholesale_1770549062@example.com",
+    "phone": "+49 123 456789",
+    "website": null,
+    "expected_volume": "500-1000",
+    "message": "Testing wholesale approval without user account",
+    "status": "approved",
+    "created_at": "2026-02-08T11:11:02.625448+00:00",
+    "approved_at": "2026-02-08T11:11:02.660940+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69886f6bdf0bb0ce7ca4f998"
+    },
+    "id": "737534a2-1672-40f1-9e5f-d6b5b81e8e51",
+    "company_name": "TEST_WholesaleNoUser GmbH",
+    "contact_name": "Test Contact",
+    "email": "test_wholesale_1770549099@example.com",
+    "phone": "+49 123 456789",
+    "website": null,
+    "expected_volume": "500-1000",
+    "message": "Testing wholesale approval without user account",
+    "status": "approved",
+    "created_at": "2026-02-08T11:11:39.389518+00:00",
+    "approved_at": "2026-02-08T11:11:39.422438+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69886f93fd292a5aafc24589"
+    },
+    "id": "750b2650-1017-4455-86c8-cc7fff5c791a",
+    "company_name": "TEST_WholesaleNoUser GmbH",
+    "contact_name": "Test Contact",
+    "email": "test_wholesale_1770549139@example.com",
+    "phone": "+49 123 456789",
+    "website": null,
+    "expected_volume": "500-1000",
+    "message": "Testing wholesale approval without user account",
+    "status": "approved",
+    "created_at": "2026-02-08T11:12:19.219680+00:00",
+    "approved_at": "2026-02-08T11:12:19.259024+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69887ffa5c6d9403007cc11b"
+    },
+    "id": "a0e06c02-9ba0-409d-ab39-dffe4ce8d3a7",
+    "company_name": "Test Email GmbH",
+    "contact_name": "Max Mustermann",
+    "email": "max.mustermann@test.de",
+    "phone": "+49 123 456789",
+    "website": null,
+    "expected_volume": "500-1000",
+    "message": "Test für E-Mail-Versand",
+    "status": "approved",
+    "created_at": "2026-02-08T12:22:18.909068+00:00",
+    "approved_at": "2026-02-08T12:22:29.088828+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698889c018e3b42cdf6a75d9"
+    },
+    "id": "66b0e53a-438b-436f-b8cb-1fa66f210223",
+    "wholesale_id": "b052a704-dc91-4839-9860-f0c065e3a48a",
+    "company_name": "Test B2B GmbH",
+    "contact_name": "Hans Tester",
+    "email": "hans@testb2b.de",
+    "phone": "+49 111 222333",
+    "website": null,
+    "expected_volume": "1000-5000",
+    "message": "Ich möchte Großkunde werden!",
+    "status": "approved",
+    "created_at": "2026-02-08T13:04:00.988569+00:00",
+    "approved_at": "2026-02-08T13:04:21.597522+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69888a81989c4c518cd5499a"
+    },
+    "id": "e283c926-9dbf-45c4-b92c-372437b3b58a",
+    "wholesale_id": "dd980bb9-3dcb-407a-991a-8bc557087a99",
+    "company_name": "Test GmbH",
+    "contact_name": "Test Person",
+    "email": "test_b2b_42318d2c@testcompany.de",
+    "phone": "+49 123 456789",
+    "website": "www.testcompany.de",
+    "expected_volume": "500-1000",
+    "message": "Test registration",
+    "status": "pending",
+    "created_at": "2026-02-08T13:07:13.890902+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69888a82989c4c518cd5499d"
+    },
+    "id": "3cfe812f-ab3b-4fce-a8e0-e108a1c0aa74",
+    "wholesale_id": "f1294aef-b9e2-4a63-96eb-f10ac825e896",
+    "company_name": "Pending Test GmbH",
+    "contact_name": "Test Person",
+    "email": "test_pending_fefb14b9@testcompany.de",
+    "phone": "+49 123 456789",
+    "website": null,
+    "expected_volume": "500-1000",
+    "message": null,
+    "status": "pending",
+    "created_at": "2026-02-08T13:07:14.221003+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69889bd50f16a3f842b1fdff"
+    },
+    "id": "1fba87bf-9517-420a-ae7e-656880063dbc",
+    "wholesale_id": "65152d96-2700-40bb-81ba-71825c13b2db",
+    "company_name": "Afrim Krasniqi l ",
+    "contact_name": "Afrim ",
+    "email": "afrimk@me.com",
+    "phone": "017693131712",
+    "website": null,
+    "expected_volume": "500-1000",
+    "message": "Test 3",
+    "status": "approved",
+    "created_at": "2026-02-08T14:21:09.292413+00:00",
+    "approved_at": "2026-02-08T14:21:55.233181+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6988e19526c2b37dbd0cfe5f"
+    },
+    "id": "71f9a9a2-1730-4d52-8660-7f44e3c6d9f1",
+    "wholesale_id": "cfa238ee-4b8f-4801-9af7-81ee2c602100",
+    "company_name": "Test Großhandel GmbH",
+    "contact_name": "Max Mustermann",
+    "email": "test@grosshandel.de",
+    "phone": "+49 123 456789",
+    "website": null,
+    "expected_volume": "1000-5000",
+    "message": "Testregistrierung",
+    "status": "approved",
+    "created_at": "2026-02-08T19:18:45.361144+00:00",
+    "approved_at": "2026-02-08T19:18:54.803259+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69890bd9512c7452236796be"
+    },
+    "id": "d92421de-d0d7-4e69-a888-77510e49f2a8",
+    "wholesale_id": "18f11929-cf4c-4bf0-b19d-7a4503e67b73",
+    "company_name": "Test GmbH",
+    "contact_name": "Max Mustermann",
+    "email": "test@b2b-test.de",
+    "phone": "+49 123 456789",
+    "website": null,
+    "expected_volume": "5000",
+    "message": null,
+    "status": "approved",
+    "created_at": "2026-02-08T22:19:05.424056+00:00",
+    "approved_at": "2026-02-08T22:20:03.173251+00:00"
+  }
+]

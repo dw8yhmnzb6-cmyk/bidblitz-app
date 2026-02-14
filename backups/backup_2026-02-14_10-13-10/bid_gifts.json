@@ -1,0 +1,19 @@
+[
+  {
+    "_id": {
+      "$oid": "697e676ae28d2b5929e6fa37"
+    },
+    "id": "556a8952-09ef-4301-926b-e149c054f70e",
+    "sender_id": "93751cd4-fcd3-41da-82e2-8f455322ba24",
+    "sender_name": "Kunde",
+    "sender_customer_number": "85286446",
+    "recipient_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "recipient_name": "Admin",
+    "recipient_customer_number": "58913853",
+    "amount": 5,
+    "message": "Test Geschenk!",
+    "type": "direct_gift",
+    "status": "completed",
+    "created_at": "2026-01-31T20:34:50.235782+00:00"
+  }
+]

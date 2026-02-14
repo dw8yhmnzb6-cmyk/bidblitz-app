@@ -1,0 +1,28 @@
+[
+  {
+    "_id": {
+      "$oid": "6981344a383eb6506d8d3d6e"
+    },
+    "id": "66144515-e7a1-45e7-ad7d-7a3bc73ed512",
+    "project_id": "5fd72a0f-baaa-4ea6-aec7-b16d32983b42",
+    "user_id": "93751cd4-fcd3-41da-82e2-8f455322ba24",
+    "user_name": "Kunde",
+    "user_email": "kunde@bidblitz.de",
+    "amount": 500.0,
+    "status": "pending",
+    "created_at": "2026-02-02T23:33:30.907790+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6981345b383eb6506d8d3d6f"
+    },
+    "id": "647d2d9d-b52f-4a33-b7a6-c25d8bbba9e3",
+    "project_id": "95cfe597-159d-4c41-8df2-2e2b3e06e37e",
+    "user_id": "93751cd4-fcd3-41da-82e2-8f455322ba24",
+    "user_name": "Kunde",
+    "user_email": "kunde@bidblitz.de",
+    "amount": 100.0,
+    "status": "pending",
+    "created_at": "2026-02-02T23:33:47.079337+00:00"
+  }
+]

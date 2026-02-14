@@ -1,0 +1,46 @@
+[
+  {
+    "_id": {
+      "$oid": "698090c6c055d2e93b8b38c6"
+    },
+    "id": "a61ec1a7-880c-4e99-8936-9037ce8b42c3",
+    "user_id": "93751cd4-fcd3-41da-82e2-8f455322ba24",
+    "current_xp": 8,
+    "current_level": "bronze",
+    "level_history": [],
+    "created_at": "2026-02-02T11:55:50.842263+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69813370f9de2d023ac139c0"
+    },
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "created_at": "2026-02-02T23:29:52.966555+00:00",
+    "current_level": "bronze",
+    "current_xp": 66,
+    "id": "c97bf446-3cc8-4488-9a42-3460f825c9cc",
+    "level_history": []
+  },
+  {
+    "_id": {
+      "$oid": "698793dc0ec93b535bb97e93"
+    },
+    "user_id": "c9e2304c-f3ca-49d7-8ce6-4ce3933ef963",
+    "created_at": "2026-02-07T19:34:52.512979+00:00",
+    "current_level": "bronze",
+    "current_xp": 1,
+    "id": "8cea6920-5594-4fba-bd07-034f2d9ef3e4",
+    "level_history": []
+  },
+  {
+    "_id": {
+      "$oid": "698856cbee0565631c5addc3"
+    },
+    "user_id": "ce9b3522-6d70-49f9-a0ce-b1c9a112759d",
+    "created_at": "2026-02-08T09:26:35.037853+00:00",
+    "current_level": "bronze",
+    "current_xp": 8,
+    "id": "20c6bd43-b96f-4a83-8f4e-11cad63e63c9",
+    "level_history": []
+  }
+]

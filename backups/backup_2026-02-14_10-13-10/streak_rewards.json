@@ -1,0 +1,35 @@
+[
+  {
+    "_id": {
+      "$oid": "69853da8cf28ae4874e0c835"
+    },
+    "id": "75f00b96-37e8-4295-bf1e-7d5e29c24a54",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "auction_id": "45421d9f-6095-4f4c-8f3c-253559fb9e7d",
+    "streak_count": 5,
+    "bids_awarded": 1,
+    "awarded_at": "2026-02-06T01:02:32.302781+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69877f17ee89b1f53f48fccf"
+    },
+    "id": "3e1b59cd-a2ee-4ea8-a46b-90d901b567b9",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "auction_id": "752603a8-675b-48b1-8186-da54b7fefd0e",
+    "streak_count": 5,
+    "bids_awarded": 1,
+    "awarded_at": "2026-02-07T18:06:15.419167+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69878ccd39b40208a92eca77"
+    },
+    "id": "bcb17058-0a79-416d-b974-b26dd6fcf127",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "auction_id": "a6a334b2-e733-45a0-b24d-e1b0c2bb1d75",
+    "streak_count": 5,
+    "bids_awarded": 1,
+    "awarded_at": "2026-02-07T19:04:45.726227+00:00"
+  }
+]

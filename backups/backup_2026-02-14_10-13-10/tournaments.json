@@ -1,0 +1,163 @@
+[
+  {
+    "_id": {
+      "$oid": "69870c27cca20e7a19a2b8ed"
+    },
+    "id": "9eb6a473-04a1-4e55-ac0d-db55fa1b7794",
+    "type": "most_bids",
+    "name": "Aktivster Bieter",
+    "description": "Wer platziert diese Woche die meisten Gebote?",
+    "metric": "bids",
+    "icon": "⚡",
+    "start_date": {
+      "$date": "2026-02-02T00:00:00Z"
+    },
+    "end_date": {
+      "$date": "2026-02-08T23:59:59Z"
+    },
+    "status": "active",
+    "prizes": {
+      "1": {
+        "bids": 100,
+        "badge": "🥇",
+        "title": "1. Platz"
+      },
+      "2": {
+        "bids": 50,
+        "badge": "🥈",
+        "title": "2. Platz"
+      },
+      "3": {
+        "bids": 25,
+        "badge": "🥉",
+        "title": "3. Platz"
+      },
+      "4": {
+        "bids": 10,
+        "badge": "⭐",
+        "title": "Top 10"
+      },
+      "5": {
+        "bids": 10,
+        "badge": "⭐",
+        "title": "Top 10"
+      },
+      "6": {
+        "bids": 5,
+        "badge": "✨",
+        "title": "Top 10"
+      },
+      "7": {
+        "bids": 5,
+        "badge": "✨",
+        "title": "Top 10"
+      },
+      "8": {
+        "bids": 5,
+        "badge": "✨",
+        "title": "Top 10"
+      },
+      "9": {
+        "bids": 5,
+        "badge": "✨",
+        "title": "Top 10"
+      },
+      "10": {
+        "bids": 5,
+        "badge": "✨",
+        "title": "Top 10"
+      }
+    },
+    "created_at": {
+      "$date": "2026-02-07T09:55:51.610Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "698a17a673c29b2a0ef05c77"
+    },
+    "id": "3d606b8a-3aae-4648-b4cf-5c4484c21597",
+    "name": "Wöchentliches Turnier KW7",
+    "description": "Wer gewinnt diese Woche am meisten?",
+    "status": "active",
+    "start_date": "2026-02-09T17:21:42.979927+00:00",
+    "end_date": "2026-02-16T17:21:42.979927+00:00",
+    "prize_first": 100,
+    "prize_second": 50,
+    "prize_third": 25,
+    "created_at": "2026-02-09T17:21:42.979927+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698d0216593947c5fbeacfb2"
+    },
+    "id": "a438c064-f429-47f2-a172-7ac56c8f5eed",
+    "type": "most_bids",
+    "name": "Aktivster Bieter",
+    "description": "Wer platziert diese Woche die meisten Gebote?",
+    "metric": "bids",
+    "icon": "⚡",
+    "start_date": {
+      "$date": "2026-02-09T00:00:00Z"
+    },
+    "end_date": {
+      "$date": "2026-02-15T23:59:59Z"
+    },
+    "status": "active",
+    "prizes": {
+      "1": {
+        "bids": 100,
+        "badge": "🥇",
+        "title": "1. Platz"
+      },
+      "2": {
+        "bids": 50,
+        "badge": "🥈",
+        "title": "2. Platz"
+      },
+      "3": {
+        "bids": 25,
+        "badge": "🥉",
+        "title": "3. Platz"
+      },
+      "4": {
+        "bids": 10,
+        "badge": "⭐",
+        "title": "Top 10"
+      },
+      "5": {
+        "bids": 10,
+        "badge": "⭐",
+        "title": "Top 10"
+      },
+      "6": {
+        "bids": 5,
+        "badge": "✨",
+        "title": "Top 10"
+      },
+      "7": {
+        "bids": 5,
+        "badge": "✨",
+        "title": "Top 10"
+      },
+      "8": {
+        "bids": 5,
+        "badge": "✨",
+        "title": "Top 10"
+      },
+      "9": {
+        "bids": 5,
+        "badge": "✨",
+        "title": "Top 10"
+      },
+      "10": {
+        "bids": 5,
+        "badge": "✨",
+        "title": "Top 10"
+      }
+    },
+    "created_at": {
+      "$date": "2026-02-11T22:26:30.684Z"
+    }
+  }
+]

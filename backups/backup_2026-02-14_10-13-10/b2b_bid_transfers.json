@@ -1,0 +1,17 @@
+[
+  {
+    "_id": {
+      "$oid": "6988e24026c2b37dbd0cfe68"
+    },
+    "id": "e77eece7-2cde-441f-828e-08dc2f586fbb",
+    "wholesale_id": "cfa238ee-4b8f-4801-9af7-81ee2c602100",
+    "wholesale_company": "Test Großhandel GmbH",
+    "recipient_id": "a1c3a84d-cd92-4674-87dd-8f3440cb5551",
+    "recipient_name": "Test User",
+    "customer_number": "09519131",
+    "amount": 50,
+    "cost": 4.25,
+    "message": "Viel Erfolg beim Bieten!",
+    "created_at": "2026-02-08T19:21:36.525445+00:00"
+  }
+]

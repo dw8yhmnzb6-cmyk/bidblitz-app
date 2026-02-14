@@ -1,0 +1,294 @@
+{
+  "timestamp": "2026-02-14_10-13-10",
+  "database": "bidblitz",
+  "total_collections": 71,
+  "backed_up_collections": 71,
+  "total_documents": 26241,
+  "collections": [
+    {
+      "name": "bots",
+      "count": 268
+    },
+    {
+      "name": "wholesale_customers",
+      "count": 12
+    },
+    {
+      "name": "daily_rewards",
+      "count": 15
+    },
+    {
+      "name": "wholesale_users",
+      "count": 1
+    },
+    {
+      "name": "xp_transactions",
+      "count": 79
+    },
+    {
+      "name": "auction_history",
+      "count": 412
+    },
+    {
+      "name": "bid_gifts",
+      "count": 1
+    },
+    {
+      "name": "won_auctions",
+      "count": 23023
+    },
+    {
+      "name": "achievements",
+      "count": 2
+    },
+    {
+      "name": "game_config",
+      "count": 1
+    },
+    {
+      "name": "daily_quests",
+      "count": 15
+    },
+    {
+      "name": "investor_investments",
+      "count": 1
+    },
+    {
+      "name": "analytics_report_logs",
+      "count": 1
+    },
+    {
+      "name": "email_campaigns",
+      "count": 1
+    },
+    {
+      "name": "teams",
+      "count": 10
+    },
+    {
+      "name": "products",
+      "count": 91
+    },
+    {
+      "name": "security_logs",
+      "count": 1204
+    },
+    {
+      "name": "investment_transactions",
+      "count": 1
+    },
+    {
+      "name": "b2b_bid_transfers",
+      "count": 1
+    },
+    {
+      "name": "user_levels",
+      "count": 4
+    },
+    {
+      "name": "mystery_bids",
+      "count": 5
+    },
+    {
+      "name": "wholesale_orders",
+      "count": 8
+    },
+    {
+      "name": "loyalty_points",
+      "count": 4
+    },
+    {
+      "name": "betting_balances",
+      "count": 5
+    },
+    {
+      "name": "tournaments",
+      "count": 3
+    },
+    {
+      "name": "battle_pass_users",
+      "count": 3
+    },
+    {
+      "name": "banners",
+      "count": 1
+    },
+    {
+      "name": "managers",
+      "count": 6
+    },
+    {
+      "name": "wheel_spins",
+      "count": 11
+    },
+    {
+      "name": "influencer_applications",
+      "count": 1
+    },
+    {
+      "name": "device_analytics",
+      "count": 593
+    },
+    {
+      "name": "login_calendar",
+      "count": 2
+    },
+    {
+      "name": "daily_streaks",
+      "count": 2
+    },
+    {
+      "name": "jackpot_history",
+      "count": 3
+    },
+    {
+      "name": "crowdfunding_projects",
+      "count": 3
+    },
+    {
+      "name": "auctions",
+      "count": 34
+    },
+    {
+      "name": "global_jackpot",
+      "count": 3
+    },
+    {
+      "name": "promo_codes",
+      "count": 4
+    },
+    {
+      "name": "voice_command_logs",
+      "count": 47
+    },
+    {
+      "name": "notifications",
+      "count": 114
+    },
+    {
+      "name": "autobidders",
+      "count": 1
+    },
+    {
+      "name": "streak_claims",
+      "count": 5
+    },
+    {
+      "name": "coupons",
+      "count": 3
+    },
+    {
+      "name": "telegram_link_codes",
+      "count": 1
+    },
+    {
+      "name": "gamification_config",
+      "count": 1
+    },
+    {
+      "name": "b2b_customer_links",
+      "count": 1
+    },
+    {
+      "name": "duels",
+      "count": 1
+    },
+    {
+      "name": "mystery_boxes",
+      "count": 3
+    },
+    {
+      "name": "battle_pass_seasons",
+      "count": 1
+    },
+    {
+      "name": "user_challenges",
+      "count": 8
+    },
+    {
+      "name": "sustainability_stats",
+      "count": 1
+    },
+    {
+      "name": "vip_subscriptions",
+      "count": 1
+    },
+    {
+      "name": "promo_code_redemptions",
+      "count": 2
+    },
+    {
+      "name": "auction_of_the_day",
+      "count": 4
+    },
+    {
+      "name": "settings",
+      "count": 4
+    },
+    {
+      "name": "wholesale_applications",
+      "count": 13
+    },
+    {
+      "name": "auction_reminders",
+      "count": 1
+    },
+    {
+      "name": "weekly_challenges",
+      "count": 2
+    },
+    {
+      "name": "vouchers",
+      "count": 120
+    },
+    {
+      "name": "streak_rewards",
+      "count": 3
+    },
+    {
+      "name": "voice_command_history",
+      "count": 12
+    },
+    {
+      "name": "product_wishes",
+      "count": 2
+    },
+    {
+      "name": "transactions",
+      "count": 16
+    },
+    {
+      "name": "restaurant_applications",
+      "count": 2
+    },
+    {
+      "name": "manager_activities",
+      "count": 15
+    },
+    {
+      "name": "discount_codes",
+      "count": 2
+    },
+    {
+      "name": "influencers",
+      "count": 4
+    },
+    {
+      "name": "crowdfunding_investments",
+      "count": 2
+    },
+    {
+      "name": "users",
+      "count": 12
+    },
+    {
+      "name": "favorites",
+      "count": 1
+    },
+    {
+      "name": "sustainability_projects",
+      "count": 2
+    }
+  ],
+  "errors": []
+}

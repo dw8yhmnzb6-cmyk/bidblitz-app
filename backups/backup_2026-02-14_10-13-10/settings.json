@@ -1,0 +1,49 @@
+[
+  {
+    "_id": {
+      "$oid": "697eb3271d121873a3498a99"
+    },
+    "key": "bots_enabled",
+    "value": true
+  },
+  {
+    "_id": {
+      "$oid": "69878caa0ec93b535bb87585"
+    },
+    "key": "happy_hour",
+    "value": {
+      "enabled": true,
+      "start_hour": 20,
+      "end_hour": 22,
+      "multiplier": 2.0,
+      "days": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ]
+    }
+  },
+  {
+    "_id": {
+      "$oid": "69886a0550d68e7fb16c50e2"
+    },
+    "type": "maintenance",
+    "enabled": false,
+    "estimated_end": null,
+    "message": "Wir führen gerade Wartungsarbeiten durch. Bitte versuchen Sie es später erneut.",
+    "updated_at": "2026-02-13T08:14:54.348751+00:00",
+    "updated_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "698921409cabbd9b4cb8827b"
+    },
+    "type": "winner_control",
+    "bot_win_rate": 91.0,
+    "updated_at": "2026-02-11T22:50:38.125456+00:00"
+  }
+]

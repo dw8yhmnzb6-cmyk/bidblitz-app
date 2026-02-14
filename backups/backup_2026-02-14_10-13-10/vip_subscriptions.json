@@ -1,0 +1,15 @@
+[
+  {
+    "_id": {
+      "$oid": "697567300cf350264fce3c71"
+    },
+    "id": "b43d3fa9-5d7f-4a51-baa8-f9ee3d5c06fb",
+    "user_id": "93751cd4-fcd3-41da-82e2-8f455322ba24",
+    "plan": "admin_granted",
+    "status": "active",
+    "next_renewal": "2027-01-25T00:43:28.761824+00:00",
+    "activated_by": "admin",
+    "activated_at": "2026-01-25T00:43:28.761873+00:00",
+    "created_at": "2026-01-25T00:43:28.761876+00:00"
+  }
+]

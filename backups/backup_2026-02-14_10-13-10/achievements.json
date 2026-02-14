@@ -1,0 +1,30 @@
+[
+  {
+    "_id": {
+      "$oid": "697f60e7090b6f89b1ad7ebf"
+    },
+    "id": "2933b956-bd03-4411-aed0-e425f61240e5",
+    "user_id": "93751cd4-fcd3-41da-82e2-8f455322ba24",
+    "achievement_id": "first_bid",
+    "name": "Erste Schritte",
+    "description": "Erstes Gebot platziert",
+    "icon": "🎯",
+    "reward_bids": 5,
+    "category": "beginner",
+    "earned_at": "2026-02-01T14:19:19.877045+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f60e7090b6f89b1ad7ec1"
+    },
+    "id": "2a081c8f-a971-4659-b92f-ff59ff190ecb",
+    "user_id": "93751cd4-fcd3-41da-82e2-8f455322ba24",
+    "achievement_id": "vip_member",
+    "name": "VIP Status",
+    "description": "VIP-Mitglied geworden",
+    "icon": "👑",
+    "reward_bids": 20,
+    "category": "status",
+    "earned_at": "2026-02-01T14:19:19.896898+00:00"
+  }
+]

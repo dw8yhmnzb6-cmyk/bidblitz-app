@@ -1,0 +1,2078 @@
+[
+  {
+    "_id": {
+      "$oid": "6975465b5f4f333e741ee82e"
+    },
+    "id": "3884d8bf-fcb2-4e4e-9fc8-e9cdfaf797a2",
+    "code": "TEST100",
+    "bids": 100,
+    "max_uses": 999,
+    "used_count": 0,
+    "used_by": [],
+    "expires_at": "2027-01-24T22:23:23.756422+00:00",
+    "created_at": "2026-01-24T22:23:23.756434+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697546d7462ea96838f4bd83"
+    },
+    "id": "cf72f9c3-f3a1-40cb-99fd-097ef3c9fd7f",
+    "code": "WILLKOMMEN50",
+    "bids": 50,
+    "max_uses": 9999,
+    "used_count": 0,
+    "used_by": [],
+    "expires_at": "2027-01-24T22:25:27.654482+00:00",
+    "created_at": "2026-01-24T22:25:27.654496+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697e78607e85a4b3231b31b3"
+    },
+    "id": "3d7d16e2-cfad-4c29-82a5-5f881f3298f5",
+    "code": "OS8O0KSI",
+    "type": "bids",
+    "value": 50,
+    "max_uses": 1,
+    "current_uses": 0,
+    "is_active": true,
+    "created_by": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "created_at": "2026-01-31T21:47:12.310462+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f745bcb1b4d3ca00527be"
+    },
+    "id": "48d8932e-f0d7-4e9a-bde1-63a3cf27c963",
+    "code": "456356FHJ",
+    "bids": 10,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "expires_at": "2026-07-01T16:41",
+    "created_at": "2026-02-01T15:42:19.020901+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f746bcb1b4d3ca00527c4"
+    },
+    "id": "69e87f66-4f27-48df-95dd-a63db6f271a3",
+    "code": "456356FHJU",
+    "bids": 10,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "expires_at": "2026-07-01T16:41",
+    "created_at": "2026-02-01T15:42:35.028236+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f75eb78d37ffa7b3773a0"
+    },
+    "id": "f5cf7e6d-97db-4e54-ae33-9bfaf9e1b103",
+    "code": "YTSM0CID",
+    "type": "euro",
+    "value": 10,
+    "bids": 50,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-03T15:48:59.889066+00:00",
+    "created_at": "2026-02-01T15:48:59.889096+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "697f75eb78d37ffa7b3773a1"
+    },
+    "id": "0e70c3d8-5b16-416d-88b9-22c4cd940923",
+    "code": "NEUJAHR-8IJFGCXG",
+    "type": "euro",
+    "value": 20,
+    "bids": 100,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-03T15:48:59.943380+00:00",
+    "created_at": "2026-02-01T15:48:59.943937+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "697f75eb78d37ffa7b3773a2"
+    },
+    "id": "2c5d8a08-ef0c-4d6b-81d4-7ffa1bf13a26",
+    "code": "NEUJAHR-KAD17MM0",
+    "type": "euro",
+    "value": 20,
+    "bids": 100,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-03T15:48:59.943380+00:00",
+    "created_at": "2026-02-01T15:48:59.944846+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "697f75eb78d37ffa7b3773a3"
+    },
+    "id": "2c8a53ec-c421-4bd9-b00f-2dda5fca188f",
+    "code": "NEUJAHR-2KDY5RO0",
+    "type": "euro",
+    "value": 20,
+    "bids": 100,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-03T15:48:59.943380+00:00",
+    "created_at": "2026-02-01T15:48:59.945583+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "697f75eb78d37ffa7b3773a4"
+    },
+    "id": "8f5eab4f-2ded-430d-8143-816b166dfd08",
+    "code": "NEUJAHR-BLKODWA1",
+    "type": "euro",
+    "value": 20,
+    "bids": 100,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-03T15:48:59.943380+00:00",
+    "created_at": "2026-02-01T15:48:59.946330+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "697f75eb78d37ffa7b3773a5"
+    },
+    "id": "e4b7b5c9-7392-42bf-a4cb-0feccb298b75",
+    "code": "NEUJAHR-72D428WO",
+    "type": "euro",
+    "value": 20,
+    "bids": 100,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-03T15:48:59.943380+00:00",
+    "created_at": "2026-02-01T15:48:59.947026+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "697f772e78d37ffa7b3773a6"
+    },
+    "id": "fdb3f6d4-a924-4f8d-9f69-f3500bcbf66b",
+    "code": "87TIWGME",
+    "type": "bids",
+    "value": 10,
+    "bids": 10,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-03T15:54:22.936194+00:00",
+    "created_at": "2026-02-01T15:54:22.936223+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "697f773678d37ffa7b3773a7"
+    },
+    "id": "e5950c8b-366c-404e-b4f5-99d7358c2f8d",
+    "code": "XW1L5QHI",
+    "type": "bids",
+    "value": 10,
+    "bids": 10,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-03T15:54:30.549566+00:00",
+    "created_at": "2026-02-01T15:54:30.549594+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc5297"
+    },
+    "id": "1c58cc43-cec6-4b57-b93e-3134162e5de6",
+    "code": "WJFTTL6N",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.503255+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc5298"
+    },
+    "id": "73647955-8a44-41b9-bebc-02d06fe1ded5",
+    "code": "BY9UUEO0",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.507295+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc5299"
+    },
+    "id": "6fcb6925-0046-4d65-98e8-e86c7acba429",
+    "code": "2HMYO87A",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.508125+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc529a"
+    },
+    "id": "355fd9f9-e1bc-4587-a674-b8579cc94b6f",
+    "code": "2EU5N64X",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.508939+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc529b"
+    },
+    "id": "6ba369be-72f1-4286-86c6-1f9fa24dcc71",
+    "code": "9QIR3DU2",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.509682+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc529c"
+    },
+    "id": "d4f28ebb-a687-4963-8403-8dd29f13a66d",
+    "code": "WSORDZU0",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.510420+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc529d"
+    },
+    "id": "baf612a1-113f-4023-a638-033cdb269d67",
+    "code": "AUPHYE5Y",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.511195+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc529e"
+    },
+    "id": "971d1151-988b-48c4-b1a7-25301ec48138",
+    "code": "J3UGP8OJ",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.511994+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc529f"
+    },
+    "id": "00acd62b-56a9-4394-88ab-9c09a90d8bcd",
+    "code": "Y9TUKCBZ",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.512664+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52a0"
+    },
+    "id": "e4850c90-9253-42bf-b8eb-960f9b274606",
+    "code": "08U2B4WM",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.513373+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52a1"
+    },
+    "id": "286a3f9b-4a15-4cd4-bb2e-5132d3f3c3e6",
+    "code": "JPLM3UAI",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.514080+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52a2"
+    },
+    "id": "e679e713-070a-4f21-abb0-b45dd4d35628",
+    "code": "VYHP72UD",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.514754+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52a3"
+    },
+    "id": "9e1e58f5-cc87-4ae2-867e-583891f29414",
+    "code": "GRMGTFKK",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.515515+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52a4"
+    },
+    "id": "3f2983b8-fc10-49d4-8558-18911a2aa797",
+    "code": "PLYPLWXB",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.516351+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52a5"
+    },
+    "id": "ec1cca36-8b97-49bb-ad49-aab4b8c305a9",
+    "code": "TMYS895R",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.517153+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52a6"
+    },
+    "id": "a27ae8f5-12b1-447a-be33-d5d9a0f34621",
+    "code": "P5PVXEU5",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.517848+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52a7"
+    },
+    "id": "24f5fd43-853c-4c56-95eb-fe62daeb1a13",
+    "code": "C76ROA5R",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.518767+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52a8"
+    },
+    "id": "c47e07f0-eea3-44c6-99c9-fd07e29891a7",
+    "code": "K483HH3U",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.519581+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52a9"
+    },
+    "id": "c1dfef3a-3abf-48d6-92cc-28b7176dca25",
+    "code": "LHQHAQO2",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.520238+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52aa"
+    },
+    "id": "3c0aebef-1fcf-41ea-8134-4097d1cf8dcd",
+    "code": "3O1FF7NE",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.520792+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52ab"
+    },
+    "id": "b0e1c529-d695-4070-9873-5eadd2c648ee",
+    "code": "S58JPEAP",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.521300+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52ac"
+    },
+    "id": "a5fb5c2e-d3a9-4b7c-ac0a-8608b28b371f",
+    "code": "5EZLX528",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.521916+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52ad"
+    },
+    "id": "9645c2a2-b19b-42ac-8779-0f1792239674",
+    "code": "E800QI9E",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.522474+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52ae"
+    },
+    "id": "de998539-f368-4909-a22f-2313caeda94b",
+    "code": "EZOX8CW6",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.522968+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52af"
+    },
+    "id": "8ddeebaf-e827-4f5b-8175-9cb921ba6d0a",
+    "code": "GTI6UW7S",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.523482+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52b0"
+    },
+    "id": "68ca0255-fa94-4fb6-868b-cabc1c6b59f6",
+    "code": "QLSLO2QB",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.524126+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52b1"
+    },
+    "id": "8f1d6b27-7e32-49e7-a41f-56effbed5d69",
+    "code": "9VV1YGT0",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.524882+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52b2"
+    },
+    "id": "cc3b0939-b69c-49d6-9faa-0738b5000516",
+    "code": "CM9659H4",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.525552+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52b3"
+    },
+    "id": "0b11bd36-e526-4aac-96ce-53042bc2d33b",
+    "code": "9BH7JJ8C",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.526087+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52b4"
+    },
+    "id": "610fa306-6a5a-4dba-afbc-72023983bf9b",
+    "code": "BJMUQJXQ",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.526724+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52b5"
+    },
+    "id": "c5e8ad2b-0411-4be1-b56e-9a28d6553aa8",
+    "code": "E0E5EFU2",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.527384+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52b6"
+    },
+    "id": "8c00ae40-5490-4b02-80d6-e1153487ddd8",
+    "code": "3AW5KJGW",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.527939+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52b7"
+    },
+    "id": "56e00392-e33b-416e-96aa-ad76046bc949",
+    "code": "VH4FV5RG",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.528658+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52b8"
+    },
+    "id": "49e08305-10ef-4e7f-b7a5-f6f3397b343d",
+    "code": "VW8E1N0W",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.529295+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52b9"
+    },
+    "id": "58bd18f3-4f05-4e26-a0ea-dacbbfd29037",
+    "code": "GUODLF6H",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.529830+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52ba"
+    },
+    "id": "63d621ba-92d6-4b9e-ab13-eeddae87315f",
+    "code": "8RX6H142",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.530454+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52bb"
+    },
+    "id": "b0bc2838-d86e-4831-b849-c50bd501f7b7",
+    "code": "B86PX4Q9",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.531072+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52bc"
+    },
+    "id": "72cf647a-e77f-41de-82c0-9ee4df63a236",
+    "code": "XURZOCWO",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.531621+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52bd"
+    },
+    "id": "d52bc5c5-8466-4912-a7bc-32b24859e8f0",
+    "code": "T663YOPE",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.532234+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52be"
+    },
+    "id": "5d3f6113-4848-4022-b059-ada9857f7eeb",
+    "code": "5TDBMQTI",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.532842+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52bf"
+    },
+    "id": "222fbb2d-5259-4a5a-b5b1-21ec3361ad8c",
+    "code": "WXW2RM6K",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.533382+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52c0"
+    },
+    "id": "498bca9a-b837-4269-8aa0-608d6f7a824f",
+    "code": "ZSEQQPQP",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.534087+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52c1"
+    },
+    "id": "71343722-671d-41d4-9746-56310c8d9786",
+    "code": "WGAF149Q",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.534683+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52c2"
+    },
+    "id": "ad58bddb-300a-4084-a5a0-3a3337959161",
+    "code": "KZV0133H",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.535262+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52c3"
+    },
+    "id": "27c5cc3b-7529-4995-9a1c-37ae5c927762",
+    "code": "N7VNJKHQ",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.535978+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52c4"
+    },
+    "id": "f3e27489-5122-43ec-ae27-b99335750048",
+    "code": "WFN1AW86",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.536564+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52c5"
+    },
+    "id": "79c66e5c-342b-44ff-b665-d5e7cf9723c6",
+    "code": "EVAAOLUR",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.537103+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52c6"
+    },
+    "id": "60c54234-fdaf-49ef-b4b0-43af9266a0f4",
+    "code": "4TD9EV4H",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.537672+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52c7"
+    },
+    "id": "77bd07a7-4f2a-4086-92fb-ff38c797430e",
+    "code": "GM7X04K9",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.538213+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52c8"
+    },
+    "id": "de1833dd-8631-4445-9fcb-1318ee41f56b",
+    "code": "B2GEYQ2W",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.538830+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52c9"
+    },
+    "id": "ac8700c7-42b0-4286-ad6b-0e09b95ceb0e",
+    "code": "YVH3GVMI",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.539295+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52ca"
+    },
+    "id": "ba767577-5d76-4bcf-b8ae-8c209461c0ec",
+    "code": "64I3FMTC",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.539892+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52cb"
+    },
+    "id": "65ab0bd9-4f4b-459d-9ca4-a8fa8da17072",
+    "code": "3ODF5PDZ",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.540397+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52cc"
+    },
+    "id": "e3641dba-0e41-4e84-8de4-d8ae7cfa3ee3",
+    "code": "XV42FOF4",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.540871+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52cd"
+    },
+    "id": "33d6dc9a-e794-4315-b696-6715b68bfd0d",
+    "code": "O8CX22WP",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.541507+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52ce"
+    },
+    "id": "4f56ac63-82fb-4665-861a-851b0da1a4f5",
+    "code": "NQNJYD4N",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.542156+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52cf"
+    },
+    "id": "448df441-dd50-4819-b096-8a51739948ba",
+    "code": "CGJP528Y",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.542744+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52d0"
+    },
+    "id": "2dfbc42d-dce4-4ba4-a98f-19028309a8ed",
+    "code": "A61RA3TR",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.543341+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52d1"
+    },
+    "id": "86b7801a-a9c9-4a7d-9f05-14883b84d7a1",
+    "code": "8PCO7YJF",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.544001+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52d2"
+    },
+    "id": "cd437c6d-1f5d-4b70-9412-ba6b7bf0615b",
+    "code": "95A7S0BS",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.544595+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52d3"
+    },
+    "id": "bdbdd93e-ef63-447f-988a-2cc5030e31c3",
+    "code": "9YCKXTOK",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.545088+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52d4"
+    },
+    "id": "66449bc0-c460-47a4-b347-1bc57ad32295",
+    "code": "Y7QDMK9D",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.545723+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52d5"
+    },
+    "id": "9250a3f2-6100-46cc-b421-5c051164e356",
+    "code": "BO6GYIR8",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.546346+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52d6"
+    },
+    "id": "b4ea73f7-cfa3-4c74-bef8-f0f6e354eb36",
+    "code": "AKUDIN1O",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.546856+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52d7"
+    },
+    "id": "ae4a2646-87d4-49f5-abbb-2508360b6b6d",
+    "code": "0N2MERJS",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.547486+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52d8"
+    },
+    "id": "a28fdccc-09bb-437c-9f5e-9e8bde4018eb",
+    "code": "IA9ZV1BY",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.548110+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52d9"
+    },
+    "id": "333c14c1-33e5-4e5d-a510-145ff21da4d4",
+    "code": "INCGUWJE",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.548599+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52da"
+    },
+    "id": "1058b5a0-f4c3-448d-841e-1cbb1773b443",
+    "code": "NY5VBGKM",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.549233+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52db"
+    },
+    "id": "8f2dc162-8f7d-46f3-be27-6c8862903fba",
+    "code": "GP7OB5LS",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.549845+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52dc"
+    },
+    "id": "6b7ad621-37f3-49de-9376-45e026f3155a",
+    "code": "MZ2BBAWX",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.550339+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52dd"
+    },
+    "id": "32e93afd-0cd4-485a-bc44-546360ebf98f",
+    "code": "9FVEP0Q4",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.551050+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52de"
+    },
+    "id": "b7ef6e94-7260-4e6e-8374-d21afc390127",
+    "code": "3W9IPERS",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.551641+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52df"
+    },
+    "id": "7313c653-4f48-4a9c-bd32-7a6d53b4f972",
+    "code": "XX73WD1R",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.552186+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52e0"
+    },
+    "id": "478eec06-0cbc-41b5-a8ee-0ee82892a42a",
+    "code": "PBX7IDOG",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.552854+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52e1"
+    },
+    "id": "45ecc3d1-6376-4189-babc-19994ab437c1",
+    "code": "MDPMNTER",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.553441+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52e2"
+    },
+    "id": "44faec46-db2c-421a-b92b-9b722fe9660e",
+    "code": "VQ20P7TK",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.553954+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52e3"
+    },
+    "id": "36fbc127-1032-46c9-93e6-b9c29c8bfa00",
+    "code": "YA8EMOXM",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.554627+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52e4"
+    },
+    "id": "9f754aca-f99a-4cee-83a3-38a5dceae6a8",
+    "code": "VHBLTXZ5",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.555255+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52e5"
+    },
+    "id": "ee080a7d-6a1d-41bc-a4d4-a450d15c38e2",
+    "code": "YXGGEF01",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.555779+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52e6"
+    },
+    "id": "26975506-aea0-48b5-9a03-dd4040d31446",
+    "code": "P7QOVCTX",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.556402+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52e7"
+    },
+    "id": "d5218627-44ee-4fa7-8cca-1b02e3569930",
+    "code": "AUHSKCZA",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.556987+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52e8"
+    },
+    "id": "e9da88f9-6fc1-406f-be69-255b9ab17333",
+    "code": "B44J2WQS",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.557496+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52e9"
+    },
+    "id": "f39b0786-c52f-4333-9037-311135d159d1",
+    "code": "XUFRLUKD",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.558133+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52ea"
+    },
+    "id": "b1193d5f-c0b0-45c1-a550-a91e14c4119f",
+    "code": "9B0183VM",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.558722+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52eb"
+    },
+    "id": "c1c1bf8e-8798-46a2-b315-72d0805b3a39",
+    "code": "W8NBWZIV",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.559209+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52ec"
+    },
+    "id": "4967e30f-f20f-40b4-bdb1-42ab27abf6ba",
+    "code": "4AEO6HHF",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.559864+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52ed"
+    },
+    "id": "97a6ce1c-e4f4-427b-963b-67d19b15336c",
+    "code": "MAAP4748",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.560453+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52ee"
+    },
+    "id": "fb761cc1-e736-46f4-b17f-cb90d48f41e2",
+    "code": "4AUEBOOZ",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.560986+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52ef"
+    },
+    "id": "8bcd8784-b034-4764-a85e-dd017d159e17",
+    "code": "SXGRH2OI",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.561653+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52f0"
+    },
+    "id": "17f4b56e-7be4-46e5-b64f-5b4a1755b6b2",
+    "code": "QI535ZHJ",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.562260+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52f1"
+    },
+    "id": "2680a746-becb-453b-bdd7-8ef2c7923089",
+    "code": "WB5T5GR8",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.562780+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52f2"
+    },
+    "id": "52fe33bd-16be-4d53-b41e-c1ec1e3ea8c8",
+    "code": "FDN0QKXM",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.563531+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52f3"
+    },
+    "id": "54de5d5f-d2fd-47ce-83e8-03dbe5a7b41c",
+    "code": "9MUMC7JZ",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.564264+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52f4"
+    },
+    "id": "52d9337b-3087-4eec-8e74-668b8a24d3f9",
+    "code": "UBBK3ZKB",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.564958+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52f5"
+    },
+    "id": "b808ec4b-29f7-45c6-9e58-28337d3b298f",
+    "code": "1J4QNDR4",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.565579+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52f6"
+    },
+    "id": "1f7562c2-b2d8-4f19-8cd5-a80b99c771da",
+    "code": "0EOG69DQ",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.566160+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52f7"
+    },
+    "id": "8de672f0-a12a-4214-91b3-625195341443",
+    "code": "OB0A887S",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.566630+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52f8"
+    },
+    "id": "91e8aa22-896c-4a9c-8add-273cf540c4c0",
+    "code": "4LS1SXN2",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.567128+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52f9"
+    },
+    "id": "9f3acf80-05ef-42e9-a689-3bcdd042cc95",
+    "code": "T6QFL9ON",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.567601+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "6981da8b0bc5aac5dbbc52fa"
+    },
+    "id": "76d33e94-60e1-492a-81bd-a0dbc24baa3c",
+    "code": "BVN17SMN",
+    "type": "euro",
+    "value": 5,
+    "bids": 25,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-03-05T11:22:51.502610+00:00",
+    "created_at": "2026-02-03T11:22:51.568063+00:00",
+    "created_by": "admin@bidblitz.de"
+  },
+  {
+    "_id": {
+      "$oid": "698dd94d79ad0096f51b6751"
+    },
+    "id": "048080d6-ed8d-44ef-b77d-b9ca353f484d",
+    "code": "PIZZ-PP9FCR",
+    "type": "restaurant",
+    "value": 25,
+    "discount_percent": 10,
+    "bids": 0,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-05-13T13:44:45.420855+00:00",
+    "created_at": "2026-02-12T13:44:45.420895+00:00",
+    "created_by": "admin@bidblitz.de",
+    "merchant_name": "Pizza Roma",
+    "merchant_url": "https://www.pizzaroma-berlin.de",
+    "merchant_logo": null,
+    "merchant_address": "Hauptstraße 123, 10115 Berlin",
+    "merchant_category": "restaurant",
+    "description": "Genießen Sie 10% Rabatt auf alle Pizzen!"
+  },
+  {
+    "_id": {
+      "$oid": "698dd94d79ad0096f51b6752"
+    },
+    "id": "40248f5a-4a00-4aad-b729-2ac51526789e",
+    "code": "PIZZ-PGJO45",
+    "type": "restaurant",
+    "value": 25,
+    "discount_percent": 10,
+    "bids": 0,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-05-13T13:44:45.425628+00:00",
+    "created_at": "2026-02-12T13:44:45.425649+00:00",
+    "created_by": "admin@bidblitz.de",
+    "merchant_name": "Pizza Roma",
+    "merchant_url": "https://www.pizzaroma-berlin.de",
+    "merchant_logo": null,
+    "merchant_address": "Hauptstraße 123, 10115 Berlin",
+    "merchant_category": "restaurant",
+    "description": "Genießen Sie 10% Rabatt auf alle Pizzen!"
+  },
+  {
+    "_id": {
+      "$oid": "698dd94d79ad0096f51b6753"
+    },
+    "id": "ba4b9fac-7a3e-4eed-8f36-ecb62c970f76",
+    "code": "PIZZ-Q9IYTJ",
+    "type": "restaurant",
+    "value": 25,
+    "discount_percent": 10,
+    "bids": 0,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": true,
+    "expires_at": "2026-05-13T13:44:45.426505+00:00",
+    "created_at": "2026-02-12T13:44:45.426517+00:00",
+    "created_by": "admin@bidblitz.de",
+    "merchant_name": "Pizza Roma",
+    "merchant_url": "https://www.pizzaroma-berlin.de",
+    "merchant_logo": null,
+    "merchant_address": "Hauptstraße 123, 10115 Berlin",
+    "merchant_category": "restaurant",
+    "description": "Genießen Sie 10% Rabatt auf alle Pizzen!"
+  },
+  {
+    "_id": {
+      "$oid": "698e42b576c8a6d4456fbeee"
+    },
+    "id": "23d4dfdd-125d-444e-9162-6bc7a911af92",
+    "code": "PIZZ-M6YFQ9",
+    "type": "restaurant_auction",
+    "value": 25,
+    "discount_percent": null,
+    "bids": 0,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": false,
+    "auction_id": "33b8e811-51c6-45d7-ab76-b7b30f450f62",
+    "expires_at": "2026-05-13T21:14:29.253662+00:00",
+    "created_at": "2026-02-12T21:14:29.253662+00:00",
+    "created_by": "admin@bidblitz.de",
+    "merchant_name": "Pizza Roma",
+    "merchant_url": "https://pizzaroma.de",
+    "merchant_address": "Hauptstraße 123, Berlin",
+    "merchant_logo": null,
+    "description": "Genießen Sie echte italienische Pizza!"
+  },
+  {
+    "_id": {
+      "$oid": "698e42bf76c8a6d4456fbef1"
+    },
+    "id": "7a960c4a-64db-4db4-98b5-c7c85e2863e0",
+    "code": "SUSH-W2U8YQ",
+    "type": "restaurant_auction",
+    "value": 0,
+    "discount_percent": 20,
+    "bids": 0,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": false,
+    "auction_id": "ee7ec4f5-5aca-447e-b144-fbf2baa1dc2e",
+    "expires_at": "2026-05-13T21:14:39.756636+00:00",
+    "created_at": "2026-02-12T21:14:39.756636+00:00",
+    "created_by": "admin@bidblitz.de",
+    "merchant_name": "Sushi Paradise",
+    "merchant_url": "https://sushiparadise.de",
+    "merchant_address": "Friedrichstraße 50, Berlin",
+    "merchant_logo": null,
+    "description": "20% Rabatt auf alle Sushi-Menüs!"
+  },
+  {
+    "_id": {
+      "$oid": "698e49666e45bde558c7f912"
+    },
+    "id": "93afb9c0-0093-4bf5-8835-660bc2407187",
+    "code": "BELL-VNNI5M",
+    "type": "restaurant_auction",
+    "value": 50,
+    "discount_percent": null,
+    "bids": 0,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": false,
+    "auction_id": "5c20235f-1ce2-40a5-8739-26c9a2eb562a",
+    "expires_at": "2026-05-13T21:43:02.936284+00:00",
+    "created_at": "2026-02-12T21:43:02.936284+00:00",
+    "created_by": "admin@bidblitz.de",
+    "merchant_name": "Bella Italia",
+    "merchant_url": "https://bellaitalia.de",
+    "merchant_address": "Kurfürstendamm 50, Berlin",
+    "merchant_logo": null,
+    "merchant_images": [
+      "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400",
+      "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400",
+      "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400"
+    ],
+    "description": "Authentische italienische Küche - Hausgemachte Pasta & Pizza!"
+  },
+  {
+    "_id": {
+      "$oid": "698e4a336e45bde558c7f914"
+    },
+    "id": "2a418817-57cf-4e76-8a31-9d01d934b490",
+    "code": "EISC-ZSI4XN",
+    "type": "restaurant_auction",
+    "value": 50,
+    "discount_percent": null,
+    "bids": 0,
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "is_active": false,
+    "auction_id": "c2082704-2893-47e4-99ad-b1d08476c6a9",
+    "expires_at": "2026-05-13T21:46:27.948800+00:00",
+    "created_at": "2026-02-12T21:46:27.948800+00:00",
+    "created_by": "admin@bidblitz.de",
+    "merchant_name": "Eiscafe Valentina ",
+    "merchant_url": "",
+    "merchant_address": "Pristina ",
+    "merchant_logo": "",
+    "merchant_images": [],
+    "description": "Genießen Sie ein leckeres Essen bei uns!"
+  }
+]

@@ -1,0 +1,47 @@
+[
+  {
+    "_id": {
+      "$oid": "698e3f200f80a4eb9382f86b"
+    },
+    "box_id": "698cf445fee006755f9e2d12",
+    "bidder_name": "Bieter_883",
+    "price": 0.01,
+    "created_at": "2026-02-12T20:59:12.861161+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698e3f240f80a4eb9382f86c"
+    },
+    "box_id": "698cf445fee006755f9e2d12",
+    "bidder_name": "Bieter_616",
+    "price": 0.02,
+    "created_at": "2026-02-12T20:59:16.019879+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698e3f260f80a4eb9382f86d"
+    },
+    "box_id": "698cf445fee006755f9e2d12",
+    "bidder_name": "Bieter_310",
+    "price": 0.03,
+    "created_at": "2026-02-12T20:59:18.800799+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698e3f290f80a4eb9382f86e"
+    },
+    "box_id": "698cf445fee006755f9e2d12",
+    "bidder_name": "Bieter_912",
+    "price": 0.04,
+    "created_at": "2026-02-12T20:59:21.549455+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698e3f300f80a4eb9382f86f"
+    },
+    "box_id": "698cf445fee006755f9e2d12",
+    "bidder_name": "Bieter_237",
+    "price": 0.05,
+    "created_at": "2026-02-12T20:59:28.330586+00:00"
+  }
+]

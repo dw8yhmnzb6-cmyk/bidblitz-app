@@ -1,0 +1,148 @@
+[
+  {
+    "_id": {
+      "$oid": "69889c380f16a3f842b1fe02"
+    },
+    "id": "a44b155b-ec07-49a6-a5fa-3bbf408e1fee",
+    "wholesale_id": "65152d96-2700-40bb-81ba-71825c13b2db",
+    "company_name": "Afrim Krasniqi l ",
+    "package_name": "10 Gebote",
+    "package_bids": 10,
+    "quantity": 1,
+    "unit_price": 4.5,
+    "total_price": 4.5,
+    "total_bids": 10,
+    "discount_percent": 10.0,
+    "payment_terms": "prepaid",
+    "status": "awaiting_payment",
+    "created_at": "2026-02-08T14:22:48.417164+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69889c440f16a3f842b1fe03"
+    },
+    "id": "8b2f5ad3-090c-46e0-a4a4-c587958bb3bb",
+    "wholesale_id": "65152d96-2700-40bb-81ba-71825c13b2db",
+    "company_name": "Afrim Krasniqi l ",
+    "package_name": "10 Gebote",
+    "package_bids": 10,
+    "quantity": 1,
+    "unit_price": 4.5,
+    "total_price": 4.5,
+    "total_bids": 10,
+    "discount_percent": 10.0,
+    "payment_terms": "prepaid",
+    "status": "awaiting_payment",
+    "created_at": "2026-02-08T14:23:00.634770+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6988e24526c2b37dbd0cfe6a"
+    },
+    "id": "5d03c824-d21e-4cf3-b26a-766447f747d3",
+    "wholesale_id": "65152d96-2700-40bb-81ba-71825c13b2db",
+    "company_name": "Afrim Krasniqi l ",
+    "package_name": "10 Gebote",
+    "package_bids": 10,
+    "quantity": 1,
+    "unit_price": 4.5,
+    "total_price": 4.5,
+    "total_bids": 10,
+    "discount_percent": 10.0,
+    "payment_terms": "prepaid",
+    "status": "awaiting_payment",
+    "created_at": "2026-02-08T19:21:41.353796+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6988eabc051813da9db9e266"
+    },
+    "id": "eefc4cff-9a0f-4f90-a6f5-c9e8c6125760",
+    "wholesale_id": "65152d96-2700-40bb-81ba-71825c13b2db",
+    "company_name": "Afrim Krasniqi l ",
+    "package_name": "10 Gebote",
+    "package_bids": 10,
+    "quantity": 1,
+    "unit_price": 4.5,
+    "total_price": 4.5,
+    "total_bids": 10,
+    "discount_percent": 10.0,
+    "payment_terms": "prepaid",
+    "status": "awaiting_payment",
+    "created_at": "2026-02-08T19:57:48.758529+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6988eac2051813da9db9e267"
+    },
+    "id": "c7f3fb72-8d7d-4b2c-92bf-a8e0be6c1227",
+    "wholesale_id": "65152d96-2700-40bb-81ba-71825c13b2db",
+    "company_name": "Afrim Krasniqi l ",
+    "package_name": "40 Gebote",
+    "package_bids": 40,
+    "quantity": 1,
+    "unit_price": 18.0,
+    "total_price": 18.0,
+    "total_bids": 40,
+    "discount_percent": 10.0,
+    "payment_terms": "prepaid",
+    "status": "awaiting_payment",
+    "created_at": "2026-02-08T19:57:54.456663+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6988ee40706825c047e9c465"
+    },
+    "id": "2ea0b2e0-9ca4-4682-9608-6e466a911592",
+    "wholesale_id": "65152d96-2700-40bb-81ba-71825c13b2db",
+    "company_name": "Afrim Krasniqi l ",
+    "package_name": "10 Gebote",
+    "package_bids": 10,
+    "quantity": 1,
+    "unit_price": 4.5,
+    "total_price": 4.5,
+    "total_bids": 10,
+    "discount_percent": 10.0,
+    "payment_terms": "prepaid",
+    "status": "awaiting_payment",
+    "created_at": "2026-02-08T20:12:48.360496+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69890bed512c7452236796c2"
+    },
+    "id": "593d3a2d-9cd7-4303-83e6-cf0274e2f85c",
+    "wholesale_id": "65152d96-2700-40bb-81ba-71825c13b2db",
+    "company_name": "Afrim Krasniqi l ",
+    "package_name": "10 Gebote",
+    "package_bids": 10,
+    "quantity": 1,
+    "unit_price": 4.5,
+    "total_price": 4.5,
+    "total_bids": 10,
+    "discount_percent": 10.0,
+    "payment_terms": "prepaid",
+    "status": "awaiting_payment",
+    "created_at": "2026-02-08T22:19:25.784397+00:00",
+    "stripe_session_id": "cs_live_a1b0m0bCi7hv5TpViBb3DgiC45vaMAX9ztU5kVNyYXqI419xMvSqC3WjZ3"
+  },
+  {
+    "_id": {
+      "$oid": "69890c25512c7452236796c9"
+    },
+    "id": "f014165d-5b19-43f1-8982-486798bb998a",
+    "wholesale_id": "18f11929-cf4c-4bf0-b19d-7a4503e67b73",
+    "company_name": "Test GmbH",
+    "package_name": "40 Gebote",
+    "package_bids": 40,
+    "quantity": 1,
+    "unit_price": 17.0,
+    "total_price": 17.0,
+    "total_bids": 40,
+    "discount_percent": 15.0,
+    "payment_terms": "prepaid",
+    "status": "awaiting_payment",
+    "created_at": "2026-02-08T22:20:21.555179+00:00",
+    "stripe_session_id": "cs_live_a10yiHiq9I2BHF3lYYRgQ3PgJSze7L5YFFm6JfebrqUHDImgf1AxdxNC26"
+  }
+]

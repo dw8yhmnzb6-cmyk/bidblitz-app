@@ -1,0 +1,240 @@
+[
+  {
+    "_id": {
+      "$oid": "697ea13810a642d3d82763ad"
+    },
+    "id": "9abefb51-e53c-473a-92fe-681bbe716af0",
+    "admin_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "admin_name": "Admin",
+    "transcription": "[Bildanalyse] Was zeigt dieses Bild?",
+    "action": "analyze_image",
+    "parameters": {},
+    "result": {
+      "success": true,
+      "message": "Das Bild zeigt die Benutzeroberfläche der BidBlitz-App auf einem mobilen Gerät. \n\n**Beschreibung:**\n- Oben links wird die aktuelle Uhrzeit angezeigt (01:36).\n- Das BidBlitz-Logo und der Name sind oben..."
+    },
+    "created_at": {
+      "$date": "2026-02-01T00:41:28.511Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "697ea1bc10a642d3d82763af"
+    },
+    "id": "8504f0c8-aea7-49d1-873a-efbfc9151071",
+    "admin_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "admin_name": "Admin",
+    "transcription": "[Bildanalyse] Analysiere dieses Bild und beschreibe was du siehst. Was könnte das Problem sein?",
+    "action": "analyze_image",
+    "parameters": {},
+    "result": {
+      "success": true,
+      "message": "Auf dem Bild ist die Benutzeroberfläche der BidBlitz-Admin-Plattform zu sehen. Hier sind die wichtigsten Elemente:\n\n1. **Zeit und Statusleiste**: Oben werden die aktuelle Uhrzeit, WLAN- und Akkustatus..."
+    },
+    "created_at": {
+      "$date": "2026-02-01T00:43:40.173Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "697ea65e10a642d3d82763bf"
+    },
+    "id": "5812ef60-03b2-4b8a-8408-1f52dae5ea97",
+    "admin_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "admin_name": "Admin",
+    "transcription": "[Bildanalyse] Analysiere dieses Bild und beschreibe was du siehst. Was könnte das Problem sein?",
+    "action": "analyze_image",
+    "parameters": {},
+    "result": {
+      "success": true,
+      "message": "**Beschreibung des Bildes:**\n\nDas Bild zeigt eine mobile Webseite der BidBlitz-Plattform. Der Abschnitt auf dem Bildschirm ist der VIP-Bereich für exklusive VIP-Auktionen. Der Text sagt, dass es momen..."
+    },
+    "created_at": {
+      "$date": "2026-02-01T01:03:26.807Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "697ea68f10a642d3d82763c1"
+    },
+    "id": "e10e454b-a4be-4efd-b173-ba6d3c5b85ba",
+    "admin_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "admin_name": "Admin",
+    "transcription": "[Bildanalyse] Was ist angesprochen aber die Seite übersetze alle Sprachen auf die Seite",
+    "action": "analyze_image",
+    "parameters": {},
+    "result": {
+      "success": true,
+      "message": "Das Bild zeigt die BidBlitz-Webseite, die den VIP-Bereich präsentiert. Folgende Punkte sind ersichtlich:\n\n1. **Seiteninhalt:**\n   - Überschrift: \"Exklusive VIP-Auktionen\"\n   - Beschreibung: Hinweis au..."
+    },
+    "created_at": {
+      "$date": "2026-02-01T01:04:15.151Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "697eabdf96cc3b7c9162e50b"
+    },
+    "id": "04102e88-b031-48eb-8cc2-e5cad5269018",
+    "admin_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "admin_name": "Admin",
+    "transcription": "[Bildanalyse] Was zeigt dieses Bild?",
+    "action": "analyze_image",
+    "parameters": {
+      "type": "image"
+    },
+    "result": {
+      "success": true,
+      "message": "Das Bild zeigt einen Screenshot der BidBlitz-Plattform. Oben links befindet sich das BidBlitz-Logo. Im Bild gibt es eine Textanzeige \"Bronze Influencer\" und ein Menüsymbol in der rechten oberen Ecke. ..."
+    },
+    "created_at": {
+      "$date": "2026-02-01T01:26:55.637Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "697f0424cb0f94d198f8666e"
+    },
+    "id": "ef83656d-9001-4e9b-bc80-617114b421da",
+    "admin_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "admin_name": "Admin",
+    "transcription": "[Bildanalyse] Es würd nicht alles übersetzen ",
+    "action": "analyze_image",
+    "parameters": {
+      "type": "image"
+    },
+    "result": {
+      "success": true,
+      "message": "Auf dem Bild sehe ich eine Benutzeroberfläche der BidBlitz Plattform für Influencer. Hier sind die Details:\n\n1. **Nutzerprofil**: Der Nutzer ist ein \"Bronze Influencer\". \n2. **Influencer-Code**: Der C..."
+    },
+    "created_at": {
+      "$date": "2026-02-01T07:43:32.455Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "697f0449cb0f94d198f86695"
+    },
+    "id": "ddbffe50-0305-4863-8d71-e9a2a1f2a867",
+    "admin_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "admin_name": "Admin",
+    "transcription": "[Bildanalyse] Es würd nicht alles übersetzen Bitte was ist das auf Englisch und andere Sprachen?",
+    "action": "analyze_image",
+    "parameters": {
+      "type": "image"
+    },
+    "result": {
+      "success": true,
+      "message": "Das Screenshot zeigt die Benutzeroberfläche der BidBlitz Penny-Auktions-Plattform für einen \"Demo Influencer\". \n\n**Beschreibung des Bildes:**\n- Oben links ist das BidBlitz-Logo zu sehen.\n- Unter dem L..."
+    },
+    "created_at": {
+      "$date": "2026-02-01T07:44:09.642Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "697f063e48b001877a898709"
+    },
+    "id": "98e17f79-c4b3-45a1-9b64-95d7f0436405",
+    "admin_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "admin_name": "Admin",
+    "transcription": "[Bild + Aktion] Es wird nicht alles übersetzt. Bitte übersetze in Englisch und andere Sprachen",
+    "action": "translate_products",
+    "parameters": {
+      "languages": [
+        "en",
+        "tr",
+        "fr",
+        "sq",
+        "ar"
+      ]
+    },
+    "result": {
+      "success": true,
+      "message": "✅ **Aktion ausgeführt: translate_products**\n\n🌐 0 Produkte übersetzt in: Englisch, Türkisch, Französisch, Albanisch, Arabisch! (273 übersprungen)\n\n---\n\n**Bildanalyse:**\nEs scheint, dass das hochgeladene Bild nur eine grüne Fläche zeigt, ohne sichtbare Details oder Text. \n\n### Kontext der Aktion:\n1. **Problem**: Es wurde berichtet, dass nicht alle Produkte übersetzt werden.\n2. **Ausgeführte Aktion**: Der Administrator hat die Aktion 'translate_products' ausgeführt. Ergebnis: Keine Produkte wurden "
+    },
+    "created_at": {
+      "$date": "2026-02-01T07:52:30.326Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "697f064b48b001877a898710"
+    },
+    "id": "2bed8d2c-6662-4207-9316-ba95dad92547",
+    "admin_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "admin_name": "Admin",
+    "transcription": "[Bildanalyse] Was siehst du auf diesem Bild?",
+    "action": "analyze_image",
+    "parameters": {
+      "type": "image"
+    },
+    "result": {
+      "success": true,
+      "message": "Das Bild, das du hochgeladen hast, ist vollständig grün. Es enthält keine weiteren sichtbaren Details oder Elemente. Wenn du erwartest, dass darin etwas Spezifisches zu sehen sein sollte, könnte es ei..."
+    },
+    "created_at": {
+      "$date": "2026-02-01T07:52:43.224Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "697f206005beabc7557c0b7f"
+    },
+    "id": "182829c0-f330-4db9-ba48-52bf353111da",
+    "admin_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "admin_name": "Admin",
+    "transcription": "[Bildanalyse] Kannst du mir beschreiben, ob die Seite was die Zeichen bedeuten?",
+    "action": "analyze_image",
+    "parameters": {
+      "type": "image"
+    },
+    "result": {
+      "success": true,
+      "message": "Auf dem Dashboard der BidBlitz-Plattform sind folgende Informationen und Symbole zu sehen:\n\n1. **Schnell-Aktionen**: Eine Reihe von farblich unterschiedlichen Icons, die vermutlich für schnelle, häufi..."
+    },
+    "created_at": {
+      "$date": "2026-02-01T09:44:00.664Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "697f80dcf4234617bfb5e680"
+    },
+    "id": "b511fba3-e132-419c-b57d-826884345ae1",
+    "admin_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "admin_name": "Admin",
+    "transcription": "[Bildanalyse] Analysiere dieses Bild und beschreibe was du siehst. Was könnte das Problem sein?",
+    "action": "analyze_image",
+    "parameters": {
+      "type": "image"
+    },
+    "result": {
+      "success": true,
+      "message": "Das Bild zeigt einen Screenshot der BidBlitz Penny-Auktions-Plattform. Hier ist eine Analyse des Bildes:\n\n### Was ich sehe:\n1. **Kopfzeile:**\n   - Das Logo von BidBlitz ist zu sehen.\n   - Ein Menü-Ico..."
+    },
+    "created_at": {
+      "$date": "2026-02-01T16:35:40.774Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "698279a504cd2c8b2f69b6a5"
+    },
+    "id": "a055e727-2159-4f87-917b-bbdce6602c4e",
+    "admin_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "admin_name": "Admin",
+    "transcription": "[Bildanalyse] Was ist das ",
+    "action": "analyze_image",
+    "parameters": {
+      "type": "image"
+    },
+    "result": {
+      "success": true,
+      "message": "Das Bild zeigt ein Icon eines Geschenks und daneben den Text \"Lucky in 50\" auf einem lila Hintergrund. \n\nMögliche Interpretation:\n- Dies könnte ein Countdown oder Timer sein, der auf ein Ereignis hinw..."
+    },
+    "created_at": {
+      "$date": "2026-02-03T22:41:41.033Z"
+    }
+  }
+]

@@ -1,0 +1,16 @@
+[
+  {
+    "_id": {
+      "$oid": "698bc1dae31743e1d3bf6300"
+    },
+    "email": "wholesale@bidblitz.de",
+    "company_name": "Test GmbH",
+    "contact_name": "Max Mustermann",
+    "created_at": "2026-02-10T23:40:10.291612+00:00",
+    "id": "70479e69-1a36-4253-b265-32c628751d60",
+    "password": "$2b$12$Cla0DJs38WweuoDbmaI2K.csyzbZN9Kg2MyRJ7BtzcWWiViHfuJe6",
+    "phone": "+49123456789",
+    "status": "approved",
+    "tier": "bronze"
+  }
+]

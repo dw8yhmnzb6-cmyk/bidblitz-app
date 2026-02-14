@@ -1,0 +1,2995 @@
+[
+  {
+    "_id": {
+      "$oid": "697130169b8be46379668780"
+    },
+    "id": "d8e5842b-0add-416c-a283-249dbec81c4c",
+    "name": "Max M.",
+    "email": "maxm@bot.bidblitz.de",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-21T19:59:18.296554+00:00",
+    "total_bids_placed": 112328
+  },
+  {
+    "_id": {
+      "$oid": "697130169b8be46379668781"
+    },
+    "id": "60a7ab46-cd84-4c76-b0d5-cc7a1aa48614",
+    "name": "Anna S.",
+    "email": "annas@bot.bidblitz.de",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-21T19:59:18.296566+00:00",
+    "total_bids_placed": 112949
+  },
+  {
+    "_id": {
+      "$oid": "697130169b8be46379668782"
+    },
+    "id": "236fd9f3-f375-40e9-bae7-f4e38515944b",
+    "name": "Thomas B.",
+    "email": "thomasb@bot.bidblitz.de",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-21T19:59:18.296571+00:00",
+    "total_bids_placed": 112215
+  },
+  {
+    "_id": {
+      "$oid": "697130169b8be46379668783"
+    },
+    "id": "994c9f09-f468-43b8-bb59-8bfdb75d571a",
+    "name": "Julia K.",
+    "email": "juliak@bot.bidblitz.de",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-21T19:59:18.296576+00:00",
+    "total_bids_placed": 113187
+  },
+  {
+    "_id": {
+      "$oid": "697130169b8be46379668784"
+    },
+    "id": "161e0d49-4ad2-483d-a5e7-e9e1c5dbe902",
+    "name": "Michael H.",
+    "email": "michaelh@bot.bidblitz.de",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-21T19:59:18.296584+00:00",
+    "total_bids_placed": 112881
+  },
+  {
+    "_id": {
+      "$oid": "697130169b8be46379668785"
+    },
+    "id": "d9625ea9-7732-48e2-b990-8be7546aa5e0",
+    "name": "Sarah L.",
+    "email": "sarahl@bot.bidblitz.de",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-21T19:59:18.296588+00:00",
+    "total_bids_placed": 113079
+  },
+  {
+    "_id": {
+      "$oid": "697130169b8be46379668786"
+    },
+    "id": "cbfffcf0-8666-43bf-905b-787059d7da53",
+    "name": "David W.",
+    "email": "davidw@bot.bidblitz.de",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-21T19:59:18.296592+00:00",
+    "total_bids_placed": 112697
+  },
+  {
+    "_id": {
+      "$oid": "697130169b8be46379668787"
+    },
+    "id": "5a1c2452-a6a9-4a05-a418-6eb6eaec1ebc",
+    "name": "Lisa F.",
+    "email": "lisaf@bot.bidblitz.de",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-21T19:59:18.296596+00:00",
+    "total_bids_placed": 112076
+  },
+  {
+    "_id": {
+      "$oid": "697130169b8be46379668788"
+    },
+    "id": "9eedf288-7863-4b01-b498-1749fb9572c7",
+    "name": "Stefan R.",
+    "email": "stefanr@bot.bidblitz.de",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-21T19:59:18.296601+00:00",
+    "total_bids_placed": 112618,
+    "bids_placed": 1
+  },
+  {
+    "_id": {
+      "$oid": "697130169b8be46379668789"
+    },
+    "id": "b4659de3-7dbb-435e-9806-798b1e5d5474",
+    "name": "Nina P.",
+    "email": "ninap@bot.bidblitz.de",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-21T19:59:18.296605+00:00",
+    "total_bids_placed": 112486
+  },
+  {
+    "_id": {
+      "$oid": "6972233f7739aa15792cd43e"
+    },
+    "id": "64d0ca78-1364-462d-aaaf-c60305070e1f",
+    "name": "Emily C.",
+    "total_bids_placed": 111224,
+    "created_at": "2026-01-22T13:16:47.715941+00:00",
+    "created_by": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca"
+  },
+  {
+    "_id": {
+      "$oid": "6972233f7739aa15792cd43f"
+    },
+    "id": "67a2f437-a07f-418a-a068-43cff87faef3",
+    "name": "Marco G.",
+    "total_bids_placed": 111177,
+    "created_at": "2026-01-22T13:16:47.718175+00:00",
+    "created_by": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca"
+  },
+  {
+    "_id": {
+      "$oid": "6972233f7739aa15792cd440"
+    },
+    "id": "2bafc4de-4c4b-4f75-9304-173c7c19e140",
+    "name": "Niklas K.",
+    "total_bids_placed": 111037,
+    "created_at": "2026-01-22T13:16:47.718742+00:00",
+    "created_by": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca"
+  },
+  {
+    "_id": {
+      "$oid": "6972233f7739aa15792cd441"
+    },
+    "id": "fcf32a7f-0c65-4367-b381-82d71e4c33c0",
+    "name": "Niklas C.",
+    "total_bids_placed": 111176,
+    "created_at": "2026-01-22T13:16:47.719220+00:00",
+    "created_by": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca"
+  },
+  {
+    "_id": {
+      "$oid": "6972233f7739aa15792cd442"
+    },
+    "id": "1e12d927-ed2a-4a96-8a94-3009bd2be3be",
+    "name": "Tom P.",
+    "total_bids_placed": 111873,
+    "created_at": "2026-01-22T13:16:47.719700+00:00",
+    "created_by": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca"
+  },
+  {
+    "_id": {
+      "$oid": "6972233f7739aa15792cd443"
+    },
+    "id": "fd6c2d6a-0246-4ee2-9e35-d13fd1497830",
+    "name": "Laura G.",
+    "total_bids_placed": 111391,
+    "created_at": "2026-01-22T13:16:47.720196+00:00",
+    "created_by": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca"
+  },
+  {
+    "_id": {
+      "$oid": "6972233f7739aa15792cd444"
+    },
+    "id": "5ecb5a66-021b-40d0-9ed6-de91db417435",
+    "name": "Finn V.",
+    "total_bids_placed": 110916,
+    "created_at": "2026-01-22T13:16:47.720651+00:00",
+    "created_by": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca"
+  },
+  {
+    "_id": {
+      "$oid": "6972233f7739aa15792cd445"
+    },
+    "id": "afc9e233-9e2e-4986-8996-03a117cd9046",
+    "name": "Amelie H.",
+    "total_bids_placed": 110911,
+    "created_at": "2026-01-22T13:16:47.721085+00:00",
+    "created_by": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca"
+  },
+  {
+    "_id": {
+      "$oid": "6972233f7739aa15792cd446"
+    },
+    "id": "0f2c0412-2de7-4c0e-851a-fdbbc53a420c",
+    "name": "Jens K.",
+    "total_bids_placed": 111274,
+    "created_at": "2026-01-22T13:16:47.721524+00:00",
+    "created_by": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "bids_placed": 1
+  },
+  {
+    "_id": {
+      "$oid": "6972233f7739aa15792cd447"
+    },
+    "id": "712adb23-cdc2-494f-bc36-d4dd40a3f8ac",
+    "name": "Moritz Z.",
+    "total_bids_placed": 111834,
+    "created_at": "2026-01-22T13:16:47.721945+00:00",
+    "created_by": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "bids_placed": 1
+  },
+  {
+    "_id": {
+      "$oid": "6972233f7739aa15792cd448"
+    },
+    "id": "35922ece-0c1a-4096-8c94-97d1bdb67234",
+    "name": "Jonas K.",
+    "total_bids_placed": 110823,
+    "created_at": "2026-01-22T13:16:47.722365+00:00",
+    "created_by": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca"
+  },
+  {
+    "_id": {
+      "$oid": "6972233f7739aa15792cd449"
+    },
+    "id": "14ba6335-4406-44af-a9c3-18b08b35e855",
+    "name": "Elias M.",
+    "total_bids_placed": 111789,
+    "created_at": "2026-01-22T13:16:47.722913+00:00",
+    "created_by": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca"
+  },
+  {
+    "_id": {
+      "$oid": "6972233f7739aa15792cd44a"
+    },
+    "id": "2bbd97b5-c0e9-457e-a9ed-b0d7d20940b0",
+    "name": "Hana R.",
+    "total_bids_placed": 111659,
+    "created_at": "2026-01-22T13:16:47.723465+00:00",
+    "created_by": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "bids_placed": 1
+  },
+  {
+    "_id": {
+      "$oid": "6972233f7739aa15792cd44b"
+    },
+    "id": "b886c991-1e5a-4639-aed9-f26f8f539ca7",
+    "name": "Matthias T.",
+    "total_bids_placed": 111414,
+    "created_at": "2026-01-22T13:16:47.724036+00:00",
+    "created_by": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca"
+  },
+  {
+    "_id": {
+      "$oid": "6972233f7739aa15792cd44c"
+    },
+    "id": "8d9562f3-b465-419a-a2cd-80359ec9724e",
+    "name": "Andreas E.",
+    "total_bids_placed": 111778,
+    "created_at": "2026-01-22T13:16:47.724508+00:00",
+    "created_by": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca"
+  },
+  {
+    "_id": {
+      "$oid": "6972233f7739aa15792cd44d"
+    },
+    "id": "a4e33d22-ea9e-4239-b13e-c654602cd3de",
+    "name": "Tim R.",
+    "total_bids_placed": 111682,
+    "created_at": "2026-01-22T13:16:47.724967+00:00",
+    "created_by": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca"
+  },
+  {
+    "_id": {
+      "$oid": "6972233f7739aa15792cd44e"
+    },
+    "id": "3fbbbefb-3d5b-465e-a485-31ac1d49a26a",
+    "name": "Anna B.",
+    "total_bids_placed": 110792,
+    "created_at": "2026-01-22T13:16:47.725426+00:00",
+    "created_by": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "bids_placed": 1
+  },
+  {
+    "_id": {
+      "$oid": "6972233f7739aa15792cd44f"
+    },
+    "id": "6e5a0923-8fe5-4157-8ace-f40e2f156d49",
+    "name": "Maja C.",
+    "total_bids_placed": 111111,
+    "created_at": "2026-01-22T13:16:47.725887+00:00",
+    "created_by": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca"
+  },
+  {
+    "_id": {
+      "$oid": "6972233f7739aa15792cd450"
+    },
+    "id": "a2f98caa-b2e9-47da-a1c4-f87383c6703a",
+    "name": "Amelie L.",
+    "total_bids_placed": 111490,
+    "created_at": "2026-01-22T13:16:47.726306+00:00",
+    "created_by": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca"
+  },
+  {
+    "_id": {
+      "$oid": "6972233f7739aa15792cd451"
+    },
+    "id": "516e6027-8b4b-451d-bfe3-3cb07d975bbe",
+    "name": "Johanna C.",
+    "total_bids_placed": 111269,
+    "created_at": "2026-01-22T13:16:47.726774+00:00",
+    "created_by": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca"
+  },
+  {
+    "_id": {
+      "$oid": "697e8c0114d351088cda51d2"
+    },
+    "id": "d2f6fa43-2442-4df6-b2f2-0f2ba9f07739",
+    "name": "Greta R.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:10:57.329675+00:00",
+    "total_bids_placed": 26515
+  },
+  {
+    "_id": {
+      "$oid": "697e8c0114d351088cda51d3"
+    },
+    "id": "e88c85c9-be77-43da-831a-b6c4bcb8f6fb",
+    "name": "Luiza K.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:10:57.335112+00:00",
+    "total_bids_placed": 26865
+  },
+  {
+    "_id": {
+      "$oid": "697e8c0114d351088cda51d4"
+    },
+    "id": "880c502b-4be7-41c2-849b-79c66a895099",
+    "name": "Luan B.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:10:57.335485+00:00",
+    "total_bids_placed": 26637
+  },
+  {
+    "_id": {
+      "$oid": "697e8c0114d351088cda51d5"
+    },
+    "id": "ea01c4bd-1739-42a8-9f21-43202975e437",
+    "name": "Shqipe H.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:10:57.335833+00:00",
+    "total_bids_placed": 26800
+  },
+  {
+    "_id": {
+      "$oid": "697e8c0114d351088cda51d6"
+    },
+    "id": "3b49602a-44c7-47a4-a1c5-6e13631d22e4",
+    "name": "Violeta M.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:10:57.336175+00:00",
+    "total_bids_placed": 26892
+  },
+  {
+    "_id": {
+      "$oid": "697e90d4969406f01250dc1b"
+    },
+    "id": "3f63d480-8443-4d07-80b6-333d5d9ed90a",
+    "name": "Rexhep H.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:31:32.276993+00:00",
+    "total_bids_placed": 26750
+  },
+  {
+    "_id": {
+      "$oid": "697e90d4969406f01250dc1c"
+    },
+    "id": "e6057173-31bd-44cd-ba7d-d903a1ecfa79",
+    "name": "Luan H.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:31:32.277590+00:00",
+    "total_bids_placed": 26441
+  },
+  {
+    "_id": {
+      "$oid": "697e90d4969406f01250dc1d"
+    },
+    "id": "d47e6b33-240c-4580-addd-3a2aa6787358",
+    "name": "Greta G.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:31:32.278009+00:00",
+    "total_bids_placed": 26462
+  },
+  {
+    "_id": {
+      "$oid": "697e90d4969406f01250dc1e"
+    },
+    "id": "6f68c8b7-d6e6-4012-86d4-306f65ec55d3",
+    "name": "Rexhep O.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:31:32.278447+00:00",
+    "total_bids_placed": 26329
+  },
+  {
+    "_id": {
+      "$oid": "697e90d4969406f01250dc1f"
+    },
+    "id": "3ec41fc3-e660-4338-9fb5-e0beb74234a0",
+    "name": "Mentor A.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:31:32.278777+00:00",
+    "total_bids_placed": 26348
+  },
+  {
+    "_id": {
+      "$oid": "697e90d4969406f01250dc20"
+    },
+    "id": "ac3935a7-bc2c-4d22-8544-43b581778cb6",
+    "name": "Besnik M.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:31:32.279025+00:00",
+    "total_bids_placed": 26460
+  },
+  {
+    "_id": {
+      "$oid": "697e90d4969406f01250dc21"
+    },
+    "id": "ec2ab893-8b97-4b76-865f-73fc601621fc",
+    "name": "Kujtim S.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:31:32.279284+00:00",
+    "total_bids_placed": 26268
+  },
+  {
+    "_id": {
+      "$oid": "697e90d4969406f01250dc22"
+    },
+    "id": "e63395c1-94bf-4bdc-be4f-43c91d3741f9",
+    "name": "Naim S.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:31:32.279536+00:00",
+    "total_bids_placed": 26486
+  },
+  {
+    "_id": {
+      "$oid": "697e90d4969406f01250dc23"
+    },
+    "id": "9a103cbc-4caa-4794-adbc-1c6a5028aebb",
+    "name": "Fatmir G.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:31:32.279750+00:00",
+    "total_bids_placed": 26587
+  },
+  {
+    "_id": {
+      "$oid": "697e90d4969406f01250dc24"
+    },
+    "id": "22e6f780-3776-484d-a4fd-d2c58cfa314f",
+    "name": "Erjona B.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:31:32.280082+00:00",
+    "total_bids_placed": 26432
+  },
+  {
+    "_id": {
+      "$oid": "697e90d4969406f01250dc25"
+    },
+    "id": "59a19b02-a18b-4eb3-b276-662dbb7a09af",
+    "name": "Erion H.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:31:32.280428+00:00",
+    "total_bids_placed": 26747
+  },
+  {
+    "_id": {
+      "$oid": "697e90d4969406f01250dc26"
+    },
+    "id": "0a481c62-ed50-47fb-a860-c2732e28697e",
+    "name": "Arben M.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:31:32.280735+00:00",
+    "total_bids_placed": 26568
+  },
+  {
+    "_id": {
+      "$oid": "697e90d4969406f01250dc27"
+    },
+    "id": "8549553b-c3dc-473e-b7f3-bbeaf55f81a7",
+    "name": "Xhevat R.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:31:32.281039+00:00",
+    "total_bids_placed": 26496
+  },
+  {
+    "_id": {
+      "$oid": "697e90d4969406f01250dc28"
+    },
+    "id": "621dd78a-a2b6-44a4-8dc1-00a786b3fceb",
+    "name": "Pranvera R.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:31:32.281390+00:00",
+    "total_bids_placed": 26249
+  },
+  {
+    "_id": {
+      "$oid": "697e90d4969406f01250dc29"
+    },
+    "id": "aa5357bc-4fe9-455c-a034-f6c849be7949",
+    "name": "Ylber O.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:31:32.281684+00:00",
+    "total_bids_placed": 26461
+  },
+  {
+    "_id": {
+      "$oid": "697e90d4969406f01250dc2a"
+    },
+    "id": "6e441465-129a-42ea-9535-7960b1c27770",
+    "name": "Zamira M.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:31:32.282046+00:00",
+    "total_bids_placed": 26775
+  },
+  {
+    "_id": {
+      "$oid": "697e90d4969406f01250dc2b"
+    },
+    "id": "a6b56f9c-e86d-4243-96e3-952f06cbdec5",
+    "name": "Albina H.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:31:32.282364+00:00",
+    "total_bids_placed": 26602
+  },
+  {
+    "_id": {
+      "$oid": "697e90d4969406f01250dc2c"
+    },
+    "id": "53d3e2a7-c14c-4ff3-b579-3c5eae487ec7",
+    "name": "Zamira K.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:31:32.282665+00:00",
+    "total_bids_placed": 26114
+  },
+  {
+    "_id": {
+      "$oid": "697e90d4969406f01250dc2d"
+    },
+    "id": "bc5c6fac-8116-4734-8244-eed141c23fc4",
+    "name": "Xhevahire G.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:31:32.283028+00:00",
+    "total_bids_placed": 26351
+  },
+  {
+    "_id": {
+      "$oid": "697e90d4969406f01250dc2e"
+    },
+    "id": "06ac9d08-7c34-472e-8206-4e4be58d4402",
+    "name": "Erjona K.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:31:32.283346+00:00",
+    "total_bids_placed": 26518
+  },
+  {
+    "_id": {
+      "$oid": "697e90d4969406f01250dc2f"
+    },
+    "id": "824575d9-26e5-4103-a79b-822fad271bcc",
+    "name": "Rexhep G.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:31:32.283685+00:00",
+    "total_bids_placed": 26721
+  },
+  {
+    "_id": {
+      "$oid": "697e90d4969406f01250dc30"
+    },
+    "id": "5baacab6-c15c-4cf5-b836-d0bccd4bd6d2",
+    "name": "Flora A.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:31:32.284013+00:00",
+    "total_bids_placed": 26739
+  },
+  {
+    "_id": {
+      "$oid": "697e90d4969406f01250dc31"
+    },
+    "id": "f49bd0cb-a35b-4d9c-b15e-d35a0dae02e8",
+    "name": "Iliriana B.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:31:32.284409+00:00",
+    "total_bids_placed": 26256
+  },
+  {
+    "_id": {
+      "$oid": "697e90d4969406f01250dc32"
+    },
+    "id": "cc337e99-13e8-432e-8656-9f928773e529",
+    "name": "Iliriana K.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:31:32.284716+00:00",
+    "total_bids_placed": 26518
+  },
+  {
+    "_id": {
+      "$oid": "697e90d4969406f01250dc33"
+    },
+    "id": "0784464d-a8d2-4f36-be74-f459ca3c67f1",
+    "name": "Mentor S.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:31:32.285016+00:00",
+    "total_bids_placed": 26705
+  },
+  {
+    "_id": {
+      "$oid": "697e90d4969406f01250dc34"
+    },
+    "id": "a88a9962-a8ba-491d-ad1b-4dbb04dac1cd",
+    "name": "Greta H.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:31:32.285417+00:00",
+    "total_bids_placed": 26573
+  },
+  {
+    "_id": {
+      "$oid": "697e90d4969406f01250dc35"
+    },
+    "id": "da2fe085-0c68-404f-98a3-ad19c74d6e39",
+    "name": "Zamir B.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:31:32.285729+00:00",
+    "total_bids_placed": 26441
+  },
+  {
+    "_id": {
+      "$oid": "697e90d4969406f01250dc36"
+    },
+    "id": "3923a4a2-d710-426a-9438-24b621383961",
+    "name": "Valdrin M.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:31:32.286043+00:00",
+    "total_bids_placed": 26402
+  },
+  {
+    "_id": {
+      "$oid": "697e90d4969406f01250dc37"
+    },
+    "id": "fc26e747-a238-4b2e-9ac9-7baae23f1232",
+    "name": "Fatmir M.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:31:32.286397+00:00",
+    "total_bids_placed": 26494
+  },
+  {
+    "_id": {
+      "$oid": "697e90d4969406f01250dc38"
+    },
+    "id": "8aabc2f2-fb11-430f-b650-90ee6fe6893c",
+    "name": "Shpëtim O.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:31:32.286691+00:00",
+    "total_bids_placed": 26407
+  },
+  {
+    "_id": {
+      "$oid": "697e90d4969406f01250dc39"
+    },
+    "id": "036609c2-eadf-4350-ba4f-d2e90f1851e7",
+    "name": "Erjona H.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:31:32.287015+00:00",
+    "total_bids_placed": 26420
+  },
+  {
+    "_id": {
+      "$oid": "697e90d4969406f01250dc3a"
+    },
+    "id": "254f4f78-3443-4a37-9043-abb962c3629a",
+    "name": "Driton K.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:31:32.287354+00:00",
+    "total_bids_placed": 26444
+  },
+  {
+    "_id": {
+      "$oid": "697e90d4969406f01250dc3b"
+    },
+    "id": "5cbea863-1d77-4632-aa26-c8fb6be99e4b",
+    "name": "Qamile H.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:31:32.287681+00:00",
+    "total_bids_placed": 26774
+  },
+  {
+    "_id": {
+      "$oid": "697e90d4969406f01250dc3c"
+    },
+    "id": "76654423-e07f-4cef-bdcd-34515a77761c",
+    "name": "Violeta S.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:31:32.288000+00:00",
+    "total_bids_placed": 26476
+  },
+  {
+    "_id": {
+      "$oid": "697e90d4969406f01250dc3d"
+    },
+    "id": "1edc6947-c276-42fb-9665-94136acd4aa5",
+    "name": "Fatmir H.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:31:32.288397+00:00",
+    "total_bids_placed": 26466
+  },
+  {
+    "_id": {
+      "$oid": "697e90d4969406f01250dc3e"
+    },
+    "id": "87f4e35f-6dd9-431b-b4f3-24f82871f329",
+    "name": "Teuta B.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:31:32.288703+00:00",
+    "total_bids_placed": 26535
+  },
+  {
+    "_id": {
+      "$oid": "697e90d4969406f01250dc3f"
+    },
+    "id": "ff06e1d8-c995-4fab-9d19-62a357762d5c",
+    "name": "Taulant L.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:31:32.289015+00:00",
+    "total_bids_placed": 26715
+  },
+  {
+    "_id": {
+      "$oid": "697e90d4969406f01250dc40"
+    },
+    "id": "d425dafe-ee29-4c38-80e9-5db379d0dad0",
+    "name": "Besa R.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:31:32.289447+00:00",
+    "total_bids_placed": 26804
+  },
+  {
+    "_id": {
+      "$oid": "697e90d4969406f01250dc41"
+    },
+    "id": "796f513f-dfea-483e-ba83-53095cd7319a",
+    "name": "Teuta M.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:31:32.289728+00:00",
+    "total_bids_placed": 26425
+  },
+  {
+    "_id": {
+      "$oid": "697e90d4969406f01250dc42"
+    },
+    "id": "eb4af683-1ce0-4882-9aa6-259293b97437",
+    "name": "Naim H.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:31:32.289980+00:00",
+    "total_bids_placed": 26574
+  },
+  {
+    "_id": {
+      "$oid": "697e90d4969406f01250dc43"
+    },
+    "id": "99e1961d-ea67-4ad6-b919-957ae485c013",
+    "name": "Violeta H.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:31:32.290232+00:00",
+    "total_bids_placed": 26670
+  },
+  {
+    "_id": {
+      "$oid": "697e90d4969406f01250dc44"
+    },
+    "id": "b468337d-8e06-4821-89ee-99f678fc2307",
+    "name": "Besa H.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:31:32.290552+00:00",
+    "total_bids_placed": 26493
+  },
+  {
+    "_id": {
+      "$oid": "697e90d4969406f01250dc45"
+    },
+    "id": "3fa0ed00-6163-43c7-8f80-9fa1fb2eeec6",
+    "name": "Valdrin G.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:31:32.290772+00:00",
+    "total_bids_placed": 26596
+  },
+  {
+    "_id": {
+      "$oid": "697e90d4969406f01250dc46"
+    },
+    "id": "5f8c7ace-6bcb-4739-bec9-16a79b90ca8b",
+    "name": "Shqipe A.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:31:32.291087+00:00",
+    "total_bids_placed": 26516
+  },
+  {
+    "_id": {
+      "$oid": "697e90d4969406f01250dc47"
+    },
+    "id": "e4cd0543-1fbc-4bd1-9fe2-b1bf16637e41",
+    "name": "Albina O.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:31:32.291356+00:00",
+    "total_bids_placed": 26631
+  },
+  {
+    "_id": {
+      "$oid": "697e90d4969406f01250dc48"
+    },
+    "id": "fe628a38-9976-4359-8712-0d24e2a2c957",
+    "name": "Pranvera K.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:31:32.291573+00:00",
+    "total_bids_placed": 26403
+  },
+  {
+    "_id": {
+      "$oid": "697e90d4969406f01250dc49"
+    },
+    "id": "6347837f-6449-4210-917f-c78eaae5628a",
+    "name": "Xhevahire K.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:31:32.291782+00:00",
+    "total_bids_placed": 26345
+  },
+  {
+    "_id": {
+      "$oid": "697e90d4969406f01250dc4a"
+    },
+    "id": "9bf6fe0c-daab-48fd-99fa-24378ca3d43b",
+    "name": "Yllka S.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:31:32.291988+00:00",
+    "total_bids_placed": 26457
+  },
+  {
+    "_id": {
+      "$oid": "697e90d4969406f01250dc4b"
+    },
+    "id": "1251f818-6962-42ac-acba-78bd8794da6e",
+    "name": "Erjona R.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:31:32.292193+00:00",
+    "total_bids_placed": 26593
+  },
+  {
+    "_id": {
+      "$oid": "697e90fc969406f01250dc4e"
+    },
+    "id": "bb891561-cb66-48e8-ab38-a678437cabd7",
+    "name": "Zamira H.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:32:12.102436+00:00",
+    "total_bids_placed": 26300
+  },
+  {
+    "_id": {
+      "$oid": "697e90fc969406f01250dc4f"
+    },
+    "id": "815f2eb7-a8de-4b16-937f-c31a6327f0d1",
+    "name": "Kaltrina H.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:32:12.102949+00:00",
+    "total_bids_placed": 26507
+  },
+  {
+    "_id": {
+      "$oid": "697e90fc969406f01250dc50"
+    },
+    "id": "8e8c568a-6e5e-423f-aaab-e9052aa78e26",
+    "name": "Shpëtim R.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:32:12.103317+00:00",
+    "total_bids_placed": 26254
+  },
+  {
+    "_id": {
+      "$oid": "697e90fc969406f01250dc51"
+    },
+    "id": "0453e96a-9886-42f9-bbc4-da7895530cfc",
+    "name": "Zamir H.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:32:12.103718+00:00",
+    "total_bids_placed": 26459
+  },
+  {
+    "_id": {
+      "$oid": "697e90fc969406f01250dc52"
+    },
+    "id": "2e04f50a-8b1e-47c2-b5d9-3970931dae8f",
+    "name": "Driton H.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:32:12.104026+00:00",
+    "total_bids_placed": 26621
+  },
+  {
+    "_id": {
+      "$oid": "697e90fc969406f01250dc55"
+    },
+    "id": "35858c90-e8c8-463e-8079-a4720f6050db",
+    "name": "Flora L.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:32:12.104788+00:00",
+    "total_bids_placed": 26538
+  },
+  {
+    "_id": {
+      "$oid": "697e90fc969406f01250dc57"
+    },
+    "id": "9d81ca72-f616-4464-8cea-90f446c50da6",
+    "name": "Ylber B.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:32:12.105293+00:00",
+    "total_bids_placed": 26544
+  },
+  {
+    "_id": {
+      "$oid": "697e90fc969406f01250dc58"
+    },
+    "id": "8a7d4553-35d4-40eb-a72d-a8132a18c195",
+    "name": "Rozafa L.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:32:12.105520+00:00",
+    "total_bids_placed": 26404
+  },
+  {
+    "_id": {
+      "$oid": "697e90fc969406f01250dc59"
+    },
+    "id": "376ecdce-b07c-40b2-98e9-29f565b70bc7",
+    "name": "Naim G.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:32:12.105820+00:00",
+    "total_bids_placed": 26495
+  },
+  {
+    "_id": {
+      "$oid": "697e90fc969406f01250dc5a"
+    },
+    "id": "ff639f87-cdf4-4fcc-a7e9-e4048f194154",
+    "name": "Luan O.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:32:12.106073+00:00",
+    "total_bids_placed": 26659
+  },
+  {
+    "_id": {
+      "$oid": "697e90fc969406f01250dc5b"
+    },
+    "id": "0913894f-e976-4c91-9065-1f5cf5301e22",
+    "name": "Besa B.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:32:12.106344+00:00",
+    "total_bids_placed": 26738
+  },
+  {
+    "_id": {
+      "$oid": "697e90fc969406f01250dc5c"
+    },
+    "id": "6c4dd4e4-2817-4ce4-b03d-316798c2bbb3",
+    "name": "Greta B.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:32:12.106613+00:00",
+    "total_bids_placed": 26519
+  },
+  {
+    "_id": {
+      "$oid": "697e90fc969406f01250dc5d"
+    },
+    "id": "f4d6e407-08ee-4475-9e38-b2ffd6ce6d34",
+    "name": "Yllka R.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:32:12.106812+00:00",
+    "total_bids_placed": 2485
+  },
+  {
+    "_id": {
+      "$oid": "697e90fc969406f01250dc5e"
+    },
+    "id": "d2be66be-030e-4bb1-b241-740597071c24",
+    "name": "Violeta K.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:32:12.107032+00:00",
+    "total_bids_placed": 2655
+  },
+  {
+    "_id": {
+      "$oid": "697e90fc969406f01250dc5f"
+    },
+    "id": "d0ff69ac-3dee-43c5-8767-ab378fd7dba6",
+    "name": "Naim M.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:32:12.107277+00:00",
+    "total_bids_placed": 2558
+  },
+  {
+    "_id": {
+      "$oid": "697e90fc969406f01250dc61"
+    },
+    "id": "099c9525-eec4-4c54-ba9e-b3f76348def5",
+    "name": "Qamile S.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:32:12.107722+00:00",
+    "total_bids_placed": 2510
+  },
+  {
+    "_id": {
+      "$oid": "697e90fc969406f01250dc63"
+    },
+    "id": "0c257322-132a-44a7-92f7-bfd66383b8cd",
+    "name": "Arben H.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:32:12.108124+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697e90fc969406f01250dc64"
+    },
+    "id": "9e5bcad1-4934-4169-b43e-607965296914",
+    "name": "Flora H.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:32:12.108357+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697e90fc969406f01250dc66"
+    },
+    "id": "eebe6bd6-6f09-4490-a3d6-56fcf296919a",
+    "name": "Rexhep S.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:32:12.108789+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697e90fc969406f01250dc67"
+    },
+    "id": "4a8d5a48-2fc0-49e9-bdf3-6b76c5581272",
+    "name": "Iliriana M.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:32:12.108997+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697e90fc969406f01250dc68"
+    },
+    "id": "495ba112-5da9-4082-aa41-81526bb1d0fd",
+    "name": "Qëndrim R.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:32:12.109196+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697e90fc969406f01250dc69"
+    },
+    "id": "49bdd4aa-5e26-44c7-a505-2375b9777447",
+    "name": "Teuta O.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:32:12.109403+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697e90fc969406f01250dc6a"
+    },
+    "id": "7df52423-6d87-4d59-b910-db455bcef9db",
+    "name": "Qëndrim H.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:32:12.109619+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697e90fc969406f01250dc6b"
+    },
+    "id": "d0a07353-11a3-43a9-870f-98715670a33f",
+    "name": "Albina B.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:32:12.109806+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697e90fc969406f01250dc6c"
+    },
+    "id": "822538f7-3fde-4cfb-9007-37217e7d87c8",
+    "name": "Nora B.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:32:12.109996+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697e90fc969406f01250dc6d"
+    },
+    "id": "4aaffd32-a9e5-4466-894e-1f4ad09fe9a5",
+    "name": "Erjona M.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:32:12.110186+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697e90fc969406f01250dc6e"
+    },
+    "id": "30bcf45c-e220-4a29-945f-8f5f64ba17a0",
+    "name": "Taulant R.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:32:12.110378+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697e90fc969406f01250dc70"
+    },
+    "id": "7444f29e-ff0c-4ff5-b715-dc3e62db9fcb",
+    "name": "Flora S.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:32:12.110769+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697e90fc969406f01250dc71"
+    },
+    "id": "7db467fe-d7a6-47c2-a8ef-bd5d4e7e3323",
+    "name": "Drita H.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:32:12.110944+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697e90fc969406f01250dc72"
+    },
+    "id": "a73274b0-3bd1-41e2-9e14-596c14a5d890",
+    "name": "Besnik B.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:32:12.111142+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697e90fc969406f01250dc73"
+    },
+    "id": "9aa0342e-a8b6-4923-8e09-18e7111156ec",
+    "name": "Luiza G.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:32:12.111354+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697e90fc969406f01250dc74"
+    },
+    "id": "31df0f6a-b480-4c21-bdd3-a9f0e4490559",
+    "name": "Teuta K.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:32:12.111527+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697e90fc969406f01250dc75"
+    },
+    "id": "1e02cb03-6075-43b1-8829-e6940058d526",
+    "name": "Pranvera H.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:32:12.111728+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697e90fc969406f01250dc76"
+    },
+    "id": "baf66bc6-5ec7-4441-80a5-d4b30549dbbc",
+    "name": "Erion R.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:32:12.111920+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697e90fc969406f01250dc77"
+    },
+    "id": "6ea85aff-cc4a-42e0-85f6-797d8393b8ef",
+    "name": "Erion S.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:32:12.112104+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697e90fc969406f01250dc78"
+    },
+    "id": "e8ea126e-bbec-47f5-8e7f-85461dcaafc3",
+    "name": "Qëndrim G.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:32:12.112313+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697e90fc969406f01250dc7a"
+    },
+    "id": "8e78ce49-5c85-404f-845e-ef0a7757aa73",
+    "name": "Xhevat H.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:32:12.112678+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697e90fc969406f01250dc7b"
+    },
+    "id": "c6894d30-3a67-4363-adca-ab58fa494b29",
+    "name": "Nora G.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:32:12.112878+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697e90fc969406f01250dc7d"
+    },
+    "id": "b8d0c682-caf2-4cc8-861d-21d05886288f",
+    "name": "Besa G.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:32:12.113252+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697e90fc969406f01250dc7f"
+    },
+    "id": "5b348598-f2d5-4e51-a2e2-cb2d575d8c19",
+    "name": "Albina S.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:32:12.113833+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697e90fc969406f01250dc82"
+    },
+    "id": "e3323de1-0e9c-4103-8965-c40797f8ca54",
+    "name": "Iliriana G.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:32:12.114755+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697e90fc969406f01250dc84"
+    },
+    "id": "50b364b3-ef37-4ac4-9fe9-b4fae47f3b30",
+    "name": "Qamile M.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:32:12.115339+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697e90fc969406f01250dc86"
+    },
+    "id": "48a8c32d-a4d7-4a48-bfb9-40122f5b03a2",
+    "name": "Drita K.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:32:12.115888+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697e90fc969406f01250dc87"
+    },
+    "id": "8c9e2e8e-e26a-49e8-bb33-c95bdcaa6220",
+    "name": "Greta L.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:32:12.116169+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697e90fc969406f01250dc88"
+    },
+    "id": "a929d65c-d4f5-482f-abd8-92e89129851c",
+    "name": "Drita B.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:32:12.116471+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697e90fc969406f01250dc89"
+    },
+    "id": "5f7ba5d8-8dd4-4931-a99c-369d0cf36136",
+    "name": "Zamira R.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:32:12.116733+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697e90fc969406f01250dc8b"
+    },
+    "id": "d808b7b5-6a25-475b-8ed3-d385fa3e1517",
+    "name": "Taulant G.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:32:12.117422+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697e90fc969406f01250dc8d"
+    },
+    "id": "fc1a1eae-f813-4c65-91c1-78cc458ee8dd",
+    "name": "Violeta G.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:32:12.117984+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697e90fc969406f01250dc90"
+    },
+    "id": "e8ca6755-dce1-4a51-a2e6-4a1c3ec75510",
+    "name": "Shpëtim H.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:32:12.118937+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697e90fc969406f01250dc93"
+    },
+    "id": "7998d35b-f732-4d70-acc6-4b02613cba16",
+    "name": "Ilir R.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:32:12.119884+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697e90fc969406f01250dc94"
+    },
+    "id": "dce0d12a-0b88-4e0b-a1be-99865376e8c5",
+    "name": "Ylber K.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:32:12.120201+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697e90fc969406f01250dc97"
+    },
+    "id": "5fdf3021-184f-4f35-83ab-5f7cf22eec03",
+    "name": "Shqipe S.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:32:12.121095+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697e90fc969406f01250dc98"
+    },
+    "id": "fbcacd18-c896-4264-afa0-de99575f5c85",
+    "name": "Genti H.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:32:12.121418+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697e90fc969406f01250dc9a"
+    },
+    "id": "6c99c021-832e-47b4-b09d-4e13d3717fcd",
+    "name": "Mirela H.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:32:12.122005+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697e90fc969406f01250dc9d"
+    },
+    "id": "f957deb4-94fc-4b97-bec6-3693a3b6cf37",
+    "name": "Taulant H.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:32:12.122928+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697e90fc969406f01250dc9e"
+    },
+    "id": "f1a0a60b-8811-45ae-9f1a-4d3f44fd2c08",
+    "name": "Ilir S.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:32:12.123285+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697e90fc969406f01250dc9f"
+    },
+    "id": "d2a20128-0137-4e5c-9005-bddf4fa1d4b8",
+    "name": "Petrit R.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:32:12.123585+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697e90fc969406f01250dca0"
+    },
+    "id": "3554fe1c-33bd-410c-af05-7c2d4d1b74a3",
+    "name": "Shpëtim B.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:32:12.123904+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697e90fc969406f01250dca1"
+    },
+    "id": "1ae3b6e3-879d-48be-bfb0-4eac2bd24afc",
+    "name": "Fatmir S.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:32:12.124188+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697e90fc969406f01250dca2"
+    },
+    "id": "05db7c04-1672-44e3-9371-6b52e0720119",
+    "name": "Mentor R.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:32:12.124510+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697e90fc969406f01250dca3"
+    },
+    "id": "7a4da6de-ca4c-4d91-891f-2c42930654be",
+    "name": "Qamile R.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:32:12.124822+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697e90fc969406f01250dca4"
+    },
+    "id": "593952ef-085c-4319-8bbd-a3847897517b",
+    "name": "Besnik G.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:32:12.125094+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697e90fc969406f01250dca7"
+    },
+    "id": "866cb341-2efc-4c45-8702-8aee5b6b2624",
+    "name": "Nora R.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:32:12.125956+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697e90fc969406f01250dca8"
+    },
+    "id": "4585e061-fabb-4a1a-8af2-aca7a977a965",
+    "name": "Teuta R.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:32:12.126271+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697e90fc969406f01250dcaa"
+    },
+    "id": "467b0eb1-d2cd-4f1e-a83b-37acfbc6de4c",
+    "name": "Rozafa K.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:32:12.126688+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697e90fc969406f01250dcab"
+    },
+    "id": "1c6bec0e-bef1-4452-87c3-9172c82d87a3",
+    "name": "Luiza A.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:32:12.126879+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697e90fc969406f01250dcac"
+    },
+    "id": "78b4d336-0811-485b-8c98-9f8c8d7c9ad8",
+    "name": "Yllka K.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:32:12.127078+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697e90fc969406f01250dcae"
+    },
+    "id": "181a2d9f-34b0-4bc9-b9b7-0ba41ca82296",
+    "name": "Zamira G.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:32:12.127455+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697e90fc969406f01250dcb0"
+    },
+    "id": "29304b3e-daef-4f6e-952f-afbdea9292e4",
+    "name": "Kujtim M.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:32:12.127811+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697e90fc969406f01250dcb1"
+    },
+    "id": "d2c3d768-fcf5-485d-838c-2e0b470bc624",
+    "name": "Arben R.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-01-31T23:32:12.128002+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e60a"
+    },
+    "id": "605e1b41-9b9e-471e-aacb-a0e113cfa62d",
+    "name": "Shpëtim G.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.213622+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e60b"
+    },
+    "id": "21db6b4d-51c1-4681-8da2-9237d97e6d4e",
+    "name": "Besnik H.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.215982+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e60c"
+    },
+    "id": "d8d9ca8e-84b1-41c3-a684-7316b5a8d92e",
+    "name": "Nora M.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.216436+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e60d"
+    },
+    "id": "8f90de35-8e73-424b-a620-52c97bf3e8b9",
+    "name": "Albina M.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.216926+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e60e"
+    },
+    "id": "ab8b6770-fb60-4ae3-9e1a-7f096f94daa3",
+    "name": "Qëndrim K.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.217426+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e610"
+    },
+    "id": "5c41097c-d723-4767-84f0-8ac70ecd6f38",
+    "name": "Mirela K.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.218555+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e611"
+    },
+    "id": "ad6afecb-d559-4732-810a-2f98d7dc49ee",
+    "name": "Kujtim B.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.219072+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e614"
+    },
+    "id": "962af115-2c6c-45ea-85db-6aa34c944d39",
+    "name": "Ylber M.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.220302+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e618"
+    },
+    "id": "a2fec9b3-1825-4fc7-87eb-0392eb8735da",
+    "name": "Ylber H.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.221917+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e619"
+    },
+    "id": "fb063cb9-277a-46c3-9c86-6aba800958e4",
+    "name": "Qamile H.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.222421+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e61a"
+    },
+    "id": "0319af12-51c6-4daf-878f-ced2af5e55c8",
+    "name": "Mirela L.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.222825+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e61b"
+    },
+    "id": "d144d4b3-3592-4492-bb87-d589537b8dee",
+    "name": "Mirela B.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.223299+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e61c"
+    },
+    "id": "f7518d1e-f697-45dd-b59b-361513fdbd78",
+    "name": "Erjona B.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.223718+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e61d"
+    },
+    "id": "84e412c7-bcc7-4a70-aff9-aa6acc2af753",
+    "name": "Yllka S.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.224128+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e61e"
+    },
+    "id": "d4d5141a-ae38-4145-b273-2a3256ed416a",
+    "name": "Iliriana B.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.224554+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e61f"
+    },
+    "id": "b9e7eb3b-b237-4521-b3ff-38f8b409f5fa",
+    "name": "Naim H.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.224884+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e620"
+    },
+    "id": "4c38ef95-7d78-4a94-b355-e65fea7c5122",
+    "name": "Arben L.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.225276+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e621"
+    },
+    "id": "653fd7ac-9edf-4fb9-a44b-82959f554bf3",
+    "name": "Shqipe G.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.225640+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e622"
+    },
+    "id": "f46ccb10-b78e-4774-ba10-f8f40a421b49",
+    "name": "Arben H.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.225977+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e623"
+    },
+    "id": "7a620d53-e9d6-43d1-9ce9-1f085a3f0977",
+    "name": "Erion M.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.226407+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e624"
+    },
+    "id": "71b693cb-cf35-4dec-bce0-1a9125e1a1ee",
+    "name": "Luiza O.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.226920+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e625"
+    },
+    "id": "cc9701dd-55d6-4fb4-a72b-ec46fdcb8365",
+    "name": "Erion R.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.227289+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e626"
+    },
+    "id": "35704c7b-8960-4bc6-a4fc-f0b3d8c56e1d",
+    "name": "Besnik M.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.227718+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e627"
+    },
+    "id": "0b5123d4-7903-4b14-9585-e8ebbbb86ec6",
+    "name": "Erion O.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.228113+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e628"
+    },
+    "id": "df3a2c44-2e24-431c-b150-1db1b7f442e7",
+    "name": "Rexhep H.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.228472+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e629"
+    },
+    "id": "9dbcc02f-1c27-4c03-8a43-dc20a2fd0e4f",
+    "name": "Luan G.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.228835+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e62a"
+    },
+    "id": "d3fd10b2-74fe-4f76-a687-720f5fed29c1",
+    "name": "Xhevat A.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.229315+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e62b"
+    },
+    "id": "360da3ca-e429-4967-a7c4-c2f378b04262",
+    "name": "Teuta S.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.229671+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e62c"
+    },
+    "id": "59d1fe9d-c8a8-4079-b4d2-d56511f5930d",
+    "name": "Luan S.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.230134+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e62d"
+    },
+    "id": "bf263fa4-7ea4-4289-a06e-0e21366aa216",
+    "name": "Erjona H.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.230596+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e62e"
+    },
+    "id": "4be1da9e-6a32-4976-85b7-0ce1af8a58d6",
+    "name": "Greta B.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.231008+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e62f"
+    },
+    "id": "1f33907b-7168-4248-9b0c-7058e0310fb3",
+    "name": "Arben B.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.231409+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e630"
+    },
+    "id": "f204c84b-b5e1-41bf-97c7-1dcce30c97ab",
+    "name": "Genti B.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.231887+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e631"
+    },
+    "id": "8325f20b-409f-4ccb-99ec-3df3724243be",
+    "name": "Taulant K.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.232360+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e632"
+    },
+    "id": "3edf741a-4f8d-4900-be8e-90d168950031",
+    "name": "Shqipe K.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.232863+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e633"
+    },
+    "id": "d7f4645a-fea0-445e-b60a-4d0319961d2d",
+    "name": "Xhevat G.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.233311+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e634"
+    },
+    "id": "98857566-5c9f-471b-a822-994a9c9517c7",
+    "name": "Xhevat M.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.233663+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e635"
+    },
+    "id": "7e808459-0dba-4d22-9d14-b926b79a99f3",
+    "name": "Flora S.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.233904+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e636"
+    },
+    "id": "ecda7ed3-2988-48f8-aa17-58f6aa83861a",
+    "name": "Drita H.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.234122+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e637"
+    },
+    "id": "153028ef-33e5-4b28-afd1-53849262334c",
+    "name": "Qamile B.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.234409+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e638"
+    },
+    "id": "8f7941f7-a1c4-4236-a7fb-fc63b72d04ea",
+    "name": "Fatmir S.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.234727+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e639"
+    },
+    "id": "ae042563-790c-41fa-a6fc-469fd7e73c28",
+    "name": "Shqipe H.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.234989+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e63a"
+    },
+    "id": "2c085918-44bf-48b5-9d1b-62c52cf503c5",
+    "name": "Shpëtim H.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.235211+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e63b"
+    },
+    "id": "a2559bfc-0600-4695-a739-74bc6d46e1d3",
+    "name": "Fatmir S.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.235416+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e63c"
+    },
+    "id": "f95dc061-b524-4ba1-83c8-21170710a28f",
+    "name": "Qëndrim K.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.235607+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e63d"
+    },
+    "id": "7ccc27de-1586-4169-b5e2-73881a5397b7",
+    "name": "Driton L.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.235846+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e63e"
+    },
+    "id": "8ae16e17-a1f7-4289-a19f-5d0019fb04b5",
+    "name": "Greta O.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.236101+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e63f"
+    },
+    "id": "a9431263-44a8-4a34-afcc-79af49a23eb2",
+    "name": "Fatmir M.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.236326+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e640"
+    },
+    "id": "19427889-b07c-4452-8509-23daa81dce09",
+    "name": "Violeta K.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.236543+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e641"
+    },
+    "id": "11956fac-48ca-4c85-8b43-e5d6af228014",
+    "name": "Taulant M.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.236731+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e642"
+    },
+    "id": "c45b470e-2bf8-4c2d-82a2-e82378e193f6",
+    "name": "Taulant H.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.236927+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e643"
+    },
+    "id": "bb2eb326-ed30-488b-bf7a-43f46a32c4f2",
+    "name": "Pranvera O.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.237153+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e644"
+    },
+    "id": "b4dd6674-2240-4e14-9bc9-08cf991cd4fa",
+    "name": "Kaltrina K.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.237392+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e645"
+    },
+    "id": "437fd942-8710-4a81-bf2a-9c6f78e6d5de",
+    "name": "Teuta S.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.237605+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e646"
+    },
+    "id": "f4d4fc7b-dc14-4f85-b565-a6c5d46292bc",
+    "name": "Qamile M.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.237813+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e647"
+    },
+    "id": "ca319171-4fef-4cef-9c29-d29c744ea491",
+    "name": "Zamir O.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.238062+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e648"
+    },
+    "id": "6d049dcb-d1a6-4d22-ba80-47d2f9b4815d",
+    "name": "Besnik A.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.238259+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e649"
+    },
+    "id": "a84cd787-19df-487c-9fec-22edeb739fc2",
+    "name": "Driton B.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.238481+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e64a"
+    },
+    "id": "1d9886d1-aff0-4519-b8df-289677bef715",
+    "name": "Greta H.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.238723+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e64b"
+    },
+    "id": "322c59d3-9ce2-477c-9b29-8e4fa083e29e",
+    "name": "Greta O.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.238927+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e64c"
+    },
+    "id": "9ff0ce99-e200-4e7c-b654-c1616b8e696c",
+    "name": "Rexhep L.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.239249+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e64d"
+    },
+    "id": "88e4db19-257e-4bef-85c0-dfb72757d66d",
+    "name": "Rexhep M.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.239728+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e64e"
+    },
+    "id": "20c0e780-1486-4953-88be-3a3733c976e9",
+    "name": "Zamir H.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.240031+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e64f"
+    },
+    "id": "17405d76-8c9b-40bf-95ca-6db012970f7d",
+    "name": "Erjona H.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.240331+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e650"
+    },
+    "id": "64c92b6e-e86b-47cf-95b9-c0799bb1a067",
+    "name": "Albina M.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.240731+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e651"
+    },
+    "id": "e770eccb-c85b-47a4-bb64-91cedd80ec6b",
+    "name": "Greta S.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.241039+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e652"
+    },
+    "id": "d146cfd2-0d94-469b-a68e-3436b9f9fd93",
+    "name": "Zamira H.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.241368+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e653"
+    },
+    "id": "70a1a3ee-f320-4642-bb7b-9af65ad9e2d6",
+    "name": "Kujtim S.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.241637+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e654"
+    },
+    "id": "d6b1613f-b98e-42c5-a68a-1852de52b83d",
+    "name": "Mentor S.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.241882+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e655"
+    },
+    "id": "4dbb8267-55a4-41d0-ab1b-4fd4bdc5779e",
+    "name": "Albina S.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.242156+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e656"
+    },
+    "id": "cd2b1a8b-36ac-4259-85bb-75c1ebf88804",
+    "name": "Naim G.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.242427+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e657"
+    },
+    "id": "8f63cf20-7939-4997-9f18-44f43c872372",
+    "name": "Mirela G.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.242656+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e658"
+    },
+    "id": "b74ac13a-c394-4655-8416-71e3a6fff5a7",
+    "name": "Petrit A.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.242930+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e659"
+    },
+    "id": "fd802b08-cddd-4ab9-8a95-6102ec512e76",
+    "name": "Mirela H.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.243152+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e65a"
+    },
+    "id": "b784ee93-572c-4a58-8295-ca9c37eeb847",
+    "name": "Qëndrim L.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.243510+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e65b"
+    },
+    "id": "fe82d87d-1548-46d8-b2c1-30607e59e175",
+    "name": "Mentor S.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.243817+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e65c"
+    },
+    "id": "3c2e39cc-c7ba-4e2c-8b63-1899224a0914",
+    "name": "Xhevahire G.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.244318+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e65d"
+    },
+    "id": "6b6f25fb-9679-4669-b233-c708a447bc01",
+    "name": "Violeta M.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.244740+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e65e"
+    },
+    "id": "e95d2bb3-ed0c-4cbc-bf1a-68bd588d5a2d",
+    "name": "Petrit R.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.245177+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e65f"
+    },
+    "id": "011f7f97-cce8-4ff2-807b-f9785b8505db",
+    "name": "Besnik M.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.245617+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e660"
+    },
+    "id": "cefb92c0-9e6b-4a0c-89ab-ec59fde203a4",
+    "name": "Nora K.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.245867+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e661"
+    },
+    "id": "38e87f67-e1b8-4250-a25d-da4a67f53d6c",
+    "name": "Mirela B.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.246125+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e662"
+    },
+    "id": "e16b1059-ad86-4328-915f-2ed953e46c0e",
+    "name": "Besa M.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.246505+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e663"
+    },
+    "id": "c7450df0-adcc-41b9-a8a9-bbd718a010e2",
+    "name": "Ilir R.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.246967+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e664"
+    },
+    "id": "f3415cd7-438b-403d-9308-1d42aa7cc5d1",
+    "name": "Fatmir H.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.247370+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e665"
+    },
+    "id": "362e5b6e-7973-46c2-89a2-41d80c857c1a",
+    "name": "Zamir K.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.247681+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e666"
+    },
+    "id": "d29add9b-d6fc-41df-aeef-97c9faf1413a",
+    "name": "Ilir L.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.248002+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e667"
+    },
+    "id": "fda727ab-3efb-4d53-a743-2cf8d92e807b",
+    "name": "Ilir K.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.248425+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e668"
+    },
+    "id": "ca2d14c6-01aa-4800-bfb1-50eabfed8cc6",
+    "name": "Qëndrim K.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.248775+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e669"
+    },
+    "id": "4de32bd5-69f5-42d1-a6ad-e8585f662136",
+    "name": "Mirela K.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.249132+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e66a"
+    },
+    "id": "6426cc46-320c-440b-a180-72612f811bc6",
+    "name": "Qamile A.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.249489+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e66b"
+    },
+    "id": "806d0ee2-b255-4491-a293-8e734af73f2c",
+    "name": "Besnik B.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.249873+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e66c"
+    },
+    "id": "ac47fd31-fe51-4cdf-8528-4affee41a0ab",
+    "name": "Kujtim R.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.250284+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697f8048f4234617bfb5e66d"
+    },
+    "id": "c70e5c5f-1dcf-4abe-bfcc-3dde8a67262e",
+    "name": "Genti G.",
+    "nationality": "albanian",
+    "is_active": true,
+    "total_bids": 0,
+    "created_at": "2026-02-01T16:33:12.250666+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698e4b5b6e45bde558c7f918"
+    },
+    "id": "0ddc2bb1-65cf-4654-889b-d54cfbdf3d98",
+    "name": "Laura L.",
+    "total_bids_placed": 0,
+    "created_at": "2026-02-12T21:51:23.472063+00:00",
+    "created_by": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca"
+  },
+  {
+    "_id": {
+      "$oid": "698e4b5b6e45bde558c7f919"
+    },
+    "id": "97cbf250-9aa3-486e-9b72-8088f938df18",
+    "name": "Moritz M.",
+    "total_bids_placed": 0,
+    "created_at": "2026-02-12T21:51:23.474562+00:00",
+    "created_by": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca"
+  },
+  {
+    "_id": {
+      "$oid": "698e4b5b6e45bde558c7f91a"
+    },
+    "id": "df0e10ea-3ce2-4205-97d9-5e86c1cd762b",
+    "name": "Julian G.",
+    "total_bids_placed": 0,
+    "created_at": "2026-02-12T21:51:23.475478+00:00",
+    "created_by": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca"
+  },
+  {
+    "_id": {
+      "$oid": "698e4b5b6e45bde558c7f91b"
+    },
+    "id": "2f84fe95-721e-4e1e-95e6-9c6b982028f0",
+    "name": "Luca N.",
+    "total_bids_placed": 0,
+    "created_at": "2026-02-12T21:51:23.476303+00:00",
+    "created_by": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca"
+  },
+  {
+    "_id": {
+      "$oid": "698e4b5b6e45bde558c7f91c"
+    },
+    "id": "430752e9-aa5d-4b51-97fe-7214efc8cccf",
+    "name": "Nele F.",
+    "total_bids_placed": 0,
+    "created_at": "2026-02-12T21:51:23.476939+00:00",
+    "created_by": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca"
+  },
+  {
+    "_id": {
+      "$oid": "698e4b5b6e45bde558c7f91d"
+    },
+    "id": "7c79fc92-78da-4cd4-859a-8aa1508a9f4e",
+    "name": "Jonas E.",
+    "total_bids_placed": 0,
+    "created_at": "2026-02-12T21:51:23.477695+00:00",
+    "created_by": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca"
+  },
+  {
+    "_id": {
+      "$oid": "698e4b5b6e45bde558c7f91e"
+    },
+    "id": "5162a3b0-b746-4d44-a96b-6bd08a47a739",
+    "name": "Jens J.",
+    "total_bids_placed": 0,
+    "created_at": "2026-02-12T21:51:23.478466+00:00",
+    "created_by": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca"
+  },
+  {
+    "_id": {
+      "$oid": "698e4b5b6e45bde558c7f91f"
+    },
+    "id": "5ae2ee1e-eef9-492d-8a94-b66af097c39f",
+    "name": "David T.",
+    "total_bids_placed": 0,
+    "created_at": "2026-02-12T21:51:23.479129+00:00",
+    "created_by": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca"
+  },
+  {
+    "_id": {
+      "$oid": "698e4b5b6e45bde558c7f920"
+    },
+    "id": "141b87ea-d475-42a4-88f5-570462362816",
+    "name": "Emma A.",
+    "total_bids_placed": 0,
+    "created_at": "2026-02-12T21:51:23.479878+00:00",
+    "created_by": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca"
+  },
+  {
+    "_id": {
+      "$oid": "698e4b5b6e45bde558c7f921"
+    },
+    "id": "ec1d6dd0-e536-416d-b5f2-db8f44964ada",
+    "name": "Julian M.",
+    "total_bids_placed": 0,
+    "created_at": "2026-02-12T21:51:23.480667+00:00",
+    "created_by": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca"
+  },
+  {
+    "_id": {
+      "$oid": "698e4b5b6e45bde558c7f922"
+    },
+    "id": "a0ef465b-75e0-45a7-9940-2454eefd464a",
+    "name": "Majlinda E.",
+    "total_bids_placed": 0,
+    "created_at": "2026-02-12T21:51:23.481313+00:00",
+    "created_by": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca"
+  },
+  {
+    "_id": {
+      "$oid": "698e4b5b6e45bde558c7f923"
+    },
+    "id": "72ec1f46-fc8a-443e-85fa-f0c014668728",
+    "name": "Kaltrina M.",
+    "total_bids_placed": 0,
+    "created_at": "2026-02-12T21:51:23.482089+00:00",
+    "created_by": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca"
+  },
+  {
+    "_id": {
+      "$oid": "698e4b5b6e45bde558c7f924"
+    },
+    "id": "6380c07d-c895-44ec-bf88-9615f8002486",
+    "name": "Frank F.",
+    "total_bids_placed": 0,
+    "created_at": "2026-02-12T21:51:23.482864+00:00",
+    "created_by": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca"
+  },
+  {
+    "_id": {
+      "$oid": "698e4b5b6e45bde558c7f925"
+    },
+    "id": "5a1e91d8-5fdf-4b03-8f13-95df0d3f4568",
+    "name": "Maja A.",
+    "total_bids_placed": 0,
+    "created_at": "2026-02-12T21:51:23.483500+00:00",
+    "created_by": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca"
+  },
+  {
+    "_id": {
+      "$oid": "698e4b5b6e45bde558c7f926"
+    },
+    "id": "e4d1ad31-5199-4869-a995-6674ce001a45",
+    "name": "Andreas N.",
+    "total_bids_placed": 0,
+    "created_at": "2026-02-12T21:51:23.484259+00:00",
+    "created_by": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca"
+  },
+  {
+    "_id": {
+      "$oid": "698e4b5b6e45bde558c7f927"
+    },
+    "id": "f77fc62e-9955-4526-92d9-438049297169",
+    "name": "Michael F.",
+    "total_bids_placed": 0,
+    "created_at": "2026-02-12T21:51:23.485029+00:00",
+    "created_by": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca"
+  },
+  {
+    "_id": {
+      "$oid": "698e4b5b6e45bde558c7f928"
+    },
+    "id": "0655a728-699c-4ba7-abb6-f18594d0adbd",
+    "name": "Emily R.",
+    "total_bids_placed": 0,
+    "created_at": "2026-02-12T21:51:23.485647+00:00",
+    "created_by": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca"
+  },
+  {
+    "_id": {
+      "$oid": "698e4b5b6e45bde558c7f929"
+    },
+    "id": "6949a192-d703-42ed-ae39-5e16e34f5a98",
+    "name": "Paul E.",
+    "total_bids_placed": 0,
+    "created_at": "2026-02-12T21:51:23.486377+00:00",
+    "created_by": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca"
+  },
+  {
+    "_id": {
+      "$oid": "698e4b5b6e45bde558c7f92a"
+    },
+    "id": "3a372814-719d-46ce-a8d1-e9f3c2e3a8fc",
+    "name": "Tim M.",
+    "total_bids_placed": 0,
+    "created_at": "2026-02-12T21:51:23.487130+00:00",
+    "created_by": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca"
+  },
+  {
+    "_id": {
+      "$oid": "698e4b5b6e45bde558c7f92b"
+    },
+    "id": "1e154046-174f-4a39-8b4f-ec1cf407bac1",
+    "name": "Andreas R.",
+    "total_bids_placed": 0,
+    "created_at": "2026-02-12T21:51:23.487737+00:00",
+    "created_by": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca"
+  }
+]

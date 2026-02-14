@@ -1,0 +1,263 @@
+[
+  {
+    "_id": {
+      "$oid": "69715e59452bc0f67b7c2083"
+    },
+    "id": "db0f34dd-840d-4d23-ab90-94bbcbdd644d",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "package_id": "mini",
+    "bids": 10,
+    "amount": 5.0,
+    "status": "completed",
+    "payment_method": "stripe",
+    "created_at": "2026-01-21T23:16:41.143119+00:00",
+    "stripe_session_id": "cs_test_a1xqS68tHSVnK9Lc4PdKTAecHB1eiF0eu1QIrle0vcSaOSPANp45ZeSJTY",
+    "completed_at": "2026-01-21T23:17:00.079512+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69715f3d452bc0f67b7c2085"
+    },
+    "id": "75bcfad7-c16a-4dfc-85b0-a29305690e75",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "package_id": "mini",
+    "bids": 10,
+    "amount": 5.0,
+    "status": "completed",
+    "payment_method": "stripe",
+    "created_at": "2026-01-21T23:20:29.536843+00:00",
+    "stripe_session_id": "cs_test_a1xTiLiLyncvKKHBkWEapyEJWFlLgCAVTaj6LrQycYXEICpiScl3xDsVEt",
+    "completed_at": "2026-01-21T23:31:27.523432+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69716291451bc0a7d05a1b72"
+    },
+    "id": "2702babe-7da5-4454-8eef-8cffc931279f",
+    "user_id": "93751cd4-fcd3-41da-82e2-8f455322ba24",
+    "package_id": "mini",
+    "bids": 10,
+    "amount": 5.0,
+    "status": "completed",
+    "payment_method": "stripe",
+    "created_at": "2026-01-21T23:34:41.965073+00:00",
+    "stripe_session_id": "cs_test_a1bZqtWj2KkUUNeSEql3jDpEJKniYZjKKY9XuBH5lfyFlbGGaBQa9xU8Lo",
+    "completed_at": "2026-01-21T23:34:59.004726+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "697169c687ce46e22e409691"
+    },
+    "id": "86ec9337-b66e-4086-a2e6-f4ae72099f49",
+    "user_id": "93751cd4-fcd3-41da-82e2-8f455322ba24",
+    "package_id": "mini",
+    "bids": 10,
+    "amount": 5.0,
+    "status": "completed",
+    "payment_method": "stripe",
+    "created_at": "2026-01-22T00:05:26.613122+00:00",
+    "stripe_session_id": "cs_live_a1l9nPbwqZ298ciKD9b1wTtZZ3gGR97r6udQvNDZVLewnbobbpjMP1iHYn",
+    "completed_at": "2026-01-22T00:05:47.512288+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6975498302cb73904eb0c3da"
+    },
+    "id": "bc617a32-39d4-4302-abd5-6e070554004d",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "package_id": "mini",
+    "bids": 10,
+    "amount": 5.0,
+    "status": "pending",
+    "payment_method": "stripe",
+    "created_at": "2026-01-24T22:36:51.225504+00:00",
+    "stripe_session_id": "cs_live_a1JaFdgcPYZSiIJDQZnGSVaeiVzywxpbfpjXKw4Sl6006MIjKHY0cmch2n"
+  },
+  {
+    "_id": {
+      "$oid": "697f7c4378d37ffa7b377403"
+    },
+    "id": "28fc2019-d875-4576-8936-47035b2811a2",
+    "user_id": "93751cd4-fcd3-41da-82e2-8f455322ba24",
+    "package_id": "mini",
+    "bids": 10,
+    "base_bids": 10,
+    "happy_hour_active": false,
+    "happy_hour_multiplier": null,
+    "amount": 5.0,
+    "status": "pending",
+    "payment_method": "stripe",
+    "created_at": "2026-02-01T16:16:03.107113+00:00",
+    "stripe_session_id": "cs_live_a1VZ0EfQ5NsvjwcgRSOrgOFd50fJJ02SFRj97H5vuazGH1w8inJYiqq4YU"
+  },
+  {
+    "_id": {
+      "$oid": "6980d8754b6ab49d2d7170d0"
+    },
+    "id": "250eb89b-1733-4abf-b5d6-8dce3c3523b7",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "package_id": "mini",
+    "bids": 20,
+    "base_bids": 10,
+    "happy_hour_active": true,
+    "happy_hour_multiplier": 2.0,
+    "amount": 5.0,
+    "status": "pending",
+    "payment_method": "stripe",
+    "created_at": "2026-02-02T17:01:41.391384+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6980da8e4e95f15b3c1aaa24"
+    },
+    "id": "be8e0101-5c85-4b3d-8abe-3c563c871772",
+    "user_id": "93751cd4-fcd3-41da-82e2-8f455322ba24",
+    "package_id": "starter",
+    "bids": 44,
+    "base_bids": 22,
+    "happy_hour_active": true,
+    "happy_hour_multiplier": 2.0,
+    "amount": 10.0,
+    "status": "pending",
+    "payment_method": "stripe",
+    "created_at": "2026-02-02T17:10:38.687320+00:00",
+    "stripe_session_id": "cs_live_a1Ma4FPsuPU3MRpmVC0MSZG5Kp4nX2bXa3oV1yfKNEWy9Rrj70Of6YCSgG"
+  },
+  {
+    "_id": {
+      "$oid": "6980dbd24e95f15b3c1aaa26"
+    },
+    "id": "06ff5d29-b658-46e8-8266-a1e45754063c",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "package_id": "mini",
+    "bids": 20,
+    "base_bids": 10,
+    "happy_hour_active": true,
+    "happy_hour_multiplier": 2.0,
+    "amount": 5.0,
+    "status": "completed",
+    "payment_method": "stripe",
+    "created_at": "2026-02-02T17:16:02.828399+00:00",
+    "stripe_session_id": "cs_live_a1xXBe8t8e0h5ZJohg9lHqHSnmKZNvuZkrJ2oohwSop3CvrOpF4pw63FDJ",
+    "completed_at": "2026-02-02T17:16:32.728115+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6987700e1e0f565704e142f3"
+    },
+    "id": "9ccb906a-76dd-4b54-b851-72085678c9c5",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "package_id": "mini",
+    "bids": 20,
+    "base_bids": 10,
+    "happy_hour_active": true,
+    "happy_hour_multiplier": 2.0,
+    "amount": 5.0,
+    "status": "pending",
+    "payment_method": "stripe",
+    "created_at": "2026-02-07T17:02:06.746470+00:00",
+    "stripe_session_id": "cs_live_a1x7Utr11VGK03er7tFWy8aFG9QYvqpvy4K7VIfp7BhFepxei9P5BYgpGv"
+  },
+  {
+    "_id": {
+      "$oid": "69878d9139b40208a92eca79"
+    },
+    "id": "1bd5858e-139f-4c61-88ff-3cfd5d6299e2",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "package_id": "starter",
+    "bids": 44,
+    "base_bids": 22,
+    "happy_hour_active": true,
+    "happy_hour_multiplier": 2.0,
+    "amount": 10.0,
+    "status": "pending",
+    "payment_method": "stripe",
+    "created_at": "2026-02-07T19:08:01.177588+00:00",
+    "stripe_session_id": "cs_live_a15KJb8g0pOwoY8CKCbC1rtmWaTGr7IlKPGk8mpaFpEENhzAuivlfjfJsp"
+  },
+  {
+    "_id": {
+      "$oid": "69878fa139b40208a92eca7f"
+    },
+    "id": "bbc1b1e6-6746-494c-a9a5-5f3ba8cc20a9",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "package_id": "mini",
+    "bids": 20,
+    "base_bids": 10,
+    "happy_hour_active": true,
+    "happy_hour_multiplier": 2.0,
+    "amount": 5.0,
+    "status": "pending",
+    "payment_method": "stripe",
+    "created_at": "2026-02-07T19:16:49.372534+00:00",
+    "stripe_session_id": "cs_live_a1VpEYrFr3VUyW9N03JupmOogN2bXHXbD28Igy5X2qAiZWZJ4cWcvsrKfN"
+  },
+  {
+    "_id": {
+      "$oid": "6987932a39b40208a92eca85"
+    },
+    "id": "a8c43d1f-d3f2-4951-a382-0601c6991d38",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "package_id": "mini",
+    "bids": 20,
+    "base_bids": 10,
+    "happy_hour_active": true,
+    "happy_hour_multiplier": 2.0,
+    "amount": 5.0,
+    "status": "pending",
+    "payment_method": "stripe",
+    "created_at": "2026-02-07T19:31:54.209178+00:00",
+    "stripe_session_id": "cs_live_a1HEQmpDNbM2FPFtNkbrRqC7KpLHE0SzKsY3sbeSkWKLD9i36lF7962FiH"
+  },
+  {
+    "_id": {
+      "$oid": "698a29336c6d78192fba92ea"
+    },
+    "id": "74b7e1c5-cc04-4b8b-8948-9482cd79cde3",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "package_id": "mini",
+    "bids": 10,
+    "base_bids": 10,
+    "happy_hour_active": false,
+    "happy_hour_multiplier": null,
+    "amount": 5.0,
+    "status": "pending",
+    "payment_method": "stripe",
+    "created_at": "2026-02-09T18:36:35.692565+00:00",
+    "stripe_session_id": "cs_live_a10B64Q1VpQrJuKHnTwSVt3yVlNgWsdpRedOHDWVWKx8gO1obpk3LKIKvX"
+  },
+  {
+    "_id": {
+      "$oid": "698cd56093e286cede1adecc"
+    },
+    "id": "489ca470-5bb5-4ae9-8997-51c8abdba9bc",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "package_id": "mini",
+    "bids": 20,
+    "base_bids": 10,
+    "happy_hour_active": true,
+    "happy_hour_multiplier": 2.0,
+    "amount": 5.0,
+    "status": "pending",
+    "payment_method": "stripe",
+    "created_at": "2026-02-11T19:15:44.110326+00:00",
+    "stripe_session_id": "cs_live_a1KXQCBwNf8WasQMLWrDig3vdhBC1v6nlj9ZfcgLQ7NJJlh6qq1V4050L8"
+  },
+  {
+    "_id": {
+      "$oid": "698cd5fc93e286cede1aded8"
+    },
+    "id": "6e10e5f7-897d-4c6b-ac40-14767218c90e",
+    "user_id": "93751cd4-fcd3-41da-82e2-8f455322ba24",
+    "package_id": "mini",
+    "bids": 20,
+    "base_bids": 10,
+    "happy_hour_active": true,
+    "happy_hour_multiplier": 2.0,
+    "amount": 5.0,
+    "status": "pending",
+    "payment_method": "stripe",
+    "created_at": "2026-02-11T19:18:20.619811+00:00",
+    "stripe_session_id": "cs_live_a1ExqPPkBWRDq1NUUgA5zSvyPyXVzAOxhAYZi873ZNFazVZLhbKDRqcDJg"
+  }
+]

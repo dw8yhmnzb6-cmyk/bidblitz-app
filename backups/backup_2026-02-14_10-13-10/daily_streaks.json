@@ -1,0 +1,24 @@
+[
+  {
+    "_id": {
+      "$oid": "698c31bcce646c44bfa532eb"
+    },
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "current_streak": 4,
+    "last_claim_date": "2026-02-14T08:50:33.168151+00:00",
+    "longest_streak": 4,
+    "total_bids_earned": 10,
+    "total_claims": 4
+  },
+  {
+    "_id": {
+      "$oid": "698cfb3fb952012bf6dfc777"
+    },
+    "user_id": "93751cd4-fcd3-41da-82e2-8f455322ba24",
+    "current_streak": 1,
+    "last_claim_date": "2026-02-11T21:57:19.517384+00:00",
+    "longest_streak": 1,
+    "total_bids_earned": 1,
+    "total_claims": 1
+  }
+]

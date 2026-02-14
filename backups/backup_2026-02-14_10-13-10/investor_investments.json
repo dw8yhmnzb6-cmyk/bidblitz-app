@@ -1,0 +1,16 @@
+[
+  {
+    "_id": {
+      "$oid": "6981355f383eb6506d8d3d7b"
+    },
+    "id": "643574fe-c17b-4281-a926-89ef788bf51e",
+    "user_id": "93751cd4-fcd3-41da-82e2-8f455322ba24",
+    "user_name": "Kunde",
+    "user_email": "kunde@bidblitz.de",
+    "amount": 5000.0,
+    "investment_type": "premium",
+    "notes": null,
+    "status": "pending",
+    "created_at": "2026-02-02T23:38:07.904312+00:00"
+  }
+]

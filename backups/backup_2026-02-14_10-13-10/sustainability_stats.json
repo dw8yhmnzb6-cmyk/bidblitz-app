@@ -1,0 +1,13 @@
+[
+  {
+    "_id": {
+      "$oid": "698ce48c9554fb776a855271"
+    },
+    "trees_planted": 2947,
+    "projects_supported": 25,
+    "co2_offset_kg": 15420,
+    "donations_total": 146788.0,
+    "last_updated": "2026-02-12T22:18:36.289722+00:00",
+    "type": "global"
+  }
+]

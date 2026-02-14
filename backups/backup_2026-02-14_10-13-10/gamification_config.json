@@ -1,0 +1,12 @@
+[
+  {
+    "_id": {
+      "$oid": "69878c660ec93b535bb866d0"
+    },
+    "type": "happy_hour",
+    "enabled": true,
+    "end_hour": 21,
+    "multiplier": 2.0,
+    "start_hour": 19
+  }
+]

@@ -1,0 +1,1144 @@
+[
+  {
+    "_id": {
+      "$oid": "6980cd46b9cac92790d851d0"
+    },
+    "id": "prod-iphone17-promax",
+    "name": "Apple iPhone 17 Pro Max 256GB",
+    "name_de": "Apple iPhone 17 Pro Max 256GB",
+    "category": "Smartphones",
+    "retail_price": 1599,
+    "image_url": "https://images.unsplash.com/photo-1695048133142-1a20484d2569?w=400",
+    "description": "Das neueste iPhone mit A19 Pro Chip"
+  },
+  {
+    "_id": {
+      "$oid": "6980cd46b9cac92790d851d1"
+    },
+    "id": "prod-iphone17-pro",
+    "name": "Apple iPhone 17 Pro 256GB",
+    "name_de": "Apple iPhone 17 Pro 256GB",
+    "category": "Smartphones",
+    "retail_price": 1399,
+    "image_url": "https://images.unsplash.com/photo-1695048133142-1a20484d2569?w=400",
+    "description": "iPhone 17 Pro mit ProMotion Display"
+  },
+  {
+    "_id": {
+      "$oid": "6980cd46b9cac92790d851d2"
+    },
+    "id": "prod-iphone17",
+    "name": "Apple iPhone 17 256GB",
+    "name_de": "Apple iPhone 17 256GB",
+    "category": "Smartphones",
+    "retail_price": 999,
+    "image_url": "https://images.unsplash.com/photo-1695048133142-1a20484d2569?w=400",
+    "description": "Das neue iPhone 17"
+  },
+  {
+    "_id": {
+      "$oid": "6980cd46b9cac92790d851d3"
+    },
+    "id": "prod-s25-ultra",
+    "name": "Samsung Galaxy S25 Ultra 512GB",
+    "name_de": "Samsung Galaxy S25 Ultra 512GB",
+    "category": "Smartphones",
+    "retail_price": 1549,
+    "image_url": "https://images.unsplash.com/photo-1610945265064-0e34e5519bbf?w=400",
+    "description": "Samsung Flaggschiff mit S Pen"
+  },
+  {
+    "_id": {
+      "$oid": "6980cd46b9cac92790d851d4"
+    },
+    "id": "prod-s25-plus",
+    "name": "Samsung Galaxy S25+ 256GB",
+    "name_de": "Samsung Galaxy S25+ 256GB",
+    "category": "Smartphones",
+    "retail_price": 1199,
+    "image_url": "https://images.unsplash.com/photo-1610945265064-0e34e5519bbf?w=400",
+    "description": "Samsung Galaxy S25+"
+  },
+  {
+    "_id": {
+      "$oid": "6980cd46b9cac92790d851d5"
+    },
+    "id": "prod-zfold7",
+    "name": "Samsung Galaxy Z Fold 7",
+    "name_de": "Samsung Galaxy Z Fold 7",
+    "category": "Smartphones",
+    "retail_price": 2099,
+    "image_url": "https://images.unsplash.com/photo-1628744404730-5e143358539b?w=400",
+    "description": "Faltbares Samsung Flaggschiff"
+  },
+  {
+    "_id": {
+      "$oid": "6980cd46b9cac92790d851d6"
+    },
+    "id": "prod-zflip7",
+    "name": "Samsung Galaxy Z Flip 7",
+    "name_de": "Samsung Galaxy Z Flip 7",
+    "category": "Smartphones",
+    "retail_price": 1299,
+    "image_url": "https://images.unsplash.com/photo-1628744404730-5e143358539b?w=400",
+    "description": "Kompaktes faltbares Smartphone"
+  },
+  {
+    "_id": {
+      "$oid": "6980cd46b9cac92790d851d7"
+    },
+    "id": "prod-pixel10-proxl",
+    "name": "Google Pixel 10 Pro XL",
+    "name_de": "Google Pixel 10 Pro XL",
+    "category": "Smartphones",
+    "retail_price": 1199,
+    "image_url": "https://images.unsplash.com/photo-1598327105666-5b89351aff97?w=400",
+    "description": "Google AI Smartphone mit Tensor G5"
+  },
+  {
+    "_id": {
+      "$oid": "6980cd46b9cac92790d851d8"
+    },
+    "id": "prod-pixel10-pro",
+    "name": "Google Pixel 10 Pro",
+    "name_de": "Google Pixel 10 Pro",
+    "category": "Smartphones",
+    "retail_price": 999,
+    "image_url": "https://images.unsplash.com/photo-1598327105666-5b89351aff97?w=400",
+    "description": "Google Pixel mit AI Features"
+  },
+  {
+    "_id": {
+      "$oid": "6980cd46b9cac92790d851d9"
+    },
+    "id": "prod-oneplus14-pro",
+    "name": "OnePlus 14 Pro",
+    "name_de": "OnePlus 14 Pro",
+    "category": "Smartphones",
+    "retail_price": 1099,
+    "image_url": "https://images.unsplash.com/photo-1585060544812-6b45742d762f?w=400",
+    "description": "OnePlus Flaggschiff 2025"
+  },
+  {
+    "_id": {
+      "$oid": "6980cd46b9cac92790d851da"
+    },
+    "id": "prod-xiaomi15-ultra",
+    "name": "Xiaomi 15 Ultra",
+    "name_de": "Xiaomi 15 Ultra",
+    "category": "Smartphones",
+    "retail_price": 1399,
+    "image_url": "https://images.unsplash.com/photo-1585060544812-6b45742d762f?w=400",
+    "description": "Xiaomi Premium mit Leica Kamera"
+  },
+  {
+    "_id": {
+      "$oid": "6980cd46b9cac92790d851db"
+    },
+    "id": "prod-mbp16-m4max",
+    "name": "MacBook Pro 16\" M4 Max",
+    "name_de": "MacBook Pro 16\" M4 Max",
+    "category": "Laptops",
+    "retail_price": 4299,
+    "image_url": "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=400",
+    "description": "Das leistungsstärkste MacBook"
+  },
+  {
+    "_id": {
+      "$oid": "6980cd46b9cac92790d851dc"
+    },
+    "id": "prod-mbp14-m4pro",
+    "name": "MacBook Pro 14\" M4 Pro",
+    "name_de": "MacBook Pro 14\" M4 Pro",
+    "category": "Laptops",
+    "retail_price": 2499,
+    "image_url": "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=400",
+    "description": "MacBook Pro mit M4 Pro Chip"
+  },
+  {
+    "_id": {
+      "$oid": "6980cd46b9cac92790d851dd"
+    },
+    "id": "prod-mba15-m4",
+    "name": "MacBook Air 15\" M4",
+    "name_de": "MacBook Air 15\" M4",
+    "category": "Laptops",
+    "retail_price": 1599,
+    "image_url": "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=400",
+    "description": "MacBook Air mit großem Display"
+  },
+  {
+    "_id": {
+      "$oid": "6980cd46b9cac92790d851de"
+    },
+    "id": "prod-mba13-m4",
+    "name": "MacBook Air 13\" M4",
+    "name_de": "MacBook Air 13\" M4",
+    "category": "Laptops",
+    "retail_price": 1299,
+    "image_url": "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=400",
+    "description": "Kompaktes MacBook Air"
+  },
+  {
+    "_id": {
+      "$oid": "6980cd46b9cac92790d851df"
+    },
+    "id": "prod-dellxps16-2025",
+    "name": "Dell XPS 16 OLED (2025)",
+    "name_de": "Dell XPS 16 OLED (2025)",
+    "category": "Laptops",
+    "retail_price": 2499,
+    "image_url": "https://images.unsplash.com/photo-1593642632559-0c6d3fc62b89?w=400",
+    "description": "Dell Premium Laptop mit OLED"
+  },
+  {
+    "_id": {
+      "$oid": "6980cd46b9cac92790d851e0"
+    },
+    "id": "prod-thinkpad-x1-13",
+    "name": "Lenovo ThinkPad X1 Carbon Gen 13",
+    "name_de": "Lenovo ThinkPad X1 Carbon Gen 13",
+    "category": "Laptops",
+    "retail_price": 2199,
+    "image_url": "https://images.unsplash.com/photo-1593642632559-0c6d3fc62b89?w=400",
+    "description": "Business Laptop der Spitzenklasse"
+  },
+  {
+    "_id": {
+      "$oid": "6980cd46b9cac92790d851e1"
+    },
+    "id": "prod-rog-zephyrus-2025",
+    "name": "ASUS ROG Zephyrus G16 (2025)",
+    "name_de": "ASUS ROG Zephyrus G16 (2025)",
+    "category": "Gaming Laptops",
+    "retail_price": 2699,
+    "image_url": "https://images.unsplash.com/photo-1603302576837-37561b2e2302?w=400",
+    "description": "Gaming Laptop mit RTX 5090"
+  },
+  {
+    "_id": {
+      "$oid": "6980cd46b9cac92790d851e2"
+    },
+    "id": "prod-razer-blade16-2025",
+    "name": "Razer Blade 16 (2025)",
+    "name_de": "Razer Blade 16 (2025)",
+    "category": "Gaming Laptops",
+    "retail_price": 3299,
+    "image_url": "https://images.unsplash.com/photo-1603302576837-37561b2e2302?w=400",
+    "description": "Premium Gaming Laptop"
+  },
+  {
+    "_id": {
+      "$oid": "6980cd46b9cac92790d851e3"
+    },
+    "id": "prod-ps5-pro-2tb",
+    "name": "Sony PlayStation 5 Pro 2TB",
+    "name_de": "Sony PlayStation 5 Pro 2TB",
+    "category": "Gaming",
+    "retail_price": 799,
+    "image_url": "https://images.unsplash.com/photo-1606144042614-b2417e99c4e3?w=400",
+    "description": "PS5 Pro mit erweitertem Speicher"
+  },
+  {
+    "_id": {
+      "$oid": "6980cd46b9cac92790d851e4"
+    },
+    "id": "prod-ps5-slim",
+    "name": "Sony PlayStation 5 Slim",
+    "name_de": "Sony PlayStation 5 Slim",
+    "category": "Gaming",
+    "retail_price": 449,
+    "image_url": "https://images.unsplash.com/photo-1606144042614-b2417e99c4e3?w=400",
+    "description": "Kompakte PS5"
+  },
+  {
+    "_id": {
+      "$oid": "6980cd46b9cac92790d851e5"
+    },
+    "id": "prod-xbox-x-2tb",
+    "name": "Xbox Series X 2TB",
+    "name_de": "Xbox Series X 2TB",
+    "category": "Gaming",
+    "retail_price": 599,
+    "image_url": "https://images.unsplash.com/photo-1621259182978-fbf93132d53d?w=400",
+    "description": "Xbox mit mehr Speicher"
+  },
+  {
+    "_id": {
+      "$oid": "6980cd46b9cac92790d851e6"
+    },
+    "id": "prod-switch2",
+    "name": "Nintendo Switch 2",
+    "name_de": "Nintendo Switch 2",
+    "category": "Gaming",
+    "retail_price": 449,
+    "image_url": "https://images.unsplash.com/photo-1578303512597-81e6cc155b3e?w=400",
+    "description": "Die neue Nintendo Konsole"
+  },
+  {
+    "_id": {
+      "$oid": "6980cd46b9cac92790d851e7"
+    },
+    "id": "prod-steamdeck-oled-2tb",
+    "name": "Steam Deck OLED 2TB",
+    "name_de": "Steam Deck OLED 2TB",
+    "category": "Gaming",
+    "retail_price": 799,
+    "image_url": "https://images.unsplash.com/photo-1640955014216-75201056c829?w=400",
+    "description": "Portables PC Gaming"
+  },
+  {
+    "_id": {
+      "$oid": "6980cd46b9cac92790d851e8"
+    },
+    "id": "prod-rog-ally-2",
+    "name": "ASUS ROG Ally 2",
+    "name_de": "ASUS ROG Ally 2",
+    "category": "Gaming",
+    "retail_price": 899,
+    "image_url": "https://images.unsplash.com/photo-1640955014216-75201056c829?w=400",
+    "description": "Windows Handheld Gaming"
+  },
+  {
+    "_id": {
+      "$oid": "6980cd46b9cac92790d851e9"
+    },
+    "id": "prod-lg-oled-g5-77",
+    "name": "LG OLED G5 77\"",
+    "name_de": "LG OLED G5 77\"",
+    "category": "TVs",
+    "retail_price": 4499,
+    "image_url": "https://images.unsplash.com/photo-1593359677879-a4bb92f829d1?w=400",
+    "description": "Premium OLED TV 2025"
+  },
+  {
+    "_id": {
+      "$oid": "6980cd46b9cac92790d851ea"
+    },
+    "id": "prod-samsung-s95f-65",
+    "name": "Samsung QD-OLED S95F 65\"",
+    "name_de": "Samsung QD-OLED S95F 65\"",
+    "category": "TVs",
+    "retail_price": 2999,
+    "image_url": "https://images.unsplash.com/photo-1593359677879-a4bb92f829d1?w=400",
+    "description": "QD-OLED TV mit HDR"
+  },
+  {
+    "_id": {
+      "$oid": "6980cd46b9cac92790d851eb"
+    },
+    "id": "prod-sony-a95m-55",
+    "name": "Sony Bravia A95M 55\" QD-OLED",
+    "name_de": "Sony Bravia A95M 55\" QD-OLED",
+    "category": "TVs",
+    "retail_price": 2499,
+    "image_url": "https://images.unsplash.com/photo-1593359677879-a4bb92f829d1?w=400",
+    "description": "Sony Premium TV"
+  },
+  {
+    "_id": {
+      "$oid": "6980cd46b9cac92790d851ec"
+    },
+    "id": "prod-tcl-qm9-85",
+    "name": "TCL QM9 85\" Mini LED",
+    "name_de": "TCL QM9 85\" Mini LED",
+    "category": "TVs",
+    "retail_price": 1999,
+    "image_url": "https://images.unsplash.com/photo-1593359677879-a4bb92f829d1?w=400",
+    "description": "Großer Mini LED TV"
+  },
+  {
+    "_id": {
+      "$oid": "6980cd46b9cac92790d851ed"
+    },
+    "id": "prod-airpods-pro-3",
+    "name": "Apple AirPods Pro 3",
+    "name_de": "Apple AirPods Pro 3",
+    "category": "Audio",
+    "retail_price": 299,
+    "image_url": "https://images.unsplash.com/photo-1600294037681-c80b4cb5b434?w=400",
+    "description": "Neue AirPods mit Health Features"
+  },
+  {
+    "_id": {
+      "$oid": "6980cd46b9cac92790d851ee"
+    },
+    "id": "prod-airpods-max-2",
+    "name": "Apple AirPods Max 2",
+    "name_de": "Apple AirPods Max 2",
+    "category": "Audio",
+    "retail_price": 599,
+    "image_url": "https://images.unsplash.com/photo-1600294037681-c80b4cb5b434?w=400",
+    "description": "Premium Over-Ear Kopfhörer"
+  },
+  {
+    "_id": {
+      "$oid": "6980cd46b9cac92790d851ef"
+    },
+    "id": "prod-sony-wh1000xm6",
+    "name": "Sony WH-1000XM6",
+    "name_de": "Sony WH-1000XM6",
+    "category": "Audio",
+    "retail_price": 449,
+    "image_url": "https://images.unsplash.com/photo-1546435770-a3e426bf472b?w=400",
+    "description": "Best Noise Cancelling"
+  },
+  {
+    "_id": {
+      "$oid": "6980cd46b9cac92790d851f0"
+    },
+    "id": "prod-bose-qc-ultra-2",
+    "name": "Bose QuietComfort Ultra II",
+    "name_de": "Bose QuietComfort Ultra II",
+    "category": "Audio",
+    "retail_price": 429,
+    "image_url": "https://images.unsplash.com/photo-1546435770-a3e426bf472b?w=400",
+    "description": "Premium Bose Kopfhörer"
+  },
+  {
+    "_id": {
+      "$oid": "6980cd46b9cac92790d851f1"
+    },
+    "id": "prod-sonos-arc-ultra",
+    "name": "Sonos Arc Ultra",
+    "name_de": "Sonos Arc Ultra",
+    "category": "Audio",
+    "retail_price": 999,
+    "image_url": "https://images.unsplash.com/photo-1545454675-3531b543be5d?w=400",
+    "description": "Premium Soundbar"
+  },
+  {
+    "_id": {
+      "$oid": "6980cd46b9cac92790d851f2"
+    },
+    "id": "prod-apple-watch-11-ultra",
+    "name": "Apple Watch Ultra 3",
+    "name_de": "Apple Watch Ultra 3",
+    "category": "Wearables",
+    "retail_price": 999,
+    "image_url": "https://images.unsplash.com/photo-1551816230-ef5deaed4a26?w=400",
+    "description": "Die robusteste Apple Watch"
+  },
+  {
+    "_id": {
+      "$oid": "6980cd46b9cac92790d851f3"
+    },
+    "id": "prod-apple-watch-11",
+    "name": "Apple Watch Series 11",
+    "name_de": "Apple Watch Series 11",
+    "category": "Wearables",
+    "retail_price": 499,
+    "image_url": "https://images.unsplash.com/photo-1551816230-ef5deaed4a26?w=400",
+    "description": "Neue Apple Watch 2025"
+  },
+  {
+    "_id": {
+      "$oid": "6980cd46b9cac92790d851f4"
+    },
+    "id": "prod-galaxy-watch-8-ultra",
+    "name": "Samsung Galaxy Watch 8 Ultra",
+    "name_de": "Samsung Galaxy Watch 8 Ultra",
+    "category": "Wearables",
+    "retail_price": 749,
+    "image_url": "https://images.unsplash.com/photo-1579586337278-3befd40fd17a?w=400",
+    "description": "Samsung Premium Smartwatch"
+  },
+  {
+    "_id": {
+      "$oid": "6980cd46b9cac92790d851f5"
+    },
+    "id": "prod-oura-ring-4",
+    "name": "Oura Ring 4",
+    "name_de": "Oura Ring 4",
+    "category": "Wearables",
+    "retail_price": 449,
+    "image_url": "https://images.unsplash.com/photo-1573408259889-3c4b89f65a04?w=400",
+    "description": "Smart Ring für Gesundheit"
+  },
+  {
+    "_id": {
+      "$oid": "6980cd46b9cac92790d851f6"
+    },
+    "id": "prod-meta-quest-4",
+    "name": "Meta Quest 4",
+    "name_de": "Meta Quest 4",
+    "category": "VR/AR",
+    "retail_price": 599,
+    "image_url": "https://images.unsplash.com/photo-1622979135225-d2ba269cf1ac?w=400",
+    "description": "Standalone VR Headset"
+  },
+  {
+    "_id": {
+      "$oid": "6980cd46b9cac92790d851f7"
+    },
+    "id": "prod-apple-vision-pro-2",
+    "name": "Apple Vision Pro 2",
+    "name_de": "Apple Vision Pro 2",
+    "category": "VR/AR",
+    "retail_price": 2999,
+    "image_url": "https://images.unsplash.com/photo-1622979135225-d2ba269cf1ac?w=400",
+    "description": "Premium Mixed Reality"
+  },
+  {
+    "_id": {
+      "$oid": "6980cd46b9cac92790d851f8"
+    },
+    "id": "prod-sony-a1-ii",
+    "name": "Sony Alpha A1 II",
+    "name_de": "Sony Alpha A1 II",
+    "category": "Kameras",
+    "retail_price": 6499,
+    "image_url": "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=400",
+    "description": "Profi-Kamera 2025"
+  },
+  {
+    "_id": {
+      "$oid": "6980cd46b9cac92790d851f9"
+    },
+    "id": "prod-canon-r1",
+    "name": "Canon EOS R1",
+    "name_de": "Canon EOS R1",
+    "category": "Kameras",
+    "retail_price": 5999,
+    "image_url": "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=400",
+    "description": "Canon Flaggschiff"
+  },
+  {
+    "_id": {
+      "$oid": "6980cd46b9cac92790d851fa"
+    },
+    "id": "prod-nikon-z9-ii",
+    "name": "Nikon Z9 II",
+    "name_de": "Nikon Z9 II",
+    "category": "Kameras",
+    "retail_price": 5499,
+    "image_url": "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=400",
+    "description": "Nikon Profi-Kamera"
+  },
+  {
+    "_id": {
+      "$oid": "6980cd46b9cac92790d851fb"
+    },
+    "id": "prod-dji-mavic-4-pro",
+    "name": "DJI Mavic 4 Pro",
+    "name_de": "DJI Mavic 4 Pro",
+    "category": "Drohnen",
+    "retail_price": 2199,
+    "image_url": "https://images.unsplash.com/photo-1473968512647-3e447244af8f?w=400",
+    "description": "Premium Drohne 2025"
+  },
+  {
+    "_id": {
+      "$oid": "6980cd46b9cac92790d851fc"
+    },
+    "id": "prod-gopro-13",
+    "name": "GoPro Hero 13 Black",
+    "name_de": "GoPro Hero 13 Black",
+    "category": "Kameras",
+    "retail_price": 449,
+    "image_url": "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=400",
+    "description": "Action Kamera"
+  },
+  {
+    "_id": {
+      "$oid": "6980cd46b9cac92790d851fd"
+    },
+    "id": "prod-insta360-x5",
+    "name": "Insta360 X5",
+    "name_de": "Insta360 X5",
+    "category": "Kameras",
+    "retail_price": 549,
+    "image_url": "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=400",
+    "description": "360° Action Kamera"
+  },
+  {
+    "_id": {
+      "$oid": "6980cd46b9cac92790d851fe"
+    },
+    "id": "prod-dyson-v20",
+    "name": "Dyson V20 Detect Absolute",
+    "name_de": "Dyson V20 Detect Absolute",
+    "category": "Haushalt",
+    "retail_price": 899,
+    "image_url": "https://images.unsplash.com/photo-1558317374-067fb5f30001?w=400",
+    "description": "Kabelloser Premium Staubsauger"
+  },
+  {
+    "_id": {
+      "$oid": "6980cd46b9cac92790d851ff"
+    },
+    "id": "prod-roborock-s9-maxv",
+    "name": "Roborock S9 MaxV Ultra",
+    "name_de": "Roborock S9 MaxV Ultra",
+    "category": "Haushalt",
+    "retail_price": 1699,
+    "image_url": "https://images.unsplash.com/photo-1558317374-067fb5f30001?w=400",
+    "description": "Saugroboter mit Wischfunktion"
+  },
+  {
+    "_id": {
+      "$oid": "6980cd46b9cac92790d85200"
+    },
+    "id": "prod-thermomix-tm7",
+    "name": "Thermomix TM7",
+    "name_de": "Thermomix TM7",
+    "category": "Haushalt",
+    "retail_price": 1499,
+    "image_url": "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=400",
+    "description": "Küchenmaschine 2025"
+  },
+  {
+    "_id": {
+      "$oid": "6980cd46b9cac92790d85201"
+    },
+    "id": "prod-delonghi-primadonna",
+    "name": "De'Longhi PrimaDonna Soul",
+    "name_de": "De'Longhi PrimaDonna Soul",
+    "category": "Haushalt",
+    "retail_price": 1299,
+    "image_url": "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=400",
+    "description": "Kaffeevollautomat Premium"
+  },
+  {
+    "_id": {
+      "$oid": "6980cd46b9cac92790d85202"
+    },
+    "id": "prod-philips-hue-play-gradient",
+    "name": "Philips Hue Play Gradient Bar",
+    "name_de": "Philips Hue Play Gradient Bar",
+    "category": "Smart Home",
+    "retail_price": 199,
+    "image_url": "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400",
+    "description": "Ambilight für jeden TV"
+  },
+  {
+    "_id": {
+      "$oid": "6980cd46b9cac92790d85203"
+    },
+    "id": "prod-ipad-pro-m5-13",
+    "name": "Apple iPad Pro 13\" M5",
+    "name_de": "Apple iPad Pro 13\" M5",
+    "category": "Tablets",
+    "retail_price": 1499,
+    "image_url": "https://images.unsplash.com/photo-1544244015-0df4b3ffc6b0?w=400",
+    "description": "iPad Pro mit M5 Chip"
+  },
+  {
+    "_id": {
+      "$oid": "6980cd46b9cac92790d85204"
+    },
+    "id": "prod-ipad-pro-m5-11",
+    "name": "Apple iPad Pro 11\" M5",
+    "name_de": "Apple iPad Pro 11\" M5",
+    "category": "Tablets",
+    "retail_price": 1199,
+    "image_url": "https://images.unsplash.com/photo-1544244015-0df4b3ffc6b0?w=400",
+    "description": "Kompaktes iPad Pro"
+  },
+  {
+    "_id": {
+      "$oid": "6980cd46b9cac92790d85205"
+    },
+    "id": "prod-ipad-air-m4",
+    "name": "Apple iPad Air M4",
+    "name_de": "Apple iPad Air M4",
+    "category": "Tablets",
+    "retail_price": 799,
+    "image_url": "https://images.unsplash.com/photo-1544244015-0df4b3ffc6b0?w=400",
+    "description": "iPad Air 2025"
+  },
+  {
+    "_id": {
+      "$oid": "6980cd46b9cac92790d85206"
+    },
+    "id": "prod-galaxy-tab-s10-ultra",
+    "name": "Samsung Galaxy Tab S10 Ultra",
+    "name_de": "Samsung Galaxy Tab S10 Ultra",
+    "category": "Tablets",
+    "retail_price": 1299,
+    "image_url": "https://images.unsplash.com/photo-1544244015-0df4b3ffc6b0?w=400",
+    "description": "Samsung Premium Tablet"
+  },
+  {
+    "_id": {
+      "$oid": "6980cd46b9cac92790d85207"
+    },
+    "id": "prod-apple-studio-display-2",
+    "name": "Apple Studio Display 2",
+    "name_de": "Apple Studio Display 2",
+    "category": "Monitore",
+    "retail_price": 1799,
+    "image_url": "https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=400",
+    "description": "5K Retina Display"
+  },
+  {
+    "_id": {
+      "$oid": "6980cd46b9cac92790d85208"
+    },
+    "id": "prod-lg-ultrafine-32-oled",
+    "name": "LG UltraFine 32\" OLED",
+    "name_de": "LG UltraFine 32\" OLED",
+    "category": "Monitore",
+    "retail_price": 1499,
+    "image_url": "https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=400",
+    "description": "OLED Monitor für Profis"
+  },
+  {
+    "_id": {
+      "$oid": "6980cd46b9cac92790d85209"
+    },
+    "id": "prod-samsung-odyssey-g10-49",
+    "name": "Samsung Odyssey G10 49\"",
+    "name_de": "Samsung Odyssey G10 49\"",
+    "category": "Gaming Monitore",
+    "retail_price": 1999,
+    "image_url": "https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=400",
+    "description": "Ultrawide Gaming Monitor"
+  },
+  {
+    "_id": {
+      "$oid": "6980cd46b9cac92790d8520a"
+    },
+    "id": "prod-vanmoof-s6",
+    "name": "VanMoof S6",
+    "name_de": "VanMoof S6",
+    "category": "E-Bikes",
+    "retail_price": 2998,
+    "image_url": "https://images.unsplash.com/photo-1571068316344-75bc76f77890?w=400",
+    "description": "Smart E-Bike"
+  },
+  {
+    "_id": {
+      "$oid": "6980cd46b9cac92790d8520b"
+    },
+    "id": "prod-cowboy-5",
+    "name": "Cowboy 5",
+    "name_de": "Cowboy 5",
+    "category": "E-Bikes",
+    "retail_price": 2990,
+    "image_url": "https://images.unsplash.com/photo-1571068316344-75bc76f77890?w=400",
+    "description": "Elegantes E-Bike"
+  },
+  {
+    "_id": {
+      "$oid": "6980cd46b9cac92790d8520c"
+    },
+    "id": "prod-riese-muller-superdelite",
+    "name": "Riese & Müller Superdelite",
+    "name_de": "Riese & Müller Superdelite",
+    "category": "E-Bikes",
+    "retail_price": 6999,
+    "image_url": "https://images.unsplash.com/photo-1571068316344-75bc76f77890?w=400",
+    "description": "Premium E-Bike"
+  },
+  {
+    "_id": {
+      "$oid": "6980cd46b9cac92790d8520d"
+    },
+    "id": "prod-apple-pencil-3",
+    "name": "Apple Pencil Pro 2",
+    "name_de": "Apple Pencil Pro 2",
+    "category": "Zubehör",
+    "retail_price": 149,
+    "image_url": "https://images.unsplash.com/photo-1585790050230-5dd28404ccb9?w=400",
+    "description": "iPad Eingabestift"
+  },
+  {
+    "_id": {
+      "$oid": "6980cd46b9cac92790d8520e"
+    },
+    "id": "prod-magic-keyboard-ipad",
+    "name": "Magic Keyboard für iPad Pro",
+    "name_de": "Magic Keyboard für iPad Pro",
+    "category": "Zubehör",
+    "retail_price": 399,
+    "image_url": "https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=400",
+    "description": "iPad Tastatur"
+  },
+  {
+    "_id": {
+      "$oid": "6980cd46b9cac92790d8520f"
+    },
+    "id": "prod-anker-737-powerbank",
+    "name": "Anker 737 PowerCore 24K",
+    "name_de": "Anker 737 PowerCore 24K",
+    "category": "Zubehör",
+    "retail_price": 149,
+    "image_url": "https://images.unsplash.com/photo-1609091839311-d5365f9ff1c5?w=400",
+    "description": "140W Powerbank"
+  },
+  {
+    "_id": {
+      "$oid": "6980cd46b9cac92790d85210"
+    },
+    "id": "prod-samsung-smarttag-2",
+    "name": "Samsung SmartTag 2 (4er Pack)",
+    "name_de": "Samsung SmartTag 2 (4er Pack)",
+    "category": "Zubehör",
+    "retail_price": 99,
+    "image_url": "https://images.unsplash.com/photo-1609091839311-d5365f9ff1c5?w=400",
+    "description": "Smart Tracker"
+  },
+  {
+    "_id": {
+      "$oid": "6980cd46b9cac92790d85211"
+    },
+    "id": "prod-airtag-4pack",
+    "name": "Apple AirTag (4er Pack)",
+    "name_de": "Apple AirTag (4er Pack)",
+    "category": "Zubehör",
+    "retail_price": 129,
+    "image_url": "https://images.unsplash.com/photo-1609091839311-d5365f9ff1c5?w=400",
+    "description": "Apple Tracker"
+  },
+  {
+    "_id": {
+      "$oid": "6980cd46b9cac92790d85212"
+    },
+    "id": "prod-pixel-9a",
+    "name": "Google Pixel 9a",
+    "name_de": "Google Pixel 9a",
+    "category": "Smartphones",
+    "retail_price": 499,
+    "image_url": "https://images.unsplash.com/photo-1598327105666-5b89351aff97?w=400",
+    "description": "Günstiges Google Phone"
+  },
+  {
+    "_id": {
+      "$oid": "6980cd46b9cac92790d85213"
+    },
+    "id": "prod-iphone-se-4",
+    "name": "Apple iPhone SE 4",
+    "name_de": "Apple iPhone SE 4",
+    "category": "Smartphones",
+    "retail_price": 599,
+    "image_url": "https://images.unsplash.com/photo-1695048133142-1a20484d2569?w=400",
+    "description": "Günstiges iPhone"
+  },
+  {
+    "_id": {
+      "$oid": "6980cd46b9cac92790d85214"
+    },
+    "id": "prod-galaxy-a56",
+    "name": "Samsung Galaxy A56 5G",
+    "name_de": "Samsung Galaxy A56 5G",
+    "category": "Smartphones",
+    "retail_price": 449,
+    "image_url": "https://images.unsplash.com/photo-1610945265064-0e34e5519bbf?w=400",
+    "description": "Samsung Mittelklasse"
+  },
+  {
+    "_id": {
+      "$oid": "6980cd46b9cac92790d85215"
+    },
+    "id": "prod-leica-q3",
+    "name": "Leica Q3",
+    "name_de": "Leica Q3",
+    "category": "Kameras",
+    "retail_price": 5950,
+    "image_url": "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=400",
+    "description": "Leica Kompaktkamera"
+  },
+  {
+    "_id": {
+      "$oid": "6980cd46b9cac92790d85216"
+    },
+    "id": "prod-hasselblad-x2d",
+    "name": "Hasselblad X2D 100C",
+    "name_de": "Hasselblad X2D 100C",
+    "category": "Kameras",
+    "retail_price": 8199,
+    "image_url": "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=400",
+    "description": "100MP Mittelformat"
+  },
+  {
+    "_id": {
+      "$oid": "6980cd46b9cac92790d85217"
+    },
+    "id": "prod-bang-olufsen-beolab-28",
+    "name": "Bang & Olufsen Beolab 28",
+    "name_de": "Bang & Olufsen Beolab 28",
+    "category": "Audio",
+    "retail_price": 6990,
+    "image_url": "https://images.unsplash.com/photo-1545454675-3531b543be5d?w=400",
+    "description": "Wireless Standlautsprecher"
+  },
+  {
+    "_id": {
+      "$oid": "69812b1f97c7625dc2373823"
+    },
+    "id": "feff47ba-396e-4e6e-a842-bdc363a17da0",
+    "name": "Amazon Gutschein €50",
+    "description": "€50 Amazon.de Geschenkgutschein - Sofort per E-Mail erhältlich",
+    "image_url": "https://images.unsplash.com/photo-1523474253046-8cd2748b5fd2?w=400",
+    "retail_price": 50.0,
+    "category": "Gutscheine",
+    "name_translations": null,
+    "description_translations": null,
+    "created_at": "2026-02-02T22:54:23.118170+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69812b2097c7625dc2373824"
+    },
+    "id": "1737ad05-1b91-41a9-83a0-fa74a1df28f9",
+    "name": "Amazon Gutschein €100",
+    "description": "€100 Amazon.de Geschenkgutschein - Sofort per E-Mail erhältlich",
+    "image_url": "https://images.unsplash.com/photo-1523474253046-8cd2748b5fd2?w=400",
+    "retail_price": 100.0,
+    "category": "Gutscheine",
+    "name_translations": null,
+    "description_translations": null,
+    "created_at": "2026-02-02T22:54:24.068421+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69812b2197c7625dc2373825"
+    },
+    "id": "8c1cf2a5-4c9b-40e2-bd0c-4cb1232916d4",
+    "name": "MediaMarkt Gutschein €75",
+    "description": "€75 MediaMarkt Geschenkgutschein - In allen Filialen einlösbar",
+    "image_url": "https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=400",
+    "retail_price": 75.0,
+    "category": "Gutscheine",
+    "name_translations": null,
+    "description_translations": null,
+    "created_at": "2026-02-02T22:54:25.003151+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69812b2197c7625dc2373826"
+    },
+    "id": "d8f7b83f-4e32-4894-b68e-14b5a64e3944",
+    "name": "IKEA Gutschein €100",
+    "description": "€100 IKEA Geschenkgutschein - Online und in Filialen einlösbar",
+    "image_url": "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=400",
+    "retail_price": 100.0,
+    "category": "Gutscheine",
+    "name_translations": null,
+    "description_translations": null,
+    "created_at": "2026-02-02T22:54:25.061643+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69812b2197c7625dc2373827"
+    },
+    "id": "254c6bee-4a28-449a-ab13-6f8307fae324",
+    "name": "Steam Guthaben €50",
+    "description": "€50 Steam Wallet Guthaben - Für Spiele, DLCs und mehr",
+    "image_url": "https://images.unsplash.com/photo-1538481199705-c710c4e965fc?w=400",
+    "retail_price": 50.0,
+    "category": "Gutscheine",
+    "name_translations": null,
+    "description_translations": null,
+    "created_at": "2026-02-02T22:54:25.113057+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69812b701ee8eb213c92d619"
+    },
+    "id": "c658e2aa-e556-415c-9bbb-223b930ef01c",
+    "name": "Amazon Gutschein €50",
+    "description": "€50 Amazon.de Geschenkgutschein",
+    "image_url": "https://images.unsplash.com/photo-1523474253046-8cd2748b5fd2?w=400",
+    "retail_price": 50.0,
+    "category": "Gutscheine",
+    "name_translations": null,
+    "description_translations": null,
+    "created_at": "2026-02-02T22:55:44.046963+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69812b851ee8eb213c92d61b"
+    },
+    "id": "532e6479-c7e9-4a6a-99cb-a9a500358be1",
+    "name": "Amazon Gutschein €100",
+    "description": "€100 Amazon.de Geschenkgutschein",
+    "image_url": "https://images.unsplash.com/photo-1523474253046-8cd2748b5fd2?w=400",
+    "retail_price": 100.0,
+    "category": "Gutscheine",
+    "name_translations": null,
+    "description_translations": null,
+    "created_at": "2026-02-02T22:56:05.779786+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69812b851ee8eb213c92d61c"
+    },
+    "id": "fc58942d-38dd-4042-a211-0705a9b76835",
+    "name": "MediaMarkt Gutschein €75",
+    "description": "€75 MediaMarkt Geschenkgutschein",
+    "image_url": "https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=400",
+    "retail_price": 75.0,
+    "category": "Gutscheine",
+    "name_translations": null,
+    "description_translations": null,
+    "created_at": "2026-02-02T22:56:05.822573+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69812b851ee8eb213c92d61d"
+    },
+    "id": "a73b06e2-41e7-48ae-9d7e-f8b375057777",
+    "name": "IKEA Gutschein €100",
+    "description": "€100 IKEA Geschenkgutschein",
+    "image_url": "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=400",
+    "retail_price": 100.0,
+    "category": "Gutscheine",
+    "name_translations": null,
+    "description_translations": null,
+    "created_at": "2026-02-02T22:56:05.868720+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69812b851ee8eb213c92d61e"
+    },
+    "id": "22fa15bc-c52e-420f-82b2-695b6fc64a4f",
+    "name": "Steam Guthaben €50",
+    "description": "€50 Steam Wallet Guthaben",
+    "image_url": "https://images.unsplash.com/photo-1538481199705-c710c4e965fc?w=400",
+    "retail_price": 50.0,
+    "category": "Gutscheine",
+    "name_translations": null,
+    "description_translations": null,
+    "created_at": "2026-02-02T22:56:05.912526+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69812b851ee8eb213c92d61f"
+    },
+    "id": "dd9c29e6-850a-4306-889f-4c8ababf5a2f",
+    "name": "PlayStation Store €50",
+    "description": "€50 PlayStation Store Guthaben",
+    "image_url": "https://images.unsplash.com/photo-1606144042614-b2417e99c4e3?w=400",
+    "retail_price": 50.0,
+    "category": "Gutscheine",
+    "name_translations": null,
+    "description_translations": null,
+    "created_at": "2026-02-02T22:56:05.955039+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69812b851ee8eb213c92d620"
+    },
+    "id": "859a095c-c9c3-4229-9f24-fa9b54682edf",
+    "name": "Netflix Gutschein €25",
+    "description": "€25 Netflix Geschenkkarte",
+    "image_url": "https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=400",
+    "retail_price": 25.0,
+    "category": "Gutscheine",
+    "name_translations": null,
+    "description_translations": null,
+    "created_at": "2026-02-02T22:56:05.997614+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69812b861ee8eb213c92d621"
+    },
+    "id": "2a907eec-de6c-407b-87f4-ae0bb42c8443",
+    "name": "Spotify Premium 3 Monate",
+    "description": "Spotify Premium Gutschein für 3 Monate",
+    "image_url": "https://images.unsplash.com/photo-1614680376593-902f74cf0d41?w=400",
+    "retail_price": 30.0,
+    "category": "Gutscheine",
+    "name_translations": null,
+    "description_translations": null,
+    "created_at": "2026-02-02T22:56:06.043330+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69813ba2f7b1089f2da5afeb"
+    },
+    "id": "e8bedb13-7077-4c5e-8826-0280040c0177",
+    "name": "BidBlitz 50 Gratis-Gebote",
+    "description": "50 Gratis-Gebote für Ihr BidBlitz-Konto - Sofort verfügbar!",
+    "image_url": "https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?w=400",
+    "retail_price": 25.0,
+    "category": "BidBlitz Gutscheine",
+    "name_translations": null,
+    "description_translations": null,
+    "created_at": "2026-02-03T00:04:50.467185+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69813ba2f7b1089f2da5afec"
+    },
+    "id": "dbd509e7-811e-4c1f-ad92-c935df7e28fe",
+    "name": "BidBlitz 100 Gratis-Gebote",
+    "description": "100 Gratis-Gebote für Ihr BidBlitz-Konto - Sofort verfügbar!",
+    "image_url": "https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?w=400",
+    "retail_price": 50.0,
+    "category": "BidBlitz Gutscheine",
+    "name_translations": null,
+    "description_translations": null,
+    "created_at": "2026-02-03T00:04:50.515421+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69813ba2f7b1089f2da5afed"
+    },
+    "id": "ac816572-07b1-4cbf-853a-4c22e76bf0ce",
+    "name": "BidBlitz VIP 1 Monat GRATIS",
+    "description": "1 Monat VIP-Mitgliedschaft bei BidBlitz - Exklusive Vorteile!",
+    "image_url": "https://images.unsplash.com/photo-1533750349088-cd871a92f312?w=400",
+    "retail_price": 29.0,
+    "category": "BidBlitz Gutscheine",
+    "name_translations": null,
+    "description_translations": null,
+    "created_at": "2026-02-03T00:04:50.565608+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69813ba2f7b1089f2da5afee"
+    },
+    "id": "97df8e30-b365-4d2f-a6c7-3aacbb44bd26",
+    "name": "BidBlitz 200 Gratis-Gebote",
+    "description": "200 Gratis-Gebote für Ihr BidBlitz-Konto - Mega Paket!",
+    "image_url": "https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?w=400",
+    "retail_price": 100.0,
+    "category": "BidBlitz Gutscheine",
+    "name_translations": null,
+    "description_translations": null,
+    "created_at": "2026-02-03T00:04:50.615154+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6981ee25b61bd1989ba421fb"
+    },
+    "id": "88bb6870-a3d6-4430-b149-259e5f759045",
+    "name": "Test Product",
+    "description": "Test",
+    "image_url": "https://example.com/image.jpg",
+    "retail_price": 100.0,
+    "category": "electronics",
+    "name_translations": null,
+    "description_translations": null,
+    "created_at": "2026-02-03T12:46:29.678942+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69878840854c8f2607e2d8b3"
+    },
+    "id": "73792aef-e920-4ba1-aa5b-bce6ee8cdb18",
+    "name": "BidBlitz VIP 1 Jahr",
+    "name_translations": {
+      "de": "BidBlitz VIP 1 Jahr",
+      "en": "BidBlitz VIP 1 Year",
+      "sq": "BidBlitz VIP 1 Vit",
+      "xk": "BidBlitz VIP 1 Vit"
+    },
+    "description": "12 Monate VIP-Mitgliedschaft mit allen Premium-Vorteilen!",
+    "description_translations": {
+      "de": "12 Monate VIP-Mitgliedschaft mit allen Premium-Vorteilen!",
+      "en": "12 months VIP membership with all premium benefits!",
+      "sq": "12 muaj anëtarësim VIP me të gjitha përfitimet premium!",
+      "xk": "12 muaj anëtarësim VIP me të gjitha përfitimet premium!"
+    },
+    "short_description": "1 Jahr VIP = 12 Monate Premium-Vorteile",
+    "category": "BidBlitz Gutscheine",
+    "retail_price": 348.0,
+    "image_url": "https://images.unsplash.com/photo-1553729459-efe14ef6055d?w=400",
+    "is_active": true,
+    "created_at": "2026-02-07T18:45:20.240074+00:00"
+  }
+]

@@ -1,0 +1,52 @@
+[
+  {
+    "_id": {
+      "$oid": "698c31bccd377257a1eda49d"
+    },
+    "id": "acfb891b-5174-44b5-93c0-791dc7330891",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "streak_day": 1,
+    "bids_earned": 1,
+    "claimed_at": "2026-02-11T07:37:31.995600+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698cfb3f593947c5fbeacf4e"
+    },
+    "id": "07ea201e-aa39-4f92-b20c-f0467a042dc2",
+    "user_id": "93751cd4-fcd3-41da-82e2-8f455322ba24",
+    "streak_day": 1,
+    "bids_earned": 1,
+    "claimed_at": "2026-02-11T21:57:19.517384+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698d5d8869fe3ae16caddfed"
+    },
+    "id": "39153a5b-2eb1-431e-ad7b-9fc0d57d9753",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "streak_day": 2,
+    "bids_earned": 2,
+    "claimed_at": "2026-02-12T04:56:40.622222+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698ed3523d365b4e98a4f1ff"
+    },
+    "id": "c8196a52-3993-4200-ad36-9841c95d1a4a",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "streak_day": 3,
+    "bids_earned": 3,
+    "claimed_at": "2026-02-13T07:31:30.557543+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "699037596a417b6c1ee20c42"
+    },
+    "id": "16fdc21c-51b8-44b0-ba4f-f156525ce7bf",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "streak_day": 4,
+    "bids_earned": 4,
+    "claimed_at": "2026-02-14T08:50:33.168151+00:00"
+  }
+]

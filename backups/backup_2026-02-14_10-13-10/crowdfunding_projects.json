@@ -1,0 +1,47 @@
+[
+  {
+    "_id": {
+      "$oid": "69812d36383eb6506d8d3d04"
+    },
+    "id": "95cfe597-159d-4c41-8df2-2e2b3e06e37e",
+    "title": "BidBlitz Mobile App",
+    "description": "Entwicklung einer nativen iOS und Android App für BidBlitz. Bieten Sie unterwegs und verpassen Sie nie wieder eine Auktion!",
+    "target_amount": 50000.0,
+    "min_investment": 100.0,
+    "reward_type": "equity",
+    "image_url": "https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?w=400",
+    "status": "active",
+    "created_at": "2026-02-02T23:03:18.718074+00:00",
+    "created_by": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca"
+  },
+  {
+    "_id": {
+      "$oid": "69812d36383eb6506d8d3d05"
+    },
+    "id": "5fd72a0f-baaa-4ea6-aec7-b16d32983b42",
+    "title": "Europäische Expansion",
+    "description": "Erweiterung des BidBlitz-Services in weitere europäische Länder: Österreich, Schweiz, Niederlande und Belgien.",
+    "target_amount": 100000.0,
+    "min_investment": 500.0,
+    "reward_type": "revenue_share",
+    "image_url": "https://images.unsplash.com/photo-1519677584237-752f8853252e?w=400",
+    "status": "active",
+    "created_at": "2026-02-02T23:03:18.776397+00:00",
+    "created_by": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca"
+  },
+  {
+    "_id": {
+      "$oid": "69812d36383eb6506d8d3d06"
+    },
+    "id": "dfc520f6-a837-4e3b-94bf-a56ee1548bcd",
+    "title": "Premium Produktkatalog",
+    "description": "Erweiterung des Produktsortiments um Luxusmarken und exklusive Artikel. Rolex, Louis Vuitton, Tesla und mehr!",
+    "target_amount": 25000.0,
+    "min_investment": 250.0,
+    "reward_type": "perks",
+    "image_url": "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400",
+    "status": "active",
+    "created_at": "2026-02-02T23:03:18.828182+00:00",
+    "created_by": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca"
+  }
+]

@@ -1,0 +1,857 @@
+[
+  {
+    "_id": {
+      "$oid": "6980930c48431d8abe1eae6d"
+    },
+    "id": "b3ed1f56-92e8-41b5-b3bb-24651a8001cb",
+    "user_id": "93751cd4-fcd3-41da-82e2-8f455322ba24",
+    "date": "2026-02-02",
+    "quests": [
+      {
+        "id": "47f04edc-17f1-4446-8f35-127bf03f9adf",
+        "quest_id": "visit_gallery",
+        "name": "Galerie-Besucher",
+        "description": "Besuche die Gewinner-Galerie",
+        "icon": "🖼️",
+        "target": 1,
+        "progress": 0,
+        "completed": false,
+        "claimed": false,
+        "reward_xp": 5,
+        "reward_bids": 1,
+        "type": "visit_page",
+        "page": "gallery"
+      },
+      {
+        "id": "799cb8cc-04fe-48a1-871b-662387abccb6",
+        "quest_id": "spin_wheel",
+        "name": "Glücksritter",
+        "description": "Drehe am Glücksrad",
+        "icon": "🎡",
+        "target": 1,
+        "progress": 0,
+        "completed": false,
+        "claimed": false,
+        "reward_xp": 10,
+        "reward_bids": 1,
+        "type": "spin_wheel",
+        "page": null
+      },
+      {
+        "id": "6758ecfb-cdf8-4f50-b23c-d5011fed401a",
+        "quest_id": "visit_leaderboard",
+        "name": "Ranglisten-Check",
+        "description": "Besuche die Rangliste",
+        "icon": "🏆",
+        "target": 1,
+        "progress": 0,
+        "completed": false,
+        "claimed": false,
+        "reward_xp": 5,
+        "reward_bids": 1,
+        "type": "visit_page",
+        "page": "leaderboard"
+      }
+    ],
+    "all_completed_bonus_claimed": false,
+    "created_at": "2026-02-02T12:05:32.619207+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698744135ad2ce988432de00"
+    },
+    "id": "e85f99e8-d402-447b-8e46-52a4a6c7b011",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "date": "2026-02-07",
+    "quests": [
+      {
+        "id": "52ca2e6a-a09d-477c-9f56-597f555bb83d",
+        "quest_id": "watch_auction",
+        "name": "Beobachter",
+        "description": "Beobachte eine Auktion",
+        "icon": "👀",
+        "target": 1,
+        "progress": 0,
+        "completed": false,
+        "claimed": false,
+        "reward_xp": 5,
+        "reward_bids": 1,
+        "type": "watch_auction",
+        "page": null
+      },
+      {
+        "id": "bcf1216a-f8d4-4120-ad55-e5f575f32830",
+        "quest_id": "spin_wheel",
+        "name": "Glücksritter",
+        "description": "Drehe am Glücksrad",
+        "icon": "🎡",
+        "target": 1,
+        "progress": 0,
+        "completed": false,
+        "claimed": false,
+        "reward_xp": 10,
+        "reward_bids": 1,
+        "type": "spin_wheel",
+        "page": null
+      },
+      {
+        "id": "1ddc05cc-1f84-4bbd-8feb-f121c8d0d342",
+        "quest_id": "check_profile",
+        "name": "Profil-Check",
+        "description": "Besuche dein Profil",
+        "icon": "👤",
+        "target": 1,
+        "progress": 0,
+        "completed": false,
+        "claimed": false,
+        "reward_xp": 5,
+        "reward_bids": 0,
+        "type": "visit_page",
+        "page": "profile"
+      }
+    ],
+    "all_completed_bonus_claimed": false,
+    "created_at": "2026-02-07T13:54:27.892165+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698745535ad2ce988432de11"
+    },
+    "id": "6eb30052-f934-40dc-81e5-3074fa59d979",
+    "user_id": "fd728c0c-ab58-4431-8177-213a3c96510c",
+    "date": "2026-02-07",
+    "quests": [
+      {
+        "id": "d84eeb6e-88c0-4c04-ab2b-ad369d19b633",
+        "quest_id": "check_profile",
+        "name": "Profil-Check",
+        "description": "Besuche dein Profil",
+        "icon": "👤",
+        "target": 1,
+        "progress": 0,
+        "completed": false,
+        "claimed": false,
+        "reward_xp": 5,
+        "reward_bids": 0,
+        "type": "visit_page",
+        "page": "profile"
+      },
+      {
+        "id": "f01e5929-8daf-4554-837b-c0065b279fce",
+        "quest_id": "spin_wheel",
+        "name": "Glücksritter",
+        "description": "Drehe am Glücksrad",
+        "icon": "🎡",
+        "target": 1,
+        "progress": 0,
+        "completed": false,
+        "claimed": false,
+        "reward_xp": 10,
+        "reward_bids": 1,
+        "type": "spin_wheel",
+        "page": null
+      },
+      {
+        "id": "db27b68f-295f-4944-ac48-c0050d1e5907",
+        "quest_id": "visit_gallery",
+        "name": "Galerie-Besucher",
+        "description": "Besuche die Gewinner-Galerie",
+        "icon": "🖼️",
+        "target": 1,
+        "progress": 0,
+        "completed": false,
+        "claimed": false,
+        "reward_xp": 5,
+        "reward_bids": 1,
+        "type": "visit_page",
+        "page": "gallery"
+      }
+    ],
+    "all_completed_bonus_claimed": false,
+    "created_at": "2026-02-07T13:59:47.629562+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698793c639b40208a92eca8b"
+    },
+    "id": "9e4c3fc9-9e85-4a4e-ab7d-2765d29c1fc7",
+    "user_id": "c9e2304c-f3ca-49d7-8ce6-4ce3933ef963",
+    "date": "2026-02-07",
+    "quests": [
+      {
+        "id": "b0b62440-8ead-4145-8893-29e6f55a17b6",
+        "quest_id": "bid_3_auctions",
+        "name": "Aktiver Bieter",
+        "description": "Biete auf 3 verschiedene Auktionen",
+        "icon": "⚡",
+        "target": 3,
+        "progress": 0,
+        "completed": false,
+        "claimed": false,
+        "reward_xp": 15,
+        "reward_bids": 2,
+        "type": "bid_auctions",
+        "page": null
+      },
+      {
+        "id": "5289c4cb-d86a-48db-9d1a-d4047023740d",
+        "quest_id": "visit_leaderboard",
+        "name": "Ranglisten-Check",
+        "description": "Besuche die Rangliste",
+        "icon": "🏆",
+        "target": 1,
+        "progress": 0,
+        "completed": false,
+        "claimed": false,
+        "reward_xp": 5,
+        "reward_bids": 1,
+        "type": "visit_page",
+        "page": "leaderboard"
+      },
+      {
+        "id": "ce7784f9-0e14-493a-9def-2742c868cd19",
+        "quest_id": "check_profile",
+        "name": "Profil-Check",
+        "description": "Besuche dein Profil",
+        "icon": "👤",
+        "target": 1,
+        "progress": 0,
+        "completed": false,
+        "claimed": false,
+        "reward_xp": 5,
+        "reward_bids": 0,
+        "type": "visit_page",
+        "page": "profile"
+      }
+    ],
+    "all_completed_bonus_claimed": false,
+    "created_at": "2026-02-07T19:34:30.937828+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698829a438b7e21795bfd663"
+    },
+    "id": "88bc8aeb-9294-48e2-ab2c-c526b3e56868",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "date": "2026-02-08",
+    "quests": [
+      {
+        "id": "0bc890de-122a-449a-9f9c-d209981daac6",
+        "quest_id": "bid_5_times",
+        "name": "Fleißiger Bieter",
+        "description": "Platziere 5 Gebote",
+        "icon": "💪",
+        "target": 5,
+        "progress": 0,
+        "completed": false,
+        "claimed": false,
+        "reward_xp": 10,
+        "reward_bids": 2,
+        "type": "total_bids",
+        "page": null
+      },
+      {
+        "id": "d1103175-7ac3-473b-b07d-32faedc8e2e7",
+        "quest_id": "bid_3_auctions",
+        "name": "Aktiver Bieter",
+        "description": "Biete auf 3 verschiedene Auktionen",
+        "icon": "⚡",
+        "target": 3,
+        "progress": 0,
+        "completed": false,
+        "claimed": false,
+        "reward_xp": 15,
+        "reward_bids": 2,
+        "type": "bid_auctions",
+        "page": null
+      },
+      {
+        "id": "cb1580e0-9254-4a4f-948a-85bcf46f0fd3",
+        "quest_id": "visit_leaderboard",
+        "name": "Ranglisten-Check",
+        "description": "Besuche die Rangliste",
+        "icon": "🏆",
+        "target": 1,
+        "progress": 0,
+        "completed": false,
+        "claimed": false,
+        "reward_xp": 5,
+        "reward_bids": 1,
+        "type": "visit_page",
+        "page": "leaderboard"
+      }
+    ],
+    "all_completed_bonus_claimed": false,
+    "created_at": "2026-02-08T06:13:56.311489+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698835b2862ec58f94841720"
+    },
+    "id": "1f6a1032-2490-4a6a-a078-c6bccf7f4667",
+    "user_id": "93751cd4-fcd3-41da-82e2-8f455322ba24",
+    "date": "2026-02-08",
+    "quests": [
+      {
+        "id": "47ed4208-aa7c-4531-bbde-8b380d6507ca",
+        "quest_id": "visit_leaderboard",
+        "name": "Ranglisten-Check",
+        "description": "Besuche die Rangliste",
+        "icon": "🏆",
+        "target": 1,
+        "progress": 0,
+        "completed": false,
+        "claimed": false,
+        "reward_xp": 5,
+        "reward_bids": 1,
+        "type": "visit_page",
+        "page": "leaderboard"
+      },
+      {
+        "id": "bdaafff9-37b2-4a05-acbd-2b070bdb8a62",
+        "quest_id": "bid_3_auctions",
+        "name": "Aktiver Bieter",
+        "description": "Biete auf 3 verschiedene Auktionen",
+        "icon": "⚡",
+        "target": 3,
+        "progress": 0,
+        "completed": false,
+        "claimed": false,
+        "reward_xp": 15,
+        "reward_bids": 2,
+        "type": "bid_auctions",
+        "page": null
+      },
+      {
+        "id": "126c0464-c6f2-45f4-aaa3-f02bafa9260e",
+        "quest_id": "spin_wheel",
+        "name": "Glücksritter",
+        "description": "Drehe am Glücksrad",
+        "icon": "🎡",
+        "target": 1,
+        "progress": 0,
+        "completed": false,
+        "claimed": false,
+        "reward_xp": 10,
+        "reward_bids": 1,
+        "type": "spin_wheel",
+        "page": null
+      }
+    ],
+    "all_completed_bonus_claimed": false,
+    "created_at": "2026-02-08T07:05:22.527399+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "69883675862ec58f94841722"
+    },
+    "id": "7c99b5ed-afe8-4d59-aa28-187a63466b62",
+    "user_id": "ce9b3522-6d70-49f9-a0ce-b1c9a112759d",
+    "date": "2026-02-08",
+    "quests": [
+      {
+        "id": "5860e86b-fe3a-4262-8f93-2a47635316c6",
+        "quest_id": "visit_gallery",
+        "name": "Galerie-Besucher",
+        "description": "Besuche die Gewinner-Galerie",
+        "icon": "🖼️",
+        "target": 1,
+        "progress": 0,
+        "completed": false,
+        "claimed": false,
+        "reward_xp": 5,
+        "reward_bids": 1,
+        "type": "visit_page",
+        "page": "gallery"
+      },
+      {
+        "id": "a49753ed-a601-43c4-8527-46634fd7fc47",
+        "quest_id": "visit_leaderboard",
+        "name": "Ranglisten-Check",
+        "description": "Besuche die Rangliste",
+        "icon": "🏆",
+        "target": 1,
+        "progress": 0,
+        "completed": false,
+        "claimed": false,
+        "reward_xp": 5,
+        "reward_bids": 1,
+        "type": "visit_page",
+        "page": "leaderboard"
+      },
+      {
+        "id": "4d0a8424-5c30-42ba-8e3f-e9d893e82f18",
+        "quest_id": "watch_auction",
+        "name": "Beobachter",
+        "description": "Beobachte eine Auktion",
+        "icon": "👀",
+        "target": 1,
+        "progress": 0,
+        "completed": false,
+        "claimed": false,
+        "reward_xp": 5,
+        "reward_bids": 1,
+        "type": "watch_auction",
+        "page": null
+      }
+    ],
+    "all_completed_bonus_claimed": false,
+    "created_at": "2026-02-08T07:08:37.383129+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6989238b1d3ea3cc539cac32"
+    },
+    "id": "4448028c-7061-497d-b05a-3d66e7f2e2f1",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "date": "2026-02-09",
+    "quests": [
+      {
+        "id": "8d51c526-2696-48d1-b9f3-ed813040af46",
+        "quest_id": "bid_3_auctions",
+        "name": "Aktiver Bieter",
+        "description": "Biete auf 3 verschiedene Auktionen",
+        "icon": "⚡",
+        "target": 3,
+        "progress": 0,
+        "completed": false,
+        "claimed": false,
+        "reward_xp": 15,
+        "reward_bids": 2,
+        "type": "bid_auctions",
+        "page": null
+      },
+      {
+        "id": "9d5d80d7-b3a9-4111-8d64-ff8a2ca20a66",
+        "quest_id": "bid_5_times",
+        "name": "Fleißiger Bieter",
+        "description": "Platziere 5 Gebote",
+        "icon": "💪",
+        "target": 5,
+        "progress": 0,
+        "completed": false,
+        "claimed": false,
+        "reward_xp": 10,
+        "reward_bids": 2,
+        "type": "total_bids",
+        "page": null
+      },
+      {
+        "id": "dac4714d-2c23-460d-8a6e-30e308ea819a",
+        "quest_id": "visit_gallery",
+        "name": "Galerie-Besucher",
+        "description": "Besuche die Gewinner-Galerie",
+        "icon": "🖼️",
+        "target": 1,
+        "progress": 0,
+        "completed": false,
+        "claimed": false,
+        "reward_xp": 5,
+        "reward_bids": 1,
+        "type": "visit_page",
+        "page": "gallery"
+      }
+    ],
+    "all_completed_bonus_claimed": false,
+    "created_at": "2026-02-09T00:00:11.561141+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698af86be659aa34faf0fd61"
+    },
+    "id": "1d5b618d-3cd9-4b75-b628-40de6a3c8a3c",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "date": "2026-02-10",
+    "quests": [
+      {
+        "id": "d099d82a-85d1-4896-a0fb-8124c254df07",
+        "quest_id": "bid_5_times",
+        "name": "Fleißiger Bieter",
+        "description": "Platziere 5 Gebote",
+        "icon": "💪",
+        "target": 5,
+        "progress": 0,
+        "completed": false,
+        "claimed": false,
+        "reward_xp": 10,
+        "reward_bids": 2,
+        "type": "total_bids",
+        "page": null
+      },
+      {
+        "id": "b9567fec-8e24-47cf-926f-bdb73af054fb",
+        "quest_id": "visit_leaderboard",
+        "name": "Ranglisten-Check",
+        "description": "Besuche die Rangliste",
+        "icon": "🏆",
+        "target": 1,
+        "progress": 0,
+        "completed": false,
+        "claimed": false,
+        "reward_xp": 5,
+        "reward_bids": 1,
+        "type": "visit_page",
+        "page": "leaderboard"
+      },
+      {
+        "id": "a30937f4-4a84-4fdc-9a86-d5a69faad97e",
+        "quest_id": "check_profile",
+        "name": "Profil-Check",
+        "description": "Besuche dein Profil",
+        "icon": "👤",
+        "target": 1,
+        "progress": 0,
+        "completed": false,
+        "claimed": false,
+        "reward_xp": 5,
+        "reward_bids": 0,
+        "type": "visit_page",
+        "page": "profile"
+      }
+    ],
+    "all_completed_bonus_claimed": false,
+    "created_at": "2026-02-10T09:20:43.487145+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698c1f4823c1d8b8104f4a22"
+    },
+    "id": "ad1e8641-3210-45f2-890a-d978619cf0d2",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "date": "2026-02-11",
+    "quests": [
+      {
+        "id": "22be68f9-2014-4afa-af69-c67880e10635",
+        "quest_id": "check_profile",
+        "name": "Profil-Check",
+        "description": "Besuche dein Profil",
+        "icon": "👤",
+        "target": 1,
+        "progress": 0,
+        "completed": false,
+        "claimed": false,
+        "reward_xp": 5,
+        "reward_bids": 0,
+        "type": "visit_page",
+        "page": "profile"
+      },
+      {
+        "id": "eb0e4bd3-0ea1-44f9-aee5-78fb12d085d1",
+        "quest_id": "visit_leaderboard",
+        "name": "Ranglisten-Check",
+        "description": "Besuche die Rangliste",
+        "icon": "🏆",
+        "target": 1,
+        "progress": 0,
+        "completed": false,
+        "claimed": false,
+        "reward_xp": 5,
+        "reward_bids": 1,
+        "type": "visit_page",
+        "page": "leaderboard"
+      },
+      {
+        "id": "1bd44123-d879-4548-8934-a776502b20b4",
+        "quest_id": "spin_wheel",
+        "name": "Glücksritter",
+        "description": "Drehe am Glücksrad",
+        "icon": "🎡",
+        "target": 1,
+        "progress": 0,
+        "completed": false,
+        "claimed": false,
+        "reward_xp": 10,
+        "reward_bids": 1,
+        "type": "spin_wheel",
+        "page": null
+      }
+    ],
+    "all_completed_bonus_claimed": false,
+    "created_at": "2026-02-11T06:18:48.386449+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698cd68193e286cede1adedd"
+    },
+    "id": "be880df2-040f-4919-9e0f-fd9a94d18f2e",
+    "user_id": "93751cd4-fcd3-41da-82e2-8f455322ba24",
+    "date": "2026-02-11",
+    "quests": [
+      {
+        "id": "d0a4a1c4-0fd4-4049-9a67-abea89803643",
+        "quest_id": "visit_leaderboard",
+        "name": "Ranglisten-Check",
+        "description": "Besuche die Rangliste",
+        "icon": "🏆",
+        "target": 1,
+        "progress": 0,
+        "completed": false,
+        "claimed": false,
+        "reward_xp": 5,
+        "reward_bids": 1,
+        "type": "visit_page",
+        "page": "leaderboard"
+      },
+      {
+        "id": "65490501-f7e7-402d-8a24-5e45d5e01d7f",
+        "quest_id": "bid_3_auctions",
+        "name": "Aktiver Bieter",
+        "description": "Biete auf 3 verschiedene Auktionen",
+        "icon": "⚡",
+        "target": 3,
+        "progress": 0,
+        "completed": false,
+        "claimed": false,
+        "reward_xp": 15,
+        "reward_bids": 2,
+        "type": "bid_auctions",
+        "page": null
+      },
+      {
+        "id": "1ae798a3-2119-4604-9826-31af3a61ec86",
+        "quest_id": "spin_wheel",
+        "name": "Glücksritter",
+        "description": "Drehe am Glücksrad",
+        "icon": "🎡",
+        "target": 1,
+        "progress": 0,
+        "completed": false,
+        "claimed": false,
+        "reward_xp": 10,
+        "reward_bids": 1,
+        "type": "spin_wheel",
+        "page": null
+      }
+    ],
+    "all_completed_bonus_claimed": false,
+    "created_at": "2026-02-11T19:20:33.752693+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698ce08f708f7da9b6f95689"
+    },
+    "id": "61b4af4b-b283-4536-a637-61d5f1034835",
+    "user_id": "494c49c3-5194-480a-8402-58620a610020",
+    "date": "2026-02-11",
+    "quests": [
+      {
+        "id": "9eefaffc-c6b9-4553-8e83-b0fa9cb1686b",
+        "quest_id": "place_10_bids",
+        "name": "Gebot-Marathon",
+        "description": "Platziere 10 Gebote",
+        "icon": "🎯",
+        "target": 10,
+        "progress": 0,
+        "completed": false,
+        "claimed": false,
+        "reward_xp": 20,
+        "reward_bids": 3,
+        "type": "total_bids",
+        "page": null
+      },
+      {
+        "id": "83740038-79c4-4344-bebc-8f6bcf09d94c",
+        "quest_id": "watch_auction",
+        "name": "Beobachter",
+        "description": "Beobachte eine Auktion",
+        "icon": "👀",
+        "target": 1,
+        "progress": 0,
+        "completed": false,
+        "claimed": false,
+        "reward_xp": 5,
+        "reward_bids": 1,
+        "type": "watch_auction",
+        "page": null
+      },
+      {
+        "id": "f6458eb6-1512-402b-a73c-e6640e5804ec",
+        "quest_id": "bid_3_auctions",
+        "name": "Aktiver Bieter",
+        "description": "Biete auf 3 verschiedene Auktionen",
+        "icon": "⚡",
+        "target": 3,
+        "progress": 0,
+        "completed": false,
+        "claimed": false,
+        "reward_xp": 15,
+        "reward_bids": 2,
+        "type": "bid_auctions",
+        "page": null
+      }
+    ],
+    "all_completed_bonus_claimed": false,
+    "created_at": "2026-02-11T20:03:27.679891+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698d5a8769fe3ae16caddfe2"
+    },
+    "id": "b9b4bfc9-c911-46a7-8328-d92a677e0a95",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "date": "2026-02-12",
+    "quests": [
+      {
+        "id": "19e13048-8ca1-4cee-9bd9-724e336b3548",
+        "quest_id": "bid_5_times",
+        "name": "Fleißiger Bieter",
+        "description": "Platziere 5 Gebote",
+        "icon": "💪",
+        "target": 5,
+        "progress": 0,
+        "completed": false,
+        "claimed": false,
+        "reward_xp": 10,
+        "reward_bids": 2,
+        "type": "total_bids",
+        "page": null
+      },
+      {
+        "id": "bb92d30f-6158-41c9-b883-5e921c33e023",
+        "quest_id": "bid_3_auctions",
+        "name": "Aktiver Bieter",
+        "description": "Biete auf 3 verschiedene Auktionen",
+        "icon": "⚡",
+        "target": 3,
+        "progress": 0,
+        "completed": false,
+        "claimed": false,
+        "reward_xp": 15,
+        "reward_bids": 2,
+        "type": "bid_auctions",
+        "page": null
+      },
+      {
+        "id": "e286dbcf-1624-41ef-99a5-fb1433997428",
+        "quest_id": "check_profile",
+        "name": "Profil-Check",
+        "description": "Besuche dein Profil",
+        "icon": "👤",
+        "target": 1,
+        "progress": 0,
+        "completed": false,
+        "claimed": false,
+        "reward_xp": 5,
+        "reward_bids": 0,
+        "type": "visit_page",
+        "page": "profile"
+      }
+    ],
+    "all_completed_bonus_claimed": false,
+    "created_at": "2026-02-12T04:43:51.522159+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698ed3443d365b4e98a4f1fe"
+    },
+    "id": "e49b4704-4abc-46a5-bfdb-0afb836b59ad",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "date": "2026-02-13",
+    "quests": [
+      {
+        "id": "ebf4625c-ce85-417b-b5bb-07f3708f4c51",
+        "quest_id": "visit_leaderboard",
+        "name": "Ranglisten-Check",
+        "description": "Besuche die Rangliste",
+        "icon": "🏆",
+        "target": 1,
+        "progress": 0,
+        "completed": false,
+        "claimed": false,
+        "reward_xp": 5,
+        "reward_bids": 1,
+        "type": "visit_page",
+        "page": "leaderboard"
+      },
+      {
+        "id": "ce577e59-a669-487d-b0b4-5605b35d0ee2",
+        "quest_id": "check_profile",
+        "name": "Profil-Check",
+        "description": "Besuche dein Profil",
+        "icon": "👤",
+        "target": 1,
+        "progress": 0,
+        "completed": false,
+        "claimed": false,
+        "reward_xp": 5,
+        "reward_bids": 0,
+        "type": "visit_page",
+        "page": "profile"
+      },
+      {
+        "id": "2a304344-b59f-4a6d-a74a-81d22f51b575",
+        "quest_id": "place_10_bids",
+        "name": "Gebot-Marathon",
+        "description": "Platziere 10 Gebote",
+        "icon": "🎯",
+        "target": 10,
+        "progress": 0,
+        "completed": false,
+        "claimed": false,
+        "reward_xp": 20,
+        "reward_bids": 3,
+        "type": "total_bids",
+        "page": null
+      }
+    ],
+    "all_completed_bonus_claimed": false,
+    "created_at": "2026-02-13T07:31:16.513308+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "699037546a417b6c1ee20c41"
+    },
+    "id": "dad6c679-a133-4e7e-b3f3-ce7c728d3e05",
+    "user_id": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "date": "2026-02-14",
+    "quests": [
+      {
+        "id": "fee40940-73a1-4252-bf19-fb8bf25fec10",
+        "quest_id": "visit_leaderboard",
+        "name": "Ranglisten-Check",
+        "description": "Besuche die Rangliste",
+        "icon": "🏆",
+        "target": 1,
+        "progress": 0,
+        "completed": false,
+        "claimed": false,
+        "reward_xp": 5,
+        "reward_bids": 1,
+        "type": "visit_page",
+        "page": "leaderboard"
+      },
+      {
+        "id": "6a685ecd-4d24-411b-984a-1358e9121d9a",
+        "quest_id": "bid_5_times",
+        "name": "Fleißiger Bieter",
+        "description": "Platziere 5 Gebote",
+        "icon": "💪",
+        "target": 5,
+        "progress": 0,
+        "completed": false,
+        "claimed": false,
+        "reward_xp": 10,
+        "reward_bids": 2,
+        "type": "total_bids",
+        "page": null
+      },
+      {
+        "id": "6166349a-b60e-48b1-916d-199a6bbeb5ae",
+        "quest_id": "bid_3_auctions",
+        "name": "Aktiver Bieter",
+        "description": "Biete auf 3 verschiedene Auktionen",
+        "icon": "⚡",
+        "target": 3,
+        "progress": 0,
+        "completed": false,
+        "claimed": false,
+        "reward_xp": 15,
+        "reward_bids": 2,
+        "type": "bid_auctions",
+        "page": null
+      }
+    ],
+    "all_completed_bonus_claimed": false,
+    "created_at": "2026-02-14T08:50:28.657164+00:00"
+  }
+]

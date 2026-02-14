@@ -1,0 +1,53 @@
+[
+  {
+    "_id": {
+      "$oid": "698c61f3317a10d2130335fb"
+    },
+    "id": "efa28cb0-000c-4c85-85f2-dac4267ac9ff",
+    "code": "WELCOME20",
+    "discount_type": "percent",
+    "discount_value": 20.0,
+    "min_purchase": 0,
+    "max_uses": 100,
+    "current_uses": 0,
+    "expires_at": "2026-03-13T11:03:15.103042+00:00",
+    "description": "Willkommens-Rabatt",
+    "status": "active",
+    "created_by": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "created_at": "2026-02-11T11:03:15.103042+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698c61f3317a10d2130335fc"
+    },
+    "id": "3720813b-7fb7-4dc2-9005-5a863e0a88a3",
+    "code": "FREEBIDS10",
+    "discount_type": "bids",
+    "discount_value": 10.0,
+    "min_purchase": 0,
+    "max_uses": 50,
+    "current_uses": 0,
+    "expires_at": "2026-02-25T11:03:15.185219+00:00",
+    "description": "10 Gratis-Gebote",
+    "status": "active",
+    "created_by": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "created_at": "2026-02-11T11:03:15.185219+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "698c61f3317a10d2130335fd"
+    },
+    "id": "ab7b7557-0706-47c3-bdc5-fee511bf9e05",
+    "code": "SUMMER5",
+    "discount_type": "fixed",
+    "discount_value": 5.0,
+    "min_purchase": 20.0,
+    "max_uses": null,
+    "current_uses": 0,
+    "expires_at": "2026-04-12T11:03:15.244321+00:00",
+    "description": "Sommer-Aktion 5€ Rabatt",
+    "status": "active",
+    "created_by": "011a0846-4166-4a8f-b4d1-a5c5c8c024ca",
+    "created_at": "2026-02-11T11:03:15.244321+00:00"
+  }
+]

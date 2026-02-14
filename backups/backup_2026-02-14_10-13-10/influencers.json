@@ -1,0 +1,85 @@
+[
+  {
+    "_id": {
+      "$oid": "698bc1dae31743e1d3bf62fe"
+    },
+    "email": "influencer@bidblitz.de",
+    "code": "INFL2026",
+    "commission_rate": 15,
+    "created_at": "2026-02-10T23:40:10.291612+00:00",
+    "id": "5d6b3fb4-7d18-4a08-ac11-40da2044703b",
+    "name": "Test Influencer",
+    "password": "$2b$12$Cla0DJs38WweuoDbmaI2K.csyzbZN9Kg2MyRJ7BtzcWWiViHfuJe6",
+    "status": "active",
+    "total_customers": 0,
+    "total_earnings": 0
+  },
+  {
+    "_id": {
+      "$oid": "6974bf2ef8aa3a991b2959b4"
+    },
+    "id": "7e71b75d-8167-47c1-8992-66118a1a3e4e",
+    "name": "MaxPower",
+    "code": "maxpower",
+    "commission_percent": 10.0,
+    "email": "max@example.com",
+    "instagram": "maxpower_official",
+    "youtube": "MaxPowerYT",
+    "tiktok": "maxpower_tiktok",
+    "is_active": true,
+    "total_uses": 0,
+    "total_revenue": 0,
+    "total_commission": 0,
+    "created_at": "2026-01-24T12:46:38.955847+00:00",
+    "city": "Prizren",
+    "manager_id": "b8bb850e-ad00-4bbc-84c7-2ef162347712",
+    "blocked_at": "2026-02-02T20:23:29.096201+00:00",
+    "blocked_by": "b8bb850e-ad00-4bbc-84c7-2ef162347712",
+    "approved_at": "2026-02-02T20:23:29.305692+00:00",
+    "approved_by": "b8bb850e-ad00-4bbc-84c7-2ef162347712",
+    "is_approved": true,
+    "updated_at": "2026-02-02T21:15:16.283839+00:00",
+    "updated_by_manager": "b8bb850e-ad00-4bbc-84c7-2ef162347712"
+  },
+  {
+    "_id": {
+      "$oid": "6974e03a493b054e5e33db8c"
+    },
+    "id": "7414eaa3-ea79-4bf3-b71c-8c600d5b1959",
+    "name": "Afrim Krasniqi",
+    "code": "jdjjjd6",
+    "commission_percent": 10.0,
+    "email": "taiga_zirkumflex.9q@icloud.com",
+    "instagram": "",
+    "youtube": "",
+    "tiktok": "",
+    "is_active": true,
+    "total_uses": 0,
+    "total_revenue": 0,
+    "total_commission": 0,
+    "created_at": "2026-01-24T15:07:38.263784+00:00",
+    "updated_at": "2026-01-24T15:08:38.217894+00:00",
+    "city": "Prishtina",
+    "manager_id": "b8bb850e-ad00-4bbc-84c7-2ef162347712"
+  },
+  {
+    "_id": {
+      "$oid": "697e59c36c362f03c00b111f"
+    },
+    "id": "03ee8290-3ac8-4012-af47-bf1795fc3f26",
+    "name": "Demo Influencer",
+    "code": "demo",
+    "commission_percent": 15.0,
+    "email": "demo@influencer.test",
+    "instagram": "@demo_influencer",
+    "youtube": "DemoInfluencer",
+    "tiktok": "@demo_inf",
+    "is_active": true,
+    "total_uses": 0,
+    "total_revenue": 0,
+    "total_commission": 0,
+    "created_at": "2026-01-31T19:36:35.309684+00:00",
+    "city": "Prishtina",
+    "manager_id": "b8bb850e-ad00-4bbc-84c7-2ef162347712"
+  }
+]

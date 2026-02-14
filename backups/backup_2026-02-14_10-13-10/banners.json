@@ -1,0 +1,20 @@
+[
+  {
+    "_id": {
+      "$oid": "6974a29f5d84fc7c78cc5ff2"
+    },
+    "id": "b0f9db18-4b37-41e7-8a09-2e1ccc220250",
+    "title": "Willkommensbonus - 50 Gratis-Gebote!",
+    "image_url": "https://images.unsplash.com/photo-1607083206869-4c7672e72a8a?w=1200&h=200&fit=crop&crop=center",
+    "link_url": "/buy-bids",
+    "position": "homepage_middle",
+    "is_active": true,
+    "start_date": null,
+    "end_date": null,
+    "clicks": 7,
+    "views": 3444,
+    "created_at": "2026-01-24T10:44:47.412378+00:00",
+    "created_by": "system",
+    "updated_at": "2026-01-24T11:03:07.412873+00:00"
+  }
+]
