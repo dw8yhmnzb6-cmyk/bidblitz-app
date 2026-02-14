@@ -56,7 +56,8 @@ import {
   AdminMaintenance,
   AdminMobileNav,
   AdminPromoCodes,
-  AdminManagers
+  AdminManagers,
+  AdminJackpot
 } from '../components/admin';
 
 // Import Winner Control
