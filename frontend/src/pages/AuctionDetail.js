@@ -11,6 +11,7 @@ import { Label } from '../components/ui/label';
 import { Timer, Users, Zap, ArrowLeft, Trophy, Tag, Package, Wifi, WifiOff, Eye, History, Clock, User, ChevronDown, ChevronUp, ShoppingBag, CreditCard, Sparkles, Share2, Copy, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { getProductName, getProductDescription } from '../utils/productTranslation';
+import AuctionProbability from '../components/AuctionProbability';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
