@@ -465,6 +465,11 @@ export default function Dashboard() {
           <PushNotificationSettings token={token} />
         </div>
 
+        {/* WhatsApp Notifications */}
+        <div className="mb-8">
+          <WhatsAppSettings language={langKey} />
+        </div>
+
         {/* Lucky Wheel & Leaderboard Row */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
           {/* Lucky Wheel Card */}
