@@ -1008,7 +1008,7 @@ export default function Auctions() {
     
     // For ALL filters, show all filtered auctions without exclusions
     // The AOTD and Premium sections are bonus displays, not exclusions
-    return filteredAuctions.filter(a => {
+    let result = filteredAuctions.filter(a => {
       // For ended filter, show all
       if (activeFilter === 'ende') return true;
       // For night filter, show all night auctions
@@ -1018,7 +1018,29 @@ export default function Auctions() {
       const timeLeft = new Date(a.end_time).getTime() - Date.now();
       return timeLeft > -5000;
     });
-  }, [filteredAuctions, activeFilter]);
+    
+    // Sort by day/night based on current time
+    // Day time (6:00-23:30): Day auctions first, night auctions at bottom
+    // Night time (23:30-6:00): Night auctions first, day auctions at bottom
+    if (activeFilter === 'live') {
+      result = [...result].sort((a, b) => {
+        const aIsNight = a.is_night_auction || false;
+        const bIsNight = b.is_night_auction || false;
+        
+        if (aIsNight === bIsNight) return 0; // Same type, keep original order
+        
+        if (isNightTime) {
+          // Night time: Night auctions first (true before false)
+          return aIsNight ? -1 : 1;
+        } else {
+          // Day time: Day auctions first (false before true)
+          return aIsNight ? 1 : -1;
+        }
+      });
+    }
+    
+    return result;
+  }, [filteredAuctions, activeFilter, isNightTime]);
   
   // Get AOTD product
   const aotdProduct = auctionOfTheDay?.product || (auctionOfTheDay?.product_id ? products[auctionOfTheDay.product_id] : null);
