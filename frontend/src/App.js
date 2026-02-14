@@ -188,6 +188,12 @@ function AppContent() {
       {/* Live Winner Popup - Shows real-time win notifications */}
       <LiveWinnerPopup language={mappedLanguage || language} />
       
+      {/* Welcome Bonus Banner - Shows for new users */}
+      <WelcomeBonusBanner language={mappedLanguage || language} />
+      
+      {/* Abandoned Cart Reminder - Floating widget */}
+      <AbandonedCartReminder language={mappedLanguage || language} />
+      
       <Navbar />
       
       {/* Happy Hour Banner - After Navbar */}
