@@ -1001,6 +1001,11 @@ export default function AuctionDetail() {
           </div>
         </div>
 
+        {/* Auction Statistics / Win Probability */}
+        <div className="mt-6">
+          <AuctionProbability auctionId={id} language={mappedLanguage || language} />
+        </div>
+
         {/* Bid History Section */}
         <div className="mt-8 glass-card rounded-xl overflow-hidden" data-testid="bid-history-section">
           <button
