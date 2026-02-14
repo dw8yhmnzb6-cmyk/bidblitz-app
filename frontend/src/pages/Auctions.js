@@ -1093,6 +1093,11 @@ export default function Auctions() {
         <ExcitementStatusBar />
       </div>
       
+      {/* Last Chance Auctions - Ending Soon */}
+      <div className="max-w-7xl mx-auto mb-4 px-2">
+        <LastChanceSection language={language} />
+      </div>
+      
       <div className="text-center text-[10px] text-gray-600 mb-2">
         {new Date().toLocaleTimeString('de-DE')} | {publicAuctions.length} {t('auctionPage.liveAuctions') || 'Live-Auktionen'}
       </div>
