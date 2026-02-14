@@ -665,6 +665,7 @@ export default function Home() {
             onBid={handleBid}
             onRefresh={fetchData}
             language={mappedLang}
+            langKey={langKey}
           />
         )}
         
@@ -694,6 +695,7 @@ export default function Home() {
                 onBid={handleBid}
                 onRefresh={fetchData}
                 language={mappedLang}
+                langKey={langKey}
                 isAuthenticated={isAuthenticated}
                 isVip={isVip}
               />
