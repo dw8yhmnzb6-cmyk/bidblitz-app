@@ -109,8 +109,8 @@ export const CompactAuctionCard = ({ auction, onBid, isAuthenticated, t }) => {
 
       <div className="p-3">
         {/* Product Name */}
-        <h3 className="font-bold text-gray-800 text-sm leading-tight mb-1 line-clamp-2 h-10 group-hover:text-teal-600 transition-colors" title={product.name}>
-          {product.name?.toUpperCase()}
+        <h3 className="font-bold text-gray-800 text-sm leading-tight mb-1 line-clamp-2 h-10 group-hover:text-teal-600 transition-colors" title={productName}>
+          {productName?.toUpperCase()}
         </h3>
         
         {/* Retail Price */}
@@ -162,7 +162,7 @@ export const CompactAuctionCard = ({ auction, onBid, isAuthenticated, t }) => {
             {/* Product Image */}
             <img
               src={product.image_url || 'https://via.placeholder.com/100'}
-              alt={product.name}
+              alt={productName}
               className="w-20 h-20 object-contain group-hover:scale-110 transition-transform"
             />
           </div>
