@@ -17,7 +17,7 @@ const LanguageHintBanner = memo(() => {
     const wasDismissed = sessionStorage.getItem('language_hint_dismissed');
     if (language !== 'de' && !wasDismissed) {
       // Delay showing to not be too intrusive
-      const timer = setTimeout(() => setShowHint(true), 2000);
+      const timer = setTimeout(() => setShowHint(true), 3000);
       return () => clearTimeout(timer);
     }
   }, [language]);
@@ -44,16 +44,16 @@ const LanguageHintBanner = memo(() => {
   
   return (
     <div 
-      className="fixed bottom-20 left-4 right-4 sm:left-auto sm:right-4 sm:w-80 z-50 
-        animate-in slide-in-from-bottom-5 duration-300"
+      className="fixed top-20 left-4 right-4 sm:left-auto sm:right-4 sm:w-72 z-40 
+        animate-in slide-in-from-top-5 duration-300"
       data-testid="language-hint-banner"
     >
-      <div className="bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden">
+      <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
         {/* Header */}
-        <div className="bg-gradient-to-r from-blue-500 to-indigo-500 px-4 py-2 flex items-center justify-between">
+        <div className="bg-gradient-to-r from-blue-500 to-indigo-500 px-3 py-2 flex items-center justify-between">
           <div className="flex items-center gap-2 text-white">
             <Globe className="w-4 h-4" />
-            <span className="font-medium text-sm">Spracheinstellung</span>
+            <span className="font-medium text-sm">Sprache / Language</span>
           </div>
           <button
             onClick={handleDismiss}
@@ -65,29 +65,25 @@ const LanguageHintBanner = memo(() => {
         </div>
         
         {/* Content */}
-        <div className="p-4">
-          <p className="text-gray-700 text-sm mb-3">
+        <div className="p-3">
+          <p className="text-gray-700 text-sm mb-2">
             <span className="text-lg mr-1">{currentLangInfo?.flag}</span>
-            Aktuelle Sprache: <strong>{currentLangInfo?.name}</strong>
-          </p>
-          
-          <p className="text-gray-500 text-xs mb-4">
-            Möchten Sie zu Deutsch wechseln?
+            <strong>{currentLangInfo?.name}</strong>
           </p>
           
           <div className="flex gap-2">
             <button
               onClick={handleSwitchToGerman}
-              className="flex-1 flex items-center justify-center gap-2 px-3 py-2 
+              className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 
                 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold 
-                text-sm rounded-lg hover:from-amber-600 hover:to-orange-600 transition-colors"
+                text-xs rounded-lg hover:from-amber-600 hover:to-orange-600 transition-colors"
             >
               🇩🇪 Deutsch
             </button>
             <button
               onClick={handleDismiss}
-              className="px-3 py-2 bg-gray-100 text-gray-600 text-sm rounded-lg 
-                hover:bg-gray-200 transition-colors"
+              className="px-3 py-1.5 bg-gray-100 text-gray-600 text-xs rounded-lg 
+                hover:bg-gray-200 transition-colors font-medium"
             >
               OK
             </button>
