@@ -361,6 +361,7 @@ app.include_router(affiliate_dashboard_router, prefix="/api")
 app.include_router(social_media_share_router, prefix="/api")
 app.include_router(user_reports_router, prefix="/api")
 app.include_router(daily_streak_router, prefix="/api")
+app.include_router(top_bidder_router, prefix="/api")
 # New gamification and revenue routers
 app.include_router(vip_tiers_router, prefix="/api")
 app.include_router(coupons_router, prefix="/api")
