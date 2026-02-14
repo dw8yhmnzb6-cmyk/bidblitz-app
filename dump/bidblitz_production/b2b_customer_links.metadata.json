@@ -1,0 +1,1 @@
+{"indexes":[{"v":{"$numberInt":"2"},"key":{"_id":{"$numberInt":"1"}},"name":"_id_"}],"uuid":"8fb77ace658a48c79faeaf3b0d8fe855","collectionName":"b2b_customer_links","type":"collection"}

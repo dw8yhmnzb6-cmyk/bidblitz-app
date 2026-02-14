@@ -1,0 +1,1 @@
+{"indexes":[{"v":{"$numberInt":"2"},"key":{"_id":{"$numberInt":"1"}},"name":"_id_"}],"uuid":"cb10ee7890004250a436b59de80bcca0","collectionName":"daily_streaks","type":"collection"}

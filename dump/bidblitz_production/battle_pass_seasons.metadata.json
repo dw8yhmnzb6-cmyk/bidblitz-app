@@ -1,0 +1,1 @@
+{"indexes":[{"v":{"$numberInt":"2"},"key":{"_id":{"$numberInt":"1"}},"name":"_id_"}],"uuid":"e96e67184bd941cfbf9bc8513615142a","collectionName":"battle_pass_seasons","type":"collection"}

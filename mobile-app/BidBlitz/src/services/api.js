@@ -3,7 +3,7 @@ import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 
 // API Base URL - Change this to your production URL
-const API_BASE_URL = 'https://i18n-fix-7.preview.emergentagent.com/api';
+const API_BASE_URL = 'https://penny-auction-5.preview.emergentagent.com/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,

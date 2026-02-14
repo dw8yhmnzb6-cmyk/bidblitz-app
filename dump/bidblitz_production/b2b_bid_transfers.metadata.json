@@ -1,0 +1,1 @@
+{"indexes":[{"v":{"$numberInt":"2"},"key":{"_id":{"$numberInt":"1"}},"name":"_id_"}],"uuid":"772ba378d6944bd6aa45709d55784757","collectionName":"b2b_bid_transfers","type":"collection"}
