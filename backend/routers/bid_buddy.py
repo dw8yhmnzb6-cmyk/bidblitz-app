@@ -17,11 +17,46 @@ class BidBuddyCreate(BaseModel):
     auction_id: str
     max_bids: int  # Maximum number of bids to place
     max_price: Optional[float] = None  # Stop when price reaches this
+    strategy: str = "aggressive"  # aggressive, balanced, conservative
+    bid_on_outbid: bool = True  # Auto-bid when outbid
+    min_seconds_before_end: int = 5  # Only bid when timer is below this
 
 class BidBuddyUpdate(BaseModel):
     max_bids: Optional[int] = None
     max_price: Optional[float] = None
     is_active: Optional[bool] = None
+    strategy: Optional[str] = None
+    bid_on_outbid: Optional[bool] = None
+    min_seconds_before_end: Optional[int] = None
+
+# Bid Buddy Strategies
+BID_STRATEGIES = {
+    "aggressive": {
+        "name": "Aggressiv",
+        "description": "Bietet sofort nach dem Überboten werden",
+        "delay_seconds": (0.5, 1.5),
+        "priority": 1
+    },
+    "balanced": {
+        "name": "Ausgewogen", 
+        "description": "Bietet mit kurzem Delay nach dem Überboten werden",
+        "delay_seconds": (1.5, 3.0),
+        "priority": 2
+    },
+    "conservative": {
+        "name": "Konservativ",
+        "description": "Wartet bis kurz vor Ende und bietet dann",
+        "delay_seconds": (3.0, 6.0),
+        "priority": 3
+    },
+    "sniper": {
+        "name": "Sniper",
+        "description": "Bietet nur in den letzten 3 Sekunden",
+        "delay_seconds": (0.1, 0.5),
+        "priority": 0,
+        "min_seconds": 3
+    }
+}
 
 # ==================== ENDPOINTS ====================
 
