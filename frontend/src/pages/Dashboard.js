@@ -565,10 +565,10 @@ export default function Dashboard() {
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
                     <Target className="w-5 h-5 text-[#FFD700]" />
-                    Meine aktiven Auktionen
+                    {dt.myActiveAuctions}
                   </h2>
                   <Link to="/auctions" className="text-[#FFD700] text-sm hover:underline flex items-center gap-1">
-                    Alle anzeigen <ChevronRight className="w-4 h-4" />
+                    {dt.viewAll} <ChevronRight className="w-4 h-4" />
                   </Link>
                 </div>
                 <div className="space-y-3">
@@ -584,7 +584,7 @@ export default function Dashboard() {
                         <p className="text-[#06B6D4] font-mono font-bold">€{auction.current_price?.toFixed(2)}</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-gray-500 text-xs">Letzter Bieter</p>
+                        <p className="text-gray-500 text-xs">{dt.lastBidder}</p>
                         <p className={`text-sm font-medium ${auction.last_bidder_id === user.id ? 'text-[#10B981]' : 'text-[#EF4444]'}`}>
                           {auction.last_bidder_name || '-'}
                         </p>
@@ -607,10 +607,10 @@ export default function Dashboard() {
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
                   <Timer className="w-5 h-5 text-[#FF4D4D]" />
-                  Live-Auktionen entdecken
+                  {dt.discoverLiveAuctions}
                 </h2>
                 <Link to="/auctions" className="text-[#FFD700] text-sm hover:underline flex items-center gap-1">
-                  Alle anzeigen <ChevronRight className="w-4 h-4" />
+                  {dt.viewAll} <ChevronRight className="w-4 h-4" />
                 </Link>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
