@@ -1214,8 +1214,8 @@ export default function Auctions() {
       case 'anfaenger':
         return publicAuctions.filter(a => (a.is_beginner_only || a.is_beginner_auction) && a.status === 'active');
       case 'gratis':
-        // Filter by product category - show only bidblitz.ae's own vouchers
-        return publicAuctions.filter(a => isVoucherProduct(a.product_id) && a.status === 'active');
+        // Filter by product category - show all voucher products
+        return publicAuctions.filter(a => isVoucherAuction(a) && a.status === 'active');
       case 'restaurant':
         // Filter restaurant voucher auctions
         return publicAuctions.filter(a => isRestaurantAuction(a) && a.status === 'active');
