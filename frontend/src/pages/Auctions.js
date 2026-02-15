@@ -1181,8 +1181,11 @@ export default function Auctions() {
 
   // Helper function to check if it's a restaurant voucher auction
   const isRestaurantAuction = (auction) => {
-    return auction.auction_type === 'restaurant_voucher' || 
+    // Check all possible ways a restaurant auction could be marked
+    return auction.is_restaurant === true ||
+           auction.auction_type === 'restaurant_voucher' || 
            auction.category === 'restaurant_voucher' ||
+           (auction.product && auction.product.category === 'Restaurants') ||
            (auction.product && auction.product.category === 'restaurant_voucher');
   };
 
