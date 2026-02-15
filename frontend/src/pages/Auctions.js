@@ -1301,6 +1301,13 @@ export default function Auctions() {
       <div className="max-w-4xl mx-auto px-4 py-8">
         <PriceGuaranteeSection language={langKey} />
       </div>
+      
+      {/* Quick Registration Section - Only for non-authenticated users */}
+      {!isAuthenticated && (
+        <div id="quick-register" className="max-w-2xl mx-auto px-4 py-8 scroll-mt-20">
+          <QuickRegisterSection language={langKey} navigate={navigate} />
+        </div>
+      )}
     </div>
   );
 }
