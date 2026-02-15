@@ -267,14 +267,25 @@ async def purchase_bundle(bundle_id: str, user: dict = Depends(get_current_user)
         bundle = next((b for b in DEFAULT_BUNDLES if b["id"] == bundle_id), None)
     
     if not bundle:
+        # Try flash sale bundles
+        bundle = next((b for b in FLASH_SALE_BUNDLES if b["id"] == bundle_id), None)
+    
+    if not bundle:
         raise HTTPException(status_code=404, detail="Paket nicht gefunden")
+    
+    # Check for first purchase only restriction
+    if bundle.get("first_purchase_only"):
+        # Check if user has made a purchase before
+        existing_purchase = await db.purchases.find_one({"user_id": user["id"], "status": "completed"})
+        if existing_purchase:
+            raise HTTPException(status_code=400, detail="Dieses Angebot ist nur für Erstkäufer")
     
     # Check for VIP discount
     user_data = await db.users.find_one({"id": user["id"]}, {"_id": 0, "is_vip": 1})
-    is_vip = user_data.get("is_vip", False)
+    is_vip = user_data.get("is_vip", False) if user_data else False
     
     final_price = bundle.get("vip_price", bundle["price"]) if is_vip else bundle["price"]
-    total_bids = bundle["bids"] + bundle["bonus_bids"]
+    total_bids = bundle["bids"] + bundle.get("bonus_bids", 0)
     
     # Create pending purchase record
     purchase_id = str(uuid.uuid4())
@@ -284,7 +295,7 @@ async def purchase_bundle(bundle_id: str, user: dict = Depends(get_current_user)
         "bundle_id": bundle_id,
         "bundle_name": bundle["name"],
         "bids": bundle["bids"],
-        "bonus_bids": bundle["bonus_bids"],
+        "bonus_bids": bundle.get("bonus_bids", 0),
         "total_bids": total_bids,
         "price": final_price,
         "vip_discount_applied": is_vip,
@@ -292,15 +303,16 @@ async def purchase_bundle(bundle_id: str, user: dict = Depends(get_current_user)
         "created_at": datetime.now(timezone.utc).isoformat()
     })
     
-    # Note: In production, this would create a Stripe checkout session
-    # For now, return the purchase details
+    # Create Stripe checkout URL
+    checkout_url = f"/buy-bids?checkout={purchase_id}&bundle={bundle_id}&price={final_price}"
+    
     return {
         "purchase_id": purchase_id,
         "bundle": bundle,
         "final_price": final_price,
         "total_bids": total_bids,
         "vip_discount_applied": is_vip,
-        "checkout_url": f"/checkout/{purchase_id}"  # Would be Stripe URL
+        "checkout_url": checkout_url
     }
 
 # ==================== ADMIN ENDPOINTS ====================
