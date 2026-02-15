@@ -222,12 +222,6 @@ const LastChanceSection = memo(({ language = 'de' }) => {
   }, [auctions.length]);
   
   // Force re-render every second for countdown
-  const [, forceUpdate] = useState(0);
-  useEffect(() => {
-    const timer = setInterval(() => forceUpdate(n => n + 1), 1000);
-    return () => clearInterval(timer);
-  }, []);
-  
   if (loading) return null;
   if (auctions.length === 0) return null;
   
@@ -237,12 +231,12 @@ const LastChanceSection = memo(({ language = 'de' }) => {
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-red-500 rounded-xl">
-            <AlertTriangle className="w-6 h-6 text-white animate-pulse" />
+            <AlertTriangle className="w-6 h-6 text-white" />
           </div>
           <div>
             <h2 className="text-xl font-black text-gray-800 flex items-center gap-2">
               {t.title}
-              <Flame className="w-5 h-5 text-orange-500 animate-bounce" />
+              <Flame className="w-5 h-5 text-orange-500" />
             </h2>
             <p className="text-gray-500 text-sm">{t.subtitle}</p>
           </div>
