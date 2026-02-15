@@ -121,13 +121,21 @@ const WhatsAppSettings = memo(({ language = 'de' }) => {
     const loadSettings = async () => {
       if (!token) return;
       try {
-        const res = await axios.get(`${API}/whatsapp/settings`, {
+        const res = await axios.get(`${API}/whatsapp/status`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         if (res.data) {
-          setPhone(res.data.phone_number || '');
-          setPhoneVerified(res.data.verified || false);
-          setSettings(res.data.notifications || settings);
+          setPhone(res.data.phone || '');
+          setPhoneVerified(res.data.subscribed || false);
+          if (res.data.preferences) {
+            setSettings({
+              outbid: res.data.preferences.outbid ?? true,
+              won: res.data.preferences.auction_won ?? true,
+              ending: res.data.preferences.auction_ending ?? true,
+              newAuction: res.data.preferences.deals ?? false,
+              promo: res.data.preferences.daily_digest ?? false
+            });
+          }
         }
       } catch (err) {
         console.error('Error loading WhatsApp settings:', err);
