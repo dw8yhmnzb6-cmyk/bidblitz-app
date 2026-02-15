@@ -205,9 +205,7 @@ function AppContent() {
       <Navbar />
       
       {/* Happy Hour Banner - After Navbar */}
-      <div className="pt-16">
-        <HappyHourBanner />
-      </div>
+      <HappyHourBanner />
       
       <main className="flex-grow">
         <Routes>
