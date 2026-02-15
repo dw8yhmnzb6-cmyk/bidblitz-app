@@ -834,18 +834,18 @@ export default function Dashboard() {
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
                     <Package className="w-5 h-5 text-[#FFD700]" />
-                    Letzte Käufe
+                    {dt.lastPurchases}
                   </h2>
                   <Link to="/purchases" className="text-[#FFD700] text-sm hover:underline">
-                    Alle
+                    {dt.viewAll}
                   </Link>
                 </div>
                 <div className="space-y-2">
                   {purchases.map((purchase, index) => (
                     <div key={index} className="flex items-center justify-between p-2 rounded-lg bg-white">
                       <div>
-                        <p className="text-gray-800 text-sm">{purchase.package_name || 'Gebotspaket'}</p>
-                        <p className="text-gray-500 text-xs">{purchase.bids} Gebote</p>
+                        <p className="text-gray-800 text-sm">{purchase.package_name || dt.bidPackage}</p>
+                        <p className="text-gray-500 text-xs">{purchase.bids} {dt.bids}</p>
                       </div>
                       <p className="text-[#10B981] font-bold">€{purchase.amount?.toFixed(2)}</p>
                     </div>
@@ -856,30 +856,30 @@ export default function Dashboard() {
 
             {/* Quick Links */}
             <div className="glass-card rounded-2xl p-6">
-              <h2 className="text-lg font-bold text-gray-800 mb-4">Schnellzugriff</h2>
+              <h2 className="text-lg font-bold text-gray-800 mb-4">{dt.quickAccess}</h2>
               <div className="space-y-2">
                 <Link to="/achievements" className="flex items-center justify-between p-3 rounded-lg bg-gradient-to-r from-[#FFD700]/10 to-[#FF4D4D]/10 border border-[#FFD700]/30 hover:bg-[#FFD700]/20 transition-colors">
                   <span className="flex items-center gap-2 text-[#FFD700]"><Trophy className="w-4 h-4" />{dt.achievementsAndRewards}</span>
                   <ChevronRight className="w-4 h-4 text-[#FFD700]" />
                 </Link>
                 <Link to="/profile" className="flex items-center justify-between p-3 rounded-lg bg-white hover:bg-white/5 transition-colors">
-                  <span className="flex items-center gap-2 text-gray-800"><User className="w-4 h-4 text-gray-500" />Profil bearbeiten</span>
+                  <span className="flex items-center gap-2 text-gray-800"><User className="w-4 h-4 text-gray-500" />{dt.editProfile}</span>
                   <ChevronRight className="w-4 h-4 text-gray-500" />
                 </Link>
                 <Link to="/bid-history" className="flex items-center justify-between p-3 rounded-lg bg-white hover:bg-white/5 transition-colors">
-                  <span className="flex items-center gap-2 text-gray-800"><History className="w-4 h-4 text-gray-500" />Gebots-Historie</span>
+                  <span className="flex items-center gap-2 text-gray-800"><History className="w-4 h-4 text-gray-500" />{dt.bidHistory}</span>
                   <ChevronRight className="w-4 h-4 text-gray-500" />
                 </Link>
                 <Link to="/purchases" className="flex items-center justify-between p-3 rounded-lg bg-white hover:bg-white/5 transition-colors">
-                  <span className="flex items-center gap-2 text-gray-800"><Package className="w-4 h-4 text-gray-500" />Meine Käufe</span>
+                  <span className="flex items-center gap-2 text-gray-800"><Package className="w-4 h-4 text-gray-500" />{dt.myPurchases}</span>
                   <ChevronRight className="w-4 h-4 text-gray-500" />
                 </Link>
                 <Link to="/invoices" className="flex items-center justify-between p-3 rounded-lg bg-white hover:bg-white/5 transition-colors">
-                  <span className="flex items-center gap-2 text-gray-800"><FileText className="w-4 h-4 text-gray-500" />Rechnungen</span>
+                  <span className="flex items-center gap-2 text-gray-800"><FileText className="w-4 h-4 text-gray-500" />{dt.invoices}</span>
                   <ChevronRight className="w-4 h-4 text-gray-500" />
                 </Link>
                 <Link to="/invite" className="flex items-center justify-between p-3 rounded-lg bg-white hover:bg-white/5 transition-colors">
-                  <span className="flex items-center gap-2 text-gray-800"><Gift className="w-4 h-4 text-[#10B981]" />Freunde einladen</span>
+                  <span className="flex items-center gap-2 text-gray-800"><Gift className="w-4 h-4 text-[#10B981]" />{dt.inviteFriends}</span>
                   <ChevronRight className="w-4 h-4 text-gray-500" />
                 </Link>
               </div>
