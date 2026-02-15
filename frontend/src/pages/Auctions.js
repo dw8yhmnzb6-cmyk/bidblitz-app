@@ -939,6 +939,7 @@ export default function Auctions() {
   // Use mappedLanguage for regional variants (e.g., xk -> sq)
   const langKey = mappedLanguage || language;
   const navigate = useNavigate();
+  const location = useLocation();
   
   const [auctions, setAuctions] = useState([]);
   const [products, setProducts] = useState({});
@@ -947,6 +948,24 @@ export default function Auctions() {
   const wsRef = useRef(null);
   
   const [endedAuctions, setEndedAuctions] = useState([]);
+  
+  // Auto-scroll to element based on URL parameter
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const scrollTarget = params.get('scrollTo');
+    
+    if (scrollTarget) {
+      // Wait a bit for content to load, then scroll
+      const scrollTimer = setTimeout(() => {
+        const element = document.getElementById(scrollTarget);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 500);
+      
+      return () => clearTimeout(scrollTimer);
+    }
+  }, [location.search]);
   
   // Fetch data
   const fetchData = useCallback(async () => {
