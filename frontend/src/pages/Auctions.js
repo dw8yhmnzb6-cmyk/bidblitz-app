@@ -1576,6 +1576,11 @@ export default function Auctions() {
         <PriceGuaranteeSection language={langKey} />
       </div>
       
+      {/* Winner Gallery - Social Proof Section */}
+      <div className="max-w-6xl mx-auto px-4 py-8">
+        <WinnerGalleryHome />
+      </div>
+      
       {/* Quick Registration Section - Scroll target always exists */}
       <div id="quick-register" className="max-w-2xl mx-auto px-4 py-8 scroll-mt-20">
         {!isAuthenticated && (
