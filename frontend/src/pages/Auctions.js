@@ -653,11 +653,11 @@ const AuctionCard = memo(({ auction, product, onBid, t, language, langKey, isAut
   else if (auction.is_beginner_only) headerBg = 'bg-gradient-to-r from-purple-500 to-violet-500';
   
   return (
-    <div className={`bg-gradient-to-b from-cyan-50 to-cyan-100 rounded-lg overflow-hidden border border-cyan-300 cursor-pointer hover:shadow-lg transition-shadow ${isNightPaused ? 'opacity-60' : ''}`}
+    <div className={`bg-gradient-to-b from-cyan-50 to-cyan-100 rounded-lg overflow-hidden border border-cyan-300 cursor-pointer hover:shadow-lg transition-shadow min-h-[280px] flex flex-col ${isNightPaused ? 'opacity-60' : ''}`}
          onClick={() => window.location.href = `/auctions/${auction.id}`}>
       
-      {/* Header with Badges + Timer */}
-      <div className={`${headerBg} text-white text-xs font-bold py-1.5 px-3 flex items-center justify-between`}>
+      {/* Header with Badges + Timer - Fixed height */}
+      <div className={`${headerBg} text-white text-xs font-bold py-1.5 px-3 flex items-center justify-between h-8 flex-shrink-0`}>
         <div className="flex items-center gap-1 flex-wrap max-w-[60%]">
           {badges}
         </div>
@@ -668,46 +668,49 @@ const AuctionCard = memo(({ auction, product, onBid, t, language, langKey, isAut
         )}
       </div>
       
-      {/* Content */}
-      <div className="p-3">
-        {/* Product Name - Full width, wrap text */}
-        <h3 className="text-sm font-bold text-gray-800 leading-snug mb-2 min-h-[36px]" style={{ wordBreak: 'break-word' }}>
+      {/* Content - Flex grow to fill space */}
+      <div className="p-3 flex-1 flex flex-col">
+        {/* Product Name - Fixed height */}
+        <h3 className="text-sm font-bold text-gray-800 leading-snug mb-2 h-[40px] line-clamp-2 overflow-hidden" style={{ wordBreak: 'break-word' }}>
           {productName}
         </h3>
         
-        {productDescription && (
-          <p className="text-xs text-gray-600 line-clamp-2 mb-2 italic" title={productDescription}>
-            {productDescription}
-          </p>
-        )}
-        
-        <p className="text-xs text-gray-500 mb-2">
+        {/* UVP - Fixed height */}
+        <p className="text-xs text-gray-500 mb-2 h-4 overflow-hidden">
           {t('auctionPage.uvp')}: € {product.retail_price?.toLocaleString('de-DE')},-
         </p>
         
-        {/* Price and Image Row */}
-        <div className="flex gap-3 items-start">
-          <div className="flex-1 min-w-0">
+        {/* Price and Image Row - Flex grow */}
+        <div className="flex gap-3 items-start flex-1">
+          <div className="flex-1 min-w-0 flex flex-col justify-between">
             <LivePrice price={auction.current_price} bidderName={auction.last_bidder_name} t={t} />
             
             <button 
               onClick={(e) => { e.stopPropagation(); buttonConfig.action(); }}
               disabled={isNightPaused || buttonConfig.disabled}
-              className={`mt-2 w-full py-2 ${isNightPaused ? 'bg-gray-400 cursor-not-allowed' : buttonConfig.style} text-white font-bold text-sm rounded-lg`}
+              className={`mt-2 w-full py-2 ${isNightPaused ? 'bg-gray-400 cursor-not-allowed' : buttonConfig.style} text-white font-bold text-sm rounded-lg flex-shrink-0`}
             >
               {isNightPaused ? `🌙 ${t('auctionPage.nightOnly')}` : buttonConfig.text}
             </button>
           </div>
           
-          <div className="w-16 h-16 sm:w-20 sm:h-20 bg-white rounded-lg flex items-center justify-center shadow-sm flex-shrink-0">
-            <img src={product.image_url || 'https://via.placeholder.com/64'} alt="" className="max-w-full max-h-full object-contain p-1" />
+          {/* Image container with fixed size and loading placeholder */}
+          <div className="w-16 h-16 sm:w-20 sm:h-20 bg-white rounded-lg flex items-center justify-center shadow-sm flex-shrink-0 overflow-hidden">
+            <img 
+              src={product.image_url || 'https://via.placeholder.com/64'} 
+              alt="" 
+              className="max-w-full max-h-full object-contain p-1"
+              loading="lazy"
+              onError={(e) => { e.target.src = 'https://via.placeholder.com/64?text=?'; }}
+            />
           </div>
         </div>
         
         <ActivityIndex auctionId={auction.id} t={t} />
       </div>
       
-      <div className="bg-cyan-200/50 px-3 py-2 text-center">
+      {/* Footer - Fixed height */}
+      <div className="bg-cyan-200/50 px-3 py-2 text-center h-10 flex-shrink-0">
         <p className="text-xs text-gray-600">
           {t('auctionPage.lastSoldFor')} <span className="text-green-600 font-bold">€ {(product.retail_price * 0.03).toFixed(2).replace('.', ',')}</span>
         </p>
