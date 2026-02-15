@@ -176,7 +176,7 @@ const AbandonedCartReminder = memo(({ language = 'de' }) => {
           
           {/* CTA */}
           <button
-            onClick={() => navigate('/gebot-pakete')}
+            onClick={() => navigate('/buy-bids')}
             className="w-full flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-orange-500 to-red-500 
               text-white font-bold rounded-xl hover:from-orange-600 hover:to-red-600 transition-all 
               transform hover:scale-[1.02] shadow-lg"
