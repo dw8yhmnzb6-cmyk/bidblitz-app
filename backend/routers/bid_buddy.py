@@ -99,6 +99,8 @@ async def activate_bid_buddy(data: BidBuddyCreate, user: dict = Depends(get_curr
         return {"success": True, "message": "Bid Buddy aktualisiert", "bid_buddy_id": existing["id"]}
     
     # Create new bid buddy
+    strategy_info = BID_STRATEGIES.get(data.strategy, BID_STRATEGIES["aggressive"])
+    
     bid_buddy = {
         "id": str(uuid.uuid4()),
         "user_id": user_id,
@@ -109,6 +111,11 @@ async def activate_bid_buddy(data: BidBuddyCreate, user: dict = Depends(get_curr
         "max_price": data.max_price,
         "bids_placed": 0,
         "is_active": True,
+        "strategy": data.strategy,
+        "strategy_name": strategy_info["name"],
+        "bid_on_outbid": data.bid_on_outbid,
+        "min_seconds_before_end": data.min_seconds_before_end,
+        "wins": 0,
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     
