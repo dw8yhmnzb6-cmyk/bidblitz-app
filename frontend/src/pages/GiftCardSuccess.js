@@ -137,7 +137,7 @@ export default function GiftCardSuccess() {
               <div className="flex items-center justify-between mb-8">
                 <div className="flex items-center gap-2">
                   <Gift className="w-8 h-8 text-[#F59E0B]" />
-                  <span className="text-gray-800 font-bold text-xl">BidBlitz</span>
+                  <span className="text-gray-800 font-bold text-xl">bidblitz.ae</span>
                 </div>
                 <span className="text-gray-500 text-sm">{t.giftCard}</span>
               </div>

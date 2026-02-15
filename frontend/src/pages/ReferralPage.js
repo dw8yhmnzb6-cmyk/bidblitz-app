@@ -49,7 +49,7 @@ export default function ReferralPage() {
       reward2: '10 Gebote für deinen Freund',
       reward3: '+5 Bonus ab 5 Empfehlungen',
       copied: 'Code kopiert!',
-      shareText: 'Registriere dich bei BidBlitz und erhalte 10 Gratis-Gebote mit meinem Code:'
+      shareText: 'Registriere dich bei bidblitz.ae und erhalte 10 Gratis-Gebote mit meinem Code:'
     },
     en: {
       title: 'Referral Bonus',
@@ -74,7 +74,7 @@ export default function ReferralPage() {
       reward2: '10 bids for your friend',
       reward3: '+5 bonus after 5 referrals',
       copied: 'Code copied!',
-      shareText: 'Sign up at BidBlitz and get 10 free bids with my code:'
+      shareText: 'Sign up at bidblitz.ae and get 10 free bids with my code:'
     },
     sq: {
       title: 'Bonusi i miqve',
@@ -99,7 +99,7 @@ export default function ReferralPage() {
       reward2: '10 oferta për mikun tuaj',
       reward3: '+5 bonus pas 5 rekomandimeve',
       copied: 'Kodi u kopjua!',
-      shareText: 'Regjistrohuni në BidBlitz dhe merrni 10 oferta falas me kodin tim:'
+      shareText: 'Regjistrohuni në bidblitz.ae dhe merrni 10 oferta falas me kodin tim:'
     }
   };
 
@@ -145,7 +145,7 @@ export default function ReferralPage() {
     if (navigator.share) {
       try {
         await navigator.share({
-          title: 'BidBlitz',
+          title: 'bidblitz.ae',
           text: text,
           url: url
         });

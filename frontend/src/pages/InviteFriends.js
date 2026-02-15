@@ -237,8 +237,8 @@ export default function InviteFriends() {
     if (navigator.share) {
       try {
         await navigator.share({
-          title: 'BidBlitz - Penny Auktionen',
-          text: language === 'en' ? 'Sign up at BidBlitz and get 10 free bids!' : 'Registriere dich bei BidBlitz und erhalte 10 kostenlose Gebote!',
+          title: 'bidblitz.ae - Penny Auktionen',
+          text: language === 'en' ? 'Sign up at bidblitz.ae and get 10 free bids!' : 'Registriere dich bei bidblitz.ae und erhalte 10 kostenlose Gebote!',
           url: link
         });
       } catch (err) {

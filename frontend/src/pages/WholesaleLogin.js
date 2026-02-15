@@ -56,7 +56,7 @@ export default function WholesaleLogin() {
               <Building2 className="w-5 h-5 text-white" />
             </div>
             <div>
-              <span className="text-xl font-bold text-white">BidBlitz</span>
+              <span className="text-xl font-bold text-white">bidblitz.ae</span>
               <span className="text-cyan-400 font-bold ml-1">B2B</span>
             </div>
           </Link>

@@ -209,11 +209,11 @@ export default function Winners() {
 
   // Multilingual stats labels
   const statsLabels = {
-    de: { happyWinners: 'Glückliche Gewinner', totalSaved: 'Gesamt gespart', avgSavings: 'Durchschnittliche Ersparnis', realWinners: 'Echte Gewinner, echte Ersparnisse', ourWinners: 'Unsere', subtitle: 'Diese Nutzer haben bei BidBlitz fantastische Schnäppchen gemacht. Der nächste Gewinner könnten Sie sein!', bidNow: 'Jetzt bieten' },
-    en: { happyWinners: 'Happy Winners', totalSaved: 'Total saved', avgSavings: 'Average savings', realWinners: 'Real winners, real savings', ourWinners: 'Our', subtitle: 'These users scored amazing deals at BidBlitz. You could be next!', bidNow: 'Bid Now' },
-    sq: { happyWinners: 'Fitues të Lumtur', totalSaved: 'Totali i kursyer', avgSavings: 'Kursimi mesatar', realWinners: 'Fitues realë, kursime reale', ourWinners: 'Fituesit', subtitle: 'Këta përdorues kanë bërë pazare fantastike në BidBlitz. Tjetri mund të jeni ju!', bidNow: 'Oferoni Tani' },
-    tr: { happyWinners: 'Mutlu Kazananlar', totalSaved: 'Toplam tasarruf', avgSavings: 'Ortalama tasarruf', realWinners: 'Gerçek kazananlar, gerçek tasarruflar', ourWinners: 'Kazananlarımız', subtitle: 'Bu kullanıcılar BidBlitz\'de harika fırsatlar yakaladı. Sıradaki siz olabilirsiniz!', bidNow: 'Şimdi Teklif Ver' },
-    fr: { happyWinners: 'Gagnants Heureux', totalSaved: 'Total économisé', avgSavings: 'Économie moyenne', realWinners: 'Vrais gagnants, vraies économies', ourWinners: 'Nos', subtitle: 'Ces utilisateurs ont fait de super affaires sur BidBlitz. Vous pourriez être le prochain!', bidNow: 'Enchérir' }
+    de: { happyWinners: 'Glückliche Gewinner', totalSaved: 'Gesamt gespart', avgSavings: 'Durchschnittliche Ersparnis', realWinners: 'Echte Gewinner, echte Ersparnisse', ourWinners: 'Unsere', subtitle: 'Diese Nutzer haben bei bidblitz.ae fantastische Schnäppchen gemacht. Der nächste Gewinner könnten Sie sein!', bidNow: 'Jetzt bieten' },
+    en: { happyWinners: 'Happy Winners', totalSaved: 'Total saved', avgSavings: 'Average savings', realWinners: 'Real winners, real savings', ourWinners: 'Our', subtitle: 'These users scored amazing deals at bidblitz.ae. You could be next!', bidNow: 'Bid Now' },
+    sq: { happyWinners: 'Fitues të Lumtur', totalSaved: 'Totali i kursyer', avgSavings: 'Kursimi mesatar', realWinners: 'Fitues realë, kursime reale', ourWinners: 'Fituesit', subtitle: 'Këta përdorues kanë bërë pazare fantastike në bidblitz.ae. Tjetri mund të jeni ju!', bidNow: 'Oferoni Tani' },
+    tr: { happyWinners: 'Mutlu Kazananlar', totalSaved: 'Toplam tasarruf', avgSavings: 'Ortalama tasarruf', realWinners: 'Gerçek kazananlar, gerçek tasarruflar', ourWinners: 'Kazananlarımız', subtitle: 'Bu kullanıcılar bidblitz.ae\'de harika fırsatlar yakaladı. Sıradaki siz olabilirsiniz!', bidNow: 'Şimdi Teklif Ver' },
+    fr: { happyWinners: 'Gagnants Heureux', totalSaved: 'Total économisé', avgSavings: 'Économie moyenne', realWinners: 'Vrais gagnants, vraies économies', ourWinners: 'Nos', subtitle: 'Ces utilisateurs ont fait de super affaires sur bidblitz.ae. Vous pourriez être le prochain!', bidNow: 'Enchérir' }
   };
   const stats = statsLabels[langKey] || statsLabels.de;
 

@@ -33,7 +33,7 @@ const FAQItem = ({ question, answer, isOpen, onClick, isDarkMode }) => {
 const faqContent = {
   de: {
     title: "Häufig gestellte Fragen",
-    subtitle: "Antworten auf die häufigsten Fragen zu BidBlitz",
+    subtitle: "Antworten auf die häufigsten Fragen zu bidblitz.ae",
     searchPlaceholder: "Fragen durchsuchen...",
     resultsFor: "Ergebnis(se) für",
     noResults: "Keine Ergebnisse gefunden. Kontaktieren Sie uns für weitere Hilfe.",
@@ -44,9 +44,9 @@ const faqContent = {
       {
         title: "Allgemein",
         faqs: [
-          { question: "Was ist BidBlitz?", answer: "BidBlitz ist eine Penny-Auktions-Plattform, auf der Sie Top-Markenprodukte für einen Bruchteil des Preises ersteigern können. Jedes Gebot erhöht den Preis um nur 0,01€ und verlängert den Timer." },
-          { question: "Ist BidBlitz seriös?", answer: "Ja! BidBlitz ist ein seriöses Unternehmen mit Sitz in Dubai, UAE. Alle Auktionen sind transparent und fair. Wir versenden echte Produkte an echte Gewinner." },
-          { question: "Wie kann ich Geld sparen?", answer: "Bei BidBlitz können Sie Produkte für bis zu 99% unter dem Marktpreis ersteigern. Ein iPhone im Wert von 1.199€ kann z.B. für unter 50€ ersteigert werden." }
+          { question: "Was ist bidblitz.ae?", answer: "bidblitz.ae ist eine Penny-Auktions-Plattform, auf der Sie Top-Markenprodukte für einen Bruchteil des Preises ersteigern können. Jedes Gebot erhöht den Preis um nur 0,01€ und verlängert den Timer." },
+          { question: "Ist bidblitz.ae seriös?", answer: "Ja! bidblitz.ae ist ein seriöses Unternehmen mit Sitz in Dubai, UAE. Alle Auktionen sind transparent und fair. Wir versenden echte Produkte an echte Gewinner." },
+          { question: "Wie kann ich Geld sparen?", answer: "Bei bidblitz.ae können Sie Produkte für bis zu 99% unter dem Marktpreis ersteigern. Ein iPhone im Wert von 1.199€ kann z.B. für unter 50€ ersteigert werden." }
         ]
       },
       {
@@ -69,7 +69,7 @@ const faqContent = {
   },
   en: {
     title: "Frequently Asked Questions",
-    subtitle: "Answers to the most common questions about BidBlitz",
+    subtitle: "Answers to the most common questions about bidblitz.ae",
     searchPlaceholder: "Search questions...",
     resultsFor: "result(s) for",
     noResults: "No results found. Contact us for further help.",
@@ -80,9 +80,9 @@ const faqContent = {
       {
         title: "General",
         faqs: [
-          { question: "What is BidBlitz?", answer: "BidBlitz is a penny auction platform where you can win top brand products for a fraction of the price. Each bid increases the price by only €0.01 and extends the timer." },
-          { question: "Is BidBlitz legitimate?", answer: "Yes! BidBlitz is a legitimate company based in Dubai, UAE. All auctions are transparent and fair. We ship real products to real winners." },
-          { question: "How can I save money?", answer: "At BidBlitz, you can win products for up to 99% below market price. An iPhone worth €1,199 can be won for under €50." }
+          { question: "What is bidblitz.ae?", answer: "bidblitz.ae is a penny auction platform where you can win top brand products for a fraction of the price. Each bid increases the price by only €0.01 and extends the timer." },
+          { question: "Is bidblitz.ae legitimate?", answer: "Yes! bidblitz.ae is a legitimate company based in Dubai, UAE. All auctions are transparent and fair. We ship real products to real winners." },
+          { question: "How can I save money?", answer: "At bidblitz.ae, you can win products for up to 99% below market price. An iPhone worth €1,199 can be won for under €50." }
         ]
       },
       {
@@ -105,7 +105,7 @@ const faqContent = {
   },
   sq: {
     title: "Pyetjet e Bëra Shpesh",
-    subtitle: "Përgjigje për pyetjet më të zakonshme rreth BidBlitz",
+    subtitle: "Përgjigje për pyetjet më të zakonshme rreth bidblitz.ae",
     searchPlaceholder: "Kërko pyetje...",
     resultsFor: "rezultat(e) për",
     noResults: "Nuk u gjetën rezultate. Na kontaktoni për ndihmë të mëtejshme.",
@@ -116,9 +116,9 @@ const faqContent = {
       {
         title: "Të Përgjithshme",
         faqs: [
-          { question: "Çfarë është BidBlitz?", answer: "BidBlitz është një platformë ankandesh penny ku mund të fitoni produkte të markave të njohura me një pjesë të çmimit. Çdo ofertë rrit çmimin me vetëm 0.01€ dhe zgjat kohëmatësin." },
-          { question: "A është BidBlitz i besueshëm?", answer: "Po! BidBlitz është një kompani legjitime me bazë në Dubai, UAE. Të gjitha ankandet janë transparente dhe të drejta. Ne dërgojmë produkte reale tek fituesit realë." },
-          { question: "Si mund të kursej para?", answer: "Në BidBlitz, mund të fitoni produkte deri në 99% nën çmimin e tregut. Një iPhone me vlerë 1,199€ mund të fitohet për nën 50€." }
+          { question: "Çfarë është bidblitz.ae?", answer: "bidblitz.ae është një platformë ankandesh penny ku mund të fitoni produkte të markave të njohura me një pjesë të çmimit. Çdo ofertë rrit çmimin me vetëm 0.01€ dhe zgjat kohëmatësin." },
+          { question: "A është bidblitz.ae i besueshëm?", answer: "Po! bidblitz.ae është një kompani legjitime me bazë në Dubai, UAE. Të gjitha ankandet janë transparente dhe të drejta. Ne dërgojmë produkte reale tek fituesit realë." },
+          { question: "Si mund të kursej para?", answer: "Në bidblitz.ae, mund të fitoni produkte deri në 99% nën çmimin e tregut. Një iPhone me vlerë 1,199€ mund të fitohet për nën 50€." }
         ]
       },
       {
@@ -141,7 +141,7 @@ const faqContent = {
   },
   tr: {
     title: "Sık Sorulan Sorular",
-    subtitle: "BidBlitz hakkında en yaygın sorulara cevaplar",
+    subtitle: "bidblitz.ae hakkında en yaygın sorulara cevaplar",
     searchPlaceholder: "Soru ara...",
     resultsFor: "sonuç",
     noResults: "Sonuç bulunamadı. Daha fazla yardım için bizimle iletişime geçin.",
@@ -152,9 +152,9 @@ const faqContent = {
       {
         title: "Genel",
         faqs: [
-          { question: "BidBlitz nedir?", answer: "BidBlitz, en iyi marka ürünlerini fiyatın küçük bir bölümüyle kazanabileceğiniz bir penny açık artırma platformudur. Her teklif fiyatı sadece 0,01€ artırır ve zamanlayıcıyı uzatır." },
-          { question: "BidBlitz güvenilir mi?", answer: "Evet! BidBlitz, Dubai, BAE merkezli meşru bir şirkettir. Tüm açık artırmalar şeffaf ve adildir. Gerçek kazananlara gerçek ürünler gönderiyoruz." },
-          { question: "Nasıl para tasarruf edebilirim?", answer: "BidBlitz'de ürünleri piyasa fiyatının %99'a kadar altında kazanabilirsiniz. 1.199€ değerinde bir iPhone 50€'nun altında kazanılabilir." }
+          { question: "bidblitz.ae nedir?", answer: "bidblitz.ae, en iyi marka ürünlerini fiyatın küçük bir bölümüyle kazanabileceğiniz bir penny açık artırma platformudur. Her teklif fiyatı sadece 0,01€ artırır ve zamanlayıcıyı uzatır." },
+          { question: "bidblitz.ae güvenilir mi?", answer: "Evet! bidblitz.ae, Dubai, BAE merkezli meşru bir şirkettir. Tüm açık artırmalar şeffaf ve adildir. Gerçek kazananlara gerçek ürünler gönderiyoruz." },
+          { question: "Nasıl para tasarruf edebilirim?", answer: "bidblitz.ae'de ürünleri piyasa fiyatının %99'a kadar altında kazanabilirsiniz. 1.199€ değerinde bir iPhone 50€'nun altında kazanılabilir." }
         ]
       },
       {
@@ -177,7 +177,7 @@ const faqContent = {
   },
   fr: {
     title: "Questions Fréquemment Posées",
-    subtitle: "Réponses aux questions les plus courantes sur BidBlitz",
+    subtitle: "Réponses aux questions les plus courantes sur bidblitz.ae",
     searchPlaceholder: "Rechercher des questions...",
     resultsFor: "résultat(s) pour",
     noResults: "Aucun résultat trouvé. Contactez-nous pour plus d'aide.",
@@ -188,9 +188,9 @@ const faqContent = {
       {
         title: "Général",
         faqs: [
-          { question: "Qu'est-ce que BidBlitz?", answer: "BidBlitz est une plateforme d'enchères au centime où vous pouvez gagner des produits de grandes marques pour une fraction du prix. Chaque enchère augmente le prix de seulement 0,01€ et prolonge le minuteur." },
-          { question: "BidBlitz est-il fiable?", answer: "Oui! BidBlitz est une entreprise légitime basée à Dubaï, EAU. Toutes les enchères sont transparentes et équitables. Nous expédions de vrais produits aux vrais gagnants." },
-          { question: "Comment puis-je économiser de l'argent?", answer: "Chez BidBlitz, vous pouvez gagner des produits jusqu'à 99% en dessous du prix du marché. Un iPhone d'une valeur de 1 199€ peut être gagné pour moins de 50€." }
+          { question: "Qu'est-ce que bidblitz.ae?", answer: "bidblitz.ae est une plateforme d'enchères au centime où vous pouvez gagner des produits de grandes marques pour une fraction du prix. Chaque enchère augmente le prix de seulement 0,01€ et prolonge le minuteur." },
+          { question: "bidblitz.ae est-il fiable?", answer: "Oui! bidblitz.ae est une entreprise légitime basée à Dubaï, EAU. Toutes les enchères sont transparentes et équitables. Nous expédions de vrais produits aux vrais gagnants." },
+          { question: "Comment puis-je économiser de l'argent?", answer: "Chez bidblitz.ae, vous pouvez gagner des produits jusqu'à 99% en dessous du prix du marché. Un iPhone d'une valeur de 1 199€ peut être gagné pour moins de 50€." }
         ]
       },
       {

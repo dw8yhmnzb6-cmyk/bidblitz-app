@@ -27,7 +27,7 @@ const pageTexts = {
     yourLink: 'Dein Empfehlungslink',
     linkLoading: 'Link wird geladen...',
     share: 'Teilen',
-    shareText: 'Melde dich bei BidBlitz an und erhalte 10 Gratis-Gebote:',
+    shareText: 'Melde dich bei bidblitz.ae an und erhalte 10 Gratis-Gebote:',
     linkCopied: 'Link kopiert!',
     totalReferrals: 'Gesamt',
     successful: 'Erfolgreich',
@@ -58,7 +58,7 @@ const pageTexts = {
     yourLink: 'Linku juaj i rekomandimit',
     linkLoading: 'Linku po ngarkohet...',
     share: 'Ndaj',
-    shareText: 'Regjistrohu në BidBlitz dhe merr 10 oferta falas:',
+    shareText: 'Regjistrohu në bidblitz.ae dhe merr 10 oferta falas:',
     linkCopied: 'Linku u kopjua!',
     totalReferrals: 'Totali',
     successful: 'I suksesshëm',
@@ -133,7 +133,7 @@ export default function ReferFriends() {
     if (navigator.share && stats?.link) {
       try {
         await navigator.share({
-          title: 'BidBlitz - Penny Auktionen',
+          title: 'bidblitz.ae - Penny Auktionen',
           text: t.shareText,
           url: stats.link
         });

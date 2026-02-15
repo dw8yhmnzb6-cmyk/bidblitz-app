@@ -8,7 +8,7 @@ const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 const pageTexts = {
   de: {
     title: 'Wartungsarbeiten',
-    defaultMessage: 'Wir führen gerade Wartungsarbeiten durch, um BidBlitz noch besser zu machen. Bitte versuchen Sie es in Kürze erneut.',
+    defaultMessage: 'Wir führen gerade Wartungsarbeiten durch, um bidblitz.ae noch besser zu machen. Bitte versuchen Sie es in Kürze erneut.',
     estimatedTime: 'Geschätzte Restzeit:',
     hours: 'Stunden',
     minutes: 'Minuten',
@@ -18,7 +18,7 @@ const pageTexts = {
   },
   sq: {
     title: 'Mirëmbajtje',
-    defaultMessage: 'Po kryejmë mirëmbajtje për ta bërë BidBlitz edhe më të mirë. Ju lutemi provoni përsëri së shpejti.',
+    defaultMessage: 'Po kryejmë mirëmbajtje për ta bërë bidblitz.ae edhe më të mirë. Ju lutemi provoni përsëri së shpejti.',
     estimatedTime: 'Koha e mbetur e vlerësuar:',
     hours: 'Orë',
     minutes: 'Minuta',
@@ -129,7 +129,7 @@ export default function MaintenancePage() {
           {t.retry}
         </Button>
 
-        {/* BidBlitz Logo */}
+        {/* bidblitz.ae Logo */}
         <div className="mt-12 text-slate-400">
           <p className="font-bold text-lg">
             <span className="text-[#7C3AED]">Bid</span>

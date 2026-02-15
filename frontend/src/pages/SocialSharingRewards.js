@@ -28,7 +28,7 @@ export default function SocialSharingRewards() {
   const t = {
     de: {
       title: 'Social Sharing Rewards',
-      subtitle: 'Teile BidBlitz und verdiene Gratis-Gebote!',
+      subtitle: 'Teile bidblitz.ae und verdiene Gratis-Gebote!',
       totalShares: 'Geteilte Posts',
       totalRewards: 'Verdiente Gebote',
       thisWeek: 'Diese Woche',
@@ -44,7 +44,7 @@ export default function SocialSharingRewards() {
       startSharing: 'Teile jetzt und verdiene Gebote!',
       perShare: 'pro Teilen',
       bonus: 'Bonus',
-      shareText: 'Ich spare gerade bei BidBlitz! 🎉 Penny-Auktionen mit bis zu 90% Rabatt. Jetzt kostenlos anmelden:',
+      shareText: 'Ich spare gerade bei bidblitz.ae! 🎉 Penny-Auktionen mit bis zu 90% Rabatt. Jetzt kostenlos anmelden:',
       howItWorks: 'So funktioniert\'s',
       step1: 'Wähle eine Plattform',
       step2: 'Teile deinen Link',
@@ -57,7 +57,7 @@ export default function SocialSharingRewards() {
     },
     en: {
       title: 'Social Sharing Rewards',
-      subtitle: 'Share BidBlitz and earn free bids!',
+      subtitle: 'Share bidblitz.ae and earn free bids!',
       totalShares: 'Total Shares',
       totalRewards: 'Bids Earned',
       thisWeek: 'This Week',
@@ -73,7 +73,7 @@ export default function SocialSharingRewards() {
       startSharing: 'Start sharing and earn bids!',
       perShare: 'per share',
       bonus: 'Bonus',
-      shareText: 'I\'m saving big at BidBlitz! 🎉 Penny auctions with up to 90% off. Join free:',
+      shareText: 'I\'m saving big at bidblitz.ae! 🎉 Penny auctions with up to 90% off. Join free:',
       howItWorks: 'How it works',
       step1: 'Choose a platform',
       step2: 'Share your link',

@@ -135,7 +135,7 @@ export const translations = {
     buyBids: { title: "Gebote kaufen", popular: "Beliebt", bids: "Gebote", buyNow: "Jetzt kaufen" },
     giftCards: {
       title: "Geschenkkarten",
-      subtitle: "Verschenken Sie Freude mit BidBlitz Geschenkkarten",
+      subtitle: "Verschenken Sie Freude mit bidblitz.ae Geschenkkarten",
       selectAmount: "Wählen Sie einen Betrag",
       customAmount: "Eigenen Betrag wählen",
       recipientDetails: "Empfänger-Details",

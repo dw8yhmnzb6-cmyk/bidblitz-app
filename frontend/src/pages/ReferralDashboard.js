@@ -38,7 +38,7 @@ const ReferralDashboard = () => {
   const texts = {
     de: {
       title: 'Kunden werben Kunden',
-      subtitle: 'Empfehle BidBlitz und verdiene Gratis-Gebote!',
+      subtitle: 'Empfehle bidblitz.ae und verdiene Gratis-Gebote!',
       yourCode: 'Dein Empfehlungscode',
       yourLink: 'Dein Empfehlungslink',
       copy: 'Kopieren',
@@ -74,7 +74,7 @@ const ReferralDashboard = () => {
     },
     en: {
       title: 'Refer a Friend',
-      subtitle: 'Recommend BidBlitz and earn free bids!',
+      subtitle: 'Recommend bidblitz.ae and earn free bids!',
       yourCode: 'Your Referral Code',
       yourLink: 'Your Referral Link',
       copy: 'Copy',
@@ -110,7 +110,7 @@ const ReferralDashboard = () => {
     },
     sq: {
       title: 'Ftoni miq',
-      subtitle: 'Rekomandoni BidBlitz dhe fitoni oferta falas!',
+      subtitle: 'Rekomandoni bidblitz.ae dhe fitoni oferta falas!',
       yourCode: 'Kodi juaj i rekomandimit',
       yourLink: 'Linku juaj i rekomandimit',
       copy: 'Kopjo',
@@ -192,8 +192,8 @@ const ReferralDashboard = () => {
   const shareLink = () => {
     if (navigator.share && referralData?.referral_link) {
       navigator.share({
-        title: 'BidBlitz - Penny Auktionen',
-        text: 'Melde dich bei BidBlitz an und erhalte 5 Gratis-Gebote!',
+        title: 'bidblitz.ae - Penny Auktionen',
+        text: 'Melde dich bei bidblitz.ae an und erhalte 5 Gratis-Gebote!',
         url: referralData.referral_link
       });
     } else {

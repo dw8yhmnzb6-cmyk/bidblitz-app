@@ -328,7 +328,7 @@ export const Footer = () => {
         {/* Bottom - Cyber Style */}
         <div className="mt-12 pt-8 border-t border-white/10 flex flex-col md:flex-row justify-between items-center gap-4">
           <p className="text-gray-500 text-sm font-body">
-            © {currentYear} BidBlitz FZCO. {ft.allRights}. CEO: Afrim Krasniqi
+            © {currentYear} bidblitz.ae FZCO. {ft.allRights}. CEO: Afrim Krasniqi
           </p>
           <div className="flex items-center gap-4">
             <img src="https://cdn-icons-png.flaticon.com/128/349/349221.png" alt="Visa" className="h-5 opacity-50 hover:opacity-100 transition-opacity" />

@@ -44,7 +44,7 @@ const TelegramConnect = () => {
       openTelegram: 'Telegram öffnen',
       instructions: 'Anleitung',
       step1: '1. Öffne Telegram',
-      step2: '2. Suche nach @BidBlitzBot',
+      step2: '2. Suche nach @bidblitz.aeBot',
       step3: '3. Starte den Bot mit /start',
       step4: '4. Sende: /link',
       preferences: 'Benachrichtigungen',
@@ -71,7 +71,7 @@ const TelegramConnect = () => {
       openTelegram: 'Open Telegram',
       instructions: 'Instructions',
       step1: '1. Open Telegram',
-      step2: '2. Search for @BidBlitzBot',
+      step2: '2. Search for @bidblitz.aeBot',
       step3: '3. Start the bot with /start',
       step4: '4. Send: /link',
       preferences: 'Notifications',
@@ -98,7 +98,7 @@ const TelegramConnect = () => {
       openTelegram: 'Hap Telegram',
       instructions: 'Udhëzimet',
       step1: '1. Hap Telegram',
-      step2: '2. Kërko @BidBlitzBot',
+      step2: '2. Kërko @bidblitz.aeBot',
       step3: '3. Fillo botin me /start',
       step4: '4. Dërgo: /link',
       preferences: 'Njoftimet',
@@ -125,7 +125,7 @@ const TelegramConnect = () => {
       openTelegram: 'Hap Telegram',
       instructions: 'Udhëzimet',
       step1: '1. Hap Telegram',
-      step2: '2. Kërko @BidBlitzBot',
+      step2: '2. Kërko @bidblitz.aeBot',
       step3: '3. Fillo botin me /start',
       step4: '4. Dërgo: /link',
       preferences: 'Njoftimet',
@@ -152,7 +152,7 @@ const TelegramConnect = () => {
       openTelegram: 'Telegram aç',
       instructions: 'Talimatlar',
       step1: '1. Telegram\'ı açın',
-      step2: '2. @BidBlitzBot arayin',
+      step2: '2. @bidblitz.aeBot arayin',
       step3: '3. Botu /start ile başlatın',
       step4: '4. Gönderin: /link',
       preferences: 'Bildirimler',
@@ -179,7 +179,7 @@ const TelegramConnect = () => {
       openTelegram: 'Ouvrir Telegram',
       instructions: 'Instructions',
       step1: '1. Ouvrir Telegram',
-      step2: '2. Chercher @BidBlitzBot',
+      step2: '2. Chercher @bidblitz.aeBot',
       step3: '3. Démarrer le bot avec /start',
       step4: '4. Envoyer: /link',
       preferences: 'Notifications',
@@ -337,7 +337,7 @@ const TelegramConnect = () => {
 
               {/* Open Telegram Button */}
               <a 
-                href={`https://t.me/${linkCode.bot_username || 'BidBlitzBot'}`}
+                href={`https://t.me/${linkCode.bot_username || 'bidblitz.aeBot'}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center justify-center gap-2 w-full py-3 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-lg transition-colors"

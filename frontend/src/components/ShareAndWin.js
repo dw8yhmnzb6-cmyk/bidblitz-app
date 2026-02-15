@@ -12,7 +12,7 @@ const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 const shareTexts = {
   de: {
     title: 'Teilen & Gebote gewinnen!',
-    subtitle: 'Teile BidBlitz und erhalte Gratis-Gebote',
+    subtitle: 'Teile bidblitz.ae und erhalte Gratis-Gebote',
     shareOn: 'Teilen auf',
     copyLink: 'Link kopieren',
     copied: 'Kopiert!',
@@ -20,12 +20,12 @@ const shareTexts = {
     twitter: 'Twitter/X',
     facebook: 'Facebook',
     whatsapp: 'WhatsApp',
-    shareMessage: 'Ich spare bis zu 90% bei BidBlitz! Probier es aus:',
+    shareMessage: 'Ich spare bis zu 90% bei bidblitz.ae! Probier es aus:',
     thankYou: 'Danke fürs Teilen!'
   },
   sq: {
     title: 'Ndaj & Fito Oferta!',
-    subtitle: 'Ndaj BidBlitz dhe merr oferta falas',
+    subtitle: 'Ndaj bidblitz.ae dhe merr oferta falas',
     shareOn: 'Ndaj në',
     copyLink: 'Kopjo linkun',
     copied: 'Kopjuar!',
@@ -33,12 +33,12 @@ const shareTexts = {
     twitter: 'Twitter/X',
     facebook: 'Facebook',
     whatsapp: 'WhatsApp',
-    shareMessage: 'Po kursej deri 90% në BidBlitz! Provoje:',
+    shareMessage: 'Po kursej deri 90% në bidblitz.ae! Provoje:',
     thankYou: 'Faleminderit për ndarjen!'
   },
   en: {
     title: 'Share & Win Bids!',
-    subtitle: 'Share BidBlitz and get free bids',
+    subtitle: 'Share bidblitz.ae and get free bids',
     shareOn: 'Share on',
     copyLink: 'Copy link',
     copied: 'Copied!',
@@ -46,7 +46,7 @@ const shareTexts = {
     twitter: 'Twitter/X',
     facebook: 'Facebook',
     whatsapp: 'WhatsApp',
-    shareMessage: "I'm saving up to 90% on BidBlitz! Try it:",
+    shareMessage: "I'm saving up to 90% on bidblitz.ae! Try it:",
     thankYou: 'Thanks for sharing!'
   }
 };

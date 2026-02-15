@@ -33,8 +33,8 @@ const SustainabilitySection = () => {
   const translations = {
     de: {
       title: 'Innovation mit Verantwortung',
-      subtitle: 'BidBlitz – Weil Erfolg nur zählt, wenn er nachhaltig ist',
-      description: 'Jede Transaktion trägt nicht nur zum wirtschaftlichen Erfolg bei, sondern leistet einen messbaren Beitrag zum Klimaschutz. Nachhaltigkeit ist für BidBlitz kein Trend – sondern ein Versprechen.',
+      subtitle: 'bidblitz.ae – Weil Erfolg nur zählt, wenn er nachhaltig ist',
+      description: 'Jede Transaktion trägt nicht nur zum wirtschaftlichen Erfolg bei, sondern leistet einen messbaren Beitrag zum Klimaschutz. Nachhaltigkeit ist für bidblitz.ae kein Trend – sondern ein Versprechen.',
       projectsTitle: 'Unsere Projekte',
       projectsDesc: 'Wir unterstützen lokale Initiativen und fördern nachhaltige Projekte in der Gemeinde.',
       donationsTitle: 'Spenden & Helfen',
@@ -53,8 +53,8 @@ const SustainabilitySection = () => {
     },
     en: {
       title: 'Innovation with Responsibility',
-      subtitle: 'BidBlitz – Because success only counts when it\'s sustainable',
-      description: 'Every transaction contributes not only to economic success, but also makes a measurable contribution to climate protection. For BidBlitz, sustainability is not a trend – it\'s a promise.',
+      subtitle: 'bidblitz.ae – Because success only counts when it\'s sustainable',
+      description: 'Every transaction contributes not only to economic success, but also makes a measurable contribution to climate protection. For bidblitz.ae, sustainability is not a trend – it\'s a promise.',
       projectsTitle: 'Our Projects',
       projectsDesc: 'We support local initiatives and promote sustainable projects in the community.',
       donationsTitle: 'Donations & Help',
@@ -73,7 +73,7 @@ const SustainabilitySection = () => {
     },
     sq: {
       title: 'Inovacion me Përgjegjësi',
-      subtitle: 'BidBlitz – Sepse suksesi vlen vetëm kur është i qëndrueshëm',
+      subtitle: 'bidblitz.ae – Sepse suksesi vlen vetëm kur është i qëndrueshëm',
       description: 'Çdo transaksion kontribon jo vetëm në suksesin ekonomik, por gjithashtu bën një kontribut të matshëm në mbrojtjen e klimës.',
       projectsTitle: 'Projektet Tona',
       projectsDesc: 'Ne mbështesim iniciativat lokale dhe promovojmë projekte të qëndrueshme në komunitet.',
@@ -93,7 +93,7 @@ const SustainabilitySection = () => {
     },
     xk: {
       title: 'Inovacion me Përgjegjësi',
-      subtitle: 'BidBlitz – Sepse suksesi vlen vetëm kur është i qëndrueshëm',
+      subtitle: 'bidblitz.ae – Sepse suksesi vlen vetëm kur është i qëndrueshëm',
       description: 'Çdo transaksion kontribon jo vetëm në suksesin ekonomik, por gjithashtu bën një kontribut të matshëm në mbrojtjen e klimës.',
       projectsTitle: 'Projektet Tona',
       projectsDesc: 'Ne mbështesim iniciativat lokale dhe promovojmë projekte të qëndrueshme në komunitet.',
@@ -113,7 +113,7 @@ const SustainabilitySection = () => {
     },
     tr: {
       title: 'Sorumlulukla İnovasyon',
-      subtitle: 'BidBlitz – Başarı ancak sürdürülebilir olduğunda değerlidir',
+      subtitle: 'bidblitz.ae – Başarı ancak sürdürülebilir olduğunda değerlidir',
       description: 'Her işlem yalnızca ekonomik başarıya değil, aynı zamanda iklim korumasına da ölçülebilir bir katkı sağlar.',
       projectsTitle: 'Projelerimiz',
       projectsDesc: 'Yerel girişimleri destekliyoruz ve toplulukta sürdürülebilir projeleri teşvik ediyoruz.',
@@ -133,7 +133,7 @@ const SustainabilitySection = () => {
     },
     fr: {
       title: 'Innovation avec Responsabilité',
-      subtitle: 'BidBlitz – Car le succès ne compte que s\'il est durable',
+      subtitle: 'bidblitz.ae – Car le succès ne compte que s\'il est durable',
       description: 'Chaque transaction contribue non seulement au succès économique, mais apporte également une contribution mesurable à la protection du climat.',
       projectsTitle: 'Nos Projets',
       projectsDesc: 'Nous soutenons les initiatives locales et promouvons des projets durables dans la communauté.',
@@ -275,7 +275,7 @@ const SustainabilitySection = () => {
           <p className="text-emerald-700 font-medium text-lg italic mb-4">"{text.quote}"</p>
           <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
             <Leaf className="w-4 h-4 text-emerald-500" />
-            <span>BidBlitz – {text.title}</span>
+            <span>bidblitz.ae – {text.title}</span>
             <Leaf className="w-4 h-4 text-emerald-500" />
           </div>
         </div>

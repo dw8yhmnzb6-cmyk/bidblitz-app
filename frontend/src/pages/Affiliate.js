@@ -17,7 +17,7 @@ const affiliateTexts = {
   de: {
     title: "Affiliate",
     titleHighlight: "Partner-Programm",
-    subtitle: "Verdienen Sie Geld, indem Sie BidBlitz empfehlen. Erhalten Sie bis zu €9 pro Lead!",
+    subtitle: "Verdienen Sie Geld, indem Sie bidblitz.ae empfehlen. Erhalten Sie bis zu €9 pro Lead!",
     leadsPerMonth: "Leads/Monat",
     perLead: "pro Lead",
     minPerLead: "Mindestens €8 pro Lead",
@@ -60,7 +60,7 @@ const affiliateTexts = {
   en: {
     title: "Affiliate",
     titleHighlight: "Partner Program",
-    subtitle: "Earn money by recommending BidBlitz. Get up to €9 per lead!",
+    subtitle: "Earn money by recommending bidblitz.ae. Get up to €9 per lead!",
     leadsPerMonth: "Leads/Month",
     perLead: "per lead",
     minPerLead: "At least €8 per lead",
@@ -103,7 +103,7 @@ const affiliateTexts = {
   sq: {
     title: "Filiale",
     titleHighlight: "Programi i Partneritetit",
-    subtitle: "Fitoni para duke rekomanduar BidBlitz. Merrni deri në 9€ për çdo lead!",
+    subtitle: "Fitoni para duke rekomanduar bidblitz.ae. Merrni deri në 9€ për çdo lead!",
     leadsPerMonth: "Lead/Muaj",
     perLead: "për lead",
     minPerLead: "Së paku 8€ për lead",
@@ -146,7 +146,7 @@ const affiliateTexts = {
   tr: {
     title: "Ortaklık",
     titleHighlight: "Programı",
-    subtitle: "BidBlitz'i tavsiye ederek para kazanın. Lead başına 9€'ya kadar kazanın!",
+    subtitle: "bidblitz.ae'i tavsiye ederek para kazanın. Lead başına 9€'ya kadar kazanın!",
     leadsPerMonth: "Lead/Ay",
     perLead: "lead başına",
     minPerLead: "Lead başına en az 8€",
@@ -189,7 +189,7 @@ const affiliateTexts = {
   fr: {
     title: "Programme",
     titleHighlight: "d'Affiliation",
-    subtitle: "Gagnez de l'argent en recommandant BidBlitz. Obtenez jusqu'à 9€ par lead!",
+    subtitle: "Gagnez de l'argent en recommandant bidblitz.ae. Obtenez jusqu'à 9€ par lead!",
     leadsPerMonth: "Leads/Mois",
     perLead: "par lead",
     minPerLead: "Au moins 8€ par lead",

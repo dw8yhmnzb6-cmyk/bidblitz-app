@@ -281,7 +281,7 @@ export default function GiftCards() {
             <Gift className="w-10 h-10 text-gray-800" />
           </div>
           <h1 className="text-4xl font-bold text-gray-800 mb-2">Geschenkkarten</h1>
-          <p className="text-gray-500 text-lg">Verschenken Sie Freude mit BidBlitz Geschenkkarten</p>
+          <p className="text-gray-500 text-lg">Verschenken Sie Freude mit bidblitz.ae Geschenkkarten</p>
           
           {/* Toggle to redeem */}
           <button
@@ -492,7 +492,7 @@ export default function GiftCards() {
                   <div className="flex items-center gap-3">
                     <Gift className="w-8 h-8 text-[#F59E0B]" />
                     <div>
-                      <p className="text-gray-800 font-bold text-xl">BidBlitz Geschenkkarte</p>
+                      <p className="text-gray-800 font-bold text-xl">bidblitz.ae Geschenkkarte</p>
                       <p className="text-gray-500 text-sm">Digitale Geschenkkarte</p>
                     </div>
                   </div>

@@ -97,7 +97,7 @@ const WinnerCelebration = ({ isWinner, productName, finalPrice, onClose }) => {
               if (navigator.share) {
                 navigator.share({
                   title: 'Ich habe gewonnen!',
-                  text: `Ich habe ${productName} für nur €${finalPrice?.toFixed(2)} bei BidBlitz gewonnen! 🎉`,
+                  text: `Ich habe ${productName} für nur €${finalPrice?.toFixed(2)} bei bidblitz.ae gewonnen! 🎉`,
                   url: window.location.href
                 });
               }

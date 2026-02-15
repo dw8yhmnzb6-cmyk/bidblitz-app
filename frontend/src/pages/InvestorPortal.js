@@ -296,7 +296,7 @@ export default function InvestorPortal() {
             💼 {t.title || 'Investor Portal'}
           </h1>
           <p className="text-gray-500">
-            {t.subtitle || 'Investieren Sie in die Zukunft von BidBlitz'}
+            {t.subtitle || 'Investieren Sie in die Zukunft von bidblitz.ae'}
           </p>
         </div>
         
@@ -403,7 +403,7 @@ export default function InvestorPortal() {
             
             {/* Why Invest Section */}
             <div className="glass-card rounded-xl p-6">
-              <h3 className="text-gray-800 font-bold text-lg mb-4">{t.whyInvest || 'Warum in BidBlitz investieren?'}</h3>
+              <h3 className="text-gray-800 font-bold text-lg mb-4">{t.whyInvest || 'Warum in bidblitz.ae investieren?'}</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="p-4 bg-white rounded-lg">
                   <div className="w-10 h-10 bg-[#7C3AED]/20 rounded-lg flex items-center justify-center mb-3">
@@ -457,7 +457,7 @@ export default function InvestorPortal() {
             <div className="glass-card rounded-2xl p-8 bg-gradient-to-br from-[#7C3AED]/10 to-[#06B6D4]/10 border border-[#7C3AED]/20">
               <h2 className="text-2xl font-bold text-gray-800 mb-4 text-center">🚀 {t.ourVision || 'Unsere Vision'}</h2>
               <p className="text-gray-500 text-center max-w-3xl mx-auto mb-6">
-                {t.visionDesc || 'BidBlitz revolutioniert den E-Commerce durch spannende Penny-Auktionen. Mit Ihrer Investition helfen Sie uns, europaweit zu expandieren und die führende Plattform für Schnäppchenjäger zu werden.'}
+                {t.visionDesc || 'bidblitz.ae revolutioniert den E-Commerce durch spannende Penny-Auktionen. Mit Ihrer Investition helfen Sie uns, europaweit zu expandieren und die führende Plattform für Schnäppchenjäger zu werden.'}
               </p>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="text-center p-4">
@@ -499,7 +499,7 @@ export default function InvestorPortal() {
                   </div>
                   <h3 className="text-gray-800 font-bold mb-2">🏆 {t.companyShares || 'Unternehmensanteile'}</h3>
                   <p className="text-gray-500 text-sm mb-3">
-                    {t.sharesDesc || 'Sie werden Miteigentümer von BidBlitz mit Stimmrecht bei wichtigen Entscheidungen.'}
+                    {t.sharesDesc || 'Sie werden Miteigentümer von bidblitz.ae mit Stimmrecht bei wichtigen Entscheidungen.'}
                   </p>
                   <div className="text-[#7C3AED] font-bold">0.01% - 1% {t.equity || 'Equity'}</div>
                 </div>

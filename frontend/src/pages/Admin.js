@@ -1057,13 +1057,13 @@ export default function Admin() {
 <body style="margin:0;padding:0;font-family:Arial,sans-serif;background:#f4f4f4;">
 <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;margin:0 auto;background:#fff;">
 <tr><td style="background:linear-gradient(135deg,#7C3AED,#EC4899);padding:30px;text-align:center;">
-<h1 style="color:#fff;margin:0;font-size:28px;">🎉 Willkommen bei BidBlitz!</h1>
+<h1 style="color:#fff;margin:0;font-size:28px;">🎉 Willkommen bei bidblitz.ae!</h1>
 </td></tr>
 <tr><td style="padding:30px;">
 <p style="font-size:18px;color:#333;">Hallo <strong>{name}</strong>,</p>
 <p style="color:#555;line-height:1.6;">Vielen Dank für Ihre Registrierung! Als Willkommensgeschenk haben wir Ihnen <strong>10 kostenlose Gebote</strong> gutgeschrieben.</p>
 <p style="text-align:center;margin:30px 0;"><a href="https://bidblitz.de/auctions" style="background:#7C3AED;color:#fff;padding:15px 30px;text-decoration:none;border-radius:8px;font-weight:bold;">Jetzt mitbieten</a></p>
-<p style="color:#888;font-size:14px;">Viel Erfolg beim Bieten!<br>Ihr BidBlitz Team</p>
+<p style="color:#888;font-size:14px;">Viel Erfolg beim Bieten!<br>Ihr bidblitz.ae Team</p>
 </td></tr>
 </table>
 </body>
@@ -1081,7 +1081,7 @@ export default function Admin() {
 <p style="font-size:18px;color:#333;">Hallo <strong>{name}</strong>,</p>
 <p style="color:#555;line-height:1.6;">Eine neue spannende Auktion wurde soeben gestartet! Verpassen Sie nicht Ihre Chance auf ein tolles Schnäppchen.</p>
 <p style="text-align:center;margin:30px 0;"><a href="https://bidblitz.de/auctions" style="background:#FFD700;color:#111;padding:15px 30px;text-decoration:none;border-radius:8px;font-weight:bold;">Zur Auktion</a></p>
-<p style="color:#888;font-size:14px;">Viel Erfolg beim Bieten!<br>Ihr BidBlitz Team</p>
+<p style="color:#888;font-size:14px;">Viel Erfolg beim Bieten!<br>Ihr bidblitz.ae Team</p>
 </td></tr>
 </table>
 </body>
@@ -1764,7 +1764,7 @@ export default function Admin() {
       >
         <Bug className="w-6 h-6 group-hover:scale-110 transition-transform" />
         <span className="absolute -top-10 left-0 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-          Hey BidBlitz 🎤
+          Hey bidblitz.ae 🎤
         </span>
       </button>
       

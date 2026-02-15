@@ -14,7 +14,7 @@ const API = process.env.REACT_APP_BACKEND_URL;
 const translations = {
   de: {
     title: 'Geschenkkarten',
-    subtitle: 'Verschenke BidBlitz Gebote an Freunde und Familie!',
+    subtitle: 'Verschenke bidblitz.ae Gebote an Freunde und Familie!',
     buyCard: 'Geschenkkarte kaufen',
     sendGift: 'Geschenk senden',
     myCards: 'Meine Karten',
@@ -57,7 +57,7 @@ const translations = {
   },
   en: {
     title: 'Gift Cards',
-    subtitle: 'Gift BidBlitz bids to friends and family!',
+    subtitle: 'Gift bidblitz.ae bids to friends and family!',
     buyCard: 'Buy Gift Card',
     sendGift: 'Send Gift',
     myCards: 'My Cards',
@@ -100,7 +100,7 @@ const translations = {
   },
   sq: {
     title: 'Kartat e Dhuratave',
-    subtitle: 'Dhuro ofertat BidBlitz miqve dhe familjes!',
+    subtitle: 'Dhuro ofertat bidblitz.ae miqve dhe familjes!',
     buyCard: 'Bli Kartën e Dhuratës',
     sendGift: 'Dërgo Dhuratë',
     myCards: 'Kartat e Mia',
@@ -143,7 +143,7 @@ const translations = {
   },
   xk: {
     title: 'Kartat e Dhuratave',
-    subtitle: 'Dhuro ofertat BidBlitz miqve dhe familjes!',
+    subtitle: 'Dhuro ofertat bidblitz.ae miqve dhe familjes!',
     buyCard: 'Bli Kartën e Dhuratës',
     sendGift: 'Dërgo Dhuratë',
     myCards: 'Kartat e Mia',
@@ -450,7 +450,7 @@ const GiftCardsPage = () => {
               <div className={`bg-gradient-to-br ${selectedDesign.color} rounded-xl p-6 text-white`}>
                 <div className="text-center">
                   <p className="text-5xl mb-4">{selectedDesign.icon}</p>
-                  <h3 className="text-2xl font-black mb-2">BidBlitz Geschenk</h3>
+                  <h3 className="text-2xl font-black mb-2">bidblitz.ae Geschenk</h3>
                   <p className="text-4xl font-black">{selectedPackage.bids} {t.bids}</p>
                   {personalMessage && (
                     <p className="mt-4 italic text-white/80">"{personalMessage}"</p>
