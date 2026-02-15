@@ -1,6 +1,6 @@
 {
-  "name": "BidBlitz - Penny Auktionen",
-  "short_name": "BidBlitz",
+  "name": "bidblitz.ae - Penny Auktionen",
+  "short_name": "bidblitz.ae",
   "description": "Penny Auktion Plattform - Biete und gewinne Produkte zu unglaublichen Preisen!",
   "start_url": "/",
   "display": "standalone",
@@ -69,7 +69,7 @@
       "sizes": "512x512",
       "type": "image/png",
       "form_factor": "narrow",
-      "label": "BidBlitz App"
+      "label": "bidblitz.ae App"
     }
   ],
   "related_applications": [],
