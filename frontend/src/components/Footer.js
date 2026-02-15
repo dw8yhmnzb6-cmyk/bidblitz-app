@@ -197,7 +197,7 @@ export const Footer = () => {
                 <Zap className="w-5 h-5 text-black" />
               </div>
               <span className="text-xl font-heading font-black text-white">
-                Bid<span className="text-acid">Blitz</span>
+                bidblitz<span className="text-acid">.ae</span>
               </span>
             </Link>
             <p className="text-gray-400 text-sm font-body">
