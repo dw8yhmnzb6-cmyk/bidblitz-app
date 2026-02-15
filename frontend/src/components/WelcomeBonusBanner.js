@@ -83,7 +83,7 @@ const WelcomeBonusBanner = memo(({ language = 'de' }) => {
     if (!isAuthenticated) {
       navigate('/register');
     } else {
-      navigate('/gebot-pakete');
+      navigate('/buy-bids');
     }
   };
   
