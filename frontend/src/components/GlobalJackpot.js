@@ -128,7 +128,8 @@ export default function GlobalJackpot({ className = '' }) {
     };
 
     fetchJackpot();
-    const interval = setInterval(fetchJackpot, 3000);
+    // Reduced frequency from 3s to 15s - jackpot doesn't change that often
+    const interval = setInterval(fetchJackpot, 15000);
     return () => clearInterval(interval);
   }, []);
 
