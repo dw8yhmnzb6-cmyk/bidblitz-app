@@ -188,6 +188,57 @@ async def get_bid_buddy_status(auction_id: str, user: dict = Depends(get_current
         "remaining_bids": buddy["max_bids"] - buddy["bids_placed"]
     }
 
+@router.get("/strategies")
+async def get_strategies():
+    """Get available bid buddy strategies"""
+    return {
+        "strategies": [
+            {
+                "id": key,
+                **value
+            }
+            for key, value in BID_STRATEGIES.items()
+        ]
+    }
+
+@router.get("/stats")
+async def get_bid_buddy_stats(user: dict = Depends(get_current_user)):
+    """Get bid buddy statistics for the user"""
+    user_id = user["id"]
+    
+    # Get all bid buddies (active and inactive)
+    total_buddies = await db.bid_buddies.count_documents({"user_id": user_id})
+    active_buddies = await db.bid_buddies.count_documents({"user_id": user_id, "is_active": True})
+    
+    # Calculate total bids placed by bid buddies
+    pipeline = [
+        {"$match": {"user_id": user_id}},
+        {"$group": {
+            "_id": None,
+            "total_bids_placed": {"$sum": "$bids_placed"},
+            "total_wins": {"$sum": "$wins"},
+            "total_max_bids_allocated": {"$sum": "$max_bids"}
+        }}
+    ]
+    
+    stats_result = await db.bid_buddies.aggregate(pipeline).to_list(1)
+    stats = stats_result[0] if stats_result else {"total_bids_placed": 0, "total_wins": 0, "total_max_bids_allocated": 0}
+    
+    # Get recent bid buddy history
+    recent = await db.bid_buddies.find(
+        {"user_id": user_id},
+        {"_id": 0, "auction_name": 1, "bids_placed": 1, "wins": 1, "is_active": 1, "strategy": 1, "created_at": 1}
+    ).sort("created_at", -1).limit(10).to_list(10)
+    
+    return {
+        "total_bid_buddies_created": total_buddies,
+        "active_bid_buddies": active_buddies,
+        "total_bids_placed_by_buddies": stats.get("total_bids_placed", 0),
+        "total_wins_with_buddy": stats.get("total_wins", 0),
+        "win_rate": round(stats.get("total_wins", 0) / max(total_buddies, 1) * 100, 1),
+        "recent_buddies": recent
+    }
+
 # ==================== INTERNAL FUNCTION (called by auction system) ====================
 
 async def process_bid_buddies(auction_id: str, current_price: float, last_bidder_id: str):
