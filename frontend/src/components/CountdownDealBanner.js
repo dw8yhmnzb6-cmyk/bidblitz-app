@@ -197,8 +197,9 @@ const CountdownDealBanner = memo(({ language = 'de' }) => {
           <div className="flex items-center gap-2">
             <button
               onClick={handleClaim}
-              className="flex items-center gap-2 px-5 py-2.5 bg-white text-red-600 font-black rounded-full
-                hover:bg-yellow-300 transition-all transform hover:scale-105 shadow-lg"
+              className="flex items-center gap-2 px-5 py-3 sm:py-2.5 bg-white text-red-600 font-black rounded-full
+                hover:bg-yellow-300 transition-all transform hover:scale-105 shadow-lg
+                active:scale-95 touch-manipulation min-h-[44px]"
               data-testid="countdown-deal-cta"
             >
               <Gift className="w-4 h-4" />
