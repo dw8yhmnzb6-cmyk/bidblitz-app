@@ -187,25 +187,21 @@ function AppContent() {
       {/* Scroll to top on route change */}
       <ScrollToTopOnNavigate />
       
-      {/* Live Winner Popup - Shows real-time win notifications */}
-      <LiveWinnerPopup language={mappedLanguage || language} />
-      
-      {/* Welcome Bonus Banner - Shows for new users */}
-      <WelcomeBonusBanner language={mappedLanguage || language} />
-      
-      {/* Countdown Deal Banner - Time-limited offers */}
-      <CountdownDealBanner language={mappedLanguage || language} />
-      
-      {/* Abandoned Cart Reminder - Floating widget */}
-      <AbandonedCartReminder language={mappedLanguage || language} />
-      
-      {/* Language Hint Banner - Shows when not German */}
-      <LanguageHintBanner />
-      
+      {/* Navbar - Fixed at top */}
       <Navbar />
       
-      {/* Happy Hour Banner - After Navbar */}
-      <HappyHourBanner />
+      {/* Floating popups and widgets - These are position:fixed, don't affect layout */}
+      <LiveWinnerPopup language={mappedLanguage || language} />
+      <AbandonedCartReminder language={mappedLanguage || language} />
+      <LanguageHintBanner />
+      
+      {/* Main content wrapper - Offset for fixed navbar */}
+      <div className="pt-16">
+        {/* Promotional Banners - Show above main content */}
+        <WelcomeBonusBanner language={mappedLanguage || language} />
+        <CountdownDealBanner language={mappedLanguage || language} />
+        <HappyHourBanner />
+      </div>
       
       <main className="flex-grow">
         <Routes>
