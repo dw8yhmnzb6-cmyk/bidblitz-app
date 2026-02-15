@@ -5,6 +5,32 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 
 ## Current Status (February 15, 2026)
 
+### ✅ Session Update - February 15, 2026 (Session 21) - 1v1 DUELLE BUGFIX 🔧
+
+**Bug Fix: "Network Error" auf der 1v1 Duelle Seite behoben**
+
+Der Benutzer meldete einen "Network Error" auf der Duelle-Seite. Die Ursache wurde identifiziert und behoben:
+
+#### 🔧 Problem:
+- Die Frontend-Seite `DuelsPage.js` rief den API-Endpoint `/api/duels/challenges` auf
+- Dieser Endpoint existierte nicht im Backend `/app/backend/routers/duels.py`
+- Resultat: 404 Not Found → "Network Error" im Frontend
+
+#### ✅ Lösung:
+- **Neuer Endpoint hinzugefügt:** `GET /api/duels/challenges`
+- Gibt alle ausstehenden Duell-Herausforderungen für den eingeloggten Benutzer zurück
+- Mit Challenger-Usernamen angereichert
+
+#### 📋 Geänderte Dateien:
+- `/app/backend/routers/duels.py` - Neuer `/challenges` Endpoint hinzugefügt
+
+#### ✅ Test-Ergebnis:
+- API-Endpoint getestet mit curl: Gibt `{"challenges": []}` zurück ✅
+- Screenshot der Duelle-Seite: Kein Network Error mehr ✅
+- "Funktionen & Extras" Seite lädt korrekt ✅
+
+---
+
 ### ✅ Session Update - February 15, 2026 (Session 20) - RESTAURANT, GUTSCHEINE, AUTOBIDDER & ÜBERSETZUNG 🚀
 
 **Implementierte Features:**
