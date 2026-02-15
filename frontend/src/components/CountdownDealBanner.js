@@ -118,26 +118,23 @@ const CountdownDealBanner = memo(({ language = 'de' }) => {
   
   if (dismissed) return null;
   
-  const handleClaim = () => {
+  const handleClaim = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
     if (!isAuthenticated) {
-      // Not logged in - scroll to registration or navigate there
+      // Not logged in - try to scroll to registration, otherwise navigate
       const registerSection = document.getElementById('quick-register');
-      if (registerSection) {
+      if (registerSection && registerSection.children.length > 0) {
+        // Element exists and has content
         registerSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        toast.success(language === 'de' ? 'Registriere dich jetzt!' : 'Register now!');
       } else {
-        // Not on homepage, navigate there with scroll param
-        if (location.pathname !== '/') {
-          navigate('/?scrollTo=quick-register');
-        } else {
-          // On homepage but element not found, navigate to register page
-          navigate('/register');
-        }
+        // Navigate directly to register page
+        navigate('/register');
       }
     } else {
       // Logged in - go to buy bids
       navigate('/buy-bids');
-      toast.success(language === 'de' ? 'Sichere dir jetzt Gebote!' : 'Get your bids now!');
     }
   };
   
