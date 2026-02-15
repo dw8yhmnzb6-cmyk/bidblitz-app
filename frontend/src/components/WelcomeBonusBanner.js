@@ -82,21 +82,25 @@ const WelcomeBonusBanner = memo(({ language = 'de' }) => {
   }
   
   const handleClaim = () => {
-    console.log('WelcomeBonusBanner: handleClaim clicked, isAuthenticated:', isAuthenticated);
-    
     if (!isAuthenticated) {
-      // First check if quick-register exists on current page
+      // Not logged in - scroll to registration or navigate there
       const registerSection = document.getElementById('quick-register');
       if (registerSection) {
-        console.log('Found quick-register, scrolling...');
         registerSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        toast.success(language === 'de' ? 'Registriere dich jetzt!' : 'Register now!');
       } else {
-        console.log('quick-register not found, navigating to /?scrollTo=quick-register');
-        navigate('/?scrollTo=quick-register');
+        // Not on homepage, navigate there with scroll param
+        if (location.pathname !== '/') {
+          navigate('/?scrollTo=quick-register');
+        } else {
+          // On homepage but element not found, navigate to register page
+          navigate('/register');
+        }
       }
     } else {
-      console.log('User authenticated, navigating to /buy-bids');
+      // Logged in - go to buy bids
       navigate('/buy-bids');
+      toast.success(language === 'de' ? 'Sichere dir jetzt Gebote!' : 'Get your bids now!');
     }
   };
   
