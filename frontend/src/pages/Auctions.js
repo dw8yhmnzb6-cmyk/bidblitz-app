@@ -1287,10 +1287,37 @@ export default function Auctions() {
     { id: 'vip', label: t('auctionPage.filters.vip') || 'VIP', count: auctionCounts.vip, color: 'from-yellow-400 to-amber-500', icon: '⭐' }
   ];
   
+  // Show skeleton loading instead of full page spinner
   if (loading) {
     return (
-      <div className="min-h-screen bg-cyan-100 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-10 w-10 border-4 border-cyan-600 border-t-transparent" />
+      <div className="min-h-screen bg-gradient-to-b from-cyan-200 to-cyan-300 p-2 pt-4 overflow-x-hidden">
+        {/* Skeleton for Features Banner */}
+        <div className="max-w-7xl mx-auto mb-3 px-2">
+          <div className="h-12 bg-white/50 rounded-xl animate-pulse" />
+        </div>
+        
+        {/* Skeleton for Jackpot */}
+        <div className="max-w-4xl mx-auto mb-4 px-2">
+          <div className="h-20 bg-white/50 rounded-xl animate-pulse" />
+        </div>
+        
+        {/* Skeleton for Filter Buttons */}
+        <div className="max-w-7xl mx-auto mb-3 px-2">
+          <div className="flex gap-2 justify-center">
+            {[1,2,3,4,5].map(i => (
+              <div key={i} className="h-8 w-20 bg-white/50 rounded-full animate-pulse" />
+            ))}
+          </div>
+        </div>
+        
+        {/* Skeleton for Auction Grid */}
+        <div className="max-w-7xl mx-auto px-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2">
+            {[1,2,3,4,5,6,7,8,9,10,11,12].map(i => (
+              <div key={i} className="bg-white/50 rounded-lg h-[280px] animate-pulse" />
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
