@@ -209,9 +209,9 @@ const CountdownDealBanner = memo(({ language = 'de' }) => {
             
             <button
               onClick={() => setDismissed(true)}
-              className="p-1.5 hover:bg-white/20 rounded-full transition-colors"
+              className="p-2 sm:p-1.5 hover:bg-white/20 rounded-full transition-colors touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center"
             >
-              <X className="w-4 h-4 text-white" />
+              <X className="w-5 h-5 sm:w-4 sm:h-4 text-white" />
             </button>
           </div>
         </div>
