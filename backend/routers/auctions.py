@@ -362,20 +362,35 @@ async def get_auctions():
 
 @router.get("/auctions/ended")
 async def get_ended_auctions(limit: int = 50):
-    """Get recently ended auctions from history (for 'Ende' tab)"""
+    """Get recently ended auctions from history (for 'Ende' tab) - OPTIMIZED"""
     # Get from auction_history collection (auto-restart saves here before restarting)
     history = await db.auction_history.find(
         {},
         {"_id": 0}
     ).sort("ended_at", -1).to_list(limit)
     
-    # Enrich with product info if not present
+    # OPTIMIZATION: Fetch all missing products at once
+    product_ids_needed = [
+        e.get("product_id") for e in history 
+        if not e.get("product") and e.get("product_id")
+    ]
+    
+    if product_ids_needed:
+        products_list = await db.products.find(
+            {"id": {"$in": list(set(product_ids_needed))}},
+            {"_id": 0}
+        ).to_list(len(product_ids_needed))
+        products_map = {p["id"]: p for p in products_list}
+        
+        # Enrich with product info
+        for entry in history:
+            if not entry.get("product") and entry.get("product_id"):
+                product = products_map.get(entry["product_id"])
+                if product:
+                    entry["product"] = product
+    
+    # Add status field for frontend compatibility
     for entry in history:
-        if not entry.get("product") and entry.get("product_id"):
-            product = await db.products.find_one({"id": entry["product_id"]}, {"_id": 0})
-            if product:
-                entry["product"] = product
-        # Add status field for frontend compatibility
         entry["status"] = "ended"
     
     return history
