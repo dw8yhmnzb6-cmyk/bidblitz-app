@@ -5,48 +5,42 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 
 ## Current Status (February 15, 2026)
 
-### ✅ Session Update - February 15, 2026 (Session 20) - DASHBOARD ÜBERSETZUNGEN VOLLSTÄNDIG 🌍
+### ✅ Session Update - February 15, 2026 (Session 20) - UI-STABILITÄT & ÜBERSETZUNGEN 🎯
 
-**Bug Fix: "Achievements" und andere Dashboard-Texte waren nicht übersetzt**
+**Behobene Probleme:**
 
-Das Problem war, dass mehrere UI-Elemente im Dashboard hart-kodiert auf Deutsch waren.
+#### 1. 🌍 Dashboard-Übersetzungen vollständig repariert
+- **15+ hart-kodierte Texte** durch übersetzbare Keys ersetzt
+- **Arabisch (ar)** als neue Sprache hinzugefügt
+- Alle **8 Sprachen** werden jetzt vollständig unterstützt
 
-#### 🔧 Behobene Probleme in Dashboard.js:
+#### 2. 🚀 Seitenlade-Performance drastisch verbessert
+**Problem:** Seite flackerte und "sprang" beim Laden und Scrollen
 
-1. **Neue Sprache hinzugefügt: Arabisch (ar)**
-   - Vollständige Übersetzungen für alle Dashboard-Keys
+**Fixes in Auctions.js:**
+- Auto-Refresh von 30s auf 60s reduziert (nur für AOTD und beendete Auktionen)
+- WebSocket übernimmt jetzt alle Live-Updates
+- AuctionCards haben jetzt feste Höhen (`min-h-[280px]`)
+- Skeleton-Loading für schnellere wahrgenommene Ladezeit
+- Bilder haben `loading="lazy"` und `onError` Handler
 
-2. **15+ hart-kodierte Texte durch übersetzbare Keys ersetzt:**
-   - `achievements` → "Erfolge" (DE), "Arritjet" (SQ), "Başarılar" (TR), etc.
-   - `noAchievementsYet` → "Noch keine Achievements - starte jetzt!"
-   - `achievementsAndRewards` → "Erfolge & Belohnungen"
-   - `activeBids` → "Aktive Gebote"
-   - `comeBackTomorrow` → "Komm morgen wieder!"
-   - `sevenDaysBonus` → "7 Tage = +10 Bonus-Gebote!"
-   - `editProfile` → "Profil bearbeiten"
-   - `bidHistory` → "Gebots-Historie"
-   - `myPurchases` → "Meine Käufe"
-   - `invoices` → "Rechnungen"
-   - `inviteFriends` → "Freunde einladen"
-   - `quickAccess` → "Schnellzugriff"
-   - `lastBidder` → "Letzter Bieter"
-   - `discoverLiveAuctions` → "Live-Auktionen entdecken"
-   - `myActiveAuctions` → "Meine aktiven Auktionen"
-   - `lastPurchases` → "Letzte Käufe"
-   - `bidPackage` → "Gebotspaket"
+**Fixes in Komponenten:**
+- `GlobalJackpot.js`: Refresh von 3s auf 15s
+- `LastChanceAuctions.js`: Refresh von 10s/15s auf 20s/30s
+- `ExcitementFeatures.js`: Alle Intervalle von 3-5s auf 10-20s
 
-3. **Alle 8 Sprachen vollständig unterstützt:**
-   - Deutsch (de) ✅
-   - Englisch (en) ✅
-   - Albanisch (sq) ✅
-   - Kosovo (xk) ✅
-   - Türkisch (tr) ✅
-   - Französisch (fr) ✅
-   - Spanisch (es) ✅
-   - Arabisch (ar) ✅ NEU
+#### 3. ✅ WelcomeBonusBanner wieder aktiviert
+- Banner zeigt "50% EXTRA-GEBOTE für Neukunden"
+- Layout-stabil durch intelligente Placeholder-Logik
 
 #### 📋 Geänderte Dateien:
-- `/app/frontend/src/pages/Dashboard.js` - Alle Übersetzungen hinzugefügt
+- `/app/frontend/src/pages/Dashboard.js` - Übersetzungen
+- `/app/frontend/src/pages/Auctions.js` - Performance & Layout
+- `/app/frontend/src/components/GlobalJackpot.js` - Refresh-Intervall
+- `/app/frontend/src/components/LastChanceAuctions.js` - Refresh-Intervalle
+- `/app/frontend/src/components/ExcitementFeatures.js` - Refresh-Intervalle
+- `/app/frontend/src/components/WelcomeBonusBanner.js` - Layout-Stabilität
+- `/app/frontend/src/App.js` - Banner reaktiviert
 
 ---
 
