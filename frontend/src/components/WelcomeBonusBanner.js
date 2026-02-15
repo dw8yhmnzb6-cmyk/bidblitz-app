@@ -59,6 +59,7 @@ const translations = {
 const WelcomeBonusBanner = memo(({ language = 'de' }) => {
   const { isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [dismissed, setDismissed] = useState(false);
   const [hasClaimedBonus, setHasClaimedBonus] = useState(false);
   
