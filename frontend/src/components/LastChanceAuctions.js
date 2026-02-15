@@ -223,8 +223,8 @@ const LastChanceSection = memo(({ language = 'de' }) => {
     };
     
     fetchEndingSoon();
-    // Refresh every 15 seconds to get new ending-soon auctions
-    const refreshInterval = setInterval(fetchEndingSoon, 15000);
+    // Refresh every 30 seconds to get new ending-soon auctions (reduced from 15s)
+    const refreshInterval = setInterval(fetchEndingSoon, 30000);
     return () => clearInterval(refreshInterval);
   }, []);
   
