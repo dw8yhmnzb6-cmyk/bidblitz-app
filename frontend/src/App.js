@@ -194,6 +194,8 @@ function AppContent() {
       
       {/* Floating popups - Enabled for user engagement */}
       <AbandonedCartReminder language={mappedLanguage || language} />
+      <OutbidNotification />
+      <OnboardingTour />
       {/* <LiveWinnerPopup language={mappedLanguage || language} /> */}
       {/* <LanguageHintBanner /> */}
       
