@@ -184,6 +184,7 @@ const LastChanceSection = memo(({ language = 'de' }) => {
   
   const t = translations[effectiveLang] || translations.de;
   
+  // Fetch ending soon auctions
   useEffect(() => {
     const fetchEndingSoon = async () => {
       try {
@@ -193,12 +194,13 @@ const LastChanceSection = memo(({ language = 'de' }) => {
           .filter(a => {
             const endTime = new Date(a.end_time).getTime();
             const timeLeft = (endTime - now) / 1000;
-            return timeLeft > 0 && timeLeft < 300;
+            return timeLeft > 0 && timeLeft < 300; // Less than 5 minutes
           })
           .sort((a, b) => new Date(a.end_time) - new Date(b.end_time));
         setAuctions(endingSoon);
       } catch (err) {
         console.error('Error fetching ending soon:', err);
+        setAuctions([]);
       } finally {
         setLoading(false);
       }
@@ -210,7 +212,7 @@ const LastChanceSection = memo(({ language = 'de' }) => {
     return () => clearInterval(refreshInterval);
   }, []);
   
-  // Auto-remove expired auctions from display
+  // Auto-remove expired auctions from display every second
   useEffect(() => {
     if (auctions.length === 0) return;
     
@@ -225,16 +227,6 @@ const LastChanceSection = memo(({ language = 'de' }) => {
     const timer = setInterval(checkExpired, 1000);
     return () => clearInterval(timer);
   }, [auctions.length]);
-        setAuctions([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchEndingSoon();
-    const interval = setInterval(fetchEndingSoon, 5000);
-    return () => clearInterval(interval);
-  }, []);
   
   // Force re-render every second for countdown
   const [, forceUpdate] = useState(0);
