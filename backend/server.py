@@ -1507,16 +1507,42 @@ async def day_night_auction_scheduler():
                         {"$set": {"status": "day_paused", "paused_at": datetime.now(timezone.utc).isoformat()}}
                     )
                     
-                    # Resume night auctions
-                    night_result = await db.auctions.update_many(
+                    # Resume night auctions - extend end_time by remaining paused time or minimum 2 hours
+                    # This preserves the auction's intended duration rather than resetting to 10 minutes
+                    night_auctions = await db.auctions.find(
                         {"status": "night_paused", "is_night_auction": True},
-                        {"$set": {
-                            "status": "active",
-                            "end_time": (datetime.now(timezone.utc) + timedelta(minutes=10)).isoformat()
-                        }}
-                    )
+                        {"_id": 0, "id": 1, "paused_at": 1, "end_time": 1}
+                    ).to_list(500)
                     
-                    logger.info(f"🌙 Night mode: Paused {day_result.modified_count} day auctions, Resumed {night_result.modified_count} night auctions")
+                    for auction in night_auctions:
+                        # Calculate how much time was remaining when paused
+                        paused_at = auction.get("paused_at")
+                        original_end = auction.get("end_time")
+                        
+                        # Default: extend by 2 hours minimum
+                        new_end_time = datetime.now(timezone.utc) + timedelta(hours=2)
+                        
+                        if paused_at and original_end:
+                            try:
+                                paused_time = datetime.fromisoformat(paused_at.replace("Z", "+00:00"))
+                                end_time = datetime.fromisoformat(original_end.replace("Z", "+00:00"))
+                                remaining_time = (end_time - paused_time).total_seconds()
+                                
+                                # If auction was supposed to run longer, preserve that
+                                if remaining_time > 7200:  # More than 2 hours
+                                    new_end_time = datetime.now(timezone.utc) + timedelta(seconds=remaining_time)
+                            except:
+                                pass
+                        
+                        await db.auctions.update_one(
+                            {"id": auction["id"]},
+                            {"$set": {
+                                "status": "active",
+                                "end_time": new_end_time.isoformat()
+                            }}
+                        )
+                    
+                    logger.info(f"🌙 Night mode: Paused {day_result.modified_count} day auctions, Resumed {len(night_auctions)} night auctions")
                     
                 else:
                     # DAY MODE: Resume day auctions, pause night auctions
