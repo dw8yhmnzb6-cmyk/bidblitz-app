@@ -219,6 +219,18 @@ async def get_won_auction(auction_id: str, user: dict = Depends(get_current_user
         if product:
             won_auction["is_bid_voucher"] = product.get("is_bid_voucher", False)
             won_auction["bid_amount"] = product.get("bid_amount", 0)
+            # Ensure retail_price is set
+            if not won_auction.get("retail_price"):
+                won_auction["retail_price"] = product.get("retail_price", 0)
+        
+        # Ensure final_price is never 0 for non-free auctions
+        if not won_auction.get("final_price") or won_auction.get("final_price") == 0:
+            if not won_auction.get("is_free_auction", False):
+                # Try to get from current_price or set minimum
+                won_auction["final_price"] = won_auction.get("current_price", 0.01)
+                if won_auction["final_price"] == 0:
+                    won_auction["final_price"] = 0.01
+        
         return won_auction
     
     # Fallback: check in user's won_auctions list
