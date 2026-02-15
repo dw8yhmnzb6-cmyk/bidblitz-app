@@ -658,16 +658,18 @@ const AuctionCard = memo(({ auction, product, onBid, t, language, langKey, isAut
     <div className={`bg-gradient-to-b from-cyan-50 to-cyan-100 rounded-lg overflow-hidden border border-cyan-300 cursor-pointer hover:shadow-lg transition-shadow min-h-[280px] flex flex-col ${isNightPaused ? 'opacity-60' : ''}`}
          onClick={() => window.location.href = `/auctions/${auction.id}`}>
       
-      {/* Header with Badges + Timer - Fixed height */}
-      <div className={`${headerBg} text-white text-xs font-bold py-1.5 px-3 flex items-center justify-between h-8 flex-shrink-0`}>
-        <div className="flex items-center gap-1 flex-wrap max-w-[60%]">
+      {/* Header with Badges + Timer - Fixed height, no overlap */}
+      <div className={`${headerBg} text-white text-[10px] sm:text-xs font-bold py-1 px-2 flex items-center justify-between h-7 sm:h-8 flex-shrink-0 gap-1`}>
+        <div className="flex items-center gap-0.5 flex-shrink-0 max-w-[45%] overflow-hidden">
           {badges}
         </div>
-        {isNightPaused ? (
-          <span className="text-xs opacity-80">{auction.night_message || '🌙 23:30-06:00'}</span>
-        ) : (
-          <LiveTimer endTime={auction.end_time} />
-        )}
+        <div className="flex-shrink-0">
+          {isNightPaused ? (
+            <span className="text-[10px] opacity-80">{auction.night_message || '🌙 23:30-06:00'}</span>
+          ) : (
+            <LiveTimer endTime={auction.end_time} />
+          )}
+        </div>
       </div>
       
       {/* Content - Flex grow to fill space */}
