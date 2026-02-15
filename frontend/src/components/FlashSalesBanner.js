@@ -288,7 +288,7 @@ const FlashSalesBanner = ({ onPurchase }) => {
               )}
               
               <Button
-                onClick={() => handlePurchase(sale.id)}
+                onClick={() => handlePurchase(sale)}
                 className="bg-white text-red-600 hover:bg-yellow-100 font-bold px-6 py-2 rounded-full shadow-lg transform hover:scale-105 transition-all"
                 data-testid={`flash-sale-buy-${sale.id}`}
               >
