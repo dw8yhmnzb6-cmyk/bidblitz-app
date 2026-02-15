@@ -10,63 +10,114 @@ from dependencies import get_current_user, get_admin_user
 
 router = APIRouter(prefix="/bid-bundles", tags=["Bid Bundles"])
 
-# Default Bid Bundles Configuration
+# Default Bid Bundles Configuration with enhanced offers
 DEFAULT_BUNDLES = [
     {
         "id": "bundle_starter",
         "name": "Starter",
+        "name_translations": {"de": "Starter", "en": "Starter", "ar": "المبتدئ", "tr": "Başlangıç"},
         "bids": 50,
-        "bonus_bids": 0,
-        "price": 29.00,
-        "price_per_bid": 0.58,
+        "bonus_bids": 5,  # Small bonus added
+        "price": 25.00,  # Price reduced
+        "price_per_bid": 0.45,
         "badge": None,
-        "savings_percent": 0,
+        "savings_percent": 10,
         "active": True
     },
     {
         "id": "bundle_basic",
         "name": "Basic",
+        "name_translations": {"de": "Basic", "en": "Basic", "ar": "الأساسي", "tr": "Temel"},
         "bids": 100,
-        "bonus_bids": 10,
-        "price": 49.00,
-        "price_per_bid": 0.45,
-        "badge": None,
-        "savings_percent": 22,
+        "bonus_bids": 20,  # Increased bonus
+        "price": 45.00,  # Price reduced
+        "price_per_bid": 0.38,
+        "badge": "💰 SPARE 20%",
+        "savings_percent": 25,
         "active": True
     },
     {
         "id": "bundle_popular",
         "name": "Beliebt",
+        "name_translations": {"de": "Beliebt", "en": "Popular", "ar": "الأكثر شيوعاً", "tr": "Popüler"},
         "bids": 250,
-        "bonus_bids": 50,
-        "price": 99.00,
-        "price_per_bid": 0.33,
+        "bonus_bids": 75,  # Increased bonus
+        "price": 89.00,  # Price reduced
+        "price_per_bid": 0.27,
         "badge": "⭐ BELIEBT",
-        "savings_percent": 43,
+        "savings_percent": 45,
         "active": True,
         "highlighted": True
     },
     {
         "id": "bundle_pro",
         "name": "Pro",
+        "name_translations": {"de": "Pro", "en": "Pro", "ar": "المحترف", "tr": "Pro"},
         "bids": 500,
-        "bonus_bids": 150,
-        "price": 179.00,
-        "price_per_bid": 0.28,
+        "bonus_bids": 200,  # Increased bonus
+        "price": 159.00,  # Price reduced
+        "price_per_bid": 0.23,
         "badge": "🔥 BESTE WAHL",
-        "savings_percent": 52,
+        "savings_percent": 55,
         "active": True
     },
     {
         "id": "bundle_vip",
         "name": "VIP",
+        "name_translations": {"de": "VIP", "en": "VIP", "ar": "كبار الشخصيات", "tr": "VIP"},
         "bids": 1000,
-        "bonus_bids": 400,
-        "price": 299.00,
-        "price_per_bid": 0.21,
+        "bonus_bids": 500,  # 50% bonus!
+        "price": 279.00,  # Price reduced
+        "price_per_bid": 0.19,
         "badge": "👑 VIP",
-        "savings_percent": 64,
+        "savings_percent": 65,
         "active": True
+    },
+    {
+        "id": "bundle_mega",
+        "name": "Mega",
+        "name_translations": {"de": "Mega", "en": "Mega", "ar": "ميجا", "tr": "Mega"},
+        "bids": 2000,
+        "bonus_bids": 1200,  # 60% bonus!
+        "price": 449.00,
+        "price_per_bid": 0.14,
+        "badge": "🚀 MEGA DEAL",
+        "savings_percent": 75,
+        "active": True
+    }
+]
+
+# Flash Sale Bundles (time-limited offers)
+FLASH_SALE_BUNDLES = [
+    {
+        "id": "flash_weekend",
+        "name": "Weekend Special",
+        "name_translations": {"de": "Wochenend-Special", "en": "Weekend Special", "ar": "عرض نهاية الأسبوع", "tr": "Hafta Sonu Özel"},
+        "bids": 300,
+        "bonus_bids": 150,  # 50% extra!
+        "price": 79.00,
+        "original_price": 119.00,
+        "price_per_bid": 0.18,
+        "badge": "🔥 -34% WEEKEND",
+        "savings_percent": 70,
+        "active": True,
+        "is_flash_sale": True,
+        "valid_days": ["Saturday", "Sunday"]
+    },
+    {
+        "id": "flash_firsttime",
+        "name": "Erstkäufer-Bonus",
+        "name_translations": {"de": "Erstkäufer-Bonus", "en": "First-Time Buyer Bonus", "ar": "مكافأة المشتري الجديد", "tr": "İlk Alıcı Bonusu"},
+        "bids": 150,
+        "bonus_bids": 100,  # 67% extra!
+        "price": 49.00,
+        "original_price": 89.00,
+        "price_per_bid": 0.20,
+        "badge": "🎁 NEUKUNDEN",
+        "savings_percent": 65,
+        "active": True,
+        "is_flash_sale": True,
+        "first_purchase_only": True
     }
 ]
 
