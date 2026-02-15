@@ -41,7 +41,7 @@ class ProductTranslationRequest(BaseModel):
 async def translate_text_with_llm(text: str, source_lang: str, target_lang: str) -> str:
     """Translate text using Emergent LLM (GPT)"""
     try:
-        from emergentintegrations.llm.chat import chat, UserMessage
+        from emergentintegrations.llm.chat import LlmChat, UserMessage
         
         prompt = f"""Translate the following text from {SUPPORTED_LANGUAGES.get(source_lang, source_lang)} to {SUPPORTED_LANGUAGES.get(target_lang, target_lang)}.
 Only return the translation, nothing else. Keep product names, brand names, and technical specifications unchanged.
@@ -49,13 +49,17 @@ Only return the translation, nothing else. Keep product names, brand names, and 
 Text to translate:
 {text}"""
         
-        response = await chat(
-            api_key=os.environ.get("EMERGENT_API_KEY"),
-            messages=[UserMessage(content=prompt)],
-            model="gpt-4o-mini"
-        )
+        # Use the new LlmChat API
+        chat = LlmChat(
+            api_key=os.environ.get("EMERGENT_LLM_KEY"),
+            session_id=f"translate_{source_lang}_{target_lang}",
+            system_message="You are a professional translator. Only output the translated text, nothing else."
+        ).with_model("openai", "gpt-4o-mini")
         
-        return response.content.strip()
+        user_message = UserMessage(text=prompt)
+        response = await chat.send_message(user_message)
+        
+        return response.strip() if response else text
     except Exception as e:
         logger.error(f"Translation error: {e}")
         return text  # Return original on error
