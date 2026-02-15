@@ -142,6 +142,38 @@ class BundleUpdate(BaseModel):
 
 # ==================== PUBLIC ENDPOINTS ====================
 
+@router.get("/flash-sales")
+async def get_flash_sales(user: dict = Depends(get_current_user)):
+    """Get current flash sale bundles"""
+    from datetime import datetime
+    
+    now = datetime.now(timezone.utc)
+    current_day = now.strftime("%A")
+    
+    available_flash_sales = []
+    
+    for bundle in FLASH_SALE_BUNDLES:
+        # Check if valid for current day
+        if bundle.get("valid_days") and current_day not in bundle["valid_days"]:
+            continue
+        
+        # Check first purchase only
+        if bundle.get("first_purchase_only"):
+            purchases = await db.purchases.count_documents({
+                "user_id": user["id"],
+                "type": "bids"
+            })
+            if purchases > 0:
+                continue
+        
+        available_flash_sales.append(bundle)
+    
+    return {
+        "flash_sales": available_flash_sales,
+        "current_day": current_day,
+        "ends_in_hours": 24 - now.hour  # Simplified countdown
+    }
+
 @router.get("/available")
 async def get_available_bundles(user: dict = Depends(get_current_user)):
     """Get all available bid bundles for purchase"""
