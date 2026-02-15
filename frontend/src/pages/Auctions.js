@@ -609,17 +609,19 @@ const AuctionCard = memo(({ auction, product, onBid, t, language, langKey, isAut
   // Collect all badges for this auction
   const badges = [];
   
-  // Discount badge (always show)
-  badges.push(
-    <span key="discount" className="bg-red-500 text-white px-2 py-0.5 rounded text-xs font-bold">
-      -{discount}%
-    </span>
-  );
+  // Discount badge - only show if discount is positive and reasonable
+  if (discount > 0 && discount <= 100) {
+    badges.push(
+      <span key="discount" className="bg-red-500 text-white px-1.5 py-0.5 rounded text-[10px] font-bold whitespace-nowrap">
+        -{discount}%
+      </span>
+    );
+  }
   
   // Special auction type badges
   if (auction.is_vip_only) {
     badges.push(
-      <span key="vip" className="bg-yellow-500 text-black px-2 py-0.5 rounded text-xs font-bold">
+      <span key="vip" className="bg-yellow-500 text-black px-1.5 py-0.5 rounded text-[10px] font-bold">
         VIP
       </span>
     );
@@ -627,7 +629,7 @@ const AuctionCard = memo(({ auction, product, onBid, t, language, langKey, isAut
   
   if (auction.is_beginner_only) {
     badges.push(
-      <span key="beginner" className="bg-purple-500 text-white px-2 py-0.5 rounded text-xs font-bold">
+      <span key="beginner" className="bg-purple-500 text-white px-1.5 py-0.5 rounded text-[10px] font-bold">
         🎓
       </span>
     );
@@ -637,8 +639,8 @@ const AuctionCard = memo(({ auction, product, onBid, t, language, langKey, isAut
   
   if (auction.is_night_auction) {
     badges.push(
-      <span key="night" className="bg-indigo-600 text-white px-2 py-0.5 rounded text-xs font-bold" title={t('auctionPage.nightTime')}>
-        🌙 {t('auctionPage.filters.night').toUpperCase()}
+      <span key="night" className="bg-indigo-600 text-white px-1.5 py-0.5 rounded text-[10px] font-bold" title={t('auctionPage.nightTime')}>
+        🌙
       </span>
     );
   }
