@@ -843,141 +843,20 @@ export default function AuctionDetail() {
                     </div>
                   )}
 
-                  {/* Bid Buddy / Autobidder Section */}
+                  {/* Bid Buddy / Autobidder Section - Using enhanced BidBuddyCard */}
                   {isAuthenticated && (
                     <div className="border-t border-gray-200 pt-4">
-                      {/* Active Bid Buddy Status */}
-                      {activeAutobidder && (
-                        <div className="mb-4 p-4 rounded-lg bg-gradient-to-r from-[#7C3AED]/20 to-[#06B6D4]/20 border border-[#7C3AED]/30" data-testid="active-autobidder">
-                          <div className="flex items-center justify-between mb-3">
-                            <div className="flex items-center gap-2">
-                              <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-                              <span className="text-[#7C3AED] font-bold">🤖 Bid Buddy aktiv</span>
-                            </div>
-                            <Button
-                              onClick={handleDeactivateAutobidder}
-                              variant="ghost"
-                              size="sm"
-                              className="text-red-400 hover:text-red-300 hover:bg-red-500/10 h-8 px-2"
-                            >
-                              Stoppen
-                            </Button>
-                          </div>
-                          <div className="grid grid-cols-2 gap-3 text-sm">
-                            <div className="bg-black/20 rounded-lg p-2">
-                              <p className="text-gray-500 text-xs">Verbleibende Gebote</p>
-                              <p className="text-gray-800 font-bold text-lg">
-                                {activeAutobidder.max_bids - (activeAutobidder.bids_placed || 0)} / {activeAutobidder.max_bids}
-                              </p>
-                            </div>
-                            <div className="bg-black/20 rounded-lg p-2">
-                              <p className="text-gray-500 text-xs">Platzierte Gebote</p>
-                              <p className="text-[#10B981] font-bold text-lg">{activeAutobidder.bids_placed || 0}</p>
-                            </div>
-                            {activeAutobidder.max_price && (
-                              <div className="bg-black/20 rounded-lg p-2 col-span-2">
-                                <p className="text-gray-500 text-xs">Max. Preis</p>
-                                <p className="text-gray-800 font-bold">€{activeAutobidder.max_price?.toFixed(2)}</p>
-                              </div>
-                            )}
-                          </div>
-                          <p className="text-gray-500 text-xs mt-3 text-center">
-                            ⚡ Bietet automatisch in den letzten {activeAutobidder.bid_in_last_seconds || 10} Sekunden
-                          </p>
-                        </div>
-                      )}
-
-                      {/* Setup New Bid Buddy */}
-                      {!activeAutobidder && !showAutobidder && (
-                        <Button
-                          onClick={() => setShowAutobidder(true)}
-                          variant="outline"
-                          className="w-full border-[#7C3AED]/50 text-[#7C3AED] hover:bg-[#7C3AED]/10"
-                          data-testid="show-autobidder-btn"
-                        >
-                          <Zap className="w-5 h-5 mr-2" />
-                          {dtl.bidBuddy}
-                        </Button>
-                      )}
-
-                      {/* Bid Buddy Setup Form */}
-                      {showAutobidder && !activeAutobidder && (
-                        <div className="space-y-4 p-4 rounded-lg bg-white" data-testid="autobidder-form">
-                          <div className="flex items-center gap-2 text-[#7C3AED]">
-                            <Zap className="w-5 h-5" />
-                            <span className="font-bold">{dtl.bidBuddy}</span>
-                          </div>
-                          <p className="text-gray-500 text-sm">
-                            {dtl.bidBuddyDesc}
-                          </p>
-                          
-                          {/* Max Bids */}
-                          <div className="space-y-2">
-                            <Label className="text-gray-800">{language === 'en' ? 'Maximum bids' : language === 'sq' ? 'Oferta maksimale' : language === 'tr' ? 'Maksimum teklif' : language === 'fr' ? 'Enchères maximum' : 'Maximale Anzahl Gebote'}</Label>
-                            <Input
-                              type="number"
-                              min="1"
-                              max={user?.bids_balance || 100}
-                              value={maxBids}
-                              onChange={(e) => setMaxBids(e.target.value)}
-                              placeholder={language === 'en' ? 'e.g. 10' : language === 'sq' ? 'p.sh. 10' : language === 'tr' ? 'örn. 10' : language === 'fr' ? 'ex. 10' : 'z.B. 10'}
-                              className="bg-gradient-to-b from-cyan-50 to-cyan-100 border-gray-200 text-gray-800"
-                              data-testid="max-bids-input"
-                            />
-                            <p className="text-gray-500 text-xs">{language === 'en' ? 'Available' : language === 'sq' ? 'Në dispozicion' : language === 'tr' ? 'Mevcut' : language === 'fr' ? 'Disponible' : 'Verfügbar'}: {user?.bids_balance || 0}</p>
-                          </div>
-
-                          {/* Max Price (optional) */}
-                          <div className="space-y-2">
-                            <Label className="text-gray-800">{language === 'en' ? 'Max price (€)' : language === 'sq' ? 'Çmimi maks (€)' : language === 'tr' ? 'Maks fiyat (€)' : language === 'fr' ? 'Prix max (€)' : 'Maximaler Preis (€)'} <span className="text-gray-500">- {language === 'en' ? 'optional' : language === 'sq' ? 'opsionale' : language === 'tr' ? 'isteğe bağlı' : language === 'fr' ? 'optionnel' : 'optional'}</span></Label>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              min={auction.current_price + 0.01}
-                              value={maxPrice}
-                              onChange={(e) => setMaxPrice(e.target.value)}
-                              placeholder={`${language === 'en' ? 'e.g.' : language === 'sq' ? 'p.sh.' : language === 'tr' ? 'örn.' : language === 'fr' ? 'ex.' : 'z.B.'} ${(auction.current_price * 2).toFixed(2)}`}
-                              className="bg-gradient-to-b from-cyan-50 to-cyan-100 border-gray-200 text-gray-800"
-                              data-testid="max-price-input"
-                            />
-                            <p className="text-gray-500 text-xs">{language === 'en' ? 'Stops when this price is reached' : language === 'sq' ? 'Ndalet kur arrihet ky çmim' : language === 'tr' ? 'Bu fiyata ulaşıldığında durur' : language === 'fr' ? 'S\'arrête quand ce prix est atteint' : 'Stoppt wenn dieser Preis erreicht ist'}</p>
-                          </div>
-
-                          {/* Bid in Last Seconds */}
-                          <div className="space-y-2">
-                            <Label className="text-gray-800">{language === 'en' ? 'Bid in last seconds' : language === 'sq' ? 'Ofertohet në sekondat e fundit' : language === 'tr' ? 'Son saniyelerde teklif ver' : language === 'fr' ? 'Enchérir dans les dernières secondes' : 'Bieten in letzten Sekunden'}</Label>
-                            <select
-                              value={bidInLastSeconds}
-                              onChange={(e) => setBidInLastSeconds(e.target.value)}
-                              className="w-full h-10 px-3 bg-gradient-to-b from-cyan-50 to-cyan-100 border border-gray-200 rounded-md text-gray-800"
-                              data-testid="bid-seconds-select"
-                            >
-                              <option value="5">5 {language === 'en' ? 'seconds' : language === 'sq' ? 'sekonda' : language === 'tr' ? 'saniye' : language === 'fr' ? 'secondes' : 'Sekunden'}</option>
-                              <option value="10">10 {language === 'en' ? 'seconds' : language === 'sq' ? 'sekonda' : language === 'tr' ? 'saniye' : language === 'fr' ? 'secondes' : 'Sekunden'}</option>
-                              <option value="15">15 {language === 'en' ? 'seconds' : language === 'sq' ? 'sekonda' : language === 'tr' ? 'saniye' : language === 'fr' ? 'secondes' : 'Sekunden'}</option>
-                              <option value="20">20 {language === 'en' ? 'seconds' : language === 'sq' ? 'sekonda' : language === 'tr' ? 'saniye' : language === 'fr' ? 'secondes' : 'Sekunden'}</option>
-                            </select>
-                          </div>
-
-                          <div className="flex gap-2">
-                            <Button
-                              onClick={handleSetAutobidder}
-                              disabled={settingAutobidder}
-                              className="flex-1 bg-[#7C3AED] hover:bg-[#6D28D9]"
-                              data-testid="activate-autobidder-btn"
-                            >
-                              {settingAutobidder ? '...' : (language === 'en' ? 'Activate' : language === 'sq' ? 'Aktivizo' : language === 'tr' ? 'Aktifleştir' : language === 'fr' ? 'Activer' : 'Aktivieren')}
-                            </Button>
-                            <Button
-                              onClick={() => setShowAutobidder(false)}
-                              variant="outline"
-                              className="border-gray-200 text-gray-800 hover:bg-white/10"
-                            >
-                              {language === 'en' ? 'Cancel' : language === 'sq' ? 'Anulo' : language === 'tr' ? 'İptal' : language === 'fr' ? 'Annuler' : 'Abbrechen'}
-                            </Button>
-                          </div>
-                        </div>
-                      )}
+                      <BidBuddyCard 
+                        auctionId={id}
+                        auctionName={productName}
+                        currentPrice={auction.current_price}
+                        userBids={user?.bids_balance || 0}
+                        langKey={langKey}
+                        onActivate={(buddy) => {
+                          setActiveAutobidder(buddy);
+                          toast.success(dtl.bidBuddyActivated);
+                        }}
+                      />
                     </div>
                   )}
                 </div>
