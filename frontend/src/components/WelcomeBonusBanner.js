@@ -75,6 +75,7 @@ const WelcomeBonusBanner = memo(({ language = 'de' }) => {
   }, [isAuthenticated, user]);
   
   // Don't show if authenticated user has already purchased or dismissed
+  // Return empty placeholder to maintain layout stability
   if (dismissed || (isAuthenticated && hasClaimedBonus)) {
     return null;
   }
