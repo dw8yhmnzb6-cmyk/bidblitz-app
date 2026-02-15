@@ -1155,11 +1155,12 @@ async def auction_auto_restart_processor():
                     elif isinstance(auto_restart_raw, dict):
                         auto_restart_enabled = auto_restart_raw.get("enabled", True)
                     else:
-                        # Default: regular auctions always restart
-                        auto_restart_enabled = True
+                        # Default: ONLY restart if auto_restart is explicitly enabled
+                        # This prevents creating new auctions with wrong times
+                        auto_restart_enabled = False
                     
-                    # Skip if auto_restart is explicitly disabled
-                    if auto_restart_enabled is False:
+                    # Skip if auto_restart is not explicitly enabled
+                    if auto_restart_enabled is False or auto_restart_enabled is None:
                         continue
                     
                     # Check if auction has been ended for at least 3 seconds
