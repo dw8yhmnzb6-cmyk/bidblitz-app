@@ -9,25 +9,30 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 
 **Bug Fix: "Network Error" auf der 1v1 Duelle Seite behoben**
 
-Der Benutzer meldete einen "Network Error" auf der Duelle-Seite. Die Ursache wurde identifiziert und behoben:
+Der Benutzer meldete einen "Network Error" auf der Duelle-Seite. Die Ursachen wurden identifiziert und behoben:
 
-#### 🔧 Problem:
+#### 🔧 Problem 1: Fehlender API-Endpoint
 - Die Frontend-Seite `DuelsPage.js` rief den API-Endpoint `/api/duels/challenges` auf
 - Dieser Endpoint existierte nicht im Backend `/app/backend/routers/duels.py`
 - Resultat: 404 Not Found → "Network Error" im Frontend
 
-#### ✅ Lösung:
-- **Neuer Endpoint hinzugefügt:** `GET /api/duels/challenges`
-- Gibt alle ausstehenden Duell-Herausforderungen für den eingeloggten Benutzer zurück
-- Mit Challenger-Usernamen angereichert
+#### 🔧 Problem 2: Inkonsistente Bid-Felder
+- Backend prüfte `bids` Feld, aber Datenbank verwendet `bids_balance`
+- User mit `bids_balance > 0` wurden als "Nicht genug Gebote" abgelehnt
+
+#### ✅ Lösungen:
+1. **Neuer Endpoint:** `GET /api/duels/challenges` hinzugefügt
+2. **Bid-Feld-Support:** Backend prüft jetzt sowohl `bids` als auch `bids_balance`
+3. **Bessere Fehlermeldungen:** Frontend zeigt jetzt die echte API-Fehlermeldung statt generischem "Network error"
 
 #### 📋 Geänderte Dateien:
-- `/app/backend/routers/duels.py` - Neuer `/challenges` Endpoint hinzugefügt
+- `/app/backend/routers/duels.py` - Neuer `/challenges` Endpoint, beide Bid-Felder unterstützt
+- `/app/frontend/src/pages/DuelsPage.js` - Verbesserte Fehlerbehandlung
 
 #### ✅ Test-Ergebnis:
-- API-Endpoint getestet mit curl: Gibt `{"challenges": []}` zurück ✅
-- Screenshot der Duelle-Seite: Kein Network Error mehr ✅
-- "Funktionen & Extras" Seite lädt korrekt ✅
+- API-Endpoints getestet: `my-duels`, `challenges`, `create` ✅
+- Mobile Screenshot: Keine "Network Error" mehr ✅
+- Duell-Erstellung funktioniert ✅
 
 ---
 
