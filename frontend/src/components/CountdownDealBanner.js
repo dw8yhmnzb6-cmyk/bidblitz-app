@@ -118,13 +118,8 @@ const CountdownDealBanner = memo(({ language = 'de' }) => {
   
   const handleClaim = () => {
     if (!isAuthenticated) {
-      // Scroll to registration section or navigate if not on home page
-      const registerSection = document.getElementById('quick-register');
-      if (registerSection) {
-        registerSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      } else {
-        navigate('/register');
-      }
+      // Navigate to auctions page with scroll target
+      navigate('/?scrollTo=quick-register');
     } else {
       navigate('/buy-bids');
     }
