@@ -298,9 +298,11 @@ const AuctionOfTheDay = memo(({ auction, product, onBid, t, language, langKey, i
                 ⭐ VIP
               </span>
             )}
-            <div className="bg-red-500 text-white px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-xs sm:text-sm font-bold ">
-              -{discount}%
-            </div>
+            {discount > 0 && discount <= 100 && (
+              <div className="bg-red-500 text-white px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-xs sm:text-sm font-bold ">
+                -{discount}%
+              </div>
+            )}
           </div>
         </div>
         
