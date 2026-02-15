@@ -226,7 +226,7 @@ const AuctionOfTheDay = memo(({ auction, product, onBid, t, language, langKey, i
   // If expired, don't render
   if (isExpired) return null;
   
-  const discount = product.retail_price 
+  const discount = product.retail_price && product.retail_price > auction.current_price
     ? Math.round((1 - auction.current_price / product.retail_price) * 100)
     : 99;
   
@@ -561,7 +561,7 @@ const AuctionCard = memo(({ auction, product, onBid, t, language, langKey, isAut
   const productName = product.name_translations?.[effectiveLangKey] || product.name;
   const productDescription = product.description_translations?.[effectiveLangKey] || product.description || product.short_description;
   
-  const discount = product.retail_price 
+  const discount = product.retail_price && product.retail_price > auction.current_price
     ? Math.round((1 - auction.current_price / product.retail_price) * 100)
     : 99;
   
