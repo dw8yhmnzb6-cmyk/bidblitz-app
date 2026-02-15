@@ -84,7 +84,7 @@ const howItWorksTranslations = {
     timeBonusDesc: "The timer is extended by 10-15 seconds",
     savings: "Savings",
     savingsDesc: "Save up to 99% on top brands",
-    whybidblitz.ae: "Why bidblitz.ae?",
+    whyBidblitz: "Why bidblitz.ae?",
     fairAuctions: "Fair Auctions",
     fairAuctionsDesc: "Everyone has an equal chance to win. No gambling, just strategy.",
     realTimeUpdates: "Real-time Updates",
@@ -135,7 +135,7 @@ const howItWorksTranslations = {
     timeBonusDesc: "Koha zgjatet me 10-15 sekonda",
     savings: "Kursime",
     savingsDesc: "Kurseni deri në 99% në markat më të mira",
-    whybidblitz.ae: "Pse bidblitz.ae?",
+    whyBidblitz: "Pse bidblitz.ae?",
     fairAuctions: "Ankande të Drejta",
     fairAuctionsDesc: "Të gjithë kanë shanse të barabarta për të fituar. Nuk është bixhoz, vetëm strategji.",
     realTimeUpdates: "Përditësime në Kohë Reale",
@@ -171,7 +171,7 @@ const howItWorksTranslations = {
     timeBonusDesc: "Zamanlayıcı 10-15 saniye uzatılır",
     savings: "Tasarruf",
     savingsDesc: "En iyi markalarda %99'a kadar tasarruf edin",
-    whybidblitz.ae: "Neden bidblitz.ae?",
+    whyBidblitz: "Neden bidblitz.ae?",
     fairAuctions: "Adil Açık Artırmalar",
     fairAuctionsDesc: "Herkesin kazanma şansı eşit. Kumar değil, sadece strateji.",
     realTimeUpdates: "Gerçek Zamanlı Güncellemeler",
@@ -207,7 +207,7 @@ const howItWorksTranslations = {
     timeBonusDesc: "يتم تمديد المؤقت بـ 10-15 ثانية",
     savings: "التوفير",
     savingsDesc: "وفر حتى 99% على أفضل العلامات التجارية",
-    whybidblitz.ae: "لماذا bidblitz.ae؟",
+    whyBidblitz: "لماذا bidblitz.ae؟",
     fairAuctions: "مزادات عادلة",
     fairAuctionsDesc: "الجميع لديه فرصة متساوية للفوز. ليس قمارًا، فقط استراتيجية.",
     realTimeUpdates: "تحديثات فورية",
@@ -243,7 +243,7 @@ const howItWorksTranslations = {
     timeBonusDesc: "Le minuteur est prolongé de 10-15 secondes",
     savings: "Économies",
     savingsDesc: "Économisez jusqu'à 99% sur les meilleures marques",
-    whybidblitz.ae: "Pourquoi bidblitz.ae?",
+    whyBidblitz: "Pourquoi bidblitz.ae?",
     fairAuctions: "Enchères équitables",
     fairAuctionsDesc: "Tout le monde a une chance égale de gagner. Pas de jeu de hasard, juste de la stratégie.",
     realTimeUpdates: "Mises à jour en temps réel",
@@ -386,7 +386,7 @@ export default function HowItWorks() {
 
         {/* Features */}
         <div className="mb-16">
-          <h2 className={`text-2xl font-bold mb-8 text-center ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>{t.whybidblitz.ae}</h2>
+          <h2 className={`text-2xl font-bold mb-8 text-center ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>{t.whyBidblitz}</h2>
           <div className="grid md:grid-cols-3 gap-6">
             {features.map((feature, index) => (
               <div 
