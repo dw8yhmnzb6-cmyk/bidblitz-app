@@ -5,7 +5,8 @@
 import { useState, useEffect, memo } from 'react';
 import { Gift, Sparkles, ArrowRight, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { toast } from 'sonner';
 
 const translations = {
   de: {
