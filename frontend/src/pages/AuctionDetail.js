@@ -12,6 +12,7 @@ import { Timer, Users, Zap, ArrowLeft, Trophy, Tag, Package, Wifi, WifiOff, Eye,
 import { toast } from 'sonner';
 import { getProductName, getProductDescription } from '../utils/productTranslation';
 import AuctionProbability from '../components/AuctionProbability';
+import BidBuddyCard from '../components/BidBuddyCard';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
