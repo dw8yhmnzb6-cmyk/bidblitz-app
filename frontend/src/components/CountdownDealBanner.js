@@ -117,10 +117,20 @@ const CountdownDealBanner = memo(({ language = 'de' }) => {
   if (dismissed) return null;
   
   const handleClaim = () => {
+    console.log('CountdownDealBanner: handleClaim clicked, isAuthenticated:', isAuthenticated);
+    
     if (!isAuthenticated) {
-      // Navigate to auctions page with scroll target
-      navigate('/?scrollTo=quick-register');
+      // First check if quick-register exists on current page
+      const registerSection = document.getElementById('quick-register');
+      if (registerSection) {
+        console.log('Found quick-register, scrolling...');
+        registerSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else {
+        console.log('quick-register not found, navigating to /?scrollTo=quick-register');
+        navigate('/?scrollTo=quick-register');
+      }
     } else {
+      console.log('User authenticated, navigating to /buy-bids');
       navigate('/buy-bids');
     }
   };
