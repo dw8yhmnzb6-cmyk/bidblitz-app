@@ -298,7 +298,7 @@ const AuctionOfTheDay = memo(({ auction, product, onBid, t, language, langKey, i
                 ⭐ VIP
               </span>
             )}
-            <div className="bg-red-500 text-white px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-xs sm:text-sm font-bold animate-pulse">
+            <div className="bg-red-500 text-white px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-xs sm:text-sm font-bold ">
               -{discount}%
             </div>
           </div>
@@ -513,7 +513,7 @@ const LiveTimer = memo(({ endTime, isPaused }) => {
   return (
     <span className={`font-mono text-xs font-bold px-1.5 py-0.5 rounded transition-colors duration-300 ${
       isPaused ? 'bg-indigo-600 text-white' :
-      isLow ? 'bg-red-500 text-white animate-pulse' : 
+      isLow ? 'bg-red-500 text-white ' : 
       isLong ? 'bg-green-600 text-white' : 
       'bg-blue-600 text-white'
     }`}>
