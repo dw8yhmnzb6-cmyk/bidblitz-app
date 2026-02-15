@@ -144,13 +144,15 @@ const WhatsAppSettings = memo(({ language = 'de' }) => {
     
     setSaving(true);
     try {
-      await axios.post(`${API}/whatsapp/register`, 
-        { phone_number: phone },
+      // Use the correct endpoint: /subscribe instead of /register
+      await axios.post(`${API}/whatsapp/subscribe?phone_number=${encodeURIComponent(phone)}`, 
+        {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
       toast.success(t.saved);
       setPhoneVerified(true);
     } catch (err) {
+      console.error('WhatsApp save error:', err);
       toast.error(t.error);
     } finally {
       setSaving(false);
