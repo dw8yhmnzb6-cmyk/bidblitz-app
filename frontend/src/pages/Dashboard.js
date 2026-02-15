@@ -643,14 +643,14 @@ export default function Dashboard() {
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
                   <History className="w-5 h-5 text-[#7C3AED]" />
-                  Gebots-Historie
+                  {dt.bidHistory}
                 </h2>
                 <Link to="/bid-history" className="text-[#FFD700] text-sm hover:underline flex items-center gap-1">
-                  Alle anzeigen <ChevronRight className="w-4 h-4" />
+                  {dt.viewAll} <ChevronRight className="w-4 h-4" />
                 </Link>
               </div>
               {recentBids.length === 0 ? (
-                <p className="text-gray-500 text-center py-4">Noch keine Gebote abgegeben</p>
+                <p className="text-gray-500 text-center py-4">{dt.noBidsYet}</p>
               ) : (
                 <div className="space-y-2">
                   {recentBids.slice(0, 5).map((bid, index) => (
