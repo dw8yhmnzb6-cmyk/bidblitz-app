@@ -5,8 +5,7 @@
 import { useState, useEffect, memo } from 'react';
 import { Gift, Sparkles, ArrowRight, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { toast } from 'sonner';
+import { useNavigate } from 'react-router-dom';
 
 const translations = {
   de: {
@@ -59,7 +58,6 @@ const translations = {
 const WelcomeBonusBanner = memo(({ language = 'de' }) => {
   const { isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
   const [dismissed, setDismissed] = useState(false);
   const [hasClaimedBonus, setHasClaimedBonus] = useState(false);
   

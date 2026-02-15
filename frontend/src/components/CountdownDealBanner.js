@@ -4,9 +4,8 @@
  */
 import { useState, useEffect, memo } from 'react';
 import { Clock, Zap, Gift, ArrowRight, X } from 'lucide-react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { toast } from 'sonner';
 
 const translations = {
   de: {
@@ -68,7 +67,6 @@ const DEALS = [
 
 const CountdownDealBanner = memo(({ language = 'de' }) => {
   const navigate = useNavigate();
-  const location = useLocation();
   const { isAuthenticated } = useAuth();
   const [dismissed, setDismissed] = useState(false);
   const [timeLeft, setTimeLeft] = useState({ hours: 2, mins: 0, secs: 0 });
