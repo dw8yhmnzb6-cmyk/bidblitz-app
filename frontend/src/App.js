@@ -190,16 +190,16 @@ function AppContent() {
       {/* Navbar - Fixed at top */}
       <Navbar />
       
-      {/* Floating popups and widgets */}
-      <LiveWinnerPopup language={mappedLanguage || language} />
+      {/* Floating popups - ALL DISABLED to prevent layout jumping */}
+      {/* <LiveWinnerPopup language={mappedLanguage || language} /> */}
       {/* <AbandonedCartReminder language={mappedLanguage || language} /> */}
       {/* <LanguageHintBanner /> */}
       
       {/* Main content wrapper - Offset for fixed navbar */}
       <div className="pt-16">
-        {/* Promotional Banners */}
-        <WelcomeBonusBanner language={mappedLanguage || language} />
-        <CountdownDealBanner language={mappedLanguage || language} />
+        {/* Promotional Banners - DISABLED to prevent layout shifting */}
+        {/* <WelcomeBonusBanner language={mappedLanguage || language} /> */}
+        {/* <CountdownDealBanner language={mappedLanguage || language} /> */}
         {/* <HappyHourBanner /> */}
       </div>
       
