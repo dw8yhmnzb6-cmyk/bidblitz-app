@@ -1554,18 +1554,37 @@ async def day_night_auction_scheduler():
                         {"$set": {"status": "night_paused", "paused_at": datetime.now(timezone.utc).isoformat()}}
                     )
                     
-                    # Resume day auctions with fresh timer
+                    # Resume day auctions with preserved timer (or minimum 2 hours)
                     day_auctions = await db.auctions.find(
                         {"status": "day_paused"},
-                        {"_id": 0, "id": 1}
+                        {"_id": 0, "id": 1, "paused_at": 1, "end_time": 1}
                     ).to_list(500)
                     
                     for auction in day_auctions:
+                        # Calculate how much time was remaining when paused
+                        paused_at = auction.get("paused_at")
+                        original_end = auction.get("end_time")
+                        
+                        # Default: extend by 2 hours minimum
+                        new_end_time = datetime.now(timezone.utc) + timedelta(hours=2)
+                        
+                        if paused_at and original_end:
+                            try:
+                                paused_time = datetime.fromisoformat(paused_at.replace("Z", "+00:00"))
+                                end_time = datetime.fromisoformat(original_end.replace("Z", "+00:00"))
+                                remaining_time = (end_time - paused_time).total_seconds()
+                                
+                                # If auction was supposed to run longer, preserve that
+                                if remaining_time > 7200:  # More than 2 hours
+                                    new_end_time = datetime.now(timezone.utc) + timedelta(seconds=remaining_time)
+                            except:
+                                pass
+                        
                         await db.auctions.update_one(
                             {"id": auction["id"]},
                             {"$set": {
                                 "status": "active",
-                                "end_time": (datetime.now(timezone.utc) + timedelta(minutes=10)).isoformat()
+                                "end_time": new_end_time.isoformat()
                             }}
                         )
                     
