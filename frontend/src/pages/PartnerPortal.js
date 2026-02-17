@@ -589,6 +589,8 @@ export default function PartnerPortal() {
         minAmount: 'Monto mínimo solo €10',
         ibanHint: 'Encontrará su IBAN en su tarjeta bancaria o en la banca online',
         payNow: 'Pagar ahora',
+        payoutAmount: 'Monto del pago',
+        maxAmount: 'Máx',
         completed: 'Completado',
         processing: 'Procesando',
         pendingStatus: 'Pendiente',
