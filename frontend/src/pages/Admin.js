@@ -1401,6 +1401,11 @@ export default function Admin() {
             <AdminRestaurantApplications />
           )}
 
+          {/* Partner Portal Tab (NEW) */}
+          {activeTab === 'partner-portal' && (
+            <AdminPartnerApplications />
+          )}
+
           {/* Bots Tab */}
           {activeTab === 'bots' && (
             <div className="space-y-8">
