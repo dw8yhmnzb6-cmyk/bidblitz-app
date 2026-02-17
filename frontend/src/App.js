@@ -124,6 +124,7 @@ import DiscoverRestaurants from "./pages/DiscoverRestaurants";
 import LoyaltyDashboard from "./pages/LoyaltyDashboard";
 import RestaurantDetail from "./pages/RestaurantDetail";
 import WriteReview from "./pages/WriteReview";
+import BidBlitzPay from "./pages/BidBlitzPay";
 
 // Protected Route Component
 const ProtectedRoute = ({ children, requireAdmin = false }) => {
