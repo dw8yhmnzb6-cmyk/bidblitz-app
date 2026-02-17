@@ -193,6 +193,7 @@ async def apply_as_partner(data: PartnerApplication):
     # Send confirmation email
     try:
         await send_partner_application_received(
+            send_email,
             to_email=data.email,
             business_name=data.business_name,
             business_type=data.business_type
