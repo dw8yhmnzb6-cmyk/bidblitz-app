@@ -2373,46 +2373,113 @@ export default function PartnerPortal() {
                 ) : (
                   <div className="divide-y">
                     {staffList.map((staff) => (
-                      <div key={staff.id} className="p-4 flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                            staff.role === 'admin' ? 'bg-purple-100' : 'bg-amber-100'
-                          }`}>
-                            {staff.role === 'admin' ? (
-                              <User className="w-5 h-5 text-purple-600" />
-                            ) : (
-                              <Store className="w-5 h-5 text-amber-600" />
-                            )}
+                      <div key={staff.id} className="p-4">
+                        {editingStaff === staff.id ? (
+                          // Edit Mode
+                          <div className="space-y-3">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                              <div>
+                                <label className="block text-xs text-gray-500 mb-1">{t('name')}</label>
+                                <Input
+                                  value={editStaffData.name}
+                                  onChange={(e) => setEditStaffData({...editStaffData, name: e.target.value})}
+                                  className="h-9"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs text-gray-500 mb-1">{t('email')}</label>
+                                <Input
+                                  value={editStaffData.email}
+                                  disabled
+                                  className="h-9 bg-gray-50"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs text-gray-500 mb-1">{t('role')}</label>
+                                <select
+                                  value={editStaffData.role}
+                                  onChange={(e) => setEditStaffData({...editStaffData, role: e.target.value})}
+                                  className="w-full px-3 py-2 h-9 border border-gray-300 rounded-lg text-sm"
+                                >
+                                  <option value="counter">{t('counter')}</option>
+                                  <option value="admin">{t('admin')}</option>
+                                </select>
+                              </div>
+                            </div>
+                            <div className="flex gap-2">
+                              <Button 
+                                size="sm" 
+                                onClick={() => updateStaff(staff.id)}
+                                className="bg-green-500 hover:bg-green-600"
+                              >
+                                <Check className="w-4 h-4 mr-1" />
+                                {t('save')}
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                onClick={() => setEditingStaff(null)}
+                              >
+                                <X className="w-4 h-4 mr-1" />
+                                {t('cancel')}
+                              </Button>
+                            </div>
                           </div>
-                          <div>
-                            <p className="font-medium text-gray-800">{staff.name}</p>
-                            <p className="text-sm text-gray-500">{staff.email}</p>
+                        ) : (
+                          // View Mode
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                                staff.role === 'admin' ? 'bg-purple-100' : 'bg-amber-100'
+                              }`}>
+                                {staff.role === 'admin' ? (
+                                  <User className="w-5 h-5 text-purple-600" />
+                                ) : (
+                                  <Store className="w-5 h-5 text-amber-600" />
+                                )}
+                              </div>
+                              <div>
+                                <p className="font-medium text-gray-800">{staff.name}</p>
+                                <p className="text-sm text-gray-500">{staff.email}</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                staff.role === 'admin' 
+                                  ? 'bg-purple-100 text-purple-700' 
+                                  : 'bg-amber-100 text-amber-700'
+                              }`}>
+                                {staff.role === 'admin' ? t('admin') : t('counter')}
+                              </span>
+                              <span className={`px-2 py-1 rounded-full text-xs ${
+                                staff.is_active !== false
+                                  ? 'bg-green-100 text-green-700'
+                                  : 'bg-red-100 text-red-700'
+                              }`}>
+                                {staff.is_active !== false ? t('active') : t('inactive')}
+                              </span>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setEditingStaff(staff.id);
+                                  setEditStaffData({ name: staff.name, email: staff.email, role: staff.role });
+                                }}
+                                className="text-blue-500 hover:text-blue-700 hover:bg-blue-50"
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => deleteStaff(staff.id)}
+                                className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
                           </div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            staff.role === 'admin' 
-                              ? 'bg-purple-100 text-purple-700' 
-                              : 'bg-amber-100 text-amber-700'
-                          }`}>
-                            {staff.role === 'admin' ? t('admin') : t('counter')}
-                          </span>
-                          <span className={`px-2 py-1 rounded-full text-xs ${
-                            staff.is_active !== false
-                              ? 'bg-green-100 text-green-700'
-                              : 'bg-red-100 text-red-700'
-                          }`}>
-                            {staff.is_active !== false ? t('active') : t('inactive')}
-                          </span>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => deleteStaff(staff.id)}
-                            className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
+                        )}
                       </div>
                     ))}
                   </div>
