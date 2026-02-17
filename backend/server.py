@@ -394,6 +394,8 @@ app.include_router(restaurant_reviews_router, prefix="/api")
 app.include_router(restaurant_discovery_router, prefix="/api")
 app.include_router(loyalty_router, prefix="/api")
 app.include_router(partner_portal_router, prefix="/api")
+app.include_router(partner_stripe_router, prefix="/api")
+app.include_router(partner_verification_router, prefix="/api")
 
 # ==================== HEALTH & BASIC ENDPOINTS ====================
 
