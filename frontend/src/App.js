@@ -743,6 +743,7 @@ function AppContent() {
           <Route path="/restaurant-portal" element={<RestaurantPortal />} />
           <Route path="/discover-restaurants" element={<DiscoverRestaurants />} />
           <Route path="/restaurants/discover" element={<DiscoverRestaurants />} />
+          <Route path="/restaurant/:id" element={<RestaurantDetail />} />
           <Route path="/loyalty" element={<LoyaltyDashboard />} />
           <Route path="/treueprogramm" element={<LoyaltyDashboard />} />
           
