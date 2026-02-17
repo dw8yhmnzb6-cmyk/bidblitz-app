@@ -1465,6 +1465,14 @@ async def auction_expiry_checker():
                             await send_winner_email(winner_id, auction_with_product, product or {})
                         except Exception as email_error:
                             logger.error(f"Failed to send winner email: {email_error}")
+                        
+                        # Send partner notification if product is a voucher and winner is NOT a bot
+                        if product and product.get("partner_id") and not is_bot_winner:
+                            try:
+                                from services.winner_notifications import send_partner_voucher_sold_notification
+                                await send_partner_voucher_sold_notification(product, winner_name or "Kunde", final_price)
+                            except Exception as partner_email_error:
+                                logger.error(f"Failed to send partner notification: {partner_email_error}")
                     
                     product_name = product.get("name") if product else auction_id[:8]
                     logger.info(f"⏱️ Expired auction ended: {product_name} | Winner: {winner_name or 'None'} | Final: €{final_price}")
