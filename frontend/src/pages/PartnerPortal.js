@@ -201,10 +201,14 @@ export default function PartnerPortal() {
   useEffect(() => {
     const savedToken = localStorage.getItem('partner_token');
     const savedPartner = localStorage.getItem('partner_data');
+    const savedRole = localStorage.getItem('partner_role');
+    const savedIsStaff = localStorage.getItem('partner_is_staff');
     if (savedToken && savedPartner) {
       setToken(savedToken);
       setPartner(JSON.parse(savedPartner));
       setIsLoggedIn(true);
+      setUserRole(savedRole || 'admin');
+      setIsStaff(savedIsStaff === 'true');
       setView('dashboard');
     }
   }, []);
@@ -217,6 +221,11 @@ export default function PartnerPortal() {
       }
     };
   }, []);
+  
+  // Save language preference
+  useEffect(() => {
+    localStorage.setItem('partner_language', language);
+  }, [language]);
 
   // ==================== AUTH ====================
   
@@ -225,7 +234,11 @@ export default function PartnerPortal() {
     setLoading(true);
     
     try {
-      const response = await fetch(`${API}/api/partner-portal/login`, {
+      const endpoint = loginMode === 'staff' 
+        ? `${API}/api/partner-portal/staff/login`
+        : `${API}/api/partner-portal/login`;
+        
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
@@ -234,19 +247,36 @@ export default function PartnerPortal() {
       const data = await response.json();
       
       if (!response.ok) {
-        throw new Error(data.detail || 'Login fehlgeschlagen');
+        throw new Error(data.detail || 'Login failed');
       }
       
       setToken(data.token);
       setPartner(data.partner);
       setIsLoggedIn(true);
-      setView('dashboard');
+      
+      // Set role based on login type
+      const role = data.role || data.partner?.role || 'admin';
+      setUserRole(role);
+      setIsStaff(data.is_staff || false);
+      
+      // Counter staff goes directly to scanner/pay view
+      if (role === 'counter') {
+        setView('scanner');
+      } else {
+        setView('dashboard');
+      }
       
       localStorage.setItem('partner_token', data.token);
       localStorage.setItem('partner_data', JSON.stringify(data.partner));
+      localStorage.setItem('partner_role', role);
+      localStorage.setItem('partner_is_staff', String(data.is_staff || false));
       
-      toast.success(`Willkommen, ${data.partner.name}!`);
-      fetchDashboard(data.token);
+      const welcomeName = data.staff?.name || data.partner.name;
+      toast.success(language === 'en' ? `Welcome, ${welcomeName}!` : `Willkommen, ${welcomeName}!`);
+      
+      if (role !== 'counter') {
+        fetchDashboard(data.token);
+      }
     } catch (err) {
       toast.error(err.message);
     } finally {
