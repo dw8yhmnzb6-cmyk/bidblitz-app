@@ -2288,7 +2288,7 @@ export default function PartnerPortal() {
         
         {/* Content */}
         <main className="max-w-4xl mx-auto px-4 py-6">
-          {/* Dashboard View - Admin Only */}
+          {/* Dashboard View - Admin Only - Using Component */}
           {view === 'dashboard' && userRole === 'admin' && dashboardData && (
             <div className="space-y-6">
               {/* Stats Cards */}
@@ -2303,7 +2303,7 @@ export default function PartnerPortal() {
                 </div>
                 <div className="bg-white rounded-xl p-4 shadow-sm">
                   <p className="text-gray-500 text-sm">{t('sold')}</p>
-                  <p className="text-2xl font-bold text-blue-600">{dashboardData.vouchers.sold}</p>
+                  <p className="text-2xl font-bold text-blue-600">{dashboardData.vouchers?.sold || 0}</p>
                 </div>
                 <div className="bg-white rounded-xl p-4 shadow-sm">
                   <p className="text-gray-500 text-sm">{t('commission')}</p>
