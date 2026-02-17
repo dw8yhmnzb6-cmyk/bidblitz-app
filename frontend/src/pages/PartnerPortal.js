@@ -1001,7 +1001,28 @@ export default function PartnerPortal() {
         counter: 'Sporteli', admin: 'Admin', name: 'Emri', role: 'Roli', active: 'Aktiv',
         inactive: 'Joaktiv', delete: 'Fshi', save: 'Ruaj', cancel: 'Anulo',
         welcome: 'Mirësevini', notPartner: 'Nuk jeni partner?', applyNow: 'Apliko tani',
-        rememberMe: 'Më mbaj mend', recentRedemptions: 'Përdorimet e fundit', noRedemptions: 'Pa përdorime', value: 'Vlera'
+        rememberMe: 'Më mbaj mend', recentRedemptions: 'Përdorimet e fundit', noRedemptions: 'Pa përdorime', value: 'Vlera',
+        // Wise Bank Transfer translations
+        payoutHistory: 'Historia e pagesave', noPayouts: 'Nuk ka pagesa ende',
+        bankTransfer: 'Transfertë bankare',
+        enterBankDetails: 'Vendosni të dhënat bankare',
+        accountHolder: 'Mbajtësi i llogarisë',
+        connectBank: 'Lidh llogarinë bankare',
+        bankConnected: 'Llogaria bankare e lidhur',
+        disconnectBank: 'Shkëput llogarinë',
+        connect: 'Lidh',
+        minPayout: 'Shuma minimale e pagesës',
+        bankAdvantages: 'Përparësitë:',
+        fastTransfer: 'Transferta të shpejta (1-2 ditë pune)',
+        noFees: 'Pa tarifa për transfertat EUR',
+        secureIban: 'Verifikim i sigurt IBAN',
+        minAmount: 'Shuma minimale vetëm €10',
+        ibanHint: 'IBAN-in tuaj e gjeni në kartën bankare ose në bankën online',
+        payNow: 'Paguaj tani',
+        completed: 'Përfunduar',
+        processing: 'Duke u procesuar',
+        pendingStatus: 'Në pritje',
+        iban: 'IBAN'
       }
     };
     const langKey = getLangKey(language);
