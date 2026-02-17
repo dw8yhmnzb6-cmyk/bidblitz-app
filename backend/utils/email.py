@@ -623,6 +623,295 @@ async def send_abandoned_cart_reminder(
                         </tr>
                     </table>
                     
+
+
+# ==================== PARTNER PORTAL EMAIL NOTIFICATIONS ====================
+
+async def send_partner_application_received(
+    to_email: str,
+    business_name: str,
+    business_type: str
+):
+    """Send confirmation email when partner application is received."""
+    business_type_display = {
+        'restaurant': 'Restaurant',
+        'bar': 'Bar & Club',
+        'cafe': 'Café',
+        'gas_station': 'Tankstelle',
+        'cinema': 'Kino',
+        'retail': 'Einzelhandel',
+        'wellness': 'Wellness & Spa',
+        'fitness': 'Fitness-Studio',
+        'beauty': 'Friseur & Beauty',
+        'hotel': 'Hotel & Unterkunft',
+        'entertainment': 'Unterhaltung',
+        'supermarket': 'Supermarkt',
+        'pharmacy': 'Apotheke',
+        'other': 'Sonstiges'
+    }.get(business_type, business_type)
+    
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset="utf-8"></head>
+    <body style="margin:0; padding:0; font-family:Arial,sans-serif; background-color:#f4f4f4;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px; margin:0 auto; background:#ffffff;">
+            <tr>
+                <td style="background:linear-gradient(135deg,#F59E0B,#D97706); padding:30px; text-align:center;">
+                    <h1 style="color:#fff; margin:0; font-size:28px;">📋 Bewerbung eingegangen!</h1>
+                </td>
+            </tr>
+            <tr>
+                <td style="padding:30px;">
+                    <p style="font-size:18px; color:#333;">Hallo <strong>{business_name}</strong>,</p>
+                    <p style="font-size:16px; color:#555;">
+                        Vielen Dank für Ihre Bewerbung als BidBlitz Partner! 🎉
+                    </p>
+                    
+                    <table width="100%" style="background:#FEF3C7; border-radius:10px; padding:20px; margin:20px 0;">
+                        <tr><td style="padding:10px;">
+                            <p style="margin:0; font-size:14px; color:#92400E;">Geschäftstyp:</p>
+                            <p style="margin:5px 0 0; font-size:18px; color:#D97706; font-weight:bold;">{business_type_display}</p>
+                        </td></tr>
+                    </table>
+                    
+                    <div style="background:#E0F2FE; border-left:4px solid #0EA5E9; padding:15px; margin:20px 0; border-radius:0 10px 10px 0;">
+                        <p style="margin:0; font-size:14px; color:#0369A1;">
+                            <strong>Nächste Schritte:</strong><br>
+                            Unser Team prüft Ihre Bewerbung innerhalb von 1-2 Werktagen.
+                            Sie erhalten eine E-Mail, sobald Ihre Bewerbung bearbeitet wurde.
+                        </p>
+                    </div>
+                    
+                    <p style="font-size:14px; color:#888; margin-top:30px;">
+                        Bei Fragen erreichen Sie uns unter 
+                        <a href="mailto:partner@bidblitz.ae" style="color:#F59E0B;">partner@bidblitz.ae</a>
+                    </p>
+                </td>
+            </tr>
+            <tr>
+                <td style="background:#1a1a1a; padding:20px; text-align:center;">
+                    <p style="margin:0; color:#888; font-size:12px;">© 2026 BidBlitz.ae FZCO | Dubai, UAE</p>
+                </td>
+            </tr>
+        </table>
+    </body>
+    </html>
+    """
+    
+    return await send_email(
+        to_email=to_email,
+        subject=f"📋 Bewerbung eingegangen - {business_name}",
+        html_content=html_content
+    )
+
+
+async def send_partner_approved(
+    to_email: str,
+    business_name: str,
+    business_type: str,
+    commission_rate: float
+):
+    """Send email when partner application is approved."""
+    business_type_display = {
+        'restaurant': 'Restaurant',
+        'bar': 'Bar & Club',
+        'cafe': 'Café',
+        'gas_station': 'Tankstelle',
+        'cinema': 'Kino',
+        'retail': 'Einzelhandel',
+        'wellness': 'Wellness & Spa',
+        'fitness': 'Fitness-Studio',
+        'beauty': 'Friseur & Beauty',
+        'hotel': 'Hotel & Unterkunft',
+        'entertainment': 'Unterhaltung',
+        'supermarket': 'Supermarkt',
+        'pharmacy': 'Apotheke',
+        'other': 'Sonstiges'
+    }.get(business_type, business_type)
+    
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset="utf-8"></head>
+    <body style="margin:0; padding:0; font-family:Arial,sans-serif; background-color:#f4f4f4;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px; margin:0 auto; background:#ffffff;">
+            <tr>
+                <td style="background:linear-gradient(135deg,#10B981,#059669); padding:30px; text-align:center;">
+                    <h1 style="color:#fff; margin:0; font-size:28px;">✅ Willkommen als Partner!</h1>
+                </td>
+            </tr>
+            <tr>
+                <td style="padding:30px;">
+                    <p style="font-size:18px; color:#333;">Herzlichen Glückwunsch <strong>{business_name}</strong>!</p>
+                    <p style="font-size:16px; color:#555;">
+                        Ihre Bewerbung wurde genehmigt! Sie können sich jetzt im Partner Portal einloggen. 🎉
+                    </p>
+                    
+                    <table width="100%" style="background:#D1FAE5; border-radius:10px; margin:20px 0;">
+                        <tr>
+                            <td style="padding:15px;">
+                                <p style="margin:0; font-size:14px; color:#059669;">Geschäftstyp:</p>
+                                <p style="margin:5px 0; font-size:18px; color:#047857; font-weight:bold;">{business_type_display}</p>
+                            </td>
+                            <td style="padding:15px; text-align:right;">
+                                <p style="margin:0; font-size:14px; color:#059669;">Ihre Provision:</p>
+                                <p style="margin:5px 0; font-size:24px; color:#047857; font-weight:bold;">{100 - commission_rate}%</p>
+                                <p style="margin:0; font-size:12px; color:#059669;">(BidBlitz behält {commission_rate}%)</p>
+                            </td>
+                        </tr>
+                    </table>
+                    
+                    <h3 style="color:#333; font-size:18px; margin-top:30px;">So geht's weiter:</h3>
+                    <ol style="color:#555; font-size:14px; line-height:1.8;">
+                        <li>Loggen Sie sich im <strong>Partner Portal</strong> ein</li>
+                        <li>Erstellen Sie Ihre ersten <strong>Gutscheine</strong></li>
+                        <li>Wir listen Ihre Gutscheine auf BidBlitz</li>
+                        <li>Kunden kaufen & lösen Gutscheine bei Ihnen ein</li>
+                        <li>Sie erhalten Ihre <strong>Auszahlung</strong> wöchentlich</li>
+                    </ol>
+                    
+                    <div style="text-align:center; margin-top:30px;">
+                        <a href="https://eatbidblitz.preview.emergentagent.com/partner-portal" 
+                           style="display:inline-block; background:linear-gradient(135deg,#10B981,#059669); 
+                                  color:#fff; padding:18px 40px; text-decoration:none; border-radius:10px; 
+                                  font-weight:bold; font-size:18px; box-shadow:0 4px 15px rgba(16,185,129,0.4);">
+                            Zum Partner Portal →
+                        </a>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td style="background:#1a1a1a; padding:20px; text-align:center;">
+                    <p style="margin:0; color:#888; font-size:12px;">© 2026 BidBlitz.ae FZCO | Dubai, UAE</p>
+                </td>
+            </tr>
+        </table>
+    </body>
+    </html>
+    """
+    
+    return await send_email(
+        to_email=to_email,
+        subject=f"✅ Willkommen bei BidBlitz - {business_name}!",
+        html_content=html_content
+    )
+
+
+async def send_partner_rejected(
+    to_email: str,
+    business_name: str,
+    reason: str = None
+):
+    """Send email when partner application is rejected."""
+    reason_text = reason or "Leider erfüllt Ihre Bewerbung nicht unsere aktuellen Anforderungen."
+    
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset="utf-8"></head>
+    <body style="margin:0; padding:0; font-family:Arial,sans-serif; background-color:#f4f4f4;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px; margin:0 auto; background:#ffffff;">
+            <tr>
+                <td style="background:linear-gradient(135deg,#6B7280,#4B5563); padding:30px; text-align:center;">
+                    <h1 style="color:#fff; margin:0; font-size:28px;">Bewerbung nicht angenommen</h1>
+                </td>
+            </tr>
+            <tr>
+                <td style="padding:30px;">
+                    <p style="font-size:18px; color:#333;">Hallo <strong>{business_name}</strong>,</p>
+                    <p style="font-size:16px; color:#555;">
+                        Vielen Dank für Ihr Interesse an einer Partnerschaft mit BidBlitz.
+                    </p>
+                    
+                    <div style="background:#FEE2E2; border-left:4px solid #EF4444; padding:15px; margin:20px 0; border-radius:0 10px 10px 0;">
+                        <p style="margin:0; font-size:14px; color:#DC2626;">
+                            <strong>Grund:</strong><br>
+                            {reason_text}
+                        </p>
+                    </div>
+                    
+                    <p style="font-size:14px; color:#555;">
+                        Sie können sich gerne erneut bewerben, wenn sich Ihre Situation ändert.
+                        Bei Fragen erreichen Sie uns unter 
+                        <a href="mailto:partner@bidblitz.ae" style="color:#F59E0B;">partner@bidblitz.ae</a>
+                    </p>
+                </td>
+            </tr>
+            <tr>
+                <td style="background:#1a1a1a; padding:20px; text-align:center;">
+                    <p style="margin:0; color:#888; font-size:12px;">© 2026 BidBlitz.ae FZCO | Dubai, UAE</p>
+                </td>
+            </tr>
+        </table>
+    </body>
+    </html>
+    """
+    
+    return await send_email(
+        to_email=to_email,
+        subject=f"Bewerbung nicht angenommen - {business_name}",
+        html_content=html_content
+    )
+
+
+async def send_partner_payout_confirmation(
+    to_email: str,
+    business_name: str,
+    payout_amount: float,
+    payout_id: str
+):
+    """Send confirmation email when partner requests a payout."""
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset="utf-8"></head>
+    <body style="margin:0; padding:0; font-family:Arial,sans-serif; background-color:#f4f4f4;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px; margin:0 auto; background:#ffffff;">
+            <tr>
+                <td style="background:linear-gradient(135deg,#10B981,#059669); padding:30px; text-align:center;">
+                    <h1 style="color:#fff; margin:0; font-size:28px;">💰 Auszahlung beantragt</h1>
+                </td>
+            </tr>
+            <tr>
+                <td style="padding:30px;">
+                    <p style="font-size:18px; color:#333;">Hallo <strong>{business_name}</strong>,</p>
+                    <p style="font-size:16px; color:#555;">
+                        Ihre Auszahlungsanfrage wurde erfolgreich eingereicht!
+                    </p>
+                    
+                    <table width="100%" style="background:#D1FAE5; border-radius:10px; margin:20px 0;">
+                        <tr><td style="padding:20px; text-align:center;">
+                            <p style="margin:0; font-size:14px; color:#059669;">Auszahlungsbetrag:</p>
+                            <p style="margin:10px 0 0; font-size:36px; color:#047857; font-weight:bold;">€{payout_amount:.2f}</p>
+                            <p style="margin:10px 0 0; font-size:12px; color:#059669; font-family:monospace;">ID: {payout_id}</p>
+                        </td></tr>
+                    </table>
+                    
+                    <div style="background:#FEF3C7; border-left:4px solid #F59E0B; padding:15px; margin:20px 0; border-radius:0 10px 10px 0;">
+                        <p style="margin:0; font-size:14px; color:#92400E;">
+                            <strong>Bearbeitungszeit:</strong><br>
+                            Auszahlungen werden innerhalb von 3-5 Werktagen auf Ihr hinterlegtes Bankkonto überwiesen.
+                        </p>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td style="background:#1a1a1a; padding:20px; text-align:center;">
+                    <p style="margin:0; color:#888; font-size:12px;">© 2026 BidBlitz.ae FZCO | Dubai, UAE</p>
+                </td>
+            </tr>
+        </table>
+    </body>
+    </html>
+    """
+    
+    return await send_email(
+        to_email=to_email,
+        subject=f"💰 Auszahlung beantragt: €{payout_amount:.2f}",
+        html_content=html_content
+    )
+
                     <div style="background:#FEF3C7; border:2px dashed #F59E0B; border-radius:10px; padding:20px; margin:20px 0; text-align:center;">
                         <p style="margin:0; font-size:14px; color:#92400E;">🎁 Exklusiv für Sie:</p>
                         <p style="margin:10px 0 0; font-size:28px; color:#D97706; font-weight:bold; letter-spacing:3px;">{discount_code}</p>
