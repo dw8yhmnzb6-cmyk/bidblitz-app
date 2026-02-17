@@ -42,7 +42,7 @@ async def submit_rating(data: RatingCreate, user: dict = Depends(get_current_use
         raise HTTPException(status_code=400, detail="Bewertung muss zwischen 1 und 5 sein")
     
     # Check if partner exists
-    partner = await db.partners.find_one({"id": data.partner_id}, {"_id": 0})
+    partner = await db.partner_accounts.find_one({"id": data.partner_id}, {"_id": 0})
     if not partner:
         raise HTTPException(status_code=404, detail="Partner nicht gefunden")
     
@@ -125,7 +125,7 @@ async def update_partner_average_rating(partner_id: str):
         stats = result[0]
         recommend_rate = (stats["recommend_count"] / stats["total_ratings"] * 100) if stats["total_ratings"] > 0 else 0
         
-        await db.partners.update_one(
+        await db.partner_accounts.update_one(
             {"id": partner_id},
             {
                 "$set": {
@@ -140,7 +140,7 @@ async def update_partner_average_rating(partner_id: str):
 @router.get("/partner/{partner_id}")
 async def get_partner_ratings(partner_id: str, limit: int = 20, skip: int = 0):
     """Get all ratings for a specific partner"""
-    partner = await db.partners.find_one({"id": partner_id}, {"_id": 0})
+    partner = await db.partner_accounts.find_one({"id": partner_id}, {"_id": 0})
     if not partner:
         raise HTTPException(status_code=404, detail="Partner nicht gefunden")
     
@@ -194,7 +194,7 @@ async def get_my_ratings(user: dict = Depends(get_current_user)):
     
     # Enrich with partner info
     for rating in ratings:
-        partner = await db.partners.find_one(
+        partner = await db.partner_accounts.find_one(
             {"id": rating["partner_id"]},
             {"_id": 0, "name": 1, "logo_url": 1, "business_type": 1}
         )
@@ -235,7 +235,7 @@ async def get_top_rated_partners(limit: int = 10, business_type: Optional[str] =
     if business_type:
         query["business_type"] = business_type
     
-    partners = await db.partners.find(
+    partners = await db.partner_accounts.find(
         query,
         {"_id": 0, "id": 1, "name": 1, "logo_url": 1, "business_type": 1, 
          "average_rating": 1, "total_ratings": 1, "recommend_rate": 1,

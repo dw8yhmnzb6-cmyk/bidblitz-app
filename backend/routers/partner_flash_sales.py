@@ -39,7 +39,7 @@ class FlashSaleResponse(BaseModel):
 @router.post("/create")
 async def create_flash_sale(data: FlashSaleCreate, token: str):
     """Create a new flash sale / happy hour"""
-    partner = await db.partners.find_one({"token": token}, {"_id": 0})
+    partner = await db.partner_accounts.find_one({"token": token}, {"_id": 0})
     if not partner:
         raise HTTPException(status_code=401, detail="Ungültiger Token")
     
@@ -110,7 +110,7 @@ async def schedule_flash_sale_notification(flash_sale_id: str, partner: dict, da
 @router.get("/my-sales")
 async def get_my_flash_sales(token: str, status: Optional[str] = None):
     """Get all flash sales for partner"""
-    partner = await db.partners.find_one({"token": token}, {"_id": 0})
+    partner = await db.partner_accounts.find_one({"token": token}, {"_id": 0})
     if not partner:
         raise HTTPException(status_code=401, detail="Ungültiger Token")
     
@@ -172,7 +172,7 @@ async def get_active_flash_sales(
     # Enrich with partner info
     enriched_sales = []
     for sale in sales:
-        partner = await db.partners.find_one(
+        partner = await db.partner_accounts.find_one(
             {"id": sale["partner_id"]},
             {"_id": 0, "name": 1, "logo_url": 1, "business_type": 1, "city": 1, "address": 1}
         )
@@ -199,7 +199,7 @@ async def get_active_flash_sales(
 @router.delete("/{sale_id}")
 async def cancel_flash_sale(sale_id: str, token: str):
     """Cancel a flash sale"""
-    partner = await db.partners.find_one({"token": token}, {"_id": 0})
+    partner = await db.partner_accounts.find_one({"token": token}, {"_id": 0})
     if not partner:
         raise HTTPException(status_code=401, detail="Ungültiger Token")
     
@@ -227,7 +227,7 @@ async def cancel_flash_sale(sale_id: str, token: str):
 @router.post("/extend/{sale_id}")
 async def extend_flash_sale(sale_id: str, token: str, additional_hours: int = 1):
     """Extend an active flash sale"""
-    partner = await db.partners.find_one({"token": token}, {"_id": 0})
+    partner = await db.partner_accounts.find_one({"token": token}, {"_id": 0})
     if not partner:
         raise HTTPException(status_code=401, detail="Ungültiger Token")
     
@@ -257,7 +257,7 @@ async def extend_flash_sale(sale_id: str, token: str, additional_hours: int = 1)
 @router.get("/stats/{sale_id}")
 async def get_flash_sale_stats(sale_id: str, token: str):
     """Get detailed statistics for a flash sale"""
-    partner = await db.partners.find_one({"token": token}, {"_id": 0})
+    partner = await db.partner_accounts.find_one({"token": token}, {"_id": 0})
     if not partner:
         raise HTTPException(status_code=401, detail="Ungültiger Token")
     

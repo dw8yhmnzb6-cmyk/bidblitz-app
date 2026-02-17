@@ -45,7 +45,7 @@ async def generate_partner_qr(
     # Verify partner - check both collections for compatibility
     partner = await db.partner_accounts.find_one({"token": token}, {"_id": 0})
     if not partner:
-        partner = await db.partners.find_one({"token": token}, {"_id": 0})
+        partner = await db.partner_accounts.find_one({"token": token}, {"_id": 0})
     if not partner:
         raise HTTPException(status_code=401, detail="Ungültiger Token")
     
@@ -112,7 +112,7 @@ async def download_qr_image(
 ):
     """Download QR code as image file"""
     # Verify partner
-    partner = await db.partners.find_one({"token": token}, {"_id": 0})
+    partner = await db.partner_accounts.find_one({"token": token}, {"_id": 0})
     if not partner:
         raise HTTPException(status_code=401, detail="Ungültiger Token")
     
@@ -182,7 +182,7 @@ async def track_qr_scan(qr_id: str, user_agent: Optional[str] = None, location: 
 @router.get("/stats")
 async def get_qr_stats(token: str):
     """Get QR code statistics for partner"""
-    partner = await db.partners.find_one({"token": token}, {"_id": 0})
+    partner = await db.partner_accounts.find_one({"token": token}, {"_id": 0})
     if not partner:
         raise HTTPException(status_code=401, detail="Ungültiger Token")
     
@@ -222,7 +222,7 @@ async def get_qr_stats(token: str):
 @router.get("/print-template")
 async def get_print_template(token: str, template_type: str = "table_tent"):
     """Get printable template with QR code"""
-    partner = await db.partners.find_one({"token": token}, {"_id": 0})
+    partner = await db.partner_accounts.find_one({"token": token}, {"_id": 0})
     if not partner:
         raise HTTPException(status_code=401, detail="Ungültiger Token")
     

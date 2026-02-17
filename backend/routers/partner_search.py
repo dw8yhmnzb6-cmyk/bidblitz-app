@@ -69,7 +69,7 @@ async def find_nearby_partners(data: LocationSearch):
     if data.min_rating:
         query["average_rating"] = {"$gte": data.min_rating}
     
-    partners = await db.partners.find(
+    partners = await db.partner_accounts.find(
         query,
         {"_id": 0, "id": 1, "name": 1, "business_type": 1, "latitude": 1, "longitude": 1,
          "average_rating": 1, "total_ratings": 1, "address": 1, "city": 1, "logo_url": 1,
@@ -126,7 +126,7 @@ async def get_cities_with_partners():
         {"$limit": 50}
     ]
     
-    cities = await db.partners.aggregate(pipeline).to_list(50)
+    cities = await db.partner_accounts.aggregate(pipeline).to_list(50)
     
     return {
         "cities": [
@@ -160,7 +160,7 @@ async def get_partners_by_city(
     sort_field = "average_rating" if sort_by == "rating" else "name"
     sort_order = -1 if sort_by == "rating" else 1
     
-    partners = await db.partners.find(
+    partners = await db.partner_accounts.find(
         query,
         {"_id": 0, "id": 1, "name": 1, "business_type": 1, "address": 1, "city": 1,
          "average_rating": 1, "total_ratings": 1, "logo_url": 1, "phone": 1,
@@ -191,7 +191,7 @@ async def get_business_types():
         {"$sort": {"count": -1}}
     ]
     
-    types = await db.partners.aggregate(pipeline).to_list(50)
+    types = await db.partner_accounts.aggregate(pipeline).to_list(50)
     
     # Business type translations
     type_names = {
@@ -227,7 +227,7 @@ async def get_business_types():
 @router.put("/update-location")
 async def update_partner_location(token: str, latitude: float, longitude: float):
     """Update partner's location coordinates"""
-    partner = await db.partners.find_one({"token": token}, {"_id": 0})
+    partner = await db.partner_accounts.find_one({"token": token}, {"_id": 0})
     if not partner:
         raise HTTPException(status_code=401, detail="Ungültiger Token")
     
@@ -235,7 +235,7 @@ async def update_partner_location(token: str, latitude: float, longitude: float)
     if not (-90 <= latitude <= 90) or not (-180 <= longitude <= 180):
         raise HTTPException(status_code=400, detail="Ungültige Koordinaten")
     
-    await db.partners.update_one(
+    await db.partner_accounts.update_one(
         {"id": partner.get("id")},
         {
             "$set": {
@@ -267,7 +267,7 @@ async def get_map_data(
     if business_type:
         query["business_type"] = business_type
     
-    partners = await db.partners.find(
+    partners = await db.partner_accounts.find(
         query,
         {"_id": 0, "id": 1, "name": 1, "business_type": 1, "latitude": 1, "longitude": 1,
          "average_rating": 1, "logo_url": 1, "address": 1}

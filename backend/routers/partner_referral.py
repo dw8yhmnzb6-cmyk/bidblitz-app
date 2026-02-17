@@ -46,7 +46,7 @@ def generate_partner_referral_code(name: str) -> str:
 async def get_partner_referral_code(token: str):
     """Get or create partner's referral code"""
     # Verify partner
-    partner = await db.partners.find_one({"token": token}, {"_id": 0})
+    partner = await db.partner_accounts.find_one({"token": token}, {"_id": 0})
     if not partner:
         raise HTTPException(status_code=401, detail="Ungültiger Token")
     
@@ -60,11 +60,11 @@ async def get_partner_referral_code(token: str):
         referral_code = generate_partner_referral_code(partner.get("name", "PARTNER"))
         
         # Ensure uniqueness
-        while await db.partners.find_one({"referral_code": referral_code}):
+        while await db.partner_accounts.find_one({"referral_code": referral_code}):
             referral_code = generate_partner_referral_code(partner.get("name", "PARTNER"))
         
         # Save to partner
-        await db.partners.update_one(
+        await db.partner_accounts.update_one(
             {"id": partner_id},
             {"$set": {"referral_code": referral_code}}
         )
@@ -91,7 +91,7 @@ async def get_partner_referral_code(token: str):
 @router.get("/stats")
 async def get_referral_stats(token: str):
     """Get detailed referral statistics for partner"""
-    partner = await db.partners.find_one({"token": token}, {"_id": 0})
+    partner = await db.partner_accounts.find_one({"token": token}, {"_id": 0})
     if not partner:
         raise HTTPException(status_code=401, detail="Ungültiger Token")
     
@@ -105,7 +105,7 @@ async def get_referral_stats(token: str):
     # Enrich with referred partner info
     enriched_referrals = []
     for ref in referrals:
-        referred_partner = await db.partners.find_one(
+        referred_partner = await db.partner_accounts.find_one(
             {"id": ref.get("referred_id")},
             {"_id": 0, "name": 1, "business_type": 1, "created_at": 1}
         )
@@ -137,14 +137,14 @@ async def get_referral_stats(token: str):
 async def apply_referral_code(code: str, new_partner_id: str):
     """Apply a referral code during partner registration"""
     # Find referring partner
-    referrer = await db.partners.find_one({"referral_code": code.upper()}, {"_id": 0})
+    referrer = await db.partner_accounts.find_one({"referral_code": code.upper()}, {"_id": 0})
     if not referrer:
         raise HTTPException(status_code=404, detail="Ungültiger Empfehlungscode")
     
     referrer_id = referrer.get("id")
     
     # Check if new partner exists
-    new_partner = await db.partners.find_one({"id": new_partner_id}, {"_id": 0})
+    new_partner = await db.partner_accounts.find_one({"id": new_partner_id}, {"_id": 0})
     if not new_partner:
         raise HTTPException(status_code=404, detail="Partner nicht gefunden")
     
@@ -173,7 +173,7 @@ async def apply_referral_code(code: str, new_partner_id: str):
     })
     
     # Add welcome bonus to new partner's balance
-    await db.partners.update_one(
+    await db.partner_accounts.update_one(
         {"id": new_partner_id},
         {
             "$inc": {"pending_payout": new_partner_bonus},
@@ -215,7 +215,7 @@ async def complete_referral(referral_id: str, admin_key: str = None):
     )
     
     # Add bonus to referrer's pending payout
-    await db.partners.update_one(
+    await db.partner_accounts.update_one(
         {"id": referral.get("referrer_id")},
         {"$inc": {"pending_payout": referral.get("bonus", 10.0)}}
     )
@@ -248,7 +248,7 @@ async def get_referral_leaderboard():
     # Enrich with partner info
     leaderboard = []
     for i, result in enumerate(results):
-        partner = await db.partners.find_one(
+        partner = await db.partner_accounts.find_one(
             {"id": result["_id"]},
             {"_id": 0, "name": 1, "business_type": 1, "logo_url": 1}
         )

@@ -35,7 +35,7 @@ async def get_share_links(
     content_id: Optional[str] = None
 ):
     """Generate share links for all platforms"""
-    partner = await db.partners.find_one({"token": token}, {"_id": 0})
+    partner = await db.partner_accounts.find_one({"token": token}, {"_id": 0})
     if not partner:
         raise HTTPException(status_code=401, detail="Ungültiger Token")
     
@@ -177,7 +177,7 @@ async def track_social_click(tracking_id: str, platform: str, referrer: Optional
 @router.get("/stats")
 async def get_social_stats(token: str, days: int = 30):
     """Get social sharing statistics for partner"""
-    partner = await db.partners.find_one({"token": token}, {"_id": 0})
+    partner = await db.partner_accounts.find_one({"token": token}, {"_id": 0})
     if not partner:
         raise HTTPException(status_code=401, detail="Ungültiger Token")
     
@@ -225,7 +225,7 @@ async def get_social_stats(token: str, days: int = 30):
 @router.get("/suggested-posts")
 async def get_suggested_posts(token: str):
     """Get AI-generated post suggestions for partner"""
-    partner = await db.partners.find_one({"token": token}, {"_id": 0})
+    partner = await db.partner_accounts.find_one({"token": token}, {"_id": 0})
     if not partner:
         raise HTTPException(status_code=401, detail="Ungültiger Token")
     
