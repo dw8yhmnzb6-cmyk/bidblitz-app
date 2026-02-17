@@ -278,8 +278,77 @@ async def login_partner(data: PartnerLogin):
             "pending_payout": partner.get("pending_payout", 0),
             "total_redeemed": partner.get("total_redeemed", 0),
             "commission_rate": partner.get("commission_rate", 10),
-            "logo_url": partner.get("logo_url")
+            "logo_url": partner.get("logo_url"),
+            "role": "admin"  # Main partner account always has admin role
         }
+    }
+
+@router.post("/staff/login")
+async def login_staff(data: PartnerLogin):
+    """Login for staff members (counter employees)"""
+    staff = await db.partner_staff.find_one(
+        {"email": data.email.lower()},
+        {"_id": 0}
+    )
+    
+    if not staff:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    
+    if not verify_password(data.password, staff.get("password_hash", "")):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    
+    if not staff.get("is_active", True):
+        raise HTTPException(status_code=403, detail="Account deactivated")
+    
+    # Get parent partner info
+    partner = await db.partner_accounts.find_one(
+        {"id": staff["partner_id"]},
+        {"_id": 0, "password_hash": 0}
+    )
+    
+    if not partner:
+        partner = await db.restaurant_accounts.find_one(
+            {"id": staff["partner_id"]},
+            {"_id": 0, "password_hash": 0}
+        )
+    
+    if not partner or not partner.get("is_active"):
+        raise HTTPException(status_code=403, detail="Partner account inactive")
+    
+    # Generate token
+    import secrets
+    token = secrets.token_urlsafe(32)
+    
+    # Store token
+    await db.partner_staff.update_one(
+        {"id": staff["id"]},
+        {"$set": {
+            "auth_token": token,
+            "last_login": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    return {
+        "success": True,
+        "token": token,
+        "staff": {
+            "id": staff["id"],
+            "name": staff.get("name"),
+            "email": staff["email"],
+            "role": staff.get("role", "counter"),
+            "partner_id": staff["partner_id"],
+            "partner_name": partner.get("business_name", partner.get("restaurant_name")),
+            "commission_rate": partner.get("commission_rate", 10)
+        },
+        "partner": {
+            "id": partner["id"],
+            "name": partner.get("business_name", partner.get("restaurant_name")),
+            "business_type": partner.get("business_type", "restaurant"),
+            "commission_rate": partner.get("commission_rate", 10),
+            "logo_url": partner.get("logo_url")
+        },
+        "is_staff": True,
+        "role": staff.get("role", "counter")
     }
 
 async def get_current_partner(token: str):
