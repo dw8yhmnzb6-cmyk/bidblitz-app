@@ -792,6 +792,9 @@ export default function PartnerPortal() {
               { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
               { id: 'scanner', label: 'Scanner', icon: Scan },
               { id: 'vouchers', label: 'Gutscheine', icon: Ticket },
+              { id: 'statistics', label: 'Statistiken', icon: BarChart3 },
+              { id: 'payouts', label: 'Auszahlungen', icon: Euro },
+              { id: 'profile', label: 'Profil', icon: User },
             ].map((item) => (
               <button
                 key={item.id}
