@@ -43,6 +43,7 @@ const footerTexts = {
     wholesale: 'Wholesale (B2B)',
     vipMembership: 'VIP Membership',
     investors: 'For Investors',
+    partnerPortal: 'Partner Portal',
     winners: 'Winners',
     features: 'Features',
     dealRadar: 'Deal Radar',
