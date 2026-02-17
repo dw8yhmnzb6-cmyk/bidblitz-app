@@ -311,6 +311,25 @@ export default function Login() {
               </Button>
             )}
 
+            {/* Microsoft Login Button */}
+            {!requires2FA && (
+              <Button
+                type="button"
+                onClick={() => window.location.href = `${API}/auth/microsoft/login`}
+                variant="outline"
+                className="w-full h-12 border-gray-300 text-gray-700 hover:bg-gray-50"
+                data-testid="microsoft-login-btn"
+              >
+                <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
+                  <path fill="#F25022" d="M1 1h10v10H1z"/>
+                  <path fill="#00A4EF" d="M1 13h10v10H1z"/>
+                  <path fill="#7FBA00" d="M13 1h10v10H13z"/>
+                  <path fill="#FFB900" d="M13 13h10v10H13z"/>
+                </svg>
+                {language === 'de' ? 'Mit Microsoft anmelden' : language === 'sq' || language === 'xk' ? 'Hyni me Microsoft' : language === 'tr' ? 'Microsoft ile Giriş' : language === 'fr' ? 'Se connecter avec Microsoft' : 'Sign in with Microsoft'}
+              </Button>
+            )}
+
             {/* Apple Login */}
             {!requires2FA && (
               <Button
