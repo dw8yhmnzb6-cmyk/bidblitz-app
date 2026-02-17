@@ -1,13 +1,15 @@
 /**
  * Partner Portal - Multi-Business Registration, QR Scanner & Voucher Management
  * Supports: Restaurants, Bars, Gas Stations, Cinemas, Retail, Wellness, Fitness, etc.
+ * Features: Statistics with Charts, Stripe Connect Payouts, Document Verification
  */
 import { useState, useEffect, useRef } from 'react';
 import { 
   QrCode, Scan, Check, X, Euro, History, LogOut, Camera, Loader2, 
   AlertCircle, CheckCircle, Building2, MapPin, Phone, Mail, Globe,
   FileText, CreditCard, User, Plus, Ticket, BarChart3, Clock,
-  ChevronRight, Upload, Store
+  ChevronRight, Upload, Store, TrendingUp, Shield, ExternalLink,
+  PieChart, Trash2, Eye, Download
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
