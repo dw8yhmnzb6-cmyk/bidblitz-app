@@ -127,6 +127,76 @@ async def get_payment_transactions(
     
     return {"transactions": transactions, "total": len(transactions)}
 
+class TopUpRequest(BaseModel):
+    amount: float
+
+@router.post("/topup")
+async def topup_wallet(request: TopUpRequest, user: dict = Depends(get_current_user)):
+    """Transfer money from main account balance to BidBlitz Pay wallet"""
+    user_id = user["id"]
+    amount = request.amount
+    
+    if amount <= 0:
+        raise HTTPException(status_code=400, detail="Betrag muss größer als 0 sein")
+    
+    # Get user's main account balance
+    user_data = await db.users.find_one({"id": user_id}, {"_id": 0, "credits": 1, "bidblitz_balance": 1})
+    if not user_data:
+        raise HTTPException(status_code=404, detail="Benutzer nicht gefunden")
+    
+    main_balance = user_data.get("credits", 0)
+    
+    if main_balance < amount:
+        raise HTTPException(status_code=400, detail=f"Nicht genug Guthaben. Verfügbar: €{main_balance:.2f}")
+    
+    # Transfer: Subtract from main credits, add to BidBlitz balance
+    await db.users.update_one(
+        {"id": user_id},
+        {
+            "$inc": {
+                "credits": -amount,
+                "bidblitz_balance": amount
+            }
+        }
+    )
+    
+    # Record transaction
+    transaction_id = str(uuid.uuid4())
+    await db.bidblitz_pay_transactions.insert_one({
+        "id": transaction_id,
+        "user_id": user_id,
+        "type": "topup",
+        "amount": amount,
+        "description": "Guthaben auf BidBlitz Pay übertragen",
+        "created_at": datetime.now(timezone.utc).isoformat()
+    })
+    
+    # Get updated balances
+    updated_user = await db.users.find_one({"id": user_id}, {"_id": 0, "credits": 1, "bidblitz_balance": 1})
+    
+    return {
+        "success": True,
+        "message": f"€{amount:.2f} erfolgreich auf BidBlitz Pay übertragen",
+        "new_main_balance": updated_user.get("credits", 0),
+        "new_bidblitz_balance": updated_user.get("bidblitz_balance", 0)
+    }
+
+@router.get("/main-balance")
+async def get_main_balance(user: dict = Depends(get_current_user)):
+    """Get user's main account balance (credits) for transfer"""
+    user_id = user["id"]
+    
+    user_data = await db.users.find_one({"id": user_id}, {"_id": 0, "credits": 1, "bidblitz_balance": 1, "name": 1, "email": 1})
+    if not user_data:
+        raise HTTPException(status_code=404, detail="Benutzer nicht gefunden")
+    
+    return {
+        "main_balance": user_data.get("credits", 0),
+        "bidblitz_balance": user_data.get("bidblitz_balance", 0),
+        "name": user_data.get("name", ""),
+        "email": user_data.get("email", "")
+    }
+
 # ==================== PARTNER PAYMENT ENDPOINTS ====================
 
 async def get_current_partner(token: str):
