@@ -360,6 +360,7 @@ app.include_router(recommendations_router, prefix="/api")
 app.include_router(watchers_router, prefix="/api")
 app.include_router(revenge_bid_router, prefix="/api")
 app.include_router(wallet_router, prefix="/api")
+app.include_router(bidblitz_pay_router, prefix="/api")
 
 # NEW: 10 additional features (batch 2)
 app.include_router(email_marketing_router, prefix="/api")
