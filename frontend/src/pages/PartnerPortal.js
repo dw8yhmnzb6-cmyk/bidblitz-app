@@ -45,6 +45,7 @@ export default function PartnerPortal() {
   const [userRole, setUserRole] = useState('admin'); // 'admin' or 'counter'
   const [isStaff, setIsStaff] = useState(false);
   const [language, setLanguage] = useState(() => localStorage.getItem('partner_language') || 'de');
+  const [rememberMe, setRememberMe] = useState(() => localStorage.getItem('partner_remember') === 'true');
   
   // Available languages
   const languages = [
