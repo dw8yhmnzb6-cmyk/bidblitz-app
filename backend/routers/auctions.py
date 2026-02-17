@@ -382,31 +382,8 @@ async def get_featured_auction():
 
 @router.get("/auctions")
 async def get_auctions():
-    """Get all auctions with product details - OPTIMIZED"""
-    # Include active, day_paused, and night_paused auctions
-    auctions = await db.auctions.find(
-        {"status": {"$in": ["active", "day_paused", "night_paused", "ended", "scheduled"]}},
-        {"_id": 0}
-    ).sort("created_at", -1).to_list(500)
-    
-    # OPTIMIZATION: Fetch all products at once instead of N+1 queries
-    product_ids = list(set(a.get("product_id") for a in auctions if a.get("product_id")))
-    products_list = await db.products.find(
-        {"id": {"$in": product_ids}},
-        {"_id": 0}
-    ).to_list(len(product_ids))
-    products_map = {p["id"]: p for p in products_list}
-    
-    # Check if currently night time (Berlin Time)
-    now_berlin = datetime.now(timezone.utc) + timedelta(hours=1)
-    current_hour = now_berlin.hour + now_berlin.minute / 60
-    is_night_time = current_hour >= 23.5 or current_hour < 6
-    
-    # Attach product info and pause status
-    for auction in auctions:
-        product = products_map.get(auction.get("product_id"))
-        if product:
-            auction["product"] = product
+    """Get all auctions with product details - CACHED & OPTIMIZED"""
+    return await get_cached_auctions()
         
         # Mark paused auctions with appropriate message
         if auction.get("status") == "day_paused":
