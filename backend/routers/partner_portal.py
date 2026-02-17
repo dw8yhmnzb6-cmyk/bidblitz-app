@@ -769,6 +769,41 @@ async def reject_application(partner_id: str, reason: str = "Nicht erfüllt die 
         "reason": reason
     }
 
+@router.put("/admin/update-commission/{partner_id}")
+async def update_partner_commission(partner_id: str, commission_rate: float):
+    """Update commission rate for a partner (Admin only)"""
+    if commission_rate < 0 or commission_rate > 100:
+        raise HTTPException(status_code=400, detail="Provision muss zwischen 0 und 100% liegen")
+    
+    # Check partner_accounts first
+    partner = await db.partner_accounts.find_one({"id": partner_id})
+    collection = db.partner_accounts
+    
+    # If not found, check restaurant_accounts
+    if not partner:
+        partner = await db.restaurant_accounts.find_one({"id": partner_id})
+        collection = db.restaurant_accounts
+    
+    if not partner:
+        raise HTTPException(status_code=404, detail="Partner nicht gefunden")
+    
+    await collection.update_one(
+        {"id": partner_id},
+        {"$set": {
+            "commission_rate": commission_rate,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    logger.info(f"Partner {partner_id} commission updated to {commission_rate}%")
+    
+    return {
+        "success": True,
+        "message": f"Provision auf {commission_rate}% geändert",
+        "partner_id": partner_id,
+        "commission_rate": commission_rate
+    }
+
 @router.get("/admin/all-partners")
 async def get_all_partners():
     """Get all partners (Admin only)"""
