@@ -409,6 +409,14 @@ app.include_router(partner_stripe_router, prefix="/api")
 app.include_router(partner_verification_router, prefix="/api")
 app.include_router(wise_payouts_router, prefix="/api")
 
+# Partner Marketing Features
+app.include_router(partner_referral_router, prefix="/api")
+app.include_router(partner_ratings_router, prefix="/api")
+app.include_router(partner_qr_router, prefix="/api")
+app.include_router(partner_flash_sales_router, prefix="/api")
+app.include_router(partner_search_router, prefix="/api")
+app.include_router(partner_social_router, prefix="/api")
+
 # ==================== HEALTH & BASIC ENDPOINTS ====================
 
 @app.get("/")
