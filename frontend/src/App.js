@@ -740,6 +740,10 @@ function AppContent() {
           <Route path="/restaurant-vouchers" element={<RestaurantVouchersPage />} />
           <Route path="/restaurants" element={<RestaurantVouchersPage />} />
           <Route path="/restaurant-portal" element={<RestaurantPortal />} />
+          <Route path="/discover-restaurants" element={<DiscoverRestaurants />} />
+          <Route path="/restaurants/discover" element={<DiscoverRestaurants />} />
+          <Route path="/loyalty" element={<LoyaltyDashboard />} />
+          <Route path="/treueprogramm" element={<LoyaltyDashboard />} />
           
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
