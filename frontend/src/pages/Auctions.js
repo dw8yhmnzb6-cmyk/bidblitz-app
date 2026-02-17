@@ -404,6 +404,8 @@ const AdBanner = memo(() => {
         alt={banner.title}
         className="w-full h-auto object-cover"
         style={{ maxHeight: '120px' }}
+        loading="lazy"
+        decoding="async"
       />
     </div>
   );
