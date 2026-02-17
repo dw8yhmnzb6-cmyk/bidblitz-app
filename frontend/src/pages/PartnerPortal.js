@@ -854,21 +854,12 @@ export default function PartnerPortal() {
     
     try {
       setLoading(true);
-      const response = await fetch(`${API}/api/partner-verification/upload-document?token=${token}`, {
-        method: 'POST',
-        body: formData
-      });
+      const response = await axios.post(`${API}/api/partner-verification/upload-document?token=${token}`, formData);
       
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.detail || 'Upload failed');
-      }
-      
-      toast.success(data.message);
+      toast.success(response.data.message);
       fetchVerificationStatus();
     } catch (err) {
-      toast.error(err.message);
+      toast.error(err.response?.data?.detail || 'Upload failed');
     } finally {
       setLoading(false);
     }
