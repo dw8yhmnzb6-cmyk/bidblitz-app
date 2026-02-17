@@ -279,7 +279,7 @@ async def get_business_hours():
 
 @router.get("/auctions/featured")
 async def get_featured_auction():
-    """Get the featured/VIP auction to display prominently"""
+    """Get the featured/VIP auction to display prominently - OPTIMIZED"""
     # First try to find a VIP-marked auction
     featured = await db.auctions.find_one(
         {"status": "active", "is_featured": True},
@@ -294,12 +294,20 @@ async def get_featured_auction():
         ).to_list(100)
         
         if auctions:
+            # OPTIMIZATION: Fetch all products at once
+            product_ids = [a.get("product_id") for a in auctions if a.get("product_id")]
+            products_list = await db.products.find(
+                {"id": {"$in": product_ids}},
+                {"_id": 0}
+            ).to_list(len(product_ids))
+            products_map = {p["id"]: p for p in products_list}
+            
             # Find auction with highest value product
             best = None
             best_value = 0
             
             for auction in auctions:
-                product = await db.products.find_one({"id": auction.get("product_id")}, {"_id": 0})
+                product = products_map.get(auction.get("product_id"))
                 if product:
                     value = product.get("retail_price", 0)
                     if value > best_value:
