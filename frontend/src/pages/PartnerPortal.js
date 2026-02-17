@@ -1677,65 +1677,6 @@ export default function PartnerPortal() {
               )}
             </div>
           )}
-                  Verfügbar: €{(dashboardData?.stats?.pending_payout || 0).toFixed(2)}
-                </div>
-              </div>
-              
-              {/* Request Payout */}
-              <div className="bg-white rounded-xl p-6 shadow-sm">
-                <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
-                  <Euro className="w-5 h-5 text-green-500" />
-                  Auszahlung beantragen
-                </h3>
-                
-                {(dashboardData?.stats?.pending_payout || 0) >= 50 ? (
-                  <div className="space-y-4">
-                    <p className="text-gray-600 text-sm">
-                      Mindestbetrag: €50.00 | Bearbeitungszeit: 3-5 Werktage
-                    </p>
-                    <Button 
-                      onClick={async () => {
-                        if (!confirm(`Möchten Sie €${(dashboardData?.stats?.pending_payout || 0).toFixed(2)} auszahlen lassen?`)) return;
-                        try {
-                          const res = await fetch(`${API}/api/partner-portal/request-payout?token=${token}`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({})
-                          });
-                          const data = await res.json();
-                          if (!res.ok) throw new Error(data.detail);
-                          toast.success(data.message);
-                          fetchDashboard();
-                        } catch (err) {
-                          toast.error(err.message);
-                        }
-                      }}
-                      className="w-full bg-green-500 hover:bg-green-600"
-                    >
-                      Gesamten Betrag auszahlen (€{(dashboardData?.stats?.pending_payout || 0).toFixed(2)})
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="bg-gray-100 rounded-lg p-4 text-center text-gray-500">
-                    <p>Mindestbetrag von €50.00 noch nicht erreicht</p>
-                    <p className="text-sm mt-1">Aktuell verfügbar: €{(dashboardData?.stats?.pending_payout || 0).toFixed(2)}</p>
-                  </div>
-                )}
-              </div>
-              
-              {/* Payout History */}
-              <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-                <div className="p-4 border-b flex items-center justify-between">
-                  <h3 className="font-bold text-gray-800">Auszahlungsverlauf</h3>
-                  <History className="w-5 h-5 text-gray-400" />
-                </div>
-                <div className="p-8 text-center text-gray-400">
-                  <History className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                  <p>Noch keine Auszahlungen</p>
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* Profile View */}
           {view === 'profile' && (
