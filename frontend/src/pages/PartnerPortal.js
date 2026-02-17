@@ -388,11 +388,144 @@ export default function PartnerPortal() {
     }
   };
 
+  // ==================== STATISTICS ====================
+  
+  const fetchStatistics = async () => {
+    try {
+      const response = await fetch(`${API}/api/partner-portal/statistics?token=${token}`);
+      const data = await response.json();
+      setStatistics(data);
+    } catch (err) {
+      console.error('Statistics fetch error:', err);
+    }
+  };
+
+  // ==================== STRIPE CONNECT ====================
+  
+  const fetchStripeStatus = async () => {
+    try {
+      const response = await fetch(`${API}/api/partner-stripe/account-status?token=${token}`);
+      const data = await response.json();
+      setStripeStatus(data);
+    } catch (err) {
+      console.error('Stripe status error:', err);
+    }
+  };
+
+  const fetchPayoutHistory = async () => {
+    try {
+      const response = await fetch(`${API}/api/partner-stripe/payout-history?token=${token}`);
+      const data = await response.json();
+      setPayoutHistory(data.payouts || []);
+    } catch (err) {
+      console.error('Payout history error:', err);
+    }
+  };
+
+  const connectStripe = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(`${API}/api/partner-stripe/create-connect-account?token=${token}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          return_url: `${window.location.origin}/partner-portal?stripe=success`,
+          refresh_url: `${window.location.origin}/partner-portal?stripe=refresh`
+        })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail);
+      
+      // Redirect to Stripe onboarding
+      window.location.href = data.url;
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const requestStripePayout = async () => {
+    if (!confirm(`Möchten Sie €${(dashboardData?.stats?.pending_payout || 0).toFixed(2)} via Stripe auszahlen?`)) return;
+    
+    try {
+      setLoading(true);
+      const response = await fetch(`${API}/api/partner-stripe/request-payout?token=${token}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail);
+      
+      toast.success(data.message);
+      fetchDashboard();
+      fetchPayoutHistory();
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ==================== VERIFICATION ====================
+  
+  const fetchVerificationStatus = async () => {
+    try {
+      const [statusRes, docsRes, typesRes] = await Promise.all([
+        fetch(`${API}/api/partner-verification/verification-status?token=${token}`),
+        fetch(`${API}/api/partner-verification/my-documents?token=${token}`),
+        fetch(`${API}/api/partner-verification/document-types`)
+      ]);
+      
+      const status = await statusRes.json();
+      const docs = await docsRes.json();
+      const types = await typesRes.json();
+      
+      setVerificationStatus(status);
+      setDocuments(docs.documents || []);
+      setDocumentTypes(types);
+    } catch (err) {
+      console.error('Verification fetch error:', err);
+    }
+  };
+
+  const uploadDocument = async (file, docType) => {
+    const formData = new FormData();
+    formData.append('document', file);
+    formData.append('document_type', docType);
+    
+    try {
+      setLoading(true);
+      const response = await fetch(`${API}/api/partner-verification/upload-document?token=${token}`, {
+        method: 'POST',
+        body: formData
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail);
+      
+      toast.success(data.message);
+      fetchVerificationStatus();
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (isLoggedIn && view === 'dashboard') {
       fetchDashboard();
     } else if (isLoggedIn && view === 'vouchers') {
       fetchVouchers();
+    } else if (isLoggedIn && view === 'statistics') {
+      fetchStatistics();
+    } else if (isLoggedIn && view === 'payouts') {
+      fetchStripeStatus();
+      fetchPayoutHistory();
+      fetchDashboard();
+    } else if (isLoggedIn && view === 'verification') {
+      fetchVerificationStatus();
     }
   }, [view, isLoggedIn]);
 
