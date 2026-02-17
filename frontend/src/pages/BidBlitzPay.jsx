@@ -40,7 +40,14 @@ const translations = {
     login: 'Einloggen',
     pleaseLogin: 'Bitte einloggen, um fortzufahren',
     credit: 'Gutschrift',
-    payment: 'Zahlung'
+    payment: 'Zahlung',
+    topUp: 'Aufladen',
+    mainAccount: 'Hauptkonto',
+    transferToWallet: 'Auf BidBlitz Pay übertragen',
+    enterAmount: 'Betrag eingeben',
+    transfer: 'Übertragen',
+    availableOnMain: 'Verfügbar auf Hauptkonto',
+    successTransfer: 'Erfolgreich übertragen'
   },
   en: {
     wallet: 'Wallet',
