@@ -679,13 +679,12 @@ export default function PartnerPortal() {
   const validateVoucher = async (code) => {
     setLoading(true);
     try {
-      const response = await fetch(`${API}/api/partner-portal/validate/${code}?token=${token}`);
-      const data = await response.json();
-      setScanResult(data);
-      if (data.valid) {
-        toast.success(`Gültiger Gutschein: €${data.value}`);
+      const response = await axios.get(`${API}/api/partner-portal/validate/${code}?token=${token}`);
+      setScanResult(response.data);
+      if (response.data.valid) {
+        toast.success(`Gültiger Gutschein: €${response.data.value}`);
       } else {
-        toast.error(data.error || 'Ungültiger Gutschein');
+        toast.error(response.data.error || 'Ungültiger Gutschein');
       }
     } catch (err) {
       toast.error('Validierung fehlgeschlagen');
@@ -704,24 +703,14 @@ export default function PartnerPortal() {
     if (!scanResult?.valid) return;
     setRedeeming(true);
     try {
-      const response = await fetch(`${API}/api/partner-portal/redeem?token=${token}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ voucher_code: scanResult.code })
-      });
+      const response = await axios.post(`${API}/api/partner-portal/redeem?token=${token}`, { voucher_code: scanResult.code });
       
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.detail || 'Einlösung fehlgeschlagen');
-      }
-      
-      toast.success(`✅ Gutschein eingelöst! €${data.payout_amount.toFixed(2)} gutgeschrieben.`);
+      toast.success(`✅ Gutschein eingelöst! €${response.data.payout_amount.toFixed(2)} gutgeschrieben.`);
       setScanResult(null);
       setManualCode('');
       fetchDashboard(token);
     } catch (err) {
-      toast.error(err.message);
+      toast.error(err.response?.data?.detail || 'Einlösung fehlgeschlagen');
     } finally {
       setRedeeming(false);
     }
@@ -731,9 +720,8 @@ export default function PartnerPortal() {
   
   const fetchDashboard = async (authToken = token) => {
     try {
-      const response = await fetch(`${API}/api/partner-portal/dashboard?token=${authToken}`);
-      const data = await response.json();
-      setDashboardData(data);
+      const response = await axios.get(`${API}/api/partner-portal/dashboard?token=${authToken}`);
+      setDashboardData(response.data);
     } catch (err) {
       console.error('Dashboard fetch error:', err);
     }
@@ -741,9 +729,8 @@ export default function PartnerPortal() {
 
   const fetchVouchers = async () => {
     try {
-      const response = await fetch(`${API}/api/partner-portal/vouchers?token=${token}`);
-      const data = await response.json();
-      setVouchers(data.vouchers || []);
+      const response = await axios.get(`${API}/api/partner-portal/vouchers?token=${token}`);
+      setVouchers(response.data.vouchers || []);
     } catch (err) {
       console.error('Vouchers fetch error:', err);
     }
