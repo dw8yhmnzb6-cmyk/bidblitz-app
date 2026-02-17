@@ -5,6 +5,60 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 
 ## Current Status (February 17, 2026)
 
+### ✅ Session Update - February 17, 2026 (Session 22) - RESTAURANT FEATURES KOMPLETT 🍽️
+
+**Neue Restaurant-Features implementiert:**
+
+#### 1. ✅ Restaurant Portal mit QR-Scanner
+- **URL:** `/restaurant-portal`
+- Restaurant-Login & Registrierung
+- QR-Code-Scanner (Kamera + manuelle Eingabe)
+- Gutschein-Validierung mit Wert, Rabatt, Beschreibung
+- Einlösung → Guthaben wird Restaurant gutgeschrieben
+- Dashboard mit ausstehenden Auszahlungen
+- Verlauf aller Einlösungen
+
+#### 2. ✅ Bewertungssystem
+- Kunden können nach Einlösung bewerten (1-5 Sterne)
+- Bonus-Gebote für Bewertungen (+2 normal, +5 mit Fotos)
+- Food/Service/Ambiance Einzelbewertungen
+- "Würde empfehlen" Rate
+
+#### 3. ✅ Restaurant-Kategorien & Discovery
+- **URL:** `/discover-restaurants`
+- 16 Kategorien (Italienisch, Asiatisch, Burger, Sushi, etc.)
+- Filter nach Kategorie, Stadt, Bewertung
+- Premium-Restaurants Featured
+- Gutschein-Verfügbarkeit angezeigt
+
+#### 4. ✅ Treueprogramm (Loyalty)
+- **URL:** `/loyalty`
+- 5 Level: Starter → Stammgast → VIP → Gold → Platin
+- Stempel sammeln bei Restaurant-Besuchen
+- 8 Challenges mit Bonus-Geboten
+- Wochenstreak-Belohnungen
+- Leaderboard
+
+#### 5. ✅ Premium-Listings für Restaurants
+- Restaurants können Premium-Status kaufen (€49,99/Monat)
+- Featured-Platzierung auf der Startseite
+- Höhere Sichtbarkeit
+
+**Test-Restaurants erstellt:**
+- Pizza Roma (Berlin) ⭐4.5 - Premium
+- Sushi Garden (München) ⭐4.8 - Premium
+- Burger House (Berlin) ⭐4.2
+- Istanbul Kebab (Berlin) ⭐4.6
+- Café Zentral (Wien) ⭐4.7 - Premium
+
+**API-Endpunkte:**
+- `/api/restaurant-portal/*` - Scanner & Redemption
+- `/api/restaurant-reviews/*` - Bewertungen
+- `/api/restaurants/*` - Discovery & Kategorien
+- `/api/loyalty/*` - Treueprogramm
+
+---
+
 ### ✅ Session Update - February 17, 2026 (Session 22) - VERIFIZIERUNG & STATUS-CHECK 🔍
 
 **Verifizierte Änderungen vom vorherigen Agenten:**
