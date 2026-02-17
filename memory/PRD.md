@@ -5,6 +5,38 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 
 ## Current Status (February 17, 2026)
 
+### ✅ Session Update - February 17, 2026 (Session 25) - WISE PAYOUT INTEGRATION ✅
+
+#### 1. Wise (TransferWise) Auszahlungssystem implementiert ✅
+- **Ersetzt das nicht funktionierende Stripe Connect System**
+- Neuer Backend-Router: `/app/backend/routers/wise_payouts.py`
+- Partner können IBAN/Bankkonto für automatische Auszahlungen hinterlegen
+- Endpoints:
+  - `POST /api/wise-payouts/setup-bank-account` - Bankkonto einrichten
+  - `GET /api/wise-payouts/account-status` - Verbindungsstatus
+  - `POST /api/wise-payouts/request-payout` - Auszahlung anfordern
+  - `GET /api/wise-payouts/payout-history` - Auszahlungsverlauf
+  - `DELETE /api/wise-payouts/disconnect` - Bankkonto trennen
+
+#### 2. Frontend Payouts-View aktualisiert ✅
+- Neue grüne/teal-farbene Banküberweisung-UI
+- IBAN-Eingabeformular mit Validierung
+- Vorteile-Liste für Partner
+- Auszahlungsverlauf mit Status-Badges
+- Mindestbetrag: €10 (statt €50 bei Stripe)
+
+#### 3. Hinweis zum Wise API Key ⚠️
+- Der vom Benutzer bereitgestellte API-Key hat "Eingeschränkte Berechtigungen"
+- Für vollständige Auszahlungen muss der Benutzer im Wise-Dashboard:
+  - Einen neuen API-Token mit vollen Berechtigungen erstellen ODER
+  - Die Berechtigungen des existierenden Tokens erweitern
+
+**Test-Account:**
+- Partner: `wise-test@partner.com` / `Test123!`
+- €150.00 Auszahlungsguthaben vorhanden
+
+---
+
 ### ✅ Session Update - February 17, 2026 (Session 24i) - KUNDEN-WALLET AUFLADEN & SPRACHEN ✅
 
 #### 1. Kunden-Wallet Aufladen-Funktion ✅
