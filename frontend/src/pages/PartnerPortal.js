@@ -939,15 +939,37 @@ export default function PartnerPortal() {
       <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-100 flex items-center justify-center p-4">
         <div className="w-full max-w-md">
           <div className="bg-white rounded-2xl shadow-xl p-8">
-            {/* Language Toggle */}
-            <div className="flex justify-end mb-4">
+            {/* Language Selector */}
+            <div className="flex justify-end mb-4 relative">
               <button
-                onClick={() => setLanguage(language === 'de' ? 'en' : 'de')}
-                className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
+                onClick={() => setShowLanguageMenu(!showLanguageMenu)}
+                className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 px-3 py-1.5 rounded-lg border hover:border-amber-300"
               >
+                <span>{languages.find(l => l.code === language)?.flag}</span>
+                <span>{languages.find(l => l.code === language)?.name}</span>
                 <Languages className="w-4 h-4" />
-                {language === 'de' ? 'EN' : 'DE'}
               </button>
+              
+              {showLanguageMenu && (
+                <div className="absolute top-full right-0 mt-1 bg-white border rounded-lg shadow-lg py-1 z-50 min-w-[150px]">
+                  {languages.map((lang) => (
+                    <button
+                      key={lang.code}
+                      onClick={() => {
+                        setLanguage(lang.code);
+                        setShowLanguageMenu(false);
+                        localStorage.setItem('partner_language', lang.code);
+                      }}
+                      className={`w-full px-4 py-2 text-left text-sm flex items-center gap-2 hover:bg-amber-50 ${
+                        language === lang.code ? 'bg-amber-50 text-amber-600' : 'text-gray-700'
+                      }`}
+                    >
+                      <span>{lang.flag}</span>
+                      <span>{lang.name}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
             
             {/* Logo */}
@@ -956,7 +978,7 @@ export default function PartnerPortal() {
                 <Store className="w-8 h-8 text-white" />
               </div>
               <h1 className="text-2xl font-bold text-gray-800">Partner Portal</h1>
-              <p className="text-gray-500 text-sm">BidBlitz {language === 'en' ? 'Voucher System' : 'Gutschein-System'}</p>
+              <p className="text-gray-500 text-sm">BidBlitz {t('voucherSystem')}</p>
             </div>
             
             {/* Login Mode Toggle */}
