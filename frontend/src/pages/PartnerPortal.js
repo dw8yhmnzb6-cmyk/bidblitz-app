@@ -2469,6 +2469,51 @@ export default function PartnerPortal() {
             />
           )}
 
+          {/* Marketing View - New Marketing Features */}
+          {view === 'marketing' && (
+            <div className="space-y-8">
+              {/* Marketing Sub-Navigation */}
+              <div className="flex gap-2 flex-wrap">
+                {[
+                  { id: 'referral', label: 'Empfehlungen', icon: '👥' },
+                  { id: 'qr', label: 'QR-Codes', icon: '📱' },
+                  { id: 'flash', label: 'Flash Sales', icon: '⚡' },
+                  { id: 'social', label: 'Social Media', icon: '📣' },
+                  { id: 'ratings', label: 'Bewertungen', icon: '⭐' },
+                ].map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setMarketingTab(tab.id)}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      marketingTab === tab.id
+                        ? 'bg-amber-500 text-white'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    {tab.icon} {tab.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Marketing Content */}
+              {marketingTab === 'referral' && (
+                <PartnerReferral token={token} t={t} />
+              )}
+              {marketingTab === 'qr' && (
+                <PartnerQRCodes token={token} t={t} />
+              )}
+              {marketingTab === 'flash' && (
+                <PartnerFlashSales token={token} t={t} />
+              )}
+              {marketingTab === 'social' && (
+                <PartnerSocialSharing token={token} t={t} />
+              )}
+              {marketingTab === 'ratings' && (
+                <PartnerRatingsOverview token={token} partnerId={partner?.id} t={t} />
+              )}
+            </div>
+          )}
+
           {/* Verification View - Using PartnerVerification Component */}
           {view === 'verification' && (
             <PartnerVerification 
