@@ -327,6 +327,19 @@ export default function WinnerGalleryHome() {
     }
   };
 
+  // Stats translations
+  const statsTexts = {
+    de: { winners: 'Glückliche Gewinner', savings: 'Gesamtersparnis', avg: 'Durchschn. Ersparnis' },
+    en: { winners: 'Happy Winners', savings: 'Total Savings', avg: 'Avg. Savings' },
+    tr: { winners: 'Mutlu Kazananlar', savings: 'Toplam Tasarruf', avg: 'Ort. Tasarruf' },
+    sq: { winners: 'Fitues të Lumtur', savings: 'Kursime Totale', avg: 'Mesatare' },
+    xk: { winners: 'Fitues të Lumtur', savings: 'Kursime Totale', avg: 'Mesatare' },
+    fr: { winners: 'Gagnants Heureux', savings: 'Économies Totales', avg: 'Économies Moy.' },
+    ar: { winners: 'فائزون سعداء', savings: 'إجمالي التوفير', avg: 'متوسط التوفير' },
+    ae: { winners: 'فائزون سعداء', savings: 'إجمالي التوفير', avg: 'متوسط التوفير' }
+  };
+  const st = statsTexts[language] || statsTexts.de;
+
   return (
     <div className="mb-8">
       {/* Live Stats Banner */}
@@ -334,17 +347,17 @@ export default function WinnerGalleryHome() {
         <div className="flex items-center justify-around text-center">
           <div>
             <div className="text-2xl sm:text-3xl font-bold">{liveStats.totalWinners.toLocaleString('de-DE')}</div>
-            <div className="text-xs sm:text-sm text-green-100">{language === 'de' ? 'Glückliche Gewinner' : 'Happy Winners'}</div>
+            <div className="text-xs sm:text-sm text-green-100">{st.winners}</div>
           </div>
           <div className="w-px h-12 bg-white/30" />
           <div>
             <div className="text-2xl sm:text-3xl font-bold">€{liveStats.totalSavings.toLocaleString('de-DE')}</div>
-            <div className="text-xs sm:text-sm text-green-100">{language === 'de' ? 'Gesamtersparnis' : 'Total Savings'}</div>
+            <div className="text-xs sm:text-sm text-green-100">{st.savings}</div>
           </div>
           <div className="w-px h-12 bg-white/30 hidden sm:block" />
           <div className="hidden sm:block">
             <div className="text-2xl sm:text-3xl font-bold">98%</div>
-            <div className="text-xs sm:text-sm text-green-100">{language === 'de' ? 'Durchschn. Ersparnis' : 'Avg. Savings'}</div>
+            <div className="text-xs sm:text-sm text-green-100">{st.avg}</div>
           </div>
         </div>
       </div>
