@@ -2135,17 +2135,12 @@ export default function PartnerPortal() {
                         const formData = new FormData();
                         formData.append('logo', file);
                         try {
-                          const res = await fetch(`${API}/api/partner-portal/upload-logo?token=${token}`, {
-                            method: 'POST',
-                            body: formData
-                          });
-                          const data = await res.json();
-                          if (!res.ok) throw new Error(data.detail);
-                          toast.success(data.message);
-                          setPartner({ ...partner, logo_url: data.logo_url });
-                          localStorage.setItem('partner_data', JSON.stringify({ ...partner, logo_url: data.logo_url }));
+                          const res = await axios.post(`${API}/api/partner-portal/upload-logo?token=${token}`, formData);
+                          toast.success(res.data.message);
+                          setPartner({ ...partner, logo_url: res.data.logo_url });
+                          localStorage.setItem('partner_data', JSON.stringify({ ...partner, logo_url: res.data.logo_url }));
                         } catch (err) {
-                          toast.error(err.message);
+                          toast.error(err.response?.data?.detail || 'Upload fehlgeschlagen');
                         }
                       }}
                     />
