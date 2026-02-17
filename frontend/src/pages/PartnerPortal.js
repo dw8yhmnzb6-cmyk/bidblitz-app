@@ -1147,6 +1147,7 @@ export default function PartnerPortal() {
   const [wiseStatus, setWiseStatus] = useState(null);
   const [wiseSetupForm, setWiseSetupForm] = useState({ account_holder_name: '', iban: '' });
   const [showWiseSetup, setShowWiseSetup] = useState(false);
+  const [payoutAmount, setPayoutAmount] = useState(''); // Custom payout amount
   
   // Verification state
   const [documents, setDocuments] = useState([]);
