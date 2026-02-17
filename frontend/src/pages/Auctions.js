@@ -785,7 +785,7 @@ const EndedAuctionCard = memo(({ auction, product, t, language, langKey }) => {
           </div>
           
           <div className="w-14 h-14 bg-white rounded-lg flex items-center justify-center shadow-sm flex-shrink-0">
-            <img src={product.image_url || 'https://via.placeholder.com/64'} alt="" className="max-w-full max-h-full object-contain grayscale p-1" />
+            <img src={product.image_url || 'https://via.placeholder.com/64'} alt="" className="max-w-full max-h-full object-contain grayscale p-1" loading="lazy" decoding="async" />
           </div>
         </div>
       </div>
