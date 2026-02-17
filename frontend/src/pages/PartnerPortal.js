@@ -2460,25 +2460,17 @@ function BidBlitzPayPartner({ token, partnerId, partnerName, commissionRate }) {
     setProcessing(true);
     
     try {
-      const response = await fetch(
-        `${API}/api/bidblitz-pay/process-payment?token=${token}&payment_token=${customerData.payment_token}&amount=${amount}&use_partner_vouchers=true&use_universal=true`,
-        { method: 'POST' }
+      const response = await axios.post(
+        `${API}/api/bidblitz-pay/process-payment?token=${token}&payment_token=${customerData.payment_token}&amount=${amount}&use_partner_vouchers=true&use_universal=true`
       );
       
-      const result = await response.json();
-      
-      if (!response.ok) {
-        toast.error(result.detail || "Zahlung fehlgeschlagen");
-        return;
-      }
-      
-      setPaymentSuccess(result);
+      setPaymentSuccess(response.data);
       setCustomerData(null);
       setPaymentAmount('');
       toast.success(`Zahlung von €${amount.toFixed(2)} erfolgreich!`);
     } catch (error) {
       console.error("Payment error:", error);
-      toast.error("Fehler bei der Zahlung");
+      toast.error(error.response?.data?.detail || "Zahlung fehlgeschlagen");
     } finally {
       setProcessing(false);
     }
