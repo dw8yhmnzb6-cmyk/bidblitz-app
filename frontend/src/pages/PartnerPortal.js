@@ -743,32 +743,22 @@ export default function PartnerPortal() {
     setLoading(true);
     
     try {
-      const response = await fetch(`${API}/api/partner-portal/vouchers/create?token=${token}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: newVoucher.name,
-          description: newVoucher.description,
-          value: parseFloat(newVoucher.value),
-          price: parseFloat(newVoucher.price),
-          quantity: parseInt(newVoucher.quantity),
-          valid_until: newVoucher.valid_until || null,
-          terms: newVoucher.terms
-        })
+      const response = await axios.post(`${API}/api/partner-portal/vouchers/create?token=${token}`, {
+        name: newVoucher.name,
+        description: newVoucher.description,
+        value: parseFloat(newVoucher.value),
+        price: parseFloat(newVoucher.price),
+        quantity: parseInt(newVoucher.quantity),
+        valid_until: newVoucher.valid_until || null,
+        terms: newVoucher.terms
       });
       
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.detail || 'Fehler beim Erstellen');
-      }
-      
-      toast.success(data.message);
+      toast.success(response.data.message);
       setNewVoucher({ name: '', description: '', value: '', price: '', quantity: 1, valid_until: '', terms: '' });
       setView('vouchers');
       fetchVouchers();
     } catch (err) {
-      toast.error(err.message);
+      toast.error(err.response?.data?.detail || 'Fehler beim Erstellen');
     } finally {
       setLoading(false);
     }
@@ -778,9 +768,8 @@ export default function PartnerPortal() {
   
   const fetchStatistics = async () => {
     try {
-      const response = await fetch(`${API}/api/partner-portal/statistics?token=${token}`);
-      const data = await response.json();
-      setStatistics(data);
+      const response = await axios.get(`${API}/api/partner-portal/statistics?token=${token}`);
+      setStatistics(response.data);
     } catch (err) {
       console.error('Statistics fetch error:', err);
     }
