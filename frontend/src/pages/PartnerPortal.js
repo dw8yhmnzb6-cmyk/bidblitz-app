@@ -621,9 +621,10 @@ export default function PartnerPortal() {
         body: JSON.stringify(newStaff)
       });
       
+      const data = await response.json();
+      
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.detail || 'Error creating staff');
+        throw new Error(data.detail || 'Error creating staff');
       }
       
       toast.success(language === 'en' ? 'Staff account created' : 'Mitarbeiter-Konto erstellt');
@@ -727,12 +728,12 @@ export default function PartnerPortal() {
         body: JSON.stringify({ voucher_code: scanResult.code })
       });
       
+      const data = await response.json();
+      
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Einlösung fehlgeschlagen');
+        throw new Error(data.detail || 'Einlösung fehlgeschlagen');
       }
       
-      const data = await response.json();
       toast.success(`✅ Gutschein eingelöst! €${data.payout_amount.toFixed(2)} gutgeschrieben.`);
       setScanResult(null);
       setManualCode('');
