@@ -396,6 +396,89 @@ async def check_application_status(email: str):
         "rejection_reason": partner.get("rejection_reason")
     }
 
+# ==================== STAFF MANAGEMENT ====================
+
+@router.get("/staff")
+async def list_staff(token: str):
+    """List all staff members for a partner"""
+    partner = await get_current_partner(token)
+    
+    staff_list = await db.partner_staff.find(
+        {"partner_id": partner["id"]},
+        {"_id": 0, "password_hash": 0, "auth_token": 0}
+    ).to_list(100)
+    
+    return {
+        "staff": staff_list,
+        "total": len(staff_list)
+    }
+
+@router.post("/staff/create")
+async def create_staff_account(staff_data: StaffAccountCreate, token: str):
+    """Create a new staff account (counter employee)"""
+    partner = await get_current_partner(token)
+    
+    # Check if email already exists
+    existing = await db.partner_staff.find_one({"email": staff_data.email.lower()})
+    if existing:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    
+    staff_id = str(uuid.uuid4())
+    
+    staff_doc = {
+        "id": staff_id,
+        "partner_id": partner["id"],
+        "name": staff_data.name,
+        "email": staff_data.email.lower(),
+        "password_hash": hash_password(staff_data.password),
+        "role": staff_data.role,  # "counter" or "admin"
+        "is_active": True,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.partner_staff.insert_one(staff_doc)
+    
+    logger.info(f"Staff account created: {staff_data.email} for partner {partner['id']}")
+    
+    return {
+        "success": True,
+        "message": f"Staff account created for {staff_data.name}",
+        "staff_id": staff_id,
+        "role": staff_data.role
+    }
+
+@router.put("/staff/{staff_id}")
+async def update_staff_account(staff_id: str, token: str, name: Optional[str] = None, role: Optional[str] = None, is_active: Optional[bool] = None):
+    """Update a staff account"""
+    partner = await get_current_partner(token)
+    
+    staff = await db.partner_staff.find_one({"id": staff_id, "partner_id": partner["id"]})
+    if not staff:
+        raise HTTPException(status_code=404, detail="Staff not found")
+    
+    update_data = {"updated_at": datetime.now(timezone.utc).isoformat()}
+    if name is not None:
+        update_data["name"] = name
+    if role is not None:
+        update_data["role"] = role
+    if is_active is not None:
+        update_data["is_active"] = is_active
+    
+    await db.partner_staff.update_one({"id": staff_id}, {"$set": update_data})
+    
+    return {"success": True, "message": "Staff updated"}
+
+@router.delete("/staff/{staff_id}")
+async def delete_staff_account(staff_id: str, token: str):
+    """Delete a staff account"""
+    partner = await get_current_partner(token)
+    
+    result = await db.partner_staff.delete_one({"id": staff_id, "partner_id": partner["id"]})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Staff not found")
+    
+    return {"success": True, "message": "Staff account deleted"}
+
 # ==================== VOUCHER MANAGEMENT ====================
 
 @router.post("/vouchers/create")
