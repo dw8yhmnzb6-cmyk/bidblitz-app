@@ -578,16 +578,15 @@ export default function PartnerPortal() {
   const [staffList, setStaffList] = useState([]);
   const [newStaff, setNewStaff] = useState({ name: '', email: '', password: '', role: 'counter' });
   const [loadingStaff, setLoadingStaff] = useState(false);
+  const [editingStaff, setEditingStaff] = useState(null);
+  const [editStaffData, setEditStaffData] = useState({ name: '', email: '', role: 'counter' });
   
   const fetchStaff = async () => {
     if (!token) return;
     setLoadingStaff(true);
     try {
-      const response = await fetch(`${API}/api/partner-portal/staff?token=${token}`);
-      if (response.ok) {
-        const data = await response.json();
-        setStaffList(data.staff || []);
-      }
+      const response = await axios.get(`${API}/api/partner-portal/staff?token=${token}`);
+      setStaffList(response.data.staff || []);
     } catch (error) {
       console.error('Error fetching staff:', error);
     } finally {
@@ -603,23 +602,23 @@ export default function PartnerPortal() {
     }
     
     try {
-      const response = await fetch(`${API}/api/partner-portal/staff/create?token=${token}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newStaff)
-      });
-      
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.detail || 'Error creating staff');
-      }
-      
+      await axios.post(`${API}/api/partner-portal/staff/create?token=${token}`, newStaff);
       toast.success(language === 'en' ? 'Staff account created' : 'Mitarbeiter-Konto erstellt');
       setNewStaff({ name: '', email: '', password: '', role: 'counter' });
       fetchStaff();
     } catch (error) {
-      toast.error(error.message);
+      toast.error(error.response?.data?.detail || error.message);
+    }
+  };
+  
+  const updateStaff = async (staffId) => {
+    try {
+      await axios.put(`${API}/api/partner-portal/staff/${staffId}?token=${token}`, editStaffData);
+      toast.success(language === 'en' ? 'Staff updated' : 'Mitarbeiter aktualisiert');
+      setEditingStaff(null);
+      fetchStaff();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || error.message);
     }
   };
   
@@ -627,16 +626,11 @@ export default function PartnerPortal() {
     if (!confirm(language === 'en' ? 'Delete this staff account?' : 'Mitarbeiter-Konto löschen?')) return;
     
     try {
-      const response = await fetch(`${API}/api/partner-portal/staff/${staffId}?token=${token}`, {
-        method: 'DELETE'
-      });
-      
-      if (response.ok) {
-        toast.success(language === 'en' ? 'Staff deleted' : 'Mitarbeiter gelöscht');
-        fetchStaff();
-      }
+      await axios.delete(`${API}/api/partner-portal/staff/${staffId}?token=${token}`);
+      toast.success(language === 'en' ? 'Staff deleted' : 'Mitarbeiter gelöscht');
+      fetchStaff();
     } catch (error) {
-      toast.error(error.message);
+      toast.error(error.response?.data?.detail || error.message);
     }
   };
 
