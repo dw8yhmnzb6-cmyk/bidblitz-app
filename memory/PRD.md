@@ -5,74 +5,57 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 
 ## Current Status (February 17, 2026)
 
-### ✅ Session Update - February 17, 2026 (Session 23) - PARTNER PORTAL ERWEITERT 🏪
+### ✅ Session Update - February 17, 2026 (Session 23) - PARTNER PORTAL KOMPLETT 🏪
 
-**Partner Portal für alle Geschäftstypen implementiert:**
+**Alle Features implementiert:**
 
-#### Neue Geschäftstypen (14 insgesamt):
-| Typ | Icon | Provision |
-|-----|------|-----------|
-| Restaurant | 🍕 | 10% |
-| Bar & Club | 🍺 | 10% |
-| Café | ☕ | 10% |
-| Tankstelle | ⛽ | 8% |
-| Kino | 🎬 | 12% |
-| Einzelhandel | 🛒 | 10% |
-| Wellness & Spa | 💆 | 12% |
-| Fitness-Studio | 🏋️ | 10% |
-| Friseur & Beauty | 💇 | 10% |
-| Hotel & Unterkunft | 🏨 | 12% |
-| Unterhaltung | 🎯 | 10% |
-| Supermarkt | 🛍️ | 8% |
-| Apotheke | 💊 | 8% |
-| Sonstiges | 🏪 | 10% |
+#### 1. Partner Portal mit 14 Geschäftstypen
+- Restaurant, Bar, Café, Tankstelle, Kino, Einzelhandel, Wellness, Fitness, Friseur, Hotel, Unterhaltung, Supermarkt, Apotheke, Sonstiges
+- 3-Schritte Bewerbungsformular
+- Admin-Genehmigung erforderlich
 
-#### Features:
-1. **Multi-Step Bewerbungsformular** (3 Schritte)
-   - Schritt 1: Geschäftstyp wählen
-   - Schritt 2: Grunddaten (Firmenname, E-Mail, Telefon, Passwort)
-   - Schritt 3: Details (Adresse, PLZ, Stadt, Website, Steuernummer, IBAN)
+#### 2. E-Mail-Benachrichtigungen ✅ NEU
+- Bestätigung bei Bewerbungseingang
+- E-Mail bei Genehmigung mit Partner Portal Link
+- E-Mail bei Ablehnung mit Grund
+- Auszahlungsbestätigung mit Betrag und ID
 
-2. **Admin-Genehmigung** für neue Partner
-   - Neuer Admin-Tab: "🏪 Partner Portal"
-   - Bewerbungen müssen vom Admin genehmigt werden
-   - Ablehnungsgrund kann eingegeben werden
+#### 3. Auszahlungssystem ✅ NEU
+- Mindestbetrag: €50
+- Bearbeitungszeit: 3-5 Werktage
+- Auszahlungsverlauf einsehbar
+- IBAN-Verwaltung im Profil
 
-3. **Provisions-System**
-   - 8-12% je nach Geschäftstyp
-   - Automatische Berechnung bei Gutschein-Erstellung
-   - Ausstehende Auszahlungen werden im Dashboard angezeigt
+#### 4. Partner-Statistiken ✅ NEU
+- Übersicht: Erstellt, Verkauft, Eingelöst
+- Finanzübersicht: Gesamtumsatz, Ausstehend
+- Conversion Rate, Redemption Rate
 
-4. **Gutschein-Verwaltung**
-   - Partner können Gutscheine erstellen
-   - Wert, Preis, Gültigkeit, Bedingungen
-   - Automatische Auszahlungsberechnung
+#### 5. Profil & Logo-Upload ✅ NEU
+- Logo hochladen (max. 2MB)
+- IBAN und Steuernummer aktualisieren
+- Kontoinformationen einsehen
 
-5. **QR-Code Scanner** (wie bisher)
-   - Gutscheine scannen und einlösen
-   - Dashboard mit Statistiken
+#### 6. Admin-Panel erweitert ✅
+- "🏪 Partner Portal" Tab im Admin
+- Bewerbungen genehmigen/ablehnen
+- Alle Partner in Übersichtstabelle
 
-6. **Footer-Link hinzugefügt**
-   - "🏪 Partner Portal" Link unter EXTRAS im Footer
+#### 7. Footer-Link ✅
+- "🏪 Partner Portal" unter EXTRAS
 
-**Backend API-Endpunkte:**
-- `GET /api/partner-portal/business-types` - Alle Geschäftstypen
-- `POST /api/partner-portal/apply` - Bewerbung einreichen
-- `POST /api/partner-portal/login` - Partner-Login
-- `POST /api/partner-portal/vouchers/create` - Gutschein erstellen
-- `GET /api/partner-portal/dashboard` - Dashboard-Daten
-- `POST /api/partner-portal/redeem` - Gutschein einlösen
-- `GET /api/partner-portal/admin/pending-applications` - Offene Bewerbungen
-- `POST /api/partner-portal/admin/approve/{id}` - Bewerbung genehmigen
-- `POST /api/partner-portal/admin/reject/{id}` - Bewerbung ablehnen
-- `GET /api/partner-portal/admin/all-partners` - Alle Partner
+**Backend APIs:**
+- `POST /api/partner-portal/apply` - Bewerbung + E-Mail
+- `POST /api/partner-portal/admin/approve/{id}` - Genehmigung + E-Mail
+- `POST /api/partner-portal/admin/reject/{id}` - Ablehnung + E-Mail
+- `POST /api/partner-portal/request-payout` - Auszahlung + E-Mail
+- `GET /api/partner-portal/payout-history` - Auszahlungsverlauf
+- `GET /api/partner-portal/statistics` - Statistiken
+- `POST /api/partner-portal/upload-logo` - Logo hochladen
+- `PUT /api/partner-portal/update-iban` - Bankdaten aktualisieren
 
-**Frontend URLs:**
-- `/partner-portal` - Neues Partner Portal (Multi-Business)
-- `/restaurant-portal` - Legacy Restaurant Portal (weiterhin verfügbar)
-
-**Admin Panel:**
-- Neuer Tab "🏪 Partner Portal" mit Bewerbungsübersicht und Partnerliste
+**Frontend Views:**
+- Dashboard, Scanner, Gutscheine, Statistiken, Auszahlungen, Profil
 
 ---
 
