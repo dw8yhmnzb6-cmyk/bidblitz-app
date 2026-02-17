@@ -121,6 +121,7 @@ import RestaurantVouchersPage from "./pages/RestaurantVouchersPage";
 import RestaurantPortal from "./pages/RestaurantPortal";
 import DiscoverRestaurants from "./pages/DiscoverRestaurants";
 import LoyaltyDashboard from "./pages/LoyaltyDashboard";
+import RestaurantDetail from "./pages/RestaurantDetail";
 
 // Protected Route Component
 const ProtectedRoute = ({ children, requireAdmin = false }) => {
