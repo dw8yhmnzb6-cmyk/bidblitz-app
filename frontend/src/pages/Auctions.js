@@ -834,7 +834,7 @@ const PremiumCard = memo(({ auction, product, onBid, t, language, langKey }) => 
         </div>
         
         <div className="w-28 h-28 bg-white rounded-lg flex items-center justify-center shadow">
-          <img src={product.image_url || 'https://via.placeholder.com/112'} alt="" className="max-w-full max-h-full object-contain p-1" />
+          <img src={product.image_url || 'https://via.placeholder.com/112'} alt="" className="max-w-full max-h-full object-contain p-1" loading="lazy" decoding="async" />
         </div>
       </div>
       
