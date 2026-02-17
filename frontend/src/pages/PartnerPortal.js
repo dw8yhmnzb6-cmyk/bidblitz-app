@@ -1902,7 +1902,7 @@ export default function PartnerPortal() {
               {/* Recent Redemptions */}
               <div className="bg-white rounded-xl shadow-sm overflow-hidden">
                 <div className="p-4 border-b flex items-center justify-between">
-                  <h2 className="font-bold text-gray-800">Letzte Einlösungen</h2>
+                  <h2 className="font-bold text-gray-800">{t('recentRedemptions')}</h2>
                   <History className="w-5 h-5 text-gray-400" />
                 </div>
                 <div className="divide-y">
@@ -1917,14 +1917,14 @@ export default function PartnerPortal() {
                         </div>
                         <div className="text-right">
                           <p className="font-bold text-green-600">+€{(r.payout_amount || r.value * 0.9)?.toFixed(2)}</p>
-                          <p className="text-xs text-gray-400">Wert: €{r.value}</p>
+                          <p className="text-xs text-gray-400">{t('value')}: €{r.value}</p>
                         </div>
                       </div>
                     ))
                   ) : (
                     <div className="p-8 text-center text-gray-400">
                       <History className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                      <p>Noch keine Einlösungen</p>
+                      <p>{t('noRedemptions')}</p>
                     </div>
                   )}
                 </div>
