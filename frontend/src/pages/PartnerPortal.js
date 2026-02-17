@@ -1532,8 +1532,8 @@ export default function PartnerPortal() {
     } else if (isLoggedIn && view === 'statistics') {
       fetchStatistics();
     } else if (isLoggedIn && view === 'payouts') {
-      fetchStripeStatus();
-      fetchPayoutHistory();
+      fetchWiseStatus();
+      fetchWisePayoutHistory();
       fetchDashboard();
     } else if (isLoggedIn && view === 'verification') {
       fetchVerificationStatus();
