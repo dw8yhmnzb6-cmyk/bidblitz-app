@@ -138,7 +138,7 @@ async def microsoft_callback(request: Request, code: str = None, error: str = No
                 "password": None,  # OAuth users don't have password
                 "auth_provider": "microsoft",
                 "microsoft_id": microsoft_id,
-                "bids_balance": 50,  # Welcome bonus
+                "bids_balance": 10,  # Welcome bonus
                 "is_admin": False,
                 "is_vip": False,
                 "created_at": datetime.now(timezone.utc).isoformat(),
