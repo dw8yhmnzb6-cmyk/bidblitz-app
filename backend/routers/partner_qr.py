@@ -42,8 +42,10 @@ async def generate_partner_qr(
     bg_color: str = "FFFFFF"
 ):
     """Generate QR code for partner profile or vouchers"""
-    # Verify partner
-    partner = await db.partners.find_one({"token": token}, {"_id": 0})
+    # Verify partner - check both collections for compatibility
+    partner = await db.partner_accounts.find_one({"token": token}, {"_id": 0})
+    if not partner:
+        partner = await db.partners.find_one({"token": token}, {"_id": 0})
     if not partner:
         raise HTTPException(status_code=401, detail="Ungültiger Token")
     
