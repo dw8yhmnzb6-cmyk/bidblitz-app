@@ -315,6 +315,9 @@ const AuctionOfTheDay = memo(({ auction, product, onBid, t, language, langKey, i
               src={product.image_url || 'https://via.placeholder.com/128'} 
               alt={productName}
               className="max-w-full max-h-full object-contain p-2"
+              loading="lazy"
+              decoding="async"
+              onError={(e) => { e.target.src = 'https://via.placeholder.com/128?text=?'; }}
             />
           </div>
           
