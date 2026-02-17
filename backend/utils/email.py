@@ -174,7 +174,7 @@ async def send_influencer_new_sale_notification(
                     </div>
                     
                     <div style="text-align:center; margin-top:30px;">
-                        <a href="https://bidblitz.ae/influencer-dashboard" 
+                        <a href="https://BidBlitz.ae/influencer-dashboard" 
                            style="display:inline-block; background:#FFD700; color:#111; padding:15px 30px; 
                                   text-decoration:none; border-radius:8px; font-weight:bold; font-size:16px;">
                             Zum Dashboard →
@@ -185,7 +185,7 @@ async def send_influencer_new_sale_notification(
             <tr>
                 <td style="background:#f5f5f5; padding:20px; text-align:center;">
                     <p style="margin:0; font-size:12px; color:#888;">
-                        Vielen Dank, dass Sie Teil des bidblitz.ae Influencer-Programms sind!
+                        Vielen Dank, dass Sie Teil des BidBlitz.ae Influencer-Programms sind!
                     </p>
                 </td>
             </tr>
@@ -235,7 +235,7 @@ async def send_influencer_new_signup_notification(
                     </p>
                     
                     <div style="text-align:center; margin-top:30px;">
-                        <a href="https://bidblitz.ae/influencer-dashboard" 
+                        <a href="https://BidBlitz.ae/influencer-dashboard" 
                            style="display:inline-block; background:#7C3AED; color:#fff; padding:15px 30px; 
                                   text-decoration:none; border-radius:8px; font-weight:bold; font-size:16px;">
                             Dashboard ansehen →
@@ -327,7 +327,7 @@ async def send_admin_payout_notification(
     request_type: str = "influencer"  # "influencer" or "manager"
 ):
     """Send payout request notification to admin."""
-    ADMIN_EMAIL = os.environ.get('ADMIN_EMAIL', 'admin@bidblitz.ae')
+    ADMIN_EMAIL = os.environ.get('ADMIN_EMAIL', 'admin@BidBlitz.ae')
     
     type_label = "Influencer" if request_type == "influencer" else "Manager"
     
@@ -388,7 +388,7 @@ async def send_admin_payout_notification(
                     </div>
                     
                     <div style="text-align:center; margin-top:30px;">
-                        <a href="https://bidblitz.ae/admin-panel" style="display:inline-block; background:#7C3AED; color:#fff; padding:15px 30px; text-decoration:none; border-radius:10px; font-weight:bold;">
+                        <a href="https://BidBlitz.ae/admin-panel" style="display:inline-block; background:#7C3AED; color:#fff; padding:15px 30px; text-decoration:none; border-radius:10px; font-weight:bold;">
                             Zum Admin-Panel →
                         </a>
                     </div>
@@ -438,7 +438,7 @@ async def send_wholesale_welcome_email(
             <p style="color:#E0F2FE; margin:0 0 20px 0; font-size:14px;">
                 Erstellen Sie Ihr Konto, um sofort von Ihren Großkundenvorteilen zu profitieren.
             </p>
-            <a href="https://bidblitz.ae/register" style="display:inline-block; background:#fff; color:#0891B2; padding:15px 40px; text-decoration:none; border-radius:10px; font-weight:bold; font-size:16px;">
+            <a href="https://BidBlitz.ae/register" style="display:inline-block; background:#fff; color:#0891B2; padding:15px 40px; text-decoration:none; border-radius:10px; font-weight:bold; font-size:16px;">
                 Kostenlos registrieren →
             </a>
         </div>
@@ -457,7 +457,7 @@ async def send_wholesale_welcome_email(
             <tr>
                 <td style="background:linear-gradient(135deg,#1E293B,#334155); padding:40px 30px; text-align:center;">
                     <h1 style="color:#fff; margin:0; font-size:28px;">🏢 Willkommen als Großkunde!</h1>
-                    <p style="color:#94A3B8; margin:10px 0 0; font-size:14px;">Ihre B2B-Partnerschaft mit bidblitz.ae</p>
+                    <p style="color:#94A3B8; margin:10px 0 0; font-size:14px;">Ihre B2B-Partnerschaft mit BidBlitz.ae</p>
                 </td>
             </tr>
             
@@ -466,7 +466,7 @@ async def send_wholesale_welcome_email(
                 <td style="padding:30px;">
                     <p style="font-size:18px; color:#1E293B;">Hallo <strong>{contact_name}</strong>,</p>
                     <p style="font-size:15px; color:#475569; line-height:1.6;">
-                        Herzlich willkommen bei bidblitz.ae! Wir freuen uns, <strong>{company_name}</strong> als Großkunden begrüßen zu dürfen. 
+                        Herzlich willkommen bei BidBlitz.ae! Wir freuen uns, <strong>{company_name}</strong> als Großkunden begrüßen zu dürfen. 
                         Ihre Bewerbung wurde genehmigt und Sie können ab sofort von exklusiven B2B-Vorteilen profitieren.
                     </p>
                     
@@ -538,7 +538,7 @@ async def send_wholesale_welcome_email(
                     <div style="background:#EFF6FF; border-radius:10px; padding:20px; margin-top:25px; text-align:center;">
                         <p style="margin:0; color:#1E40AF; font-size:14px;">
                             <strong>Fragen?</strong> Unser B2B-Team steht Ihnen gerne zur Verfügung:<br>
-                            📧 b2b@bidblitz.ae | 📞 +49 123 456 7890
+                            📧 b2b@BidBlitz.ae | 📞 +49 123 456 7890
                         </p>
                     </div>
                 </td>
@@ -548,7 +548,7 @@ async def send_wholesale_welcome_email(
             <tr>
                 <td style="background:#F8FAFC; padding:20px 30px; text-align:center; border-top:1px solid #E2E8F0;">
                     <p style="margin:0; color:#64748B; font-size:12px;">
-                        © 2026 bidblitz.ae GmbH | Ihr Partner für Penny-Auktionen
+                        © 2026 BidBlitz.ae GmbH | Ihr Partner für Penny-Auktionen
                     </p>
                 </td>
             </tr>
@@ -559,6 +559,6 @@ async def send_wholesale_welcome_email(
     
     return await send_email(
         to_email=to_email,
-        subject=f"🏢 Willkommen bei bidblitz.ae, {company_name}! Ihre Großkundenvorteile sind aktiviert",
+        subject=f"🏢 Willkommen bei BidBlitz.ae, {company_name}! Ihre Großkundenvorteile sind aktiviert",
         html_content=html_content
     )
