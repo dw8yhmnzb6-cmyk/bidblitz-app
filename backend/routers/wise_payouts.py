@@ -167,13 +167,9 @@ async def request_wise_payout(token: str, data: WisePayoutRequest):
     from routers.partner_portal import get_current_partner
     partner = await get_current_partner(token)
     
-    # Verify Wise setup
+    # Verify bank account setup
     if not partner.get("wise_setup_complete"):
         raise HTTPException(status_code=400, detail="Bitte verbinden Sie zuerst Ihr Bankkonto")
-    
-    wise_recipient_id = partner.get("wise_recipient_id")
-    if not wise_recipient_id:
-        raise HTTPException(status_code=400, detail="Kein Bankkonto hinterlegt")
     
     # Get pending payout amount
     partner_collection = db.partner_accounts
@@ -187,57 +183,114 @@ async def request_wise_payout(token: str, data: WisePayoutRequest):
     if payout_amount < 10:  # Minimum €10
         raise HTTPException(status_code=400, detail="Mindestbetrag für Auszahlung: €10")
     
-    try:
-        profile_id = await get_wise_profile_id()
-        if not profile_id:
-            raise HTTPException(status_code=400, detail="Wise Profil nicht gefunden")
-        
-        # Step 1: Create a quote
-        quote_data = {
-            "sourceCurrency": "EUR",
-            "targetCurrency": partner.get("wise_currency", "EUR"),
-            "sourceAmount": payout_amount,
-            "profile": profile_id
-        }
-        
-        async with httpx.AsyncClient() as client:
-            # Create quote
-            quote_response = await client.post(
-                f"{WISE_API_URL}/v3/profiles/{profile_id}/quotes",
-                headers=await get_wise_headers(),
-                json=quote_data,
-                timeout=30.0
-            )
-            
-            if quote_response.status_code >= 400:
-                error = quote_response.json() if quote_response.content else {}
-                logger.error(f"Wise quote error: {error}")
-                raise HTTPException(status_code=400, detail="Fehler beim Erstellen des Überweisungsangebots")
-            
-            quote = quote_response.json()
-            quote_id = quote["id"]
-            
-            # Step 2: Create transfer
-            transfer_data = {
-                "targetAccount": wise_recipient_id,
-                "quoteUuid": quote_id,
-                "customerTransactionId": str(uuid.uuid4()),
-                "details": {
-                    "reference": data.reference or f"BidBlitz Auszahlung {partner.get('business_name', '')}"
+    wise_api_connected = partner.get("wise_api_connected", False)
+    wise_recipient_id = partner.get("wise_recipient_id")
+    transfer_id = None
+    payout_status = "pending_manual"
+    
+    # Try Wise API if connected and has recipient
+    if wise_api_connected and wise_recipient_id:
+        try:
+            profile_id = await get_wise_profile_id()
+            if profile_id:
+                # Step 1: Create a quote
+                quote_data = {
+                    "sourceCurrency": "EUR",
+                    "targetCurrency": partner.get("wise_currency", "EUR"),
+                    "sourceAmount": payout_amount,
+                    "profile": profile_id
                 }
-            }
-            
-            transfer_response = await client.post(
-                f"{WISE_API_URL}/v1/transfers",
-                headers=await get_wise_headers(),
-                json=transfer_data,
-                timeout=30.0
-            )
-            
-            if transfer_response.status_code >= 400:
-                error = transfer_response.json() if transfer_response.content else {}
-                logger.error(f"Wise transfer error: {error}")
-                raise HTTPException(status_code=400, detail="Fehler beim Erstellen der Überweisung")
+                
+                async with httpx.AsyncClient() as client:
+                    quote_response = await client.post(
+                        f"{WISE_API_URL}/v3/profiles/{profile_id}/quotes",
+                        headers=await get_wise_headers(),
+                        json=quote_data,
+                        timeout=30.0
+                    )
+                    
+                    if quote_response.status_code < 400:
+                        quote = quote_response.json()
+                        quote_id = quote["id"]
+                        
+                        # Step 2: Create transfer
+                        transfer_data = {
+                            "targetAccount": wise_recipient_id,
+                            "quoteUuid": quote_id,
+                            "customerTransactionId": str(uuid.uuid4()),
+                            "details": {
+                                "reference": data.reference or f"BidBlitz Auszahlung {partner.get('business_name', '')}"
+                            }
+                        }
+                        
+                        transfer_response = await client.post(
+                            f"{WISE_API_URL}/v1/transfers",
+                            headers=await get_wise_headers(),
+                            json=transfer_data,
+                            timeout=30.0
+                        )
+                        
+                        if transfer_response.status_code < 400:
+                            transfer = transfer_response.json()
+                            transfer_id = transfer["id"]
+                            payout_status = "processing"
+                            
+                            # Try to fund from Wise balance
+                            fund_response = await client.post(
+                                f"{WISE_API_URL}/v3/profiles/{profile_id}/transfers/{transfer_id}/payments",
+                                headers=await get_wise_headers(),
+                                json={"type": "BALANCE"},
+                                timeout=30.0
+                            )
+                            if fund_response.status_code < 400:
+                                payout_status = "funded"
+        except Exception as e:
+            logger.warning(f"Wise API transfer failed, creating manual payout request: {e}")
+    
+    # Record payout in database (works for both Wise and manual)
+    payout_record = {
+        "id": f"payout_{str(uuid.uuid4())[:8]}",
+        "partner_id": partner["id"],
+        "wise_transfer_id": transfer_id,
+        "amount": payout_amount,
+        "currency": partner.get("wise_currency", "EUR"),
+        "status": payout_status,
+        "reference": data.reference or f"BidBlitz Auszahlung",
+        "iban": partner.get("wise_iban_full", ""),
+        "account_holder": partner.get("wise_account_holder", ""),
+        "requested_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.partner_payouts.insert_one(payout_record)
+    
+    # Update partner's pending payout
+    new_pending = max(0, pending_amount - payout_amount)
+    await partner_collection.update_one(
+        {"id": partner["id"]},
+        {"$set": {
+            "pending_payout": new_pending,
+            "last_payout_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    logger.info(f"Payout request created for partner {partner['id']}: €{payout_amount} (status: {payout_status})")
+    
+    if payout_status == "pending_manual":
+        return {
+            "success": True,
+            "payout_id": payout_record["id"],
+            "amount": payout_amount,
+            "status": payout_status,
+            "message": f"Auszahlung von €{payout_amount:.2f} angefordert. Wird manuell bearbeitet (1-3 Werktage)."
+        }
+    else:
+        return {
+            "success": True,
+            "transfer_id": transfer_id,
+            "amount": payout_amount,
+            "status": payout_status,
+            "message": f"Auszahlung von €{payout_amount:.2f} wird automatisch verarbeitet"
+        }
             
             transfer = transfer_response.json()
             transfer_id = transfer["id"]
