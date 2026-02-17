@@ -836,4 +836,26 @@ function RestaurantPortalStandalone() {
   );
 }
 
+// Standalone Partner Portal without Navbar/Footer (NEW - Multi-Business Types)
+function PartnerPortalStandalone() {
+  return (
+    <>
+      <PartnerPortal />
+      <Toaster 
+        position="top-center"
+        toastOptions={{
+          style: {
+            background: '#FFFFFF',
+            border: '1px solid rgba(0,0,0,0.1)',
+            color: '#1F2937',
+            fontSize: '14px',
+            padding: '12px 16px',
+          },
+          duration: 4000,
+        }}
+      />
+    </>
+  );
+}
+
 export default App;
