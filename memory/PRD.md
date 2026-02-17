@@ -1311,9 +1311,14 @@ Um die Mobile App für iOS/Android zu veröffentlichen:
 ---
 
 ## Test Credentials
-- **Admin:** admin@bidblitz.de / Admin123!
+- **Admin:** admin@bidblitz.ae / Admin123!
+- **Test User:** spinner@bidblitz.ae / Spinner123!
+- **Manager Prishtina:** manager.prishtina@bidblitz.ae / Manager123!
+- **Manager Berlin:** manager.berlin@bidblitz.ae / Manager123!
 - **B2B Customer:** test@grosshandel.de / Test123!
 - **Influencer:** demo@influencer.test / demo
+
+⚠️ **WICHTIG:** Alle Manager-E-Mails enden mit `.ae`, NICHT `.de`!
 
 ---
 
