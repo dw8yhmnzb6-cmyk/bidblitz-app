@@ -25,6 +25,7 @@ import Dashboard from "./pages/Dashboard";
 import UserStats from "./pages/UserStats";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import AuthCallback from "./pages/AuthCallback";
 import Admin from "./pages/Admin";
 import ForgotPassword from "./pages/ForgotPassword";
 import Impressum from "./pages/Impressum";
