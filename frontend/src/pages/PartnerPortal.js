@@ -2517,13 +2517,13 @@ function BidBlitzPayPartner({ token, partnerId, partnerName, commissionRate }) {
         `${API}/api/bidblitz-pay/scan-customer?qr_data=${encodeURIComponent(qrData)}&token=${token}`
       );
       
+      const data = await response.json();
+      
       if (!response.ok) {
-        const error = await response.json();
-        toast.error(error.detail || "Ungültiger QR-Code");
+        toast.error(data.detail || "Ungültiger QR-Code");
         return;
       }
       
-      const data = await response.json();
       setCustomerData(data);
       toast.success(`Kunde gefunden: ${data.customer.name}`);
     } catch (error) {
@@ -2559,13 +2559,13 @@ function BidBlitzPayPartner({ token, partnerId, partnerName, commissionRate }) {
         { method: 'POST' }
       );
       
+      const result = await response.json();
+      
       if (!response.ok) {
-        const error = await response.json();
-        toast.error(error.detail || "Zahlung fehlgeschlagen");
+        toast.error(result.detail || "Zahlung fehlgeschlagen");
         return;
       }
       
-      const result = await response.json();
       setPaymentSuccess(result);
       setCustomerData(null);
       setPaymentAmount('');
