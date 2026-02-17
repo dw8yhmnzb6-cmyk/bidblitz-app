@@ -788,12 +788,12 @@ export default function PartnerPortal() {
         })
       });
       
+      const data = await response.json();
+      
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Fehler beim Erstellen');
+        throw new Error(data.detail || 'Fehler beim Erstellen');
       }
       
-      const data = await response.json();
       toast.success(data.message);
       setNewVoucher({ name: '', description: '', value: '', price: '', quantity: 1, valid_until: '', terms: '' });
       setView('vouchers');
@@ -851,12 +851,11 @@ export default function PartnerPortal() {
         })
       });
       
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Stripe connection failed');
-      }
-      
       const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.detail || 'Stripe connection failed');
+      }
       
       // Redirect to Stripe onboarding
       window.location.href = data.url;
@@ -878,12 +877,12 @@ export default function PartnerPortal() {
         body: JSON.stringify({})
       });
       
+      const data = await response.json();
+      
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Payout request failed');
+        throw new Error(data.detail || 'Payout request failed');
       }
       
-      const data = await response.json();
       toast.success(data.message);
       fetchDashboard();
       fetchPayoutHistory();
