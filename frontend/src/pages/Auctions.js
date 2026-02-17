@@ -23,23 +23,23 @@ const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 const quickRegisterTexts = {
   de: {
     title: 'Jetzt kostenlos registrieren',
-    subtitle: '50 Gratis Gebote sichern!',
+    subtitle: '10 Gratis Gebote sichern!',
     namePlaceholder: 'Vollständiger Name',
     emailPlaceholder: 'E-Mail Adresse',
     passwordPlaceholder: 'Passwort wählen',
     submitBtn: 'Kostenlos starten',
     terms: 'Mit der Registrierung akzeptierst du unsere AGB',
-    benefits: ['50 Gratis Gebote', 'Keine Kreditkarte nötig', 'Sofort loslegen']
+    benefits: ['10 Gratis Gebote', 'Keine Kreditkarte nötig', 'Sofort loslegen']
   },
   en: {
     title: 'Register for free now',
-    subtitle: 'Get 50 Free Bids!',
+    subtitle: 'Get 10 Free Bids!',
     namePlaceholder: 'Full name',
     emailPlaceholder: 'Email address',
     passwordPlaceholder: 'Choose password',
     submitBtn: 'Start for free',
     terms: 'By registering you accept our Terms & Conditions',
-    benefits: ['50 Free Bids', 'No credit card needed', 'Start immediately']
+    benefits: ['10 Free Bids', 'No credit card needed', 'Start immediately']
   },
   sq: {
     title: 'Regjistrohu falas tani',
