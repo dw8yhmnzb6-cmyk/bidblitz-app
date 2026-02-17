@@ -12,4 +12,14 @@ export { default as PartnerVouchers } from './PartnerVouchers';
 export { default as PartnerStatistics } from './PartnerStatistics';
 export { default as PartnerProfile } from './PartnerProfile';
 export { default as PartnerVerification } from './PartnerVerification';
+
+// Marketing Components
+export { 
+  PartnerReferral,
+  PartnerQRCodes,
+  PartnerFlashSales,
+  PartnerSocialSharing,
+  PartnerRatingsOverview
+} from './PartnerMarketing';
+
 export { translations, createTranslator, availableLanguages, getLangKey } from './partnerTranslations';
