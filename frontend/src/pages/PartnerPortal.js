@@ -1817,3 +1817,328 @@ export default function PartnerPortal() {
 
   return null;
 }
+
+// BidBlitz Pay Partner Component - Payment Scanner
+function BidBlitzPayPartner({ token, partnerId, partnerName, commissionRate }) {
+  const [scanning, setScanning] = useState(false);
+  const [customerData, setCustomerData] = useState(null);
+  const [paymentAmount, setPaymentAmount] = useState('');
+  const [processing, setProcessing] = useState(false);
+  const [manualQR, setManualQR] = useState('');
+  const [paymentSuccess, setPaymentSuccess] = useState(null);
+  const html5QrCodeRef = useRef(null);
+
+  const startScanner = async () => {
+    setScanning(true);
+    setCustomerData(null);
+    setPaymentSuccess(null);
+    
+    try {
+      const html5QrCode = new Html5Qrcode("bidblitz-pay-scanner");
+      html5QrCodeRef.current = html5QrCode;
+      
+      await html5QrCode.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: 250 },
+        async (decodedText) => {
+          await html5QrCode.stop();
+          setScanning(false);
+          handleQRScanned(decodedText);
+        },
+        () => {}
+      );
+    } catch (err) {
+      console.error("Scanner error:", err);
+      setScanning(false);
+      toast.error("Kamera-Zugriff nicht möglich");
+    }
+  };
+
+  const stopScanner = async () => {
+    if (html5QrCodeRef.current) {
+      try {
+        await html5QrCodeRef.current.stop();
+      } catch {}
+    }
+    setScanning(false);
+  };
+
+  const handleQRScanned = async (qrData) => {
+    try {
+      const response = await fetch(
+        `${API}/api/bidblitz-pay/scan-customer?qr_data=${encodeURIComponent(qrData)}&token=${token}`
+      );
+      
+      if (!response.ok) {
+        const error = await response.json();
+        toast.error(error.detail || "Ungültiger QR-Code");
+        return;
+      }
+      
+      const data = await response.json();
+      setCustomerData(data);
+      toast.success(`Kunde gefunden: ${data.customer.name}`);
+    } catch (error) {
+      console.error("Scan error:", error);
+      toast.error("Fehler beim Scannen");
+    }
+  };
+
+  const handleManualInput = async (e) => {
+    e.preventDefault();
+    if (!manualQR.trim()) return;
+    handleQRScanned(manualQR.trim());
+    setManualQR('');
+  };
+
+  const processPayment = async () => {
+    const amount = parseFloat(paymentAmount);
+    if (!amount || amount <= 0) {
+      toast.error("Bitte gültigen Betrag eingeben");
+      return;
+    }
+    
+    if (amount > (customerData?.available_balance?.total || 0)) {
+      toast.error("Nicht genug Guthaben beim Kunden");
+      return;
+    }
+    
+    setProcessing(true);
+    
+    try {
+      const response = await fetch(
+        `${API}/api/bidblitz-pay/process-payment?token=${token}&payment_token=${customerData.payment_token}&amount=${amount}&use_partner_vouchers=true&use_universal=true`,
+        { method: 'POST' }
+      );
+      
+      if (!response.ok) {
+        const error = await response.json();
+        toast.error(error.detail || "Zahlung fehlgeschlagen");
+        return;
+      }
+      
+      const result = await response.json();
+      setPaymentSuccess(result);
+      setCustomerData(null);
+      setPaymentAmount('');
+      toast.success(`Zahlung von €${amount.toFixed(2)} erfolgreich!`);
+    } catch (error) {
+      console.error("Payment error:", error);
+      toast.error("Fehler bei der Zahlung");
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-3">
+        <div className="w-12 h-12 bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl flex items-center justify-center">
+          <CreditCard className="w-6 h-6 text-white" />
+        </div>
+        <div>
+          <h2 className="font-bold text-gray-800 text-xl">BidBlitz Pay</h2>
+          <p className="text-sm text-gray-500">Kunden-Zahlungen akzeptieren</p>
+        </div>
+      </div>
+
+      {/* Success Message */}
+      {paymentSuccess && (
+        <div className="bg-green-50 border border-green-200 rounded-xl p-6 text-center">
+          <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
+          <h3 className="text-xl font-bold text-green-700 mb-2">Zahlung erfolgreich!</h3>
+          <p className="text-3xl font-bold text-green-600 mb-4">€{paymentSuccess.amount.toFixed(2)}</p>
+          <div className="bg-white rounded-lg p-4 text-left space-y-2">
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-500">Transaktions-ID:</span>
+              <span className="font-mono">{paymentSuccess.transaction_id}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-500">Sie erhalten:</span>
+              <span className="font-bold text-green-600">€{paymentSuccess.partner_receives.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-500">Provision ({commissionRate}%):</span>
+              <span className="text-gray-600">€{paymentSuccess.commission.toFixed(2)}</span>
+            </div>
+          </div>
+          <Button 
+            onClick={() => setPaymentSuccess(null)}
+            className="mt-4 bg-green-500 hover:bg-green-600"
+          >
+            Weitere Zahlung
+          </Button>
+        </div>
+      )}
+
+      {/* Scanner */}
+      {!paymentSuccess && !customerData && (
+        <div className="bg-white rounded-xl p-6 shadow-sm">
+          <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
+            <QrCode className="w-5 h-5 text-amber-500" />
+            Kunden-QR scannen
+          </h3>
+          
+          <div id="bidblitz-pay-scanner" className="w-full max-w-sm mx-auto rounded-lg overflow-hidden bg-black" />
+          
+          {!scanning ? (
+            <Button onClick={startScanner} className="w-full mt-4 bg-amber-500 hover:bg-amber-600">
+              <Camera className="w-4 h-4 mr-2" />
+              Scanner starten
+            </Button>
+          ) : (
+            <Button onClick={stopScanner} variant="outline" className="w-full mt-4">
+              <X className="w-4 h-4 mr-2" />
+              Scanner beenden
+            </Button>
+          )}
+          
+          {/* Manual Input */}
+          <div className="mt-6 pt-6 border-t">
+            <p className="text-sm text-gray-500 mb-3">Oder QR-Code manuell eingeben:</p>
+            <form onSubmit={handleManualInput} className="flex gap-2">
+              <Input
+                value={manualQR}
+                onChange={(e) => setManualQR(e.target.value)}
+                placeholder="BIDBLITZ-PAY:xxxxx"
+                className="flex-1"
+              />
+              <Button type="submit">Prüfen</Button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Customer Found - Payment Form */}
+      {!paymentSuccess && customerData && (
+        <div className="bg-white rounded-xl p-6 shadow-sm">
+          <div className="flex items-center gap-3 mb-6 pb-4 border-b">
+            <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+              <User className="w-6 h-6 text-green-600" />
+            </div>
+            <div>
+              <p className="font-bold text-gray-800">{customerData.customer.name}</p>
+              <p className="text-sm text-gray-500">{customerData.customer.email}</p>
+            </div>
+            <CheckCircle className="w-6 h-6 text-green-500 ml-auto" />
+          </div>
+
+          {/* Available Balance */}
+          <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl p-4 mb-6">
+            <p className="text-sm text-amber-700 mb-2">Verfügbares Guthaben:</p>
+            <div className="grid grid-cols-3 gap-4 text-center">
+              <div>
+                <p className="text-xs text-gray-500">Partner</p>
+                <p className="font-bold text-lg text-amber-600">
+                  €{customerData.available_balance.partner_specific.toFixed(2)}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Universal</p>
+                <p className="font-bold text-lg text-purple-600">
+                  €{customerData.available_balance.universal.toFixed(2)}
+                </p>
+              </div>
+              <div className="bg-white rounded-lg p-2">
+                <p className="text-xs text-gray-500">Gesamt</p>
+                <p className="font-bold text-xl text-green-600">
+                  €{customerData.available_balance.total.toFixed(2)}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Payment Amount */}
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Zahlungsbetrag eingeben:
+            </label>
+            <div className="relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-xl">€</span>
+              <Input
+                type="number"
+                step="0.01"
+                min="0.01"
+                max={customerData.available_balance.total}
+                value={paymentAmount}
+                onChange={(e) => setPaymentAmount(e.target.value)}
+                className="pl-10 text-2xl font-bold h-16 text-center"
+                placeholder="0.00"
+                autoFocus
+              />
+            </div>
+            {parseFloat(paymentAmount) > customerData.available_balance.total && (
+              <p className="text-red-500 text-sm mt-2">
+                Betrag übersteigt verfügbares Guthaben
+              </p>
+            )}
+          </div>
+
+          {/* Quick Amount Buttons */}
+          <div className="flex gap-2 mb-6">
+            {[5, 10, 20, 50].map((amount) => (
+              <Button
+                key={amount}
+                variant="outline"
+                onClick={() => setPaymentAmount(String(amount))}
+                disabled={amount > customerData.available_balance.total}
+                className="flex-1"
+              >
+                €{amount}
+              </Button>
+            ))}
+          </div>
+
+          {/* Actions */}
+          <div className="flex gap-3">
+            <Button 
+              variant="outline" 
+              onClick={() => setCustomerData(null)}
+              className="flex-1"
+            >
+              Abbrechen
+            </Button>
+            <Button 
+              onClick={processPayment}
+              disabled={processing || !paymentAmount || parseFloat(paymentAmount) <= 0 || parseFloat(paymentAmount) > customerData.available_balance.total}
+              className="flex-1 bg-green-500 hover:bg-green-600"
+            >
+              {processing ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <>
+                  <Check className="w-4 h-4 mr-2" />
+                  Zahlung €{parseFloat(paymentAmount || 0).toFixed(2)}
+                </>
+              )}
+            </Button>
+          </div>
+
+          {/* Info */}
+          <div className="mt-6 pt-4 border-t text-sm text-gray-500">
+            <p>Sie erhalten: <span className="font-bold text-green-600">
+              €{((parseFloat(paymentAmount) || 0) * (1 - commissionRate / 100)).toFixed(2)}
+            </span> (nach {commissionRate}% Provision)</p>
+          </div>
+        </div>
+      )}
+
+      {/* Info Box */}
+      <div className="bg-blue-50 rounded-xl p-4 border border-blue-100">
+        <div className="flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
+          <div className="text-sm text-blue-800">
+            <p className="font-medium mb-1">So funktioniert BidBlitz Pay:</p>
+            <ol className="list-decimal list-inside space-y-1 text-blue-700">
+              <li>Kunde zeigt QR-Code aus seiner BidBlitz App</li>
+              <li>Sie scannen den QR-Code</li>
+              <li>Geben Sie den Zahlungsbetrag ein</li>
+              <li>Betrag wird vom Kundenguthaben abgezogen</li>
+              <li>Sie erhalten Gutschrift (abzgl. {commissionRate}% Provision)</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
