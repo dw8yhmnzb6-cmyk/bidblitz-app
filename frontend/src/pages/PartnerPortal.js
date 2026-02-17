@@ -9,7 +9,7 @@ import {
   AlertCircle, CheckCircle, Building2, MapPin, Phone, Mail, Globe,
   FileText, CreditCard, User, Plus, Ticket, BarChart3, Clock,
   ChevronRight, Upload, Store, TrendingUp, Shield, ExternalLink,
-  PieChart, Trash2, Eye, Download, Users, Languages
+  PieChart, Trash2, Eye, Download, Users, Languages, Pencil
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
