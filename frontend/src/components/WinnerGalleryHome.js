@@ -329,6 +329,26 @@ export default function WinnerGalleryHome() {
 
   return (
     <div className="mb-8">
+      {/* Live Stats Banner */}
+      <div className="bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl p-4 mb-4 text-white">
+        <div className="flex items-center justify-around text-center">
+          <div>
+            <div className="text-2xl sm:text-3xl font-bold">{liveStats.totalWinners.toLocaleString('de-DE')}</div>
+            <div className="text-xs sm:text-sm text-green-100">{language === 'de' ? 'Glückliche Gewinner' : 'Happy Winners'}</div>
+          </div>
+          <div className="w-px h-12 bg-white/30" />
+          <div>
+            <div className="text-2xl sm:text-3xl font-bold">€{liveStats.totalSavings.toLocaleString('de-DE')}</div>
+            <div className="text-xs sm:text-sm text-green-100">{language === 'de' ? 'Gesamtersparnis' : 'Total Savings'}</div>
+          </div>
+          <div className="w-px h-12 bg-white/30 hidden sm:block" />
+          <div className="hidden sm:block">
+            <div className="text-2xl sm:text-3xl font-bold">98%</div>
+            <div className="text-xs sm:text-sm text-green-100">{language === 'de' ? 'Durchschn. Ersparnis' : 'Avg. Savings'}</div>
+          </div>
+        </div>
+      </div>
+
       {/* Winner Gallery */}
       <div className="bg-gradient-to-r from-amber-500/10 via-yellow-500/10 to-amber-500/10 border border-amber-500/20 rounded-xl p-4 mb-4">
         <div className="flex items-center justify-between mb-4">
