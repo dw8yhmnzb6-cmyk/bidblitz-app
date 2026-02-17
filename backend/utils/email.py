@@ -562,3 +562,102 @@ async def send_wholesale_welcome_email(
         subject=f"🏢 Willkommen bei BidBlitz.ae, {company_name}! Ihre Großkundenvorteile sind aktiviert",
         html_content=html_content
     )
+
+
+
+# ==================== ABANDONED CART EMAIL ====================
+
+async def send_abandoned_cart_reminder(
+    to_email: str,
+    user_name: str,
+    cart_items: list,
+    cart_total: float,
+    discount_code: str = "COMEBACK10"
+):
+    """Send reminder email for abandoned cart with optional discount."""
+    
+    # Build items list HTML
+    items_html = ""
+    for item in cart_items[:3]:  # Show max 3 items
+        items_html += f"""
+        <tr>
+            <td style="padding:10px; border-bottom:1px solid #eee;">
+                {item.get('product_type', 'Gebote-Paket').replace('_', ' ').title()}
+            </td>
+            <td style="padding:10px; border-bottom:1px solid #eee; text-align:right;">
+                €{item.get('price', 0):.2f}
+            </td>
+        </tr>
+        """
+    
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset="utf-8"></head>
+    <body style="margin:0; padding:0; font-family:Arial,sans-serif; background-color:#f4f4f4;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px; margin:0 auto; background:#ffffff;">
+            <tr>
+                <td style="background:linear-gradient(135deg,#F59E0B,#D97706); padding:30px; text-align:center;">
+                    <h1 style="color:#fff; margin:0; font-size:28px;">🛒 Sie haben etwas vergessen!</h1>
+                </td>
+            </tr>
+            <tr>
+                <td style="padding:30px;">
+                    <p style="font-size:18px; color:#333;">Hallo <strong>{user_name}</strong>,</p>
+                    <p style="font-size:16px; color:#555;">
+                        Sie haben Artikel in Ihrem Warenkorb gelassen. Schließen Sie Ihren Kauf ab, 
+                        bevor sie weg sind!
+                    </p>
+                    
+                    <table width="100%" style="margin:20px 0; border-collapse:collapse;">
+                        <tr style="background:#f9f9f9;">
+                            <td style="padding:10px; font-weight:bold;">Artikel</td>
+                            <td style="padding:10px; text-align:right; font-weight:bold;">Preis</td>
+                        </tr>
+                        {items_html}
+                        <tr>
+                            <td style="padding:15px 10px; font-weight:bold; font-size:18px;">Gesamt:</td>
+                            <td style="padding:15px 10px; text-align:right; font-weight:bold; font-size:18px; color:#F59E0B;">
+                                €{cart_total:.2f}
+                            </td>
+                        </tr>
+                    </table>
+                    
+                    <div style="background:#FEF3C7; border:2px dashed #F59E0B; border-radius:10px; padding:20px; margin:20px 0; text-align:center;">
+                        <p style="margin:0; font-size:14px; color:#92400E;">🎁 Exklusiv für Sie:</p>
+                        <p style="margin:10px 0 0; font-size:28px; color:#D97706; font-weight:bold; letter-spacing:3px;">{discount_code}</p>
+                        <p style="margin:10px 0 0; font-size:14px; color:#92400E;">10% Rabatt auf Ihren nächsten Einkauf!</p>
+                    </div>
+                    
+                    <div style="text-align:center; margin-top:30px;">
+                        <a href="https://BidBlitz.ae/buy-bids" 
+                           style="display:inline-block; background:linear-gradient(135deg,#F59E0B,#D97706); 
+                                  color:#fff; padding:18px 40px; text-decoration:none; border-radius:10px; 
+                                  font-weight:bold; font-size:18px; box-shadow:0 4px 15px rgba(245,158,11,0.4);">
+                            Jetzt Einkauf abschließen →
+                        </a>
+                    </div>
+                    
+                    <p style="font-size:12px; color:#888; margin-top:30px; text-align:center;">
+                        Der Rabattcode ist 7 Tage gültig. Falls Sie Fragen haben, 
+                        <a href="mailto:support@bidblitz.ae" style="color:#F59E0B;">kontaktieren Sie uns</a>.
+                    </p>
+                </td>
+            </tr>
+            <tr>
+                <td style="background:#1a1a1a; padding:20px; text-align:center;">
+                    <p style="margin:0; color:#888; font-size:12px;">
+                        © 2026 BidBlitz.ae FZCO | Dubai, UAE
+                    </p>
+                </td>
+            </tr>
+        </table>
+    </body>
+    </html>
+    """
+    
+    return await send_email(
+        to_email=to_email,
+        subject=f"🛒 {user_name}, Sie haben Artikel im Warenkorb vergessen!",
+        html_content=html_content
+    )
