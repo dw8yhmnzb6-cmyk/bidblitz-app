@@ -181,6 +181,8 @@ export default function PartnerPortal() {
         minAmount: 'Mindestbetrag nur €10',
         ibanHint: 'Ihre IBAN finden Sie auf Ihrer Bankkarte oder im Online-Banking',
         payNow: 'Jetzt auszahlen',
+        payoutAmount: 'Auszahlungsbetrag',
+        maxAmount: 'Max',
         completed: 'Abgeschlossen',
         processing: 'In Bearbeitung',
         pendingStatus: 'Ausstehend',
