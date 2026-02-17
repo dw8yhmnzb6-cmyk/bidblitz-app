@@ -737,6 +737,7 @@ async def reject_application(partner_id: str, reason: str = "Nicht erfüllt die 
     # Send rejection email
     try:
         await send_partner_rejected(
+            send_email,
             to_email=partner["email"],
             business_name=partner["business_name"],
             reason=reason
