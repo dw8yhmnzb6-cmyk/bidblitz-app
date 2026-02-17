@@ -927,12 +927,12 @@ export default function PartnerPortal() {
         body: formData
       });
       
+      const data = await response.json();
+      
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Upload failed');
+        throw new Error(data.detail || 'Upload failed');
       }
       
-      const data = await response.json();
       toast.success(data.message);
       fetchVerificationStatus();
     } catch (err) {
