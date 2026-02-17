@@ -343,19 +343,12 @@ export default function PartnerPortal() {
     };
     return translations[language]?.[key] || translations.de[key] || key;
   };
-        noAccess: 'No Access',
-        counterOnly: 'This view is for counter staff only.',
-        language: 'Language'
-      }
-    };
-    return translations[language]?.[key] || translations.de[key] || key;
-  };
-  
   // Login state
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [loginMode, setLoginMode] = useState('admin'); // 'admin' or 'staff'
+  const [showLanguageMenu, setShowLanguageMenu] = useState(false);
   
   // Registration state - extended
   const [regStep, setRegStep] = useState(1); // 1: Business Type, 2: Basic Info, 3: Details
