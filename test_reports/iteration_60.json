@@ -1,0 +1,94 @@
+{
+  "summary": "Tested Partner Portal refactored components. Login works with wise-test@partner.com. All 8 navigation tabs functional (Dashboard, Scanner, Pay, Gutscheine, Statistiken, Auszahlungen, Verifizierung, Profil, Mitarbeiter). Language switching works (19 languages). CRITICAL: Translation keys showing instead of translated text in Statistics, Profile, and Verification views.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "PartnerStatistics.js",
+        "issue": "Translation keys showing instead of translated text: 'created', 'financialOverview', 'totalRevenue', 'commissionPaid', 'paidOut', 'voucherStatus'",
+        "selector": "[data-testid='partner-statistics']",
+        "priority": "HIGH"
+      },
+      {
+        "component": "PartnerProfile.js",
+        "issue": "Translation key 'accountInfo' showing instead of 'Kontoinformationen'",
+        "selector": "[data-testid='partner-profile']",
+        "priority": "MEDIUM"
+      },
+      {
+        "component": "PartnerVerification.js",
+        "issue": "Multiple translation keys showing: 'notVerified', 'notVerifiedDescription', 'selectFile', 'uploadedDocuments', 'noDocuments', 'verificationInfo', 'verificationHint1/2/3'",
+        "selector": "[data-testid='partner-verification']",
+        "priority": "HIGH"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_results": {
+    "frontend_tests": {
+      "login_page": "PASS - Shows login form with Admin-Login/Mitarbeiter-Login tabs, email/password fields",
+      "login_flow": "PASS - Login with wise-test@partner.com / Test123! works correctly",
+      "dashboard_view": "PASS - Shows 4 stats cards (Ausstehend €200.00, Eingelöst 0, Verkauft 0, Provision 10%), 'Letzte Einlösungen' section",
+      "scanner_view": "PASS - Shows 'Gutschein scannen' with 'Kamera starten' button and manual input",
+      "vouchers_view": "PASS - Shows 'Meine Gutscheine' with 'Gutschein erstellen' button, 'Noch keine Gutscheine'",
+      "statistics_view": "PARTIAL - View loads but translation keys showing instead of translated text",
+      "payouts_view": "PASS - Shows €200.00 Verfügbar, bank connected (Afrim Krasniqi ****9093), payout history",
+      "verification_view": "PARTIAL - View loads but translation keys showing instead of translated text",
+      "profile_view": "PARTIAL - View loads, logo upload works, bank details form works, but 'accountInfo' key showing",
+      "staff_view": "PASS - Shows 'Mitarbeiter erstellen' form with Name/E-Mail/Passwort/Rolle fields",
+      "language_switching": "PASS - 19 languages available, switching to English updates UI correctly",
+      "navigation_tabs": "PASS - All 8 tabs clickable and functional"
+    }
+  },
+  "test_report_links": [
+    "/app/frontend/src/pages/PartnerPortal.js",
+    "/app/frontend/src/components/partner/PartnerStatistics.js",
+    "/app/frontend/src/components/partner/PartnerProfile.js",
+    "/app/frontend/src/components/partner/PartnerVerification.js",
+    "/app/frontend/src/components/partner/partnerTranslations.js"
+  ],
+  "action_items": [
+    "FIX REQUIRED: PartnerPortal.js uses inline translations that are missing keys needed by extracted components. The partnerTranslations.js file has the complete translations but is not being used. Either import and use partnerTranslations.js OR add missing keys to inline translations.",
+    "Missing translation keys in PartnerPortal.js: created, financialOverview, totalRevenue, commissionPaid, paidOut, voucherStatus, topVouchers, revenue, redemptionsChart, accountInfo, verified, inReview, moreInfoRequired, notVerified, verifiedDescription, inReviewDescription, notVerifiedDescription, businessRegistration, taxCertificate, idDocument, bankStatement, other, selectFile, uploadedDocuments, approved, rejected, noDocuments, verificationInfo, verificationHint1, verificationHint2, verificationHint3, settings"
+  ],
+  "critical_code_review_comments": [
+    "partnerTranslations.js exists with complete translations but is NOT imported/used in PartnerPortal.js",
+    "PartnerPortal.js defines translations inline but is missing ~30 keys needed by extracted components",
+    "The extracted components (PartnerStatistics, PartnerProfile, PartnerVerification) use t() function with fallbacks, but fallbacks only work for German - other languages show raw keys",
+    "Recommendation: Import { translations, getLangKey } from partnerTranslations.js and use them instead of inline translations"
+  ],
+  "updated_files": [],
+  "success_rate": {
+    "backend": "N/A - Frontend only testing",
+    "frontend": "75% - All views load but 3 views have translation issues"
+  },
+  "test_credentials": {
+    "partner": {
+      "email": "wise-test@partner.com",
+      "password": "Test123!"
+    }
+  },
+  "seed_data_creation": "No seed data created - using existing test partner (Wise Test Partner - Restaurant)",
+  "mocked_apis": {
+    "has_mocked_apis": false,
+    "mocked_apis_list": []
+  },
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Partner Portal refactoring tested. All 8 navigation tabs work. Main issue: Translation keys showing in Statistics, Profile, and Verification views because PartnerPortal.js uses incomplete inline translations instead of the complete partnerTranslations.js file. Test partner: wise-test@partner.com / Test123! has €200.00 pending balance, bank connected (Afrim Krasniqi ****9093), 2 payouts in history.",
+  "root_cause_analysis": {
+    "issue": "Translation keys showing instead of translated text in PartnerStatistics, PartnerProfile, and PartnerVerification components",
+    "root_cause": "PartnerPortal.js defines translations inline in the t() function but is missing ~30 translation keys that the extracted components need. The partnerTranslations.js file has complete translations but is not being imported or used.",
+    "reproduction_steps": [
+      "1. Login to Partner Portal with wise-test@partner.com / Test123!",
+      "2. Navigate to Statistiken tab - see 'created', 'financialOverview', etc. as raw keys",
+      "3. Navigate to Verifizierung tab - see 'notVerified', 'selectFile', etc. as raw keys",
+      "4. Navigate to Profil tab - see 'accountInfo' as raw key"
+    ],
+    "fix_suggestion": "In PartnerPortal.js, replace the inline t() function with: import { translations, getLangKey } from '../components/partner/partnerTranslations'; and update t() to use these translations"
+  }
+}
