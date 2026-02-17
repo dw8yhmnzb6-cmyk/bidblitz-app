@@ -5,7 +5,35 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 
 ## Current Status (February 17, 2026)
 
-### ✅ Session Update - February 17, 2026 (Session 24e) - STAFF MANAGEMENT + INTERNATIONALISIERUNG ✅
+### ✅ Session Update - February 17, 2026 (Session 24f) - INTERNATIONALE SPRACHEN + KUNDEN-WALLET ✅
+
+**Neue Features:**
+
+#### 1. 6 Sprachen im Partner-Portal ✅
+- 🇩🇪 Deutsch (Standard)
+- 🇬🇧 English
+- 🇫🇷 Français
+- 🇪🇸 Español
+- 🇹🇷 Türkçe
+- 🇸🇦 العربية (Arabisch mit RTL-Support)
+
+#### 2. Kunden-Wallet (BidBlitz Pay) ✅
+- Erreichbar unter `/pay` oder `/wallet`
+- **Wallet-Button im Hauptmenü** für eingeloggte Benutzer
+- Übersicht: Verfügbares Guthaben, Partner-Gutscheine, Universal-Guthaben
+- QR-Code zum Bezahlen bei Partnern
+- Transaktionsverlauf
+- **6 Sprachen** unterstützt
+- RTL-Support für Arabisch
+
+#### 3. Sprach-Dropdown mit Flaggen
+- Dropdown-Menü statt einfacher Toggle
+- Flaggen für visuelle Erkennung
+- Sprache wird lokal gespeichert
+
+---
+
+### ✅ Session Update - February 17, 2026 (Session 24e) - STAFF MANAGEMENT ✅
 
 **Neue Features:**
 
