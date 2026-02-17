@@ -2341,6 +2341,7 @@ export default function PartnerPortal() {
                 { id: 'vouchers', label: t('vouchers'), icon: Ticket },
                 { id: 'statistics', label: t('statistics'), icon: TrendingUp },
                 { id: 'payouts', label: t('payouts'), icon: Euro },
+                { id: 'marketing', label: 'Marketing', icon: Share2 },
                 { id: 'verification', label: t('verification'), icon: Shield },
                 { id: 'profile', label: t('profile'), icon: User },
                 { id: 'staff', label: t('staff'), icon: Users },
