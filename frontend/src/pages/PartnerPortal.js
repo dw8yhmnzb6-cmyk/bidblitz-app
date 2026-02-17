@@ -731,25 +731,62 @@ export default function PartnerPortal() {
       <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-100 flex items-center justify-center p-4">
         <div className="w-full max-w-md">
           <div className="bg-white rounded-2xl shadow-xl p-8">
+            {/* Language Toggle */}
+            <div className="flex justify-end mb-4">
+              <button
+                onClick={() => setLanguage(language === 'de' ? 'en' : 'de')}
+                className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
+              >
+                <Languages className="w-4 h-4" />
+                {language === 'de' ? 'EN' : 'DE'}
+              </button>
+            </div>
+            
             {/* Logo */}
-            <div className="text-center mb-8">
+            <div className="text-center mb-6">
               <div className="w-16 h-16 bg-gradient-to-br from-amber-400 to-orange-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
                 <Store className="w-8 h-8 text-white" />
               </div>
               <h1 className="text-2xl font-bold text-gray-800">Partner Portal</h1>
-              <p className="text-gray-500 text-sm">BidBlitz Gutschein-System</p>
+              <p className="text-gray-500 text-sm">BidBlitz {language === 'en' ? 'Voucher System' : 'Gutschein-System'}</p>
+            </div>
+            
+            {/* Login Mode Toggle */}
+            <div className="flex gap-2 mb-6 bg-gray-100 p-1 rounded-lg">
+              <button
+                onClick={() => setLoginMode('admin')}
+                className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-all ${
+                  loginMode === 'admin' 
+                    ? 'bg-white shadow text-amber-600' 
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                <User className="w-4 h-4 inline mr-1" />
+                {t('adminLogin')}
+              </button>
+              <button
+                onClick={() => setLoginMode('staff')}
+                className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-all ${
+                  loginMode === 'staff' 
+                    ? 'bg-white shadow text-amber-600' 
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                <Users className="w-4 h-4 inline mr-1" />
+                {t('staffLogin')}
+              </button>
             </div>
             
             <form onSubmit={handleLogin} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">E-Mail</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('email')}</label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                   <Input
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="partner@example.de"
+                    placeholder={loginMode === 'staff' ? 'staff@partner.com' : 'partner@example.de'}
                     className="pl-10"
                     required
                   />
@@ -757,7 +794,7 @@ export default function PartnerPortal() {
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Passwort</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('password')}</label>
                 <Input
                   type="password"
                   value={password}
@@ -772,19 +809,31 @@ export default function PartnerPortal() {
                 disabled={loading}
                 className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600"
               >
-                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Anmelden'}
+                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : t('login')}
               </Button>
             </form>
             
-            <div className="mt-6 text-center">
-              <p className="text-gray-500 text-sm">Noch kein Partner?</p>
-              <button 
-                onClick={() => setView('register')}
-                className="text-amber-600 font-medium hover:underline"
-              >
-                Jetzt bewerben
-              </button>
-            </div>
+            {loginMode === 'admin' && (
+              <div className="mt-6 text-center">
+                <p className="text-gray-500 text-sm">{language === 'en' ? 'Not a partner yet?' : 'Noch kein Partner?'}</p>
+                <button 
+                  onClick={() => setView('register')}
+                  className="text-amber-600 font-medium hover:underline"
+                >
+                  {language === 'en' ? 'Apply now' : 'Jetzt bewerben'}
+                </button>
+              </div>
+            )}
+            
+            {loginMode === 'staff' && (
+              <div className="mt-6 p-3 bg-blue-50 rounded-lg">
+                <p className="text-blue-700 text-xs text-center">
+                  {language === 'en' 
+                    ? 'Counter staff login - Limited access to scanner and payment functions only.'
+                    : 'Theken-Mitarbeiter Login - Eingeschränkter Zugang nur für Scanner und Zahlungsfunktionen.'}
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </div>
