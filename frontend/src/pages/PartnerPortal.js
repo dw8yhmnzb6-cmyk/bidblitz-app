@@ -803,9 +803,8 @@ export default function PartnerPortal() {
   
   const fetchStripeStatus = async () => {
     try {
-      const response = await fetch(`${API}/api/partner-stripe/account-status?token=${token}`);
-      const data = await response.json();
-      setStripeStatus(data);
+      const response = await axios.get(`${API}/api/partner-stripe/account-status?token=${token}`);
+      setStripeStatus(response.data);
     } catch (err) {
       console.error('Stripe status error:', err);
     }
@@ -813,9 +812,8 @@ export default function PartnerPortal() {
 
   const fetchPayoutHistory = async () => {
     try {
-      const response = await fetch(`${API}/api/partner-stripe/payout-history?token=${token}`);
-      const data = await response.json();
-      setPayoutHistory(data.payouts || []);
+      const response = await axios.get(`${API}/api/partner-stripe/payout-history?token=${token}`);
+      setPayoutHistory(response.data.payouts || []);
     } catch (err) {
       console.error('Payout history error:', err);
     }
@@ -824,25 +822,15 @@ export default function PartnerPortal() {
   const connectStripe = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API}/api/partner-stripe/create-connect-account?token=${token}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          return_url: `${window.location.origin}/partner-portal?stripe=success`,
-          refresh_url: `${window.location.origin}/partner-portal?stripe=refresh`
-        })
+      const response = await axios.post(`${API}/api/partner-stripe/create-connect-account?token=${token}`, {
+        return_url: `${window.location.origin}/partner-portal?stripe=success`,
+        refresh_url: `${window.location.origin}/partner-portal?stripe=refresh`
       });
       
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.detail || 'Stripe connection failed');
-      }
-      
       // Redirect to Stripe onboarding
-      window.location.href = data.url;
+      window.location.href = response.data.url;
     } catch (err) {
-      toast.error(err.message);
+      toast.error(err.response?.data?.detail || err.message);
     } finally {
       setLoading(false);
     }
@@ -853,23 +841,13 @@ export default function PartnerPortal() {
     
     try {
       setLoading(true);
-      const response = await fetch(`${API}/api/partner-stripe/request-payout?token=${token}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({})
-      });
+      const response = await axios.post(`${API}/api/partner-stripe/request-payout?token=${token}`, {});
       
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.detail || 'Payout request failed');
-      }
-      
-      toast.success(data.message);
+      toast.success(response.data.message);
       fetchDashboard();
       fetchPayoutHistory();
     } catch (err) {
-      toast.error(err.message);
+      toast.error(err.response?.data?.detail || err.message);
     } finally {
       setLoading(false);
     }
@@ -880,18 +858,14 @@ export default function PartnerPortal() {
   const fetchVerificationStatus = async () => {
     try {
       const [statusRes, docsRes, typesRes] = await Promise.all([
-        fetch(`${API}/api/partner-verification/verification-status?token=${token}`),
-        fetch(`${API}/api/partner-verification/my-documents?token=${token}`),
-        fetch(`${API}/api/partner-verification/document-types`)
+        axios.get(`${API}/api/partner-verification/verification-status?token=${token}`),
+        axios.get(`${API}/api/partner-verification/my-documents?token=${token}`),
+        axios.get(`${API}/api/partner-verification/document-types`)
       ]);
       
-      const status = await statusRes.json();
-      const docs = await docsRes.json();
-      const types = await typesRes.json();
-      
-      setVerificationStatus(status);
-      setDocuments(docs.documents || []);
-      setDocumentTypes(types);
+      setVerificationStatus(statusRes.data);
+      setDocuments(docsRes.data.documents || []);
+      setDocumentTypes(typesRes.data);
     } catch (err) {
       console.error('Verification fetch error:', err);
     }
