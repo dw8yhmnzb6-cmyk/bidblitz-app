@@ -2359,155 +2359,24 @@ export default function PartnerPortal() {
             <BidBlitzPayPartner token={token} partnerId={partner?.id} partnerName={partner?.name} commissionRate={partner?.commission_rate || 10} />
           )}
           
-          {/* Vouchers View */}
-          {view === 'vouchers' && (
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <h2 className="font-bold text-gray-800">Ihre Gutscheine</h2>
-                <Button onClick={() => setView('create-voucher')} className="bg-amber-500 hover:bg-amber-600">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Neuer Gutschein
-                </Button>
-              </div>
-              
-              <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-                {vouchers.length > 0 ? (
-                  <div className="divide-y">
-                    {vouchers.map((v) => (
-                      <div key={v.id} className="p-4 flex items-center justify-between">
-                        <div>
-                          <p className="font-medium text-gray-800">{v.name}</p>
-                          <p className="text-sm text-gray-500">{v.code}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-bold text-gray-800">€{v.value}</p>
-                          <span className={`text-xs px-2 py-1 rounded-full ${
-                            v.is_redeemed ? 'bg-gray-100 text-gray-600' :
-                            v.is_sold ? 'bg-blue-100 text-blue-600' :
-                            'bg-green-100 text-green-600'
-                          }`}>
-                            {v.is_redeemed ? 'Eingelöst' : v.is_sold ? 'Verkauft' : 'Verfügbar'}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="p-8 text-center text-gray-400">
-                    <Ticket className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                    <p>Noch keine Gutscheine erstellt</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-          
-          {/* Create Voucher View */}
-          {view === 'create-voucher' && (
-            <div className="bg-white rounded-xl shadow-sm p-6">
-              <h2 className="font-bold text-gray-800 mb-6 flex items-center gap-2">
-                <Plus className="w-5 h-5 text-amber-500" />
-                Neuen Gutschein erstellen
-              </h2>
-              
-              <form onSubmit={handleCreateVoucher} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
-                    <Input
-                      value={newVoucher.name}
-                      onChange={(e) => setNewVoucher({ ...newVoucher, name: e.target.value })}
-                      placeholder="z.B. 20€ Essensgutschein"
-                      required
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Wert (€) *</label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={newVoucher.value}
-                      onChange={(e) => setNewVoucher({ ...newVoucher, value: e.target.value })}
-                      placeholder="20.00"
-                      required
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Verkaufspreis (€) *</label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={newVoucher.price}
-                      onChange={(e) => setNewVoucher({ ...newVoucher, price: e.target.value })}
-                      placeholder="15.00"
-                      required
-                    />
-                    <p className="text-xs text-gray-400 mt-1">
-                      Ihre Auszahlung: €{newVoucher.price ? (parseFloat(newVoucher.price) * (1 - (partner?.commission_rate || 10) / 100)).toFixed(2) : '0.00'}
-                    </p>
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Anzahl</label>
-                    <Input
-                      type="number"
-                      min="1"
-                      value={newVoucher.quantity}
-                      onChange={(e) => setNewVoucher({ ...newVoucher, quantity: e.target.value })}
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Gültig bis</label>
-                    <Input
-                      type="date"
-                      value={newVoucher.valid_until}
-                      onChange={(e) => setNewVoucher({ ...newVoucher, valid_until: e.target.value })}
-                    />
-                  </div>
-                  
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Beschreibung</label>
-                    <textarea
-                      value={newVoucher.description}
-                      onChange={(e) => setNewVoucher({ ...newVoucher, description: e.target.value })}
-                      placeholder="Details zum Gutschein..."
-                      rows={2}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                    />
-                  </div>
-                  
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Bedingungen</label>
-                    <Input
-                      value={newVoucher.terms}
-                      onChange={(e) => setNewVoucher({ ...newVoucher, terms: e.target.value })}
-                      placeholder="z.B. Nicht mit anderen Aktionen kombinierbar"
-                    />
-                  </div>
-                </div>
-                
-                <div className="flex gap-3 mt-6">
-                  <Button type="button" variant="outline" onClick={() => setView('vouchers')} className="flex-1">
-                    Abbrechen
-                  </Button>
-                  <Button type="submit" disabled={loading} className="flex-1 bg-amber-500 hover:bg-amber-600">
-                    {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Erstellen'}
-                  </Button>
-                </div>
-              </form>
-            </div>
+          {/* Vouchers View - Using PartnerVouchers Component */}
+          {(view === 'vouchers' || view === 'create-voucher') && (
+            <PartnerVouchers 
+              token={token}
+              partner={partner}
+              fetchDashboard={fetchDashboard}
+              t={t}
+            />
           )}
 
-          {/* Statistics View with Charts */}
+          {/* Statistics View - Using PartnerStatistics Component */}
           {view === 'statistics' && (
-            <div className="space-y-6">
-              <h2 className="font-bold text-gray-800 text-xl flex items-center gap-2">
-                <TrendingUp className="w-6 h-6 text-amber-500" />
-                Statistiken & Berichte
-              </h2>
+            <PartnerStatistics 
+              token={token}
+              partner={partner}
+              t={t}
+            />
+          )}
               
               {/* Quick Stats */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
