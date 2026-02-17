@@ -137,6 +137,14 @@ from routers.duel import router as duel_router
 from routers.mystery_box import router as mystery_box_router
 from routers.auto_translate import auto_translate_router
 
+# NEW: Partner Marketing Features
+from routers.partner_referral import router as partner_referral_router
+from routers.partner_ratings import router as partner_ratings_router
+from routers.partner_qr import router as partner_qr_router
+from routers.partner_flash_sales import router as partner_flash_sales_router
+from routers.partner_search import router as partner_search_router
+from routers.partner_social import router as partner_social_router
+
 # NEW: 9 additional features
 from routers.bid_alarm import bid_alarm_router
 from routers.welcome_bonus import welcome_bonus_router
