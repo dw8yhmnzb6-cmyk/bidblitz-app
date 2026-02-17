@@ -787,11 +787,40 @@ function App() {
       <LanguageProvider>
         <ThemeProvider>
           <AuthProvider>
-            <AppContent />
+            <Routes>
+              {/* Restaurant Portal - Completely separate from main app */}
+              <Route path="/restaurant-portal/*" element={<RestaurantPortalStandalone />} />
+              <Route path="/partner/*" element={<RestaurantPortalStandalone />} />
+              
+              {/* Main App with Navbar/Footer */}
+              <Route path="/*" element={<AppContent />} />
+            </Routes>
           </AuthProvider>
         </ThemeProvider>
       </LanguageProvider>
     </BrowserRouter>
+  );
+}
+
+// Standalone Restaurant Portal without Navbar/Footer
+function RestaurantPortalStandalone() {
+  return (
+    <>
+      <RestaurantPortal />
+      <Toaster 
+        position="top-center"
+        toastOptions={{
+          style: {
+            background: '#FFFFFF',
+            border: '1px solid rgba(0,0,0,0.1)',
+            color: '#1F2937',
+            fontSize: '14px',
+            padding: '12px 16px',
+          },
+          duration: 4000,
+        }}
+      />
+    </>
   );
 }
 
