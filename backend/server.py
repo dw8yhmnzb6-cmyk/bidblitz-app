@@ -1432,6 +1432,15 @@ async def auction_expiry_checker():
                     # Get product data for email
                     product = await db.products.find_one({"id": auction.get("product_id")}, {"_id": 0})
                     
+                    # Check if winner is a bot
+                    is_bot_winner = False
+                    if winner_id:
+                        if winner_id.startswith("bot_"):
+                            is_bot_winner = True
+                        else:
+                            winner_user = await db.users.find_one({"id": winner_id}, {"_id": 0, "is_bot": 1})
+                            is_bot_winner = winner_user.get("is_bot", False) if winner_user else False
+                    
                     # Create won auction record for user
                     if winner_id:
                         await db.won_auctions.insert_one({
