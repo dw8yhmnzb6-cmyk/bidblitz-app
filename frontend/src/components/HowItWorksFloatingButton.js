@@ -22,7 +22,7 @@ const translations = {
     example: 'Beispiel',
     exampleText: 'Ein iPhone 15 Pro (UVP €1.199) wurde für nur €12,47 verkauft. Der Gewinner hat 95 Gebote verwendet (Wert: ~€47) und insgesamt nur €59,47 bezahlt - eine Ersparnis von über €1.100!',
     cta: 'Jetzt kostenlos starten',
-    freeBids: '50 Gratis-Gebote für neue Spieler!',
+    freeBids: '10 Gratis-Gebote für neue Spieler!',
     close: 'Schließen',
     howItWorks: 'Wie funktioniert es?'
   },
@@ -40,7 +40,7 @@ const translations = {
     example: 'Example',
     exampleText: 'An iPhone 15 Pro (RRP €1,199) sold for just €12.47. The winner used 95 bids (worth ~€47) and paid only €59.47 total - saving over €1,100!',
     cta: 'Start for free now',
-    freeBids: '50 Free bids for new players!',
+    freeBids: '10 Free bids for new players!',
     close: 'Close',
     howItWorks: 'How does it work?'
   },
@@ -58,7 +58,7 @@ const translations = {
     example: 'Örnek',
     exampleText: 'Bir iPhone 15 Pro (PBF €1.199) sadece €12,47\'ye satıldı. Kazanan 95 teklif kullandı (~€47 değerinde) ve toplamda sadece €59,47 ödedi - €1.100\'den fazla tasarruf!',
     cta: 'Şimdi ücretsiz başlayın',
-    freeBids: 'Yeni oyuncular için 50 ücretsiz teklif!',
+    freeBids: 'Yeni oyuncular için 10 ücretsiz teklif!',
     close: 'Kapat',
     howItWorks: 'Nasıl çalışır?'
   },
@@ -76,7 +76,7 @@ const translations = {
     example: 'Shembull',
     exampleText: 'Një iPhone 15 Pro (ÇMRRP €1,199) u shit për vetëm €12,47. Fituesi përdori 95 oferta (~€47 vlerë) dhe pagoi vetëm €59,47 gjithsej - duke kursyer mbi €1,100!',
     cta: 'Filloni falas tani',
-    freeBids: '50 Oferta falas për lojtarë të rinj!',
+    freeBids: '10 Oferta falas për lojtarë të rinj!',
     close: 'Mbyll',
     howItWorks: 'Si funksionon?'
   },
@@ -94,7 +94,7 @@ const translations = {
     example: 'Exemple',
     exampleText: 'Un iPhone 15 Pro (PVC 1 199€) vendu pour seulement 12,47€. Le gagnant a utilisé 95 enchères (~47€ de valeur) et n\'a payé que 59,47€ au total - une économie de plus de 1 100€!',
     cta: 'Commencer gratuitement',
-    freeBids: '50 Enchères gratuites pour les nouveaux joueurs!',
+    freeBids: '10 Enchères gratuites pour les nouveaux joueurs!',
     close: 'Fermer',
     howItWorks: 'Comment ça marche?'
   }
