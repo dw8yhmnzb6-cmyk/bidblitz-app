@@ -59,11 +59,12 @@ export default function PartnerPortal() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [token, setToken] = useState('');
   const [partner, setPartner] = useState(null);
-  const [view, setView] = useState('login'); // login, register, scanner, vouchers, dashboard, create-voucher, statistics, payouts, profile, verification, staff
+  const [view, setView] = useState('login'); // login, register, scanner, vouchers, dashboard, create-voucher, statistics, payouts, profile, verification, staff, marketing
   const [userRole, setUserRole] = useState('admin'); // 'admin' or 'counter'
   const [isStaff, setIsStaff] = useState(false);
   const [language, setLanguage] = useState(() => localStorage.getItem('partner_language') || 'de');
   const [rememberMe, setRememberMe] = useState(() => localStorage.getItem('partner_remember') === 'true');
+  const [marketingTab, setMarketingTab] = useState('referral'); // referral, qr, flash, social, ratings
   
   // Available languages - 19 languages
   const languages = [
