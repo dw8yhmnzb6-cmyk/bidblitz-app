@@ -41,7 +41,7 @@ export const Navbar = () => {
               <Zap className="w-6 h-6 text-white" />
             </div>
             <span className={`text-xl font-bold tracking-tight ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>
-              bidblitz<span className="text-amber-500">.ae</span>
+              BidBlitz<span className="text-amber-500">.ae</span>
             </span>
           </Link>
 
