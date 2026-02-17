@@ -672,8 +672,8 @@ async def get_pending_applications():
     }
 
 @router.post("/admin/approve/{partner_id}")
-async def approve_application(partner_id: str):
-    """Approve a partner application (Admin only)"""
+async def approve_application(partner_id: str, commission_rate: Optional[float] = None):
+    """Approve a partner application with optional custom commission rate (Admin only)"""
     partner = await db.partner_accounts.find_one({"id": partner_id})
     
     if not partner:
@@ -682,18 +682,22 @@ async def approve_application(partner_id: str):
     if partner.get("status") != "pending":
         raise HTTPException(status_code=400, detail="Bewerbung ist nicht ausstehend")
     
+    # Use custom commission rate or keep the default
+    final_commission_rate = commission_rate if commission_rate is not None else partner.get("commission_rate", 10)
+    
     await db.partner_accounts.update_one(
         {"id": partner_id},
         {"$set": {
             "status": "approved",
             "is_active": True,
             "is_verified": True,
+            "commission_rate": final_commission_rate,
             "approved_at": datetime.now(timezone.utc).isoformat(),
             "updated_at": datetime.now(timezone.utc).isoformat()
         }}
     )
     
-    logger.info(f"Partner application {partner_id} approved")
+    logger.info(f"Partner application {partner_id} approved with {final_commission_rate}% commission")
     
     # Send approval email
     try:
@@ -705,7 +709,7 @@ async def approve_application(partner_id: str):
             <p>Hallo {partner["business_name"]},</p>
             <p>Ihre Bewerbung als BidBlitz Partner wurde genehmigt!</p>
             <p>Sie können sich jetzt im Partner-Portal anmelden und Ihre Gutscheine verwalten.</p>
-            <p><strong>Ihre Provision:</strong> {partner.get("commission_rate", 10)}%</p>
+            <p><strong>Ihre Provision:</strong> {final_commission_rate}%</p>
             <br>
             <p>Mit freundlichen Grüßen,<br>Ihr BidBlitz Team</p>
             """
