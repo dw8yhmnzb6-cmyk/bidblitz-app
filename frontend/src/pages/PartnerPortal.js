@@ -436,6 +436,33 @@ export default function PartnerPortal() {
   useEffect(() => {
     localStorage.setItem('partner_language', language);
   }, [language]);
+  
+  // Auto-login from saved credentials
+  useEffect(() => {
+    const savedToken = localStorage.getItem('partner_token');
+    const savedPartner = localStorage.getItem('partner_data');
+    const savedRole = localStorage.getItem('partner_role');
+    const savedIsStaff = localStorage.getItem('partner_is_staff');
+    const shouldRemember = localStorage.getItem('partner_remember') === 'true';
+    
+    if (shouldRemember && savedToken && savedPartner) {
+      try {
+        const partnerData = JSON.parse(savedPartner);
+        setToken(savedToken);
+        setPartner(partnerData);
+        setUserRole(savedRole || 'admin');
+        setIsStaff(savedIsStaff === 'true');
+        setIsLoggedIn(true);
+        setView(savedRole === 'counter' ? 'scanner' : 'dashboard');
+      } catch (e) {
+        // Invalid saved data, clear it
+        localStorage.removeItem('partner_token');
+        localStorage.removeItem('partner_data');
+        localStorage.removeItem('partner_role');
+        localStorage.removeItem('partner_is_staff');
+      }
+    }
+  }, []);
 
   // ==================== AUTH ====================
   
@@ -467,10 +494,19 @@ export default function PartnerPortal() {
         setView('dashboard');
       }
       
+      // Save to localStorage (always save for session, remember for persistence)
       localStorage.setItem('partner_token', data.token);
       localStorage.setItem('partner_data', JSON.stringify(data.partner));
       localStorage.setItem('partner_role', role);
       localStorage.setItem('partner_is_staff', String(data.is_staff || false));
+      localStorage.setItem('partner_remember', String(rememberMe));
+      
+      // Also save credentials if remember me is checked
+      if (rememberMe) {
+        localStorage.setItem('partner_saved_email', email);
+      } else {
+        localStorage.removeItem('partner_saved_email');
+      }
       
       const welcomeName = data.staff?.name || data.partner.name;
       toast.success(language === 'en' ? `Welcome, ${welcomeName}!` : `Willkommen, ${welcomeName}!`);
@@ -485,6 +521,24 @@ export default function PartnerPortal() {
       toast.error(errorMessage);
     } finally {
       setLoading(false);
+    }
+  };
+  
+  const handleLogout = () => {
+    setIsLoggedIn(false);
+    setToken('');
+    setPartner(null);
+    setView('login');
+    setUserRole('admin');
+    setIsStaff(false);
+    
+    // Clear localStorage but keep remember preference and email
+    localStorage.removeItem('partner_token');
+    localStorage.removeItem('partner_data');
+    localStorage.removeItem('partner_role');
+    localStorage.removeItem('partner_is_staff');
+    if (!rememberMe) {
+      localStorage.removeItem('partner_saved_email');
     }
   };
 
