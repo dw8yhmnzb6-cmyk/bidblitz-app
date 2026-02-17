@@ -5,6 +5,41 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 
 ## Current Status (February 17, 2026)
 
+### ✅ Session Update - February 17, 2026 (Session 24h) - COMPREHENSIVE BUGFIX & NEW FEATURES ✅
+
+**Alle `fetch`-Aufrufe auf `axios` migriert - "Body is disturbed" Fehler komplett behoben!**
+
+#### 1. Fetch-zu-Axios Migration ✅
+- **ALLE** `fetch`-Aufrufe im Partner-Portal auf `axios` umgestellt
+- Betroffene Bereiche: Login, Registration, Staff Management, Dashboard, Vouchers, Statistics, Stripe Connect, Payouts, Verification, BidBlitz Pay Scanner
+- Der "Body is disturbed or locked" Fehler tritt jetzt nirgendwo mehr auf
+
+#### 2. "Angemeldet bleiben" Funktion ✅
+- Neue Checkbox auf der Login-Seite
+- Login-Daten werden in localStorage gespeichert
+- Automatisches Re-Login beim nächsten Besuch
+- Logout löscht die gespeicherten Daten (außer bei "Angemeldet bleiben")
+
+#### 3. Mitarbeiter-Bearbeitung ✅
+- Neuer "Bearbeiten"-Button (Stift-Icon) in der Mitarbeiter-Liste
+- Inline-Bearbeitungsmodus mit Name und Rolle ändern
+- "Speichern" und "Abbrechen" Buttons
+- Backend-Endpoint: `PUT /api/partner-portal/staff/{id}`
+
+#### 4. Sprach-Dropdown im Dashboard ✅
+- Sprache kann jetzt auch NACH dem Login geändert werden
+- Dropdown im Header neben dem Logout-Button
+- 6 Sprachen: 🇩🇪 🇬🇧 🇫🇷 🇪🇸 🇹🇷 🇸🇦
+
+**Getestet:**
+- ✅ Login mit falschen Credentials → "Ungültige Anmeldedaten"
+- ✅ Login mit korrekten Credentials → Dashboard
+- ✅ Auszahlungen-Seite → Kein Fehler mehr
+- ✅ Mitarbeiter bearbeiten → Inline-Edit funktioniert
+- ✅ Sprache im Dashboard ändern → Sofortige Aktualisierung
+
+---
+
 ### ✅ Session Update - February 17, 2026 (Session 24g) - LOGIN BUGFIX ✅
 
 **Bugfix: "Body is disturbed or locked" Error beim Partner-Login behoben**
