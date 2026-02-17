@@ -2760,18 +2760,53 @@ export default function PartnerPortal() {
                     </div>
                     
                     {(dashboardData?.stats?.pending_payout || 0) >= 10 && (
-                      <Button 
-                        onClick={requestWisePayout}
-                        disabled={loading}
-                        className="w-full bg-gradient-to-r from-teal-500 to-green-500 hover:from-teal-600 hover:to-green-600"
-                      >
-                        {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
-                          <>
-                            <Euro className="w-5 h-5 mr-2" />
-                            {t('payNow')} €{(dashboardData?.stats?.pending_payout || 0).toFixed(2)}
-                          </>
-                        )}
-                      </Button>
+                      <div className="space-y-3">
+                        {/* Amount Input */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            {t('payoutAmount') || 'Auszahlungsbetrag'}
+                          </label>
+                          <div className="flex gap-2">
+                            <div className="relative flex-1">
+                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">€</span>
+                              <Input
+                                type="number"
+                                min="10"
+                                max={dashboardData?.stats?.pending_payout || 0}
+                                step="0.01"
+                                placeholder={`10 - ${(dashboardData?.stats?.pending_payout || 0).toFixed(2)}`}
+                                value={payoutAmount}
+                                onChange={(e) => setPayoutAmount(e.target.value)}
+                                className="pl-7"
+                              />
+                            </div>
+                            <Button 
+                              variant="outline"
+                              onClick={() => setPayoutAmount((dashboardData?.stats?.pending_payout || 0).toFixed(2))}
+                              className="whitespace-nowrap"
+                            >
+                              {t('maxAmount') || 'Max'}
+                            </Button>
+                          </div>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {t('minPayout')}: €10 • {t('available')}: €{(dashboardData?.stats?.pending_payout || 0).toFixed(2)}
+                          </p>
+                        </div>
+                        
+                        {/* Payout Button */}
+                        <Button 
+                          onClick={() => requestWisePayout(payoutAmount || dashboardData?.stats?.pending_payout)}
+                          disabled={loading || (!payoutAmount && !(dashboardData?.stats?.pending_payout >= 10))}
+                          className="w-full bg-gradient-to-r from-teal-500 to-green-500 hover:from-teal-600 hover:to-green-600"
+                        >
+                          {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
+                            <>
+                              <Euro className="w-5 h-5 mr-2" />
+                              {payoutAmount ? `€${parseFloat(payoutAmount).toFixed(2)} ${t('payNow')}` : `${t('payNow')} €${(dashboardData?.stats?.pending_payout || 0).toFixed(2)}`}
+                            </>
+                          )}
+                        </Button>
+                      </div>
                     )}
                     
                     {(dashboardData?.stats?.pending_payout || 0) < 10 && (
