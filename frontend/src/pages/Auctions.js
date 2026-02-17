@@ -554,7 +554,7 @@ const ProductInfo = memo(({ name, retailPrice, imageUrl, discount }) => (
         {/* Price slot - filled by parent */}
       </div>
       <div className="w-16 h-16 bg-white rounded-lg flex items-center justify-center shadow-sm flex-shrink-0">
-        <img src={imageUrl || 'https://via.placeholder.com/64'} alt="" className="max-w-full max-h-full object-contain" />
+        <img src={imageUrl || 'https://via.placeholder.com/64'} alt="" className="max-w-full max-h-full object-contain" loading="lazy" decoding="async" />
       </div>
     </div>
   </>
