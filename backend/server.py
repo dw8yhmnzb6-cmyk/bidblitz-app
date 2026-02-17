@@ -125,6 +125,7 @@ from routers.loyalty_program import loyalty_router
 from routers.partner_portal import partner_portal_router
 from routers.partner_stripe import partner_stripe_router
 from routers.partner_verification import partner_verification_router
+from routers.wise_payouts import router as wise_payouts_router
 from routers.surveys import router as surveys_router
 from routers.maintenance import router as maintenance_router
 from routers.push_notifications import router as push_notifications_router
