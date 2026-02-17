@@ -201,7 +201,8 @@ async def lifespan(app: FastAPI):
     # asyncio.create_task(auction_auto_restart_processor())  # Disabled - auctions have manual end times
     asyncio.create_task(auction_expiry_checker())
     asyncio.create_task(day_night_auction_scheduler())
-    logger.info("bidblitz.ae server started - Bot only bids when < 10 min remaining. Auto-restart disabled.")
+    asyncio.create_task(abandoned_cart_reminder_task())
+    logger.info("BidBlitz.ae server started - Bot only bids when < 10 min remaining. Auto-restart disabled.")
     
     yield
     
