@@ -119,6 +119,8 @@ import TeamBiddingPage from "./pages/TeamBiddingPage";
 import FeaturesPage from "./pages/FeaturesPage";
 import RestaurantVouchersPage from "./pages/RestaurantVouchersPage";
 import RestaurantPortal from "./pages/RestaurantPortal";
+import DiscoverRestaurants from "./pages/DiscoverRestaurants";
+import LoyaltyDashboard from "./pages/LoyaltyDashboard";
 
 // Protected Route Component
 const ProtectedRoute = ({ children, requireAdmin = false }) => {
