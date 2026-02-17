@@ -452,11 +452,11 @@ export default function PartnerPortal() {
         body: JSON.stringify({ email, password })
       });
       
-      // Clone the response to read it multiple times if needed
-      const responseText = await response.text();
+      // Clone response before reading to avoid body stream issues
+      const clonedResponse = response.clone();
       let data;
       try {
-        data = JSON.parse(responseText);
+        data = await clonedResponse.json();
       } catch {
         throw new Error('Server error');
       }
