@@ -452,17 +452,11 @@ export default function PartnerPortal() {
         body: JSON.stringify({ email, password })
       });
       
-      // Clone response before reading to avoid body stream issues
-      const clonedResponse = response.clone();
-      let data;
-      try {
-        data = await clonedResponse.json();
-      } catch {
-        throw new Error('Server error');
-      }
+      // Read response as JSON directly - handle both success and error cases
+      const data = await response.json();
       
       if (!response.ok) {
-        throw new Error(data.detail || 'Login failed');
+        throw new Error(data.detail || (language === 'en' ? 'Invalid credentials' : 'Ungültige Anmeldedaten'));
       }
       
       setToken(data.token);
@@ -493,7 +487,9 @@ export default function PartnerPortal() {
         fetchDashboard(data.token);
       }
     } catch (err) {
-      toast.error(err.message);
+      // Handle both network errors and API error responses
+      const errorMessage = err.message || (language === 'en' ? 'Login failed' : 'Anmeldung fehlgeschlagen');
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
