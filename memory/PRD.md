@@ -5,6 +5,38 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 
 ## Current Status (February 17, 2026)
 
+### ✅ Session Update - February 17, 2026 (Session 24e) - STAFF MANAGEMENT + INTERNATIONALISIERUNG ✅
+
+**Neue Features:**
+
+#### 1. Zwei Zugangsstufen für Partner ✅
+- **Admin-Login:** Voller Zugang zu allen Funktionen (Dashboard, Statistiken, Auszahlungen, Verifizierung, Profil, Mitarbeiter)
+- **Mitarbeiter-Login (Counter/Theke):** Nur Scanner und Pay - perfekt für Thekenmitarbeiter
+
+#### 2. Mitarbeiter-Verwaltung (Staff Management) ✅
+- Neuer Tab "Staff" im Partner-Portal (nur für Admins)
+- Mitarbeiter erstellen mit Name, E-Mail, Passwort und Rolle
+- Rollen: "Counter" (Theke) oder "Admin" (voller Zugang)
+- Mitarbeiter-Liste mit Status und Löschen-Option
+
+#### 3. Internationale Unterstützung ✅
+- Sprach-Toggle DE ↔ EN auf Login-Seite
+- Übersetzungen für alle UI-Elemente
+- Sprache wird lokal gespeichert
+
+**Backend-Endpoints:**
+- `POST /api/partner-portal/staff/login` - Mitarbeiter-Login
+- `GET /api/partner-portal/staff` - Mitarbeiter-Liste
+- `POST /api/partner-portal/staff/create` - Mitarbeiter erstellen
+- `PUT /api/partner-portal/staff/{id}` - Mitarbeiter bearbeiten
+- `DELETE /api/partner-portal/staff/{id}` - Mitarbeiter löschen
+
+**Test-Credentials:**
+- Admin: `pizza@test.de` / `Test123!`
+- Theke-Mitarbeiter: `theke@pizza-roma.de` / `Theke123!`
+
+---
+
 ### ✅ Session Update - February 17, 2026 (Session 24d) - BIDBLITZ PAY ZAHLUNGSSYSTEM ✅
 
 **Neues Feature: BidBlitz Pay - Digitales Zahlungssystem wie AliPay**
