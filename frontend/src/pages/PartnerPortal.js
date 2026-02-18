@@ -2556,6 +2556,7 @@ export default function PartnerPortal() {
 
 // BidBlitz Pay Partner Component - Payment Scanner
 function BidBlitzPayPartner({ token, partnerId, partnerName, commissionRate }) {
+  const [step, setStep] = useState('amount'); // 'amount' -> 'scan' -> 'confirm'
   const [scanning, setScanning] = useState(false);
   const [customerData, setCustomerData] = useState(null);
   const [paymentAmount, setPaymentAmount] = useState('');
@@ -2563,13 +2564,18 @@ function BidBlitzPayPartner({ token, partnerId, partnerName, commissionRate }) {
   const [manualQR, setManualQR] = useState('');
   const [paymentSuccess, setPaymentSuccess] = useState(null);
   const html5QrCodeRef = useRef(null);
+  const scannerStarted = useRef(false);
 
   const startScanner = async () => {
+    if (scannerStarted.current) return;
+    scannerStarted.current = true;
     setScanning(true);
     setCustomerData(null);
-    setPaymentSuccess(null);
     
     try {
+      // Small delay to ensure DOM element is ready
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
       const html5QrCode = new Html5Qrcode("bidblitz-pay-scanner");
       html5QrCodeRef.current = html5QrCode;
       
@@ -2578,6 +2584,7 @@ function BidBlitzPayPartner({ token, partnerId, partnerName, commissionRate }) {
         { fps: 10, qrbox: 250 },
         async (decodedText) => {
           await html5QrCode.stop();
+          scannerStarted.current = false;
           setScanning(false);
           handleQRScanned(decodedText);
         },
@@ -2585,8 +2592,9 @@ function BidBlitzPayPartner({ token, partnerId, partnerName, commissionRate }) {
       );
     } catch (err) {
       console.error("Scanner error:", err);
+      scannerStarted.current = false;
       setScanning(false);
-      toast.error("Kamera-Zugriff nicht möglich");
+      toast.error("Kamera-Zugriff nicht möglich. Bitte QR-Code manuell eingeben.");
     }
   };
 
@@ -2596,8 +2604,21 @@ function BidBlitzPayPartner({ token, partnerId, partnerName, commissionRate }) {
         await html5QrCodeRef.current.stop();
       } catch {}
     }
+    scannerStarted.current = false;
     setScanning(false);
   };
+
+  // Auto-start camera when moving to scan step
+  useEffect(() => {
+    if (step === 'scan' && !scanning && !scannerStarted.current) {
+      startScanner();
+    }
+    return () => {
+      if (step !== 'scan') {
+        stopScanner();
+      }
+    };
+  }, [step]);
 
   const handleQRScanned = async (qrData) => {
     try {
