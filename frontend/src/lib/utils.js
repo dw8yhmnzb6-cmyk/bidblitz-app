@@ -16,7 +16,10 @@ export function getErrorMessage(error, fallback = 'Ein Fehler ist aufgetreten') 
     return null;
   }
   
-  const detail = error?.response?.data?.detail;
+  const rawDetail = error?.response?.data?.detail;
+  
+  // Handle case where detail might be an object instead of string
+  const detail = typeof rawDetail === 'string' ? rawDetail : (rawDetail?.message || rawDetail?.msg || '');
   
   // If no detail or empty string, use fallback
   if (!detail) return fallback;
