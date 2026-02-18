@@ -1747,6 +1747,11 @@ export default function Admin() {
           {activeTab === 'wallet-topup' && (
             <AdminWalletTopup token={token} t={t} />
           )}
+
+          {/* Wise Payouts Tab */}
+          {activeTab === 'wise-payouts' && (
+            <AdminWisePayouts token={token} />
+          )}
         </main>
       </div>
       
