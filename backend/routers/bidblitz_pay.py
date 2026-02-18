@@ -200,13 +200,13 @@ async def get_main_balance(user: dict = Depends(get_current_user)):
 # ==================== PEER-TO-PEER TRANSFER ====================
 
 class P2PTransferRequest(BaseModel):
-    recipient_email: str
+    recipient_email: str  # Can be email or user ID (customer number)
     amount: float
     message: Optional[str] = None
 
 @router.post("/send-money")
 async def send_money_to_user(data: P2PTransferRequest, user: dict = Depends(get_current_user)):
-    """Send BidBlitz balance to another user"""
+    """Send BidBlitz balance to another user by email or customer ID"""
     sender_id = user["id"]
     
     if data.amount <= 0:
@@ -215,13 +215,33 @@ async def send_money_to_user(data: P2PTransferRequest, user: dict = Depends(get_
     if data.amount < 1:
         raise HTTPException(status_code=400, detail="Mindestbetrag: €1")
     
-    # Find recipient
-    recipient = await db.users.find_one(
-        {"email": data.recipient_email.lower()},
-        {"_id": 0, "id": 1, "name": 1, "email": 1}
-    )
+    # Find recipient by email OR by user ID (customer number)
+    recipient_input = data.recipient_email.strip()
+    recipient = None
+    
+    # First try to find by email
+    if "@" in recipient_input:
+        recipient = await db.users.find_one(
+            {"email": recipient_input.lower()},
+            {"_id": 0, "id": 1, "name": 1, "email": 1}
+        )
+    
+    # If not found by email, try to find by user ID
     if not recipient:
-        raise HTTPException(status_code=404, detail="Empfänger nicht gefunden")
+        recipient = await db.users.find_one(
+            {"id": recipient_input},
+            {"_id": 0, "id": 1, "name": 1, "email": 1}
+        )
+    
+    # Also try case-insensitive ID search
+    if not recipient:
+        recipient = await db.users.find_one(
+            {"id": {"$regex": f"^{recipient_input}$", "$options": "i"}},
+            {"_id": 0, "id": 1, "name": 1, "email": 1}
+        )
+    
+    if not recipient:
+        raise HTTPException(status_code=404, detail="Empfänger nicht gefunden. Bitte Kundennummer oder E-Mail überprüfen.")
     
     if recipient["id"] == sender_id:
         raise HTTPException(status_code=400, detail="Sie können nicht an sich selbst senden")
