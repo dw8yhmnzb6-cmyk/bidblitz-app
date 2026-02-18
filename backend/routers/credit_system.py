@@ -791,7 +791,7 @@ async def admin_get_document(credit_id: str, doc_type: str):
 
 @router.post("/admin/decide")
 async def admin_decide_credit(data: AdminCreditDecision):
-    """Admin: Kreditantrag genehmigen oder ablehnen"""
+    """Admin: Kreditantrag genehmigen oder ablehnen - Bei Genehmigung wird sofort aktiviert"""
     credit = await db.credits.find_one({"id": data.credit_id})
     
     if not credit:
@@ -811,6 +811,7 @@ async def admin_decide_credit(data: AdminCreditDecision):
         # Calculate repayment details
         amount = credit["amount"]
         months = credit["repayment_months"]
+        user_id = credit["user_id"]
         
         # Apply interest (no interest for amounts under threshold)
         if amount < NO_INTEREST_THRESHOLD:
@@ -826,11 +827,38 @@ async def admin_decide_credit(data: AdminCreditDecision):
         # Set first payment date (30 days from now)
         next_payment_date = (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()
         
+        # AUTO-ACTIVATE: Credit amount to user's BidBlitz Pay wallet immediately
+        wallet = await db.wallets.find_one({"user_id": user_id})
+        if wallet:
+            await db.wallets.update_one(
+                {"user_id": user_id},
+                {"$inc": {"balance": amount}}
+            )
+        else:
+            await db.wallets.insert_one({
+                "id": str(uuid.uuid4()),
+                "user_id": user_id,
+                "balance": amount,
+                "created_at": datetime.now(timezone.utc).isoformat()
+            })
+        
+        # Create wallet transaction
+        await db.wallet_transactions.insert_one({
+            "id": str(uuid.uuid4()),
+            "user_id": user_id,
+            "type": "credit_disbursement",
+            "amount": amount,
+            "description": f"BidBlitz Kredit ausgezahlt ({data.credit_id[:8]})",
+            "credit_id": data.credit_id,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        })
+        
+        # Update credit to ACTIVE status (not just approved)
         await db.credits.update_one(
             {"id": data.credit_id},
             {
                 "$set": {
-                    "status": "approved",
+                    "status": "active",  # Directly active, not just approved
                     "interest_rate": interest_rate,
                     "total_interest": total_interest,
                     "total_repayment": total_repayment,
@@ -838,12 +866,23 @@ async def admin_decide_credit(data: AdminCreditDecision):
                     "next_payment_date": next_payment_date,
                     "admin_notes": data.notes,
                     "approved_at": datetime.now(timezone.utc).isoformat(),
+                    "activated_at": datetime.now(timezone.utc).isoformat(),
                     "updated_at": datetime.now(timezone.utc).isoformat()
                 }
             }
         )
         
-        message = f"Kredit genehmigt: €{amount} mit {interest_rate}% Zinsen"
+        message = f"Kredit genehmigt & aktiviert: €{amount} wurde auf BidBlitz Pay gutgeschrieben"
+        
+        # Log activation
+        await db.credit_logs.insert_one({
+            "id": str(uuid.uuid4()),
+            "credit_id": data.credit_id,
+            "user_id": user_id,
+            "action": "activated",
+            "details": {"amount_disbursed": amount},
+            "created_at": datetime.now(timezone.utc).isoformat()
+        })
         
     else:
         await db.credits.update_one(
@@ -873,7 +912,7 @@ async def admin_decide_credit(data: AdminCreditDecision):
         "created_at": datetime.now(timezone.utc).isoformat()
     })
     
-    logger.info(f"Credit decision: {data.credit_id} - {'approved' if data.approved else 'rejected'}")
+    logger.info(f"Credit decision: {data.credit_id} - {'approved & activated' if data.approved else 'rejected'}")
     
     return {
         "success": True,
