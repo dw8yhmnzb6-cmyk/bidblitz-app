@@ -76,6 +76,9 @@ import AdminSustainability from '../components/admin/AdminSustainability';
 // Import Mystery Box
 import AdminMysteryBox from '../components/admin/AdminMysteryBox';
 
+// Import Admin Wallet Top-up
+import AdminWalletTopup from '../components/admin/AdminWalletTopup';
+
 // Import Voice Debug Assistant
 import VoiceDebugAssistant from '../components/VoiceDebugAssistant';
 
@@ -1175,6 +1178,7 @@ export default function Admin() {
     { id: 'mystery-box', label: '🎁 Mystery Box', icon: <Gift className="w-5 h-5" />, highlight: true },
     { id: 'sustainability', label: '🌿 Nachhaltigkeit', icon: <Leaf className="w-5 h-5" />, highlight: true },
     { id: 'promo-codes', label: '🎫 Gutschein-Codes', icon: <Gift className="w-5 h-5" />, highlight: true },
+    { id: 'wallet-topup', label: '💳 Wallet Aufladen', icon: <DollarSign className="w-5 h-5" />, highlight: true },
     { id: 'game-config', label: at('gameSettings'), icon: <Settings className="w-5 h-5" /> }
   ];
 
