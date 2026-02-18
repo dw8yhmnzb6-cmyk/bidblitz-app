@@ -117,7 +117,7 @@ async def find_nearby_partners(data: LocationSearch):
 async def get_cities_with_partners():
     """Get list of cities with active partners"""
     pipeline = [
-        {"$match": {"is_active": True, "city": {"$exists": True, "$ne": ""}}},
+        {"$match": {"status": "approved", "city": {"$exists": True, "$ne": ""}}},
         {"$group": {
             "_id": "$city",
             "partner_count": {"$sum": 1}
@@ -145,10 +145,14 @@ async def get_partners_by_city(
     limit: int = 50
 ):
     """Get all partners in a specific city"""
-    query = {
-        "is_active": True,
-        "city": {"$regex": f"^{city}$", "$options": "i"}
-    }
+    # Support 'all' to get all partners regardless of city
+    if city.lower() == "all":
+        query = {"status": "approved"}
+    else:
+        query = {
+            "status": "approved",
+            "city": {"$regex": f"^{city}$", "$options": "i"}
+        }
     
     if business_type:
         query["business_type"] = business_type
