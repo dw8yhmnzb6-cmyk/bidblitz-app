@@ -114,12 +114,21 @@ export const BiometricSetup = ({ user, token, onSuccess }) => {
       // Get device name
       const deviceName = getDeviceName();
 
+      // Get public key - handle both old and new WebAuthn API
+      let publicKeyData;
+      if (credential.response.getPublicKey && typeof credential.response.getPublicKey === 'function') {
+        publicKeyData = arrayBufferToBase64(credential.response.getPublicKey());
+      } else {
+        // Fallback: use attestationObject which contains the public key
+        publicKeyData = arrayBufferToBase64(credential.response.attestationObject);
+      }
+
       // Send to backend
       const response = await axios.post(
         `${API}/api/security/register-biometric`,
         {
           credential_id: arrayBufferToBase64(credential.rawId),
-          public_key: arrayBufferToBase64(credential.response.getPublicKey()),
+          public_key: publicKeyData,
           device_name: deviceName,
           auth_type: authType
         },
