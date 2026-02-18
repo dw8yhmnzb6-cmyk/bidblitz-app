@@ -894,6 +894,13 @@ const BidBlitzPay = () => {
             )}
           </div>
         )}
+
+        {/* Security Settings */}
+        {view === 'security' && user && (
+          <div className="bg-white rounded-2xl shadow-lg p-6" data-testid="security-view">
+            <SecuritySettings user={user} token={token} />
+          </div>
+        )}
       </div>
     </div>
   );
