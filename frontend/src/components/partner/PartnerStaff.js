@@ -1,11 +1,11 @@
 /**
  * Partner Staff Management Component
- * Create, edit, and manage staff members
+ * Create, edit, and manage staff members with auto-generated Kundennummer
  */
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { toast } from 'sonner';
-import { Users, Plus, User, Store, Pencil, Trash2, Check, X, Loader2, AlertCircle } from 'lucide-react';
+import { Users, Plus, User, Store, Pencil, Trash2, Check, X, Loader2, AlertCircle, Copy, Eye, EyeOff, Hash } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 
@@ -14,9 +14,11 @@ const API = process.env.REACT_APP_BACKEND_URL;
 const PartnerStaff = ({ token, language, t }) => {
   const [staffList, setStaffList] = useState([]);
   const [loadingStaff, setLoadingStaff] = useState(false);
-  const [newStaff, setNewStaff] = useState({ name: '', password: '', role: 'counter', save_login: true });
+  const [newStaff, setNewStaff] = useState({ name: '', password: '', role: 'counter' });
   const [editingStaff, setEditingStaff] = useState(null);
   const [editStaffData, setEditStaffData] = useState({ name: '', role: '' });
+  const [showPassword, setShowPassword] = useState(false);
+  const [createdStaff, setCreatedStaff] = useState(null); // Stores newly created staff with Kundennummer
 
   // Fetch staff list
   const fetchStaffList = async () => {
@@ -40,14 +42,22 @@ const PartnerStaff = ({ token, language, t }) => {
     }
 
     try {
-      await axios.post(`${API}/api/partner-portal/staff/create?token=${token}`, {
+      const response = await axios.post(`${API}/api/partner-portal/staff/create?token=${token}`, {
         name: newStaff.name,
         password: newStaff.password,
-        role: newStaff.role,
-        save_login: newStaff.save_login
+        role: newStaff.role
       });
+      
+      // Show the created staff with Kundennummer
+      setCreatedStaff({
+        name: response.data.name,
+        staff_number: response.data.staff_number,
+        password: newStaff.password, // Show password once
+        role: response.data.role
+      });
+      
       toast.success(language === 'en' ? 'Staff account created' : 'Mitarbeiter-Konto erstellt');
-      setNewStaff({ name: '', password: '', role: 'counter', save_login: true });
+      setNewStaff({ name: '', password: '', role: 'counter' });
       fetchStaffList();
     } catch (err) {
       toast.error(err.response?.data?.detail || t('error'));
@@ -82,6 +92,12 @@ const PartnerStaff = ({ token, language, t }) => {
     }
   };
 
+  // Copy to clipboard
+  const copyToClipboard = (text, label) => {
+    navigator.clipboard.writeText(text);
+    toast.success(language === 'en' ? `${label} copied!` : `${label} kopiert!`);
+  };
+
   useEffect(() => {
     if (token) {
       fetchStaffList();
@@ -95,11 +111,78 @@ const PartnerStaff = ({ token, language, t }) => {
         {t('staff')}
       </h2>
       
+      {/* Success Modal - Shows newly created staff with Kundennummer */}
+      {createdStaff && (
+        <div className="bg-green-50 border-2 border-green-500 rounded-xl p-6 shadow-lg" data-testid="staff-created-modal">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-bold text-green-800 flex items-center gap-2">
+              <Check className="w-5 h-5" />
+              {language === 'en' ? 'Staff Account Created!' : 'Mitarbeiter-Konto erstellt!'}
+            </h3>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => setCreatedStaff(null)}
+              className="text-green-700 hover:bg-green-100"
+            >
+              <X className="w-5 h-5" />
+            </Button>
+          </div>
+          
+          <div className="bg-white rounded-lg p-4 space-y-3">
+            <div className="flex items-center justify-between p-3 bg-amber-50 rounded-lg border border-amber-200">
+              <div>
+                <p className="text-xs text-amber-600 font-medium">
+                  {language === 'en' ? 'Staff Number (Login ID)' : 'Kundennummer (Login-ID)'}
+                </p>
+                <p className="text-xl font-bold text-amber-800 font-mono">{createdStaff.staff_number}</p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => copyToClipboard(createdStaff.staff_number, 'Kundennummer')}
+                className="border-amber-400 text-amber-700 hover:bg-amber-100"
+              >
+                <Copy className="w-4 h-4 mr-1" />
+                {language === 'en' ? 'Copy' : 'Kopieren'}
+              </Button>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-3">
+              <div className="p-3 bg-gray-50 rounded-lg">
+                <p className="text-xs text-gray-500">{t('name')}</p>
+                <p className="font-medium text-gray-800">{createdStaff.name}</p>
+              </div>
+              <div className="p-3 bg-gray-50 rounded-lg">
+                <p className="text-xs text-gray-500">{t('password')}</p>
+                <div className="flex items-center gap-2">
+                  <p className="font-medium text-gray-800 font-mono">
+                    {showPassword ? createdStaff.password : '••••••••'}
+                  </p>
+                  <button onClick={() => setShowPassword(!showPassword)} className="text-gray-400 hover:text-gray-600">
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+            </div>
+            
+            <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+              <p className="text-sm text-blue-800 flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                {language === 'en' 
+                  ? 'Staff can login using the Staff Number and Password above.' 
+                  : 'Mitarbeiter kann sich mit der Kundennummer und dem Passwort oben anmelden.'}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* Create Staff Form */}
       <div className="bg-white rounded-xl p-6 shadow-sm">
         <h3 className="font-bold text-gray-800 mb-4">{t('createStaff')}</h3>
         <form onSubmit={createStaff} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">{t('name')}</label>
               <Input
@@ -107,6 +190,7 @@ const PartnerStaff = ({ token, language, t }) => {
                 onChange={(e) => setNewStaff({...newStaff, name: e.target.value})}
                 placeholder={language === 'en' ? 'Staff name' : 'Mitarbeiter Name'}
                 required
+                data-testid="staff-name-input"
               />
             </div>
             <div>
@@ -117,6 +201,7 @@ const PartnerStaff = ({ token, language, t }) => {
                 onChange={(e) => setNewStaff({...newStaff, password: e.target.value})}
                 placeholder="••••••••"
                 required
+                data-testid="staff-password-input"
               />
             </div>
             <div>
@@ -125,25 +210,24 @@ const PartnerStaff = ({ token, language, t }) => {
                 value={newStaff.role}
                 onChange={(e) => setNewStaff({...newStaff, role: e.target.value})}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500"
+                data-testid="staff-role-select"
               >
                 <option value="counter">{t('counter')} ({language === 'en' ? 'Scanner & Pay only' : 'Nur Scanner & Pay'})</option>
                 <option value="admin">{t('admin')} ({language === 'en' ? 'Full access' : 'Voller Zugang'})</option>
               </select>
             </div>
-            <div className="flex items-center gap-2 mt-6">
-              <input
-                type="checkbox"
-                id="save-login"
-                checked={newStaff.save_login}
-                onChange={(e) => setNewStaff({...newStaff, save_login: e.target.checked})}
-                className="w-4 h-4 text-amber-500 border-gray-300 rounded focus:ring-amber-500"
-              />
-              <label htmlFor="save-login" className="text-sm text-gray-700">
-                {language === 'en' ? 'Save login credentials' : 'Login-Daten speichern'}
-              </label>
-            </div>
           </div>
-          <Button type="submit" className="bg-amber-500 hover:bg-amber-600">
+          
+          <div className="p-3 bg-amber-50 rounded-lg border border-amber-200">
+            <p className="text-sm text-amber-800 flex items-center gap-2">
+              <Hash className="w-4 h-4 flex-shrink-0" />
+              {language === 'en' 
+                ? 'A unique Staff Number (Kundennummer) will be automatically generated for login.' 
+                : 'Eine eindeutige Kundennummer wird automatisch für die Anmeldung generiert.'}
+            </p>
+          </div>
+          
+          <Button type="submit" className="bg-amber-500 hover:bg-amber-600" data-testid="create-staff-btn">
             <Plus className="w-4 h-4 mr-2" />
             {t('createStaff')}
           </Button>
@@ -168,7 +252,7 @@ const PartnerStaff = ({ token, language, t }) => {
         ) : (
           <div className="divide-y">
             {staffList.map((staff) => (
-              <div key={staff.id} className="p-4">
+              <div key={staff.id} className="p-4" data-testid={`staff-item-${staff.id}`}>
                 {editingStaff === staff.id ? (
                   // Edit Mode
                   <div className="space-y-3">
@@ -182,11 +266,13 @@ const PartnerStaff = ({ token, language, t }) => {
                         />
                       </div>
                       <div>
-                        <label className="block text-xs text-gray-500 mb-1">{t('email')}</label>
+                        <label className="block text-xs text-gray-500 mb-1">
+                          {language === 'en' ? 'Staff Number' : 'Kundennummer'}
+                        </label>
                         <Input
-                          value={editStaffData.email}
+                          value={staff.staff_number || '-'}
                           disabled
-                          className="h-9 bg-gray-50"
+                          className="h-9 bg-gray-50 font-mono"
                         />
                       </div>
                       <div>
@@ -235,7 +321,16 @@ const PartnerStaff = ({ token, language, t }) => {
                       </div>
                       <div>
                         <p className="font-medium text-gray-800">{staff.name}</p>
-                        <p className="text-sm text-gray-500">{staff.email}</p>
+                        <div className="flex items-center gap-2">
+                          {staff.staff_number && (
+                            <span className="text-sm text-amber-600 font-mono bg-amber-50 px-2 py-0.5 rounded">
+                              {staff.staff_number}
+                            </span>
+                          )}
+                          {staff.email && (
+                            <span className="text-sm text-gray-500">{staff.email}</span>
+                          )}
+                        </div>
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
@@ -253,12 +348,23 @@ const PartnerStaff = ({ token, language, t }) => {
                       }`}>
                         {staff.is_active !== false ? t('active') : t('inactive')}
                       </span>
+                      {staff.staff_number && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => copyToClipboard(staff.staff_number, 'Kundennummer')}
+                          className="text-amber-500 hover:text-amber-700 hover:bg-amber-50"
+                          title={language === 'en' ? 'Copy Staff Number' : 'Kundennummer kopieren'}
+                        >
+                          <Copy className="w-4 h-4" />
+                        </Button>
+                      )}
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => {
                           setEditingStaff(staff.id);
-                          setEditStaffData({ name: staff.name, email: staff.email, role: staff.role });
+                          setEditStaffData({ name: staff.name, role: staff.role });
                         }}
                         className="text-blue-500 hover:text-blue-700 hover:bg-blue-50"
                       >
@@ -279,20 +385,6 @@ const PartnerStaff = ({ token, language, t }) => {
             ))}
           </div>
         )}
-      </div>
-      
-      {/* Info Box */}
-      <div className="bg-blue-50 rounded-xl p-4 border border-blue-100">
-        <div className="flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
-          <div className="text-sm text-blue-800">
-            <p className="font-medium mb-1">{language === 'en' ? 'Staff Roles:' : 'Mitarbeiter-Rollen:'}</p>
-            <ul className="space-y-1 text-blue-700">
-              <li><strong>{t('counter')}:</strong> {language === 'en' ? 'Only Scanner and Pay - perfect for counter employees' : 'Nur Scanner und Pay - perfekt für Thekenmitarbeiter'}</li>
-              <li><strong>{t('admin')}:</strong> {language === 'en' ? 'Full access to statistics, payouts, and settings' : 'Voller Zugang zu Statistiken, Auszahlungen und Einstellungen'}</li>
-            </ul>
-          </div>
-        </div>
       </div>
     </div>
   );
