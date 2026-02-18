@@ -85,6 +85,9 @@ import AdminWisePayouts from '../components/admin/AdminWisePayouts';
 // Import Admin Merchant Vouchers
 import AdminMerchantVouchers from '../components/admin/AdminMerchantVouchers';
 
+// Import Admin Credit Management
+import AdminCreditManagement from '../components/admin/AdminCreditManagement';
+
 // Import Admin Password Manager
 import AdminPasswordManager from '../components/admin/AdminPasswordManager';
 
