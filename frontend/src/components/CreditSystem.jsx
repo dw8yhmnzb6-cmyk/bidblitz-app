@@ -661,7 +661,8 @@ const CreditSystem = ({ language = 'de', walletBalance = 0, onBalanceUpdate }) =
   
   // Credit Details View
   if (view === 'details' && selectedCredit) {
-    const remaining = (selectedCredit.amount + (selectedCredit.total_interest || 0)) - (selectedCredit.amount_repaid || 0);
+    const totalDue = selectedCredit.total_repayment || (selectedCredit.amount + (selectedCredit.total_interest || 0));
+    const remaining = Math.max(0, totalDue - (selectedCredit.amount_repaid || 0));
     
     return (
       <div className="space-y-4">
