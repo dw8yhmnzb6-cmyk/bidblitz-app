@@ -11,7 +11,6 @@ import { LastChanceSection } from '../components/LastChanceAuctions';
 import { TopBidderBadge } from '../components/TopBidderLeaderboard';
 import ExitIntentPopup from '../components/ExitIntentPopup';
 import WinnerGalleryHome from '../components/WinnerGalleryHome';
-import VoucherAuctionsSection from '../components/VoucherAuctionsSection';
 import { 
   Timer, Flame, TrendingUp, Users, Zap, Award, Gift, Shield, Star, Crown, Clock, 
   ChevronRight, CheckCircle, Eye, Gavel, ArrowRight, Sparkles, UserPlus, Mail, Lock
