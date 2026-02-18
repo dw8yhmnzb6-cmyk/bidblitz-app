@@ -1292,4 +1292,166 @@ async def admin_search_customer(q: str = Query(..., min_length=3)):
     }
 
 
+# ==================== TRANSACTION HISTORY ====================
+
+@router.get("/transaction-history")
+async def get_transaction_history(
+    page: int = Query(1, ge=1),
+    limit: int = Query(20, ge=1, le=100),
+    type: Optional[str] = None,
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    min_amount: Optional[float] = None,
+    max_amount: Optional[float] = None,
+    search: Optional[str] = None,
+    user: dict = Depends(get_current_user)
+):
+    """Get user's transaction history with filters"""
+    user_id = user["id"]
+    
+    # Build query
+    query = {"user_id": user_id}
+    
+    # Type filter
+    type_mapping = {
+        "deposit": ["topup", "deposit", "bank_transfer_credit", "credit_disbursement"],
+        "withdrawal": ["withdrawal", "payout", "credit_repayment"],
+        "credit": ["credit_disbursement", "credit_repayment"],
+        "cashback": ["cashback", "cashback_payout", "cashback_earning"],
+        "transfer": ["transfer_in", "transfer_out", "bank_transfer_credit"]
+    }
+    
+    if type and type != "all" and type in type_mapping:
+        query["type"] = {"$in": type_mapping[type]}
+    
+    # Date filters
+    if date_from:
+        query["created_at"] = {"$gte": date_from}
+    if date_to:
+        if "created_at" in query:
+            query["created_at"]["$lte"] = date_to + "T23:59:59"
+        else:
+            query["created_at"] = {"$lte": date_to + "T23:59:59"}
+    
+    # Amount filters
+    if min_amount is not None:
+        query["$or"] = [
+            {"amount": {"$gte": min_amount}},
+            {"amount": {"$lte": -min_amount}}
+        ]
+    if max_amount is not None:
+        if "$or" not in query:
+            query["$and"] = [
+                {"$or": [
+                    {"amount": {"$lte": max_amount}},
+                    {"amount": {"$gte": -max_amount}}
+                ]}
+            ]
+    
+    # Search in description
+    if search:
+        query["description"] = {"$regex": search, "$options": "i"}
+    
+    # Count total
+    total = await db.wallet_transactions.count_documents(query)
+    
+    # Get transactions
+    skip = (page - 1) * limit
+    transactions = await db.wallet_transactions.find(
+        query,
+        {"_id": 0}
+    ).sort("created_at", -1).skip(skip).limit(limit).to_list(limit)
+    
+    # Also get from balance_history in users collection
+    user_data = await db.users.find_one({"id": user_id}, {"_id": 0, "balance_history": 1})
+    balance_history = user_data.get("balance_history", []) if user_data else []
+    
+    # Merge and sort
+    all_transactions = transactions + [
+        {**h, "type": h.get("type", "balance_change")} 
+        for h in balance_history 
+        if not date_from or h.get("date", "") >= date_from
+    ]
+    
+    # Sort by date
+    all_transactions.sort(key=lambda x: x.get("created_at") or x.get("date", ""), reverse=True)
+    
+    # Paginate
+    paginated = all_transactions[skip:skip + limit]
+    
+    return {
+        "transactions": paginated,
+        "total": max(total, len(all_transactions)),
+        "page": page,
+        "limit": limit,
+        "total_pages": (max(total, len(all_transactions)) + limit - 1) // limit
+    }
+
+
+@router.get("/export-transactions")
+async def export_transactions(
+    format: str = Query("csv"),
+    type: Optional[str] = None,
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    user: dict = Depends(get_current_user)
+):
+    """Export user's transactions as CSV"""
+    from fastapi.responses import Response
+    import csv
+    import io
+    
+    user_id = user["id"]
+    
+    # Build query
+    query = {"user_id": user_id}
+    if type and type != "all":
+        type_mapping = {
+            "deposit": ["topup", "deposit", "bank_transfer_credit"],
+            "withdrawal": ["withdrawal", "payout"],
+            "credit": ["credit_disbursement", "credit_repayment"],
+            "cashback": ["cashback", "cashback_payout"],
+            "transfer": ["transfer_in", "transfer_out"]
+        }
+        if type in type_mapping:
+            query["type"] = {"$in": type_mapping[type]}
+    
+    if date_from:
+        query["created_at"] = {"$gte": date_from}
+    if date_to:
+        if "created_at" in query:
+            query["created_at"]["$lte"] = date_to + "T23:59:59"
+        else:
+            query["created_at"] = {"$lte": date_to + "T23:59:59"}
+    
+    # Get all transactions
+    transactions = await db.wallet_transactions.find(
+        query, {"_id": 0}
+    ).sort("created_at", -1).to_list(1000)
+    
+    if format == "csv":
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(["Datum", "Typ", "Beschreibung", "Betrag", "Referenz", "Status"])
+        
+        for tx in transactions:
+            writer.writerow([
+                tx.get("created_at", "")[:19].replace("T", " "),
+                tx.get("type", ""),
+                tx.get("description", ""),
+                f"{tx.get('amount', 0):.2f}",
+                tx.get("reference", ""),
+                tx.get("status", "completed")
+            ])
+        
+        csv_content = output.getvalue()
+        return Response(
+            content=csv_content,
+            media_type="text/csv",
+            headers={"Content-Disposition": "attachment; filename=transactions.csv"}
+        )
+    
+    return {"transactions": transactions}
+
+
 bidblitz_pay_router = router
