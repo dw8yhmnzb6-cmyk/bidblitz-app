@@ -230,6 +230,94 @@ class AdminCreditDecision(BaseModel):
 
 # ==================== USER ENDPOINTS ====================
 
+@router.get("/score")
+async def get_credit_score(user: dict = Depends(get_current_user)):
+    """Holt den Kredit-Score des Nutzers mit allen Details"""
+    user_id = user["id"]
+    
+    score_doc = await get_user_credit_score(user_id)
+    current_score = score_doc.get("score", INITIAL_SCORE)
+    current_tier = get_tier_for_score(current_score)
+    next_tier = get_next_tier(current_score)
+    
+    # Calculate progress to next tier
+    progress_percent = 0
+    if next_tier:
+        tier_range = current_tier["max_score"] - current_tier["min_score"]
+        progress_in_tier = current_score - current_tier["min_score"]
+        progress_percent = int((progress_in_tier / tier_range) * 100) if tier_range > 0 else 0
+    
+    return {
+        "score": current_score,
+        "tier": {
+            "key": current_tier["key"],
+            "name": current_tier["name"],
+            "name_en": current_tier["name_en"],
+            "icon": current_tier["icon"],
+            "color": current_tier["color"],
+            "max_credit": current_tier["max_credit"],
+            "interest_rate": current_tier["interest_rate"]
+        },
+        "next_tier": {
+            "key": next_tier["key"],
+            "name": next_tier["name"],
+            "name_en": next_tier["name_en"],
+            "icon": next_tier["icon"],
+            "points_needed": next_tier["points_needed"],
+            "max_credit": next_tier["max_credit"],
+            "interest_rate": next_tier["interest_rate"]
+        } if next_tier else None,
+        "progress_percent": progress_percent,
+        "stats": {
+            "total_credits_completed": score_doc.get("total_credits_completed", 0),
+            "total_on_time_payments": score_doc.get("total_on_time_payments", 0),
+            "total_late_payments": score_doc.get("total_late_payments", 0)
+        },
+        "history": score_doc.get("history", [])[-10:],  # Last 10 entries
+        "tips": get_score_tips(current_score, current_tier["key"])
+    }
+
+
+def get_score_tips(score: int, tier_key: str) -> list:
+    """Get tips to improve credit score"""
+    tips = []
+    
+    if tier_key == "red":
+        tips.append({
+            "title": "Konto verifizieren",
+            "description": "Verifizieren Sie Ihr Konto für +25 Punkte",
+            "points": 25
+        })
+    
+    if tier_key in ["red", "yellow"]:
+        tips.append({
+            "title": "Pünktlich zahlen",
+            "description": "Jede pünktliche Zahlung bringt +20 Punkte",
+            "points": 20
+        })
+        tips.append({
+            "title": "Kredit vollständig zurückzahlen",
+            "description": "Vollständige Rückzahlung bringt +100 Punkte",
+            "points": 100
+        })
+    
+    if tier_key in ["yellow", "green"]:
+        tips.append({
+            "title": "Früh zahlen",
+            "description": "Zahlung vor Fälligkeit bringt +30 Punkte",
+            "points": 30
+        })
+    
+    if tier_key in ["green", "gold"]:
+        tips.append({
+            "title": "Regelmäßig Kredite nutzen",
+            "description": "Jeder erfolgreich abgeschlossene Kredit verbessert Ihren Score",
+            "points": 50
+        })
+    
+    return tips
+
+
 @router.get("/eligibility")
 async def check_credit_eligibility(user: dict = Depends(get_current_user)):
     """Prüft, ob der Nutzer für einen Kredit berechtigt ist"""
@@ -256,16 +344,38 @@ async def check_credit_eligibility(user: dict = Depends(get_current_user)):
         "status": "repaid"
     }).to_list(100)
     
+    # Get credit score and tier
+    score_doc = await get_user_credit_score(user_id)
+    current_score = score_doc.get("score", INITIAL_SCORE)
+    current_tier = get_tier_for_score(current_score)
+    
+    # Determine max credit based on tier (but capped at MAX_CREDIT_AMOUNT)
+    tier_max_credit = min(current_tier["max_credit"], MAX_CREDIT_AMOUNT)
+    tier_interest_rate = current_tier["interest_rate"]
+    
+    # Check if eligible based on score tier
+    score_eligible = current_tier["max_credit"] > 0
+    
     return {
-        "eligible": is_verified and not has_open_credit,
+        "eligible": is_verified and not has_open_credit and score_eligible,
         "is_verified": is_verified,
         "has_open_credit": has_open_credit,
         "open_credit_id": existing_credit["id"] if existing_credit else None,
         "credit_history_count": len(credit_history),
         "min_amount": MIN_CREDIT_AMOUNT,
-        "max_amount": MAX_CREDIT_AMOUNT,
+        "max_amount": tier_max_credit,
+        "interest_rate": tier_interest_rate,
         "interest_rate_range": f"{MIN_INTEREST_RATE}-{MAX_INTEREST_RATE}%",
-        "repayment_months_range": f"{MIN_REPAYMENT_MONTHS}-{MAX_REPAYMENT_MONTHS}"
+        "repayment_months_range": f"{MIN_REPAYMENT_MONTHS}-{MAX_REPAYMENT_MONTHS}",
+        "score": current_score,
+        "tier": {
+            "key": current_tier["key"],
+            "name": current_tier["name"],
+            "icon": current_tier["icon"],
+            "color": current_tier["color"]
+        },
+        "score_eligible": score_eligible,
+        "score_message": "Ihr Score ist zu niedrig für einen Kredit. Verbessern Sie ihn durch pünktliche Zahlungen." if not score_eligible else None
     }
 
 
