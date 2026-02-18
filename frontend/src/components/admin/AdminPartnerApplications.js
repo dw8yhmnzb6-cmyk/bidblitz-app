@@ -545,26 +545,44 @@ const AdminPartnerApplications = () => {
               {allPartners.map((partner) => {
                 const businessType = getBusinessTypeInfo(partner.business_type);
                 const isEditing = editingCommission === partner.id;
+                const isLocked = partner.is_locked || false;
                 
                 return (
                   <div 
                     key={partner.id} 
-                    className="bg-white rounded-xl border border-gray-200 p-3 sm:p-4 shadow-sm"
+                    className={`bg-white rounded-xl border overflow-hidden shadow-sm ${
+                      isLocked ? 'border-red-300 bg-red-50/30' : 'border-gray-200'
+                    }`}
                   >
+                    {/* Locked Banner */}
+                    {isLocked && (
+                      <div className="bg-red-100 border-b border-red-200 px-3 py-2 flex items-center gap-2">
+                        <Lock className="w-4 h-4 text-red-600" />
+                        <span className="text-red-700 text-xs font-medium">
+                          Gesperrt: {partner.lock_reason || 'Administrativ gesperrt'}
+                        </span>
+                      </div>
+                    )}
+                    
+                    <div className="p-3 sm:p-4">
                     {/* Partner Header */}
                     <div className="flex items-start gap-3">
-                      <div className="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center text-2xl flex-shrink-0">
+                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl flex-shrink-0 ${
+                        isLocked ? 'bg-red-100 grayscale' : 'bg-amber-100'
+                      }`}>
                         {businessType.icon}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0 flex-1">
-                            <h3 className="font-semibold text-gray-800 text-sm sm:text-base truncate">
+                            <h3 className={`font-semibold text-sm sm:text-base truncate ${
+                              isLocked ? 'text-gray-500' : 'text-gray-800'
+                            }`}>
                               {partner.business_name || partner.restaurant_name}
                             </h3>
                             <p className="text-gray-500 text-xs truncate">{partner.email}</p>
                           </div>
-                          {getStatusBadge(partner.status || (partner.is_active ? 'approved' : 'pending'))}
+                          {getStatusBadge(partner.status || (partner.is_active ? 'approved' : 'pending'), isLocked)}
                         </div>
                         
                         {/* Partner Details Grid */}
@@ -652,7 +670,46 @@ const AdminPartnerApplications = () => {
                             </Button>
                           )}
                         </div>
+                        
+                        {/* Lock/Unlock Button Row */}
+                        <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between">
+                          <div className="flex items-center gap-2 text-xs text-gray-500">
+                            <Clock className="w-3 h-3" />
+                            <span>Seit: {formatDate(partner.created_at)}</span>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant={isLocked ? "outline" : "ghost"}
+                            onClick={() => handleToggleLock(
+                              partner.id, 
+                              isLocked,
+                              partner.business_name || partner.restaurant_name
+                            )}
+                            disabled={processing === partner.id}
+                            className={`h-7 px-2 ${
+                              isLocked 
+                                ? 'border-green-300 text-green-600 hover:bg-green-50' 
+                                : 'text-red-600 hover:text-red-700 hover:bg-red-50'
+                            }`}
+                            data-testid={`lock-btn-${partner.id}`}
+                          >
+                            {processing === partner.id ? (
+                              <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                            ) : isLocked ? (
+                              <>
+                                <Unlock className="w-3 h-3 mr-1" />
+                                <span className="text-xs">Entsperren</span>
+                              </>
+                            ) : (
+                              <>
+                                <Lock className="w-3 h-3 mr-1" />
+                                <span className="text-xs">Sperren</span>
+                              </>
+                            )}
+                          </Button>
+                        </div>
                       </div>
+                    </div>
                     </div>
                   </div>
                 );
