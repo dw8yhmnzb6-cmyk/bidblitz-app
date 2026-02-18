@@ -643,7 +643,7 @@ const BidBlitzPay = () => {
           </button>
           <button
             onClick={() => { setView('topup'); fetchMainBalance(); }}
-            className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${
+            className={`flex-shrink-0 py-2 px-3 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
               view === 'topup' ? 'bg-amber-500 text-white' : 'text-gray-600 hover:bg-gray-100'
             }`}
           >
@@ -652,7 +652,7 @@ const BidBlitzPay = () => {
           </button>
           <button
             onClick={() => { setView('send'); fetchTransferHistory(); }}
-            className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${
+            className={`flex-shrink-0 py-2 px-3 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
               view === 'send' ? 'bg-amber-500 text-white' : 'text-gray-600 hover:bg-gray-100'
             }`}
           >
@@ -661,7 +661,7 @@ const BidBlitzPay = () => {
           </button>
           <button
             onClick={() => { setView('qr'); generateQR(); }}
-            className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${
+            className={`flex-shrink-0 py-2 px-3 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
               view === 'qr' ? 'bg-amber-500 text-white' : 'text-gray-600 hover:bg-gray-100'
             }`}
           >
@@ -670,7 +670,7 @@ const BidBlitzPay = () => {
           </button>
           <button
             onClick={() => { setView('history'); fetchTransactions(); }}
-            className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${
+            className={`flex-shrink-0 py-2 px-3 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
               view === 'history' ? 'bg-amber-500 text-white' : 'text-gray-600 hover:bg-gray-100'
             }`}
           >
@@ -679,7 +679,7 @@ const BidBlitzPay = () => {
           </button>
           <button
             onClick={() => setView('security')}
-            className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${
+            className={`flex-shrink-0 py-2 px-3 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
               view === 'security' ? 'bg-amber-500 text-white' : 'text-gray-600 hover:bg-gray-100'
             }`}
           >
