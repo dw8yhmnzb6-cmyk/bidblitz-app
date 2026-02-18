@@ -716,12 +716,14 @@ const BidBlitzPay = () => {
                 {[5, 10, 20, 50].map((amount) => (
                   <button
                     key={amount}
-                    onClick={() => setTopUpAmount(String(Math.min(amount, mainBalance)))}
-                    disabled={mainBalance < amount}
+                    type="button"
+                    onClick={() => setTopUpAmount(String(amount))}
                     className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium border transition-all ${
-                      mainBalance >= amount 
-                        ? 'border-amber-300 text-amber-600 hover:bg-amber-50' 
-                        : 'border-gray-200 text-gray-400 cursor-not-allowed'
+                      parseFloat(topUpAmount) === amount
+                        ? 'border-amber-500 bg-amber-50 text-amber-600'
+                        : mainBalance >= amount 
+                          ? 'border-amber-300 text-amber-600 hover:bg-amber-50' 
+                          : 'border-gray-200 text-gray-400 hover:border-gray-300'
                     }`}
                   >
                     €{amount}
