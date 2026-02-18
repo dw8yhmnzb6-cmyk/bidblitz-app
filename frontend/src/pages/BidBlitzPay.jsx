@@ -1255,6 +1255,15 @@ const BidBlitzPay = () => {
             <Shield className="w-4 h-4 inline mr-1" />
             {t('security')}
           </button>
+          <button
+            onClick={() => setView('credit')}
+            className={`flex-shrink-0 py-2 px-3 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
+              view === 'credit' ? 'bg-amber-500 text-white' : 'text-gray-600 hover:bg-gray-100'
+            }`}
+          >
+            <Banknote className="w-4 h-4 inline mr-1" />
+            {t('credit')}
+          </button>
         </div>
       </div>
 
