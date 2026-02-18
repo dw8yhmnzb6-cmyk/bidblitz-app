@@ -183,6 +183,42 @@ const AdminPartnerApplications = () => {
     }
   };
 
+  const handleToggleLock = async (partnerId, isLocked, partnerName) => {
+    const action = isLocked ? 'entsperren' : 'sperren';
+    let reason = null;
+    
+    if (!isLocked) {
+      reason = prompt(`Warum soll "${partnerName}" gesperrt werden?\n(Optional - leer lassen für Standard-Grund)`);
+      if (reason === null) return; // User cancelled
+    } else {
+      if (!window.confirm(`Möchten Sie "${partnerName}" wirklich entsperren?`)) return;
+    }
+    
+    setProcessing(partnerId);
+    try {
+      let url = `${API}/api/partner-portal/admin/lock/${partnerId}`;
+      if (reason) {
+        url += `?reason=${encodeURIComponent(reason)}`;
+      }
+      
+      const response = await fetch(url, { method: 'POST' });
+
+      if (response.ok) {
+        const data = await response.json();
+        toast.success(data.message);
+        fetchAllPartners();
+      } else {
+        const error = await response.json();
+        toast.error(error.detail || `Fehler beim ${action}`);
+      }
+    } catch (error) {
+      console.error('Error toggling lock:', error);
+      toast.error(`Fehler beim ${action}`);
+    } finally {
+      setProcessing(null);
+    }
+  };
+
   const formatDate = (dateString) => {
     if (!dateString) return '-';
     return new Date(dateString).toLocaleDateString('de-DE', {
