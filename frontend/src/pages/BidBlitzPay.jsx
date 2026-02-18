@@ -658,6 +658,25 @@ const BidBlitzPay = () => {
     }
   };
 
+  const handleManualRequestLoad = async (e) => {
+    e.preventDefault();
+    if (!manualRequestId.trim()) return;
+    
+    setLoadingManualRequest(true);
+    try {
+      // Clean up the ID (remove BIDBLITZ-REQ: prefix if present)
+      let requestId = manualRequestId.trim().toUpperCase();
+      if (requestId.startsWith('BIDBLITZ-REQ:')) {
+        requestId = requestId.replace('BIDBLITZ-REQ:', '');
+      }
+      
+      await fetchRequestDetails(requestId);
+      setManualRequestId('');
+    } finally {
+      setLoadingManualRequest(false);
+    }
+  };
+
   const payScannedRequest = async () => {
     if (!scannedRequest) return;
     
