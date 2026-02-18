@@ -2875,67 +2875,37 @@ function BidBlitzPayPartner({ token, partnerId, partnerName, commissionRate }) {
             </div>
           </div>
 
-          {/* Payment Amount */}
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Zahlungsbetrag eingeben:
-            </label>
-            <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-xl">€</span>
-              <Input
-                type="number"
-                step="0.01"
-                min="0.01"
-                max={customerData.available_balance.total}
-                value={paymentAmount}
-                onChange={(e) => setPaymentAmount(e.target.value)}
-                className="pl-10 text-2xl font-bold h-16 text-center"
-                placeholder="0.00"
-                autoFocus
-              />
-            </div>
+          {/* Payment Amount - already entered */}
+          <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-6 text-center">
+            <p className="text-sm text-green-700 mb-1">Zahlungsbetrag:</p>
+            <p className="text-4xl font-bold text-green-600">€{parseFloat(paymentAmount).toFixed(2)}</p>
             {parseFloat(paymentAmount) > customerData.available_balance.total && (
               <p className="text-red-500 text-sm mt-2">
-                Betrag übersteigt verfügbares Guthaben
+                ⚠️ Betrag übersteigt verfügbares Guthaben
               </p>
             )}
-          </div>
-
-          {/* Quick Amount Buttons */}
-          <div className="flex gap-2 mb-6">
-            {[5, 10, 20, 50].map((amount) => (
-              <Button
-                key={amount}
-                variant="outline"
-                onClick={() => setPaymentAmount(String(amount))}
-                disabled={amount > customerData.available_balance.total}
-                className="flex-1"
-              >
-                €{amount}
-              </Button>
-            ))}
           </div>
 
           {/* Actions */}
           <div className="flex gap-3">
             <Button 
               variant="outline" 
-              onClick={() => setCustomerData(null)}
+              onClick={resetFlow}
               className="flex-1"
             >
               Abbrechen
             </Button>
             <Button 
               onClick={processPayment}
-              disabled={processing || !paymentAmount || parseFloat(paymentAmount) <= 0 || parseFloat(paymentAmount) > customerData.available_balance.total}
-              className="flex-1 bg-green-500 hover:bg-green-600"
+              disabled={processing || parseFloat(paymentAmount) > customerData.available_balance.total}
+              className="flex-1 bg-green-500 hover:bg-green-600 h-14"
             >
               {processing ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
                 <>
-                  <Check className="w-4 h-4 mr-2" />
-                  Zahlung €{parseFloat(paymentAmount || 0).toFixed(2)}
+                  <Check className="w-5 h-5 mr-2" />
+                  Zahlung bestätigen
                 </>
               )}
             </Button>
