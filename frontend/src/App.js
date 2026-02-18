@@ -715,6 +715,12 @@ function AppContent() {
           <Route path="/vouchers" element={<VoucherAuctionsPage />} />
           <Route path="/gutscheine" element={<VoucherAuctionsPage />} />
           
+          {/* Merchant Vouchers - Händler-Gutscheine */}
+          <Route path="/haendler-gutscheine" element={<MerchantVouchersPage />} />
+          <Route path="/haendler-gutscheine/:merchantId" element={<MerchantVouchersPage />} />
+          <Route path="/merchant-vouchers" element={<MerchantVouchersPage />} />
+          <Route path="/merchant-vouchers/:merchantId" element={<MerchantVouchersPage />} />
+          
           {/* Gift Cards */}
           <Route path="/gift-cards" element={
             <ProtectedRoute>
