@@ -1869,6 +1869,11 @@ export default function Admin() {
             <AdminWisePayouts token={token} />
           )}
 
+          {/* Merchant Vouchers Tab */}
+          {activeTab === 'merchant-vouchers' && (
+            <AdminMerchantVouchers />
+          )}
+
           {/* Passwords Tab */}
           {activeTab === 'passwords' && (
             <AdminPasswordManager token={token} />
