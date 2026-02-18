@@ -112,6 +112,7 @@ import SocialBettingPage from "./pages/SocialBettingPage";
 import BidAlarmPage from "./pages/BidAlarmPage";
 import AIAdvisorPage from "./pages/AIAdvisorPage";
 import VoucherAuctionsPage from "./pages/VoucherAuctionsPage";
+import MerchantVouchersPage from "./pages/MerchantVouchersPage";
 import DuelsPage from "./pages/DuelsPage";
 import GiftCardsPage from "./pages/GiftCardsPage";
 import FriendBattlesPage from "./pages/FriendBattlesPage";
