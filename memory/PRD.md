@@ -5,20 +5,27 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 
 ## Current Status (February 18, 2026)
 
-### ✅ Session Update - February 18, 2026 (Session 35) - ADMIN WALLET TOP-UP ✅
+### ✅ Session Update - February 18, 2026 (Session 35) - ADMIN WALLET TOP-UP MIT HÄNDLER-AUSWAHL ✅
 
-#### Neues Feature: Admin Kunden-Guthaben Aufladen ✅
+#### Feature: Admin Kunden-Guthaben Aufladen + Händler-Zuordnung ✅
 
-**Admin Panel - Neuer Tab "💳 Wallet Aufladen":**
+**Admin Panel - Tab "💳 Wallet Aufladen":**
 - Statistik-Karten: Aufladungen heute, Gesamtvolumen, Ausgezahlte Boni, Neue Kunden
 - Kundensuche nach E-Mail, Name oder Kunden-ID
 - Quick-Amount-Buttons: €10, €25, €50, €100, €200
-- Bonus-Vorschau mit automatischer Berechnung
+- **NEU: Händler-Auswahl-Dropdown** für 2% Provision
+- Bonus-Vorschau mit automatischer Berechnung inkl. Händlerprovision
 
 **Incentives & Bonus-System:**
 - **2% Kundenbonus** auf jede Aufladung
 - **€1 Erstaufladungsbonus** für neue Kunden
 - **2% Händlerprovision** (bei Händler-Zuordnung)
+
+**Händler-Auswahl-Feature:**
+- Dropdown mit "Händler zuordnen (optional - für 2% Provision)"
+- Suchfunktion für Händler nach Namen
+- Zeigt genehmigte Partner an
+- Bonus-Vorschau zeigt Händlerprovision separat
 
 **Händler-Leaderboard:**
 - Top 3 Händler nach Aufladevolumen
@@ -27,18 +34,19 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 **Neue API-Endpoints:**
 - `GET /api/admin/wallet-topup/stats` - Statistiken, Leaderboard, letzte Aufladungen
 - `GET /api/admin/wallet-topup/search` - Kundensuche
-- `POST /api/admin/wallet-topup/topup` - Kunden-Wallet aufladen
+- `POST /api/admin/wallet-topup/topup` - Kunden-Wallet aufladen (mit merchant_id)
 - `GET /api/admin/wallet-topup/history` - Paginierter Aufladungsverlauf
 
 **Geänderte/Neue Dateien:**
-- `/app/backend/routers/admin_wallet_topup.py` - NEU: Backend-Router
-- `/app/frontend/src/components/admin/AdminWalletTopup.js` - NEU: Frontend-Komponente
+- `/app/backend/routers/admin_wallet_topup.py` - Backend-Router mit merchant_id Support
+- `/app/frontend/src/components/admin/AdminWalletTopup.js` - Frontend mit Händler-Dropdown
 - `/app/backend/server.py` - Router registriert
 - `/app/frontend/src/pages/Admin.js` - Tab hinzugefügt
 
-**Test-Ergebnisse:**
+**Test-Ergebnisse (iteration_65.json):**
 - Backend: 21/21 Tests bestanden (100%)
-- Frontend: 9/9 Komponenten-Checks verifiziert (100%)
+- Frontend: 12/12 UI-Checks verifiziert (100%)
+- Bug behoben: API-Endpoint für Händler-Liste korrigiert
 
 ---
 
