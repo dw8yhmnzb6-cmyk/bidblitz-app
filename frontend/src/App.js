@@ -254,6 +254,10 @@ function AppContent() {
           <Route path="/datenschutz" element={<Datenschutz />} />
           <Route path="/agb" element={<AGB />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
+          
+          {/* Partner Landing Page - Public */}
+          <Route path="/p/:partnerId" element={<PartnerLanding />} />
+          
           {/* Protected User Pages */}
           <Route path="/profile" element={
             <ProtectedRoute>
