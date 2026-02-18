@@ -5,6 +5,54 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 
 ## Current Status (February 18, 2026)
 
+### ✅ Session Update - February 18, 2026 (Session 46) - P1 FEATURES: BOTS & CASHBACK-AKTIONEN ✅
+
+#### Feature 1: Bot-System für Händler-Gutschein-Auktionen ✅
+
+**Implementiert:**
+
+1. **Backend (`/app/backend/routers/bots.py`):**
+   - `POST /api/admin/bots/configure-voucher-bots` - Konfiguriert Bots für alle aktiven Gutschein-Auktionen
+   - `GET /api/admin/bots/voucher-bot-status` - Zeigt Status aller Gutschein-Auktionen mit Bot-Konfiguration
+   - Parameter: `min_percent` (Standard: 10%), `max_percent` (Standard: 30%)
+   - Bots bieten automatisch bis zu einem Zielpreis zwischen 10-30% des Gutscheinwerts
+
+2. **Frontend (`/app/frontend/src/components/admin/AdminMerchantVouchers.js`):**
+   - Neuer "Bots" Tab in der Händler-Gutscheine-Verwaltung
+   - Konfigurationsbereich mit Min/Max-Prozent-Eingaben
+   - "Bots für alle Gutscheine aktivieren" Button
+   - Echtzeit-Status-Liste aller Gutschein-Auktionen mit Bot-Status (Aktiv/Inaktiv/Ziel erreicht)
+
+**Test-Status:** Backend 100% (11/11 Tests), Frontend 100% (iteration_78.json)
+
+---
+
+#### Feature 2: Cashback-Aktionen für Händler ✅
+
+**Implementiert:**
+
+1. **Backend (`/app/backend/routers/cashback_system.py`):**
+   - `POST /api/cashback/admin/create-promotion/{partner_id}` - Erstellt temporäre Cashback-Aktion
+     - Parameter: `special_rate` (1-10%), `duration_days` (1-30 Tage)
+   - `GET /api/cashback/admin/promotions` - Listet alle aktiven Cashback-Aktionen
+   - `DELETE /api/cashback/admin/remove-promotion/{partner_id}` - Beendet eine Cashback-Aktion
+
+2. **Frontend (`/app/frontend/src/components/admin/AdminMerchantVouchers.js`):**
+   - Neuer "Cashback Aktionen" Tab in der Händler-Gutscheine-Verwaltung
+   - Händler-Auswahl mit Suchfunktion
+   - Eingabefelder für Cashback-Rate (%) und Dauer (Tage)
+   - "Cashback-Aktion starten" Button
+   - Liste aktiver Aktionen mit "Beenden" Button
+
+**Cashback-Raten:**
+- Standard: 3%
+- Premium-Händler: 5%
+- Aktionen: bis 10%
+
+**Test-Status:** Backend 100%, Frontend 100% (iteration_78.json)
+
+---
+
 ### ✅ Session Update - February 18, 2026 (Session 45) - CASHBACK-SYSTEM ✅
 
 #### Feature: Cashback-System für BidBlitz Pay ✅
