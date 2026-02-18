@@ -594,9 +594,12 @@ async def create_cashback_promotion(
         )
     
     # Check if partner exists - try both partner_accounts and users collection
+    logger.info(f"Looking for partner with id: {partner_id}")
     partner = await db.partner_accounts.find_one({"id": partner_id})
+    logger.info(f"partner_accounts result: {partner}")
     if not partner:
         partner = await db.users.find_one({"id": partner_id, "role": "partner"})
+        logger.info(f"users result: {partner}")
     if not partner:
         raise HTTPException(status_code=404, detail="Händler nicht gefunden")
     
