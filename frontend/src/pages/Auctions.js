@@ -1363,11 +1363,6 @@ export default function Auctions() {
         </Link>
       </div>
       
-      {/* Händler-Gutscheine Section - NEU */}
-      <div className="max-w-7xl mx-auto mb-4 px-2">
-        <VoucherAuctionsSection language={language} />
-      </div>
-      
       {/* Global Jackpot - Top of Page */}
       <div className="max-w-4xl mx-auto mb-4 px-2">
         <GlobalJackpot />
