@@ -513,6 +513,62 @@ const BidBlitzPay = () => {
     }
   }, [token]);
 
+  // Request Money functions
+  const createPaymentRequest = async (e) => {
+    e.preventDefault();
+    const amount = parseFloat(requestAmount);
+    if (isNaN(amount) || amount <= 0) {
+      toast.error(language === 'de' ? 'Bitte gültigen Betrag eingeben' : 'Please enter valid amount');
+      return;
+    }
+    
+    setCreatingRequest(true);
+    try {
+      const response = await fetch(`${API}/api/bidblitz-pay/request-money`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          amount: amount,
+          description: requestDescription || null,
+          expires_minutes: 60
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok) {
+        setRequestQR(data);
+        fetchMyRequests();
+        toast.success(language === 'de' ? 'Zahlungsanforderung erstellt!' : 'Payment request created!');
+      } else {
+        toast.error(data.detail || 'Error creating request');
+      }
+    } catch (error) {
+      console.error('Request money error:', error);
+      toast.error('Error creating request');
+    } finally {
+      setCreatingRequest(false);
+    }
+  };
+
+  const fetchMyRequests = useCallback(async () => {
+    if (!token) return;
+    try {
+      const response = await fetch(`${API}/api/bidblitz-pay/my-payment-requests`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setMyRequests(data.requests || []);
+      }
+    } catch (error) {
+      console.error('My requests error:', error);
+    }
+  }, [token]);
+
   const fetchTransactions = useCallback(async () => {
     if (!token) return;
     
