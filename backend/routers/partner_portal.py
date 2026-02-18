@@ -175,6 +175,39 @@ async def get_public_partner_profile(partner_id: str):
     
     return partner
 
+
+@router.get("/public-list")
+async def get_public_partner_list(limit: int = 50, skip: int = 0):
+    """Get list of all public partners for directory"""
+    partners = await db.partner_accounts.find(
+        {"is_active": {"$ne": False}},
+        {
+            "_id": 0,
+            "id": 1,
+            "business_name": 1,
+            "name": 1,
+            "business_type": 1,
+            "logo_url": 1,
+            "address": 1,
+            "city": 1,
+            "latitude": 1,
+            "longitude": 1,
+            "average_rating": 1,
+            "total_ratings": 1
+        }
+    ).sort("average_rating", -1).skip(skip).limit(limit).to_list(limit)
+    
+    # Get voucher counts
+    for partner in partners:
+        voucher_count = await db.vouchers.count_documents({
+            "partner_id": partner["id"],
+            "is_sold": False,
+            "is_redeemed": False
+        })
+        partner["available_vouchers"] = voucher_count
+    
+    return {"partners": partners, "total": len(partners)}
+
 # ==================== PARTNER AUTH ====================
 
 @router.post("/apply")
