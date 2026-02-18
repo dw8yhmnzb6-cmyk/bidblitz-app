@@ -21,6 +21,20 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 if RESEND_API_KEY and RESEND_API_KEY != 're_123_placeholder':
     resend.api_key = RESEND_API_KEY
 
+
+async def generate_customer_number():
+    """Generate unique customer number in format: BID-XXXXXX"""
+    while True:
+        # Generate 6-digit number
+        number = random.randint(100000, 999999)
+        customer_number = f"BID-{number}"
+        
+        # Check if it already exists
+        existing = await db.users.find_one({"customer_number": customer_number})
+        if not existing:
+            return customer_number
+
+
 # ==================== REGISTER ====================
 
 @router.post("/register")
