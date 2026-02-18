@@ -629,12 +629,12 @@ const BidBlitzPay = () => {
         </div>
       </div>
 
-      {/* Navigation Tabs */}
+      {/* Navigation Tabs - Mobile scrollable */}
       <div className="max-w-lg mx-auto px-4 -mt-4">
-        <div className="bg-white rounded-xl shadow-lg p-1 flex gap-1">
+        <div className="bg-white rounded-xl shadow-lg p-1 flex gap-1 overflow-x-auto scrollbar-hide" style={{scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
           <button
             onClick={() => setView('wallet')}
-            className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${
+            className={`flex-shrink-0 py-2 px-3 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
               view === 'wallet' ? 'bg-amber-500 text-white' : 'text-gray-600 hover:bg-gray-100'
             }`}
           >
