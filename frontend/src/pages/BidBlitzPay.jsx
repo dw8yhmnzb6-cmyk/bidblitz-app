@@ -355,6 +355,7 @@ const BidBlitzPay = () => {
   const [directTopUpAmount, setDirectTopUpAmount] = useState('');
   const [processingPayment, setProcessingPayment] = useState(false);
   const [topUpMode, setTopUpMode] = useState('direct'); // 'direct' or 'transfer'
+  const [transferDirection, setTransferDirection] = useState('toMain'); // 'toWallet' or 'toMain'
   
   // P2P Transfer states
   const [recipientEmail, setRecipientEmail] = useState('');
