@@ -1194,4 +1194,102 @@ async def admin_add_user_balance(
     }
 
 
+@router.post("/admin/credit-by-customer-number")
+async def admin_credit_by_customer_number(data: CustomerCreditRequest):
+    """
+    Admin: Gutschrift per Kundennummer (für Überweisungen)
+    
+    - customer_number: z.B. "BID-123456"
+    - amount: Betrag in Euro
+    - description: Beschreibung (optional)
+    - reference: Externe Referenz wie Bank-Überweisungs-ID (optional)
+    """
+    customer_number = data.customer_number.upper().strip()
+    
+    if data.amount <= 0:
+        raise HTTPException(status_code=400, detail="Betrag muss positiv sein")
+    
+    # Find user by customer number
+    user = await db.users.find_one(
+        {"customer_number": customer_number},
+        {"_id": 0, "id": 1, "name": 1, "email": 1, "customer_number": 1}
+    )
+    
+    if not user:
+        raise HTTPException(status_code=404, detail=f"Kundennummer {customer_number} nicht gefunden")
+    
+    # Add balance
+    description = data.description or "Überweisung"
+    await db.users.update_one(
+        {"id": user["id"]},
+        {
+            "$inc": {"bidblitz_balance": data.amount},
+            "$push": {
+                "balance_history": {
+                    "id": str(uuid.uuid4()),
+                    "amount": data.amount,
+                    "type": "bank_transfer",
+                    "description": description,
+                    "reference": data.reference,
+                    "customer_number": customer_number,
+                    "date": datetime.now(timezone.utc).isoformat()
+                }
+            }
+        }
+    )
+    
+    # Also update wallets collection for consistency
+    await db.wallets.update_one(
+        {"user_id": user["id"]},
+        {"$inc": {"balance": data.amount}},
+        upsert=True
+    )
+    
+    # Create transaction record
+    await db.wallet_transactions.insert_one({
+        "id": str(uuid.uuid4()),
+        "user_id": user["id"],
+        "type": "bank_transfer_credit",
+        "amount": data.amount,
+        "description": description,
+        "reference": data.reference,
+        "customer_number": customer_number,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    })
+    
+    logger.info(f"Admin credited €{data.amount:.2f} to {customer_number} ({user['email']}): {description}")
+    
+    return {
+        "success": True,
+        "message": f"€{data.amount:.2f} gutgeschrieben an {customer_number}",
+        "customer_number": customer_number,
+        "customer_name": user.get("name", ""),
+        "amount": data.amount,
+        "reference": data.reference
+    }
+
+
+@router.get("/admin/search-customer")
+async def admin_search_customer(q: str = Query(..., min_length=3)):
+    """Admin: Search customer by number, email, or name"""
+    query = q.upper().strip()
+    
+    # Search by customer_number, email, or name
+    users = await db.users.find(
+        {
+            "$or": [
+                {"customer_number": {"$regex": query, "$options": "i"}},
+                {"email": {"$regex": query, "$options": "i"}},
+                {"name": {"$regex": query, "$options": "i"}}
+            ]
+        },
+        {"_id": 0, "id": 1, "customer_number": 1, "name": 1, "email": 1, "bidblitz_balance": 1}
+    ).limit(20).to_list(20)
+    
+    return {
+        "results": users,
+        "count": len(users)
+    }
+
+
 bidblitz_pay_router = router
