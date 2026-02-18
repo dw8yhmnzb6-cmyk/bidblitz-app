@@ -191,6 +191,9 @@ from routers.microsoft_auth import microsoft_auth_router
 # NEW: Admin Wallet Top-up
 from routers.admin_wallet_topup import router as admin_wallet_topup_router
 
+# NEW: Stripe Checkout for Wallet Top-up
+from routers.stripe_checkout import router as stripe_checkout_router
+
 # WebSocket manager
 from services.websocket import ws_manager, broadcast_bid_update, broadcast_auction_ended
 
