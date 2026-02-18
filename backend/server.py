@@ -437,6 +437,7 @@ app.include_router(partner_qr_router, prefix="/api")
 app.include_router(partner_flash_sales_router, prefix="/api")
 app.include_router(partner_search_router, prefix="/api")
 app.include_router(partner_social_router, prefix="/api")
+app.include_router(staff_cards_router, prefix="/api")
 
 # BidBlitz Pay Security (Biometric Auth, Fraud Detection)
 app.include_router(security_router, prefix="/api")
