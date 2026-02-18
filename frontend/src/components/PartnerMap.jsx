@@ -109,7 +109,7 @@ const PartnerMap = ({ language = 'de' }) => {
   const fetchPartners = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${API}/api/partners/map`);
+      const response = await fetch(`${API}/api/partner-search/map`);
       if (response.ok) {
         const data = await response.json();
         setPartners(data.partners || []);
