@@ -21,7 +21,20 @@ const AdminMerchantVouchers = () => {
   const [creating, setCreating] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState('vouchers'); // 'vouchers' or 'premium'
+  const [activeTab, setActiveTab] = useState('vouchers'); // 'vouchers', 'premium', 'bots', 'cashback'
+  
+  // Bot state
+  const [botStatus, setBotStatus] = useState([]);
+  const [configuringBots, setConfiguringBots] = useState(false);
+  const [botMinPercent, setBotMinPercent] = useState('10');
+  const [botMaxPercent, setBotMaxPercent] = useState('30');
+  
+  // Cashback promotion state
+  const [promotions, setPromotions] = useState([]);
+  const [selectedPromoPartner, setSelectedPromoPartner] = useState('');
+  const [promoRate, setPromoRate] = useState('8');
+  const [promoDays, setPromoDays] = useState('7');
+  const [creatingPromo, setCreatingPromo] = useState(false);
 
   // Form state
   const [selectedPartner, setSelectedPartner] = useState('');
