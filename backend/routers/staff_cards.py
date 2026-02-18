@@ -347,7 +347,7 @@ async def get_all_staff_cards(token: str):
     
     # Get all staff
     staff_members = await db.partner_staff.find(
-        {"partner_id": partner["id"], "active": True},
+        {"partner_id": partner["id"], "is_active": True},
         {"_id": 0}
     ).to_list(50)
     
