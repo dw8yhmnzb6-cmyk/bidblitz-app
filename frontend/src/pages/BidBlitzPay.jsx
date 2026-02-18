@@ -496,35 +496,88 @@ const BidBlitzPay = () => {
     
     setProcessingPayment(true);
     try {
-      const response = await fetch(`${API}/api/bidblitz-pay/direct-topup`, {
+      // Create Stripe Checkout session
+      const response = await fetch(`${API}/api/stripe/create-topup-session?token=${token}`, {
         method: 'POST',
         headers: { 
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({ 
-          amount: amount,
-          payment_method: 'card'
+          package_id: 'custom',
+          custom_amount: amount,
+          origin_url: window.location.origin
         })
       });
       
       if (response.ok) {
         const data = await response.json();
-        toast.success(data.message || `€${amount.toFixed(2)} aufgeladen!`);
-        setDirectTopUpAmount('');
-        fetchWallet();
-        fetchTransactions();
+        // Redirect to Stripe Checkout
+        window.location.href = data.checkout_url;
       } else {
         const error = await response.json();
-        toast.error(error.detail || 'Aufladung fehlgeschlagen');
+        toast.error(error.detail || 'Zahlung konnte nicht erstellt werden');
+        setProcessingPayment(false);
       }
     } catch (error) {
-      console.error('Direct top up error:', error);
-      toast.error('Aufladung fehlgeschlagen');
-    } finally {
+      console.error('Stripe checkout error:', error);
+      toast.error('Zahlung konnte nicht erstellt werden');
       setProcessingPayment(false);
     }
   };
+
+  // Poll payment status after returning from Stripe
+  const pollPaymentStatus = useCallback(async (sessionId, attempts = 0) => {
+    const maxAttempts = 10;
+    const pollInterval = 2000; // 2 seconds
+
+    if (attempts >= maxAttempts) {
+      toast.error('Zahlungsstatus konnte nicht abgerufen werden. Bitte überprüfen Sie Ihr Guthaben.');
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API}/api/stripe/payment-status/${sessionId}?token=${token}`);
+      if (!response.ok) {
+        throw new Error('Failed to check payment status');
+      }
+
+      const data = await response.json();
+      
+      if (data.payment_status === 'paid' && data.wallet_credited) {
+        toast.success(data.message || 'Zahlung erfolgreich! Guthaben wurde gutgeschrieben.');
+        fetchWallet();
+        fetchTransactions();
+        // Clear URL params
+        window.history.replaceState({}, document.title, window.location.pathname);
+        return;
+      } else if (data.status === 'expired') {
+        toast.error('Zahlungssitzung abgelaufen. Bitte erneut versuchen.');
+        window.history.replaceState({}, document.title, window.location.pathname);
+        return;
+      }
+
+      // If payment is still pending, continue polling
+      setTimeout(() => pollPaymentStatus(sessionId, attempts + 1), pollInterval);
+    } catch (error) {
+      console.error('Error checking payment status:', error);
+      setTimeout(() => pollPaymentStatus(sessionId, attempts + 1), pollInterval);
+    }
+  }, [token, fetchWallet, fetchTransactions]);
+
+  // Check for payment return from Stripe
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const paymentStatus = urlParams.get('payment');
+    const sessionId = urlParams.get('session_id');
+
+    if (paymentStatus === 'success' && sessionId) {
+      toast.info('Zahlung wird überprüft...');
+      pollPaymentStatus(sessionId);
+    } else if (paymentStatus === 'cancelled') {
+      toast.info('Zahlung abgebrochen');
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, [pollPaymentStatus]);
 
   // P2P Transfer function
   const sendMoney = async (e) => {
