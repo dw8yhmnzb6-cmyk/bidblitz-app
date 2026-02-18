@@ -216,5 +216,143 @@ class TestMerchantVouchersIntegration:
         print(f"PASS: Full integration flow completed for voucher {unique_name}")
 
 
+class TestPremiumMerchantFeatures:
+    """Test Premium Merchant features - Admin can set/remove premium status"""
+    
+    def test_admin_set_premium(self):
+        """Test POST /api/merchant-vouchers/admin/set-premium - sets merchant as Premium"""
+        payload = {
+            "partner_id": TEST_PARTNER_ID,
+            "months": 1
+        }
+        
+        response = requests.post(
+            f"{BASE_URL}/api/merchant-vouchers/admin/set-premium",
+            json=payload
+        )
+        
+        assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
+        
+        data = response.json()
+        assert data.get("success") == True, "Response should indicate success"
+        assert "premium_until" in data, "Response should contain 'premium_until'"
+        assert "message" in data, "Response should contain 'message'"
+        
+        # Verify merchant is now premium
+        verify_response = requests.get(f"{BASE_URL}/api/merchant-vouchers/merchant/{TEST_PARTNER_ID}")
+        assert verify_response.status_code == 200
+        merchant = verify_response.json()["merchant"]
+        assert merchant.get("is_premium") == True, "Merchant should be marked as premium"
+        assert merchant.get("premium_until") is not None, "Merchant should have premium_until date"
+        
+        print(f"PASS: Set merchant {TEST_PARTNER_ID} as Premium until {data['premium_until']}")
+    
+    def test_admin_set_premium_invalid_partner(self):
+        """Test POST /api/merchant-vouchers/admin/set-premium - returns 404 for invalid partner"""
+        fake_partner_id = str(uuid.uuid4())
+        
+        payload = {
+            "partner_id": fake_partner_id,
+            "months": 1
+        }
+        
+        response = requests.post(
+            f"{BASE_URL}/api/merchant-vouchers/admin/set-premium",
+            json=payload
+        )
+        
+        assert response.status_code == 404, f"Expected 404, got {response.status_code}"
+        print("PASS: Returns 404 for non-existent partner")
+    
+    def test_admin_remove_premium(self):
+        """Test POST /api/merchant-vouchers/admin/remove-premium/{id} - removes Premium status"""
+        # First ensure merchant is premium
+        set_response = requests.post(
+            f"{BASE_URL}/api/merchant-vouchers/admin/set-premium",
+            json={"partner_id": TEST_PARTNER_ID, "months": 1}
+        )
+        assert set_response.status_code == 200
+        
+        # Now remove premium
+        response = requests.post(
+            f"{BASE_URL}/api/merchant-vouchers/admin/remove-premium/{TEST_PARTNER_ID}"
+        )
+        
+        assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
+        
+        data = response.json()
+        assert data.get("success") == True, "Response should indicate success"
+        
+        # Verify merchant is no longer premium
+        verify_response = requests.get(f"{BASE_URL}/api/merchant-vouchers/merchant/{TEST_PARTNER_ID}")
+        assert verify_response.status_code == 200
+        merchant = verify_response.json()["merchant"]
+        assert merchant.get("is_premium") == False, "Merchant should not be marked as premium"
+        
+        print(f"PASS: Removed Premium status from merchant {TEST_PARTNER_ID}")
+    
+    def test_admin_remove_premium_invalid_partner(self):
+        """Test POST /api/merchant-vouchers/admin/remove-premium/{id} - returns 404 for invalid partner"""
+        fake_partner_id = str(uuid.uuid4())
+        
+        response = requests.post(
+            f"{BASE_URL}/api/merchant-vouchers/admin/remove-premium/{fake_partner_id}"
+        )
+        
+        assert response.status_code == 404, f"Expected 404, got {response.status_code}"
+        print("PASS: Returns 404 for non-existent partner")
+    
+    def test_premium_merchants_sorted_first(self):
+        """Test that premium merchants appear first in the merchants list"""
+        # First set a merchant as premium
+        set_response = requests.post(
+            f"{BASE_URL}/api/merchant-vouchers/admin/set-premium",
+            json={"partner_id": TEST_PARTNER_ID, "months": 1}
+        )
+        assert set_response.status_code == 200
+        
+        # Get merchants list
+        response = requests.get(f"{BASE_URL}/api/merchant-vouchers/merchants")
+        assert response.status_code == 200
+        
+        merchants = response.json()["merchants"]
+        assert len(merchants) > 0, "Should have at least one merchant"
+        
+        # Check if premium merchants are at the top
+        premium_merchants = [m for m in merchants if m.get("is_premium")]
+        non_premium_merchants = [m for m in merchants if not m.get("is_premium")]
+        
+        if premium_merchants and non_premium_merchants:
+            # Find the index of first premium and first non-premium
+            first_premium_idx = next((i for i, m in enumerate(merchants) if m.get("is_premium")), -1)
+            first_non_premium_idx = next((i for i, m in enumerate(merchants) if not m.get("is_premium")), -1)
+            
+            # Premium should come before non-premium
+            if first_premium_idx >= 0 and first_non_premium_idx >= 0:
+                assert first_premium_idx < first_non_premium_idx, "Premium merchants should be sorted first"
+        
+        print(f"PASS: Premium merchants ({len(premium_merchants)}) sorted before non-premium ({len(non_premium_merchants)})")
+    
+    def test_merchant_details_include_extended_info(self):
+        """Test that merchant details include extended info (logo, photos, opening_hours, etc.)"""
+        response = requests.get(f"{BASE_URL}/api/merchant-vouchers/merchant/{TEST_PARTNER_ID}")
+        assert response.status_code == 200
+        
+        merchant = response.json()["merchant"]
+        
+        # Check for extended fields
+        expected_fields = [
+            "id", "business_name", "business_type", "city", "address",
+            "phone", "website", "email", "logo_url", "photos", "description",
+            "opening_hours", "is_verified", "is_premium", "premium_until",
+            "rating", "review_count", "social_media", "specialties", "payment_methods"
+        ]
+        
+        for field in expected_fields:
+            assert field in merchant, f"Merchant should have '{field}' field"
+        
+        print(f"PASS: Merchant details include all extended fields: {list(merchant.keys())}")
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
