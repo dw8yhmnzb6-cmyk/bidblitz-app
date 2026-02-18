@@ -966,7 +966,7 @@ const BidBlitzPay = () => {
               <Button
                 onClick={handleTopUp}
                 disabled={transferring || !topUpAmount || parseFloat(topUpAmount) <= 0 || parseFloat(topUpAmount) > mainBalance}
-                className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 py-4 text-lg"
+                className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 py-4 text-lg disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {transferring ? (
                   <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -977,6 +977,19 @@ const BidBlitzPay = () => {
                   </>
                 )}
               </Button>
+              
+              {/* Help message when balance is 0 */}
+              {mainBalance <= 0 && (
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-center">
+                  <p className="text-sm text-amber-700">
+                    {language === 'de' 
+                      ? '💡 Ihr Hauptkonto-Guthaben ist €0. Gewinnen Sie Auktionen oder kaufen Sie Bids, um Guthaben zu erhalten.'
+                      : language === 'ar'
+                        ? '💡 رصيد حسابك الرئيسي €0. اربح المزادات أو اشترِ العروض للحصول على رصيد.'
+                        : '💡 Your main account balance is €0. Win auctions or buy bids to get balance.'}
+                  </p>
+                </div>
+              )}
             </div>
             
             {mainBalance === 0 && (
