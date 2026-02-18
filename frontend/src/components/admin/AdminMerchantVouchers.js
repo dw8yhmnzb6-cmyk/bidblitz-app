@@ -7,7 +7,7 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { 
   Ticket, Store, Plus, Euro, Clock, Gift, Search,
-  CheckCircle, XCircle, Trash2, Eye, RefreshCw
+  CheckCircle, XCircle, Trash2, Eye, RefreshCw, Crown, Star
 } from 'lucide-react';
 
 const API = process.env.REACT_APP_BACKEND_URL;
@@ -19,6 +19,7 @@ const AdminMerchantVouchers = () => {
   const [creating, setCreating] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [activeTab, setActiveTab] = useState('vouchers'); // 'vouchers' or 'premium'
 
   // Form state
   const [selectedPartner, setSelectedPartner] = useState('');
@@ -27,6 +28,7 @@ const AdminMerchantVouchers = () => {
   const [voucherValue, setVoucherValue] = useState('50');
   const [startPrice, setStartPrice] = useState('0.01');
   const [durationHours, setDurationHours] = useState('24');
+  const [premiumMonths, setPremiumMonths] = useState('1');
 
   const fetchPartners = useCallback(async () => {
     try {
