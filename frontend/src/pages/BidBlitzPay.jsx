@@ -1194,6 +1194,8 @@ const BidBlitzPay = () => {
               </div>
             )}
           </div>
+            )}
+          </div>
         )}
 
         {/* Send Money View */}
