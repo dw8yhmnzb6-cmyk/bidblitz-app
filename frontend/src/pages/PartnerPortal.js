@@ -2377,60 +2377,16 @@ export default function PartnerPortal() {
         
         {/* Content */}
         <main className="max-w-4xl mx-auto px-4 py-6">
-          {/* Dashboard View - Admin Only - Using Component */}
+          {/* Dashboard View - Admin Only - Using Expanded Component */}
           {view === 'dashboard' && userRole === 'admin' && dashboardData && (
-            <div className="space-y-6">
-              {/* Stats Cards */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="bg-white rounded-xl p-4 shadow-sm">
-                  <p className="text-gray-500 text-sm">{t('pending')}</p>
-                  <p className="text-2xl font-bold text-green-600">€{dashboardData.stats.pending_payout?.toFixed(2)}</p>
-                </div>
-                <div className="bg-white rounded-xl p-4 shadow-sm">
-                  <p className="text-gray-500 text-sm">{t('redeemed')}</p>
-                  <p className="text-2xl font-bold text-amber-600">{dashboardData.stats.total_redeemed}</p>
-                </div>
-                <div className="bg-white rounded-xl p-4 shadow-sm">
-                  <p className="text-gray-500 text-sm">{t('sold')}</p>
-                  <p className="text-2xl font-bold text-blue-600">{dashboardData.vouchers?.sold || 0}</p>
-                </div>
-                <div className="bg-white rounded-xl p-4 shadow-sm">
-                  <p className="text-gray-500 text-sm">{t('commission')}</p>
-                  <p className="text-2xl font-bold text-gray-600">{partner?.commission_rate}%</p>
-                </div>
-              </div>
-              
-              {/* Recent Redemptions */}
-              <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-                <div className="p-4 border-b flex items-center justify-between">
-                  <h2 className="font-bold text-gray-800">{t('recentRedemptions')}</h2>
-                  <History className="w-5 h-5 text-gray-400" />
-                </div>
-                <div className="divide-y">
-                  {dashboardData.recent_redemptions?.length > 0 ? (
-                    dashboardData.recent_redemptions.map((r, i) => (
-                      <div key={i} className="p-4 flex items-center justify-between">
-                        <div>
-                          <p className="font-medium text-gray-800">{r.voucher_code}</p>
-                          <p className="text-xs text-gray-500">
-                            {r.date ? new Date(r.date).toLocaleDateString('de-DE') : '-'}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-bold text-green-600">+€{(r.payout_amount || r.value * 0.9)?.toFixed(2)}</p>
-                          <p className="text-xs text-gray-400">{t('value')}: €{r.value}</p>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="p-8 text-center text-gray-400">
-                      <History className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                      <p>{t('noRedemptions')}</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
+            <PartnerDashboardExpanded
+              token={token}
+              partner={partner}
+              dashboardData={dashboardData}
+              fetchDashboard={fetchDashboard}
+              setView={setView}
+              language={language}
+            />
           )}
           
           {/* Scanner View */}
