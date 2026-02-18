@@ -794,6 +794,292 @@ const AdminMerchantVouchers = () => {
           </div>
         </div>
       )}
+
+      {/* Bots Tab */}
+      {activeTab === 'bots' && (
+        <div className="space-y-4">
+          {/* Bot Info */}
+          <div className="bg-gradient-to-r from-purple-500 to-indigo-600 rounded-xl p-4 text-white">
+            <div className="flex items-center gap-3">
+              <Bot className="w-8 h-8" />
+              <div>
+                <h3 className="font-bold text-lg">Bot-System für Gutschein-Auktionen</h3>
+                <p className="text-purple-100 text-sm">Bots bieten automatisch zwischen 10-30% des Gutscheinwerts</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Configure Bots */}
+          <div className="bg-white rounded-xl border border-purple-200 p-4">
+            <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+              <Zap className="w-5 h-5 text-purple-500" />
+              Bots konfigurieren
+            </h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Min. Prozent (%)
+                </label>
+                <Input
+                  type="number"
+                  min="5"
+                  max="50"
+                  value={botMinPercent}
+                  onChange={(e) => setBotMinPercent(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Max. Prozent (%)
+                </label>
+                <Input
+                  type="number"
+                  min="5"
+                  max="50"
+                  value={botMaxPercent}
+                  onChange={(e) => setBotMaxPercent(e.target.value)}
+                />
+              </div>
+              <Button
+                onClick={handleConfigureBots}
+                disabled={configuringBots}
+                className="bg-purple-500 hover:bg-purple-600"
+              >
+                {configuringBots ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                    Konfiguriere...
+                  </>
+                ) : (
+                  <>
+                    <Bot className="w-4 h-4 mr-1" />
+                    Bots für alle Gutscheine aktivieren
+                  </>
+                )}
+              </Button>
+            </div>
+            
+            <p className="text-xs text-gray-500 mt-3">
+              💡 Bots bieten automatisch auf alle aktiven Händler-Gutschein-Auktionen bis zum Zielpreis (zufällig zwischen {botMinPercent}% und {botMaxPercent}% des Gutscheinwerts).
+            </p>
+          </div>
+
+          {/* Bot Status List */}
+          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+            <div className="p-4 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
+              <h3 className="font-semibold text-gray-800">Bot-Status ({botStatus.length} Auktionen)</h3>
+              <Button variant="outline" size="sm" onClick={fetchBotStatus}>
+                <RefreshCw className="w-4 h-4 mr-1" />
+                Aktualisieren
+              </Button>
+            </div>
+            
+            {botStatus.length === 0 ? (
+              <div className="p-8 text-center text-gray-500">
+                <Bot className="w-12 h-12 text-gray-300 mx-auto mb-2" />
+                <p>Keine Gutschein-Auktionen gefunden</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-gray-100 max-h-96 overflow-y-auto">
+                {botStatus.map((auction) => (
+                  <div key={auction.auction_id} className="p-4 hover:bg-gray-50">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-3 h-3 rounded-full ${auction.bot_active ? 'bg-green-500 animate-pulse' : 'bg-gray-300'}`} />
+                        <div>
+                          <p className="font-medium text-gray-800">{auction.title}</p>
+                          <p className="text-sm text-gray-500">Wert: €{auction.voucher_value}</p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center gap-4 text-sm">
+                        <div className="text-right">
+                          <p className="text-gray-600">Aktuell: <span className="font-medium">€{(auction.current_price || 0).toFixed(2)}</span></p>
+                          <p className="text-gray-400">Ziel: €{(auction.bot_target_price || 0).toFixed(2)} ({auction.bot_target_percent || 0}%)</p>
+                        </div>
+                        
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          auction.bot_active 
+                            ? 'bg-green-100 text-green-700' 
+                            : auction.bot_target_price > 0 
+                              ? 'bg-yellow-100 text-yellow-700'
+                              : 'bg-gray-100 text-gray-600'
+                        }`}>
+                          {auction.bot_active ? 'Aktiv' : auction.bot_target_price > 0 ? 'Ziel erreicht' : 'Nicht konfiguriert'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Cashback Promotions Tab */}
+      {activeTab === 'cashback' && (
+        <div className="space-y-4">
+          {/* Cashback Info */}
+          <div className="bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl p-4 text-white">
+            <div className="flex items-center gap-3">
+              <Percent className="w-8 h-8" />
+              <div>
+                <h3 className="font-bold text-lg">Cashback-Aktionen</h3>
+                <p className="text-green-100 text-sm">Temporäre erhöhte Cashback-Raten für Händler (Standard: 3%, Premium: 5%, Aktion: bis 10%)</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Create Promotion */}
+          <div className="bg-white rounded-xl border border-green-200 p-4">
+            <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+              <Plus className="w-5 h-5 text-green-500" />
+              Neue Cashback-Aktion erstellen
+            </h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Händler auswählen</label>
+                <div className="relative mb-2">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <Input
+                    type="text"
+                    placeholder="Händler suchen..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
+                <div className="max-h-32 overflow-y-auto border border-gray-200 rounded-lg">
+                  {filteredPartners.map((partner) => (
+                    <div
+                      key={partner.id}
+                      onClick={() => setSelectedPromoPartner(partner.id)}
+                      className={`p-2 cursor-pointer hover:bg-gray-50 border-b border-gray-100 last:border-0 flex items-center justify-between ${
+                        selectedPromoPartner === partner.id ? 'bg-green-50' : ''
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Store className="w-4 h-4 text-gray-400" />
+                        <span className="font-medium text-sm">{partner.business_name}</span>
+                        {partner.is_premium && <Crown className="w-3 h-3 text-yellow-500" />}
+                      </div>
+                      {selectedPromoPartner === partner.id && (
+                        <CheckCircle className="w-4 h-4 text-green-600" />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Cashback-Rate (%)</label>
+                <Input
+                  type="number"
+                  min="1"
+                  max="10"
+                  step="0.5"
+                  value={promoRate}
+                  onChange={(e) => setPromoRate(e.target.value)}
+                />
+                <p className="text-xs text-gray-500 mt-1">Max: 10%</p>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Dauer (Tage)</label>
+                <Input
+                  type="number"
+                  min="1"
+                  max="30"
+                  value={promoDays}
+                  onChange={(e) => setPromoDays(e.target.value)}
+                />
+                <p className="text-xs text-gray-500 mt-1">Max: 30 Tage</p>
+              </div>
+            </div>
+            
+            <Button
+              onClick={handleCreatePromotion}
+              disabled={!selectedPromoPartner || creatingPromo}
+              className="mt-4 bg-green-500 hover:bg-green-600"
+            >
+              {creatingPromo ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                  Erstelle...
+                </>
+              ) : (
+                <>
+                  <Zap className="w-4 h-4 mr-1" />
+                  Cashback-Aktion starten ({promoRate}% für {promoDays} Tage)
+                </>
+              )}
+            </Button>
+          </div>
+
+          {/* Active Promotions */}
+          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+            <div className="p-4 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
+              <h3 className="font-semibold text-gray-800 flex items-center gap-2">
+                <Zap className="w-5 h-5 text-green-500" />
+                Aktive Cashback-Aktionen ({promotions.length})
+              </h3>
+              <Button variant="outline" size="sm" onClick={fetchPromotions}>
+                <RefreshCw className="w-4 h-4 mr-1" />
+                Aktualisieren
+              </Button>
+            </div>
+            
+            {promotions.length === 0 ? (
+              <div className="p-8 text-center text-gray-500">
+                <Percent className="w-12 h-12 text-gray-300 mx-auto mb-2" />
+                <p>Keine aktiven Cashback-Aktionen</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-gray-100">
+                {promotions.map((promo) => (
+                  <div key={promo.partner_id} className="p-4 flex items-center justify-between hover:bg-gray-50">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                        <Percent className="w-5 h-5 text-green-600" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-gray-800 flex items-center gap-1">
+                          {promo.partner_name}
+                          {promo.is_premium && <Crown className="w-4 h-4 text-yellow-500" />}
+                        </p>
+                        <p className="text-sm text-gray-500 flex items-center gap-1">
+                          <Calendar className="w-3 h-3" />
+                          Bis: {new Date(promo.ends_at).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-4">
+                      <div className="text-right">
+                        <p className="text-2xl font-bold text-green-600">{promo.special_rate}%</p>
+                        <p className="text-xs text-gray-400">Cashback</p>
+                      </div>
+                      
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleRemovePromotion(promo.partner_id, promo.partner_name)}
+                        className="border-red-200 text-red-600 hover:bg-red-50"
+                      >
+                        <XCircle className="w-4 h-4 mr-1" />
+                        Beenden
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
