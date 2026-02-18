@@ -170,10 +170,14 @@ export default function BuyBids() {
   const [selectedPackage, setSelectedPackage] = useState(null);
   const [paymentMethod, setPaymentMethod] = useState('stripe');
   const [paymentMethods, setPaymentMethods] = useState({ stripe: true, crypto: false, paypal: false });
+  const [walletBalance, setWalletBalance] = useState(0);
 
   useEffect(() => {
     fetchPackages();
     fetchPaymentMethods();
+    if (isAuthenticated && token) {
+      fetchWalletBalance();
+    }
     
     // Check for crypto callback
     if (searchParams.get('crypto_success')) {
@@ -182,7 +186,19 @@ export default function BuyBids() {
     if (searchParams.get('crypto_cancel')) {
       toast.info(texts.cryptoCancel);
     }
-  }, [searchParams]);
+  }, [searchParams, isAuthenticated, token]);
+
+  const fetchWalletBalance = async () => {
+    try {
+      const response = await axios.get(`${API}/bidblitz-pay/balance`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setWalletBalance(response.data.balance || 0);
+    } catch (error) {
+      console.error('Error fetching wallet balance:', error);
+      setWalletBalance(0);
+    }
+  };
 
   const fetchPaymentMethods = async () => {
     try {
