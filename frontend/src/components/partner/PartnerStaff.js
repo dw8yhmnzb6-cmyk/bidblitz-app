@@ -5,7 +5,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { toast } from 'sonner';
-import { Users, Plus, User, Store, Pencil, Trash2, Check, X, Loader2, AlertCircle, Copy, Eye, EyeOff, Hash } from 'lucide-react';
+import { Users, Plus, User, Store, Pencil, Trash2, Check, X, Loader2, AlertCircle, Copy, Eye, EyeOff, Hash, Printer, CreditCard, FileText } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 
@@ -19,6 +19,7 @@ const PartnerStaff = ({ token, language, t }) => {
   const [editStaffData, setEditStaffData] = useState({ name: '', role: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [createdStaff, setCreatedStaff] = useState(null); // Stores newly created staff with Kundennummer
+  const [selectedForPrint, setSelectedForPrint] = useState([]); // Staff IDs selected for printing
 
   // Fetch staff list
   const fetchStaffList = async () => {
