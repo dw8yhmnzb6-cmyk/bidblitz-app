@@ -1750,7 +1750,7 @@ const BidBlitzPay = () => {
                       {t('universal')}
                     </h3>
                     <div className="space-y-3">
-                      {wallet.universal_vouchers.map((voucher) => (
+                      {wallet?.universal_vouchers?.map((voucher) => (
                         <div 
                           key={voucher.id}
                           className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-xl p-4 border border-purple-100"
