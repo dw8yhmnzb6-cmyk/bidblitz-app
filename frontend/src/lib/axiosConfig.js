@@ -36,7 +36,9 @@ const EXPECTED_404_PATTERNS = [
  * Check if an error should be silently ignored
  */
 function shouldSilenceError(error) {
-  const detail = error?.response?.data?.detail || '';
+  const rawDetail = error?.response?.data?.detail;
+  // Handle case where detail might be an object instead of string
+  const detail = typeof rawDetail === 'string' ? rawDetail : (rawDetail?.message || rawDetail?.msg || String(rawDetail || ''));
   const statusCode = error?.response?.status;
   const requestUrl = error?.config?.url || '';
   
