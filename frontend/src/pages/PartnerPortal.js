@@ -2345,6 +2345,7 @@ export default function PartnerPortal() {
               // Admin-only tabs
               ...(userRole === 'admin' ? [
                 { id: 'vouchers', label: t('vouchers'), icon: Ticket },
+                { id: 'budget', label: 'Guthaben', icon: Wallet },
                 { id: 'statistics', label: t('statistics'), icon: TrendingUp },
                 { id: 'payouts', label: t('payouts'), icon: Euro },
                 { id: 'marketing', label: 'Marketing', icon: Share2 },
