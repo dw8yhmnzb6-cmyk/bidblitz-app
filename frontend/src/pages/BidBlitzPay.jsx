@@ -763,6 +763,155 @@ const BidBlitzPay = () => {
           </div>
         )}
 
+        {/* Send Money View */}
+        {view === 'send' && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-2xl shadow-lg p-6">
+              <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                <ArrowUpRight className="w-5 h-5 text-amber-500" />
+                {t('sendMoney')}
+              </h2>
+              
+              <form onSubmit={sendMoney} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    {t('recipientEmail')}
+                  </label>
+                  <Input
+                    type="email"
+                    value={recipientEmail}
+                    onChange={(e) => setRecipientEmail(e.target.value)}
+                    placeholder="empfaenger@email.com"
+                    className="w-full"
+                    required
+                    data-testid="recipient-email-input"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    {t('amount')}
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-semibold">€</span>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="1"
+                      value={sendAmount}
+                      onChange={(e) => setSendAmount(e.target.value)}
+                      className="pl-8"
+                      placeholder="0.00"
+                      required
+                      data-testid="send-amount-input"
+                    />
+                  </div>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    {t('message')}
+                  </label>
+                  <Input
+                    type="text"
+                    value={sendMessage}
+                    onChange={(e) => setSendMessage(e.target.value)}
+                    placeholder={language === 'de' ? 'Nachricht an Empfänger...' : 'Message to recipient...'}
+                    className="w-full"
+                    data-testid="send-message-input"
+                  />
+                </div>
+                
+                <Button
+                  type="submit"
+                  className="w-full bg-amber-500 hover:bg-amber-600 text-white"
+                  disabled={sendingMoney || !recipientEmail || !sendAmount}
+                  data-testid="send-money-btn"
+                >
+                  {sendingMoney ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      {t('sending')}
+                    </>
+                  ) : (
+                    <>
+                      <ArrowUpRight className="w-4 h-4 mr-2" />
+                      {t('sendNow')}
+                    </>
+                  )}
+                </Button>
+              </form>
+            </div>
+            
+            {/* Transfer History */}
+            <div className="bg-white rounded-2xl shadow-lg p-6">
+              <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
+                <History className="w-5 h-5 text-gray-400" />
+                {t('transferHistory')}
+              </h3>
+              
+              {transfers.length > 0 ? (
+                <div className="space-y-3 max-h-96 overflow-y-auto">
+                  {transfers.map((transfer) => (
+                    <div
+                      key={transfer.id}
+                      className={`p-3 rounded-xl border ${
+                        transfer.direction === 'sent' 
+                          ? 'border-red-100 bg-red-50' 
+                          : 'border-green-100 bg-green-50'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                            transfer.direction === 'sent' ? 'bg-red-100' : 'bg-green-100'
+                          }`}>
+                            {transfer.direction === 'sent' ? (
+                              <ArrowUpRight className="w-5 h-5 text-red-600" />
+                            ) : (
+                              <ArrowDownLeft className="w-5 h-5 text-green-600" />
+                            )}
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-800 text-sm">
+                              {transfer.direction === 'sent' 
+                                ? `→ ${transfer.recipient_name || transfer.recipient_email}`
+                                : `← ${transfer.sender_name || 'Absender'}`
+                              }
+                            </p>
+                            {transfer.message && (
+                              <p className="text-xs text-gray-500">"{transfer.message}"</p>
+                            )}
+                            <p className="text-xs text-gray-400">
+                              {new Date(transfer.created_at).toLocaleDateString(language, {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </p>
+                          </div>
+                        </div>
+                        <span className={`font-bold ${
+                          transfer.direction === 'sent' ? 'text-red-600' : 'text-green-600'
+                        }`}>
+                          {transfer.direction === 'sent' ? '-' : '+'}€{transfer.amount.toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 bg-gray-50 rounded-xl">
+                  <ArrowUpRight className="w-10 h-10 text-gray-300 mx-auto mb-2" />
+                  <p className="text-gray-500">{t('noTransfers')}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Wallet View - Vouchers */}
         {view === 'wallet' && (
           <div className="space-y-4">
