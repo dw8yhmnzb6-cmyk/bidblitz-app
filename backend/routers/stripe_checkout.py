@@ -74,7 +74,7 @@ async def create_topup_session(
     Create a Stripe Checkout session for wallet top-up.
     Amount is determined server-side from fixed packages for security.
     """
-    db = get_database()
+    
     
     # Get user from token (if authenticated)
     token = request.query_params.get("token")
@@ -182,7 +182,7 @@ async def get_payment_status(
     Check the status of a payment and credit wallet if successful.
     This endpoint is polled by the frontend after returning from Stripe.
     """
-    db = get_database()
+    
     
     # Find the transaction
     transaction = await db.payment_transactions.find_one({"session_id": session_id})
@@ -302,7 +302,7 @@ async def stripe_webhook(request: Request):
     """
     Handle Stripe webhook events for payment updates.
     """
-    db = get_database()
+    
     
     api_key = os.environ.get("STRIPE_API_KEY")
     if not api_key:
