@@ -238,12 +238,14 @@ export const PartnerQRCodes = ({ token, partner, t }) => {
   const [showPrintTemplates, setShowPrintTemplates] = useState(false);
 
   const generateQR = async (type = 'profile') => {
+    if (!token) return; // Don't generate if no token
     try {
       setLoading(true);
       setSelectedType(type);
       const response = await axios.get(`${API}/api/partner-qr/generate?token=${token}&qr_type=${type}`);
       setQrData(response.data);
     } catch (err) {
+      console.error('QR generate error:', err);
       toast.error('Fehler beim Generieren');
     } finally {
       setLoading(false);
@@ -251,6 +253,7 @@ export const PartnerQRCodes = ({ token, partner, t }) => {
   };
 
   const fetchStats = async () => {
+    if (!token) return; // Don't fetch if no token
     try {
       const response = await axios.get(`${API}/api/partner-qr/stats?token=${token}`);
       setStats(response.data);
@@ -260,8 +263,10 @@ export const PartnerQRCodes = ({ token, partner, t }) => {
   };
 
   useEffect(() => {
-    generateQR('profile');
-    fetchStats();
+    if (token) {
+      generateQR('profile');
+      fetchStats();
+    }
   }, [token]);
 
   const downloadQR = () => {
