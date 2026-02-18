@@ -1,12 +1,13 @@
 /**
  * CreditSystem - Kredit-System für BidBlitz Pay
  * Nutzer können Kredite beantragen, Dokumente hochladen, und Rückzahlungen leisten
+ * Inkl. Kredit-Score System mit Stufen und Vorteilen
  */
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   CreditCard, Upload, FileText, Camera, CheckCircle, XCircle,
   Clock, AlertCircle, Euro, Calendar, ChevronRight, ChevronLeft,
-  Loader2, Info, Shield, Percent, Banknote
+  Loader2, Info, Shield, Percent, Banknote, TrendingUp, Star, Award
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -48,6 +49,21 @@ const translations = {
     notEligible: 'Nicht berechtigt',
     verificationRequired: 'Verifizierung erforderlich',
     openCreditExists: 'Offener Kredit vorhanden',
+    // Credit Score translations
+    creditScore: 'Kredit-Score',
+    yourScore: 'Ihr Score',
+    currentTier: 'Aktuelle Stufe',
+    nextTier: 'Nächste Stufe',
+    pointsNeeded: 'Punkte benötigt',
+    maxCredit: 'Max. Kredit',
+    yourInterestRate: 'Ihr Zinssatz',
+    scoreHistory: 'Score-Verlauf',
+    tipsToImprove: 'Tipps zur Verbesserung',
+    creditsCompleted: 'Abgeschlossene Kredite',
+    onTimePayments: 'Pünktliche Zahlungen',
+    latePayments: 'Verspätete Zahlungen',
+    scoreTooLow: 'Ihr Score ist zu niedrig für einen Kredit',
+    improveScore: 'Score verbessern',
     repayFirst: 'Bitte zuerst zurückzahlen',
     applicationSubmitted: 'Antrag eingereicht!',
     awaitingReview: 'Wartet auf Prüfung',
