@@ -3,7 +3,7 @@ import {
   Wallet, QrCode, CreditCard, History, ChevronRight, 
   Store, RefreshCw, Euro, CheckCircle, AlertCircle,
   Smartphone, ArrowUpRight, ArrowDownLeft, Gift, Languages,
-  Plus, Minus, X, Shield, Loader2, Camera, ScanLine, Banknote
+  Plus, Minus, X, Shield, Loader2, Camera, ScanLine, Banknote, Percent
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import { SecuritySettings } from '../components/BiometricAuth';
 import { Html5Qrcode } from 'html5-qrcode';
 import CreditSystem from '../components/CreditSystem';
+import CashbackSystem from '../components/CashbackSystem';
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
