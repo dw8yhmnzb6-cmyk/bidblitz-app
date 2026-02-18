@@ -197,6 +197,58 @@ async def get_main_balance(user: dict = Depends(get_current_user)):
         "email": user_data.get("email", "")
     }
 
+# ==================== DIRECT TOP UP ====================
+
+class DirectTopUpRequest(BaseModel):
+    amount: float
+    payment_method: str = "card"  # card, paypal, etc.
+
+@router.post("/direct-topup")
+async def direct_topup(data: DirectTopUpRequest, user: dict = Depends(get_current_user)):
+    """Direct top up of BidBlitz Pay balance (simulated payment)"""
+    user_id = user["id"]
+    amount = data.amount
+    
+    if amount < 5:
+        raise HTTPException(status_code=400, detail="Mindestbetrag: €5")
+    if amount > 500:
+        raise HTTPException(status_code=400, detail="Maximalbetrag: €500")
+    
+    # In production, this would integrate with Stripe/PayPal
+    # For now, we simulate successful payment and add balance
+    
+    # Add to BidBlitz Pay balance
+    await db.users.update_one(
+        {"id": user_id},
+        {"$inc": {"bidblitz_balance": amount}}
+    )
+    
+    # Create transaction record
+    transaction_id = str(uuid.uuid4())
+    await db.bidblitz_pay_transactions.insert_one({
+        "id": transaction_id,
+        "user_id": user_id,
+        "type": "direct_topup",
+        "amount": amount,
+        "payment_method": data.payment_method,
+        "description": f"Direkte Aufladung via {data.payment_method}",
+        "status": "completed",
+        "created_at": datetime.now(timezone.utc).isoformat()
+    })
+    
+    # Get updated balance
+    updated_user = await db.users.find_one({"id": user_id}, {"_id": 0, "bidblitz_balance": 1})
+    
+    logger.info(f"💳 Direct top-up: {user_id} +€{amount} via {data.payment_method}")
+    
+    return {
+        "success": True,
+        "message": f"€{amount:.2f} erfolgreich aufgeladen",
+        "amount": amount,
+        "new_balance": updated_user.get("bidblitz_balance", 0),
+        "transaction_id": transaction_id
+    }
+
 # ==================== PEER-TO-PEER TRANSFER ====================
 
 class P2PTransferRequest(BaseModel):
