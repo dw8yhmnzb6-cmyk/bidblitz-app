@@ -684,6 +684,15 @@ const BidBlitzPay = () => {
             {t('send')}
           </button>
           <button
+            onClick={() => setView('request')}
+            className={`flex-shrink-0 py-2 px-3 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
+              view === 'request' ? 'bg-amber-500 text-white' : 'text-gray-600 hover:bg-gray-100'
+            }`}
+          >
+            <ArrowDownLeft className="w-4 h-4 inline mr-1" />
+            {language === 'de' ? 'Anfordern' : 'Request'}
+          </button>
+          <button
             onClick={() => { setView('qr'); generateQR(); }}
             className={`flex-shrink-0 py-2 px-3 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
               view === 'qr' ? 'bg-amber-500 text-white' : 'text-gray-600 hover:bg-gray-100'
