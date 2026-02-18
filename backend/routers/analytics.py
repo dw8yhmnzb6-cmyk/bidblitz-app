@@ -732,17 +732,6 @@ async def export_analytics(
                 "bids": d["bids"]
             } for d in daily_data]
         }
-
-        {"$group": {"_id": "$device_type", "count": {"$sum": 1}}},
-        {"$sort": {"count": -1}}
-    ]
-    device_breakdown = await db.device_analytics.aggregate(device_pipeline).to_list(length=10)
-    
-    # OS breakdown
-    os_pipeline = [
-        {"$match": {"timestamp": {"$gte": start_date}, "os": {"$ne": None}}},
-        {"$group": {"_id": "$os", "count": {"$sum": 1}}},
-        {"$sort": {"count": -1}}
     ]
     os_breakdown = await db.device_analytics.aggregate(os_pipeline).to_list(length=10)
     
