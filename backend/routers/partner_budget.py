@@ -60,7 +60,24 @@ async def get_partner_from_token(token: str):
     """Get partner from auth token"""
     if not token:
         return None
-    partner = await db.partners.find_one({"auth_token": token}, {"_id": 0})
+    
+    # Check partner_accounts first
+    partner = await db.partner_accounts.find_one(
+        {"auth_token": token, "is_active": True},
+        {"_id": 0, "password_hash": 0}
+    )
+    
+    # Fallback to restaurant_accounts
+    if not partner:
+        partner = await db.restaurant_accounts.find_one(
+            {"auth_token": token, "is_active": True},
+            {"_id": 0, "password_hash": 0}
+        )
+    
+    # Fallback to partners collection
+    if not partner:
+        partner = await db.partners.find_one({"auth_token": token}, {"_id": 0})
+    
     return partner
 
 
