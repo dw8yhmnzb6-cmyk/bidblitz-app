@@ -276,7 +276,7 @@ const BidBlitzPay = () => {
     const fetchUser = async () => {
       if (!token) return;
       try {
-        const response = await fetch(`${API}/api/user/me`, {
+        const response = await fetch(`${API}/api/user/profile`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         if (response.ok) {
