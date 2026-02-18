@@ -1362,6 +1362,29 @@ export default function Auctions() {
         </Link>
       </div>
       
+      {/* Händler-Gutscheine Banner */}
+      <div className="max-w-7xl mx-auto mb-3 px-2">
+        <Link 
+          to="/haendler-gutscheine" 
+          className="block bg-gradient-to-r from-amber-500 to-orange-500 rounded-xl p-4 hover:from-amber-400 hover:to-orange-400 transition-all shadow-lg"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">🎫</span>
+              <div>
+                <p className="text-white font-bold text-lg">
+                  {language === 'de' ? 'Händler-Gutscheine' : 'Merchant Vouchers'}
+                </p>
+                <p className="text-white/80 text-sm">
+                  {language === 'de' ? 'Ersteigere Gutscheine bei lokalen Partnern!' : 'Bid on vouchers from local partners!'}
+                </p>
+              </div>
+            </div>
+            <ChevronRight className="w-6 h-6 text-white" />
+          </div>
+        </Link>
+      </div>
+      
       {/* Global Jackpot - Top of Page */}
       <div className="max-w-4xl mx-auto mb-4 px-2">
         <GlobalJackpot />
