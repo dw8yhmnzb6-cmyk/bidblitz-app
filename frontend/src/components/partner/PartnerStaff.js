@@ -404,6 +404,14 @@ const PartnerStaff = ({ token, language, t }) => {
                   // View Mode
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
+                      {/* Selection Checkbox */}
+                      <input
+                        type="checkbox"
+                        checked={selectedForPrint.includes(staff.id)}
+                        onChange={() => togglePrintSelection(staff.id)}
+                        className="w-4 h-4 rounded border-gray-300 text-amber-500 focus:ring-amber-500"
+                      />
+                      
                       <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
                         staff.role === 'admin' ? 'bg-purple-100' : 'bg-amber-100'
                       }`}>
