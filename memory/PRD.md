@@ -5,6 +5,39 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 
 ## Current Status (February 18, 2026)
 
+### ✅ Session Update - February 18, 2026 (Session 40) - KUNDENNUMMER FEATURE ✅
+
+#### Feature: Automatische Kundennummer für Mitarbeiter ✅
+
+**Anforderung:** Mitarbeiter sollen sich mit einer automatisch generierten Kundennummer anmelden können, nicht mit E-Mail.
+
+**Implementiert:**
+1. **Backend:**
+   - `generate_staff_number()` Funktion generiert Format: PARTNER_PREFIX-PARTNER_NUM-STAFF_NUM (z.B. WI-008-001)
+   - `POST /api/partner-portal/staff/create` gibt jetzt `staff_number` zurück
+   - `POST /api/partner-portal/staff/login` akzeptiert `staff_number` statt `email`
+   - Neue Schema-Klasse `StaffLogin` mit `staff_number` Feld
+
+2. **Frontend PartnerStaff.js:**
+   - Erfolgs-Modal nach Erstellung zeigt Kundennummer groß an
+   - Kopieren-Button für Kundennummer
+   - Passwort kann einmal angezeigt werden
+   - Info-Text erklärt das Login-Verfahren
+   - Mitarbeiter-Liste zeigt Kundennummer für jeden Mitarbeiter
+
+3. **Frontend PartnerPortal.js Login:**
+   - Mitarbeiter-Login zeigt "Kundennummer" statt "E-Mail"
+   - Hash-Icon (#) statt Mail-Icon
+   - Placeholder: "z.B. PR-001-001"
+   - Hilfetext erklärt die Kundennummer
+
+**Test-Ergebnisse (iteration_68.json):**
+- Backend: 10/10 Tests bestanden (100%)
+- Frontend: 100% UI-Features verifiziert
+- Test-Mitarbeiter: WI-008-001 / staff123
+
+---
+
 ### ✅ Session Update - February 18, 2026 (Session 40) - ERWEITERTES PARTNER-DASHBOARD ✅
 
 #### Feature: Partner Dashboard Expansion + Bugfix ✅
