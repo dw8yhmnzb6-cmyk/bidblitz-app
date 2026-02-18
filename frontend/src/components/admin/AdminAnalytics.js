@@ -678,7 +678,7 @@ const AdminAnalytics = ({ token }) => {
               <ResponsiveContainer width="100%" height={200}>
                 <PieChart>
                   <Pie
-                    data={deviceData.device_breakdown}
+                    data={deviceData.device_breakdown || []}
                     cx="50%"
                     cy="50%"
                     innerRadius={50}
@@ -688,7 +688,7 @@ const AdminAnalytics = ({ token }) => {
                     nameKey="device"
                     label={({ device, percent }) => `${device} ${(percent * 100).toFixed(0)}%`}
                   >
-                    {deviceData.device_breakdown.map((entry, index) => (
+                    {(deviceData.device_breakdown || []).map((entry, index) => (
                       <Cell 
                         key={`cell-${index}`} 
                         fill={entry.device === 'mobile' ? CHART_COLORS.mobile : 
