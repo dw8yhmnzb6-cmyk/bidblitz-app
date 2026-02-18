@@ -3,7 +3,45 @@
 ## Original Problem Statement
 Create a penny auction website modeled after `dealdash.com` and `snipster.de` with complete visual and functional features.
 
-## Current Status (February 17, 2026)
+## Current Status (February 18, 2026)
+
+### ✅ Session Update - February 18, 2026 (Session 28) - PARTNER VERZEICHNIS & DRUCKVORLAGEN ✅
+
+#### Neue Features:
+
+**1. Partner-Verzeichnis Seite ✅**
+- Öffentliche Seite unter `/partners`
+- Suchfeld nach Name, Stadt, Adresse
+- Filter nach Stadt und Kategorie
+- Kategorie-Pills (Restaurant, Bar, Café, etc.)
+- Grid- und Kartenansicht
+- Geolocation-basierte Sortierung
+- Frontend: `/app/frontend/src/pages/PartnerDirectory.js`
+
+**2. Partner-Landing-Page ✅**
+- Öffentliche Profilseite unter `/p/{partnerId}`
+- Perfekt für QR-Codes und Social Media
+- Zeigt Bewertungen, Gutscheine, Kontakt
+- Tracking für Social Shares (tid Parameter)
+- Frontend: `/app/frontend/src/pages/PartnerLanding.js`
+
+**3. QR-Code Druckvorlagen ✅**
+- 4 Vorlagen: Tischaufsteller, Flyer, Schaufenster, Kassenbon
+- Live-Vorschau im Partner Portal
+- Direkt druckbar
+- Drucktipps für beste Ergebnisse
+- Frontend: In `PartnerMarketing.js` integriert
+
+**4. Marketing-Übersetzungen vervollständigt ✅**
+- ~40 neue Übersetzungsschlüssel für DE/EN
+- Referral, QR-Codes, Flash Sales, Social Media, Bewertungen
+
+#### Neue API-Endpoints:
+- `GET /api/partner-portal/public-profile/{id}` - Öffentliches Partnerprofil
+- `GET /api/partner-portal/public-list` - Alle öffentlichen Partner
+- `GET /api/vouchers/partner/{id}/public` - Öffentliche Gutscheine eines Partners
+
+---
 
 ### ✅ Session Update - February 17, 2026 (Session 27) - 9 NEUE MARKETING-FEATURES ✅
 
