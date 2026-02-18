@@ -5,6 +5,43 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 
 ## Current Status (February 18, 2026)
 
+### ✅ Session Update - February 18, 2026 (Session 35) - ADMIN WALLET TOP-UP ✅
+
+#### Neues Feature: Admin Kunden-Guthaben Aufladen ✅
+
+**Admin Panel - Neuer Tab "💳 Wallet Aufladen":**
+- Statistik-Karten: Aufladungen heute, Gesamtvolumen, Ausgezahlte Boni, Neue Kunden
+- Kundensuche nach E-Mail, Name oder Kunden-ID
+- Quick-Amount-Buttons: €10, €25, €50, €100, €200
+- Bonus-Vorschau mit automatischer Berechnung
+
+**Incentives & Bonus-System:**
+- **2% Kundenbonus** auf jede Aufladung
+- **€1 Erstaufladungsbonus** für neue Kunden
+- **2% Händlerprovision** (bei Händler-Zuordnung)
+
+**Händler-Leaderboard:**
+- Top 3 Händler nach Aufladevolumen
+- Zeigt Provisionen und Anzahl Aufladungen
+
+**Neue API-Endpoints:**
+- `GET /api/admin/wallet-topup/stats` - Statistiken, Leaderboard, letzte Aufladungen
+- `GET /api/admin/wallet-topup/search` - Kundensuche
+- `POST /api/admin/wallet-topup/topup` - Kunden-Wallet aufladen
+- `GET /api/admin/wallet-topup/history` - Paginierter Aufladungsverlauf
+
+**Geänderte/Neue Dateien:**
+- `/app/backend/routers/admin_wallet_topup.py` - NEU: Backend-Router
+- `/app/frontend/src/components/admin/AdminWalletTopup.js` - NEU: Frontend-Komponente
+- `/app/backend/server.py` - Router registriert
+- `/app/frontend/src/pages/Admin.js` - Tab hinzugefügt
+
+**Test-Ergebnisse:**
+- Backend: 21/21 Tests bestanden (100%)
+- Frontend: 9/9 Komponenten-Checks verifiziert (100%)
+
+---
+
 ### ✅ Session Update - February 18, 2026 (Session 34) - DIREKTE AUFLADUNG ✅
 
 #### Neues Feature: Direkt aufladen (Direct Top Up) ✅
