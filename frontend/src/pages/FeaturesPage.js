@@ -352,6 +352,7 @@ const FeaturesPage = () => {
 
   const utilityFeatures = [
     { icon: Brain, title: t.aiAdvisor, description: t.aiAdvisorDesc, route: '/ki-berater', colorClass: colorClasses.blue, isNew: true },
+    { icon: Store, title: language === 'de' ? 'Händler-Gutscheine' : 'Merchant Vouchers', description: language === 'de' ? 'Ersteigere Gutscheine bei lokalen Partnern' : 'Bid on vouchers from local partners', route: '/haendler-gutscheine', colorClass: colorClasses.amber, isNew: true },
     { icon: Ticket, title: t.vouchers, description: t.vouchersDesc, route: '/gutscheine', colorClass: colorClasses.purple, isNew: true },
     { icon: Utensils, title: t.restaurantVouchers, description: t.restaurantVouchersDesc, route: '/restaurant-gutscheine', colorClass: colorClasses.orange, isNew: true },
     { icon: Gift, title: t.gifts, description: t.giftsDesc, route: '/gift-cards', colorClass: colorClasses.pink, isNew: true },
