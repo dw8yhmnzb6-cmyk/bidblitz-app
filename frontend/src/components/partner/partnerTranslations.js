@@ -380,6 +380,7 @@ export const translations = {
     qrCodesCreated: 'QR Codes Created',
     printTip: 'Tip: Print Templates',
     printTipDescription: 'Use QR codes on table tents, flyers or shop windows!',
+    printTemplates: 'Print Templates',
     flashSales: 'Flash Sales',
     createSale: 'New Sale',
     newFlashSale: 'New Flash Sale',
