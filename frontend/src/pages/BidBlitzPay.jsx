@@ -1976,21 +1976,6 @@ const BidBlitzPay = () => {
                 </div>
               )}
             </div>
-
-            <div className="bg-blue-50 rounded-xl p-4 border border-blue-100">
-              <div className="flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
-                <div className="text-sm text-blue-800">
-                  <p className="font-medium mb-1">{t('howItWorks')}:</p>
-                  <ol className="list-decimal list-inside space-y-1 text-blue-700">
-                    <li>{t('step1')}</li>
-                    <li>{t('step2')}</li>
-                    <li>{t('step3')}</li>
-                    <li>{t('step4')}</li>
-                  </ol>
-                </div>
-              </div>
-            </div>
           </div>
         )}
 
