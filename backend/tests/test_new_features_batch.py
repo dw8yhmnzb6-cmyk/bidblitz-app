@@ -6,7 +6,7 @@ import pytest
 import requests
 import os
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://auction-gateway-1.preview.emergentagent.com')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://bidblitz-penny-2.preview.emergentagent.com')
 
 # Test credentials
 CUSTOMER_EMAIL = "kunde@bidblitz.ae"
