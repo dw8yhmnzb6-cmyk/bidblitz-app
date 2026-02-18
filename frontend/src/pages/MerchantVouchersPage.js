@@ -434,19 +434,6 @@ const MerchantVouchersPage = () => {
           <h2 className="text-xl font-bold text-gray-800 dark:text-white mb-4 flex items-center gap-2">
             <Ticket className="w-5 h-5 text-amber-500" />
             {t.availableVouchers}
-                </div>
-              </div>
-            </div>
-            
-            {selectedMerchant.description && (
-              <p className="mt-4 text-white/90 text-sm">{selectedMerchant.description}</p>
-            )}
-          </div>
-
-          {/* Vouchers Grid */}
-          <h2 className="text-xl font-bold text-gray-800 dark:text-white mb-4 flex items-center gap-2">
-            <Ticket className="w-5 h-5 text-amber-500" />
-            {t.availableVouchers}
           </h2>
 
           {vouchers.length === 0 ? (
