@@ -620,6 +620,43 @@ async def repay_credit(data: CreditRepayment, user: dict = Depends(get_current_u
         "created_at": datetime.now(timezone.utc).isoformat()
     })
     
+    # Update credit score based on payment timing
+    next_payment_date = credit.get("next_payment_date")
+    score_event = "on_time_payment"
+    score_description = "Pünktliche Zahlung"
+    
+    if next_payment_date:
+        due_date = datetime.fromisoformat(next_payment_date.replace('Z', '+00:00'))
+        now = datetime.now(timezone.utc)
+        
+        if now < due_date - timedelta(days=3):
+            # Payment before due date (early)
+            score_event = "early_payment"
+            score_description = "Frühe Zahlung - vor Fälligkeit"
+        elif now > due_date + timedelta(days=7):
+            # Very late payment
+            score_event = "very_late_payment"
+            score_description = "Sehr verspätete Zahlung"
+        elif now > due_date:
+            # Late payment
+            score_event = "late_payment"
+            score_description = "Verspätete Zahlung"
+    
+    # Update score for payment
+    score_update = await update_credit_score(user["id"], score_event, score_description)
+    
+    # Additional score boost for full repayment
+    if is_fully_repaid:
+        await update_credit_score(user["id"], "full_repayment", "Kredit vollständig zurückgezahlt")
+        
+        # Check if this is the first credit
+        completed_credits = await db.credits.count_documents({
+            "user_id": user["id"],
+            "status": "repaid"
+        })
+        if completed_credits == 1:
+            await update_credit_score(user["id"], "first_credit_completed", "Erster Kredit erfolgreich abgeschlossen")
+    
     logger.info(f"Credit payment: {data.credit_id} - €{actual_payment} by user {user['id']}")
     
     return {
@@ -628,7 +665,8 @@ async def repay_credit(data: CreditRepayment, user: dict = Depends(get_current_u
         "amount_paid": actual_payment,
         "total_repaid": new_amount_repaid,
         "remaining": max(0, total_due - new_amount_repaid),
-        "is_fully_repaid": is_fully_repaid
+        "is_fully_repaid": is_fully_repaid,
+        "score_update": score_update
     }
 
 
