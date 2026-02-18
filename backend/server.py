@@ -452,6 +452,9 @@ app.include_router(partner_budget_router, prefix="/api")
 # Credit System (Kredit-System für BidBlitz Pay)
 app.include_router(credit_router, prefix="/api")
 
+# Cashback System
+app.include_router(cashback_router, prefix="/api")
+
 # ==================== HEALTH & BASIC ENDPOINTS ====================
 
 @app.get("/")
