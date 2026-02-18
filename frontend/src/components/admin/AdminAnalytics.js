@@ -654,7 +654,7 @@ const AdminAnalytics = ({ token }) => {
                 Geräte-Trend
               </h3>
               <ResponsiveContainer width="100%" height={200}>
-                <AreaChart data={deviceData.daily_trends}>
+                <AreaChart data={deviceData.daily_trends || []}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                   <XAxis dataKey="date" stroke="#9CA3AF" tick={{ fontSize: 10 }} />
                   <YAxis stroke="#9CA3AF" tick={{ fontSize: 10 }} />
