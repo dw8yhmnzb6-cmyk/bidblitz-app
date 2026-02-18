@@ -139,11 +139,12 @@ export const PartnerReferral = ({ token, t }) => {
 
 // ==================== PARTNER QR CODES ====================
 
-export const PartnerQRCodes = ({ token, t }) => {
+export const PartnerQRCodes = ({ token, partner, t }) => {
   const [loading, setLoading] = useState(false);
   const [qrData, setQrData] = useState(null);
   const [selectedType, setSelectedType] = useState('profile');
   const [stats, setStats] = useState(null);
+  const [showPrintTemplates, setShowPrintTemplates] = useState(false);
 
   const generateQR = async (type = 'profile') => {
     try {
@@ -175,6 +176,32 @@ export const PartnerQRCodes = ({ token, t }) => {
   const downloadQR = () => {
     window.open(`${API}/api/partner-qr/download?token=${token}&qr_type=${selectedType}&size=500`, '_blank');
   };
+
+  // Print Templates View
+  if (showPrintTemplates && qrData?.qr_base64) {
+    return (
+      <div className="space-y-6" data-testid="partner-qr-print">
+        <button
+          onClick={() => setShowPrintTemplates(false)}
+          className="flex items-center gap-2 text-gray-600 hover:text-gray-800"
+        >
+          <span>←</span> {t?.('backToQR') || 'Zurück zu QR-Codes'}
+        </button>
+        
+        <h2 className="font-bold text-gray-800 text-xl flex items-center gap-2">
+          <QrCode className="w-6 h-6 text-amber-500" />
+          {t?.('printTemplates') || 'Druckvorlagen'}
+        </h2>
+
+        {/* Inline Print Templates */}
+        <PrintTemplatesInline 
+          qrBase64={qrData.qr_base64}
+          partnerName={partner?.business_name || partner?.name}
+          t={t}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6" data-testid="partner-qr-codes">
@@ -212,7 +239,7 @@ export const PartnerQRCodes = ({ token, t }) => {
               className="w-64 h-64 mx-auto mb-4"
             />
             <p className="text-sm text-gray-500 mb-4">{qrData.target_url}</p>
-            <div className="flex gap-2 justify-center">
+            <div className="flex gap-2 justify-center flex-wrap">
               <Button onClick={downloadQR} className="bg-amber-500 hover:bg-amber-600">
                 <Download className="w-4 h-4 mr-2" />
                 {t?.('download') || 'Herunterladen'}
@@ -223,6 +250,12 @@ export const PartnerQRCodes = ({ token, t }) => {
               >
                 <Copy className="w-4 h-4 mr-2" />
                 {t?.('copyLink') || 'Link kopieren'}
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => setShowPrintTemplates(true)}
+              >
+                🖨️ {t?.('printTemplates') || 'Druckvorlagen'}
               </Button>
             </div>
           </>
