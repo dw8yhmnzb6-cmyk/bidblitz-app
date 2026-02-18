@@ -136,8 +136,16 @@ export const BiometricSetup = ({ user, token, onSuccess }) => {
         toast.error('Authentifizierung wurde abgebrochen');
       } else if (err.name === 'SecurityError') {
         toast.error('Sicherheitsfehler - bitte HTTPS verwenden');
+      } else if (err.name === 'NotSupportedError') {
+        toast.error('Biometrische Authentifizierung wird auf diesem Gerät nicht unterstützt');
+      } else if (err.name === 'InvalidStateError') {
+        toast.error('Dieses Gerät ist bereits registriert');
+      } else if (err.name === 'AbortError') {
+        toast.error('Vorgang abgebrochen');
+      } else if (err.response?.data?.detail) {
+        toast.error(err.response.data.detail);
       } else {
-        toast.error('Fehler bei der Registrierung');
+        toast.error(err.message || 'Fehler bei der Registrierung. Bitte versuchen Sie es erneut.');
       }
     } finally {
       setLoading(false);
