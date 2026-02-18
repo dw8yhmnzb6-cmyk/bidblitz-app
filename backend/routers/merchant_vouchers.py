@@ -215,11 +215,12 @@ async def update_merchant_profile(partner_id: str, data: UpdateMerchantProfile):
 class SetPremiumRequest(BaseModel):
     partner_id: str
     months: int = 1  # Premium duration in months
+    price: float = 10.0  # Premium price in EUR (5-20€)
     
 
 @router.post("/admin/set-premium")
 async def admin_set_premium_merchant(data: SetPremiumRequest):
-    """Admin: Händler als Premium markieren"""
+    """Admin: Händler als Premium markieren mit Preis"""
     partner = await db.partner_accounts.find_one({"id": data.partner_id})
     collection = db.partner_accounts
     
@@ -238,6 +239,36 @@ async def admin_set_premium_merchant(data: SetPremiumRequest):
         {
             "$set": {
                 "is_premium": True,
+                "premium_until": premium_until.isoformat(),
+                "premium_started": datetime.now(timezone.utc).isoformat(),
+                "premium_price": data.price,
+                "premium_months": data.months,
+                "premium_total_paid": data.price * data.months,
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }
+        }
+    )
+    
+    # Log premium purchase
+    await db.premium_purchases.insert_one({
+        "id": str(uuid.uuid4()),
+        "partner_id": data.partner_id,
+        "partner_name": partner.get("business_name", partner.get("restaurant_name")),
+        "months": data.months,
+        "price_per_month": data.price,
+        "total_price": data.price * data.months,
+        "premium_until": premium_until.isoformat(),
+        "created_at": datetime.now(timezone.utc).isoformat()
+    })
+    
+    logger.info(f"Partner {data.partner_id} set as Premium for {data.months} months at €{data.price}/month")
+    
+    return {
+        "success": True,
+        "message": f"Partner ist jetzt Premium bis {premium_until.strftime('%d.%m.%Y')} (€{data.price * data.months} total)",
+        "premium_until": premium_until.isoformat(),
+        "total_price": data.price * data.months
+    }
                 "premium_until": premium_until.isoformat(),
                 "premium_started": datetime.now(timezone.utc).isoformat(),
                 "updated_at": datetime.now(timezone.utc).isoformat()
