@@ -1760,12 +1760,40 @@ const BidBlitzPay = () => {
                     />
                   </div>
                   
-                  <div className="bg-amber-50 rounded-xl p-4">
-                    <p className="text-xs text-amber-600 mb-2">{t('availableForPayment')}:</p>
-                    <p className="text-2xl font-bold text-amber-700">
-                      €{(qrCode.wallet_summary?.total_value || 0).toFixed(2)}
-                    </p>
+                  {/* Toggle to hide balance */}
+                  <div className="flex items-center justify-center gap-2">
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input 
+                        type="checkbox" 
+                        checked={hideBalance}
+                        onChange={() => setHideBalance(!hideBalance)}
+                        className="sr-only peer" 
+                      />
+                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-amber-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
+                    </label>
+                    <span className="text-sm text-gray-600">
+                      {hideBalance ? (t('balanceHidden') || 'Guthaben ausgeblendet') : (t('hideBalance') || 'Guthaben ausblenden')}
+                    </span>
                   </div>
+
+                  {/* Show/Hide Balance */}
+                  {!hideBalance && (
+                    <div className="bg-amber-50 rounded-xl p-4">
+                      <p className="text-xs text-amber-600 mb-2">{t('availableForPayment')}:</p>
+                      <p className="text-2xl font-bold text-amber-700">
+                        €{(qrCode.wallet_summary?.total_value || 0).toFixed(2)}
+                      </p>
+                    </div>
+                  )}
+                  
+                  {hideBalance && (
+                    <div className="bg-gray-100 rounded-xl p-4">
+                      <p className="text-xs text-gray-500 mb-2">{t('availableForPayment')}:</p>
+                      <p className="text-2xl font-bold text-gray-400">
+                        €••••
+                      </p>
+                    </div>
+                  )}
 
                   <p className="text-xs text-gray-400">
                     {t('qrValidFor')}
