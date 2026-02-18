@@ -5,6 +5,36 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 
 ## Current Status (February 18, 2026)
 
+### ✅ Session Update - February 18, 2026 (Session 40) - WISE AUSZAHLUNGEN ✅
+
+#### Feature: Admin Wise Payouts System ✅
+
+**Implementiert:**
+1. **Backend Endpoints (wise_payouts.py):**
+   - `GET /api/wise-payouts/pending` - Ausstehende Auszahlungen abrufen
+   - `GET /api/wise-payouts/history` - Auszahlungsverlauf abrufen
+   - `POST /api/wise-payouts/admin/initiate` - Einzelne Auszahlung initiieren
+   - `POST /api/wise-payouts/admin/batch` - Batch-Auszahlungen verarbeiten
+
+2. **Frontend (AdminWisePayouts.js):**
+   - Wise API Status-Anzeige (verbunden/nicht konfiguriert)
+   - Übersichtskarten: Ausstehend, Auszahlungsbereit, Ausgewählt
+   - Liste der Partner mit ausstehenden Auszahlungen
+   - Checkbox-Auswahl für Batch-Auszahlungen
+   - "Alle auswählen" Funktion
+   - Auszahlungsverlauf mit Toggle
+
+3. **Admin Tab:**
+   - Neuer Tab "💰 Wise Auszahlungen" in der Admin-Sidebar
+
+**Test-Ergebnisse (iteration_69.json):**
+- Backend: 11/11 Tests bestanden (100%)
+- Frontend: 100% UI-Features verifiziert
+
+**HINWEIS:** Wise API ist NICHT konfiguriert - Auszahlungen werden manuell verarbeitet (Status: pending_manual)
+
+---
+
 ### ✅ Session Update - February 18, 2026 (Session 40) - KUNDENNUMMER FEATURE ✅
 
 #### Feature: Automatische Kundennummer für Mitarbeiter ✅
