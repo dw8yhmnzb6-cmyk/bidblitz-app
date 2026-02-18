@@ -438,6 +438,9 @@ app.include_router(admin_wallet_topup_router, prefix="/api/admin/wallet-topup")
 # Stripe Checkout for Wallet Top-up
 app.include_router(stripe_checkout_router, prefix="/api/stripe")
 
+# Partner Budget System (Freibetrag, Wise Payments, Payouts)
+app.include_router(partner_budget_router, prefix="/api")
+
 # ==================== HEALTH & BASIC ENDPOINTS ====================
 
 @app.get("/")
