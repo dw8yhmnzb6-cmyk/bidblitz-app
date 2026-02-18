@@ -188,6 +188,9 @@ from routers.abandoned_cart import abandoned_cart_router
 from routers.sustainability import router as sustainability_router
 from routers.microsoft_auth import microsoft_auth_router
 
+# NEW: Admin Wallet Top-up
+from routers.admin_wallet_topup import router as admin_wallet_topup_router
+
 # WebSocket manager
 from services.websocket import ws_manager, broadcast_bid_update, broadcast_auction_ended
 
@@ -422,6 +425,9 @@ app.include_router(partner_social_router, prefix="/api")
 
 # BidBlitz Pay Security (Biometric Auth, Fraud Detection)
 app.include_router(security_router, prefix="/api")
+
+# Admin Wallet Top-up & Incentives System
+app.include_router(admin_wallet_topup_router, prefix="/api/admin/wallet-topup")
 
 # ==================== HEALTH & BASIC ENDPOINTS ====================
 
