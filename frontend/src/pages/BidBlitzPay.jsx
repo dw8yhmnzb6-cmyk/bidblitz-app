@@ -640,6 +640,15 @@ const BidBlitzPay = () => {
             {t('topUp')}
           </button>
           <button
+            onClick={() => { setView('send'); fetchTransferHistory(); }}
+            className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${
+              view === 'send' ? 'bg-amber-500 text-white' : 'text-gray-600 hover:bg-gray-100'
+            }`}
+          >
+            <ArrowUpRight className="w-4 h-4 inline mr-1" />
+            {t('send')}
+          </button>
+          <button
             onClick={() => { setView('qr'); generateQR(); }}
             className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${
               view === 'qr' ? 'bg-amber-500 text-white' : 'text-gray-600 hover:bg-gray-100'
