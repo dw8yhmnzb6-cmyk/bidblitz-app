@@ -5,6 +5,43 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 
 ## Current Status (February 18, 2026)
 
+### ✅ Session Update - February 18, 2026 (Session 48) - KUNDENNUMMER-SYSTEM ✅
+
+#### Feature: Eindeutige Kundennummer für jeden Kunden ✅
+
+**Implementiert:**
+
+1. **Backend (`/app/backend/routers/auth.py`):**
+   - `generate_customer_number()` - Generiert eindeutige Kundennummer (Format: BID-XXXXXX)
+   - Neue Benutzer erhalten automatisch bei Registrierung eine Kundennummer
+   - Migration: Alle bestehenden Benutzer haben Kundennummern erhalten
+
+2. **Backend (`/app/backend/routers/bidblitz_pay.py`):**
+   - `GET /api/bidblitz-pay/my-customer-number` - Eigene Kundennummer abrufen (mit Auto-Generierung)
+   - `GET /api/bidblitz-pay/lookup/{customer_number}` - Öffentlich: Kunde verifizieren (maskierter Name)
+   - `POST /api/bidblitz-pay/admin/credit-by-customer-number` - Admin: Gutschrift per Kundennummer
+   - `GET /api/bidblitz-pay/admin/search-customer` - Admin: Kunde suchen (Email, Name, Kundennummer)
+
+3. **Backend (`/app/backend/routers/admin_wallet_topup.py`):**
+   - Suche erweitert um `customer_number` Feld
+
+4. **Frontend (`/app/frontend/src/pages/BidBlitzPay.jsx`):**
+   - Kundennummer wird im Wallet-Bereich prominent angezeigt
+   - Copy-Button zum einfachen Kopieren
+   - Hinweis: "Für Überweisungen als Verwendungszweck angeben"
+
+**Kundennummer-Format:** `BID-XXXXXX` (6 Ziffern)
+
+**Anwendungsfälle:**
+- Überweisungen empfangen (SEPA)
+- Gutschriften vom Admin erhalten
+- Einfache Identifikation bei Support-Anfragen
+- Verifizierung vor Gutschrift (maskierter Name)
+
+**Test-Status:** 100% (18/18 Tests) - iteration_80.json
+
+---
+
 ### ✅ Session Update - February 18, 2026 (Session 47) - P1/P2: WISE, REFERRAL, STAFF CARDS ✅
 
 #### Feature 1: Wise Integration (P1) ✅
