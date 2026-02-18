@@ -8,7 +8,8 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { 
   Ticket, Store, Plus, Euro, Clock, Gift, Search,
-  CheckCircle, XCircle, Trash2, Eye, RefreshCw, Crown, Star
+  CheckCircle, XCircle, Trash2, Eye, RefreshCw, Crown, Star,
+  Bot, Percent, Zap, Calendar
 } from 'lucide-react';
 
 const API = process.env.REACT_APP_BACKEND_URL;
