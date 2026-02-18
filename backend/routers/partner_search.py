@@ -312,7 +312,7 @@ async def get_map_data(
 ):
     """Get partners within map bounds for display on map"""
     query = {
-        "is_active": True,
+        "status": "approved",
         "latitude": {"$gte": south, "$lte": north},
         "longitude": {"$gte": west, "$lte": east}
     }
