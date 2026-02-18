@@ -201,6 +201,9 @@ from routers.partner_budget import router as partner_budget_router
 # NEW: Credit System (Kredit-System für BidBlitz Pay)
 from routers.credit_system import router as credit_router
 
+# NEW: Cashback System
+from routers.cashback_system import router as cashback_router
+
 # WebSocket manager
 from services.websocket import ws_manager, broadcast_bid_update, broadcast_auction_ended
 
