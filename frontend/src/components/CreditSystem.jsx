@@ -284,6 +284,11 @@ const CreditSystem = ({ language = 'de', walletBalance = 0, onBalanceUpdate }) =
         const data = await creditsRes.json();
         setCredits(data.credits || []);
       }
+      
+      if (scoreRes.ok) {
+        const data = await scoreRes.json();
+        setScoreData(data);
+      }
     } catch (error) {
       console.error('Error fetching credit data:', error);
     } finally {
@@ -295,8 +300,9 @@ const CreditSystem = ({ language = 'de', walletBalance = 0, onBalanceUpdate }) =
     fetchData();
   }, [fetchData]);
   
-  // Calculate estimated payments
-  const estimatedInterest = amount < 50 ? 0 : (amount * 0.03 * months); // 3% default
+  // Calculate estimated payments based on tier interest rate
+  const tierInterestRate = eligibility?.interest_rate || 3;
+  const estimatedInterest = amount < 50 ? 0 : (amount * (tierInterestRate / 100) * months);
   const estimatedTotal = amount + estimatedInterest;
   const estimatedMonthly = estimatedTotal / months;
   
