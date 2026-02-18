@@ -2501,7 +2501,7 @@ export default function PartnerPortal() {
                 <PartnerReferral token={token} t={t} />
               )}
               {marketingTab === 'qr' && (
-                <PartnerQRCodes token={token} t={t} />
+                <PartnerQRCodes token={token} partner={partner} t={t} />
               )}
               {marketingTab === 'flash' && (
                 <PartnerFlashSales token={token} t={t} />
