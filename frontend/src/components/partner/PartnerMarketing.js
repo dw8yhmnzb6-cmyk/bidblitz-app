@@ -236,38 +236,46 @@ export const PartnerQRCodes = ({ token, partner, t }) => {
   const [selectedType, setSelectedType] = useState('profile');
   const [stats, setStats] = useState(null);
   const [showPrintTemplates, setShowPrintTemplates] = useState(false);
+  const [errorMsg, setErrorMsg] = useState(null);
 
-  const generateQR = async (type = 'profile') => {
-    if (!token) return; // Don't generate if no token
+  const generateQR = useCallback(async (type = 'profile') => {
+    if (!token) {
+      console.log('No token available for QR generation');
+      return;
+    }
     try {
       setLoading(true);
+      setErrorMsg(null);
       setSelectedType(type);
+      console.log('Generating QR for type:', type, 'with token:', token.substring(0, 10) + '...');
       const response = await axios.get(`${API}/api/partner-qr/generate?token=${token}&qr_type=${type}`);
       setQrData(response.data);
+      console.log('QR generated successfully');
     } catch (err) {
       console.error('QR generate error:', err);
+      setErrorMsg('Fehler beim Generieren');
       toast.error('Fehler beim Generieren');
     } finally {
       setLoading(false);
     }
-  };
+  }, [token]);
 
-  const fetchStats = async () => {
-    if (!token) return; // Don't fetch if no token
+  const fetchStats = useCallback(async () => {
+    if (!token) return;
     try {
       const response = await axios.get(`${API}/api/partner-qr/stats?token=${token}`);
       setStats(response.data);
     } catch (err) {
       console.error('QR stats error:', err);
     }
-  };
+  }, [token]);
 
   useEffect(() => {
     if (token) {
       generateQR('profile');
       fetchStats();
     }
-  }, [token]);
+  }, [token, generateQR, fetchStats]);
 
   const downloadQR = () => {
     window.open(`${API}/api/partner-qr/download?token=${token}&qr_type=${selectedType}&size=500`, '_blank');
