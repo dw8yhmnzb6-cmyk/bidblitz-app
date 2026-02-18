@@ -112,11 +112,11 @@ export default function AdminWisePayouts({ token }) {
 
     setProcessing('batch');
     try {
-      const response = await axios.post(`${API}/api/wise/batch-payout?token=${token}`, {
+      const response = await axios.post(`${API}/api/wise-payouts/admin/batch?token=${token}`, {
         partner_ids: selectedPartners
       });
       
-      toast.success(response.data.message);
+      toast.success(response.data.message || `${selectedPartners.length} Auszahlungen verarbeitet`);
       setSelectedPartners([]);
       await loadData();
     } catch (error) {
