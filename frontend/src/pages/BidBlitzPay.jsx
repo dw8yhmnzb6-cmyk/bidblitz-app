@@ -439,6 +439,24 @@ const BidBlitzPay = () => {
     }
   }, [token]);
 
+  // Fetch transactions - MUST be defined before other functions that use it
+  const fetchTransactions = useCallback(async () => {
+    if (!token) return;
+    
+    try {
+      const response = await fetch(`${API}/api/bidblitz-pay/transactions?limit=20`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setTransactions(data.transactions || []);
+      }
+    } catch (error) {
+      console.error('Error fetching transactions:', error);
+    }
+  }, [token]);
+
   const handleTopUp = async () => {
     const amount = parseFloat(topUpAmount);
     if (!amount || amount <= 0) {
