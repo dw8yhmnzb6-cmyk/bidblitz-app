@@ -409,21 +409,29 @@ async def login_partner(data: PartnerLogin):
     }
 
 @router.post("/staff/login")
-async def login_staff(data: PartnerLogin):
-    """Login for staff members (counter employees)"""
+async def login_staff(data: StaffLogin):
+    """Login for staff members using staff_number (Kundennummer) and password"""
+    # Find staff by staff_number
     staff = await db.partner_staff.find_one(
-        {"email": data.email.lower()},
+        {"staff_number": data.staff_number.upper()},
         {"_id": 0}
     )
     
     if not staff:
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+        # Also try legacy email login for backwards compatibility
+        staff = await db.partner_staff.find_one(
+            {"email": data.staff_number.lower()},
+            {"_id": 0}
+        )
+    
+    if not staff:
+        raise HTTPException(status_code=401, detail="Ungültige Kundennummer oder Passwort")
     
     if not verify_password(data.password, staff.get("password_hash", "")):
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+        raise HTTPException(status_code=401, detail="Ungültige Kundennummer oder Passwort")
     
     if not staff.get("is_active", True):
-        raise HTTPException(status_code=403, detail="Account deactivated")
+        raise HTTPException(status_code=403, detail="Konto deaktiviert")
     
     # Get parent partner info
     partner = await db.partner_accounts.find_one(
@@ -438,7 +446,7 @@ async def login_staff(data: PartnerLogin):
         )
     
     if not partner or not partner.get("is_active"):
-        raise HTTPException(status_code=403, detail="Partner account inactive")
+        raise HTTPException(status_code=403, detail="Partner-Konto inaktiv")
     
     # Generate token
     import secrets
@@ -459,7 +467,8 @@ async def login_staff(data: PartnerLogin):
         "staff": {
             "id": staff["id"],
             "name": staff.get("name"),
-            "email": staff["email"],
+            "staff_number": staff.get("staff_number"),
+            "email": staff.get("email"),
             "role": staff.get("role", "counter"),
             "partner_id": staff["partner_id"],
             "partner_name": partner.get("business_name", partner.get("restaurant_name")),
