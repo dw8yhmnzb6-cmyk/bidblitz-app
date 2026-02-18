@@ -593,8 +593,10 @@ async def create_cashback_promotion(
             detail="Aktionsdauer muss zwischen 1 und 30 Tagen liegen"
         )
     
-    # Check if partner exists
-    partner = await db.users.find_one({"id": partner_id, "role": "partner"})
+    # Check if partner exists - try both partner_accounts and users collection
+    partner = await db.partner_accounts.find_one({"id": partner_id})
+    if not partner:
+        partner = await db.users.find_one({"id": partner_id, "role": "partner"})
     if not partner:
         raise HTTPException(status_code=404, detail="Händler nicht gefunden")
     
