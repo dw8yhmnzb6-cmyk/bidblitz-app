@@ -2627,6 +2627,7 @@ function BidBlitzPayPartner({ token, partnerId, partnerName, commissionRate }) {
       );
       
       setCustomerData(response.data);
+      setStep('confirm');
       toast.success(`Kunde gefunden: ${response.data.customer.name}`);
     } catch (error) {
       console.error("Scan error:", error);
@@ -2639,6 +2640,15 @@ function BidBlitzPayPartner({ token, partnerId, partnerName, commissionRate }) {
     if (!manualQR.trim()) return;
     handleQRScanned(manualQR.trim());
     setManualQR('');
+  };
+
+  const proceedToScan = () => {
+    const amount = parseFloat(paymentAmount);
+    if (!amount || amount <= 0) {
+      toast.error("Bitte gültigen Betrag eingeben");
+      return;
+    }
+    setStep('scan');
   };
 
   const processPayment = async () => {
@@ -2663,6 +2673,7 @@ function BidBlitzPayPartner({ token, partnerId, partnerName, commissionRate }) {
       setPaymentSuccess(response.data);
       setCustomerData(null);
       setPaymentAmount('');
+      setStep('amount');
       toast.success(`Zahlung von €${amount.toFixed(2)} erfolgreich!`);
     } catch (error) {
       console.error("Payment error:", error);
@@ -2670,6 +2681,14 @@ function BidBlitzPayPartner({ token, partnerId, partnerName, commissionRate }) {
     } finally {
       setProcessing(false);
     }
+  };
+
+  const resetFlow = () => {
+    setStep('amount');
+    setPaymentAmount('');
+    setCustomerData(null);
+    setPaymentSuccess(null);
+    stopScanner();
   };
 
   return (
