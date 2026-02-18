@@ -1214,6 +1214,7 @@ export default function Admin() {
       textColor: 'text-pink-600',
       borderColor: 'border-pink-500/30',
       tabs: [
+        { id: 'merchant-vouchers', label: 'Händler-Gutscheine', icon: <Ticket className="w-5 h-5" /> },
         { id: 'vouchers', label: 'Bieter-Gutscheine', icon: <Ticket className="w-5 h-5" /> },
         { id: 'restaurant-vouchers', label: 'Partner-Gutscheine', icon: <Ticket className="w-5 h-5" /> },
         { id: 'coupons', label: 'Rabatt-Coupons', icon: <Ticket className="w-5 h-5" /> },
