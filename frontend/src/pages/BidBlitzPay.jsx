@@ -555,6 +555,15 @@ const BidBlitzPay = () => {
             <History className="w-4 h-4 inline mr-1" />
             {t('history')}
           </button>
+          <button
+            onClick={() => setView('security')}
+            className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${
+              view === 'security' ? 'bg-amber-500 text-white' : 'text-gray-600 hover:bg-gray-100'
+            }`}
+          >
+            <Shield className="w-4 h-4 inline mr-1" />
+            {t('security')}
+          </button>
         </div>
       </div>
 
