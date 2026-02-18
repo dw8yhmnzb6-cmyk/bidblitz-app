@@ -295,6 +295,13 @@ const BidBlitzPay = () => {
   const [topUpAmount, setTopUpAmount] = useState('');
   const [transferring, setTransferring] = useState(false);
   const [user, setUser] = useState(null);
+  
+  // P2P Transfer states
+  const [recipientEmail, setRecipientEmail] = useState('');
+  const [sendAmount, setSendAmount] = useState('');
+  const [sendMessage, setSendMessage] = useState('');
+  const [sendingMoney, setSendingMoney] = useState(false);
+  const [transfers, setTransfers] = useState([]);
 
   const token = localStorage.getItem('token') || sessionStorage.getItem('token') || localStorage.getItem('bidblitz_token');
   
