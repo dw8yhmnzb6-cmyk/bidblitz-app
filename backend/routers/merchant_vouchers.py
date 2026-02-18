@@ -269,20 +269,6 @@ async def admin_set_premium_merchant(data: SetPremiumRequest):
         "premium_until": premium_until.isoformat(),
         "total_price": data.price * data.months
     }
-                "premium_until": premium_until.isoformat(),
-                "premium_started": datetime.now(timezone.utc).isoformat(),
-                "updated_at": datetime.now(timezone.utc).isoformat()
-            }
-        }
-    )
-    
-    logger.info(f"Partner {data.partner_id} set as Premium until {premium_until}")
-    
-    return {
-        "success": True,
-        "message": f"Partner ist jetzt Premium bis {premium_until.strftime('%d.%m.%Y')}",
-        "premium_until": premium_until.isoformat()
-    }
 
 
 @router.post("/admin/remove-premium/{partner_id}")
