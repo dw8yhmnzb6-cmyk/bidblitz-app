@@ -214,7 +214,7 @@ async def get_current_partner(token: str):
         raise HTTPException(status_code=401, detail="Ungültiger Partner-Token")
     return partner
 
-@router.post("/scan-customer")
+@router.get("/scan-customer")
 async def scan_customer_qr(qr_data: str, token: str = Query(...)):
     """Partner scans customer QR to initiate payment"""
     partner = await get_current_partner(token)
