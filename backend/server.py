@@ -99,6 +99,7 @@ from routers.weekly_winners import weekly_winners_router
 from routers.excitement import router as excitement_router
 from routers.investor import router as investor_router
 from routers.voucher_auctions import router as voucher_auctions_router
+from routers.merchant_vouchers import router as merchant_vouchers_router
 from routers.promo_codes import router as promo_codes_router
 from routers.beginner_guarantee import router as beginner_guarantee_router
 from routers.whatsapp_notifications import router as whatsapp_router
