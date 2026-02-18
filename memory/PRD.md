@@ -5,6 +5,67 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 
 ## Current Status (February 18, 2026)
 
+### ✅ Session Update - February 18, 2026 (Session 47) - P1/P2: WISE, REFERRAL, STAFF CARDS ✅
+
+#### Feature 1: Wise Integration (P1) ✅
+**Status:** Bereits vollständig implementiert in vorheriger Session.
+
+**Backend (`/app/backend/routers/wise_payouts.py`, `/app/backend/services/wise_service.py`):**
+- Automatische Überweisungen via Wise API
+- Manuelle Auszahlung als Fallback
+- Admin-Endpoints für Batch-Payouts
+- Transfer-Status-Tracking
+
+---
+
+#### Feature 2: Partner-Referral-System (P2) ✅
+
+**Implementiert:**
+
+1. **Backend (`/app/backend/routers/partner_referral.py`):**
+   - `GET /api/partner-referral/my-code` - Partner erhält eigenen Referral-Code (Format: PXXXX1234)
+   - `GET /api/partner-referral/stats` - Detaillierte Statistiken für Partner
+   - `POST /api/partner-referral/apply` - Referral-Code bei Registrierung anwenden
+   - `POST /api/partner-referral/complete/{referral_id}` - Referral abschließen (bei erstem Gutschein-Verkauf)
+   - `GET /api/partner-referral/leaderboard` - Top 10 Partner nach Empfehlungen
+
+**Bonus-System:**
+- €10 Bonus für Werber (bei erfolgreichem Gutschein-Verkauf des Geworbenen)
+- €5 Startguthaben für neuen Partner (sofort)
+
+**Test-Status:** 100% (iteration_79.json)
+
+---
+
+#### Feature 3: Druckbare Staff-Login-Karten (P2) ✅
+
+**Implementiert:**
+
+1. **Backend (`/app/backend/routers/staff_cards.py`):**
+   - `GET /api/staff-cards/preview/{staff_id}` - JSON-Vorschau mit QR-Code
+   - `GET /api/staff-cards/single/{staff_id}` - Einzelkarte (Visitenkarten-Format 85x55mm)
+   - `POST /api/staff-cards/a4-sheet` - A4-Blatt mit bis zu 20 Karten
+   - `GET /api/staff-cards/all` - Alle Karten eines Partners
+   - `GET /api/staff-cards/admin/all-partners` - Admin: Alle Mitarbeiterkarten
+
+2. **Frontend (`/app/frontend/src/components/partner/PartnerStaff.js`):**
+   - Checkbox-Auswahl für Mitarbeiter
+   - "Alle auswählen" Button
+   - "X Karten drucken (A4)" Button für ausgewählte
+   - "Alle Karten drucken" Button
+   - Einzelkarten-Druck-Button pro Mitarbeiter (CreditCard Icon)
+
+**Karten-Features:**
+- QR-Code für schnellen Login
+- Kundennummer prominent angezeigt
+- Partnername und Mitarbeitername
+- Print-optimiertes CSS (@media print)
+- Zwei Formate: Visitenkarte (85x55mm) und A4 (mehrere Karten)
+
+**Test-Status:** 100% (iteration_79.json)
+
+---
+
 ### ✅ Session Update - February 18, 2026 (Session 46) - P1 FEATURES: BOTS & CASHBACK-AKTIONEN ✅
 
 #### Feature 1: Bot-System für Händler-Gutschein-Auktionen ✅
