@@ -77,7 +77,116 @@ const AdminMerchantVouchers = () => {
   useEffect(() => {
     fetchPartners();
     fetchVouchers();
+    fetchBotStatus();
+    fetchPromotions();
   }, [fetchPartners, fetchVouchers]);
+
+  const fetchBotStatus = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API}/api/admin/bots/voucher-bot-status`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setBotStatus(data.auctions || []);
+      }
+    } catch (err) {
+      console.error('Error fetching bot status:', err);
+    }
+  };
+
+  const fetchPromotions = async () => {
+    try {
+      const res = await fetch(`${API}/api/cashback/admin/promotions`);
+      if (res.ok) {
+        const data = await res.json();
+        setPromotions(data.promotions || []);
+      }
+    } catch (err) {
+      console.error('Error fetching promotions:', err);
+    }
+  };
+
+  const handleConfigureBots = async () => {
+    setConfiguringBots(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API}/api/admin/bots/configure-voucher-bots?min_percent=${botMinPercent}&max_percent=${botMaxPercent}`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        toast.success(`${data.configured} Gutschein-Auktionen mit Bots konfiguriert`);
+        fetchBotStatus();
+      } else {
+        const error = await res.json();
+        toast.error(error.detail || 'Fehler beim Konfigurieren');
+      }
+    } catch (err) {
+      console.error('Error configuring bots:', err);
+      toast.error('Fehler beim Konfigurieren der Bots');
+    } finally {
+      setConfiguringBots(false);
+    }
+  };
+
+  const handleCreatePromotion = async () => {
+    if (!selectedPromoPartner) {
+      toast.error('Bitte wählen Sie einen Händler aus');
+      return;
+    }
+    
+    setCreatingPromo(true);
+    try {
+      const res = await fetch(`${API}/api/cashback/admin/create-promotion/${selectedPromoPartner}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          special_rate: parseFloat(promoRate),
+          duration_days: parseInt(promoDays)
+        })
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        toast.success(`Cashback-Aktion erstellt: ${data.special_rate}% für ${data.partner_name}`);
+        setSelectedPromoPartner('');
+        fetchPromotions();
+      } else {
+        const error = await res.json();
+        toast.error(error.detail || 'Fehler beim Erstellen');
+      }
+    } catch (err) {
+      console.error('Error creating promotion:', err);
+      toast.error('Fehler beim Erstellen der Aktion');
+    } finally {
+      setCreatingPromo(false);
+    }
+  };
+
+  const handleRemovePromotion = async (partnerId, partnerName) => {
+    if (!window.confirm(`Cashback-Aktion von "${partnerName}" beenden?`)) return;
+    
+    try {
+      const res = await fetch(`${API}/api/cashback/admin/remove-promotion/${partnerId}`, {
+        method: 'DELETE'
+      });
+      
+      if (res.ok) {
+        toast.success(`Cashback-Aktion von ${partnerName} beendet`);
+        fetchPromotions();
+      } else {
+        const error = await res.json();
+        toast.error(error.detail || 'Fehler');
+      }
+    } catch (err) {
+      console.error('Error removing promotion:', err);
+      toast.error('Fehler beim Beenden der Aktion');
+    }
+  };
 
   const handleCreateVoucher = async (e) => {
     e.preventDefault();
