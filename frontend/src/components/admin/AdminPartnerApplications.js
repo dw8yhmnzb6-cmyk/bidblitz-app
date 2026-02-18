@@ -3,7 +3,7 @@ import {
   Building2, Check, X, Mail, Phone, Globe, MapPin, 
   FileText, Clock, User, Percent, Euro, Store,
   ChevronDown, ChevronUp, Trash2, RefreshCw, CreditCard,
-  BarChart3, Wallet, Download, Edit3, Save
+  BarChart3, Wallet, Download, Edit3, Save, Lock, Unlock
 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
