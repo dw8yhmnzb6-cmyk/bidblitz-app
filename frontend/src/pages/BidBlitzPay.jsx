@@ -1201,17 +1201,52 @@ const BidBlitzPay = () => {
               </div>
             )}
 
-            {/* Transfer from Main Account Section */}
+            {/* Transfer Section - Both directions */}
             {topUpMode === 'transfer' && (
             <div className="bg-white rounded-2xl shadow-lg p-6">
               <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
                 <RefreshCw className="w-5 h-5 text-amber-500" />
-                {t('transferToWallet')}
+                {language === 'de' ? 'Guthaben übertragen' : 'Transfer Balance'}
               </h2>
               
-              <div className="bg-gray-50 rounded-xl p-4 mb-6">
-                <p className="text-sm text-gray-500 mb-1">{t('availableOnMain')}</p>
-                <p className="text-2xl font-bold text-gray-800">€{mainBalance.toFixed(2)}</p>
+              {/* Direction Toggle */}
+              <div className="flex gap-2 mb-6">
+                <button
+                  onClick={() => setTransferDirection('toWallet')}
+                  className={`flex-1 py-3 px-4 rounded-xl text-sm font-medium transition-all ${
+                    transferDirection === 'toWallet'
+                      ? 'bg-amber-500 text-white shadow-lg'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  <ArrowDownLeft className="w-4 h-4 inline mr-2" />
+                  {language === 'de' ? 'Auf BidBlitz Pay' : 'To BidBlitz Pay'}
+                </button>
+                <button
+                  onClick={() => setTransferDirection('toMain')}
+                  className={`flex-1 py-3 px-4 rounded-xl text-sm font-medium transition-all ${
+                    transferDirection === 'toMain'
+                      ? 'bg-green-500 text-white shadow-lg'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  <ArrowUpRight className="w-4 h-4 inline mr-2" />
+                  {language === 'de' ? 'Auf Hauptkonto' : 'To Main Account'}
+                </button>
+              </div>
+              
+              {/* Balance Display */}
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                <div className={`rounded-xl p-4 ${transferDirection === 'toWallet' ? 'bg-amber-50 border-2 border-amber-300' : 'bg-gray-50'}`}>
+                  <p className="text-xs text-gray-500 mb-1">Hauptkonto</p>
+                  <p className="text-xl font-bold text-gray-800">€{mainBalance.toFixed(2)}</p>
+                  {transferDirection === 'toWallet' && <p className="text-xs text-amber-600 mt-1">↓ Von hier</p>}
+                </div>
+                <div className={`rounded-xl p-4 ${transferDirection === 'toMain' ? 'bg-green-50 border-2 border-green-300' : 'bg-gray-50'}`}>
+                  <p className="text-xs text-gray-500 mb-1">BidBlitz Pay</p>
+                  <p className="text-xl font-bold text-gray-800">€{(wallet?.wallet?.total_value || 0).toFixed(2)}</p>
+                  {transferDirection === 'toMain' && <p className="text-xs text-green-600 mt-1">↓ Von hier</p>}
+                </div>
               </div>
               
               <div className="space-y-4">
@@ -1227,57 +1262,100 @@ const BidBlitzPay = () => {
                       className="w-full pl-10 pr-4 py-3 text-xl font-semibold border rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
                       min="0"
                       step="0.01"
-                      max={mainBalance}
+                      max={transferDirection === 'toWallet' ? mainBalance : (wallet?.wallet?.total_value || 0)}
                     />
                   </div>
                 </div>
                 
                 {/* Quick amount buttons */}
                 <div className="flex gap-2 flex-wrap">
-                  {[5, 10, 20, 50].map((amount) => (
-                    <button
-                      key={amount}
-                      type="button"
-                      onClick={() => setTopUpAmount(String(amount))}
-                      className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium border transition-all ${
-                        parseFloat(topUpAmount) === amount
-                          ? 'border-amber-500 bg-amber-50 text-amber-600'
-                          : mainBalance >= amount 
-                            ? 'border-amber-300 text-amber-600 hover:bg-amber-50' 
-                            : 'border-gray-200 text-gray-400 hover:border-gray-300'
-                      }`}
-                    >
-                      €{amount}
-                    </button>
-                  ))}
+                  {[5, 10, 20, 50].map((amount) => {
+                    const maxAmount = transferDirection === 'toWallet' ? mainBalance : (wallet?.wallet?.total_value || 0);
+                    return (
+                      <button
+                        key={amount}
+                        type="button"
+                        onClick={() => setTopUpAmount(String(amount))}
+                        disabled={maxAmount < amount}
+                        className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium border transition-all ${
+                          parseFloat(topUpAmount) === amount
+                            ? transferDirection === 'toWallet' 
+                              ? 'border-amber-500 bg-amber-50 text-amber-600' 
+                              : 'border-green-500 bg-green-50 text-green-600'
+                            : maxAmount >= amount 
+                              ? transferDirection === 'toWallet'
+                                ? 'border-amber-300 text-amber-600 hover:bg-amber-50'
+                                : 'border-green-300 text-green-600 hover:bg-green-50'
+                              : 'border-gray-200 text-gray-400 cursor-not-allowed'
+                        }`}
+                      >
+                        €{amount}
+                      </button>
+                    );
+                  })}
+                  
                   {/* Complete sum button */}
                   <button
                     type="button"
-                    onClick={() => setTopUpAmount(String(mainBalance))}
-                    disabled={mainBalance <= 0}
+                    onClick={() => {
+                      const maxAmount = transferDirection === 'toWallet' ? mainBalance : (wallet?.wallet?.total_value || 0);
+                      setTopUpAmount(String(maxAmount));
+                    }}
+                    disabled={(transferDirection === 'toWallet' ? mainBalance : (wallet?.wallet?.total_value || 0)) <= 0}
                     className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium border transition-all ${
-                      parseFloat(topUpAmount) === mainBalance && mainBalance > 0
-                        ? 'border-green-500 bg-green-50 text-green-600'
-                        : mainBalance > 0 
-                          ? 'border-green-300 text-green-600 hover:bg-green-50' 
-                          : 'border-gray-200 text-gray-400 cursor-not-allowed'
+                      (transferDirection === 'toWallet' ? mainBalance : (wallet?.wallet?.total_value || 0)) > 0
+                        ? transferDirection === 'toWallet'
+                          ? 'border-amber-500 bg-amber-100 text-amber-700 hover:bg-amber-200 font-bold'
+                          : 'border-green-500 bg-green-100 text-green-700 hover:bg-green-200 font-bold'
+                        : 'border-gray-200 text-gray-400 cursor-not-allowed'
                     }`}
                   >
-                    {language === 'de' ? 'Alles' : 'All'} (€{mainBalance.toFixed(2)})
+                    {language === 'de' ? 'ALLES' : 'ALL'} (€{(transferDirection === 'toWallet' ? mainBalance : (wallet?.wallet?.total_value || 0)).toFixed(2)})
                   </button>
                 </div>
                 
                 <Button
-                  onClick={handleTopUp}
-                  disabled={transferring || !topUpAmount || parseFloat(topUpAmount) <= 0 || parseFloat(topUpAmount) > mainBalance}
-                  className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 py-4 text-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  onClick={transferDirection === 'toWallet' ? handleTopUp : handleTransferToMain}
+                  disabled={
+                    transferring || 
+                    !topUpAmount || 
+                    parseFloat(topUpAmount) <= 0 || 
+                    parseFloat(topUpAmount) > (transferDirection === 'toWallet' ? mainBalance : (wallet?.wallet?.total_value || 0))
+                  }
+                  className={`w-full py-4 text-lg disabled:opacity-50 disabled:cursor-not-allowed ${
+                    transferDirection === 'toWallet'
+                      ? 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600'
+                      : 'bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600'
+                  }`}
                 >
                 {transferring ? (
                   <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                 ) : (
                   <>
-                    <ArrowDownLeft className="w-5 h-5 mr-2" />
-                    {t('transfer')}
+                    {transferDirection === 'toWallet' ? (
+                      <ArrowDownLeft className="w-5 h-5 mr-2" />
+                    ) : (
+                      <ArrowUpRight className="w-5 h-5 mr-2" />
+                    )}
+                    {transferDirection === 'toWallet' 
+                      ? (language === 'de' ? 'Auf BidBlitz Pay übertragen' : 'Transfer to BidBlitz Pay')
+                      : (language === 'de' ? 'Auf Hauptkonto übertragen' : 'Transfer to Main Account')
+                    }
+                  </>
+                )}
+                </Button>
+                
+                {(transferDirection === 'toWallet' ? mainBalance : (wallet?.wallet?.total_value || 0)) === 0 && (
+                  <p className="text-center text-sm text-red-500 mt-2">
+                    {transferDirection === 'toWallet'
+                      ? (language === 'de' ? 'Kein Guthaben auf Hauptkonto verfügbar' : 'No balance available on main account')
+                      : (language === 'de' ? 'Kein BidBlitz Pay Guthaben verfügbar' : 'No BidBlitz Pay balance available')
+                    }
+                  </p>
+                )}
+              </div>
+            </div>
+            )}
                   </>
                 )}
               </Button>
