@@ -896,9 +896,15 @@ const BidBlitzPay = () => {
         )}
 
         {/* Security Settings */}
-        {view === 'security' && user && (
+        {view === 'security' && (
           <div className="bg-white rounded-2xl shadow-lg p-6" data-testid="security-view">
-            <SecuritySettings user={user} token={token} />
+            {user ? (
+              <SecuritySettings user={user} token={token} />
+            ) : (
+              <div className="flex items-center justify-center py-8">
+                <div className="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
+              </div>
+            )}
           </div>
         )}
       </div>
