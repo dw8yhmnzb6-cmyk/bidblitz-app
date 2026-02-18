@@ -776,17 +776,20 @@ const BidBlitzPay = () => {
               <form onSubmit={sendMoney} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    {t('recipientEmail')}
+                    {t('recipientId')}
                   </label>
                   <Input
-                    type="email"
+                    type="text"
                     value={recipientEmail}
                     onChange={(e) => setRecipientEmail(e.target.value)}
-                    placeholder="empfaenger@email.com"
+                    placeholder={language === 'de' ? 'Kundennummer oder E-Mail' : 'Customer ID or Email'}
                     className="w-full"
                     required
                     data-testid="recipient-email-input"
                   />
+                  <p className="text-xs text-gray-400 mt-1">
+                    {language === 'de' ? 'Geben Sie die Kundennummer oder E-Mail des Empfängers ein' : 'Enter recipient customer ID or email'}
+                  </p>
                 </div>
                 
                 <div>
