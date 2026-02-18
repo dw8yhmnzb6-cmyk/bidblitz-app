@@ -17,8 +17,8 @@ const API = process.env.REACT_APP_BACKEND_URL;
 
 const translations = {
   de: {
-    creditSystem: 'Kredit-System',
-    applyForCredit: 'Kredit beantragen',
+    creditSystem: 'BidBlitz Guthaben-Kredit',
+    applyForCredit: 'Guthaben beantragen',
     creditAmount: 'Kreditbetrag',
     repaymentMonths: 'Rückzahlung (Monate)',
     interestRate: 'Zinssatz',
@@ -48,7 +48,8 @@ const translations = {
     eligible: 'Berechtigt',
     notEligible: 'Nicht berechtigt',
     verificationRequired: 'Verifizierung erforderlich',
-    openCreditExists: 'Offener Kredit vorhanden',
+    activeCreditExists: 'Aktiver Kredit vorhanden - bitte zuerst zurückzahlen',
+    pendingApplication: 'Antrag in Bearbeitung',
     // Credit Score translations
     creditScore: 'Kredit-Score',
     yourScore: 'Ihr Score',
@@ -68,6 +69,7 @@ const translations = {
     applicationSubmitted: 'Antrag eingereicht!',
     awaitingReview: 'Wartet auf Prüfung',
     noInterestUnder50: 'Keine Zinsen unter €50',
+    creditDisclaimer: 'Kein echtes Geld - nur BidBlitz Pay Guthaben',
     flexibleRepayment: 'Flexible Rückzahlung 3-6 Monate',
     creditTerms: 'Kreditbedingungen',
     iAccept: 'Ich akzeptiere die',
