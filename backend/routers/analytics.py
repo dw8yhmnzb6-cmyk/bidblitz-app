@@ -467,6 +467,14 @@ async def get_device_analytics(
     # Device type breakdown
     device_pipeline = [
         {"$match": {"timestamp": {"$gte": start_date}}},
+        {"$group": {"_id": "$device_type", "count": {"$sum": 1}}}
+    ]
+    device_data = await db.analytics_events.aggregate(device_pipeline).to_list(10)
+    
+    return {
+        "device_breakdown": [{"device": d["_id"], "count": d["count"]} for d in device_data],
+        "period_days": days
+    }
 
 
 # ==================== EXTENDED ANALYTICS ====================
