@@ -379,18 +379,13 @@ async def disconnect_wise_account(token: str):
 
 # ==================== ADMIN ENDPOINTS ====================
 
-async def verify_admin(token: str):
-    """Verify admin token"""
-    user = await db.users.find_one({"token": token}, {"_id": 0})
-    if not user or user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Admin-Zugang erforderlich")
-    return user
+from dependencies import get_admin_user
+from fastapi import Depends
 
 
 @router.get("/pending")
-async def get_pending_payouts(token: str):
+async def get_pending_payouts(admin: dict = Depends(get_admin_user)):
     """Admin: Get all partners with pending payouts"""
-    await verify_admin(token)
     
     # Get all partners with pending payouts
     partners_with_payouts = await db.partner_accounts.find(
@@ -432,9 +427,8 @@ async def get_pending_payouts(token: str):
 
 
 @router.get("/history")
-async def get_admin_payout_history(token: str, limit: int = 50):
+async def get_admin_payout_history(limit: int = 50, admin: dict = Depends(get_admin_user)):
     """Admin: Get all payout history"""
-    await verify_admin(token)
     
     payouts = await db.partner_payouts.find(
         {},
@@ -458,10 +452,17 @@ async def get_admin_payout_history(token: str, limit: int = 50):
     return {"payouts": payouts, "count": len(payouts)}
 
 
+class AdminPayoutRequest(BaseModel):
+    partner_id: str
+    amount: float
+
+
 @router.post("/admin/initiate")
-async def admin_initiate_payout(token: str, partner_id: str, amount: float):
+async def admin_initiate_payout(data: AdminPayoutRequest, admin: dict = Depends(get_admin_user)):
     """Admin: Initiate a payout for a specific partner"""
-    admin = await verify_admin(token)
+    
+    partner_id = data.partner_id
+    amount = data.amount
     
     # Get partner
     partner = await db.partner_accounts.find_one({"id": partner_id}, {"_id": 0})
@@ -573,11 +574,15 @@ async def admin_initiate_payout(token: str, partner_id: str, amount: float):
     }
 
 
+class BatchPayoutRequest(BaseModel):
+    partner_ids: list
+
+
 @router.post("/admin/batch")
-async def admin_batch_payout(token: str, partner_ids: list):
+async def admin_batch_payout(data: BatchPayoutRequest, admin: dict = Depends(get_admin_user)):
     """Admin: Process batch payouts for multiple partners"""
-    admin = await verify_admin(token)
     
+    partner_ids = data.partner_ids
     results = []
     total_amount = 0
     
