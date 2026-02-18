@@ -349,6 +349,7 @@ const BidBlitzPay = () => {
   const [topUpAmount, setTopUpAmount] = useState('');
   const [transferring, setTransferring] = useState(false);
   const [user, setUser] = useState(null);
+  const [hideBalance, setHideBalance] = useState(false); // Hide total balance on QR screen
   
   // Direct Top Up states
   const [directTopUpAmount, setDirectTopUpAmount] = useState('');
