@@ -76,9 +76,14 @@ class VoucherRedeemRequest(BaseModel):
 
 class StaffAccountCreate(BaseModel):
     name: str
-    email: str
     password: str
     role: str = "counter"  # "counter" (Theke) or "admin"
+    # Note: staff_number is auto-generated, email is optional
+    email: Optional[str] = None
+
+class StaffLogin(BaseModel):
+    staff_number: str  # Kundennummer z.B. "PR-001-001"
+    password: str
     
 # ==================== HELPER FUNCTIONS ====================
 
