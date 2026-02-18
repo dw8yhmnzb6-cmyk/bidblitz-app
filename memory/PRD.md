@@ -5,6 +5,41 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 
 ## Current Status (February 18, 2026)
 
+### ✅ Session Update - February 18, 2026 (Session 42) - BUGFIXES & ÜBERSETZUNGEN ✅
+
+#### Fixes & Verbesserungen:
+
+1. **"Jetzt bieten" Button Fix** ✅
+   - Button navigiert jetzt korrekt zu `/auctions/mv-{voucher_id}` 
+   - Vorher funktionierte der Click nicht korrekt
+
+2. **Premium-Preis System** ✅
+   - Admin kann Premium-Preis (€5-€20) pro Monat setzen
+   - Dauer in Monaten wählbar (1-12)
+   - Gesamtpreis-Berechnung wird angezeigt
+   - API speichert: `premium_price`, `premium_months`, `premium_total_paid`
+
+3. **Übersetzungen für alle Sprachen** ✅
+   - MerchantVouchersPage: 10 Sprachen (de, en, el, tr, ar, fr, it, pt, ru, zh)
+   - BidBlitzPay: Griechisch (el), Russisch (ru), Chinesisch (zh), Italienisch (it), Portugiesisch (pt)
+   - Vollständige Übersetzungen für alle Features
+
+4. **Backend Code Cleanup** ✅
+   - Doppelter Code in `merchant_vouchers.py` entfernt (Zeilen 271-285)
+   - Doppelte Übersetzungsobjekte in `MerchantVouchersPage.js` entfernt
+
+5. **Admin Mobile-Ansicht** ✅
+   - Kategorisiertes Menü mit Farbcodes
+   - Grid-Layout für Mobile-Tabs (3x4 Grid)
+   - Schneller Zugriff auf alle Admin-Funktionen
+
+**Test-Ergebnisse (iteration_75.json):**
+- Backend: 100% (16/16 Tests)
+- Frontend: 100%
+- Alle 12 Features getestet und bestanden
+
+---
+
 ### ✅ Session Update - February 18, 2026 (Session 41) - PREMIUM HÄNDLER SYSTEM ✅
 
 #### Feature: Premium Partner System & Erweiterte Händler-Informationen ✅
