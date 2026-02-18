@@ -330,13 +330,21 @@ async def check_credit_eligibility(user: dict = Depends(get_current_user)):
     
     is_verified = user_data.get("is_verified", False) or user_data.get("id_verified", False)
     
-    # Check for existing open credit
-    existing_credit = await db.credits.find_one({
+    # Check for existing ACTIVE credit only (not pending/approved)
+    active_credit = await db.credits.find_one({
         "user_id": user_id,
-        "status": {"$in": ["pending", "approved", "active"]}
+        "status": "active"
     })
     
-    has_open_credit = existing_credit is not None
+    has_active_credit = active_credit is not None
+    
+    # Check for pending application
+    pending_credit = await db.credits.find_one({
+        "user_id": user_id,
+        "status": "pending"
+    })
+    
+    has_pending = pending_credit is not None
     
     # Get credit history
     credit_history = await db.credits.find({
