@@ -478,7 +478,7 @@ export default function AdminWalletTopup({ token, t }) {
                       )}
                       <hr className="border-green-200 my-2" />
                       <div className="flex justify-between font-bold text-green-700">
-                        <span>Gesamtgutschrift:</span>
+                        <span>Kundengutschrift:</span>
                         <span>
                           €{(
                             parseFloat(topUpAmount) + 
@@ -487,6 +487,23 @@ export default function AdminWalletTopup({ token, t }) {
                           ).toFixed(2)}
                         </span>
                       </div>
+                      
+                      {/* Merchant Commission */}
+                      {selectedMerchant && (
+                        <>
+                          <hr className="border-amber-200 my-2" />
+                          <div className="flex justify-between text-amber-600">
+                            <span className="flex items-center gap-1">
+                              <Store className="w-3 h-3" />
+                              Händlerprovision (2%):
+                            </span>
+                            <span className="font-medium">+€{(parseFloat(topUpAmount) * 0.02).toFixed(2)}</span>
+                          </div>
+                          <div className="text-xs text-amber-500 mt-1">
+                            → an {selectedMerchant.company_name || selectedMerchant.business_name}
+                          </div>
+                        </>
+                      )}
                     </div>
                   </div>
                 )}
