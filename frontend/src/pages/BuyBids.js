@@ -33,7 +33,11 @@ const buyBidsTexts = {
     pay: "Bezahlen",
     processing: "Wird verarbeitet...",
     cancel: "Abbrechen",
-    securePayment: "Sichere Zahlung über Stripe"
+    securePayment: "Sichere Zahlung über Stripe",
+    yourBalance: "Ihr Guthaben",
+    bidBlitzPay: "BidBlitz Pay",
+    topUp: "Aufladen",
+    useBalance: "Mit Guthaben bezahlen"
   },
   en: {
     title: "Buy Bids",
@@ -55,7 +59,11 @@ const buyBidsTexts = {
     pay: "Pay",
     processing: "Processing...",
     cancel: "Cancel",
-    securePayment: "Secure payment via Stripe"
+    securePayment: "Secure payment via Stripe",
+    yourBalance: "Your Balance",
+    bidBlitzPay: "BidBlitz Pay",
+    topUp: "Top Up",
+    useBalance: "Pay with Balance"
   },
   sq: {
     title: "Bli Oferta",
