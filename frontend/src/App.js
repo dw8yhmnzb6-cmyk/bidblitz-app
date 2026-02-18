@@ -258,6 +258,7 @@ function AppContent() {
           
           {/* Partner Landing Page - Public */}
           <Route path="/p/:partnerId" element={<PartnerLanding />} />
+          <Route path="/partners" element={<PartnerDirectory />} />
           
           {/* Protected User Pages */}
           <Route path="/profile" element={
