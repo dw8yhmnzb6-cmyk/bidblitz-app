@@ -170,6 +170,7 @@ const translations = {
     pay: 'Öde',
     history: 'Geçmiş',
     vouchers: 'Kuponlar',
+    security: 'Güvenlik',
     availableBalance: 'Mevcut Bakiye',
     partnerVouchers: 'Partner Kuponları',
     universal: 'Evrensel',
