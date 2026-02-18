@@ -1256,9 +1256,9 @@ const BidBlitzPay = () => {
                     </Button>
                   </div>
                 ) : (
-                  <div className="text-center space-y-4">
-                    <div className="bg-gray-100 rounded-xl p-8">
-                      <Camera className="w-16 h-16 text-gray-400 mx-auto mb-3" />
+                  <div className="space-y-4">
+                    <div className="bg-gray-100 rounded-xl p-6 text-center">
+                      <Camera className="w-12 h-12 text-gray-400 mx-auto mb-2" />
                       <p className="text-sm text-gray-500">{t('scanRequestQR')}</p>
                     </div>
                     <Button
@@ -1268,6 +1268,47 @@ const BidBlitzPay = () => {
                       <Camera className="w-4 h-4 mr-2" />
                       {t('startScanner')}
                     </Button>
+                    
+                    {/* Manual ID Entry */}
+                    <div className="relative">
+                      <div className="absolute inset-0 flex items-center">
+                        <div className="w-full border-t border-gray-200" />
+                      </div>
+                      <div className="relative flex justify-center text-sm">
+                        <span className="px-2 bg-white text-gray-500">
+                          {language === 'de' ? 'oder' : language === 'ar' ? 'أو' : 'or'}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    <form onSubmit={handleManualRequestLoad} className="space-y-3">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          {language === 'de' ? 'Anforderungs-ID manuell eingeben' : language === 'ar' ? 'أدخل معرف الطلب يدويًا' : 'Enter Request ID manually'}
+                        </label>
+                        <Input
+                          type="text"
+                          value={manualRequestId}
+                          onChange={(e) => setManualRequestId(e.target.value.toUpperCase())}
+                          placeholder="z.B. 149F919F"
+                          className="w-full text-center font-mono tracking-wider"
+                          maxLength={12}
+                        />
+                      </div>
+                      <Button
+                        type="submit"
+                        variant="outline"
+                        className="w-full"
+                        disabled={!manualRequestId.trim() || loadingManualRequest}
+                      >
+                        {loadingManualRequest ? (
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                          <CheckCircle className="w-4 h-4 mr-2" />
+                        )}
+                        {language === 'de' ? 'ID laden' : language === 'ar' ? 'تحميل المعرف' : 'Load ID'}
+                      </Button>
+                    </form>
                   </div>
                 )}
               </div>
