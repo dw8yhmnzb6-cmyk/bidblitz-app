@@ -14,9 +14,9 @@ const API = process.env.REACT_APP_BACKEND_URL;
 const PartnerStaff = ({ token, language, t }) => {
   const [staffList, setStaffList] = useState([]);
   const [loadingStaff, setLoadingStaff] = useState(false);
-  const [newStaff, setNewStaff] = useState({ name: '', email: '', password: '', role: 'counter' });
+  const [newStaff, setNewStaff] = useState({ name: '', password: '', role: 'counter', save_login: true });
   const [editingStaff, setEditingStaff] = useState(null);
-  const [editStaffData, setEditStaffData] = useState({ name: '', email: '', role: '' });
+  const [editStaffData, setEditStaffData] = useState({ name: '', role: '' });
 
   // Fetch staff list
   const fetchStaffList = async () => {
@@ -34,15 +34,20 @@ const PartnerStaff = ({ token, language, t }) => {
   // Create new staff member
   const createStaff = async (e) => {
     e.preventDefault();
-    if (!newStaff.name || !newStaff.email || !newStaff.password) {
-      toast.error(t('error'));
+    if (!newStaff.name || !newStaff.password) {
+      toast.error(language === 'en' ? 'Please enter name and password' : 'Bitte Name und Passwort eingeben');
       return;
     }
 
     try {
-      await axios.post(`${API}/api/partner-portal/staff/create?token=${token}`, newStaff);
-      toast.success(t('success'));
-      setNewStaff({ name: '', email: '', password: '', role: 'counter' });
+      await axios.post(`${API}/api/partner-portal/staff/create?token=${token}`, {
+        name: newStaff.name,
+        password: newStaff.password,
+        role: newStaff.role,
+        save_login: newStaff.save_login
+      });
+      toast.success(language === 'en' ? 'Staff account created' : 'Mitarbeiter-Konto erstellt');
+      setNewStaff({ name: '', password: '', role: 'counter', save_login: true });
       fetchStaffList();
     } catch (err) {
       toast.error(err.response?.data?.detail || t('error'));
