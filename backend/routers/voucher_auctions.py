@@ -153,3 +153,69 @@ async def get_available_voucher_auctions():
         "count": len(auctions),
         "info": "Bieten Sie mit Ihren gekauften Geboten. Bei Gewinn erhalten Sie den Gutschein GRATIS!"
     }
+
+@router.get("/active")
+async def get_active_voucher_auctions():
+    """Get all active voucher auctions for the homepage section"""
+    # Get voucher auctions from multiple sources
+    auctions = []
+    
+    # 1. Free prize auctions (is_free_auction=True)
+    free_auctions = await db.auctions.find(
+        {"is_free_auction": True, "status": "active"},
+        {"_id": 0}
+    ).to_list(20)
+    auctions.extend(free_auctions)
+    
+    # 2. Restaurant voucher auctions
+    restaurant_auctions = await db.auctions.find(
+        {"auction_type": "restaurant_voucher", "status": "active"},
+        {"_id": 0}
+    ).to_list(20)
+    auctions.extend(restaurant_auctions)
+    
+    # 3. Auctions with voucher category
+    voucher_category_auctions = await db.auctions.find(
+        {"category": {"$in": ["voucher", "restaurant_voucher", "partner_voucher"]}, "status": "active"},
+        {"_id": 0}
+    ).to_list(20)
+    auctions.extend(voucher_category_auctions)
+    
+    # 4. Auctions marked as voucher
+    is_voucher_auctions = await db.auctions.find(
+        {"is_voucher": True, "status": "active"},
+        {"_id": 0}
+    ).to_list(20)
+    auctions.extend(is_voucher_auctions)
+    
+    # Remove duplicates by ID
+    seen_ids = set()
+    unique_auctions = []
+    for auction in auctions:
+        if auction.get("id") not in seen_ids:
+            seen_ids.add(auction.get("id"))
+            unique_auctions.append(auction)
+    
+    # Add product info and format
+    for auction in unique_auctions:
+        product = await db.products.find_one({"id": auction.get("product_id")}, {"_id": 0})
+        if product:
+            auction["product"] = product
+            auction["product_name"] = product.get("name", auction.get("product_name", "Gutschein"))
+            auction["product_image"] = product.get("image_url")
+            auction["voucher_value"] = product.get("retail_price", 50)
+        
+        # Get restaurant info if available
+        if auction.get("restaurant_info"):
+            auction["merchant"] = auction["restaurant_info"].get("name", "Partner")
+            auction["voucher_value"] = auction["restaurant_info"].get("voucher_value", 25)
+            auction["category"] = auction["restaurant_info"].get("category", "restaurant")
+    
+    # Sort by end_time (ending soon first)
+    unique_auctions.sort(key=lambda x: x.get("end_time", "9999"))
+    
+    return {
+        "auctions": unique_auctions[:20],
+        "count": len(unique_auctions),
+        "info": "Händler-Gutscheine - Ersteigere Gutscheine für Restaurants, Bars & mehr!"
+    }
