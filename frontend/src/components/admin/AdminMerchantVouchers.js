@@ -372,10 +372,10 @@ const AdminMerchantVouchers = () => {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 border-b border-gray-200 pb-2">
+      <div className="flex gap-2 border-b border-gray-200 pb-2 overflow-x-auto">
         <button
           onClick={() => setActiveTab('vouchers')}
-          className={`px-4 py-2 rounded-lg font-medium transition-all flex items-center gap-2 ${
+          className={`px-4 py-2 rounded-lg font-medium transition-all flex items-center gap-2 whitespace-nowrap ${
             activeTab === 'vouchers'
               ? 'bg-amber-500 text-white'
               : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -386,7 +386,7 @@ const AdminMerchantVouchers = () => {
         </button>
         <button
           onClick={() => setActiveTab('premium')}
-          className={`px-4 py-2 rounded-lg font-medium transition-all flex items-center gap-2 ${
+          className={`px-4 py-2 rounded-lg font-medium transition-all flex items-center gap-2 whitespace-nowrap ${
             activeTab === 'premium'
               ? 'bg-yellow-500 text-white'
               : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -394,6 +394,28 @@ const AdminMerchantVouchers = () => {
         >
           <Crown className="w-4 h-4" />
           Premium Partner ({premiumPartners.length})
+        </button>
+        <button
+          onClick={() => setActiveTab('bots')}
+          className={`px-4 py-2 rounded-lg font-medium transition-all flex items-center gap-2 whitespace-nowrap ${
+            activeTab === 'bots'
+              ? 'bg-purple-500 text-white'
+              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+          }`}
+        >
+          <Bot className="w-4 h-4" />
+          Bots ({botStatus.filter(b => b.bot_active).length})
+        </button>
+        <button
+          onClick={() => setActiveTab('cashback')}
+          className={`px-4 py-2 rounded-lg font-medium transition-all flex items-center gap-2 whitespace-nowrap ${
+            activeTab === 'cashback'
+              ? 'bg-green-500 text-white'
+              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+          }`}
+        >
+          <Percent className="w-4 h-4" />
+          Cashback Aktionen ({promotions.length})
         </button>
       </div>
 
