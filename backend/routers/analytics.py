@@ -732,16 +732,6 @@ async def export_analytics(
                 "bids": d["bids"]
             } for d in daily_data]
         }
-    ]
-    os_breakdown = await db.device_analytics.aggregate(os_pipeline).to_list(length=10)
-    
-    # Browser breakdown
-    browser_pipeline = [
-        {"$match": {"timestamp": {"$gte": start_date}, "browser": {"$ne": None}}},
-        {"$group": {"_id": "$browser", "count": {"$sum": 1}}},
-        {"$sort": {"count": -1}}
-    ]
-    browser_breakdown = await db.device_analytics.aggregate(browser_pipeline).to_list(length=10)
     
     # Screen size categories
     screen_pipeline = [
