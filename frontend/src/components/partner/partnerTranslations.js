@@ -178,6 +178,7 @@ export const translations = {
     qrCodesCreated: 'QR-Codes erstellt',
     printTip: 'Tipp: Druckvorlagen',
     printTipDescription: 'Nutzen Sie QR-Codes auf Tischaufstellern, Flyern oder Schaufenstern!',
+    printTemplates: 'Druckvorlagen',
     flashSales: 'Flash Sales',
     createSale: 'Neue Aktion',
     newFlashSale: 'Neue Flash Sale Aktion',
