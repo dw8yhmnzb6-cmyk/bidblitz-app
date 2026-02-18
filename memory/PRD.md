@@ -5,6 +5,27 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 
 ## Current Status (February 18, 2026)
 
+### ✅ Session Update - February 18, 2026 (Session 36) - BUGFIXES & PARTNER MARKETING ✅
+
+#### Behobene Fehler:
+
+**1. QR-Code Generierung "Fehler beim Generieren" ✅**
+- Problem: QR-Codes wurden nicht generiert im Partner-Portal (Marketing → QR-Codes)
+- Ursache: `useEffect` wurde aufgerufen bevor Token gesetzt war
+- Lösung: Token-Check vor API-Aufrufen hinzugefügt
+- Datei: `/app/frontend/src/components/partner/PartnerMarketing.js`
+
+**2. Kundenbewertungen zeigen 0.0 ⚠️**
+- Status: KEIN BUG - Es gibt einfach noch keine Bewertungen für den Partner
+- Die Anzeige ist korrekt
+
+**3. Direkt aufladen ohne echte Bezahlung ⚠️**
+- Status: ERWARTET - Stripe ist noch nicht integriert
+- Das Feature ist ein Platzhalter, zeigt aber "erfolgreich" an
+- Nächster Schritt: Stripe Integration für echte Zahlungen
+
+---
+
 ### ✅ Session Update - February 18, 2026 (Session 35) - ADMIN WALLET TOP-UP MIT HÄNDLER-AUSWAHL ✅
 
 #### Feature: Admin Kunden-Guthaben Aufladen + Händler-Zuordnung ✅
