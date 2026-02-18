@@ -500,6 +500,51 @@ const BidBlitzPay = () => {
     }
   };
 
+  // Transfer from BidBlitz Pay to Main Account
+  const handleTransferToMain = async () => {
+    const amount = parseFloat(topUpAmount);
+    if (!amount || amount <= 0) {
+      toast.error(t('enterAmount'));
+      return;
+    }
+    
+    const currentBidBlitzBalance = wallet?.wallet?.total_value || 0;
+    if (amount > currentBidBlitzBalance) {
+      toast.error(`Verfügbar: €${currentBidBlitzBalance.toFixed(2)}`);
+      return;
+    }
+    
+    setTransferring(true);
+    try {
+      const response = await fetch(`${API}/api/bidblitz-pay/transfer-to-main`, {
+        method: 'POST',
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ amount })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        toast.success(`€${amount.toFixed(2)} auf Hauptkonto übertragen!`);
+        setMainBalance(data.new_main_balance);
+        setTopUpAmount('');
+        setView('wallet');
+        fetchWallet();
+        fetchTransactions();
+      } else {
+        const error = await response.json();
+        toast.error(error.detail || 'Transfer fehlgeschlagen');
+      }
+    } catch (error) {
+      console.error('Error transferring to main:', error);
+      toast.error('Transfer fehlgeschlagen');
+    } finally {
+      setTransferring(false);
+    }
+  };
+
   // Direct Top Up function (with card)
   const handleDirectTopUp = async () => {
     const amount = parseFloat(directTopUpAmount);
