@@ -197,6 +197,61 @@ async def get_main_balance(user: dict = Depends(get_current_user)):
         "email": user_data.get("email", "")
     }
 
+
+@router.post("/transfer-to-main")
+async def transfer_to_main(request: TopUpRequest, user: dict = Depends(get_current_user)):
+    """Transfer money from BidBlitz Pay wallet to main account (credits)"""
+    user_id = user["id"]
+    amount = request.amount
+    
+    if amount <= 0:
+        raise HTTPException(status_code=400, detail="Betrag muss größer als 0 sein")
+    
+    # Get user's BidBlitz Pay balance
+    user_data = await db.users.find_one({"id": user_id}, {"_id": 0, "credits": 1, "bidblitz_balance": 1})
+    if not user_data:
+        raise HTTPException(status_code=404, detail="Benutzer nicht gefunden")
+    
+    bidblitz_balance = user_data.get("bidblitz_balance", 0)
+    
+    if bidblitz_balance < amount:
+        raise HTTPException(status_code=400, detail=f"Nicht genug BidBlitz Pay Guthaben. Verfügbar: €{bidblitz_balance:.2f}")
+    
+    # Transfer: Subtract from BidBlitz balance, add to main credits
+    await db.users.update_one(
+        {"id": user_id},
+        {
+            "$inc": {
+                "bidblitz_balance": -amount,
+                "credits": amount
+            }
+        }
+    )
+    
+    # Record transaction
+    transaction_id = str(uuid.uuid4())
+    await db.bidblitz_pay_transactions.insert_one({
+        "id": transaction_id,
+        "user_id": user_id,
+        "type": "transfer_to_main",
+        "amount": -amount,  # Negative because it's going out of BidBlitz Pay
+        "description": "Guthaben vom BidBlitz Pay auf Hauptkonto übertragen",
+        "created_at": datetime.now(timezone.utc).isoformat()
+    })
+    
+    # Get updated balances
+    updated_user = await db.users.find_one({"id": user_id}, {"_id": 0, "credits": 1, "bidblitz_balance": 1})
+    
+    logger.info(f"Transfer to main: €{amount} for user {user_id}")
+    
+    return {
+        "success": True,
+        "message": f"€{amount:.2f} erfolgreich auf Hauptkonto übertragen",
+        "new_main_balance": updated_user.get("credits", 0),
+        "new_bidblitz_balance": updated_user.get("bidblitz_balance", 0)
+    }
+
+
 # ==================== DIRECT TOP UP ====================
 
 class DirectTopUpRequest(BaseModel):
