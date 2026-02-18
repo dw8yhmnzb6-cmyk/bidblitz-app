@@ -20,8 +20,8 @@ from emergentintegrations.payments.stripe.checkout import (
     CheckoutSessionRequest
 )
 
-# Database
-from database import get_database
+# Database from config
+from config import db
 
 logger = logging.getLogger(__name__)
 
