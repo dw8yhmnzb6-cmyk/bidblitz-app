@@ -1873,6 +1873,11 @@ export default function Admin() {
             <AdminWisePayouts token={token} />
           )}
 
+          {/* Credit Management Tab */}
+          {activeTab === 'credit-management' && (
+            <AdminCreditManagement />
+          )}
+
           {/* Merchant Vouchers Tab */}
           {activeTab === 'merchant-vouchers' && (
             <AdminMerchantVouchers />
