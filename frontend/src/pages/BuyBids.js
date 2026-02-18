@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { usePageTranslations } from '../i18n/pageTranslations';
 import { Button } from '../components/ui/button';
-import { Zap, Check, Sparkles, CreditCard, Bitcoin, X } from 'lucide-react';
+import { Zap, Check, Sparkles, CreditCard, Bitcoin, X, Wallet, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
 import FlashSalesBanner from '../components/FlashSalesBanner';
 
