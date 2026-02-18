@@ -1186,6 +1186,7 @@ export default function Admin() {
     { id: 'promo-codes', label: '🎫 Gutschein-Codes', icon: <Gift className="w-5 h-5" />, highlight: true },
     { id: 'wallet-topup', label: '💳 Wallet Aufladen', icon: <DollarSign className="w-5 h-5" />, highlight: true },
     { id: 'wise-payouts', label: '💰 Wise Auszahlungen', icon: <CreditCard className="w-5 h-5" />, highlight: true },
+    { id: 'passwords', label: '🔑 Passwörter', icon: <Key className="w-5 h-5" />, highlight: true },
     { id: 'game-config', label: at('gameSettings'), icon: <Settings className="w-5 h-5" /> }
   ];
 
