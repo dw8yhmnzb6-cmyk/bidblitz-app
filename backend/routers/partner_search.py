@@ -166,7 +166,7 @@ async def get_partners_by_city(
     
     partners = await db.partner_accounts.find(
         query,
-        {"_id": 0, "id": 1, "name": 1, "business_type": 1, "address": 1, "city": 1,
+        {"_id": 0, "id": 1, "name": 1, "business_name": 1, "business_type": 1, "address": 1, "city": 1,
          "average_rating": 1, "total_ratings": 1, "logo_url": 1, "phone": 1,
          "latitude": 1, "longitude": 1}
     ).sort(sort_field, sort_order).limit(limit).to_list(limit)
