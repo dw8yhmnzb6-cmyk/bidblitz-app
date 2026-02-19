@@ -1750,7 +1750,7 @@ function BidBlitzPayPartner({ token, partnerId, partnerName, commissionRate }) {
 
           {/* Available Balance */}
           <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl p-4 mb-6">
-            <p className="text-sm text-amber-700 mb-2">Verfügbares Guthaben:</p>
+            <p className="text-sm text-amber-700 mb-2">{t('customerBalance')}:</p>
             <div className="grid grid-cols-3 gap-4 text-center">
               <div>
                 <p className="text-xs text-gray-500">Partner</p>
@@ -1765,7 +1765,7 @@ function BidBlitzPayPartner({ token, partnerId, partnerName, commissionRate }) {
                 </p>
               </div>
               <div className="bg-white rounded-lg p-2">
-                <p className="text-xs text-gray-500">Gesamt</p>
+                <p className="text-xs text-gray-500">{t('total') || 'Total'}</p>
                 <p className="font-bold text-xl text-green-600">
                   €{customerData.available_balance.total.toFixed(2)}
                 </p>
@@ -1775,11 +1775,11 @@ function BidBlitzPayPartner({ token, partnerId, partnerName, commissionRate }) {
 
           {/* Payment Amount - already entered */}
           <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-6 text-center">
-            <p className="text-sm text-green-700 mb-1">Zahlungsbetrag:</p>
+            <p className="text-sm text-green-700 mb-1">{t('amount')}:</p>
             <p className="text-4xl font-bold text-green-600">€{parseFloat(paymentAmount).toFixed(2)}</p>
             {parseFloat(paymentAmount) > customerData.available_balance.total && (
               <p className="text-red-500 text-sm mt-2">
-                ⚠️ Betrag übersteigt verfügbares Guthaben
+                ⚠️ {t('insufficientBalance') || 'Insufficient balance'}
               </p>
             )}
           </div>
@@ -1791,7 +1791,7 @@ function BidBlitzPayPartner({ token, partnerId, partnerName, commissionRate }) {
               onClick={resetFlow}
               className="flex-1"
             >
-              Abbrechen
+              {t('cancel')}
             </Button>
             <Button 
               onClick={processPayment}
@@ -1803,7 +1803,7 @@ function BidBlitzPayPartner({ token, partnerId, partnerName, commissionRate }) {
               ) : (
                 <>
                   <Check className="w-5 h-5 mr-2" />
-                  Zahlung bestätigen
+                  {t('chargeCustomer')}
                 </>
               )}
             </Button>
@@ -1811,9 +1811,9 @@ function BidBlitzPayPartner({ token, partnerId, partnerName, commissionRate }) {
 
           {/* Info */}
           <div className="mt-6 pt-4 border-t text-sm text-gray-500">
-            <p>Sie erhalten: <span className="font-bold text-green-600">
+            <p>{t('youReceive')}: <span className="font-bold text-green-600">
               €{((parseFloat(paymentAmount) || 0) * (1 - commissionRate / 100)).toFixed(2)}
-            </span> (nach {commissionRate}% Provision)</p>
+            </span> ({t('commissionLabel')} {commissionRate}%)</p>
           </div>
         </div>
       )}
@@ -1823,13 +1823,12 @@ function BidBlitzPayPartner({ token, partnerId, partnerName, commissionRate }) {
         <div className="flex items-start gap-3">
           <AlertCircle className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
           <div className="text-sm text-blue-800">
-            <p className="font-medium mb-1">So funktioniert BidBlitz Pay:</p>
+            <p className="font-medium mb-1">{t('howItWorks')}</p>
             <ol className="list-decimal list-inside space-y-1 text-blue-700">
-              <li>Kunde zeigt QR-Code aus seiner BidBlitz App</li>
-              <li>Sie scannen den QR-Code</li>
-              <li>Geben Sie den Zahlungsbetrag ein</li>
-              <li>Betrag wird vom Kundenguthaben abgezogen</li>
-              <li>Sie erhalten Gutschrift (abzgl. {commissionRate}% Provision)</li>
+              <li>{t('step1Pay')}</li>
+              <li>{t('step2Pay')}</li>
+              <li>{t('step3Pay')}</li>
+              <li>{t('step4Pay')}</li>
             </ol>
           </div>
         </div>
