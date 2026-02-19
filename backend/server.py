@@ -474,6 +474,9 @@ app.include_router(watchlist_router, prefix="/api")
 from routers.car_advertising import router as car_advertising_router
 app.include_router(car_advertising_router, prefix="/api")
 
+# NEW: Universal Transfer System
+app.include_router(universal_transfer_router, prefix="/api")
+
 # ==================== HEALTH & BASIC ENDPOINTS ====================
 
 @app.get("/")
