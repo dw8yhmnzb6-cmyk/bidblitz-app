@@ -54,7 +54,7 @@ from routers.challenges import router as challenges_router
 from routers.events import router as events_router
 from routers.gallery import router as gallery_router
 from routers.subscriptions import router as subscriptions_router
-from routers.loyalty import router as loyalty_router
+from routers.loyalty import router as vip_loyalty_router
 from routers.flash_sales import router as flash_sales_router
 from routers.wishlist import router as wishlist_router
 from routers.user_stats import router as user_stats_router
