@@ -505,6 +505,129 @@ async def get_transfer_history(user: dict = Depends(get_current_user), limit: in
         "total_received": sum(t["amount"] for t in received)
     }
 
+# ==================== SAVED RECIPIENTS / CONTACTS ====================
+
+class SavedRecipientCreate(BaseModel):
+    recipient_identifier: str  # Email or customer number (BID-XXXXXX)
+    nickname: str  # Custom name like "Mein Sohn", "Meine Tochter"
+
+class SavedRecipientUpdate(BaseModel):
+    nickname: str
+
+
+@router.get("/saved-recipients")
+async def get_saved_recipients(user: dict = Depends(get_current_user)):
+    """Get all saved recipients for the current user"""
+    user_id = user["id"]
+    
+    recipients = await db.saved_recipients.find(
+        {"user_id": user_id},
+        {"_id": 0}
+    ).sort("nickname", 1).to_list(100)
+    
+    return {"recipients": recipients}
+
+
+@router.post("/saved-recipients")
+async def save_recipient(data: SavedRecipientCreate, user: dict = Depends(get_current_user)):
+    """Save a new recipient with a custom nickname"""
+    user_id = user["id"]
+    recipient_input = data.recipient_identifier.strip()
+    
+    # Validate and find the recipient
+    recipient = None
+    
+    # Check by email
+    if "@" in recipient_input:
+        recipient = await db.users.find_one(
+            {"email": recipient_input.lower()},
+            {"_id": 0, "id": 1, "name": 1, "email": 1, "customer_number": 1}
+        )
+    
+    # Check by customer number
+    if not recipient and recipient_input.upper().startswith("BID-"):
+        recipient = await db.users.find_one(
+            {"customer_number": recipient_input.upper()},
+            {"_id": 0, "id": 1, "name": 1, "email": 1, "customer_number": 1}
+        )
+    
+    if not recipient:
+        raise HTTPException(status_code=404, detail="Empfänger nicht gefunden")
+    
+    if recipient["id"] == user_id:
+        raise HTTPException(status_code=400, detail="Sie können sich nicht selbst speichern")
+    
+    # Check if already saved
+    existing = await db.saved_recipients.find_one({
+        "user_id": user_id,
+        "recipient_id": recipient["id"]
+    })
+    
+    if existing:
+        # Update nickname instead
+        await db.saved_recipients.update_one(
+            {"user_id": user_id, "recipient_id": recipient["id"]},
+            {"$set": {"nickname": data.nickname, "updated_at": datetime.now(timezone.utc).isoformat()}}
+        )
+        return {"success": True, "message": "Empfänger aktualisiert", "updated": True}
+    
+    # Create new saved recipient
+    saved_recipient = {
+        "id": str(uuid.uuid4())[:8].upper(),
+        "user_id": user_id,
+        "recipient_id": recipient["id"],
+        "recipient_email": recipient.get("email", ""),
+        "recipient_name": recipient.get("name", ""),
+        "recipient_customer_number": recipient.get("customer_number", ""),
+        "nickname": data.nickname,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.saved_recipients.insert_one(saved_recipient)
+    
+    return {
+        "success": True,
+        "message": f"'{data.nickname}' wurde gespeichert",
+        "recipient": {
+            "id": saved_recipient["id"],
+            "nickname": data.nickname,
+            "email": recipient.get("email", ""),
+            "customer_number": recipient.get("customer_number", ""),
+            "name": recipient.get("name", "")
+        }
+    }
+
+
+@router.put("/saved-recipients/{recipient_id}")
+async def update_saved_recipient(recipient_id: str, data: SavedRecipientUpdate, user: dict = Depends(get_current_user)):
+    """Update a saved recipient's nickname"""
+    user_id = user["id"]
+    
+    result = await db.saved_recipients.update_one(
+        {"id": recipient_id, "user_id": user_id},
+        {"$set": {"nickname": data.nickname, "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Empfänger nicht gefunden")
+    
+    return {"success": True, "message": "Name aktualisiert"}
+
+
+@router.delete("/saved-recipients/{recipient_id}")
+async def delete_saved_recipient(recipient_id: str, user: dict = Depends(get_current_user)):
+    """Delete a saved recipient"""
+    user_id = user["id"]
+    
+    result = await db.saved_recipients.delete_one({"id": recipient_id, "user_id": user_id})
+    
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Empfänger nicht gefunden")
+    
+    return {"success": True, "message": "Empfänger gelöscht"}
+
+
 # ==================== REQUEST MONEY ====================
 
 class PaymentRequestCreate(BaseModel):
