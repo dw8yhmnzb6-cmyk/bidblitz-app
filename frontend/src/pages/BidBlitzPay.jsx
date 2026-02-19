@@ -47,7 +47,7 @@ const languages = [
 ];
 
 const BidBlitzPay = () => {
-  const { user, refreshUser } = useAuth();
+  const { user: authUser, refreshUser } = useAuth();
   const [wallet, setWallet] = useState(null);
   const [qrCode, setQrCode] = useState(null);
   const [transactions, setTransactions] = useState([]);
@@ -60,7 +60,7 @@ const BidBlitzPay = () => {
   const [mainBalance, setMainBalance] = useState(0);
   const [topUpAmount, setTopUpAmount] = useState('');
   const [transferring, setTransferring] = useState(false);
-  const [user, setUser] = useState(null);
+  const [localUser, setLocalUser] = useState(null); // Local user for security settings
   const [hideBalance, setHideBalance] = useState(false); // Hide total balance on QR screen
   const [customerNumber, setCustomerNumber] = useState(null); // User's unique customer number
   
