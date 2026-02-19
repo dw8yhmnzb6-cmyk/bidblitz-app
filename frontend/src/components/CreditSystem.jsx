@@ -117,7 +117,8 @@ const translations = {
     tierDiamond: 'Diamant',
     tier: 'Stufe',
     walletBalanceLabel: 'Wallet-Guthaben',
-    months: 'Mon'
+    months: 'Mon',
+    until: 'bis'
   },
   en: {
     creditSystem: 'Credit System',
