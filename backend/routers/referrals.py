@@ -212,8 +212,12 @@ async def apply_referral_code(code: str, user: dict = Depends(get_current_user))
 
 
 @router.post("/complete/{referred_id}")
-async def complete_referral(referred_id: str):
-    """Complete a referral after purchase (called internally)"""
+async def complete_referral(referred_id: str, deposit_amount: float = 0):
+    """Complete a referral after first deposit of €5+ (called internally)"""
+    # Check minimum deposit
+    if deposit_amount < MIN_DEPOSIT_FOR_REWARD:
+        return {"success": False, "message": f"Mindesteinzahlung €{MIN_DEPOSIT_FOR_REWARD} erforderlich"}
+    
     # Find pending referral
     referral = await db.referrals.find_one({
         "referred_id": referred_id,
@@ -230,21 +234,29 @@ async def complete_referral(referred_id: str):
         {"id": referral["id"]},
         {"$set": {
             "status": "completed",
-            "completed_at": now
+            "completed_at": now,
+            "trigger_deposit": deposit_amount
         }}
     )
     
     # Award rewards
-    # Referrer
+    # Referrer gets €10 EURO (not bids) - credited to balance and wallet
     await db.users.update_one(
         {"id": referral["referrer_id"]},
         {"$inc": {
-            "bids_balance": REFERRER_REWARD,
-            "bid_balance": REFERRER_REWARD
+            "balance": REFERRER_REWARD,
+            "bidblitz_balance": REFERRER_REWARD
         }}
     )
     
-    # Referred user
+    # Also update BidBlitz Pay wallet for referrer
+    await db.bidblitz_wallets.update_one(
+        {"user_id": referral["referrer_id"]},
+        {"$inc": {"universal_balance": REFERRER_REWARD}},
+        upsert=True
+    )
+    
+    # Referred user gets FREE BIDS
     await db.users.update_one(
         {"id": referred_id},
         {"$inc": {
