@@ -37,6 +37,7 @@ import {
   PartnerSocialSharing,
   PartnerRatingsOverview 
 } from '../components/partner/PartnerMarketing';
+import { PartnerTransfer } from '../components/partner/PartnerTransfer';
 
 // Import centralized translations
 import { translations as partnerTranslations, getLangKey } from '../components/partner/partnerTranslations';
