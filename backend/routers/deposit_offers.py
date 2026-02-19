@@ -488,7 +488,6 @@ async def calculate_daily_interest(
     
     for deposit in active_deposits:
         created = datetime.fromisoformat(deposit.get("created_at").replace("Z", "+00:00"))
-        days_elapsed = (now - created).days
         annual_rate = deposit.get("interest_rate", 0) / 100
         daily_rate = annual_rate / 365
         
