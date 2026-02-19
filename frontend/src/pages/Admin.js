@@ -1621,6 +1621,11 @@ export default function Admin() {
             <AdminCarAdvertising language={language} />
           )}
 
+          {/* Partner Credit Tab */}
+          {activeTab === 'partner-credit' && (
+            <AdminPartnerCredit language={language} />
+          )}
+
           {/* Manager Tab */}
           {activeTab === 'managers' && (
             <AdminManagers token={token} language={language} />
