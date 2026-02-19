@@ -52,6 +52,7 @@ import WonAuctionSuccess from "./pages/WonAuctionSuccess";
 import InfluencerDashboard from "./pages/InfluencerDashboard";
 import InfluencerBecome from "./pages/InfluencerBecome";
 import CarAdvertising from "./pages/CarAdvertising";
+import DepositOffers from "./pages/DepositOffers";
 import WholesaleApply from "./pages/WholesaleApply";
 import WholesaleDashboard from "./pages/WholesaleDashboard";
 import GiftBids from "./pages/GiftBids";
