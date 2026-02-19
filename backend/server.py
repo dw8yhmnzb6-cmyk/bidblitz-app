@@ -480,6 +480,9 @@ app.include_router(car_advertising_router, prefix="/api")
 # NEW: Universal Transfer System
 app.include_router(universal_transfer_router, prefix="/api")
 
+# NEW: Deposit Offers & Interest System
+app.include_router(deposit_offers_router, prefix="/api")
+
 # ==================== HEALTH & BASIC ENDPOINTS ====================
 
 @app.get("/")
