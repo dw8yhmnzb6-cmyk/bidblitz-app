@@ -363,6 +363,9 @@ function AppContent() {
           } />
           {/* Digital Payment Checkout (External POS Integration) */}
           <Route path="/checkout/:paymentId" element={<DigitalCheckout />} />
+          {/* API Documentation for Partners */}
+          <Route path="/api-docs" element={<ApiDocs />} />
+          <Route path="/developers" element={<ApiDocs />} />
           {/* New Public Pages */}
           <Route path="/how-it-works" element={<HowItWorks />} />
           <Route path="/faq" element={<FAQ />} />
