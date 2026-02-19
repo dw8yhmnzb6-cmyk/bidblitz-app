@@ -110,7 +110,8 @@ const translations = {
     gotIt: 'E kuptova!',
     clickToTry: 'Klikoni për të provuar',
     completed: 'Turi u përfundua!',
-    reward: 'Morët 10 oferta falas!'
+    reward: 'Morët 10 oferta falas!',
+    dontShowAgain: 'Mos e shfaq më'
   },
   fr: {
     welcome: 'Bienvenue sur BidBlitz!',
