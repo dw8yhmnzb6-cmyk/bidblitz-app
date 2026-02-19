@@ -55,7 +55,11 @@ const PaymentHistory = ({ token, language = 'de' }) => {
         page: 'Seite',
         of: 'von',
         exportSuccess: 'Export erfolgreich',
-        loading: 'Laden...'
+        loading: 'Laden...',
+        completed: 'Abgeschlossen',
+        pending: 'Ausstehend',
+        failed: 'Fehlgeschlagen',
+        reference: 'Referenz'
       },
       en: {
         title: 'Payment History',
