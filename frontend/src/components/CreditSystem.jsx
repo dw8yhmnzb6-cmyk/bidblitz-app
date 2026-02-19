@@ -248,13 +248,29 @@ const translations = {
     pending: 'İnceleniyor', approved: 'Onaylandı', rejected: 'Reddedildi',
     active: 'Aktif', repaid: 'Ödendi', myCredits: 'Kredilerim',
     idFront: 'Kimlik Önü', idBack: 'Kimlik Arkası', selfieWithId: 'Kimlikli Selfie',
-    incomeProof: 'Gelir Belgesi', submitApplication: 'Başvuru Gönder', back: 'Geri'
+    incomeProof: 'Gelir Belgesi', submitApplication: 'Başvuru Gönder', back: 'Geri',
+    tierRed: 'Kırmızı', tierYellow: 'Sarı', tierGreen: 'Yeşil', tierGold: 'Altın', tierDiamond: 'Elmas',
+    tipPayOnTime: 'Zamanında öde', tipPayOnTimeDesc: 'Her zamanında ödeme +20 puan kazandırır',
+    tipFullRepay: 'Krediyi tamamen öde', tipFullRepayDesc: 'Tam ödeme +100 puan kazandırır',
+    tipPayEarly: 'Erken öde', tipPayEarlyDesc: 'Vadeden önce ödeme +30 puan kazandırır',
+    tipUseRegularly: 'Düzenli kredi kullan', tipUseRegularlyDesc: 'Her başarılı kredi puanınızı artırır',
+    accountCreated: 'Hesap oluşturuldu - Başlangıç puanı', onTimePayment: 'Zamanında ödeme',
+    earlyPayment: 'Erken ödeme - vadeden önce', latePayment: 'Geç ödeme',
+    fullRepayment: 'Tam ödeme', creditApproved: 'Kredi onaylandı', firstCredit: 'İlk kredi tamamlandı'
   },
   ar: {
     creditSystem: 'نظام الائتمان', applyForCredit: 'تقديم طلب قرض',
     creditAmount: 'مبلغ القرض', repaymentMonths: 'فترة السداد (أشهر)',
     pending: 'قيد المراجعة', approved: 'موافق عليه', rejected: 'مرفوض',
-    active: 'نشط', repaid: 'مسدد', myCredits: 'قروضي', back: 'رجوع'
+    active: 'نشط', repaid: 'مسدد', myCredits: 'قروضي', back: 'رجوع',
+    tierRed: 'أحمر', tierYellow: 'أصفر', tierGreen: 'أخضر', tierGold: 'ذهبي', tierDiamond: 'ماسي',
+    tipPayOnTime: 'ادفع في الموعد', tipPayOnTimeDesc: 'كل دفعة في الموعد تجلب +20 نقطة',
+    tipFullRepay: 'سدد القرض بالكامل', tipFullRepayDesc: 'السداد الكامل يجلب +100 نقطة',
+    tipPayEarly: 'ادفع مبكراً', tipPayEarlyDesc: 'الدفع قبل الموعد يجلب +30 نقطة',
+    tipUseRegularly: 'استخدم القروض بانتظام', tipUseRegularlyDesc: 'كل قرض ناجح يحسن تقييمك',
+    accountCreated: 'تم إنشاء الحساب - النقاط الأولية', onTimePayment: 'دفعة في الموعد',
+    earlyPayment: 'دفعة مبكرة - قبل الموعد', latePayment: 'دفعة متأخرة',
+    fullRepayment: 'سداد كامل', creditApproved: 'تمت الموافقة على القرض', firstCredit: 'أول قرض مكتمل'
   },
   el: {
     creditSystem: 'Σύστημα Πίστωσης', applyForCredit: 'Αίτηση Δανείου',
