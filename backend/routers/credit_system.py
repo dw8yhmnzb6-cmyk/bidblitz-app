@@ -142,10 +142,11 @@ async def get_user_credit_score(user_id: str) -> dict:
             "score": INITIAL_SCORE,
             "history": [{
                 "event": "account_created",
+                "event_key": "accountCreated",
                 "change": 0,
                 "score_after": INITIAL_SCORE,
                 "date": datetime.now(timezone.utc).isoformat(),
-                "description": "Konto erstellt - Startscore"
+                "description_de": "Konto erstellt - Startscore"
             }],
             "total_credits_completed": 0,
             "total_on_time_payments": 0,
