@@ -272,7 +272,9 @@ const DepositOffers = ({ partnerId = null, onBalanceChange = null }) => {
       const data = await response.json();
 
       if (response.ok) {
-        toast.success(`${t.success} +€${data.bonus.toFixed(2)} Bonus!`);
+        // Show success message with bonus bids info
+        const bonusBids = data.bonus_bids || Math.floor(data.bonus);
+        toast.success(`€${data.amount.toFixed(2)} ${t.deposited || 'eingezahlt'}! +${bonusBids} ${t.freeBidsBonus || 'Gratis-Gebote als Bonus'}`);
         setSelectedOffer(null);
         setAmount('');
         // Refresh deposits
@@ -283,7 +285,7 @@ const DepositOffers = ({ partnerId = null, onBalanceChange = null }) => {
         setMyDeposits(depositsData.deposits || []);
         setDepositSummary(depositsData.summary || {});
         
-        // Refresh user balance in navbar
+        // Refresh user balance in navbar (this also updates bids_balance)
         if (refreshUser) {
           await refreshUser();
         }
