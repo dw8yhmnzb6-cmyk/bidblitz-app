@@ -62,6 +62,8 @@ const translations = {
     top: 'TOP',
     vip: 'VIP',
     success: 'Einzahlung erfolgreich!',
+    deposited: 'eingezahlt',
+    freeBidsBonus: 'Gratis-Gebote als Bonus',
     insufficientFunds: 'Nicht genug Guthaben auf der Karte',
     loginRequired: 'Bitte einloggen',
     calculator: 'Zinsrechner',
