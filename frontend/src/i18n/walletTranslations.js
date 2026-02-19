@@ -2169,7 +2169,7 @@ export const walletTranslations = {
     recipient: 'Marrësi',
     nameForQuickSelect: 'Emri për zgjedhje të shpejtë',
     exampleName: 'p.sh. Djali im, Vajza ime',
-    dontSave: 'Mos e ruaj'
+    dontSave: 'Mos e ruaj',
     monthlyPayment: 'Pagesa mujore',
     totalRepayment: 'Ripagimi total',
     creditPurpose: 'Qëllimi',
