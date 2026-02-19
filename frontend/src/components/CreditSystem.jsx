@@ -118,7 +118,24 @@ const translations = {
     tier: 'Stufe',
     walletBalanceLabel: 'Wallet-Guthaben',
     months: 'Mon',
-    until: 'bis'
+    until: 'bis',
+    // Tips translations
+    tipPayOnTime: 'Pünktlich zahlen',
+    tipPayOnTimeDesc: 'Jede pünktliche Zahlung bringt +20 Punkte',
+    tipFullRepay: 'Kredit vollständig zurückzahlen',
+    tipFullRepayDesc: 'Vollständige Rückzahlung bringt +100 Punkte',
+    tipPayEarly: 'Früh zahlen',
+    tipPayEarlyDesc: 'Zahlung vor Fälligkeit bringt +30 Punkte',
+    tipUseRegularly: 'Regelmäßig Kredite nutzen',
+    tipUseRegularlyDesc: 'Jeder erfolgreich abgeschlossene Kredit verbessert Ihren Score',
+    // History event translations
+    accountCreated: 'Konto erstellt - Startscore',
+    onTimePayment: 'Pünktliche Zahlung',
+    earlyPayment: 'Frühe Zahlung - vor Fälligkeit',
+    latePayment: 'Verspätete Zahlung',
+    fullRepayment: 'Vollständige Rückzahlung',
+    creditApproved: 'Kredit genehmigt',
+    firstCredit: 'Erster Kredit abgeschlossen'
   },
   en: {
     creditSystem: 'Credit System',
