@@ -216,6 +216,9 @@ from routers.universal_transfer import router as universal_transfer_router
 # NEW: Deposit Offers & Interest System
 from routers.deposit_offers import router as deposit_offers_router
 
+# NEW: Referral & Notifications System
+from routers.referral_notifications import router as referral_router
+
 # WebSocket manager
 from services.websocket import ws_manager, broadcast_bid_update, broadcast_auction_ended
 
