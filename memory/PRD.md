@@ -5,6 +5,27 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 
 ## Current Status (February 19, 2026)
 
+### ✅ Session Update - February 19, 2026 (Session 51) - ONBOARDING SKIP OPTION ✅
+
+#### "Nicht mehr anzeigen" Checkbox hinzugefügt ✅
+
+**Problem:** Das Onboarding-Popup erschien bei jedem Login und blockierte die Nutzung der Website.
+
+**Lösung:**
+1. **Neue Checkbox in OnboardingTour.js hinzugefügt:**
+   - "Nicht mehr anzeigen" Checkbox am unteren Rand des Popups
+   - Übersetzt in alle 5 Hauptsprachen (de, en, tr, sq, fr)
+   - Bei Aktivierung wird `bidblitz_onboarding_permanent_skip` in localStorage gesetzt
+
+2. **Verbesserte Skip-Logik:**
+   - Prüft zuerst auf `bidblitz_onboarding_permanent_skip`
+   - Wenn gesetzt, wird das Onboarding nie mehr angezeigt
+   - Funktioniert unabhängig von `bidblitz_onboarding_completed`
+
+**Geänderte Datei:** `/app/frontend/src/components/OnboardingTour.js`
+
+---
+
 ### ✅ Session Update - February 19, 2026 (Session 51) - I18N FIXES ✅
 
 #### CreditSystem Komponente Übersetzungen Vervollständigt ✅
