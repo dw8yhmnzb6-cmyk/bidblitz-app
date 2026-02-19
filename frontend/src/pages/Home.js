@@ -14,7 +14,7 @@ import VIPBenefitsBanner from '../components/VIPBenefitsBanner';
 import DailyLoginStreak from '../components/DailyLoginStreak';
 import ShareAndWin from '../components/ShareAndWin';
 import WinnerGalleryHome from '../components/WinnerGalleryHome';
-import DepositBonusBanner from '../components/DepositBonusBanner.jsx';
+import FlashBonusPromo from '../components/FlashBonusPromo';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
