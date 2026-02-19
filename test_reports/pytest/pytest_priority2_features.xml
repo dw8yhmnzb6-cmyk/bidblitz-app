@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="7" failures="8" skipped="0" tests="23" time="11.765" timestamp="2026-02-19T03:54:29.471727+00:00" hostname="agent-env-fe85f6b1-d69d-4173-a1bb-99d63e83ece8"><testcase classname="backend.tests.test_priority2_features.TestAutoBidSystem" name="test_get_my_auto_bids_empty" time="1.272" /><testcase classname="backend.tests.test_priority2_features.TestAutoBidSystem" name="test_configure_auto_bid_requires_auth" time="1.176"><error message="failed on setup with &quot;AttributeError: 'list' object has no attribute 'get'&quot;">backend/tests/test_priority2_features.py:59: in active_auction_id
+    auctions = data.get("auctions", [])
+               ^^^^^^^^
+E   AttributeError: 'list' object has no attribute 'get'</error></testcase><testcase classname="backend.tests.test_priority2_features.TestAutoBidSystem" name="test_configure_auto_bid_invalid_auction" time="0.318" /><testcase classname="backend.tests.test_priority2_features.TestAutoBidSystem" name="test_configure_auto_bid_invalid_price" time="0.000"><error message="failed on setup with &quot;AttributeError: 'list' object has no attribute 'get'&quot;">backend/tests/test_priority2_features.py:59: in active_auction_id
+    auctions = data.get("auctions", [])
+               ^^^^^^^^
+E   AttributeError: 'list' object has no attribute 'get'</error></testcase><testcase classname="backend.tests.test_priority2_features.TestAutoBidSystem" name="test_toggle_auto_bid_not_configured" time="0.000"><error message="failed on setup with &quot;AttributeError: 'list' object has no attribute 'get'&quot;">backend/tests/test_priority2_features.py:59: in active_auction_id
+    auctions = data.get("auctions", [])
+               ^^^^^^^^
+E   AttributeError: 'list' object has no attribute 'get'</error></testcase><testcase classname="backend.tests.test_priority2_features.TestAutoBidSystem" name="test_update_auto_bid_not_found" time="0.322" /><testcase classname="backend.tests.test_priority2_features.TestAutoBidSystem" name="test_delete_auto_bid_not_found" time="0.300" /><testcase classname="backend.tests.test_priority2_features.TestWatchlistSystem" name="test_get_my_watchlist" time="1.193" /><testcase classname="backend.tests.test_priority2_features.TestWatchlistSystem" name="test_get_my_watchlist_with_status_filter" time="0.314" /><testcase classname="backend.tests.test_priority2_features.TestWatchlistSystem" name="test_add_to_watchlist_requires_auth" time="1.072"><error message="failed on setup with &quot;AttributeError: 'list' object has no attribute 'get'&quot;">backend/tests/test_priority2_features.py:59: in active_auction_id
+    auctions = data.get("auctions", [])
+               ^^^^^^^^
+E   AttributeError: 'list' object has no attribute 'get'</error></testcase><testcase classname="backend.tests.test_priority2_features.TestWatchlistSystem" name="test_add_to_watchlist_invalid_auction" time="0.339" /><testcase classname="backend.tests.test_priority2_features.TestWatchlistSystem" name="test_add_to_watchlist_success" time="0.000"><error message="failed on setup with &quot;AttributeError: 'list' object has no attribute 'get'&quot;">backend/tests/test_priority2_features.py:59: in active_auction_id
+    auctions = data.get("auctions", [])
+               ^^^^^^^^
+E   AttributeError: 'list' object has no attribute 'get'</error></testcase><testcase classname="backend.tests.test_priority2_features.TestWatchlistSystem" name="test_check_watchlist_status" time="0.000"><error message="failed on setup with &quot;AttributeError: 'list' object has no attribute 'get'&quot;">backend/tests/test_priority2_features.py:59: in active_auction_id
+    auctions = data.get("auctions", [])
+               ^^^^^^^^
+E   AttributeError: 'list' object has no attribute 'get'</error></testcase><testcase classname="backend.tests.test_priority2_features.TestWatchlistSystem" name="test_remove_from_watchlist_not_found" time="0.311" /><testcase classname="backend.tests.test_priority2_features.TestVIPLoyaltyProgram" name="test_get_loyalty_status" time="1.187"><failure message="AssertionError: Response should contain 'points' field&#10;assert 'points' in {'bonus_percent': 0, 'current_level': {'bonus_percent': 0, 'icon': '#x1F31F', 'level': 1, 'name': 'Starter', ...}, 'current_streak': 0, 'next_level': {'bonus_percent': 5, 'icon': '⭐', 'level': 2, 'name': 'Regular', ...}, ...}">backend/tests/test_priority2_features.py:275: in test_get_loyalty_status
+    assert "points" in data, "Response should contain 'points' field"
+E   AssertionError: Response should contain 'points' field
+E   assert 'points' in {'bonus_percent': 0, 'current_level': {'bonus_percent': 0, 'icon': '#x1F31F', 'level': 1, 'name': 'Starter', ...}, 'current_streak': 0, 'next_level': {'bonus_percent': 5, 'icon': '⭐', 'level': 2, 'name': 'Regular', ...}, ...}</failure></testcase><testcase classname="backend.tests.test_priority2_features.TestVIPLoyaltyProgram" name="test_get_loyalty_tiers" time="0.059"><failure message="AssertionError: Expected 200, got 404: {&quot;detail&quot;:&quot;Not Found&quot;}&#10;assert 404 == 200&#10; +  where 404 = &lt;Response [404]&gt;.status_code">backend/tests/test_priority2_features.py:290: in test_get_loyalty_tiers
+    assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
+E   AssertionError: Expected 200, got 404: {"detail":"Not Found"}
+E   assert 404 == 200
+E    +  where 404 = &lt;Response [404]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_priority2_features.TestVIPLoyaltyProgram" name="test_claim_daily_bonus" time="0.053"><failure message="AssertionError: Expected 200 or 400, got 404: {&quot;detail&quot;:&quot;Not Found&quot;}&#10;assert 404 in [200, 400]&#10; +  where 404 = &lt;Response [404]&gt;.status_code">backend/tests/test_priority2_features.py:317: in test_claim_daily_bonus
+    assert response.status_code in [200, 400], f"Expected 200 or 400, got {response.status_code}: {response.text}"
+E   AssertionError: Expected 200 or 400, got 404: {"detail":"Not Found"}
+E   assert 404 in [200, 400]
+E    +  where 404 = &lt;Response [404]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_priority2_features.TestVIPLoyaltyProgram" name="test_claim_daily_bonus_requires_auth" time="0.056"><failure message="AssertionError: Expected 401/403 without auth, got 404&#10;assert 404 in [401, 403]&#10; +  where 404 = &lt;Response [404]&gt;.status_code">backend/tests/test_priority2_features.py:335: in test_claim_daily_bonus_requires_auth
+    assert response.status_code in [401, 403], f"Expected 401/403 without auth, got {response.status_code}"
+E   AssertionError: Expected 401/403 without auth, got 404
+E   assert 404 in [401, 403]
+E    +  where 404 = &lt;Response [404]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_priority2_features.TestVIPLoyaltyProgram" name="test_get_leaderboard_month" time="0.413"><failure message="AssertionError: Response should contain 'period' field&#10;assert 'period' in [{'avatar_url': None, 'level': {'bonus_percent': 0, 'icon': '#x1F31F', 'level': 1, 'name': 'Starter', ...}, 'total_stamps': 0, 'total_visits': 0, ...}, {'avatar_url': None, 'level': {'bonus_percent': 0, 'icon': '#x1F31F', 'level': 1, 'name': 'Starter', ...}, 'total_stamps': 0, 'total_visits': 0, ...}]">backend/tests/test_priority2_features.py:349: in test_get_leaderboard_month
+    assert "period" in data, "Response should contain 'period' field"
+E   AssertionError: Response should contain 'period' field
+E   assert 'period' in [{'avatar_url': None, 'level': {'bonus_percent': 0, 'icon': '#x1F31F', 'level': 1, 'name': 'Starter', ...}, 'total_stamps': 0, 'total_visits': 0, ...}, {'avatar_url': None, 'level': {'bonus_percent': 0, 'icon': '#x1F31F', 'level': 1, 'name': 'Starter', ...}, 'total_stamps': 0, 'total_visits': 0, ...}]</failure></testcase><testcase classname="backend.tests.test_priority2_features.TestVIPLoyaltyProgram" name="test_get_leaderboard_week" time="0.464"><failure message="TypeError: list indices must be integers or slices, not str">backend/tests/test_priority2_features.py:376: in test_get_leaderboard_week
+    assert data["period"] == "week", f"Expected period 'week', got {data['period']}"
+           ^^^^^^^^^^^^^^
+E   TypeError: list indices must be integers or slices, not str</failure></testcase><testcase classname="backend.tests.test_priority2_features.TestVIPLoyaltyProgram" name="test_get_leaderboard_all_time" time="0.418"><failure message="TypeError: list indices must be integers or slices, not str">backend/tests/test_priority2_features.py:389: in test_get_leaderboard_all_time
+    assert data["period"] == "all", f"Expected period 'all', got {data['period']}"
+           ^^^^^^^^^^^^^^
+E   TypeError: list indices must be integers or slices, not str</failure></testcase><testcase classname="backend.tests.test_priority2_features.TestIntegration" name="test_watchlist_add_and_verify" time="1.992"><error message="failed on setup with &quot;AttributeError: 'list' object has no attribute 'get'&quot;">backend/tests/test_priority2_features.py:59: in active_auction_id
+    auctions = data.get("auctions", [])
+               ^^^^^^^^
+E   AttributeError: 'list' object has no attribute 'get'</error></testcase><testcase classname="backend.tests.test_priority2_features.TestIntegration" name="test_loyalty_status_after_daily_claim" time="0.321"><failure message="KeyError: 'points'">backend/tests/test_priority2_features.py:436: in test_loyalty_status_after_daily_claim
+    initial_points = status_response.json()["points"]
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   KeyError: 'points'</failure></testcase></testsuite></testsuites>
