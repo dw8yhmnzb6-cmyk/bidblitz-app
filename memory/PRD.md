@@ -3508,3 +3508,59 @@ Um die Mobile App für iOS/Android zu veröffentlichen:
 
 ## Language Support (24 languages)
 German, English, Albanian, Kosovo, Turkish, French, Spanish, Italian, Dutch, Polish, Portuguese, Russian, Arabic, Chinese, Japanese, Korean, Hindi, Swedish, Norwegian, Danish, Finnish, Greek, Romanian, Czech
+
+---
+
+### ✅ Session Update - February 20, 2026 (Session 56) - DIGITAL PAYMENT API ✅
+
+#### Feature: Digital Payment API für externe Kassensysteme (z.B. Edeka) ✅
+
+**Use Case:**
+Externe Unternehmen wie Edeka können BidBlitz Pay als Zahlungsmethode an ihren Kassen integrieren. Kunden können dann mit ihrem BidBlitz-Guthaben bezahlen.
+
+**Implementierte Features:**
+
+1. **API-Key-Management (Admin):**
+   - `POST /api/digital/keys/create` - Neuen API-Key erstellen
+   - `GET /api/digital/keys/list` - Alle API-Keys auflisten
+   - `DELETE /api/digital/keys/{key_id}` - API-Key widerrufen
+
+2. **Zahlungs-Endpoints (Händler):**
+   - `POST /api/digital/payments/create` - Zahlung initiieren
+   - `GET /api/digital/payments/{payment_id}` - Zahlungsstatus prüfen
+   - `GET /api/digital/payments` - Alle Zahlungen auflisten
+   - `POST /api/digital/payments/{payment_id}/refund` - Rückerstattung
+
+3. **Statistiken:**
+   - `GET /api/digital/balance` - API-Key-Statistiken
+   - `GET /api/digital/balance?customer_id=X` - Kundenkontostand
+
+4. **Kunden-Checkout:**
+   - `GET /api/digital/checkout/{payment_id}` - Zahlungsdetails (öffentlich)
+   - `POST /api/digital/checkout/{payment_id}/confirm` - Zahlung bestätigen
+
+5. **Webhooks:**
+   - `POST /api/digital/webhooks/test` - Webhook testen
+   - Automatische Benachrichtigung bei `payment.completed`
+
+6. **Dokumentation:**
+   - `GET /api/digital/docs` - Vollständige API-Dokumentation
+
+**Payment-Flow:**
+```
+1. Händler erstellt Zahlung an Kasse → Status: "pending"
+2. Kunde öffnet Checkout-URL in BidBlitz App
+3. Kunde bestätigt Zahlung → Guthaben wird abgezogen
+4. Status wird "completed" → Webhook wird an Händler gesendet
+5. Händler erhält Bestätigung
+```
+
+**Neue Dateien:**
+- `/app/backend/routers/digital_api.py` - Backend API (vollständig)
+- `/app/frontend/src/pages/DigitalCheckout.js` - Kunden-Checkout-Seite
+
+**Test-Status:** 100% (24/24 pytest Tests bestanden) - iteration_89.json
+
+**API-Key-Format:** `bbz_XXXXXXXXXXXX` (48 Zeichen)
+**Webhook-Signatur:** HMAC-SHA256 mit `X-BidBlitz-Signature` Header
+
