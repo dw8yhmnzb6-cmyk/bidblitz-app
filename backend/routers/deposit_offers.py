@@ -261,10 +261,12 @@ async def make_deposit(
     
     # Credit bonus to customer immediately
     total_credit = data.amount + bonus
+    
+    # Update user's main balance
     await db.users.update_one(
         {"id": user_id},
         {
-            "$inc": {"balance": total_credit},
+            "$inc": {"balance": total_credit, "bidblitz_balance": total_credit},
             "$push": {
                 "deposit_history": {
                     "deposit_id": deposit_id,
@@ -275,6 +277,20 @@ async def make_deposit(
             }
         }
     )
+    
+    # Also update BidBlitz Pay wallet (for UI display)
+    existing_wallet = await db.bidblitz_wallets.find_one({"user_id": user_id})
+    if existing_wallet:
+        await db.bidblitz_wallets.update_one(
+            {"user_id": user_id},
+            {"$inc": {"universal_balance": total_credit}}
+        )
+    else:
+        await db.bidblitz_wallets.insert_one({
+            "user_id": user_id,
+            "universal_balance": total_credit,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        })
     
     # Credit partner commission if applicable
     if data.partner_id and partner_commission > 0:
