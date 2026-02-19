@@ -397,7 +397,7 @@ const BidBlitzPay = () => {
     const sessionId = urlParams.get('session_id');
 
     if (paymentStatus === 'success' && sessionId) {
-      toast.info('Zahlung wird überprüft...');
+      toast.info(t('paymentChecking'));
       pollPaymentStatus(sessionId);
     } else if (paymentStatus === 'cancelled') {
       toast.info('Zahlung abgebrochen');
