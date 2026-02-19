@@ -840,7 +840,7 @@ const BidBlitzPay = () => {
             }`}
           >
             <ArrowDownLeft className="w-4 h-4 inline mr-1" />
-            {language === 'de' ? 'Anfordern' : 'Request'}
+            {t('request')}
           </button>
           <button
             onClick={() => { setView('qr'); generateQR(); }}
