@@ -467,6 +467,10 @@ app.include_router(cashback_router, prefix="/api")
 app.include_router(auto_bid_router, prefix="/api")
 app.include_router(watchlist_router, prefix="/api")
 
+# Car Advertising
+from routers.car_advertising import router as car_advertising_router
+app.include_router(car_advertising_router, prefix="/api")
+
 # ==================== HEALTH & BASIC ENDPOINTS ====================
 
 @app.get("/")
