@@ -1237,7 +1237,7 @@ export default function PartnerPortal() {
                         onClick={() => {
                           setLanguage(lang.code);
                           setShowLanguageMenu(false);
-                          localStorage.setItem('partner_language', lang.code);
+                          localStorage.setItem('language', lang.code);
                         }}
                         className={`w-full px-3 py-2 text-left text-sm hover:bg-amber-50 flex items-center gap-2 ${
                           language === lang.code ? 'bg-amber-50 text-amber-700' : 'text-gray-700'
