@@ -360,6 +360,8 @@ function AppContent() {
               <WonAuctionSuccess />
             </ProtectedRoute>
           } />
+          {/* Digital Payment Checkout (External POS Integration) */}
+          <Route path="/checkout/:paymentId" element={<DigitalCheckout />} />
           {/* New Public Pages */}
           <Route path="/how-it-works" element={<HowItWorks />} />
           <Route path="/faq" element={<FAQ />} />
