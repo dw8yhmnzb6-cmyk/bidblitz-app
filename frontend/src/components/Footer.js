@@ -248,28 +248,31 @@ export const Footer = () => {
           <div className="space-y-4">
             <h4 className="text-white font-heading font-bold uppercase tracking-wider text-sm">{ft.extras || 'Extras'}</h4>
             <nav className="flex flex-col gap-2">
-              <Link to="/influencer-werden" className="text-hot-pink hover:text-hot-pink-hover transition-colors font-body text-sm">
+              <Link to="/influencer-werden" className="text-gray-400 hover:text-white transition-colors font-body text-sm">
                 {ft.becomeInfluencer}
               </Link>
-              <Link to="/auto-werbung" className="text-orange-400 hover:text-orange-300 transition-colors font-body text-sm flex items-center gap-1">
-                🚗 {ft.carAdvertising}
+              <Link to="/auto-werbung" className="text-gray-400 hover:text-white transition-colors font-body text-sm flex items-center gap-2">
+                <Car className="w-3.5 h-3.5" />
+                {ft.carAdvertising}
               </Link>
-              <Link to="/influencer-login" className="text-gray-400 hover:text-acid transition-colors font-body text-sm">
+              <Link to="/influencer-login" className="text-gray-400 hover:text-white transition-colors font-body text-sm">
                 {ft.influencerLogin}
               </Link>
-              <Link to="/wholesale" className="text-gray-400 hover:text-acid transition-colors font-body text-sm">
+              <Link to="/wholesale" className="text-gray-400 hover:text-white transition-colors font-body text-sm flex items-center gap-2">
+                <Users className="w-3.5 h-3.5" />
                 {ft.wholesale}
               </Link>
-              <Link to="/investoren" className="text-cyber hover:text-cyber-hover transition-colors font-body text-sm flex items-center gap-1">
-                <TrendingUp className="w-3 h-3" />
+              <Link to="/investoren" className="text-gray-400 hover:text-white transition-colors font-body text-sm flex items-center gap-2">
+                <TrendingUp className="w-3.5 h-3.5" />
                 {ft.investors}
               </Link>
-              <Link to="/vip" className="text-gray-400 hover:text-acid transition-colors font-body text-sm flex items-center gap-1">
-                <Crown className="w-3 h-3" />
+              <Link to="/vip" className="text-gray-400 hover:text-white transition-colors font-body text-sm flex items-center gap-2">
+                <Crown className="w-3.5 h-3.5" />
                 {ft.vipMembership}
               </Link>
-              <a href="/partner-portal" target="_blank" rel="noopener noreferrer" className="text-amber-400 hover:text-amber-300 transition-colors font-body text-sm flex items-center gap-1">
-                🏪 {ft.partnerPortal || 'Partner Portal'}
+              <a href="/partner-portal" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white transition-colors font-body text-sm flex items-center gap-2">
+                <Store className="w-3.5 h-3.5" />
+                {ft.partnerPortal || 'Partner Portal'}
               </a>
             </nav>
           </div>
