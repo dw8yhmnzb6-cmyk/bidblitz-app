@@ -287,6 +287,11 @@ const DepositOffers = ({ partnerId = null, onBalanceChange = null }) => {
         if (refreshUser) {
           await refreshUser();
         }
+        
+        // Refresh wallet balance if callback provided
+        if (onBalanceChange) {
+          await onBalanceChange();
+        }
       } else {
         toast.error(data.detail || 'Fehler bei der Einzahlung');
       }
