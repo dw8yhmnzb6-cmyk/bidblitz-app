@@ -492,6 +492,9 @@ app.include_router(deposit_offers_router, prefix="/api")
 # NEW: Referral & Notifications System
 app.include_router(referral_router, prefix="/api")
 
+# NEW: Digital Payment API for External Integrations (POS Systems)
+app.include_router(digital_api_router, prefix="/api")
+
 # ==================== HEALTH & BASIC ENDPOINTS ====================
 
 @app.get("/")
