@@ -291,27 +291,31 @@ def get_score_tips(score: int, tier_key: str) -> list:
     
     if tier_key in ["red", "yellow"]:
         tips.append({
-            "title": "Pünktlich zahlen",
-            "description": "Jede pünktliche Zahlung bringt +20 Punkte",
+            "key": "tipPayOnTime",
+            "title_de": "Pünktlich zahlen",
+            "description_de": "Jede pünktliche Zahlung bringt +20 Punkte",
             "points": 20
         })
         tips.append({
-            "title": "Kredit vollständig zurückzahlen",
-            "description": "Vollständige Rückzahlung bringt +100 Punkte",
+            "key": "tipFullRepay",
+            "title_de": "Kredit vollständig zurückzahlen",
+            "description_de": "Vollständige Rückzahlung bringt +100 Punkte",
             "points": 100
         })
     
     if tier_key in ["yellow", "green"]:
         tips.append({
-            "title": "Früh zahlen",
-            "description": "Zahlung vor Fälligkeit bringt +30 Punkte",
+            "key": "tipPayEarly",
+            "title_de": "Früh zahlen",
+            "description_de": "Zahlung vor Fälligkeit bringt +30 Punkte",
             "points": 30
         })
     
     if tier_key in ["green", "gold"]:
         tips.append({
-            "title": "Regelmäßig Kredite nutzen",
-            "description": "Jeder erfolgreich abgeschlossene Kredit verbessert Ihren Score",
+            "key": "tipUseRegularly",
+            "title_de": "Regelmäßig Kredite nutzen",
+            "description_de": "Jeder erfolgreich abgeschlossene Kredit verbessert Ihren Score",
             "points": 50
         })
     
