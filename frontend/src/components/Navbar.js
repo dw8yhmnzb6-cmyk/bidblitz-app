@@ -266,7 +266,7 @@ export const Navbar = () => {
                       <User className="w-5 h-5 text-white" />
                     </div>
                     <div>
-                      <p className={`font-semibold text-sm ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>{user?.name || 'Benutzer'}</p>
+                      <p className={`font-semibold text-sm ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>{user?.name || t('nav.user')}</p>
                       <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{user?.email}</p>
                     </div>
                   </div>
