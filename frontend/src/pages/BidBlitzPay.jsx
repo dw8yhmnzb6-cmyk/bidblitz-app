@@ -467,7 +467,7 @@ const BidBlitzPay = () => {
     e.preventDefault();
     const amount = parseFloat(requestAmount);
     if (isNaN(amount) || amount <= 0) {
-      toast.error(language === 'de' ? 'Bitte gültigen Betrag eingeben' : 'Please enter valid amount');
+      toast.error(t('enterValidAmount'));
       return;
     }
     
@@ -491,7 +491,7 @@ const BidBlitzPay = () => {
       if (response.ok) {
         setRequestQR(data);
         fetchMyRequests();
-        toast.success(language === 'de' ? 'Zahlungsanforderung erstellt!' : 'Payment request created!');
+        toast.success(t('requestCreated'));
       } else {
         toast.error(data.detail || 'Error creating request');
       }
