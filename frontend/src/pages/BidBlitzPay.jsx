@@ -421,12 +421,27 @@ const BidBlitzPay = () => {
         // Speichere letzten Empfänger für Schnellüberweisung
         const recipientData = {
           email: recipientEmail,
+          name: data.recipient_name || recipientEmail,
           lastAmount: amount,
           lastMessage: sendMessage || '',
           timestamp: new Date().toISOString()
         };
         localStorage.setItem('bidblitz_last_recipient', JSON.stringify(recipientData));
         setLastRecipient(recipientData);
+        
+        // Check if this recipient is already saved
+        const isAlreadySaved = savedRecipients.some(
+          r => r.recipient_email === recipientEmail || r.recipient_customer_number === recipientEmail
+        );
+        
+        // If not saved, offer to save with nickname
+        if (!isAlreadySaved) {
+          setLastSuccessfulRecipient({
+            email: recipientEmail,
+            name: data.recipient_name || recipientEmail
+          });
+          setShowSaveDialog(true);
+        }
         
         setRecipientEmail('');
         setSendAmount('');
