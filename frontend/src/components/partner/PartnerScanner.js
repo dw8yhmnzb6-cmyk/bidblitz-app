@@ -153,7 +153,7 @@ const PartnerScanner = ({ token, fetchDashboard, t }) => {
         
         {/* Manual Input */}
         <div className="mt-6 pt-6 border-t">
-          <p className="text-sm text-gray-500 mb-3">{t('manualEntry') || 'Oder Code manuell eingeben'}:</p>
+          <p className="text-sm text-gray-500 mb-3">{t('manualEntry')}:</p>
           <form onSubmit={handleManualValidate} className="flex gap-2">
             <Input
               value={manualCode}
