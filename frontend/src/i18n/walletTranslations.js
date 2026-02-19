@@ -2153,8 +2153,8 @@ export const walletTranslations = {
     or: 'ose',
     cancel: 'Anulo',
     descriptionPlaceholder: 'p.sh. Ndarja e darkës',
-    recipientPlaceholder: 'Numri i klientit ose Email',
-    recipientHint: 'Vendos numrin e klientit ose email të marrësit',
+    recipientPlaceholder: 'BID-XXXXXX ose P-XXXXX ose Email',
+    recipientHint: 'Numri i klientit (BID-XXXXXX), Numri i partnerit (P-XXXXX) ose email',
     messagePlaceholder: 'Mesazh për marrësin...',
     
     // Payment History
