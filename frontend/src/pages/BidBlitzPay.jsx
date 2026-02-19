@@ -2093,18 +2093,16 @@ const BidBlitzPay = () => {
                 <CheckCircle className="w-8 h-8 text-green-500" />
               </div>
               <h3 className="text-lg font-bold text-gray-800">
-                {language === 'de' ? 'Überweisung erfolgreich!' : 'Transfer successful!'}
+                {t('transferSuccessful')}
               </h3>
               <p className="text-sm text-gray-500 mt-1">
-                {language === 'de' 
-                  ? 'Möchten Sie diesen Empfänger speichern?' 
-                  : 'Would you like to save this recipient?'}
+                {t('saveFutureTransfers')}
               </p>
             </div>
             
             <div className="bg-gray-50 rounded-xl p-3 mb-4">
               <p className="text-xs text-gray-500">
-                {language === 'de' ? 'Empfänger' : 'Recipient'}
+                {t('recipient')}
               </p>
               <p className="font-medium text-gray-800">{lastSuccessfulRecipient.name}</p>
               <p className="text-xs text-gray-400">{lastSuccessfulRecipient.email}</p>
@@ -2112,13 +2110,13 @@ const BidBlitzPay = () => {
             
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                {language === 'de' ? 'Name für Schnellauswahl' : 'Name for quick selection'}
+                {t('nameForQuickSelect')}
               </label>
               <Input
                 type="text"
                 value={saveNickname}
                 onChange={(e) => setSaveNickname(e.target.value)}
-                placeholder={language === 'de' ? 'z.B. Mein Sohn, Meine Tochter' : 'e.g. My Son, My Daughter'}
+                placeholder={t('exampleName')}
                 className="w-full"
                 autoFocus
               />
@@ -2134,7 +2132,7 @@ const BidBlitzPay = () => {
                 variant="outline"
                 className="flex-1"
               >
-                {language === 'de' ? 'Nicht speichern' : 'Don\'t save'}
+                {t('dontSave')}
               </Button>
               <Button
                 onClick={saveRecipientWithNickname}
