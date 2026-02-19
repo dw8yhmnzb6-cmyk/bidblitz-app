@@ -3,6 +3,25 @@ import { Cookie, X, Settings, CheckCircle } from 'lucide-react';
 import { Button } from './ui/button';
 import { useLanguage } from '../context/LanguageContext';
 
+// Language mapping for regional variants
+const langMapping = {
+  'us': 'en', 'gb': 'en', 'xk': 'sq', 'ae': 'ar', 'sa': 'ar',
+  'at': 'de', 'ch': 'de', 'be': 'fr', 'ca': 'fr', 'mx': 'es', 'br': 'pt'
+};
+
+// Get the correct language key for translations
+const getTranslationLang = (lang, mappedLang) => {
+  // First try the mapped language (from context)
+  if (mappedLang && cookieTranslations[mappedLang]) return mappedLang;
+  // Then try the direct language
+  if (cookieTranslations[lang]) return lang;
+  // Then try local mapping
+  const localMapped = langMapping[lang];
+  if (localMapped && cookieTranslations[localMapped]) return localMapped;
+  // Default to German
+  return 'de';
+};
+
 // Cookie consent translations
 const cookieTranslations = {
   de: {
@@ -106,9 +125,9 @@ const cookieTranslations = {
 };
 
 export const CookieConsent = () => {
-  const { language , mappedLanguage } = useLanguage();
-  // Use mappedLanguage for regional variants (e.g., xk -> sq)
-  const langKey = mappedLanguage || language;
+  const { language, mappedLanguage } = useLanguage();
+  // Use robust language detection with multiple fallbacks
+  const langKey = getTranslationLang(language, mappedLanguage);
   const [visible, setVisible] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [preferences, setPreferences] = useState({
@@ -117,8 +136,8 @@ export const CookieConsent = () => {
     marketing: false
   });
 
-  // Get translations for current language, fallback to German
-  const t = cookieTranslations[langKey] || cookieTranslations.de;
+  // Get translations for current language
+  const t = cookieTranslations[langKey];
 
   useEffect(() => {
     const consent = localStorage.getItem('cookieConsent');
