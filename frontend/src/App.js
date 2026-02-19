@@ -208,11 +208,14 @@ const VIPPage = () => {
 
 // Daily Login Popup Wrapper
 const DailyLoginPopupWrapper = ({ language }) => {
-  const { isAuthenticated, token } = useAuth();
+  const { isAuthenticated, token, refreshUser } = useAuth();
   
-  const handleRewardClaimed = (data) => {
-    // Optionally refresh user data after claiming reward
+  const handleRewardClaimed = async (data) => {
+    // Refresh user data to update bids_balance in navbar
     console.log('Daily reward claimed:', data);
+    if (refreshUser) {
+      await refreshUser();
+    }
   };
   
   return (
