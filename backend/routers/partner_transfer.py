@@ -12,9 +12,11 @@ import uuid
 
 router = APIRouter(prefix="/partner-transfer", tags=["Partner Transfer"])
 
-# Database connection
-client = AsyncIOMotorClient(os.environ.get("MONGO_URL"))
-db = client[os.environ.get("DB_NAME", "bidblitz")]
+
+def get_db():
+    """Get database connection"""
+    client = AsyncIOMotorClient(os.environ.get("MONGO_URL"))
+    return client[os.environ.get("DB_NAME", "bidblitz")]
 
 
 class TransferRequest(BaseModel):
@@ -33,6 +35,7 @@ class TransferResponse(BaseModel):
 
 async def get_partner_by_token(token: str):
     """Get partner by auth token"""
+    db = get_db()
     partner = await db.partner_accounts.find_one({"auth_token": token}, {"_id": 0})
     if not partner:
         partner = await db.restaurant_accounts.find_one({"auth_token": token}, {"_id": 0})
