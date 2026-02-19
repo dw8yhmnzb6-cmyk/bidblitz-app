@@ -191,10 +191,22 @@ const translations = {
 };
 
 // Animated demo component for step visualization
-const StepDemo = ({ step }) => {
+const StepDemo = ({ step, language }) => {
   const [price, setPrice] = useState(0);
   const [timer, setTimer] = useState(15);
   const [bids, setBids] = useState(0);
+  
+  const demoLabels = {
+    de: { currentPrice: 'Aktueller Preis', bids: 'Gebote', timer: 'Timer' },
+    en: { currentPrice: 'Current Price', bids: 'Bids', timer: 'Timer' },
+    tr: { currentPrice: 'Güncel Fiyat', bids: 'Teklifler', timer: 'Süre' },
+    sq: { currentPrice: 'Çmimi aktual', bids: 'Ofertat', timer: 'Kohëmatësi' },
+    fr: { currentPrice: 'Prix actuel', bids: 'Enchères', timer: 'Chrono' },
+    ar: { currentPrice: 'السعر الحالي', bids: 'المزايدات', timer: 'المؤقت' },
+    es: { currentPrice: 'Precio actual', bids: 'Pujas', timer: 'Tiempo' }
+  };
+  
+  const labels = demoLabels[language] || demoLabels.de;
   
   useEffect(() => {
     if (step === 0) {
@@ -228,15 +240,15 @@ const StepDemo = ({ step }) => {
         </div>
         <div className="flex justify-between items-center">
           <div>
-            <div className="text-white/60 text-xs">Aktueller Preis</div>
+            <div className="text-white/60 text-xs">{labels.currentPrice}</div>
             <div className="text-2xl font-bold text-white">€{price.toFixed(2)}</div>
           </div>
           <div className="text-center">
-            <div className="text-white/60 text-xs">Gebote</div>
+            <div className="text-white/60 text-xs">{labels.bids}</div>
             <div className="text-xl font-bold text-yellow-400">{bids}</div>
           </div>
           <div className="text-right">
-            <div className="text-white/60 text-xs">Timer</div>
+            <div className="text-white/60 text-xs">{labels.timer}</div>
             <div className={`text-2xl font-bold ${timer <= 5 ? 'text-red-400 animate-pulse' : 'text-white'}`}>
               {timer}s
             </div>
