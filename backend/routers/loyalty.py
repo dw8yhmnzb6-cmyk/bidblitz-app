@@ -11,7 +11,7 @@ import uuid
 from config import db, logger
 from dependencies import get_current_user
 
-router = APIRouter(prefix="/loyalty", tags=["Loyalty Program"])
+router = APIRouter(prefix="/vip-loyalty", tags=["VIP Loyalty Program"])
 
 
 # ==================== VIP TIERS ====================
