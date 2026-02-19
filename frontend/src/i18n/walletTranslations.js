@@ -213,6 +213,7 @@ export const walletTranslations = {
     mainAccount: 'Main Account',
     availableOnMain: 'Available on main account',
     topUp: 'Top Up',
+    bonusOffers: 'Bonus',
     directTopUp: 'Direct Top Up',
     directTopUpDesc: 'Add balance directly with card',
     payWithCard: 'Pay with Card',
