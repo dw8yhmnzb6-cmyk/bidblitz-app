@@ -213,6 +213,9 @@ from routers.watchlist import watchlist_router
 # NEW: Universal Transfer System (Partner↔Kunde, Kunde↔Kunde, Partner↔Partner)
 from routers.universal_transfer import router as universal_transfer_router
 
+# NEW: Deposit Offers & Interest System
+from routers.deposit_offers import router as deposit_offers_router
+
 # WebSocket manager
 from services.websocket import ws_manager, broadcast_bid_update, broadcast_auction_ended
 
