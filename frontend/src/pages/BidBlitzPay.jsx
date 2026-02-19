@@ -952,6 +952,24 @@ const BidBlitzPay = () => {
             {t('referrals') || 'Einladen'}
           </button>
           <button
+            onClick={() => setView('achievements')}
+            className={`flex-shrink-0 py-2 px-3 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
+              view === 'achievements' ? 'bg-gradient-to-r from-purple-500 to-indigo-500 text-white' : 'text-gray-600 hover:bg-gray-100'
+            }`}
+          >
+            <Trophy className="w-4 h-4 inline mr-1" />
+            {t('achievements') || 'Abzeichen'}
+          </button>
+          <button
+            onClick={() => setView('leaderboard')}
+            className={`flex-shrink-0 py-2 px-3 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
+              view === 'leaderboard' ? 'bg-gradient-to-r from-amber-500 to-red-500 text-white' : 'text-gray-600 hover:bg-gray-100'
+            }`}
+          >
+            <Crown className="w-4 h-4 inline mr-1" />
+            {t('leaderboard') || 'Rangliste'}
+          </button>
+          <button
             onClick={() => { setView('send'); fetchTransferHistory(); }}
             className={`flex-shrink-0 py-2 px-3 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
               view === 'send' ? 'bg-amber-500 text-white' : 'text-gray-600 hover:bg-gray-100'
