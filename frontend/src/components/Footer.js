@@ -303,16 +303,17 @@ export const Footer = () => {
           <div className="space-y-4">
             <h4 className="text-white font-heading font-bold uppercase tracking-wider text-sm">{ft.legal}</h4>
             <nav className="flex flex-col gap-2">
-              <Link to="/impressum" className="text-gray-400 hover:text-acid transition-colors font-body text-sm">
+              <Link to="/impressum" className="text-gray-400 hover:text-white transition-colors font-body text-sm">
                 {ft.imprint}
               </Link>
-              <Link to="/datenschutz" className="text-gray-400 hover:text-acid transition-colors font-body text-sm">
+              <Link to="/datenschutz" className="text-gray-400 hover:text-white transition-colors font-body text-sm flex items-center gap-2">
+                <ShieldCheck className="w-3.5 h-3.5" />
                 {ft.privacy}
               </Link>
-              <Link to="/agb" className="text-gray-400 hover:text-acid transition-colors font-body text-sm">
+              <Link to="/agb" className="text-gray-400 hover:text-white transition-colors font-body text-sm">
                 {ft.terms}
               </Link>
-              <Link to="/faq" className="text-gray-400 hover:text-acid transition-colors font-body text-sm">
+              <Link to="/faq" className="text-gray-400 hover:text-white transition-colors font-body text-sm">
                 FAQ
               </Link>
             </nav>
