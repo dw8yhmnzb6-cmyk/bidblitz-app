@@ -1597,7 +1597,7 @@ function BidBlitzPayPartner({ token, partnerId, partnerName, commissionRate }) {
         </div>
         <div>
           <h2 className="font-bold text-gray-800 text-xl">BidBlitz Pay</h2>
-          <p className="text-sm text-gray-500">Kunden-Zahlungen akzeptieren</p>
+          <p className="text-sm text-gray-500">{t('customerPayments')}</p>
         </div>
       </div>
 
