@@ -441,14 +441,14 @@ const OnboardingTour = () => {
           {/* Navigation */}
           <div className="flex flex-col gap-4 mt-6">
             {/* Don't show again checkbox */}
-            <label className="flex items-center justify-center gap-2 cursor-pointer text-white/70 hover:text-white transition-colors">
+            <label className="flex items-center justify-center gap-3 cursor-pointer text-white/80 hover:text-white transition-colors">
+              <span className="text-base font-medium">{t.dontShowAgain}</span>
               <input
                 type="checkbox"
                 checked={dontShowAgain}
                 onChange={(e) => setDontShowAgain(e.target.checked)}
-                className="w-4 h-4 rounded border-white/30 bg-white/10 text-orange-500 focus:ring-orange-500 focus:ring-offset-0"
+                className="w-5 h-5 rounded border-white/30 bg-white/10 text-orange-500 focus:ring-orange-500 focus:ring-offset-0"
               />
-              <span className="text-sm">{t.dontShowAgain}</span>
             </label>
             
             {/* Navigation buttons */}
