@@ -336,10 +336,16 @@ const translations = {
     holdIdVisible: 'Mbaj dokumentin qartë të dukshëm',
     clear3MonthStatements: 'Pasqyra bankare të 3 muajve të fundit',
     of: 'nga',
-    green: 'Jeshile',
-    yellow: 'E Verdhë',
-    orange: 'Portokalli',
-    red: 'E Kuqe'
+    points: 'Pikë',
+    progressTo: 'Progresi drejt',
+    yourBenefits: 'Përfitimet Tuaja',
+    allTiers: 'Të Gjitha Nivelet',
+    tierRed: 'E Kuqe',
+    tierYellow: 'E Verdhë',
+    tierGreen: 'Jeshile',
+    tierGold: 'Artë',
+    tierDiamond: 'Diamant',
+    tier: 'Niveli'
   }
 };
 
