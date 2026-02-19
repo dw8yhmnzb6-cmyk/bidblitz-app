@@ -745,11 +745,15 @@ async def get_checkout_details(payment_id: str):
     }
 
 
+class CheckoutConfirmRequest(BaseModel):
+    user_id: Optional[str] = Field(None, description="Customer user ID or customer number (BID-XXXXXX)")
+    pin: Optional[str] = Field(None, description="Optional PIN for additional security")
+
+
 @router.post("/checkout/{payment_id}/confirm")
 async def confirm_checkout_payment(
     payment_id: str,
-    user_id: str = None,
-    pin: str = None
+    data: CheckoutConfirmRequest = None
 ):
     """
     Customer confirms payment from their BidBlitz wallet.
@@ -757,6 +761,8 @@ async def confirm_checkout_payment(
     This deducts from the customer's BidBlitz Pay balance.
     In production, this would require user authentication.
     """
+    user_id = data.user_id if data else None
+    
     # Get payment
     payment = await db.digital_payments.find_one(
         {"id": payment_id},
