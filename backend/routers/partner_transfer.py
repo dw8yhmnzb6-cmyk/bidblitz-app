@@ -35,7 +35,14 @@ class TransferResponse(BaseModel):
 
 async def get_partner_by_token(token: str):
     """Get partner by auth token"""
+    import logging
     db = get_db()
+    logging.info(f"[DEBUG] DB name: {db.name}")
+    
+    # Try direct count
+    count = await db.partner_accounts.count_documents({})
+    logging.info(f"[DEBUG] Total partners in DB: {count}")
+    
     partner = await db.partner_accounts.find_one({"auth_token": token}, {"_id": 0})
     if not partner:
         partner = await db.restaurant_accounts.find_one({"auth_token": token}, {"_id": 0})
