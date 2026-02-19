@@ -750,23 +750,23 @@ const CreditSystem = ({ language = 'de', walletBalance = 0, onBalanceUpdate }) =
           <div className="p-4 border-b border-gray-100">
             <h3 className="font-semibold flex items-center gap-2">
               <Star className="w-5 h-5 text-orange-500" />
-              Alle Stufen
+              {t('allTiers')}
             </h3>
           </div>
           <div className="divide-y divide-gray-100">
             {[
-              { icon: '🔴', name: 'Rot', score: '0-300', credit: '€0', interest: '5%', current: scoreData.tier.key === 'red' },
-              { icon: '🟡', name: 'Gelb', score: '301-500', credit: '€500', interest: '5%', current: scoreData.tier.key === 'yellow' },
-              { icon: '🟢', name: 'Grün', score: '501-700', credit: '€1.500', interest: '3%', current: scoreData.tier.key === 'green' },
-              { icon: '⭐', name: 'Gold', score: '701-900', credit: '€2.000', interest: '2%', current: scoreData.tier.key === 'gold' },
-              { icon: '💎', name: 'Diamant', score: '901+', credit: '€2.000', interest: '1.5%', current: scoreData.tier.key === 'diamond' },
+              { icon: '🔴', name: t('tierRed'), score: '0-300', credit: '€0', interest: '5%', current: scoreData.tier.key === 'red' },
+              { icon: '🟡', name: t('tierYellow'), score: '301-500', credit: '€500', interest: '5%', current: scoreData.tier.key === 'yellow' },
+              { icon: '🟢', name: t('tierGreen'), score: '501-700', credit: '€1.500', interest: '3%', current: scoreData.tier.key === 'green' },
+              { icon: '⭐', name: t('tierGold'), score: '701-900', credit: '€2.000', interest: '2%', current: scoreData.tier.key === 'gold' },
+              { icon: '💎', name: t('tierDiamond'), score: '901+', credit: '€2.000', interest: '1.5%', current: scoreData.tier.key === 'diamond' },
             ].map((tier, idx) => (
               <div key={idx} className={`p-3 flex items-center justify-between ${tier.current ? 'bg-orange-50' : ''}`}>
                 <div className="flex items-center gap-3">
                   <span className="text-xl">{tier.icon}</span>
                   <div>
                     <p className={`font-medium ${tier.current ? 'text-orange-600' : ''}`}>{tier.name}</p>
-                    <p className="text-xs text-gray-400">{tier.score} Punkte</p>
+                    <p className="text-xs text-gray-400">{tier.score} {t('points')}</p>
                   </div>
                 </div>
                 <div className="text-right text-sm">
