@@ -93,6 +93,9 @@ import AdminCreditManagement from '../components/admin/AdminCreditManagement';
 // Import Admin Password Manager
 import AdminPasswordManager from '../components/admin/AdminPasswordManager';
 
+// Import Admin Digital Payment API
+import AdminDigitalPayments from '../components/admin/AdminDigitalPayments';
+
 // Import Voice Debug Assistant
 import VoiceDebugAssistant from '../components/VoiceDebugAssistant';
 
