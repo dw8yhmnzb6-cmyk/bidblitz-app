@@ -135,7 +135,8 @@ const translations = {
     gotIt: 'Compris!',
     clickToTry: 'Cliquez pour essayer',
     completed: 'Visite terminée!',
-    reward: 'Vous avez reçu 10 enchères gratuites!'
+    reward: 'Vous avez reçu 10 enchères gratuites!',
+    dontShowAgain: 'Ne plus afficher'
   }
 };
 
