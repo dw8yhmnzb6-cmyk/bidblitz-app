@@ -410,6 +410,17 @@ const BidBlitzPay = () => {
       
       if (response.ok) {
         toast.success(data.message || `€${amount.toFixed(2)} gesendet!`);
+        
+        // Speichere letzten Empfänger für Schnellüberweisung
+        const recipientData = {
+          email: recipientEmail,
+          lastAmount: amount,
+          lastMessage: sendMessage || '',
+          timestamp: new Date().toISOString()
+        };
+        localStorage.setItem('bidblitz_last_recipient', JSON.stringify(recipientData));
+        setLastRecipient(recipientData);
+        
         setRecipientEmail('');
         setSendAmount('');
         setSendMessage('');
