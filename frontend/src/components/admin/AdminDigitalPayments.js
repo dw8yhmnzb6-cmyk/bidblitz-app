@@ -1,12 +1,13 @@
 /**
  * Admin Digital Payment API Dashboard
  * Manages API keys, payments, and statistics for external POS integrations
+ * Mobile-optimized design
  */
 import React, { useState, useEffect } from 'react';
 import { 
-  Key, CreditCard, TrendingUp, Store, RefreshCw, Copy, Eye, EyeOff,
-  Plus, Trash2, Search, Filter, Download, CheckCircle, Clock, XCircle,
-  AlertTriangle, ChevronDown, ChevronUp, ExternalLink, Webhook
+  Key, CreditCard, TrendingUp, Store, RefreshCw, Copy,
+  Plus, Trash2, CheckCircle, Clock, XCircle,
+  AlertTriangle, ExternalLink, Webhook
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -16,17 +17,10 @@ const ADMIN_KEY = 'bidblitz-admin-2026';
 export default function AdminDigitalPayments() {
   const [activeTab, setActiveTab] = useState('overview');
   const [apiKeys, setApiKeys] = useState([]);
-  const [payments, setPayments] = useState([]);
-  const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [showCreateKey, setShowCreateKey] = useState(false);
   const [newKeyName, setNewKeyName] = useState('');
   const [newKeyWebhook, setNewKeyWebhook] = useState('');
   const [createdKey, setCreatedKey] = useState(null);
-  const [showSecret, setShowSecret] = useState({});
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [expandedPayment, setExpandedPayment] = useState(null);
 
   // Fetch data
   useEffect(() => {
