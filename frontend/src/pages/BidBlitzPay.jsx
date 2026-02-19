@@ -1975,6 +1975,77 @@ const BidBlitzPay = () => {
           </div>
         )}
       </div>
+
+      {/* Save Recipient Dialog */}
+      {showSaveDialog && lastSuccessfulRecipient && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl">
+            <div className="text-center mb-4">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                <CheckCircle className="w-8 h-8 text-green-500" />
+              </div>
+              <h3 className="text-lg font-bold text-gray-800">
+                {language === 'de' ? 'Überweisung erfolgreich!' : 'Transfer successful!'}
+              </h3>
+              <p className="text-sm text-gray-500 mt-1">
+                {language === 'de' 
+                  ? 'Möchten Sie diesen Empfänger speichern?' 
+                  : 'Would you like to save this recipient?'}
+              </p>
+            </div>
+            
+            <div className="bg-gray-50 rounded-xl p-3 mb-4">
+              <p className="text-xs text-gray-500">
+                {language === 'de' ? 'Empfänger' : 'Recipient'}
+              </p>
+              <p className="font-medium text-gray-800">{lastSuccessfulRecipient.name}</p>
+              <p className="text-xs text-gray-400">{lastSuccessfulRecipient.email}</p>
+            </div>
+            
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                {language === 'de' ? 'Name für Schnellauswahl' : 'Name for quick selection'}
+              </label>
+              <Input
+                type="text"
+                value={saveNickname}
+                onChange={(e) => setSaveNickname(e.target.value)}
+                placeholder={language === 'de' ? 'z.B. Mein Sohn, Meine Tochter' : 'e.g. My Son, My Daughter'}
+                className="w-full"
+                autoFocus
+              />
+            </div>
+            
+            <div className="flex gap-2">
+              <Button
+                onClick={() => {
+                  setShowSaveDialog(false);
+                  setSaveNickname('');
+                  setLastSuccessfulRecipient(null);
+                }}
+                variant="outline"
+                className="flex-1"
+              >
+                {language === 'de' ? 'Nicht speichern' : 'Don\'t save'}
+              </Button>
+              <Button
+                onClick={saveRecipientWithNickname}
+                disabled={!saveNickname.trim() || savingRecipient}
+                className="flex-1 bg-green-500 hover:bg-green-600 text-white"
+              >
+                {savingRecipient ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <>
+                    <CheckCircle className="w-4 h-4 mr-1" />
+                    {language === 'de' ? 'Speichern' : 'Save'}
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
