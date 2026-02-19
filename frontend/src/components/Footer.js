@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Zap, Mail, Phone, MapPin, Facebook, Twitter, Instagram, Youtube, TrendingUp, Radar, Crown } from 'lucide-react';
+import { Zap, Mail, Phone, MapPin, Facebook, Twitter, Instagram, Youtube, TrendingUp, Radar, Crown, Car, Store, Users, Award, ShieldCheck } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 
 // Footer translations
