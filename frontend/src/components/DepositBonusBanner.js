@@ -5,7 +5,7 @@
 import { memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Gift, TrendingUp, Sparkles, ArrowRight, Percent, Star } from 'lucide-react';
-import { Button } from './ui/button';
+import { Button } from './ui/button.jsx';
 
 const translations = {
   de: {
