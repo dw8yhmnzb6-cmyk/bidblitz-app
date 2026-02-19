@@ -9,6 +9,7 @@ from typing import Optional
 from datetime import datetime, timezone
 from bson import ObjectId
 from config import db
+from utils.email import send_email
 
 router = APIRouter(prefix="/car-advertising", tags=["Car Advertising"])
 
