@@ -334,6 +334,50 @@ async def make_deposit(
                 }
             )
     
+    # Check if this is the first deposit and user has a pending referral
+    # If so, complete the referral and award rewards
+    if data.amount >= 5.0:  # Minimum €5 deposit for referral reward
+        pending_referral = await db.referrals.find_one({
+            "referred_id": user_id,
+            "status": "pending"
+        })
+        
+        if pending_referral:
+            # Complete the referral
+            await db.referrals.update_one(
+                {"id": pending_referral["id"]},
+                {"$set": {
+                    "status": "completed",
+                    "completed_at": datetime.now(timezone.utc).isoformat(),
+                    "trigger_deposit": data.amount
+                }}
+            )
+            
+            # Award €10 to referrer (balance + wallet)
+            referrer_reward = 10.0
+            await db.users.update_one(
+                {"id": pending_referral["referrer_id"]},
+                {"$inc": {"balance": referrer_reward, "bidblitz_balance": referrer_reward}}
+            )
+            await db.bidblitz_wallets.update_one(
+                {"user_id": pending_referral["referrer_id"]},
+                {"$inc": {"universal_balance": referrer_reward}},
+                upsert=True
+            )
+            
+            # Award 5 free bids to referred user
+            referee_bids = 5
+            await db.users.update_one(
+                {"id": user_id},
+                {"$inc": {"bids_balance": referee_bids}}
+            )
+            
+            # Update referral code stats
+            await db.referral_codes.update_one(
+                {"code": pending_referral["code"]},
+                {"$inc": {"successful_referrals": 1, "total_earned": referrer_reward}}
+            )
+    
     return {
         "success": True,
         "deposit_id": deposit_id,
