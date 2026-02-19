@@ -41,6 +41,21 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 - Cookie-Banner zeigt korrekte Sprache
 - Credit System Tips und History übersetzt
 
+#### 7. Einzahlungs-Bonus & Zinsen System ✅ (NEU)
+- **Backend:** `/app/backend/routers/deposit_offers.py`
+- **Frontend:** `/app/frontend/src/pages/DepositOffers.js`
+- **Route:** `/einzahlen`, `/deposit`, `/bonus`
+- **4 Angebote:**
+  - **Starter (5%):** €10-100, 2% Zinsen, 30 Tage, Händler 2%
+  - **Standard (10%):** €100-500, 3% Zinsen, 60 Tage, Händler 3%
+  - **Premium (15%):** €500-2000, 4% Zinsen, 90 Tage, Händler 4%
+  - **VIP (20%):** €2000+, 5% Zinsen, 180 Tage, Händler 5%
+- **Features:**
+  - Zinsrechner zeigt Bonus + Zinsen live
+  - Händler-Provision bei Vermittlung
+  - Zinsen werden täglich berechnet
+  - Auszahlung nach Laufzeit
+
 #### Geänderte Dateien:
 - `/app/backend/routers/universal_transfer.py` (NEU - Komplettes Transfer-System)
 - `/app/backend/routers/bidblitz_pay.py` (Erweitert für Partner-Transfers)
