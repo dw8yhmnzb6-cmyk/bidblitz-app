@@ -152,6 +152,42 @@ export const walletTranslations = {
     customerNumber: 'Kundennummer',
     copyToClipboard: 'In Zwischenablage kopieren',
     forBankTransfers: 'Für Überweisungen als Verwendungszweck angeben',
+    yourCustomerNumber: 'Ihre Kundennummer',
+    customerNumberCopied: 'Kundennummer kopiert!',
+    
+    // Transfer & Request Additional
+    minAmount: 'Mindestbetrag: €5',
+    maxAmount: 'Maximalbetrag: €500',
+    minMaxInfo: 'Min: €5 | Max: €500',
+    redirectingStripe: 'Weiterleitung zu Stripe...',
+    securePaymentStripe: '🔒 Sichere Zahlung via Stripe',
+    transferToBidBlitzPay: 'Auf BidBlitz Pay übertragen',
+    transferToMainAccount: 'Auf Hauptkonto übertragen',
+    all: 'ALLES',
+    
+    // Last Transfer / Quick Send
+    lastTransfer: 'Letzte Überweisung',
+    lastAmount: 'Zuletzt',
+    useRecipient: 'Übernehmen',
+    recipientLoaded: 'Empfänger übernommen!',
+    enterValidAmount: 'Bitte gültigen Betrag eingeben',
+    
+    // Request Money Additional
+    requestCreated: 'Zahlungsanforderung erstellt!',
+    invalidQRCode: 'Ungültiger QR-Code',
+    cameraAccessDenied: 'Kamerazugriff verweigert',
+    cameraStartError: 'Kamera konnte nicht gestartet werden',
+    requestNoLongerValid: 'Diese Anforderung ist nicht mehr gültig',
+    enterRequestIdManually: 'Anforderungs-ID manuell eingeben',
+    loadId: 'ID laden',
+    creating: 'Wird erstellt...',
+    noRequestsYet: 'Noch keine Anforderungen',
+    or: 'oder',
+    cancel: 'Abbrechen',
+    descriptionPlaceholder: 'z.B. Abendessen teilen',
+    recipientPlaceholder: 'Kundennummer oder E-Mail',
+    recipientHint: 'Geben Sie die Kundennummer oder E-Mail des Empfängers ein',
+    messagePlaceholder: 'Nachricht an Empfänger...',
     
     // Errors
     errorLoading: 'Fehler beim Laden',
