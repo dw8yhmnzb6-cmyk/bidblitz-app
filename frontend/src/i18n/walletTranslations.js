@@ -321,6 +321,43 @@ export const walletTranslations = {
     customerNumber: 'Customer Number',
     copyToClipboard: 'Copy to Clipboard',
     forBankTransfers: 'Use as reference for bank transfers',
+    yourCustomerNumber: 'Your Customer Number',
+    customerNumberCopied: 'Customer number copied!',
+    
+    // Transfer & Request Additional
+    minAmount: 'Minimum amount: €5',
+    maxAmount: 'Maximum amount: €500',
+    minMaxInfo: 'Min: €5 | Max: €500',
+    redirectingStripe: 'Redirecting to Stripe...',
+    securePaymentStripe: '🔒 Secure payment via Stripe',
+    transferToBidBlitzPay: 'Transfer to BidBlitz Pay',
+    transferToMainAccount: 'Transfer to Main Account',
+    all: 'ALL',
+    
+    // Last Transfer / Quick Send
+    lastTransfer: 'Last Transfer',
+    lastAmount: 'Last',
+    useRecipient: 'Use',
+    recipientLoaded: 'Recipient loaded!',
+    enterValidAmount: 'Please enter valid amount',
+    
+    // Request Money Additional
+    requestCreated: 'Payment request created!',
+    invalidQRCode: 'Invalid QR code',
+    cameraAccessDenied: 'Camera access denied',
+    cameraStartError: 'Could not start camera',
+    requestNoLongerValid: 'This request is no longer valid',
+    enterRequestIdManually: 'Enter Request ID manually',
+    loadId: 'Load ID',
+    creating: 'Creating...',
+    noRequestsYet: 'No requests yet',
+    or: 'or',
+    cancel: 'Cancel',
+    descriptionPlaceholder: 'e.g. Splitting dinner',
+    recipientPlaceholder: 'Customer ID or Email',
+    recipientHint: 'Enter recipient customer ID or email',
+    messagePlaceholder: 'Message to recipient...',
+    
     errorLoading: 'Error loading',
     tryAgain: 'Try again',
     insufficientFunds: 'Insufficient funds',
