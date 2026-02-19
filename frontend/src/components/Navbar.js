@@ -242,7 +242,7 @@ export const Navbar = () => {
             {/* Dark Mode Toggle - Mobile */}
             <div className="flex items-center justify-between pb-3 border-b border-gray-200 dark:border-white/10">
               <span className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-700'}`}>
-                {isDarkMode ? '☀️ Light Mode' : '🌙 Dark Mode'}
+                {isDarkMode ? `☀️ ${t('nav.lightMode')}` : `🌙 ${t('nav.darkMode')}`}
               </span>
               <button
                 onClick={toggleDarkMode}
