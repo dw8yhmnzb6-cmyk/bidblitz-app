@@ -265,7 +265,7 @@ const BidBlitzPay = () => {
     
     const currentBidBlitzBalance = wallet?.wallet?.total_value || 0;
     if (amount > currentBidBlitzBalance) {
-      toast.error(`Verfügbar: €${currentBidBlitzBalance.toFixed(2)}`);
+      toast.error(`${t('available')}: €${currentBidBlitzBalance.toFixed(2)}`);
       return;
     }
     
