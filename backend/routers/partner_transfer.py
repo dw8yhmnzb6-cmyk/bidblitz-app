@@ -53,7 +53,13 @@ async def get_partner_collection(partner_id: str):
 @router.get("/balance")
 async def get_transfer_balance(token: str = Query(...)):
     """Get partner's available balance for transfers"""
+    import logging
+    logging.info(f"[DEBUG] Balance request with token: {token[:20]}...")
+    
     partner = await get_partner_by_token(token)
+    
+    logging.info(f"[DEBUG] Partner found: {partner.get('email') if partner else 'None'}")
+    
     if not partner:
         raise HTTPException(status_code=401, detail="Ungültiger Token")
     
