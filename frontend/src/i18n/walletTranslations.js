@@ -398,7 +398,20 @@ export const walletTranslations = {
     freeBids: 'Free Bids',
     save: 'Save',
     errorSaving: 'Error saving',
-    errorLoadingRequest: 'Error loading request'
+    errorLoadingRequest: 'Error loading request',
+    
+    // Recipients
+    enterName: 'Please enter a name',
+    recipientSaved: 'Recipient saved!',
+    recipientDeleted: 'Recipient deleted',
+    selected: 'selected',
+    savedRecipients: 'Saved Recipients',
+    transferSuccessful: 'Transfer successful!',
+    saveFutureTransfers: 'Save for future transfers?',
+    recipient: 'Recipient',
+    nameForQuickSelect: 'Name for quick selection',
+    exampleName: 'e.g. My Son, My Daughter',
+    dontSave: 'Don\'t save'
   },
   
   tr: {
