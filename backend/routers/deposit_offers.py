@@ -503,12 +503,12 @@ async def get_partner_deposit_stats(token: str = Query(...)):
 
 # ==================== INTEREST CALCULATION (CRON) ====================
 
-@router.post("/calculate-interest")
+@router.api_route("/calculate-interest", methods=["GET", "POST"])
 async def calculate_daily_interest(
     admin_key: str = Query(...),
     send_emails: bool = Query(False, description="Send email notifications to customers")
 ):
-    """Daily interest calculation (called by cron job)"""
+    """Daily interest calculation (called by cron job) - Accepts GET and POST"""
     # Simple admin key check
     if admin_key != "bidblitz-interest-cron-2026":
         raise HTTPException(status_code=403, detail="Unauthorized")
