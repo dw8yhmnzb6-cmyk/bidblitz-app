@@ -181,10 +181,13 @@ const badgeColors = {
 };
 
 const DepositOffers = ({ partnerId = null, onBalanceChange = null }) => {
-  const { language, mappedLanguage } = useLanguage();
+  const { language: contextLanguage, mappedLanguage } = useLanguage();
   const { isAuthenticated, user, refreshUser } = useAuth();
-  const langKey = mappedLanguage || language;
-  const t = translations[langKey] || translations.de;
+  
+  // Get language - prefer localStorage for consistency, fallback to context
+  const storedLang = typeof window !== 'undefined' ? localStorage.getItem('language') : null;
+  const langKey = storedLang || mappedLanguage || contextLanguage || 'de';
+  const t = translations[langKey] || translations[mappedLanguage] || translations.de;
   
   const [offers, setOffers] = useState([]);
   const [myDeposits, setMyDeposits] = useState([]);
