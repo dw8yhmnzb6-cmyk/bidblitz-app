@@ -337,7 +337,7 @@ const BidBlitzPay = () => {
         window.location.href = data.checkout_url;
       } else {
         const error = await response.json();
-        toast.error(error.detail || 'Zahlung konnte nicht erstellt werden');
+        toast.error(error.detail || t('paymentCouldNotCreate'));
         setProcessingPayment(false);
       }
     } catch (error) {
