@@ -284,11 +284,11 @@ const BidBlitzPay = () => {
   const handleDirectTopUp = async () => {
     const amount = parseFloat(directTopUpAmount);
     if (isNaN(amount) || amount < 5) {
-      toast.error(language === 'de' ? 'Mindestbetrag: €5' : 'Minimum amount: €5');
+      toast.error(t('minAmount'));
       return;
     }
     if (amount > 500) {
-      toast.error(language === 'de' ? 'Maximalbetrag: €500' : 'Maximum amount: €500');
+      toast.error(t('maxAmount'));
       return;
     }
     
