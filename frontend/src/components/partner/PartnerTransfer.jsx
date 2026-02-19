@@ -350,7 +350,12 @@ export function PartnerTransfer({ token, language = 'de' }) {
         fetchHistory();
         fetchLastRecipient();
       } else {
-        toast.error(data.detail || t('recipientNotFound'));
+        // Check for customer ID error from backend
+        if (data.detail && (data.detail.includes('BID-') || data.detail.includes('Kunden-IDs') || data.detail.includes('Partner'))) {
+          toast.error(t('customerIdError'));
+        } else {
+          toast.error(data.detail || t('recipientNotFound'));
+        }
       }
     } catch (error) {
       console.error('Transfer error:', error);
