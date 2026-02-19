@@ -228,7 +228,12 @@ export const translations = {
     step4Pay: '4. Geld wird sofort auf Ihr Konto überwiesen',
     transfers: 'Überweisungen',
     marketing: 'Marketing',
-    ratings: 'Bewertungen'
+    ratings: 'Bewertungen',
+    scanning: 'Scannen aktiv...',
+    back: 'Zurück',
+    stopScanner: 'Scanner beenden',
+    total: 'Gesamt',
+    insufficientBalance: 'Betrag übersteigt verfügbares Guthaben'
   },
   en: {
     login: 'Login',
