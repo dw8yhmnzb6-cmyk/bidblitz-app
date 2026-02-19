@@ -282,6 +282,11 @@ const DepositOffers = ({ partnerId = null }) => {
         const depositsData = await depositsRes.json();
         setMyDeposits(depositsData.deposits || []);
         setDepositSummary(depositsData.summary || {});
+        
+        // Refresh user balance in navbar
+        if (refreshUser) {
+          await refreshUser();
+        }
       } else {
         toast.error(data.detail || 'Fehler bei der Einzahlung');
       }
