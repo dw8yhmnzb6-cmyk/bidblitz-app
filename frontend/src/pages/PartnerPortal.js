@@ -1492,7 +1492,7 @@ function BidBlitzPayPartner({ token, partnerId, partnerName, commissionRate, t }
       console.error("Scanner error:", err);
       scannerStarted.current = false;
       setScanning(false);
-      toast.error("Kamera-Zugriff nicht möglich. Bitte QR-Code manuell eingeben.");
+      toast.error(t('cameraAccessError') || "Camera access error. Please enter QR code manually.");
     }
   };
 
@@ -1526,10 +1526,10 @@ function BidBlitzPayPartner({ token, partnerId, partnerName, commissionRate, t }
       
       setCustomerData(response.data);
       setStep('confirm');
-      toast.success(`Kunde gefunden: ${response.data.customer.name}`);
+      toast.success(`${t('customerFound') || 'Customer found'}: ${response.data.customer.name}`);
     } catch (error) {
       console.error("Scan error:", error);
-      toast.error(error.response?.data?.detail || "Ungültiger QR-Code");
+      toast.error(error.response?.data?.detail || t('invalidQRCode') || "Invalid QR code");
     }
   };
 
