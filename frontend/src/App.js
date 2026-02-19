@@ -129,6 +129,11 @@ import BidBlitzPay from "./pages/BidBlitzPay";
 import PartnerLanding from "./pages/PartnerLanding";
 import PartnerDirectory from "./pages/PartnerDirectory";
 
+// New Feature Components
+import Watchlist from "./components/Watchlist";
+import AutoBid from "./components/AutoBid";
+import VIPLoyalty from "./components/VIPLoyalty";
+
 // Protected Route Component
 const ProtectedRoute = ({ children, requireAdmin = false }) => {
   const { isAuthenticated, isAdmin, loading } = useAuth();
