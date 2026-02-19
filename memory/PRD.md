@@ -5,6 +5,32 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 
 ## Current Status (February 19, 2026)
 
+### ✅ Session Update - February 19, 2026 (Session 51) - MOBILE UX & I18N FIXES ✅
+
+#### 1. Onboarding Checkbox Redesign ✅
+- Checkbox jetzt RECHTS vom Text (nicht links)
+- Größere Schrift (`text-base font-medium` statt `text-sm`)
+- Größere Checkbox (`w-5 h-5` statt `w-4 h-4`)
+
+#### 2. Partner-Transfer Fehlermeldung ✅
+- `toast.error('Error')` durch `toast.error(t('recipientNotFound'))` ersetzt
+- Übersetzte Fehlermeldung wird jetzt angezeigt
+
+#### 3. Partner-Portal BidBlitz Pay Übersetzungen ✅
+**Neue albanische Übersetzungen in `partnerTranslations.js`:**
+- `customerPayments`: "Pranoni pagesat e klientëve"
+- `enterAmount`: "1. Vendosni shumën"
+- `proceedToScan`: "Vazhdo me skanimin"
+- `howItWorks`: "Si funksionon BidBlitz Pay:"
+- `step1Pay` - `step4Pay`: Alle 4 Schritte übersetzt
+- Plus: `scanCustomerCode`, `confirmPayment`, `chargeCustomer`, etc.
+
+**PartnerPortal.js aktualisiert:**
+- `BidBlitzPayPartner` Komponente erhält jetzt `t` Funktion als Prop
+- Alle hardcoded deutschen Texte im Pay-Bereich durch `t()` Aufrufe ersetzt
+
+---
+
 ### ✅ Session Update - February 19, 2026 (Session 51) - ONBOARDING SKIP OPTION ✅
 
 #### "Nicht mehr anzeigen" Checkbox hinzugefügt ✅
