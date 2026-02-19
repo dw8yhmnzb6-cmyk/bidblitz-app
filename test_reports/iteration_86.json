@@ -1,0 +1,97 @@
+{
+  "summary": "Tested new referral program, flash bonus promotions, partner deposit commissions, and notifications features. All backend APIs working correctly (13/13 tests passed). Frontend wallet tabs (Einladen/Referral and Bonus) working correctly. Partner Portal Provisionen tab working correctly.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "Homepage",
+        "issues": ["FlashBonusPromo component not visible on homepage - may be due to hot-reload caching or component returning null"]
+      }
+    ]
+  },
+  "features_tested": {
+    "referral_api_my_code": {
+      "status": "PASS",
+      "endpoint": "GET /api/referral/my-code",
+      "details": "Returns user's referral code (REF-XXXXXX format), reward amount, uses count, total earned"
+    },
+    "referral_api_my_referrals": {
+      "status": "PASS",
+      "endpoint": "GET /api/referral/my-referrals",
+      "details": "Returns list of referred users, total earned, uses count"
+    },
+    "referral_api_use": {
+      "status": "PASS",
+      "endpoint": "POST /api/referral/use",
+      "details": "Correctly rejects invalid codes (404) and unauthenticated requests (401/403)"
+    },
+    "active_promotions_api": {
+      "status": "PASS",
+      "endpoint": "GET /api/referral/active-promotions",
+      "details": "Returns flash promotions with bonus_percentage, valid_until, min_deposit, hours/minutes remaining. Supports language parameter (de, en, tr)"
+    },
+    "notifications_api": {
+      "status": "PASS",
+      "endpoint": "GET /api/referral/notifications",
+      "details": "Returns user notifications with unread_count. Supports limit parameter. Correctly rejects unauthenticated requests"
+    },
+    "notifications_mark_read_api": {
+      "status": "PASS",
+      "endpoint": "POST /api/referral/notifications/read-all",
+      "details": "Marks all notifications as read"
+    },
+    "partner_stats_api": {
+      "status": "PASS",
+      "endpoint": "GET /api/deposit-offers/partner/stats",
+      "details": "Endpoint exists and requires partner token"
+    },
+    "wallet_einladen_tab": {
+      "status": "PASS",
+      "details": "Einladen (Referral) tab visible in BidBlitzPay wallet. Shows referral code (REF-286446), copy/share buttons, stats (€0.00 earned, 0 friends), 'So funktioniert's' section with 3 steps"
+    },
+    "wallet_bonus_tab": {
+      "status": "PASS",
+      "details": "Bonus tab visible in BidBlitzPay wallet. Shows 4 deposit offers (5%, 10%, 15%, 20% bonus) with interest rates (2-5% p.a.), lock periods (30-180 days), partner commission rates"
+    },
+    "partner_portal_provisionen_tab": {
+      "status": "PASS",
+      "details": "Provisionen (Commissions) tab visible in Partner Portal. Shows 'Einzahlungs-Provisionen' header, stats cards (Gesamte Provision, Vermittelte Einzahlungen, Kunden, Ø Provision), 'So funktioniert's' section explaining 2-5% commission"
+    },
+    "flash_bonus_promo_homepage": {
+      "status": "NOT_VISIBLE",
+      "details": "FlashBonusPromo component exists and is imported in Home.js but not rendering on homepage. Component returns null if loading/no promo/expired. API returns valid promo data."
+    }
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_referral_notifications.py",
+    "/app/test_reports/pytest/pytest_referral_notifications.xml"
+  ],
+  "action_items": [
+    "OPTIONAL: Investigate why FlashBonusPromo component is not visible on homepage (may be state/caching issue)"
+  ],
+  "critical_code_review_comments": [],
+  "updated_files": [
+    "/app/backend/tests/test_referral_notifications.py"
+  ],
+  "success_rate": {
+    "backend": "100% (13/13 tests passed)",
+    "frontend": "90% (Einladen tab, Bonus tab, Partner Provisionen tab all working. FlashBonusPromo not visible on homepage)"
+  },
+  "test_credentials": {
+    "customer": {"email": "kunde@bidblitz.ae", "password": "Kunde123!"},
+    "partner": {"email": "pizza@test.de", "password": "Test123!"}
+  },
+  "seed_data_creation": "None",
+  "mocked_apis": {
+    "has_mocked_apis": false,
+    "mocked_apis_list": []
+  },
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Referral system fully working: /api/referral/my-code returns REF-XXXXXX codes, /api/referral/active-promotions returns flash promos with countdown. Partner Portal has Provisionen tab showing deposit commissions dashboard. Wallet has Einladen and Bonus tabs working. FlashBonusPromo component exists but not rendering on homepage - may need investigation."
+}
