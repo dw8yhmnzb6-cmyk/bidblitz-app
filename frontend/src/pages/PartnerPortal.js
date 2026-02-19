@@ -28,6 +28,7 @@ import PartnerProfile from '../components/partner/PartnerProfile';
 import PartnerVerification from '../components/partner/PartnerVerification';
 import PartnerBudget from '../components/partner/PartnerBudget';
 import PartnerDashboardExpanded from '../components/partner/PartnerDashboardExpanded';
+import PartnerDepositCommissions from '../components/partner/PartnerDepositCommissions';
 
 // Import marketing components
 import { 
