@@ -1605,19 +1605,19 @@ function BidBlitzPayPartner({ token, partnerId, partnerName, commissionRate }) {
       {paymentSuccess && (
         <div className="bg-green-50 border border-green-200 rounded-xl p-6 text-center">
           <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
-          <h3 className="text-xl font-bold text-green-700 mb-2">Zahlung erfolgreich!</h3>
+          <h3 className="text-xl font-bold text-green-700 mb-2">{t('paymentSuccessful')}</h3>
           <p className="text-3xl font-bold text-green-600 mb-4">€{paymentSuccess.amount.toFixed(2)}</p>
           <div className="bg-white rounded-lg p-4 text-left space-y-2">
             <div className="flex justify-between text-sm">
-              <span className="text-gray-500">Transaktions-ID:</span>
+              <span className="text-gray-500">{t('transactionId')}:</span>
               <span className="font-mono">{paymentSuccess.transaction_id}</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-gray-500">Sie erhalten:</span>
+              <span className="text-gray-500">{t('youReceive')}:</span>
               <span className="font-bold text-green-600">€{paymentSuccess.partner_receives.toFixed(2)}</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-gray-500">Provision ({commissionRate}%):</span>
+              <span className="text-gray-500">{t('commissionLabel')} ({commissionRate}%):</span>
               <span className="text-gray-600">€{paymentSuccess.commission.toFixed(2)}</span>
             </div>
           </div>
@@ -1625,7 +1625,7 @@ function BidBlitzPayPartner({ token, partnerId, partnerName, commissionRate }) {
             onClick={resetFlow}
             className="mt-4 bg-green-500 hover:bg-green-600"
           >
-            Weitere Zahlung
+            {t('anotherPayment')}
           </Button>
         </div>
       )}
