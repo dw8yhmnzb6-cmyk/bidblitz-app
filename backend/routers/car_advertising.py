@@ -112,7 +112,7 @@ async def apply_for_car_advertising(application: CarAdvertisingApplication):
 @router.get("/my-application")
 async def get_my_application(email: str = Query(...)):
     """Get existing application for a user"""
-    db = get_db()
+    
     
     application = await db.car_advertising.find_one(
         {"email": email.lower()},
@@ -128,7 +128,7 @@ async def get_my_application(email: str = Query(...)):
 @router.get("/all")
 async def get_all_applications(status: Optional[str] = None):
     """Get all car advertising applications (admin only)"""
-    db = get_db()
+    
     
     query = {}
     if status:
@@ -149,7 +149,7 @@ async def update_application_status(
     admin_note: Optional[str] = None
 ):
     """Update application status (admin only)"""
-    db = get_db()
+    
     
     valid_statuses = ["pending", "approved", "active", "rejected"]
     if status not in valid_statuses:
@@ -180,7 +180,7 @@ async def update_application_status(
 @router.post("/process-monthly-payouts")
 async def process_monthly_payouts():
     """Process monthly €50 payouts for all active car advertisers"""
-    db = get_db()
+    
     
     # Get all active advertisers
     active_advertisers = await db.car_advertising.find(
@@ -234,7 +234,7 @@ async def process_monthly_payouts():
 @router.get("/stats")
 async def get_car_advertising_stats():
     """Get statistics for car advertising program"""
-    db = get_db()
+    
     
     total = await db.car_advertising.count_documents({})
     pending = await db.car_advertising.count_documents({"status": "pending"})
