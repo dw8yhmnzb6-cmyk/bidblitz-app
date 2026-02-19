@@ -361,6 +361,10 @@ const BidBlitzPay = () => {
         toast.success(data.message || 'Zahlung erfolgreich! Guthaben wurde gutgeschrieben.');
         fetchWallet();
         fetchTransactions();
+        // Refresh user balance in navbar
+        if (refreshUser) {
+          await refreshUser();
+        }
         // Clear URL params
         window.history.replaceState({}, document.title, window.location.pathname);
         return;
@@ -376,7 +380,7 @@ const BidBlitzPay = () => {
       console.error('Error checking payment status:', error);
       setTimeout(() => pollPaymentStatus(sessionId, attempts + 1), pollInterval);
     }
-  }, [token, fetchWallet, fetchTransactions]);
+  }, [token, fetchWallet, fetchTransactions, refreshUser]);
 
   // Check for payment return from Stripe
   useEffect(() => {
