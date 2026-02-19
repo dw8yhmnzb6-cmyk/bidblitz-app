@@ -83,7 +83,11 @@ const PaymentHistory = ({ token, language = 'de' }) => {
         page: 'Page',
         of: 'of',
         exportSuccess: 'Export successful',
-        loading: 'Loading...'
+        loading: 'Loading...',
+        completed: 'Completed',
+        pending: 'Pending',
+        failed: 'Failed',
+        reference: 'Reference'
       },
       tr: {
         title: 'Ödeme Geçmişi',
