@@ -199,7 +199,14 @@ export const walletTranslations = {
     insufficientFunds: 'Nicht genug Guthaben',
     invalidAmount: 'Ungültiger Betrag',
     paymentFailed: 'Zahlung fehlgeschlagen',
-    paymentSuccessful: 'Zahlung erfolgreich'
+    paymentSuccessful: 'Zahlung erfolgreich',
+    paymentStatusError: 'Zahlungsstatus konnte nicht abgerufen werden',
+    paymentCredited: 'Guthaben wurde gutgeschrieben',
+    sessionExpired: 'Sitzung abgelaufen. Bitte erneut versuchen',
+    freeBids: 'Gratis-Gebote',
+    save: 'Speichern',
+    errorSaving: 'Fehler beim Speichern',
+    errorLoadingRequest: 'Fehler beim Laden der Anforderung'
   },
   
   en: {
