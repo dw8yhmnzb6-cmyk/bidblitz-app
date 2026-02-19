@@ -1635,7 +1635,7 @@ function BidBlitzPayPartner({ token, partnerId, partnerName, commissionRate }) {
         <div className="bg-white rounded-xl p-6 shadow-sm">
           <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
             <Euro className="w-5 h-5 text-amber-500" />
-            1. Zahlungsbetrag eingeben
+            {t('enterAmount')}
           </h3>
           
           <div className="space-y-4">
@@ -1676,7 +1676,7 @@ function BidBlitzPayPartner({ token, partnerId, partnerName, commissionRate }) {
               disabled={!paymentAmount || parseFloat(paymentAmount) <= 0}
             >
               <QrCode className="w-5 h-5 mr-2" />
-              Weiter zum Scannen
+              {t('proceedToScan')}
             </Button>
           </div>
         </div>
