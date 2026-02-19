@@ -221,6 +221,10 @@ const OnboardingTour = () => {
   // Check if user should see onboarding
   useEffect(() => {
     const checkOnboarding = async () => {
+      // Check for permanent skip first
+      const permanentSkip = localStorage.getItem('bidblitz_onboarding_permanent_skip');
+      if (permanentSkip === 'true') return;
+      
       const hasSeenTour = localStorage.getItem('bidblitz_onboarding_completed');
       if (hasSeenTour) return;
       
