@@ -8,7 +8,7 @@ from pydantic import BaseModel, EmailStr
 from typing import Optional
 from datetime import datetime, timezone
 from bson import ObjectId
-from config import get_db
+from config import db
 
 router = APIRouter(prefix="/car-advertising", tags=["Car Advertising"])
 
