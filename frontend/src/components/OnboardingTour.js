@@ -490,6 +490,7 @@ const OnboardingTour = () => {
                 </>
               )}
             </Button>
+            </div>
           </div>
         </div>
       </div>
