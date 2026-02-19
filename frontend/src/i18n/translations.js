@@ -371,7 +371,7 @@ export const translations = {
     }
   },
   en: {
-    nav: { language: "Language", auctions: "Auctions", buyBids: "Buy Bids", dashboard: "Dashboard", admin: "Admin", login: "Login", register: "Register", logout: "Logout", bids: "Bids", winners: "Winners", inviteFriends: "Invite Friends", wishlist: "Wishlist", howItWorks: "How it works", vip: "VIP Membership", faq: "FAQ", contact: "Contact", giftCards: "Gift Cards", vipAuctions: "VIP Auctions", leaderboard: "Leaderboard", luckyWheel: "Lucky Wheel" },
+    nav: { language: "Language", auctions: "Auctions", buyBids: "Buy Bids", dashboard: "Dashboard", admin: "Admin", login: "Login", register: "Register", logout: "Logout", bids: "Bids", winners: "Winners", inviteFriends: "Invite Friends", wishlist: "Wishlist", howItWorks: "How it works", vip: "VIP Membership", faq: "FAQ", contact: "Contact", giftCards: "Gift Cards", vipAuctions: "VIP Auctions", leaderboard: "Leaderboard", luckyWheel: "Lucky Wheel", manager: "Manager", influencer: "Influencer", wallet: "Wallet", user: "User", lightMode: "Light Mode", darkMode: "Dark Mode" },
     home: {
       badge: "10 free bids on registration",
       heroTitle1: "Win",
