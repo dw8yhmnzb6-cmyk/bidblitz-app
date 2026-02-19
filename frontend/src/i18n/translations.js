@@ -1393,6 +1393,12 @@ export const translations = {
       lastBidder: "Son Teklif Veren",
       noAuctionsInCategory: "Bu kategoride müzayede yok",
       discoverFeatures: "Tüm Özellikleri & Ekstraları Keşfet",
+      depositBonus: "Yatırım Bonusu",
+      depositBonusDesc: "%20'ye kadar Bonus + %5 Yıllık Faiz",
+      getBonusNow: "Şimdi Bonus Al →",
+      merchantVouchers: "Satıcı Kuponları",
+      merchantVouchersDesc: "Yerel ortaklardan kuponlar için teklif ver!",
+      freeBidsGratis: "Ücretsiz Teklifler",
       filters: {
         live: "Canlı",
         beginner: "Başlangıç",
