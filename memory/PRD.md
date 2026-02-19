@@ -7,61 +7,48 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 
 ### ✅ Session Update - February 19, 2026 (Session 52) - COMPLETE ✅
 
-#### 1. Cookie-Banner Übersetzung Fix ✅
-- **Problem:** Cookie-Banner zeigte immer Deutsch unabhängig von ausgewählter Sprache
-- **Lösung:** Verbesserte Sprachzuordnung in `CookieConsent.js` mit lokalem Language-Mapping
-- **Getestet:** Deutsch und Albanisch Screenshots bestätigen korrekte Übersetzungen
+#### 1. Bidirektionale Überweisungen implementiert ✅
+- **Backend (`/app/backend/routers/universal_transfer.py`):**
+  - Partner → Kunde (Gutschrift)
+  - Kunde → Partner (Zahlung)
+  - Kunde → Kunde (P2P Transfer)
+  - Partner → Partner (Inter-Merchant Transfer)
+- **Erweiterte BidBlitz Pay (`/app/backend/routers/bidblitz_pay.py`):**
+  - `send-money` akzeptiert jetzt: BID-XXXXXX (Kunde), P-XXXXX (Partner), E-Mail
+  - Automatische ID-Erkennung: System erkennt Empfängertyp automatisch
 
-#### 2. E-Mail-Benachrichtigungen für Auto-Werbung ✅
-- **Implementiert in:** `/app/backend/routers/car_advertising.py`
-- **Neue E-Mail-Templates:**
-  - `send_car_advertising_approval_email()` - Bei Genehmigung
-  - `send_car_advertising_rejection_email()` - Bei Ablehnung (mit optionalem Grund)
-  - `send_car_advertising_activation_email()` - Bei Vertragsaktivierung
-- **Status-Updates senden automatisch E-Mails** an Bewerber
+#### 2. Händler-Aufladung (Partner Top-Up) ✅
+- Partner können Kundenguthaben aufladen mit `/api/universal-transfer/partner/send`
+- Unterstützt Admin-Credit-Line (`use_admin_credit: true`)
+- Transaktions-Historie für Partner und Kunden
 
-#### 3. Car Advertising Page komplett überarbeitet ✅
-- **Problem:** Seite war auf Deutschland fokussiert, nur €50, fehlende Features
-- **Lösung - Komplette Neugestaltung:**
-  - 🌍 **International:** "Auto-Werbung International" Badge, UAE als Hauptmarkt
-  - 💰 **€50-200/Monat:** Variable Vergütung je nach Fahrzeugtyp
-  - 📸 **5 Foto-Uploads:** Vorne, Hinten, Links, Rechts, Innen (erforderlich)
-  - 📊 **Statistiken:** 785+ Aktive Fahrer, 11+ Länder, 50+ Städte
-  - 📅 **Baujahr:** 2016-2026 (10 Jahre)
-  - 🌐 **Alle Sprachen:** de, en, ar, sq, tr, fr
-  - 📱 **Mobile-optimiert:** Responsive Grid-Layout, bessere UX
-  - 🏙️ **Länder & Städte:** UAE, Germany, Austria, Switzerland, Albania, Kosovo, Saudi Arabia, Qatar, etc.
+#### 3. Admin-Freibetrag System ✅
+- **Backend API:** `/api/universal-transfer/admin/credit`
+  - Admin kann Partner Freibetrag (Credit Line) zuweisen
+  - Partner können diesen für Kunden-Aufladungen nutzen
+  - Automatische Abrechnung und Verlauf
+- **Frontend:** `AdminPartnerCredit.js` - Neues Admin-Panel
+  - Übersicht aller Partner mit Freibetrag
+  - Guthaben hinzufügen/abziehen mit Grund
+  - Statistiken: Gesamt vergeben, verwendet, Partner mit Credit
 
-#### 4. Partner Portal i18n Fixes ✅
-- **Problem:** Hardcoded deutsche Texte in Scanner- und BidBlitz Pay-Komponenten
-- **Lösung:**
-  - `PartnerPortal.js`: Fehlermeldungen jetzt übersetzt (Kameraerror, Zahlungsfehler)
-  - `PartnerScanner.js`: Alle Texte verwenden jetzt `t()` Funktion
-  - `partnerTranslations.js`: Albanische Übersetzungen erheblich erweitert (80+ neue Keys)
+#### 4. Wallet/BidBlitz Pay i18n erweitert ✅
+- Aktualisierte Placeholder für Empfänger-Eingabe
+- Unterstützt: "BID-XXXXXX oder P-XXXXX oder E-Mail"
+- Übersetzungen für de, en, sq
 
-#### 5. Credit System i18n Fixes ✅
-- **Problem:** Tipps und History-Events waren auf Deutsch hardcoded im Backend
-- **Lösung:**
-  - `/app/backend/routers/credit_system.py`: Übersetzungskeys statt hardcodierter Texte
-  - `CreditSystem.jsx`: Erweiterte Übersetzungen für Tips und History-Events
-  - Neue Keys: `tipPayOnTime`, `tipPayEarly`, `tipFullRepay`, `tipUseRegularly`, `accountCreated`, etc.
-  - Vollständige Übersetzungen für: de, en, sq, tr, ar
-
-#### 6. Wallet/BidBlitzPay i18n Fix ✅
-- **Problem:** BidBlitzPay verwendete `bidblitz_language` statt globaler `language`
-- **Lösung:** BidBlitzPay.jsx verwendet jetzt `localStorage.getItem('language')` für konsistente Sprachauswahl
-- **Getestet:** Wallet-Seite zeigt korrekt Albanisch an
+#### 5. Cookie-Banner & Credit System ✅ (früher erledigt)
+- Cookie-Banner zeigt korrekte Sprache
+- Credit System Tips und History übersetzt
 
 #### Geänderte Dateien:
-- `/app/frontend/src/components/CookieConsent.js` (Übersetzungslogik verbessert)
-- `/app/backend/routers/car_advertising.py` (E-Mail-Integration, Fotos & Land)
-- `/app/frontend/src/pages/CarAdvertising.js` (Komplett neu gestaltet)
-- `/app/frontend/src/pages/PartnerPortal.js` (Fehlermeldungen übersetzt)
-- `/app/frontend/src/components/partner/PartnerScanner.js` (Texte übersetzt)
-- `/app/frontend/src/components/partner/partnerTranslations.js` (80+ neue albanische Keys)
-- `/app/backend/routers/credit_system.py` (Übersetzungskeys für Tips/History)
-- `/app/frontend/src/components/CreditSystem.jsx` (Erweiterte i18n für Tips/History)
-- `/app/frontend/src/pages/BidBlitzPay.jsx` (Globale Sprachauswahl)
+- `/app/backend/routers/universal_transfer.py` (NEU - Komplettes Transfer-System)
+- `/app/backend/routers/bidblitz_pay.py` (Erweitert für Partner-Transfers)
+- `/app/frontend/src/components/admin/AdminPartnerCredit.js` (NEU)
+- `/app/frontend/src/components/admin/index.js` (Export hinzugefügt)
+- `/app/frontend/src/pages/Admin.js` (Partner-Credit Tab hinzugefügt)
+- `/app/frontend/src/i18n/walletTranslations.js` (Placeholder aktualisiert)
+- `/app/backend/server.py` (Router registriert)
 
 ---
 
