@@ -524,7 +524,7 @@ const BidBlitzPay = () => {
   // Save a new recipient with nickname
   const saveRecipientWithNickname = async () => {
     if (!lastSuccessfulRecipient || !saveNickname.trim()) {
-      toast.error(language === 'de' ? 'Bitte Namen eingeben' : 'Please enter a name');
+      toast.error(t('enterName'));
       return;
     }
     
