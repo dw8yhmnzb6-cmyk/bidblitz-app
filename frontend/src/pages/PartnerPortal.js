@@ -1453,7 +1453,7 @@ export default function PartnerPortal() {
 }
 
 // BidBlitz Pay Partner Component - Payment Scanner
-function BidBlitzPayPartner({ token, partnerId, partnerName, commissionRate }) {
+function BidBlitzPayPartner({ token, partnerId, partnerName, commissionRate, t }) {
   const [step, setStep] = useState('amount'); // 'amount' -> 'scan' -> 'confirm'
   const [scanning, setScanning] = useState(false);
   const [customerData, setCustomerData] = useState(null);
