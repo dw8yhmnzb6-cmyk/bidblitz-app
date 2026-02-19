@@ -1171,11 +1171,11 @@ const BidBlitzPay = () => {
                     </div>
                     <div>
                       <p className="text-xs text-amber-600 font-medium">
-                        {language === 'de' ? 'Letzte Überweisung' : 'Last Transfer'}
+                        {t('lastTransfer')}
                       </p>
                       <p className="font-bold text-gray-800">{lastRecipient.email}</p>
                       <p className="text-xs text-gray-500">
-                        {language === 'de' ? 'Zuletzt:' : 'Last:'} €{lastRecipient.lastAmount?.toFixed(2)}
+                        {t('lastAmount')}: €{lastRecipient.lastAmount?.toFixed(2)}
                       </p>
                     </div>
                   </div>
@@ -1185,7 +1185,7 @@ const BidBlitzPay = () => {
                     className="bg-amber-500 hover:bg-amber-600 text-white text-sm px-4"
                     data-testid="use-last-recipient-btn"
                   >
-                    {language === 'de' ? 'Übernehmen' : 'Use'}
+                    {t('useRecipient')}
                   </Button>
                 </div>
               </div>
@@ -1206,7 +1206,7 @@ const BidBlitzPay = () => {
                     type="text"
                     value={recipientEmail}
                     onChange={(e) => setRecipientEmail(e.target.value)}
-                    placeholder={language === 'de' ? 'Kundennummer oder E-Mail' : 'Customer ID or Email'}
+                    placeholder={t('recipientPlaceholder')}
                     className="w-full"
                     required
                     data-testid="recipient-email-input"
