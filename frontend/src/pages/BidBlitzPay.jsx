@@ -555,7 +555,7 @@ const BidBlitzPay = () => {
       }
     } catch (error) {
       console.error('Save recipient error:', error);
-      toast.error(language === 'de' ? 'Fehler beim Speichern' : 'Error saving');
+      toast.error(t('errorSaving'));
     } finally {
       setSavingRecipient(false);
     }
