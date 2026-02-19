@@ -1240,12 +1240,12 @@ const CreditSystem = ({ language = 'de', walletBalance = 0, onBalanceUpdate }) =
           </div>
           
           <div className="flex justify-between text-xs">
-            <span>Max. Kredit: €{scoreData.tier.max_credit}</span>
-            <span>Zinsen: {scoreData.tier.interest_rate}%</span>
+            <span>{t('maxCredit')}: €{scoreData.tier.max_credit}</span>
+            <span>{t('interestRange')}: {scoreData.tier.interest_rate}%</span>
             {scoreData.next_tier && (
               <span className="flex items-center gap-1">
                 <TrendingUp className="w-3 h-3" />
-                {scoreData.next_tier.points_needed} bis {scoreData.next_tier.icon}
+                {scoreData.next_tier.points_needed} {t('until')} {scoreData.next_tier.icon}
               </span>
             )}
           </div>
