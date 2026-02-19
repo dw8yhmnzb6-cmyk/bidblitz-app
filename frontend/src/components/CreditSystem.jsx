@@ -204,7 +204,8 @@ const translations = {
     tierDiamond: 'Diamond',
     tier: 'Tier',
     walletBalanceLabel: 'Wallet Balance',
-    months: 'Mo'
+    months: 'Mo',
+    until: 'to'
   },
   tr: {
     creditSystem: 'Kredi Sistemi', applyForCredit: 'Kredi Başvurusu',
