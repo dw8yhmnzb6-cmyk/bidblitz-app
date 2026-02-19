@@ -222,7 +222,24 @@ const translations = {
     tier: 'Tier',
     walletBalanceLabel: 'Wallet Balance',
     months: 'Mo',
-    until: 'to'
+    until: 'to',
+    // Tips translations
+    tipPayOnTime: 'Pay on time',
+    tipPayOnTimeDesc: 'Every on-time payment earns +20 points',
+    tipFullRepay: 'Fully repay credit',
+    tipFullRepayDesc: 'Full repayment earns +100 points',
+    tipPayEarly: 'Pay early',
+    tipPayEarlyDesc: 'Payment before due date earns +30 points',
+    tipUseRegularly: 'Use credits regularly',
+    tipUseRegularlyDesc: 'Every successfully completed credit improves your score',
+    // History event translations
+    accountCreated: 'Account created - Starting score',
+    onTimePayment: 'On-time payment',
+    earlyPayment: 'Early payment - before due date',
+    latePayment: 'Late payment',
+    fullRepayment: 'Full repayment',
+    creditApproved: 'Credit approved',
+    firstCredit: 'First credit completed'
   },
   tr: {
     creditSystem: 'Kredi Sistemi', applyForCredit: 'Kredi Başvurusu',
