@@ -309,7 +309,7 @@ export const Navbar = () => {
                       className="flex-1 bg-amber-400 text-white py-2.5 px-3 rounded-lg font-semibold text-center text-sm flex items-center justify-center gap-1"
                     >
                       <Star className="w-4 h-4" />
-                      Influencer
+                      {t('nav.influencer')}
                     </Link>
                   )}
                   <button 
