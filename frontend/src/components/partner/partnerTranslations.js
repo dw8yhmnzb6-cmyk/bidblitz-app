@@ -459,7 +459,12 @@ export const translations = {
     step4Pay: '4. Money is transferred immediately to your account',
     transfers: 'Transfers',
     marketing: 'Marketing',
-    ratings: 'Ratings'
+    ratings: 'Ratings',
+    scanning: 'Scanning...',
+    back: 'Back',
+    stopScanner: 'Stop scanner',
+    total: 'Total',
+    insufficientBalance: 'Amount exceeds available balance'
   },
   fr: {
     login: 'Connexion', register: 'Inscription', email: 'Email', password: 'Mot de passe',
