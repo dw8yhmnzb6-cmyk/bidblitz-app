@@ -647,6 +647,9 @@ export default function Home() {
         {/* Global Jackpot - Prominent Position */}
         <GlobalJackpot className="mb-6" />
         
+        {/* Deposit Bonus Banner - Prominent Position */}
+        <DepositBonusBanner language={mappedLang} className="mb-6" />
+        
         {/* Excitement Status Bar */}
         <ExcitementStatusBar className="mb-4" />
         
