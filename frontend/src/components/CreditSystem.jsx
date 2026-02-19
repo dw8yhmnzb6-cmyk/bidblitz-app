@@ -894,7 +894,7 @@ const CreditSystem = ({ language = 'de', walletBalance = 0, onBalanceUpdate }) =
             </Button>
             
             <p className="text-xs text-gray-500 text-center">
-              Wallet Balance: €{walletBalance.toFixed(2)}
+              {t('walletBalanceLabel')}: €{walletBalance.toFixed(2)}
             </p>
           </div>
         )}
