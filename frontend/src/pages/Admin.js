@@ -1614,6 +1614,11 @@ export default function Admin() {
             />
           )}
 
+          {/* Car Advertising Tab */}
+          {activeTab === 'car-advertising' && (
+            <AdminCarAdvertising language={language} />
+          )}
+
           {/* Manager Tab */}
           {activeTab === 'managers' && (
             <AdminManagers token={token} language={language} />
