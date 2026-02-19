@@ -229,16 +229,16 @@ export const Footer = () => {
           <div className="space-y-4">
             <h4 className="text-white font-heading font-bold uppercase tracking-wider text-sm">{ft.quickLinks}</h4>
             <nav className="flex flex-col gap-2">
-              <Link to="/auctions" className="text-gray-400 hover:text-acid transition-colors font-body text-sm">
+              <Link to="/auctions" className="text-gray-400 hover:text-white transition-colors font-body text-sm">
                 {ft.liveAuctions}
               </Link>
-              <Link to="/buy-bids" className="text-gray-400 hover:text-acid transition-colors font-body text-sm">
+              <Link to="/buy-bids" className="text-gray-400 hover:text-white transition-colors font-body text-sm">
                 {ft.buyBids}
               </Link>
-              <Link to="/register" className="text-gray-400 hover:text-acid transition-colors font-body text-sm">
+              <Link to="/register" className="text-gray-400 hover:text-white transition-colors font-body text-sm">
                 {ft.register}
               </Link>
-              <Link to="/login" className="text-gray-400 hover:text-acid transition-colors font-body text-sm">
+              <Link to="/login" className="text-gray-400 hover:text-white transition-colors font-body text-sm">
                 {ft.login}
               </Link>
             </nav>
