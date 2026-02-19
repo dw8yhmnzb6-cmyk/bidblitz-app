@@ -1,7 +1,7 @@
 // Complete translations for 20 languages
 export const translations = {
   de: {
-    nav: { language: "Sprache", auctions: "Auktionen", buyBids: "Gebote kaufen", dashboard: "Übersicht", admin: "Admin", login: "Anmelden", register: "Registrieren", logout: "Abmelden", bids: "Gebote", winners: "Gewinner", inviteFriends: "Freunde werben", wishlist: "Wunschliste", howItWorks: "So funktioniert's", vip: "VIP Mitgliedschaft", faq: "FAQ", contact: "Kontakt", giftCards: "Geschenkkarten", vipAuctions: "VIP Auktionen", leaderboard: "Rangliste", luckyWheel: "Glücksrad" },
+    nav: { language: "Sprache", auctions: "Auktionen", buyBids: "Gebote kaufen", dashboard: "Übersicht", admin: "Admin", login: "Anmelden", register: "Registrieren", logout: "Abmelden", bids: "Gebote", winners: "Gewinner", inviteFriends: "Freunde werben", wishlist: "Wunschliste", howItWorks: "So funktioniert's", vip: "VIP Mitgliedschaft", faq: "FAQ", contact: "Kontakt", giftCards: "Geschenkkarten", vipAuctions: "VIP Auktionen", leaderboard: "Rangliste", luckyWheel: "Glücksrad", manager: "Manager", influencer: "Influencer", wallet: "Wallet", user: "Benutzer", lightMode: "Hell Modus", darkMode: "Dunkel Modus" },
     home: {
       badge: "10 kostenlose Gebote bei Registrierung",
       heroTitle1: "Gewinnen Sie",
