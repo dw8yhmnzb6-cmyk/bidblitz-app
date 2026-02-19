@@ -416,10 +416,17 @@ async def withdraw_deposit(
     annual_rate = deposit.get("interest_rate", 0) / 100
     final_interest = deposit.get("amount", 0) * annual_rate * (days_elapsed / 365)
     
-    # Credit interest to customer
+    # Credit interest to customer (both balances)
     await db.users.update_one(
         {"id": user_id},
-        {"$inc": {"balance": final_interest}}
+        {"$inc": {"balance": final_interest, "bidblitz_balance": final_interest}}
+    )
+    
+    # Also update BidBlitz Pay wallet
+    await db.bidblitz_wallets.update_one(
+        {"user_id": user_id},
+        {"$inc": {"universal_balance": final_interest}},
+        upsert=True
     )
     
     # Update deposit status
