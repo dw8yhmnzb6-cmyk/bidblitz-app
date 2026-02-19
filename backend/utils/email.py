@@ -661,3 +661,93 @@ async def send_abandoned_cart_reminder(
         subject=f"🛒 {user_name}, Sie haben Artikel im Warenkorb vergessen!",
         html_content=html_content
     )
+
+
+
+async def send_interest_payout_notification(
+    to_email: str, 
+    user_name: str, 
+    interest_amount: float,
+    deposit_amount: float,
+    interest_rate: float,
+    total_balance: float
+):
+    """Send email notification when interest is paid out to a customer's deposit."""
+    
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset="utf-8"></head>
+    <body style="margin:0; padding:0; font-family:Arial,sans-serif; background-color:#f4f4f4;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px; margin:0 auto; background:#ffffff;">
+            <tr>
+                <td style="background:linear-gradient(135deg,#22c55e,#16a34a); padding:30px; text-align:center;">
+                    <h1 style="color:#ffffff; margin:0; font-size:28px;">💰 Zinsgutschrift erhalten!</h1>
+                </td>
+            </tr>
+            <tr>
+                <td style="padding:30px;">
+                    <p style="font-size:16px; color:#333; margin:0 0 20px;">
+                        Hallo {user_name},
+                    </p>
+                    <p style="font-size:16px; color:#333; margin:0 0 20px;">
+                        gute Nachrichten! Ihre täglichen Zinsen wurden Ihrem Guthaben gutgeschrieben.
+                    </p>
+                    
+                    <table style="width:100%; background:#f9fafb; border-radius:12px; padding:20px; margin:20px 0;">
+                        <tr>
+                            <td style="padding:10px 0; border-bottom:1px solid #e5e7eb;">
+                                <span style="color:#6b7280; font-size:14px;">Einlage:</span>
+                                <span style="float:right; color:#111; font-weight:bold;">€{deposit_amount:.2f}</span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding:10px 0; border-bottom:1px solid #e5e7eb;">
+                                <span style="color:#6b7280; font-size:14px;">Zinssatz:</span>
+                                <span style="float:right; color:#111; font-weight:bold;">{interest_rate}% p.a.</span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding:10px 0; border-bottom:1px solid #e5e7eb;">
+                                <span style="color:#22c55e; font-size:16px; font-weight:bold;">Zinsgutschrift:</span>
+                                <span style="float:right; color:#22c55e; font-weight:bold; font-size:18px;">+€{interest_amount:.4f}</span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding:15px 0 5px;">
+                                <span style="color:#6b7280; font-size:14px;">Gesamtguthaben:</span>
+                                <span style="float:right; color:#111; font-weight:bold; font-size:18px;">€{total_balance:.2f}</span>
+                            </td>
+                        </tr>
+                    </table>
+                    
+                    <p style="font-size:14px; color:#6b7280; margin:20px 0;">
+                        Die Zinsen werden täglich berechnet und gutgeschrieben. Je höher Ihre Einlage, desto mehr verdienen Sie!
+                    </p>
+                    
+                    <div style="text-align:center; margin:30px 0;">
+                        <a href="https://bidblitz.ae/pay" 
+                           style="display:inline-block; background:linear-gradient(135deg,#f59e0b,#d97706); color:#fff; text-decoration:none; padding:14px 28px; border-radius:8px; font-weight:bold; font-size:16px;">
+                            Mehr einzahlen & mehr verdienen →
+                        </a>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td style="background:#f9fafb; padding:20px; text-align:center; border-top:1px solid #e5e7eb;">
+                    <p style="margin:0; color:#9ca3af; font-size:12px;">
+                        © 2026 BidBlitz.ae FZCO | Dubai, UAE<br>
+                        Sie erhalten diese E-Mail, weil Sie eine aktive Einlage haben.
+                    </p>
+                </td>
+            </tr>
+        </table>
+    </body>
+    </html>
+    """
+    
+    return await send_email(
+        to_email=to_email,
+        subject=f"💰 Zinsgutschrift: +€{interest_amount:.4f} auf Ihre Einlage",
+        html_content=html_content
+    )
