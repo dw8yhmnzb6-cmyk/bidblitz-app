@@ -876,7 +876,12 @@ export const translations = {
     createVoucher: 'Krijo kupon',
     transfers: 'Transfertat',
     marketing: 'Marketing',
-    ratings: 'Vlerësimet'
+    ratings: 'Vlerësimet',
+    scanning: 'Duke skanuar...',
+    back: 'Prapa',
+    stopScanner: 'Ndalo skanerin',
+    total: 'Totali',
+    insufficientBalance: 'Shuma kalon bilancin e disponueshëm'
   }
 };
 
