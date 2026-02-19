@@ -359,7 +359,7 @@ export function PartnerTransfer({ token, language = 'de' }) {
       }
     } catch (error) {
       console.error('Transfer error:', error);
-      toast.error('Error');
+      toast.error(t('recipientNotFound'));
     } finally {
       setSending(false);
     }
