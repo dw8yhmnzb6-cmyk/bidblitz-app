@@ -378,7 +378,14 @@ export const walletTranslations = {
     insufficientFunds: 'Insufficient funds',
     invalidAmount: 'Invalid amount',
     paymentFailed: 'Payment failed',
-    paymentSuccessful: 'Payment successful'
+    paymentSuccessful: 'Payment successful',
+    paymentStatusError: 'Could not retrieve payment status',
+    paymentCredited: 'Balance has been credited',
+    sessionExpired: 'Session expired. Please try again',
+    freeBids: 'Free Bids',
+    save: 'Save',
+    errorSaving: 'Error saving',
+    errorLoadingRequest: 'Error loading request'
   },
   
   tr: {
