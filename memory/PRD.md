@@ -20,7 +20,7 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
   - `send_car_advertising_activation_email()` - Bei Vertragsaktivierung
 - **Status-Updates senden automatisch E-Mails** an Bewerber
 
-#### 2. Car Advertising Page komplett überarbeitet ✅
+#### 3. Car Advertising Page komplett überarbeitet ✅
 - **Problem:** Seite war auf Deutschland fokussiert, nur €50, fehlende Features
 - **Lösung - Komplette Neugestaltung:**
   - 🌍 **International:** "Auto-Werbung International" Badge, UAE als Hauptmarkt
@@ -32,10 +32,20 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
   - 📱 **Mobile-optimiert:** Responsive Grid-Layout, bessere UX
   - 🏙️ **Länder & Städte:** UAE, Germany, Austria, Switzerland, Albania, Kosovo, Saudi Arabia, Qatar, etc.
 
+#### 4. Partner Portal i18n Fixes ✅
+- **Problem:** Hardcoded deutsche Texte in Scanner- und BidBlitz Pay-Komponenten
+- **Lösung:**
+  - `PartnerPortal.js`: Fehlermeldungen jetzt übersetzt (Kameraerror, Zahlungsfehler)
+  - `PartnerScanner.js`: Alle Texte verwenden jetzt `t()` Funktion
+  - `partnerTranslations.js`: Albanische Übersetzungen erheblich erweitert (80+ neue Keys)
+
 #### Geänderte Dateien:
 - `/app/frontend/src/components/CookieConsent.js` (Übersetzungslogik verbessert)
 - `/app/backend/routers/car_advertising.py` (E-Mail-Integration, Fotos & Land)
 - `/app/frontend/src/pages/CarAdvertising.js` (Komplett neu gestaltet)
+- `/app/frontend/src/pages/PartnerPortal.js` (Fehlermeldungen übersetzt)
+- `/app/frontend/src/components/partner/PartnerScanner.js` (Texte übersetzt)
+- `/app/frontend/src/components/partner/partnerTranslations.js` (80+ neue albanische Keys)
 
 ---
 
