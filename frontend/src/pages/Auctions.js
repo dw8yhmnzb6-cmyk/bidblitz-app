@@ -1368,15 +1368,15 @@ export default function Auctions() {
               <div className="flex items-center justify-center md:justify-start gap-2 mb-2">
                 <Trophy className="w-6 h-6 text-white" />
                 <h2 className="text-xl md:text-2xl font-bold text-white">
-                  {language === 'de' ? 'Bonus auf Einzahlungen' : 'Deposit Bonus'}
+                  {t('auctionPage.depositBonus') || 'Bonus auf Einzahlungen'}
                 </h2>
               </div>
               <p className="text-white/90 text-sm md:text-base mb-3 flex items-center justify-center md:justify-start gap-2">
                 <TrendingUp className="w-4 h-4" />
-                {language === 'de' ? 'Bis zu 20% Bonus + 5% Zinsen p.a.' : 'Up to 20% Bonus + 5% Interest p.a.'}
+                {t('auctionPage.depositBonusDesc') || 'Bis zu 20% Bonus + 5% Zinsen p.a.'}
               </p>
               <button className="bg-white text-orange-600 hover:bg-orange-50 font-bold text-sm px-6 py-2 rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:scale-105">
-                {language === 'de' ? 'Jetzt Bonus sichern →' : 'Get Bonus Now →'}
+                {t('auctionPage.getBonusNow') || 'Jetzt Bonus sichern →'}
               </button>
             </div>
             
@@ -1420,10 +1420,10 @@ export default function Auctions() {
               <span className="text-2xl">🎫</span>
               <div>
                 <p className="text-white font-bold text-lg">
-                  {language === 'de' ? 'Händler-Gutscheine' : 'Merchant Vouchers'}
+                  {t('auctionPage.merchantVouchers') || 'Händler-Gutscheine'}
                 </p>
                 <p className="text-white/80 text-sm">
-                  {language === 'de' ? 'Ersteigere Gutscheine bei lokalen Partnern!' : 'Bid on vouchers from local partners!'}
+                  {t('auctionPage.merchantVouchersDesc') || 'Ersteigere Gutscheine bei lokalen Partnern!'}
                 </p>
               </div>
             </div>
