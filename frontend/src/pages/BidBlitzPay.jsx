@@ -13,6 +13,7 @@ import { Html5Qrcode } from 'html5-qrcode';
 import CreditSystem from '../components/CreditSystem';
 import CashbackSystem from '../components/CashbackSystem';
 import PaymentHistory from '../components/PaymentHistory';
+import DepositOffers from './DepositOffers';
 import { walletTranslations } from '../i18n/walletTranslations';
 
 const API = process.env.REACT_APP_BACKEND_URL;
@@ -1982,6 +1983,13 @@ const BidBlitzPay = () => {
               language={language}
               onBalanceUpdate={() => { fetchWallet(); fetchTransactions(); }}
             />
+          </div>
+        )}
+
+        {/* Bonus / Deposit Offers View */}
+        {view === 'bonus' && (
+          <div data-testid="bonus-offers-view">
+            <DepositOffers />
           </div>
         )}
       </div>
