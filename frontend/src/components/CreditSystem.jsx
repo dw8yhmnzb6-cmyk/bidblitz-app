@@ -388,7 +388,24 @@ const translations = {
     tier: 'Niveli',
     walletBalanceLabel: 'Bilanci i Portofolit',
     months: 'Muaj',
-    until: 'deri në'
+    until: 'deri në',
+    // Tips translations
+    tipPayOnTime: 'Paguaj në kohë',
+    tipPayOnTimeDesc: 'Çdo pagesë në kohë sjell +20 pikë',
+    tipFullRepay: 'Paguaj kredinë plotësisht',
+    tipFullRepayDesc: 'Pagesa e plotë sjell +100 pikë',
+    tipPayEarly: 'Paguaj herët',
+    tipPayEarlyDesc: 'Pagesa para afatit sjell +30 pikë',
+    tipUseRegularly: 'Përdor kredi rregullisht',
+    tipUseRegularlyDesc: 'Çdo kredi e përfunduar me sukses përmirëson vlerësimin tuaj',
+    // History event translations
+    accountCreated: 'Llogaria u krijua - Vlerësimi fillestar',
+    onTimePayment: 'Pagesë në kohë',
+    earlyPayment: 'Pagesë e hershme - para afatit',
+    latePayment: 'Pagesë e vonuar',
+    fullRepayment: 'Pagesa e plotë',
+    creditApproved: 'Kredia u aprovua',
+    firstCredit: 'Kredia e parë u përfundua'
   }
 };
 
