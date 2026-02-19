@@ -1224,7 +1224,7 @@ const CreditSystem = ({ language = 'de', walletBalance = 0, onBalanceUpdate }) =
             </div>
             <div className="text-right">
               <p className="text-3xl font-bold" style={{ color: scoreData.tier.color }}>{scoreData.score}</p>
-              <p className="text-xs opacity-70">von 1000</p>
+              <p className="text-xs opacity-70">{t('of')} 1000</p>
             </div>
           </div>
           
