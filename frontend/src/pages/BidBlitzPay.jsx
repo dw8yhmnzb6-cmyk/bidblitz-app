@@ -16,6 +16,9 @@ import PaymentHistory from '../components/PaymentHistory';
 import DepositOffers from './DepositOffers';
 import ReferralProgram from '../components/ReferralProgram';
 import NotificationCenter from '../components/NotificationCenter';
+import DailyLoginReward from '../components/DailyLoginReward';
+import AchievementsPage from '../components/AchievementsPage';
+import MonthlyLeaderboard from '../components/MonthlyLeaderboard';
 import { walletTranslations } from '../i18n/walletTranslations';
 
 const API = process.env.REACT_APP_BACKEND_URL;
