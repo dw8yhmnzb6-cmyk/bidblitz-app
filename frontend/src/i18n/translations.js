@@ -1553,7 +1553,7 @@ export const translations = {
     }
   },
   ar: {
-    nav: { language: "اللغة", auctions: "المزادات", buyBids: "شراء العروض", dashboard: "لوحة التحكم", admin: "المشرف", login: "تسجيل الدخول", register: "التسجيل", logout: "تسجيل الخروج", bids: "العروض", howItWorks: "كيف يعمل", vip: "عضوية VIP", faq: "الأسئلة", contact: "اتصل", giftCards: "بطاقات الهدايا", vipAuctions: "مزادات VIP", winners: "الفائزون", inviteFriends: "دعوة الأصدقاء", wishlist: "قائمة الرغبات", leaderboard: "قائمة المتصدرين", luckyWheel: "عجلة الحظ" },
+    nav: { language: "اللغة", auctions: "المزادات", buyBids: "شراء العروض", dashboard: "لوحة التحكم", admin: "المشرف", login: "تسجيل الدخول", register: "التسجيل", logout: "تسجيل الخروج", bids: "العروض", howItWorks: "كيف يعمل", vip: "عضوية VIP", faq: "الأسئلة", contact: "اتصل", giftCards: "بطاقات الهدايا", vipAuctions: "مزادات VIP", winners: "الفائزون", inviteFriends: "دعوة الأصدقاء", wishlist: "قائمة الرغبات", leaderboard: "قائمة المتصدرين", luckyWheel: "عجلة الحظ", manager: "المدير", influencer: "المؤثر", wallet: "المحفظة", user: "المستخدم", lightMode: "الوضع الفاتح", darkMode: "الوضع الداكن" },
     home: {
       badge: "10 عروض مجانية عند التسجيل",
       heroTitle1: "اربح",
