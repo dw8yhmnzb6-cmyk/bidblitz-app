@@ -5,6 +5,41 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 
 ## Current Status (February 19, 2026)
 
+### ✅ Session Update - February 19, 2026 (Session 51) - COMPLETE ✅
+
+#### 1. Auto-Werbung Feature ✅
+- **Frontend:** `/auto-werbung` Landing-Page mit Formular (4 Sprachen: DE, EN, SQ, TR)
+- **Backend:** `/api/car-advertising/*` API für Bewerbungen
+- **Admin:** Neuer Tab "Auto-Werbung" im Admin-Panel mit:
+  - Statistiken (Gesamt, Ausstehend, Genehmigt, Aktiv, Abgelehnt, Ausgezahlt)
+  - Filter & Suche
+  - Tabelle mit Bewerbungen
+  - Genehmigen/Ablehnen/Aktivieren Buttons
+  - "Monatszahlung ausführen" für €50/Monat Auszahlungen
+  - Detail-Modal für jede Bewerbung
+
+#### 2. Partner-Portal Übersetzungen ✅
+- **PartnerBudget.js:** Albanisch & Türkisch hinzugefügt
+- **PartnerDashboardExpanded.js:** Albanisch & Türkisch hinzugefügt
+- **"Budget erschöpft - Bitte aufladen":** Jetzt mehrsprachig
+
+#### 3. Mobile UX Fixes ✅
+- Onboarding Checkbox rechts vom Text, größere Schrift
+- Partner-Transfer Fehlermeldung übersetzt
+
+---
+
+### Geänderte/Neue Dateien:
+- `/app/frontend/src/pages/CarAdvertising.js` (NEU)
+- `/app/backend/routers/car_advertising.py` (NEU)
+- `/app/frontend/src/components/admin/AdminCarAdvertising.js` (NEU)
+- `/app/frontend/src/components/partner/PartnerBudget.js` (Übersetzungen)
+- `/app/frontend/src/components/partner/PartnerDashboardExpanded.js` (Übersetzungen)
+- `/app/frontend/src/pages/Admin.js` (Auto-Werbung Tab)
+- `/app/frontend/src/components/OnboardingTour.js` (Checkbox Redesign)
+
+---
+
 ### ✅ Session Update - February 19, 2026 (Session 51) - AUTO-WERBUNG FEATURE ✅
 
 #### Neues Feature: Auto-Werbung Programm ✅
