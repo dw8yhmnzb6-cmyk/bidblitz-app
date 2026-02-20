@@ -135,14 +135,50 @@ export default function AdminEnterpriseManagement() {
     }
   };
 
+  const saveCommissionSettings = async (enterpriseId) => {
+    try {
+      const res = await fetch(`${API_URL}/api/enterprise/admin/commission-settings/${enterpriseId}`, {
+        method: 'PUT',
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-admin-key': ADMIN_KEY 
+        },
+        body: JSON.stringify(commissionForm)
+      });
+      
+      if (res.ok) {
+        toast.success('Provisionseinstellungen gespeichert!');
+        setEditingCommission(null);
+        fetchEnterprises();
+      } else {
+        const data = await res.json();
+        toast.error(data.detail || 'Fehler beim Speichern');
+      }
+    } catch (err) {
+      toast.error('Verbindungsfehler');
+    }
+  };
+
   const startEditPayout = (enterprise) => {
     setEditingPayout(enterprise.id);
+    setEditingCommission(null);
     setPayoutForm({
       iban: enterprise.payout_settings?.iban || '',
       iban_holder: enterprise.payout_settings?.iban_holder || enterprise.company_name,
       payout_frequency: enterprise.payout_settings?.payout_frequency || 'monthly',
       iban_mode: enterprise.payout_settings?.iban_mode || 'admin_entry',
       min_payout_amount: enterprise.payout_settings?.min_payout_amount || 100
+    });
+  };
+
+  const startEditCommission = (enterprise) => {
+    setEditingCommission(enterprise.id);
+    setEditingPayout(null);
+    setCommissionForm({
+      voucher_commission: enterprise.commission_settings?.voucher_commission ?? 5.0,
+      self_pay_commission: enterprise.commission_settings?.self_pay_commission ?? 3.0,
+      customer_cashback: enterprise.commission_settings?.customer_cashback ?? 1.0,
+      is_active: enterprise.commission_settings?.is_active ?? true
     });
   };
 
