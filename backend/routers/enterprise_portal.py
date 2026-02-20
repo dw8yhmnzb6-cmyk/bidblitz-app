@@ -532,10 +532,10 @@ async def create_user(data: UserCreate, authorization: str = Header(None)):
         raise HTTPException(status_code=400, detail="E-Mail bereits vergeben")
     
     # Validate role
-    if data.role not in ["admin", "branch_manager", "cashier"]:
+    if data.role not in ["admin", "branch_manager", "cashier", "tax_advisor"]:
         raise HTTPException(status_code=400, detail="Ungültige Rolle")
     
-    # Branch required for branch_manager and cashier
+    # Branch required for branch_manager and cashier (not for admin or tax_advisor)
     if data.role in ["branch_manager", "cashier"] and not data.branch_id:
         raise HTTPException(status_code=400, detail="Filiale erforderlich für diese Rolle")
     
@@ -565,7 +565,7 @@ async def create_user(data: UserCreate, authorization: str = Header(None)):
     
     await db.enterprise_users.insert_one(user)
     
-    role_names = {"admin": "Administrator", "branch_manager": "Filialleiter", "cashier": "Kassierer"}
+    role_names = {"admin": "Administrator", "branch_manager": "Filialleiter", "cashier": "Kassierer", "tax_advisor": "Steuerberater"}
     
     return {
         "success": True,
