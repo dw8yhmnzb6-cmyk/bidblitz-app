@@ -22,12 +22,19 @@ export default function AdminEnterpriseManagement() {
   const [activeTab, setActiveTab] = useState('all');
   const [expandedId, setExpandedId] = useState(null);
   const [editingPayout, setEditingPayout] = useState(null);
+  const [editingCommission, setEditingCommission] = useState(null);
   const [payoutForm, setPayoutForm] = useState({
     iban: '',
     iban_holder: '',
     payout_frequency: 'monthly',
     iban_mode: 'admin_entry',
     min_payout_amount: 100
+  });
+  const [commissionForm, setCommissionForm] = useState({
+    voucher_commission: 5.0,
+    self_pay_commission: 3.0,
+    customer_cashback: 1.0,
+    is_active: true
   });
 
   useEffect(() => {
