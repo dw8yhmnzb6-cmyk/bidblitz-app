@@ -54,4 +54,4 @@ BID_PACKAGES = [
 ]
 
 # Frontend URL for redirects
-FRONTEND_URL = os.environ.get('FRONTEND_URL', 'https://payment-hub-196.preview.emergentagent.com')
+FRONTEND_URL = os.environ.get('FRONTEND_URL', 'https://payment-ecosystem-3.preview.emergentagent.com')
