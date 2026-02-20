@@ -53,6 +53,7 @@ import {
   AdminProductAnalytics,
   AdminUserAnalytics,
   AdminRevenueAnalytics,
+  AdminBackupSystem,
   AdminQuickActions,
   AdminLiveWidgets,
   AdminGlobalSearch,
