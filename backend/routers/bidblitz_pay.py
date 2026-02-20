@@ -1520,14 +1520,28 @@ async def get_transaction_history(
         query["description"] = {"$regex": search, "$options": "i"}
     
     # Count total
-    total = await db.wallet_transactions.count_documents(query)
+    total_wallet = await db.wallet_transactions.count_documents(query)
+    total_bidblitz = await db.bidblitz_pay_transactions.count_documents(query)
+    total = total_wallet + total_bidblitz
     
-    # Get transactions
+    # Get transactions from both collections
     skip = (page - 1) * limit
-    transactions = await db.wallet_transactions.find(
+    wallet_txs = await db.wallet_transactions.find(
         query,
         {"_id": 0}
-    ).sort("created_at", -1).skip(skip).limit(limit).to_list(limit)
+    ).sort("created_at", -1).to_list(1000)
+    
+    bidblitz_txs = await db.bidblitz_pay_transactions.find(
+        query,
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(1000)
+    
+    # Merge and sort by date
+    all_transactions = wallet_txs + bidblitz_txs
+    all_transactions.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+    
+    # Paginate
+    transactions = all_transactions[skip:skip+limit]
     
     # Also get from balance_history in users collection
     user_data = await db.users.find_one({"id": user_id}, {"_id": 0, "balance_history": 1})
