@@ -1003,6 +1003,20 @@ async def export_report(
 
 # ==================== ADMIN ENDPOINTS ====================
 
+@router.get("/admin/list")
+async def list_all_enterprises(x_admin_key: str = Header(...)):
+    """Admin: Get list of all enterprise accounts."""
+    if x_admin_key != "bidblitz-admin-2026":
+        raise HTTPException(status_code=403, detail="Ungültiger Admin-Key")
+    
+    enterprises = await db.enterprise_accounts.find(
+        {},
+        {"_id": 0, "password": 0}
+    ).sort("created_at", -1).to_list(100)
+    
+    return {"enterprises": enterprises, "total": len(enterprises)}
+
+
 @router.get("/admin/pending")
 async def get_pending_enterprises(x_admin_key: str = Header(...)):
     """Admin: Get list of pending enterprise registrations."""
