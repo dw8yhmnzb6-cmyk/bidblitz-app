@@ -1481,7 +1481,7 @@ async def get_transaction_history(
     
     # Type filter
     type_mapping = {
-        "deposit": ["topup", "deposit", "bank_transfer_credit", "credit_disbursement"],
+        "deposit": ["topup", "deposit", "bank_transfer_credit", "credit_disbursement", "pos_topup"],
         "withdrawal": ["withdrawal", "payout", "credit_repayment"],
         "credit": ["credit_disbursement", "credit_repayment"],
         "cashback": ["cashback", "cashback_payout", "cashback_earning"],
