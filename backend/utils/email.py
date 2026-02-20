@@ -751,3 +751,93 @@ async def send_interest_payout_notification(
         subject=f"💰 Zinsgutschrift: +€{interest_amount:.4f} auf Ihre Einlage",
         html_content=html_content
     )
+
+
+async def send_topup_notification(
+    to_email: str,
+    user_name: str,
+    amount: float,
+    bonus: float,
+    total_credited: float,
+    new_balance: float,
+    merchant_name: str
+):
+    """Send email notification when customer receives a top-up from a merchant."""
+    
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset="utf-8"></head>
+    <body style="margin:0; padding:0; font-family:Arial,sans-serif; background-color:#f4f4f4;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px; margin:0 auto; background:#ffffff;">
+            <tr>
+                <td style="background:linear-gradient(135deg,#22c55e,#16a34a); padding:30px; text-align:center;">
+                    <h1 style="color:#ffffff; margin:0; font-size:28px;">💳 Guthaben aufgeladen!</h1>
+                </td>
+            </tr>
+            <tr>
+                <td style="padding:30px;">
+                    <p style="font-size:16px; color:#333; margin:0 0 20px;">
+                        Hallo {user_name},
+                    </p>
+                    <p style="font-size:16px; color:#333; margin:0 0 20px;">
+                        Ihr BidBlitz-Guthaben wurde soeben bei <strong>{merchant_name}</strong> aufgeladen!
+                    </p>
+                    
+                    <table style="width:100%; background:#f9fafb; border-radius:12px; padding:20px; margin:20px 0;">
+                        <tr>
+                            <td style="padding:10px 0; border-bottom:1px solid #e5e7eb;">
+                                <span style="color:#6b7280; font-size:14px;">Aufladebetrag:</span>
+                                <span style="float:right; color:#111; font-weight:bold;">€{amount:.2f}</span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding:10px 0; border-bottom:1px solid #e5e7eb;">
+                                <span style="color:#22c55e; font-size:14px;">Bonus geschenkt:</span>
+                                <span style="float:right; color:#22c55e; font-weight:bold;">+€{bonus:.2f}</span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding:15px 0; border-bottom:1px solid #e5e7eb;">
+                                <span style="color:#f59e0b; font-size:16px; font-weight:bold;">Gutschrift gesamt:</span>
+                                <span style="float:right; color:#f59e0b; font-weight:bold; font-size:20px;">€{total_credited:.2f}</span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding:15px 0 5px;">
+                                <span style="color:#6b7280; font-size:14px;">Neues Guthaben:</span>
+                                <span style="float:right; color:#111; font-weight:bold; font-size:18px;">€{new_balance:.2f}</span>
+                            </td>
+                        </tr>
+                    </table>
+                    
+                    <p style="font-size:14px; color:#6b7280; margin:20px 0;">
+                        Je mehr Sie aufladen, desto mehr Bonus erhalten Sie! Schauen Sie sich unsere Bonus-Staffeln an.
+                    </p>
+                    
+                    <div style="text-align:center; margin:30px 0;">
+                        <a href="https://bidblitz.ae/pay" 
+                           style="display:inline-block; background:linear-gradient(135deg,#f59e0b,#d97706); color:#fff; text-decoration:none; padding:14px 28px; border-radius:8px; font-weight:bold; font-size:16px;">
+                            Jetzt bieten & sparen →
+                        </a>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td style="background:#f9fafb; padding:20px; text-align:center; border-top:1px solid #e5e7eb;">
+                    <p style="margin:0; color:#9ca3af; font-size:12px;">
+                        © 2026 BidBlitz.ae FZCO | Dubai, UAE<br>
+                        Händler: {merchant_name}
+                    </p>
+                </td>
+            </tr>
+        </table>
+    </body>
+    </html>
+    """
+    
+    return await send_email(
+        to_email=to_email,
+        subject=f"💳 €{total_credited:.2f} Guthaben bei {merchant_name} aufgeladen!",
+        html_content=html_content
+    )
