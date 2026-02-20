@@ -31,8 +31,12 @@ const playSound = (type) => {
 export default function POSTerminal() {
   const [apiKey, setApiKey] = useState(localStorage.getItem('pos_api_key') || '');
   const [merchantName, setMerchantName] = useState('');
+  const [merchantCommission, setMerchantCommission] = useState(2.0);
   const [isConnected, setIsConnected] = useState(false);
   const [loading, setLoading] = useState(false);
+  
+  // Mode: 'payment' or 'topup'
+  const [mode, setMode] = useState('payment');
   
   // Payment state
   const [amount, setAmount] = useState('');
@@ -40,6 +44,16 @@ export default function POSTerminal() {
   const [description, setDescription] = useState('');
   const [currentPayment, setCurrentPayment] = useState(null);
   const [paymentStatus, setPaymentStatus] = useState(null);
+  
+  // Top-up state
+  const [topupAmount, setTopupAmount] = useState('');
+  const [customerNumber, setCustomerNumber] = useState('');
+  const [topupResult, setTopupResult] = useState(null);
+  const [bonusTiers] = useState([
+    { min: 100, bonus: 5.00, label: '€100+ → +€5' },
+    { min: 50, bonus: 2.00, label: '€50+ → +€2' },
+    { min: 20, bonus: 0.50, label: '€20+ → +€0,50' }
+  ]);
   
   // Settings
   const [soundEnabled, setSoundEnabled] = useState(true);
