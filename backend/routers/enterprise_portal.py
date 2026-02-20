@@ -1259,3 +1259,405 @@ async def suspend_enterprise(enterprise_id: str, x_admin_key: str = Header(...))
         raise HTTPException(status_code=404, detail="Unternehmen nicht gefunden")
     
     return {"success": True, "message": "Unternehmen gesperrt"}
+
+
+# ==================== SEPA PAYOUT ENDPOINTS ====================
+
+class PayoutCreate(BaseModel):
+    enterprise_id: str
+    amount: float
+    note: Optional[str] = None
+
+@router.get("/admin/payouts/pending")
+async def get_pending_payouts(x_admin_key: str = Header(...)):
+    """Admin: Get list of all pending payouts based on frequency settings."""
+    if x_admin_key != "bidblitz-admin-2026":
+        raise HTTPException(status_code=403, detail="Ungültiger Admin-Key")
+    
+    now = datetime.now(timezone.utc)
+    pending_payouts = []
+    
+    # Get all approved enterprises
+    enterprises = await db.enterprise_accounts.find(
+        {"status": "approved"},
+        {"_id": 0, "password": 0}
+    ).to_list(100)
+    
+    for enterprise in enterprises:
+        ent_id = enterprise["id"]
+        
+        # Get payout settings
+        payout_settings = await db.enterprise_payout_settings.find_one(
+            {"enterprise_id": ent_id},
+            {"_id": 0}
+        ) or {"payout_frequency": "monthly", "min_payout_amount": 100, "iban_mode": "admin_entry"}
+        
+        # Get commission settings
+        commission_settings = await db.enterprise_commission_settings.find_one(
+            {"enterprise_id": ent_id},
+            {"_id": 0}
+        ) or {"voucher_commission": 5.0}
+        
+        # Calculate pending amount from transactions
+        api_keys = await db.enterprise_api_keys.find(
+            {"enterprise_id": ent_id},
+            {"_id": 0, "api_key": 1}
+        ).to_list(100)
+        
+        key_list = [k["api_key"] for k in api_keys]
+        total_revenue = 0
+        
+        if key_list:
+            # Get last payout date
+            last_payout = await db.enterprise_payouts.find_one(
+                {"enterprise_id": ent_id, "status": "completed"},
+                sort=[("completed_at", -1)]
+            )
+            last_payout_date = last_payout["completed_at"] if last_payout else None
+            
+            # Calculate revenue since last payout
+            match_filter = {"api_key": {"$in": key_list}, "type": "topup"}
+            if last_payout_date:
+                match_filter["created_at"] = {"$gt": last_payout_date}
+            
+            pipeline = [
+                {"$match": match_filter},
+                {"$group": {"_id": None, "total": {"$sum": "$amount"}}}
+            ]
+            result = await db.enterprise_transactions.aggregate(pipeline).to_list(1)
+            total_revenue = result[0]["total"] if result else 0
+        
+        # Calculate commission amount
+        commission_rate = commission_settings.get("voucher_commission", 5.0) / 100
+        pending_amount = round(total_revenue * commission_rate, 2)
+        
+        # Check if payout is due based on frequency
+        is_due = False
+        frequency = payout_settings.get("payout_frequency", "monthly")
+        min_amount = payout_settings.get("min_payout_amount", 100)
+        
+        if pending_amount >= min_amount and frequency != "manual":
+            # Get last payout
+            last_payout = await db.enterprise_payouts.find_one(
+                {"enterprise_id": ent_id, "status": "completed"},
+                sort=[("completed_at", -1)]
+            )
+            
+            if not last_payout:
+                is_due = True
+            else:
+                last_date = datetime.fromisoformat(last_payout["completed_at"].replace("Z", "+00:00"))
+                
+                if frequency == "daily":
+                    is_due = (now - last_date).days >= 1
+                elif frequency == "weekly":
+                    is_due = (now - last_date).days >= 7
+                elif frequency == "monthly":
+                    is_due = (now - last_date).days >= 30
+        
+        if pending_amount > 0:
+            pending_payouts.append({
+                "enterprise_id": ent_id,
+                "company_name": enterprise.get("company_name", ""),
+                "email": enterprise.get("email", ""),
+                "total_revenue": total_revenue,
+                "pending_amount": pending_amount,
+                "commission_rate": commission_settings.get("voucher_commission", 5.0),
+                "frequency": frequency,
+                "min_amount": min_amount,
+                "is_due": is_due,
+                "iban": payout_settings.get("iban", ""),
+                "iban_holder": payout_settings.get("iban_holder", ""),
+                "iban_mode": payout_settings.get("iban_mode", "admin_entry")
+            })
+    
+    # Sort by pending amount descending
+    pending_payouts.sort(key=lambda x: x["pending_amount"], reverse=True)
+    
+    return {
+        "pending_payouts": pending_payouts,
+        "total": len(pending_payouts),
+        "total_amount": sum(p["pending_amount"] for p in pending_payouts)
+    }
+
+
+@router.post("/admin/payouts/create")
+async def create_payout(data: PayoutCreate, x_admin_key: str = Header(...)):
+    """Admin: Create a new payout for an enterprise."""
+    if x_admin_key != "bidblitz-admin-2026":
+        raise HTTPException(status_code=403, detail="Ungültiger Admin-Key")
+    
+    # Verify enterprise exists
+    enterprise = await db.enterprise_accounts.find_one({"id": data.enterprise_id})
+    if not enterprise:
+        raise HTTPException(status_code=404, detail="Unternehmen nicht gefunden")
+    
+    # Get payout settings for IBAN
+    payout_settings = await db.enterprise_payout_settings.find_one(
+        {"enterprise_id": data.enterprise_id},
+        {"_id": 0}
+    )
+    
+    if not payout_settings or not payout_settings.get("iban"):
+        raise HTTPException(status_code=400, detail="Keine IBAN hinterlegt")
+    
+    now = datetime.now(timezone.utc)
+    payout_id = f"payout_{uuid.uuid4().hex[:12]}"
+    
+    payout_doc = {
+        "id": payout_id,
+        "enterprise_id": data.enterprise_id,
+        "company_name": enterprise.get("company_name", ""),
+        "amount": data.amount,
+        "currency": "EUR",
+        "iban": payout_settings.get("iban", ""),
+        "iban_holder": payout_settings.get("iban_holder", ""),
+        "status": "pending",  # pending, processing, completed, failed
+        "note": data.note,
+        "created_at": now.isoformat(),
+        "created_by": "admin"
+    }
+    
+    await db.enterprise_payouts.insert_one(payout_doc)
+    
+    return {
+        "success": True,
+        "payout_id": payout_id,
+        "message": f"Auszahlung von €{data.amount:.2f} erstellt"
+    }
+
+
+@router.post("/admin/payouts/{payout_id}/process")
+async def process_payout(payout_id: str, x_admin_key: str = Header(...)):
+    """Admin: Process a pending payout (simulate SEPA transfer)."""
+    if x_admin_key != "bidblitz-admin-2026":
+        raise HTTPException(status_code=403, detail="Ungültiger Admin-Key")
+    
+    payout = await db.enterprise_payouts.find_one({"id": payout_id})
+    if not payout:
+        raise HTTPException(status_code=404, detail="Auszahlung nicht gefunden")
+    
+    if payout["status"] == "completed":
+        raise HTTPException(status_code=400, detail="Auszahlung bereits abgeschlossen")
+    
+    now = datetime.now(timezone.utc)
+    
+    # Simulate SEPA transfer - In production, integrate with bank API
+    # Generate a reference number
+    sepa_reference = f"SEPA-{uuid.uuid4().hex[:8].upper()}"
+    
+    await db.enterprise_payouts.update_one(
+        {"id": payout_id},
+        {"$set": {
+            "status": "completed",
+            "completed_at": now.isoformat(),
+            "sepa_reference": sepa_reference,
+            "processed_by": "admin"
+        }}
+    )
+    
+    return {
+        "success": True,
+        "sepa_reference": sepa_reference,
+        "message": f"SEPA-Überweisung verarbeitet"
+    }
+
+
+@router.get("/admin/payouts/history")
+async def get_payout_history(
+    enterprise_id: Optional[str] = None,
+    status: Optional[str] = None,
+    limit: int = Query(50, le=200),
+    x_admin_key: str = Header(...)
+):
+    """Admin: Get payout history."""
+    if x_admin_key != "bidblitz-admin-2026":
+        raise HTTPException(status_code=403, detail="Ungültiger Admin-Key")
+    
+    query = {}
+    if enterprise_id:
+        query["enterprise_id"] = enterprise_id
+    if status:
+        query["status"] = status
+    
+    payouts = await db.enterprise_payouts.find(
+        query,
+        {"_id": 0}
+    ).sort("created_at", -1).limit(limit).to_list(limit)
+    
+    # Calculate totals
+    totals = {
+        "pending": 0,
+        "processing": 0,
+        "completed": 0,
+        "failed": 0
+    }
+    
+    for p in payouts:
+        status_key = p.get("status", "pending")
+        if status_key in totals:
+            totals[status_key] += p.get("amount", 0)
+    
+    return {
+        "payouts": payouts,
+        "total": len(payouts),
+        "totals": totals
+    }
+
+
+@router.post("/admin/payouts/batch-process")
+async def batch_process_payouts(x_admin_key: str = Header(...)):
+    """Admin: Process all due payouts automatically."""
+    if x_admin_key != "bidblitz-admin-2026":
+        raise HTTPException(status_code=403, detail="Ungültiger Admin-Key")
+    
+    # Get all pending payouts that are due
+    pending_result = await get_pending_payouts(x_admin_key)
+    due_payouts = [p for p in pending_result["pending_payouts"] if p["is_due"] and p.get("iban")]
+    
+    processed = []
+    errors = []
+    
+    for payout_info in due_payouts:
+        try:
+            # Create payout
+            create_result = await create_payout(
+                PayoutCreate(
+                    enterprise_id=payout_info["enterprise_id"],
+                    amount=payout_info["pending_amount"],
+                    note=f"Automatische {payout_info['frequency']} Auszahlung"
+                ),
+                x_admin_key
+            )
+            
+            # Process it
+            process_result = await process_payout(create_result["payout_id"], x_admin_key)
+            
+            processed.append({
+                "enterprise_id": payout_info["enterprise_id"],
+                "company_name": payout_info["company_name"],
+                "amount": payout_info["pending_amount"],
+                "sepa_reference": process_result["sepa_reference"]
+            })
+        except Exception as e:
+            errors.append({
+                "enterprise_id": payout_info["enterprise_id"],
+                "company_name": payout_info["company_name"],
+                "error": str(e)
+            })
+    
+    return {
+        "success": True,
+        "processed": processed,
+        "processed_count": len(processed),
+        "total_amount": sum(p["amount"] for p in processed),
+        "errors": errors,
+        "error_count": len(errors)
+    }
+
+
+# Enterprise Portal - Payout endpoints for logged-in enterprises
+@router.get("/payouts/my-history")
+async def get_my_payout_history(authorization: str = Header(...)):
+    """Enterprise: Get own payout history."""
+    if not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Invalid token format")
+    
+    token = authorization.replace("Bearer ", "")
+    enterprise = await db.enterprise_accounts.find_one({"token": token}, {"_id": 0})
+    
+    if not enterprise:
+        raise HTTPException(status_code=401, detail="Ungültiger Token")
+    
+    payouts = await db.enterprise_payouts.find(
+        {"enterprise_id": enterprise["id"]},
+        {"_id": 0}
+    ).sort("created_at", -1).limit(50).to_list(50)
+    
+    # Calculate summary
+    total_paid = sum(p["amount"] for p in payouts if p.get("status") == "completed")
+    pending = sum(p["amount"] for p in payouts if p.get("status") == "pending")
+    
+    return {
+        "payouts": payouts,
+        "total": len(payouts),
+        "total_paid": total_paid,
+        "pending": pending
+    }
+
+
+@router.get("/payouts/my-pending")
+async def get_my_pending_payout(authorization: str = Header(...)):
+    """Enterprise: Get own pending payout amount."""
+    if not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Invalid token format")
+    
+    token = authorization.replace("Bearer ", "")
+    enterprise = await db.enterprise_accounts.find_one({"token": token}, {"_id": 0})
+    
+    if not enterprise:
+        raise HTTPException(status_code=401, detail="Ungültiger Token")
+    
+    ent_id = enterprise["id"]
+    
+    # Get commission settings
+    commission_settings = await db.enterprise_commission_settings.find_one(
+        {"enterprise_id": ent_id},
+        {"_id": 0}
+    ) or {"voucher_commission": 5.0}
+    
+    # Get payout settings
+    payout_settings = await db.enterprise_payout_settings.find_one(
+        {"enterprise_id": ent_id},
+        {"_id": 0}
+    ) or {"payout_frequency": "monthly", "min_payout_amount": 100}
+    
+    # Calculate pending amount
+    api_keys = await db.enterprise_api_keys.find(
+        {"enterprise_id": ent_id},
+        {"_id": 0, "api_key": 1}
+    ).to_list(100)
+    
+    key_list = [k["api_key"] for k in api_keys]
+    total_revenue = 0
+    
+    if key_list:
+        # Get last payout date
+        last_payout = await db.enterprise_payouts.find_one(
+            {"enterprise_id": ent_id, "status": "completed"},
+            sort=[("completed_at", -1)]
+        )
+        last_payout_date = last_payout["completed_at"] if last_payout else None
+        
+        # Calculate revenue since last payout
+        match_filter = {"api_key": {"$in": key_list}, "type": "topup"}
+        if last_payout_date:
+            match_filter["created_at"] = {"$gt": last_payout_date}
+        
+        pipeline = [
+            {"$match": match_filter},
+            {"$group": {"_id": None, "total": {"$sum": "$amount"}}}
+        ]
+        result = await db.enterprise_transactions.aggregate(pipeline).to_list(1)
+        total_revenue = result[0]["total"] if result else 0
+    
+    commission_rate = commission_settings.get("voucher_commission", 5.0) / 100
+    pending_amount = round(total_revenue * commission_rate, 2)
+    
+    # Get last payout info
+    last_payout = await db.enterprise_payouts.find_one(
+        {"enterprise_id": ent_id, "status": "completed"},
+        {"_id": 0},
+        sort=[("completed_at", -1)]
+    )
+    
+    return {
+        "total_revenue_since_last_payout": total_revenue,
+        "commission_rate": commission_settings.get("voucher_commission", 5.0),
+        "pending_amount": pending_amount,
+        "min_payout_amount": payout_settings.get("min_payout_amount", 100),
+        "payout_frequency": payout_settings.get("payout_frequency", "monthly"),
+        "last_payout": last_payout,
+        "iban_configured": bool(payout_settings.get("iban"))
+    }
+
