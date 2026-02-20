@@ -3631,3 +3631,58 @@ Externe Unternehmen wie Edeka können BidBlitz Pay als Zahlungsmethode an ihren 
 - URL: `/developers` oder `/developer-docs`
 - Öffentlich zugänglich für externe Partner
 
+
+---
+
+### ✅ QR-Code Kassensystem (POS Terminal) ✅
+
+**Implementiert:** Vollständiges QR-Code-basiertes Kassensystem für Händler
+
+**URL:** `/pos` oder `/kasse`
+
+**Features:**
+1. **Login mit API-Key:**
+   - Händler meldet sich mit seinem API-Key an
+   - Verbindungsstatus wird angezeigt
+   - API-Key wird im LocalStorage gespeichert
+
+2. **Zahlungserstellung:**
+   - Betrag eingeben (große, gut lesbare Eingabe)
+   - Optionale Referenz (z.B. Bestellnummer)
+   - Optionale Beschreibung
+
+3. **QR-Code-Anzeige:**
+   - Großer, scannbarer QR-Code
+   - Zeigt Checkout-URL für Kunden
+   - Status-Anzeige (Warte auf Scan...)
+
+4. **Auto-Status-Update:**
+   - Alle 2 Sekunden automatische Statusprüfung
+   - Sound-Benachrichtigung bei erfolgreicher Zahlung
+   - Erfolgsanimation nach Bestätigung
+
+5. **Transaktionsverlauf:**
+   - Letzte 10 Zahlungen werden angezeigt
+   - Tagesstatistik (Umsatz, Anzahl Transaktionen)
+
+6. **Zusätzliche Features:**
+   - Sound ein/aus schaltbar
+   - Abmelden-Funktion
+   - Mobile-optimierte Ansicht
+
+**Neue Datei:**
+- `/app/frontend/src/pages/POSTerminal.js`
+
+**Verwendete Bibliothek:**
+- `qrcode.react` für QR-Code-Generierung
+
+**Flow für Händler:**
+```
+1. Händler öffnet /pos
+2. Gibt API-Key ein → Verbindet
+3. Gibt Betrag ein → Klickt "QR-Code generieren"
+4. QR-Code erscheint → Kunde scannt
+5. Kunde bestätigt in BidBlitz App
+6. POS zeigt "Zahlung erfolgreich!" + Sound
+```
+
