@@ -33,21 +33,37 @@ class APIKeyCreate(BaseModel):
     name: str = Field(..., description="Name for this API key (e.g., 'Production', 'Testing')")
     webhook_url: Optional[str] = Field(None, description="URL for webhook notifications")
     allowed_ips: Optional[List[str]] = Field(None, description="List of allowed IP addresses")
-    # Commission settings - Händler bekommt Provision für Aufladungen
-    merchant_commission: float = Field(2.0, ge=1.0, le=10.0, description="Händler-Provision % (1-10%) - geht an den Händler")
+    # Händler-Provision wird automatisch basierend auf Umsatz berechnet (0-2%)
 
 class APIKeyUpdate(BaseModel):
     name: Optional[str] = Field(None, description="Update API key name")
     webhook_url: Optional[str] = Field(None, description="Update webhook URL")
     is_active: Optional[bool] = Field(None, description="Enable/disable API key")
-    merchant_commission: Optional[float] = Field(None, ge=1.0, le=10.0, description="Händler-Provision % (1-10%)")
 
 
-# Kunden-Bonus Staffelung für Aufladungen
+# Händler-Provisions-Staffeln (basierend auf Monatsumsatz)
+MERCHANT_COMMISSION_TIERS = [
+    {"min_volume": 10000, "rate": 2.0},   # €10.000+ → 2%
+    {"min_volume": 5000, "rate": 1.5},    # €5.000+ → 1.5%
+    {"min_volume": 2000, "rate": 1.0},    # €2.000+ → 1%
+    {"min_volume": 500, "rate": 0.5},     # €500+ → 0.5%
+    {"min_volume": 0, "rate": 0.0},       # Start → 0%
+]
+
+def calculate_merchant_commission(monthly_volume: float) -> float:
+    """Calculate merchant commission rate based on monthly volume."""
+    for tier in MERCHANT_COMMISSION_TIERS:
+        if monthly_volume >= tier["min_volume"]:
+            return tier["rate"]
+    return 0.0
+
+
+# Kunden-Bonus Staffelung für Aufladungen (je mehr aufgeladen, desto mehr Bonus)
 CUSTOMER_BONUS_TIERS = [
-    {"min_amount": 100, "bonus": 5.00},   # €100+ → +€5
-    {"min_amount": 50, "bonus": 2.00},    # €50+ → +€2
-    {"min_amount": 20, "bonus": 0.50},    # €20+ → +€0.50
+    {"min_amount": 200, "bonus": 12.00},  # €200+ → +€12 (6%)
+    {"min_amount": 100, "bonus": 5.00},   # €100+ → +€5 (5%)
+    {"min_amount": 50, "bonus": 2.00},    # €50+ → +€2 (4%)
+    {"min_amount": 20, "bonus": 0.50},    # €20+ → +€0.50 (2.5%)
 ]
 
 def calculate_customer_bonus(amount: float) -> float:
