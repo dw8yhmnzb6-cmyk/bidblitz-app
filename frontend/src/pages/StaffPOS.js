@@ -1975,16 +1975,17 @@ export default function StaffPOS() {
                 <button
                   onClick={() => fetchTransactionHistory()}
                   className="p-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-slate-300 transition-colors"
-                  title="Aktualisieren"
+                  title={t.refresh}
                 >
                   <RefreshCw className="w-5 h-5" />
                 </button>
                 <button
                   onClick={printTransactionHistory}
                   className="px-4 py-2 bg-amber-500 hover:bg-amber-600 rounded-lg text-white font-medium transition-colors flex items-center gap-2"
+                  data-testid="print-history-btn"
                 >
                   <Printer className="w-4 h-4" />
-                  Drucken
+                  {t.print}
                 </button>
                 <button
                   onClick={() => setShowHistory(false)}
@@ -1998,19 +1999,19 @@ export default function StaffPOS() {
             {/* Summary */}
             <div className="p-4 bg-slate-900/50 border-b border-slate-700 grid grid-cols-3 gap-4">
               <div className="text-center">
-                <p className="text-slate-400 text-xs">Aufladungen</p>
+                <p className="text-slate-400 text-xs">{t.topups}</p>
                 <p className="text-green-400 font-bold text-lg">
                   €{transactionHistory.filter(tx => tx.type === 'pos_topup' || tx.type === 'topup').reduce((sum, tx) => sum + (tx.amount || 0), 0).toFixed(2)}
                 </p>
               </div>
               <div className="text-center">
-                <p className="text-slate-400 text-xs">Boni vergeben</p>
+                <p className="text-slate-400 text-xs">{t.bonusesGiven}</p>
                 <p className="text-amber-400 font-bold text-lg">
                   €{transactionHistory.filter(tx => tx.type === 'pos_topup' || tx.type === 'topup').reduce((sum, tx) => sum + (tx.bonus || 0), 0).toFixed(2)}
                 </p>
               </div>
               <div className="text-center">
-                <p className="text-slate-400 text-xs">Gutscheine</p>
+                <p className="text-slate-400 text-xs">{t.giftcards}</p>
                 <p className="text-purple-400 font-bold text-lg">
                   €{transactionHistory.filter(tx => tx.type === 'gift_card_redemption').reduce((sum, tx) => sum + (tx.amount || 0), 0).toFixed(2)}
                 </p>
