@@ -96,6 +96,9 @@ import AdminPasswordManager from '../components/admin/AdminPasswordManager';
 // Import Admin Digital Payment API
 import AdminDigitalPayments from '../components/admin/AdminDigitalPayments';
 
+// Import Enterprise Management
+import AdminEnterpriseManagement from '../components/admin/AdminEnterpriseManagement';
+
 // Import Voice Debug Assistant
 import VoiceDebugAssistant from '../components/VoiceDebugAssistant';
 
