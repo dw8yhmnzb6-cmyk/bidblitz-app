@@ -239,6 +239,46 @@ from reportlab.lib.enums import TA_CENTER, TA_RIGHT
 # Global flag for bot task
 bot_task_running = False
 
+# ==================== DAILY HEALTH CHECK TASK ====================
+
+async def daily_health_check_task():
+    """Run health checks once per day at 3 AM UTC."""
+    from routers.health_check import run_health_check
+    logger.info("Daily health check task started")
+    
+    while bot_task_running:
+        try:
+            now = datetime.now(timezone.utc)
+            # Calculate time until 3 AM UTC
+            target = now.replace(hour=3, minute=0, second=0, microsecond=0)
+            if now.hour >= 3:
+                target += timedelta(days=1)
+            
+            wait_seconds = (target - now).total_seconds()
+            logger.info(f"Next health check in {wait_seconds/3600:.1f} hours")
+            
+            # Wait until 3 AM
+            await asyncio.sleep(min(wait_seconds, 3600))  # Check every hour at most
+            
+            # If it's close to 3 AM, run the check
+            now = datetime.now(timezone.utc)
+            if now.hour == 3 and now.minute < 5:
+                logger.info("Running daily health check...")
+                try:
+                    report = await run_health_check()
+                    logger.info(f"Health check complete: {report.get('overall_status')} - {report.get('issue_count', 0)} issues")
+                except Exception as e:
+                    logger.error(f"Health check failed: {str(e)}")
+                
+                # Wait 1 hour to avoid running again
+                await asyncio.sleep(3600)
+                
+        except asyncio.CancelledError:
+            break
+        except Exception as e:
+            logger.error(f"Health check task error: {str(e)}")
+            await asyncio.sleep(300)  # Wait 5 min on error
+
 # ==================== LIFESPAN ====================
 
 @asynccontextmanager
