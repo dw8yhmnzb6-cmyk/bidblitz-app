@@ -5,15 +5,52 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 
 ## Current Status (February 20, 2026)
 
-### ✅ Session Update - February 20, 2026 (Session 60) - ENTERPRISE PORTAL V3 ✅
+### ✅ Session Update - February 20, 2026 (Session 60) - ENTERPRISE PORTAL + SEPA PAYOUTS ✅
 
-#### Enterprise Portal V3 - VOLLSTÄNDIG IMPLEMENTIERT UND GETESTET ✅
+#### Enterprise Portal V3 + SEPA-Auszahlungen - VOLLSTÄNDIG IMPLEMENTIERT UND GETESTET ✅
 - **Status:** VOLLSTÄNDIG IMPLEMENTIERT UND GETESTET
 - **Route:** `/enterprise` und `/grosshaendler`
 - **Test-Reports:** 
   - `/app/test_reports/iteration_94.json` - Enterprise Portal Redesign (11/11 Tests)
   - `/app/test_reports/iteration_95.json` - Portal Erweiterungen (6/6 Tests, 100%)
   - `/app/test_reports/iteration_96.json` - Provisionseinstellungen & Übersetzungen (6/6 Tests, 100%)
+  - `/app/test_reports/iteration_97.json` - SEPA-Auszahlungssystem (100% Backend, 100% Frontend)
+
+---
+
+### NEU: SEPA-Auszahlungssystem für Großhändler ✅
+
+**Features:**
+- **Automatische Berechnung** der ausstehenden Provisionen basierend auf Transaktionen seit letzter Auszahlung
+- **Auszahlungsfrequenz:** Täglich, Wöchentlich, Monatlich, oder Manuell
+- **Mindestbetrag** für Auszahlung konfigurierbar
+- **Batch-Verarbeitung** aller fälligen Auszahlungen auf einmal
+- **SEPA-Referenz-Generierung** (Format: SEPA-XXXXXXXX)
+
+**Admin-Panel:**
+- Neuer Tab: "SEPA-Auszahlungen" unter Finanzen
+- Statistik-Karten: Ausstehend, Fällig, Ausgezahlt, Gesamt offen
+- Tabs: Ausstehend (pending) und Historie
+- Button: "Alle verarbeiten" für Batch-Auszahlungen
+- Einzelne Auszahlung mit "SEPA-Überweisung starten"
+
+**API-Endpoints (Admin):**
+- `GET /api/enterprise/admin/payouts/pending` - Ausstehende Auszahlungen
+- `POST /api/enterprise/admin/payouts/create` - Auszahlung erstellen
+- `POST /api/enterprise/admin/payouts/{id}/process` - Auszahlung verarbeiten
+- `GET /api/enterprise/admin/payouts/history` - Auszahlungs-Historie
+- `POST /api/enterprise/admin/payouts/batch-process` - Alle fälligen verarbeiten
+
+**API-Endpoints (Enterprise Portal):**
+- `GET /api/enterprise/payouts/my-pending` - Eigene ausstehende Provision
+- `GET /api/enterprise/payouts/my-history` - Eigene Auszahlungs-Historie
+
+**⚠️ HINWEIS:** Die SEPA-Überweisung ist aktuell **SIMULIERT**. In Produktion müsste eine Bank-API (Wise, Deutsche Bank, etc.) integriert werden.
+
+**Neue Dateien:**
+- `/app/frontend/src/components/admin/AdminPayouts.js`
+
+---
 
 **Implementierte Verbesserungen (Teil 1 - Redesign):**
 1. **Persistente Anmeldung ("Angemeldet bleiben")** ✅
