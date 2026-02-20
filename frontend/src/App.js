@@ -265,7 +265,9 @@ function AppContent() {
       {!window.location.pathname.includes('/pos') && 
        !window.location.pathname.includes('/kiosk') && 
        !window.location.pathname.includes('/kasse') &&
-       !window.location.pathname.includes('/scanner') && (
+       !window.location.pathname.includes('/scanner') &&
+       !window.location.pathname.includes('/mitarbeiter-kasse') &&
+       !window.location.pathname.includes('/staff-pos') && (
         <Navbar />
       )}
       
@@ -275,6 +277,8 @@ function AppContent() {
        !window.location.pathname.includes('/kiosk') && 
        !window.location.pathname.includes('/kasse') &&
        !window.location.pathname.includes('/scanner') && 
+       !window.location.pathname.includes('/mitarbeiter-kasse') &&
+       !window.location.pathname.includes('/staff-pos') &&
        !window.location.pathname.includes('/checkout/') &&
        !window.location.pathname.includes('/mein-qr') &&
        !window.location.pathname.includes('/my-qr') &&
