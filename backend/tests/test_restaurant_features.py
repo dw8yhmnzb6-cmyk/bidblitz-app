@@ -6,7 +6,7 @@ import pytest
 import requests
 import os
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://cashback-pos.preview.emergentagent.com')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://staff-pos-payment.preview.emergentagent.com')
 
 class TestRestaurantDiscovery:
     """Restaurant Discovery API tests"""
