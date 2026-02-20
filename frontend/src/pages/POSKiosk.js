@@ -120,14 +120,46 @@ const Numpad = ({ onInput, onClear, onBackspace, onSubmit, disabled }) => {
 export default function POSKiosk() {
   const [apiKey, setApiKey] = useState(localStorage.getItem('pos_api_key') || '');
   const [merchantName, setMerchantName] = useState('');
+  const [merchantVolume, setMerchantVolume] = useState(0);
   const [isConnected, setIsConnected] = useState(false);
   const [loading, setLoading] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  
+  // Mode: 'payment' or 'topup'
+  const [mode, setMode] = useState('payment');
   
   // Payment state
   const [amount, setAmount] = useState('0.00');
   const [currentPayment, setCurrentPayment] = useState(null);
   const [paymentStatus, setPaymentStatus] = useState(null);
+  
+  // Top-up state
+  const [customerNumber, setCustomerNumber] = useState('');
+  const [topupResult, setTopupResult] = useState(null);
+  const [bonusTiers] = useState([
+    { min: 200, bonus: 12.00, label: '€200+ → +€12' },
+    { min: 100, bonus: 5.00, label: '€100+ → +€5' },
+    { min: 50, bonus: 2.00, label: '€50+ → +€2' },
+    { min: 20, bonus: 0.50, label: '€20+ → +€0,50' }
+  ]);
+  
+  // Commission tiers (automatic based on volume)
+  const getCommissionRate = (volume) => {
+    if (volume >= 10000) return 2.0;
+    if (volume >= 5000) return 1.5;
+    if (volume >= 2000) return 1.0;
+    if (volume >= 500) return 0.5;
+    return 0;
+  };
+  
+  // Calculate bonus preview
+  const calculateBonus = (amt) => {
+    const num = parseFloat(amt) || 0;
+    for (const tier of bonusTiers) {
+      if (num >= tier.min) return tier.bonus;
+    }
+    return 0;
+  };
   
   // Settings
   const [soundEnabled, setSoundEnabled] = useState(true);
