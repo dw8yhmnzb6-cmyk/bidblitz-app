@@ -119,15 +119,30 @@ async def process_topup(data: TopupRequest, authorization: Optional[str] = Heade
         bonus = calculate_bonus(data.amount)
         total_credit = data.amount + bonus
         
-        # Update customer balance
-        new_balance = customer.get("balance", 0.0) + total_credit
+        # Get current balance from bidblitz_balance field
+        current_balance = customer.get("bidblitz_balance", 0.0)
+        new_balance = current_balance + total_credit
+        
+        # Update customer bidblitz_balance in users collection
         await db.users.update_one(
             {"id": customer["id"]},
             {
-                "$set": {"balance": new_balance},
+                "$set": {"bidblitz_balance": new_balance},
                 "$inc": {"total_deposits": data.amount}
             }
         )
+        
+        # Also update bidblitz_wallets collection (universal_balance)
+        await db.bidblitz_wallets.update_one(
+            {"user_id": customer["id"]},
+            {
+                "$inc": {"universal_balance": total_credit},
+                "$set": {"updated_at": datetime.now(timezone.utc).isoformat()}
+            },
+            upsert=True
+        )
+        
+        logger.info(f"POS Topup: €{data.amount} + €{bonus} bonus for {customer.get('customer_number')} - New balance: €{new_balance}")
         
         # Create transaction record
         transaction = {
