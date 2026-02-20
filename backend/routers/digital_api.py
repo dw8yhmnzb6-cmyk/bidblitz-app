@@ -215,6 +215,59 @@ async def list_api_keys(
     return {"keys": keys}
 
 
+@router.patch("/keys/{key_id}")
+async def update_api_key(
+    key_id: str,
+    data: APIKeyUpdate,
+    x_admin_key: str = Header(..., description="Admin authentication key")
+):
+    """
+    Update API key settings including commission rates.
+    
+    - platform_commission: 0.01% - 10% (goes to BidBlitz)
+    - customer_cashback: 0% - 2% (bonus for customer on top-ups)
+    """
+    if x_admin_key != "bidblitz-admin-2026":
+        raise HTTPException(status_code=403, detail="Invalid admin key")
+    
+    update_data = {}
+    if data.name is not None:
+        update_data["name"] = data.name
+    if data.webhook_url is not None:
+        update_data["webhook_url"] = data.webhook_url
+    if data.is_active is not None:
+        update_data["is_active"] = data.is_active
+    if data.platform_commission is not None:
+        update_data["platform_commission"] = data.platform_commission
+    if data.customer_cashback is not None:
+        update_data["customer_cashback"] = data.customer_cashback
+    
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No update data provided")
+    
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    
+    result = await db.api_keys.update_one(
+        {"id": key_id},
+        {"$set": update_data}
+    )
+    
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="API key not found")
+    
+    # Get updated key
+    updated_key = await db.api_keys.find_one(
+        {"id": key_id},
+        {"_id": 0, "secret": 0}
+    )
+    
+    return {
+        "success": True,
+        "message": "API key updated",
+        "key": updated_key
+    }
+
+
 @router.delete("/keys/{key_id}")
 async def revoke_api_key(
     key_id: str,
