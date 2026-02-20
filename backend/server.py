@@ -279,6 +279,14 @@ async def daily_health_check_task():
             logger.error(f"Health check task error: {str(e)}")
             await asyncio.sleep(300)  # Wait 5 min on error
 
+# ==================== MONTHLY COMMISSION REPORT SCHEDULER ====================
+
+async def monthly_commission_report_scheduler():
+    """Background task that sends monthly commission reports on the 1st of each month."""
+    from routers.enterprise_reports import monthly_commission_report_task
+    logger.info("📧 Monthly commission report scheduler started")
+    await monthly_commission_report_task()
+
 # ==================== LIFESPAN ====================
 
 @asynccontextmanager
