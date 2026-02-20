@@ -1241,6 +1241,171 @@ async def lookup_customer(
     }
 
 
+# ==================== CARD TOP-UP (Händler lädt Kunden-Karte auf) ====================
+
+class TopUpRequest(BaseModel):
+    amount: float = Field(..., ge=5, le=500, description="Aufladebetrag in EUR (5-500€)")
+    customer_number: str = Field(..., description="Kundennummer (BID-XXXXXX)")
+    payment_token: Optional[str] = Field(None, description="Optional: Payment token from QR")
+    qr_data: Optional[str] = Field(None, description="Optional: Raw QR code data")
+
+
+@router.post("/topup")
+async def topup_customer_card(
+    data: TopUpRequest,
+    x_api_key: str = Header(None, alias="X-API-Key")
+):
+    """
+    Top up a customer's BidBlitz card at a merchant location.
+    
+    Flow:
+    1. Customer pays cash at merchant (e.g., Edeka)
+    2. Merchant scans customer QR or enters customer number
+    3. Customer receives: amount + bonus (based on tier)
+    4. Merchant earns commission
+    
+    Bonus tiers:
+    - €100+ → +€5 bonus
+    - €50+ → +€2 bonus  
+    - €20+ → +€0.50 bonus
+    """
+    # Verify API key
+    if not x_api_key:
+        raise HTTPException(status_code=401, detail="API key required")
+    
+    api_key = await db.api_keys.find_one(
+        {"key": x_api_key, "is_active": True},
+        {"_id": 0}
+    )
+    
+    if not api_key:
+        raise HTTPException(status_code=401, detail="Invalid or inactive API key")
+    
+    # Parse QR code if provided
+    customer_number = data.customer_number.upper()
+    if data.qr_data:
+        qr_info = parse_qr_code(data.qr_data)
+        customer_number = qr_info.get("customer_number", customer_number).upper()
+    
+    # Find customer
+    user = await db.users.find_one(
+        {"customer_number": customer_number},
+        {"_id": 0, "id": 1, "name": 1, "customer_number": 1, "bidblitz_balance": 1, "balance": 1, "email": 1}
+    )
+    
+    if not user:
+        raise HTTPException(status_code=404, detail=f"Kunde {customer_number} nicht gefunden")
+    
+    # Calculate bonus
+    customer_bonus = calculate_customer_bonus(data.amount)
+    total_credit = data.amount + customer_bonus
+    
+    # Calculate merchant commission
+    merchant_commission_rate = api_key.get("merchant_commission", 2.0)  # Default 2%
+    merchant_commission = round(data.amount * (merchant_commission_rate / 100), 2)
+    
+    # Credit customer account
+    await db.users.update_one(
+        {"id": user["id"]},
+        {"$inc": {"bidblitz_balance": total_credit, "balance": total_credit}}
+    )
+    
+    # Update wallet
+    await db.bidblitz_wallets.update_one(
+        {"user_id": user["id"]},
+        {"$inc": {"universal_balance": total_credit}},
+        upsert=True
+    )
+    
+    now = datetime.now(timezone.utc)
+    topup_id = f"topup_{uuid.uuid4().hex[:16]}"
+    
+    # Record the top-up transaction
+    await db.digital_payments.insert_one({
+        "id": topup_id,
+        "type": "topup",
+        "api_key_id": api_key["id"],
+        "api_key_name": api_key["name"],
+        "amount": data.amount,
+        "customer_bonus": customer_bonus,
+        "total_credited": total_credit,
+        "merchant_commission": merchant_commission,
+        "merchant_commission_rate": merchant_commission_rate,
+        "currency": "EUR",
+        "reference": f"TOPUP-{now.strftime('%Y%m%d%H%M%S')}",
+        "customer_id": user["id"],
+        "customer_number": user.get("customer_number"),
+        "customer_name": user.get("name"),
+        "status": "completed",
+        "created_at": now.isoformat()
+    })
+    
+    # Record merchant commission (they earn this)
+    if merchant_commission > 0:
+        await db.merchant_commissions.insert_one({
+            "id": f"mcomm_{uuid.uuid4().hex[:16]}",
+            "type": "topup",
+            "api_key_id": api_key["id"],
+            "api_key_name": api_key["name"],
+            "topup_amount": data.amount,
+            "commission_rate": merchant_commission_rate,
+            "commission_amount": merchant_commission,
+            "created_at": now.isoformat()
+        })
+    
+    # Get new balance
+    updated_user = await db.users.find_one(
+        {"id": user["id"]},
+        {"_id": 0, "bidblitz_balance": 1, "balance": 1}
+    )
+    new_balance = updated_user.get("bidblitz_balance", updated_user.get("balance", 0))
+    
+    # Send webhook if configured
+    webhook_url = api_key.get("webhook_url")
+    if webhook_url:
+        await send_webhook(
+            url=webhook_url,
+            event="topup.completed",
+            data={
+                "topup_id": topup_id,
+                "amount": data.amount,
+                "bonus": customer_bonus,
+                "total_credited": total_credit,
+                "merchant_commission": merchant_commission,
+                "customer_number": user.get("customer_number"),
+                "created_at": now.isoformat()
+            },
+            secret=api_key.get("secret", "")
+        )
+    
+    return {
+        "success": True,
+        "topup_id": topup_id,
+        "amount": data.amount,
+        "bonus": customer_bonus,
+        "total_credited": total_credit,
+        "merchant_commission": merchant_commission,
+        "customer_name": user.get("name"),
+        "customer_number": user.get("customer_number"),
+        "new_balance": new_balance,
+        "message": f"✅ {user.get('name')} hat {total_credit:.2f}€ erhalten ({data.amount:.2f}€ + {customer_bonus:.2f}€ Bonus)!"
+    }
+
+
+@router.get("/topup/bonus-info")
+async def get_bonus_info():
+    """Get information about the current bonus tiers for top-ups."""
+    return {
+        "bonus_tiers": [
+            {"min_amount": 100, "bonus": 5.00, "description": "€100+ aufladen → +€5 Bonus"},
+            {"min_amount": 50, "bonus": 2.00, "description": "€50+ aufladen → +€2 Bonus"},
+            {"min_amount": 20, "bonus": 0.50, "description": "€20+ aufladen → +€0,50 Bonus"},
+        ],
+        "min_topup": 5,
+        "max_topup": 500
+    }
+
+
 
 # ==================== SCAN & PAY (Merchant scans customer QR) ====================
 
