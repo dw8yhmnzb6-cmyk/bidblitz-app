@@ -68,7 +68,7 @@ class UserCreate(BaseModel):
     name: str
     email: EmailStr
     password: str = Field(..., min_length=6)
-    role: str = Field(..., description="admin, branch_manager, cashier")
+    role: str = Field(..., description="admin, branch_manager, cashier, tax_advisor")
     branch_id: Optional[str] = None  # Required for branch_manager and cashier
 
 class UserUpdate(BaseModel):
