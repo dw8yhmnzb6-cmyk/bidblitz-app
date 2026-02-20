@@ -53,6 +53,19 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
   - POST `/api/digital/payments/{payment_id}/refund` - Erstattung
   - GET `/api/digital/balance` - Statistiken
 
+#### 6. Kassen-Integration Dokumentation & API ✅
+- **Dokumentation:** `/docs/kassen-integration.html`
+- **Neue Features:**
+  - **Standardisiertes QR-Code Format v2.0:**
+    - Kompakt: `BIDBLITZ:2.0:{token}:{customer_number}:{timestamp}`
+    - JSON: `{"type":"bidblitz_pay","version":"2.0","token":"...","customer_number":"BID-XXXXXX"}`
+  - **Customer Lookup API:** `GET /api/digital/customer/lookup`
+    - Ermöglicht Händlern, Kundeninfo vor Zahlung zu prüfen
+    - Zeigt: Name, maskierte E-Mail, Guthaben, Zahlungsfähigkeit
+  - **Scan-Pay unterstützt beide QR-Formate**
+- **Code-Beispiele:** Python, C#/.NET, Java, PHP, cURL/Shell
+- **Hardware-Empfehlungen:** Honeywell Voyager, Zebra DS2208, Datalogic QuickScan
+
 ---
 
 ### ✅ Session Update - February 19, 2026 (Session 55) - MULTIPLE FIXES ✅
