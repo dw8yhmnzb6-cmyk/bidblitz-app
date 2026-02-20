@@ -24,34 +24,54 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 - Manuell über "Bericht senden" Button im Enterprise Portal → Berichte
 
 #### Neues Feature 3: Produkt-Analyse Dashboard ✅
-- **Beschreibung:** Ein umfassendes Analyse-System, das trackt, welche Produkte Kunden am meisten interessieren.
-- **Features:**
-  - Automatisches Tracking von Produktansichten
-  - Tracking von Benutzerinteraktionen (Teilen, Bieten, Wishlist)
-  - Statistik-Übersicht: Aufrufe heute/Woche, beliebteste Kategorie
-  - 4 Ansichten: Top Produkte, Trending, Interesse-Score, Kategorien
-  - Trending-Berechnung (heute vs. letzte Woche)
-  - Interest-Score basierend auf Aufrufen, Geboten, Wishlist, Shares
-  - Filter nach Zeitraum (heute, Woche, Monat, gesamt)
-
-- **API-Endpoints:**
-  - `POST /api/analytics/product-view` - Produktansicht tracken
-  - `POST /api/analytics/product-interaction` - Interaktion tracken
-  - `GET /api/analytics/overview` - Dashboard-Übersicht
-  - `GET /api/analytics/top-products` - Meistgesehene Produkte
-  - `GET /api/analytics/trending` - Trending-Produkte
-  - `GET /api/analytics/interest-score` - Interesse-Ranking
-  - `GET /api/analytics/category-stats` - Kategorie-Statistiken
-  - `GET /api/analytics/product/{id}/stats` - Einzelprodukt-Analyse
-
-- **Neue Dateien:**
-  - `/app/backend/routers/product_analytics.py`
-  - `/app/frontend/src/components/admin/AdminProductAnalytics.js`
-
-- **Geänderte Dateien:**
-  - `/app/frontend/src/pages/AuctionDetail.js` - Tracking hinzugefügt
-
 - **Zugriff:** Admin Panel → Auktionen → Produkt-Analyse
+- Automatisches Tracking von Produktansichten und Interaktionen
+- Top Produkte, Trending, Interesse-Score, Kategorien
+
+#### Neues Feature 4: Benutzer-Analyse Dashboard ✅
+- **Zugriff:** Admin Panel → Auktionen → Benutzer-Analyse
+- **Features:**
+  - Statistik-Übersicht: Gesamt, Neue, Aktive, Mit Geboten, VIP
+  - 6 Tabs: Übersicht, Aktivität, Segmente, Retention, Top Gewinner, Sprachen
+  - Registrierungs-Graph nach Tagen
+  - Top Bieter Liste
+  - Benutzer-Segmentierung (nach Gebots-Guthaben, Aktivität, VIP-Status)
+  - Retention-Analyse (Kohorten)
+  - Sprachverteilung der Benutzer
+- **API-Endpoints:**
+  - `GET /api/analytics/users/overview` - Benutzer-Übersicht
+  - `GET /api/analytics/users/registrations` - Registrierungen
+  - `GET /api/analytics/users/activity` - Aktivität & Top Bieter
+  - `GET /api/analytics/users/segments` - Segmentierung
+  - `GET /api/analytics/users/retention` - Retention-Analyse
+  - `GET /api/analytics/users/top-winners` - Top Gewinner
+  - `GET /api/analytics/users/geographic` - Sprachverteilung
+
+#### Neues Feature 5: Umsatz-Analyse Dashboard ✅
+- **Zugriff:** Admin Panel → Auktionen → Umsatz-Analyse
+- **Features:**
+  - Umsatz-Übersicht: Heute, Diese Woche, Dieser Monat, Transaktionen
+  - 6 Tabs: Übersicht, Gebotspakete, Auktionen, Top Käufer, Conversion, Peak-Zeiten
+  - Täglicher Umsatz-Graph
+  - Gebotspakete-Verkaufsstatistiken
+  - Auktions-Einnahmen und Statistiken
+  - Top-Käufer Liste
+  - Conversion-Funnel (Registriert → Bieten → Kauf → Gewinn)
+  - Peak-Zeiten nach Tageszeit
+- **API-Endpoints:**
+  - `GET /api/analytics/revenue/overview` - Umsatz-Übersicht
+  - `GET /api/analytics/revenue/daily` - Täglicher Umsatz
+  - `GET /api/analytics/revenue/by-package` - Nach Paket
+  - `GET /api/analytics/revenue/auctions` - Auktions-Statistiken
+  - `GET /api/analytics/revenue/top-spenders` - Top Käufer
+  - `GET /api/analytics/revenue/conversion` - Conversion-Funnel
+  - `GET /api/analytics/revenue/hourly` - Peak-Zeiten
+
+**Neue Dateien:**
+- `/app/backend/routers/user_analytics.py`
+- `/app/backend/routers/revenue_analytics.py`
+- `/app/frontend/src/components/admin/AdminUserAnalytics.js`
+- `/app/frontend/src/components/admin/AdminRevenueAnalytics.js`
 
 ---
 
