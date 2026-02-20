@@ -49,6 +49,7 @@ import {
   AdminWholesale,
   AdminGameConfig,
   AdminDebugReports,
+  AdminSystemHealth,
   AdminQuickActions,
   AdminLiveWidgets,
   AdminGlobalSearch,
