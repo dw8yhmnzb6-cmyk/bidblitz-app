@@ -10,7 +10,7 @@ import requests
 import os
 import tempfile
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://pos-terminal-20.preview.emergentagent.com')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://payment-hub-196.preview.emergentagent.com')
 
 # Test credentials
 ADMIN_EMAIL = "admin@bidblitz.ae"
