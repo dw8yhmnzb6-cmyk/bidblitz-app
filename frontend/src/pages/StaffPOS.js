@@ -915,38 +915,128 @@ export default function StaffPOS() {
       {/* Transaction History Modal */}
       {showHistory && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-800 rounded-2xl w-full max-w-lg max-h-[80vh] overflow-hidden">
+          <div className="bg-slate-800 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden">
             <div className="p-4 border-b border-slate-700 flex items-center justify-between">
-              <h2 className="text-xl font-bold text-white">Transaktionsverlauf</h2>
-              <button
-                onClick={() => setShowHistory(false)}
-                className="p-2 hover:bg-slate-700 rounded-lg transition-colors"
-              >
-                <X className="w-5 h-5 text-slate-400" />
-              </button>
+              <div>
+                <h2 className="text-xl font-bold text-white">Transaktionsverlauf</h2>
+                <p className="text-slate-400 text-sm">{transactionHistory.length} Transaktionen</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => fetchTransactionHistory()}
+                  className="p-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-slate-300 transition-colors"
+                  title="Aktualisieren"
+                >
+                  <RefreshCw className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={printTransactionHistory}
+                  className="px-4 py-2 bg-amber-500 hover:bg-amber-600 rounded-lg text-white font-medium transition-colors flex items-center gap-2"
+                >
+                  <Printer className="w-4 h-4" />
+                  Drucken
+                </button>
+                <button
+                  onClick={() => setShowHistory(false)}
+                  className="p-2 hover:bg-slate-700 rounded-lg transition-colors"
+                >
+                  <X className="w-5 h-5 text-slate-400" />
+                </button>
+              </div>
             </div>
-            <div className="p-4 overflow-y-auto max-h-[60vh]">
+            
+            {/* Summary */}
+            <div className="p-4 bg-slate-900/50 border-b border-slate-700 grid grid-cols-3 gap-4">
+              <div className="text-center">
+                <p className="text-slate-400 text-xs">Aufladungen</p>
+                <p className="text-green-400 font-bold text-lg">
+                  €{transactionHistory.filter(tx => tx.type === 'pos_topup' || tx.type === 'topup').reduce((sum, tx) => sum + (tx.amount || 0), 0).toFixed(2)}
+                </p>
+              </div>
+              <div className="text-center">
+                <p className="text-slate-400 text-xs">Boni vergeben</p>
+                <p className="text-amber-400 font-bold text-lg">
+                  €{transactionHistory.filter(tx => tx.type === 'pos_topup' || tx.type === 'topup').reduce((sum, tx) => sum + (tx.bonus || 0), 0).toFixed(2)}
+                </p>
+              </div>
+              <div className="text-center">
+                <p className="text-slate-400 text-xs">Gutscheine</p>
+                <p className="text-purple-400 font-bold text-lg">
+                  €{transactionHistory.filter(tx => tx.type === 'gift_card_redemption').reduce((sum, tx) => sum + (tx.amount || 0), 0).toFixed(2)}
+                </p>
+              </div>
+            </div>
+            
+            <div className="p-4 overflow-y-auto max-h-[50vh]">
               {transactionHistory.length > 0 ? (
-                <div className="space-y-3">
+                <div className="space-y-2">
                   {transactionHistory.map((tx, i) => (
                     <div key={i} className="bg-slate-700/50 rounded-xl p-3">
                       <div className="flex justify-between items-start">
-                        <div>
-                          <p className="text-white font-medium">€{tx.amount?.toFixed(2)}</p>
-                          <p className="text-slate-400 text-sm">{tx.type || 'Aufladung'}</p>
+                        <div className="flex items-center gap-3">
+                          <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                            tx.type === 'pos_topup' || tx.type === 'topup' ? 'bg-green-500/20' :
+                            tx.type === 'gift_card_redemption' ? 'bg-purple-500/20' :
+                            tx.type === 'payment' ? 'bg-blue-500/20' : 'bg-slate-600'
+                          }`}>
+                            {tx.type === 'pos_topup' || tx.type === 'topup' ? (
+                              <Wallet className="w-5 h-5 text-green-400" />
+                            ) : tx.type === 'gift_card_redemption' ? (
+                              <Ticket className="w-5 h-5 text-purple-400" />
+                            ) : (
+                              <CreditCard className="w-5 h-5 text-blue-400" />
+                            )}
+                          </div>
+                          <div>
+                            <p className="text-white font-bold">€{(tx.amount || 0).toFixed(2)}</p>
+                            <p className="text-slate-400 text-sm">
+                              {tx.type === 'pos_topup' || tx.type === 'topup' ? 'Aufladung' :
+                               tx.type === 'gift_card_redemption' ? 'Gutschein eingelöst' :
+                               tx.type === 'payment' ? 'Zahlung' : tx.type}
+                              {tx.bonus > 0 && (
+                                <span className="text-green-400 ml-2">+€{tx.bonus.toFixed(2)} Bonus</span>
+                              )}
+                            </p>
+                          </div>
                         </div>
-                        <span className={`px-2 py-1 rounded text-xs font-medium ${
-                          tx.status === 'completed' ? 'bg-green-500/20 text-green-400' : 'bg-amber-500/20 text-amber-400'
-                        }`}>
-                          {tx.status === 'completed' ? 'Abgeschlossen' : 'Ausstehend'}
-                        </span>
+                        <div className="text-right">
+                          <span className={`px-2 py-1 rounded text-xs font-medium ${
+                            tx.status === 'completed' ? 'bg-green-500/20 text-green-400' : 'bg-amber-500/20 text-amber-400'
+                          }`}>
+                            {tx.status === 'completed' ? '✓' : '...'}
+                          </span>
+                          <p className="text-slate-500 text-xs mt-1">
+                            {new Date(tx.created_at).toLocaleTimeString('de-DE', {hour: '2-digit', minute: '2-digit'})}
+                          </p>
+                        </div>
                       </div>
+                      {tx.customer_barcode && (
+                        <p className="text-slate-500 text-xs mt-2">Kunde: {tx.customer_barcode}</p>
+                      )}
                     </div>
                   ))}
                 </div>
               ) : (
-                <p className="text-slate-400 text-center py-8">Keine Transaktionen vorhanden</p>
+                <div className="text-center py-12">
+                  <History className="w-16 h-16 text-slate-600 mx-auto mb-4" />
+                  <p className="text-slate-400">Keine Transaktionen vorhanden</p>
+                  <p className="text-slate-500 text-sm mt-2">Transaktionen erscheinen hier nach der ersten Aufladung</p>
+                </div>
               )}
+            </div>
+            
+            {/* Footer with print options */}
+            <div className="p-4 border-t border-slate-700 flex justify-between items-center">
+              <p className="text-slate-500 text-sm">
+                {new Date().toLocaleDateString('de-DE')} - {staff?.name}
+              </p>
+              <button
+                onClick={printTransactionHistory}
+                className="px-6 py-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold rounded-xl hover:from-amber-600 hover:to-orange-600 transition-all shadow-lg shadow-amber-500/30 flex items-center gap-2"
+              >
+                <Printer className="w-5 h-5" />
+                Kassenabschluss drucken
+              </button>
             </div>
           </div>
         </div>
