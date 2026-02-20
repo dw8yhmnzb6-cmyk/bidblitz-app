@@ -404,6 +404,17 @@ function AppContent() {
           {/* Enterprise Portal for Large Retailers */}
           <Route path="/enterprise" element={<EnterprisePortal />} />
           <Route path="/grosshaendler" element={<EnterprisePortal />} />
+          {/* Cashback Dashboard */}
+          <Route path="/cashback" element={
+            <ProtectedRoute>
+              <CashbackDashboard />
+            </ProtectedRoute>
+          } />
+          <Route path="/mein-cashback" element={
+            <ProtectedRoute>
+              <CashbackDashboard />
+            </ProtectedRoute>
+          } />
           {/* Customer Payment QR */}
           <Route path="/mein-qr" element={
             <ProtectedRoute>
