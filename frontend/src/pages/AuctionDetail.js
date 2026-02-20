@@ -200,7 +200,29 @@ export default function AuctionDetail() {
   // Initial fetch
   useEffect(() => {
     fetchBidHistory();
-  }, [id]);
+    
+    // Track product view
+    const trackProductView = async () => {
+      if (auction?.product?.id) {
+        try {
+          await axios.post(`${API}/analytics/product-view`, {
+            product_id: auction.product.id,
+            auction_id: id,
+            source: document.referrer.includes('search') ? 'search' : 
+                   document.referrer.includes('category') ? 'category' : 'direct'
+          }, {
+            headers: token ? { Authorization: `Bearer ${token}` } : {}
+          });
+        } catch (err) {
+          // Silent fail for analytics
+        }
+      }
+    };
+    
+    if (auction?.product?.id) {
+      trackProductView();
+    }
+  }, [id, auction?.product?.id]);
 
   // Fetch autobidder when authenticated
   useEffect(() => {
