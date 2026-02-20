@@ -118,13 +118,12 @@ export default function AdminDigitalPayments() {
           'X-Admin-Key': ADMIN_KEY
         },
         body: JSON.stringify({
-          platform_commission: editCommission.platform,
-          customer_cashback: editCommission.cashback
+          merchant_commission: editCommission
         })
       });
 
       if (res.ok) {
-        toast.success('Provisionen aktualisiert!');
+        toast.success('Händler-Provision aktualisiert!');
         setEditingKey(null);
         fetchData();
       } else {
