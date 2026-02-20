@@ -1,14 +1,14 @@
 /**
  * Admin Enterprise Management
  * Manage enterprise accounts (Großhändler like Edeka, Rewe)
- * Extended with IBAN/Payout settings and detailed data access
+ * Extended with IBAN/Payout settings, Commission settings, and detailed data access
  */
 import React, { useState, useEffect } from 'react';
 import { 
   Building2, Store, Users, Key, CheckCircle, XCircle, Clock,
   RefreshCw, Eye, ToggleLeft, ToggleRight, TrendingUp, Euro,
   Settings, CreditCard, Calendar, ChevronDown, ChevronUp,
-  Download, FileText, Edit2, Save, X, Banknote, AlertCircle
+  Download, FileText, Edit2, Save, X, Banknote, AlertCircle, Percent
 } from 'lucide-react';
 import { toast } from 'sonner';
 
