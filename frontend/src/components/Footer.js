@@ -262,6 +262,10 @@ export const Footer = () => {
                 <Users className="w-3.5 h-3.5" />
                 {ft.wholesale}
               </Link>
+              <Link to="/enterprise" className="text-gray-400 hover:text-white transition-colors font-body text-sm flex items-center gap-2">
+                <Store className="w-3.5 h-3.5" />
+                Händler-Portal (Edeka, Rewe...)
+              </Link>
               <Link to="/investoren" className="text-gray-400 hover:text-white transition-colors font-body text-sm flex items-center gap-2">
                 <TrendingUp className="w-3.5 h-3.5" />
                 {ft.investors}
