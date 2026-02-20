@@ -65,24 +65,32 @@ def calculate_bonus(amount: float) -> float:
 
 async def get_or_create_customer(barcode: str) -> dict:
     """Get customer by barcode or create new one"""
-    # Check if barcode exists as customer_number or barcode
+    # Clean up barcode - remove BID- prefix if present
+    clean_barcode = barcode.replace("BID-", "").replace("bid-", "").strip()
+    
+    # Try multiple search patterns
     customer = await db.users.find_one({
         "$or": [
             {"customer_number": barcode},
+            {"customer_number": clean_barcode},
+            {"customer_number": f"BID-{clean_barcode}"},
             {"barcode": barcode},
-            {"id": barcode}
+            {"barcode": clean_barcode},
+            {"id": barcode},
+            {"id": clean_barcode}
         ]
     })
     
     if customer:
+        logger.info(f"Found existing customer: {customer.get('customer_number')} for barcode {barcode}")
         return customer
     
     # Create new customer with this barcode
     new_customer = {
         "id": str(uuid.uuid4()),
-        "customer_number": barcode,
-        "barcode": barcode,
-        "name": f"Kunde {barcode[-4:]}",
+        "customer_number": f"BID-{clean_barcode}",
+        "barcode": clean_barcode,
+        "name": f"Kunde {clean_barcode[-4:]}",
         "balance": 0.0,
         "total_deposits": 0.0,
         "created_at": datetime.now(timezone.utc).isoformat(),
