@@ -74,6 +74,7 @@ import ApiDocs from "./pages/ApiDocs";
 import POSTerminal from "./pages/POSTerminal";
 import POSKiosk from "./pages/POSKiosk";
 import EnterprisePortal from "./pages/EnterprisePortal";
+import CashbackDashboard from "./components/CashbackDashboard";
 import POSScanner from "./pages/POSScanner";
 import MyPaymentQR from "./pages/MyPaymentQR";
 import WalletCard from "./pages/WalletCard";
