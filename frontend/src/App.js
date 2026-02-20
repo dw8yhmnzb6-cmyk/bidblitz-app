@@ -73,6 +73,8 @@ import LevelsPage from "./pages/LevelsPage";
 import ApiDocs from "./pages/ApiDocs";
 import POSTerminal from "./pages/POSTerminal";
 import POSKiosk from "./pages/POSKiosk";
+import POSScanner from "./pages/POSScanner";
+import MyPaymentQR from "./pages/MyPaymentQR";
 import DailyRewardsPage from "./pages/DailyRewardsPage";
 import BattlePassPage from "./pages/BattlePassPage";
 import MysteryBoxPage from "./pages/MysteryBoxPage";
