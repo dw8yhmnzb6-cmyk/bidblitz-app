@@ -92,6 +92,16 @@ const enterpriseTranslations = {
     lastPayout: 'Letzte Auszahlung',
     payoutHistory: 'Auszahlungsverlauf',
     staffName: 'Mitarbeiter Name',
+    connectionError: 'Verbindungsfehler',
+    savingError: 'Fehler beim Speichern',
+    loadingError: 'Fehler beim Laden',
+    // Commission settings for enterprises
+    commissionSettings: 'Provisionseinstellungen',
+    voucherCommission: 'Gutschein-Provision',
+    selfPayCommission: 'Eigenzahlung-Provision',
+    customerCashback: 'Kunden-Cashback',
+    commissionRate: 'Provisionssatz',
+    enterpriseSettings: 'Großhändler-Einstellungen',
   },
   en: {
     title: 'Merchant Portal',
