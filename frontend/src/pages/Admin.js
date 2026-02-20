@@ -1451,6 +1451,11 @@ export default function Admin() {
             <AdminSystemHealth token={token} />
           )}
 
+          {/* Product Analytics Tab */}
+          {activeTab === 'product-analytics' && (
+            <AdminProductAnalytics token={token} />
+          )}
+
           {/* Products Tab */}
           {activeTab === 'products' && (
             <AdminProducts 
