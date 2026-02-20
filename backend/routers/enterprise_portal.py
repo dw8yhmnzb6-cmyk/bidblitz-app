@@ -1047,6 +1047,18 @@ async def list_all_enterprises(x_admin_key: str = Header(...)):
             "min_payout_amount": 100
         }
         
+        # Get commission settings
+        commission = await db.enterprise_commission_settings.find_one(
+            {"enterprise_id": ent_id},
+            {"_id": 0}
+        )
+        enterprise["commission_settings"] = commission or {
+            "voucher_commission": 5.0,
+            "self_pay_commission": 3.0,
+            "customer_cashback": 1.0,
+            "is_active": True
+        }
+        
         # Calculate revenue (from transactions via API keys)
         api_keys = await db.enterprise_api_keys.find(
             {"enterprise_id": ent_id},
@@ -1066,7 +1078,9 @@ async def list_all_enterprises(x_admin_key: str = Header(...)):
         else:
             enterprise["total_revenue"] = 0
         
-        enterprise["pending_commission"] = round(enterprise["total_revenue"] * 0.05, 2)  # 5% commission example
+        # Use individual commission rate if set
+        commission_rate = enterprise["commission_settings"].get("voucher_commission", 5.0) / 100
+        enterprise["pending_commission"] = round(enterprise["total_revenue"] * commission_rate, 2)
     
     return {"enterprises": enterprises, "total": len(enterprises)}
 
