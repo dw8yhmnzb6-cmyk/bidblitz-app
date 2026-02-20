@@ -354,6 +354,12 @@ const enterpriseTranslations = {
     connectionError: 'Bağlantı hatası',
     savingError: 'Kaydetme hatası',
     loadingError: 'Yükleme hatası',
+    commissionSettings: 'Komisyon Ayarları',
+    voucherCommission: 'Kupon Komisyonu',
+    selfPayCommission: 'Kendi Ödeme Komisyonu',
+    customerCashback: 'Müşteri Cashback',
+    commissionRate: 'Komisyon Oranı',
+    enterpriseSettings: 'Kuruluş Ayarları',
   }
 };
 
