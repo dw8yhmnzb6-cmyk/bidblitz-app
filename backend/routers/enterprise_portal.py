@@ -1113,6 +1113,70 @@ async def update_payout_settings(enterprise_id: str, data: PayoutSettings, x_adm
     return {"success": True, "message": "Auszahlungseinstellungen gespeichert"}
 
 
+@router.put("/admin/commission-settings/{enterprise_id}")
+async def update_commission_settings(enterprise_id: str, data: CommissionSettings, x_admin_key: str = Header(...)):
+    """Admin: Update commission settings for an enterprise."""
+    if x_admin_key != "bidblitz-admin-2026":
+        raise HTTPException(status_code=403, detail="Ungültiger Admin-Key")
+    
+    # Verify enterprise exists
+    enterprise = await db.enterprise_accounts.find_one({"id": enterprise_id})
+    if not enterprise:
+        raise HTTPException(status_code=404, detail="Unternehmen nicht gefunden")
+    
+    # Validate percentages
+    if not (0 <= data.voucher_commission <= 100):
+        raise HTTPException(status_code=400, detail="Gutschein-Provision muss zwischen 0 und 100% liegen")
+    if not (0 <= data.self_pay_commission <= 100):
+        raise HTTPException(status_code=400, detail="Eigenzahlung-Provision muss zwischen 0 und 100% liegen")
+    if not (0 <= data.customer_cashback <= 100):
+        raise HTTPException(status_code=400, detail="Kunden-Cashback muss zwischen 0 und 100% liegen")
+    
+    now = datetime.now(timezone.utc)
+    
+    settings_data = {
+        "enterprise_id": enterprise_id,
+        "voucher_commission": data.voucher_commission,
+        "self_pay_commission": data.self_pay_commission,
+        "customer_cashback": data.customer_cashback,
+        "is_active": data.is_active,
+        "updated_at": now.isoformat(),
+        "updated_by": "admin"
+    }
+    
+    # Upsert settings
+    await db.enterprise_commission_settings.update_one(
+        {"enterprise_id": enterprise_id},
+        {"$set": settings_data, "$setOnInsert": {"created_at": now.isoformat()}},
+        upsert=True
+    )
+    
+    return {"success": True, "message": "Provisionseinstellungen gespeichert"}
+
+
+@router.get("/admin/commission-settings/{enterprise_id}")
+async def get_commission_settings(enterprise_id: str, x_admin_key: str = Header(...)):
+    """Admin: Get commission settings for an enterprise."""
+    if x_admin_key != "bidblitz-admin-2026":
+        raise HTTPException(status_code=403, detail="Ungültiger Admin-Key")
+    
+    settings = await db.enterprise_commission_settings.find_one(
+        {"enterprise_id": enterprise_id},
+        {"_id": 0}
+    )
+    
+    if not settings:
+        settings = {
+            "enterprise_id": enterprise_id,
+            "voucher_commission": 5.0,
+            "self_pay_commission": 3.0,
+            "customer_cashback": 1.0,
+            "is_active": True
+        }
+    
+    return settings
+
+
 @router.get("/admin/payout-settings/{enterprise_id}")
 async def get_payout_settings(enterprise_id: str, x_admin_key: str = Header(...)):
     """Admin: Get payout settings for an enterprise."""
