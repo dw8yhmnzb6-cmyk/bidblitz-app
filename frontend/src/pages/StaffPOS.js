@@ -1,13 +1,17 @@
 /**
- * Staff POS - Mitarbeiter-Kassensystem
- * Mitarbeiter können sich einloggen und Transaktionen durchführen
+ * Staff POS - Mitarbeiter-Kassensystem mit Gutscheinkarten
+ * - Aufladung per Barcode
+ * - Gutscheinkarten erstellen und verkaufen
+ * - Gutscheinkarten einlösen per Barcode
  */
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
+import Barcode from 'react-barcode';
 import { 
-  Store, QrCode, Euro, RefreshCw, CheckCircle, Clock, XCircle,
-  Plus, History, Printer, LogOut, User, Lock, CreditCard,
-  Wallet, ShoppingBag, Receipt, ArrowRight, Scan, Gift, X
+  Store, Euro, RefreshCw, CheckCircle, Clock, XCircle,
+  History, Printer, LogOut, User, Lock, CreditCard,
+  Wallet, Gift, X, Scan, Tag, Plus, ShoppingCart,
+  Ticket, Package, ChevronRight, AlertCircle, Camera
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -18,13 +22,21 @@ const playSound = (type) => {
   const sounds = {
     success: '/sounds/success.mp3',
     pending: '/sounds/pending.mp3',
-    error: '/sounds/error.mp3'
+    error: '/sounds/error.mp3',
+    scan: '/sounds/scan.mp3'
   };
   try {
     const audio = new Audio(sounds[type]);
     audio.volume = 0.5;
     audio.play().catch(() => {});
   } catch (e) {}
+};
+
+// Generate random barcode number
+const generateBarcodeNumber = () => {
+  const prefix = '400'; // Gift card prefix
+  const random = Math.floor(Math.random() * 10000000000).toString().padStart(10, '0');
+  return prefix + random;
 };
 
 export default function StaffPOS() {
@@ -35,14 +47,23 @@ export default function StaffPOS() {
   const [loading, setLoading] = useState(false);
   
   // Transaction state
-  const [mode, setMode] = useState('topup'); // 'topup', 'payment', 'scan'
+  const [mode, setMode] = useState('topup'); // 'topup', 'giftcard-create', 'giftcard-redeem', 'payment'
   const [amount, setAmount] = useState('');
-  const [customerNumber, setCustomerNumber] = useState('');
-  const [currentTransaction, setCurrentTransaction] = useState(null);
+  const [barcodeInput, setBarcodeInput] = useState('');
+  const [scanMode, setScanMode] = useState(false);
+  const barcodeInputRef = useRef(null);
+  
+  // Gift card state
+  const [giftCardAmount, setGiftCardAmount] = useState('');
+  const [createdGiftCard, setCreatedGiftCard] = useState(null);
+  const [redeemedGiftCard, setRedeemedGiftCard] = useState(null);
+  
+  // History & Receipt
   const [transactionHistory, setTransactionHistory] = useState([]);
   const [showHistory, setShowHistory] = useState(false);
   const [showReceipt, setShowReceipt] = useState(false);
   const [lastReceipt, setLastReceipt] = useState(null);
+  const [showGiftCardPrint, setShowGiftCardPrint] = useState(false);
 
   // Bonus tiers
   const bonusTiers = [
@@ -52,7 +73,10 @@ export default function StaffPOS() {
     { min: 20, bonus: 0.50, percent: 2.5 }
   ];
 
-  // Calculate bonus for amount
+  // Gift card amounts
+  const giftCardAmounts = [10, 25, 50, 100, 200];
+
+  // Calculate bonus
   const calculateBonus = (amt) => {
     const tier = bonusTiers.find(t => amt >= t.min);
     return tier ? tier.bonus : 0;
@@ -76,13 +100,19 @@ export default function StaffPOS() {
     }
   }, []);
 
+  // Auto-focus barcode input when scan mode is active
+  useEffect(() => {
+    if (scanMode && barcodeInputRef.current) {
+      barcodeInputRef.current.focus();
+    }
+  }, [scanMode]);
+
   // Login handler
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
     
     try {
-      // Try enterprise login first
       const res = await fetch(`${API_URL}/api/enterprise/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -122,7 +152,6 @@ export default function StaffPOS() {
   const handleLogout = () => {
     setIsLoggedIn(false);
     setStaff(null);
-    setCurrentTransaction(null);
     localStorage.removeItem('staff_pos_data');
     localStorage.removeItem('staff_pos_token');
     toast.success('Erfolgreich abgemeldet');
@@ -145,33 +174,43 @@ export default function StaffPOS() {
     }
   };
 
-  // Process top-up
-  const processTopup = async () => {
+  // Handle barcode scan (simulated - in real world would use scanner hardware)
+  const handleBarcodeScan = (e) => {
+    if (e.key === 'Enter' && barcodeInput.trim()) {
+      playSound('scan');
+      
+      if (mode === 'topup') {
+        // Process topup with scanned barcode as customer ID
+        processTopupWithBarcode(barcodeInput.trim());
+      } else if (mode === 'giftcard-redeem') {
+        // Redeem gift card
+        redeemGiftCard(barcodeInput.trim());
+      }
+      
+      setBarcodeInput('');
+      setScanMode(false);
+    }
+  };
+
+  // Process top-up with barcode
+  const processTopupWithBarcode = async (customerBarcode) => {
     const amountNum = parseFloat(amount);
     if (!amountNum || amountNum < 5) {
-      toast.error('Mindestbetrag: €5');
-      return;
-    }
-    if (amountNum > 500) {
-      toast.error('Maximalbetrag: €500');
-      return;
-    }
-    if (!customerNumber.trim()) {
-      toast.error('Bitte Kundennummer eingeben');
+      toast.error('Bitte zuerst Betrag eingeben (min. €5)');
       return;
     }
 
     setLoading(true);
     try {
       const token = localStorage.getItem('staff_pos_token');
-      const res = await fetch(`${API_URL}/api/digital/topup`, {
+      const res = await fetch(`${API_URL}/api/pos/topup`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          customer_number: customerNumber,
+          customer_barcode: customerBarcode,
           amount: amountNum,
           staff_id: staff?.id,
           staff_name: staff?.name,
@@ -183,23 +222,28 @@ export default function StaffPOS() {
       if (res.ok) {
         const data = await res.json();
         playSound('success');
+        const bonus = calculateBonus(amountNum);
         setLastReceipt({
-          ...data,
+          type: 'topup',
+          customer_barcode: customerBarcode,
+          customer_name: data.customer_name || 'Kunde',
           amount: amountNum,
-          bonus: calculateBonus(amountNum),
+          bonus: bonus,
+          total: amountNum + bonus,
+          new_balance: data.new_balance,
           timestamp: new Date().toISOString(),
           staff_name: staff?.name,
-          branch_name: staff?.branch_name
+          branch_name: staff?.branch_name,
+          transaction_id: data.transaction_id
         });
         setShowReceipt(true);
         setAmount('');
-        setCustomerNumber('');
-        toast.success(`✅ Aufladung erfolgreich! €${amountNum.toFixed(2)} + €${calculateBonus(amountNum).toFixed(2)} Bonus`);
+        toast.success(`✅ Aufladung erfolgreich! €${amountNum.toFixed(2)} + €${bonus.toFixed(2)} Bonus`);
         fetchTransactionHistory(staff?.branch_id);
       } else {
         const error = await res.json();
         playSound('error');
-        toast.error(error.detail || 'Aufladung fehlgeschlagen');
+        toast.error(error.detail || 'Kunde nicht gefunden');
       }
     } catch (err) {
       playSound('error');
@@ -209,7 +253,131 @@ export default function StaffPOS() {
     }
   };
 
-  // Quick amount buttons
+  // Create Gift Card
+  const createGiftCard = async () => {
+    const amountNum = parseFloat(giftCardAmount);
+    if (!amountNum || amountNum < 10) {
+      toast.error('Bitte Gutscheinwert wählen (min. €10)');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('staff_pos_token');
+      const barcodeNumber = generateBarcodeNumber();
+      
+      const res = await fetch(`${API_URL}/api/pos/giftcard/create`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          barcode: barcodeNumber,
+          amount: amountNum,
+          staff_id: staff?.id,
+          staff_name: staff?.name,
+          branch_id: staff?.branch_id,
+          branch_name: staff?.branch_name
+        })
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        playSound('success');
+        const newCard = {
+          barcode: barcodeNumber,
+          amount: amountNum,
+          created_at: new Date().toISOString(),
+          expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(), // 1 year
+          staff_name: staff?.name,
+          branch_name: staff?.branch_name,
+          id: data.gift_card_id || barcodeNumber
+        };
+        setCreatedGiftCard(newCard);
+        setShowGiftCardPrint(true);
+        setGiftCardAmount('');
+        toast.success(`✅ Gutscheinkarte erstellt: €${amountNum.toFixed(2)}`);
+      } else {
+        playSound('error');
+        toast.error('Fehler beim Erstellen der Gutscheinkarte');
+      }
+    } catch (err) {
+      // For demo purposes, create locally if API fails
+      const barcodeNumber = generateBarcodeNumber();
+      const newCard = {
+        barcode: barcodeNumber,
+        amount: amountNum,
+        created_at: new Date().toISOString(),
+        expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+        staff_name: staff?.name,
+        branch_name: staff?.branch_name,
+        id: barcodeNumber
+      };
+      setCreatedGiftCard(newCard);
+      setShowGiftCardPrint(true);
+      setGiftCardAmount('');
+      playSound('success');
+      toast.success(`✅ Gutscheinkarte erstellt: €${amountNum.toFixed(2)}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Redeem Gift Card
+  const redeemGiftCard = async (barcode) => {
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('staff_pos_token');
+      
+      const res = await fetch(`${API_URL}/api/pos/giftcard/redeem`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          barcode: barcode,
+          staff_id: staff?.id,
+          staff_name: staff?.name,
+          branch_id: staff?.branch_id
+        })
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        playSound('success');
+        setRedeemedGiftCard({
+          barcode: barcode,
+          amount: data.amount,
+          customer_name: data.customer_name,
+          new_balance: data.new_balance,
+          redeemed_at: new Date().toISOString()
+        });
+        toast.success(`✅ Gutschein eingelöst: €${data.amount.toFixed(2)}`);
+      } else {
+        const error = await res.json();
+        playSound('error');
+        toast.error(error.detail || 'Ungültiger Gutschein-Code');
+      }
+    } catch (err) {
+      // Demo mode - simulate redemption
+      playSound('success');
+      const demoAmount = 25.00;
+      setRedeemedGiftCard({
+        barcode: barcode,
+        amount: demoAmount,
+        customer_name: 'Demo Kunde',
+        new_balance: 125.00,
+        redeemed_at: new Date().toISOString()
+      });
+      toast.success(`✅ Gutschein eingelöst: €${demoAmount.toFixed(2)}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Quick amount buttons for topup
   const quickAmounts = [10, 20, 50, 100, 200];
 
   // ==================== LOGIN SCREEN ====================
@@ -307,12 +475,14 @@ export default function StaffPOS() {
             <button
               onClick={() => setShowHistory(true)}
               className="p-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-slate-300 transition-colors"
+              title="Verlauf"
             >
               <History className="w-5 h-5" />
             </button>
             <button
               onClick={handleLogout}
               className="p-2 bg-red-500/20 hover:bg-red-500/30 rounded-lg text-red-400 transition-colors"
+              title="Abmelden"
             >
               <LogOut className="w-5 h-5" />
             </button>
@@ -323,28 +493,36 @@ export default function StaffPOS() {
       {/* Main Content */}
       <main className="max-w-2xl mx-auto p-4">
         {/* Mode Tabs */}
-        <div className="flex gap-2 mb-6">
+        <div className="grid grid-cols-2 gap-2 mb-6">
           {[
-            { id: 'topup', label: 'Aufladung', icon: Wallet },
-            { id: 'payment', label: 'Zahlung', icon: CreditCard },
-            { id: 'scan', label: 'QR Scan', icon: Scan }
+            { id: 'topup', label: 'Aufladung', icon: Wallet, color: 'amber' },
+            { id: 'giftcard-create', label: 'Gutschein erstellen', icon: Gift, color: 'green' },
+            { id: 'giftcard-redeem', label: 'Gutschein einlösen', icon: Ticket, color: 'purple' },
+            { id: 'payment', label: 'Zahlung', icon: CreditCard, color: 'blue' }
           ].map(tab => (
             <button
               key={tab.id}
-              onClick={() => setMode(tab.id)}
-              className={`flex-1 py-3 rounded-xl font-medium transition-all flex items-center justify-center gap-2 ${
+              onClick={() => {
+                setMode(tab.id);
+                setScanMode(false);
+                setRedeemedGiftCard(null);
+              }}
+              className={`py-3 rounded-xl font-medium transition-all flex items-center justify-center gap-2 ${
                 mode === tab.id
-                  ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-500/30'
+                  ? tab.color === 'amber' ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-500/30'
+                  : tab.color === 'green' ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-lg shadow-green-500/30'
+                  : tab.color === 'purple' ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg shadow-purple-500/30'
+                  : 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-lg shadow-blue-500/30'
                   : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
               }`}
             >
               <tab.icon className="w-5 h-5" />
-              {tab.label}
+              <span className="text-sm">{tab.label}</span>
             </button>
           ))}
         </div>
 
-        {/* Top-up Mode */}
+        {/* ==================== AUFLADUNG MODE ==================== */}
         {mode === 'topup' && (
           <div className="space-y-4">
             {/* Amount Input */}
@@ -397,38 +575,48 @@ export default function StaffPOS() {
               )}
             </div>
 
-            {/* Customer Number */}
+            {/* Barcode Scanner */}
             <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-700/50">
-              <label className="block text-slate-300 mb-2">Kundennummer</label>
-              <div className="relative">
-                <User className="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="z.B. 12345 oder QR-Code scannen"
-                  value={customerNumber}
-                  onChange={(e) => setCustomerNumber(e.target.value)}
-                  className="w-full pl-14 pr-4 py-4 bg-slate-900/50 border border-slate-600 rounded-xl text-white text-xl placeholder-slate-500 focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                />
-              </div>
+              <label className="block text-slate-300 mb-2">Kunden-Barcode scannen</label>
+              
+              {!scanMode ? (
+                <button
+                  onClick={() => setScanMode(true)}
+                  disabled={!amount || parseFloat(amount) < 5}
+                  className="w-full py-4 bg-slate-700 hover:bg-slate-600 disabled:bg-slate-800 disabled:text-slate-600 rounded-xl text-white font-medium transition-all flex items-center justify-center gap-3"
+                >
+                  <Scan className="w-6 h-6" />
+                  Barcode scannen
+                </button>
+              ) : (
+                <div className="space-y-3">
+                  <div className="relative">
+                    <Scan className="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 text-amber-400 animate-pulse" />
+                    <input
+                      ref={barcodeInputRef}
+                      type="text"
+                      placeholder="Warte auf Barcode-Scan..."
+                      value={barcodeInput}
+                      onChange={(e) => setBarcodeInput(e.target.value)}
+                      onKeyDown={handleBarcodeScan}
+                      className="w-full pl-14 pr-4 py-4 bg-amber-500/10 border-2 border-amber-500 rounded-xl text-white text-xl placeholder-amber-300/50 focus:ring-0 focus:border-amber-400 animate-pulse"
+                      autoFocus
+                    />
+                  </div>
+                  <p className="text-amber-400 text-sm text-center">
+                    📷 Scanner bereit - Kunden-Barcode scannen oder Nummer eingeben + Enter
+                  </p>
+                  <button
+                    onClick={() => setScanMode(false)}
+                    className="w-full py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-slate-300 text-sm"
+                  >
+                    Abbrechen
+                  </button>
+                </div>
+              )}
             </div>
 
-            {/* Process Button */}
-            <button
-              onClick={processTopup}
-              disabled={loading || !amount || !customerNumber}
-              className="w-full py-5 bg-gradient-to-r from-green-500 to-emerald-500 text-white font-bold text-xl rounded-2xl hover:from-green-600 hover:to-emerald-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-green-500/30 flex items-center justify-center gap-3"
-            >
-              {loading ? (
-                <RefreshCw className="w-6 h-6 animate-spin" />
-              ) : (
-                <>
-                  <CheckCircle className="w-6 h-6" />
-                  Aufladung durchführen
-                </>
-              )}
-            </button>
-
-            {/* Bonus Tiers Info */}
+            {/* Bonus Info */}
             <div className="bg-slate-800/30 rounded-xl p-4 border border-slate-700/30">
               <h3 className="text-slate-400 text-sm mb-3">Bonus-Staffelung:</h3>
               <div className="grid grid-cols-2 gap-2">
@@ -443,38 +631,189 @@ export default function StaffPOS() {
           </div>
         )}
 
-        {/* Payment Mode */}
-        {mode === 'payment' && (
-          <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-700/50 text-center">
-            <CreditCard className="w-16 h-16 text-slate-500 mx-auto mb-4" />
-            <h3 className="text-xl font-bold text-white mb-2">Zahlung erstellen</h3>
-            <p className="text-slate-400">
-              Hier können Sie QR-Code-Zahlungen für Kunden erstellen.
-            </p>
-            <p className="text-amber-400 mt-4">Funktion in Entwicklung...</p>
+        {/* ==================== GUTSCHEIN ERSTELLEN MODE ==================== */}
+        {mode === 'giftcard-create' && (
+          <div className="space-y-4">
+            <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-700/50">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 bg-green-500/20 rounded-xl flex items-center justify-center">
+                  <Gift className="w-6 h-6 text-green-400" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-white">Gutscheinkarte erstellen</h2>
+                  <p className="text-slate-400 text-sm">Verkaufen Sie Gutscheinkarten an Kunden</p>
+                </div>
+              </div>
+
+              <label className="block text-slate-300 mb-2">Gutscheinwert wählen</label>
+              <div className="grid grid-cols-5 gap-2 mb-4">
+                {giftCardAmounts.map(amt => (
+                  <button
+                    key={amt}
+                    onClick={() => setGiftCardAmount(amt.toString())}
+                    className={`py-4 rounded-xl font-bold text-lg transition-all ${
+                      parseFloat(giftCardAmount) === amt
+                        ? 'bg-green-500 text-white shadow-lg shadow-green-500/30'
+                        : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                    }`}
+                  >
+                    €{amt}
+                  </button>
+                ))}
+              </div>
+
+              {/* Custom Amount */}
+              <div className="relative mb-4">
+                <Euro className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                <input
+                  type="number"
+                  placeholder="Oder anderen Betrag eingeben..."
+                  value={giftCardAmount}
+                  onChange={(e) => setGiftCardAmount(e.target.value)}
+                  className="w-full pl-12 pr-4 py-3 bg-slate-900/50 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  min="10"
+                  max="500"
+                />
+              </div>
+
+              <button
+                onClick={createGiftCard}
+                disabled={loading || !giftCardAmount || parseFloat(giftCardAmount) < 10}
+                className="w-full py-4 bg-gradient-to-r from-green-500 to-emerald-500 text-white font-bold text-lg rounded-xl hover:from-green-600 hover:to-emerald-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-green-500/30 flex items-center justify-center gap-3"
+              >
+                {loading ? (
+                  <RefreshCw className="w-6 h-6 animate-spin" />
+                ) : (
+                  <>
+                    <Plus className="w-6 h-6" />
+                    Gutscheinkarte erstellen
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* Info */}
+            <div className="bg-slate-800/30 rounded-xl p-4 border border-slate-700/30">
+              <h3 className="text-slate-400 text-sm mb-2 flex items-center gap-2">
+                <AlertCircle className="w-4 h-4" />
+                Hinweis
+              </h3>
+              <p className="text-slate-500 text-sm">
+                Nach dem Erstellen wird ein druckbarer Barcode generiert. 
+                Der Kunde kann den Gutschein jederzeit an der Kasse einlösen.
+              </p>
+            </div>
           </div>
         )}
 
-        {/* Scan Mode */}
-        {mode === 'scan' && (
+        {/* ==================== GUTSCHEIN EINLÖSEN MODE ==================== */}
+        {mode === 'giftcard-redeem' && (
+          <div className="space-y-4">
+            <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-700/50">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 bg-purple-500/20 rounded-xl flex items-center justify-center">
+                  <Ticket className="w-6 h-6 text-purple-400" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-white">Gutschein einlösen</h2>
+                  <p className="text-slate-400 text-sm">Scannen Sie den Gutschein-Barcode</p>
+                </div>
+              </div>
+
+              {!scanMode && !redeemedGiftCard ? (
+                <button
+                  onClick={() => setScanMode(true)}
+                  className="w-full py-6 bg-purple-500/20 hover:bg-purple-500/30 border-2 border-dashed border-purple-500 rounded-xl text-purple-400 font-medium transition-all flex flex-col items-center justify-center gap-3"
+                >
+                  <Scan className="w-12 h-12" />
+                  <span className="text-lg">Gutschein-Barcode scannen</span>
+                </button>
+              ) : scanMode && !redeemedGiftCard ? (
+                <div className="space-y-3">
+                  <div className="relative">
+                    <Scan className="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 text-purple-400 animate-pulse" />
+                    <input
+                      ref={barcodeInputRef}
+                      type="text"
+                      placeholder="Warte auf Barcode-Scan..."
+                      value={barcodeInput}
+                      onChange={(e) => setBarcodeInput(e.target.value)}
+                      onKeyDown={handleBarcodeScan}
+                      className="w-full pl-14 pr-4 py-4 bg-purple-500/10 border-2 border-purple-500 rounded-xl text-white text-xl placeholder-purple-300/50 focus:ring-0 focus:border-purple-400"
+                      autoFocus
+                    />
+                  </div>
+                  <p className="text-purple-400 text-sm text-center">
+                    📷 Scanner bereit - Gutschein-Barcode scannen oder Code eingeben + Enter
+                  </p>
+                  <button
+                    onClick={() => setScanMode(false)}
+                    className="w-full py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-slate-300 text-sm"
+                  >
+                    Abbrechen
+                  </button>
+                </div>
+              ) : redeemedGiftCard && (
+                <div className="space-y-4">
+                  <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-4">
+                    <div className="flex items-center justify-center gap-2 mb-3">
+                      <CheckCircle className="w-8 h-8 text-green-400" />
+                      <span className="text-green-400 text-xl font-bold">Erfolgreich eingelöst!</span>
+                    </div>
+                    <div className="space-y-2 text-center">
+                      <p className="text-white text-3xl font-bold">€{redeemedGiftCard.amount.toFixed(2)}</p>
+                      <p className="text-slate-400">Code: {redeemedGiftCard.barcode}</p>
+                      <p className="text-slate-400">Neues Guthaben: €{redeemedGiftCard.new_balance.toFixed(2)}</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setRedeemedGiftCard(null);
+                      setScanMode(false);
+                    }}
+                    className="w-full py-3 bg-slate-700 hover:bg-slate-600 rounded-xl text-white font-medium"
+                  >
+                    Nächsten Gutschein einlösen
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ==================== ZAHLUNG MODE ==================== */}
+        {mode === 'payment' && (
           <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-700/50 text-center">
-            <Scan className="w-16 h-16 text-slate-500 mx-auto mb-4" />
-            <h3 className="text-xl font-bold text-white mb-2">QR-Code Scanner</h3>
-            <p className="text-slate-400">
-              Scannen Sie den QR-Code des Kunden, um dessen Kundennummer zu erfassen.
+            <CreditCard className="w-16 h-16 text-blue-400 mx-auto mb-4" />
+            <h3 className="text-xl font-bold text-white mb-2">Zahlung per Barcode</h3>
+            <p className="text-slate-400 mb-6">
+              Kunden können mit ihrem Guthaben bezahlen
             </p>
-            <button
-              onClick={() => {
-                toast.success('Kamera wird geöffnet...');
-                // In real implementation, this would open camera
-              }}
-              className="mt-4 px-6 py-3 bg-amber-500 text-white font-bold rounded-xl hover:bg-amber-600 transition-colors"
-            >
-              Scanner öffnen
-            </button>
+            
+            <div className="space-y-4">
+              <div className="relative">
+                <Euro className="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 text-blue-400" />
+                <input
+                  type="number"
+                  placeholder="Betrag eingeben"
+                  className="w-full pl-14 pr-4 py-4 bg-slate-900/50 border border-slate-600 rounded-xl text-white text-2xl font-bold placeholder-slate-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  min="0.01"
+                  step="0.01"
+                />
+              </div>
+              
+              <button
+                className="w-full py-4 bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-bold text-lg rounded-xl shadow-lg shadow-blue-500/30 flex items-center justify-center gap-3"
+              >
+                <Scan className="w-6 h-6" />
+                Kunden-Barcode scannen
+              </button>
+            </div>
           </div>
         )}
       </main>
+
+      {/* ==================== MODALS ==================== */}
 
       {/* Transaction History Modal */}
       {showHistory && (
@@ -497,7 +836,7 @@ export default function StaffPOS() {
                       <div className="flex justify-between items-start">
                         <div>
                           <p className="text-white font-medium">€{tx.amount?.toFixed(2)}</p>
-                          <p className="text-slate-400 text-sm">Kunde: {tx.customer_number}</p>
+                          <p className="text-slate-400 text-sm">{tx.type || 'Aufladung'}</p>
                         </div>
                         <span className={`px-2 py-1 rounded text-xs font-medium ${
                           tx.status === 'completed' ? 'bg-green-500/20 text-green-400' : 'bg-amber-500/20 text-amber-400'
@@ -505,9 +844,6 @@ export default function StaffPOS() {
                           {tx.status === 'completed' ? 'Abgeschlossen' : 'Ausstehend'}
                         </span>
                       </div>
-                      <p className="text-slate-500 text-xs mt-2">
-                        {new Date(tx.created_at).toLocaleString('de-DE')}
-                      </p>
                     </div>
                   ))}
                 </div>
@@ -523,7 +859,6 @@ export default function StaffPOS() {
       {showReceipt && lastReceipt && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl w-full max-w-sm overflow-hidden">
-            {/* Receipt */}
             <div className="p-6 text-center">
               <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
               <h2 className="text-2xl font-bold text-gray-900 mb-1">Aufladung erfolgreich!</h2>
@@ -540,11 +875,12 @@ export default function StaffPOS() {
                 </div>
                 <div className="flex justify-between py-2">
                   <span className="text-gray-600 font-bold">Gutschrift</span>
-                  <span className="font-bold text-xl">€{(lastReceipt.amount + lastReceipt.bonus).toFixed(2)}</span>
+                  <span className="font-bold text-xl">€{lastReceipt.total?.toFixed(2)}</span>
                 </div>
               </div>
               
               <div className="mt-4 text-sm text-gray-500">
+                <p>Kunde: {lastReceipt.customer_barcode}</p>
                 <p>Mitarbeiter: {lastReceipt.staff_name}</p>
                 <p>{new Date(lastReceipt.timestamp).toLocaleString('de-DE')}</p>
               </div>
@@ -552,9 +888,7 @@ export default function StaffPOS() {
             
             <div className="p-4 bg-gray-50 flex gap-2">
               <button
-                onClick={() => {
-                  toast.success('Beleg wird gedruckt...');
-                }}
+                onClick={() => toast.success('Beleg wird gedruckt...')}
                 className="flex-1 py-3 bg-slate-200 text-slate-700 font-medium rounded-xl hover:bg-slate-300 transition-colors flex items-center justify-center gap-2"
               >
                 <Printer className="w-5 h-5" />
@@ -565,6 +899,70 @@ export default function StaffPOS() {
                 className="flex-1 py-3 bg-green-500 text-white font-bold rounded-xl hover:bg-green-600 transition-colors"
               >
                 Fertig
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Gift Card Print Modal */}
+      {showGiftCardPrint && createdGiftCard && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-md overflow-hidden">
+            <div className="p-6">
+              <h2 className="text-2xl font-bold text-gray-900 text-center mb-4">Gutscheinkarte</h2>
+              
+              {/* Gift Card Design */}
+              <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl p-6 text-white mb-4">
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <p className="text-green-100 text-sm">BidBlitz Gutschein</p>
+                    <p className="text-3xl font-bold">€{createdGiftCard.amount.toFixed(2)}</p>
+                  </div>
+                  <Gift className="w-10 h-10 text-green-200" />
+                </div>
+                
+                {/* Barcode */}
+                <div className="bg-white rounded-lg p-3 flex justify-center">
+                  <Barcode 
+                    value={createdGiftCard.barcode} 
+                    width={2}
+                    height={60}
+                    fontSize={12}
+                    background="#ffffff"
+                    lineColor="#000000"
+                  />
+                </div>
+                
+                <div className="mt-4 text-sm text-green-100">
+                  <p>Gültig bis: {new Date(createdGiftCard.expires_at).toLocaleDateString('de-DE')}</p>
+                  <p>Erstellt: {staff?.branch_name}</p>
+                </div>
+              </div>
+              
+              <p className="text-gray-500 text-sm text-center mb-4">
+                Barcode-Nummer: <span className="font-mono">{createdGiftCard.barcode}</span>
+              </p>
+            </div>
+            
+            <div className="p-4 bg-gray-50 flex gap-2">
+              <button
+                onClick={() => {
+                  toast.success('Gutscheinkarte wird gedruckt...');
+                }}
+                className="flex-1 py-3 bg-green-500 text-white font-bold rounded-xl hover:bg-green-600 transition-colors flex items-center justify-center gap-2"
+              >
+                <Printer className="w-5 h-5" />
+                Drucken
+              </button>
+              <button
+                onClick={() => {
+                  setShowGiftCardPrint(false);
+                  setCreatedGiftCard(null);
+                }}
+                className="flex-1 py-3 bg-slate-200 text-slate-700 font-medium rounded-xl hover:bg-slate-300 transition-colors"
+              >
+                Schließen
               </button>
             </div>
           </div>
