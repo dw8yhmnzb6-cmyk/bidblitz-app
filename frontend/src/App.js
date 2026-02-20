@@ -404,6 +404,9 @@ function AppContent() {
           <Route path="/kasse" element={<POSKiosk />} />
           <Route path="/kiosk" element={<POSKiosk />} />
           <Route path="/scanner" element={<POSScanner />} />
+          {/* Staff POS - Mitarbeiter-Kassensystem */}
+          <Route path="/mitarbeiter-kasse" element={<StaffPOS />} />
+          <Route path="/staff-pos" element={<StaffPOS />} />
           {/* Enterprise Portal for Large Retailers */}
           <Route path="/enterprise" element={<EnterprisePortal />} />
           <Route path="/grosshaendler" element={<EnterprisePortal />} />
