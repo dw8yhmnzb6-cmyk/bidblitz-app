@@ -165,42 +165,90 @@ async def register_enterprise(data: EnterpriseCreate):
 
 @router.post("/login")
 async def login_enterprise(data: EnterpriseLogin):
-    """Login to enterprise portal."""
+    """Login to enterprise portal (supports both admin and staff accounts)."""
     
+    # First, try to find enterprise admin account
     enterprise = await db.enterprise_accounts.find_one(
         {"email": data.email.lower()},
         {"_id": 0}
     )
     
-    if not enterprise or enterprise["password"] != hash_password(data.password):
-        raise HTTPException(status_code=401, detail="Ungültige Anmeldedaten")
+    if enterprise and enterprise["password"] == hash_password(data.password):
+        # Enterprise admin login
+        if enterprise.get("status") == "pending":
+            raise HTTPException(status_code=403, detail="Account wartet auf Freischaltung")
+        
+        if enterprise.get("status") == "suspended":
+            raise HTTPException(status_code=403, detail="Account gesperrt")
+        
+        # Create session token
+        token = secrets.token_hex(32)
+        expires_at = datetime.now(timezone.utc) + timedelta(hours=24)
+        
+        await db.enterprise_sessions.insert_one({
+            "token": token,
+            "enterprise_id": enterprise["id"],
+            "user_id": None,  # Main admin login
+            "role": "admin",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "expires_at": expires_at.isoformat()
+        })
+        
+        return {
+            "success": True,
+            "token": token,
+            "enterprise_id": enterprise["id"],
+            "company_name": enterprise["company_name"],
+            "role": "admin",
+            "expires_at": expires_at.isoformat()
+        }
     
-    if enterprise.get("status") == "pending":
-        raise HTTPException(status_code=403, detail="Account wartet auf Freischaltung")
+    # If not enterprise admin, try enterprise user (staff)
+    user = await db.enterprise_users.find_one(
+        {"email": data.email.lower()},
+        {"_id": 0}
+    )
     
-    if enterprise.get("status") == "suspended":
-        raise HTTPException(status_code=403, detail="Account gesperrt")
+    if user and user.get("password") == hash_password(data.password):
+        if not user.get("is_active", True):
+            raise HTTPException(status_code=403, detail="Account deaktiviert")
+        
+        # Get enterprise info
+        user_enterprise = await db.enterprise_accounts.find_one(
+            {"id": user["enterprise_id"]},
+            {"_id": 0, "password": 0}
+        )
+        
+        if not user_enterprise or user_enterprise.get("status") != "approved":
+            raise HTTPException(status_code=403, detail="Unternehmens-Account nicht aktiv")
+        
+        # Create session token
+        token = secrets.token_hex(32)
+        expires_at = datetime.now(timezone.utc) + timedelta(hours=12)
+        
+        await db.enterprise_sessions.insert_one({
+            "token": token,
+            "enterprise_id": user["enterprise_id"],
+            "user_id": user["id"],
+            "role": user["role"],
+            "branch_id": user.get("branch_id"),
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "expires_at": expires_at.isoformat()
+        })
+        
+        return {
+            "success": True,
+            "token": token,
+            "enterprise_id": user["enterprise_id"],
+            "company_name": user_enterprise["company_name"],
+            "user_name": user["name"],
+            "role": user["role"],
+            "branch_id": user.get("branch_id"),
+            "expires_at": expires_at.isoformat()
+        }
     
-    # Create session token
-    token = secrets.token_hex(32)
-    expires_at = datetime.now(timezone.utc) + timedelta(hours=24)
-    
-    await db.enterprise_sessions.insert_one({
-        "token": token,
-        "enterprise_id": enterprise["id"],
-        "user_id": None,  # Main admin login
-        "created_at": datetime.now(timezone.utc).isoformat(),
-        "expires_at": expires_at.isoformat()
-    })
-    
-    return {
-        "success": True,
-        "token": token,
-        "enterprise_id": enterprise["id"],
-        "company_name": enterprise["company_name"],
-        "role": "admin",
-        "expires_at": expires_at.isoformat()
-    }
+    # Neither admin nor user found
+    raise HTTPException(status_code=401, detail="Ungültige Anmeldedaten")
 
 
 @router.post("/user/login")
