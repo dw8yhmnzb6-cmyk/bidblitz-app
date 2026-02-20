@@ -386,6 +386,18 @@ function AppContent() {
           <Route path="/pos" element={<POSTerminal />} />
           <Route path="/kasse" element={<POSKiosk />} />
           <Route path="/kiosk" element={<POSKiosk />} />
+          <Route path="/scanner" element={<POSScanner />} />
+          {/* Customer Payment QR */}
+          <Route path="/mein-qr" element={
+            <ProtectedRoute>
+              <MyPaymentQR />
+            </ProtectedRoute>
+          } />
+          <Route path="/my-qr" element={
+            <ProtectedRoute>
+              <MyPaymentQR />
+            </ProtectedRoute>
+          } />
           {/* New Public Pages */}
           <Route path="/how-it-works" element={<HowItWorks />} />
           <Route path="/faq" element={<FAQ />} />
