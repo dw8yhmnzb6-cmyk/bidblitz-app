@@ -573,6 +573,10 @@ app.include_router(user_analytics_router)
 from routers.revenue_analytics import router as revenue_analytics_router
 app.include_router(revenue_analytics_router)
 
+# NEW: Backup System
+from routers.backup_system import router as backup_router
+app.include_router(backup_router)
+
 # ==================== HEALTH & BASIC ENDPOINTS ====================
 
 @app.get("/")
