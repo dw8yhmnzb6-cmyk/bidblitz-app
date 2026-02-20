@@ -95,6 +95,9 @@ const enterpriseTranslations = {
     connectionError: 'Verbindungsfehler',
     savingError: 'Fehler beim Speichern',
     loadingError: 'Fehler beim Laden',
+    emailReport: 'E-Mail Bericht',
+    monthlyReport: 'Monatlicher Provisionsbericht',
+    sendReport: 'Bericht senden',
     // Commission settings for enterprises
     commissionSettings: 'Provisionseinstellungen',
     voucherCommission: 'Gutschein-Provision',
