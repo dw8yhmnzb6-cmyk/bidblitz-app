@@ -1559,27 +1559,40 @@ export default function EnterprisePortal() {
                 </form>
               ) : (
                 // Login Form
-                <form onSubmit={handleLogin} className="space-y-4">
+                <form onSubmit={handleLogin} className="space-y-4" autoComplete="off">
                   <h2 className="text-xl font-bold text-white mb-4">{t.login}</h2>
                   
-                  <input
-                    type="email"
-                    placeholder={t.email}
-                    value={authForm.email}
-                    onChange={(e) => setAuthForm({...authForm, email: e.target.value})}
-                    className="w-full px-4 py-3 bg-slate-900/50 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                    required
-                  />
-                  
-                  <div className="relative">
+                  <div className="space-y-1">
+                    <label className="block text-sm text-slate-300">{t.email}</label>
                     <input
-                      type={showPassword ? "text" : "password"}
-                      placeholder={t.password}
-                      value={authForm.password}
-                      onChange={(e) => setAuthForm({...authForm, password: e.target.value})}
-                      className="w-full px-4 py-3 bg-slate-900/50 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:ring-2 focus:ring-amber-500 focus:border-transparent pr-12"
+                      type="email"
+                      name="enterprise_email"
+                      placeholder="ihre@email.de"
+                      value={authForm.email}
+                      onChange={(e) => setAuthForm({...authForm, email: e.target.value})}
+                      className="w-full px-4 py-3 bg-slate-900/50 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                      autoComplete="email"
+                      autoCapitalize="none"
+                      autoCorrect="off"
+                      spellCheck="false"
+                      inputMode="email"
                       required
                     />
+                  </div>
+                  
+                  <div className="space-y-1">
+                    <label className="block text-sm text-slate-300">{t.password}</label>
+                    <div className="relative">
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        name="enterprise_password"
+                        placeholder="••••••••"
+                        value={authForm.password}
+                        onChange={(e) => setAuthForm({...authForm, password: e.target.value})}
+                        className="w-full px-4 py-3 bg-slate-900/50 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:ring-2 focus:ring-amber-500 focus:border-transparent pr-12"
+                        autoComplete="current-password"
+                        required
+                      />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
