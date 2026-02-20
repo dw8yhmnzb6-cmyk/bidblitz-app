@@ -14,7 +14,7 @@ Features:
 API Documentation available at: /api/digital/docs
 """
 
-from fastapi import APIRouter, HTTPException, Header, Query, Request
+from fastapi import APIRouter, HTTPException, Header, Query, Request, BackgroundTasks
 from pydantic import BaseModel, Field
 from datetime import datetime, timezone, timedelta
 from typing import Optional, List
@@ -23,6 +23,7 @@ import hashlib
 import hmac
 import httpx
 from config import db
+from utils.email import send_topup_notification
 
 router = APIRouter(prefix="/digital", tags=["Digital Payment API"])
 
