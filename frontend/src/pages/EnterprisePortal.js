@@ -262,8 +262,7 @@ const languages = [
 ];
 
 export default function EnterprisePortal() {
-  const { i18n } = useTranslation();
-  const [lang, setLang] = useState(localStorage.getItem('enterprise_lang') || i18n.language || 'de');
+  const [lang, setLang] = useState(localStorage.getItem('enterprise_lang') || localStorage.getItem('language') || 'de');
   const t = enterpriseTranslations[lang] || enterpriseTranslations.de;
   
   const [token, setToken] = useState(localStorage.getItem('enterprise_token') || '');
@@ -308,7 +307,7 @@ export default function EnterprisePortal() {
   const changeLanguage = (code) => {
     setLang(code);
     localStorage.setItem('enterprise_lang', code);
-    i18n.changeLanguage(code);
+    localStorage.setItem('language', code);
     setShowLangDropdown(false);
   };
 
