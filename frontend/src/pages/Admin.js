@@ -50,6 +50,7 @@ import {
   AdminGameConfig,
   AdminDebugReports,
   AdminSystemHealth,
+  AdminProductAnalytics,
   AdminQuickActions,
   AdminLiveWidgets,
   AdminGlobalSearch,
