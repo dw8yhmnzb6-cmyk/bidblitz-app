@@ -967,6 +967,64 @@ async def generate_customer_payment_qr(
     }
 
 
+
+# ==================== CUSTOMER LOOKUP (for POS verification) ====================
+
+@router.get("/customer/lookup")
+async def lookup_customer(
+    customer_number: str = Query(None, description="Customer number (BID-XXXXXX)"),
+    email: str = Query(None, description="Customer email"),
+    x_api_key: str = Header(None, alias="X-API-Key")
+):
+    """
+    Look up customer information for verification before payment.
+    
+    Merchants can verify customer details and check available balance
+    before processing a payment.
+    """
+    # Verify API key
+    if not x_api_key:
+        raise HTTPException(status_code=401, detail="API key required")
+    
+    api_key = await db.api_keys.find_one(
+        {"key": x_api_key, "is_active": True},
+        {"_id": 0}
+    )
+    
+    if not api_key:
+        raise HTTPException(status_code=401, detail="Invalid or inactive API key")
+    
+    if not customer_number and not email:
+        raise HTTPException(status_code=400, detail="customer_number or email required")
+    
+    # Find customer
+    query = {}
+    if customer_number:
+        query["customer_number"] = customer_number.upper()
+    elif email:
+        query["email"] = email.lower()
+    
+    user = await db.users.find_one(
+        query,
+        {"_id": 0, "id": 1, "name": 1, "customer_number": 1, "bidblitz_balance": 1, "balance": 1, "email": 1}
+    )
+    
+    if not user:
+        raise HTTPException(status_code=404, detail="Kunde nicht gefunden")
+    
+    balance = user.get("bidblitz_balance", user.get("balance", 0))
+    
+    return {
+        "found": True,
+        "customer_number": user.get("customer_number"),
+        "name": user.get("name", "Unbekannt"),
+        "email_masked": user.get("email", "")[:3] + "***" + user.get("email", "")[-10:] if user.get("email") else None,
+        "balance": balance,
+        "can_pay": balance > 0
+    }
+
+
+
 # ==================== SCAN & PAY (Merchant scans customer QR) ====================
 
 class ScanPayRequest(BaseModel):
