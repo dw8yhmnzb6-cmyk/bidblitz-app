@@ -1322,14 +1322,21 @@ export default function EnterprisePortal() {
         body: JSON.stringify(formData)
       });
       const data = await res.json();
-      if (res.ok) {
-        toast.success(data.message);
+      if (res.ok && data.success) {
+        toast.success(data.message || t.registrationSuccess);
         setShowBranchModal(false);
         fetchBranches();
       } else {
-        toast.error(data.detail);
+        // Handle validation errors (422) which return an array
+        const errorMsg = Array.isArray(data.detail) 
+          ? data.detail.map(e => e.msg).join(', ')
+          : (data.detail || data.message || t.savingError);
+        toast.error(errorMsg);
       }
-    } catch (err) { toast.error('Fehler'); }
+    } catch (err) { 
+      console.error('Branch creation error:', err);
+      toast.error(t.connectionError || 'Fehler'); 
+    }
   };
 
   const handleCreateApiKey = async (formData) => {
