@@ -5,6 +5,54 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 
 ## Current Status (February 20, 2026)
 
+### ✅ Session Update - February 20, 2026 (Session 59) - CASHBACK PROGRAM ✅
+
+#### NEW: Cashback-Programm für Kunden ✅
+- **Status:** VOLLSTÄNDIG IMPLEMENTIERT UND GETESTET
+- **Routes:** `/cashback` und `/mein-cashback`
+- **Test-Report:** `/app/test_reports/iteration_93.json` - 100% bestanden
+
+**Konfiguration:**
+- **1% Cashback-Rate** bei jedem Einkauf
+- **Sofort einlösbar** - kein Mindestbetrag
+- **6 Monate Gültigkeit** - danach verfällt
+- **50/50 Kostenaufteilung** zwischen BidBlitz und Händler
+- **Händler-Aktionen** möglich (z.B. Doppeltes Cashback am Wochenende)
+
+**Kunden-Dashboard (`/cashback`):**
+- Verfügbares Cashback anzeigen
+- Einlösen-Funktion (direkt auf BidBlitz-Guthaben)
+- 3 Tabs: Übersicht, Verlauf, So funktioniert's
+- Warnungen bei bald ablaufendem Cashback
+- Aktive Bonus-Aktionen anzeigen
+
+**Backend API Endpoints:**
+- `GET /api/cashback/info` - Programm-Infos (public)
+- `GET /api/cashback/balance` - Kunden-Guthaben
+- `GET /api/cashback/history` - Transaktions-Verlauf
+- `POST /api/cashback/redeem` - Cashback einlösen
+- `GET /api/cashback/active-promotions` - Aktive Aktionen (public)
+- `GET /api/cashback/enterprise/stats` - Händler-Statistiken
+- `POST /api/cashback/enterprise/promotions` - Aktion erstellen
+- `GET /api/cashback/enterprise/promotions` - Aktionen auflisten
+
+**Integration:**
+- Cashback wird automatisch bei `/api/digital/topup` vergeben
+- Response enthält jetzt `cashback_earned` Feld
+
+**Dateien:**
+- `/app/backend/routers/cashback_program.py` (Backend)
+- `/app/frontend/src/components/CashbackDashboard.js` (Frontend)
+
+---
+
+#### Footer-Update: Händler-Portal Link ✅
+- **Neuer Link:** "Händler-Portal (Edeka, Rewe...)" → `/enterprise`
+- **Bestehend:** "Großkunden (B2B)" → `/wholesale`
+- Beide Links sind jetzt im EXTRAS-Bereich sichtbar
+
+---
+
 ### ✅ Session Update - February 20, 2026 (Session 58) - ENTERPRISE PORTAL ✅
 
 #### NEW: Großhändler-Portal (Enterprise Portal) ✅
