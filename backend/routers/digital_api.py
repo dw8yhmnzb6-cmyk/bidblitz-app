@@ -33,16 +33,30 @@ class APIKeyCreate(BaseModel):
     name: str = Field(..., description="Name for this API key (e.g., 'Production', 'Testing')")
     webhook_url: Optional[str] = Field(None, description="URL for webhook notifications")
     allowed_ips: Optional[List[str]] = Field(None, description="List of allowed IP addresses")
-    # Commission settings
-    platform_commission: float = Field(0.5, ge=0.01, le=10.0, description="Platform commission % (0.01-10%)")
-    customer_cashback: float = Field(0.0, ge=0.0, le=2.0, description="Customer cashback % for top-ups (0-2%)")
+    # Commission settings - Händler bekommt Provision für Aufladungen
+    merchant_commission: float = Field(2.0, ge=1.0, le=10.0, description="Händler-Provision % (1-10%) - geht an den Händler")
 
 class APIKeyUpdate(BaseModel):
     name: Optional[str] = Field(None, description="Update API key name")
     webhook_url: Optional[str] = Field(None, description="Update webhook URL")
     is_active: Optional[bool] = Field(None, description="Enable/disable API key")
-    platform_commission: Optional[float] = Field(None, ge=0.01, le=10.0, description="Platform commission % (0.01-10%)")
-    customer_cashback: Optional[float] = Field(None, ge=0.0, le=2.0, description="Customer cashback % for top-ups (0-2%)")
+    merchant_commission: Optional[float] = Field(None, ge=1.0, le=10.0, description="Händler-Provision % (1-10%)")
+
+
+# Kunden-Bonus Staffelung für Aufladungen
+CUSTOMER_BONUS_TIERS = [
+    {"min_amount": 100, "bonus": 5.00},   # €100+ → +€5
+    {"min_amount": 50, "bonus": 2.00},    # €50+ → +€2
+    {"min_amount": 20, "bonus": 0.50},    # €20+ → +€0.50
+]
+
+def calculate_customer_bonus(amount: float) -> float:
+    """Calculate customer bonus based on top-up amount."""
+    for tier in CUSTOMER_BONUS_TIERS:
+        if amount >= tier["min_amount"]:
+            return tier["bonus"]
+    return 0.0
+
 
 class PaymentRequest(BaseModel):
     amount: float = Field(..., gt=0, description="Payment amount in EUR")
