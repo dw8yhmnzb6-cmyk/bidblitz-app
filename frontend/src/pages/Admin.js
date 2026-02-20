@@ -51,6 +51,8 @@ import {
   AdminDebugReports,
   AdminSystemHealth,
   AdminProductAnalytics,
+  AdminUserAnalytics,
+  AdminRevenueAnalytics,
   AdminQuickActions,
   AdminLiveWidgets,
   AdminGlobalSearch,
