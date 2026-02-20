@@ -292,6 +292,56 @@ export default function POSKiosk() {
     }
   };
 
+  // Process card top-up
+  const processTopup = async () => {
+    const amountNum = parseFloat(amount);
+    if (!amountNum || amountNum < 5 || amountNum > 500) {
+      toast.error('Betrag muss zwischen €5 und €500 liegen');
+      return;
+    }
+    if (!customerNumber.trim()) {
+      toast.error('Bitte Kundennummer eingeben');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_URL}/api/digital/topup`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Key': apiKey
+        },
+        body: JSON.stringify({
+          amount: amountNum,
+          customer_number: customerNumber.toUpperCase()
+        })
+      });
+
+      const data = await res.json();
+      
+      if (res.ok) {
+        setTopupResult(data);
+        setAmount('0.00');
+        setCustomerNumber('');
+        // Update merchant volume
+        if (data.merchant_volume) {
+          setMerchantVolume(data.merchant_volume);
+        }
+        if (soundEnabled) playSound('success');
+        toast.success(`${data.customer_name || 'Kunde'} hat €${data.total_credited.toFixed(2)} erhalten!`);
+        fetchRecentPayments();
+      } else {
+        toast.error(data.detail || 'Aufladung fehlgeschlagen');
+        if (soundEnabled) playSound('error');
+      }
+    } catch (err) {
+      toast.error('Verbindungsfehler');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Check payment status
   const checkPaymentStatus = useCallback(async () => {
     if (!currentPayment?.payment_id || !isConnected) return;
