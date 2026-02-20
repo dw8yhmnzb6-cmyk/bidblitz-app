@@ -1460,6 +1460,16 @@ export default function Admin() {
             <AdminProductAnalytics token={token} />
           )}
 
+          {/* User Analytics Tab */}
+          {activeTab === 'user-analytics' && (
+            <AdminUserAnalytics token={token} />
+          )}
+
+          {/* Revenue Analytics Tab */}
+          {activeTab === 'revenue-analytics' && (
+            <AdminRevenueAnalytics token={token} />
+          )}
+
           {/* Products Tab */}
           {activeTab === 'products' && (
             <AdminProducts 
