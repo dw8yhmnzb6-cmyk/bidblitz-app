@@ -876,3 +876,197 @@ async def confirm_checkout_payment(
         "paid_at": now.isoformat(),
         "message": f"Zahlung von €{amount:.2f} erfolgreich!"
     }
+
+
+
+# ==================== CUSTOMER QR CODE GENERATION ====================
+
+class CustomerQRRequest(BaseModel):
+    expires_in_minutes: int = Field(5, ge=1, le=30, description="QR code validity in minutes")
+
+
+@router.post("/customer/generate-qr")
+async def generate_customer_payment_qr(
+    authorization: str = Header(None, alias="Authorization")
+):
+    """
+    Generate a payment QR code for a customer to use at POS terminals.
+    
+    This creates a temporary token that can be scanned by merchants.
+    The customer shows this QR at checkout.
+    """
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Authorization required")
+    
+    token = authorization.replace("Bearer ", "")
+    
+    # Verify user token (simplified - in production use proper JWT verification)
+    user = await db.users.find_one(
+        {"$or": [{"token": token}, {"id": token}]},
+        {"_id": 0, "id": 1, "customer_number": 1, "name": 1, "bidblitz_balance": 1, "balance": 1}
+    )
+    
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    
+    # Generate payment token
+    payment_token = f"cqr_{uuid.uuid4().hex}"
+    expires_at = datetime.now(timezone.utc) + timedelta(minutes=5)
+    
+    # Store token in database
+    await db.customer_payment_tokens.insert_one({
+        "token": payment_token,
+        "user_id": user["id"],
+        "customer_number": user.get("customer_number"),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "expires_at": expires_at.isoformat(),
+        "used": False
+    })
+    
+    return {
+        "payment_token": payment_token,
+        "user_id": user["id"],
+        "customer_number": user.get("customer_number"),
+        "expires_at": expires_at.isoformat(),
+        "valid_for_minutes": 5
+    }
+
+
+# ==================== SCAN & PAY (Merchant scans customer QR) ====================
+
+class ScanPayRequest(BaseModel):
+    amount: float = Field(..., gt=0, description="Amount to charge")
+    payment_token: str = Field(..., description="Customer's payment token from QR")
+    customer_id: Optional[str] = Field(None, description="Customer user ID")
+    customer_number: Optional[str] = Field(None, description="Customer number (BID-XXXXXX)")
+
+
+@router.post("/scan-pay")
+async def scan_and_pay(
+    data: ScanPayRequest,
+    x_api_key: str = Header(None, alias="X-API-Key")
+):
+    """
+    Process payment by scanning customer's QR code.
+    
+    Merchant scans the customer's QR code displayed in their BidBlitz app.
+    Amount is deducted from customer's wallet instantly.
+    """
+    # Verify API key
+    if not x_api_key:
+        raise HTTPException(status_code=401, detail="API key required")
+    
+    api_key = await db.api_keys.find_one(
+        {"key": x_api_key, "is_active": True},
+        {"_id": 0}
+    )
+    
+    if not api_key:
+        raise HTTPException(status_code=401, detail="Invalid or inactive API key")
+    
+    # Verify payment token
+    token_doc = await db.customer_payment_tokens.find_one(
+        {"token": data.payment_token, "used": False},
+        {"_id": 0}
+    )
+    
+    if not token_doc:
+        raise HTTPException(status_code=400, detail="Ungültiger oder bereits verwendeter QR-Code")
+    
+    # Check expiry
+    expires_at = datetime.fromisoformat(token_doc["expires_at"].replace("Z", "+00:00"))
+    if datetime.now(timezone.utc) > expires_at:
+        raise HTTPException(status_code=400, detail="QR-Code abgelaufen")
+    
+    # Get customer
+    user_id = token_doc.get("user_id") or data.customer_id
+    user = await db.users.find_one(
+        {"id": user_id},
+        {"_id": 0, "id": 1, "name": 1, "email": 1, "bidblitz_balance": 1, "balance": 1, "customer_number": 1}
+    )
+    
+    if not user:
+        raise HTTPException(status_code=404, detail="Kunde nicht gefunden")
+    
+    # Check balance
+    user_balance = user.get("bidblitz_balance", user.get("balance", 0))
+    if user_balance < data.amount:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Nicht genug Guthaben. Verfügbar: €{user_balance:.2f}"
+        )
+    
+    # Mark token as used
+    await db.customer_payment_tokens.update_one(
+        {"token": data.payment_token},
+        {"$set": {"used": True, "used_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    # Deduct from user balance
+    await db.users.update_one(
+        {"id": user["id"]},
+        {"$inc": {"bidblitz_balance": -data.amount, "balance": -data.amount}}
+    )
+    
+    # Update wallet
+    await db.bidblitz_wallets.update_one(
+        {"user_id": user["id"]},
+        {"$inc": {"universal_balance": -data.amount}},
+        upsert=True
+    )
+    
+    now = datetime.now(timezone.utc)
+    payment_id = f"scan_{uuid.uuid4().hex[:16]}"
+    
+    # Record the payment
+    await db.digital_payments.insert_one({
+        "id": payment_id,
+        "type": "scan_pay",
+        "api_key_id": api_key["id"],
+        "api_key_name": api_key["name"],
+        "amount": data.amount,
+        "currency": "EUR",
+        "reference": f"SCAN-{now.strftime('%Y%m%d%H%M%S')}",
+        "customer_id": user["id"],
+        "customer_number": user.get("customer_number"),
+        "customer_name": user.get("name"),
+        "status": "completed",
+        "created_at": now.isoformat(),
+        "paid_at": now.isoformat()
+    })
+    
+    # Update API key stats
+    await db.api_keys.update_one(
+        {"id": api_key["id"]},
+        {
+            "$inc": {"total_requests": 1, "total_volume": data.amount},
+            "$set": {"last_used": now.isoformat()}
+        }
+    )
+    
+    # Send webhook if configured
+    webhook_url = api_key.get("webhook_url")
+    if webhook_url:
+        await send_webhook(
+            url=webhook_url,
+            event="payment.completed",
+            data={
+                "payment_id": payment_id,
+                "type": "scan_pay",
+                "amount": data.amount,
+                "currency": "EUR",
+                "customer_number": user.get("customer_number"),
+                "paid_at": now.isoformat()
+            },
+            secret=api_key.get("secret", "")
+        )
+    
+    return {
+        "success": True,
+        "payment_id": payment_id,
+        "amount": data.amount,
+        "customer_name": user.get("name"),
+        "customer_number": user.get("customer_number"),
+        "new_balance": user_balance - data.amount,
+        "message": f"Zahlung von €{data.amount:.2f} erfolgreich!"
+    }
