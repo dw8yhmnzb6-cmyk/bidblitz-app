@@ -1086,3 +1086,77 @@ async def scan_and_pay(
         "new_balance": user_balance - data.amount,
         "message": f"Zahlung von €{data.amount:.2f} erfolgreich!"
     }
+
+
+
+# ==================== CUSTOMER PAYMENT HISTORY ====================
+
+@router.get("/customer/payments")
+async def get_customer_payments(
+    authorization: str = Header(None, alias="Authorization"),
+    limit: int = 50,
+    offset: int = 0
+):
+    """
+    Get payment history for a customer.
+    
+    Returns all digital payments made by the customer (POS, QR scan, checkout).
+    """
+    import jwt
+    import os
+    
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Authorization required")
+    
+    token = authorization.replace("Bearer ", "")
+    
+    # Decode JWT token
+    try:
+        secret = os.environ.get("JWT_SECRET", "bidblitz-secret-key-2026")
+        payload = jwt.decode(token, secret, algorithms=["HS256"])
+        user_id = payload.get("user_id")
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token expired")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid token payload")
+    
+    # Get user's customer number
+    user = await db.users.find_one(
+        {"id": user_id},
+        {"_id": 0, "id": 1, "customer_number": 1}
+    )
+    
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+    
+    customer_number = user.get("customer_number")
+    
+    # Query payments where user is the payer
+    query = {
+        "$or": [
+            {"customer_id": user_id},
+            {"paid_by": user_id},
+            {"customer_number": customer_number} if customer_number else {"_id": None}
+        ]
+    }
+    
+    # Get total count
+    total = await db.digital_payments.count_documents(query)
+    
+    # Get payments
+    cursor = db.digital_payments.find(
+        query,
+        {"_id": 0}
+    ).sort("created_at", -1).skip(offset).limit(limit)
+    
+    payments = await cursor.to_list(length=limit)
+    
+    return {
+        "payments": payments,
+        "total": total,
+        "limit": limit,
+        "offset": offset
+    }
