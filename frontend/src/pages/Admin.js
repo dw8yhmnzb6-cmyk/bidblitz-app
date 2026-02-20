@@ -1248,6 +1248,7 @@ export default function Admin() {
         { id: 'credit-management', label: 'Kredit-Verwaltung', icon: <CreditCard className="w-5 h-5" /> },
         { id: 'digital-api', label: 'Digital API', icon: <Key className="w-5 h-5" /> },
         { id: 'enterprise', label: 'Großhändler', icon: <Building2 className="w-5 h-5" /> },
+        { id: 'sepa-payouts', label: 'SEPA-Auszahlungen', icon: <Banknote className="w-5 h-5" /> },
       ]
     },
     {
