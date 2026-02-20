@@ -1744,6 +1744,11 @@ export default function Admin() {
             <AdminEnterpriseManagement />
           )}
 
+          {/* SEPA Payouts Tab */}
+          {activeTab === 'sepa-payouts' && (
+            <AdminPayouts />
+          )}
+
           {/* Merchant Vouchers Tab */}
           {activeTab === 'merchant-vouchers' && (
             <AdminMerchantVouchers />
