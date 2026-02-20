@@ -3739,3 +3739,50 @@ Externe Unternehmen wie Edeka können BidBlitz Pay als Zahlungsmethode an ihren 
 - Touchscreen-Monitore
 - Dedizierte POS-Terminals
 
+
+---
+
+### ✅ Kunden-Scan-Terminal (Reverse QR Flow) ✅
+
+**Implementiert:** Kunden zeigen QR-Code, Händler scannt
+
+**Neuer Flow:**
+```
+1. Kunde öffnet /mein-qr in BidBlitz App
+2. QR-Code wird angezeigt (5 Min. gültig)
+3. Händler gibt Betrag ein unter /scanner
+4. Händler scannt Kunden-QR mit Kamera
+5. Zahlung wird sofort abgezogen
+6. Händler sieht "Bezahlt!" + Kundenname
+```
+
+**Neue Seiten:**
+- `/mein-qr` oder `/my-qr` - Kunden-QR-Code (protected)
+- `/scanner` - Händler-Scanner mit Kamera
+
+**Neue Backend-Endpoints:**
+- `POST /api/digital/customer/generate-qr` - Generiert Kunden-QR-Token
+- `POST /api/digital/scan-pay` - Verarbeitet gescannten QR + Betrag
+
+**Neue Dateien:**
+- `/app/frontend/src/pages/MyPaymentQR.js` - Kunden-QR-Anzeige
+- `/app/frontend/src/pages/POSScanner.js` - Scanner-Terminal
+
+**Verwendete Bibliothek:**
+- `@yudiel/react-qr-scanner` für Kamera-Zugriff
+
+**Features:**
+1. **Kunden-QR:**
+   - Persönlicher QR-Code
+   - 5 Minuten Gültigkeit
+   - Auto-Refresh Timer
+   - Guthaben-Anzeige
+   - "So funktioniert's" Erklärung
+
+2. **Scanner-Terminal:**
+   - Betrag-Eingabe
+   - Kamera-Scanner
+   - Scan-Frame-Overlay
+   - Erfolgs-Animation
+   - Transaktionsverlauf
+
