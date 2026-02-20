@@ -446,60 +446,40 @@ export default function AdminDigitalPayments() {
                           </div>
                         )}
                         
-                        {/* Commission Info */}
+                        {/* Commission Info - Automatic based on volume */}
                         <div className="flex flex-wrap items-center gap-2 text-xs">
+                          <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded">
+                            📊 Umsatz: €{(key.total_volume || 0).toFixed(2)}
+                          </span>
                           <span className="px-2 py-1 bg-green-100 text-green-700 rounded">
-                            💰 Händler-Provision: {(key.merchant_commission || 2.0).toFixed(1)}%
+                            💰 Provision: {
+                              key.total_volume >= 10000 ? '2%' :
+                              key.total_volume >= 5000 ? '1.5%' :
+                              key.total_volume >= 2000 ? '1%' :
+                              key.total_volume >= 500 ? '0.5%' : '0%'
+                            }
                           </span>
                         </div>
                         
+                        {/* Progress to next tier */}
+                        {key.total_volume < 10000 && (
+                          <div className="text-xs text-gray-500">
+                            {key.total_volume < 500 ? (
+                              <span>Noch €{(500 - (key.total_volume || 0)).toFixed(2)} bis 0.5% Provision</span>
+                            ) : key.total_volume < 2000 ? (
+                              <span>Noch €{(2000 - (key.total_volume || 0)).toFixed(2)} bis 1% Provision</span>
+                            ) : key.total_volume < 5000 ? (
+                              <span>Noch €{(5000 - (key.total_volume || 0)).toFixed(2)} bis 1.5% Provision</span>
+                            ) : (
+                              <span>Noch €{(10000 - (key.total_volume || 0)).toFixed(2)} bis 2% Provision</span>
+                            )}
+                          </div>
+                        )}
+                        
                         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500">
-                          <span>{key.total_requests || 0} Anfragen</span>
-                          <span>€{(key.total_volume || 0).toFixed(2)}</span>
+                          <span>{key.total_requests || 0} Transaktionen</span>
                           <span>{formatDate(key.created_at)}</span>
                         </div>
-                        
-                        {/* Edit Commission */}
-                        {editingKey === key.id ? (
-                          <div className="bg-gray-50 rounded-lg p-3 mt-2 space-y-3">
-                            <div>
-                              <label className="text-xs text-gray-600">Händler-Provision %</label>
-                              <input
-                                type="number"
-                                step="0.5"
-                                min="1"
-                                max="10"
-                                value={editCommission}
-                                onChange={(e) => setEditCommission(parseFloat(e.target.value) || 2.0)}
-                                className="w-full px-2 py-1 border rounded text-sm"
-                              />
-                            </div>
-                            <div className="flex gap-2">
-                              <button
-                                onClick={() => updateCommission(key.id)}
-                                className="px-3 py-1 bg-green-500 text-white rounded text-xs hover:bg-green-600"
-                              >
-                                Speichern
-                              </button>
-                              <button
-                                onClick={() => setEditingKey(null)}
-                                className="px-3 py-1 bg-gray-300 text-gray-700 rounded text-xs hover:bg-gray-400"
-                              >
-                                Abbrechen
-                              </button>
-                            </div>
-                          </div>
-                        ) : key.is_active && (
-                          <button
-                            onClick={() => {
-                              setEditingKey(key.id);
-                              setEditCommission(key.merchant_commission || 2.0);
-                            }}
-                            className="text-xs text-orange-600 hover:text-orange-700 underline"
-                          >
-                            Provision bearbeiten
-                          </button>
-                        )}
                       </div>
                       {key.is_active && (
                         <button
