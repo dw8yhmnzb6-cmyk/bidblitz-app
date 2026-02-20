@@ -561,6 +561,10 @@ app.include_router(cashback_program_router, prefix="/api")
 from routers.health_check import router as health_check_router
 app.include_router(health_check_router)
 
+# NEW: Product Analytics
+from routers.product_analytics import router as product_analytics_router
+app.include_router(product_analytics_router)
+
 # ==================== HEALTH & BASIC ENDPOINTS ====================
 
 @app.get("/")
