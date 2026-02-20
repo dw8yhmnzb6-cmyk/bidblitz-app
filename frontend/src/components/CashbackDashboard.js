@@ -145,11 +145,11 @@ export default function CashbackDashboard() {
       </div>
 
       {/* Balance Card */}
-      <div className="bg-gradient-to-br from-orange-500 to-amber-500 rounded-2xl p-6 text-white shadow-lg">
-        <div className="flex items-start justify-between">
+      <div className="bg-gradient-to-br from-orange-500 to-amber-500 rounded-2xl p-4 sm:p-6 text-white shadow-lg">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
           <div>
             <p className="text-orange-100 text-sm">Verfügbares Cashback</p>
-            <p className="text-4xl font-bold mt-1">€{balance?.available_balance?.toFixed(2) || '0.00'}</p>
+            <p className="text-3xl sm:text-4xl font-bold mt-1">€{(balance?.available_balance ?? 0).toFixed(2)}</p>
             {balance?.expiring_soon > 0 && (
               <p className="text-orange-200 text-sm mt-2 flex items-center gap-1">
                 <AlertTriangle className="w-4 h-4" />
@@ -157,15 +157,15 @@ export default function CashbackDashboard() {
               </p>
             )}
           </div>
-          <div className="text-right">
+          <div className="text-left sm:text-right">
             <p className="text-orange-100 text-sm">Gesamt gesammelt</p>
-            <p className="text-xl font-semibold">€{balance?.total_earned?.toFixed(2) || '0.00'}</p>
+            <p className="text-xl font-semibold">€{(balance?.total_earned ?? 0).toFixed(2)}</p>
           </div>
         </div>
 
         {/* Quick Redeem */}
-        {balance?.can_redeem && (
-          <div className="mt-6 flex gap-2">
+        {balance?.can_redeem && balance?.available_balance > 0 && (
+          <div className="mt-4 sm:mt-6 flex flex-col sm:flex-row gap-2">
             <input
               type="number"
               value={redeemAmount}
@@ -179,7 +179,7 @@ export default function CashbackDashboard() {
             <button
               onClick={handleRedeem}
               disabled={redeeming || !redeemAmount}
-              className="px-6 py-3 bg-white text-orange-600 font-bold rounded-xl hover:bg-orange-50 disabled:opacity-50 flex items-center gap-2"
+              className="px-6 py-3 bg-white text-orange-600 font-bold rounded-xl hover:bg-orange-50 disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {redeeming ? <RefreshCw className="w-5 h-5 animate-spin" /> : <ArrowRight className="w-5 h-5" />}
               Einlösen
