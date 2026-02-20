@@ -157,11 +157,11 @@ export default function StaffPOS() {
     toast.success('Erfolgreich abgemeldet');
   };
 
-  // Fetch transaction history
-  const fetchTransactionHistory = async (branchId) => {
+  // Fetch transaction history from POS transactions
+  const fetchTransactionHistory = async () => {
     try {
       const token = localStorage.getItem('staff_pos_token');
-      const res = await fetch(`${API_URL}/api/enterprise/transactions?limit=20`, {
+      const res = await fetch(`${API_URL}/api/pos/transactions?limit=50`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
@@ -172,6 +172,103 @@ export default function StaffPOS() {
     } catch (e) {
       console.log('Could not fetch history');
     }
+  };
+
+  // Print transaction history
+  const printTransactionHistory = () => {
+    const printWindow = window.open('', '_blank');
+    const today = new Date().toLocaleDateString('de-DE');
+    const now = new Date().toLocaleTimeString('de-DE');
+    
+    // Calculate totals
+    const totals = transactionHistory.reduce((acc, tx) => {
+      if (tx.type === 'pos_topup' || tx.type === 'topup') {
+        acc.topups += tx.amount || 0;
+        acc.bonuses += tx.bonus || 0;
+        acc.topupCount++;
+      } else if (tx.type === 'gift_card_redemption') {
+        acc.giftCards += tx.amount || 0;
+        acc.giftCardCount++;
+      } else if (tx.type === 'payment') {
+        acc.payments += tx.amount || 0;
+        acc.paymentCount++;
+      }
+      return acc;
+    }, { topups: 0, bonuses: 0, giftCards: 0, payments: 0, topupCount: 0, giftCardCount: 0, paymentCount: 0 });
+    
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Kassenabschluss - ${today}</title>
+        <style>
+          body { font-family: 'Courier New', monospace; font-size: 12px; padding: 20px; max-width: 80mm; margin: 0 auto; }
+          .header { text-align: center; border-bottom: 2px dashed #000; padding-bottom: 10px; margin-bottom: 15px; }
+          .header h1 { font-size: 16px; margin: 0 0 5px 0; }
+          .header p { margin: 2px 0; }
+          .section { margin: 15px 0; }
+          .section-title { font-weight: bold; border-bottom: 1px solid #000; padding-bottom: 3px; margin-bottom: 8px; }
+          .tx-row { display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px dotted #ccc; }
+          .tx-row.header { font-weight: bold; border-bottom: 2px solid #000; }
+          .summary { border-top: 2px dashed #000; padding-top: 10px; margin-top: 15px; }
+          .summary-row { display: flex; justify-content: space-between; padding: 3px 0; }
+          .summary-row.total { font-weight: bold; font-size: 14px; border-top: 1px solid #000; margin-top: 5px; padding-top: 5px; }
+          .footer { text-align: center; margin-top: 20px; border-top: 2px dashed #000; padding-top: 10px; font-size: 10px; }
+          @media print { body { max-width: 100%; } }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>${staff?.branch_name || 'Kasse'}</h1>
+          <p>Kassenabschluss</p>
+          <p>${today} - ${now}</p>
+          <p>Mitarbeiter: ${staff?.name || '-'}</p>
+        </div>
+        
+        <div class="section">
+          <div class="section-title">Transaktionen (${transactionHistory.length})</div>
+          ${transactionHistory.length > 0 ? transactionHistory.map(tx => `
+            <div class="tx-row">
+              <span>${new Date(tx.created_at).toLocaleTimeString('de-DE', {hour: '2-digit', minute: '2-digit'})}</span>
+              <span>${tx.type === 'pos_topup' ? 'Aufladung' : tx.type === 'gift_card_redemption' ? 'Gutschein' : tx.type === 'payment' ? 'Zahlung' : tx.type}</span>
+              <span>€${(tx.amount || 0).toFixed(2)}</span>
+            </div>
+          `).join('') : '<p>Keine Transaktionen</p>'}
+        </div>
+        
+        <div class="summary">
+          <div class="section-title">Zusammenfassung</div>
+          <div class="summary-row">
+            <span>Aufladungen (${totals.topupCount})</span>
+            <span>€${totals.topups.toFixed(2)}</span>
+          </div>
+          <div class="summary-row">
+            <span>Boni ausgegeben</span>
+            <span>€${totals.bonuses.toFixed(2)}</span>
+          </div>
+          <div class="summary-row">
+            <span>Gutscheine (${totals.giftCardCount})</span>
+            <span>€${totals.giftCards.toFixed(2)}</span>
+          </div>
+          <div class="summary-row">
+            <span>Zahlungen (${totals.paymentCount})</span>
+            <span>€${totals.payments.toFixed(2)}</span>
+          </div>
+          <div class="summary-row total">
+            <span>GESAMT</span>
+            <span>€${(totals.topups + totals.giftCards + totals.payments).toFixed(2)}</span>
+          </div>
+        </div>
+        
+        <div class="footer">
+          <p>BidBlitz Kassensystem</p>
+          <p>Druck: ${now}</p>
+        </div>
+      </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.print();
   };
 
   // Handle barcode scan (simulated - in real world would use scanner hardware)
