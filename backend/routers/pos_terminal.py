@@ -156,10 +156,11 @@ async def process_topup(data: TopupRequest, authorization: Optional[str] = Heade
         
         logger.info(f"POS Topup: €{data.amount} + €{bonus} bonus for {customer.get('customer_number')} - New balance: €{new_balance}")
         
-        # Create transaction record
+        # Create transaction record in pos_transactions
+        transaction_id = str(uuid.uuid4())
         transaction = {
-            "id": str(uuid.uuid4()),
-            "type": "topup",
+            "id": transaction_id,
+            "type": "pos_topup",
             "customer_id": customer["id"],
             "customer_barcode": data.customer_barcode,
             "customer_name": customer.get("name", "Kunde"),
@@ -176,11 +177,25 @@ async def process_topup(data: TopupRequest, authorization: Optional[str] = Heade
         }
         await db.pos_transactions.insert_one(transaction)
         
+        # Also create in bidblitz_pay_transactions for user's payment history
+        await db.bidblitz_pay_transactions.insert_one({
+            "id": transaction_id,
+            "user_id": customer["id"],
+            "type": "pos_topup",
+            "amount": total_credit,  # Amount including bonus
+            "original_amount": data.amount,
+            "bonus": bonus,
+            "description": f"Bareinzahlung bei {data.branch_name or 'Filiale'}" + (f" (+€{bonus:.2f} Bonus)" if bonus > 0 else ""),
+            "staff_name": data.staff_name,
+            "branch_name": data.branch_name,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        })
+        
         logger.info(f"POS Topup: €{data.amount} + €{bonus} bonus for customer {data.customer_barcode}")
         
         return {
             "success": True,
-            "transaction_id": transaction["id"],
+            "transaction_id": transaction_id,
             "customer_name": customer.get("name"),
             "amount": data.amount,
             "bonus": bonus,
