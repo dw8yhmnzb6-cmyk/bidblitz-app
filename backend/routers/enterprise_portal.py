@@ -1560,14 +1560,7 @@ async def batch_process_payouts(x_admin_key: str = Header(...)):
 @router.get("/payouts/my-history")
 async def get_my_payout_history(authorization: str = Header(...)):
     """Enterprise: Get own payout history."""
-    if not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Invalid token format")
-    
-    token = authorization.replace("Bearer ", "")
-    enterprise = await db.enterprise_accounts.find_one({"token": token}, {"_id": 0})
-    
-    if not enterprise:
-        raise HTTPException(status_code=401, detail="Ungültiger Token")
+    enterprise = await get_enterprise_from_token(authorization)
     
     payouts = await db.enterprise_payouts.find(
         {"enterprise_id": enterprise["id"]},
