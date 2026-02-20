@@ -288,6 +288,146 @@ async def revoke_api_key(
     return {"success": True, "message": "API key revoked"}
 
 
+# ==================== COMMISSION DASHBOARD ====================
+
+@router.get("/commissions/stats")
+async def get_commission_stats(
+    x_admin_key: str = Header(..., description="Admin authentication key"),
+    days: int = Query(30, ge=1, le=365, description="Number of days to analyze")
+):
+    """
+    Get commission statistics for the admin dashboard.
+    
+    Returns total commissions, breakdown by merchant, and daily stats.
+    """
+    if x_admin_key != "bidblitz-admin-2026":
+        raise HTTPException(status_code=403, detail="Invalid admin key")
+    
+    now = datetime.now(timezone.utc)
+    start_date = (now - timedelta(days=days)).isoformat()
+    
+    # Get all commissions in the period
+    commissions = await db.platform_commissions.find(
+        {"created_at": {"$gte": start_date}},
+        {"_id": 0}
+    ).to_list(10000)
+    
+    # Get all payments with commission data
+    payments = await db.digital_payments.find(
+        {"created_at": {"$gte": start_date}, "platform_fee": {"$exists": True}},
+        {"_id": 0}
+    ).to_list(10000)
+    
+    # Calculate totals
+    total_commission = sum(c.get("commission_amount", 0) for c in commissions)
+    total_cashback = sum(p.get("customer_cashback", 0) for p in payments)
+    total_volume = sum(p.get("amount", 0) for p in payments)
+    total_transactions = len(payments)
+    
+    # Group by merchant
+    merchant_stats = {}
+    for c in commissions:
+        key_name = c.get("api_key_name", "Unbekannt")
+        if key_name not in merchant_stats:
+            merchant_stats[key_name] = {
+                "name": key_name,
+                "api_key_id": c.get("api_key_id"),
+                "commission_total": 0,
+                "transaction_count": 0,
+                "volume": 0
+            }
+        merchant_stats[key_name]["commission_total"] += c.get("commission_amount", 0)
+        merchant_stats[key_name]["transaction_count"] += 1
+        merchant_stats[key_name]["volume"] += c.get("payment_amount", 0)
+    
+    # Sort by commission total
+    merchants = sorted(merchant_stats.values(), key=lambda x: x["commission_total"], reverse=True)
+    
+    # Daily breakdown
+    daily_stats = {}
+    for c in commissions:
+        date = c.get("created_at", "")[:10]  # YYYY-MM-DD
+        if date not in daily_stats:
+            daily_stats[date] = {"date": date, "commission": 0, "transactions": 0}
+        daily_stats[date]["commission"] += c.get("commission_amount", 0)
+        daily_stats[date]["transactions"] += 1
+    
+    # Sort by date
+    daily = sorted(daily_stats.values(), key=lambda x: x["date"], reverse=True)
+    
+    # This month vs last month
+    this_month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    last_month_start = (this_month_start - timedelta(days=1)).replace(day=1)
+    
+    this_month_commission = sum(
+        c.get("commission_amount", 0) for c in commissions 
+        if c.get("created_at", "") >= this_month_start.isoformat()
+    )
+    last_month_commission = sum(
+        c.get("commission_amount", 0) for c in commissions 
+        if last_month_start.isoformat() <= c.get("created_at", "") < this_month_start.isoformat()
+    )
+    
+    # Growth calculation
+    growth = 0
+    if last_month_commission > 0:
+        growth = ((this_month_commission - last_month_commission) / last_month_commission) * 100
+    
+    return {
+        "period_days": days,
+        "totals": {
+            "commission": round(total_commission, 2),
+            "cashback_given": round(total_cashback, 2),
+            "volume": round(total_volume, 2),
+            "transactions": total_transactions,
+            "avg_commission_rate": round((total_commission / total_volume * 100) if total_volume > 0 else 0, 2)
+        },
+        "comparison": {
+            "this_month": round(this_month_commission, 2),
+            "last_month": round(last_month_commission, 2),
+            "growth_percent": round(growth, 1)
+        },
+        "by_merchant": merchants[:20],  # Top 20
+        "daily": daily[:30]  # Last 30 days
+    }
+
+
+@router.get("/commissions/export")
+async def export_commissions(
+    x_admin_key: str = Header(..., description="Admin authentication key"),
+    days: int = Query(30, ge=1, le=365),
+    format: str = Query("json", description="Export format: json or csv")
+):
+    """Export commission data for accounting."""
+    if x_admin_key != "bidblitz-admin-2026":
+        raise HTTPException(status_code=403, detail="Invalid admin key")
+    
+    start_date = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+    
+    commissions = await db.platform_commissions.find(
+        {"created_at": {"$gte": start_date}},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(10000)
+    
+    if format == "csv":
+        import csv
+        import io
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(["Datum", "Händler", "Zahlungsbetrag", "Provision %", "Provision €"])
+        for c in commissions:
+            writer.writerow([
+                c.get("created_at", "")[:19],
+                c.get("api_key_name", ""),
+                c.get("payment_amount", 0),
+                c.get("commission_rate", 0),
+                c.get("commission_amount", 0)
+            ])
+        return {"csv": output.getvalue(), "rows": len(commissions)}
+    
+    return {"commissions": commissions, "count": len(commissions)}
+
+
 # ==================== PAYMENT ENDPOINTS ====================
 
 @router.post("/payments/create")
