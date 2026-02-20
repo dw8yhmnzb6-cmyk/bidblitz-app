@@ -201,39 +201,39 @@ const AdminPartnerCredit = ({ language = 'de' }) => {
         </Button>
       </div>
 
-      {/* Stats Cards - 2x2 on mobile, 3 columns on desktop */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
+      {/* Stats Cards - Stacked on mobile for better readability */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
         <div className="bg-gradient-to-br from-green-50 to-emerald-100 rounded-xl p-4 sm:p-5 border border-green-200">
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-3">
             <div className="w-10 h-10 sm:w-12 sm:h-12 bg-green-500 rounded-xl flex items-center justify-center flex-shrink-0">
               <Euro className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
             </div>
-            <div className="min-w-0">
-              <p className="text-xs sm:text-sm text-green-600 truncate">{t('totalCredit')}</p>
+            <div className="flex-1">
+              <p className="text-xs sm:text-sm text-green-600">{t('totalCredit')}</p>
               <p className="text-lg sm:text-2xl font-bold text-green-800">€{stats.totalCredit.toFixed(2)}</p>
             </div>
           </div>
         </div>
         
         <div className="bg-gradient-to-br from-orange-50 to-amber-100 rounded-xl p-4 sm:p-5 border border-orange-200">
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-3">
             <div className="w-10 h-10 sm:w-12 sm:h-12 bg-orange-500 rounded-xl flex items-center justify-center flex-shrink-0">
               <ArrowUpDown className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
             </div>
-            <div className="min-w-0">
-              <p className="text-xs sm:text-sm text-orange-600 truncate">{t('totalUsed')}</p>
+            <div className="flex-1">
+              <p className="text-xs sm:text-sm text-orange-600">{t('totalUsed')}</p>
               <p className="text-lg sm:text-2xl font-bold text-orange-800">€{stats.totalUsed.toFixed(2)}</p>
             </div>
           </div>
         </div>
         
-        <div className="bg-gradient-to-br from-blue-50 to-indigo-100 rounded-xl p-4 sm:p-5 border border-blue-200 col-span-2 sm:col-span-1">
-          <div className="flex items-center gap-2 sm:gap-3">
+        <div className="bg-gradient-to-br from-blue-50 to-indigo-100 rounded-xl p-4 sm:p-5 border border-blue-200">
+          <div className="flex items-center gap-3">
             <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-500 rounded-xl flex items-center justify-center flex-shrink-0">
               <Users className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
             </div>
-            <div className="min-w-0">
-              <p className="text-xs sm:text-sm text-blue-600 truncate">{t('partnersWithCredit')}</p>
+            <div className="flex-1">
+              <p className="text-xs sm:text-sm text-blue-600">{t('partnersWithCredit')}</p>
               <p className="text-lg sm:text-2xl font-bold text-blue-800">{stats.partnersWithCredit}</p>
             </div>
           </div>
