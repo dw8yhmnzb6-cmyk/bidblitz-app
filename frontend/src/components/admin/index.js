@@ -22,6 +22,7 @@ export { AdminInfluencers } from './AdminInfluencers';
 export { AdminWholesale } from './AdminWholesale';
 export { AdminGameConfig } from './AdminGameConfig';
 export { AdminDebugReports } from './AdminDebugReports';
+export { AdminSystemHealth } from './AdminSystemHealth';
 
 // Staff Management
 export { default as AdminStaff } from './AdminStaff';
