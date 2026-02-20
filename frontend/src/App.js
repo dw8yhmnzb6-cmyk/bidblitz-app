@@ -259,7 +259,8 @@ function AppContent() {
       {/* Navbar - Fixed at top (hidden on POS/Kiosk pages) */}
       {!window.location.pathname.includes('/pos') && 
        !window.location.pathname.includes('/kiosk') && 
-       !window.location.pathname.includes('/kasse') && (
+       !window.location.pathname.includes('/kasse') &&
+       !window.location.pathname.includes('/scanner') && (
         <Navbar />
       )}
       
@@ -267,7 +268,8 @@ function AppContent() {
       {/* Hide popups on POS/Kiosk pages */}
       {!window.location.pathname.includes('/pos') && 
        !window.location.pathname.includes('/kiosk') && 
-       !window.location.pathname.includes('/kasse') && 
+       !window.location.pathname.includes('/kasse') &&
+       !window.location.pathname.includes('/scanner') && 
        !window.location.pathname.includes('/checkout/') && (
         <>
           <AbandonedCartReminder language={mappedLanguage || language} />
