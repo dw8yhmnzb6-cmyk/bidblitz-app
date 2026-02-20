@@ -254,8 +254,12 @@ function AppContent() {
       {/* Scroll to top on route change */}
       <ScrollToTopOnNavigate />
       
-      {/* Navbar - Fixed at top */}
-      <Navbar />
+      {/* Navbar - Fixed at top (hidden on POS/Kiosk pages) */}
+      {!window.location.pathname.includes('/pos') && 
+       !window.location.pathname.includes('/kiosk') && 
+       !window.location.pathname.includes('/kasse') && (
+        <Navbar />
+      )}
       
       {/* Floating popups - Enabled for user engagement */}
       {/* Hide popups on POS/Kiosk pages */}
