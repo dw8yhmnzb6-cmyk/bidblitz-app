@@ -2072,7 +2072,7 @@ export default function EnterprisePortal() {
           <div className="space-y-4">
             <h2 className="text-xl font-bold text-slate-800">{t.reports}</h2>
 
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-3">
               <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center">
@@ -2108,6 +2108,41 @@ export default function EnterprisePortal() {
                 >
                   <Download className="w-5 h-5" />
                   {t.pdfExport}
+                </button>
+              </div>
+
+              {/* Email Report Button */}
+              <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                    <Mail className="w-6 h-6 text-blue-600" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-slate-800">{t.emailReport || 'E-Mail Bericht'}</h3>
+                    <p className="text-sm text-slate-500">{t.monthlyReport || 'Monatlicher Provisionsbericht'}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={async () => {
+                    try {
+                      const res = await fetch(`${API_URL}/api/enterprise/reports/send-commission-report`, {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${token}` }
+                      });
+                      const data = await res.json();
+                      if (res.ok) {
+                        toast.success(data.message || 'Bericht wurde per E-Mail gesendet!');
+                      } else {
+                        toast.error(data.detail || 'Fehler beim Senden');
+                      }
+                    } catch (err) {
+                      toast.error('Verbindungsfehler');
+                    }
+                  }}
+                  className="w-full py-3 bg-blue-500 text-white rounded-xl font-semibold hover:bg-blue-600 flex items-center justify-center gap-2"
+                >
+                  <Mail className="w-5 h-5" />
+                  {t.sendReport || 'Bericht senden'}
                 </button>
               </div>
             </div>
