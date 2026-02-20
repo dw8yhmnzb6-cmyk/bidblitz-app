@@ -775,6 +775,7 @@ async def get_balance(
     
     return {
         "api_key_name": key_data["name"],
+        "merchant_commission": key_data.get("merchant_commission", 2.0),
         "total_requests": key_data.get("total_requests", 0),
         "total_volume": key_data.get("total_volume", 0),
         "statistics": stats_dict
