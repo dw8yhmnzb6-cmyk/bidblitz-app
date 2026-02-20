@@ -62,7 +62,9 @@ export default function AdminDigitalPayments() {
         },
         body: JSON.stringify({
           name: newKeyName,
-          webhook_url: newKeyWebhook || null
+          webhook_url: newKeyWebhook || null,
+          platform_commission: newKeyPlatformCommission,
+          customer_cashback: newKeyCustomerCashback
         })
       });
 
@@ -73,6 +75,8 @@ export default function AdminDigitalPayments() {
         fetchData();
         setNewKeyName('');
         setNewKeyWebhook('');
+        setNewKeyPlatformCommission(0.5);
+        setNewKeyCustomerCashback(0);
       } else {
         toast.error('Fehler beim Erstellen');
       }
