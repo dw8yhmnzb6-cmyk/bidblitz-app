@@ -534,6 +534,115 @@ export default function AdminEnterpriseManagement() {
                   )}
                 </div>
 
+                {/* Commission Settings - NEW */}
+                <div className="bg-white rounded-xl p-4 border">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="font-bold text-sm flex items-center gap-2">
+                      <Percent className="w-4 h-4 text-purple-600" />
+                      Provisionseinstellungen
+                    </h4>
+                    {editingCommission !== enterprise.id ? (
+                      <button 
+                        onClick={() => startEditCommission(enterprise)}
+                        className="text-purple-600 hover:text-purple-700 text-sm font-medium flex items-center gap-1"
+                      >
+                        <Edit2 className="w-3 h-3" /> Bearbeiten
+                      </button>
+                    ) : (
+                      <div className="flex gap-2">
+                        <button 
+                          onClick={() => saveCommissionSettings(enterprise.id)}
+                          className="text-green-600 hover:text-green-700 text-sm font-medium flex items-center gap-1"
+                        >
+                          <Save className="w-3 h-3" /> Speichern
+                        </button>
+                        <button 
+                          onClick={() => setEditingCommission(null)}
+                          className="text-gray-500 hover:text-gray-700 text-sm font-medium flex items-center gap-1"
+                        >
+                          <X className="w-3 h-3" /> Abbrechen
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {editingCommission === enterprise.id ? (
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-3 gap-3">
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">Gutschein-Provision %</label>
+                          <input
+                            type="number"
+                            step="0.1"
+                            min="0"
+                            max="100"
+                            value={commissionForm.voucher_commission}
+                            onChange={(e) => setCommissionForm({...commissionForm, voucher_commission: parseFloat(e.target.value) || 0})}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">Eigenzahlung-Prov. %</label>
+                          <input
+                            type="number"
+                            step="0.1"
+                            min="0"
+                            max="100"
+                            value={commissionForm.self_pay_commission}
+                            onChange={(e) => setCommissionForm({...commissionForm, self_pay_commission: parseFloat(e.target.value) || 0})}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">Kunden-Cashback %</label>
+                          <input
+                            type="number"
+                            step="0.1"
+                            min="0"
+                            max="100"
+                            value={commissionForm.customer_cashback}
+                            onChange={(e) => setCommissionForm({...commissionForm, customer_cashback: parseFloat(e.target.value) || 0})}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                          />
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          id={`commission_active_${enterprise.id}`}
+                          checked={commissionForm.is_active}
+                          onChange={(e) => setCommissionForm({...commissionForm, is_active: e.target.checked})}
+                          className="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                        />
+                        <label htmlFor={`commission_active_${enterprise.id}`} className="text-sm text-gray-700">
+                          Provisionen aktiviert
+                        </label>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-3 gap-3 text-sm">
+                      <div className="bg-orange-50 rounded-lg p-2 text-center">
+                        <p className="text-xs text-orange-600">Gutschein</p>
+                        <p className="text-lg font-bold text-orange-700">
+                          {enterprise.commission_settings?.voucher_commission ?? 5}%
+                        </p>
+                      </div>
+                      <div className="bg-blue-50 rounded-lg p-2 text-center">
+                        <p className="text-xs text-blue-600">Eigenzahlung</p>
+                        <p className="text-lg font-bold text-blue-700">
+                          {enterprise.commission_settings?.self_pay_commission ?? 3}%
+                        </p>
+                      </div>
+                      <div className="bg-green-50 rounded-lg p-2 text-center">
+                        <p className="text-xs text-green-600">Kunden-Cashback</p>
+                        <p className="text-lg font-bold text-green-700">
+                          {enterprise.commission_settings?.customer_cashback ?? 1}%
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 {/* Quick Stats */}
                 <div className="grid grid-cols-3 gap-2">
                   <div className="bg-white rounded-xl p-3 border text-center">
