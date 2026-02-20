@@ -417,6 +417,17 @@ function AppContent() {
               <WalletCard />
             </ProtectedRoute>
           } />
+          {/* Payment History */}
+          <Route path="/zahlungen" element={
+            <ProtectedRoute>
+              <PaymentHistory />
+            </ProtectedRoute>
+          } />
+          <Route path="/payment-history" element={
+            <ProtectedRoute>
+              <PaymentHistory />
+            </ProtectedRoute>
+          } />
           {/* New Public Pages */}
           <Route path="/how-it-works" element={<HowItWorks />} />
           <Route path="/faq" element={<FAQ />} />
