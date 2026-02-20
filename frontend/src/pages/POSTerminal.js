@@ -146,6 +146,61 @@ export default function POSTerminal() {
     }
   };
 
+  // Process card top-up
+  const processTopup = async () => {
+    const amountNum = parseFloat(topupAmount);
+    if (!amountNum || amountNum < 5 || amountNum > 500) {
+      toast.error('Betrag muss zwischen €5 und €500 liegen');
+      return;
+    }
+    if (!customerNumber.trim()) {
+      toast.error('Bitte Kundennummer eingeben');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_URL}/api/digital/topup`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Key': apiKey
+        },
+        body: JSON.stringify({
+          amount: amountNum,
+          customer_number: customerNumber.toUpperCase()
+        })
+      });
+
+      const data = await res.json();
+      
+      if (res.ok) {
+        setTopupResult(data);
+        setTopupAmount('');
+        setCustomerNumber('');
+        if (soundEnabled) playSound('success');
+        toast.success(`${data.customer_name} hat €${data.total_credited.toFixed(2)} erhalten!`);
+        fetchRecentPayments();
+      } else {
+        toast.error(data.detail || 'Aufladung fehlgeschlagen');
+        if (soundEnabled) playSound('error');
+      }
+    } catch (err) {
+      toast.error('Verbindungsfehler');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Calculate bonus preview
+  const calculateBonus = (amount) => {
+    const num = parseFloat(amount) || 0;
+    for (const tier of bonusTiers) {
+      if (num >= tier.min) return tier.bonus;
+    }
+    return 0;
+  };
+
   // Check payment status
   const checkPaymentStatus = useCallback(async () => {
     if (!currentPayment?.payment_id || !isConnected) return;
