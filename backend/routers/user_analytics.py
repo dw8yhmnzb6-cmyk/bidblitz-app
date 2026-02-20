@@ -257,7 +257,8 @@ async def get_user_segments():
         }},
         {"$group": {"_id": "$user_id"}}
     ]
-    active_month_ids = set(u["_id"] async for u in db.bids.aggregate(active_month_pipeline))
+    active_month_result = await db.bids.aggregate(active_month_pipeline).to_list(100000)
+    active_month_ids = set(u["_id"] for u in active_month_result)
     
     activity_segments = {
         "active_this_week": len(active_week_ids),
