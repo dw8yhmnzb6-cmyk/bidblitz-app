@@ -1,18 +1,54 @@
 /**
  * POS Kiosk Mode - Full-screen Tablet-optimized Point of Sale Terminal
  * Designed for dedicated POS devices (iPad, Android Tablets)
+ * Now supports both Payment and Top-up modes
  */
 import React, { useState, useEffect, useCallback } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { 
   Store, QrCode, Euro, RefreshCw, CheckCircle, Clock, XCircle,
   Plus, History, Volume2, VolumeX, Maximize, Minimize, LogOut,
-  Wifi, Delete, ArrowLeft
+  Wifi, Delete, ArrowLeft, CreditCard, Download, Share2
 } from 'lucide-react';
 import { toast } from 'sonner';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 const FRONTEND_URL = window.location.origin;
+
+// Generate receipt text for download
+const generateReceiptText = (result, merchantName) => {
+  const date = new Date().toLocaleString('de-DE');
+  return `
+═══════════════════════════════════
+        BIDBLITZ AUFLADUNG
+═══════════════════════════════════
+Händler: ${merchantName}
+Datum: ${date}
+
+───────────────────────────────────
+Kunde: ${result.customer_name || 'Kunde'}
+Kundennummer: ${result.customer_number}
+───────────────────────────────────
+
+Aufladebetrag:     €${result.amount.toFixed(2)}
+Bonus:            +€${result.bonus.toFixed(2)}
+                  ─────────────────
+GUTSCHRIFT:       €${result.total_credited.toFixed(2)}
+
+───────────────────────────────────
+Neues Guthaben:   €${result.new_balance.toFixed(2)}
+───────────────────────────────────
+
+Händler-Provision: €${result.merchant_commission.toFixed(2)}
+                   (${result.merchant_commission_rate || 0}%)
+
+═══════════════════════════════════
+       Vielen Dank!
+       www.bidblitz.ae
+═══════════════════════════════════
+Transaktion: ${result.topup_id}
+`;
+};
 
 // Sound effects
 const playSound = (type) => {
