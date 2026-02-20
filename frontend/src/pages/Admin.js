@@ -1282,6 +1282,7 @@ export default function Admin() {
         { id: 'logs', label: 'Systemlogs', icon: <BarChart3 className="w-5 h-5" /> },
         { id: 'voice', label: 'Sprachbefehle', icon: <Mic className="w-5 h-5" /> },
         { id: 'debug-reports', label: 'Debug Reports', icon: <Bug className="w-5 h-5" /> },
+        { id: 'system-health', label: 'System Health', icon: <Activity className="w-5 h-5" /> },
       ]
     },
   ];
