@@ -195,9 +195,8 @@ async def create_api_key(
         "last_used": None,
         "total_requests": 0,
         "total_volume": 0,
-        # Commission settings
-        "platform_commission": data.platform_commission,  # % for BidBlitz (0.01-10%)
-        "customer_cashback": data.customer_cashback  # % cashback for customer (0-2%)
+        # Händler-Provision
+        "merchant_commission": data.merchant_commission  # % geht AN den Händler (1-10%)
     }
     
     await db.api_keys.insert_one(key_doc)
@@ -207,8 +206,7 @@ async def create_api_key(
         "api_key": api_key,
         "secret_key": secret_key,
         "webhook_url": data.webhook_url,
-        "platform_commission": data.platform_commission,
-        "customer_cashback": data.customer_cashback,
+        "merchant_commission": data.merchant_commission,
         "message": "⚠️ Save these keys now! The secret key will not be shown again."
     }
 
