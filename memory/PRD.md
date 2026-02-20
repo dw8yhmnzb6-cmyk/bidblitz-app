@@ -33,11 +33,13 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 - Tabs: Ausstehend (pending) und Historie
 - Button: "Alle verarbeiten" für Batch-Auszahlungen
 - Einzelne Auszahlung mit "SEPA-Überweisung starten"
+- **NEU:** Info-Box über Wise API Integration
+- **NEU:** Transfer-Methode in Historie (🌐 Wise API / 📝 Manuell)
 
 **API-Endpoints (Admin):**
 - `GET /api/enterprise/admin/payouts/pending` - Ausstehende Auszahlungen
 - `POST /api/enterprise/admin/payouts/create` - Auszahlung erstellen
-- `POST /api/enterprise/admin/payouts/{id}/process` - Auszahlung verarbeiten
+- `POST /api/enterprise/admin/payouts/{id}/process?use_wise=true` - Auszahlung via Wise API
 - `GET /api/enterprise/admin/payouts/history` - Auszahlungs-Historie
 - `POST /api/enterprise/admin/payouts/batch-process` - Alle fälligen verarbeiten
 
@@ -45,7 +47,32 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 - `GET /api/enterprise/payouts/my-pending` - Eigene ausstehende Provision
 - `GET /api/enterprise/payouts/my-history` - Eigene Auszahlungs-Historie
 
-**⚠️ HINWEIS:** Die SEPA-Überweisung ist aktuell **SIMULIERT**. In Produktion müsste eine Bank-API (Wise, Deutsche Bank, etc.) integriert werden.
+### ✅ Wise Bank-API Integration (Session 60) - IMPLEMENTIERT
+
+**Funktionsweise:**
+1. Das System versucht automatisch die **Wise Transfer API** zu nutzen
+2. Bei Erfolg: Status = `completed` oder `funded`, Transfer-Methode = `wise_api`
+3. Bei Fehler (z.B. ungültiger Token): Status = `pending_manual`, Transfer-Methode = `manual`
+4. Manuell markierte Auszahlungen können händisch überwiesen werden
+
+**Wise API Schritte:**
+1. Profile ID abrufen
+2. Empfänger (Recipient) mit IBAN erstellen
+3. Quote für EUR→EUR Transfer erstellen
+4. Transfer erstellen
+5. Von Wise-Guthaben finanzieren
+
+**Status-Arten:**
+- `completed` - Erfolgreich abgeschlossen
+- `funded` - Via Wise finanziert
+- `pending_manual` - Manuelle Bearbeitung erforderlich
+- `processing` - In Verarbeitung
+
+**Konfiguration:**
+In `/app/backend/.env` muss ein gültiger `WISE_API_TOKEN` gesetzt sein.
+Aktueller Token ist ungültig (401 Unauthorized), daher Fallback auf manuell.
+
+**Test-Report:** `/app/test_reports/iteration_98.json` - 100% bestanden
 
 **Neue Dateien:**
 - `/app/frontend/src/components/admin/AdminPayouts.js`
