@@ -1444,6 +1444,11 @@ export default function Admin() {
             <AdminDebugReports token={token} />
           )}
 
+          {/* System Health Tab */}
+          {activeTab === 'system-health' && (
+            <AdminSystemHealth token={token} />
+          )}
+
           {/* Products Tab */}
           {activeTab === 'products' && (
             <AdminProducts 
