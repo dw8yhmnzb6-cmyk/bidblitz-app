@@ -5,7 +5,7 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 
 ## Current Status (February 20, 2026)
 
-### ✅ Session Update - February 20, 2026 (Session 61) - BUG FIXES + SYSTEM HEALTH CHECK ✅
+### ✅ Session Update - February 20, 2026 (Session 61) - BUG FIXES + NEW FEATURES ✅
 
 #### Bug Fix 1: Fehler-Toast bei Filialen-Erstellung ✅
 - **Problem:** Beim Erstellen einer neuen Filiale im Enterprise Portal erschien eine rote "Fehler"-Meldung, obwohl die Filiale erfolgreich erstellt wurde.
@@ -23,7 +23,7 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
   2. Falls nicht gefunden, wird nach Enterprise-Benutzer gesucht
 - **Dateien geändert:** `/app/backend/routers/enterprise_portal.py`
 
-#### Neues Feature: Automatisches System Health Check ✅
+#### Neues Feature 1: Automatisches System Health Check ✅
 - **Beschreibung:** Ein automatisches Testsystem, das täglich Tests durchführt, Probleme anzeigt und automatisch behebt.
 - **Features:**
   - Tägliche automatische Systemprüfung um 3:00 Uhr UTC
@@ -32,21 +32,39 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
   - Automatische Problemfixes (behebbare Probleme werden markiert)
   - "Jetzt prüfen"-Button für manuelle Prüfung
   - Report-Cleanup-Funktion
-
 - **API-Endpoints:**
   - `GET /api/health/run` - Health Check ausführen
   - `GET /api/health/stats` - Statistiken abrufen
   - `GET /api/health/reports` - Reports auflisten
   - `POST /api/health/fix/{report_id}` - Probleme automatisch beheben
-  - `DELETE /api/health/reports/cleanup` - Alte Reports löschen
-
 - **Neue Dateien:**
   - `/app/backend/routers/health_check.py`
   - `/app/frontend/src/components/admin/AdminSystemHealth.js`
 
----
+#### Neues Feature 2: Monatliche Provisionsberichte per E-Mail ✅
+- **Beschreibung:** Automatischer Versand von Provisionsberichten an Händler am 1. jedes Monats.
+- **Features:**
+  - Automatischer Versand am 1. jedes Monats um 8:00 Uhr UTC
+  - Detaillierter HTML-E-Mail-Bericht mit:
+    - Gesamtumsatz und Transaktionen
+    - Provisions-Aufschlüsselung (Gutschein, Eigenzahlung, Cashback)
+    - Vergleich zum Vormonat
+    - Filial-Übersicht
+    - Auszahlungsstatus
+  - Manueller Versand über "Bericht senden" Button im Enterprise Portal
+  - Admin kann alle Berichte auf einmal versenden
+- **API-Endpoints:**
+  - `GET /api/enterprise/reports/commission-preview` - Bericht-Vorschau
+  - `POST /api/enterprise/reports/send-commission-report` - Bericht senden
+  - `GET /api/enterprise/reports/history` - Berichts-Historie
+  - `POST /api/enterprise/reports/admin/send-all-reports` - Alle Berichte senden
+- **Neue Dateien:**
+  - `/app/backend/routers/enterprise_reports.py`
+- **Geänderte Dateien:**
+  - `/app/backend/utils/email.py` - Neue E-Mail-Template-Funktion
+  - `/app/frontend/src/pages/EnterprisePortal.js` - Neuer "E-Mail Bericht" Button
 
-### ✅ BUG FIX - February 20, 2026 (Session 61) - FILIALE ERSTELLEN BUG ✅
+---
 
 **Problem:** Beim Erstellen einer neuen Filiale im Enterprise Portal erschien eine rote "Fehler"-Meldung, obwohl die Filiale erfolgreich erstellt wurde.
 
