@@ -1407,6 +1407,20 @@ async def topup_customer_card(
             secret=api_key.get("secret", "")
         )
     
+    # Send email notification to customer (in background to not block response)
+    customer_email = user.get("email")
+    if customer_email:
+        background_tasks.add_task(
+            send_topup_notification,
+            to_email=customer_email,
+            user_name=user.get("name", "Kunde"),
+            amount=data.amount,
+            bonus=customer_bonus,
+            total_credited=total_credit,
+            new_balance=new_balance,
+            merchant_name=api_key.get("name", "Händler")
+        )
+    
     # Calculate next tier info
     new_volume = monthly_volume + data.amount
     next_tier = None
