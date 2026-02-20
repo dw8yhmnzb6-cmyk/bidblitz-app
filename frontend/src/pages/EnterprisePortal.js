@@ -3,7 +3,6 @@
  * Redesigned with better UI, mobile support, and multi-language
  */
 import React, { useState, useEffect, useCallback } from 'react';
-import { useTranslation } from 'react-i18next';
 import { 
   Building2, Key, Users, BarChart3, Download, Store, Plus,
   LogOut, Check, X, RefreshCw, FileText, TrendingUp, Menu,
