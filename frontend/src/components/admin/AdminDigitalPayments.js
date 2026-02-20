@@ -21,11 +21,10 @@ export default function AdminDigitalPayments() {
   const [loading, setLoading] = useState(true);
   const [newKeyName, setNewKeyName] = useState('');
   const [newKeyWebhook, setNewKeyWebhook] = useState('');
-  const [newKeyPlatformCommission, setNewKeyPlatformCommission] = useState(0.5);
-  const [newKeyCustomerCashback, setNewKeyCustomerCashback] = useState(0);
+  const [newKeyMerchantCommission, setNewKeyMerchantCommission] = useState(2.0);
   const [createdKey, setCreatedKey] = useState(null);
   const [editingKey, setEditingKey] = useState(null);
-  const [editCommission, setEditCommission] = useState({ platform: 0.5, cashback: 0 });
+  const [editCommission, setEditCommission] = useState(2.0);
 
   useEffect(() => {
     fetchData();
