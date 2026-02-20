@@ -1631,10 +1631,10 @@ export default function StaffPOS() {
         {/* Mode Tabs */}
         <div className="grid grid-cols-2 gap-2 mb-6">
           {[
-            { id: 'topup', label: 'Aufladung', icon: Wallet, color: 'amber' },
-            { id: 'giftcard-create', label: 'Gutschein erstellen', icon: Gift, color: 'green' },
-            { id: 'giftcard-redeem', label: 'Gutschein einlösen', icon: Ticket, color: 'purple' },
-            { id: 'payment', label: 'Zahlung', icon: CreditCard, color: 'blue' }
+            { id: 'topup', labelKey: 'topup', icon: Wallet, color: 'amber' },
+            { id: 'giftcard-create', labelKey: 'giftcardCreate', icon: Gift, color: 'green' },
+            { id: 'giftcard-redeem', labelKey: 'giftcardRedeem', icon: Ticket, color: 'purple' },
+            { id: 'payment', labelKey: 'payment', icon: CreditCard, color: 'blue' }
           ].map(tab => (
             <button
               key={tab.id}
@@ -1643,6 +1643,7 @@ export default function StaffPOS() {
                 setScanMode(false);
                 setRedeemedGiftCard(null);
               }}
+              data-testid={`tab-${tab.id}`}
               className={`py-3 rounded-xl font-medium transition-all flex items-center justify-center gap-2 ${
                 mode === tab.id
                   ? tab.color === 'amber' ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-500/30'
@@ -1653,7 +1654,7 @@ export default function StaffPOS() {
               }`}
             >
               <tab.icon className="w-5 h-5" />
-              <span className="text-sm">{tab.label}</span>
+              <span className="text-sm">{t[tab.labelKey]}</span>
             </button>
           ))}
         </div>
@@ -1663,7 +1664,7 @@ export default function StaffPOS() {
           <div className="space-y-4">
             {/* Amount Input */}
             <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-700/50">
-              <label className="block text-slate-300 mb-2">Aufladebetrag</label>
+              <label className="block text-slate-300 mb-2">{t.topupAmount}</label>
               <div className="relative">
                 <Euro className="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 text-amber-400" />
                 <input
@@ -1675,6 +1676,7 @@ export default function StaffPOS() {
                   min="5"
                   max="500"
                   step="0.01"
+                  data-testid="topup-amount-input"
                 />
               </div>
               
