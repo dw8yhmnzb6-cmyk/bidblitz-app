@@ -1428,8 +1428,8 @@ async def create_payout(data: PayoutCreate, x_admin_key: str = Header(...)):
 
 
 @router.post("/admin/payouts/{payout_id}/process")
-async def process_payout(payout_id: str, x_admin_key: str = Header(...)):
-    """Admin: Process a pending payout (simulate SEPA transfer)."""
+async def process_payout(payout_id: str, use_wise: bool = True, x_admin_key: str = Header(...)):
+    """Admin: Process a pending payout via Wise API or manual SEPA."""
     if x_admin_key != "bidblitz-admin-2026":
         raise HTTPException(status_code=403, detail="Ungültiger Admin-Key")
     
@@ -1441,26 +1441,159 @@ async def process_payout(payout_id: str, x_admin_key: str = Header(...)):
         raise HTTPException(status_code=400, detail="Auszahlung bereits abgeschlossen")
     
     now = datetime.now(timezone.utc)
+    iban = payout.get("iban", "")
+    iban_holder = payout.get("iban_holder", "")
+    amount = payout.get("amount", 0)
     
-    # Simulate SEPA transfer - In production, integrate with bank API
-    # Generate a reference number
+    # Try to use Wise API for real SEPA transfer
+    wise_transfer_id = None
+    transfer_status = "pending_manual"
     sepa_reference = f"SEPA-{uuid.uuid4().hex[:8].upper()}"
+    
+    if use_wise and iban:
+        try:
+            import httpx
+            
+            WISE_API_TOKEN = os.environ.get("WISE_API_TOKEN", "")
+            WISE_SANDBOX = os.environ.get("WISE_SANDBOX_MODE", "false").lower() == "true"
+            WISE_API_URL = "https://api.sandbox.wise.com" if WISE_SANDBOX else "https://api.wise.com"
+            
+            if WISE_API_TOKEN:
+                headers = {
+                    "Authorization": f"Bearer {WISE_API_TOKEN}",
+                    "Content-Type": "application/json"
+                }
+                
+                async with httpx.AsyncClient() as client:
+                    # Step 1: Get profile ID
+                    profile_response = await client.get(
+                        f"{WISE_API_URL}/v1/profiles",
+                        headers=headers,
+                        timeout=30.0
+                    )
+                    
+                    if profile_response.status_code < 400:
+                        profiles = profile_response.json()
+                        profile_id = None
+                        for profile in profiles:
+                            if profile.get("type") == "business":
+                                profile_id = profile["id"]
+                                break
+                        if not profile_id and profiles:
+                            profile_id = profiles[0]["id"]
+                        
+                        if profile_id:
+                            # Step 2: Create recipient
+                            recipient_data = {
+                                "currency": "EUR",
+                                "type": "iban",
+                                "profile": profile_id,
+                                "accountHolderName": iban_holder or payout.get("company_name", "Enterprise"),
+                                "legalType": "BUSINESS",
+                                "details": {
+                                    "iban": iban.replace(" ", "").upper()
+                                }
+                            }
+                            
+                            recipient_response = await client.post(
+                                f"{WISE_API_URL}/v1/accounts",
+                                headers=headers,
+                                json=recipient_data,
+                                timeout=30.0
+                            )
+                            
+                            recipient_id = None
+                            if recipient_response.status_code < 400:
+                                recipient = recipient_response.json()
+                                recipient_id = recipient.get("id")
+                            
+                            if recipient_id:
+                                # Step 3: Create quote
+                                quote_data = {
+                                    "sourceCurrency": "EUR",
+                                    "targetCurrency": "EUR",
+                                    "sourceAmount": amount,
+                                    "profile": profile_id
+                                }
+                                
+                                quote_response = await client.post(
+                                    f"{WISE_API_URL}/v3/profiles/{profile_id}/quotes",
+                                    headers=headers,
+                                    json=quote_data,
+                                    timeout=30.0
+                                )
+                                
+                                if quote_response.status_code < 400:
+                                    quote = quote_response.json()
+                                    quote_id = quote["id"]
+                                    
+                                    # Step 4: Create transfer
+                                    transfer_data = {
+                                        "targetAccount": recipient_id,
+                                        "quoteUuid": quote_id,
+                                        "customerTransactionId": str(uuid.uuid4()),
+                                        "details": {
+                                            "reference": f"BidBlitz Enterprise Auszahlung {payout.get('company_name', '')}"[:35]
+                                        }
+                                    }
+                                    
+                                    transfer_response = await client.post(
+                                        f"{WISE_API_URL}/v1/transfers",
+                                        headers=headers,
+                                        json=transfer_data,
+                                        timeout=30.0
+                                    )
+                                    
+                                    if transfer_response.status_code < 400:
+                                        transfer = transfer_response.json()
+                                        wise_transfer_id = transfer["id"]
+                                        sepa_reference = f"WISE-{wise_transfer_id}"
+                                        transfer_status = "processing"
+                                        
+                                        # Step 5: Try to fund from Wise balance
+                                        fund_response = await client.post(
+                                            f"{WISE_API_URL}/v3/profiles/{profile_id}/transfers/{wise_transfer_id}/payments",
+                                            headers=headers,
+                                            json={"type": "BALANCE"},
+                                            timeout=30.0
+                                        )
+                                        if fund_response.status_code < 400:
+                                            transfer_status = "funded"
+                                        
+                                        logger.info(f"Wise transfer created: {wise_transfer_id} for enterprise payout {payout_id}")
+        except Exception as e:
+            logger.warning(f"Wise API error for enterprise payout, falling back to manual: {e}")
+    
+    # Determine final status
+    final_status = "completed" if transfer_status in ["processing", "funded"] else "pending_manual"
     
     await db.enterprise_payouts.update_one(
         {"id": payout_id},
         {"$set": {
-            "status": "completed",
-            "completed_at": now.isoformat(),
+            "status": final_status,
+            "completed_at": now.isoformat() if final_status == "completed" else None,
             "sepa_reference": sepa_reference,
+            "wise_transfer_id": wise_transfer_id,
+            "transfer_method": "wise_api" if wise_transfer_id else "manual",
             "processed_by": "admin"
         }}
     )
     
-    return {
-        "success": True,
-        "sepa_reference": sepa_reference,
-        "message": f"SEPA-Überweisung verarbeitet"
-    }
+    if wise_transfer_id:
+        return {
+            "success": True,
+            "sepa_reference": sepa_reference,
+            "wise_transfer_id": wise_transfer_id,
+            "status": transfer_status,
+            "message": f"SEPA-Überweisung über Wise API gestartet"
+        }
+    else:
+        return {
+            "success": True,
+            "sepa_reference": sepa_reference,
+            "status": "pending_manual",
+            "message": f"Auszahlung zur manuellen Bearbeitung markiert (Wise API nicht verfügbar)"
+        }
 
 
 @router.get("/admin/payouts/history")
