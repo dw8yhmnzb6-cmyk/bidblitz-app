@@ -5,45 +5,46 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 
 ## Current Status (February 21, 2026)
 
-### ✅ Session Update - February 21, 2026 (Session 63) - STAFF POS MULTI-LANGUAGE + UI IMPROVEMENTS ✅
+### ✅ Session Update - February 21, 2026 (Session 63) - STAFF POS + PROVISIONSEINSTELLUNGEN ✅
 
 #### Feature: Staff POS Multi-Language Support (18 Sprachen) ✅
 - **Zugriff:** `/mitarbeiter-kasse`
 - **Neue Sprachen hinzugefügt:**
-  - Português (PT)
-  - Nederlands (NL)
-  - 中文 (ZH - Chinese)
-  - 日本語 (JA - Japanese)
-  - 한국어 (KO - Korean)
-  - Kosovë (XK - mapped to Albanian)
-  - English US (US - mapped to English)
-  - الإمارات (AE - UAE Arabic, mapped to Arabic)
-- **Bestehende Sprachen:**
-  - Deutsch (DE)
-  - English (EN)
-  - Türkçe (TR)
-  - العربية (AR)
-  - Shqip (SQ)
-  - Polski (PL)
-  - Français (FR)
-  - Español (ES)
-  - Italiano (IT)
-  - Русский (RU)
-- **UI:** Sprachauswahl-Dropdown mit Globe-Icon im Header, 2-spaltige Grid-Darstellung mit Flaggen
+  - Português (PT), Nederlands (NL), 中文 (ZH), 日本語 (JA), 한국어 (KO)
+  - Kosovë (XK), English US (US), الإمارات (AE)
+- **Bestehende Sprachen:** DE, EN, TR, AR, SQ, PL, FR, ES, IT, RU
+- **UI:** Sprachauswahl-Dropdown mit Globe-Icon im Header
 
 #### Feature: Verbesserte Quick-Select Buttons für Aufladung ✅
-- **Vorher:** €10, €20, €50, €100, €200
 - **Jetzt:** €5, €10, €20, €25, €50, €100
-- **Alle Modi übersetzt:** Aufladung, Gutschein erstellen, Gutschein einlösen, Zahlung
+
+#### Feature: Login-Seite Verbesserungen ✅
+- **Sprachauswahl** oben rechts auf dem Login-Screen
+- **Händler-Portal Link** unten ("Händler-Portal (Edeka, Rewe...)")
+
+#### Feature: Provisionseinstellungen - 0.01% Eingabe ✅
+- **step="0.01"** für alle Provisionsfelder im Admin-Panel
+- **Klarere Beschriftungen:**
+  - Gutschein-Provision % (Händler → BidBlitz)
+  - Aufladung-Provision % (BidBlitz → Händler)
+  - Kunden-Cashback % (BidBlitz → Kunde)
+- **Erklärungstexte** hinzugefügt:
+  - Gutschein: Bei Gutscheinverkauf zahlt der Händler diese % an BidBlitz
+  - Aufladung: Bei Kundenaufladung erhält der Händler diese % von BidBlitz
+  - Cashback: Der Kunde erhält diese % als Bonus auf sein Guthaben
 
 #### Dateien geändert:
-- `/app/frontend/src/pages/StaffPOS.js` - Neue Übersetzungen, Sprachauswahl-UI, Quick-Select-Buttons
+- `/app/frontend/src/pages/StaffPOS.js` - Login-UI, Sprache, Quick-Select-Buttons
+- `/app/frontend/src/components/admin/AdminEnterpriseManagement.js` - Provisionseinstellungen 0.01%
 
 #### Test: ✅
-- Login funktioniert
-- Sprachauswahl öffnet Dropdown mit 18 Sprachen
-- Sprachwechsel funktioniert (DE, TR, ZH getestet)
-- Alle UI-Texte werden korrekt übersetzt
+- Staff POS Login funktioniert
+- Sprachauswahl auf Login-Seite und im POS
+- 18 Sprachen verfügbar
+- Quick-Select-Buttons: €5, €10, €20, €25, €50, €100
+- Händler-Portal Link funktioniert
+- Provisionseinstellungen: 0.01% kann eingegeben werden
+- Beschriftungen zeigen, wer wem zahlt
 
 ---
 
