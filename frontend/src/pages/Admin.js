@@ -1290,6 +1290,7 @@ export default function Admin() {
         { id: 'voice', label: 'Sprachbefehle', icon: <Mic className="w-5 h-5" /> },
         { id: 'debug-reports', label: 'Debug Reports', icon: <Bug className="w-5 h-5" /> },
         { id: 'system-health', label: 'System Health', icon: <Activity className="w-5 h-5" /> },
+        { id: 'backup', label: 'Daten-Backup', icon: <Database className="w-5 h-5" /> },
       ]
     },
   ];
