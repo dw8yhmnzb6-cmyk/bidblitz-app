@@ -1246,6 +1246,7 @@ export default function Admin() {
         { id: 'wise-payouts', label: 'Wise Auszahlungen', icon: <CreditCard className="w-5 h-5" /> },
         { id: 'credit-management', label: 'Kredit-Verwaltung', icon: <CreditCard className="w-5 h-5" /> },
         { id: 'digital-api', label: 'Digital API', icon: <Key className="w-5 h-5" /> },
+        { id: 'enterprise', label: 'Großhändler', icon: <Building2 className="w-5 h-5" /> },
       ]
     },
     {
