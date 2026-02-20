@@ -361,6 +361,52 @@ export default function AdminDigitalPayments() {
                     />
                   </div>
                 </div>
+                
+                {/* Commission Settings */}
+                <div className="bg-gray-50 rounded-lg p-4 space-y-4">
+                  <h4 className="font-medium text-gray-900 text-sm flex items-center gap-2">
+                    💰 Provisions-Einstellungen
+                  </h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Plattform-Provision (0,01% - 10%)
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0.01"
+                          max="10"
+                          value={newKeyPlatformCommission}
+                          onChange={(e) => setNewKeyPlatformCommission(parseFloat(e.target.value) || 0.5)}
+                          className="flex-1 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 text-sm"
+                        />
+                        <span className="text-gray-500 text-sm">%</span>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">Geht an BidBlitz pro Transaktion</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Kunden-Cashback (0% - 2%)
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          max="2"
+                          value={newKeyCustomerCashback}
+                          onChange={(e) => setNewKeyCustomerCashback(parseFloat(e.target.value) || 0)}
+                          className="flex-1 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 text-sm"
+                        />
+                        <span className="text-gray-500 text-sm">%</span>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">Bonus für Kunden bei Aufladung</p>
+                    </div>
+                  </div>
+                </div>
+
                 <button
                   onClick={createApiKey}
                   className="w-full sm:w-auto px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 flex items-center justify-center gap-2 text-sm"
