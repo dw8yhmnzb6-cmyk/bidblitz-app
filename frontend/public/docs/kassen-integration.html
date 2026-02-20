@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BidBlitz Kassen-Integration</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #1a1a1a; background: #f8f9fa; }
+        .container { max-width: 1000px; margin: 0 auto; padding: 2rem; }
+        h1 { color: #f97316; margin-bottom: 0.5rem; }
+        h2 { color: #374151; margin: 2rem 0 1rem; border-bottom: 2px solid #f97316; padding-bottom: 0.5rem; }
+        h3 { color: #4b5563; margin: 1.5rem 0 0.75rem; }
+        p { margin-bottom: 1rem; color: #4b5563; }
+        .intro { background: linear-gradient(135deg, #fff7ed, #ffedd5); padding: 1.5rem; border-radius: 12px; margin-bottom: 2rem; border-left: 4px solid #f97316; }
+        pre { background: #1e293b; color: #e2e8f0; padding: 1.25rem; border-radius: 8px; overflow-x: auto; margin: 1rem 0; font-size: 14px; }
+        code { font-family: 'Fira Code', 'Monaco', monospace; }
+        .inline-code { background: #f1f5f9; color: #dc2626; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.9em; }
+        .warning { background: #fef3c7; border-left: 4px solid #f59e0b; padding: 1rem; border-radius: 0 8px 8px 0; margin: 1rem 0; }
+        .success { background: #d1fae5; border-left: 4px solid #10b981; padding: 1rem; border-radius: 0 8px 8px 0; margin: 1rem 0; }
+        .info { background: #dbeafe; border-left: 4px solid #3b82f6; padding: 1rem; border-radius: 0 8px 8px 0; margin: 1rem 0; }
+        table { width: 100%; border-collapse: collapse; margin: 1rem 0; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        th, td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid #e5e7eb; }
+        th { background: #f8fafc; font-weight: 600; color: #374151; }
+        .method { display: inline-block; padding: 0.25rem 0.75rem; border-radius: 4px; font-weight: 600; font-size: 0.85rem; }
+        .method-post { background: #dbeafe; color: #1d4ed8; }
+        .method-get { background: #d1fae5; color: #059669; }
+        .tabs { display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap; }
+        .tab { padding: 0.5rem 1rem; background: #e5e7eb; border: none; border-radius: 6px; cursor: pointer; font-weight: 500; }
+        .tab.active { background: #f97316; color: white; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .scanner-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin: 1rem 0; }
+        .scanner-card { background: white; border-radius: 8px; padding: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .scanner-card h4 { color: #f97316; margin-bottom: 0.5rem; }
+        .badge { display: inline-block; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; margin-left: 0.5rem; }
+        .badge-recommended { background: #d1fae5; color: #059669; }
+        .badge-simple { background: #dbeafe; color: #1d4ed8; }
+        footer { margin-top: 3rem; padding-top: 2rem; border-top: 1px solid #e5e7eb; text-align: center; color: #6b7280; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏪 BidBlitz Kassen-Integration</h1>
+        <p style="font-size: 1.1rem; color: #6b7280;">Technische Dokumentation für die Integration von BidBlitz Pay in Ihr Kassensystem</p>
+
+        <div class="intro">
+            <strong>Übersicht:</strong> Diese Dokumentation erklärt, wie Sie BidBlitz-Zahlungen in Ihr Kassensystem integrieren können. 
+            Kunden können mit ihrem BidBlitz-Guthaben an Ihrer Kasse bezahlen - schnell, sicher und ohne Bargeld.
+        </div>
+
+        <h2>📱 QR-Code Format</h2>
+        
+        <h3>Standard-Format (Version 2.0)</h3>
+        <p>Der QR-Code enthält einen JSON-String mit allen notwendigen Informationen:</p>
+        
+        <pre><code>{
+  "type": "bidblitz_pay",
+  "version": "2.0",
+  "token": "cpt_abc123def456...",
+  "customer_id": "usr_xyz789",
+  "customer_number": "BID-123456",
+  "expires": "2026-02-20T12:30:00Z"
+}</code></pre>
+
+        <h3>Kompakt-Format (für einfache Scanner)</h3>
+        <p>Alternativ ein einfacher String für Scanner die nur Text ausgeben:</p>
+        <pre><code>BIDBLITZ:2.0:cpt_abc123def456:BID-123456:1708430400</code></pre>
+        
+        <p>Format: <code class="inline-code">BIDBLITZ:{version}:{token}:{customer_number}:{unix_timestamp}</code></p>
+
+        <h2>🔌 API-Endpoints</h2>
+
+        <table>
+            <thead>
+                <tr><th>Endpoint</th><th>Methode</th><th>Beschreibung</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>/api/digital/scan-pay</code></td>
+                    <td><span class="method method-post">POST</span></td>
+                    <td>Zahlung durchführen (Kasse scannt Kunden-QR)</td>
+                </tr>
+                <tr>
+                    <td><code>/api/digital/customer/lookup</code></td>
+                    <td><span class="method method-get">GET</span></td>
+                    <td>Kunden-Info abrufen (Name, Guthaben prüfen)</td>
+                </tr>
+                <tr>
+                    <td><code>/api/digital/payments/{id}</code></td>
+                    <td><span class="method method-get">GET</span></td>
+                    <td>Zahlungsstatus abfragen</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>💻 Integrations-Beispiele</h2>
+
+        <div class="tabs">
+            <button class="tab active" onclick="showTab('python')">Python</button>
+            <button class="tab" onclick="showTab('csharp')">C# (.NET)</button>
+            <button class="tab" onclick="showTab('java')">Java</button>
+            <button class="tab" onclick="showTab('php')">PHP</button>
+            <button class="tab" onclick="showTab('curl')">cURL</button>
+        </div>
+
+        <div id="python" class="tab-content active">
+            <h3>Python Integration</h3>
+            <pre><code>import requests
+import json
+
+class BidBlitzPOS:
+    """BidBlitz Kassen-Integration für Python"""
+    
+    def __init__(self, api_key: str, api_url: str = "https://bidblitz.ae"):
+        self.api_key = api_key
+        self.api_url = api_url
+        self.headers = {
+            "X-API-Key": api_key,
+            "Content-Type": "application/json"
+        }
+    
+    def parse_qr_code(self, qr_data: str) -> dict:
+        """
+        Parst den gescannten QR-Code.
+        Unterstützt JSON und Kompakt-Format.
+        """
+        # JSON-Format
+        if qr_data.startswith("{"):
+            return json.loads(qr_data)
+        
+        # Kompakt-Format: BIDBLITZ:2.0:token:customer:timestamp
+        if qr_data.startswith("BIDBLITZ:"):
+            parts = qr_data.split(":")
+            return {
+                "type": "bidblitz_pay",
+                "version": parts[1],
+                "token": parts[2],
+                "customer_number": parts[3],
+                "expires_timestamp": int(parts[4])
+            }
+        
+        raise ValueError("Ungültiges QR-Code Format")
+    
+    def process_payment(self, qr_data: str, amount: float) -> dict:
+        """
+        Führt eine Zahlung durch.
+        
+        Args:
+            qr_data: Der gescannte QR-Code Inhalt
+            amount: Betrag in EUR
+            
+        Returns:
+            dict mit Zahlungsergebnis
+        """
+        qr_info = self.parse_qr_code(qr_data)
+        
+        response = requests.post(
+            f"{self.api_url}/api/digital/scan-pay",
+            headers=self.headers,
+            json={
+                "payment_token": qr_info["token"],
+                "amount": amount,
+                "customer_number": qr_info.get("customer_number")
+            }
+        )
+        
+        result = response.json()
+        
+        if response.status_code == 200:
+            return {
+                "success": True,
+                "payment_id": result.get("payment_id"),
+                "message": f"Zahlung erfolgreich: €{amount:.2f}",
+                "customer_name": result.get("customer_name"),
+                "new_balance": result.get("new_balance")
+            }
+        else:
+            return {
+                "success": False,
+                "error": result.get("detail", "Unbekannter Fehler"),
+                "code": response.status_code
+            }
+    
+    def lookup_customer(self, customer_number: str) -> dict:
+        """Prüft Kundeninformationen vor der Zahlung."""
+        response = requests.get(
+            f"{self.api_url}/api/digital/customer/lookup",
+            headers=self.headers,
+            params={"customer_number": customer_number}
+        )
+        return response.json()
+
+
+# === BEISPIEL VERWENDUNG ===
+
+if __name__ == "__main__":
+    # Initialisierung
+    pos = BidBlitzPOS(
+        api_key="YOUR_API_KEY_HERE",
+        api_url="https://pos-terminal-20.preview.emergentagent.com"
+    )
+    
+    # Simulierter QR-Code Scan (von USB-Scanner)
+    scanned_qr = "BIDBLITZ:2.0:cpt_test123:BID-123456:1708430400"
+    
+    # Zahlung durchführen
+    result = pos.process_payment(scanned_qr, amount=25.50)
+    
+    if result["success"]:
+        print(f"✅ {result['message']}")
+        print(f"   Kunde: {result['customer_name']}")
+        print(f"   Neues Guthaben: €{result['new_balance']:.2f}")
+    else:
+        print(f"❌ Fehler: {result['error']}")</code></pre>
+        </div>
+
+        <div id="csharp" class="tab-content">
+            <h3>C# / .NET Integration</h3>
+            <pre><code>using System;
+using System.Net.Http;
+using System.Text;
+using System.Text.Json;
+using System.Threading.Tasks;
+
+public class BidBlitzPOS
+{
+    private readonly HttpClient _client;
+    private readonly string _apiUrl;
+
+    public BidBlitzPOS(string apiKey, string apiUrl = "https://bidblitz.ae")
+    {
+        _apiUrl = apiUrl;
+        _client = new HttpClient();
+        _client.DefaultRequestHeaders.Add("X-API-Key", apiKey);
+    }
+
+    public class QRCodeData
+    {
+        public string Type { get; set; }
+        public string Version { get; set; }
+        public string Token { get; set; }
+        public string CustomerNumber { get; set; }
+    }
+
+    public QRCodeData ParseQRCode(string qrData)
+    {
+        // JSON-Format
+        if (qrData.StartsWith("{"))
+        {
+            return JsonSerializer.Deserialize&lt;QRCodeData&gt;(qrData);
+        }
+        
+        // Kompakt-Format
+        if (qrData.StartsWith("BIDBLITZ:"))
+        {
+            var parts = qrData.Split(':');
+            return new QRCodeData
+            {
+                Type = "bidblitz_pay",
+                Version = parts[1],
+                Token = parts[2],
+                CustomerNumber = parts[3]
+            };
+        }
+        
+        throw new ArgumentException("Ungültiges QR-Code Format");
+    }
+
+    public async Task&lt;PaymentResult&gt; ProcessPaymentAsync(string qrData, decimal amount)
+    {
+        var qrInfo = ParseQRCode(qrData);
+        
+        var payload = new
+        {
+            payment_token = qrInfo.Token,
+            amount = amount,
+            customer_number = qrInfo.CustomerNumber
+        };
+        
+        var content = new StringContent(
+            JsonSerializer.Serialize(payload),
+            Encoding.UTF8,
+            "application/json"
+        );
+        
+        var response = await _client.PostAsync(
+            $"{_apiUrl}/api/digital/scan-pay",
+            content
+        );
+        
+        var json = await response.Content.ReadAsStringAsync();
+        var result = JsonSerializer.Deserialize&lt;Dictionary&lt;string, object&gt;&gt;(json);
+        
+        return new PaymentResult
+        {
+            Success = response.IsSuccessStatusCode,
+            PaymentId = result.GetValueOrDefault("payment_id")?.ToString(),
+            Message = response.IsSuccessStatusCode 
+                ? $"Zahlung erfolgreich: €{amount:F2}"
+                : result.GetValueOrDefault("detail")?.ToString()
+        };
+    }
+}
+
+public class PaymentResult
+{
+    public bool Success { get; set; }
+    public string PaymentId { get; set; }
+    public string Message { get; set; }
+}
+
+// === BEISPIEL ===
+// var pos = new BidBlitzPOS("YOUR_API_KEY");
+// var result = await pos.ProcessPaymentAsync(scannedQR, 25.50m);</code></pre>
+        </div>
+
+        <div id="java" class="tab-content">
+            <h3>Java Integration</h3>
+            <pre><code>import java.net.http.*;
+import java.net.URI;
+import com.google.gson.*;
+
+public class BidBlitzPOS {
+    private final String apiKey;
+    private final String apiUrl;
+    private final HttpClient client;
+    private final Gson gson;
+
+    public BidBlitzPOS(String apiKey, String apiUrl) {
+        this.apiKey = apiKey;
+        this.apiUrl = apiUrl;
+        this.client = HttpClient.newHttpClient();
+        this.gson = new Gson();
+    }
+
+    public record QRCodeData(String token, String customerNumber) {}
+    
+    public record PaymentResult(boolean success, String paymentId, String message) {}
+
+    public QRCodeData parseQRCode(String qrData) {
+        if (qrData.startsWith("BIDBLITZ:")) {
+            String[] parts = qrData.split(":");
+            return new QRCodeData(parts[2], parts[3]);
+        }
+        // JSON-Format
+        JsonObject json = gson.fromJson(qrData, JsonObject.class);
+        return new QRCodeData(
+            json.get("token").getAsString(),
+            json.get("customer_number").getAsString()
+        );
+    }
+
+    public PaymentResult processPayment(String qrData, double amount) throws Exception {
+        QRCodeData qr = parseQRCode(qrData);
+        
+        JsonObject payload = new JsonObject();
+        payload.addProperty("payment_token", qr.token());
+        payload.addProperty("amount", amount);
+        payload.addProperty("customer_number", qr.customerNumber());
+        
+        HttpRequest request = HttpRequest.newBuilder()
+            .uri(URI.create(apiUrl + "/api/digital/scan-pay"))
+            .header("X-API-Key", apiKey)
+            .header("Content-Type", "application/json")
+            .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(payload)))
+            .build();
+        
+        HttpResponse&lt;String&gt; response = client.send(request, 
+            HttpResponse.BodyHandlers.ofString());
+        
+        JsonObject result = gson.fromJson(response.body(), JsonObject.class);
+        
+        if (response.statusCode() == 200) {
+            return new PaymentResult(true, 
+                result.get("payment_id").getAsString(),
+                String.format("Zahlung erfolgreich: €%.2f", amount));
+        }
+        return new PaymentResult(false, null, 
+            result.get("detail").getAsString());
+    }
+}</code></pre>
+        </div>
+
+        <div id="php" class="tab-content">
+            <h3>PHP Integration</h3>
+            <pre><code>&lt;?php
+
+class BidBlitzPOS {
+    private string $apiKey;
+    private string $apiUrl;
+    
+    public function __construct(string $apiKey, string $apiUrl = "https://bidblitz.ae") {
+        $this->apiKey = $apiKey;
+        $this->apiUrl = $apiUrl;
+    }
+    
+    public function parseQRCode(string $qrData): array {
+        // JSON-Format
+        if (str_starts_with($qrData, '{')) {
+            return json_decode($qrData, true);
+        }
+        
+        // Kompakt-Format: BIDBLITZ:2.0:token:customer:timestamp
+        if (str_starts_with($qrData, 'BIDBLITZ:')) {
+            $parts = explode(':', $qrData);
+            return [
+                'type' => 'bidblitz_pay',
+                'version' => $parts[1],
+                'token' => $parts[2],
+                'customer_number' => $parts[3],
+                'expires_timestamp' => (int)$parts[4]
+            ];
+        }
+        
+        throw new Exception('Ungültiges QR-Code Format');
+    }
+    
+    public function processPayment(string $qrData, float $amount): array {
+        $qrInfo = $this->parseQRCode($qrData);
+        
+        $ch = curl_init();
+        curl_setopt_array($ch, [
+            CURLOPT_URL => $this->apiUrl . '/api/digital/scan-pay',
+            CURLOPT_POST => true,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HTTPHEADER => [
+                'X-API-Key: ' . $this->apiKey,
+                'Content-Type: application/json'
+            ],
+            CURLOPT_POSTFIELDS => json_encode([
+                'payment_token' => $qrInfo['token'],
+                'amount' => $amount,
+                'customer_number' => $qrInfo['customer_number'] ?? null
+            ])
+        ]);
+        
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        
+        $result = json_decode($response, true);
+        
+        if ($httpCode === 200) {
+            return [
+                'success' => true,
+                'payment_id' => $result['payment_id'],
+                'message' => sprintf('Zahlung erfolgreich: €%.2f', $amount),
+                'customer_name' => $result['customer_name'] ?? null,
+                'new_balance' => $result['new_balance'] ?? null
+            ];
+        }
+        
+        return [
+            'success' => false,
+            'error' => $result['detail'] ?? 'Unbekannter Fehler',
+            'code' => $httpCode
+        ];
+    }
+}
+
+// === BEISPIEL ===
+$pos = new BidBlitzPOS('YOUR_API_KEY', 'https://bidblitz.ae');
+$result = $pos->processPayment($scannedQR, 25.50);
+
+if ($result['success']) {
+    echo "✅ " . $result['message'];
+} else {
+    echo "❌ Fehler: " . $result['error'];
+}
+?&gt;</code></pre>
+        </div>
+
+        <div id="curl" class="tab-content">
+            <h3>cURL / Shell Integration</h3>
+            <pre><code>#!/bin/bash
+# BidBlitz POS - Shell Integration
+
+API_KEY="YOUR_API_KEY_HERE"
+API_URL="https://bidblitz.ae"
+
+# Funktion: QR-Code parsen (Kompakt-Format)
+parse_qr() {
+    local qr="$1"
+    if [[ "$qr" == BIDBLITZ:* ]]; then
+        IFS=':' read -ra PARTS <<< "$qr"
+        TOKEN="${PARTS[2]}"
+        CUSTOMER="${PARTS[3]}"
+    fi
+}
+
+# Funktion: Zahlung durchführen
+process_payment() {
+    local qr_data="$1"
+    local amount="$2"
+    
+    parse_qr "$qr_data"
+    
+    RESPONSE=$(curl -s -X POST "$API_URL/api/digital/scan-pay" \
+        -H "X-API-Key: $API_KEY" \
+        -H "Content-Type: application/json" \
+        -d "{
+            \"payment_token\": \"$TOKEN\",
+            \"amount\": $amount,
+            \"customer_number\": \"$CUSTOMER\"
+        }")
+    
+    # Ergebnis prüfen
+    if echo "$RESPONSE" | grep -q '"payment_id"'; then
+        echo "✅ Zahlung erfolgreich!"
+        echo "$RESPONSE" | python3 -c "
+import sys, json
+d = json.load(sys.stdin)
+print(f'   Payment ID: {d.get(\"payment_id\")}')
+print(f'   Kunde: {d.get(\"customer_name\", \"N/A\")}')
+print(f'   Neues Guthaben: €{d.get(\"new_balance\", 0):.2f}')
+"
+    else
+        echo "❌ Fehler:"
+        echo "$RESPONSE" | python3 -c "
+import sys, json
+d = json.load(sys.stdin)
+print(f'   {d.get(\"detail\", \"Unbekannter Fehler\")}')
+"
+    fi
+}
+
+# === BEISPIEL ===
+# Simulierter QR-Scan
+SCANNED_QR="BIDBLITZ:2.0:cpt_test123:BID-123456:1708430400"
+AMOUNT=25.50
+
+process_payment "$SCANNED_QR" $AMOUNT</code></pre>
+        </div>
+
+        <h2>📟 Empfohlene Scanner-Hardware</h2>
+
+        <div class="scanner-list">
+            <div class="scanner-card">
+                <h4>Honeywell Voyager 1400g <span class="badge badge-recommended">Empfohlen</span></h4>
+                <p><strong>Typ:</strong> USB HID (Tastatur-Emulation)</p>
+                <p><strong>Preis:</strong> ~€80-100</p>
+                <p><strong>Vorteile:</strong> Schnell, zuverlässig, plug-and-play</p>
+            </div>
+            <div class="scanner-card">
+                <h4>Zebra DS2208 <span class="badge badge-recommended">Empfohlen</span></h4>
+                <p><strong>Typ:</strong> USB HID</p>
+                <p><strong>Preis:</strong> ~€100-130</p>
+                <p><strong>Vorteile:</strong> Robust, liest auch beschädigte Codes</p>
+            </div>
+            <div class="scanner-card">
+                <h4>Datalogic QuickScan QD2500</h4>
+                <p><strong>Typ:</strong> USB HID</p>
+                <p><strong>Preis:</strong> ~€60-80</p>
+                <p><strong>Vorteile:</strong> Günstig, gut für Einsteiger</p>
+            </div>
+            <div class="scanner-card">
+                <h4>Smartphone/Tablet <span class="badge badge-simple">Einfach</span></h4>
+                <p><strong>Typ:</strong> Kamera-basiert</p>
+                <p><strong>Preis:</strong> Kostenlos (bestehende Hardware)</p>
+                <p><strong>Vorteile:</strong> Keine zusätzliche Hardware nötig</p>
+            </div>
+        </div>
+
+        <div class="info">
+            <strong>💡 Tipp:</strong> USB-Scanner im HID-Modus geben den QR-Code Inhalt direkt als Tastatureingabe aus. 
+            Ihre Software muss nur auf die Texteingabe warten und diese verarbeiten.
+        </div>
+
+        <h2>⚙️ Scanner-Konfiguration</h2>
+
+        <h3>USB-Scanner Einrichtung</h3>
+        <ol style="margin-left: 1.5rem; margin-bottom: 1rem;">
+            <li>Scanner an USB-Port anschließen</li>
+            <li>Scanner in <strong>HID-Modus</strong> setzen (meist Standard)</li>
+            <li>Optional: Präfix/Suffix konfigurieren für eindeutige Erkennung</li>
+            <li>QR-Code scannen → Text erscheint wie Tastatureingabe</li>
+        </ol>
+
+        <h3>Empfohlene Scanner-Einstellungen</h3>
+        <table>
+            <tr><th>Einstellung</th><th>Empfohlener Wert</th><th>Beschreibung</th></tr>
+            <tr><td>Modus</td><td>USB-HID (Tastatur)</td><td>Gibt gescannten Text direkt ein</td></tr>
+            <tr><td>Suffix</td><td>Enter (CR)</td><td>Bestätigt Eingabe automatisch</td></tr>
+            <tr><td>Präfix</td><td>Optional: <code>##</code></td><td>Markiert BidBlitz-Scans eindeutig</td></tr>
+            <tr><td>Timeout</td><td>500ms</td><td>Zeit zwischen Zeichen</td></tr>
+        </table>
+
+        <h2>🔐 Sicherheit</h2>
+
+        <div class="warning">
+            <strong>⚠️ Wichtig:</strong>
+            <ul style="margin-left: 1.5rem; margin-top: 0.5rem;">
+                <li>API-Key niemals im Frontend/Client-Code speichern</li>
+                <li>Nur HTTPS-Verbindungen verwenden</li>
+                <li>IP-Whitelist für API-Keys aktivieren</li>
+                <li>QR-Codes haben ein Ablaufdatum (Standard: 5 Minuten)</li>
+            </ul>
+        </div>
+
+        <h2>📞 Support</h2>
+        <p>Bei Fragen zur Integration kontaktieren Sie uns:</p>
+        <ul style="margin-left: 1.5rem;">
+            <li>E-Mail: <a href="mailto:api@bidblitz.ae">api@bidblitz.ae</a></li>
+            <li>Technische Dokumentation: <a href="/developers">/developers</a></li>
+        </ul>
+
+        <footer>
+            <p>© 2026 BidBlitz GmbH - Kassen-Integration v2.0</p>
+        </footer>
+    </div>
+
+    <script>
+        function showTab(tabId) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.querySelector(`[onclick="showTab('${tabId}')"]`).classList.add('active');
+            document.getElementById(tabId).classList.add('active');
+        }
+    </script>
+</body>
+</html>
