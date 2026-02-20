@@ -78,6 +78,7 @@ export default function POSTerminal() {
       if (res.ok) {
         const data = await res.json();
         setMerchantName(data.api_key_name || 'Händler');
+        setMerchantCommission(data.merchant_commission || 2.0);
         setIsConnected(true);
         localStorage.setItem('pos_api_key', apiKey);
         toast.success(`Verbunden als ${data.api_key_name}`);
