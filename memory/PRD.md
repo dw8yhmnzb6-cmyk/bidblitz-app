@@ -19,7 +19,7 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 1. **Persistente Anmeldung ("Angemeldet bleiben")** ✅
 2. **Visuelles Redesign** (Dark Theme, Orange Akzente) ✅
 3. **Mobile Responsiveness** (Hamburger-Menü, 2-Spalten-Grid) ✅
-4. **Mehrsprachigkeit** (DE 🇩🇪, EN 🇬🇧, AR 🇦🇪, TR 🇹🇷) ✅
+4. **Mehrsprachigkeit** ✅
 
 **Implementierte Verbesserungen (Teil 2 - Erweiterungen):**
 
@@ -44,10 +44,26 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
    - Aktivierung/Deaktivierung der Provisionen
    - Admin-UI im erweiterten Panel
 
-8. **Vollständige Übersetzungen (4 Sprachen):** ✅
-   - 🇩🇪 Deutsch - Alle Texte
-   - 🇬🇧 English - Alle Texte
-   - 🇦🇪 Arabisch - Alle Texte inkl. neue Felder
+8. **Vollständige Übersetzungen (18 Sprachen):** ✅
+   - 🇦🇪 الإمارات (UAE/Arabic)
+   - 🇩🇪 Deutsch
+   - 🇬🇧 English (UK)
+   - 🇦🇱 Shqip (Albanian)
+   - 🇽🇰 Kosovë (Kosovo)
+   - 🇹🇷 Türkçe
+   - 🇫🇷 Français
+   - 🇪🇸 Español
+   - 🇮🇹 Italiano
+   - 🇺🇸 English (US)
+   - 🇵🇹 Português
+   - 🇳🇱 Nederlands
+   - 🇵🇱 Polski
+   - 🇷🇺 Русский
+   - 🇸🇦 العربية
+   - 🇨🇳 中文
+   - 🇯🇵 日本語
+   - 🇰🇷 한국어
+   - Mit Sprach-Aliasing (ae→ar, us→en, xk→sq)
    - 🇹🇷 Türkisch - Alle Texte inkl. neue Felder
    - Neue Felder: commissionSettings, voucherCommission, selfPayCommission, customerCashback, connectionError, etc.
 
