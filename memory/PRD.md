@@ -5,6 +5,47 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 
 ## Current Status (February 20, 2026)
 
+### ✅ Session Update - February 20, 2026 (Session 61) - BUG FIXES + SYSTEM HEALTH CHECK ✅
+
+#### Bug Fix 1: Fehler-Toast bei Filialen-Erstellung ✅
+- **Problem:** Beim Erstellen einer neuen Filiale im Enterprise Portal erschien eine rote "Fehler"-Meldung, obwohl die Filiale erfolgreich erstellt wurde.
+- **Ursache:** Das Frontend-Formular sendete leere Strings (`""`) für optionale Felder wie `manager_email`. Pydantics `EmailStr`-Validierung lehnt leere Strings ab (422 Validation Error).
+- **Lösung:**
+  - Das `BranchForm`-Komponente filtert jetzt leere Strings vor dem Absenden heraus
+  - Verbesserte Fehlerbehandlung in `handleCreateBranch` zeigt spezifische Validierungsfehler
+- **Dateien geändert:** `/app/frontend/src/pages/EnterprisePortal.js`
+
+#### Bug Fix 2: Filialleiter-Anmeldung ✅
+- **Problem:** Filialleiter (Branch Manager) konnten sich nicht im Enterprise Portal anmelden.
+- **Ursache:** Der `/api/enterprise/login`-Endpoint unterstützte nur Enterprise-Admin-Konten, nicht Enterprise-Benutzer.
+- **Lösung:** Der Login-Endpoint wurde erweitert, um beide Kontotypen zu unterstützen:
+  1. Zuerst wird nach Enterprise-Admin gesucht
+  2. Falls nicht gefunden, wird nach Enterprise-Benutzer gesucht
+- **Dateien geändert:** `/app/backend/routers/enterprise_portal.py`
+
+#### Neues Feature: Automatisches System Health Check ✅
+- **Beschreibung:** Ein automatisches Testsystem, das täglich Tests durchführt, Probleme anzeigt und automatisch behebt.
+- **Features:**
+  - Tägliche automatische Systemprüfung um 3:00 Uhr UTC
+  - Prüft: Database, Enterprise Logins, Expired Sessions, Orphaned Data, Pending Payouts
+  - Admin-Dashboard mit Statistiken und Report-Verlauf
+  - Automatische Problemfixes (behebbare Probleme werden markiert)
+  - "Jetzt prüfen"-Button für manuelle Prüfung
+  - Report-Cleanup-Funktion
+
+- **API-Endpoints:**
+  - `GET /api/health/run` - Health Check ausführen
+  - `GET /api/health/stats` - Statistiken abrufen
+  - `GET /api/health/reports` - Reports auflisten
+  - `POST /api/health/fix/{report_id}` - Probleme automatisch beheben
+  - `DELETE /api/health/reports/cleanup` - Alte Reports löschen
+
+- **Neue Dateien:**
+  - `/app/backend/routers/health_check.py`
+  - `/app/frontend/src/components/admin/AdminSystemHealth.js`
+
+---
+
 ### ✅ BUG FIX - February 20, 2026 (Session 61) - FILIALE ERSTELLEN BUG ✅
 
 **Problem:** Beim Erstellen einer neuen Filiale im Enterprise Portal erschien eine rote "Fehler"-Meldung, obwohl die Filiale erfolgreich erstellt wurde.
