@@ -71,6 +71,7 @@ import FlashSalesPage from "./pages/FlashSalesPage";
 import MyStatsPage from "./pages/MyStats";
 import LevelsPage from "./pages/LevelsPage";
 import ApiDocs from "./pages/ApiDocs";
+import POSTerminal from "./pages/POSTerminal";
 import DailyRewardsPage from "./pages/DailyRewardsPage";
 import BattlePassPage from "./pages/BattlePassPage";
 import MysteryBoxPage from "./pages/MysteryBoxPage";
