@@ -2004,6 +2004,8 @@ const BidBlitzPay = () => {
                           : 'If camera doesn\'t work, use manual entry below'}
                       </p>
                     </div>
+                    
+                    {/* Camera Scanner Button */}
                     <Button
                       onClick={startScanner}
                       className="w-full bg-blue-500 hover:bg-blue-600 text-white min-h-[48px] touch-manipulation"
@@ -2011,6 +2013,40 @@ const BidBlitzPay = () => {
                       <Camera className="w-5 h-5 mr-2" />
                       {t('startScanner')}
                     </Button>
+                    
+                    {/* iOS Photo Scanner Alternative - WICHTIG für Safari! */}
+                    <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-lg">📸</span>
+                        <span className="font-medium text-green-800">
+                          {language === 'de' ? 'Alternative: Foto aufnehmen' : 'Alternative: Take Photo'}
+                        </span>
+                      </div>
+                      <p className="text-xs text-green-600 mb-3">
+                        {language === 'de' 
+                          ? 'Funktioniert zuverlässig auf iPhone/iPad!' 
+                          : 'Works reliably on iPhone/iPad!'}
+                      </p>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        capture="environment"
+                        onChange={handlePhotoScan}
+                        className="hidden"
+                        id="photo-scanner-input"
+                      />
+                      <label
+                        htmlFor="photo-scanner-input"
+                        className="flex items-center justify-center gap-2 w-full bg-green-500 hover:bg-green-600 text-white font-medium py-3 px-4 rounded-lg cursor-pointer min-h-[48px] touch-manipulation transition-colors"
+                      >
+                        <Camera className="w-5 h-5" />
+                        {language === 'de' ? 'QR-Code fotografieren' : 'Photograph QR Code'}
+                      </label>
+                    </div>
+                    
+                    {/* Hidden element for photo scan processing */}
+                    <div id="qr-reader-hidden" style={{ display: 'none' }}></div>
                     
                     {/* Manual ID Entry - More prominent */}
                     <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
