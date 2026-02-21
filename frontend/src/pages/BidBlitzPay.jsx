@@ -1765,8 +1765,8 @@ const BidBlitzPay = () => {
                       </div>
                     )}
                     
-                    {/* Kamera-Hilfe Box - erscheint NUR wenn Kamera nicht funktioniert UND Berechtigung NICHT erteilt */}
-                    {showCameraHelp && !cameraPermissionGranted && (
+                    {/* Kamera-Hilfe Box - erscheint wenn showCameraHelp true ist */}
+                    {showCameraHelp && (
                       <div className="bg-red-50 border border-red-200 rounded-xl p-4">
                         <div className="flex items-start gap-3">
                           <AlertCircle className="w-6 h-6 text-red-500 flex-shrink-0 mt-0.5" />
