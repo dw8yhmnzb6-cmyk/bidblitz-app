@@ -383,9 +383,12 @@ async def create_weekend_special(
     
     await db.flash_sales.insert_one(sale)
     
+    # Remove _id from sale dict for JSON response
+    sale_response = {k: v for k, v in sale.items() if k != '_id'}
+    
     logger.info(f"Weekend Special created: {bids}+{bonus_bids} bids for €{price}")
     
-    return {"sale": sale, "message": "Wochenend-Special erstellt!"}
+    return {"sale": sale_response, "message": "Wochenend-Special erstellt!"}
 
 @router.post("/admin/create-first-buyer-bonus")
 async def create_first_buyer_bonus(
