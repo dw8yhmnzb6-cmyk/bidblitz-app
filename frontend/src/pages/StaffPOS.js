@@ -1278,8 +1278,30 @@ export default function StaffPOS() {
       setPaymentCameraError(null);
       setPaymentCameraActive(true);
       
-      // Wait for DOM element
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // Prüfen ob iOS
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+                    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+      
+      // Wait for DOM element to render
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
+      // Für iOS: Erst Kamera-Berechtigung anfordern
+      if (isIOS) {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ 
+            video: { facingMode: 'environment' } 
+          });
+          stream.getTracks().forEach(track => track.stop());
+          await new Promise(resolve => setTimeout(resolve, 300));
+        } catch (permErr) {
+          console.error('iOS camera permission error:', permErr);
+          setPaymentCameraError(language === 'de' 
+            ? 'Kamera-Zugriff verweigert. Bitte erlauben Sie die Kamera in den Browser-Einstellungen.' 
+            : 'Camera access denied. Please allow camera in browser settings.');
+          setPaymentCameraActive(false);
+          return;
+        }
+      }
       
       const scanner = new Html5Qrcode("payment-scanner");
       paymentScannerRef.current = scanner;
@@ -1287,25 +1309,44 @@ export default function StaffPOS() {
       await scanner.start(
         { facingMode: "environment" },
         {
-          fps: 10,
-          qrbox: { width: 250, height: 150 },
-          aspectRatio: 1.5
+          fps: 15, // Höhere FPS für schnelleres Scannen
+          qrbox: { width: 300, height: 200 }, // Größerer Scan-Bereich für Barcodes
+          aspectRatio: 1.5,
+          formatsToSupport: [
+            0, // QR_CODE
+            4, // CODE_128
+            2, // CODE_39
+            3, // CODE_93
+            10, // EAN_13
+            9, // EAN_8
+            12, // UPC_A
+            11, // UPC_E
+            7, // ITF
+            1, // AZTEC
+            6, // DATA_MATRIX
+            8, // PDF_417
+          ]
         },
         (decodedText) => {
           // Success - barcode scanned
+          console.log('✅ Barcode gescannt:', decodedText);
           playSound('success');
+          toast.success(language === 'de' ? `Barcode erkannt: ${decodedText}` : `Barcode detected: ${decodedText}`);
           stopPaymentCamera();
           processPayment(decodedText);
         },
         (errorMessage) => {
-          // Scan error - ignore
+          // Scan error - ignore (normal während des Scannens)
         }
       );
+      
+      console.log('✅ Kamera gestartet');
+      
     } catch (err) {
       console.error('Camera error:', err);
       setPaymentCameraError(language === 'de' 
-        ? 'Kamera konnte nicht gestartet werden. Bitte verwenden Sie die Foto-Option.' 
-        : 'Camera could not be started. Please use the photo option.');
+        ? 'Kamera konnte nicht gestartet werden. Bitte verwenden Sie "Foto aufnehmen" oder geben Sie den Barcode manuell ein.' 
+        : 'Camera could not be started. Please use "Take Photo" or enter barcode manually.');
       setPaymentCameraActive(false);
     }
   };
