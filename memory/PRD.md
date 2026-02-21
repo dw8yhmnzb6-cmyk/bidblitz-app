@@ -5,6 +5,28 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 
 ## Current Status (February 21, 2026)
 
+### ✅ Session Update - February 21, 2026 (Session 65b) - STAMMKUNDEN FÜR STAFFPOS ✅
+
+#### StaffPOS.js - "Stammkunden speichern" Funktion implementiert ✅
+**Neue Features:**
+- **"Als Stammkunde speichern" Button** im Quittungs-Dialog nach erfolgreicher Aufladung
+- **Speicher-Dialog** mit optionalem Spitznamen
+- **Stammkunden-Liste** auf der Hauptseite mit Schnellauswahl
+- **Ein-Klick-Aufladung** für gespeicherte Stammkunden
+- **Entfernen-Option** per Hover-Button
+- **Persistente Speicherung** in localStorage pro Filiale
+
+#### BidBlitzPayInfo.jsx - Mobile Layout Fix ✅
+- Live-Ticker (Anmeldungs-Nachrichten) nur auf Desktop sichtbar
+- Viewer-Count Badge verkleinert und neu positioniert für Mobile
+
+#### BidBlitzPay.jsx - QR-Code Teilen-Funktion hinzugefügt ✅
+- WhatsApp Share Button für Zahlungsanfragen
+- Native Share API / Kopieren-Button
+- QR-Code Download-Button
+
+---
+
 ### ✅ Session Update - February 21, 2026 (Session 65) - BIDBLITZ PAY INFO MULTI-LANGUAGE ✅
 
 #### BidBlitzPayInfo.jsx - Volle Mehrsprachigkeit implementiert ✅
