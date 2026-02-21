@@ -1692,6 +1692,43 @@ const BidBlitzPay = () => {
                   </div>
                 ) : (
                   <div className="space-y-4">
+                    {/* Kamera-Hilfe Box - erscheint wenn Kamera nicht funktioniert */}
+                    {showCameraHelp && (
+                      <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+                        <div className="flex items-start gap-3">
+                          <AlertCircle className="w-6 h-6 text-red-500 flex-shrink-0 mt-0.5" />
+                          <div>
+                            <p className="font-medium text-red-800 mb-2">
+                              {language === 'de' ? 'Kamera-Berechtigung erforderlich' : 'Camera Permission Required'}
+                            </p>
+                            <div className="text-sm text-red-700 space-y-2">
+                              <p className="font-medium">📱 iPhone/iPad (Safari):</p>
+                              <ol className="list-decimal list-inside ml-2 space-y-1 text-xs">
+                                <li>Öffnen Sie <strong>Einstellungen</strong></li>
+                                <li>Scrollen Sie zu <strong>Safari</strong></li>
+                                <li>Tippen Sie auf <strong>Kamera</strong></li>
+                                <li>Wählen Sie <strong>Erlauben</strong></li>
+                                <li>Aktualisieren Sie diese Seite</li>
+                              </ol>
+                              <p className="font-medium mt-3">🌐 Andere Browser:</p>
+                              <ol className="list-decimal list-inside ml-2 space-y-1 text-xs">
+                                <li>Klicken Sie auf das 🔒 Symbol in der Adressleiste</li>
+                                <li>Erlauben Sie die <strong>Kamera</strong></li>
+                              </ol>
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setShowCameraHelp(false)}
+                              className="mt-3 text-red-600 border-red-300"
+                            >
+                              Verstanden
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    
                     <div className="bg-gray-100 rounded-xl p-6 text-center">
                       <Camera className="w-12 h-12 text-gray-400 mx-auto mb-2" />
                       <p className="text-sm text-gray-500">{t('scanRequestQR')}</p>
@@ -1703,9 +1740,9 @@ const BidBlitzPay = () => {
                     </div>
                     <Button
                       onClick={startScanner}
-                      className="w-full bg-blue-500 hover:bg-blue-600 text-white"
+                      className="w-full bg-blue-500 hover:bg-blue-600 text-white min-h-[48px] touch-manipulation"
                     >
-                      <Camera className="w-4 h-4 mr-2" />
+                      <Camera className="w-5 h-5 mr-2" />
                       {t('startScanner')}
                     </Button>
                     
@@ -1723,12 +1760,12 @@ const BidBlitzPay = () => {
                           value={manualRequestId}
                           onChange={(e) => setManualRequestId(e.target.value.toUpperCase())}
                           placeholder="z.B. 149F919F"
-                          className="w-full text-center font-mono tracking-wider bg-white"
+                          className="w-full text-center font-mono tracking-wider bg-white min-h-[48px]"
                           maxLength={12}
                         />
                         <Button
                           type="submit"
-                          className="w-full bg-amber-500 hover:bg-amber-600 text-white"
+                          className="w-full bg-amber-500 hover:bg-amber-600 text-white min-h-[48px] touch-manipulation"
                           disabled={!manualRequestId.trim() || loadingManualRequest}
                         >
                           {loadingManualRequest ? (
