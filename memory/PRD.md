@@ -5,6 +5,29 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 
 ## Current Status (February 21, 2026)
 
+### ✅ Session Update - February 21, 2026 (Session 64) - AUKTIONEN + VOICE COMMAND FIX ✅
+
+#### Fix 1: Auktionen repariert ✅
+- **Problem:** Auktionen hatten "?" als Titel und identische Endzeiten
+- **Lösung:** 30 neue Auktionen erstellt mit:
+  - ✅ Startpreis: €0.01
+  - ✅ Korrekte Produkttitel (iPhone, Samsung, BMW, Mercedes, etc.)
+  - ✅ Verschiedene Endzeiten (10 unterschiedliche Tage)
+- **Kategorien:** Elektronik, Gaming, Auto, Reisen, Luxus, Uhren, VR/Wearables
+
+#### Fix 2: Voice Command "Auto-Aktion" ✅
+- **Problem:** Der Sprachbefehl "Auto-Aktion" wurde nicht korrekt erkannt
+- **Lösung:** GPT-Prompt in `/app/backend/routers/voice_command.py` erweitert:
+  - Neue Trigger-Wörter: "Auto-Aktion", "auto aktion", "Autoauktion", "Auto Auktion"
+  - Standardwert €50.000 für Auto-Auktionen
+  - Robustere natürliche Spracherkennung
+- **Test:** Alle Varianten werden jetzt korrekt als `create_single_auction` erkannt
+
+#### Dateien geändert:
+- `/app/backend/routers/voice_command.py` - Verbesserte "Auto-Aktion" Erkennung
+
+---
+
 ### ✅ Session Update - February 21, 2026 (Session 63) - STAFF POS + PROVISIONSEINSTELLUNGEN ✅
 
 #### Feature: Staff POS Multi-Language Support (18 Sprachen) ✅
