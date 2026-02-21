@@ -5,7 +5,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { X, ChevronRight, ChevronLeft, Zap, Trophy, Clock, Gift, Target, Sparkles, MousePointer2, Play, CheckCircle } from 'lucide-react';
 import { Button } from './ui/button';
 import confetti from 'canvas-confetti';
