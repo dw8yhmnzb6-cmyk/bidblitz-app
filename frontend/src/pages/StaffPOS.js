@@ -1546,16 +1546,20 @@ export default function StaffPOS() {
                     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
       
       // Wait for DOM element to render
-      await new Promise(resolve => setTimeout(resolve, 200));
+      await new Promise(resolve => setTimeout(resolve, 300));
       
       // Für iOS: Erst Kamera-Berechtigung anfordern
       if (isIOS) {
         try {
           const stream = await navigator.mediaDevices.getUserMedia({ 
-            video: { facingMode: 'environment' } 
+            video: { 
+              facingMode: 'environment',
+              width: { ideal: 1280 },
+              height: { ideal: 720 }
+            } 
           });
           stream.getTracks().forEach(track => track.stop());
-          await new Promise(resolve => setTimeout(resolve, 300));
+          await new Promise(resolve => setTimeout(resolve, 500));
         } catch (permErr) {
           console.error('iOS camera permission error:', permErr);
           setTopupCameraError(language === 'de' 
@@ -1569,27 +1573,30 @@ export default function StaffPOS() {
       const scanner = new Html5Qrcode("topup-scanner");
       topupScannerRef.current = scanner;
       
+      // Optimierte Einstellungen für iOS Barcode-Erkennung
+      const config = {
+        fps: isIOS ? 10 : 15, // Niedrigere FPS für iOS
+        qrbox: { width: 280, height: 150 }, // Breiterer Scan-Bereich für Barcodes
+        aspectRatio: isIOS ? 1.7777 : 1.5, // 16:9 für iOS
+        formatsToSupport: [
+          4, // CODE_128 - Häufigster Barcode-Typ
+          10, // EAN_13
+          9, // EAN_8
+          12, // UPC_A
+          11, // UPC_E
+          2, // CODE_39
+          3, // CODE_93
+          7, // ITF
+          0, // QR_CODE
+        ],
+        experimentalFeatures: {
+          useBarCodeDetectorIfSupported: true // Nutzt native BarcodeDetector API wenn verfügbar
+        }
+      };
+      
       await scanner.start(
         { facingMode: "environment" },
-        {
-          fps: 15,
-          qrbox: { width: 300, height: 200 },
-          aspectRatio: 1.5,
-          formatsToSupport: [
-            0, // QR_CODE
-            4, // CODE_128
-            2, // CODE_39
-            3, // CODE_93
-            10, // EAN_13
-            9, // EAN_8
-            12, // UPC_A
-            11, // UPC_E
-            7, // ITF
-            1, // AZTEC
-            6, // DATA_MATRIX
-            8, // PDF_417
-          ]
-        },
+        config,
         (decodedText) => {
           // Success - barcode scanned
           console.log('✅ Kunden-Barcode gescannt:', decodedText);
