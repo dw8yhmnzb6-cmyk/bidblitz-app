@@ -2494,6 +2494,135 @@ const BidBlitzPay = () => {
           </div>
         </div>
       )}
+
+      {/* Add New Contact Dialog */}
+      {showAddContactDialog && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl">
+            <div className="text-center mb-4">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                <Users className="w-8 h-8 text-green-500" />
+              </div>
+              <h3 className="text-lg font-bold text-gray-800">
+                {language === 'de' ? 'Neuen Kontakt hinzufügen' : 'Add New Contact'}
+              </h3>
+              <p className="text-sm text-gray-500 mt-1">
+                {language === 'de' ? 'Speichern Sie häufige Empfänger' : 'Save frequent recipients'}
+              </p>
+            </div>
+            
+            <div className="space-y-4 mb-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  {language === 'de' ? 'Kundennummer oder E-Mail' : 'Customer ID or Email'}
+                </label>
+                <Input
+                  type="text"
+                  value={newContactId}
+                  onChange={(e) => setNewContactId(e.target.value)}
+                  placeholder={language === 'de' ? 'z.B. BID-123456 oder email@example.com' : 'e.g. BID-123456 or email@example.com'}
+                  className="w-full"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  {language === 'de' ? 'Spitzname' : 'Nickname'}
+                </label>
+                <Input
+                  type="text"
+                  value={newContactNickname}
+                  onChange={(e) => setNewContactNickname(e.target.value)}
+                  placeholder={language === 'de' ? 'z.B. Mama, Max, Arbeit' : 'e.g. Mom, Max, Work'}
+                  className="w-full"
+                />
+              </div>
+            </div>
+            
+            <div className="flex gap-2">
+              <Button
+                onClick={() => {
+                  setShowAddContactDialog(false);
+                  setNewContactId('');
+                  setNewContactNickname('');
+                }}
+                variant="outline"
+                className="flex-1"
+              >
+                {language === 'de' ? 'Abbrechen' : 'Cancel'}
+              </Button>
+              <Button
+                onClick={addContactManually}
+                disabled={!newContactId.trim() || !newContactNickname.trim() || addingContact}
+                className="flex-1 bg-green-500 hover:bg-green-600 text-white"
+              >
+                {addingContact ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <>
+                    <CheckCircle className="w-4 h-4 mr-1" />
+                    {language === 'de' ? 'Speichern' : 'Save'}
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Contact Dialog */}
+      {editingContact && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl">
+            <div className="text-center mb-4">
+              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                <span className="text-2xl">✏️</span>
+              </div>
+              <h3 className="text-lg font-bold text-gray-800">
+                {language === 'de' ? 'Kontakt bearbeiten' : 'Edit Contact'}
+              </h3>
+            </div>
+            
+            <div className="bg-gray-50 rounded-xl p-3 mb-4">
+              <p className="text-xs text-gray-500">
+                {language === 'de' ? 'Kundennummer' : 'Customer ID'}
+              </p>
+              <p className="font-medium text-gray-800">{editingContact.recipient_customer_number || editingContact.recipient_email}</p>
+            </div>
+            
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                {language === 'de' ? 'Neuer Spitzname' : 'New Nickname'}
+              </label>
+              <Input
+                type="text"
+                value={editingContact.newNickname || ''}
+                onChange={(e) => setEditingContact({ ...editingContact, newNickname: e.target.value })}
+                placeholder={language === 'de' ? 'z.B. Mama, Max, Arbeit' : 'e.g. Mom, Max, Work'}
+                className="w-full"
+                autoFocus
+              />
+            </div>
+            
+            <div className="flex gap-2">
+              <Button
+                onClick={() => setEditingContact(null)}
+                variant="outline"
+                className="flex-1"
+              >
+                {language === 'de' ? 'Abbrechen' : 'Cancel'}
+              </Button>
+              <Button
+                onClick={updateContact}
+                disabled={!editingContact.newNickname?.trim()}
+                className="flex-1 bg-blue-500 hover:bg-blue-600 text-white"
+              >
+                <CheckCircle className="w-4 h-4 mr-1" />
+                {language === 'de' ? 'Speichern' : 'Save'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
