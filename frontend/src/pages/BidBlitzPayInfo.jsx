@@ -86,7 +86,14 @@ const BidBlitzPayInfo = () => {
     }, 4000);
     
     const viewerUpdate = setInterval(() => {
-      setViewerCount(prev => prev + Math.floor(Math.random() * 3) - 1);
+      setViewerCount(prev => {
+        const change = Math.floor(Math.random() * 21) - 10; // -10 to +10
+        const newCount = prev + change;
+        // Keep within 400-800 range
+        if (newCount < 400) return 400 + Math.floor(Math.random() * 50);
+        if (newCount > 800) return 800 - Math.floor(Math.random() * 50);
+        return newCount;
+      });
     }, 5000);
     
     return () => {
