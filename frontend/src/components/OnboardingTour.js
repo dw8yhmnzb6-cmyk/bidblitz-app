@@ -280,9 +280,19 @@ const OnboardingTour = () => {
   const [isClosing, setIsClosing] = useState(false);
   const [showCompletion, setShowCompletion] = useState(false);
   const [dontShowAgain, setDontShowAgain] = useState(false);
+  
+  // Excluded paths - don't show onboarding on these pages
+  const excludedPaths = ['/staff-pos', '/admin', '/enterprise', '/bidblitz-pay', '/bidblitz-pay-info', '/login', '/register', '/checkout', '/profile', '/wallet', '/settings'];
+  const isExcludedPath = excludedPaths.some(path => location.pathname.startsWith(path));
 
   // Check if user should see onboarding
   useEffect(() => {
+    // Don't even start the check if on excluded path
+    if (isExcludedPath) {
+      setShowTour(false);
+      return;
+    }
+    
     const checkOnboarding = async () => {
       // Check for permanent skip first
       const permanentSkip = localStorage.getItem('bidblitz_onboarding_permanent_skip');
@@ -295,29 +305,38 @@ const OnboardingTour = () => {
       const sessionSkip = sessionStorage.getItem('bidblitz_onboarding_session_skip');
       if (sessionSkip === 'true') return;
       
-      // Check excluded paths - don't show on certain pages
-      const excludedPaths = ['/staff-pos', '/admin', '/enterprise', '/bidblitz-pay', '/bidblitz-pay-info', '/login', '/register', '/checkout', '/profile', '/wallet'];
-      const currentPath = location.pathname;
-      if (excludedPaths.some(path => currentPath.startsWith(path))) {
-        return;
-      }
-      
       if (isAuthenticated && user) {
         const totalBids = user.total_bids_placed || 0;
         if (totalBids < 5) {
-          setTimeout(() => setShowTour(true), 2000);
+          setTimeout(() => {
+            // Double-check we're still on an allowed path
+            if (!isExcludedPath) {
+              setShowTour(true);
+            }
+          }, 2000);
         }
       } else {
         // Only show for non-authenticated users on main pages
         const allowedPaths = ['/', '/auctions'];
-        if (allowedPaths.includes(currentPath)) {
-          setTimeout(() => setShowTour(true), 5000);
+        if (allowedPaths.includes(location.pathname)) {
+          setTimeout(() => {
+            if (!isExcludedPath) {
+              setShowTour(true);
+            }
+          }, 5000);
         }
       }
     };
     
     checkOnboarding();
-  }, [isAuthenticated, user, location.pathname]);
+  }, [isAuthenticated, user, location.pathname, isExcludedPath]);
+  
+  // Hide tour immediately when navigating to excluded path
+  useEffect(() => {
+    if (isExcludedPath && showTour) {
+      setShowTour(false);
+    }
+  }, [isExcludedPath, showTour]);
 
   const triggerConfetti = useCallback(() => {
     confetti({
