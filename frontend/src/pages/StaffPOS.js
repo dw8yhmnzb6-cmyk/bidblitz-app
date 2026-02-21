@@ -147,7 +147,16 @@ const translations = {
     minAmount: 'Minimum',
     maxAmount: 'Maximum',
     testAccess: 'Test Access',
-    from: 'from'
+    from: 'from',
+    // Regular Customers
+    regularCustomers: 'Regular Customers',
+    noRegularCustomers: 'No regular customers saved yet',
+    quickSelect: 'Quick Select',
+    saveAsRegular: 'Save as Regular Customer',
+    saveCustomer: 'Save Customer',
+    customerNickname: 'Nickname (optional)',
+    lastTransaction: 'Last Transaction',
+    removeCustomer: 'Remove'
   },
   tr: {
     loginTitle: 'Kasa Terminali',
