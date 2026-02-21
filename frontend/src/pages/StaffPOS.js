@@ -78,7 +78,16 @@ const translations = {
     minAmount: 'Mindestbetrag',
     maxAmount: 'Maximalbetrag',
     testAccess: 'Test-Zugang',
-    from: 'ab'
+    from: 'ab',
+    // Stammkunden
+    regularCustomers: 'Stammkunden',
+    noRegularCustomers: 'Noch keine Stammkunden gespeichert',
+    quickSelect: 'Schnellauswahl',
+    saveAsRegular: 'Als Stammkunde speichern',
+    saveCustomer: 'Kunde speichern',
+    customerNickname: 'Spitzname (optional)',
+    lastTransaction: 'Letzte Transaktion',
+    removeCustomer: 'Entfernen'
   },
   en: {
     loginTitle: 'Cash Register',
