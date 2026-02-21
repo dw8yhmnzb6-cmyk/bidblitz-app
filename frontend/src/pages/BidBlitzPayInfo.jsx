@@ -57,11 +57,11 @@ const BidBlitzPayInfo = () => {
     return () => clearInterval(timer);
   }, []);
   
-  // Live Ticker Effect
+  // Live Ticker Effect - less frequent updates for performance
   useEffect(() => {
     const ticker = setInterval(() => {
       setCurrentSignup(prev => (prev + 1) % recentSignups.length);
-    }, 4000);
+    }, 8000); // Changed from 4000 to 8000ms
     
     const viewerUpdate = setInterval(() => {
       setViewerCount(prev => {
@@ -72,7 +72,7 @@ const BidBlitzPayInfo = () => {
         if (newCount > 800) return 800 - Math.floor(Math.random() * 50);
         return newCount;
       });
-    }, 5000);
+    }, 10000); // Changed from 5000 to 10000ms
     
     return () => {
       clearInterval(ticker);
