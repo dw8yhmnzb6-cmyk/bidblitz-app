@@ -1267,6 +1267,7 @@ export default function Admin() {
       textColor: 'text-orange-600',
       borderColor: 'border-orange-500/30',
       tabs: [
+        { id: 'flash-sales', label: 'Flash Sales', icon: <Zap className="w-5 h-5" /> },
         { id: 'banners', label: 'Werbebanner', icon: <Eye className="w-5 h-5" /> },
         { id: 'email', label: 'E-Mail Marketing', icon: <Mail className="w-5 h-5" /> },
         { id: 'jackpot', label: 'Jackpot', icon: <Trophy className="w-5 h-5" /> },
