@@ -389,3 +389,291 @@ async def get_all_giftcards(user: dict = Depends(get_current_user)):
             "total_value": total_value
         }
     }
+
+# ==================== QR CODE ====================
+
+@router.get("/qr/{code}")
+async def get_giftcard_qr(code: str):
+    """Generate QR code for gift card"""
+    import qrcode
+    import io
+    import base64
+    
+    code = code.upper().strip()
+    
+    # Verify card exists
+    giftcard = await db.giftcards.find_one({"code": code})
+    if not giftcard:
+        raise HTTPException(status_code=404, detail="Gift Card nicht gefunden")
+    
+    # Generate QR code
+    qr = qrcode.QRCode(version=1, box_size=10, border=4)
+    qr_data = f"{FRONTEND_URL}/giftcards/redeem?code={code}"
+    qr.add_data(qr_data)
+    qr.make(fit=True)
+    
+    img = qr.make_image(fill_color="black", back_color="white")
+    
+    buffer = io.BytesIO()
+    img.save(buffer, format="PNG")
+    buffer.seek(0)
+    
+    qr_base64 = base64.b64encode(buffer.getvalue()).decode()
+    
+    return {
+        "code": code,
+        "qr_code": qr_base64,
+        "qr_url": qr_data,
+        "amount": giftcard["amount"],
+        "status": giftcard["status"]
+    }
+
+# ==================== ADMIN CREATE ====================
+
+@router.post("/admin/create")
+async def admin_create_giftcards(
+    amount: float,
+    quantity: int = 1,
+    expires_days: int = 365,
+    description: str = None,
+    user: dict = Depends(get_current_user)
+):
+    """Admin: Create gift cards directly (no payment)"""
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    
+    if amount < 1 or amount > 10000:
+        raise HTTPException(status_code=400, detail="Betrag: €1 - €10.000")
+    
+    if quantity < 1 or quantity > 100:
+        raise HTTPException(status_code=400, detail="Anzahl: 1 - 100")
+    
+    created_cards = []
+    now = datetime.now(timezone.utc)
+    bids_value = calculate_bids_from_amount(amount)
+    
+    for _ in range(quantity):
+        code = generate_giftcard_code()
+        while await db.giftcards.find_one({"code": code}):
+            code = generate_giftcard_code()
+        
+        giftcard = {
+            "id": str(uuid.uuid4()),
+            "code": code,
+            "amount": amount,
+            "bids_value": bids_value,
+            "status": "active",
+            "type": "admin_created",
+            "created_by_admin": user["id"],
+            "created_by_name": user.get("name", "Admin"),
+            "description": description,
+            "expires_at": (now + timezone.timedelta(days=expires_days)).isoformat() if hasattr(timezone, 'timedelta') else None,
+            "created_at": now.isoformat()
+        }
+        
+        await db.giftcards.insert_one(giftcard)
+        created_cards.append({
+            "code": code,
+            "amount": amount,
+            "bids_value": bids_value
+        })
+    
+    logger.info(f"Admin {user['id']} created {quantity} gift cards x €{amount}")
+    
+    return {
+        "success": True,
+        "message": f"{quantity} Gift Card(s) über €{amount:.2f} erstellt",
+        "cards": created_cards
+    }
+
+# ==================== PARTNER SALES ====================
+
+@router.post("/partner/sell")
+async def partner_sell_giftcard(
+    amount: float,
+    customer_name: str = None,
+    authorization: str = None
+):
+    """Partner: Sell physical gift card at POS"""
+    if not authorization:
+        raise HTTPException(status_code=401, detail="Partner-Login erforderlich")
+    
+    token = authorization.replace("Bearer ", "")
+    
+    # Check partner or staff
+    partner = None
+    staff = await db.staff_accounts.find_one({"token": token}, {"_id": 0})
+    if staff:
+        partner = await db.enterprise_partners.find_one({"id": staff["partner_id"]}, {"_id": 0})
+    
+    if not partner:
+        partner = await db.enterprise_partners.find_one({"api_key": token}, {"_id": 0})
+    
+    if not partner:
+        raise HTTPException(status_code=403, detail="Partner-Berechtigung erforderlich")
+    
+    if amount < 5 or amount > 500:
+        raise HTTPException(status_code=400, detail="Betrag: €5 - €500")
+    
+    code = generate_giftcard_code()
+    while await db.giftcards.find_one({"code": code}):
+        code = generate_giftcard_code()
+    
+    bids_value = calculate_bids_from_amount(amount)
+    now = datetime.now(timezone.utc)
+    
+    giftcard = {
+        "id": str(uuid.uuid4()),
+        "code": code,
+        "amount": amount,
+        "bids_value": bids_value,
+        "status": "active",
+        "type": "partner_sold",
+        "sold_by_partner_id": partner["id"],
+        "sold_by_partner_name": partner.get("name", ""),
+        "sold_by_staff": staff["id"] if staff else None,
+        "customer_name": customer_name,
+        "created_at": now.isoformat()
+    }
+    
+    await db.giftcards.insert_one(giftcard)
+    
+    # Track partner commission (5%)
+    commission = amount * 0.05
+    await db.partner_transactions.insert_one({
+        "id": str(uuid.uuid4()),
+        "partner_id": partner["id"],
+        "type": "giftcard_commission",
+        "amount": commission,
+        "giftcard_code": code,
+        "created_at": now.isoformat()
+    })
+    
+    # Generate QR
+    import qrcode
+    import io
+    import base64
+    
+    qr = qrcode.QRCode(version=1, box_size=10, border=4)
+    qr.add_data(f"{FRONTEND_URL}/giftcards/redeem?code={code}")
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="black", back_color="white")
+    buffer = io.BytesIO()
+    img.save(buffer, format="PNG")
+    qr_base64 = base64.b64encode(buffer.getvalue()).decode()
+    
+    logger.info(f"Partner {partner['id']} sold gift card: {code} (€{amount})")
+    
+    return {
+        "success": True,
+        "message": f"Gift Card €{amount:.2f} verkauft!",
+        "giftcard": {
+            "code": code,
+            "amount": amount,
+            "bids_value": bids_value,
+            "qr_code": qr_base64
+        },
+        "commission": commission
+    }
+
+# ==================== REDEEM AS BIDBLITZ BALANCE ====================
+
+@router.post("/redeem-balance")
+async def redeem_as_bidblitz_balance(data: GiftCardRedeem, user: dict = Depends(get_current_user)):
+    """Redeem gift card directly to BidBlitz Pay balance"""
+    code = data.code.upper().strip()
+    
+    giftcard = await db.giftcards.find_one({"code": code})
+    
+    if not giftcard:
+        raise HTTPException(status_code=404, detail="Ungültiger Code")
+    
+    if giftcard["status"] != "active":
+        if giftcard["status"] == "redeemed":
+            raise HTTPException(status_code=400, detail="Bereits eingelöst")
+        raise HTTPException(status_code=400, detail=f"Status: {giftcard['status']}")
+    
+    # Add to BidBlitz balance
+    await db.users.update_one(
+        {"id": user["id"]},
+        {"$inc": {"bidblitz_balance": giftcard["amount"]}}
+    )
+    
+    # Mark as redeemed
+    await db.giftcards.update_one(
+        {"id": giftcard["id"]},
+        {"$set": {
+            "status": "redeemed",
+            "redeemed_by": user["id"],
+            "redeemed_by_name": user.get("name"),
+            "redeemed_at": datetime.now(timezone.utc).isoformat(),
+            "redeemed_as": "bidblitz_balance"
+        }}
+    )
+    
+    # Get new balance
+    updated_user = await db.users.find_one({"id": user["id"]}, {"_id": 0, "bidblitz_balance": 1})
+    
+    logger.info(f"Gift card {code} redeemed to balance by {user['id']}")
+    
+    return {
+        "success": True,
+        "message": f"€{giftcard['amount']:.2f} wurde Ihrem BidBlitz Guthaben hinzugefügt!",
+        "amount": giftcard["amount"],
+        "new_balance": updated_user.get("bidblitz_balance", 0)
+    }
+
+# ==================== CHECKOUT APPLY ====================
+
+@router.post("/apply-checkout")
+async def apply_to_checkout(code: str, checkout_total: float, user: dict = Depends(get_current_user)):
+    """Apply gift card to checkout (partial or full payment)"""
+    code = code.upper().strip()
+    
+    giftcard = await db.giftcards.find_one({"code": code})
+    
+    if not giftcard:
+        raise HTTPException(status_code=404, detail="Ungültiger Code")
+    
+    if giftcard["status"] != "active":
+        raise HTTPException(status_code=400, detail=f"Gift Card ist {giftcard['status']}")
+    
+    gc_amount = giftcard["amount"]
+    applied = min(gc_amount, checkout_total)
+    remaining = max(0, checkout_total - applied)
+    gc_remaining = max(0, gc_amount - applied)
+    
+    return {
+        "valid": True,
+        "code": code,
+        "gift_card_amount": gc_amount,
+        "applied_amount": applied,
+        "checkout_remaining": remaining,
+        "gift_card_remaining": gc_remaining,
+        "message": f"€{applied:.2f} wird abgezogen" + (f", €{remaining:.2f} verbleibend" if remaining > 0 else "")
+    }
+
+# ==================== STATS ====================
+
+@router.get("/admin/stats")
+async def get_giftcard_stats(user: dict = Depends(get_current_user)):
+    """Get gift card statistics"""
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    
+    stats = {
+        "total": await db.giftcards.count_documents({}),
+        "active": await db.giftcards.count_documents({"status": "active"}),
+        "redeemed": await db.giftcards.count_documents({"status": "redeemed"}),
+        "pending": await db.giftcards.count_documents({"status": "pending"}),
+        "partner_sold": await db.giftcards.count_documents({"type": "partner_sold"}),
+        "admin_created": await db.giftcards.count_documents({"type": "admin_created"})
+    }
+    
+    # Value stats
+    all_cards = await db.giftcards.find({}, {"amount": 1, "status": 1}).to_list(10000)
+    stats["total_value"] = sum(c["amount"] for c in all_cards)
+    stats["active_value"] = sum(c["amount"] for c in all_cards if c["status"] == "active")
+    stats["redeemed_value"] = sum(c["amount"] for c in all_cards if c["status"] == "redeemed")
+    
+    return stats
