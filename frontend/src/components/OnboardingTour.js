@@ -271,6 +271,7 @@ const OnboardingTour = () => {
   const { isAuthenticated, user, token } = useAuth();
   const { language } = useLanguage();
   const navigate = useNavigate();
+  const location = useLocation();
   const langKey = language === 'xk' ? 'sq' : (translations[language] ? language : 'de');
   const t = translations[langKey];
   
@@ -295,8 +296,9 @@ const OnboardingTour = () => {
       if (sessionSkip === 'true') return;
       
       // Check excluded paths - don't show on certain pages
-      const excludedPaths = ['/staff-pos', '/admin', '/enterprise', '/bidblitz-pay', '/bidblitz-pay-info', '/login', '/register'];
-      if (excludedPaths.some(path => window.location.pathname.startsWith(path))) {
+      const excludedPaths = ['/staff-pos', '/admin', '/enterprise', '/bidblitz-pay', '/bidblitz-pay-info', '/login', '/register', '/checkout', '/profile', '/wallet'];
+      const currentPath = location.pathname;
+      if (excludedPaths.some(path => currentPath.startsWith(path))) {
         return;
       }
       
@@ -308,14 +310,14 @@ const OnboardingTour = () => {
       } else {
         // Only show for non-authenticated users on main pages
         const allowedPaths = ['/', '/auctions'];
-        if (allowedPaths.includes(window.location.pathname)) {
+        if (allowedPaths.includes(currentPath)) {
           setTimeout(() => setShowTour(true), 5000);
         }
       }
     };
     
     checkOnboarding();
-  }, [isAuthenticated, user]);
+  }, [isAuthenticated, user, location.pathname]);
 
   const triggerConfetti = useCallback(() => {
     confetti({
