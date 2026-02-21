@@ -1753,6 +1753,16 @@ const BidBlitzPay = () => {
                   </div>
                 ) : (
                   <div className="space-y-4">
+                    {/* Kamera-Status Anzeige */}
+                    {cameraPermissionGranted && (
+                      <div className="bg-green-50 border border-green-200 rounded-xl p-3 flex items-center gap-2">
+                        <CheckCircle className="w-5 h-5 text-green-500" />
+                        <span className="text-sm text-green-700">
+                          {language === 'de' ? 'Kamera-Berechtigung erteilt ✓' : 'Camera permission granted ✓'}
+                        </span>
+                      </div>
+                    )}
+                    
                     {/* Kamera-Hilfe Box - erscheint wenn Kamera nicht funktioniert */}
                     {showCameraHelp && (
                       <div className="bg-red-50 border border-red-200 rounded-xl p-4">
@@ -1777,14 +1787,30 @@ const BidBlitzPay = () => {
                                 <li>Erlauben Sie die <strong>Kamera</strong></li>
                               </ol>
                             </div>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => setShowCameraHelp(false)}
-                              className="mt-3 text-red-600 border-red-300"
-                            >
-                              Verstanden
-                            </Button>
+                            <div className="flex gap-2 mt-3">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setShowCameraHelp(false)}
+                                className="text-red-600 border-red-300"
+                              >
+                                Verstanden
+                              </Button>
+                              <Button
+                                size="sm"
+                                onClick={() => {
+                                  // Berechtigung zurücksetzen und erneut anfordern
+                                  localStorage.removeItem('bidblitz_camera_permission');
+                                  localStorage.removeItem('bidblitz_camera_asked');
+                                  setCameraPermissionGranted(false);
+                                  setCameraPermissionAsked(false);
+                                  window.location.reload();
+                                }}
+                                className="bg-red-500 hover:bg-red-600 text-white"
+                              >
+                                Neu versuchen
+                              </Button>
+                            </div>
                           </div>
                         </div>
                       </div>
