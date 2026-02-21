@@ -767,6 +767,9 @@ const BidBlitzPay = () => {
           () => {}
         );
         
+        // Erfolg - Berechtigung speichern
+        localStorage.setItem('bidblitz_camera_permission', 'granted');
+        setCameraPermissionGranted(true);
         setScannerActive(true);
         setShowCameraHelp(false);
       } catch (startErr) {
