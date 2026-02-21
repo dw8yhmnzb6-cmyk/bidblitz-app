@@ -7,29 +7,31 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 
 ### ✅ Session Update - February 21, 2026 (Session 64) - AUKTIONEN RESET + BOT-LOGIK + PERFORMANCE ✅
 
-#### Alle Auktionen gelöscht und neu erstellt ✅
-- **40 neue Premium-Auktionen** mit:
+#### Automatischer Bot-Bieter implementiert ✅
+- **NEUER Background-Task:** `bot_early_bidder()` in `/app/backend/server.py`
+- **3-Phasen-System:**
+  1. **Phase 1 (Früh):** Bots bieten alle 30-120 Sekunden bis `bot_target_price` (€2-5) erreicht ist
+  2. **Phase 2 (Pause):** Keine Bot-Gebote - echte Kunden können bieten
+  3. **Phase 3 (Endspurt):** `bot_last_second_bidder` bietet in den letzten 10 Minuten
+- **WICHTIG:** Bei Phase-1-Geboten wird die Endzeit NICHT geändert (nur bei Endspurt-Geboten)
+- **268 Bots** mit realistischen deutschen Namen (Thomas B., Arben M., Flora A., etc.)
+
+#### Alle Auktionen komplett neu erstellt ✅
+- **30 Premium-Auktionen** mit:
   - ✅ Startpreis: €0.01
   - ✅ Hochwertige Unsplash-Bilder für alle Kategorien
-  - ✅ Verschiedene Endzeiten (1-7 Tage)
+  - ✅ Endzeiten: 1-7 TAGE in der Zukunft (36-184 Stunden)
   - ✅ Bot-Zielpreis: €2-5 pro Auktion (randomisiert)
-- **Kategorien:** Elektronik, Gaming, Auto, Reisen, Luxus, Uhren, VR, Audio, TV, Kamera, Haushalt, Smartwatch, Wearables
-- **Premium-Produkte:** iPhone, MacBook, PlayStation, BMW, Mercedes, Porsche, Rolex, Apple Vision Pro, etc.
-
-#### Bot-Logik verbessert ✅
-- **Phase 1:** Bots bieten bis zum `bot_target_price` (€2-5)
-- **Phase 2:** Pause - echte Nutzer können bieten
-- **Phase 3:** Letzte 2-3 Minuten - Bots bieten wieder (Endspurt)
-- `bot_target_price` wird jetzt als primäres Phase-1-Ziel respektiert
+- **Kategorien:** Elektronik, Gaming, Auto, Reisen, Luxus, Uhren, VR, Audio, TV, Kamera, Haushalt
 
 #### Ladezeit optimiert ✅
 - API-Aufrufe reduziert: 4 → 3 (Products-Fetch entfernt)
-- Produkte werden aus eingebetteten Auktionsdaten extrahiert
+- Produktdaten aus eingebetteten Auktionsdaten extrahiert
 - Ended auctions auf 20 limitiert
 
 #### Dateien geändert:
-- `/app/backend/server.py` - Bot-Logik: Phase-1-Target verwendet jetzt `bot_target_price`
-- `/app/frontend/src/pages/Auctions.js` - Optimierte API-Aufrufe (keine separate Products-Anfrage)
+- `/app/backend/server.py` - NEUER `bot_early_bidder()` Task + Bot-Logik-Fix
+- `/app/frontend/src/pages/Auctions.js` - Optimierte API-Aufrufe
 
 ---
 
