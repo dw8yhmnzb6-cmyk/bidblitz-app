@@ -1760,7 +1760,7 @@ const BidBlitzPay = () => {
                       <div className="bg-green-50 border border-green-200 rounded-xl p-3 flex items-center gap-2">
                         <CheckCircle className="w-5 h-5 text-green-500" />
                         <span className="text-sm text-green-700">
-                          {language === 'de' ? 'Kamera-Berechtigung erteilt ✓' : 'Camera permission granted ✓'}
+                          {language === 'de' ? 'Kamera bereit ✓' : 'Camera ready ✓'}
                         </span>
                       </div>
                     )}
