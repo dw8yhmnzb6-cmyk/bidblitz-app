@@ -7,7 +7,7 @@ import {
 import { Button } from '../components/ui/button';
 import { useNavigate } from 'react-router-dom';
 
-const HowItWorks = () => {
+const BidBlitzPayInfo = () => {
   const navigate = useNavigate();
   const [language] = useState(() => localStorage.getItem('language') || 'de');
   const [openFaq, setOpenFaq] = useState(null);
@@ -429,4 +429,4 @@ const HowItWorks = () => {
   );
 };
 
-export default HowItWorks;
+export default BidBlitzPayInfo;
