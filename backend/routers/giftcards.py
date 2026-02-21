@@ -236,12 +236,12 @@ async def redeem_giftcard(data: GiftCardRedeem, user: dict = Depends(get_current
         )
         credit_message = f"{giftcard['bids_value']} Gebote"
     else:
-        # Add euro balance (for buying bids later)
+        # Add to BidBlitz Pay balance (main balance)
         await db.users.update_one(
             {"id": user["id"]},
-            {"$inc": {"giftcard_balance": giftcard["amount"]}}
+            {"$inc": {"bidblitz_balance": giftcard["amount"]}}
         )
-        credit_message = f"€{giftcard['amount']:.2f} Guthaben"
+        credit_message = f"€{giftcard['amount']:.2f} BidBlitz Guthaben"
     
     # Mark as redeemed
     await db.giftcards.update_one(
