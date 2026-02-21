@@ -438,9 +438,12 @@ async def create_first_buyer_bonus(
     
     await db.flash_sales.insert_one(sale)
     
+    # Remove _id from sale dict for JSON response
+    sale_response = {k: v for k, v in sale.items() if k != '_id'}
+    
     logger.info(f"First Buyer Bonus created: {bids}+{bonus_bids} bids for €{price}")
     
-    return {"sale": sale, "message": "Erstkäufer-Bonus erstellt!"}
+    return {"sale": sale_response, "message": "Erstkäufer-Bonus erstellt!"}
 
 # ==================== HELPER FUNCTIONS ====================
 
