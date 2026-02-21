@@ -14,7 +14,7 @@ import { useLanguage } from '../context/LanguageContext';
 
 const BidBlitzPayInfo = () => {
   const navigate = useNavigate();
-  const { language } = useLanguage(); // Use global language context
+  const { language, mappedLanguage } = useLanguage(); // Use global language context
   const [openFaq, setOpenFaq] = useState(null);
   
   // Countdown Timer State
