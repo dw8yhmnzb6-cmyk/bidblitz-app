@@ -12,6 +12,17 @@ import { useNavigate } from 'react-router-dom';
 import { getTranslation } from './translations/bidblitzPayInfoTranslations';
 import { useLanguage } from '../context/LanguageContext';
 
+// Static data outside component to prevent re-creation on each render
+const recentSignups = [
+  { name: 'Sarah M.', city: 'München', time: 'vor 2 Min.' },
+  { name: 'Thomas K.', city: 'Berlin', time: 'vor 3 Min.' },
+  { name: 'Lisa B.', city: 'Hamburg', time: 'vor 5 Min.' },
+  { name: 'Max W.', city: 'Frankfurt', time: 'vor 7 Min.' },
+  { name: 'Anna S.', city: 'Köln', time: 'vor 8 Min.' },
+  { name: 'Jan P.', city: 'Wien', time: 'vor 10 Min.' },
+  { name: 'Maria G.', city: 'Zürich', time: 'vor 12 Min.' },
+];
+
 const BidBlitzPayInfo = () => {
   const navigate = useNavigate();
   const { language, mappedLanguage } = useLanguage(); // Use global language context
@@ -28,17 +39,6 @@ const BidBlitzPayInfo = () => {
   const [showWheel, setShowWheel] = useState(false);
   const [isSpinning, setIsSpinning] = useState(false);
   const [wheelResult, setWheelResult] = useState(null);
-  
-  // Fake signups for social proof
-  const recentSignups = [
-    { name: 'Sarah M.', city: 'München', time: 'vor 2 Min.' },
-    { name: 'Thomas K.', city: 'Berlin', time: 'vor 3 Min.' },
-    { name: 'Lisa B.', city: 'Hamburg', time: 'vor 5 Min.' },
-    { name: 'Max W.', city: 'Frankfurt', time: 'vor 7 Min.' },
-    { name: 'Anna S.', city: 'Köln', time: 'vor 8 Min.' },
-    { name: 'Jan P.', city: 'Wien', time: 'vor 10 Min.' },
-    { name: 'Maria G.', city: 'Zürich', time: 'vor 12 Min.' },
-  ];
   
   // Countdown Timer Effect
   useEffect(() => {
