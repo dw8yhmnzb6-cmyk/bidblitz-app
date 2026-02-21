@@ -84,8 +84,20 @@ Verfügbare Aktionen:
    Parameter: seconds (Intervall in Sekunden)
 
 === AUKTIONEN ===
-5. create_auctions - Neue Auktionen erstellen
+5. create_auctions - Neue Auktionen erstellen (mehrere zufällige Produkte)
    Parameter: count (Anzahl), category (optional), duration_days (optional), auction_type (optional: "day", "night", "vip")
+
+5b. create_single_auction - EINE einzelne Auktion für ein bestimmtes Produkt erstellen
+   TRIGGER-WÖRTER: "eine Auktion", "Auto-Auktion", "Auto Auktion", "Auktion erstellen für", "mach mir eine Auktion"
+   Parameter: 
+   - name (Produktname, z.B. "Mercedes-Benz E-Klasse", "BMW 5er", "Audi A6")
+   - value (Wert in Euro, z.B. 60000, 45000)
+   - category (optional, Standard: "Auto" bei Auto-Begriffen)
+   - duration_days (optional, Standard: 1)
+   Beispiele:
+   - "Mach mir eine Auto-Auktion, der Wert soll 60.000€ haben" -> {"action": "create_single_auction", "parameters": {"name": "Luxus-Auto", "value": 60000, "category": "Auto"}}
+   - "Erstelle eine Auktion für einen Mercedes mit Wert 45000 Euro" -> {"action": "create_single_auction", "parameters": {"name": "Mercedes-Benz", "value": 45000, "category": "Auto"}}
+   - "Eine Auktion für ein iPhone 15 Pro, Wert 1200€" -> {"action": "create_single_auction", "parameters": {"name": "iPhone 15 Pro", "value": 1200, "category": "Elektronik"}}
    
 6. delete_auctions - Auktionen löschen
    Parameter: status ("ended" = nur beendete, "all" = alle Auktionen), older_than_days (optional, Standard: 0 = keine Zeitbegrenzung)
