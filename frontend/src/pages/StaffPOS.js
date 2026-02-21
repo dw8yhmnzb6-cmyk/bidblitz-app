@@ -1214,6 +1214,56 @@ export default function StaffPOS() {
       barcodeInputRef.current.focus();
     }
   }, [scanMode]);
+  
+  // Process payment from customer balance
+  const processPayment = async (customerBarcode) => {
+    const paymentNum = parseFloat(paymentAmount);
+    if (!paymentNum || paymentNum <= 0) {
+      playSound('error');
+      toast.error(language === 'de' ? 'Bitte gültigen Betrag eingeben' : 'Please enter valid amount');
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_URL}/api/enterprise/pos/payment`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('staff_pos_token')}`
+        },
+        body: JSON.stringify({
+          customer_barcode: customerBarcode,
+          amount: paymentNum,
+          staff_id: staff?.id,
+          branch_id: staff?.branch_id
+        })
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        playSound('success');
+        toast.success(
+          language === 'de' 
+            ? `✅ Zahlung erfolgreich! €${paymentNum.toFixed(2)} von ${data.customer_name || 'Kunde'} abgebucht.`
+            : `✅ Payment successful! €${paymentNum.toFixed(2)} deducted from ${data.customer_name || 'Customer'}.`
+        );
+        setPaymentAmount('');
+        setPaymentScanMode(false);
+        setPaymentBarcode('');
+        fetchTransactionHistory();
+      } else {
+        const error = await res.json();
+        playSound('error');
+        toast.error(error.detail || (language === 'de' ? 'Zahlung fehlgeschlagen' : 'Payment failed'));
+      }
+    } catch (err) {
+      playSound('error');
+      toast.error(language === 'de' ? 'Verbindungsfehler' : 'Connection error');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Login handler
   const handleLogin = async (e) => {
