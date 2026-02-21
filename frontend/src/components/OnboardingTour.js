@@ -290,13 +290,27 @@ const OnboardingTour = () => {
       const hasSeenTour = localStorage.getItem('bidblitz_onboarding_completed');
       if (hasSeenTour) return;
       
+      // Also check for session skip (prevents repeated popups in same session)
+      const sessionSkip = sessionStorage.getItem('bidblitz_onboarding_session_skip');
+      if (sessionSkip === 'true') return;
+      
+      // Check excluded paths - don't show on certain pages
+      const excludedPaths = ['/staff-pos', '/admin', '/enterprise', '/bidblitz-pay', '/bidblitz-pay-info', '/login', '/register'];
+      if (excludedPaths.some(path => window.location.pathname.startsWith(path))) {
+        return;
+      }
+      
       if (isAuthenticated && user) {
         const totalBids = user.total_bids_placed || 0;
         if (totalBids < 5) {
           setTimeout(() => setShowTour(true), 2000);
         }
       } else {
-        setTimeout(() => setShowTour(true), 5000);
+        // Only show for non-authenticated users on main pages
+        const allowedPaths = ['/', '/auctions'];
+        if (allowedPaths.includes(window.location.pathname)) {
+          setTimeout(() => setShowTour(true), 5000);
+        }
       }
     };
     
