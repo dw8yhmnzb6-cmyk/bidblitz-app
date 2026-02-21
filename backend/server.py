@@ -812,12 +812,12 @@ async def bot_early_bidder():
                 # Update tracking
                 last_bid_time[auction_id] = now.timestamp()
                 
-                # Broadcast update via WebSocket
+                # Broadcast update via WebSocket (mit Original-Endzeit!)
                 await broadcast_bid_update(auction_id, {
                     "current_price": new_price,
                     "last_bidder": bot["name"],
                     "last_bidder_name": bot["name"],
-                    "end_time": new_end_time.isoformat(),
+                    "end_time": original_end_time.isoformat(),
                     "bidder_message": f"🤖 {bot['name']} hat geboten!"
                 })
                 
