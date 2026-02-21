@@ -124,28 +124,22 @@ const BidBlitzPayInfo = () => {
   const testimonials = [
     {
       name: 'Sarah M.',
-      role: language === 'de' ? 'Verifizierter Nutzer' : 'Verified User',
-      text: language === 'de' 
-        ? 'Super einfach zu benutzen! Ich überweise jetzt immer mit BidBlitz Pay an meine Familie.' 
-        : 'Super easy to use! I now always transfer to my family with BidBlitz Pay.',
+      role: t.verifiedUser,
+      text: t.testimonial1,
       rating: 5,
       avatar: 'S'
     },
     {
       name: 'Thomas K.',
-      role: language === 'de' ? 'Seit 2 Jahren dabei' : 'Member for 2 years',
-      text: language === 'de'
-        ? 'Die Bonus-Gebote bei Aufladungen sind genial! Habe schon viele Auktionen gewonnen.'
-        : 'The bonus bids on top-ups are brilliant! I have already won many auctions.',
+      role: t.memberFor,
+      text: t.testimonial2,
       rating: 5,
       avatar: 'T'
     },
     {
       name: 'Lisa B.',
-      role: language === 'de' ? 'Premium Nutzerin' : 'Premium User',
-      text: language === 'de'
-        ? 'Schnell, sicher und der Support ist wirklich hilfsbereit. Kann ich nur empfehlen!'
-        : 'Fast, secure and the support is really helpful. I can only recommend it!',
+      role: t.premiumUser,
+      text: t.testimonial3,
       rating: 5,
       avatar: 'L'
     }
