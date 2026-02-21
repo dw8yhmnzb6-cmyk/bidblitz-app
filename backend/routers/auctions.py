@@ -19,6 +19,12 @@ router = APIRouter(tags=["Auctions"])
 
 _auctions_cache = {"data": None, "timestamp": 0, "ttl": 3}  # 3 second TTL
 
+def invalidate_auctions_cache():
+    """Invalidate the auctions cache to force a refresh"""
+    global _auctions_cache
+    _auctions_cache["data"] = None
+    _auctions_cache["timestamp"] = 0
+
 async def get_cached_auctions():
     """Get auctions with simple caching"""
     now = time.time()
