@@ -467,7 +467,7 @@ async def admin_create_giftcards(
             "created_by_admin": user["id"],
             "created_by_name": user.get("name", "Admin"),
             "description": description,
-            "expires_at": (now + timezone.timedelta(days=expires_days)).isoformat() if hasattr(timezone, 'timedelta') else None,
+            "expires_at": (now + timedelta(days=expires_days)).isoformat() if expires_days else None,
             "created_at": now.isoformat()
         }
         
