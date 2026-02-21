@@ -3671,7 +3671,7 @@ Die Auktionen-Seite wurde in zwei separate Seiten aufgeteilt:
 
 #### 7. MOBILE APP - BEREIT ZUM TESTEN
 - **Verzeichnis:** `/app/mobile-app/BidBlitz`
-- **API:** Korrekt konfiguriert auf `https://blitz-commerce.preview.emergentagent.com/api`
+- **API:** Korrekt konfiguriert auf `https://qr-scanner-fix-3.preview.emergentagent.com/api`
 - **Anleitung:** README.md mit Expo Go Instruktionen
 
 #### 4. Admin Mobile Responsiveness - Verifiziert
