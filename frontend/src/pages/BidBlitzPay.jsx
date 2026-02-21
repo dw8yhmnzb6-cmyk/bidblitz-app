@@ -643,35 +643,89 @@ const BidBlitzPay = () => {
   // QR Scanner functions
   const startScanner = async () => {
     try {
+      // Erst prüfen ob Kamera verfügbar ist
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        toast.error(t('cameraNotSupported') || 'Kamera wird von diesem Browser nicht unterstützt');
+        return;
+      }
+      
+      // Kamera-Berechtigung anfordern
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+        // Stream sofort wieder stoppen (war nur für Berechtigung)
+        stream.getTracks().forEach(track => track.stop());
+      } catch (permErr) {
+        console.error('Camera permission error:', permErr);
+        if (permErr.name === 'NotAllowedError' || permErr.name === 'PermissionDeniedError') {
+          toast.error(t('cameraAccessDenied') || 'Kamerazugriff verweigert. Bitte erlauben Sie den Kamerazugriff in Ihren Browsereinstellungen.');
+        } else if (permErr.name === 'NotFoundError') {
+          toast.error('Keine Kamera gefunden');
+        } else {
+          toast.error(t('cameraStartError') || 'Kamera konnte nicht gestartet werden');
+        }
+        return;
+      }
+      
       const html5QrCode = new Html5Qrcode("qr-reader");
       html5QrCodeRef.current = html5QrCode;
       
-      await html5QrCode.start(
-        { facingMode: "environment" },
-        {
-          fps: 10,
-          qrbox: { width: 250, height: 250 }
-        },
-        async (decodedText) => {
-          // Check if it's a payment request QR
-          if (decodedText.startsWith("BIDBLITZ-REQ:")) {
-            const requestId = decodedText.replace("BIDBLITZ-REQ:", "");
-            await stopScanner();
-            await fetchRequestDetails(requestId);
-          } else {
-            toast.error(t('invalidQRCode'));
-          }
-        },
-        () => {}
-      );
-      
-      setScannerActive(true);
+      // Versuche zuerst die Rückkamera
+      try {
+        await html5QrCode.start(
+          { facingMode: "environment" },
+          {
+            fps: 10,
+            qrbox: { width: 250, height: 250 },
+            aspectRatio: 1.0
+          },
+          async (decodedText) => {
+            // Check if it's a payment request QR
+            if (decodedText.startsWith("BIDBLITZ-REQ:")) {
+              const requestId = decodedText.replace("BIDBLITZ-REQ:", "");
+              await stopScanner();
+              await fetchRequestDetails(requestId);
+            } else {
+              toast.error(t('invalidQRCode'));
+            }
+          },
+          () => {}
+        );
+        
+        setScannerActive(true);
+      } catch (startErr) {
+        console.error('Start scanner error, trying alternative camera:', startErr);
+        
+        // Fallback: Versuche Frontkamera
+        try {
+          await html5QrCode.start(
+            { facingMode: "user" },
+            {
+              fps: 10,
+              qrbox: { width: 250, height: 250 }
+            },
+            async (decodedText) => {
+              if (decodedText.startsWith("BIDBLITZ-REQ:")) {
+                const requestId = decodedText.replace("BIDBLITZ-REQ:", "");
+                await stopScanner();
+                await fetchRequestDetails(requestId);
+              } else {
+                toast.error(t('invalidQRCode'));
+              }
+            },
+            () => {}
+          );
+          setScannerActive(true);
+        } catch (fallbackErr) {
+          console.error('Fallback camera also failed:', fallbackErr);
+          throw fallbackErr;
+        }
+      }
     } catch (err) {
       console.error('Scanner error:', err);
       if (err.name === 'NotAllowedError') {
-        toast.error(t('cameraAccessDenied'));
+        toast.error(t('cameraAccessDenied') || 'Kamerazugriff verweigert');
       } else {
-        toast.error(t('cameraStartError'));
+        toast.error(t('cameraStartError') || 'Kamera konnte nicht gestartet werden. Bitte nutzen Sie die manuelle Eingabe.');
       }
     }
   };
