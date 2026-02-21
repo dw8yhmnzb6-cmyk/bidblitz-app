@@ -171,8 +171,8 @@ const BidBlitzPayInfo = () => {
         </div>
       </div>
       
-      {/* Live Ticker - Floating */}
-      <div className="fixed bottom-20 left-4 z-40 bg-white rounded-xl shadow-2xl p-3 max-w-[200px] animate-pulse">
+      {/* Live Ticker - Floating - Hidden on mobile to prevent overlap */}
+      <div className="hidden md:fixed md:bottom-20 md:left-4 z-40 bg-white rounded-xl shadow-2xl p-3 max-w-[200px] animate-pulse">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
             {recentSignups[currentSignup].name.charAt(0)}
@@ -187,10 +187,11 @@ const BidBlitzPayInfo = () => {
         </div>
       </div>
       
-      {/* Viewer Count - Floating */}
-      <div className="fixed bottom-20 right-4 z-40 bg-red-500 text-white rounded-full px-3 py-1.5 text-xs font-bold flex items-center gap-1 shadow-lg">
+      {/* Viewer Count - Floating - Smaller on mobile, repositioned */}
+      <div className="fixed bottom-4 right-4 md:bottom-20 md:right-4 z-40 bg-red-500 text-white rounded-full px-2 py-1 md:px-3 md:py-1.5 text-[10px] md:text-xs font-bold flex items-center gap-1 shadow-lg">
         <Eye className="w-3 h-3" />
-        <span>{viewerCount} {t.viewingNow}</span>
+        <span className="hidden sm:inline">{viewerCount} {t.viewingNow}</span>
+        <span className="sm:hidden">{viewerCount}</span>
       </div>
 
       {/* Hero Section */}
