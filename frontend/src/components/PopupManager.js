@@ -10,11 +10,26 @@ import OnboardingTour from './OnboardingTour';
 import DailyLoginPopup from './DailyLoginPopup';
 import { useAuth } from '../context/AuthContext';
 
-// Wrapper for DailyLoginPopup
+// Wrapper for DailyLoginPopup with full functionality
 const DailyLoginPopupWrapper = ({ language }) => {
-  const { isAuthenticated, user } = useAuth();
-  if (!isAuthenticated || !user) return null;
-  return <DailyLoginPopup language={language} />;
+  const { isAuthenticated, token, refreshUser } = useAuth();
+  
+  const handleRewardClaimed = async (data) => {
+    // Refresh user data to update bids_balance in navbar
+    console.log('Daily reward claimed:', data);
+    if (refreshUser) {
+      await refreshUser();
+    }
+  };
+  
+  return (
+    <DailyLoginPopup 
+      language={language}
+      token={token}
+      isAuthenticated={isAuthenticated}
+      onRewardClaimed={handleRewardClaimed}
+    />
+  );
 };
 
 const PopupManager = ({ language }) => {
