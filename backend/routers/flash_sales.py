@@ -255,6 +255,190 @@ async def delete_flash_sale(sale_id: str, admin: dict = Depends(get_current_admi
     )
     return {"message": "Flash Sale deaktiviert"}
 
+@router.put("/admin/{sale_id}")
+async def update_flash_sale(
+    sale_id: str,
+    title: Optional[str] = None,
+    is_active: Optional[bool] = None,
+    start_time: Optional[str] = None,
+    end_time: Optional[str] = None,
+    max_per_user: Optional[int] = None,
+    packages: Optional[list] = None,
+    sale_type: Optional[str] = None,  # weekend_special, first_buyer_bonus, etc.
+    bonus_bids: Optional[int] = None,
+    bonus_percent: Optional[int] = None,
+    admin: dict = Depends(get_current_admin)
+):
+    """Update an existing flash sale"""
+    sale = await db.flash_sales.find_one({"id": sale_id})
+    if not sale:
+        raise HTTPException(status_code=404, detail="Flash Sale nicht gefunden")
+    
+    update_data = {"updated_at": datetime.now(timezone.utc).isoformat(), "updated_by": admin["id"]}
+    
+    if title is not None:
+        update_data["title"] = title
+    if is_active is not None:
+        update_data["is_active"] = is_active
+    if start_time is not None:
+        update_data["start_time"] = start_time
+    if end_time is not None:
+        update_data["end_time"] = end_time
+    if max_per_user is not None:
+        update_data["max_per_user"] = max_per_user
+    if packages is not None:
+        update_data["packages"] = packages
+    if sale_type is not None:
+        update_data["sale_type"] = sale_type
+    if bonus_bids is not None:
+        update_data["bonus_bids"] = bonus_bids
+    if bonus_percent is not None:
+        update_data["bonus_percent"] = bonus_percent
+    
+    await db.flash_sales.update_one({"id": sale_id}, {"$set": update_data})
+    
+    logger.info(f"Flash sale {sale_id} updated by {admin.get('name')}")
+    
+    return {"message": "Flash Sale aktualisiert!", "updated": update_data}
+
+@router.get("/admin/stats")
+async def get_flash_sale_stats(admin: dict = Depends(get_current_admin)):
+    """Get flash sale statistics"""
+    now = datetime.now(timezone.utc)
+    
+    total = await db.flash_sales.count_documents({})
+    active = await db.flash_sales.count_documents({
+        "is_active": True,
+        "start_time": {"$lte": now.isoformat()},
+        "end_time": {"$gte": now.isoformat()}
+    })
+    upcoming = await db.flash_sales.count_documents({
+        "is_active": True,
+        "start_time": {"$gt": now.isoformat()}
+    })
+    
+    # Total purchases and revenue
+    purchases = await db.flash_purchases.find({"status": "completed"}).to_list(10000)
+    total_revenue = sum(p.get("amount", 0) for p in purchases)
+    total_bids_sold = sum(p.get("bids", 0) for p in purchases)
+    
+    return {
+        "total_sales": total,
+        "active_sales": active,
+        "upcoming_sales": upcoming,
+        "total_purchases": len(purchases),
+        "total_revenue": total_revenue,
+        "total_bids_sold": total_bids_sold
+    }
+
+# ==================== SPECIAL SALE TYPES ====================
+
+@router.post("/admin/create-weekend-special")
+async def create_weekend_special(
+    bids: int = 300,
+    bonus_bids: int = 150,
+    price: float = 79.0,
+    original_price: float = 119.0,
+    duration_hours: int = 48,
+    start_time: Optional[str] = None,
+    admin: dict = Depends(get_current_admin)
+):
+    """Create a Weekend Special flash sale"""
+    now = datetime.now(timezone.utc)
+    
+    if start_time:
+        start = datetime.fromisoformat(start_time.replace('Z', '+00:00'))
+    else:
+        # Start next Saturday at 00:00
+        days_until_saturday = (5 - now.weekday()) % 7
+        if days_until_saturday == 0 and now.hour >= 12:
+            days_until_saturday = 7
+        start = (now + timedelta(days=days_until_saturday)).replace(hour=0, minute=0, second=0, microsecond=0)
+    
+    end = start + timedelta(hours=duration_hours)
+    discount = int((1 - price/original_price) * 100)
+    
+    sale = {
+        "id": str(uuid.uuid4()),
+        "title": "Wochenend-Special",
+        "sale_type": "weekend_special",
+        "packages": [{
+            "id": "weekend_special",
+            "name": "Wochenend-Special",
+            "bids": bids,
+            "bonus_bids": bonus_bids,
+            "total_bids": bids + bonus_bids,
+            "original_price": original_price,
+            "flash_price": price,
+            "discount_percent": discount,
+            "popular": True
+        }],
+        "start_time": start.isoformat(),
+        "end_time": end.isoformat(),
+        "max_per_user": 3,
+        "is_active": True,
+        "created_by": admin["id"],
+        "created_at": now.isoformat()
+    }
+    
+    await db.flash_sales.insert_one(sale)
+    
+    logger.info(f"Weekend Special created: {bids}+{bonus_bids} bids for €{price}")
+    
+    return {"sale": sale, "message": "Wochenend-Special erstellt!"}
+
+@router.post("/admin/create-first-buyer-bonus")
+async def create_first_buyer_bonus(
+    bids: int = 150,
+    bonus_bids: int = 100,
+    price: float = 49.0,
+    original_price: float = 89.0,
+    duration_hours: int = 24,
+    start_time: Optional[str] = None,
+    admin: dict = Depends(get_current_admin)
+):
+    """Create an Erstkäufer-Bonus (First-time buyer bonus)"""
+    now = datetime.now(timezone.utc)
+    
+    if start_time:
+        start = datetime.fromisoformat(start_time.replace('Z', '+00:00'))
+    else:
+        start = now
+    
+    end = start + timedelta(hours=duration_hours)
+    discount = int((1 - price/original_price) * 100)
+    
+    sale = {
+        "id": str(uuid.uuid4()),
+        "title": "Erstkäufer-Bonus",
+        "sale_type": "first_buyer_bonus",
+        "packages": [{
+            "id": "first_buyer_bonus",
+            "name": "Erstkäufer-Bonus",
+            "bids": bids,
+            "bonus_bids": bonus_bids,
+            "total_bids": bids + bonus_bids,
+            "original_price": original_price,
+            "flash_price": price,
+            "discount_percent": discount,
+            "popular": True,
+            "first_purchase_only": True
+        }],
+        "start_time": start.isoformat(),
+        "end_time": end.isoformat(),
+        "max_per_user": 1,  # Only once per user
+        "first_purchase_only": True,
+        "is_active": True,
+        "created_by": admin["id"],
+        "created_at": now.isoformat()
+    }
+    
+    await db.flash_sales.insert_one(sale)
+    
+    logger.info(f"First Buyer Bonus created: {bids}+{bonus_bids} bids for €{price}")
+    
+    return {"sale": sale, "message": "Erstkäufer-Bonus erstellt!"}
+
 # ==================== HELPER FUNCTIONS ====================
 
 async def notify_flash_sale_start(sale_id: str, title: str):
