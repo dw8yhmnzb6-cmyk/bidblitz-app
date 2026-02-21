@@ -1232,6 +1232,110 @@ export default function StaffPOS() {
     }
   }, [scanMode]);
   
+  // ==================== HARDWARE SCANNER SUPPORT (USB/Bluetooth) ====================
+  // Hardware-Scanner senden Barcodes als schnelle Tastatureingaben + Enter
+  
+  useEffect(() => {
+    if (!hardwareScannerMode || !isLoggedIn) return;
+    
+    const handleGlobalKeyDown = (e) => {
+      // Ignorieren wenn ein Input-Feld fokussiert ist (außer unser Scanner-Input)
+      const activeElement = document.activeElement;
+      const isInputFocused = activeElement?.tagName === 'INPUT' || 
+                              activeElement?.tagName === 'TEXTAREA' ||
+                              activeElement?.isContentEditable;
+      
+      // Wenn normales Input fokussiert ist, lassen wir die normale Verarbeitung zu
+      if (isInputFocused && !activeElement?.dataset?.hardwareScanner) {
+        return;
+      }
+      
+      const now = Date.now();
+      const timeDiff = now - lastKeyTimeRef.current;
+      lastKeyTimeRef.current = now;
+      
+      // Enter-Taste verarbeitet den Buffer
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if (hardwareScanBuffer.trim().length >= 3) {
+          processHardwareScan(hardwareScanBuffer.trim());
+        }
+        setHardwareScanBuffer('');
+        return;
+      }
+      
+      // Escape beendet den Scanner-Modus
+      if (e.key === 'Escape') {
+        setHardwareScannerMode(false);
+        setHardwareScanBuffer('');
+        return;
+      }
+      
+      // Nur alphanumerische Zeichen akzeptieren
+      if (e.key.length === 1 && /[a-zA-Z0-9]/.test(e.key)) {
+        e.preventDefault();
+        
+        // Wenn mehr als 100ms zwischen Tasten, neuer Scan-Vorgang
+        if (timeDiff > 100) {
+          setHardwareScanBuffer(e.key);
+        } else {
+          setHardwareScanBuffer(prev => prev + e.key);
+        }
+        
+        // Auto-Submit nach kurzer Pause (falls Enter nicht kommt)
+        if (hardwareScanTimeoutRef.current) {
+          clearTimeout(hardwareScanTimeoutRef.current);
+        }
+        hardwareScanTimeoutRef.current = setTimeout(() => {
+          setHardwareScanBuffer(current => {
+            if (current.trim().length >= 3) {
+              processHardwareScan(current.trim());
+            }
+            return '';
+          });
+        }, 150);
+      }
+    };
+    
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    
+    return () => {
+      window.removeEventListener('keydown', handleGlobalKeyDown);
+      if (hardwareScanTimeoutRef.current) {
+        clearTimeout(hardwareScanTimeoutRef.current);
+      }
+    };
+  }, [hardwareScannerMode, isLoggedIn, hardwareScanBuffer, mode, amount, paymentAmount]);
+  
+  // Process hardware scanner input based on current mode
+  const processHardwareScan = (barcode) => {
+    console.log('🔊 Hardware-Scanner Barcode:', barcode);
+    playSound('scan');
+    
+    if (mode === 'topup') {
+      const amountNum = parseFloat(amount);
+      if (!amountNum || amountNum < 5) {
+        toast.error(language === 'de' ? 'Bitte zuerst Betrag eingeben (min. €5)' : 'Please enter amount first (min. €5)');
+        return;
+      }
+      toast.success(language === 'de' ? `📟 Barcode erkannt: ${barcode}` : `📟 Barcode detected: ${barcode}`);
+      processTopupWithBarcode(barcode);
+    } else if (mode === 'giftcard-redeem') {
+      toast.success(language === 'de' ? `📟 Gutschein-Code erkannt: ${barcode}` : `📟 Gift card code detected: ${barcode}`);
+      redeemGiftCard(barcode);
+    } else if (mode === 'payment') {
+      const paymentNum = parseFloat(paymentAmount);
+      if (!paymentNum || paymentNum <= 0) {
+        toast.error(language === 'de' ? 'Bitte zuerst Betrag eingeben' : 'Please enter amount first');
+        return;
+      }
+      toast.success(language === 'de' ? `📟 Kunden-Barcode erkannt: ${barcode}` : `📟 Customer barcode detected: ${barcode}`);
+      processPayment(barcode);
+    } else {
+      toast.info(language === 'de' ? `📟 Barcode gescannt: ${barcode}` : `📟 Barcode scanned: ${barcode}`);
+    }
+  };
+  
   // Process payment from customer balance
   const processPayment = async (customerBarcode) => {
     const paymentNum = parseFloat(paymentAmount);
