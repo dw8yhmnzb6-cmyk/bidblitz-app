@@ -290,7 +290,9 @@ function AppContent() {
        !window.location.pathname.includes('/admin') &&
        !window.location.pathname.includes('/developers') &&
        !window.location.pathname.includes('/enterprise') &&
-       !window.location.pathname.includes('/grosshaendler') && (
+       !window.location.pathname.includes('/grosshaendler') &&
+       !window.location.pathname.includes('/bidblitz-pay') &&
+       !window.location.pathname.includes('/staff-pos') && (
         <>
           <AbandonedCartReminder language={mappedLanguage || language} />
           <OutbidNotification />
