@@ -2234,6 +2234,23 @@ export default function StaffPOS() {
         </div>
       </header>
 
+      {/* Hardware Scanner Status Bar */}
+      {hardwareScannerMode && (
+        <div className="bg-green-500 text-white px-4 py-2 text-center text-sm font-medium flex items-center justify-center gap-2 animate-pulse">
+          <Scan className="w-4 h-4" />
+          <span>📟 {t.hardwareScannerInfo || 'USB/Bluetooth Scanner bereit'}</span>
+          {hardwareScanBuffer && (
+            <span className="ml-2 font-mono bg-green-600 px-2 py-0.5 rounded">{hardwareScanBuffer}</span>
+          )}
+          <button 
+            onClick={() => setHardwareScannerMode(false)}
+            className="ml-4 px-2 py-0.5 bg-green-600 hover:bg-green-700 rounded text-xs"
+          >
+            ESC = Aus
+          </button>
+        </div>
+      )}
+
       {/* Main Content */}
       <main className="max-w-2xl mx-auto p-4">
         {/* Mode Tabs */}
