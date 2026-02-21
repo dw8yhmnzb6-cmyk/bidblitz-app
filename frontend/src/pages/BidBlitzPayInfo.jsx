@@ -106,9 +106,9 @@ const BidBlitzPayInfo = () => {
     { icon: CreditCard, title: t.feature4Title, desc: t.feature4Desc, color: 'bg-gradient-to-br from-purple-400 to-violet-500' },
     { icon: Gift, title: t.feature5Title, desc: t.feature5Desc, color: 'bg-gradient-to-br from-pink-400 to-rose-500' },
     { icon: Shield, title: t.feature6Title, desc: t.feature6Desc, color: 'bg-gradient-to-br from-teal-400 to-cyan-500' },
-  ];
+  ], [t]);
 
-  const testimonials = [
+  const testimonials = useMemo(() => [
     {
       name: 'Sarah M.',
       role: t.verifiedUser,
@@ -130,22 +130,22 @@ const BidBlitzPayInfo = () => {
       rating: 5,
       avatar: 'L'
     }
-  ];
+  ], [t]);
 
-  const guarantees = [
+  const guarantees = useMemo(() => [
     { icon: RefreshCw, title: t.guarantee1Title, desc: t.guarantee1Desc, color: 'text-green-500' },
     { icon: ShieldCheck, title: t.guarantee2Title, desc: t.guarantee2Desc, color: 'text-blue-500' },
     { icon: Lock, title: t.guarantee3Title, desc: t.guarantee3Desc, color: 'text-purple-500' },
     { icon: BadgeCheck, title: t.guarantee4Title, desc: t.guarantee4Desc, color: 'text-amber-500' },
-  ];
+  ], [t]);
 
-  const faqs = [
+  const faqs = useMemo(() => [
     { q: t.faq1Q, a: t.faq1A },
     { q: t.faq2Q, a: t.faq2A },
     { q: t.faq3Q, a: t.faq3A },
     { q: t.faq4Q, a: t.faq4A },
     { q: t.faq5Q, a: t.faq5A },
-  ];
+  ], [t]);
 
   return (
     <div className="min-h-screen bg-gray-900">
