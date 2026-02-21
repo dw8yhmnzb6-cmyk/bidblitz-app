@@ -794,6 +794,9 @@ const BidBlitzPay = () => {
             },
             () => {}
           );
+          // Erfolg - Berechtigung speichern
+          localStorage.setItem('bidblitz_camera_permission', 'granted');
+          setCameraPermissionGranted(true);
           setScannerActive(true);
           setShowCameraHelp(false);
         } catch (fallbackErr) {
@@ -804,8 +807,10 @@ const BidBlitzPay = () => {
       }
     } catch (err) {
       console.error('Scanner error:', err);
+      setShowCameraHelp(true);
       if (err.name === 'NotAllowedError') {
         toast.error(t('cameraAccessDenied') || 'Kamerazugriff verweigert');
+        localStorage.setItem('bidblitz_camera_permission', 'denied');
       } else {
         toast.error(t('cameraStartError') || 'Kamera konnte nicht gestartet werden. Bitte nutzen Sie die manuelle Eingabe.');
       }
