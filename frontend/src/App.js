@@ -523,6 +523,10 @@ function AppContent() {
           <Route path="/subscriptions" element={<Subscriptions />} />
           <Route path="/abos" element={<Subscriptions />} />
           <Route path="/abo" element={<Subscriptions />} />
+          {/* BidBlitz Pay - How it Works */}
+          <Route path="/so-funktionierts" element={<HowItWorks />} />
+          <Route path="/how-it-works" element={<HowItWorks />} />
+          <Route path="/bidblitz-pay-info" element={<HowItWorks />} />
           {/* BidBlitz Pay - Digital Wallet Payment */}
           <Route path="/pay" element={
             <ProtectedRoute>
