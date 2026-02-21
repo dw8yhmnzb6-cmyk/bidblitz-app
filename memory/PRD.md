@@ -5,6 +5,24 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 
 ## Current Status (February 21, 2026)
 
+### ✅ Session Update - February 21, 2026 (Session 66) - KAMERA-SCANNER FÜR AUFLADUNG ✅
+
+#### StaffPOS.js - Kamera-Barcode-Scanner für Aufladung implementiert ✅
+**Neue Features:**
+- **Kamera-basierter Scanner** im Auflade-Bereich (Terminal 1) für Kunden-Barcodes
+- **"Kunden-Barcode scannen"** Button mit automatischem Kamera-Start
+- **iOS-Kompatibilität** mit Foto-Upload Fallback
+- **Manuelle Eingabe** als Alternative
+- Identische Funktionalität wie der Zahlungs-Scanner
+
+**Technische Details:**
+- Neue States: `topupCameraActive`, `topupCameraError`, `topupScannerRef`, `topupFileInputRef`
+- Neue Funktionen: `startTopupCamera()`, `stopTopupCamera()`, `handleTopupPhotoUpload()`
+- Scanner-Element: `#topup-scanner`, Photo-Scanner: `#topup-photo-scanner`
+- Unterstützt alle gängigen Barcode-Formate (QR, CODE_128, EAN_13, etc.)
+
+---
+
 ### ✅ Session Update - February 21, 2026 (Session 65c) - POPUPS & CACHE FIX ✅
 
 #### OnboardingTour & Popup-System komplett überarbeitet ✅
