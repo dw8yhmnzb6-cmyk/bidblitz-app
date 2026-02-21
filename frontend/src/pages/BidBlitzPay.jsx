@@ -1790,18 +1790,11 @@ const BidBlitzPay = () => {
                               </ol>
                             </div>
                             <div className="flex flex-col gap-2 mt-3">
-                              {/* Button für iOS Einstellungen */}
+                              {/* Info-Text für iOS Einstellungen */}
                               {/iPad|iPhone|iPod/.test(navigator.userAgent) && (
-                                <Button
-                                  size="sm"
-                                  onClick={() => {
-                                    // iOS Settings URL - öffnet die Einstellungen
-                                    window.location.href = 'app-settings:';
-                                  }}
-                                  className="w-full bg-blue-500 hover:bg-blue-600 text-white"
-                                >
-                                  📱 Zu den Einstellungen
-                                </Button>
+                                <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 text-xs text-blue-700">
+                                  <strong>Tipp:</strong> Einstellungen → Apps → Safari → Kamera → Erlauben
+                                </div>
                               )}
                               <div className="flex gap-2">
                                 <Button
