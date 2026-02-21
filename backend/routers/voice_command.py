@@ -223,6 +223,13 @@ ANDERE BEISPIELE:
 - "Übersetzung überprüfen" -> {"action": "check_translations", "parameters": {}, "confirmation_message": "Ich überprüfe die Übersetzungen...", "needs_confirmation": false}
 - "Du musst die Übersetzung überprüfen" -> {"action": "check_translations", "parameters": {}, "confirmation_message": "Ich überprüfe die Übersetzungen...", "needs_confirmation": false}
 - "Die Übersetzung funktioniert nicht so richtig" -> {"action": "check_translations", "parameters": {}, "confirmation_message": "Ich überprüfe die Übersetzungen und zeige den Status...", "needs_confirmation": false}
+
+KRITISCH - AUTO-AKTION ERKENNUNG:
+Wenn der Benutzer "Auto-Aktion", "auto aktion", "Autoauktion", "Auto Auktion" oder ähnliche Varianten sagt:
+- IMMER als create_single_auction interpretieren
+- Standardwert für value: 50000
+- Standardkategorie: "Auto"
+- Beispiel: "Auto-Aktion" -> {"action": "create_single_auction", "parameters": {"name": "Premium Auto", "value": 50000, "category": "Auto"}, "confirmation_message": "Soll ich eine Auto-Auktion im Wert von 50.000€ erstellen?", "needs_confirmation": true}
 """
     
     chat = LlmChat(
