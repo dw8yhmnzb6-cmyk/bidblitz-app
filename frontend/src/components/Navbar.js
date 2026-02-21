@@ -62,6 +62,14 @@ export const Navbar = () => {
               {t('nav.buyBids')}
             </Link>
             <Link 
+              to="/bidblitz-pay-info" 
+              className="text-green-600 hover:text-green-700 transition-colors font-medium flex items-center gap-1 text-sm xl:text-base"
+              data-testid="nav-pay-info"
+            >
+              <span className="hidden xl:inline">💳</span>
+              <span>BidBlitz Pay</span>
+            </Link>
+            <Link 
               to="/leaderboard" 
               className={`${isDarkMode ? 'text-gray-300 hover:text-white' : 'text-gray-600 hover:text-gray-900'} transition-colors font-medium flex items-center gap-1 text-sm xl:text-base`}
               data-testid="nav-leaderboard"
