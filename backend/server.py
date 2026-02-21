@@ -706,6 +706,129 @@ async def abandoned_cart_reminder_task():
 
 # ==================== BOT BIDDING ====================
 
+async def bot_early_bidder():
+    """Background task - Bots bieten früh bis zum bot_target_price (€2-5).
+    
+    NEUE LOGIK (3-Phasen-System):
+    1. PHASE 1 (Früh): Bots bieten bis bot_target_price (€2-5) erreicht ist
+    2. PHASE 2 (Pause): Keine Bot-Gebote - echte Kunden können bieten
+    3. PHASE 3 (Endspurt): bot_last_second_bidder übernimmt (letzte 10 Min)
+    
+    VERHALTEN:
+    - Bietet alle 30-120 Sekunden (realistisch)
+    - Verschiedene Bots pro Auktion
+    - Stoppt wenn bot_target_price erreicht ist
+    """
+    global bot_task_running
+    
+    logger.info("🤖 Bot Early Bidder gestartet - Bietet bis bot_target_price (€2-5)")
+    
+    # Track which auctions have reached their target
+    auctions_at_target = set()
+    last_bid_time = {}  # auction_id -> timestamp
+    
+    while bot_task_running:
+        try:
+            now = datetime.now(timezone.utc)
+            
+            # Get all active auctions with bot_target_price set
+            active_auctions = await db.auctions.find({
+                "status": "active",
+                "bot_target_price": {"$gt": 0}
+            }, {"_id": 0, "id": 1, "current_price": 1, "bot_target_price": 1, 
+                "bid_increment": 1, "title": 1, "end_time": 1}).to_list(100)
+            
+            if not active_auctions:
+                await asyncio.sleep(30)
+                continue
+            
+            # Get all bots
+            bots = await db.bots.find({}, {"_id": 0}).to_list(100)
+            if not bots:
+                logger.warning("⚠️ Keine Bots vorhanden - erstelle welche im Admin Panel")
+                await asyncio.sleep(60)
+                continue
+            
+            # Process each auction
+            for auction in active_auctions:
+                auction_id = auction.get("id")
+                current_price = float(auction.get("current_price", 0))
+                target_price = float(auction.get("bot_target_price", 0))
+                bid_increment = float(auction.get("bid_increment", 0.01))
+                
+                # Skip if target already reached
+                if current_price >= target_price:
+                    if auction_id not in auctions_at_target:
+                        auctions_at_target.add(auction_id)
+                        logger.info(f"✅ Auktion {auction.get('title', auction_id)[:30]} hat Zielpreis €{target_price:.2f} erreicht (aktuell: €{current_price:.2f})")
+                    continue
+                
+                # Skip if we bid recently (30-120 seconds interval)
+                last_bid = last_bid_time.get(auction_id, 0)
+                min_interval = random.uniform(30, 120)  # Realistisches Intervall
+                if (now.timestamp() - last_bid) < min_interval:
+                    continue
+                
+                # Check time remaining - skip if in last 10 minutes (bot_last_second_bidder handles that)
+                try:
+                    end_time = datetime.fromisoformat(auction["end_time"].replace("Z", "+00:00"))
+                    seconds_left = (end_time - now).total_seconds()
+                    if seconds_left < 600:  # < 10 minutes
+                        continue  # Let bot_last_second_bidder handle this
+                except:
+                    pass
+                
+                # Select a random bot
+                bot = random.choice(bots)
+                new_price = round(current_price + bid_increment, 2)
+                
+                # Don't exceed target
+                if new_price > target_price:
+                    new_price = round(target_price, 2)
+                
+                # Place bid
+                new_end_time = now + timedelta(seconds=random.randint(10, 20))
+                
+                await db.auctions.update_one(
+                    {"id": auction_id, "status": "active"},
+                    {
+                        "$set": {
+                            "current_price": new_price,
+                            "last_bidder": bot["name"],
+                            "last_bidder_id": f"bot_{bot['id']}",
+                            "last_bidder_name": bot["name"],
+                            "end_time": new_end_time.isoformat(),
+                            "last_bid_time": now.isoformat()
+                        },
+                        "$inc": {"bid_count": 1, "total_bids": 1}
+                    }
+                )
+                
+                # Update tracking
+                last_bid_time[auction_id] = now.timestamp()
+                
+                # Broadcast update via WebSocket
+                await broadcast_bid_update(auction_id, {
+                    "current_price": new_price,
+                    "last_bidder": bot["name"],
+                    "last_bidder_name": bot["name"],
+                    "end_time": new_end_time.isoformat(),
+                    "bidder_message": f"🤖 {bot['name']} hat geboten!"
+                })
+                
+                logger.debug(f"🤖 Bot '{bot['name']}' bietet auf {auction.get('title', '?')[:25]}: €{new_price:.2f} / €{target_price:.2f}")
+            
+            # Wait before next cycle (5-15 seconds)
+            await asyncio.sleep(random.uniform(5, 15))
+            
+        except asyncio.CancelledError:
+            break
+        except Exception as e:
+            logger.error(f"Bot Early Bidder error: {e}")
+            await asyncio.sleep(30)
+    
+    logger.info("🤖 Bot Early Bidder gestoppt")
+
 async def bot_last_second_bidder():
     """Background task - bots bid with REALISTIC human-like patterns.
     
