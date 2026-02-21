@@ -110,8 +110,56 @@ const BidBlitzPay = () => {
   const [payingRequest, setPayingRequest] = useState(false);
   const [manualRequestId, setManualRequestId] = useState('');
   const [loadingManualRequest, setLoadingManualRequest] = useState(false);
+  const [cameraPermissionGranted, setCameraPermissionGranted] = useState(false);
+  const [cameraPermissionAsked, setCameraPermissionAsked] = useState(false);
   const scannerRef = useRef(null);
   const html5QrCodeRef = useRef(null);
+
+  // Kamera-Berechtigung beim Laden der Seite anfordern (einmalig)
+  useEffect(() => {
+    const requestCameraPermission = async () => {
+      // Prüfen ob bereits erteilt
+      const permissionStatus = localStorage.getItem('bidblitz_camera_permission');
+      if (permissionStatus === 'granted') {
+        setCameraPermissionGranted(true);
+        return;
+      }
+      
+      // Prüfen ob bereits gefragt wurde
+      if (localStorage.getItem('bidblitz_camera_asked') === 'true') {
+        setCameraPermissionAsked(true);
+        return;
+      }
+      
+      // Berechtigung anfordern
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        try {
+          const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+          const constraints = isIOS ? { video: true } : { video: { facingMode: "environment" } };
+          
+          const stream = await navigator.mediaDevices.getUserMedia(constraints);
+          // Erfolg - Stream stoppen und Status speichern
+          stream.getTracks().forEach(track => track.stop());
+          localStorage.setItem('bidblitz_camera_permission', 'granted');
+          setCameraPermissionGranted(true);
+          console.log('✅ Kamera-Berechtigung erteilt');
+        } catch (err) {
+          console.log('❌ Kamera-Berechtigung verweigert:', err.name);
+          localStorage.setItem('bidblitz_camera_asked', 'true');
+          setCameraPermissionAsked(true);
+          
+          if (err.name === 'NotAllowedError') {
+            localStorage.setItem('bidblitz_camera_permission', 'denied');
+          }
+        }
+      }
+    };
+    
+    // Nur auf der Scan-View automatisch fragen
+    if (view === 'scan' || view === 'wallet') {
+      requestCameraPermission();
+    }
+  }, [view]);
 
   const token = localStorage.getItem('token') || sessionStorage.getItem('token') || localStorage.getItem('bidblitz_token');
   
