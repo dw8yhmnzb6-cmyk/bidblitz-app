@@ -2400,6 +2400,29 @@ export default function StaffPOS() {
                           📷 {language === 'de' ? 'Halten Sie den Kunden-Barcode vor die Kamera...' : 'Hold customer barcode in front of camera...'}
                         </p>
                         <div id="topup-scanner" className="w-full h-72 rounded-lg overflow-hidden bg-black"></div>
+                        
+                        {/* iOS-Hinweis: Foto-Button ist zuverlässiger */}
+                        <div className="mt-3 p-3 bg-amber-500/20 border border-amber-500/50 rounded-lg">
+                          <p className="text-amber-400 text-xs text-center mb-2">
+                            💡 {language === 'de' ? 'Scanner erkennt nicht? Nutze den Foto-Button!' : 'Scanner not detecting? Use the Photo button!'}
+                          </p>
+                          <input
+                            ref={topupFileInputRef}
+                            type="file"
+                            accept="image/*"
+                            capture="environment"
+                            onChange={handleTopupPhotoUpload}
+                            className="hidden"
+                            id="topup-photo-input-main"
+                          />
+                          <label
+                            htmlFor="topup-photo-input-main"
+                            className="w-full py-3 bg-green-500 hover:bg-green-600 text-white font-bold text-lg rounded-lg flex items-center justify-center gap-2 cursor-pointer transition-colors shadow-lg"
+                          >
+                            <Camera className="w-6 h-6" />
+                            📸 {language === 'de' ? 'FOTO AUFNEHMEN' : 'TAKE PHOTO'}
+                          </label>
+                        </div>
                       </div>
                       <button
                         onClick={() => {
@@ -2425,13 +2448,12 @@ export default function StaffPOS() {
                   <div className={`${topupCameraActive ? 'mt-4 pt-4 border-t border-slate-700' : ''}`}>
                     {topupCameraActive && (
                       <p className="text-slate-500 text-xs text-center mb-3">
-                        {language === 'de' ? 'Kamera funktioniert nicht?' : 'Camera not working?'}
+                        {language === 'de' ? 'Weitere Optionen:' : 'More options:'}
                       </p>
                     )}
                     <div className="grid grid-cols-2 gap-2 mb-3">
                       {/* Foto aufnehmen */}
                       <input
-                        ref={topupFileInputRef}
                         type="file"
                         accept="image/*"
                         capture="environment"
