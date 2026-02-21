@@ -303,6 +303,10 @@ export const Footer = () => {
           <div className="space-y-4">
             <h4 className="text-white font-heading font-bold uppercase tracking-wider text-sm">{ft.features || 'Features'}</h4>
             <nav className="flex flex-col gap-2">
+              <Link to="/bidblitz-pay-info" className="text-green-400 hover:text-green-300 transition-colors font-body text-sm flex items-center gap-2">
+                <CreditCard className="w-3.5 h-3.5" />
+                BidBlitz Pay
+              </Link>
               <Link to="/deal-radar" className="text-gray-400 hover:text-white transition-colors font-body text-sm flex items-center gap-2">
                 <Radar className="w-3.5 h-3.5" />
                 {ft.dealRadar || 'Deal Radar'}
