@@ -4,6 +4,27 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Touch-Optimierung für iPad/Tablets */
+@layer base {
+  /* Mindestgröße für Touch-Targets */
+  button, a, [role="button"], input[type="submit"], input[type="button"] {
+    min-height: 44px;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
+  }
+  
+  /* Schnellere Touch-Reaktion */
+  * {
+    -webkit-touch-callout: none;
+  }
+  
+  /* Utility class for touch */
+  .touch-manipulation {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
+  }
+}
+
 /* Hide Emergent badge */
 #emergent-badge {
   display: none !important;
