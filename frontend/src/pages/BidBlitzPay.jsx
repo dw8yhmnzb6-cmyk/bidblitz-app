@@ -723,18 +723,19 @@ const BidBlitzPay = () => {
       } catch (permErr) {
         console.error('Camera permission error:', permErr);
         
+        // IMMER die Hilfe-Box anzeigen bei Kamera-Fehlern
+        setShowCameraHelp(true);
+        setCameraPermissionGranted(false);
+        
         // Zeige spezifische Hilfe für iOS
         if (isIOS || isSafari) {
           toast.error('Bitte aktivieren Sie die Kamera: Einstellungen → Safari → Kamera → Erlauben', { duration: 6000 });
-          setShowCameraHelp(true);
         } else if (permErr.name === 'NotAllowedError' || permErr.name === 'PermissionDeniedError') {
           toast.error('Kamerazugriff verweigert. Bitte erlauben Sie den Kamerazugriff in Ihren Browsereinstellungen.', { duration: 5000 });
-          setShowCameraHelp(true);
         } else if (permErr.name === 'NotFoundError') {
           toast.error('Keine Kamera gefunden');
         } else {
           toast.error('Kamera konnte nicht gestartet werden. Nutzen Sie die manuelle Eingabe unten.', { duration: 5000 });
-          setShowCameraHelp(true);
         }
         return;
       }
