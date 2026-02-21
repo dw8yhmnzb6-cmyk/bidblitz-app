@@ -10,33 +10,11 @@ import {
 import { Button } from '../components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { getTranslation } from './translations/bidblitzPayInfoTranslations';
+import { useLanguage } from '../context/LanguageContext';
 
 const BidBlitzPayInfo = () => {
   const navigate = useNavigate();
-  const [language, setLanguage] = useState(() => localStorage.getItem('language') || 'de');
-  
-  // Listen for language changes
-  useEffect(() => {
-    const handleStorageChange = () => {
-      const newLang = localStorage.getItem('language') || 'de';
-      setLanguage(newLang);
-    };
-    
-    window.addEventListener('storage', handleStorageChange);
-    
-    // Also check periodically for changes (for same-tab updates)
-    const interval = setInterval(() => {
-      const currentLang = localStorage.getItem('language') || 'de';
-      if (currentLang !== language) {
-        setLanguage(currentLang);
-      }
-    }, 500);
-    
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      clearInterval(interval);
-    };
-  }, [language]);
+  const { language } = useLanguage(); // Use global language context
   const [openFaq, setOpenFaq] = useState(null);
   
   // Countdown Timer State
