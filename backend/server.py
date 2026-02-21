@@ -981,8 +981,15 @@ async def bot_last_second_bidder():
                     # Get auction-specific variability for natural behavior
                     var = get_auction_variability(auction_id, retail_price)
                     
-                    # Phase 1 Target: Now varies per auction (€2.50 - €4.50)
-                    PHASE1_TARGET = var['phase1_target']
+                    # WICHTIG: bot_target_price ist das primäre Phase-1-Ziel!
+                    # Dies wird beim Erstellen der Auktion gesetzt (€2-5)
+                    explicit_target = auction.get("bot_target_price", 0)
+                    
+                    # Phase 1 Target: Verwende bot_target_price wenn gesetzt, sonst Variabilität
+                    if explicit_target and explicit_target > 0:
+                        PHASE1_TARGET = explicit_target  # €2-5 wie vom Admin gesetzt
+                    else:
+                        PHASE1_TARGET = var['phase1_target']  # Fallback: €2.50 - €4.50
                     
                     # Endspurt Zeit: varies between 100 and 200 seconds
                     base_endspurt = 150
