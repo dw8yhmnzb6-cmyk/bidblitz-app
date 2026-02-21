@@ -5,6 +5,37 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 
 ## Current Status (February 21, 2026)
 
+### ✅ Session Update - February 21, 2026 (Session 64c) - FLASH SALES ADMIN + IPAD FIX ✅
+
+#### Flash Sales Admin-Verwaltung implementiert ✅
+- **Neue Admin-Komponente:** `/app/frontend/src/components/admin/AdminFlashSales.js`
+- **Features:**
+  - Wochenend-Special erstellen (300+150 Gebote, €79)
+  - Erstkäufer-Bonus erstellen (150+100 Gebote, €49)
+  - Flash Sales bearbeiten (Titel, Zeit, Preis)
+  - Flash Sales aktivieren/deaktivieren
+  - Statistiken (Aktiv, Geplant, Umsatz, verkaufte Gebote)
+- **API-Endpoints:**
+  - `POST /api/flash-sales/admin/create-weekend-special`
+  - `POST /api/flash-sales/admin/create-first-buyer-bonus`
+  - `PUT /api/flash-sales/admin/{sale_id}` - Update
+  - `GET /api/flash-sales/admin/stats` - Statistiken
+
+#### iPad Admin Dashboard Tab-Problem behoben ✅
+- **Problem:** Tabs reagierten nicht auf Touch-Events auf iPad
+- **Lösung:**
+  - `onTouchEnd` Event-Handler hinzugefügt
+  - `touch-manipulation` CSS hinzugefügt
+  - `WebkitTapHighlightColor: transparent` für saubere Touch-Interaktion
+  - `active:` States für besseres Touch-Feedback
+
+#### Dateien geändert:
+- `/app/backend/routers/flash_sales.py` - Neue Admin-Endpoints
+- `/app/frontend/src/pages/Admin.js` - iPad Touch-Fix + Flash Sales Tab
+- `/app/frontend/src/components/admin/AdminFlashSales.js` - NEU
+
+---
+
 ### ✅ Session Update - February 21, 2026 (Session 64b) - GIFT CARD SYSTEM ✅
 
 #### Gift Card Payment System implementiert ✅
