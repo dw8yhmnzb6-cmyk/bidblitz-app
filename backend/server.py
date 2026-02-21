@@ -787,8 +787,12 @@ async def bot_early_bidder():
                 if new_price > target_price:
                     new_price = round(target_price, 2)
                 
-                # Place bid
-                new_end_time = now + timedelta(seconds=random.randint(10, 20))
+                # WICHTIG: Bei frühen Geboten (Phase 1) NICHT die Endzeit ändern!
+                # Die Endzeit bleibt unverändert - nur bei Endspurt-Geboten wird verlängert
+                try:
+                    original_end_time = datetime.fromisoformat(auction["end_time"].replace("Z", "+00:00"))
+                except:
+                    original_end_time = now + timedelta(days=3)  # Fallback
                 
                 await db.auctions.update_one(
                     {"id": auction_id, "status": "active"},
@@ -798,7 +802,7 @@ async def bot_early_bidder():
                             "last_bidder": bot["name"],
                             "last_bidder_id": f"bot_{bot['id']}",
                             "last_bidder_name": bot["name"],
-                            "end_time": new_end_time.isoformat(),
+                            # end_time bleibt UNVERÄNDERT bei frühen Geboten!
                             "last_bid_time": now.isoformat()
                         },
                         "$inc": {"bid_count": 1, "total_bids": 1}
