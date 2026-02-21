@@ -273,34 +273,8 @@ function AppContent() {
         <Navbar />
       )}
       
-      {/* Floating popups - Enabled for user engagement */}
-      {/* Hide popups on POS/Kiosk/Checkout/QR/Wallet/Admin/Enterprise pages */}
-      {!window.location.pathname.includes('/pos') && 
-       !window.location.pathname.includes('/kiosk') && 
-       !window.location.pathname.includes('/kasse') &&
-       !window.location.pathname.includes('/scanner') && 
-       !window.location.pathname.includes('/mitarbeiter-kasse') &&
-       !window.location.pathname.includes('/staff-pos') &&
-       !window.location.pathname.includes('/checkout/') &&
-       !window.location.pathname.includes('/mein-qr') &&
-       !window.location.pathname.includes('/my-qr') &&
-       !window.location.pathname.includes('/wallet-card') &&
-       !window.location.pathname.includes('/meine-karte') &&
-       !window.location.pathname.includes('/zahlungen') &&
-       !window.location.pathname.includes('/payment-history') &&
-       !window.location.pathname.includes('/admin') &&
-       !window.location.pathname.includes('/developers') &&
-       !window.location.pathname.includes('/enterprise') &&
-       !window.location.pathname.includes('/grosshaendler') &&
-       !window.location.pathname.includes('/bidblitz-pay') &&
-       !window.location.pathname.includes('/staff-pos') && (
-        <>
-          <AbandonedCartReminder language={mappedLanguage || language} />
-          <OutbidNotification />
-          <OnboardingTour />
-          <DailyLoginPopupWrapper language={mappedLanguage || language} />
-        </>
-      )}
+      {/* Floating popups - Managed by PopupManager which uses useLocation */}
+      <PopupManager language={mappedLanguage || language} />
       {/* HowItWorksFloatingButton removed per user request */}
       {/* <LiveWinnerPopup language={mappedLanguage || language} /> */}
       {/* <LanguageHintBanner /> */}
