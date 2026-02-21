@@ -299,9 +299,10 @@ export const Navbar = () => {
                     <Link 
                       to="/admin" 
                       onClick={() => setMobileMenuOpen(false)}
-                      className="flex-1 bg-orange-500 text-white py-2.5 px-3 rounded-lg font-semibold text-center text-sm flex items-center justify-center gap-1"
+                      className="flex-1 bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white py-3 px-4 rounded-lg font-semibold text-center text-sm flex items-center justify-center gap-2 touch-manipulation min-h-[48px]"
+                      style={{ WebkitTapHighlightColor: 'rgba(0,0,0,0.1)', touchAction: 'manipulation' }}
                     >
-                      <Shield className="w-4 h-4" />
+                      <Shield className="w-5 h-5" />
                       Admin
                     </Link>
                   )}
@@ -309,15 +310,17 @@ export const Navbar = () => {
                     <Link 
                       to="/influencer-dashboard" 
                       onClick={() => setMobileMenuOpen(false)}
-                      className="flex-1 bg-amber-400 text-white py-2.5 px-3 rounded-lg font-semibold text-center text-sm flex items-center justify-center gap-1"
+                      className="flex-1 bg-amber-400 hover:bg-amber-500 active:bg-amber-600 text-white py-3 px-4 rounded-lg font-semibold text-center text-sm flex items-center justify-center gap-2 touch-manipulation min-h-[48px]"
+                      style={{ WebkitTapHighlightColor: 'rgba(0,0,0,0.1)', touchAction: 'manipulation' }}
                     >
-                      <Star className="w-4 h-4" />
+                      <Star className="w-5 h-5" />
                       {t('nav.influencer')}
                     </Link>
                   )}
                   <button 
                     onClick={() => { handleLogout(); setMobileMenuOpen(false); }}
-                    className="bg-red-500 text-white py-2.5 px-4 rounded-lg font-semibold text-sm"
+                    className="bg-red-500 hover:bg-red-600 active:bg-red-700 text-white py-3 px-4 rounded-lg font-semibold text-sm touch-manipulation min-h-[48px]"
+                    style={{ WebkitTapHighlightColor: 'rgba(0,0,0,0.1)', touchAction: 'manipulation' }}
                   >
                     <LogOut className="w-4 h-4" />
                   </button>
