@@ -582,7 +582,14 @@ export default function AdminEnterpriseManagement() {
                             value={commissionForm.voucher_commission}
                             onChange={(e) => {
                               const val = e.target.value.replace(',', '.');
-                              setCommissionForm({...commissionForm, voucher_commission: val === '' ? '' : parseFloat(val) || 0});
+                              // Allow typing decimal numbers like "0." or "0.0"
+                              if (val === '' || val === '.' || /^[0-9]*\.?[0-9]*$/.test(val)) {
+                                setCommissionForm({...commissionForm, voucher_commission: val});
+                              }
+                            }}
+                            onBlur={(e) => {
+                              const val = parseFloat(e.target.value) || 0;
+                              setCommissionForm({...commissionForm, voucher_commission: val});
                             }}
                             className="w-full px-4 py-3 border-2 border-orange-300 rounded-xl text-lg font-bold text-center focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                             data-testid="voucher-commission-input"
@@ -601,7 +608,13 @@ export default function AdminEnterpriseManagement() {
                             value={commissionForm.self_pay_commission}
                             onChange={(e) => {
                               const val = e.target.value.replace(',', '.');
-                              setCommissionForm({...commissionForm, self_pay_commission: val === '' ? '' : parseFloat(val) || 0});
+                              if (val === '' || val === '.' || /^[0-9]*\.?[0-9]*$/.test(val)) {
+                                setCommissionForm({...commissionForm, self_pay_commission: val});
+                              }
+                            }}
+                            onBlur={(e) => {
+                              const val = parseFloat(e.target.value) || 0;
+                              setCommissionForm({...commissionForm, self_pay_commission: val});
                             }}
                             className="w-full px-4 py-3 border-2 border-blue-300 rounded-xl text-lg font-bold text-center focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                             data-testid="selfpay-commission-input"
@@ -620,7 +633,13 @@ export default function AdminEnterpriseManagement() {
                             value={commissionForm.customer_cashback}
                             onChange={(e) => {
                               const val = e.target.value.replace(',', '.');
-                              setCommissionForm({...commissionForm, customer_cashback: val === '' ? '' : parseFloat(val) || 0});
+                              if (val === '' || val === '.' || /^[0-9]*\.?[0-9]*$/.test(val)) {
+                                setCommissionForm({...commissionForm, customer_cashback: val});
+                              }
+                            }}
+                            onBlur={(e) => {
+                              const val = parseFloat(e.target.value) || 0;
+                              setCommissionForm({...commissionForm, customer_cashback: val});
                             }}
                             className="w-full px-4 py-3 border-2 border-green-300 rounded-xl text-lg font-bold text-center focus:ring-2 focus:ring-green-500 focus:border-green-500"
                             data-testid="cashback-input"
