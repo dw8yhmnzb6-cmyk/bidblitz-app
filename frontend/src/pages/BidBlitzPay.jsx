@@ -772,6 +772,43 @@ const BidBlitzPay = () => {
 
   // QR Scanner functions
   const [showCameraHelp, setShowCameraHelp] = useState(false);
+  const fileInputRef = useRef(null);
+  
+  // Foto-basierter QR-Scanner für iOS
+  const handlePhotoScan = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    
+    try {
+      toast.info(language === 'de' ? 'Scanne QR-Code...' : 'Scanning QR code...');
+      
+      const html5QrCode = new Html5Qrcode("qr-reader-hidden");
+      
+      const result = await html5QrCode.scanFile(file, true);
+      
+      console.log('📷 Foto-Scan Ergebnis:', result);
+      
+      if (result.startsWith("BIDBLITZ-REQ:")) {
+        const requestId = result.replace("BIDBLITZ-REQ:", "");
+        await fetchRequestDetails(requestId);
+        toast.success(language === 'de' ? 'QR-Code erkannt!' : 'QR code recognized!');
+      } else {
+        toast.error(language === 'de' ? 'Ungültiger QR-Code' : 'Invalid QR code');
+      }
+      
+      // Cleanup
+      html5QrCode.clear();
+      
+    } catch (err) {
+      console.error('Foto-Scan Fehler:', err);
+      toast.error(language === 'de' ? 'QR-Code konnte nicht gelesen werden. Bitte versuchen Sie es erneut.' : 'Could not read QR code. Please try again.');
+    }
+    
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
   
   const startScanner = async () => {
     try {
