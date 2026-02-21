@@ -5,6 +5,40 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 
 ## Current Status (February 21, 2026)
 
+### ✅ Session Update - February 21, 2026 (Session 64b) - GIFT CARD SYSTEM ✅
+
+#### Gift Card Payment System implementiert ✅
+- **Feste Beträge:** €10 (20 Gebote), €25 (55 Gebote), €50 (120 Gebote), €100 (260 Gebote)
+- **Benutzerdefinierte Beträge:** €5 - €500
+- **Formate:** Digital (Code), Physisch, QR-Code
+- **Einlösen:**
+  - Als Gebote (Bids)
+  - Als BidBlitz Pay Guthaben (Balance)
+- **Admin-Features:**
+  - Gift Cards erstellen (1-100 Stück, €1-€10.000)
+  - Statistiken (Total, Active, Redeemed, Values)
+- **Partner-Verkauf:**
+  - Partner können physische Gift Cards verkaufen
+  - 5% Provision für Partner
+- **QR-Code-Generierung:**
+  - Jede Gift Card hat einen scannable QR-Code
+  - Führt direkt zur Einlösen-Seite
+
+#### API Endpoints:
+- `GET /api/giftcards/packages` - Verfügbare Pakete
+- `POST /api/giftcards/purchase` - Gift Card kaufen (Stripe)
+- `POST /api/giftcards/redeem` - Einlösen (Bids oder Balance)
+- `GET /api/giftcards/validate/{code}` - Code validieren
+- `GET /api/giftcards/qr/{code}` - QR-Code generieren
+- `POST /api/giftcards/admin/create` - Admin erstellt Gift Cards
+- `GET /api/giftcards/admin/stats` - Statistiken
+- `POST /api/giftcards/partner/sell` - Partner verkauft Gift Card
+
+#### Dateien geändert:
+- `/app/backend/routers/giftcards.py` - Erweitert mit QR, Admin, Partner-Features
+
+---
+
 ### ✅ Session Update - February 21, 2026 (Session 64) - AUKTIONEN RESET + BOT-LOGIK + PERFORMANCE ✅
 
 #### Automatischer Bot-Bieter implementiert ✅
