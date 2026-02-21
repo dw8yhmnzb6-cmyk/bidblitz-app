@@ -89,7 +89,11 @@ const translations = {
     saveCustomer: 'Kunde speichern',
     customerNickname: 'Spitzname (optional)',
     lastTransaction: 'Letzte Transaktion',
-    removeCustomer: 'Entfernen'
+    removeCustomer: 'Entfernen',
+    hardwareScanner: 'Hardware-Scanner',
+    hardwareScannerActive: 'Scanner aktiv',
+    hardwareScannerInfo: 'USB/Bluetooth Scanner bereit',
+    waitingForHardwareScan: 'Warte auf Hardware-Scan...'
   },
   en: {
     loginTitle: 'Cash Register',
