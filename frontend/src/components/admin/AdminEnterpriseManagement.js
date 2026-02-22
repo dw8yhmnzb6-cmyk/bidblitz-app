@@ -169,9 +169,13 @@ export default function AdminEnterpriseManagement() {
     setPayoutForm({
       iban: enterprise.payout_settings?.iban || '',
       iban_holder: enterprise.payout_settings?.iban_holder || enterprise.company_name,
+      bic_swift: enterprise.payout_settings?.bic_swift || '',
+      bank_name: enterprise.payout_settings?.bank_name || '',
+      bank_country: enterprise.payout_settings?.bank_country || 'DE',
       payout_frequency: enterprise.payout_settings?.payout_frequency || 'monthly',
       iban_mode: enterprise.payout_settings?.iban_mode || 'admin_entry',
-      min_payout_amount: enterprise.payout_settings?.min_payout_amount || 100
+      min_payout_amount: enterprise.payout_settings?.min_payout_amount || 100,
+      currency: enterprise.payout_settings?.currency || 'EUR'
     });
   };
 
