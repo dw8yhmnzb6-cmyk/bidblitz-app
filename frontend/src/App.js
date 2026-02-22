@@ -861,6 +861,18 @@ function AppContent() {
           <Route path="/social-rewards" element={<SocialSharingRewards />} />
           <Route path="/teilen-belohnungen" element={<SocialSharingRewards />} />
           
+          {/* BidBlitz Pay Analytics */}
+          <Route path="/admin/bidblitz-pay-analytics" element={
+            <ProtectedRoute requireAdmin>
+              <BidBlitzPayAnalytics />
+            </ProtectedRoute>
+          } />
+          <Route path="/admin/pay-analyse" element={
+            <ProtectedRoute requireAdmin>
+              <BidBlitzPayAnalytics />
+            </ProtectedRoute>
+          } />
+          
           {/* Friends Battle */}
           <Route path="/friends-battle" element={<FriendsBattle />} />
           <Route path="/freunde-battle" element={<FriendsBattle />} />
