@@ -852,6 +852,10 @@ function AppContent() {
             </ProtectedRoute>
           } />
           
+          {/* Email Verification */}
+          <Route path="/verify-email" element={<VerifyEmail />} />
+          <Route path="/email-bestaetigen" element={<VerifyEmail />} />
+          
           {/* Social Sharing Rewards */}
           <Route path="/social-rewards" element={<SocialSharingRewards />} />
           <Route path="/teilen-belohnungen" element={<SocialSharingRewards />} />
