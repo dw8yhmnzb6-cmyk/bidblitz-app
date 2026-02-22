@@ -182,26 +182,27 @@ async def login(credentials: UserLogin, request: Request):
     if user.get("is_blocked"):
         raise HTTPException(status_code=403, detail="Konto gesperrt. Kontaktieren Sie den Support.")
     
-    # Check KYC verification status
-    kyc_status = user.get("kyc_status", "pending")
-    if kyc_status == "pending":
-        # Check if documents were submitted
-        if not user.get("kyc_id_front") or not user.get("kyc_id_back") or not user.get("kyc_selfie"):
+    # Check KYC verification status - Skip for admins, managers, and enterprise users
+    if not user.get("is_admin") and not user.get("is_manager") and not user.get("is_enterprise"):
+        kyc_status = user.get("kyc_status", "pending")
+        if kyc_status == "pending":
+            # Check if documents were submitted
+            if not user.get("kyc_id_front") or not user.get("kyc_id_back") or not user.get("kyc_selfie"):
+                raise HTTPException(
+                    status_code=403, 
+                    detail="kyc_documents_missing"
+                )
+            else:
+                raise HTTPException(
+                    status_code=403, 
+                    detail="kyc_pending_approval"
+                )
+        elif kyc_status == "rejected":
+            rejection_reason = user.get("kyc_rejection_reason", "Unbekannter Grund")
             raise HTTPException(
                 status_code=403, 
-                detail="kyc_documents_missing"
+                detail=f"kyc_rejected:{rejection_reason}"
             )
-        else:
-            raise HTTPException(
-                status_code=403, 
-                detail="kyc_pending_approval"
-            )
-    elif kyc_status == "rejected":
-        rejection_reason = user.get("kyc_rejection_reason", "Unbekannter Grund")
-        raise HTTPException(
-            status_code=403, 
-            detail=f"kyc_rejected:{rejection_reason}"
-        )
     
     # Check 2FA
     if user.get("two_factor_enabled") and user.get("two_factor_secret"):
