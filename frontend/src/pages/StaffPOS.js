@@ -687,7 +687,18 @@ const translations = {
     minAmount: 'Minimo',
     maxAmount: 'Massimo',
     testAccess: 'Accesso Test',
-    from: 'da'
+    from: 'da',
+    // Report Cassa
+    cashReport: 'Report Cassa',
+    cashRegister: 'Cassa',
+    staffMember: 'Dipendente',
+    summary: 'Riepilogo',
+    bonusesGivenOut: 'Bonus Assegnati',
+    payments: 'Pagamenti',
+    totalAmount: 'TOTALE',
+    printTime: 'Stampa',
+    cashSystem: 'Sistema Cassa BidBlitz',
+    noTransactionsYet: 'Nessuna transazione'
   },
   ru: {
     loginTitle: 'Касса',
