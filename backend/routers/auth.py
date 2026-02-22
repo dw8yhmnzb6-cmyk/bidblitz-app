@@ -95,6 +95,15 @@ async def register(user: UserCreate, request: Request):
         "bids_balance": 10,  # Welcome bids
         "is_admin": False,
         "is_blocked": False,
+        # KYC Verification - User needs admin approval
+        "kyc_status": "pending",  # pending, approved, rejected
+        "kyc_id_front": None,  # URL to ID front image
+        "kyc_id_back": None,   # URL to ID back image
+        "kyc_selfie": None,    # URL to selfie with ID
+        "kyc_submitted_at": None,
+        "kyc_reviewed_at": None,
+        "kyc_reviewed_by": None,
+        "kyc_rejection_reason": None,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "won_auctions": [],
         "total_bids_placed": 0,
