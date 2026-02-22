@@ -25,6 +25,7 @@ export default function AdminWalletTopup({ token, t }) {
   const [searching, setSearching] = useState(false);
   const [recentTopUps, setRecentTopUps] = useState([]);
   const [leaderboard, setLeaderboard] = useState([]);
+  const [favoriteCustomers, setFavoriteCustomers] = useState([]);
   const [stats, setStats] = useState({
     totalTopUps: 0,
     totalAmount: 0,
@@ -37,6 +38,31 @@ export default function AdminWalletTopup({ token, t }) {
   const [selectedMerchant, setSelectedMerchant] = useState(null);
   const [showMerchantDropdown, setShowMerchantDropdown] = useState(false);
   const [merchantSearchQuery, setMerchantSearchQuery] = useState('');
+
+  // Load favorite customers from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem('favorite_customers');
+    if (saved) {
+      try {
+        setFavoriteCustomers(JSON.parse(saved));
+      } catch (e) {}
+    }
+  }, []);
+
+  // Save customer to favorites
+  const addToFavorites = (user) => {
+    const updated = [user, ...favoriteCustomers.filter(f => f.id !== user.id)].slice(0, 10);
+    setFavoriteCustomers(updated);
+    localStorage.setItem('favorite_customers', JSON.stringify(updated));
+    toast.success(`${user.name} zu Favoriten hinzugefügt`);
+  };
+
+  // Remove from favorites
+  const removeFromFavorites = (userId) => {
+    const updated = favoriteCustomers.filter(f => f.id !== userId);
+    setFavoriteCustomers(updated);
+    localStorage.setItem('favorite_customers', JSON.stringify(updated));
+  };
 
   // Fetch merchants list
   const fetchMerchants = useCallback(async () => {
