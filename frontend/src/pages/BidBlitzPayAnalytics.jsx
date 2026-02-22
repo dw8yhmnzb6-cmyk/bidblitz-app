@@ -326,8 +326,8 @@ export default function BidBlitzPayAnalytics() {
         <CollapsibleSection
           title="Tagesübersicht"
           icon={Calendar}
-          expanded={expandedSection === 'daily'}
-          onToggle={() => setExpandedSection(expandedSection === 'daily' ? '' : 'daily')}
+          expanded={expandedSections.includes('daily')}
+          onToggle={() => toggleSection('daily')}
         >
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -361,8 +361,8 @@ export default function BidBlitzPayAnalytics() {
         <CollapsibleSection
           title="Filialen"
           icon={Building2}
-          expanded={expandedSection === 'branches'}
-          onToggle={() => setExpandedSection(expandedSection === 'branches' ? '' : 'branches')}
+          expanded={expandedSections.includes('branches')}
+          onToggle={() => toggleSection('branches')}
         >
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -394,8 +394,8 @@ export default function BidBlitzPayAnalytics() {
         <CollapsibleSection
           title="Mitarbeiter"
           icon={User}
-          expanded={expandedSection === 'staff'}
-          onToggle={() => setExpandedSection(expandedSection === 'staff' ? '' : 'staff')}
+          expanded={expandedSections.includes('staff')}
+          onToggle={() => toggleSection('staff')}
         >
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -427,8 +427,8 @@ export default function BidBlitzPayAnalytics() {
         <CollapsibleSection
           title="Top Kunden"
           icon={Users}
-          expanded={expandedSection === 'customers'}
-          onToggle={() => setExpandedSection(expandedSection === 'customers' ? '' : 'customers')}
+          expanded={expandedSections.includes('customers')}
+          onToggle={() => toggleSection('customers')}
         >
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -463,8 +463,8 @@ export default function BidBlitzPayAnalytics() {
         <CollapsibleSection
           title="Uhrzeitverteilung"
           icon={Clock}
-          expanded={expandedSection === 'hourly'}
-          onToggle={() => setExpandedSection(expandedSection === 'hourly' ? '' : 'hourly')}
+          expanded={expandedSections.includes('hourly')}
+          onToggle={() => toggleSection('hourly')}
         >
           <div className="grid grid-cols-6 md:grid-cols-12 gap-2">
             {stats?.hourly_distribution?.map((hour) => {
