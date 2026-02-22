@@ -37,6 +37,7 @@ export default function AdminEnterpriseManagement() {
   const [commissionForm, setCommissionForm] = useState({
     voucher_commission: 5.0,
     self_pay_commission: 3.0,
+    sales_commission: 2.0,
     customer_cashback: 1.0,
     is_active: true
   });
