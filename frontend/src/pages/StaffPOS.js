@@ -2230,19 +2230,20 @@ export default function StaffPOS() {
           {/* Login Form */}
           <form onSubmit={handleLogin} className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-700/50 shadow-xl space-y-4">
             <div className="space-y-1">
-              <label className="block text-sm text-slate-300">{t.email}</label>
+              <label className="block text-sm text-slate-300">{t.employeeNumber || 'Mitarbeiternummer'}</label>
               <div className="relative">
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                 <input
-                  type="email"
-                  placeholder="mitarbeiter@firma.de"
-                  value={loginForm.email}
-                  onChange={(e) => setLoginForm({...loginForm, email: e.target.value})}
-                  className="w-full pl-10 pr-4 py-3 bg-slate-900/50 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                  type="text"
+                  placeholder="z.B. MA-001234"
+                  value={loginForm.employee_number || loginForm.email}
+                  onChange={(e) => setLoginForm({...loginForm, employee_number: e.target.value, email: e.target.value})}
+                  className="w-full pl-10 pr-4 py-3 bg-slate-900/50 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:ring-2 focus:ring-amber-500 focus:border-transparent font-mono tracking-wide"
                   required
-                  data-testid="login-email-input"
+                  data-testid="login-employee-number-input"
                 />
               </div>
+              <p className="text-xs text-slate-500 mt-1">Ihre Mitarbeiternummer vom Händler</p>
             </div>
 
             <div className="space-y-1">
@@ -2281,7 +2282,7 @@ export default function StaffPOS() {
           {/* Test Credentials */}
           <div className="mt-6 p-4 bg-slate-800/30 rounded-xl border border-slate-700/50">
             <p className="text-slate-400 text-sm text-center">
-              {t.testAccess}: <span className="text-amber-400">admin@edeka-test.de</span>
+              {t.testAccess}: <span className="text-amber-400 font-mono">MA-EDEKA-001</span>
               <br />
               {t.password}: <span className="text-amber-400">EdekaTest2026!</span>
             </p>
