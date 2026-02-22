@@ -12,7 +12,7 @@ import {
   Euro, Users, RefreshCw, Eye, EyeOff, Percent, Package
 } from 'lucide-react';
 
-const API = process.env.REACT_APP_BACKEND_URL;
+const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 const AdminFlashSales = () => {
   const [sales, setSales] = useState([]);
