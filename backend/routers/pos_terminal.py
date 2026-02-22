@@ -461,7 +461,7 @@ async def process_payment(data: PaymentRequest, authorization: Optional[str] = H
             "customer_barcode": data.customer_barcode,
             "customer_name": customer.get("name"),
             "amount": data.amount,
-            "description": data.description or f"POS Zahlung",
+            "description": data.description or "POS Zahlung",
             "previous_balance": current_balance,
             "new_balance": new_balance,
             "staff_id": data.staff_id,
