@@ -27,11 +27,18 @@ export default function BidBlitzPayAnalytics() {
   const fetchStats = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await axios.get(`${API}/bidblitz-pay-analytics/dashboard`, {
-        headers: { 'Authorization': `Bearer ${token}` },
-        params: { start_date: startDate, end_date: endDate }
-      });
-      setStats(response.data);
+      const [statsResponse, txResponse] = await Promise.all([
+        axios.get(`${API}/bidblitz-pay-analytics/dashboard`, {
+          headers: { 'Authorization': `Bearer ${token}` },
+          params: { start_date: startDate, end_date: endDate }
+        }),
+        axios.get(`${API}/bidblitz-pay-analytics/transactions`, {
+          headers: { 'Authorization': `Bearer ${token}` },
+          params: { start_date: startDate, end_date: endDate, limit: 500 }
+        })
+      ]);
+      setStats(statsResponse.data);
+      setTransactions(txResponse.data.transactions || []);
     } catch (error) {
       toast.error('Fehler beim Laden der Statistiken');
       console.error(error);
@@ -43,6 +50,34 @@ export default function BidBlitzPayAnalytics() {
   useEffect(() => {
     fetchStats();
   }, [fetchStats]);
+
+  // Quick date range buttons
+  const setQuickDateRange = (range) => {
+    const today = new Date();
+    let start = new Date();
+    
+    switch(range) {
+      case 'today':
+        start = today;
+        break;
+      case 'yesterday':
+        start.setDate(today.getDate() - 1);
+        today.setDate(today.getDate() - 1);
+        break;
+      case 'week':
+        start.setDate(today.getDate() - 7);
+        break;
+      case 'month':
+        start.setDate(today.getDate() - 30);
+        break;
+      default:
+        break;
+    }
+    
+    setStartDate(start.toISOString().split('T')[0]);
+    setEndDate(today.toISOString().split('T')[0]);
+    setDateRange(range);
+  };
 
   const handleExportCSV = async (type) => {
     setExporting(true);
