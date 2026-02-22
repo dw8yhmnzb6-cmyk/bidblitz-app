@@ -1012,6 +1012,8 @@ function AppContent() {
       
       <ScrollToTop />
       
+      <SupportButton />
+      
       <Toaster 
         position="top-right"
         toastOptions={{
