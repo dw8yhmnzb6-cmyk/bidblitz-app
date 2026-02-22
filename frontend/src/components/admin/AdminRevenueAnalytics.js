@@ -300,11 +300,9 @@ export function AdminRevenueAnalytics({ token }) {
           </div>
         </div>
       )}
-      )}
 
-      <div className="text-center text-xs text-gray-400">
-        <Clock className="w-3 h-3 inline mr-1" />
-        Letzte Aktualisierung: {overview?.timestamp ? new Date(overview.timestamp).toLocaleString('de-DE') : '-'}
+      <div className="text-center text-[8px] sm:text-xs text-gray-400 mt-2">
+        Aktualisiert: {overview?.timestamp ? new Date(overview.timestamp).toLocaleTimeString('de-DE') : '-'}
       </div>
     </div>
   );
