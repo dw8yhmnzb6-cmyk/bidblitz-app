@@ -169,8 +169,13 @@ async def topup_customer_wallet(
     if not user:
         raise HTTPException(status_code=404, detail="Kunde nicht gefunden")
     
+    # Get commission settings
+    settings = await get_commission_settings()
+    customer_bonus_rate = settings["customer_bonus_percent"]
+    default_merchant_rate = settings["merchant_commission_percent"]
+    
     # Calculate bonuses
-    customer_bonus = amount * CUSTOMER_BONUS_PERCENT
+    customer_bonus = amount * customer_bonus_rate
     first_topup_bonus = 0.0
     
     # Check if first top-up
@@ -180,8 +185,12 @@ async def topup_customer_wallet(
     # Total credit
     total_credit = amount + customer_bonus + first_topup_bonus
     
-    # Calculate merchant commission (if merchant provided)
-    merchant_commission = amount * MERCHANT_COMMISSION_PERCENT if data.merchant_id else 0
+    # Calculate merchant commission (if merchant provided) - use merchant-specific rate or default
+    merchant_commission = 0
+    merchant_commission_rate = 0
+    if data.merchant_id:
+        merchant_commission_rate = await get_merchant_commission_rate(data.merchant_id, default_merchant_rate)
+        merchant_commission = amount * merchant_commission_rate
     
     # Update user balance
     await db.users.update_one(
