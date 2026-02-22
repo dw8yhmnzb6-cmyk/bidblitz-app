@@ -130,6 +130,28 @@ export default function Login() {
       }, 100);
     } catch (error) {
       const errorMsg = error.response?.data?.detail || texts.loginFailed;
+      
+      // Handle KYC-related errors
+      if (errorMsg === 'kyc_documents_missing') {
+        toast.error(language === 'de' 
+          ? 'Bitte vervollständigen Sie Ihre Identitätsverifizierung' 
+          : 'Please complete your identity verification');
+        navigate('/kyc-verification');
+        return;
+      } else if (errorMsg === 'kyc_pending_approval') {
+        toast.info(language === 'de' 
+          ? 'Ihre Dokumente werden geprüft. Bitte warten Sie auf die Freischaltung.' 
+          : 'Your documents are being reviewed. Please wait for approval.');
+        return;
+      } else if (errorMsg.startsWith('kyc_rejected:')) {
+        const reason = errorMsg.replace('kyc_rejected:', '');
+        toast.error(language === 'de' 
+          ? `Ihre Verifizierung wurde abgelehnt: ${reason}` 
+          : `Your verification was rejected: ${reason}`);
+        navigate('/kyc-verification');
+        return;
+      }
+      
       toast.error(errorMsg);
       
       // Reset 2FA code on error
