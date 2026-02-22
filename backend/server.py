@@ -592,6 +592,10 @@ app.include_router(pos_terminal_router)
 from routers.discount_cards import router as discount_cards_router
 app.include_router(discount_cards_router, prefix="/api")
 
+# Support System Router
+from routers.support import router as support_router
+app.include_router(support_router, prefix="/api/support")
+
 # ==================== HEALTH & BASIC ENDPOINTS ====================
 
 @app.get("/")
