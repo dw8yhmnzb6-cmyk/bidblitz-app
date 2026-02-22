@@ -25,6 +25,7 @@ const translations = {
   de: {
     loginTitle: 'Kassen-Terminal',
     loginSubtitle: 'Mitarbeiter-Anmeldung',
+    employeeNumber: 'Mitarbeiternummer',
     email: 'E-Mail',
     password: 'Passwort',
     login: 'Anmelden',
