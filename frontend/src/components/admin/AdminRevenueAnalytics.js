@@ -116,25 +116,25 @@ export function AdminRevenueAnalytics({ token }) {
         </div>
       )}
 
-      {/* Tabs */}
-      <div className="flex gap-2 border-b pb-2 overflow-x-auto">
+      {/* Tabs - Kompakt und scrollbar */}
+      <div className="flex gap-1 sm:gap-2 border-b pb-2 overflow-x-auto scrollbar-hide">
         {[
           { id: 'overview', label: 'Übersicht', icon: BarChart3 },
-          { id: 'packages', label: 'Gebotspakete', icon: Package },
+          { id: 'packages', label: 'Pakete', icon: Package },
           { id: 'auctions', label: 'Auktionen', icon: Zap },
           { id: 'spenders', label: 'Top Käufer', icon: CreditCard },
           { id: 'conversion', label: 'Conversion', icon: Target },
-          { id: 'timing', label: 'Peak-Zeiten', icon: Clock }
+          { id: 'timing', label: 'Peak', icon: Clock }
         ].map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium transition-colors whitespace-nowrap ${
+            className={`px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-lg flex items-center gap-1 sm:gap-2 text-xs sm:text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0 ${
               activeTab === tab.id ? 'bg-green-100 text-green-700' : 'text-gray-600 hover:bg-gray-100'
             }`}
           >
-            <tab.icon className="w-4 h-4" />
-            {tab.label}
+            <tab.icon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+            <span className="hidden xs:inline">{tab.label}</span>
           </button>
         ))}
       </div>
