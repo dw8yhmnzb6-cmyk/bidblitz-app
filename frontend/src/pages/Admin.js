@@ -1699,6 +1699,10 @@ export default function Admin() {
             <AdminManagers token={token} language={language} />
           )}
 
+          {/* Support Management Tab */}
+          {activeTab === 'support' && (
+            <AdminSupportManagement token={token} />
+          )}
 
           {/* Wholesale/B2B Tab */}
           {activeTab === 'wholesale' && (
