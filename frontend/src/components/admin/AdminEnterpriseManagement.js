@@ -186,6 +186,7 @@ export default function AdminEnterpriseManagement() {
     setCommissionForm({
       voucher_commission: enterprise.commission_settings?.voucher_commission ?? 5.0,
       self_pay_commission: enterprise.commission_settings?.self_pay_commission ?? 3.0,
+      sales_commission: enterprise.commission_settings?.sales_commission ?? 2.0,
       customer_cashback: enterprise.commission_settings?.customer_cashback ?? 1.0,
       is_active: enterprise.commission_settings?.is_active ?? true
     });
