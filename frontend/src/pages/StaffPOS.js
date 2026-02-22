@@ -177,7 +177,18 @@ const translations = {
     hardwareScanner: 'Hardware Scanner',
     hardwareScannerActive: 'Scanner Active',
     hardwareScannerInfo: 'USB/Bluetooth Scanner ready',
-    waitingForHardwareScan: 'Waiting for hardware scan...'
+    waitingForHardwareScan: 'Waiting for hardware scan...',
+    // Cash Report
+    cashReport: 'Cash Report',
+    cashRegister: 'Cash Register',
+    staffMember: 'Staff',
+    summary: 'Summary',
+    bonusesGivenOut: 'Bonuses Given',
+    payments: 'Payments',
+    totalAmount: 'TOTAL',
+    printTime: 'Print',
+    cashSystem: 'BidBlitz Cash System',
+    noTransactionsYet: 'No transactions'
   },
   tr: {
     loginTitle: 'Kasa Terminali',
