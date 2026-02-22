@@ -805,6 +805,13 @@ export default function AdminEnterpriseManagement() {
                           {enterprise.commission_settings?.self_pay_commission ?? 3}%
                         </p>
                       </div>
+                      <div className="bg-amber-50 rounded-lg p-3 text-center">
+                        <p className="text-sm font-medium text-amber-600">Verkauf</p>
+                        <p className="text-xs text-amber-500">Händler → BidBlitz</p>
+                        <p className="text-2xl font-bold text-amber-700 mt-1">
+                          {enterprise.commission_settings?.sales_commission ?? 2}%
+                        </p>
+                      </div>
                       <div className="bg-green-50 rounded-lg p-3 text-center">
                         <p className="text-sm font-medium text-green-600">Kunden-Cashback</p>
                         <p className="text-xs text-green-500">BidBlitz → Kunde</p>
