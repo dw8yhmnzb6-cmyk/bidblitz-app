@@ -430,7 +430,8 @@ async def process_payment(data: PaymentRequest, authorization: Optional[str] = H
         if not customer:
             raise HTTPException(status_code=404, detail="Kunde nicht gefunden")
         
-        current_balance = customer.get("balance", 0.0)
+        # Use bidblitz_balance field (same as BidBlitz Pay wallet)
+        current_balance = customer.get("bidblitz_balance", 0.0)
         
         if current_balance < data.amount:
             raise HTTPException(
@@ -438,11 +439,18 @@ async def process_payment(data: PaymentRequest, authorization: Optional[str] = H
                 detail=f"Nicht genügend Guthaben. Verfügbar: €{current_balance:.2f}"
             )
         
-        # Deduct from balance
+        # Deduct from bidblitz_balance
         new_balance = current_balance - data.amount
         await db.users.update_one(
             {"id": customer["id"]},
-            {"$set": {"balance": new_balance}}
+            {"$set": {"bidblitz_balance": new_balance}}
+        )
+        
+        # Also update bidblitz_wallets collection if exists
+        await db.bidblitz_wallets.update_one(
+            {"user_id": customer["id"]},
+            {"$inc": {"universal_balance": -data.amount}},
+            upsert=False
         )
         
         # Create transaction
