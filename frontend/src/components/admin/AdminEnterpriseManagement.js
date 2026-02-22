@@ -790,7 +790,7 @@ export default function AdminEnterpriseManagement() {
                       </div>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm">
                       <div className="bg-orange-50 rounded-lg p-3 text-center">
                         <p className="text-sm font-medium text-orange-600">Gutschein</p>
                         <p className="text-xs text-orange-500">Händler → BidBlitz</p>
