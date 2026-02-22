@@ -5,6 +5,49 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 
 ## Current Status (February 21, 2026)
 
+### ✅ Session Update - February 22, 2026 (Session 67) - RABATTKARTEN-SYSTEM ✅
+
+#### Rabattkarten-System vollständig implementiert ✅
+**Backend API-Endpunkte:**
+- `POST /api/discount-cards/admin/create` - Neue Rabattkarte erstellen
+- `GET /api/discount-cards/admin/list` - Alle Rabattkarten auflisten
+- `PUT /api/discount-cards/admin/{id}` - Rabattkarte bearbeiten
+- `DELETE /api/discount-cards/admin/{id}` - Rabattkarte löschen
+- `POST /api/discount-cards/calculate` - Rabatt berechnen
+- `GET /api/discount-cards/my-cards` - Kunden-Rabattkarten
+
+**Frontend Admin-Seite:**
+- Neue Seite: `/admin/discount-cards` und `/admin/rabattkarten`
+- Rabattkarten erstellen, bearbeiten, löschen
+- Statistiken (Nutzungen, Gesamtersparnis)
+
+**Automatische Integration im StaffPOS:**
+- Bei jeder Zahlung wird automatisch geprüft, ob ein Rabatt gilt
+- Rabatt wird vom Betrag abgezogen und im Toast angezeigt
+- Transaktion enthält: `original_amount`, `discount_amount`, `final_amount`, `discount_card_name`
+
+**Neue Dateien:**
+- `/app/backend/routers/discount_cards.py`
+- `/app/frontend/src/pages/DiscountCardsAdmin.jsx`
+
+---
+
+### ✅ Session Update - February 22, 2026 (Session 66b) - BidBlitz Pay Fixes ✅
+
+#### Tab-Reihenfolge geändert ✅
+Neue Reihenfolge: Aufladen → Bezahlen → Gutscheine → Verlauf → Bonus → ...
+
+#### Zahlung Backend-Fix ✅
+- Zahlung verwendet jetzt `bidblitz_balance` (korrekt)
+- Transaktionen werden im BidBlitz Pay Verlauf gespeichert
+- `branch_name` zum PaymentRequest Model hinzugefügt
+
+#### Live-Aktualisierung ✅
+- BidBlitz Pay aktualisiert automatisch alle 5 Sekunden
+- QR-Code View aktualisiert alle 3 Sekunden
+
+---
+
 ### ✅ Session Update - February 21, 2026 (Session 66) - KAMERA-SCANNER & HARDWARE-SCANNER ✅
 
 #### StaffPOS.js - Kamera-Barcode-Scanner für Aufladung implementiert ✅
