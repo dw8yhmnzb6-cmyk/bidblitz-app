@@ -616,7 +616,18 @@ const translations = {
     minAmount: 'Mínimo',
     maxAmount: 'Máximo',
     testAccess: 'Acceso de Prueba',
-    from: 'desde'
+    from: 'desde',
+    // Informe de Caja
+    cashReport: 'Informe de Caja',
+    cashRegister: 'Caja',
+    staffMember: 'Empleado',
+    summary: 'Resumen',
+    bonusesGivenOut: 'Bonos Otorgados',
+    payments: 'Pagos',
+    totalAmount: 'TOTAL',
+    printTime: 'Impresión',
+    cashSystem: 'Sistema de Caja BidBlitz',
+    noTransactionsYet: 'Sin transacciones'
   },
   it: {
     loginTitle: 'Terminale Cassa',
