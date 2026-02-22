@@ -9,7 +9,8 @@ from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime, timezone
-from config import db, get_current_user
+from config import db
+from dependencies import get_current_user
 import uuid
 import logging
 
