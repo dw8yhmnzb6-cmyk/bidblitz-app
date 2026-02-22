@@ -1112,6 +1112,17 @@ const BidBlitzPay = () => {
       return () => clearInterval(interval);
     }
   }, [showQR]);
+  
+  // Auto-refresh when on QR view to keep balance updated
+  useEffect(() => {
+    if (view === 'qr') {
+      // Refresh wallet balance every 3 seconds when showing QR code
+      const balanceInterval = setInterval(() => {
+        fetchWallet();
+      }, 3000);
+      return () => clearInterval(balanceInterval);
+    }
+  }, [view, fetchWallet]);
 
   if (!token) {
     return (
