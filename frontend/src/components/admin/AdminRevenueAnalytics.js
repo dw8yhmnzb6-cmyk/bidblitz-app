@@ -304,37 +304,39 @@ export function AdminRevenueAnalytics({ token }) {
 
       {/* Timing Tab */}
       {activeTab === 'timing' && hourlyData && (
-        <div className="bg-white rounded-xl border shadow-sm p-6">
-          <h3 className="font-semibold mb-4 flex items-center gap-2">
-            <Clock className="w-5 h-5 text-blue-500" />
-            Umsatz nach Tageszeit (letzte 7 Tage)
+        <div className="bg-white rounded-xl border shadow-sm p-4 sm:p-6">
+          <h3 className="font-semibold mb-4 flex flex-col sm:flex-row items-start sm:items-center gap-2">
+            <span className="flex items-center gap-2">
+              <Clock className="w-5 h-5 text-blue-500" />
+              Umsatz nach Tageszeit
+            </span>
             {hourlyData.peak_hour && (
-              <span className="ml-auto text-sm text-green-600 bg-green-50 px-3 py-1 rounded-full">
-                Peak: {hourlyData.peak_hour.hour} ({formatCurrency(hourlyData.peak_hour.revenue)})
+              <span className="text-xs sm:text-sm text-green-600 bg-green-50 px-2 sm:px-3 py-1 rounded-full">
+                Peak: {hourlyData.peak_hour.hour}
               </span>
             )}
           </h3>
           
-          <div className="grid grid-cols-6 md:grid-cols-12 gap-2">
+          <div className="grid grid-cols-8 sm:grid-cols-12 gap-1 sm:gap-2">
             {hourlyData.hourly_breakdown?.map((hour) => {
               const maxRev = Math.max(...hourlyData.hourly_breakdown.map(h => h.revenue), 1);
               const height = (hour.revenue / maxRev) * 100;
               const isPeak = hour.hour === hourlyData.peak_hour?.hour;
               return (
                 <div key={hour.hour} className="flex flex-col items-center">
-                  <div className="h-24 w-full flex items-end justify-center">
+                  <div className="h-16 sm:h-24 w-full flex items-end justify-center">
                     <div 
                       className={`w-full rounded-t transition-all ${isPeak ? 'bg-green-500' : 'bg-blue-400'}`}
                       style={{ height: `${Math.max(height, 5)}%` }}
-                      title={`${hour.hour}: ${formatCurrency(hour.revenue)} (${hour.transactions} Trans.)`}
+                      title={`${hour.hour}: ${formatCurrency(hour.revenue)}`}
                     />
                   </div>
-                  <span className="text-xs text-gray-500 mt-1">{hour.hour.slice(0, 2)}</span>
+                  <span className="text-[8px] sm:text-xs text-gray-500 mt-1">{hour.hour.slice(0, 2)}</span>
                 </div>
               );
             })}
           </div>
-          <div className="text-center text-xs text-gray-400 mt-4">Uhrzeit (UTC)</div>
+          <div className="text-center text-[10px] sm:text-xs text-gray-400 mt-4">Uhrzeit (UTC)</div>
         </div>
       )}
 
