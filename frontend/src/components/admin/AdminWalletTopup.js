@@ -253,27 +253,27 @@ export default function AdminWalletTopup({ token, t }) {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-6">
         {/* Main Top-up Section */}
-        <div className="lg:col-span-2 space-y-4">
+        <div className="lg:col-span-2 space-y-3 sm:space-y-4">
           {/* Search Customer */}
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-100">
-            <h2 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
-              <Search className="w-5 h-5 text-slate-400" />
+          <div className="bg-white rounded-lg sm:rounded-xl p-3 sm:p-6 shadow-sm border border-slate-100">
+            <h2 className="font-bold text-slate-800 mb-2 sm:mb-4 flex items-center gap-1.5 sm:gap-2 text-sm sm:text-base">
+              <Search className="w-4 h-4 sm:w-5 sm:h-5 text-slate-400" />
               Kunde suchen
             </h2>
             
-            <div className="flex gap-2">
+            <div className="flex gap-1.5 sm:gap-2">
               <Input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && searchCustomers()}
-                placeholder="E-Mail oder Kunden-ID eingeben..."
-                className="flex-1"
+                placeholder="E-Mail oder Kunden-ID..."
+                className="flex-1 text-sm h-9 sm:h-10"
               />
               <Button
                 onClick={searchCustomers}
                 disabled={searching || !searchQuery.trim()}
-                className="bg-blue-500 hover:bg-blue-600"
+                className="bg-blue-500 hover:bg-blue-600 h-9 sm:h-10 px-3"
               >
                 {searching ? (
                   <RefreshCw className="w-4 h-4 animate-spin" />
@@ -285,7 +285,7 @@ export default function AdminWalletTopup({ token, t }) {
 
             {/* Search Results */}
             {searchResults.length > 0 && (
-              <div className="mt-4 space-y-2 max-h-48 overflow-y-auto">
+              <div className="mt-2 sm:mt-4 space-y-1.5 sm:space-y-2 max-h-48 overflow-y-auto">
                 {searchResults.map((user) => (
                   <button
                     key={user.id}
@@ -294,7 +294,7 @@ export default function AdminWalletTopup({ token, t }) {
                       setSearchResults([]);
                       setSearchQuery('');
                     }}
-                    className={`w-full text-left p-3 rounded-lg border transition-all ${
+                    className={`w-full text-left p-2 sm:p-3 rounded-lg border transition-all ${
                       selectedUser?.id === user.id 
                         ? 'border-green-500 bg-green-50' 
                         : 'border-slate-200 hover:border-green-300 hover:bg-green-50/50'
