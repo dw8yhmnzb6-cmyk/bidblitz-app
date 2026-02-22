@@ -286,10 +286,20 @@ async def login(credentials: UserLogin, request: Request):
     if user.get("is_blocked"):
         raise HTTPException(status_code=403, detail="Konto gesperrt. Kontaktieren Sie den Support.")
     
+    # Check email verification - Skip for admins, managers, enterprise, and old users without the field
+    if not user.get("is_admin") and not user.get("is_manager") and not user.get("is_enterprise"):
+        # Only enforce email verification for users who have the field set to False
+        if user.get("email_verified") == False:
+            raise HTTPException(
+                status_code=403,
+                detail="email_not_verified"
+            )
+    
     # Check KYC verification status - Skip for admins, managers, and enterprise users
     if not user.get("is_admin") and not user.get("is_manager") and not user.get("is_enterprise"):
         kyc_status = user.get("kyc_status", "pending")
-        if kyc_status == "pending":
+        # Only enforce KYC for users who have the field
+        if kyc_status == "pending" and "kyc_status" in user:
             # Check if documents were submitted
             if not user.get("kyc_id_front") or not user.get("kyc_id_back") or not user.get("kyc_selfie"):
                 raise HTTPException(
