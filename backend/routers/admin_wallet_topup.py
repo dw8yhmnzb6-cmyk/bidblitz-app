@@ -1,7 +1,7 @@
 """
 Admin Wallet Top-up Router
 Allows admins to top-up customer BidBlitz Pay wallets
-Includes bonuses: 2% customer bonus, €1 first top-up, 2% merchant commission
+Includes bonuses: configurable customer bonus, €1 first top-up, configurable merchant commission
 """
 from fastapi import APIRouter, HTTPException, Depends, Query
 from datetime import datetime, timezone, timedelta
@@ -14,10 +14,10 @@ from dependencies import get_admin_user
 
 router = APIRouter(tags=["Admin Wallet Top-up"])
 
-# ==================== CONSTANTS ====================
-CUSTOMER_BONUS_PERCENT = 0.02  # 2% customer bonus
+# ==================== DEFAULT CONSTANTS ====================
+DEFAULT_CUSTOMER_BONUS_PERCENT = 0.02  # 2% customer bonus
 FIRST_TOPUP_BONUS = 1.0  # €1 for first top-up
-MERCHANT_COMMISSION_PERCENT = 0.02  # 2% merchant commission
+DEFAULT_MERCHANT_COMMISSION_PERCENT = 0.02  # 2% merchant commission
 
 # ==================== MODELS ====================
 
@@ -26,7 +26,101 @@ class TopUpRequest(BaseModel):
     amount: float
     merchant_id: Optional[str] = None
 
-# ==================== ENDPOINTS ====================
+class CommissionSettingsRequest(BaseModel):
+    customer_bonus_percent: Optional[float] = None  # 0.02 = 2%
+    merchant_commission_percent: Optional[float] = None  # 0.02 = 2%
+
+class MerchantCommissionRequest(BaseModel):
+    merchant_id: str
+    commission_percent: float  # 0.02 = 2%
+
+# ==================== HELPER FUNCTIONS ====================
+
+async def get_commission_settings():
+    """Get global commission settings from DB or return defaults"""
+    settings = await db.settings.find_one({"type": "commission_settings"}, {"_id": 0})
+    if not settings:
+        return {
+            "customer_bonus_percent": DEFAULT_CUSTOMER_BONUS_PERCENT,
+            "merchant_commission_percent": DEFAULT_MERCHANT_COMMISSION_PERCENT
+        }
+    return {
+        "customer_bonus_percent": settings.get("customer_bonus_percent", DEFAULT_CUSTOMER_BONUS_PERCENT),
+        "merchant_commission_percent": settings.get("merchant_commission_percent", DEFAULT_MERCHANT_COMMISSION_PERCENT)
+    }
+
+async def get_merchant_commission_rate(merchant_id: str, default_rate: float):
+    """Get merchant-specific commission rate or return default"""
+    if not merchant_id:
+        return default_rate
+    merchant = await db.partner_accounts.find_one({"id": merchant_id}, {"_id": 0, "commission_rate": 1})
+    if merchant and "commission_rate" in merchant:
+        return merchant["commission_rate"]
+    return default_rate
+
+# ==================== COMMISSION SETTINGS ENDPOINTS ====================
+
+@router.get("/commission-settings")
+async def get_commission_settings_endpoint(admin: dict = Depends(get_admin_user)):
+    """Get current commission settings"""
+    settings = await get_commission_settings()
+    return {
+        "customer_bonus_percent": settings["customer_bonus_percent"],
+        "customer_bonus_display": f"{settings['customer_bonus_percent'] * 100:.1f}%",
+        "merchant_commission_percent": settings["merchant_commission_percent"],
+        "merchant_commission_display": f"{settings['merchant_commission_percent'] * 100:.1f}%"
+    }
+
+@router.put("/commission-settings")
+async def update_commission_settings(
+    data: CommissionSettingsRequest,
+    admin: dict = Depends(get_admin_user)
+):
+    """Update global commission settings"""
+    update_data = {"type": "commission_settings", "updated_at": datetime.now(timezone.utc).isoformat()}
+    
+    if data.customer_bonus_percent is not None:
+        if not 0 <= data.customer_bonus_percent <= 0.5:  # Max 50%
+            raise HTTPException(status_code=400, detail="Kundenbonus muss zwischen 0% und 50% liegen")
+        update_data["customer_bonus_percent"] = data.customer_bonus_percent
+    
+    if data.merchant_commission_percent is not None:
+        if not 0 <= data.merchant_commission_percent <= 0.5:  # Max 50%
+            raise HTTPException(status_code=400, detail="Händlerprovision muss zwischen 0% und 50% liegen")
+        update_data["merchant_commission_percent"] = data.merchant_commission_percent
+    
+    await db.settings.update_one(
+        {"type": "commission_settings"},
+        {"$set": update_data},
+        upsert=True
+    )
+    
+    return {"message": "Einstellungen gespeichert", "settings": update_data}
+
+@router.put("/merchant-commission")
+async def update_merchant_commission(
+    data: MerchantCommissionRequest,
+    admin: dict = Depends(get_admin_user)
+):
+    """Set commission rate for a specific merchant"""
+    if not 0 <= data.commission_percent <= 0.5:  # Max 50%
+        raise HTTPException(status_code=400, detail="Provision muss zwischen 0% und 50% liegen")
+    
+    result = await db.partner_accounts.update_one(
+        {"id": data.merchant_id},
+        {"$set": {"commission_rate": data.commission_percent}}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Händler nicht gefunden")
+    
+    return {
+        "message": f"Provision für Händler auf {data.commission_percent * 100:.1f}% gesetzt",
+        "merchant_id": data.merchant_id,
+        "commission_percent": data.commission_percent
+    }
+
+# ==================== MAIN ENDPOINTS ====================
 
 @router.get("/search")
 async def search_customers(
