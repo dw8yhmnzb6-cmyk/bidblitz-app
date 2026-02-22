@@ -181,73 +181,77 @@ export default function AdminWalletTopup({ token, t }) {
   );
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shadow-lg">
-          <Wallet className="w-6 h-6 text-white" />
+    <div className="space-y-3 sm:space-y-6">
+      {/* Header - Kompakt für Mobile */}
+      <div className="flex items-center gap-2 sm:gap-3">
+        <div className="w-8 h-8 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shadow-lg">
+          <Wallet className="w-4 h-4 sm:w-6 sm:h-6 text-white" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Kunden-Guthaben Aufladen</h1>
-          <p className="text-slate-500 text-sm">BidBlitz Pay Wallet aufladen mit Bonus-System</p>
+          <h1 className="text-base sm:text-2xl font-bold text-slate-800">Kunden-Guthaben Aufladen</h1>
+          <p className="text-slate-500 text-[10px] sm:text-sm">BidBlitz Pay Wallet aufladen mit Bonus-System</p>
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-100">
-          <div className="flex items-center gap-2 text-slate-500 text-sm mb-1">
-            <ArrowUpRight className="w-4 h-4" />
-            Aufladungen heute
+      {/* Stats Cards - 4 in einer Reihe auf Mobile */}
+      <div className="grid grid-cols-4 gap-1 sm:gap-4">
+        <div className="bg-white rounded-lg p-1.5 sm:p-4 shadow-sm border border-slate-100 text-center">
+          <div className="flex items-center justify-center gap-1 text-slate-500 text-[8px] sm:text-sm mb-0.5 sm:mb-1">
+            <ArrowUpRight className="w-3 h-3 sm:w-4 sm:h-4" />
+            <span className="hidden sm:inline">Aufladungen heute</span>
           </div>
-          <p className="text-2xl font-bold text-slate-800">{stats.totalTopUps}</p>
+          <p className="text-sm sm:text-2xl font-bold text-slate-800">{stats.totalTopUps}</p>
+          <p className="text-[7px] sm:hidden text-slate-400">Heute</p>
         </div>
-        <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-100">
-          <div className="flex items-center gap-2 text-slate-500 text-sm mb-1">
-            <Euro className="w-4 h-4" />
-            Gesamtvolumen
+        <div className="bg-white rounded-lg p-1.5 sm:p-4 shadow-sm border border-slate-100 text-center">
+          <div className="flex items-center justify-center gap-1 text-slate-500 text-[8px] sm:text-sm mb-0.5 sm:mb-1">
+            <Euro className="w-3 h-3 sm:w-4 sm:h-4" />
+            <span className="hidden sm:inline">Gesamtvolumen</span>
           </div>
-          <p className="text-2xl font-bold text-green-600">€{stats.totalAmount?.toFixed(2) || '0.00'}</p>
+          <p className="text-sm sm:text-2xl font-bold text-green-600">€{stats.totalAmount?.toFixed(0) || '0'}</p>
+          <p className="text-[7px] sm:hidden text-slate-400">Volumen</p>
         </div>
-        <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-100">
-          <div className="flex items-center gap-2 text-slate-500 text-sm mb-1">
-            <Gift className="w-4 h-4" />
-            Ausgezahlte Boni
+        <div className="bg-white rounded-lg p-1.5 sm:p-4 shadow-sm border border-slate-100 text-center">
+          <div className="flex items-center justify-center gap-1 text-slate-500 text-[8px] sm:text-sm mb-0.5 sm:mb-1">
+            <Gift className="w-3 h-3 sm:w-4 sm:h-4" />
+            <span className="hidden sm:inline">Ausgezahlte Boni</span>
           </div>
-          <p className="text-2xl font-bold text-amber-600">€{stats.totalBonus?.toFixed(2) || '0.00'}</p>
+          <p className="text-sm sm:text-2xl font-bold text-amber-600">€{stats.totalBonus?.toFixed(2) || '0'}</p>
+          <p className="text-[7px] sm:hidden text-slate-400">Boni</p>
         </div>
-        <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-100">
-          <div className="flex items-center gap-2 text-slate-500 text-sm mb-1">
-            <Users className="w-4 h-4" />
-            Neue Kunden
+        <div className="bg-white rounded-lg p-1.5 sm:p-4 shadow-sm border border-slate-100 text-center">
+          <div className="flex items-center justify-center gap-1 text-slate-500 text-[8px] sm:text-sm mb-0.5 sm:mb-1">
+            <Users className="w-3 h-3 sm:w-4 sm:h-4" />
+            <span className="hidden sm:inline">Neue Kunden</span>
           </div>
-          <p className="text-2xl font-bold text-blue-600">{stats.newCustomers}</p>
+          <p className="text-sm sm:text-2xl font-bold text-blue-600">{stats.newCustomers}</p>
+          <p className="text-[7px] sm:hidden text-slate-400">Neue</p>
         </div>
       </div>
 
-      {/* Bonus Info Banner */}
-      <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-4">
-        <h3 className="font-bold text-amber-800 mb-2 flex items-center gap-2">
-          <Gift className="w-5 h-5" />
+      {/* Bonus Info Banner - Kompakt */}
+      <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-lg p-2 sm:p-4">
+        <h3 className="font-bold text-amber-800 mb-1 sm:mb-2 flex items-center gap-1.5 text-xs sm:text-base">
+          <Gift className="w-3.5 h-3.5 sm:w-5 sm:h-5" />
           Aktive Boni & Anreize
         </h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-          <div className="flex items-center gap-2">
-            <Percent className="w-4 h-4 text-green-600" />
-            <span><strong>2% Kundenbonus</strong> auf jede Aufladung</span>
+        <div className="grid grid-cols-3 gap-1 sm:gap-4 text-[9px] sm:text-sm">
+          <div className="flex items-center gap-1">
+            <Percent className="w-3 h-3 text-green-600 flex-shrink-0" />
+            <span><strong>2%</strong> Kundenbonus</span>
           </div>
-          <div className="flex items-center gap-2">
-            <Gift className="w-4 h-4 text-blue-600" />
-            <span><strong>€1 Extra</strong> für Erstaufladung</span>
+          <div className="flex items-center gap-1">
+            <Gift className="w-3 h-3 text-blue-600 flex-shrink-0" />
+            <span><strong>€1</strong> Erstaufladung</span>
           </div>
-          <div className="flex items-center gap-2">
-            <Trophy className="w-4 h-4 text-amber-600" />
-            <span><strong>2% Händlerprovision</strong> pro Aufladung</span>
+          <div className="flex items-center gap-1">
+            <Trophy className="w-3 h-3 text-amber-600 flex-shrink-0" />
+            <span><strong>2%</strong> Händler</span>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-6">
         {/* Main Top-up Section */}
         <div className="lg:col-span-2 space-y-4">
           {/* Search Customer */}
