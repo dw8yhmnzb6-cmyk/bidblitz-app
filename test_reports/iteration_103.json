@@ -1,0 +1,74 @@
+{
+  "summary": "Tested extended payout settings with IBAN, BIC/SWIFT for international transfers via Wise. Backend API tests pass 100%. Frontend code review confirms all required fields are implemented correctly.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {
+        "flow": "Admin login",
+        "issue": "Unable to login via Playwright automation - login button click doesn't navigate to dashboard. This is a pre-existing issue not related to the new payout settings feature.",
+        "affected_selectors": ["button:has-text('Anmelden')"]
+      }
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_payout_settings_international.py",
+    "/app/test_reports/pytest/pytest_payout_settings_international.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "All new fields correctly implemented in PayoutSettings model (enterprise_portal.py lines 1067-1076)",
+    "BIC/SWIFT validation correctly implemented in wise_payouts.py (lines 84-89) - validates 8 or 11 characters",
+    "Frontend form correctly includes all new fields: bic_swift, bank_name, bank_country, currency (AdminEnterpriseManagement.js lines 441-550)",
+    "Country dropdown includes all required countries: DE, AT, CH, NL, BE, FR, IT, ES, PL, GB, US, TR, AE",
+    "Currency dropdown includes all required currencies: EUR, USD, GBP, CHF, TRY, AED",
+    "Hint text 'Für internationale Überweisungen' is present for BIC/SWIFT field"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_payout_settings_international.py"
+  ],
+  "success_rate": {
+    "backend": "100% (13/13 tests passed)",
+    "frontend": "Code review passed - UI automation blocked by login issue"
+  },
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Extended payout settings feature is fully implemented. Backend API tests confirm all new fields (bic_swift, bank_name, bank_country, currency) are accepted and persisted correctly. Frontend code review confirms form UI has all required fields with correct dropdowns. Admin login via Playwright automation is not working (pre-existing issue), but this doesn't affect the feature implementation.",
+  "features_tested": {
+    "backend_api": {
+      "status": "PASS",
+      "tests_passed": 13,
+      "tests_failed": 0,
+      "endpoints_tested": [
+        "GET /api/enterprise/admin/list - Returns payout_settings with new fields",
+        "PUT /api/enterprise/admin/payout-settings/{id} - Accepts and stores bic_swift, bank_name, bank_country, currency"
+      ],
+      "currencies_tested": ["EUR", "USD", "GBP", "CHF", "TRY", "AED"],
+      "countries_tested": ["DE", "AT", "CH", "GB", "US", "TR", "AE"],
+      "bic_formats_tested": ["8-character BIC", "11-character BIC"]
+    },
+    "frontend_code_review": {
+      "status": "PASS",
+      "fields_verified": [
+        "BIC/SWIFT input field with placeholder 'COBADEFFXXX'",
+        "Bank Name input field with placeholder 'Commerzbank, Sparkasse, etc.'",
+        "Country dropdown with 13 countries (DE, AT, CH, NL, BE, FR, IT, ES, PL, GB, US, TR, AE)",
+        "Currency dropdown with 6 currencies (EUR, USD, GBP, CHF, TRY, AED)",
+        "Hint text 'Für internationale Überweisungen' present"
+      ],
+      "file_reviewed": "/app/frontend/src/components/admin/AdminEnterpriseManagement.js",
+      "lines_reviewed": "26-40 (state), 441-550 (form UI)"
+    },
+    "wise_payouts_validation": {
+      "status": "PASS",
+      "bic_validation": "Validates 8 or 11 characters with error message 'BIC/SWIFT muss 8 oder 11 Zeichen haben'",
+      "file_reviewed": "/app/backend/routers/wise_payouts.py",
+      "lines_reviewed": "22-32 (model), 73-145 (setup_bank_account)"
+    }
+  }
+}
