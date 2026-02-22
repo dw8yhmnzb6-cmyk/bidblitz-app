@@ -694,6 +694,10 @@ class KYCApproval(BaseModel):
     approved: bool
     rejection_reason: Optional[str] = None
 
+class KYCResubmission(BaseModel):
+    """For resubmitting after rejection"""
+    pass
+
 @router.post("/kyc/submit")
 async def submit_kyc_documents(data: KYCSubmission, user: dict = Depends(get_current_user)):
     """User submits KYC documents for verification"""
