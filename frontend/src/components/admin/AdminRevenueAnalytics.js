@@ -169,45 +169,48 @@ export function AdminRevenueAnalytics({ token }) {
         </div>
       )}
 
-      {/* Packages Tab */}
+      {/* Packages Tab - Kompakt */}
       {activeTab === 'packages' && (
-        <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
-          <div className="px-6 py-4 border-b bg-gray-50">
-            <h3 className="font-semibold text-gray-900 flex items-center gap-2"><Package className="w-5 h-5 text-purple-500" />Gebotspakete Verkäufe</h3>
+        <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
+          <div className="px-3 sm:px-6 py-2 sm:py-3 border-b bg-gray-50">
+            <h3 className="font-semibold text-gray-900 flex items-center gap-2 text-sm sm:text-base">
+              <Package className="w-4 h-4 text-purple-500" />
+              Gebotspakete
+            </h3>
           </div>
-          <div className="p-6">
+          <div className="p-3 sm:p-4">
             {packages.length > 0 ? (
-              <div className="space-y-4">
+              <div className="space-y-2.5">
                 {packages.map((pkg, idx) => {
                   const maxRev = packages[0]?.revenue || 1;
                   const width = (pkg.revenue / maxRev) * 100;
                   return (
-                    <div key={pkg.bids} className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span className="font-medium">{pkg.package_name}</span>
-                        <span className="text-gray-500">{pkg.purchases}x verkauft · Ø {formatCurrency(pkg.avg_price)}</span>
+                    <div key={pkg.bids} className="space-y-1">
+                      <div className="flex justify-between text-xs sm:text-sm">
+                        <span className="font-medium truncate mr-2">{pkg.package_name}</span>
+                        <span className="text-gray-500 flex-shrink-0">{pkg.purchases}x</span>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <div className="flex-1 h-8 bg-gray-100 rounded-full overflow-hidden">
-                          <div className={`h-full rounded-full ${idx === 0 ? 'bg-purple-500' : idx === 1 ? 'bg-blue-500' : idx === 2 ? 'bg-green-500' : 'bg-gray-400'}`} style={{ width: `${width}%` }} />
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 h-5 sm:h-6 bg-gray-100 rounded-full overflow-hidden">
+                          <div className={`h-full rounded-full ${idx === 0 ? 'bg-purple-500' : idx === 1 ? 'bg-blue-500' : idx === 2 ? 'bg-green-500' : 'bg-gray-400'}`} style={{ width: `${Math.max(width, 3)}%` }} />
                         </div>
-                        <span className="font-bold text-green-600 w-24 text-right">{formatCurrency(pkg.revenue)}</span>
+                        <span className="font-bold text-green-600 text-xs sm:text-sm w-16 sm:w-20 text-right flex-shrink-0">{formatCurrency(pkg.revenue)}</span>
                       </div>
                     </div>
                   );
                 })}
               </div>
             ) : (
-              <div className="text-center text-gray-500 py-8">Keine Paketdaten</div>
+              <div className="text-center text-gray-500 py-4 text-sm">Keine Daten</div>
             )}
           </div>
         </div>
       )}
 
-      {/* Auctions Tab */}
+      {/* Auctions Tab - Kompakt */}
       {activeTab === 'auctions' && auctionStats && (
-        <div className="grid grid-cols-1 gap-4">
-          <div className="bg-white rounded-xl border shadow-sm p-4 sm:p-6">
+        <div className="grid grid-cols-1 gap-3">
+          <div className="bg-white rounded-lg border shadow-sm p-3 sm:p-4">
             <h3 className="font-semibold mb-4 flex items-center gap-2"><Zap className="w-5 h-5 text-amber-500" />Auktions-Statistiken</h3>
             <div className="space-y-3">
               <div className="flex justify-between py-2 border-b text-sm"><span className="text-gray-600">Abgeschlossene Auktionen</span><span className="font-bold">{auctionStats.completed_auctions}</span></div>
