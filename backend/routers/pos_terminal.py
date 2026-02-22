@@ -374,14 +374,42 @@ async def get_gift_card_info(barcode: str):
 async def process_payment(data: PaymentRequest, authorization: Optional[str] = Header(None)):
     """Process payment from customer balance"""
     try:
-        # Find customer
-        customer = await db.users.find_one({
-            "$or": [
-                {"customer_number": data.customer_barcode},
-                {"barcode": data.customer_barcode},
-                {"id": data.customer_barcode}
-            ]
-        })
+        customer = None
+        
+        # Check if it's a BidBlitz Pay QR code format
+        if data.customer_barcode and data.customer_barcode.startswith("BIDBLITZ-PAY:"):
+            # Extract payment token from QR code
+            payment_token = data.customer_barcode.replace("BIDBLITZ-PAY:", "")
+            
+            # Find the token in database
+            token_data = await db.payment_tokens.find_one({"token": payment_token})
+            if not token_data:
+                raise HTTPException(status_code=400, detail="QR-Code ungültig oder abgelaufen")
+            
+            if token_data.get("used"):
+                raise HTTPException(status_code=400, detail="QR-Code bereits verwendet")
+            
+            # Get customer from token
+            customer_id = token_data["user_id"]
+            customer = await db.users.find_one({"id": customer_id})
+            
+            if customer:
+                # Mark token as used
+                await db.payment_tokens.update_one(
+                    {"token": payment_token},
+                    {"$set": {"used": True, "used_at": datetime.now(timezone.utc).isoformat()}}
+                )
+                logger.info(f"BidBlitz Pay QR recognized for customer {customer_id}")
+        
+        # If not BidBlitz Pay format, try regular barcode lookup
+        if not customer:
+            customer = await db.users.find_one({
+                "$or": [
+                    {"customer_number": data.customer_barcode},
+                    {"barcode": data.customer_barcode},
+                    {"id": data.customer_barcode}
+                ]
+            })
         
         if not customer:
             raise HTTPException(status_code=404, detail="Kunde nicht gefunden")
