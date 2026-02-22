@@ -63,108 +63,95 @@ export function AdminRevenueAnalytics({ token }) {
   const formatCurrency = (value) => `€${(value || 0).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
   return (
-    <div className="space-y-3 sm:space-y-6">
-      {/* Header - Kompakt für Mobile */}
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2 min-w-0">
-          <Euro className="w-5 h-5 text-green-600 flex-shrink-0" />
-          <h2 className="text-base sm:text-xl font-bold text-gray-900 truncate">Umsatz-Analyse</h2>
-        </div>
-        <div className="flex gap-1 sm:gap-2 flex-shrink-0">
-          <select value={period} onChange={(e) => setPeriod(e.target.value)} className="px-2 py-1.5 border rounded-lg text-xs sm:text-sm w-24 sm:w-auto">
+    <div className="space-y-2 sm:space-y-4 max-w-full overflow-hidden">
+      {/* Header - Einzeilig und kompakt */}
+      <div className="flex items-center justify-between">
+        <h2 className="text-sm sm:text-lg font-bold text-gray-900 flex items-center gap-1.5">
+          <Euro className="w-4 h-4 text-green-600" />
+          Umsatz
+        </h2>
+        <div className="flex gap-1">
+          <select value={period} onChange={(e) => setPeriod(e.target.value)} className="px-1.5 py-1 border rounded text-[10px] sm:text-xs">
             <option value="week">Woche</option>
             <option value="month">Monat</option>
             <option value="quarter">Quartal</option>
           </select>
-          <Button onClick={fetchAnalytics} disabled={loading} variant="outline" size="sm" className="px-2">
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+          <Button onClick={fetchAnalytics} disabled={loading} variant="outline" size="sm" className="h-6 w-6 p-0">
+            <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
           </Button>
         </div>
       </div>
 
-      {/* Overview Cards - 2x2 Grid auf Mobile, kompakter */}
+      {/* Overview Cards - Kompaktes 2x2 Grid */}
       {overview && (
-        <div className="grid grid-cols-2 gap-2 sm:gap-4">
-          <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-lg p-2.5 sm:p-4 text-white">
-            <div className="flex items-center gap-1.5 mb-1">
-              <Euro className="w-4 h-4 opacity-80" />
-              <span className="text-[10px] sm:text-xs text-green-100">Heute</span>
-            </div>
-            <div className="text-lg sm:text-2xl font-bold">{formatCurrency(overview.revenue_today)}</div>
+        <div className="grid grid-cols-2 gap-1.5 sm:gap-3">
+          <div className="bg-green-500 rounded-md p-2 text-white">
+            <div className="text-[9px] sm:text-xs opacity-90">Heute</div>
+            <div className="text-sm sm:text-xl font-bold">{formatCurrency(overview.revenue_today)}</div>
           </div>
-          <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg p-2.5 sm:p-4 text-white">
-            <div className="flex items-center gap-1.5 mb-1">
-              <TrendingUp className="w-4 h-4 opacity-80" />
-              <span className="text-[10px] sm:text-xs text-blue-100">Woche</span>
-            </div>
-            <div className="text-lg sm:text-2xl font-bold">{formatCurrency(overview.revenue_this_week)}</div>
+          <div className="bg-blue-500 rounded-md p-2 text-white">
+            <div className="text-[9px] sm:text-xs opacity-90">Woche</div>
+            <div className="text-sm sm:text-xl font-bold">{formatCurrency(overview.revenue_this_week)}</div>
           </div>
-          <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg p-2.5 sm:p-4 text-white">
-            <div className="flex items-center gap-1.5 mb-1">
-              <BarChart3 className="w-4 h-4 opacity-80" />
-              <span className="text-[10px] sm:text-xs text-purple-100">Monat</span>
-            </div>
-            <div className="text-lg sm:text-2xl font-bold">{formatCurrency(overview.revenue_this_month)}</div>
+          <div className="bg-purple-500 rounded-md p-2 text-white">
+            <div className="text-[9px] sm:text-xs opacity-90">Monat</div>
+            <div className="text-sm sm:text-xl font-bold">{formatCurrency(overview.revenue_this_month)}</div>
           </div>
-          <div className="bg-gradient-to-br from-amber-500 to-amber-600 rounded-lg p-2.5 sm:p-4 text-white">
-            <div className="flex items-center gap-1.5 mb-1">
-              <ShoppingCart className="w-4 h-4 opacity-80" />
-              <span className="text-[10px] sm:text-xs text-amber-100">Trans.</span>
-            </div>
-            <div className="text-lg sm:text-2xl font-bold">{overview.transactions_today}</div>
+          <div className="bg-amber-500 rounded-md p-2 text-white">
+            <div className="text-[9px] sm:text-xs opacity-90">Trans.</div>
+            <div className="text-sm sm:text-xl font-bold">{overview.transactions_today}</div>
           </div>
         </div>
       )}
 
-      {/* Tabs - Kompakt und scrollbar */}
-      <div className="flex gap-1 sm:gap-2 border-b pb-2 overflow-x-auto scrollbar-hide">
+      {/* Tabs - Icons only auf Mobile */}
+      <div className="flex gap-1 border-b pb-1.5 overflow-x-auto">
         {[
           { id: 'overview', label: 'Übersicht', icon: BarChart3 },
           { id: 'packages', label: 'Pakete', icon: Package },
-          { id: 'auctions', label: 'Auktionen', icon: Zap },
-          { id: 'spenders', label: 'Top Käufer', icon: CreditCard },
-          { id: 'conversion', label: 'Conversion', icon: Target },
+          { id: 'auctions', label: 'Aukt.', icon: Zap },
+          { id: 'spenders', label: 'Käufer', icon: CreditCard },
+          { id: 'conversion', label: 'Conv.', icon: Target },
           { id: 'timing', label: 'Peak', icon: Clock }
         ].map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-lg flex items-center gap-1 sm:gap-2 text-xs sm:text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0 ${
-              activeTab === tab.id ? 'bg-green-100 text-green-700' : 'text-gray-600 hover:bg-gray-100'
+            className={`px-2 py-1 rounded flex items-center gap-1 text-[10px] sm:text-xs font-medium whitespace-nowrap ${
+              activeTab === tab.id ? 'bg-green-100 text-green-700' : 'text-gray-500 hover:bg-gray-100'
             }`}
           >
-            <tab.icon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-            <span className="hidden xs:inline">{tab.label}</span>
+            <tab.icon className="w-3 h-3" />
+            <span className="hidden xs:inline sm:inline">{tab.label}</span>
           </button>
         ))}
       </div>
 
-      {/* Overview Tab - Daily Revenue - Kompakt */}
+      {/* Overview Tab - Täglicher Umsatz */}
       {activeTab === 'overview' && (
-        <div className="bg-white rounded-lg border shadow-sm p-3 sm:p-6">
-          <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2 text-sm sm:text-base">
-            <TrendingUp className="w-4 h-4 text-green-500" />
+        <div className="bg-white rounded-lg border p-2 sm:p-4">
+          <h3 className="font-medium text-gray-900 mb-2 text-xs sm:text-sm flex items-center gap-1.5">
+            <TrendingUp className="w-3.5 h-3.5 text-green-500" />
             Täglicher Umsatz
           </h3>
-          
           {dailyRevenue.length > 0 ? (
-            <div className="space-y-1.5 sm:space-y-2">
-              {dailyRevenue.slice(-10).map((day) => {
+            <div className="space-y-1">
+              {dailyRevenue.slice(-7).map((day) => {
                 const maxRev = Math.max(...dailyRevenue.map(d => d.revenue), 1);
                 const width = (day.revenue / maxRev) * 100;
                 return (
-                  <div key={day.date} className="flex items-center gap-2">
-                    <span className="text-[9px] sm:text-xs text-gray-500 w-12 sm:w-16 flex-shrink-0">{new Date(day.date).toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit' })}</span>
-                    <div className="flex-1 h-4 sm:h-5 bg-gray-100 rounded-full overflow-hidden">
-                      <div className="h-full bg-gradient-to-r from-green-400 to-green-600 rounded-full" style={{ width: `${Math.max(width, 2)}%` }} />
+                  <div key={day.date} className="flex items-center gap-1.5">
+                    <span className="text-[8px] sm:text-[10px] text-gray-500 w-10 sm:w-14">{new Date(day.date).toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit' })}</span>
+                    <div className="flex-1 h-3 sm:h-4 bg-gray-100 rounded-full overflow-hidden">
+                      <div className="h-full bg-green-500 rounded-full" style={{ width: `${Math.max(width, 3)}%` }} />
                     </div>
-                    <span className="text-[10px] sm:text-xs font-medium w-14 sm:w-16 text-right flex-shrink-0">{formatCurrency(day.revenue)}</span>
+                    <span className="text-[8px] sm:text-[10px] font-medium w-12 sm:w-14 text-right">{formatCurrency(day.revenue)}</span>
                   </div>
                 );
               })}
             </div>
           ) : (
-            <div className="text-center text-gray-500 py-4 text-sm">Keine Daten</div>
+            <div className="text-center text-gray-400 py-3 text-xs">Keine Daten</div>
           )}
         </div>
       )}
