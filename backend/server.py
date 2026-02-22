@@ -151,6 +151,9 @@ from routers.partner_transfer import router as partner_transfer_router
 # NEW: BidBlitz Pay Security
 from routers.security import router as security_router
 
+# NEW: BidBlitz Pay Analytics
+from routers.bidblitz_pay_analytics import router as bidblitz_pay_analytics_router
+
 # NEW: 9 additional features
 from routers.bid_alarm import bid_alarm_router
 from routers.welcome_bonus import welcome_bonus_router
