@@ -1310,34 +1310,29 @@ export default function Admin() {
   };
 
   return (
-    <div className="min-h-screen pt-36 lg:pt-0" data-testid="admin-page">
+    <div className="min-h-screen pt-28 sm:pt-32 lg:pt-0" data-testid="admin-page">
       {/* Mobile/Tablet Tab Bar - visible on screens smaller than lg (1024px) */}
-      <div className="lg:hidden fixed top-28 left-0 right-0 z-40 bg-gradient-to-b from-cyan-50 to-cyan-100 border-b border-gray-200 shadow-md safe-area-inset">
-        <div className="flex items-center justify-between px-3 py-2">
-          <h2 className="text-sm sm:text-base font-bold text-gray-800 flex items-center gap-2">
-            <Settings className="w-4 h-4 text-[#7C3AED]" />
-            <span className="hidden xs:inline">Admin Panel</span>
-            <span className="xs:hidden">Admin</span>
+      <div className="lg:hidden fixed top-20 sm:top-24 left-0 right-0 z-40 bg-gradient-to-b from-cyan-50 to-cyan-100 border-b border-gray-200 shadow-md safe-area-inset">
+        <div className="flex items-center justify-between px-2 sm:px-3 py-1.5 sm:py-2">
+          <h2 className="text-xs sm:text-sm font-bold text-gray-800 flex items-center gap-1.5">
+            <Settings className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#7C3AED]" />
+            <span>Admin Panel</span>
           </h2>
-          <div className="flex items-center gap-2">
-            <span className={`text-[10px] px-2 py-0.5 rounded-full hidden sm:inline ${getTabCategory(activeTab)?.bgColor || 'bg-gray-100'} ${getTabCategory(activeTab)?.textColor || 'text-gray-600'}`}>
-              {tabs.find(t => t.id === activeTab)?.label}
-            </span>
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              onTouchEnd={(e) => {
-                e.preventDefault();
-                setMobileMenuOpen(!mobileMenuOpen);
-              }}
-              className="text-gray-800 border-gray-300 px-3 py-2 min-h-[44px] touch-manipulation active:bg-gray-100"
-              style={{ WebkitTapHighlightColor: 'rgba(0,0,0,0.1)', touchAction: 'manipulation' }}
-              data-testid="admin-mobile-menu-btn"
-            >
-              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-              <span className="ml-2 text-sm">Menü</span>
-            </Button>
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            onTouchEnd={(e) => {
+              e.preventDefault();
+              setMobileMenuOpen(!mobileMenuOpen);
+            }}
+            className="text-gray-800 border-gray-300 px-2 py-1 min-h-[36px] sm:min-h-[40px] touch-manipulation active:bg-gray-100 text-xs sm:text-sm"
+            style={{ WebkitTapHighlightColor: 'rgba(0,0,0,0.1)', touchAction: 'manipulation' }}
+            data-testid="admin-mobile-menu-btn"
+          >
+            {mobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+            <span className="ml-1.5">Menü</span>
+          </Button>
           </div>
         </div>
         
