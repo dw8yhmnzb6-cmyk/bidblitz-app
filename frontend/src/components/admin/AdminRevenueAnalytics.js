@@ -83,26 +83,24 @@ export function AdminRevenueAnalytics({ token }) {
       </div>
 
       {/* Overview Cards - 4 Karten in einer Reihe, sehr kompakt */}
-      {overview && (
-        <div className="grid grid-cols-4 gap-1 w-full">
-          <div className="bg-green-500 rounded p-1.5 text-white text-center">
-            <div className="text-[8px] opacity-90">Heute</div>
-            <div className="text-[10px] sm:text-sm font-bold truncate">{formatCurrency(overview.revenue_today)}</div>
-          </div>
-          <div className="bg-blue-500 rounded p-1.5 text-white text-center">
-            <div className="text-[8px] opacity-90">Woche</div>
-            <div className="text-[10px] sm:text-sm font-bold truncate">{formatCurrency(overview.revenue_this_week)}</div>
-          </div>
-          <div className="bg-purple-500 rounded p-1.5 text-white text-center">
-            <div className="text-[8px] opacity-90">Monat</div>
-            <div className="text-[10px] sm:text-sm font-bold truncate">{formatCurrency(overview.revenue_this_month)}</div>
-          </div>
-          <div className="bg-amber-500 rounded p-1.5 text-white text-center">
-            <div className="text-[8px] opacity-90">Trans.</div>
-            <div className="text-[10px] sm:text-sm font-bold">{overview.transactions_today}</div>
-          </div>
+      <div className="grid grid-cols-4 gap-1 w-full">
+        <div className="bg-green-500 rounded p-1.5 text-white text-center">
+          <div className="text-[8px] opacity-90">Heute</div>
+          <div className="text-[10px] sm:text-sm font-bold truncate">{overview ? formatCurrency(overview.revenue_today) : '€0'}</div>
         </div>
-      )}
+        <div className="bg-blue-500 rounded p-1.5 text-white text-center">
+          <div className="text-[8px] opacity-90">Woche</div>
+          <div className="text-[10px] sm:text-sm font-bold truncate">{overview ? formatCurrency(overview.revenue_this_week) : '€0'}</div>
+        </div>
+        <div className="bg-purple-500 rounded p-1.5 text-white text-center">
+          <div className="text-[8px] opacity-90">Monat</div>
+          <div className="text-[10px] sm:text-sm font-bold truncate">{overview ? formatCurrency(overview.revenue_this_month) : '€0'}</div>
+        </div>
+        <div className="bg-amber-500 rounded p-1.5 text-white text-center">
+          <div className="text-[8px] opacity-90">Trans.</div>
+          <div className="text-[10px] sm:text-sm font-bold">{overview?.transactions_today ?? 0}</div>
+        </div>
+      </div>
 
       {/* Tabs - Icons only auf Mobile */}
       <div className="flex gap-1 border-b pb-1.5 overflow-x-auto">
