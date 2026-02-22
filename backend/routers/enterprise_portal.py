@@ -1175,9 +1175,13 @@ async def update_payout_settings(enterprise_id: str, data: PayoutSettings, x_adm
         "enterprise_id": enterprise_id,
         "iban": data.iban,
         "iban_holder": data.iban_holder,
+        "bic_swift": data.bic_swift,
+        "bank_name": data.bank_name,
+        "bank_country": data.bank_country,
         "payout_frequency": data.payout_frequency,
         "iban_mode": data.iban_mode,
         "min_payout_amount": data.min_payout_amount,
+        "currency": data.currency,
         "updated_at": now.isoformat(),
         "updated_by": "admin"
     }
