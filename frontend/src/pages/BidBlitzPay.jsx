@@ -53,7 +53,7 @@ const BidBlitzPay = () => {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showQR, setShowQR] = useState(false);
-  const [view, setView] = useState('wallet'); // wallet, qr, history, topup, security, send, request, contacts
+  const [view, setView] = useState('topup'); // topup, qr, wallet, history, bonus, referral, etc.
   // Use global language from localStorage
   const [language, setLanguage] = useState(() => localStorage.getItem('language') || 'de');
   
