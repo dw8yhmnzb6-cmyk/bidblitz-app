@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="20" skipped="0" tests="24" time="6.599" timestamp="2026-02-22T13:31:34.390898+00:00" hostname="agent-env-0d6d196f-53cd-4848-95bc-f35c8619fcb4"><testcase classname="backend.tests.test_kyc_verification.TestKYCVerificationSystem" name="test_01_admin_login" time="0.902" /><testcase classname="backend.tests.test_kyc_verification.TestKYCVerificationSystem" name="test_02_register_new_user" time="0.348"><failure message="AssertionError: Registration failed: {&quot;detail&quot;:&quot;Maximal 2 Konten pro Haushalt erlaubt. Kontaktieren Sie den Support bei Fragen.&quot;}&#10;assert 403 == 200&#10; +  where 403 = &lt;Response [403]&gt;.status_code">backend/tests/test_kyc_verification.py:62: in test_02_register_new_user
+    assert response.status_code == 200, f"Registration failed: {response.text}"
+E   AssertionError: Registration failed: {"detail":"Maximal 2 Konten pro Haushalt erlaubt. Kontaktieren Sie den Support bei Fragen."}
+E   assert 403 == 200
+E    +  where 403 = &lt;Response [403]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_kyc_verification.TestKYCVerificationSystem" name="test_03_get_kyc_status_initial" time="0.114"><failure message="AssertionError: KYC status check failed: {&quot;detail&quot;:&quot;Invalid token&quot;}&#10;assert 401 == 200&#10; +  where 401 = &lt;Response [401]&gt;.status_code">backend/tests/test_kyc_verification.py:80: in test_03_get_kyc_status_initial
+    assert response.status_code == 200, f"KYC status check failed: {response.text}"
+E   AssertionError: KYC status check failed: {"detail":"Invalid token"}
+E   assert 401 == 200
+E    +  where 401 = &lt;Response [401]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_kyc_verification.TestKYCVerificationSystem" name="test_04_upload_id_front" time="0.105"><failure message="AssertionError: ID front upload failed: {&quot;detail&quot;:&quot;Invalid token&quot;}&#10;assert 401 == 200&#10; +  where 401 = &lt;Response [401]&gt;.status_code">backend/tests/test_kyc_verification.py:108: in test_04_upload_id_front
+    assert response.status_code == 200, f"ID front upload failed: {response.text}"
+E   AssertionError: ID front upload failed: {"detail":"Invalid token"}
+E   assert 401 == 200
+E    +  where 401 = &lt;Response [401]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_kyc_verification.TestKYCVerificationSystem" name="test_05_upload_id_back" time="0.093"><failure message="AssertionError: ID back upload failed: {&quot;detail&quot;:&quot;Invalid token&quot;}&#10;assert 401 == 200&#10; +  where 401 = &lt;Response [401]&gt;.status_code">backend/tests/test_kyc_verification.py:130: in test_05_upload_id_back
+    assert response.status_code == 200, f"ID back upload failed: {response.text}"
+E   AssertionError: ID back upload failed: {"detail":"Invalid token"}
+E   assert 401 == 200
+E    +  where 401 = &lt;Response [401]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_kyc_verification.TestKYCVerificationSystem" name="test_06_upload_selfie" time="0.112"><failure message="AssertionError: Selfie upload failed: {&quot;detail&quot;:&quot;Invalid token&quot;}&#10;assert 401 == 200&#10; +  where 401 = &lt;Response [401]&gt;.status_code">backend/tests/test_kyc_verification.py:151: in test_06_upload_selfie
+    assert response.status_code == 200, f"Selfie upload failed: {response.text}"
+E   AssertionError: Selfie upload failed: {"detail":"Invalid token"}
+E   assert 401 == 200
+E    +  where 401 = &lt;Response [401]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_kyc_verification.TestKYCVerificationSystem" name="test_07_upload_invalid_document_type" time="0.101"><failure message="AssertionError: Expected 400 for invalid type, got: 401&#10;assert 401 == 400&#10; +  where 401 = &lt;Response [401]&gt;.status_code">backend/tests/test_kyc_verification.py:172: in test_07_upload_invalid_document_type
+    assert response.status_code == 400, f"Expected 400 for invalid type, got: {response.status_code}"
+E   AssertionError: Expected 400 for invalid type, got: 401
+E   assert 401 == 400
+E    +  where 401 = &lt;Response [401]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_kyc_verification.TestKYCVerificationSystem" name="test_08_submit_kyc_documents" time="0.106"><failure message="AssertionError: KYC submission failed: {&quot;detail&quot;:&quot;Invalid token&quot;}&#10;assert 401 == 200&#10; +  where 401 = &lt;Response [401]&gt;.status_code">backend/tests/test_kyc_verification.py:192: in test_08_submit_kyc_documents
+    assert response.status_code == 200, f"KYC submission failed: {response.text}"
+E   AssertionError: KYC submission failed: {"detail":"Invalid token"}
+E   assert 401 == 200
+E    +  where 401 = &lt;Response [401]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_kyc_verification.TestKYCVerificationSystem" name="test_09_get_kyc_status_after_submission" time="0.091"><failure message="AssertionError: KYC status check failed: {&quot;detail&quot;:&quot;Invalid token&quot;}&#10;assert 401 == 200&#10; +  where 401 = &lt;Response [401]&gt;.status_code">backend/tests/test_kyc_verification.py:205: in test_09_get_kyc_status_after_submission
+    assert response.status_code == 200, f"KYC status check failed: {response.text}"
+E   AssertionError: KYC status check failed: {"detail":"Invalid token"}
+E   assert 401 == 200
+E    +  where 401 = &lt;Response [401]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_kyc_verification.TestKYCVerificationSystem" name="test_10_login_blocked_for_unverified_user" time="0.463"><failure message="AssertionError: Expected 403, got: 401&#10;assert 401 == 403&#10; +  where 401 = &lt;Response [401]&gt;.status_code">backend/tests/test_kyc_verification.py:227: in test_10_login_blocked_for_unverified_user
+    assert response.status_code == 403, f"Expected 403, got: {response.status_code}"
+E   AssertionError: Expected 403, got: 401
+E   assert 401 == 403
+E    +  where 401 = &lt;Response [401]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_kyc_verification.TestKYCVerificationSystem" name="test_11_admin_get_pending_kyc_users" time="0.365"><failure message="AssertionError: Test user not in pending list: []&#10;assert 'kyc-test-1771767094@test.de' in []">backend/tests/test_kyc_verification.py:249: in test_11_admin_get_pending_kyc_users
+    assert TEST_USER_EMAIL in pending_emails, f"Test user not in pending list: {pending_emails}"
+E   AssertionError: Test user not in pending list: []
+E   assert 'kyc-test-1771767094@test.de' in []</failure></testcase><testcase classname="backend.tests.test_kyc_verification.TestKYCVerificationSystem" name="test_12_admin_get_all_kyc_users" time="0.407" /><testcase classname="backend.tests.test_kyc_verification.TestKYCVerificationSystem" name="test_13_admin_get_kyc_users_filtered" time="0.344" /><testcase classname="backend.tests.test_kyc_verification.TestKYCVerificationSystem" name="test_14_admin_reject_kyc" time="0.291"><failure message="AssertionError: KYC rejection failed: {&quot;detail&quot;:[{&quot;type&quot;:&quot;string_type&quot;,&quot;loc&quot;:[&quot;body&quot;,&quot;user_id&quot;],&quot;msg&quot;:&quot;Input should be a valid string&quot;,&quot;input&quot;:null,&quot;url&quot;:&quot;https://errors.pydantic.dev/2.12/v/string_type&quot;}]}&#10;assert 422 == 200&#10; +  where 422 = &lt;Response [422]&gt;.status_code">backend/tests/test_kyc_verification.py:299: in test_14_admin_reject_kyc
+    assert response.status_code == 200, f"KYC rejection failed: {response.text}"
+E   AssertionError: KYC rejection failed: {"detail":[{"type":"string_type","loc":["body","user_id"],"msg":"Input should be a valid string","input":null,"url":"https://errors.pydantic.dev/2.12/v/string_type"}]}
+E   assert 422 == 200
+E    +  where 422 = &lt;Response [422]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_kyc_verification.TestKYCVerificationSystem" name="test_15_get_kyc_status_after_rejection" time="0.100"><failure message="AssertionError: KYC status check failed: {&quot;detail&quot;:&quot;Invalid token&quot;}&#10;assert 401 == 200&#10; +  where 401 = &lt;Response [401]&gt;.status_code">backend/tests/test_kyc_verification.py:312: in test_15_get_kyc_status_after_rejection
+    assert response.status_code == 200, f"KYC status check failed: {response.text}"
+E   AssertionError: KYC status check failed: {"detail":"Invalid token"}
+E   assert 401 == 200
+E    +  where 401 = &lt;Response [401]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_kyc_verification.TestKYCVerificationSystem" name="test_16_login_blocked_for_rejected_user" time="0.452"><failure message="AssertionError: Expected 403, got: 401&#10;assert 401 == 403&#10; +  where 401 = &lt;Response [401]&gt;.status_code">backend/tests/test_kyc_verification.py:328: in test_16_login_blocked_for_rejected_user
+    assert response.status_code == 403, f"Expected 403, got: {response.status_code}"
+E   AssertionError: Expected 403, got: 401
+E   assert 401 == 403
+E    +  where 401 = &lt;Response [401]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_kyc_verification.TestKYCVerificationSystem" name="test_17_resubmit_kyc" time="0.101"><failure message="AssertionError: KYC resubmit failed: {&quot;detail&quot;:&quot;Invalid token&quot;}&#10;assert 401 == 200&#10; +  where 401 = &lt;Response [401]&gt;.status_code">backend/tests/test_kyc_verification.py:344: in test_17_resubmit_kyc
+    assert response.status_code == 200, f"KYC resubmit failed: {response.text}"
+E   AssertionError: KYC resubmit failed: {"detail":"Invalid token"}
+E   assert 401 == 200
+E    +  where 401 = &lt;Response [401]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_kyc_verification.TestKYCVerificationSystem" name="test_18_submit_kyc_again" time="0.091"><failure message="AssertionError: KYC resubmission failed: {&quot;detail&quot;:&quot;Invalid token&quot;}&#10;assert 401 == 200&#10; +  where 401 = &lt;Response [401]&gt;.status_code">backend/tests/test_kyc_verification.py:364: in test_18_submit_kyc_again
+    assert response.status_code == 200, f"KYC resubmission failed: {response.text}"
+E   AssertionError: KYC resubmission failed: {"detail":"Invalid token"}
+E   assert 401 == 200
+E    +  where 401 = &lt;Response [401]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_kyc_verification.TestKYCVerificationSystem" name="test_19_admin_approve_kyc" time="0.234"><failure message="AssertionError: KYC approval failed: {&quot;detail&quot;:[{&quot;type&quot;:&quot;string_type&quot;,&quot;loc&quot;:[&quot;body&quot;,&quot;user_id&quot;],&quot;msg&quot;:&quot;Input should be a valid string&quot;,&quot;input&quot;:null,&quot;url&quot;:&quot;https://errors.pydantic.dev/2.12/v/string_type&quot;}]}&#10;assert 422 == 200&#10; +  where 422 = &lt;Response [422]&gt;.status_code">backend/tests/test_kyc_verification.py:380: in test_19_admin_approve_kyc
+    assert response.status_code == 200, f"KYC approval failed: {response.text}"
+E   AssertionError: KYC approval failed: {"detail":[{"type":"string_type","loc":["body","user_id"],"msg":"Input should be a valid string","input":null,"url":"https://errors.pydantic.dev/2.12/v/string_type"}]}
+E   assert 422 == 200
+E    +  where 422 = &lt;Response [422]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_kyc_verification.TestKYCVerificationSystem" name="test_20_get_kyc_status_after_approval" time="0.097"><failure message="AssertionError: KYC status check failed: {&quot;detail&quot;:&quot;Invalid token&quot;}&#10;assert 401 == 200&#10; +  where 401 = &lt;Response [401]&gt;.status_code">backend/tests/test_kyc_verification.py:393: in test_20_get_kyc_status_after_approval
+    assert response.status_code == 200, f"KYC status check failed: {response.text}"
+E   AssertionError: KYC status check failed: {"detail":"Invalid token"}
+E   assert 401 == 200
+E    +  where 401 = &lt;Response [401]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_kyc_verification.TestKYCVerificationSystem" name="test_21_login_allowed_for_verified_user" time="0.471"><failure message="AssertionError: Login failed for verified user: {&quot;detail&quot;:&quot;Ungültige Anmeldedaten&quot;}&#10;assert 401 == 200&#10; +  where 401 = &lt;Response [401]&gt;.status_code">backend/tests/test_kyc_verification.py:408: in test_21_login_allowed_for_verified_user
+    assert response.status_code == 200, f"Login failed for verified user: {response.text}"
+E   AssertionError: Login failed for verified user: {"detail":"Ungültige Anmeldedaten"}
+E   assert 401 == 200
+E    +  where 401 = &lt;Response [401]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_kyc_verification.TestKYCVerificationSystem" name="test_22_admin_login_bypasses_kyc" time="0.819" /><testcase classname="backend.tests.test_kyc_verification.TestKYCVerificationSystem" name="test_23_non_admin_cannot_access_pending_users" time="0.103"><failure message="AssertionError: Expected 403, got: 401&#10;assert 401 == 403&#10; +  where 401 = &lt;Response [401]&gt;.status_code">backend/tests/test_kyc_verification.py:439: in test_23_non_admin_cannot_access_pending_users
+    assert response.status_code == 403, f"Expected 403, got: {response.status_code}"
+E   AssertionError: Expected 403, got: 401
+E   assert 401 == 403
+E    +  where 401 = &lt;Response [401]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_kyc_verification.TestKYCVerificationSystem" name="test_24_non_admin_cannot_approve_kyc" time="0.099"><failure message="AssertionError: Expected 403, got: 401&#10;assert 401 == 403&#10; +  where 401 = &lt;Response [401]&gt;.status_code">backend/tests/test_kyc_verification.py:453: in test_24_non_admin_cannot_approve_kyc
+    assert response.status_code == 403, f"Expected 403, got: {response.status_code}"
+E   AssertionError: Expected 403, got: 401
+E   assert 401 == 403
+E    +  where 401 = &lt;Response [401]&gt;.status_code</failure></testcase></testsuite></testsuites>
