@@ -545,7 +545,18 @@ const translations = {
     minAmount: 'Minimum',
     maxAmount: 'Maximum',
     testAccess: 'Accès Test',
-    from: 'à partir de'
+    from: 'à partir de',
+    // Rapport de Caisse
+    cashReport: 'Rapport de Caisse',
+    cashRegister: 'Caisse',
+    staffMember: 'Employé',
+    summary: 'Résumé',
+    bonusesGivenOut: 'Bonus Accordés',
+    payments: 'Paiements',
+    totalAmount: 'TOTAL',
+    printTime: 'Impression',
+    cashSystem: 'Système de Caisse BidBlitz',
+    noTransactionsYet: 'Aucune transaction'
   },
   es: {
     loginTitle: 'Terminal de Caja',
