@@ -206,23 +206,23 @@ export function AdminRevenueAnalytics({ token }) {
 
       {/* Auctions Tab */}
       {activeTab === 'auctions' && auctionStats && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="bg-white rounded-xl border shadow-sm p-6">
+        <div className="grid grid-cols-1 gap-4">
+          <div className="bg-white rounded-xl border shadow-sm p-4 sm:p-6">
             <h3 className="font-semibold mb-4 flex items-center gap-2"><Zap className="w-5 h-5 text-amber-500" />Auktions-Statistiken</h3>
             <div className="space-y-3">
-              <div className="flex justify-between py-2 border-b"><span className="text-gray-600">Abgeschlossene Auktionen</span><span className="font-bold">{auctionStats.completed_auctions}</span></div>
-              <div className="flex justify-between py-2 border-b"><span className="text-gray-600">Ø Endpreis</span><span className="font-bold text-green-600">{formatCurrency(auctionStats.avg_final_price)}</span></div>
-              <div className="flex justify-between py-2 border-b"><span className="text-gray-600">Ø Gebote/Auktion</span><span className="font-bold">{auctionStats.avg_bids_per_auction}</span></div>
-              <div className="flex justify-between py-2"><span className="text-gray-600">Gesamte Gebote</span><span className="font-bold text-blue-600">{auctionStats.total_bids_used?.toLocaleString()}</span></div>
+              <div className="flex justify-between py-2 border-b text-sm"><span className="text-gray-600">Abgeschlossene Auktionen</span><span className="font-bold">{auctionStats.completed_auctions}</span></div>
+              <div className="flex justify-between py-2 border-b text-sm"><span className="text-gray-600">Ø Endpreis</span><span className="font-bold text-green-600">{formatCurrency(auctionStats.avg_final_price)}</span></div>
+              <div className="flex justify-between py-2 border-b text-sm"><span className="text-gray-600">Ø Gebote/Auktion</span><span className="font-bold">{auctionStats.avg_bids_per_auction}</span></div>
+              <div className="flex justify-between py-2 text-sm"><span className="text-gray-600">Gesamte Gebote</span><span className="font-bold text-blue-600">{auctionStats.total_bids_used?.toLocaleString()}</span></div>
             </div>
           </div>
-          <div className="bg-white rounded-xl border shadow-sm p-6">
+          <div className="bg-white rounded-xl border shadow-sm p-4 sm:p-6">
             <h3 className="font-semibold mb-4 flex items-center gap-2"><Euro className="w-5 h-5 text-green-500" />Einnahmen</h3>
             <div className="space-y-3">
-              <div className="flex justify-between py-2 border-b"><span className="text-gray-600">Bezahlte Auktionen</span><span className="font-bold">{auctionStats.paid_auctions}</span></div>
-              <div className="flex justify-between py-2 border-b"><span className="text-gray-600">Auktions-Einnahmen</span><span className="font-bold text-green-600">{formatCurrency(auctionStats.paid_revenue)}</span></div>
-              <div className="flex justify-between py-2 border-b"><span className="text-gray-600">Geschätzter Gebots-Umsatz</span><span className="font-bold text-blue-600">{formatCurrency(auctionStats.estimated_bid_revenue)}</span></div>
-              <div className="flex justify-between py-2"><span className="text-gray-600">Gesamt Retail-Wert</span><span className="font-bold">{formatCurrency(auctionStats.total_retail_value)}</span></div>
+              <div className="flex justify-between py-2 border-b text-sm"><span className="text-gray-600">Bezahlte Auktionen</span><span className="font-bold">{auctionStats.paid_auctions}</span></div>
+              <div className="flex justify-between py-2 border-b text-sm"><span className="text-gray-600">Auktions-Einnahmen</span><span className="font-bold text-green-600">{formatCurrency(auctionStats.paid_revenue)}</span></div>
+              <div className="flex justify-between py-2 border-b text-sm"><span className="text-gray-600">Geschätzter Gebots-Umsatz</span><span className="font-bold text-blue-600">{formatCurrency(auctionStats.estimated_bid_revenue)}</span></div>
+              <div className="flex justify-between py-2 text-sm"><span className="text-gray-600">Gesamt Retail-Wert</span><span className="font-bold">{formatCurrency(auctionStats.total_retail_value)}</span></div>
             </div>
           </div>
         </div>
