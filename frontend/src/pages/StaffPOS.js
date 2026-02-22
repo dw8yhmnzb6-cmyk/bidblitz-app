@@ -319,7 +319,18 @@ const translations = {
     minAmount: 'الحد الأدنى',
     maxAmount: 'الحد الأقصى',
     testAccess: 'وصول تجريبي',
-    from: 'من'
+    from: 'من',
+    // تقرير الكاشير
+    cashReport: 'تقرير الكاشير',
+    cashRegister: 'الكاشير',
+    staffMember: 'الموظف',
+    summary: 'ملخص',
+    bonusesGivenOut: 'المكافآت الممنوحة',
+    payments: 'المدفوعات',
+    totalAmount: 'المجموع',
+    printTime: 'الطباعة',
+    cashSystem: 'نظام كاشير BidBlitz',
+    noTransactionsYet: 'لا توجد معاملات'
   },
   sq: {
     loginTitle: 'Terminali i Arkës',
