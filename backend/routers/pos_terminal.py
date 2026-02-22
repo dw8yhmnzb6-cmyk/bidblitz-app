@@ -453,7 +453,7 @@ async def process_payment(data: PaymentRequest, authorization: Optional[str] = H
             upsert=False
         )
         
-        # Create transaction
+        # Create transaction in pos_transactions
         transaction = {
             "id": str(uuid.uuid4()),
             "type": "payment",
@@ -461,7 +461,7 @@ async def process_payment(data: PaymentRequest, authorization: Optional[str] = H
             "customer_barcode": data.customer_barcode,
             "customer_name": customer.get("name"),
             "amount": data.amount,
-            "description": data.description,
+            "description": data.description or f"POS Zahlung",
             "previous_balance": current_balance,
             "new_balance": new_balance,
             "staff_id": data.staff_id,
@@ -472,7 +472,26 @@ async def process_payment(data: PaymentRequest, authorization: Optional[str] = H
         }
         await db.pos_transactions.insert_one(transaction)
         
-        logger.info(f"POS Payment: €{data.amount} from customer {data.customer_barcode}")
+        # Also create transaction in bidblitz_pay_transactions (for BidBlitz Pay Verlauf)
+        bidblitz_transaction = {
+            "id": transaction["id"],
+            "user_id": customer["id"],
+            "type": "pos_payment",
+            "amount": -data.amount,  # Negative because it's a payment
+            "description": data.description or f"POS Zahlung bei {data.branch_name or 'Partner'}",
+            "balance_after": new_balance,
+            "status": "completed",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "metadata": {
+                "staff_id": data.staff_id,
+                "staff_name": data.staff_name,
+                "branch_id": data.branch_id,
+                "branch_name": data.branch_name
+            }
+        }
+        await db.bidblitz_pay_transactions.insert_one(bidblitz_transaction)
+        
+        logger.info(f"POS Payment: €{data.amount} from customer {customer.get('name')} ({customer['id']}) - New balance: €{new_balance}")
         
         return {
             "success": True,
