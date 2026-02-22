@@ -264,9 +264,19 @@ const PartnerStaff = ({ token, language, t }) => {
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500"
                 data-testid="staff-role-select"
               >
-                <option value="counter">{t('counter')} ({language === 'en' ? 'Scanner & Pay only' : 'Nur Scanner & Pay'})</option>
-                <option value="admin">{t('admin')} ({language === 'en' ? 'Full access' : 'Voller Zugang'})</option>
+                <option value="counter">🔢 {t('counter')} ({language === 'en' ? 'Scanner & Pay only' : 'Nur Scanner & Pay'})</option>
+                <option value="support">📧 Support ({language === 'en' ? 'Tickets & Emails' : 'Tickets & E-Mails'})</option>
+                <option value="marketing">📢 Marketing ({language === 'en' ? 'Vouchers & Campaigns' : 'Gutscheine & Kampagnen'})</option>
+                <option value="manager">👔 Manager ({language === 'en' ? 'Staff & Reports' : 'Mitarbeiter & Berichte'})</option>
+                <option value="admin">👑 {t('admin')} ({language === 'en' ? 'Full access' : 'Voller Zugang'})</option>
               </select>
+              <p className="text-xs text-gray-500 mt-1">
+                {newStaff.role === 'counter' && (language === 'en' ? 'Can only use POS scanner and process payments' : 'Kann nur POS-Scanner nutzen und Zahlungen abwickeln')}
+                {newStaff.role === 'support' && (language === 'en' ? 'Handles customer support tickets and emails' : 'Bearbeitet Kundentickets und E-Mails')}
+                {newStaff.role === 'marketing' && (language === 'en' ? 'Creates vouchers and marketing campaigns' : 'Erstellt Gutscheine und Marketingkampagnen')}
+                {newStaff.role === 'manager' && (language === 'en' ? 'Manages staff and views reports' : 'Verwaltet Mitarbeiter und sieht Berichte')}
+                {newStaff.role === 'admin' && (language === 'en' ? 'Full access to all features' : 'Voller Zugang zu allen Funktionen')}
+              </p>
             </div>
           </div>
           
