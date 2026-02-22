@@ -93,7 +93,18 @@ const translations = {
     hardwareScanner: 'Hardware-Scanner',
     hardwareScannerActive: 'Scanner aktiv',
     hardwareScannerInfo: 'USB/Bluetooth Scanner bereit',
-    waitingForHardwareScan: 'Warte auf Hardware-Scan...'
+    waitingForHardwareScan: 'Warte auf Hardware-Scan...',
+    // Kassenabschluss
+    cashReport: 'Kassenabschluss',
+    cashRegister: 'Kasse',
+    staffMember: 'Mitarbeiter',
+    summary: 'Zusammenfassung',
+    bonusesGivenOut: 'Boni ausgegeben',
+    payments: 'Zahlungen',
+    totalAmount: 'GESAMT',
+    printTime: 'Druck',
+    cashSystem: 'BidBlitz Kassensystem',
+    noTransactionsYet: 'Keine Transaktionen'
   },
   en: {
     loginTitle: 'Cash Register',
