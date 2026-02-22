@@ -580,12 +580,44 @@ export default function AdminEnterpriseManagement() {
                               {enterprise.payout_settings?.iban || 'Nicht hinterlegt'}
                             </span>
                           </div>
+                          {enterprise.payout_settings?.bic_swift && (
+                            <div className="flex justify-between">
+                              <span className="text-gray-500">BIC/SWIFT:</span>
+                              <span className="font-medium font-mono text-xs">
+                                {enterprise.payout_settings?.bic_swift}
+                              </span>
+                            </div>
+                          )}
+                          {enterprise.payout_settings?.bank_name && (
+                            <div className="flex justify-between">
+                              <span className="text-gray-500">Bank:</span>
+                              <span className="font-medium">
+                                {enterprise.payout_settings?.bank_name}
+                              </span>
+                            </div>
+                          )}
                           <div className="flex justify-between">
                             <span className="text-gray-500">Kontoinhaber:</span>
                             <span className="font-medium">
                               {enterprise.payout_settings?.iban_holder || '-'}
                             </span>
                           </div>
+                          {enterprise.payout_settings?.bank_country && enterprise.payout_settings?.bank_country !== 'DE' && (
+                            <div className="flex justify-between">
+                              <span className="text-gray-500">Land:</span>
+                              <span className="font-medium">
+                                {enterprise.payout_settings?.bank_country}
+                              </span>
+                            </div>
+                          )}
+                          {enterprise.payout_settings?.currency && enterprise.payout_settings?.currency !== 'EUR' && (
+                            <div className="flex justify-between">
+                              <span className="text-gray-500">Währung:</span>
+                              <span className="font-medium">
+                                {enterprise.payout_settings?.currency}
+                              </span>
+                            </div>
+                          )}
                         </>
                       )}
                       <div className="flex justify-between">
