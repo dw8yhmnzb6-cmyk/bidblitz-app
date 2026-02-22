@@ -1087,6 +1087,20 @@ const BidBlitzPay = () => {
     fetchSavedRecipients();
   }, [fetchWallet, fetchTransactions, fetchMainBalance, fetchCustomerNumber, fetchSavedRecipients]);
 
+  // Auto-refresh balance and transactions every 5 seconds for real-time updates
+  useEffect(() => {
+    const refreshInterval = setInterval(() => {
+      fetchWallet();
+      fetchMainBalance();
+      // Only refresh transactions if on history view to avoid unnecessary calls
+      if (view === 'history') {
+        fetchTransactions();
+      }
+    }, 5000); // 5 Sekunden
+
+    return () => clearInterval(refreshInterval);
+  }, [fetchWallet, fetchMainBalance, fetchTransactions, view]);
+
   useEffect(() => {
     localStorage.setItem('language', language);
   }, [language]);
