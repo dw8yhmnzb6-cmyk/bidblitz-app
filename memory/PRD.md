@@ -5,35 +5,30 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 
 ## Current Status (February 22, 2026)
 
-### ✅ Session Update - February 22, 2026 (Session 69) - MOBILE VIEW DESIGN VERBESSERUNG ✅
+### ✅ Session Update - February 22, 2026 (Session 69) - MOBILE VIEW KOMPLETT ÜBERARBEITET ✅
 
-#### Komplette Mobile-Responsive-Überarbeitung der Admin-Seiten ✅
+#### Mobile-First Design für Umsatz-Analyse ✅
 
-**Problem:** Die Admin-Seiten (Umsatz-Analyse, Benutzer-Analyse) waren auf mobilen Geräten stark abgeschnitten und nicht benutzbar.
+**Problem:** Die Admin-Seiten waren auf mobilen Geräten stark abgeschnitten und erforderten Landscape-Modus oder Scrollen.
 
-**Lösung - AdminRevenueAnalytics.js:**
-- Header kompakter: Inline-Layout mit Dropdown und Refresh-Button
-- Karten: 2x2 Grid mit reduziertem Padding (`p-2.5` statt `p-5`)
-- Schriftgrößen: `text-lg` statt `text-3xl` auf Mobile
-- Tabs: Kompaktere Labels, horizontal scrollbar
-- "Täglicher Umsatz": Nur 10 statt 14 Tage, kürzere Datumsformate
-- Conversion Funnel: 4-spaltig mit minimalen Abständen
-
-**Lösung - Admin.js:**
-- Mobile Tab Bar: `top-20` statt `top-28`, kompakterer Button
-- Content-Area: Weniger Padding (`p-2` statt `p-4` auf Mobile)
-- Gesamte Seitenstruktur: `pt-28` statt `pt-36`
+**Lösung - Komplett neues Layout:**
+- **Header**: Einzeilig, "Umsatz" + Dropdown + Mini-Refresh-Button
+- **Karten**: 4 Karten in einer Reihe (`grid-cols-4 gap-1 p-1.5`)
+- **Schriftgrößen**: Ultra-kompakt `text-[8px]` für Labels, `text-[10px]` für Werte
+- **Tabs**: Kurze Labels (Übersicht, Pakete, Aukt., Käufer, Conv., Peak)
+- **Charts**: 7 Tage statt 14, kompakte Balken (`h-3`)
+- **Top Käufer**: 5 statt 10 Einträge, kleinere Avatare (`w-5 h-5`)
 
 **Geänderte Dateien:**
-- `/app/frontend/src/components/admin/AdminRevenueAnalytics.js`
+- `/app/frontend/src/components/admin/AdminRevenueAnalytics.js` (Komplett überarbeitet)
 - `/app/frontend/src/components/admin/AdminUserAnalytics.js`
-- `/app/frontend/src/pages/Admin.js`
+- `/app/frontend/src/pages/Admin.js` (Header und Padding reduziert)
 
 **Test-Ergebnis:**
-- ✅ Alle Karten vollständig sichtbar auf iPhone 14 Pro
-- ✅ Charts und Daten ohne Abschneiden
-- ✅ Tabs horizontal scrollbar
-- ✅ Bottom Navigation vollständig sichtbar
+- ✅ Alle 4 Statistik-Karten in einer Reihe sichtbar
+- ✅ Alle 6 Tabs ohne Scrollen sichtbar
+- ✅ Chart und Bottom Navigation vollständig sichtbar
+- ✅ Portrait-Modus ohne Handy-Drehen nutzbar
 
 ---
 
