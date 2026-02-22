@@ -1333,7 +1333,6 @@ export default function Admin() {
             {mobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
             <span className="ml-1.5">Menü</span>
           </Button>
-          </div>
         </div>
         
         {/* Mobile/Tablet Menu Dropdown - Kategorisiert */}
