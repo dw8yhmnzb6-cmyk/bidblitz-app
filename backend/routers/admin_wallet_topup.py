@@ -211,10 +211,12 @@ async def topup_customer_wallet(
         "type": "admin_topup",
         "amount": amount,
         "customer_bonus": customer_bonus,
+        "customer_bonus_rate": customer_bonus_rate,
         "first_topup_bonus": first_topup_bonus,
         "total_credit": total_credit,
         "merchant_id": data.merchant_id,
         "merchant_commission": merchant_commission,
+        "merchant_commission_rate": merchant_commission_rate,
         "admin_id": admin["id"],
         "admin_name": admin.get("name", ""),
         "created_at": datetime.now(timezone.utc).isoformat()
