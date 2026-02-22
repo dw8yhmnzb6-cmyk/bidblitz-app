@@ -626,11 +626,68 @@ async def forgot_password(request: ForgotPasswordRequest):
 
 from pydantic import BaseModel
 from typing import Optional
+from fastapi import UploadFile, File
+import base64
 
 class KYCSubmission(BaseModel):
     id_front_url: str
     id_back_url: str
     selfie_url: str
+
+@router.post("/kyc/upload")
+async def upload_kyc_document(
+    file: UploadFile = File(...),
+    document_type: str = "id_front",
+    user: dict = Depends(get_current_user)
+):
+    """Upload a KYC document (id_front, id_back, or selfie)"""
+    # Validate document type
+    valid_types = ["id_front", "id_back", "selfie"]
+    if document_type not in valid_types:
+        raise HTTPException(status_code=400, detail="Ungültiger Dokumenttyp. Erlaubt: id_front, id_back, selfie")
+    
+    # Validate file type
+    allowed_types = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"]
+    content_type = file.content_type or "image/jpeg"
+    if not any(content_type.startswith(t.split('/')[0]) for t in allowed_types):
+        raise HTTPException(status_code=400, detail="Nur Bilder (JPEG, PNG, WebP) erlaubt")
+    
+    # Read file
+    contents = await file.read()
+    
+    # Validate file size (max 10MB)
+    if len(contents) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Maximale Dateigröße: 10MB")
+    
+    # Store as base64 data URL
+    file_base64 = base64.b64encode(contents).decode()
+    file_url = f"data:{content_type};base64,{file_base64}"
+    
+    # Store in kyc_documents collection
+    doc_id = str(uuid.uuid4())
+    now = datetime.now(timezone.utc).isoformat()
+    
+    doc_record = {
+        "id": doc_id,
+        "user_id": user["id"],
+        "document_type": document_type,
+        "file_name": file.filename,
+        "file_type": content_type,
+        "file_size": len(contents),
+        "file_url": file_url,
+        "uploaded_at": now
+    }
+    
+    await db.kyc_documents.insert_one(doc_record)
+    
+    logger.info(f"KYC document uploaded: {document_type} by user {user['id']}")
+    
+    return {
+        "success": True,
+        "url": file_url,
+        "document_type": document_type,
+        "message": "Dokument erfolgreich hochgeladen"
+    }
 
 class KYCApproval(BaseModel):
     user_id: str
