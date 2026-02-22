@@ -69,4 +69,7 @@ export { default as AdminCommissionsDashboard } from './AdminCommissionsDashboar
 // Enterprise Management (Großhändler)
 export { default as AdminEnterpriseManagement } from './AdminEnterpriseManagement';
 
+// Support Management
+export { default as AdminSupportManagement } from './AdminSupportManagement';
+
 // All components have been extracted!
