@@ -48,6 +48,7 @@ class PaymentRequest(BaseModel):
     staff_id: Optional[str] = None
     staff_name: Optional[str] = None
     branch_id: Optional[str] = None
+    branch_name: Optional[str] = None
 
 # ==================== HELPER FUNCTIONS ====================
 
