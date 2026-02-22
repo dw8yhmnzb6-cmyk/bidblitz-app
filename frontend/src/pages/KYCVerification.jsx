@@ -91,8 +91,12 @@ export default function KYCVerification() {
   // Check KYC status on mount
   useEffect(() => {
     const checkKycStatus = async () => {
+      // If no token, redirect to login
       if (!token) {
-        setKycStatus('upload');
+        toast.error(language === 'de' 
+          ? 'Bitte melden Sie sich an, um die Verifizierung fortzusetzen' 
+          : 'Please log in to continue verification');
+        navigate('/login');
         return;
       }
       
