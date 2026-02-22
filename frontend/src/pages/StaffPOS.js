@@ -248,7 +248,18 @@ const translations = {
     minAmount: 'Minimum',
     maxAmount: 'Maksimum',
     testAccess: 'Test Erişimi',
-    from: 'dan'
+    from: 'dan',
+    // Kasa Raporu
+    cashReport: 'Kasa Kapanışı',
+    cashRegister: 'Kasa',
+    staffMember: 'Personel',
+    summary: 'Özet',
+    bonusesGivenOut: 'Verilen Bonuslar',
+    payments: 'Ödemeler',
+    totalAmount: 'TOPLAM',
+    printTime: 'Baskı',
+    cashSystem: 'BidBlitz Kasa Sistemi',
+    noTransactionsYet: 'İşlem yok'
   },
   ar: {
     loginTitle: 'محطة الكاشير',
