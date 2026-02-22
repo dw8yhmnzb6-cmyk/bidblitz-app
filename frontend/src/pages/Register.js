@@ -70,7 +70,8 @@ export default function Register() {
     try {
       await register(name, email, password, referralValid ? referralCode : null);
       toast.success(texts.registerSuccess);
-      navigate('/dashboard');
+      // Redirect to KYC verification instead of dashboard
+      navigate('/kyc-verification');
     } catch (error) {
       toast.error(error.response?.data?.detail || texts.registerFailed);
     } finally {
