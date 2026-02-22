@@ -1865,8 +1865,9 @@ export default function StaffPOS() {
   // Print transaction history
   const printTransactionHistory = () => {
     const printWindow = window.open('', '_blank');
-    const today = new Date().toLocaleDateString('de-DE');
-    const now = new Date().toLocaleTimeString('de-DE');
+    const locale = language === 'de' ? 'de-DE' : language === 'en' ? 'en-US' : language === 'sq' ? 'sq-AL' : language === 'tr' ? 'tr-TR' : language === 'ar' ? 'ar-SA' : language === 'pl' ? 'pl-PL' : language === 'fr' ? 'fr-FR' : language === 'es' ? 'es-ES' : language === 'it' ? 'it-IT' : language === 'ru' ? 'ru-RU' : 'de-DE';
+    const today = new Date().toLocaleDateString(locale);
+    const now = new Date().toLocaleTimeString(locale);
     
     // Calculate totals
     const totals = transactionHistory.reduce((acc, tx) => {
@@ -1884,11 +1885,19 @@ export default function StaffPOS() {
       return acc;
     }, { topups: 0, bonuses: 0, giftCards: 0, payments: 0, topupCount: 0, giftCardCount: 0, paymentCount: 0 });
     
+    // Get transaction type label based on language
+    const getTypeLabel = (type) => {
+      if (type === 'pos_topup' || type === 'topup') return t.topup;
+      if (type === 'gift_card_redemption') return t.giftcard;
+      if (type === 'payment') return t.payment;
+      return type;
+    };
+    
     printWindow.document.write(`
       <!DOCTYPE html>
       <html>
       <head>
-        <title>Kassenabschluss - ${today}</title>
+        <title>${t.cashReport} - ${today}</title>
         <style>
           body { font-family: 'Courier New', monospace; font-size: 12px; padding: 20px; max-width: 80mm; margin: 0 auto; }
           .header { text-align: center; border-bottom: 2px dashed #000; padding-bottom: 10px; margin-bottom: 15px; }
@@ -1907,50 +1916,50 @@ export default function StaffPOS() {
       </head>
       <body>
         <div class="header">
-          <h1>${staff?.branch_name || 'Kasse'}</h1>
-          <p>Kassenabschluss</p>
+          <h1>${staff?.branch_name || t.cashRegister}</h1>
+          <p>${t.cashReport}</p>
           <p>${today} - ${now}</p>
-          <p>Mitarbeiter: ${staff?.name || '-'}</p>
+          <p>${t.staffMember}: ${staff?.name || '-'}</p>
         </div>
         
         <div class="section">
-          <div class="section-title">Transaktionen (${transactionHistory.length})</div>
+          <div class="section-title">${t.transactions} (${transactionHistory.length})</div>
           ${transactionHistory.length > 0 ? transactionHistory.map(tx => `
             <div class="tx-row">
-              <span>${new Date(tx.created_at).toLocaleTimeString('de-DE', {hour: '2-digit', minute: '2-digit'})}</span>
-              <span>${tx.type === 'pos_topup' ? 'Aufladung' : tx.type === 'gift_card_redemption' ? 'Gutschein' : tx.type === 'payment' ? 'Zahlung' : tx.type}</span>
+              <span>${new Date(tx.created_at).toLocaleTimeString(locale, {hour: '2-digit', minute: '2-digit'})}</span>
+              <span>${getTypeLabel(tx.type)}</span>
               <span>€${(tx.amount || 0).toFixed(2)}</span>
             </div>
-          `).join('') : '<p>Keine Transaktionen</p>'}
+          `).join('') : `<p>${t.noTransactionsYet}</p>`}
         </div>
         
         <div class="summary">
-          <div class="section-title">Zusammenfassung</div>
+          <div class="section-title">${t.summary}</div>
           <div class="summary-row">
-            <span>Aufladungen (${totals.topupCount})</span>
+            <span>${t.topups} (${totals.topupCount})</span>
             <span>€${totals.topups.toFixed(2)}</span>
           </div>
           <div class="summary-row">
-            <span>Boni ausgegeben</span>
+            <span>${t.bonusesGivenOut}</span>
             <span>€${totals.bonuses.toFixed(2)}</span>
           </div>
           <div class="summary-row">
-            <span>Gutscheine (${totals.giftCardCount})</span>
+            <span>${t.giftcards} (${totals.giftCardCount})</span>
             <span>€${totals.giftCards.toFixed(2)}</span>
           </div>
           <div class="summary-row">
-            <span>Zahlungen (${totals.paymentCount})</span>
+            <span>${t.payments} (${totals.paymentCount})</span>
             <span>€${totals.payments.toFixed(2)}</span>
           </div>
           <div class="summary-row total">
-            <span>GESAMT</span>
+            <span>${t.totalAmount}</span>
             <span>€${(totals.topups + totals.giftCards + totals.payments).toFixed(2)}</span>
           </div>
         </div>
         
         <div class="footer">
-          <p>BidBlitz Kassensystem</p>
-          <p>Druck: ${now}</p>
+          <p>${t.cashSystem}</p>
+          <p>${t.printTime}: ${now}</p>
         </div>
       </body>
       </html>
