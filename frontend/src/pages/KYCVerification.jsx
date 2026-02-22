@@ -92,10 +92,10 @@ export default function KYCVerification() {
   const uploadImage = async (file, type) => {
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('type', type);
+    formData.append('document_type', type);
     
     try {
-      const response = await axios.post(`${API}/upload/kyc`, formData, {
+      const response = await axios.post(`${API}/auth/kyc/upload?document_type=${type}`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
           'Authorization': `Bearer ${token}`
