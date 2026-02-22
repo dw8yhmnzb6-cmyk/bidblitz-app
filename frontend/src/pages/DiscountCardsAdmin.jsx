@@ -132,9 +132,14 @@ export default function DiscountCardsAdmin() {
     const payload = {
       ...formData,
       discount_value: parseFloat(formData.discount_value) || 0,
+      buy_quantity: formData.discount_type === 'buy_x_get_y' ? parseInt(formData.buy_quantity) || 2 : null,
+      free_quantity: formData.discount_type === 'buy_x_get_y' ? parseInt(formData.free_quantity) || 1 : null,
+      pay_quantity: formData.discount_type === 'buy_x_pay_y' ? parseInt(formData.pay_quantity) || 2 : null,
       min_purchase: parseFloat(formData.min_purchase) || 0,
       max_discount: formData.max_discount ? parseFloat(formData.max_discount) : null,
-      categories: formData.categories ? formData.categories.split(',').map(c => c.trim()).filter(c => c) : []
+      categories: formData.categories ? formData.categories.split(',').map(c => c.trim()).filter(c => c) : [],
+      specific_articles: formData.specific_articles ? formData.specific_articles.split(',').map(a => a.trim()).filter(a => a) : [],
+      article_name: formData.article_name || null
     };
 
     try {
