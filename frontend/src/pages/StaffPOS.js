@@ -1374,10 +1374,21 @@ export default function StaffPOS() {
       if (res.ok) {
         const data = await res.json();
         playSound('success');
+        
+        // Zeige Rabatt-Info wenn vorhanden
+        if (data.has_discount && data.discount_amount > 0) {
+          toast.success(
+            language === 'de' 
+              ? `🎉 RABATT ANGEWENDET!\n💳 ${data.discount_card_name || 'Rabattkarte'}\n💰 Ersparnis: €${data.discount_amount.toFixed(2)}\n📝 Original: €${data.original_amount.toFixed(2)} → €${data.final_amount.toFixed(2)}`
+              : `🎉 DISCOUNT APPLIED!\n💳 ${data.discount_card_name || 'Discount Card'}\n💰 Saved: €${data.discount_amount.toFixed(2)}\n📝 Original: €${data.original_amount.toFixed(2)} → €${data.final_amount.toFixed(2)}`,
+            { duration: 5000 }
+          );
+        }
+        
         toast.success(
           language === 'de' 
-            ? `✅ Zahlung erfolgreich! €${paymentNum.toFixed(2)} von ${data.customer_name || 'Kunde'} abgebucht. Neues Guthaben: €${data.new_balance?.toFixed(2)}`
-            : `✅ Payment successful! €${paymentNum.toFixed(2)} deducted from ${data.customer_name || 'Customer'}. New balance: €${data.new_balance?.toFixed(2)}`
+            ? `✅ Zahlung erfolgreich! €${data.final_amount?.toFixed(2) || paymentNum.toFixed(2)} von ${data.customer_name || 'Kunde'} abgebucht. Neues Guthaben: €${data.new_balance?.toFixed(2)}`
+            : `✅ Payment successful! €${data.final_amount?.toFixed(2) || paymentNum.toFixed(2)} deducted from ${data.customer_name || 'Customer'}. New balance: €${data.new_balance?.toFixed(2)}`
         );
         setPaymentAmount('');
         setPaymentScanMode(false);
