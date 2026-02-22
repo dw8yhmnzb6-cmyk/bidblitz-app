@@ -5,25 +5,31 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 
 ## Current Status (February 22, 2026)
 
-### ✅ Session Update - February 22, 2026 (Session 69) - MOBILE VIEW BUG FIX ✅
+### ✅ Session Update - February 22, 2026 (Session 69) - MOBILE VIEW BUG FIXES ✅
 
-#### Mobile-View Bug in Benutzer-Analyse behoben ✅
-**Problem:** Die "User Analytics" Admin-Komponente zeigte keine Statistiken auf mobilen Geräten an.
+#### Mobile-View Bugs in Admin-Komponenten behoben ✅
 
-**Lösung:**
+**Problem 1: Benutzer-Analyse (AdminUserAnalytics.js)**
+- Statistiken wurden auf mobilen Geräten nicht korrekt angezeigt
 - CSS Grid-Layout von `grid-cols-3` auf `grid-cols-1 sm:grid-cols-3` geändert
-- Responsive Schriftgrößen implementiert (`text-2xl sm:text-3xl`)
-- Header-Layout für mobile Ansicht optimiert (`flex-col sm:flex-row`)
-- Overview-Karten responsive gestaltet (`grid-cols-2 sm:grid-cols-3 md:grid-cols-5`)
+- Header und Karten für mobile Ansicht optimiert
 
-**Geänderte Datei:**
+**Problem 2: Umsatz-Analyse (AdminRevenueAnalytics.js)**
+- Karten, Charts und Tabs waren auf mobilen Geräten abgeschnitten
+- Responsive Klassen hinzugefügt: `grid-cols-2 md:grid-cols-4`
+- Schriftgrößen skalierbar: `text-xl sm:text-3xl`
+- Padding angepasst: `p-3 sm:p-5`
+- Timing-Chart Grid: `grid-cols-8 sm:grid-cols-12`
+
+**Geänderte Dateien:**
 - `/app/frontend/src/components/admin/AdminUserAnalytics.js`
+- `/app/frontend/src/components/admin/AdminRevenueAnalytics.js`
 
 **Test-Ergebnis:**
 - ✅ Mobile-Ansicht getestet (iPhone 14 Pro Viewport)
-- ✅ Statistik-Karten laden korrekt
+- ✅ Alle Statistik-Karten sichtbar
+- ✅ Charts vollständig gerendert
 - ✅ Tabs horizontal scrollbar
-- ✅ Registrierungschart funktioniert
 
 ---
 
