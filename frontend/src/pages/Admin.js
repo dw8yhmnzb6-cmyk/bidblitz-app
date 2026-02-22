@@ -86,6 +86,9 @@ import AdminMysteryBox from '../components/admin/AdminMysteryBox';
 // Import Admin Wallet Top-up
 import AdminWalletTopup from '../components/admin/AdminWalletTopup';
 
+// Import KYC Management
+import KYCManagement from '../components/admin/KYCManagement';
+
 // Import Admin Wise Payouts
 import AdminWisePayouts from '../components/admin/AdminWisePayouts';
 
