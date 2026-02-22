@@ -1445,7 +1445,7 @@ export default function Admin() {
         </aside>
 
         {/* Main Content - adjusted for desktop sidebar */}
-        <main className="flex-1 lg:ml-56 xl:ml-64 p-2 sm:p-4 lg:p-8 pt-4 sm:pt-6 lg:pt-8" style={{ WebkitOverflowScrolling: 'touch' }}>
+        <main className="flex-1 lg:ml-56 xl:ml-64 p-2 sm:p-4 lg:p-8 pt-4 sm:pt-6 lg:pt-8 overflow-x-hidden max-w-full" style={{ WebkitOverflowScrolling: 'touch' }}>
           {/* Dashboard Tab */}
           {activeTab === 'dashboard' && (
             <AdminDashboard 
