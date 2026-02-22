@@ -307,17 +307,21 @@ export default function KYCVerification() {
           <p className="text-red-400 mb-2">{t.rejectedDesc}</p>
           <p className="text-slate-400 mb-6">{rejectionReason}</p>
           <Button
-            onClick={() => {
-              setKycStatus('upload');
-              setIdFront(null);
-              setIdBack(null);
-              setSelfie(null);
-            }}
+            onClick={handleResubmit}
             className="bg-amber-500 hover:bg-amber-600"
           >
             {t.reupload}
           </Button>
         </div>
+      </div>
+    );
+  }
+
+  // Loading state
+  if (kycStatus === 'loading') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
+        <Loader2 className="w-10 h-10 text-amber-400 animate-spin" />
       </div>
     );
   }
