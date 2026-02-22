@@ -5,6 +5,32 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 
 ## Current Status (February 22, 2026)
 
+### ✅ Session Update - February 22, 2026 (Session 70) - INTERNATIONAL PAYOUTS ✅
+
+#### 4. Internationale Auszahlungseinstellungen erweitert ✅
+**Problem:** IBAN allein reicht nicht für internationale Überweisungen (z.B. Türkei, USA, UAE)
+**Lösung:** Erweiterte Bankdaten-Felder für Wise-Integration
+
+**Backend-Änderungen:**
+- `/app/backend/routers/enterprise_portal.py`:
+  - `PayoutSettings` Model erweitert: `bic_swift`, `bank_name`, `bank_country`, `currency`
+- `/app/backend/routers/wise_payouts.py`:
+  - `WiseBankAccountRequest` erweitert für internationale Transfers
+  - BIC/SWIFT Validierung (8 oder 11 Zeichen)
+
+**Frontend-Änderungen:**
+- `/app/frontend/src/components/admin/AdminEnterpriseManagement.js`:
+  - Neue Formularfelder: BIC/SWIFT, Bank/Geldinstitut, Land, Währung
+  - Land-Dropdown: DE, AT, CH, NL, BE, FR, IT, ES, PL, GB, US, TR, AE
+  - Währung-Dropdown: EUR, USD, GBP, CHF, TRY, AED
+  - Hinweistext "Für internationale Überweisungen"
+
+**Test-Ergebnisse:**
+- **Backend:** 100% (13/13 Tests bestanden)
+- **Test-Report:** `/app/test_reports/iteration_103.json`
+
+---
+
 ### ✅ Session Update - February 22, 2026 (Session 70) - P0 & P1 FIXES ✅
 
 #### 1. StaffPOS Sprachauswahl-Bug behoben (P0) ✅
