@@ -5,6 +5,38 @@ Create a penny auction website modeled after `dealdash.com` and `snipster.de` wi
 
 ## Current Status (February 22, 2026)
 
+### ✅ Session Update - February 22, 2026 (Session 70) - VERKAUFS-PROVISION ✅
+
+#### 5. Verkaufs-Provision (sales_commission) hinzugefügt ✅
+**Problem:** Es fehlte eine Provision für den Verkauf, den der Händler tätigt
+**Lösung:** Neue Verkaufs-Provision als 4. Provisionstyp
+
+**4 Provisionstypen:**
+| Typ | Farbe | Richtung | Standard |
+|-----|-------|----------|----------|
+| Gutschein | Orange | Händler → BidBlitz | 5% |
+| Aufladung | Blau | BidBlitz → Händler | 3% |
+| **Verkauf** | **Amber** | **Händler → BidBlitz** | **2%** |
+| Kunden-Cashback | Grün | BidBlitz → Kunde | 1% |
+
+**Backend-Änderungen:**
+- `/app/backend/routers/enterprise_portal.py`:
+  - `CommissionSettings` Model: `sales_commission: float = 2.0` hinzugefügt
+  - Validierung: 0-100%
+  - Speicherung und Abruf
+
+**Frontend-Änderungen:**
+- `/app/frontend/src/components/admin/AdminEnterpriseManagement.js`:
+  - `commissionForm` State erweitert
+  - Eingabefeld mit Amber-Styling
+  - Grid-Layout: `grid-cols-2 sm:grid-cols-4`
+
+**Test-Ergebnisse:**
+- **Backend:** 100% (10/10 Tests bestanden)
+- **Test-Report:** `/app/test_reports/iteration_104.json`
+
+---
+
 ### ✅ Session Update - February 22, 2026 (Session 70) - INTERNATIONAL PAYOUTS ✅
 
 #### 4. Internationale Auszahlungseinstellungen erweitert ✅
