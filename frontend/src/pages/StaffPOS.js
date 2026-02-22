@@ -758,7 +758,18 @@ const translations = {
     minAmount: 'Минимум',
     maxAmount: 'Максимум',
     testAccess: 'Тестовый доступ',
-    from: 'от'
+    from: 'от',
+    // Отчёт кассы
+    cashReport: 'Отчёт кассы',
+    cashRegister: 'Касса',
+    staffMember: 'Сотрудник',
+    summary: 'Итого',
+    bonusesGivenOut: 'Выданные бонусы',
+    payments: 'Платежи',
+    totalAmount: 'ВСЕГО',
+    printTime: 'Печать',
+    cashSystem: 'Кассовая система BidBlitz',
+    noTransactionsYet: 'Нет транзакций'
   },
   pt: {
     loginTitle: 'Terminal de Caixa',
