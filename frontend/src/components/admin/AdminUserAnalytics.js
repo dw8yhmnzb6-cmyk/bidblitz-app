@@ -88,34 +88,34 @@ export function AdminUserAnalytics({ token }) {
 
       {/* Overview Cards */}
       {overview && (
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-          <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-5 text-white">
-            <Users className="w-8 h-8 opacity-80 mb-2" />
-            <div className="text-3xl font-bold">{overview.total_users?.toLocaleString()}</div>
-            <div className="text-blue-100 text-sm">Gesamt Benutzer</div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 sm:gap-4">
+          <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-3 sm:p-5 text-white col-span-2 sm:col-span-1">
+            <Users className="w-6 h-6 sm:w-8 sm:h-8 opacity-80 mb-2" />
+            <div className="text-2xl sm:text-3xl font-bold">{overview.total_users?.toLocaleString()}</div>
+            <div className="text-blue-100 text-xs sm:text-sm">Gesamt Benutzer</div>
           </div>
-          <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-5 text-white">
+          <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-3 sm:p-5 text-white">
             <div className="flex justify-between items-start">
-              <UserPlus className="w-8 h-8 opacity-80" />
+              <UserPlus className="w-6 h-6 sm:w-8 sm:h-8 opacity-80" />
               <ChangeIndicator value={overview.day_change_percent} />
             </div>
-            <div className="text-3xl font-bold mt-2">{overview.new_users_today}</div>
-            <div className="text-green-100 text-sm">Neue heute</div>
+            <div className="text-2xl sm:text-3xl font-bold mt-2">{overview.new_users_today}</div>
+            <div className="text-green-100 text-xs sm:text-sm">Neue heute</div>
           </div>
-          <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-5 text-white">
-            <Activity className="w-8 h-8 opacity-80 mb-2" />
-            <div className="text-3xl font-bold">{overview.active_users_today}</div>
-            <div className="text-purple-100 text-sm">Aktiv heute</div>
+          <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-3 sm:p-5 text-white">
+            <Activity className="w-6 h-6 sm:w-8 sm:h-8 opacity-80 mb-2" />
+            <div className="text-2xl sm:text-3xl font-bold">{overview.active_users_today}</div>
+            <div className="text-purple-100 text-xs sm:text-sm">Aktiv heute</div>
           </div>
-          <div className="bg-gradient-to-br from-amber-500 to-amber-600 rounded-xl p-5 text-white">
-            <Zap className="w-8 h-8 opacity-80 mb-2" />
-            <div className="text-3xl font-bold">{overview.users_with_bids}</div>
-            <div className="text-amber-100 text-sm">Mit Geboten</div>
+          <div className="bg-gradient-to-br from-amber-500 to-amber-600 rounded-xl p-3 sm:p-5 text-white">
+            <Zap className="w-6 h-6 sm:w-8 sm:h-8 opacity-80 mb-2" />
+            <div className="text-2xl sm:text-3xl font-bold">{overview.users_with_bids}</div>
+            <div className="text-amber-100 text-xs sm:text-sm">Mit Geboten</div>
           </div>
-          <div className="bg-gradient-to-br from-pink-500 to-pink-600 rounded-xl p-5 text-white">
-            <Crown className="w-8 h-8 opacity-80 mb-2" />
-            <div className="text-3xl font-bold">{overview.vip_users}</div>
-            <div className="text-pink-100 text-sm">VIP Benutzer</div>
+          <div className="bg-gradient-to-br from-pink-500 to-pink-600 rounded-xl p-3 sm:p-5 text-white">
+            <Crown className="w-6 h-6 sm:w-8 sm:h-8 opacity-80 mb-2" />
+            <div className="text-2xl sm:text-3xl font-bold">{overview.vip_users}</div>
+            <div className="text-pink-100 text-xs sm:text-sm">VIP Benutzer</div>
           </div>
         </div>
       )}
