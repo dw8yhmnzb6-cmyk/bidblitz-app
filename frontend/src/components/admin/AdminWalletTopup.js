@@ -1,13 +1,13 @@
 /**
  * Admin Wallet Top-up Component
  * Allows admins to top-up customer BidBlitz Pay wallets
- * Includes bonuses: 2% customer bonus, €1 first top-up, 2% merchant commission
+ * Includes bonuses: configurable customer bonus, €1 first top-up, configurable merchant commission
  */
 import { useState, useEffect, useCallback } from 'react';
 import { 
   Wallet, Search, Plus, Euro, CheckCircle, Users, 
   Gift, Percent, Trophy, TrendingUp, Crown, AlertCircle,
-  RefreshCw, History, ArrowUpRight, Store, ChevronDown, Star, X
+  RefreshCw, History, ArrowUpRight, Store, ChevronDown, Star, X, Settings
 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -33,11 +33,71 @@ export default function AdminWalletTopup({ token, t }) {
     newCustomers: 0
   });
   
+  // Commission settings
+  const [commissionSettings, setCommissionSettings] = useState({
+    customer_bonus_percent: 0.02,
+    merchant_commission_percent: 0.02
+  });
+  const [showCommissionSettings, setShowCommissionSettings] = useState(false);
+  const [editCustomerBonus, setEditCustomerBonus] = useState('2');
+  const [editMerchantCommission, setEditMerchantCommission] = useState('2');
+  const [savingSettings, setSavingSettings] = useState(false);
+  
   // Merchant selection
   const [merchants, setMerchants] = useState([]);
   const [selectedMerchant, setSelectedMerchant] = useState(null);
   const [showMerchantDropdown, setShowMerchantDropdown] = useState(false);
   const [merchantSearchQuery, setMerchantSearchQuery] = useState('');
+
+  // Load commission settings
+  const loadCommissionSettings = useCallback(async () => {
+    try {
+      const response = await axios.get(`${API}/api/admin/wallet-topup/commission-settings`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setCommissionSettings(response.data);
+      setEditCustomerBonus((response.data.customer_bonus_percent * 100).toFixed(1));
+      setEditMerchantCommission((response.data.merchant_commission_percent * 100).toFixed(1));
+    } catch (error) {
+      console.error('Failed to load commission settings:', error);
+    }
+  }, [token]);
+
+  // Save commission settings
+  const saveCommissionSettings = async () => {
+    setSavingSettings(true);
+    try {
+      await axios.put(`${API}/api/admin/wallet-topup/commission-settings`, {
+        customer_bonus_percent: parseFloat(editCustomerBonus) / 100,
+        merchant_commission_percent: parseFloat(editMerchantCommission) / 100
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success('Provisionseinstellungen gespeichert');
+      loadCommissionSettings();
+      setShowCommissionSettings(false);
+    } catch (error) {
+      toast.error('Fehler beim Speichern: ' + (error.response?.data?.detail || error.message));
+    } finally {
+      setSavingSettings(false);
+    }
+  };
+
+  // Save merchant-specific commission
+  const saveMerchantCommission = async (merchantId, rate) => {
+    try {
+      await axios.put(`${API}/api/admin/wallet-topup/merchant-commission`, {
+        merchant_id: merchantId,
+        commission_percent: parseFloat(rate) / 100
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success(`Händlerprovision auf ${rate}% gesetzt`);
+      loadMerchants();
+    } catch (error) {
+      toast.error('Fehler: ' + (error.response?.data?.detail || error.message));
+    }
+  };
 
   // Load favorite customers from localStorage
   useEffect(() => {
@@ -47,7 +107,8 @@ export default function AdminWalletTopup({ token, t }) {
         setFavoriteCustomers(JSON.parse(saved));
       } catch (e) {}
     }
-  }, []);
+    loadCommissionSettings();
+  }, [loadCommissionSettings]);
 
   // Save customer to favorites
   const addToFavorites = (user) => {
