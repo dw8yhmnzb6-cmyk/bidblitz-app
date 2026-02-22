@@ -76,11 +76,11 @@ export const AuthProvider = ({ children }) => {
       password,
       referral_code: referralCode
     });
-    const { token: newToken, user: userData } = response.data;
+    const { token: newToken, user: userData, email_verification_required, message } = response.data;
     safeStorage.setItem('token', newToken);
     setToken(newToken);
     setUser(userData);
-    return userData;
+    return { user: userData, email_verification_required, message };
   };
 
   // Login for influencers - sets token and user from influencer login response
