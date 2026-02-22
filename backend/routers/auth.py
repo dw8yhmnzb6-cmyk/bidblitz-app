@@ -620,6 +620,156 @@ async def forgot_password(request: ForgotPasswordRequest):
     else:
         response["demo_code"] = reset_code
     
+
+
+# ==================== KYC VERIFICATION ENDPOINTS ====================
+
+from pydantic import BaseModel
+from typing import Optional
+
+class KYCSubmission(BaseModel):
+    id_front_url: str
+    id_back_url: str
+    selfie_url: str
+
+class KYCApproval(BaseModel):
+    user_id: str
+    approved: bool
+    rejection_reason: Optional[str] = None
+
+@router.post("/kyc/submit")
+async def submit_kyc_documents(data: KYCSubmission, user: dict = Depends(get_current_user)):
+    """User submits KYC documents for verification"""
+    user_id = user["id"]
+    
+    # Update user with KYC documents
+    await db.users.update_one(
+        {"id": user_id},
+        {"$set": {
+            "kyc_id_front": data.id_front_url,
+            "kyc_id_back": data.id_back_url,
+            "kyc_selfie": data.selfie_url,
+            "kyc_status": "pending",
+            "kyc_submitted_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    logger.info(f"KYC documents submitted by user {user_id}")
+    
+    return {
+        "success": True,
+        "message": "Dokumente erfolgreich eingereicht. Ihre Verifizierung wird geprüft."
+    }
+
+@router.get("/kyc/status")
+async def get_kyc_status(user: dict = Depends(get_current_user)):
+    """Get user's KYC verification status"""
+    full_user = await db.users.find_one({"id": user["id"]}, {"_id": 0})
+    
+    return {
+        "status": full_user.get("kyc_status", "pending"),
+        "id_front_uploaded": bool(full_user.get("kyc_id_front")),
+        "id_back_uploaded": bool(full_user.get("kyc_id_back")),
+        "selfie_uploaded": bool(full_user.get("kyc_selfie")),
+        "submitted_at": full_user.get("kyc_submitted_at"),
+        "reviewed_at": full_user.get("kyc_reviewed_at"),
+        "rejection_reason": full_user.get("kyc_rejection_reason")
+    }
+
+@router.get("/kyc/pending")
+async def get_pending_kyc_users(admin: dict = Depends(get_current_user)):
+    """Admin gets list of users pending KYC verification"""
+    if not admin.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Admin-Zugang erforderlich")
+    
+    pending_users = await db.users.find(
+        {
+            "kyc_status": "pending",
+            "kyc_id_front": {"$ne": None},
+            "kyc_id_back": {"$ne": None},
+            "kyc_selfie": {"$ne": None}
+        },
+        {
+            "_id": 0,
+            "password": 0,
+            "two_factor_secret": 0
+        }
+    ).sort("kyc_submitted_at", 1).to_list(100)
+    
+    return {"pending_users": pending_users, "count": len(pending_users)}
+
+@router.post("/kyc/approve")
+async def approve_kyc(data: KYCApproval, admin: dict = Depends(get_current_user)):
+    """Admin approves or rejects KYC verification"""
+    if not admin.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Admin-Zugang erforderlich")
+    
+    target_user = await db.users.find_one({"id": data.user_id})
+    if not target_user:
+        raise HTTPException(status_code=404, detail="Benutzer nicht gefunden")
+    
+    if data.approved:
+        # Approve KYC
+        await db.users.update_one(
+            {"id": data.user_id},
+            {"$set": {
+                "kyc_status": "approved",
+                "kyc_reviewed_at": datetime.now(timezone.utc).isoformat(),
+                "kyc_reviewed_by": admin["id"],
+                "kyc_rejection_reason": None
+            }}
+        )
+        logger.info(f"KYC approved for user {data.user_id} by admin {admin.get('email')}")
+        message = f"Benutzer {target_user.get('email')} wurde verifiziert"
+    else:
+        # Reject KYC
+        await db.users.update_one(
+            {"id": data.user_id},
+            {"$set": {
+                "kyc_status": "rejected",
+                "kyc_reviewed_at": datetime.now(timezone.utc).isoformat(),
+                "kyc_reviewed_by": admin["id"],
+                "kyc_rejection_reason": data.rejection_reason or "Dokumente nicht akzeptiert"
+            }}
+        )
+        logger.info(f"KYC rejected for user {data.user_id} by admin {admin.get('email')}: {data.rejection_reason}")
+        message = f"Benutzer {target_user.get('email')} wurde abgelehnt"
+    
+    return {"success": True, "message": message}
+
+@router.get("/kyc/all")
+async def get_all_kyc_users(
+    admin: dict = Depends(get_current_user),
+    status: Optional[str] = None
+):
+    """Admin gets all users with KYC info"""
+    if not admin.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Admin-Zugang erforderlich")
+    
+    query = {}
+    if status:
+        query["kyc_status"] = status
+    
+    users = await db.users.find(
+        query,
+        {
+            "_id": 0,
+            "id": 1,
+            "email": 1,
+            "name": 1,
+            "kyc_status": 1,
+            "kyc_id_front": 1,
+            "kyc_id_back": 1,
+            "kyc_selfie": 1,
+            "kyc_submitted_at": 1,
+            "kyc_reviewed_at": 1,
+            "kyc_rejection_reason": 1,
+            "created_at": 1
+        }
+    ).sort("created_at", -1).to_list(200)
+    
+    return {"users": users, "count": len(users)}
+
     return response
 
 @router.post("/verify-reset-code")
