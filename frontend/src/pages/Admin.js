@@ -1549,6 +1549,11 @@ export default function Admin() {
             />
           )}
 
+          {/* KYC Management Tab */}
+          {activeTab === 'kyc-management' && (
+            <KYCManagement token={token} />
+          )}
+
           {/* Staff Tab */}
           {activeTab === 'staff' && (
             <AdminStaff
