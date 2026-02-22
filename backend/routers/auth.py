@@ -3,6 +3,7 @@ from fastapi import APIRouter, HTTPException, Depends, Request
 from datetime import datetime, timezone, timedelta
 import uuid
 import random
+import secrets
 import resend
 
 from config import db, logger, RESEND_API_KEY, SENDER_EMAIL, REFERRAL_MIN_DEPOSIT, REFERRER_REWARD_BIDS, REFEREE_REWARD_BIDS
@@ -14,6 +15,10 @@ from dependencies import (
 from schemas import (
     UserCreate, UserLogin, ForgotPasswordRequest, VerifyResetCodeRequest,
     ResetPasswordRequest, TwoFactorEnable, TwoFactorDisable
+)
+from services.email_service import (
+    send_verification_email, send_welcome_email,
+    send_kyc_approved_email, send_kyc_rejected_email
 )
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
