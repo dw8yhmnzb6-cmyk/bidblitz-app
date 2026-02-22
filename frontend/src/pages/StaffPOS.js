@@ -474,7 +474,18 @@ const translations = {
     minAmount: 'Minimum',
     maxAmount: 'Maksimum',
     testAccess: 'Dostęp Testowy',
-    from: 'od'
+    from: 'od',
+    // Raport Kasowy
+    cashReport: 'Raport Kasowy',
+    cashRegister: 'Kasa',
+    staffMember: 'Pracownik',
+    summary: 'Podsumowanie',
+    bonusesGivenOut: 'Przyznane Bonusy',
+    payments: 'Płatności',
+    totalAmount: 'RAZEM',
+    printTime: 'Wydruk',
+    cashSystem: 'System Kasowy BidBlitz',
+    noTransactionsYet: 'Brak transakcji'
   },
   fr: {
     loginTitle: 'Terminal de Caisse',
