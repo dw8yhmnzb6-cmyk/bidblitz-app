@@ -283,7 +283,13 @@ export const walletTranslations = {
     pinSet: 'PIN festgelegt',
     pinChanged: 'PIN geändert',
     wrongPin: 'Falsche PIN',
-    pinMismatch: 'PINs stimmen nicht überein'
+    pinMismatch: 'PINs stimmen nicht überein',
+    
+    // Camera & QR Errors
+    cameraAccessDenied: 'Kamerazugriff verweigert. Bitte erlauben Sie die Kamera in den Browser-Einstellungen und laden Sie die Seite neu.',
+    cameraStartError: 'Kamera konnte nicht gestartet werden. Nutzen Sie bitte "Foto aufnehmen".',
+    qrScanInstruction: 'QR-Code mit der Kamera scannen oder "Foto aufnehmen" nutzen',
+    scanQROrUpload: 'QR-Code scannen oder Bild hochladen'
   },
   
   en: {
