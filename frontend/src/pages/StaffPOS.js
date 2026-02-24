@@ -1808,18 +1808,15 @@ export default function StaffPOS() {
           3,  // CODE_93
           7,  // ITF
         ],
-        verbose: false,
-        experimentalFeatures: {
-          useBarCodeDetectorIfSupported: false // Deaktiviert native API für bessere Kompatibilität
-        }
+        verbose: false
       });
       topupScannerRef.current = scanner;
       
-      // Optimierte Einstellungen für Barcode-Erkennung
+      // Optimierte Einstellungen für QR-Code UND Barcode-Erkennung
       const config = {
-        fps: isIOS ? 8 : 10, // Niedrigere FPS für bessere Erkennung
-        qrbox: { width: 300, height: 180 }, // Größerer Scan-Bereich für Barcodes
-        aspectRatio: 1.7777, // 16:9 Seitenverhältnis
+        fps: isIOS ? 10 : 15, // Höhere FPS für schnelleres Scannen
+        qrbox: { width: 280, height: 280 }, // Quadratischer Bereich für QR-Codes
+        aspectRatio: 1.0, // 1:1 für QR-Codes
         disableFlip: false
       };
       
