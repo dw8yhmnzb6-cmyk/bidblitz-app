@@ -720,7 +720,67 @@ export const walletTranslations = {
     descriptionPlaceholder: 'örn. Akşam yemeğini bölüşme',
     recipientPlaceholder: 'Müşteri ID veya E-posta',
     recipientHint: 'Alıcı müşteri ID veya e-posta girin',
-    messagePlaceholder: 'Alıcıya mesaj...'
+    messagePlaceholder: 'Alıcıya mesaj...',
+    
+    // Contact Management
+    noContactsSaved: 'Henüz kayıtlı kişi yok',
+    clickAddContact: 'Kişi eklemek için "Ekle"ye tıklayın',
+    savedContacts: 'Kayıtlı Kişiler',
+    saveFrequentRecipients: 'Sık kullanılan alıcıları kaydet',
+    newContact: 'Ekle',
+    addNewContact: 'Yeni Kişi Ekle',
+    editContact: 'Kişiyi Düzenle',
+    contactSaved: 'Kişi kaydedildi!',
+    contactUpdated: 'Kişi güncellendi!',
+    customerNumberOrEmail: 'Müşteri No veya E-posta',
+    customerNumberExample: 'örn. BID-123456 veya email@example.com',
+    nickname: 'Takma Ad',
+    newNickname: 'Yeni Takma Ad',
+    nicknameExample: 'örn. Annem, Babam, İş',
+    edit: 'Düzenle',
+    delete: 'Sil',
+    
+    // QR Scanner
+    manualEntry: 'Manuel Giriş',
+    cameraReady: 'Kamera hazır ✓',
+    cameraPermissionRequired: 'Kamera İzni Gerekli',
+    scanningQR: 'QR kod taranıyor...',
+    qrDetected: 'QR kod algılandı!',
+    invalidQR: 'Geçersiz QR kod',
+    qrReadError: 'QR kod okunamadı. Lütfen tekrar deneyin.',
+    saveQRCode: 'QR Kodu Kaydet',
+    shareQRCode: 'Paylaş',
+    qrDownloaded: 'QR kod indirildi!',
+    sharedSuccessfully: 'Başarıyla paylaşıldı!',
+    takePhotoNow: '📷 Şimdi QR Kodu Fotoğrafla',
+    alternativeLiveCamera: 'Alternatif: Canlı kamera (her zaman çalışmayabilir)',
+    takePhoto: 'Fotoğraf Çek',
+    paymentRequest: 'Ödeme Talebi',
+    copiedToClipboard: 'Panoya kopyalandı!',
+    errorUpdating: 'Güncelleme hatası',
+    recommended: 'Önerilen',
+    
+    // Security
+    biometricAuth: 'Biyometrik Kimlik Doğrulama',
+    pinCode: 'PIN Kodu',
+    transactionLimit: 'İşlem Limiti',
+    enableBiometric: 'Biyometriyi Etkinleştir',
+    disableBiometric: 'Biyometriyi Devre Dışı Bırak',
+    biometricEnabled: 'Biyometri etkinleştirildi',
+    biometricDisabled: 'Biyometri devre dışı',
+    setPin: 'PIN Belirle',
+    changePin: 'PIN Değiştir',
+    enterCurrentPin: 'Mevcut PIN\'i girin',
+    enterNewPin: 'Yeni PIN girin',
+    confirmNewPin: 'Yeni PIN\'i onayla',
+    pinSet: 'PIN belirlendi',
+    pinChanged: 'PIN değiştirildi',
+    wrongPin: 'Yanlış PIN',
+    pinMismatch: 'PIN\'ler eşleşmiyor',
+    
+    // Camera & QR Errors
+    chooseScanOption: 'Taramak için aşağıdaki seçeneklerden birini seçin',
+    worksReliably: '✅ iPhone, iPad & Android\'de güvenilir çalışır!'
   },
   
   fr: {
