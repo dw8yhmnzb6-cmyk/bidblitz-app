@@ -1237,6 +1237,10 @@ export default function StaffPOS() {
   const topupScannerRef = useRef(null);
   const topupFileInputRef = useRef(null);
   
+  // Customer Preview State (nach Barcode-Scan)
+  const [scannedCustomer, setScannedCustomer] = useState(null);
+  const [loadingCustomer, setLoadingCustomer] = useState(false);
+  
   // Hardware Scanner State (USB/Bluetooth)
   const [hardwareScannerMode, setHardwareScannerMode] = useState(false);
   const [hardwareScanBuffer, setHardwareScanBuffer] = useState('');
