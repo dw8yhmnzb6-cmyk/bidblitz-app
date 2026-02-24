@@ -2163,9 +2163,7 @@ const BidBlitzPay = () => {
                     {/* WhatsApp Share */}
                     <Button
                       onClick={() => {
-                        const message = language === 'de' 
-                          ? `💸 Zahlungsanfrage: €${requestQR.amount?.toFixed(2)}${requestQR.description ? '\n📝 ' + requestQR.description : ''}\n\n📱 Scanne den QR-Code in der BidBlitz App oder gib diese ID ein: ${requestQR.request_id}`
-                          : `💸 Payment Request: €${requestQR.amount?.toFixed(2)}${requestQR.description ? '\n📝 ' + requestQR.description : ''}\n\n📱 Scan the QR code in BidBlitz app or enter this ID: ${requestQR.request_id}`;
+                        const message = `💸 ${t('paymentRequest')}: €${requestQR.amount?.toFixed(2)}${requestQR.description ? '\n📝 ' + requestQR.description : ''}\n\n📱 ID: ${requestQR.request_id}`;
                         window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
                       }}
                       className="bg-green-500 hover:bg-green-600 text-white"
@@ -2179,9 +2177,7 @@ const BidBlitzPay = () => {
                     {/* Native Share / Copy */}
                     <Button
                       onClick={async () => {
-                        const shareText = language === 'de' 
-                          ? `💸 Zahlungsanfrage: €${requestQR.amount?.toFixed(2)}${requestQR.description ? ' - ' + requestQR.description : ''}\n📱 ID: ${requestQR.request_id}`
-                          : `💸 Payment Request: €${requestQR.amount?.toFixed(2)}${requestQR.description ? ' - ' + requestQR.description : ''}\n📱 ID: ${requestQR.request_id}`;
+                        const shareText = `💸 ${t('paymentRequest')}: €${requestQR.amount?.toFixed(2)}${requestQR.description ? ' - ' + requestQR.description : ''}\n📱 ID: ${requestQR.request_id}`;
                         
                         // Try native share first
                         if (navigator.share) {
@@ -2201,7 +2197,7 @@ const BidBlitzPay = () => {
                         } else {
                           // Fallback to copy
                           await navigator.clipboard.writeText(shareText);
-                          toast.success(language === 'de' ? 'In Zwischenablage kopiert!' : 'Copied to clipboard!');
+                          toast.success(t('copiedToClipboard'));
                         }
                       }}
                       variant="outline"
