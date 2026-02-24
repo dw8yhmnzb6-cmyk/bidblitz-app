@@ -1596,28 +1596,32 @@ export default function StaffPOS() {
         }
       }
       
-      const scanner = new Html5Qrcode("payment-scanner");
+      // formatsToSupport muss im Konstruktor übergeben werden!
+      const scanner = new Html5Qrcode("payment-scanner", {
+        formatsToSupport: [
+          0,  // QR_CODE
+          4,  // CODE_128
+          10, // EAN_13
+          9,  // EAN_8
+          12, // UPC_A
+          11, // UPC_E
+          2,  // CODE_39
+          3,  // CODE_93
+          7,  // ITF
+        ],
+        verbose: false,
+        experimentalFeatures: {
+          useBarCodeDetectorIfSupported: false // Deaktiviert native API für bessere Kompatibilität
+        }
+      });
       paymentScannerRef.current = scanner;
       
       // Optimierte Einstellungen für iOS Barcode-Erkennung
       const config = {
-        fps: isIOS ? 10 : 15, // Niedrigere FPS für iOS für stabileres Scanning
-        qrbox: { width: 280, height: 150 }, // Breiterer Scan-Bereich für Barcodes
-        aspectRatio: isIOS ? 1.7777 : 1.5, // 16:9 für iOS
-        formatsToSupport: [
-          4, // CODE_128 - Häufigster Barcode-Typ
-          10, // EAN_13
-          9, // EAN_8
-          12, // UPC_A
-          11, // UPC_E
-          2, // CODE_39
-          3, // CODE_93
-          7, // ITF
-          0, // QR_CODE
-        ],
-        experimentalFeatures: {
-          useBarCodeDetectorIfSupported: true // Nutzt native BarcodeDetector API wenn verfügbar
-        }
+        fps: isIOS ? 8 : 10, // Niedrigere FPS für bessere Erkennung
+        qrbox: { width: 300, height: 180 }, // Größerer Scan-Bereich für Barcodes
+        aspectRatio: 1.7777, // 16:9 Seitenverhältnis
+        disableFlip: false
       };
       
       await scanner.start(
