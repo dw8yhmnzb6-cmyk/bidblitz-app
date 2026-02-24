@@ -3,7 +3,39 @@
 ## Original Problem Statement
 Create a penny auction website modeled after `dealdash.com` and `snipster.de` with complete visual and functional features.
 
-## Current Status (February 22, 2026)
+## Current Status (February 24, 2026)
+
+### ✅ Session Update - February 24, 2026 (Session 71) - MITARBEITER-ROLLEN ✅
+
+#### 1. Erweitertes Mitarbeiter-Rollen-System ✅
+**5 Rollen mit granularen Berechtigungen:**
+
+| Rolle | Emoji | Berechtigungen |
+|-------|-------|----------------|
+| Counter | 🔢 | pos.scan, pos.pay, pos.topup |
+| Support | 📧 | support.*, tickets.*, users.view |
+| Marketing | 📢 | vouchers.*, campaigns.* |
+| Manager | 👔 | staff.*, reports.view, stats.view |
+| Admin | 👑 | * (Voller Zugang) |
+
+**Backend:** `ROLE_PERMISSIONS` Dict in `/app/backend/routers/partner_portal.py`
+**Frontend:** `/app/frontend/src/components/partner/PartnerStaff.js`
+- Rollen-Auswahl mit Beschreibungen
+- Farbige Badges pro Rolle
+- Emoji-Icons für visuelle Unterscheidung
+
+#### 2. Mobile Flaggen-Anzeige verbessert ✅
+- 4-Spalten Grid auf Mobile (grid-cols-4)
+- Größere Flaggen (text-3xl)
+- Vertikales Layout mit Flagge oben, Text unten
+- Datei: `/app/frontend/src/pages/StaffPOS.js`
+
+**Test-Ergebnisse:**
+- **Backend:** 100% (5/5 API-Tests)
+- **Frontend:** 100%
+- **Test-Report:** `/app/test_reports/iteration_106.json`
+
+---
 
 ### ✅ Session Update - February 22, 2026 (Session 70) - 3 UI FIXES ✅
 
