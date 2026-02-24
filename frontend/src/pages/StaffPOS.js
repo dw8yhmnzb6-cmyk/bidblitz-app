@@ -2138,11 +2138,51 @@ export default function StaffPOS() {
     }
   };
 
-  // Process top-up with barcode
+  // Lookup customer by barcode (shows balance before topup)
+  const lookupCustomerByBarcode = async (customerBarcode) => {
+    setLoadingCustomer(true);
+    try {
+      const token = localStorage.getItem('staff_pos_token');
+      const res = await fetch(`${API_URL}/api/pos/customer/lookup?barcode=${encodeURIComponent(customerBarcode)}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        playSound('success');
+        setScannedCustomer({
+          barcode: customerBarcode,
+          name: data.name || 'Kunde',
+          email: data.email,
+          balance: data.balance || 0,
+          wallet_balance: data.wallet_balance || 0,
+          total_balance: (data.balance || 0) + (data.wallet_balance || 0)
+        });
+        toast.success(`✅ Kunde gefunden: ${data.name || 'Kunde'}`);
+      } else {
+        const error = await res.json();
+        playSound('error');
+        setScannedCustomer(null);
+        toast.error(error.detail || 'Kunde nicht gefunden');
+      }
+    } catch (err) {
+      playSound('error');
+      setScannedCustomer(null);
+      toast.error('Verbindungsfehler');
+    } finally {
+      setLoadingCustomer(false);
+    }
+  };
+
+  // Process top-up with barcode (after customer lookup)
   const processTopupWithBarcode = async (customerBarcode) => {
+    // If no amount selected, just lookup the customer first
     const amountNum = parseFloat(amount);
     if (!amountNum || amountNum < 5) {
-      toast.error('Bitte zuerst Betrag eingeben (min. €5)');
+      // Just lookup customer to show balance
+      await lookupCustomerByBarcode(customerBarcode);
       return;
     }
 
@@ -2172,7 +2212,7 @@ export default function StaffPOS() {
         const receiptData = {
           type: 'topup',
           customer_barcode: customerBarcode,
-          customer_name: data.customer_name || 'Kunde',
+          customer_name: data.customer_name || scannedCustomer?.name || 'Kunde',
           amount: amountNum,
           bonus: bonus,
           total: amountNum + bonus,
@@ -2185,6 +2225,7 @@ export default function StaffPOS() {
         setLastReceipt(receiptData);
         setShowReceipt(true);
         setAmount('');
+        setScannedCustomer(null); // Clear after successful topup
         toast.success(`✅ Aufladung erfolgreich! €${amountNum.toFixed(2)} + €${bonus.toFixed(2)} Bonus`);
         fetchTransactionHistory();
       } else {
