@@ -13,6 +13,110 @@ import { Button } from './ui/button';
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
+// Security translations for all languages
+const securityTranslations = {
+  de: {
+    securitySettings: 'Sicherheitseinstellungen',
+    biometricAuth: 'Biometrische Authentifizierung',
+    transactionNotifications: 'Transaktions-Benachrichtigungen',
+    transactionNotificationsDesc: 'E-Mail bei jeder Transaktion',
+    loginNotifications: 'Login-Benachrichtigungen',
+    loginNotificationsDesc: 'E-Mail bei neuem Login',
+    encryptedTransfer: 'Verschlüsselte Datenübertragung',
+    encryptedTransferDesc: 'SSL/TLS-Verschlüsselung aktiv',
+    requireBiometric: 'Biometrie für Transaktionen',
+    requireBiometricDesc: 'Bestätigung bei Überweisungen',
+    active: 'Aktiv',
+    biometricAvailable: 'Biometrische Authentifizierung verfügbar',
+    biometricNotSupported: 'Biometrische Authentifizierung wird nicht unterstützt',
+    setupBiometric: 'Biometrische Authentifizierung einrichten',
+    biometricConfirmation: 'Biometrische Bestätigung',
+    biometricActivated: 'Biometrische Authentifizierung aktiviert!',
+    biometricRemoved: 'Biometrische Authentifizierung entfernt'
+  },
+  en: {
+    securitySettings: 'Security Settings',
+    biometricAuth: 'Biometric Authentication',
+    transactionNotifications: 'Transaction Notifications',
+    transactionNotificationsDesc: 'Email for every transaction',
+    loginNotifications: 'Login Notifications',
+    loginNotificationsDesc: 'Email for new logins',
+    encryptedTransfer: 'Encrypted Data Transfer',
+    encryptedTransferDesc: 'SSL/TLS encryption active',
+    requireBiometric: 'Biometrics for Transactions',
+    requireBiometricDesc: 'Confirmation for transfers',
+    active: 'Active',
+    biometricAvailable: 'Biometric authentication available',
+    biometricNotSupported: 'Biometric authentication not supported',
+    setupBiometric: 'Set up biometric authentication',
+    biometricConfirmation: 'Biometric Confirmation',
+    biometricActivated: 'Biometric authentication activated!',
+    biometricRemoved: 'Biometric authentication removed'
+  },
+  sq: {
+    securitySettings: 'Cilësimet e Sigurisë',
+    biometricAuth: 'Autentifikimi Biometrik',
+    transactionNotifications: 'Njoftimet e Transaksioneve',
+    transactionNotificationsDesc: 'Email për çdo transaksion',
+    loginNotifications: 'Njoftimet e Hyrjes',
+    loginNotificationsDesc: 'Email për hyrje të reja',
+    encryptedTransfer: 'Transferim i Enkriptuar',
+    encryptedTransferDesc: 'Enkriptimi SSL/TLS aktiv',
+    requireBiometric: 'Biometri për Transaksione',
+    requireBiometricDesc: 'Konfirmim për transfertat',
+    active: 'Aktiv',
+    biometricAvailable: 'Autentifikimi biometrik në dispozicion',
+    biometricNotSupported: 'Autentifikimi biometrik nuk mbështetet',
+    setupBiometric: 'Vendos autentifikimin biometrik',
+    biometricConfirmation: 'Konfirmimi Biometrik',
+    biometricActivated: 'Autentifikimi biometrik u aktivizua!',
+    biometricRemoved: 'Autentifikimi biometrik u hoq'
+  },
+  tr: {
+    securitySettings: 'Güvenlik Ayarları',
+    biometricAuth: 'Biyometrik Kimlik Doğrulama',
+    transactionNotifications: 'İşlem Bildirimleri',
+    transactionNotificationsDesc: 'Her işlem için e-posta',
+    loginNotifications: 'Giriş Bildirimleri',
+    loginNotificationsDesc: 'Yeni girişler için e-posta',
+    encryptedTransfer: 'Şifreli Veri Aktarımı',
+    encryptedTransferDesc: 'SSL/TLS şifrelemesi aktif',
+    requireBiometric: 'İşlemler için Biyometri',
+    requireBiometricDesc: 'Transferler için onay',
+    active: 'Aktif',
+    biometricAvailable: 'Biyometrik kimlik doğrulama mevcut',
+    biometricNotSupported: 'Biyometrik kimlik doğrulama desteklenmiyor',
+    setupBiometric: 'Biyometrik kimlik doğrulamayı kur',
+    biometricConfirmation: 'Biyometrik Onay',
+    biometricActivated: 'Biyometrik kimlik doğrulama etkinleştirildi!',
+    biometricRemoved: 'Biyometrik kimlik doğrulama kaldırıldı'
+  },
+  fr: {
+    securitySettings: 'Paramètres de Sécurité',
+    biometricAuth: 'Authentification Biométrique',
+    transactionNotifications: 'Notifications de Transaction',
+    transactionNotificationsDesc: 'Email pour chaque transaction',
+    loginNotifications: 'Notifications de Connexion',
+    loginNotificationsDesc: 'Email pour les nouvelles connexions',
+    encryptedTransfer: 'Transfert de Données Crypté',
+    encryptedTransferDesc: 'Cryptage SSL/TLS actif',
+    requireBiometric: 'Biométrie pour Transactions',
+    requireBiometricDesc: 'Confirmation pour les transferts',
+    active: 'Actif',
+    biometricAvailable: 'Authentification biométrique disponible',
+    biometricNotSupported: 'Authentification biométrique non supportée',
+    setupBiometric: 'Configurer l\'authentification biométrique',
+    biometricConfirmation: 'Confirmation Biométrique',
+    biometricActivated: 'Authentification biométrique activée!',
+    biometricRemoved: 'Authentification biométrique supprimée'
+  }
+};
+
+// Get translation for security component
+const getSecurityT = (language) => {
+  return securityTranslations[language] || securityTranslations.de;
+};
+
 // Check if WebAuthn is supported
 const isWebAuthnSupported = () => {
   return window.PublicKeyCredential !== undefined;
