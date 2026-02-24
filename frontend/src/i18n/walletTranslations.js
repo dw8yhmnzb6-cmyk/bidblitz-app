@@ -323,6 +323,8 @@ export const walletTranslations = {
     enterAmount: 'Enter amount',
     successTransfer: 'Successfully transferred',
     processing: 'Processing...',
+    hideBalance: 'Hide balance',
+    balanceHidden: 'Balance hidden',
     // Transfer Balance (NEW)
     transferBalance: 'Transfer Balance',
     toBidBlitzPay: 'To BidBlitz Pay',
