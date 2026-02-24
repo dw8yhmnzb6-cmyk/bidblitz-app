@@ -1256,21 +1256,33 @@ export default function StaffPOS() {
   // Check if user can access a specific mode/feature
   const canAccessMode = (modeId) => {
     const role = staff?.role || 'counter';
+    const permissions = staff?.permissions || [];
+    
     // Admin always has full access
-    if (role === 'admin') return true;
+    if (role === 'admin' || permissions.includes('*')) return true;
     
     switch (modeId) {
       case 'topup':
-        return hasPermission('pos.topup') || role === 'counter';
+        return permissions.includes('pos.topup') || role === 'counter';
       case 'payment':
-        return hasPermission('pos.pay') || role === 'counter';
+        return permissions.includes('pos.pay') || role === 'counter';
       case 'giftcard-create':
-        return hasPermission('vouchers.create') || role === 'marketing' || role === 'admin';
+        return permissions.includes('vouchers.create') || role === 'marketing';
       case 'giftcard-redeem':
-        return hasPermission('pos.scan') || role === 'counter' || role === 'admin';
+        return permissions.includes('pos.scan') || role === 'counter';
       default:
         return false;
     }
+  };
+  
+  // Check if user has ANY POS access (for showing a message to support/manager roles)
+  const hasAnyPOSAccess = () => {
+    const role = staff?.role || 'counter';
+    if (role === 'admin' || role === 'counter' || role === 'marketing') return true;
+    // Support and Manager roles have no POS access by default
+    return staff?.permissions?.some(p => 
+      p === '*' || p.startsWith('pos.') || p === 'vouchers.create'
+    );
   };
 
   // Bonus tiers
