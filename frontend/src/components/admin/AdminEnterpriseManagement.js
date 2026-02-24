@@ -89,6 +89,52 @@ export default function AdminEnterpriseManagement() {
     }
   };
 
+  // Create new enterprise
+  const createEnterprise = async (e) => {
+    e.preventDefault();
+    
+    if (!createForm.company_name || !createForm.email || !createForm.password) {
+      toast.error('Bitte alle Pflichtfelder ausfüllen');
+      return;
+    }
+    
+    setCreateLoading(true);
+    try {
+      const res = await fetch(`${API_URL}/api/enterprise/admin/create`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-admin-key': ADMIN_KEY 
+        },
+        body: JSON.stringify(createForm)
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        toast.success(data.message || 'Händler erfolgreich erstellt!');
+        setShowCreateModal(false);
+        setCreateForm({
+          company_name: '',
+          email: '',
+          password: '',
+          contact_person: '',
+          phone: '',
+          address: '',
+          tax_id: '',
+          auto_approve: true
+        });
+        fetchEnterprises();
+      } else {
+        const data = await res.json();
+        toast.error(data.detail || 'Fehler beim Erstellen');
+      }
+    } catch (err) {
+      toast.error('Verbindungsfehler');
+    } finally {
+      setCreateLoading(false);
+    }
+  };
+
   const approveEnterprise = async (enterpriseId) => {
     try {
       const res = await fetch(`${API_URL}/api/enterprise/admin/approve/${enterpriseId}`, {
