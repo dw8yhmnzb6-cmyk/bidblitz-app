@@ -589,6 +589,8 @@ export const walletTranslations = {
     enterAmount: 'Tutar girin',
     successTransfer: 'Başarıyla transfer edildi',
     processing: 'İşleniyor...',
+    hideBalance: 'Bakiyeyi gizle',
+    balanceHidden: 'Bakiye gizli',
     sendMoney: 'Para Gönder',
     recipientId: 'Alıcı (Müşteri No veya E-posta)',
     recipientEmail: 'Alıcı E-postası',
