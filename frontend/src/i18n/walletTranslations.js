@@ -2282,6 +2282,8 @@ export const walletTranslations = {
     enterAmount: 'Vendos shumën',
     successTransfer: 'Transferuar me sukses',
     processing: 'Duke u përpunuar...',
+    hideBalance: 'Fshih bilancin',
+    balanceHidden: 'Bilanci i fshehur',
     sendMoney: 'Dërgo para',
     recipientId: 'Marrësi (Numri i klientit ose Email)',
     recipientEmail: 'Email i marrësit',
