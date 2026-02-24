@@ -1340,6 +1340,8 @@ export default function StaffPOS() {
         const data = JSON.parse(savedStaff);
         setStaff(data);
         setIsLoggedIn(true);
+        // Set first available mode based on permissions
+        setMode(getFirstAvailableMode(data));
         fetchTransactionHistory();
         // Load saved customers for this branch
         loadSavedCustomers(data.branch_id);
