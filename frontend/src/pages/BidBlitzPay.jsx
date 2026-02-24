@@ -929,14 +929,10 @@ const BidBlitzPay = () => {
           
           // Zeige spezifische Meldung für iOS
           if (isIOS) {
-            toast.error(language === 'de'
-              ? '📸 Live-Scanner funktioniert nicht. Bitte nutzen Sie "Foto aufnehmen" - das funktioniert zuverlässig!'
-              : '📸 Live scanner not working. Please use "Take Photo" - it works reliably!',
-              { duration: 6000 }
-            );
+            toast.error(t('cameraStartError'), { duration: 6000 });
           } else {
             const errorMsg = startErr.message || fallbackErr.message || '';
-            toast.error(`Kamera-Fehler: ${errorMsg || 'Unbekannter Fehler'}. Nutzen Sie "Foto aufnehmen".`, { duration: 5000 });
+            toast.error(`${t('cameraStartError')} (${errorMsg})`, { duration: 5000 });
           }
         }
       }
