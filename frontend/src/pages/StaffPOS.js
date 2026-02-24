@@ -2360,15 +2360,15 @@ export default function StaffPOS() {
           
           <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
             {/* Language Selector */}
-            <div className="relative">
+            <div className="relative z-[60]">
               <button
                 onClick={() => setShowLanguages(!showLanguages)}
-                className="p-1.5 sm:p-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-slate-300 transition-colors flex items-center gap-0.5 sm:gap-1"
+                className="p-2.5 sm:p-2 bg-slate-700 hover:bg-slate-600 active:bg-slate-500 rounded-xl text-slate-300 transition-colors flex items-center gap-1.5 sm:gap-1 min-w-[60px] justify-center touch-manipulation"
                 title={t.close || 'Sprache'}
                 data-testid="language-selector-btn"
               >
-                <Globe className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span className="text-base sm:text-lg">{languages.find(l => l.code === language)?.flag || '🇩🇪'}</span>
+                <Globe className="w-5 h-5 sm:w-5 sm:h-5" />
+                <span className="text-xl sm:text-lg">{languages.find(l => l.code === language)?.flag || '🇩🇪'}</span>
               </button>
               
               {/* Language Selection Modal - Neues Design */}
