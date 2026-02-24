@@ -644,7 +644,7 @@ const BidBlitzPay = () => {
   // Add new contact manually
   const addContactManually = async () => {
     if (!newContactId.trim() || !newContactNickname.trim()) {
-      toast.error(language === 'de' ? 'Bitte füllen Sie alle Felder aus' : 'Please fill in all fields');
+      toast.error(t('fillAllFields'));
       return;
     }
     
@@ -665,17 +665,17 @@ const BidBlitzPay = () => {
       const data = await response.json();
       
       if (response.ok) {
-        toast.success(language === 'de' ? 'Kontakt gespeichert!' : 'Contact saved!');
+        toast.success(t('contactSaved'));
         setShowAddContactDialog(false);
         setNewContactId('');
         setNewContactNickname('');
         fetchSavedRecipients();
       } else {
-        toast.error(data.detail || (language === 'de' ? 'Fehler beim Speichern' : 'Error saving'));
+        toast.error(data.detail || t('errorSaving'));
       }
     } catch (error) {
       console.error('Add contact error:', error);
-      toast.error(language === 'de' ? 'Fehler beim Speichern' : 'Error saving');
+      toast.error(t('errorSaving'));
     } finally {
       setAddingContact(false);
     }
@@ -684,7 +684,7 @@ const BidBlitzPay = () => {
   // Edit existing contact
   const updateContact = async () => {
     if (!editingContact || !editingContact.newNickname?.trim()) {
-      toast.error(language === 'de' ? 'Bitte geben Sie einen Namen ein' : 'Please enter a name');
+      toast.error(t('enterName'));
       return;
     }
     
@@ -701,7 +701,7 @@ const BidBlitzPay = () => {
       });
       
       if (response.ok) {
-        toast.success(language === 'de' ? 'Kontakt aktualisiert!' : 'Contact updated!');
+        toast.success(t('contactUpdated'));
         setEditingContact(null);
         fetchSavedRecipients();
       } else {
