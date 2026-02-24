@@ -2060,10 +2060,10 @@ const BidBlitzPay = () => {
                       <div className="flex items-center gap-2 mb-2">
                         <span className="text-2xl">📸</span>
                         <span className="font-bold text-green-800 text-lg">
-                          {language === 'de' ? 'Foto aufnehmen' : 'Take Photo'}
+                          {t('takePhoto')}
                         </span>
                         <span className="bg-green-500 text-white text-xs px-2 py-0.5 rounded-full">
-                          {language === 'de' ? 'Empfohlen' : 'Recommended'}
+                          {t('recommended')}
                         </span>
                       </div>
                       <p className="text-sm text-green-600 mb-3">
@@ -2085,7 +2085,7 @@ const BidBlitzPay = () => {
                         className="flex items-center justify-center gap-2 w-full bg-green-500 hover:bg-green-600 text-white font-bold py-4 px-4 rounded-xl cursor-pointer min-h-[56px] touch-manipulation transition-colors shadow-md text-lg"
                       >
                         <Camera className="w-6 h-6" />
-                        {language === 'de' ? '📷 Jetzt QR-Code fotografieren' : '📷 Photograph QR Code Now'}
+                        {t('takePhotoNow')}
                       </label>
                     </div>
                     
@@ -2095,7 +2095,7 @@ const BidBlitzPay = () => {
                     {/* Camera Scanner Button - Sekundäre Option */}
                     <div className="border border-gray-200 rounded-xl p-4 bg-gray-50">
                       <p className="text-xs text-gray-500 mb-2 text-center">
-                        {language === 'de' ? 'Alternative: Live-Kamera (funktioniert nicht immer)' : 'Alternative: Live camera (may not always work)'}
+                        {t('alternativeLiveCamera')}
                       </p>
                       <Button
                         onClick={startScanner}
