@@ -1855,7 +1855,21 @@ export default function StaffPOS() {
     if (!file) return;
     
     try {
-      const scanner = new Html5Qrcode("topup-photo-scanner");
+      // Create scanner with barcode formats for file scanning
+      const scanner = new Html5Qrcode("topup-photo-scanner", {
+        formatsToSupport: [
+          0,  // QR_CODE
+          4,  // CODE_128
+          10, // EAN_13
+          9,  // EAN_8
+          12, // UPC_A
+          11, // UPC_E
+          2,  // CODE_39
+          3,  // CODE_93
+          7,  // ITF
+        ],
+        verbose: false
+      });
       const result = await scanner.scanFile(file, true);
       
       if (result) {
