@@ -481,6 +481,10 @@ async def login_staff(data: StaffLogin):
         }}
     )
     
+    # Get permissions for this role
+    role = staff.get("role", "counter")
+    permissions = ROLE_PERMISSIONS.get(role, ROLE_PERMISSIONS["counter"])
+    
     return {
         "success": True,
         "token": token,
@@ -489,7 +493,8 @@ async def login_staff(data: StaffLogin):
             "name": staff.get("name"),
             "staff_number": staff.get("staff_number"),
             "email": staff.get("email"),
-            "role": staff.get("role", "counter"),
+            "role": role,
+            "permissions": permissions,
             "partner_id": staff["partner_id"],
             "partner_name": partner.get("business_name", partner.get("restaurant_name")),
             "commission_rate": partner.get("commission_rate", 10)
@@ -502,7 +507,8 @@ async def login_staff(data: StaffLogin):
             "logo_url": partner.get("logo_url")
         },
         "is_staff": True,
-        "role": staff.get("role", "counter")
+        "role": role,
+        "permissions": permissions
     }
 
 async def get_current_partner(token: str):
