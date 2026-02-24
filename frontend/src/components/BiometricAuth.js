@@ -541,14 +541,14 @@ export const SecuritySettings = ({ user, token, language = 'de' }) => {
     <div className="space-y-6" data-testid="security-settings">
       <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
         <Shield className="w-6 h-6 text-amber-500" />
-        Sicherheitseinstellungen
+        {t.securitySettings}
       </h2>
 
       {/* Biometric Setup */}
       <div className="bg-white rounded-xl border p-6">
         <h3 className="font-medium text-gray-800 mb-4 flex items-center gap-2">
           <Fingerprint className="w-5 h-5 text-amber-500" />
-          Biometrische Authentifizierung
+          {t.biometricAuth}
         </h3>
         <BiometricSetup user={user} token={token} onSuccess={fetchSettings} />
       </div>
@@ -558,8 +558,8 @@ export const SecuritySettings = ({ user, token, language = 'de' }) => {
         {/* Transaction Notifications */}
         <div className="p-4 flex items-center justify-between">
           <div>
-            <p className="font-medium text-gray-800">Transaktions-Benachrichtigungen</p>
-            <p className="text-sm text-gray-500">E-Mail bei jeder Transaktion</p>
+            <p className="font-medium text-gray-800">{t.transactionNotifications}</p>
+            <p className="text-sm text-gray-500">{t.transactionNotificationsDesc}</p>
           </div>
           <label className="relative inline-flex items-center cursor-pointer">
             <input
@@ -575,8 +575,8 @@ export const SecuritySettings = ({ user, token, language = 'de' }) => {
         {/* Login Notifications */}
         <div className="p-4 flex items-center justify-between">
           <div>
-            <p className="font-medium text-gray-800">Login-Benachrichtigungen</p>
-            <p className="text-sm text-gray-500">E-Mail bei neuem Login</p>
+            <p className="font-medium text-gray-800">{t.loginNotifications}</p>
+            <p className="text-sm text-gray-500">{t.loginNotificationsDesc}</p>
           </div>
           <label className="relative inline-flex items-center cursor-pointer">
             <input
