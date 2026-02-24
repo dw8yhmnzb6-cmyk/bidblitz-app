@@ -706,11 +706,11 @@ const BidBlitzPay = () => {
         fetchSavedRecipients();
       } else {
         const data = await response.json();
-        toast.error(data.detail || (language === 'de' ? 'Fehler beim Aktualisieren' : 'Error updating'));
+        toast.error(data.detail || t('errorUpdating'));
       }
     } catch (error) {
       console.error('Update contact error:', error);
-      toast.error(language === 'de' ? 'Fehler beim Aktualisieren' : 'Error updating');
+      toast.error(t('errorUpdating'));
     }
   };
 
@@ -780,7 +780,7 @@ const BidBlitzPay = () => {
     if (!file) return;
     
     try {
-      toast.info(language === 'de' ? 'Scanne QR-Code...' : 'Scanning QR code...');
+      toast.info(t('scanningQR'));
       
       const html5QrCode = new Html5Qrcode("qr-reader-hidden");
       
@@ -791,9 +791,9 @@ const BidBlitzPay = () => {
       if (result.startsWith("BIDBLITZ-REQ:")) {
         const requestId = result.replace("BIDBLITZ-REQ:", "");
         await fetchRequestDetails(requestId);
-        toast.success(language === 'de' ? 'QR-Code erkannt!' : 'QR code recognized!');
+        toast.success(t('qrDetected'));
       } else {
-        toast.error(language === 'de' ? 'Ungültiger QR-Code' : 'Invalid QR code');
+        toast.error(t('invalidQR'));
       }
       
       // Cleanup
@@ -801,7 +801,7 @@ const BidBlitzPay = () => {
       
     } catch (err) {
       console.error('Foto-Scan Fehler:', err);
-      toast.error(language === 'de' ? 'QR-Code konnte nicht gelesen werden. Bitte versuchen Sie es erneut.' : 'Could not read QR code. Please try again.');
+      toast.error(t('qrReadError'));
     }
     
     // Reset file input
