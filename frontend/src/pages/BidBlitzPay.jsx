@@ -2243,7 +2243,7 @@ const BidBlitzPay = () => {
                     className="w-full border-amber-300 text-amber-600 hover:bg-amber-50"
                   >
                     <ArrowDownLeft className="w-4 h-4 mr-2 rotate-45" />
-                    {language === 'de' ? 'QR-Code speichern' : 'Save QR Code'}
+                    {t('saveQRCode')}
                   </Button>
                   
                   <Button
@@ -2713,29 +2713,29 @@ const BidBlitzPay = () => {
                 <Users className="w-8 h-8 text-green-500" />
               </div>
               <h3 className="text-lg font-bold text-gray-800">
-                {language === 'de' ? 'Neuen Kontakt hinzufügen' : 'Add New Contact'}
+                {t('addNewContact')}
               </h3>
               <p className="text-sm text-gray-500 mt-1">
-                {language === 'de' ? 'Speichern Sie häufige Empfänger' : 'Save frequent recipients'}
+                {t('saveFrequentRecipients')}
               </p>
             </div>
             
             <div className="space-y-4 mb-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  {language === 'de' ? 'Kundennummer oder E-Mail' : 'Customer ID or Email'}
+                  {t('customerNumberOrEmail')}
                 </label>
                 <Input
                   type="text"
                   value={newContactId}
                   onChange={(e) => setNewContactId(e.target.value)}
-                  placeholder={language === 'de' ? 'z.B. BID-123456 oder email@example.com' : 'e.g. BID-123456 or email@example.com'}
+                  placeholder={t('customerNumberExample')}
                   className="w-full"
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  {language === 'de' ? 'Spitzname' : 'Nickname'}
+                  {t('nickname')}
                 </label>
                 <Input
                   type="text"
