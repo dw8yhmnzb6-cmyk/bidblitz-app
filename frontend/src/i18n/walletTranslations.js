@@ -2379,7 +2379,13 @@ export const walletTranslations = {
     pinSet: 'PIN u vendos',
     pinChanged: 'PIN u ndryshua',
     wrongPin: 'PIN i gabuar',
-    pinMismatch: 'PIN-et nuk përputhen'
+    pinMismatch: 'PIN-et nuk përputhen',
+    
+    // Camera & QR Errors
+    cameraAccessDenied: 'Qasja në kamerë u refuzua. Ju lutem lejoni kamerën në cilësimet e shfletuesit dhe ringarkoni faqen.',
+    cameraStartError: 'Kamera nuk mund të nisej. Ju lutem përdorni "Bëj foto".',
+    qrScanInstruction: 'Skanoni QR-kodin me kamerë ose përdorni "Bëj foto"',
+    scanQROrUpload: 'Skano QR-kodin ose ngarko imazhin'
   }
 };
 
