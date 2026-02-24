@@ -2408,9 +2408,9 @@ export default function StaffPOS() {
           {/* Test Credentials */}
           <div className="mt-6 p-4 bg-slate-800/30 rounded-xl border border-slate-700/50">
             <p className="text-slate-400 text-sm text-center">
-              {t.testAccess}: <span className="text-amber-400 font-mono">MA-EDEKA-001</span>
+              {t.testAccess}: <span className="text-amber-400 font-mono">TS-001</span>
               <br />
-              {t.password}: <span className="text-amber-400">EdekaTest2026!</span>
+              {t.password}: <span className="text-amber-400">Test123!</span>
             </p>
           </div>
 
