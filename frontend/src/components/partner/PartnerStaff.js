@@ -386,8 +386,11 @@ const PartnerStaff = ({ token, language, t }) => {
                           onChange={(e) => setEditStaffData({...editStaffData, role: e.target.value})}
                           className="w-full px-3 py-2 h-9 border border-gray-300 rounded-lg text-sm"
                         >
-                          <option value="counter">{t('counter')}</option>
-                          <option value="admin">{t('admin')}</option>
+                          <option value="counter">🔢 {t('counter')}</option>
+                          <option value="support">📧 Support</option>
+                          <option value="marketing">📢 Marketing</option>
+                          <option value="manager">👔 Manager</option>
+                          <option value="admin">👑 {t('admin')}</option>
                         </select>
                       </div>
                     </div>
