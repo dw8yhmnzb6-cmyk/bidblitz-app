@@ -49,6 +49,7 @@ async def apply_wholesale(application: WholesaleApplication):
         "phone": application.phone,
         "website": application.website,
         "expected_volume": application.expected_volume,
+        "business_type": application.business_type,
         "message": application.message,
         "status": "pending",
         "created_at": datetime.now(timezone.utc).isoformat()
