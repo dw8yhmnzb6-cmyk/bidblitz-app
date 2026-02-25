@@ -1068,9 +1068,9 @@ async def bot_last_second_bidder():
                     if seconds_left <= 0:
                         continue
                     
-                    # IMPORTANT: Skip auctions that are more than 10 minutes away
+                    # IMPORTANT: Skip auctions that are more than 5 minutes away
                     # This allows auctions with long end times (2-3 days) to run their natural course
-                    if seconds_left > 600:  # More than 10 minutes
+                    if seconds_left > 300:  # More than 5 minutes
                         continue
                     
                     # Use fresh data from current_auction
