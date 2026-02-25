@@ -172,6 +172,13 @@ export default function BuyBids() {
   const [paymentMethod, setPaymentMethod] = useState('stripe');
   const [paymentMethods, setPaymentMethods] = useState({ stripe: true, crypto: false, paypal: false });
   const [walletBalance, setWalletBalance] = useState(0);
+  
+  // BNPL State
+  const [showBNPLModal, setShowBNPLModal] = useState(false);
+  const [bnplPackage, setBnplPackage] = useState(null);
+  
+  // Loyalty/Rewards State
+  const [loyaltyInfo, setLoyaltyInfo] = useState(null);
 
   useEffect(() => {
     fetchPackages();
