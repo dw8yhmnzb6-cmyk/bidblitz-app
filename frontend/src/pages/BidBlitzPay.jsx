@@ -2578,6 +2578,27 @@ const BidBlitzPay = () => {
                     />
                   </div>
                   
+                  {/* LINEARER BARCODE - für Scanner die keine QR-Codes lesen */}
+                  {customerNumber && (
+                    <div className="bg-white p-4 rounded-xl border-2 border-gray-200">
+                      <p className="text-xs text-gray-500 mb-2">
+                        {language === 'de' ? 'Alternativ: Kundennummer-Barcode' : 'Alternative: Customer Number Barcode'}
+                      </p>
+                      <div className="flex justify-center">
+                        <Barcode 
+                          value={customerNumber}
+                          format="CODE128"
+                          width={2}
+                          height={60}
+                          fontSize={14}
+                          background="#ffffff"
+                          lineColor="#000000"
+                          displayValue={true}
+                        />
+                      </div>
+                    </div>
+                  )}
+                  
                   {/* Toggle to hide balance */}
                   <div className="flex items-center justify-center gap-2">
                     <label className="relative inline-flex items-center cursor-pointer">
