@@ -278,6 +278,23 @@ async def process_topup(data: TopupRequest, authorization: Optional[str] = Heade
         
         logger.info(f"POS Topup: €{data.amount} + €{bonus} bonus for customer {data.customer_barcode}")
         
+        # ==================== REAL-TIME NOTIFICATION ====================
+        # Send WebSocket notification to customer's device about topup
+        try:
+            await notify_payment_received(
+                user_id=customer["id"],
+                amount=total_credit,  # Total amount including bonus
+                new_balance=new_balance,
+                merchant_name=data.branch_name or "Filiale",
+                transaction_id=transaction_id,
+                is_topup=True,  # Flag to indicate this is a topup, not payment
+                bonus_amount=bonus
+            )
+            logger.info(f"WebSocket notification sent for topup to user {customer['id']}")
+        except Exception as ws_error:
+            # Don't fail the topup if notification fails
+            logger.warning(f"Could not send topup notification: {ws_error}")
+        
         return {
             "success": True,
             "transaction_id": transaction_id,
