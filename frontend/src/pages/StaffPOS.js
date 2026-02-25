@@ -2244,6 +2244,12 @@ export default function StaffPOS() {
         setShowReceipt(true);
         setAmount('');
         setScannedCustomer(null); // Clear after successful topup
+        setManualBarcode(''); // Clear manual input
+        
+        // AUTO-CLOSE Scanner nach erfolgreicher Transaktion
+        setScanMode(false);
+        stopTopupCamera();
+        
         toast.success(`✅ Aufladung erfolgreich! €${amountNum.toFixed(2)} + €${bonus.toFixed(2)} Bonus`);
         fetchTransactionHistory();
       } else {
