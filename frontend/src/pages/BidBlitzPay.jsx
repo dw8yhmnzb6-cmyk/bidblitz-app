@@ -6,6 +6,7 @@ import {
   Plus, Minus, X, Shield, Loader2, Camera, ScanLine, Banknote, Percent, Copy, Filter, Users, Bell, Trophy, Crown, Zap, Keyboard,
   Lock, PieChart, TrendingUp
 } from 'lucide-react';
+import Barcode from 'react-barcode';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { toast } from 'sonner';
