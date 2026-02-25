@@ -287,6 +287,15 @@ const OnboardingTour = () => {
 
   // Check if user should see onboarding
   useEffect(() => {
+    // DISABLED FOR DEVELOPMENT - Onboarding tour is disabled to prevent interference with testing
+    // To re-enable: remove the early return below and uncomment the checkOnboarding logic
+    // The tour can be manually triggered by removing 'bidblitz_onboarding_completed' from localStorage
+    
+    // Always skip - disabled for now
+    setShowTour(false);
+    return;
+    
+    /* ORIGINAL LOGIC - Uncomment to re-enable onboarding tour
     // Don't even start the check if on excluded path
     if (isExcludedPath) {
       setShowTour(false);
@@ -329,6 +338,7 @@ const OnboardingTour = () => {
     };
     
     checkOnboarding();
+    */
   }, [isAuthenticated, user, location.pathname, isExcludedPath]);
   
   // Hide tour immediately when navigating to excluded path
