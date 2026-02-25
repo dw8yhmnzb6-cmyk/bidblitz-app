@@ -3058,65 +3058,9 @@ export default function StaffPOS() {
                       <p className="text-red-400 text-sm mb-3">{topupCameraError}</p>
                     </div>
                   )}
-                            if (e.key === 'Enter' && manualBarcode.trim()) {
-                              processTopupWithBarcode(manualBarcode.trim());
-                            }
-                          }}
-                          placeholder={language === 'de' ? 'Kundennummer (BID-XXXXXX)' : 'Customer number'}
-                          className="flex-1 px-3 py-3 bg-slate-800 border border-slate-600 rounded-lg text-white text-center font-mono"
-                        />
-                        <button
-                          onClick={() => manualBarcode.trim() && processTopupWithBarcode(manualBarcode.trim())}
-                          disabled={!manualBarcode.trim()}
-                          className="px-4 py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-lg font-bold disabled:opacity-50"
-                        >
-                          OK
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* Kamera stoppen Button (wenn Kamera aktiv) */}
-                  {topupCameraActive && (
-                    <button
-                      onClick={stopTopupCamera}
-                      className="w-full py-3 bg-slate-600 hover:bg-slate-500 text-white font-bold rounded-lg flex items-center justify-center gap-2 transition-colors"
-                    >
-                      <X className="w-5 h-5" />
-                      {language === 'de' ? 'Kamera stoppen' : 'Stop Camera'}
-                    </button>
-                  )}
-                  
-                  {/* Manuelle Eingabe */}
-                  <div className="relative">
-                    <Scan className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-amber-400" />
-                    <input
-                      ref={barcodeInputRef}
-                      type="text"
-                      placeholder={language === 'de' ? 'Barcode manuell eingeben...' : 'Enter barcode manually...'}
-                      value={barcodeInput}
-                      onChange={(e) => setBarcodeInput(e.target.value)}
-                      onKeyDown={handleBarcodeScan}
-                      className="w-full pl-12 pr-4 py-3 bg-slate-900/50 border border-slate-600 rounded-xl text-white placeholder-slate-500 focus:ring-2 focus:ring-amber-500 focus:border-transparent font-mono"
-                      data-testid="barcode-input"
-                    />
-                  </div>
                   
                   {/* Hidden scanner element for photo scanning */}
                   <div id="topup-photo-scanner" style={{ display: 'none' }}></div>
-                  
-                  {/* Abbrechen Button */}
-                  <button
-                    onClick={() => {
-                      stopTopupCamera();
-                      setScanMode(false);
-                      setBarcodeInput('');
-                      setTopupCameraError(null);
-                    }}
-                    className="w-full py-3 bg-slate-700 hover:bg-slate-600 rounded-xl text-white font-medium transition-colors"
-                  >
-                    {t.cancel}
-                  </button>
                 </div>
               )}
             </div>
