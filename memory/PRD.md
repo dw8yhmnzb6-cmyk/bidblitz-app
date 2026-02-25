@@ -4143,7 +4143,7 @@ Die Auktionen-Seite wurde in zwei separate Seiten aufgeteilt:
 
 #### 7. MOBILE APP - BEREIT ZUM TESTEN
 - **Verzeichnis:** `/app/mobile-app/BidBlitz`
-- **API:** Korrekt konfiguriert auf `https://blitz-checkout.preview.emergentagent.com/api`
+- **API:** Korrekt konfiguriert auf `https://bidblitz-pay-2.preview.emergentagent.com/api`
 - **Anleitung:** README.md mit Expo Go Instruktionen
 
 #### 4. Admin Mobile Responsiveness - Verifiziert
