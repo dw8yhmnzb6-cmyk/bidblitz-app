@@ -19,7 +19,8 @@ class WholesaleApplication(BaseModel):
     email: str
     phone: str
     website: Optional[str] = None
-    expected_volume: str  # e.g., "500-1000", "1000-5000", "5000+"
+    expected_volume: str  # e.g., "100-500", "500-1000", "1000-5000", "5000+"
+    business_type: Optional[str] = "small"  # "small" for Kleinhändler, "wholesale" for Großhändler
     message: Optional[str] = None
 
 class WholesaleUpdate(BaseModel):
