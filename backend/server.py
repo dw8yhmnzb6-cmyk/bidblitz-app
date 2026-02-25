@@ -598,6 +598,9 @@ from routers.support import router as support_router
 # NEW: Merchant & Loyalty Features (Händler-Produkte, Cashback, VIP-Tiers, Empfehlungen)
 from routers.merchant_features import router as merchant_features_router
 from routers.loyalty_system import router as loyalty_system_router
+
+# BNPL - Ratenzahlung System (Jetzt kaufen, später bezahlen)
+from routers.bnpl_system import router as bnpl_router
 app.include_router(support_router, prefix="/api/support")
 
 # NEW: Merchant & Loyalty Features
