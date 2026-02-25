@@ -2239,7 +2239,6 @@ export default function EnterprisePortal() {
                       )}
                     </div>
                   )}
-                  </div>
                 </div>
               ))}
             </div>
