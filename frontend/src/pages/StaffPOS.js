@@ -2982,75 +2982,33 @@ export default function StaffPOS() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {/* Kamera Scanner Ansicht */}
-                  {topupCameraActive && (
-                    <div className="relative">
-                      <div className="bg-slate-900 rounded-xl p-2">
-                        <p className="text-amber-400 text-sm text-center mb-2 animate-pulse">
-                          📷 {language === 'de' ? 'Halten Sie den Kunden-Code vor die Kamera...' : 'Hold customer code in front of camera...'}
-                        </p>
-                        <div id="topup-scanner" className="w-full h-80 rounded-lg overflow-hidden bg-black"></div>
-                        
-                        {/* Manuelle Eingabe als Alternative */}
-                        <div className="mt-3 flex gap-2">
-                          <input
-                            type="text"
-                            value={manualBarcode}
-                            onChange={(e) => setManualBarcode(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter' && manualBarcode.trim()) {
-                                stopTopupCamera();
-                                processTopupWithBarcode(manualBarcode.trim());
-                              }
-                            }}
-                            placeholder={language === 'de' ? 'Code manuell...' : 'Manual code...'}
-                            className="flex-1 px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white text-center font-mono text-sm"
-                          />
-                          <button
-                            onClick={() => manualBarcode.trim() && processTopupWithBarcode(manualBarcode.trim())}
-                            disabled={!manualBarcode.trim()}
-                            className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-bold disabled:opacity-50"
-                          >
-                            OK
-                          </button>
-                        </div>
-                        
-                        {/* Hidden file input (kept for error fallback) */}
-                        <input
-                          ref={topupFileInputRef}
-                          type="file"
-                          accept="image/*"
-                          capture="environment"
-                          onChange={handleTopupPhotoUpload}
-                          className="hidden"
-                          id="topup-photo-input-main"
-                        />
-                      </div>
-                      <button
-                        onClick={() => {
-                          stopTopupCamera();
-                          setScanMode(false);
-                          setTopupCameraError(null);
-                        }}
-                        className="absolute top-2 right-2 p-2 bg-red-500 rounded-full text-white shadow-lg z-10"
-                      >
-                        <X className="w-5 h-5" />
-                      </button>
-                    </div>
-                  )}
-                  
-                  {/* Kamera Fehler Anzeige */}
-                  {topupCameraError && (
-                    <div className="bg-red-500/20 border border-red-500/50 rounded-xl p-4 text-center">
-                      <p className="text-red-400 text-sm mb-3">{topupCameraError}</p>
-                    </div>
-                  )}
-                  
-                  {/* Manuelle Eingabe wenn Scanner nicht aktiv */}
-                  {!topupCameraActive && !scanMode && (
+                  {/* FOTO AUFNEHMEN - Primäre Option im Scan-Modus */}
+                  <div className="bg-slate-800 rounded-xl p-4">
+                    <p className="text-amber-400 text-center mb-4 font-medium">
+                      📷 {language === 'de' ? 'Kunden-Barcode fotografieren' : 'Take photo of customer barcode'}
+                    </p>
+                    
+                    {/* Native Kamera Input */}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      onChange={handleTopupPhotoUpload}
+                      className="hidden"
+                      id="topup-native-camera"
+                    />
+                    <label
+                      htmlFor="topup-native-camera"
+                      className="w-full py-5 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 rounded-xl text-white font-bold text-xl transition-all flex items-center justify-center gap-3 shadow-lg shadow-green-500/30 cursor-pointer"
+                    >
+                      <Camera className="w-8 h-8" />
+                      📸 {language === 'de' ? 'KAMERA ÖFFNEN' : 'OPEN CAMERA'}
+                    </label>
+                    
+                    {/* Manuelle Eingabe */}
                     <div className="mt-4 pt-4 border-t border-slate-700">
                       <p className="text-slate-500 text-xs text-center mb-3">
-                        {language === 'de' ? 'Oder manuell eingeben:' : 'Or enter manually:'}
+                        {language === 'de' ? 'Oder Code manuell eingeben:' : 'Or enter code manually:'}
                       </p>
                       <div className="flex gap-2">
                         <input
@@ -3058,6 +3016,48 @@ export default function StaffPOS() {
                           value={manualBarcode}
                           onChange={(e) => setManualBarcode(e.target.value)}
                           onKeyDown={(e) => {
+                            if (e.key === 'Enter' && manualBarcode.trim()) {
+                              processTopupWithBarcode(manualBarcode.trim());
+                              setScanMode(false);
+                            }
+                          }}
+                          placeholder={language === 'de' ? 'BID-XXXXXX' : 'BID-XXXXXX'}
+                          className="flex-1 px-4 py-3 bg-slate-900 border border-slate-600 rounded-xl text-white text-center font-mono text-lg"
+                        />
+                        <button
+                          onClick={() => {
+                            if (manualBarcode.trim()) {
+                              processTopupWithBarcode(manualBarcode.trim());
+                              setScanMode(false);
+                            }
+                          }}
+                          disabled={!manualBarcode.trim()}
+                          className="px-6 py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold disabled:opacity-50"
+                        >
+                          OK
+                        </button>
+                      </div>
+                    </div>
+                    
+                    {/* Abbrechen Button */}
+                    <button
+                      onClick={() => {
+                        stopTopupCamera();
+                        setScanMode(false);
+                        setManualBarcode('');
+                      }}
+                      className="w-full mt-4 py-3 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-xl font-medium transition-colors"
+                    >
+                      {language === 'de' ? 'Abbrechen' : 'Cancel'}
+                    </button>
+                  </div>
+                  
+                  {/* Kamera Fehler Anzeige */}
+                  {topupCameraError && (
+                    <div className="bg-red-500/20 border border-red-500/50 rounded-xl p-4 text-center">
+                      <p className="text-red-400 text-sm mb-3">{topupCameraError}</p>
+                    </div>
+                  )}
                             if (e.key === 'Enter' && manualBarcode.trim()) {
                               processTopupWithBarcode(manualBarcode.trim());
                             }
