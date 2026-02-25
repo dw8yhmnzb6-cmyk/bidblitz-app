@@ -168,30 +168,46 @@ async def notify_payment_received(
     merchant_name: str = None,
     transaction_id: str = None,
     discount_amount: float = 0,
-    discount_card_name: str = None
+    discount_card_name: str = None,
+    is_topup: bool = False,
+    bonus_amount: float = 0
 ):
     """
-    Send real-time payment notification to customer's device.
-    Called after successful POS payment.
+    Send real-time payment/topup notification to customer's device.
+    Called after successful POS payment or topup.
     """
-    message = {
-        "type": "payment_received",
-        "data": {
-            "amount": amount,
-            "new_balance": new_balance,
-            "merchant_name": merchant_name or "Partner",
-            "transaction_id": transaction_id,
-            "discount_amount": discount_amount,
-            "discount_card_name": discount_card_name,
-            "has_discount": discount_amount > 0
-        },
-        "timestamp": datetime.now(timezone.utc).isoformat()
-    }
+    if is_topup:
+        message = {
+            "type": "topup_received",
+            "data": {
+                "amount": amount,
+                "bonus_amount": bonus_amount,
+                "new_balance": new_balance,
+                "merchant_name": merchant_name or "Filiale",
+                "transaction_id": transaction_id
+            },
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+    else:
+        message = {
+            "type": "payment_received",
+            "data": {
+                "amount": amount,
+                "new_balance": new_balance,
+                "merchant_name": merchant_name or "Partner",
+                "transaction_id": transaction_id,
+                "discount_amount": discount_amount,
+                "discount_card_name": discount_card_name,
+                "has_discount": discount_amount > 0
+            },
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
     
     sent = await ws_manager.send_to_user(user_id, message)
     
     if sent:
-        logger.info(f"✅ Payment notification sent to user {user_id}: €{amount}")
+        event_type = "Topup" if is_topup else "Payment"
+        logger.info(f"✅ {event_type} notification sent to user {user_id}: €{amount}")
     else:
         logger.info(f"⚠️ User {user_id} not connected - notification not sent")
     
