@@ -2568,11 +2568,12 @@ const BidBlitzPay = () => {
 
               {qrCode ? (
                 <div className="space-y-4">
-                  <div className="bg-white p-4 rounded-xl inline-block border-4 border-amber-200">
+                  {/* GRÖSSERER QR-CODE */}
+                  <div className="bg-white p-3 rounded-xl inline-block border-4 border-amber-200">
                     <img 
                       src={qrCode.qr_code} 
                       alt="Payment QR Code" 
-                      className="w-48 h-48 mx-auto"
+                      className="w-64 h-64 sm:w-72 sm:h-72 mx-auto"
                     />
                   </div>
                   
@@ -2592,12 +2593,12 @@ const BidBlitzPay = () => {
                     </span>
                   </div>
 
-                  {/* Show/Hide Balance - Use wallet balance for real-time updates */}
+                  {/* KORRIGIERTES GUTHABEN - wallet.wallet.universal_balance */}
                   {!hideBalance && (
                     <div className="bg-amber-50 rounded-xl p-4">
                       <p className="text-xs text-amber-600 mb-2">{t('availableForPayment')}:</p>
-                      <p className="text-2xl font-bold text-amber-700">
-                        €{(wallet?.universal_balance || 0).toFixed(2)}
+                      <p className="text-3xl font-bold text-amber-700">
+                        €{(wallet?.wallet?.universal_balance || 0).toFixed(2)}
                       </p>
                       <p className="text-xs text-green-600 mt-1 animate-pulse">
                         ● Live-Aktualisierung aktiv
