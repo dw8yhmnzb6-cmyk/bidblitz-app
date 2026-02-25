@@ -600,6 +600,10 @@ from routers.merchant_features import router as merchant_features_router
 from routers.loyalty_system import router as loyalty_system_router
 app.include_router(support_router, prefix="/api/support")
 
+# NEW: Merchant & Loyalty Features
+app.include_router(merchant_features_router)  # /api/merchant/* endpoints
+app.include_router(loyalty_system_router)  # /api/loyalty/* endpoints
+
 # ==================== HEALTH & BASIC ENDPOINTS ====================
 
 @app.get("/")
