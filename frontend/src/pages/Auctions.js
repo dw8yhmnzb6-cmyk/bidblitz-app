@@ -1517,6 +1517,33 @@ export default function Auctions() {
         </div>
       </div>
       
+      {/* Category Filter Buttons */}
+      <div className="max-w-7xl mx-auto mb-3 px-2 overflow-x-auto scrollbar-hide">
+        <div className="flex flex-wrap gap-1.5 justify-center">
+          {categoryFilters.map(btn => (
+            <button
+              key={btn.id}
+              onClick={() => setActiveFilter(btn.id)}
+              className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1 ${
+                activeFilter === btn.id
+                  ? `bg-gradient-to-r ${btn.color} text-white shadow-lg scale-105`
+                  : 'bg-white/60 text-gray-600 hover:bg-white hover:shadow border border-gray-200'
+              }`}
+            >
+              {btn.icon && <span>{btn.icon}</span>}
+              {btn.label}
+              {btn.count > 0 && (
+                <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[10px] ${
+                  activeFilter === btn.id ? 'bg-white/20' : 'bg-gray-200'
+                }`}>
+                  {btn.count}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+      </div>
+      
       {/* Main layout with trust badges on right */}
       <div className="flex gap-3 max-w-7xl mx-auto px-2">
         {/* Main Content */}
