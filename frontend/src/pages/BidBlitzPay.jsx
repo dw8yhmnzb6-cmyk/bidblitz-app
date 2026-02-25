@@ -182,6 +182,70 @@ const BidBlitzPay = () => {
   const t = (key) => translations[language]?.[key] || translations.de[key] || key;
   const isRTL = language === 'ar';
 
+  // ==================== WEBSOCKET FOR PAYMENT NOTIFICATIONS ====================
+  useEffect(() => {
+    if (!authUser?.id) return;
+    
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsHost = API.replace('https://', '').replace('http://', '');
+    const wsUrl = `${wsProtocol}//${wsHost}/api/ws/payments/${authUser.id}`;
+    
+    let ws = null;
+    let reconnectTimeout = null;
+    
+    const connect = () => {
+      try {
+        ws = new WebSocket(wsUrl);
+        
+        ws.onopen = () => {
+          console.log('✅ BidBlitz Pay: WebSocket connected for payments');
+        };
+        
+        ws.onmessage = (event) => {
+          try {
+            const message = JSON.parse(event.data);
+            console.log('📩 Payment notification:', message);
+            
+            if (message.type === 'payment_received') {
+              // Show payment confirmation modal
+              setPaymentReceived(message.data);
+              setShowPaymentModal(true);
+              
+              // Update wallet balance
+              fetchWallet();
+              fetchTransactions();
+              
+              // Vibrate if supported
+              if (navigator.vibrate) {
+                navigator.vibrate([100, 50, 100]);
+              }
+            }
+          } catch (e) {
+            console.error('WebSocket parse error:', e);
+          }
+        };
+        
+        ws.onclose = () => {
+          console.log('WebSocket closed, reconnecting in 3s...');
+          reconnectTimeout = setTimeout(connect, 3000);
+        };
+        
+        ws.onerror = (error) => {
+          console.error('WebSocket error:', error);
+        };
+      } catch (e) {
+        console.error('WebSocket connection error:', e);
+      }
+    };
+    
+    connect();
+    
+    return () => {
+      if (ws) ws.close();
+      if (reconnectTimeout) clearTimeout(reconnectTimeout);
+    };
+  }, [authUser?.id]);
+
   // Fetch user data for security settings
   useEffect(() => {
     const fetchLocalUser = async () => {
