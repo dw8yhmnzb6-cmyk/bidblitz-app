@@ -380,9 +380,11 @@ export default function WholesaleDashboard() {
         <div className="flex gap-2 mb-8 overflow-x-auto pb-2">
           {[
             { id: 'dashboard', label: 'Übersicht', icon: TrendingUp },
+            { id: 'products', label: 'Produkte', icon: Package },
+            { id: 'coupons', label: 'Gutscheine', icon: Ticket },
             { id: 'customers', label: 'Meine Kunden', icon: Users },
             { id: 'order', label: 'Gebote kaufen', icon: ShoppingCart },
-            { id: 'orders', label: 'Bestellungen', icon: Package },
+            { id: 'orders', label: 'Bestellungen', icon: FileText },
             { id: 'profile', label: 'Profil', icon: User }
           ].map(tab => (
             <Button
