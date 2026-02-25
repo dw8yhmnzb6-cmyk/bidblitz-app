@@ -1,4 +1,4 @@
-"""WebSocket connection manager for real-time auction updates"""
+"""WebSocket connection manager for real-time auction updates and payment notifications"""
 import logging
 from typing import Dict, Set, Optional
 from datetime import datetime, timezone
@@ -7,11 +7,13 @@ from fastapi import WebSocket
 logger = logging.getLogger(__name__)
 
 class ConnectionManager:
-    """Manages WebSocket connections for real-time auction updates"""
+    """Manages WebSocket connections for real-time auction updates and payment notifications"""
     
     def __init__(self):
         self.auction_connections: Dict[str, Set[WebSocket]] = {}
         self.connection_info: Dict[WebSocket, Dict] = {}
+        # User-specific connections for payment notifications
+        self.user_connections: Dict[str, Set[WebSocket]] = {}
     
     async def connect(self, websocket: WebSocket, auction_id: str, user_info: Optional[Dict] = None):
         """Accept and store a new WebSocket connection"""
