@@ -296,6 +296,126 @@ export default function WholesaleDashboard() {
     }
   };
 
+  // Create new product
+  const handleCreateProduct = async () => {
+    const token = localStorage.getItem('wholesale_token');
+    if (!newProduct.name || !newProduct.retail_price) {
+      toast.error('Bitte Name und Preis eingeben');
+      return;
+    }
+    
+    try {
+      const res = await fetch(`${API}/api/merchant/products`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          ...newProduct,
+          retail_price: parseFloat(newProduct.retail_price)
+        })
+      });
+      
+      const data = await res.json();
+      
+      if (!res.ok) {
+        throw new Error(data.detail || 'Produkt konnte nicht erstellt werden');
+      }
+      
+      toast.success('Produkt erstellt!');
+      setShowProductModal(false);
+      setNewProduct({ name: '', description: '', retail_price: '', category: 'Elektronik', image_url: '' });
+      fetchData();
+    } catch (error) {
+      toast.error(error.message);
+    }
+  };
+
+  // Delete product
+  const handleDeleteProduct = async (productId) => {
+    if (!window.confirm('Produkt wirklich löschen?')) return;
+    
+    const token = localStorage.getItem('wholesale_token');
+    try {
+      const res = await fetch(`${API}/api/merchant/products/${productId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.detail || 'Fehler beim Löschen');
+      }
+      
+      toast.success('Produkt gelöscht');
+      fetchData();
+    } catch (error) {
+      toast.error(error.message);
+    }
+  };
+
+  // Create new coupon
+  const handleCreateCoupon = async () => {
+    const token = localStorage.getItem('wholesale_token');
+    if (!newCoupon.code || !newCoupon.discount_value) {
+      toast.error('Bitte Code und Rabattwert eingeben');
+      return;
+    }
+    
+    try {
+      const res = await fetch(`${API}/api/merchant/coupons`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          ...newCoupon,
+          discount_value: parseFloat(newCoupon.discount_value),
+          min_purchase: newCoupon.min_purchase ? parseFloat(newCoupon.min_purchase) : 0,
+          max_uses: newCoupon.max_uses ? parseInt(newCoupon.max_uses) : null
+        })
+      });
+      
+      const data = await res.json();
+      
+      if (!res.ok) {
+        throw new Error(data.detail || 'Gutschein konnte nicht erstellt werden');
+      }
+      
+      toast.success('Gutschein erstellt!');
+      setShowCouponModal(false);
+      setNewCoupon({ code: '', discount_type: 'percent', discount_value: '', min_purchase: '', max_uses: '', expires_at: '' });
+      fetchData();
+    } catch (error) {
+      toast.error(error.message);
+    }
+  };
+
+  // Delete coupon
+  const handleDeleteCoupon = async (couponId) => {
+    if (!window.confirm('Gutschein wirklich löschen?')) return;
+    
+    const token = localStorage.getItem('wholesale_token');
+    try {
+      const res = await fetch(`${API}/api/merchant/coupons/${couponId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.detail || 'Fehler beim Löschen');
+      }
+      
+      toast.success('Gutschein gelöscht');
+      fetchData();
+    } catch (error) {
+      toast.error(error.message);
+    }
+  };
+
   const handleOrder = async (packageId) => {
     const token = localStorage.getItem('wholesale_token');
     try {
