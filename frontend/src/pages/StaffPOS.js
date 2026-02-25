@@ -3428,47 +3428,26 @@ export default function StaffPOS() {
                   <div className="bg-red-500/20 border border-red-500/50 rounded-xl p-4 text-center">
                     <p className="text-red-400 text-sm mb-3">{paymentCameraError}</p>
                     
-                    {/* Fallback Options wenn Kamera nicht funktioniert */}
-                    <div className="space-y-2">
-                      {/* Foto aufnehmen */}
+                    {/* NUR Manuelle Eingabe als Fallback */}
+                    <div className="flex gap-2">
                       <input
-                        ref={paymentFileInputRef}
-                        type="file"
-                        accept="image/*"
-                        capture="environment"
-                        onChange={handlePaymentPhotoUpload}
-                        className="hidden"
-                        id="payment-photo-input-error"
+                        type="text"
+                        value={paymentBarcode}
+                        onChange={(e) => setPaymentBarcode(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && paymentBarcode.trim()) {
+                            processPayment(paymentBarcode.trim());
+                          }
+                        }}
+                        placeholder={language === 'de' ? 'Code eingeben...' : 'Enter code...'}
+                        className="flex-1 px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white text-center font-mono"
                       />
-                      <label
-                        htmlFor="payment-photo-input-error"
-                        className="w-full py-3 bg-green-500 text-white font-bold rounded-lg flex items-center justify-center gap-2 cursor-pointer"
+                      <button
+                        onClick={() => paymentBarcode.trim() && processPayment(paymentBarcode.trim())}
+                        className="px-4 py-2 bg-blue-500 text-white rounded-lg font-bold"
                       >
-                        <Camera className="w-5 h-5" />
-                        {language === 'de' ? '📸 Foto aufnehmen' : '📸 Take Photo'}
-                      </label>
-                      
-                      {/* Manuelle Eingabe */}
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          value={paymentBarcode}
-                          onChange={(e) => setPaymentBarcode(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' && paymentBarcode.trim()) {
-                              processPayment(paymentBarcode.trim());
-                            }
-                          }}
-                          placeholder="Barcode eingeben..."
-                          className="flex-1 px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white text-center font-mono"
-                        />
-                        <button
-                          onClick={() => paymentBarcode.trim() && processPayment(paymentBarcode.trim())}
-                          className="px-4 py-2 bg-blue-500 text-white rounded-lg font-bold"
-                        >
-                          OK
-                        </button>
-                      </div>
+                        OK
+                      </button>
                     </div>
                   </div>
                 )}
