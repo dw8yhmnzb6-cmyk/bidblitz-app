@@ -144,6 +144,7 @@ async def wholesale_register(data: WholesaleRegister, request: Request):
         "phone": data.phone,
         "website": data.website,
         "expected_volume": data.expected_volume,
+        "business_type": data.business_type or "small",
         "message": data.message,
         "status": "pending",
         "created_at": datetime.now(timezone.utc).isoformat()
