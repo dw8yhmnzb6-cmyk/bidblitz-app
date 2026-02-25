@@ -3344,11 +3344,26 @@ export default function StaffPOS() {
                       toast.error(language === 'de' ? 'Bitte Betrag eingeben' : 'Please enter amount');
                       return;
                     }
-                    setPaymentScanMode(true);
-                    // Automatisch Kamera starten nach kurzer Verzögerung (DOM muss erst rendern)
-                    setTimeout(() => {
-                      startPaymentCamera();
-                    }, 300);
+                    
+                    // Prüfen ob iOS
+                    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+                                  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+                    
+                    if (isIOS) {
+                      // iOS: Nutze native Kamera-Input (zuverlässiger)
+                      setPaymentScanMode(true);
+                      // Trigger den versteckten file input für native Kamera
+                      setTimeout(() => {
+                        const fileInput = document.getElementById('ios-native-camera-input');
+                        if (fileInput) fileInput.click();
+                      }, 100);
+                    } else {
+                      // Android/Desktop: Nutze html5-qrcode Scanner
+                      setPaymentScanMode(true);
+                      setTimeout(() => {
+                        startPaymentCamera();
+                      }, 300);
+                    }
                   }}
                   disabled={!paymentAmount || parseFloat(paymentAmount) <= 0}
                   className="w-full py-4 bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-bold text-lg rounded-xl shadow-lg shadow-blue-500/30 flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -3357,6 +3372,16 @@ export default function StaffPOS() {
                   <Camera className="w-6 h-6" />
                   {t.scanCustomer}
                 </button>
+                
+                {/* iOS Native Kamera Input (versteckt) */}
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  onChange={handlePaymentPhotoUpload}
+                  className="hidden"
+                  id="ios-native-camera-input"
+                />
               </div>
             ) : (
               <div className="space-y-4">
@@ -3365,7 +3390,7 @@ export default function StaffPOS() {
                   <p className="text-slate-400 text-sm">{language === 'de' ? 'Zu zahlender Betrag' : 'Amount to pay'}</p>
                 </div>
                 
-                {/* Camera Scanner */}
+                {/* Camera Scanner - für Android/Desktop */}
                 {paymentCameraActive && (
                   <div className="relative">
                     <div className="bg-slate-900 rounded-xl p-2">
