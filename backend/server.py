@@ -844,6 +844,10 @@ async def bot_early_bidder():
                 
                 new_price = round(current_price + bid_step, 2)
                 
+                # Don't exceed target price
+                if new_price > target_price:
+                    new_price = round(target_price, 2)
+                
                 # PLACE BID!
                 logger.info(f"🤖 Bot wird bieten auf: {auction.get('title', '?')[:25]} (€{current_price:.2f} -> €{new_price:.2f})")
                 bids_placed += 1
