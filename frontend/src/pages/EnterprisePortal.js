@@ -2376,7 +2376,13 @@ export default function EnterprisePortal() {
 
       {showUserModal && (
         <Modal title={t.newUser} onClose={() => setShowUserModal(false)}>
-          <UserForm t={t} branches={branches} onSubmit={handleCreateUser} onCancel={() => setShowUserModal(false)} />
+          <UserForm 
+            t={t} 
+            branches={branches} 
+            onSubmit={handleCreateUser} 
+            onCancel={() => setShowUserModal(false)} 
+            companyPrefix={enterprise?.company_name?.substring(0, 3)?.toUpperCase() || 'MA'}
+          />
         </Modal>
       )}
 
