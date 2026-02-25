@@ -3302,13 +3302,27 @@ export default function StaffPOS() {
                     type="number"
                     value={paymentAmount}
                     onChange={(e) => setPaymentAmount(e.target.value)}
+                    onKeyDown={(e) => {
+                      // Bei Enter direkt zum Scan-Modus wechseln
+                      if (e.key === 'Enter') {
+                        const amt = parseFloat(paymentAmount);
+                        if (amt && amt > 0) {
+                          setPaymentScanMode(true);
+                        }
+                      }
+                    }}
                     placeholder={t.enterAmount}
                     className="w-full pl-14 pr-4 py-4 bg-slate-900/50 border border-slate-600 rounded-xl text-white text-2xl font-bold placeholder-slate-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     min="0.01"
                     step="0.01"
+                    autoFocus
                     data-testid="payment-amount-input"
                   />
                 </div>
+                
+                <p className="text-slate-500 text-sm">
+                  {language === 'de' ? '💡 Tipp: Enter drücken nach Betragseingabe' : '💡 Tip: Press Enter after entering amount'}
+                </p>
                 
                 <button
                   onClick={async () => {
@@ -3317,22 +3331,14 @@ export default function StaffPOS() {
                       toast.error(language === 'de' ? 'Bitte Betrag eingeben' : 'Please enter amount');
                       return;
                     }
-                    
-                    // Prüfen ob iOS
-                    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
-                                  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-                    
-                    if (isIOS) {
-                      // iOS: Der Klick wird vom Label unten behandelt
-                      setPaymentScanMode(true);
-                    }
+                    setPaymentScanMode(true);
                   }}
                   disabled={!paymentAmount || parseFloat(paymentAmount) <= 0}
                   className="w-full py-4 bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-bold text-lg rounded-xl shadow-lg shadow-blue-500/30 flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
                   data-testid="scan-customer-payment-btn"
                 >
                   <ScanLine className="w-6 h-6" />
-                  {language === 'de' ? 'Barcode scannen' : 'Scan Barcode'}
+                  {language === 'de' ? 'Weiter zum Scanner' : 'Continue to Scanner'}
                 </button>
               </div>
             ) : (
@@ -3348,17 +3354,17 @@ export default function StaffPOS() {
                   <div className="flex items-center justify-center gap-3 mb-4">
                     <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
                     <p className="text-green-400 font-medium text-lg">
-                      {language === 'de' ? 'Scanner bereit' : 'Scanner ready'}
+                      {language === 'de' ? '🔊 Scanner bereit - Jetzt scannen!' : '🔊 Scanner ready - Scan now!'}
                     </p>
                   </div>
                   
                   <p className="text-slate-400 text-center mb-4">
                     {language === 'de' 
-                      ? 'Halten Sie den Kunden-Barcode vor den Scanner' 
-                      : 'Hold customer barcode in front of scanner'}
+                      ? 'Scannen Sie den Kunden-Barcode (BID-XXXXXX)' 
+                      : 'Scan customer barcode (BID-XXXXXX)'}
                   </p>
                   
-                  {/* Barcode Eingabefeld - automatisch fokussiert */}
+                  {/* Barcode Eingabefeld - automatisch fokussiert für Hardware-Scanner */}
                   <input
                     type="text"
                     autoFocus
@@ -3366,28 +3372,46 @@ export default function StaffPOS() {
                     onChange={(e) => setPaymentBarcode(e.target.value)}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && paymentBarcode.trim()) {
+                        e.preventDefault();
                         processPayment(paymentBarcode.trim());
                         setPaymentScanMode(false);
                         setPaymentBarcode('');
                       }
                     }}
-                    placeholder={language === 'de' ? 'Barcode wird hier eingescannt...' : 'Barcode will be scanned here...'}
-                    className="w-full px-6 py-4 bg-slate-900 border-2 border-blue-500 rounded-xl text-white text-center font-mono text-xl focus:ring-4 focus:ring-blue-500/50 focus:border-blue-400"
+                    placeholder={language === 'de' ? 'Barcode hier eingeben oder scannen...' : 'Enter or scan barcode here...'}
+                    className="w-full px-6 py-4 bg-slate-900 border-2 border-green-500 rounded-xl text-white text-center font-mono text-xl focus:ring-4 focus:ring-green-500/50 focus:border-green-400 animate-pulse"
                     data-testid="barcode-scanner-input"
                   />
                   
+                  {/* Schnelle manuelle Eingabe + OK Button */}
+                  <div className="mt-4 flex gap-2">
+                    <button
+                      onClick={() => {
+                        if (paymentBarcode.trim()) {
+                          processPayment(paymentBarcode.trim());
+                          setPaymentScanMode(false);
+                          setPaymentBarcode('');
+                        }
+                      }}
+                      disabled={!paymentBarcode.trim()}
+                      className="flex-1 py-3 bg-green-500 hover:bg-green-600 disabled:bg-slate-700 disabled:text-slate-500 text-white font-bold rounded-xl transition-colors"
+                    >
+                      {language === 'de' ? '✓ Zahlung durchführen' : '✓ Process Payment'}
+                    </button>
+                  </div>
+                  
                   {/* Scanner Animation */}
                   <div className="mt-6 flex justify-center">
-                    <div className="relative w-32 h-32 border-4 border-dashed border-blue-500/50 rounded-xl flex items-center justify-center">
-                      <ScanLine className="w-16 h-16 text-blue-400 animate-pulse" />
-                      <div className="absolute inset-0 bg-gradient-to-b from-blue-500/20 to-transparent animate-scan"></div>
+                    <div className="relative w-32 h-32 border-4 border-dashed border-green-500/50 rounded-xl flex items-center justify-center">
+                      <ScanLine className="w-16 h-16 text-green-400 animate-pulse" />
+                      <div className="absolute inset-0 bg-gradient-to-b from-green-500/20 to-transparent animate-scan"></div>
                     </div>
                   </div>
                   
                   <p className="text-slate-500 text-xs text-center mt-4">
                     {language === 'de' 
-                      ? 'Der Scanner liest QR-Codes und Barcodes automatisch' 
-                      : 'Scanner reads QR codes and barcodes automatically'}
+                      ? '📟 Hardware-Scanner: Automatische Erkennung bei Enter' 
+                      : '📟 Hardware scanner: Auto-detection on Enter'}
                   </p>
                 </div>
                 
