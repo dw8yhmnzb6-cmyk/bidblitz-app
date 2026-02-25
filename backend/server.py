@@ -833,6 +833,7 @@ async def bot_early_bidder():
                 
                 # PLACE BID!
                 logger.info(f"🤖 Bot wird bieten auf: {auction.get('title', '?')[:25]} (€{current_price} -> €{current_price + bid_increment})")
+                bids_placed += 1
                 
                 # Select a random bot
                 bot = random.choice(bots)
