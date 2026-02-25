@@ -3055,23 +3055,17 @@ export default function StaffPOS() {
                       </div>
                     </div>
                   )}
-                        >
-                          <Camera className="w-5 h-5" />
-                          Kamera
-                        </button>
-                      )}
-                      
-                      {/* Kamera stoppen (wenn aktiv) */}
-                      {topupCameraActive && (
-                        <button
-                          onClick={stopTopupCamera}
-                          className="py-3 bg-slate-600 hover:bg-slate-500 text-white font-bold rounded-lg flex items-center justify-center gap-2 transition-colors"
-                        >
-                          <X className="w-5 h-5" />
-                          Stop
-                        </button>
-                      )}
-                    </div>
+                  
+                  {/* Kamera stoppen Button (wenn Kamera aktiv) */}
+                  {topupCameraActive && (
+                    <button
+                      onClick={stopTopupCamera}
+                      className="w-full py-3 bg-slate-600 hover:bg-slate-500 text-white font-bold rounded-lg flex items-center justify-center gap-2 transition-colors"
+                    >
+                      <X className="w-5 h-5" />
+                      {language === 'de' ? 'Kamera stoppen' : 'Stop Camera'}
+                    </button>
+                  )}
                     
                     {/* Manuelle Eingabe */}
                     <div className="relative">
