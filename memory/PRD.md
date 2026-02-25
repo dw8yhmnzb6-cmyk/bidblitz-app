@@ -49,10 +49,11 @@ German (Deutsch)
 - Filter-Buttons auf der Auktionsseite
 - Funktioniert parallel zu Auktionstyp-Filtern
 
-### ✅ Händler-Portal (NEU)
-- Unterstützt Kleinhändler und Großhändler
-- Händler-Typ Auswahl bei Registrierung
-- URL: /b2b/register, /b2b/login, /b2b/dashboard
+### ✅ Staff POS Hardware-Scanner (NEU - 2026-02-25)
+- Automatischer Focus auf Barcode-Eingabefeld
+- Enter-Taste nach Betragseingabe aktiviert Scanner-Modus
+- Hardware-Scanner (USB/Keyboard-Emulation) unterstützt
+- Zahlung wird automatisch bei Enter verarbeitet
 
 ### ✅ Auktions-System
 - 51 gemischte Auktionen in 5 Kategorien (Elektronik, Mode, Haus & Garten, Sport, Kunst)
