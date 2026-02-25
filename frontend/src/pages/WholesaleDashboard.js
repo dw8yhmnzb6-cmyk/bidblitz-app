@@ -1066,6 +1066,278 @@ export default function WholesaleDashboard() {
           </div>
         )}
 
+        {/* Products Tab - Merchant can create own products */}
+        {activeTab === 'products' && (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h3 className="text-lg font-bold text-white">Meine Produkte</h3>
+              <Button
+                onClick={() => setShowProductModal(true)}
+                className="bg-cyan-500 hover:bg-cyan-600"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Neues Produkt
+              </Button>
+            </div>
+            
+            {merchantProducts.length === 0 ? (
+              <div className="bg-slate-800/50 rounded-2xl p-8 border border-slate-700 text-center">
+                <Package className="w-12 h-12 text-slate-600 mx-auto mb-3" />
+                <p className="text-slate-400">Noch keine Produkte erstellt</p>
+                <p className="text-slate-500 text-sm mt-1">Erstellen Sie Produkte, die in Auktionen angeboten werden können</p>
+              </div>
+            ) : (
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {merchantProducts.map(product => (
+                  <div key={product.id} className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
+                    {product.image_url && (
+                      <img src={product.image_url} alt={product.name} className="w-full h-32 object-cover rounded-lg mb-3" />
+                    )}
+                    <h4 className="text-white font-medium">{product.name}</h4>
+                    <p className="text-slate-400 text-sm mt-1">{product.category}</p>
+                    <p className="text-cyan-400 font-bold mt-2">€{product.retail_price?.toFixed(2)}</p>
+                    <div className="flex gap-2 mt-3">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleDeleteProduct(product.id)}
+                        className="border-red-500/50 text-red-400 hover:bg-red-500/10"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            
+            {/* Product Modal */}
+            {showProductModal && (
+              <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+                <div className="bg-slate-800 rounded-2xl p-6 w-full max-w-md border border-slate-700">
+                  <h3 className="text-lg font-bold text-white mb-4">Neues Produkt erstellen</h3>
+                  
+                  <div className="space-y-4">
+                    <div>
+                      <Label className="text-slate-300">Produktname *</Label>
+                      <Input
+                        value={newProduct.name}
+                        onChange={e => setNewProduct({...newProduct, name: e.target.value})}
+                        placeholder="z.B. iPhone 15 Pro"
+                        className="bg-slate-700 border-slate-600 text-white"
+                      />
+                    </div>
+                    
+                    <div>
+                      <Label className="text-slate-300">Beschreibung</Label>
+                      <Input
+                        value={newProduct.description}
+                        onChange={e => setNewProduct({...newProduct, description: e.target.value})}
+                        placeholder="Produktbeschreibung..."
+                        className="bg-slate-700 border-slate-600 text-white"
+                      />
+                    </div>
+                    
+                    <div>
+                      <Label className="text-slate-300">Preis (€) *</Label>
+                      <Input
+                        type="number"
+                        value={newProduct.retail_price}
+                        onChange={e => setNewProduct({...newProduct, retail_price: e.target.value})}
+                        placeholder="0.00"
+                        className="bg-slate-700 border-slate-600 text-white"
+                      />
+                    </div>
+                    
+                    <div>
+                      <Label className="text-slate-300">Kategorie</Label>
+                      <select
+                        value={newProduct.category}
+                        onChange={e => setNewProduct({...newProduct, category: e.target.value})}
+                        className="w-full bg-slate-700 border border-slate-600 text-white rounded-md p-2"
+                      >
+                        <option value="Elektronik">Elektronik</option>
+                        <option value="Mode & Accessoires">Mode & Accessoires</option>
+                        <option value="Haus & Garten">Haus & Garten</option>
+                        <option value="Sport & Freizeit">Sport & Freizeit</option>
+                        <option value="Kunst & Sammlerstücke">Kunst & Sammlerstücke</option>
+                      </select>
+                    </div>
+                    
+                    <div>
+                      <Label className="text-slate-300">Bild-URL</Label>
+                      <Input
+                        value={newProduct.image_url}
+                        onChange={e => setNewProduct({...newProduct, image_url: e.target.value})}
+                        placeholder="https://..."
+                        className="bg-slate-700 border-slate-600 text-white"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="flex gap-3 mt-6">
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowProductModal(false)}
+                      className="flex-1 border-slate-600 text-slate-300"
+                    >
+                      Abbrechen
+                    </Button>
+                    <Button
+                      onClick={handleCreateProduct}
+                      className="flex-1 bg-cyan-500 hover:bg-cyan-600"
+                    >
+                      Erstellen
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Coupons Tab - Merchant can create discount coupons */}
+        {activeTab === 'coupons' && (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h3 className="text-lg font-bold text-white">Meine Gutscheine</h3>
+              <Button
+                onClick={() => setShowCouponModal(true)}
+                className="bg-cyan-500 hover:bg-cyan-600"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Neuer Gutschein
+              </Button>
+            </div>
+            
+            {merchantCoupons.length === 0 ? (
+              <div className="bg-slate-800/50 rounded-2xl p-8 border border-slate-700 text-center">
+                <Ticket className="w-12 h-12 text-slate-600 mx-auto mb-3" />
+                <p className="text-slate-400">Noch keine Gutscheine erstellt</p>
+                <p className="text-slate-500 text-sm mt-1">Erstellen Sie Rabatt-Gutscheine für Ihre Kunden</p>
+              </div>
+            ) : (
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {merchantCoupons.map(coupon => (
+                  <div key={coupon.id} className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
+                    <div className="flex justify-between items-start mb-3">
+                      <code className="text-cyan-400 font-bold text-lg">{coupon.code}</code>
+                      <span className={`px-2 py-1 rounded text-xs ${coupon.is_active ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
+                        {coupon.is_active ? 'Aktiv' : 'Inaktiv'}
+                      </span>
+                    </div>
+                    <p className="text-white font-medium">
+                      {coupon.discount_type === 'percent' 
+                        ? `${coupon.discount_value}% Rabatt` 
+                        : `€${coupon.discount_value?.toFixed(2)} Rabatt`}
+                    </p>
+                    {coupon.min_purchase > 0 && (
+                      <p className="text-slate-400 text-sm">Ab €{coupon.min_purchase?.toFixed(2)}</p>
+                    )}
+                    <p className="text-slate-500 text-sm mt-2">
+                      Verwendet: {coupon.times_used || 0}{coupon.max_uses ? `/${coupon.max_uses}` : ''}
+                    </p>
+                    <div className="flex gap-2 mt-3">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleDeleteCoupon(coupon.id)}
+                        className="border-red-500/50 text-red-400 hover:bg-red-500/10"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            
+            {/* Coupon Modal */}
+            {showCouponModal && (
+              <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+                <div className="bg-slate-800 rounded-2xl p-6 w-full max-w-md border border-slate-700">
+                  <h3 className="text-lg font-bold text-white mb-4">Neuen Gutschein erstellen</h3>
+                  
+                  <div className="space-y-4">
+                    <div>
+                      <Label className="text-slate-300">Gutschein-Code *</Label>
+                      <Input
+                        value={newCoupon.code}
+                        onChange={e => setNewCoupon({...newCoupon, code: e.target.value.toUpperCase()})}
+                        placeholder="z.B. SOMMER20"
+                        className="bg-slate-700 border-slate-600 text-white uppercase"
+                      />
+                    </div>
+                    
+                    <div>
+                      <Label className="text-slate-300">Rabatt-Art</Label>
+                      <select
+                        value={newCoupon.discount_type}
+                        onChange={e => setNewCoupon({...newCoupon, discount_type: e.target.value})}
+                        className="w-full bg-slate-700 border border-slate-600 text-white rounded-md p-2"
+                      >
+                        <option value="percent">Prozent (%)</option>
+                        <option value="fixed">Festbetrag (€)</option>
+                      </select>
+                    </div>
+                    
+                    <div>
+                      <Label className="text-slate-300">
+                        Rabattwert {newCoupon.discount_type === 'percent' ? '(%)' : '(€)'} *
+                      </Label>
+                      <Input
+                        type="number"
+                        value={newCoupon.discount_value}
+                        onChange={e => setNewCoupon({...newCoupon, discount_value: e.target.value})}
+                        placeholder="z.B. 10"
+                        className="bg-slate-700 border-slate-600 text-white"
+                      />
+                    </div>
+                    
+                    <div>
+                      <Label className="text-slate-300">Mindesteinkauf (€)</Label>
+                      <Input
+                        type="number"
+                        value={newCoupon.min_purchase}
+                        onChange={e => setNewCoupon({...newCoupon, min_purchase: e.target.value})}
+                        placeholder="0"
+                        className="bg-slate-700 border-slate-600 text-white"
+                      />
+                    </div>
+                    
+                    <div>
+                      <Label className="text-slate-300">Max. Verwendungen (leer = unbegrenzt)</Label>
+                      <Input
+                        type="number"
+                        value={newCoupon.max_uses}
+                        onChange={e => setNewCoupon({...newCoupon, max_uses: e.target.value})}
+                        placeholder="Unbegrenzt"
+                        className="bg-slate-700 border-slate-600 text-white"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="flex gap-3 mt-6">
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowCouponModal(false)}
+                      className="flex-1 border-slate-600 text-slate-300"
+                    >
+                      Abbrechen
+                    </Button>
+                    <Button
+                      onClick={handleCreateCoupon}
+                      className="flex-1 bg-cyan-500 hover:bg-cyan-600"
+                    >
+                      Erstellen
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Profile Tab */}
         {activeTab === 'profile' && (
           <div className="bg-slate-800/50 rounded-2xl p-6 border border-slate-700">
