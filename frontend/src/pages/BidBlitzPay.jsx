@@ -2951,6 +2951,69 @@ const BidBlitzPay = () => {
           </div>
         </div>
       )}
+      
+      {/* ==================== PAYMENT CONFIRMATION MODAL ==================== */}
+      {showPaymentModal && paymentReceived && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-300">
+            {/* Success Header */}
+            <div className="bg-gradient-to-r from-green-500 to-emerald-500 p-8 text-center">
+              <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4 animate-bounce">
+                <CheckCircle className="w-12 h-12 text-white" />
+              </div>
+              <h2 className="text-2xl font-bold text-white">
+                {language === 'de' ? 'Zahlung erfolgreich!' : 'Payment successful!'}
+              </h2>
+              <p className="text-green-100 mt-1">
+                {paymentReceived.merchant_name || 'Partner'}
+              </p>
+            </div>
+            
+            {/* Amount */}
+            <div className="p-6 text-center">
+              <p className="text-gray-500 text-sm mb-1">
+                {language === 'de' ? 'Abgezogen' : 'Deducted'}
+              </p>
+              <p className="text-4xl font-bold text-gray-900">
+                €{paymentReceived.amount?.toFixed(2)}
+              </p>
+              
+              {/* Discount Info */}
+              {paymentReceived.has_discount && paymentReceived.discount_amount > 0 && (
+                <div className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 bg-amber-100 text-amber-700 rounded-full text-sm font-medium">
+                  <span>🎉</span>
+                  <span>
+                    {language === 'de' ? 'Rabatt' : 'Discount'}: €{paymentReceived.discount_amount?.toFixed(2)}
+                  </span>
+                </div>
+              )}
+              
+              {/* New Balance */}
+              <div className="mt-6 p-4 bg-gray-50 rounded-2xl">
+                <p className="text-gray-500 text-sm">
+                  {language === 'de' ? 'Neues Guthaben' : 'New Balance'}
+                </p>
+                <p className="text-2xl font-bold text-orange-600">
+                  €{paymentReceived.new_balance?.toFixed(2)}
+                </p>
+              </div>
+            </div>
+            
+            {/* Close Button */}
+            <div className="px-6 pb-6">
+              <button
+                onClick={() => {
+                  setShowPaymentModal(false);
+                  setPaymentReceived(null);
+                }}
+                className="w-full py-4 bg-gray-900 text-white rounded-2xl font-semibold hover:bg-gray-800 transition-colors"
+              >
+                {language === 'de' ? 'Fertig' : 'Done'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
