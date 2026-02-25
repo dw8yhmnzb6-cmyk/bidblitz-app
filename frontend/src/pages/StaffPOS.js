@@ -3445,79 +3445,8 @@ export default function StaffPOS() {
                 
                 {/* Hidden scanner element for photo scanning */}
                 <div id="payment-photo-scanner" style={{ display: 'none' }}></div>
-                      </p>
-                      {/* GRÖSSERER SCANNER-BEREICH */}
-                      <div id="payment-scanner" className="w-full h-80 rounded-lg overflow-hidden bg-black"></div>
-                      
-                      {/* Manuelle Eingabe als Alternative */}
-                      <div className="mt-3 flex gap-2">
-                        <input
-                          type="text"
-                          value={paymentBarcode}
-                          onChange={(e) => setPaymentBarcode(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' && paymentBarcode.trim()) {
-                              stopPaymentCamera();
-                              processPayment(paymentBarcode.trim());
-                            }
-                          }}
-                          placeholder={language === 'de' ? 'Code manuell eingeben...' : 'Enter code manually...'}
-                          className="flex-1 px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white text-center font-mono text-sm"
-                        />
-                        <button
-                          onClick={() => paymentBarcode.trim() && processPayment(paymentBarcode.trim())}
-                          disabled={!paymentBarcode.trim()}
-                          className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-bold disabled:opacity-50"
-                        >
-                          OK
-                        </button>
-                      </div>
-                      
-                      {/* Hidden file input for photo fallback (kept for error cases) */}
-                      <input
-                        ref={paymentFileInputRef}
-                        type="file"
-                        accept="image/*"
-                        capture="environment"
-                        onChange={handlePaymentPhotoUpload}
-                        className="hidden"
-                        id="payment-photo-input-main"
-                      />
-                    </div>
-                    <button
-                      onClick={() => {
-                        stopPaymentCamera();
-                        setPaymentScanMode(false);
-                        setPaymentCameraError(null);
-                      }}
-                      className="absolute top-2 right-2 p-2 bg-red-500 rounded-full text-white shadow-lg"
-                    >
-                      <X className="w-5 h-5" />
-                    </button>
-                  </div>
-                )}
-                
-                {/* Camera Error Message */}
-                {paymentCameraError && (
-                  <div className="bg-red-500/20 border border-red-500/50 rounded-xl p-4 text-center">
-                    <p className="text-red-400 text-sm mb-3">{paymentCameraError}</p>
-                    
-                    {/* NUR Manuelle Eingabe als Fallback */}
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        value={paymentBarcode}
-                        onChange={(e) => setPaymentBarcode(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' && paymentBarcode.trim()) {
-                            processPayment(paymentBarcode.trim());
-                          }
-                        }}
-                        placeholder={language === 'de' ? 'Code eingeben...' : 'Enter code...'}
-                        className="flex-1 px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white text-center font-mono"
-                      />
-                      <button
-                        onClick={() => paymentBarcode.trim() && processPayment(paymentBarcode.trim())}
+              </div>
+            )}
                         className="px-4 py-2 bg-blue-500 text-white rounded-lg font-bold"
                       >
                         OK
