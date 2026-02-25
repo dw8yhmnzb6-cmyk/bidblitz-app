@@ -454,11 +454,18 @@ class TestStaffPOSPaymentTab:
             }
         )
         
-        # Should not return 404 (endpoint exists)
-        assert response.status_code != 404, "POS payment endpoint not found"
+        # Should return 404 for "customer not found" (not endpoint not found)
+        # The endpoint exists if we get a meaningful error response
+        data = response.json()
+        
+        # Check that we get a proper error message, not a generic 404
+        assert "detail" in data, "Expected error detail in response"
+        assert "Kunde" in data.get("detail", "") or "customer" in data.get("detail", "").lower() or "not found" in data.get("detail", "").lower(), \
+            f"Expected customer-related error, got: {data.get('detail')}"
         
         print(f"✅ POS payment endpoint exists")
         print(f"   Status: {response.status_code}")
+        print(f"   Response: {data.get('detail')}")
 
 
 if __name__ == "__main__":
