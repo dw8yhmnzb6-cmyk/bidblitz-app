@@ -46,7 +46,7 @@ class TestWebSocketPaymentNotifications:
     def staff_auth(self):
         """Login as staff and get token"""
         response = requests.post(f"{BASE_URL}/api/partner-portal/staff/login", json={
-            "employee_number": STAFF_NUMBER,
+            "staff_number": STAFF_NUMBER,
             "password": STAFF_PASSWORD
         })
         assert response.status_code == 200, f"Staff login failed: {response.text}"
