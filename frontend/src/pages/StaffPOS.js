@@ -3407,16 +3407,14 @@ export default function StaffPOS() {
                   className="hidden"
                   id="ios-native-camera-input"
                 />
-                {/* iOS: Separater Button der als Label fungiert - öffnet direkt die Kamera */}
-                {(/iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) && (
-                  <label
-                    htmlFor="ios-native-camera-input"
-                    className="w-full py-4 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 rounded-xl text-white font-bold transition-all flex items-center justify-center gap-3 shadow-lg shadow-green-500/30 cursor-pointer"
-                  >
-                    <Camera className="w-6 h-6" />
-                    📸 {language === 'de' ? 'KAMERA ÖFFNEN' : 'OPEN CAMERA'}
-                  </label>
-                )}
+                {/* Foto aufnehmen Button - funktioniert auf allen Geräten */}
+                <label
+                  htmlFor="ios-native-camera-input"
+                  className="w-full py-4 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 rounded-xl text-white font-bold transition-all flex items-center justify-center gap-3 shadow-lg shadow-green-500/30 cursor-pointer"
+                >
+                  <Camera className="w-6 h-6" />
+                  📸 {language === 'de' ? 'FOTO AUFNEHMEN' : 'TAKE PHOTO'}
+                </label>
               </div>
             ) : (
               <div className="space-y-4">
