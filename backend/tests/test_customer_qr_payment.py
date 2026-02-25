@@ -136,9 +136,9 @@ class TestCustomerQRPaymentFlow:
         
         # Login as staff first
         staff_login = requests.post(
-            f"{BASE_URL}/api/staff/login",
+            f"{BASE_URL}/api/partner-portal/staff/login",
             json={
-                "employee_number": "TS-001",
+                "staff_number": "TS-001",
                 "password": "Test123!"
             }
         )
@@ -194,9 +194,9 @@ class TestCustomerQRPaymentFlow:
         
         # Login as staff
         staff_login = requests.post(
-            f"{BASE_URL}/api/staff/login",
+            f"{BASE_URL}/api/partner-portal/staff/login",
             json={
-                "employee_number": "TS-001",
+                "staff_number": "TS-001",
                 "password": "Test123!"
             }
         )
@@ -274,9 +274,9 @@ class TestCustomerQRPaymentFlow:
         
         # Login as staff
         staff_login = requests.post(
-            f"{BASE_URL}/api/staff/login",
+            f"{BASE_URL}/api/partner-portal/staff/login",
             json={
-                "employee_number": "TS-001",
+                "staff_number": "TS-001",
                 "password": "Test123!"
             }
         )
