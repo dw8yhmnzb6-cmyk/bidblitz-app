@@ -1245,8 +1245,8 @@ export default function StaffPOS() {
   const [showManualEntry, setShowManualEntry] = useState(false);
   const [manualBarcode, setManualBarcode] = useState('');
   
-  // Hardware Scanner State (USB/Bluetooth)
-  const [hardwareScannerMode, setHardwareScannerMode] = useState(false);
+  // Hardware Scanner State (USB/Bluetooth) - ALWAYS ACTIVE when logged in
+  const [hardwareScannerMode, setHardwareScannerMode] = useState(true); // Always on
   const [hardwareScanBuffer, setHardwareScanBuffer] = useState('');
   const hardwareScanTimeoutRef = useRef(null);
   const lastKeyTimeRef = useRef(0);
