@@ -2831,75 +2831,58 @@ export default function StaffPOS() {
               )}
             </div>
 
-            {/* Barcode Scanner mit Kamera */}
+            {/* Hardware Scanner Info - Kein Kamera-Button */}
             <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-700/50">
               <label className="block text-slate-300 mb-2">{t.scanCustomer}</label>
               
-              {!scanMode ? (
-                <div className="space-y-3">
-                  {/* Kamera-Scan Button */}
-                  <button
-                    onClick={async () => {
-                      if (!amount || parseFloat(amount) < 5) {
-                        toast.error(language === 'de' ? 'Bitte zuerst Betrag eingeben (min. €5)' : 'Please enter amount first (min. €5)');
-                        return;
-                      }
-                      
-                      // Prüfen ob iOS
-                      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
-                                    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-                      
-                      if (isIOS) {
-                        // iOS: Der Klick wird vom Label/htmlFor unten behandelt
-                        // Wir setzen nur den Scan-Modus
-                        setScanMode(true);
-                      } else {
-                        // Android/Desktop: Nutze html5-qrcode Scanner
-                        setScanMode(true);
-                        setTimeout(() => {
-                          startTopupCamera();
-                        }, 300);
-                      }
-                    }}
-                    disabled={!amount || parseFloat(amount) < 5}
-                    className="w-full py-4 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 disabled:from-slate-700 disabled:to-slate-700 disabled:text-slate-500 rounded-xl text-white font-bold transition-all flex items-center justify-center gap-3 shadow-lg shadow-amber-500/30 disabled:shadow-none"
-                    data-testid="scan-barcode-btn"
-                  >
-                    <Camera className="w-6 h-6" />
-                    {language === 'de' ? 'Kunden-Barcode scannen' : 'Scan Customer Barcode'}
-                  </button>
-                  
-                  {/* iOS Native Kamera - als Label das direkt die Kamera öffnet */}
-                  <input
-                    type="file"
-                    accept="image/*"
-                    capture="environment"
-                    onChange={handleTopupPhotoUpload}
-                    className="hidden"
-                    id="ios-topup-camera-input"
-                  />
-                  {/* Foto aufnehmen Button - funktioniert auf allen Geräten */}
-                  <label
-                    htmlFor="ios-topup-camera-input"
-                    className="w-full py-4 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 rounded-xl text-white font-bold transition-all flex items-center justify-center gap-3 shadow-lg shadow-green-500/30 cursor-pointer mt-2"
-                  >
-                    <Camera className="w-6 h-6" />
-                    📸 {language === 'de' ? 'FOTO AUFNEHMEN' : 'TAKE PHOTO'}
-                  </label>
-                  
-                  {/* Manuelle Eingabe Option */}
-                  <button
-                    onClick={() => setShowManualEntry(true)}
-                    disabled={!amount || parseFloat(amount) < 5}
-                    className="w-full py-3 bg-slate-700/50 hover:bg-slate-600/50 disabled:bg-slate-800/50 disabled:text-slate-600 rounded-xl text-slate-300 font-medium transition-all flex items-center justify-center gap-2"
-                    data-testid="manual-barcode-btn"
-                  >
-                    <Scan className="w-5 h-5" />
-                    {language === 'de' ? 'Manuell eingeben' : 'Enter manually'}
-                  </button>
-                  
-                  {/* Manuelle Eingabe Modal */}
-                  {showManualEntry && (
+              {/* Einfache Anweisung für Hardware-Scanner */}
+              <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-4 text-center">
+                <div className="flex items-center justify-center gap-3 mb-3">
+                  <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                  <p className="text-green-400 font-bold text-lg">
+                    {language === 'de' ? 'Scanner bereit' : 'Scanner ready'}
+                  </p>
+                </div>
+                <p className="text-slate-400 text-sm mb-4">
+                  {language === 'de' 
+                    ? 'Scannen Sie den Kunden-Barcode mit dem Hardware-Scanner' 
+                    : 'Scan customer barcode with hardware scanner'}
+                </p>
+                <div className="flex justify-center">
+                  <div className="w-24 h-24 border-2 border-dashed border-green-500/50 rounded-xl flex items-center justify-center">
+                    <Scan className="w-12 h-12 text-green-400 animate-pulse" />
+                  </div>
+                </div>
+                <p className="text-slate-500 text-xs mt-3">
+                  {language === 'de' 
+                    ? '📟 BID-XXXXXX oder QR-Code scannen' 
+                    : '📟 Scan BID-XXXXXX or QR code'}
+                </p>
+              </div>
+              
+              {/* Manuelle Eingabe Option - nur als Fallback */}
+              <button
+                onClick={() => setShowManualEntry(true)}
+                disabled={!amount || parseFloat(amount) < 5}
+                className="w-full mt-4 py-3 bg-slate-700/50 hover:bg-slate-600/50 disabled:bg-slate-800/50 disabled:text-slate-600 rounded-xl text-slate-300 font-medium transition-all flex items-center justify-center gap-2"
+                data-testid="manual-barcode-btn"
+              >
+                <Scan className="w-5 h-5" />
+                {language === 'de' ? 'Manuell eingeben (Fallback)' : 'Enter manually (Fallback)'}
+              </button>
+              
+              {/* Hidden file input for legacy - nicht sichtbar */}
+              <input
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={handleTopupPhotoUpload}
+                className="hidden"
+                id="ios-topup-camera-input"
+              />
+              
+              {/* Manuelle Eingabe Modal */}
+              {showManualEntry && (
                     <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
                       <div className="bg-slate-800 rounded-2xl w-full max-w-md p-6">
                         <div className="flex items-center justify-between mb-4">
