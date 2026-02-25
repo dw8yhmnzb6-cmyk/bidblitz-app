@@ -3680,7 +3680,53 @@ export default function StaffPOS() {
             
             <div className="p-4 bg-gray-50 flex gap-2">
               <button
-                onClick={() => toast.success('Beleg wird gedruckt...')}
+                onClick={() => {
+                  // Erstelle druckbaren Beleg
+                  const printWindow = window.open('', '_blank', 'width=300,height=500');
+                  if (printWindow) {
+                    printWindow.document.write(`
+                      <!DOCTYPE html>
+                      <html>
+                      <head>
+                        <title>Beleg</title>
+                        <style>
+                          body { font-family: 'Courier New', monospace; font-size: 12px; padding: 10px; max-width: 280px; margin: 0 auto; }
+                          .center { text-align: center; }
+                          .bold { font-weight: bold; }
+                          .line { border-top: 1px dashed #000; margin: 8px 0; }
+                          .row { display: flex; justify-content: space-between; margin: 4px 0; }
+                          .logo { font-size: 18px; font-weight: bold; margin-bottom: 10px; }
+                          .big { font-size: 16px; }
+                        </style>
+                      </head>
+                      <body>
+                        <div class="center logo">BidBlitz Pay</div>
+                        <div class="center">${staff?.branch_name || 'Filiale'}</div>
+                        <div class="line"></div>
+                        <div class="center bold">AUFLADUNG</div>
+                        <div class="line"></div>
+                        <div class="row"><span>Betrag:</span><span class="bold">€${lastReceipt.amount?.toFixed(2)}</span></div>
+                        <div class="row"><span>Bonus:</span><span class="bold">+€${lastReceipt.bonus?.toFixed(2)}</span></div>
+                        <div class="line"></div>
+                        <div class="row"><span class="bold">GUTSCHRIFT:</span><span class="bold big">€${lastReceipt.total?.toFixed(2)}</span></div>
+                        <div class="line"></div>
+                        <div class="row"><span>Kunde:</span><span>${lastReceipt.customer_barcode}</span></div>
+                        <div class="row"><span>Mitarbeiter:</span><span>${lastReceipt.staff_name}</span></div>
+                        <div class="row"><span>Datum:</span><span>${new Date(lastReceipt.timestamp).toLocaleString('de-DE')}</span></div>
+                        <div class="line"></div>
+                        <div class="center" style="margin-top: 10px;">Vielen Dank!</div>
+                        <div class="center" style="font-size: 10px; margin-top: 5px;">www.bidblitz.de</div>
+                      </body>
+                      </html>
+                    `);
+                    printWindow.document.close();
+                    printWindow.focus();
+                    setTimeout(() => {
+                      printWindow.print();
+                    }, 250);
+                  }
+                  toast.success('Beleg wird gedruckt...');
+                }}
                 className="flex-1 py-3 bg-slate-200 text-slate-700 font-medium rounded-xl hover:bg-slate-300 transition-colors flex items-center justify-center gap-2"
               >
                 <Printer className="w-5 h-5" />
