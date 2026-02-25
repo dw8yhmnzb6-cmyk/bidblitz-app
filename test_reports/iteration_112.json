@@ -1,0 +1,101 @@
+{
+  "summary": "Tested new Customer Loyalty & Merchant Features APIs. All 21 backend tests passed (100%). Customer Loyalty APIs (/api/customer-loyalty/*) working correctly with VIP tiers (Bronze/Silver/Gold/Platinum), points system, cashback, and referral codes. Merchant APIs (/api/merchant/*) working correctly for dashboard, products, coupons, staff, and commissions. Public merchant finder (/api/merchant/public/find) working without auth.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_loyalty_merchant_features.py",
+    "/app/test_reports/pytest/pytest_loyalty_merchant_features.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "✓ Customer Loyalty router correctly uses /api/customer-loyalty prefix (avoiding conflict with existing /api/loyalty)",
+    "✓ VIP Tiers properly defined: Bronze (1% cashback), Silver (2%), Gold (3%), Platinum (5%)",
+    "✓ Points multiplier system: Bronze 1x, Silver 1.5x, Gold 2x, Platinum 3x",
+    "✓ Referral system: €5 bonus for referrer, €2 for referred user",
+    "✓ Merchant auth uses wholesale_id from JWT token correctly",
+    "✓ Merchant dashboard aggregates transactions by today/week/month/all_time",
+    "✓ Product creation sets status='pending_approval' for admin review",
+    "✓ Coupon system supports percentage and fixed amount discounts",
+    "✓ Public merchant finder supports city and coordinate-based filtering"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_loyalty_merchant_features.py"
+  ],
+  "success_rate": {
+    "backend": "100% (21/21 tests passed)",
+    "frontend": "N/A (backend only testing requested)"
+  },
+  "test_credentials": {
+    "customer": {"email": "kunde@bidblitz.ae", "password": "Kunde123!"},
+    "merchant": {"email": "demo@grosshandel.de", "password": "Haendler123!", "login_endpoint": "/api/wholesale/auth/login"}
+  },
+  "seed_data_creation": "Created test product and coupon via API during testing",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Customer Loyalty APIs at /api/customer-loyalty/* (not /api/loyalty). Merchant APIs at /api/merchant/*. Merchant login via /api/wholesale/auth/login. VIP tiers: bronze/silver/gold/platinum with increasing cashback and points multipliers.",
+  "verified_apis": {
+    "customer_loyalty": {
+      "/api/customer-loyalty/status": {
+        "status": "PASS",
+        "returns": "tier, tier_name, points, cashback_percent, benefits, referral_code, next_tier, amount_to_next_tier, all_tiers"
+      },
+      "/api/customer-loyalty/points/history": {
+        "status": "PASS",
+        "returns": "history array of points transactions"
+      },
+      "/api/customer-loyalty/referral": {
+        "status": "PASS",
+        "returns": "referral_code, referral_link, total_referrals, bonus_per_referral, bonus_for_referred"
+      },
+      "/api/customer-loyalty/cashback/history": {
+        "status": "PASS",
+        "returns": "history array, total_earned"
+      },
+      "/api/customer-loyalty/wallet-card": {
+        "status": "PASS",
+        "returns": "card_type, customer_number, tier, points, balance, barcode, qr_data, apple/google wallet URLs"
+      }
+    },
+    "merchant": {
+      "/api/merchant/dashboard": {
+        "status": "PASS",
+        "returns": "merchant_name, today/this_week/this_month/all_time stats, unique_customers, top_products, staff_activity"
+      },
+      "/api/merchant/products": {
+        "status": "PASS",
+        "methods": ["GET (list)", "POST (create)"],
+        "returns": "products array with id, title, description, category, status"
+      },
+      "/api/merchant/coupons": {
+        "status": "PASS",
+        "methods": ["GET (list)", "POST (create)", "DELETE"],
+        "returns": "coupons array with code, discount_percent, min_purchase, max_uses, expires_at"
+      },
+      "/api/merchant/profile": {
+        "status": "PASS",
+        "returns": "merchant profile data"
+      },
+      "/api/merchant/commissions": {
+        "status": "PASS",
+        "returns": "commissions array, total_earned, pending_payout, paid_out"
+      },
+      "/api/merchant/staff": {
+        "status": "PASS",
+        "returns": "staff array"
+      },
+      "/api/merchant/public/find": {
+        "status": "PASS",
+        "auth_required": false,
+        "params": "city, lat, lon, category",
+        "returns": "merchants array"
+      }
+    }
+  }
+}
