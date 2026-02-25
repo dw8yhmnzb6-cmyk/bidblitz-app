@@ -158,3 +158,41 @@ async def broadcast_auction_ended(auction_id: str, winner_name: str, final_price
     }
     await ws_manager.broadcast_to_auction(auction_id, message)
     await ws_manager.broadcast_to_auction("all_auctions", message)
+
+# ==================== PAYMENT NOTIFICATIONS ====================
+
+async def notify_payment_received(
+    user_id: str,
+    amount: float,
+    new_balance: float,
+    merchant_name: str = None,
+    transaction_id: str = None,
+    discount_amount: float = 0,
+    discount_card_name: str = None
+):
+    """
+    Send real-time payment notification to customer's device.
+    Called after successful POS payment.
+    """
+    message = {
+        "type": "payment_received",
+        "data": {
+            "amount": amount,
+            "new_balance": new_balance,
+            "merchant_name": merchant_name or "Partner",
+            "transaction_id": transaction_id,
+            "discount_amount": discount_amount,
+            "discount_card_name": discount_card_name,
+            "has_discount": discount_amount > 0
+        },
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }
+    
+    sent = await ws_manager.send_to_user(user_id, message)
+    
+    if sent:
+        logger.info(f"✅ Payment notification sent to user {user_id}: €{amount}")
+    else:
+        logger.info(f"⚠️ User {user_id} not connected - notification not sent")
+    
+    return sent
