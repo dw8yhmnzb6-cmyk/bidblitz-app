@@ -273,6 +273,22 @@ export const Navbar = () => {
               </div>
             </button>
             
+            {/* Support Button - Mobile Menu */}
+            <Link
+              to="/support"
+              onClick={() => setMobileMenuOpen(false)}
+              className={`w-full flex items-center justify-between py-3 border-b border-gray-200 dark:border-white/10 ${
+                isDarkMode ? 'hover:bg-white/5' : 'hover:bg-gray-50'
+              } rounded-lg px-2 transition-all`}
+            >
+              <span className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-700'}`}>
+                🎧 Support & Hilfe
+              </span>
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                <Headphones className="w-5 h-5 text-white" />
+              </div>
+            </Link>
+            
             {/* AUTH SECTION - Prominent at top */}
             {isAuthenticated ? (
               <div className={`rounded-xl p-4 mb-4 border ${isDarkMode ? 'bg-gradient-to-r from-cyan-900/30 to-blue-900/30 border-cyan-500/30' : 'bg-gradient-to-r from-cyan-50 to-blue-50 border-cyan-200'}`}>
