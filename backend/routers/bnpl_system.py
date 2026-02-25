@@ -117,9 +117,8 @@ async def check_eligibility(token: str):
     try:
         # Token validieren
         from jose import jwt
-        import os
-        SECRET_KEY = os.environ.get("SECRET_KEY", "your-secret-key-here")
-        payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+        from config import JWT_SECRET, JWT_ALGORITHM
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
         user_id = payload.get("user_id")
         
         if not user_id:
