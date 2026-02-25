@@ -21,7 +21,8 @@ export default function WholesaleRegister() {
     password_confirm: '',
     website: '',
     tax_id: '',
-    expected_volume: '500-1000',
+    expected_volume: '100-500',
+    business_type: 'small', // 'small' for Kleinhändler, 'wholesale' for Großhändler
     message: ''
   });
 
