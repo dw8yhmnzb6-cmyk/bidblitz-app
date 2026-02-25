@@ -1013,7 +1013,7 @@ function AppContent() {
       
       <ScrollToTop />
       
-      <SupportButton />
+      {/* SupportButton removed - Support accessible via menu */}
       
       <Toaster 
         position="top-right"
