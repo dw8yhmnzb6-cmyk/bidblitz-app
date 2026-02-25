@@ -3449,13 +3449,6 @@ export default function StaffPOS() {
             )}
           </div>
         )}
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-          </>
-        )}
       </main>
 
       {/* ==================== MODALS ==================== */}
