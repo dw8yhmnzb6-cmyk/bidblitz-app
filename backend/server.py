@@ -798,9 +798,9 @@ async def bot_early_bidder():
                         logger.info(f"✅ Auktion {auction.get('title', auction_id)[:30]} hat Zielpreis €{target_price:.2f} erreicht (aktuell: €{current_price:.2f})")
                     continue
                 
-                # Skip if we bid recently (30-120 seconds interval)
+                # Skip if we bid recently (10-30 seconds interval for faster bidding)
                 last_bid = last_bid_time.get(auction_id, 0)
-                min_interval = random.uniform(30, 120)  # Realistisches Intervall
+                min_interval = random.uniform(10, 30)  # Schnelleres Intervall
                 if (now.timestamp() - last_bid) < min_interval:
                     continue
                 
