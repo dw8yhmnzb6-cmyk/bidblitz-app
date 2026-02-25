@@ -447,11 +447,12 @@ async def process_payment(data: PaymentRequest, authorization: Optional[str] = H
     """Process payment from customer balance"""
     try:
         customer = None
+        barcode = data.customer_barcode.strip() if data.customer_barcode else ""
         
-        # Check if it's a BidBlitz Pay QR code format
-        if data.customer_barcode and data.customer_barcode.startswith("BIDBLITZ-PAY:"):
-            # Extract payment token from QR code
-            payment_token = data.customer_barcode.replace("BIDBLITZ-PAY:", "")
+        # ==================== QR-CODE FORMAT ERKENNUNG ====================
+        # Format 1: BIDBLITZ-PAY:{token} (alte Version)
+        if barcode.startswith("BIDBLITZ-PAY:"):
+            payment_token = barcode.replace("BIDBLITZ-PAY:", "")
             
             # Find the token in database
             token_data = await db.payment_tokens.find_one({"token": payment_token})
@@ -471,9 +472,58 @@ async def process_payment(data: PaymentRequest, authorization: Optional[str] = H
                     {"token": payment_token},
                     {"$set": {"used": True, "used_at": datetime.now(timezone.utc).isoformat()}}
                 )
-                logger.info(f"BidBlitz Pay QR recognized for customer {customer_id}")
+                logger.info(f"BidBlitz Pay QR (v1) recognized for customer {customer_id}")
         
-        # If not BidBlitz Pay format, try regular barcode lookup
+        # Format 2: BIDBLITZ:2.0:{token}:{customer_number}:{timestamp} (neue Version)
+        elif barcode.startswith("BIDBLITZ:2.0:"):
+            parts = barcode.split(":")
+            if len(parts) >= 3:
+                payment_token = parts[2]  # cpt_xxxxx
+                
+                # Find the token in customer_payment_tokens collection
+                token_data = await db.customer_payment_tokens.find_one({"token": payment_token})
+                if not token_data:
+                    raise HTTPException(status_code=400, detail="QR-Code ungültig oder abgelaufen")
+                
+                if token_data.get("used"):
+                    raise HTTPException(status_code=400, detail="QR-Code bereits verwendet")
+                
+                # Check expiration
+                expires_at_str = token_data.get("expires_at", "")
+                if expires_at_str:
+                    try:
+                        expires_at = datetime.fromisoformat(expires_at_str.replace("Z", "+00:00"))
+                        if expires_at < datetime.now(timezone.utc):
+                            raise HTTPException(status_code=400, detail="QR-Code abgelaufen")
+                    except:
+                        pass
+                
+                # Get customer from token
+                customer_id = token_data["user_id"]
+                customer = await db.users.find_one({"id": customer_id})
+                
+                if customer:
+                    # Mark token as used
+                    await db.customer_payment_tokens.update_one(
+                        {"token": payment_token},
+                        {"$set": {"used": True, "used_at": datetime.now(timezone.utc).isoformat()}}
+                    )
+                    logger.info(f"BidBlitz Pay QR (v2.0) recognized for customer {customer_id}")
+        
+        # Format 3: Direkter Token (cpt_xxxxx) - ohne Präfix
+        elif barcode.startswith("cpt_"):
+            token_data = await db.customer_payment_tokens.find_one({"token": barcode})
+            if token_data and not token_data.get("used"):
+                customer_id = token_data["user_id"]
+                customer = await db.users.find_one({"id": customer_id})
+                if customer:
+                    await db.customer_payment_tokens.update_one(
+                        {"token": barcode},
+                        {"$set": {"used": True, "used_at": datetime.now(timezone.utc).isoformat()}}
+                    )
+                    logger.info(f"Direct token recognized for customer {customer_id}")
+        
+        # ==================== FALLBACK: Reguläre Barcode-Suche ====================
         if not customer:
             customer = await db.users.find_one({
                 "$or": [
