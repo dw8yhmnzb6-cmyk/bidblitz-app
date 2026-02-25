@@ -65,9 +65,83 @@ export default function MyPaymentQR() {
   const [showBalance, setShowBalance] = useState(true);
   const [timeLeft, setTimeLeft] = useState(300); // 5 minutes in seconds
   const [showInfo, setShowInfo] = useState(false);
+  
+  // Payment confirmation state
+  const [paymentReceived, setPaymentReceived] = useState(null);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
 
   const language = localStorage.getItem('language') || 'de';
   const t = (key) => translations[language]?.[key] || translations.de[key] || key;
+  
+  // WebSocket connection for real-time payment notifications
+  useEffect(() => {
+    if (!user?.id) return;
+    
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsHost = API_URL.replace('https://', '').replace('http://', '');
+    const wsUrl = `${wsProtocol}//${wsHost}/api/ws/payments/${user.id}`;
+    
+    let ws = null;
+    let reconnectTimeout = null;
+    
+    const connect = () => {
+      try {
+        ws = new WebSocket(wsUrl);
+        
+        ws.onopen = () => {
+          console.log('✅ Payment WebSocket connected');
+        };
+        
+        ws.onmessage = (event) => {
+          try {
+            const message = JSON.parse(event.data);
+            console.log('📩 WebSocket message:', message);
+            
+            if (message.type === 'payment_received') {
+              // Show payment confirmation!
+              setPaymentReceived(message.data);
+              setShowPaymentModal(true);
+              
+              // Update balance
+              if (message.data.new_balance !== undefined) {
+                setBalance(message.data.new_balance);
+              }
+              
+              // Vibrate if supported
+              if (navigator.vibrate) {
+                navigator.vibrate([100, 50, 100]);
+              }
+              
+              // Auto-regenerate QR after payment
+              setTimeout(() => {
+                generateQR();
+              }, 2000);
+            }
+          } catch (e) {
+            console.error('WebSocket parse error:', e);
+          }
+        };
+        
+        ws.onclose = () => {
+          console.log('WebSocket closed, reconnecting in 3s...');
+          reconnectTimeout = setTimeout(connect, 3000);
+        };
+        
+        ws.onerror = (error) => {
+          console.error('WebSocket error:', error);
+        };
+      } catch (e) {
+        console.error('WebSocket connection error:', e);
+      }
+    };
+    
+    connect();
+    
+    return () => {
+      if (ws) ws.close();
+      if (reconnectTimeout) clearTimeout(reconnectTimeout);
+    };
+  }, [user?.id]);
 
   // Generate payment QR token
   const generateQR = async () => {
