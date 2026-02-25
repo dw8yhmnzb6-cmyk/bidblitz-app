@@ -421,9 +421,9 @@ class TestStaffPOSPaymentTab:
     def test_01_staff_login(self):
         """Test staff login for POS access"""
         response = requests.post(
-            f"{BASE_URL}/api/staff/login",
+            f"{BASE_URL}/api/partner-portal/staff/login",
             json={
-                "employee_number": "TS-001",
+                "staff_number": "TS-001",
                 "password": "Test123!"
             }
         )
