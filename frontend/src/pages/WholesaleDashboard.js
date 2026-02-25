@@ -118,6 +118,30 @@ export default function WholesaleDashboard() {
       } catch (e) {
         console.log('B2B data fetch error:', e);
       }
+      
+      // Fetch Merchant Products and Coupons
+      try {
+        const [productsRes, couponsRes] = await Promise.all([
+          fetch(`${API}/api/merchant/products`, {
+            headers: { Authorization: `Bearer ${token}` }
+          }),
+          fetch(`${API}/api/merchant/coupons`, {
+            headers: { Authorization: `Bearer ${token}` }
+          })
+        ]);
+        
+        if (productsRes.ok) {
+          const productsData = await productsRes.json();
+          setMerchantProducts(productsData.products || []);
+        }
+        
+        if (couponsRes.ok) {
+          const couponsData = await couponsRes.json();
+          setMerchantCoupons(couponsData.coupons || []);
+        }
+      } catch (e) {
+        console.log('Merchant data fetch error:', e);
+      }
     } catch (error) {
       toast.error('Sitzung abgelaufen');
       localStorage.removeItem('wholesale_token');
