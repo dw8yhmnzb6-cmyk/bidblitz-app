@@ -17,6 +17,9 @@ from config import db, logger
 # Import WebSocket notification function
 from services.websocket import notify_payment_received
 
+# Import Loyalty System for points & cashback processing
+from routers.loyalty_system import process_loyalty_transaction
+
 router = APIRouter(prefix="/api/pos", tags=["POS"])
 
 # ==================== MODELS ====================
