@@ -828,10 +828,13 @@ async def bot_early_bidder():
                 except Exception as e:
                     logger.warning(f"Zeit-Parse Fehler: {e}")
                 
-                # Only place 5-10 bids per cycle to spread activity
-                if bids_placed >= 10:
-                    logger.debug(f"🛑 Max Gebote erreicht ({bids_placed})")
+                # Only place 1-2 bids per cycle (spread across different auctions)
+                if bids_placed >= 2:
                     break
+                
+                # Random chance to skip this auction (makes bidding more natural)
+                if random.random() < 0.7:  # 70% chance to skip
+                    continue
                 
                 # Bid increment - always €0.01 (one cent)
                 bid_step = 0.01
