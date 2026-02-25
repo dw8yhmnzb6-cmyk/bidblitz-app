@@ -33,6 +33,29 @@ export default function WholesaleDashboard() {
   // Voucher State
   const [voucherCode, setVoucherCode] = useState('');
   const [voucherLoading, setVoucherLoading] = useState(false);
+  
+  // Products State (Merchant can create own products/auctions)
+  const [merchantProducts, setMerchantProducts] = useState([]);
+  const [showProductModal, setShowProductModal] = useState(false);
+  const [newProduct, setNewProduct] = useState({
+    name: '',
+    description: '',
+    retail_price: '',
+    category: 'Elektronik',
+    image_url: ''
+  });
+  
+  // Coupons State (Merchant can create discount coupons)
+  const [merchantCoupons, setMerchantCoupons] = useState([]);
+  const [showCouponModal, setShowCouponModal] = useState(false);
+  const [newCoupon, setNewCoupon] = useState({
+    code: '',
+    discount_type: 'percent',
+    discount_value: '',
+    min_purchase: '',
+    max_uses: '',
+    expires_at: ''
+  });
 
   useEffect(() => {
     const token = localStorage.getItem('wholesale_token');
