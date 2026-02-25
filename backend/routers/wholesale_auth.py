@@ -118,6 +118,7 @@ async def wholesale_register(data: WholesaleRegister, request: Request):
         "website": data.website,
         "tax_id": data.tax_id,
         "expected_volume": data.expected_volume,
+        "business_type": data.business_type or "small",  # small or wholesale
         "message": data.message,
         "status": "pending",  # pending, active, suspended
         "discount_percent": 0,
