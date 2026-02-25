@@ -836,7 +836,8 @@ async def bot_early_bidder():
                     {"id": auction_id, "status": "active"},
                     {
                         "$set": {
-                            "current_price": new_price,
+                            "current_bid": new_price,  # Use current_bid for consistency
+                            "current_price": new_price,  # Also set current_price for compatibility
                             "last_bidder": bot["name"],
                             "last_bidder_id": f"bot_{bot['id']}",
                             "last_bidder_name": bot["name"],
