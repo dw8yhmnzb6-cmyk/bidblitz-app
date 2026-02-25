@@ -226,7 +226,7 @@ from routers.referral_notifications import router as referral_router
 from routers.digital_api import router as digital_api_router
 
 # WebSocket manager
-from services.websocket import ws_manager, broadcast_bid_update, broadcast_auction_ended
+from services.websocket import ws_manager, broadcast_bid_update, broadcast_auction_ended, notify_payment_received
 
 # Dependencies
 from dependencies import get_current_user, get_admin_user
