@@ -274,9 +274,13 @@ export const Navbar = () => {
             </button>
             
             {/* Support Button - Mobile Menu */}
-            <Link
-              to="/support"
-              onClick={() => setMobileMenuOpen(false)}
+            <button
+              onClick={() => {
+                setMobileMenuOpen(false);
+                // Trigger the floating support button
+                const supportBtn = document.querySelector('[data-testid="support-button"]');
+                if (supportBtn) supportBtn.click();
+              }}
               className={`w-full flex items-center justify-between py-3 border-b border-gray-200 dark:border-white/10 ${
                 isDarkMode ? 'hover:bg-white/5' : 'hover:bg-gray-50'
               } rounded-lg px-2 transition-all`}
@@ -287,7 +291,7 @@ export const Navbar = () => {
               <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
                 <Headphones className="w-5 h-5 text-white" />
               </div>
-            </Link>
+            </button>
             
             {/* AUTH SECTION - Prominent at top */}
             {isAuthenticated ? (
