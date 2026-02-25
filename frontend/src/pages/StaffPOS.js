@@ -2988,22 +2988,22 @@ export default function StaffPOS() {
                       📷 {language === 'de' ? 'Kunden-Barcode fotografieren' : 'Take photo of customer barcode'}
                     </p>
                     
-                    {/* Native Kamera Input */}
-                    <input
-                      type="file"
-                      accept="image/*"
-                      capture="environment"
-                      onChange={handleTopupPhotoUpload}
-                      className="hidden"
-                      id="topup-native-camera"
-                    />
-                    <label
-                      htmlFor="topup-native-camera"
-                      className="w-full py-5 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 rounded-xl text-white font-bold text-xl transition-all flex items-center justify-center gap-3 shadow-lg shadow-green-500/30 cursor-pointer"
-                    >
-                      <Camera className="w-8 h-8" />
-                      📸 {language === 'de' ? 'KAMERA ÖFFNEN' : 'OPEN CAMERA'}
-                    </label>
+                    {/* KAMERA ÖFFNEN Button mit transparentem Input darüber */}
+                    <div className="relative w-full">
+                      <div className="w-full py-5 bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl text-white font-bold text-xl flex items-center justify-center gap-3 shadow-lg shadow-green-500/30">
+                        <Camera className="w-8 h-8" />
+                        📸 {language === 'de' ? 'KAMERA ÖFFNEN' : 'OPEN CAMERA'}
+                      </div>
+                      {/* Transparenter File-Input der den ganzen Button überdeckt */}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        capture="environment"
+                        onChange={handleTopupPhotoUpload}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                        style={{ fontSize: '200px' }}
+                      />
+                    </div>
                     
                     {/* Manuelle Eingabe */}
                     <div className="mt-4 pt-4 border-t border-slate-700">
