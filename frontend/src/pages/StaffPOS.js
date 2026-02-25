@@ -2182,6 +2182,12 @@ export default function StaffPOS() {
           wallet_balance: data.wallet_balance || 0,
           total_balance: (data.balance || 0) + (data.wallet_balance || 0)
         });
+        
+        // AUTO-CLOSE Scanner nach Kunde gefunden
+        setScanMode(false);
+        stopTopupCamera();
+        setManualBarcode('');
+        
         toast.success(`✅ Kunde gefunden: ${data.name || 'Kunde'}`);
       } else {
         const error = await res.json();
