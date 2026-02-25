@@ -774,6 +774,7 @@ async def bot_early_bidder():
                 "bid_increment": 1, "title": 1, "end_time": 1}).to_list(100)
             
             if not active_auctions:
+                logger.info("🤖 Early Bidder: Keine Auktionen mit bot_target_price gefunden")
                 await asyncio.sleep(30)
                 continue
             
