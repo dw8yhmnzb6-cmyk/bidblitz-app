@@ -767,6 +767,21 @@ async def process_payment(data: PaymentRequest, authorization: Optional[str] = H
             # Don't fail the payment if notification fails
             logger.warning(f"Could not send payment notification: {ws_error}")
         
+        # ==================== LOYALTY PROCESSING ====================
+        # Process loyalty points and cashback for the customer
+        try:
+            loyalty_result = await process_loyalty_transaction(
+                user_id=customer["id"],
+                amount=final_amount,
+                merchant_id=data.branch_id,
+                transaction_type="payment"
+            )
+            if loyalty_result:
+                logger.info(f"Loyalty processed: +{loyalty_result.get('points_earned', 0)} points, €{loyalty_result.get('cashback', 0):.2f} cashback for customer {customer['id']}")
+        except Exception as loyalty_error:
+            # Don't fail the payment if loyalty processing fails
+            logger.warning(f"Could not process loyalty: {loyalty_error}")
+        
         return {
             "success": True,
             "transaction_id": transaction["id"],
