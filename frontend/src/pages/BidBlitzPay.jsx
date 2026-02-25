@@ -235,6 +235,9 @@ const BidBlitzPay = () => {
               fetchWallet();
               fetchTransactions();
               
+              // SICHERHEIT: Neuen QR-Code generieren nach Transaktion
+              generateQR();
+              
               // Vibrate if supported
               if (navigator.vibrate) {
                 navigator.vibrate([100, 50, 100, 50, 100]);
