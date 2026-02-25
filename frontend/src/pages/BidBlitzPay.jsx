@@ -2994,34 +2994,54 @@ const BidBlitzPay = () => {
         </div>
       )}
       
-      {/* ==================== PAYMENT CONFIRMATION MODAL ==================== */}
+      {/* ==================== PAYMENT/TOPUP CONFIRMATION MODAL ==================== */}
       {showPaymentModal && paymentReceived && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-300">
             {/* Success Header */}
-            <div className="bg-gradient-to-r from-green-500 to-emerald-500 p-8 text-center">
+            <div className={`p-8 text-center ${
+              paymentReceived.is_topup 
+                ? 'bg-gradient-to-r from-blue-500 to-cyan-500' 
+                : 'bg-gradient-to-r from-green-500 to-emerald-500'
+            }`}>
               <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4 animate-bounce">
                 <CheckCircle className="w-12 h-12 text-white" />
               </div>
               <h2 className="text-2xl font-bold text-white">
-                {language === 'de' ? 'Zahlung erfolgreich!' : 'Payment successful!'}
+                {paymentReceived.is_topup 
+                  ? (language === 'de' ? 'Aufladung erfolgreich!' : 'Top-up successful!')
+                  : (language === 'de' ? 'Zahlung erfolgreich!' : 'Payment successful!')
+                }
               </h2>
-              <p className="text-green-100 mt-1">
-                {paymentReceived.merchant_name || 'Partner'}
+              <p className={paymentReceived.is_topup ? 'text-blue-100 mt-1' : 'text-green-100 mt-1'}>
+                {paymentReceived.merchant_name || (paymentReceived.is_topup ? 'Filiale' : 'Partner')}
               </p>
             </div>
             
             {/* Amount */}
             <div className="p-6 text-center">
               <p className="text-gray-500 text-sm mb-1">
-                {language === 'de' ? 'Abgezogen' : 'Deducted'}
+                {paymentReceived.is_topup 
+                  ? (language === 'de' ? 'Aufgeladen' : 'Topped up')
+                  : (language === 'de' ? 'Abgezogen' : 'Deducted')
+                }
               </p>
-              <p className="text-4xl font-bold text-gray-900">
-                €{paymentReceived.amount?.toFixed(2)}
+              <p className={`text-4xl font-bold ${paymentReceived.is_topup ? 'text-blue-600' : 'text-gray-900'}`}>
+                {paymentReceived.is_topup ? '+' : ''}€{paymentReceived.amount?.toFixed(2)}
               </p>
               
-              {/* Discount Info */}
-              {paymentReceived.has_discount && paymentReceived.discount_amount > 0 && (
+              {/* Bonus Info for Topup */}
+              {paymentReceived.is_topup && paymentReceived.bonus_amount > 0 && (
+                <div className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 bg-cyan-100 text-cyan-700 rounded-full text-sm font-medium">
+                  <span>🎁</span>
+                  <span>
+                    {language === 'de' ? 'Bonus' : 'Bonus'}: +€{paymentReceived.bonus_amount?.toFixed(2)}
+                  </span>
+                </div>
+              )}
+              
+              {/* Discount Info for Payment */}
+              {!paymentReceived.is_topup && paymentReceived.has_discount && paymentReceived.discount_amount > 0 && (
                 <div className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 bg-amber-100 text-amber-700 rounded-full text-sm font-medium">
                   <span>🎉</span>
                   <span>
