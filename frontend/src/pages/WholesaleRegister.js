@@ -127,8 +127,8 @@ export default function WholesaleRegister() {
           {/* Benefits Sidebar */}
           <div className="md:col-span-2 space-y-6">
             <div>
-              <h1 className="text-3xl font-bold text-white mb-2">Großkunden-Portal</h1>
-              <p className="text-slate-400">Registrieren Sie sich für exklusive B2B-Vorteile</p>
+              <h1 className="text-3xl font-bold text-white mb-2">Händler-Portal</h1>
+              <p className="text-slate-400">Registrieren Sie sich als Händler - für Groß- und Kleinhändler</p>
             </div>
             
             <div className="space-y-4">
