@@ -1579,6 +1579,11 @@ export default function Auctions() {
             {activeFilter === 'nacht' && `🌙 ${t('auctionPage.nightAuctions')}`}
             {activeFilter === 'ende' && t('auctionPage.endedAuctions')}
             {activeFilter === 'vip' && `⭐ ${t('auctionPage.vipAuctions')}`}
+            {activeFilter === 'elektronik' && `📱 Elektronik`}
+            {activeFilter === 'mode' && `👜 Mode & Accessoires`}
+            {activeFilter === 'haus' && `🏠 Haus & Garten`}
+            {activeFilter === 'sport' && `⚽ Sport & Freizeit`}
+            {activeFilter === 'kunst' && `🎨 Kunst & Sammlerstücke`}
             {' '}({auctionCounts[activeFilter] || gridAuctions.length})
           </h2>
           
