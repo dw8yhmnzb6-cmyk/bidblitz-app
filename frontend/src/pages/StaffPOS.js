@@ -2893,7 +2893,6 @@ export default function StaffPOS() {
                     className="hidden"
                     id="ios-topup-camera-input"
                   />
-                  </button>
                   
                   {/* Manuelle Eingabe Option */}
                   <button
