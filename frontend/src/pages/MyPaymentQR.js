@@ -6,7 +6,7 @@ import React, { useState, useEffect } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { 
   QrCode, RefreshCw, Shield, Clock, Wallet, Info,
-  Download, Share2, Eye, EyeOff, ChevronDown
+  Download, Share2, Eye, EyeOff, ChevronDown, CheckCircle
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'sonner';
