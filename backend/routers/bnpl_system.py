@@ -154,8 +154,8 @@ async def create_installment_plan(request: InstallmentPlanRequest, token: str):
     """
     try:
         from jose import jwt
-        from config import SECRET_KEY
-        payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+        from config import JWT_SECRET, JWT_ALGORITHM
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
         user_id = payload.get("user_id")
         
         if not user_id:
@@ -262,8 +262,8 @@ async def get_my_plans(token: str):
     """
     try:
         from jose import jwt
-        from config import SECRET_KEY
-        payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+        from config import JWT_SECRET, JWT_ALGORITHM
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
         user_id = payload.get("user_id")
         
         if not user_id:
@@ -299,8 +299,8 @@ async def pay_installment(request: PayInstallmentRequest, token: str):
     """
     try:
         from jose import jwt
-        from config import SECRET_KEY
-        payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+        from config import JWT_SECRET, JWT_ALGORITHM
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
         user_id = payload.get("user_id")
         
         if not user_id:
