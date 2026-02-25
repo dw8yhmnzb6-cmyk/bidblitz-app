@@ -14,7 +14,7 @@ import {
   History, Printer, LogOut, User, Lock, CreditCard,
   Wallet, Gift, X, Scan, Tag, Plus, ShoppingCart,
   Ticket, Package, ChevronRight, AlertCircle, Camera, Globe,
-  Star, Users, Image as ImageIcon
+  Star, Users, Image as ImageIcon, ScanLine
 } from 'lucide-react';
 import { toast } from 'sonner';
 
