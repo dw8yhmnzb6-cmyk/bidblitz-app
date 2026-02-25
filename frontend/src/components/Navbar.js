@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
 import { languageList } from '../i18n/translations';
-import { Zap, User, LogOut, Shield, Menu, X, Globe, Gift, Trophy, Heart, Crown, Star, Sparkles, Sun, Moon, ChevronDown } from 'lucide-react';
+import { Zap, User, LogOut, Shield, Menu, X, Globe, Gift, Trophy, Heart, Crown, Star, Sparkles, Sun, Moon, ChevronDown, Headphones } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from './ui/button';
 import SpinWheel from './SpinWheel';
