@@ -54,4 +54,4 @@ BID_PACKAGES = [
 ]
 
 # Frontend URL for redirects
-FRONTEND_URL = os.environ.get('FRONTEND_URL', 'https://payment-platform-34.preview.emergentagent.com')
+FRONTEND_URL = os.environ.get('FRONTEND_URL', 'https://blitz-checkout.preview.emergentagent.com')
