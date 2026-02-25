@@ -1626,8 +1626,8 @@ export default function StaffPOS() {
           const stream = await navigator.mediaDevices.getUserMedia({ 
             video: { 
               facingMode: 'environment',
-              width: { ideal: 1280 },
-              height: { ideal: 720 }
+              width: { ideal: 1920 },
+              height: { ideal: 1080 }
             } 
           });
           stream.getTracks().forEach(track => track.stop());
@@ -1642,29 +1642,20 @@ export default function StaffPOS() {
         }
       }
       
-      // formatsToSupport muss im Konstruktor übergeben werden!
-      const scanner = new Html5Qrcode("payment-scanner", {
-        formatsToSupport: [
-          0,  // QR_CODE
-          4,  // CODE_128
-          10, // EAN_13
-          9,  // EAN_8
-          12, // UPC_A
-          11, // UPC_E
-          2,  // CODE_39
-          3,  // CODE_93
-          7,  // ITF
-        ],
-        verbose: false
-      });
+      // Scanner ohne formatsToSupport im Konstruktor (verursacht iOS-Probleme)
+      const scanner = new Html5Qrcode("payment-scanner");
       paymentScannerRef.current = scanner;
       
-      // Optimierte Einstellungen für QR-Code UND Barcode-Erkennung
+      // Optimierte Einstellungen - KEIN aspectRatio (bricht iOS)
       const config = {
-        fps: isIOS ? 10 : 15, // Höhere FPS für schnelleres Scannen
-        qrbox: { width: 280, height: 280 }, // Quadratischer Bereich für QR-Codes
-        aspectRatio: 1.0, // 1:1 für QR-Codes
-        disableFlip: false
+        fps: 10,
+        qrbox: isIOS ? { width: 250, height: 250 } : { width: 300, height: 300 },
+        // Wichtig: videoConstraints für bessere Auflösung
+        videoConstraints: {
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+          facingMode: "environment"
+        }
       };
       
       await scanner.start(
@@ -1674,7 +1665,7 @@ export default function StaffPOS() {
           // Success - barcode scanned
           console.log('✅ Barcode gescannt:', decodedText);
           playSound('success');
-          toast.success(language === 'de' ? `Barcode erkannt: ${decodedText}` : `Barcode detected: ${decodedText}`);
+          toast.success(language === 'de' ? `Erkannt: ${decodedText}` : `Detected: ${decodedText}`);
           stopPaymentCamera();
           processPayment(decodedText);
         },
