@@ -1004,6 +1004,18 @@ function AppContent() {
           <Route path="/restaurant-loyalty" element={<LoyaltyDashboard />} />
           <Route path="/stempelkarte" element={<LoyaltyDashboard />} />
           
+          {/* Customer Loyalty Dashboard - VIP Tiers, Cashback, Referrals */}
+          <Route path="/mein-treue-programm" element={
+            <ProtectedRoute>
+              <CustomerLoyaltyDashboard />
+            </ProtectedRoute>
+          } />
+          <Route path="/my-loyalty" element={
+            <ProtectedRoute>
+              <CustomerLoyaltyDashboard />
+            </ProtectedRoute>
+          } />
+          
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
