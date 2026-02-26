@@ -877,6 +877,18 @@ function AppContent() {
             </ProtectedRoute>
           } />
           
+          {/* Admin BNPL Dashboard */}
+          <Route path="/admin/bnpl" element={
+            <ProtectedRoute requireAdmin>
+              <AdminBNPL />
+            </ProtectedRoute>
+          } />
+          <Route path="/admin/ratenzahlung" element={
+            <ProtectedRoute requireAdmin>
+              <AdminBNPL />
+            </ProtectedRoute>
+          } />
+          
           {/* Friends Battle */}
           <Route path="/friends-battle" element={<FriendsBattle />} />
           <Route path="/freunde-battle" element={<FriendsBattle />} />
