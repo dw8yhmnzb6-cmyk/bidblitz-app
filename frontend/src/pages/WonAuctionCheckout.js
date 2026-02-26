@@ -398,6 +398,26 @@ export default function WonAuctionCheckout() {
           </div>
         )}
       </div>
+      
+      {/* BNPL Modal */}
+      {showBNPLModal && wonAuction && (
+        <BNPLModal
+          isOpen={showBNPLModal}
+          onClose={() => setShowBNPLModal(false)}
+          itemType="auction_win"
+          itemId={auctionId}
+          itemName={wonAuction.product_name}
+          amount={wonAuction.final_price}
+          onSuccess={(plan) => {
+            toast.success(
+              language === 'de' 
+                ? `Ratenzahlung erfolgreich! ${plan.installments}x €${plan.monthly_payment.toFixed(2)}`
+                : `Installment plan created! ${plan.installments}x €${plan.monthly_payment.toFixed(2)}`
+            );
+            navigate('/meine-ratenzahlungen');
+          }}
+        />
+      )}
     </div>
   );
 }
