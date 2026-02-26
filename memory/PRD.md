@@ -48,6 +48,11 @@ German (Deutsch)
 - **Admin:** admin@bidblitz.ae / Admin123!
 - **Customer:** kunde@bidblitz.ae / Kunde123!
 - **Staff POS:** TS-001 / Test123!
+
+### ✅ Daily Login Popup Dev-Mode (2026-02-26)
+- Popup kann für Tests deaktiviert werden via:
+  `localStorage.setItem('disableDailyLoginPopup', 'true')`
+
 - **Merchant:** demo@grosshandel.de / Haendler123!
 
 ## Database
