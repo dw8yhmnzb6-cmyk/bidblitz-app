@@ -874,6 +874,10 @@ export default function Dashboard() {
                   <span className="flex items-center gap-2 text-gray-800"><Package className="w-4 h-4 text-gray-500" />{dt.myPurchases}</span>
                   <ChevronRight className="w-4 h-4 text-gray-500" />
                 </Link>
+                <Link to="/meine-ratenzahlungen" className="flex items-center justify-between p-3 rounded-lg bg-gradient-to-r from-emerald-500/10 to-cyan-500/10 border border-emerald-500/30 hover:bg-emerald-500/20 transition-colors">
+                  <span className="flex items-center gap-2 text-emerald-600"><Calendar className="w-4 h-4" />{dt.myInstallments}</span>
+                  <ChevronRight className="w-4 h-4 text-emerald-500" />
+                </Link>
                 <Link to="/invoices" className="flex items-center justify-between p-3 rounded-lg bg-white hover:bg-white/5 transition-colors">
                   <span className="flex items-center gap-2 text-gray-800"><FileText className="w-4 h-4 text-gray-500" />{dt.invoices}</span>
                   <ChevronRight className="w-4 h-4 text-gray-500" />
