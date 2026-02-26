@@ -2017,6 +2017,114 @@ export default function EnterprisePortal() {
               </div>
             )}
 
+            {/* Stoßzeiten-Analyse / Peak Hours */}
+            {peakHoursData && (
+              <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-slate-100">
+                <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
+                  <Clock className="w-5 h-5 text-blue-500" />
+                  {t.peakHours || 'Stoßzeiten-Analyse'}
+                </h3>
+                
+                {/* Peak Summary */}
+                {(peakHoursData.peak_hour || peakHoursData.peak_day) && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                    {peakHoursData.peak_hour && peakHoursData.peak_hour.transactions > 0 && (
+                      <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl p-4 border border-amber-200">
+                        <p className="text-sm text-amber-600 font-medium">🕐 {t.busiestHour || 'Stärkste Uhrzeit'}</p>
+                        <p className="text-2xl font-bold text-amber-700">{peakHoursData.peak_hour.label} Uhr</p>
+                        <p className="text-sm text-amber-600">{peakHoursData.peak_hour.transactions} {t.transactions} • €{peakHoursData.peak_hour.revenue?.toFixed(2)}</p>
+                      </div>
+                    )}
+                    {peakHoursData.peak_day && peakHoursData.peak_day.transactions > 0 && (
+                      <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-xl p-4 border border-blue-200">
+                        <p className="text-sm text-blue-600 font-medium">📅 {t.busiestDay || 'Stärkster Tag'}</p>
+                        <p className="text-2xl font-bold text-blue-700">{peakHoursData.peak_day.name}</p>
+                        <p className="text-sm text-blue-600">{peakHoursData.peak_day.transactions} {t.transactions} • €{peakHoursData.peak_day.revenue?.toFixed(2)}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+                
+                {/* Hourly Chart */}
+                <div className="mb-6">
+                  <p className="text-sm text-slate-500 mb-3">{t.hourlyDistribution || 'Verteilung nach Uhrzeit'}</p>
+                  <div className="flex items-end gap-1 h-32 bg-slate-50 rounded-lg p-2 overflow-x-auto">
+                    {peakHoursData.hourly_data?.map((hour) => {
+                      const maxCount = Math.max(...peakHoursData.hourly_data.map(h => h.transactions), 1);
+                      const heightPercent = (hour.transactions / maxCount) * 100;
+                      return (
+                        <div key={hour.hour} className="flex flex-col items-center flex-shrink-0" style={{width: '3.5%', minWidth: '20px'}}>
+                          <div 
+                            className={`w-full rounded-t transition-all ${
+                              hour.transactions > 0 
+                                ? heightPercent > 75 ? 'bg-amber-500' 
+                                : heightPercent > 50 ? 'bg-amber-400' 
+                                : heightPercent > 25 ? 'bg-amber-300' 
+                                : 'bg-amber-200'
+                                : 'bg-slate-200'
+                            }`}
+                            style={{height: `${Math.max(heightPercent, 5)}%`}}
+                            title={`${hour.label}: ${hour.transactions} Transaktionen, €${hour.revenue?.toFixed(2)}`}
+                          />
+                          <span className="text-[10px] text-slate-400 mt-1">{hour.hour}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="flex justify-between text-xs text-slate-400 mt-1">
+                    <span>00:00</span>
+                    <span>06:00</span>
+                    <span>12:00</span>
+                    <span>18:00</span>
+                    <span>23:00</span>
+                  </div>
+                </div>
+                
+                {/* Daily Chart */}
+                <div>
+                  <p className="text-sm text-slate-500 mb-3">{t.weeklyDistribution || 'Verteilung nach Wochentag'}</p>
+                  <div className="grid grid-cols-7 gap-2">
+                    {peakHoursData.daily_data?.map((day) => {
+                      const maxCount = Math.max(...peakHoursData.daily_data.map(d => d.transactions), 1);
+                      const heightPercent = (day.transactions / maxCount) * 100;
+                      return (
+                        <div key={day.day} className="text-center">
+                          <div className="h-20 flex items-end justify-center bg-slate-50 rounded-lg p-1">
+                            <div 
+                              className={`w-full rounded transition-all ${
+                                day.transactions > 0 
+                                  ? heightPercent > 75 ? 'bg-blue-500' 
+                                  : heightPercent > 50 ? 'bg-blue-400' 
+                                  : heightPercent > 25 ? 'bg-blue-300' 
+                                  : 'bg-blue-200'
+                                  : 'bg-slate-200'
+                              }`}
+                              style={{height: `${Math.max(heightPercent, 10)}%`}}
+                            />
+                          </div>
+                          <p className="text-xs font-medium text-slate-600 mt-1">{day.short}</p>
+                          <p className="text-[10px] text-slate-400">{day.transactions}</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+                
+                {/* Busy Periods Warning */}
+                {peakHoursData.busy_periods?.length > 0 && (
+                  <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                    <p className="text-sm font-medium text-amber-700 flex items-center gap-2">
+                      <AlertTriangle className="w-4 h-4" />
+                      {t.busyPeriods || 'Stoßzeiten'}
+                    </p>
+                    <p className="text-sm text-amber-600 mt-1">
+                      {peakHoursData.busy_periods.map(p => `${p.time} (${p.level})`).join(', ')}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Branch Comparison */}
             {stats?.branch_comparison?.length > 0 && (
               <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-slate-100">
