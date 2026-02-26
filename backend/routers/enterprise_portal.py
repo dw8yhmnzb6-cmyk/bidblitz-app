@@ -1098,6 +1098,140 @@ async def export_report(
         )
 
 
+@router.get("/reports/peak-hours")
+async def get_peak_hours_analysis(
+    period: str = Query("month", description="day, week, month, year"),
+    branch_id: Optional[str] = None,
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    authorization: str = Header(None)
+):
+    """
+    Stoßzeiten-Analyse - zeigt welche Uhrzeiten am meisten Aktivität haben.
+    Für Personalplanung und Optimierung.
+    """
+    enterprise = await get_enterprise_from_token(authorization)
+    
+    # Calculate date range
+    now = datetime.now(timezone.utc)
+    
+    if date_from and date_to:
+        try:
+            start_date = datetime.fromisoformat(date_from).replace(tzinfo=timezone.utc)
+            end_date = datetime.fromisoformat(date_to).replace(hour=23, minute=59, second=59, tzinfo=timezone.utc)
+        except ValueError:
+            start_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            end_date = now
+    else:
+        end_date = now
+        if period == "day":
+            start_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        elif period == "week":
+            start_date = now - timedelta(days=now.weekday())
+            start_date = start_date.replace(hour=0, minute=0, second=0, microsecond=0)
+        elif period == "month":
+            start_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        else:  # year
+            start_date = now.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+    
+    # Build query
+    query = {"enterprise_id": enterprise["id"]}
+    if branch_id:
+        query["branch_id"] = branch_id
+    
+    # Get API keys
+    api_keys = await db.enterprise_api_keys.find(query, {"_id": 0, "api_key": 1}).to_list(200)
+    api_key_values = [k["api_key"] for k in api_keys]
+    
+    if not api_key_values:
+        return {
+            "hourly_data": [],
+            "daily_data": [],
+            "peak_hour": None,
+            "peak_day": None,
+            "total_transactions": 0
+        }
+    
+    # Get transactions
+    transactions = await db.digital_payments.find({
+        "api_key": {"$in": api_key_values},
+        "created_at": {"$gte": start_date.isoformat(), "$lte": end_date.isoformat()}
+    }).to_list(10000)
+    
+    # Analyze by hour (0-23)
+    hourly_counts = {h: {"count": 0, "revenue": 0} for h in range(24)}
+    daily_counts = {d: {"count": 0, "revenue": 0} for d in range(7)}  # 0=Monday, 6=Sunday
+    
+    for tx in transactions:
+        try:
+            tx_time = datetime.fromisoformat(tx.get("created_at", "").replace("Z", "+00:00"))
+            hour = tx_time.hour
+            weekday = tx_time.weekday()
+            amount = tx.get("amount", 0)
+            
+            hourly_counts[hour]["count"] += 1
+            hourly_counts[hour]["revenue"] += amount
+            
+            daily_counts[weekday]["count"] += 1
+            daily_counts[weekday]["revenue"] += amount
+        except:
+            continue
+    
+    # Format hourly data
+    hourly_data = []
+    for hour in range(24):
+        hourly_data.append({
+            "hour": hour,
+            "label": f"{hour:02d}:00",
+            "transactions": hourly_counts[hour]["count"],
+            "revenue": round(hourly_counts[hour]["revenue"], 2)
+        })
+    
+    # Format daily data
+    day_names = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"]
+    day_names_short = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
+    daily_data = []
+    for day in range(7):
+        daily_data.append({
+            "day": day,
+            "name": day_names[day],
+            "short": day_names_short[day],
+            "transactions": daily_counts[day]["count"],
+            "revenue": round(daily_counts[day]["revenue"], 2)
+        })
+    
+    # Find peak hour
+    peak_hour = max(hourly_data, key=lambda x: x["transactions"]) if hourly_data else None
+    
+    # Find peak day
+    peak_day = max(daily_data, key=lambda x: x["transactions"]) if daily_data else None
+    
+    # Calculate busy periods
+    busy_periods = []
+    for h in hourly_data:
+        if h["transactions"] > 0:
+            avg = sum(x["transactions"] for x in hourly_data) / 24
+            if h["transactions"] >= avg * 1.5:
+                busy_periods.append({
+                    "time": h["label"],
+                    "level": "sehr hoch" if h["transactions"] >= avg * 2 else "hoch"
+                })
+    
+    return {
+        "hourly_data": hourly_data,
+        "daily_data": daily_data,
+        "peak_hour": peak_hour,
+        "peak_day": peak_day,
+        "busy_periods": busy_periods,
+        "total_transactions": len(transactions),
+        "total_revenue": round(sum(tx.get("amount", 0) for tx in transactions), 2),
+        "period": {
+            "from": start_date.isoformat(),
+            "to": end_date.isoformat()
+        }
+    }
+
+
 # ==================== ADMIN ENDPOINTS ====================
 
 class PayoutSettings(BaseModel):
