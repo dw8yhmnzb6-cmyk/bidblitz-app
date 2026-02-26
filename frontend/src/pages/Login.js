@@ -105,6 +105,15 @@ export default function Login() {
       // Login successful
       const { token, user: userData, kyc_required, kyc_message } = response.data;
       
+      // Handle "Remember Me" - save email for next login
+      if (rememberMe) {
+        localStorage.setItem('remembered_email', email);
+        localStorage.setItem('remember_me', 'true');
+      } else {
+        localStorage.removeItem('remembered_email');
+        localStorage.removeItem('remember_me');
+      }
+      
       try {
         localStorage.setItem('token', token);
       } catch (e) {
