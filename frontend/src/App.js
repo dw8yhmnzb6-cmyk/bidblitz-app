@@ -105,6 +105,7 @@ import ReferFriendsPage from "./pages/ReferFriends";
 import StreakProtectionPage from "./pages/StreakProtectionPage";
 import ExcitementAdminPage from "./pages/ExcitementAdminPage";
 import DiscountCardsAdmin from "./pages/DiscountCardsAdmin";
+import AdminBNPL from "./pages/AdminBNPL";
 import InvestorPortal from "./pages/InvestorPortal";
 import PhoneVerification from "./pages/PhoneVerification";
 import DealRadarPage from "./pages/DealRadarPage";
