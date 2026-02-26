@@ -27,6 +27,17 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [requires2FA, setRequires2FA] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
+
+  // Load saved email if "Remember Me" was checked
+  useEffect(() => {
+    const savedEmail = localStorage.getItem('remembered_email');
+    const savedRemember = localStorage.getItem('remember_me') === 'true';
+    if (savedEmail && savedRemember) {
+      setEmail(savedEmail);
+      setRememberMe(true);
+    }
+  }, []);
 
   // Handle Google OAuth callback
   useEffect(() => {
