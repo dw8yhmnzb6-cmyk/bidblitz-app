@@ -6,9 +6,10 @@ import { useLanguage } from '../context/LanguageContext';
 import { Button } from '../components/ui/button';
 import { 
   Trophy, CreditCard, Clock, Package, CheckCircle, 
-  AlertTriangle, ArrowLeft, Gift, Zap, ShieldCheck
+  AlertTriangle, ArrowLeft, Gift, Zap, ShieldCheck, Calendar
 } from 'lucide-react';
 import { toast } from 'sonner';
+import BNPLModal from '../components/BNPLModal';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
