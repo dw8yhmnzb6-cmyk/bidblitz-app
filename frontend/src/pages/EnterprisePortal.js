@@ -1213,9 +1213,13 @@ export default function EnterprisePortal() {
   const fetchStats = useCallback(async () => {
     if (!token) return;
     try {
-      const url = selectedBranch
-        ? `${API_URL}/api/enterprise/reports/overview?period=${reportPeriod}&branch_id=${selectedBranch}`
-        : `${API_URL}/api/enterprise/reports/overview?period=${reportPeriod}`;
+      let url = `${API_URL}/api/enterprise/reports/overview?period=${reportPeriod}`;
+      if (selectedBranch) {
+        url += `&branch_id=${selectedBranch}`;
+      }
+      if (dateFilterActive && customDateFrom && customDateTo) {
+        url += `&date_from=${customDateFrom}&date_to=${customDateTo}`;
+      }
       const res = await fetch(url, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -1224,14 +1228,18 @@ export default function EnterprisePortal() {
         setStats(data);
       }
     } catch (err) { console.error(err); }
-  }, [token, reportPeriod, selectedBranch]);
+  }, [token, reportPeriod, selectedBranch, dateFilterActive, customDateFrom, customDateTo]);
 
   const fetchTransactions = useCallback(async () => {
     if (!token) return;
     try {
-      const url = selectedBranch
-        ? `${API_URL}/api/enterprise/reports/transactions?period=${reportPeriod}&branch_id=${selectedBranch}`
-        : `${API_URL}/api/enterprise/reports/transactions?period=${reportPeriod}`;
+      let url = `${API_URL}/api/enterprise/reports/transactions?period=${reportPeriod}`;
+      if (selectedBranch) {
+        url += `&branch_id=${selectedBranch}`;
+      }
+      if (dateFilterActive && customDateFrom && customDateTo) {
+        url += `&date_from=${customDateFrom}&date_to=${customDateTo}`;
+      }
       const res = await fetch(url, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -1240,7 +1248,7 @@ export default function EnterprisePortal() {
         setTransactions(data.transactions || []);
       }
     } catch (err) { console.error(err); }
-  }, [token, reportPeriod, selectedBranch]);
+  }, [token, reportPeriod, selectedBranch, dateFilterActive, customDateFrom, customDateTo]);
 
   useEffect(() => {
     fetchEnterprise();
