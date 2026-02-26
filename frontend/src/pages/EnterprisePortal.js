@@ -1301,6 +1301,7 @@ export default function EnterprisePortal() {
       fetchUsers();
       fetchStats();
       fetchTransactions();
+      fetchPeakHours();
     }
   }, [token, enterprise, fetchBranches, fetchApiKeys, fetchUsers, fetchStats, fetchTransactions]);
 
