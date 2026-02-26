@@ -376,7 +376,6 @@ export default function WonAuctionCheckout() {
                 {language === 'de' ? 'In Raten zahlen (3-12 Monate)' : 'Pay in Installments (3-12 months)'}
               </Button>
             )}
-            </Button>
           </>
         )}
         
