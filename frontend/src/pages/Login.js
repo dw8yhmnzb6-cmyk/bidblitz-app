@@ -294,13 +294,6 @@ export default function Login() {
                        'Remember me'}
                     </span>
                   </label>
-                  <Link to="/forgot-password" className="text-sm text-amber-600 hover:text-amber-700">
-                    {language === 'de' ? 'Passwort vergessen?' : 
-                     language === 'sq' ? 'Keni harruar fjalëkalimin?' : 
-                     language === 'tr' ? 'Şifremi unuttum?' : 
-                     language === 'fr' ? 'Mot de passe oublié ?' : 
-                     'Forgot password?'}
-                  </Link>
                 </div>
               </>
             ) : (
