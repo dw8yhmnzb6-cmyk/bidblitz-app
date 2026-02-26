@@ -199,6 +199,18 @@ German (Deutsch)
 
 ## Upcoming Tasks
 
+### P0 - Server Migration (ERLEDIGT ✅)
+- [x] IONOS Server eingerichtet
+- [x] MongoDB, Node.js, Python, Nginx installiert
+- [x] App deployed und läuft unter http://212.227.20.190
+- [x] GitHub Actions CI/CD Workflow erstellt
+
+### P1 - Noch zu erledigen
+- [ ] SSL-Zertifikat einrichten (nachdem Domain auf neue IP zeigt)
+- [ ] Domain `bidblitz.ae` DNS auf `212.227.20.190` ändern
+- [ ] GitHub Secret `SERVER_PASSWORD` setzen
+- [ ] Datenbank mit Auktionen, Benutzern, Bots befüllen
+
 ### P2 - Frontend Verbesserungen
 - [ ] Push-Benachrichtigungen (FCM)
 - [ ] Händler-Finder mit Kartenansicht
@@ -220,4 +232,4 @@ German (Deutsch)
 ## Blocked Items
 - WhatsApp Integration: Benötigt API-Keys
 - App Store Submission: Benötigt hochauflösendes Logo
-- Tawk.to Chat: Benötigt API-Keys
+- SSL: Domain muss zuerst auf neue IP zeigen
