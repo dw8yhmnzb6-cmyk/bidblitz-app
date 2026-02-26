@@ -93,6 +93,7 @@ export default function WonAuctionCheckout() {
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('stripe');
+  const [showBNPLModal, setShowBNPLModal] = useState(false);
   
   useEffect(() => {
     fetchWonAuction();
