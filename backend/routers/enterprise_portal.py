@@ -842,6 +842,8 @@ async def get_reports_overview(
 async def get_transactions_report(
     period: str = Query("month", description="day, week, month, year"),
     branch_id: Optional[str] = None,
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
     page: int = Query(1, ge=1),
     limit: int = Query(50, le=200),
     authorization: str = Header(None)
@@ -851,15 +853,26 @@ async def get_transactions_report(
     
     # Calculate date range
     now = datetime.now(timezone.utc)
-    if period == "day":
-        start_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
-    elif period == "week":
-        start_date = now - timedelta(days=now.weekday())
-        start_date = start_date.replace(hour=0, minute=0, second=0, microsecond=0)
-    elif period == "month":
-        start_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-    else:  # year
-        start_date = now.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+    
+    # Custom date range takes priority
+    if date_from and date_to:
+        try:
+            start_date = datetime.fromisoformat(date_from).replace(tzinfo=timezone.utc)
+            end_date = datetime.fromisoformat(date_to).replace(hour=23, minute=59, second=59, tzinfo=timezone.utc)
+        except ValueError:
+            start_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            end_date = now
+    else:
+        end_date = now
+        if period == "day":
+            start_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        elif period == "week":
+            start_date = now - timedelta(days=now.weekday())
+            start_date = start_date.replace(hour=0, minute=0, second=0, microsecond=0)
+        elif period == "month":
+            start_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        else:  # year
+            start_date = now.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
     
     # Build query
     query = {"enterprise_id": enterprise["id"]}
