@@ -54,4 +54,4 @@ BID_PACKAGES = [
 ]
 
 # Frontend URL for redirects
-FRONTEND_URL = os.environ.get('FRONTEND_URL', 'https://loyalty-auction-sys.preview.emergentagent.com')
+FRONTEND_URL = os.environ.get('FRONTEND_URL', 'https://bidblitz-auction-2.preview.emergentagent.com')
