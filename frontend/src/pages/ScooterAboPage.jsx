@@ -32,10 +32,12 @@ export default function ScooterAboPage() {
   useEffect(() => {
     Promise.all([
       axios.get(`${API}/scooter-features/plans`),
-      token ? axios.get(`${API}/scooter-features/my-subscription`, { headers: { Authorization: `Bearer ${token}` } }).catch(() => ({ data: { subscription: null } })) : Promise.resolve({ data: { subscription: null } })
-    ]).then(([plansRes, subRes]) => {
+      token ? axios.get(`${API}/scooter-features/my-subscription`, { headers: { Authorization: `Bearer ${token}` } }).catch(() => ({ data: { subscription: null } })) : Promise.resolve({ data: { subscription: null } }),
+      token ? axios.get(`${API}/wallet-ledger/balance`, { headers: { Authorization: `Bearer ${token}` } }).catch(() => ({ data: { balance_cents: 0 } })) : Promise.resolve({ data: { balance_cents: 0 } })
+    ]).then(([plansRes, subRes, walletRes]) => {
       setPlans(plansRes.data.plans || []);
       setMySub(subRes.data.subscription);
+      setWalletBalance(walletRes.data.balance_cents || 0);
     }).finally(() => setLoading(false));
   }, [token]);
 
