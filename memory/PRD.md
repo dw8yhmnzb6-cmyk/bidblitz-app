@@ -213,6 +213,16 @@ German (Deutsch)
 - [x] ~~SSL-Zertifikat einrichten~~ (ERLEDIGT - Let's Encrypt aktiv)
 - [x] ~~Domain `bidblitz.ae` DNS auf `212.227.20.190` ändern~~ (ERLEDIGT)
 - [ ] GitHub Secret `SERVER_PASSWORD` setzen
+
+### Health-Check & User Status (2026-02-27)
+- [x] **Health-Check-Endpunkt** `/api/health` - Prüft DB, E-Mail-Service, Umgebung
+- [x] **Benutzer-Status-Anzeige verbessert** - Zeigt jetzt:
+  - ✓ Aktiv (E-Mail verifiziert + KYC approved)
+  - 📧 E-Mail ausstehend
+  - ⚠ KYC fehlt (Dokumente nicht hochgeladen)
+  - 🕐 KYC prüfen (Dokumente hochgeladen, wartet auf Admin)
+  - 🚫 Gesperrt
+- [x] **E-Mail-Versand funktioniert** - Resend API korrekt konfiguriert
 - [x] ✅ Datenbank mit Auktionen, Benutzern, Bots befüllen (2026-02-26)
   - 50 Auktionen (verschiedene Kategorien: Elektronik, Gaming, Haushalt, Luxus, Gutscheine)
   - 100 Bots mit deutschen Namen
