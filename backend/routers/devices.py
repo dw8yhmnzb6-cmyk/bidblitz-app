@@ -14,6 +14,12 @@ import logging
 from dependencies import get_current_user, get_admin_user
 from config import db
 
+# Import wallet ledger for integrated payments
+async def _charge_wallet(user_id, amount_cents, category, description, reference_id=None):
+    """Charge user wallet via ledger - returns entry or raises HTTPException"""
+    from routers.wallet_ledger import create_ledger_entry
+    return await create_ledger_entry(user_id, "debit", amount_cents, category, description, reference_id)
+
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/devices", tags=["Devices & Unlock"])
 
