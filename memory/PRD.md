@@ -1,76 +1,71 @@
 # BidBlitz PRD - Product Requirements Document
 
 ## Original Problem Statement
-BidBlitz is a penny auction platform (React frontend, FastAPI backend, MongoDB). The platform has expanded to include:
-1. Core auction platform with real-time bidding, bots, WebSocket updates
-2. Mandatory KYC verification flow
-3. Scooter/Device unlock system with support tickets and microfinance
-4. CI/CD pipeline via GitHub Actions
-5. Admin dashboard with comprehensive management tools
+BidBlitz is a penny auction platform expanded with Scooter/Mobility, Microfinance, and Support systems.
 
 ## Architecture
-- **Frontend:** React (CRA) with TailwindCSS + Shadcn UI
+- **Frontend:** React (CRA) + TailwindCSS + Shadcn UI
 - **Backend:** FastAPI with modular routers
 - **Database:** MongoDB (Local on IONOS production, Atlas for development)
 - **Deployment:** IONOS server (212.227.20.190), GitHub Actions CI/CD
 - **Production URL:** bidblitz.ae
 
-## What's Been Implemented
+## Implemented Features (Feb 27, 2026)
 
-### Core Platform
-- Real-time penny auction system with WebSocket
-- Bot bidding system (auto-bidding)
-- User registration, login, KYC verification
-- Admin dashboard with comprehensive tools
+### Core Auction Platform
+- 30 live auctions with real product photos, starting at 0.01 EUR
+- Active bots, WebSocket real-time updates
+- KYC verification, user management
 
-### Auctions (Feb 2026)
-- 30 new auctions with real Unsplash product photos
-- All starting at €0.01 (1 cent)
-- Mixed categories: Elektronik, Mode, Uhren, Haus & Garten, Sport
-- Special types: Night, VIP, Beginner auctions
-- Active bots on all auctions
-- Fixed /api/auctions/recent-winners 404 endpoint
+### Scooter/Mobility System (Lime-Style)
+- **Backend APIs:**
+  - `/api/devices/available` - Public device listing with GPS coordinates
+  - `/api/devices/reserve/{id}` - Reserve device (free 10 min)
+  - `/api/devices/ring/{id}` - Ring/locate device
+  - `/api/devices/report/{id}` - Report problem
+  - `/api/devices/unlock/request` - Start ride
+  - `/api/devices/unlock/{id}/end` - End ride
+  - `/api/devices/my-sessions` - Ride history
+- **15 demo scooters** in Dubai + Pristina with GPS, battery, range
+- **ScooterApp.jsx** - Full map interface with QR scanner
 
-### Mobility / Scooter System
-- **ScooterApp.jsx** - User-facing scooter rental with map, QR scanner, ride tracking
-- **Backend routers:** devices.py, support_tickets.py, microfinance.py
-- **Admin components:** AdminDevices, AdminTickets, AdminLoans, AdminOrganizations, AdminMobilityDashboard, AdminFleetManagement
-- All admin components optimized for mobile (card layout on mobile, table on desktop)
+### Partner Auth System (Separate)
+- `/api/partner-auth/register` - Partner registration
+- `/api/partner-auth/login` - Partner login (separate JWT)
+- Roles: PARTNER_ADMIN, PARTNER_STAFF
+- Admin endpoints for activation/suspension
 
-### User-Facing Pages (NEW - Feb 27, 2026)
-- **/support-tickets** - Users can create, view and reply to support tickets
-- **/loans** (+ /kredite) - Microfinance: Users can apply for €50-€5000 loans, track status, repay
-- **/scooter** (+ /mobility) - Scooter rental with map and QR unlock
+### Wallet Ledger System
+- `/api/wallet-ledger/balance` - Balance from double-entry ledger
+- `/api/wallet-ledger/transactions` - Transaction history
+- `/api/wallet-ledger/topup` - Add funds
+- Categories: topup, ride_fee, ride_unlock, loan, repayment, transfer, refund
 
-### Mobile Responsive Fixes (Feb 27, 2026)
-- AdminTickets: Stacked layout on mobile with back button
-- AdminDevices: Card layout on mobile, table on desktop
-- AdminOrganizations: Card layout with grid stats on mobile
+### Support Tickets (User-Facing)
+- `/support-tickets` - Create, view, reply to tickets
+- Categories: general, billing, device, account, auction
 
-## Pending Issues
-- P1: E2E verification of CI/CD pipeline
-- P2: Complete KYC upload/approval flow test
+### Microfinance/Loans (User-Facing)
+- `/loans` - Apply for EUR 50-5000 loans, 7-365 days
+- Status tracking, repayment via wallet
+
+### Dashboard Quick Access
+- New service tiles: Scooter, Support, Kredite
+- Positioned below stats cards on user dashboard
+
+### Admin Panel (Mobile-Responsive)
+- AdminDevices, AdminTickets, AdminLoans, AdminOrganizations
+- Card layout on mobile, table on desktop
+
+## Important Notes
+- **Production DB:** MongoDB localhost:27017/bidblitz (NOT Atlas)
+- **Changes must be made directly on IONOS server**
+- **Admin:** admin@bidblitz.ae / AfrimKrasniqi123
+- **Server:** 212.227.20.190 / root / neew7ky3xhyt3H
 
 ## Backlog
 - Push Notifications
-- Händler-Finder (Map View for merchants)
+- Haendler-Finder (Map View)
 - WhatsApp Integration
 - App Store submission
-- Refactor large components
-
-## Key Routes
-- /auctions - Auction listing
-- /scooter, /mobility - Scooter rental
-- /support-tickets, /meine-tickets - Support tickets
-- /loans, /kredite - Micro loans
-- /admin - Admin dashboard
-
-## Credentials
-- Admin: admin@bidblitz.ae / AfrimKrasniqi123
-- Server: 212.227.20.190 / root / neew7ky3xhyt3H
-- GitHub: dw8yhmnzb6-cmyk/bidblitz
-
-## Important: Database Configuration
-- **Production (IONOS):** Uses LOCAL MongoDB (mongodb://localhost:27017/bidblitz)
-- **Preview (Emergent):** Uses MongoDB Atlas
-- Changes to data must be made on BOTH databases or directly on production
+- CI/CD pipeline end-to-end verification
