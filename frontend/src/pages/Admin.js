@@ -1291,6 +1291,21 @@ export default function Admin() {
       ]
     },
     {
+      category: 'Mobility',
+      color: 'cyan',
+      bgColor: 'bg-cyan-500/10',
+      textColor: 'text-cyan-600',
+      borderColor: 'border-cyan-500/30',
+      tabs: [
+        { id: 'mobility-dashboard', label: 'Mobility Dashboard', icon: <Bike className="w-5 h-5" /> },
+        { id: 'organizations', label: 'Organisationen', icon: <Building2 className="w-5 h-5" /> },
+        { id: 'fleet', label: 'Flottenmanagement', icon: <Map className="w-5 h-5" /> },
+        { id: 'devices', label: 'Geräte', icon: <Bike className="w-5 h-5" /> },
+        { id: 'tickets', label: 'Support-Tickets', icon: <MessageSquare className="w-5 h-5" /> },
+        { id: 'loans', label: 'Mikrokredite', icon: <DollarSign className="w-5 h-5" /> },
+      ]
+    },
+    {
       category: 'System',
       color: 'slate',
       bgColor: 'bg-slate-500/10',
