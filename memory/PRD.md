@@ -204,10 +204,14 @@ German (Deutsch)
 - [x] MongoDB, Node.js, Python, Nginx installiert
 - [x] App deployed und läuft unter http://212.227.20.190
 - [x] GitHub Actions CI/CD Workflow erstellt
+- [x] **Frontend-Build repariert (2026-02-27)** - Build-Ordner war unvollständig
+- [x] **2GB Swap-Datei erstellt (2026-02-27)** - Server-Stabilität verbessert
+- [x] **SSL-Zertifikat aktiv** - https://bidblitz.ae funktioniert
+- [x] **Login funktioniert** - Admin-Login erfolgreich getestet
 
 ### P1 - Noch zu erledigen
-- [ ] SSL-Zertifikat einrichten (nachdem Domain auf neue IP zeigt)
-- [ ] Domain `bidblitz.ae` DNS auf `212.227.20.190` ändern
+- [x] ~~SSL-Zertifikat einrichten~~ (ERLEDIGT - Let's Encrypt aktiv)
+- [x] ~~Domain `bidblitz.ae` DNS auf `212.227.20.190` ändern~~ (ERLEDIGT)
 - [ ] GitHub Secret `SERVER_PASSWORD` setzen
 - [x] ✅ Datenbank mit Auktionen, Benutzern, Bots befüllen (2026-02-26)
   - 50 Auktionen (verschiedene Kategorien: Elektronik, Gaming, Haushalt, Luxus, Gutscheine)
