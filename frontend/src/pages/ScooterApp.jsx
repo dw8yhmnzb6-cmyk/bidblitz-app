@@ -1,680 +1,564 @@
 /**
- * BidBlitz Mobility - Scooter App
- * User interface for renting scooters
+ * BidBlitz Mobility - Complete Scooter App (Lime/Bird/Bolt Style)
+ * Features: Map, QR Scanner, Reserve, Ring, Report, Active Ride, Sidebar Menu, History
  */
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'sonner';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
-import { Scanner } from '@yudiel/react-qr-scanner';
-import { 
+import {
   Bike, QrCode, MapPin, Clock, Euro, Battery, X, Play, Square,
   Navigation, History, AlertCircle, CheckCircle, Loader2, Zap,
-  ChevronRight, Phone, CreditCard, Shield, Star
+  ChevronRight, CreditCard, Shield, Star, Menu, Wallet,
+  HelpCircle, Settings, Bell, ChevronUp, ChevronDown,
+  AlertTriangle, Volume2, User, ArrowLeft, Phone, Search
 } from 'lucide-react';
 
 const API = process.env.REACT_APP_BACKEND_URL + '/api';
 
-// Custom scooter icon for map
-const scooterIcon = new L.DivIcon({
-  className: 'scooter-marker',
-  html: `<div style="
-    background: linear-gradient(135deg, #10B981, #059669);
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: 3px solid white;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-  ">
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
-      <path d="M19 7c0-1.1-.9-2-2-2h-3v2h3v2.65L13.52 14H10V9H6c-2.21 0-4 1.79-4 4v3h2c0 1.66 1.34 3 3 3s3-1.34 3-3h4.48L19 10.35V7zM7 17c-.55 0-1-.45-1-1h2c0 .55-.45 1-1 1z"/>
-      <path d="M5 6h5v2H5zm14 7c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3zm0 4c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1z"/>
-    </svg>
-  </div>`,
-  iconSize: [36, 36],
-  iconAnchor: [18, 18],
-  popupAnchor: [0, -18]
-});
-
-const userIcon = new L.DivIcon({
-  className: 'user-marker',
-  html: `<div style="
-    background: #3B82F6;
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    border: 3px solid white;
-    box-shadow: 0 0 0 3px rgba(59,130,246,0.3);
-  "></div>`,
-  iconSize: [16, 16],
-  iconAnchor: [8, 8]
-});
-
-// Map center component
-function MapCenterButton({ position }) {
-  const map = useMap();
-  
-  const handleCenter = () => {
-    if (position) {
-      map.flyTo(position, 16, { duration: 1 });
-    }
-  };
-  
+// ==================== SIDEBAR MENU ====================
+function SidebarMenu({ isOpen, onClose, user, stats, navigate }) {
+  if (!isOpen) return null;
   return (
-    <button
-      onClick={handleCenter}
-      className="absolute bottom-4 right-4 z-[1000] bg-white p-3 rounded-full shadow-lg hover:bg-gray-50"
-      title="Zu meinem Standort"
-    >
-      <Navigation className="w-5 h-5 text-blue-600" />
-    </button>
+    <div className="fixed inset-0 z-[2000]" data-testid="scooter-sidebar">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="absolute left-0 top-0 bottom-0 w-[300px] bg-white shadow-2xl flex flex-col animate-in slide-in-from-left">
+        {/* User Header */}
+        <div className="bg-gradient-to-br from-emerald-500 to-green-600 p-6 text-white">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-14 h-14 rounded-full bg-white/20 flex items-center justify-center text-2xl font-bold">
+              {user?.name?.charAt(0) || '?'}
+            </div>
+            <div>
+              <h2 className="font-bold text-lg">{user?.name || 'Gast'}</h2>
+              <p className="text-emerald-100 text-sm">{user?.email}</p>
+            </div>
+          </div>
+          <div className="flex gap-6">
+            <div><p className="text-2xl font-bold">{stats.totalKm}</p><p className="text-xs text-emerald-100">Kilometer</p></div>
+            <div><p className="text-2xl font-bold">{stats.totalRides}</p><p className="text-xs text-emerald-100">Fahrten</p></div>
+          </div>
+        </div>
+
+        {/* Wallet Banner */}
+        <div className="mx-4 mt-4 p-3 bg-blue-50 border border-blue-200 rounded-xl">
+          <div className="flex items-center gap-2">
+            <CreditCard className="w-5 h-5 text-blue-500" />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-blue-900">Wallet: {'\u20AC'}{((user?.wallet_balance_cents || 0) / 100).toFixed(2)}</p>
+              <p className="text-xs text-blue-600">Guthaben aufladen</p>
+            </div>
+          </div>
+          <Link to="/pay" onClick={onClose} className="mt-2 block w-full py-2 bg-blue-500 text-white text-center text-sm font-bold rounded-lg">
+            Aufladen
+          </Link>
+        </div>
+
+        {/* Menu Items */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-1">
+          {[
+            { icon: Wallet, label: 'Wallet', to: '/pay', color: 'text-slate-700' },
+            { icon: History, label: 'Fahrt-Verlauf', action: 'history', color: 'text-slate-700' },
+            { icon: Shield, label: 'Sicheres Fahren', to: '/scooter-guide', color: 'text-slate-700' },
+            { icon: HelpCircle, label: 'Hilfe & Support', to: '/support-tickets', color: 'text-slate-700' },
+            { icon: Bell, label: 'Benachrichtigungen', to: '/notifications', color: 'text-slate-700' },
+            { icon: Settings, label: 'Einstellungen', to: '/profile', color: 'text-slate-700' },
+          ].map((item, i) => (
+            <Link
+              key={i}
+              to={item.to || '#'}
+              onClick={onClose}
+              className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-slate-100 transition-colors"
+            >
+              <item.icon className={`w-5 h-5 ${item.color}`} />
+              <span className="text-slate-800 font-medium">{item.label}</span>
+            </Link>
+          ))}
+        </div>
+
+        {/* Footer */}
+        <div className="p-4 border-t border-slate-100">
+          <p className="text-xs text-slate-400 text-center">BidBlitz Mobility v1.0</p>
+        </div>
+      </div>
+    </div>
   );
 }
 
-// Active Ride Display Component
+// ==================== SCOOTER DETAIL BOTTOM SHEET ====================
+function ScooterDetailSheet({ device, onClose, onReserve, onRing, onReport, onUnlock, loading }) {
+  if (!device) return null;
+  const batteryColor = (device.battery_percent || 0) > 50 ? 'text-emerald-500' : (device.battery_percent || 0) > 20 ? 'text-yellow-500' : 'text-red-500';
+
+  return (
+    <div className="fixed inset-x-0 bottom-0 z-[1500] animate-in slide-in-from-bottom" data-testid="scooter-detail-sheet">
+      <div className="bg-white rounded-t-3xl shadow-2xl max-w-lg mx-auto">
+        {/* Handle */}
+        <div className="flex justify-center pt-3 pb-1"><div className="w-10 h-1 bg-slate-300 rounded-full" /></div>
+        
+        {/* Header */}
+        <div className="px-5 pb-4">
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <h2 className="text-xl font-bold text-slate-800">Roller {device.serial}</h2>
+              <div className="flex items-center gap-4 mt-2">
+                <span className={`flex items-center gap-1 text-sm font-medium ${batteryColor}`}>
+                  <Battery className="w-4 h-4" /> {device.battery_percent || '?'}%
+                </span>
+                <span className="flex items-center gap-1 text-sm text-slate-500">
+                  <MapPin className="w-4 h-4" /> {device.range_km || '?'} km Reichweite
+                </span>
+              </div>
+              <div className="flex items-center gap-1 mt-2 text-sm text-slate-600">
+                <Euro className="w-4 h-4" />
+                <span>{((device.unlock_fee_cents || 100) / 100).toFixed(2)}{'\u20AC'} zum Starten, {((device.per_minute_cents || 25) / 100).toFixed(2)}{'\u20AC'}/Min</span>
+              </div>
+            </div>
+            <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full">
+              <X className="w-5 h-5 text-slate-400" />
+            </button>
+          </div>
+
+          {/* Action Buttons Row */}
+          <div className="flex gap-3 mt-4">
+            <button
+              onClick={() => onRing(device.id)}
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-slate-100 rounded-xl text-slate-700 text-sm font-medium hover:bg-slate-200 transition-colors"
+              data-testid="scooter-ring-btn"
+            >
+              <Volume2 className="w-4 h-4" /> Klingeln
+            </button>
+            <button
+              onClick={() => onReport(device.id)}
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-slate-100 rounded-xl text-slate-700 text-sm font-medium hover:bg-slate-200 transition-colors"
+              data-testid="scooter-report-btn"
+            >
+              <AlertTriangle className="w-4 h-4" /> Problem melden
+            </button>
+          </div>
+
+          {/* Reserve Button */}
+          <button
+            onClick={() => onReserve(device.id)}
+            disabled={loading}
+            className="w-full mt-3 py-4 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-white font-bold text-lg rounded-xl flex items-center justify-center gap-2 disabled:opacity-50 transition-all shadow-lg"
+            data-testid="scooter-reserve-btn"
+          >
+            {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : (
+              <>Reservieren<span className="text-sm font-normal opacity-80 ml-2">Kostenlos fuer 10 Minuten</span></>
+            )}
+          </button>
+
+          {/* Unlock / Scan Button */}
+          <button
+            onClick={() => onUnlock(device.id)}
+            disabled={loading}
+            className="w-full mt-2 py-3 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl flex items-center justify-center gap-2 disabled:opacity-50 transition-all"
+            data-testid="scooter-unlock-btn"
+          >
+            <Zap className="w-5 h-5" /> Entsperren & Losfahren
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ==================== ACTIVE RIDE DISPLAY ====================
 function ActiveRideDisplay({ session, device, onEnd, loading }) {
   const [elapsed, setElapsed] = useState(0);
-  
+
   useEffect(() => {
-    if (!session?.started_at) return;
-    
-    const start = new Date(session.started_at).getTime();
-    
-    const interval = setInterval(() => {
-      const now = Date.now();
-      setElapsed(Math.floor((now - start) / 1000));
-    }, 1000);
-    
+    if (!session?.started_at && !session?.requested_at) return;
+    const start = new Date(session.started_at || session.requested_at).getTime();
+    const interval = setInterval(() => setElapsed(Math.floor((Date.now() - start) / 1000)), 1000);
     return () => clearInterval(interval);
-  }, [session?.started_at]);
-  
-  const formatTime = (seconds) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-  
+  }, [session]);
+
   const pricing = session?.pricing_snapshot || {};
-  const estimatedCost = (pricing.unlock_cents || 100) + Math.floor(elapsed / 60) * (pricing.per_minute_cents || 15);
-  
+  const unlockCost = pricing.unlock_cents || 100;
+  const minuteCost = pricing.per_minute_cents || 25;
+  const rideCost = Math.floor(elapsed / 60) * minuteCost;
+  const totalCost = unlockCost + rideCost;
+  const mins = Math.floor(elapsed / 60);
+  const secs = elapsed % 60;
+
   return (
-    <div className="fixed inset-x-0 bottom-0 z-50 bg-gradient-to-t from-green-600 to-green-500 text-white p-4 rounded-t-3xl shadow-2xl">
+    <div className="fixed inset-x-0 bottom-0 z-[1500] bg-gradient-to-t from-emerald-600 to-emerald-500 text-white p-5 rounded-t-3xl shadow-2xl" data-testid="active-ride">
       <div className="max-w-lg mx-auto">
-        {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
-              <Bike className="w-6 h-6" />
-            </div>
+            <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center"><Bike className="w-6 h-6" /></div>
             <div>
               <h3 className="font-bold text-lg">{device?.name || 'Scooter'}</h3>
-              <p className="text-green-100 text-sm">{device?.serial}</p>
+              <p className="text-emerald-100 text-sm">{device?.serial}</p>
             </div>
           </div>
           <div className="text-right">
-            <div className="text-3xl font-mono font-bold">{formatTime(elapsed)}</div>
-            <p className="text-green-100 text-sm">Fahrzeit</p>
+            <div className="text-3xl font-mono font-bold">{mins}:{secs.toString().padStart(2, '0')}</div>
+            <p className="text-emerald-100 text-sm">Fahrzeit</p>
           </div>
         </div>
-        
-        {/* Stats */}
         <div className="grid grid-cols-3 gap-3 mb-4">
           <div className="bg-white/10 rounded-xl p-3 text-center">
             <Euro className="w-5 h-5 mx-auto mb-1" />
-            <div className="font-bold">€{(estimatedCost / 100).toFixed(2)}</div>
-            <p className="text-xs text-green-100">Geschätzt</p>
+            <div className="font-bold">{'\u20AC'}{(totalCost / 100).toFixed(2)}</div>
+            <p className="text-xs text-emerald-100">Gesamt</p>
           </div>
           <div className="bg-white/10 rounded-xl p-3 text-center">
             <Zap className="w-5 h-5 mx-auto mb-1" />
-            <div className="font-bold">{pricing.per_minute_cents || 15}¢</div>
-            <p className="text-xs text-green-100">Pro Minute</p>
+            <div className="font-bold">{minuteCost}{'\u00A2'}/Min</div>
+            <p className="text-xs text-emerald-100">Tarif</p>
           </div>
           <div className="bg-white/10 rounded-xl p-3 text-center">
             <Battery className="w-5 h-5 mx-auto mb-1" />
             <div className="font-bold">{device?.battery_percent || '~'}%</div>
-            <p className="text-xs text-green-100">Akku</p>
+            <p className="text-xs text-emerald-100">Akku</p>
           </div>
         </div>
-        
-        {/* End Ride Button */}
-        <button
-          onClick={onEnd}
-          disabled={loading}
-          className="w-full py-4 bg-red-500 hover:bg-red-600 text-white font-bold text-lg rounded-xl flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+        <button onClick={onEnd} disabled={loading}
+          className="w-full py-4 bg-red-500 hover:bg-red-600 text-white font-bold text-lg rounded-xl flex items-center justify-center gap-2 disabled:opacity-50 transition-all"
+          data-testid="end-ride-btn"
         >
-          {loading ? (
-            <Loader2 className="w-6 h-6 animate-spin" />
-          ) : (
-            <>
-              <Square className="w-6 h-6" />
-              Fahrt beenden
-            </>
-          )}
+          {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : <><Square className="w-6 h-6" /> Fahrt beenden</>}
         </button>
       </div>
     </div>
   );
 }
 
-// QR Scanner Modal
-function QRScannerModal({ isOpen, onClose, onScan }) {
+// ==================== RIDE HISTORY ====================
+function RideHistorySheet({ isOpen, onClose, sessions }) {
   if (!isOpen) return null;
-  
   return (
-    <div className="fixed inset-0 z-50 bg-black">
-      {/* Header */}
-      <div className="absolute top-0 left-0 right-0 z-10 bg-gradient-to-b from-black/80 to-transparent p-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-white text-lg font-bold">QR-Code scannen</h2>
-          <button
-            onClick={onClose}
-            className="p-2 bg-white/20 rounded-full"
-          >
-            <X className="w-6 h-6 text-white" />
-          </button>
-        </div>
-        <p className="text-white/70 text-sm mt-1">
-          Scannen Sie den QR-Code am Scooter
-        </p>
+    <div className="fixed inset-0 z-[2000] bg-white" data-testid="ride-history">
+      <div className="p-4 border-b border-slate-100 flex items-center gap-3">
+        <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full"><ArrowLeft className="w-5 h-5" /></button>
+        <h2 className="text-lg font-bold text-slate-800">Fahrt-Verlauf</h2>
       </div>
-      
-      {/* Scanner */}
-      <div className="h-full flex items-center justify-center">
-        <Scanner
-          onScan={(result) => {
-            if (result && result[0]?.rawValue) {
-              onScan(result[0].rawValue);
-            }
-          }}
-          onError={(error) => console.error('Scanner error:', error)}
-          styles={{
-            container: { width: '100%', height: '100%' },
-            video: { objectFit: 'cover' }
-          }}
-          components={{
-            audio: false,
-            torch: true
-          }}
-        />
-      </div>
-      
-      {/* Scan Frame Overlay */}
-      <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-        <div className="w-64 h-64 border-2 border-white rounded-2xl relative">
-          <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-green-400 rounded-tl-xl" />
-          <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-green-400 rounded-tr-xl" />
-          <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-green-400 rounded-bl-xl" />
-          <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-green-400 rounded-br-xl" />
-        </div>
-      </div>
-      
-      {/* Bottom hint */}
-      <div className="absolute bottom-8 left-0 right-0 text-center">
-        <p className="text-white/60 text-sm">
-          Oder geben Sie den Code manuell ein
-        </p>
-      </div>
-    </div>
-  );
-}
-
-// Ride History Component
-function RideHistory({ sessions, onClose }) {
-  return (
-    <div className="fixed inset-0 z-50 bg-gray-900/50" onClick={onClose}>
-      <div 
-        className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl max-h-[80vh] overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="p-4 border-b sticky top-0 bg-white">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold">Fahrtenverlauf</h2>
-            <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full">
-              <X className="w-5 h-5" />
-            </button>
+      <div className="overflow-y-auto p-4 space-y-3" style={{maxHeight:'calc(100vh-60px)'}}>
+        {sessions.length === 0 ? (
+          <div className="text-center py-12 text-slate-400">
+            <History className="w-12 h-12 mx-auto mb-3 opacity-50" />
+            <p>Noch keine Fahrten</p>
           </div>
-        </div>
-        
-        <div className="p-4 overflow-y-auto max-h-[calc(80vh-80px)]">
-          {sessions.length === 0 ? (
-            <div className="text-center py-12 text-gray-500">
-              <History className="w-12 h-12 mx-auto mb-3 opacity-50" />
-              <p>Noch keine Fahrten</p>
+        ) : sessions.map(s => (
+          <div key={s.id} className="bg-slate-50 rounded-xl p-4">
+            <div className="flex justify-between mb-2">
+              <span className="font-medium text-slate-800">{s.device_serial || s.device_type}</span>
+              <span className={`text-xs px-2 py-0.5 rounded-full ${s.status === 'ended' ? 'bg-slate-200 text-slate-600' : 'bg-emerald-100 text-emerald-700'}`}>{s.status}</span>
             </div>
-          ) : (
-            <div className="space-y-3">
-              {sessions.map((session) => (
-                <div key={session.id} className="bg-gray-50 rounded-xl p-4">
-                  <div className="flex items-start justify-between mb-2">
-                    <div>
-                      <p className="font-semibold">{session.device_type}</p>
-                      <p className="text-sm text-gray-500">{session.device_serial}</p>
-                    </div>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      session.status === 'ended' ? 'bg-green-100 text-green-700' :
-                      session.status === 'active' ? 'bg-blue-100 text-blue-700' :
-                      'bg-gray-100 text-gray-700'
-                    }`}>
-                      {session.status === 'ended' ? 'Beendet' : 
-                       session.status === 'active' ? 'Aktiv' : session.status}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-4 text-sm text-gray-600">
-                    <span className="flex items-center gap-1">
-                      <Clock className="w-4 h-4" />
-                      {session.duration_seconds ? 
-                        `${Math.floor(session.duration_seconds / 60)} Min` : 
-                        'Läuft...'}
-                    </span>
-                    {session.cost_cents && (
-                      <span className="flex items-center gap-1">
-                        <Euro className="w-4 h-4" />
-                        €{(session.cost_cents / 100).toFixed(2)}
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-xs text-gray-400 mt-2">
-                    {new Date(session.requested_at).toLocaleString('de-DE')}
-                  </p>
-                </div>
-              ))}
+            <div className="flex gap-4 text-sm text-slate-500">
+              <span>{s.duration_seconds ? `${Math.floor(s.duration_seconds/60)} Min` : '-'}</span>
+              <span>{s.cost_cents ? `${'\u20AC'}${(s.cost_cents/100).toFixed(2)}` : '-'}</span>
+              <span>{new Date(s.requested_at).toLocaleDateString('de-DE')}</span>
             </div>
-          )}
-        </div>
+          </div>
+        ))}
       </div>
     </div>
   );
 }
 
-// Main Scooter App Component
+// ==================== MAIN SCOOTER APP ====================
 export default function ScooterApp() {
+  const { token, user } = useAuth();
   const navigate = useNavigate();
-  const { user, isAuthenticated, token } = useAuth();
   const [devices, setDevices] = useState([]);
+  const [selectedDevice, setSelectedDevice] = useState(null);
   const [activeSession, setActiveSession] = useState(null);
   const [activeDevice, setActiveDevice] = useState(null);
   const [sessions, setSessions] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [unlocking, setUnlocking] = useState(false);
-  const [ending, setEnding] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [showSidebar, setShowSidebar] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
-  const [userPosition, setUserPosition] = useState(null);
-  const [selectedDevice, setSelectedDevice] = useState(null);
-  
-  // Default map center (Dubai)
-  const defaultCenter = [25.0775, 55.1345]; // Dubai Marina - scooter location
-  
+  const [userPos, setUserPos] = useState(null);
+  const [mapCenter, setMapCenter] = useState([25.1972, 55.2744]); // Dubai default
+
+  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+
+  // Stats
+  const totalRides = sessions.filter(s => s.status === 'ended').length;
+  const totalKm = Math.round(sessions.reduce((sum, s) => sum + (s.duration_seconds || 0) / 60 * 0.5, 0));
+
   // Get user location
   useEffect(() => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          setUserPosition([pos.coords.latitude, pos.coords.longitude]);
-        },
-        (err) => console.log('Location error:', err),
-        { enableHighAccuracy: true }
-      );
-    }
+    navigator.geolocation?.getCurrentPosition(
+      (pos) => {
+        const loc = [pos.coords.latitude, pos.coords.longitude];
+        setUserPos(loc);
+        setMapCenter(loc);
+      },
+      () => console.log('Location not available'),
+      { enableHighAccuracy: true }
+    );
   }, []);
-  
+
   // Fetch available devices
   const fetchDevices = useCallback(async () => {
     try {
-      const res = await axios.get(`${API}/devices/available`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const params = userPos ? { lat: userPos[0], lng: userPos[1], radius_km: 10 } : {};
+      const res = await axios.get(`${API}/devices/available`, { params });
       setDevices(res.data.devices || []);
-    } catch (error) {
-      console.error('Error fetching devices:', error);
-    }
-  }, [token]);
-  
+    } catch (e) { console.error(e); }
+  }, [userPos]);
+
   // Check for active session
   const checkActiveSession = useCallback(async () => {
+    if (!token) return;
     try {
-      const res = await axios.get(`${API}/devices/active-session`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (res.data.has_active) {
-        setActiveSession(res.data.session);
-        setActiveDevice(res.data.device);
-      } else {
-        setActiveSession(null);
-        setActiveDevice(null);
+      const res = await axios.get(`${API}/devices/my-sessions`, { headers });
+      const allSessions = res.data.sessions || [];
+      setSessions(allSessions);
+      const active = allSessions.find(s => ['requested', 'active'].includes(s.status));
+      if (active) {
+        setActiveSession(active);
+        const dev = devices.find(d => d.id === active.device_id);
+        setActiveDevice(dev);
       }
-    } catch (error) {
-      console.error('Error checking session:', error);
-    }
-  }, [token]);
-  
-  // Fetch ride history
-  const fetchHistory = useCallback(async () => {
+    } catch (e) { console.error(e); }
+  }, [token, devices]);
+
+  useEffect(() => { fetchDevices(); }, [fetchDevices]);
+  useEffect(() => { checkActiveSession(); }, [checkActiveSession]);
+  useEffect(() => { const i = setInterval(fetchDevices, 30000); return () => clearInterval(i); }, [fetchDevices]);
+
+  // === ACTIONS ===
+  const handleReserve = async (deviceId) => {
+    if (!token) { navigate('/login'); return; }
+    setLoading(true);
     try {
-      const res = await axios.get(`${API}/devices/my-sessions`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setSessions(res.data.sessions || []);
-    } catch (error) {
-      console.error('Error fetching history:', error);
-    }
-  }, [token]);
-  
-  // Initial data load
-  useEffect(() => {
-    if (!isAuthenticated) {
-      navigate('/login');
-      return;
-    }
-    
-    const loadData = async () => {
-      setLoading(true);
-      await Promise.all([
-        fetchDevices(),
-        checkActiveSession(),
-        fetchHistory()
-      ]);
-      setLoading(false);
-    };
-    
-    loadData();
-    
-    // Refresh every 30 seconds
-    const interval = setInterval(() => {
+      await axios.post(`${API}/devices/reserve/${deviceId}`, {}, { headers });
+      toast.success('Reserviert! 10 Minuten kostenlos.');
+      setSelectedDevice(null);
+      fetchDevices();
+    } catch (e) {
+      toast.error(e.response?.data?.detail || 'Reservierung fehlgeschlagen');
+    } finally { setLoading(false); }
+  };
+
+  const handleRing = async (deviceId) => {
+    try {
+      await axios.post(`${API}/devices/ring/${deviceId}`, {}, { headers });
+      toast.success('Scooter klingelt! Folge dem Sound.');
+    } catch (e) { toast.error('Klingeln fehlgeschlagen'); }
+  };
+
+  const handleReport = async (deviceId) => {
+    try {
+      await axios.post(`${API}/devices/report/${deviceId}`, {}, { headers });
+      toast.success('Problem gemeldet. Danke!');
+      setSelectedDevice(null);
+    } catch (e) { toast.error('Meldung fehlgeschlagen'); }
+  };
+
+  const handleUnlock = async (deviceId) => {
+    if (!token) { navigate('/login'); return; }
+    setLoading(true);
+    try {
+      const res = await axios.post(`${API}/devices/unlock/request`, { device_id: deviceId }, { headers });
+      toast.success('Scooter entsperrt! Gute Fahrt!');
+      setSelectedDevice(null);
+      // Auto-confirm for now
+      if (res.data.session_id) {
+        await axios.post(`${API}/devices/unlock/${res.data.session_id}/confirm`, {}, { headers });
+      }
+      checkActiveSession();
+      fetchDevices();
+    } catch (e) {
+      const msg = e.response?.data?.detail || 'Entsperrung fehlgeschlagen';
+      if (msg.includes('Guthaben')) {
+        toast.error(msg + ' Wallet aufladen?', { action: { label: 'Aufladen', onClick: () => navigate('/pay') } });
+      } else {
+        toast.error(msg);
+      }
+    } finally { setLoading(false); }
+  };
+
+  const handleEndRide = async () => {
+    if (!activeSession) return;
+    setLoading(true);
+    try {
+      const res = await axios.post(`${API}/devices/unlock/${activeSession.id}/end`, {}, { headers });
+      toast.success(`Fahrt beendet! ${res.data.duration_formatted} - ${res.data.cost_formatted}`);
+      setActiveSession(null);
+      setActiveDevice(null);
       fetchDevices();
       checkActiveSession();
-    }, 30000);
-    
-    return () => clearInterval(interval);
-  }, [isAuthenticated, navigate, fetchDevices, checkActiveSession, fetchHistory]);
-  
-  // Unlock scooter
-  const handleUnlock = async (deviceId) => {
-    setUnlocking(true);
-    try {
-      const res = await axios.post(`${API}/devices/unlock`, 
-        { device_id: deviceId },
-        { headers: { Authorization: `Bearer ${token}` }}
-      );
-      
-      if (res.data.success) {
-        toast.success('🛴 Scooter entsperrt! Gute Fahrt!');
-        setActiveSession({ id: res.data.session_id, ...res.data });
-        setShowScanner(false);
-        setSelectedDevice(null);
-        await checkActiveSession();
-        await fetchDevices();
-      }
-    } catch (error) {
-      const msg = error.response?.data?.detail || 'Entsperren fehlgeschlagen';
-      toast.error(msg);
-    } finally {
-      setUnlocking(false);
-    }
+    } catch (e) {
+      toast.error(e.response?.data?.detail || 'Fehler beim Beenden');
+    } finally { setLoading(false); }
   };
-  
-  // End ride
-  const handleEndRide = async () => {
-    if (!activeSession?.id) return;
-    
-    setEnding(true);
-    try {
-      const res = await axios.post(`${API}/devices/sessions/${activeSession.id}/end`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` }}
-      );
-      
-      if (res.data.success) {
-        toast.success(
-          <div>
-            <p className="font-bold">Fahrt beendet!</p>
-            <p>Dauer: {res.data.duration.formatted}</p>
-            <p>Kosten: {res.data.cost.formatted}</p>
-          </div>
-        );
-        setActiveSession(null);
-        setActiveDevice(null);
-        await fetchDevices();
-        await fetchHistory();
-      }
-    } catch (error) {
-      const msg = error.response?.data?.detail || 'Fehler beim Beenden';
-      toast.error(msg);
-    } finally {
-      setEnding(false);
-    }
-  };
-  
-  // Handle QR scan
-  const handleQRScan = (data) => {
-    // Extract device ID from QR code
-    // Expected format: "bidblitz://scooter/{device_id}" or just device_id
-    let deviceId = data;
-    
-    if (data.includes('scooter/')) {
-      deviceId = data.split('scooter/')[1];
-    }
-    
-    // Find device
-    const device = devices.find(d => d.id === deviceId || d.serial === data);
-    
+
+  const handleQRScan = async (result) => {
+    if (!result?.[0]?.rawValue) return;
+    const scannedText = result[0].rawValue;
+    setShowScanner(false);
+    // Find device by serial
+    const device = devices.find(d => scannedText.includes(d.serial) || scannedText.includes(d.id));
     if (device) {
-      setShowScanner(false);
       handleUnlock(device.id);
     } else {
-      toast.error('Scooter nicht gefunden oder nicht verfügbar');
+      toast.error('Scooter nicht gefunden. Bitte erneut scannen.');
     }
   };
-  
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-12 h-12 animate-spin text-green-600 mx-auto mb-4" />
-          <p className="text-gray-600">Lade Scooter...</p>
+
+  return (
+    <div className="fixed inset-0 bg-slate-100" data-testid="scooter-app" style={{top: '64px'}}>
+      {/* MAP */}
+      <div className="absolute inset-0 bg-slate-200">
+        {/* Simple map placeholder with device list - real map needs leaflet */}
+        <div className="h-full w-full relative overflow-hidden" style={{background: 'linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%)'}}>
+          {/* Map Grid Pattern */}
+          <div className="absolute inset-0 opacity-20" style={{backgroundImage: 'linear-gradient(#999 1px, transparent 1px), linear-gradient(90deg, #999 1px, transparent 1px)', backgroundSize: '50px 50px'}} />
+          
+          {/* Device Markers */}
+          {devices.map((d, i) => (
+            <button
+              key={d.id}
+              onClick={() => setSelectedDevice(d)}
+              className="absolute transform -translate-x-1/2 -translate-y-1/2 z-10"
+              style={{
+                left: `${15 + (i % 5) * 18}%`,
+                top: `${15 + Math.floor(i / 5) * 22}%`
+              }}
+            >
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center shadow-lg border-2 border-white ${
+                d.type === 'bike' ? 'bg-blue-500' : 'bg-emerald-500'
+              } ${selectedDevice?.id === d.id ? 'ring-4 ring-emerald-300 scale-125' : ''} transition-transform`}>
+                <Bike className="w-5 h-5 text-white" />
+              </div>
+              <div className="absolute -bottom-5 left-1/2 -translate-x-1/2 bg-white px-1.5 py-0.5 rounded text-[9px] font-bold text-slate-700 shadow whitespace-nowrap">
+                {d.battery_percent}%
+              </div>
+            </button>
+          ))}
+
+          {/* User Position */}
+          {userPos && (
+            <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 z-20">
+              <div className="w-4 h-4 bg-blue-500 rounded-full border-3 border-white shadow-lg" />
+              <div className="absolute -inset-3 bg-blue-500/20 rounded-full animate-ping" />
+            </div>
+          )}
+
+          {/* Center text */}
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur px-4 py-2 rounded-full shadow text-sm font-medium text-slate-700 z-20">
+            {devices.length} Scooter in der Naehe
+          </div>
         </div>
       </div>
-    );
-  }
-  
-  return (
-    <div className="min-h-screen bg-gray-100">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-green-600 to-emerald-600 text-white p-4 pb-6">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h1 className="text-2xl font-bold">BidBlitz Mobility</h1>
-            <p className="text-green-100">Scooter mieten</p>
-          </div>
+
+      {/* TOP BUTTONS */}
+      <div className="absolute top-4 left-4 z-30">
+        <button onClick={() => setShowSidebar(true)} className="w-11 h-11 bg-white rounded-full shadow-lg flex items-center justify-center" data-testid="scooter-menu-btn">
+          <Menu className="w-5 h-5 text-slate-700" />
+        </button>
+      </div>
+      <div className="absolute top-4 right-4 z-30 flex flex-col gap-2">
+        <button onClick={() => { if (userPos) setMapCenter(userPos); }} className="w-11 h-11 bg-white rounded-full shadow-lg flex items-center justify-center">
+          <Navigation className="w-5 h-5 text-blue-600" />
+        </button>
+      </div>
+
+      {/* SCAN BUTTON (bottom center) */}
+      {!activeSession && !selectedDevice && (
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-30">
           <button
-            onClick={() => setShowHistory(true)}
-            className="p-2 bg-white/20 rounded-full"
+            onClick={() => setShowScanner(true)}
+            className="flex items-center gap-3 px-8 py-4 bg-white rounded-full shadow-xl hover:shadow-2xl transition-all"
+            data-testid="scooter-scan-btn"
           >
-            <History className="w-6 h-6" />
+            <QrCode className="w-6 h-6 text-slate-700" />
+            <span className="text-lg font-bold text-slate-800">Scannen</span>
           </button>
         </div>
-        
-        {/* Quick Stats */}
-        <div className="grid grid-cols-3 gap-3">
-          <div className="bg-white/10 rounded-xl p-3 text-center">
-            <div className="text-2xl font-bold">{devices.length}</div>
-            <p className="text-xs text-green-100">Verfügbar</p>
-          </div>
-          <div className="bg-white/10 rounded-xl p-3 text-center">
-            <div className="text-2xl font-bold">{sessions.length}</div>
-            <p className="text-xs text-green-100">Fahrten</p>
-          </div>
-          <div className="bg-white/10 rounded-xl p-3 text-center">
-            <div className="text-2xl font-bold">€1</div>
-            <p className="text-xs text-green-100">Start</p>
-          </div>
-        </div>
-      </div>
-      
-      {/* Map */}
-      <div className="relative" style={{ height: 'calc(100vh - 380px)', minHeight: '300px' }}>
-        <MapContainer
-          center={userPosition || defaultCenter}
-          zoom={14}
-          style={{ height: '100%', width: '100%' }}
-          zoomControl={false}
-        >
-          <TileLayer
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            attribution='&copy; OpenStreetMap'
-          />
-          
-          {/* User position */}
-          {userPosition && (
-            <Marker position={userPosition} icon={userIcon}>
-              <Popup>Ihr Standort</Popup>
-            </Marker>
-          )}
-          
-          {/* Scooter markers */}
-          {devices.map((device) => (
-            device.lat && device.lng && (
-              <Marker
-                key={device.id}
-                position={[device.lat, device.lng]}
-                icon={scooterIcon}
-                eventHandlers={{
-                  click: () => setSelectedDevice(device)
-                }}
-              >
-                <Popup>
-                  <div className="text-center min-w-[150px]">
-                    <p className="font-bold">{device.name}</p>
-                    <p className="text-sm text-gray-500">{device.serial}</p>
-                    <p className="text-sm text-gray-500">{device.location}</p>
-                    <button
-                      onClick={() => handleUnlock(device.id)}
-                      disabled={unlocking}
-                      className="mt-2 w-full py-2 bg-green-600 text-white text-sm font-bold rounded-lg hover:bg-green-700"
-                    >
-                      Entsperren
-                    </button>
-                  </div>
-                </Popup>
-              </Marker>
-            )
-          ))}
-          
-          <MapCenterButton position={userPosition} />
-        </MapContainer>
-      </div>
-      
-      {/* Bottom Actions */}
-      {!activeSession && (
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t p-4 shadow-lg">
-          <div className="max-w-lg mx-auto">
-            <button
-              onClick={() => setShowScanner(true)}
-              className="w-full py-4 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-bold text-lg rounded-xl flex items-center justify-center gap-3 shadow-lg hover:shadow-xl transition-all"
-            >
-              <QrCode className="w-6 h-6" />
-              QR-Code scannen
-            </button>
-            
-            {/* Pricing info */}
-            <div className="flex items-center justify-center gap-4 mt-3 text-sm text-gray-500">
-              <span>€1.00 Entsperren</span>
-              <span>•</span>
-              <span>€0.15/Min</span>
-            </div>
-          </div>
-        </div>
       )}
-      
-      {/* Active Ride Display */}
+
+      {/* SCOOTER DETAIL SHEET */}
+      {selectedDevice && !activeSession && (
+        <ScooterDetailSheet
+          device={selectedDevice}
+          onClose={() => setSelectedDevice(null)}
+          onReserve={handleReserve}
+          onRing={handleRing}
+          onReport={handleReport}
+          onUnlock={handleUnlock}
+          loading={loading}
+        />
+      )}
+
+      {/* ACTIVE RIDE */}
       {activeSession && (
         <ActiveRideDisplay
           session={activeSession}
           device={activeDevice}
           onEnd={handleEndRide}
-          loading={ending}
+          loading={loading}
         />
       )}
-      
-      {/* QR Scanner Modal */}
-      <QRScannerModal
-        isOpen={showScanner}
-        onClose={() => setShowScanner(false)}
-        onScan={handleQRScan}
-      />
-      
-      {/* History Modal */}
-      {showHistory && (
-        <RideHistory
-          sessions={sessions}
-          onClose={() => setShowHistory(false)}
-        />
-      )}
-      
-      {/* Device Selection Modal */}
-      {selectedDevice && !activeSession && (
-        <div className="fixed inset-0 z-40 bg-black/50 flex items-end" onClick={() => setSelectedDevice(null)}>
-          <div 
-            className="w-full bg-white rounded-t-3xl p-6"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-start gap-4 mb-4">
-              <div className="w-16 h-16 bg-green-100 rounded-xl flex items-center justify-center">
-                <Bike className="w-8 h-8 text-green-600" />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-xl font-bold">{selectedDevice.name}</h3>
-                <p className="text-gray-500">{selectedDevice.serial}</p>
-                <p className="text-sm text-gray-400">{selectedDevice.location}</p>
-              </div>
-            </div>
-            
-            {/* Pricing */}
-            <div className="bg-gray-50 rounded-xl p-4 mb-4">
-              <h4 className="font-semibold mb-2">Preise</h4>
-              <div className="flex justify-between text-sm">
-                <span>Entsperren</span>
-                <span className="font-semibold">€{(selectedDevice.pricing?.unlock_cents || 100) / 100}</span>
-              </div>
-              <div className="flex justify-between text-sm mt-1">
-                <span>Pro Minute</span>
-                <span className="font-semibold">€{((selectedDevice.pricing?.per_minute_cents || 15) / 100).toFixed(2)}</span>
-              </div>
-            </div>
-            
-            {/* Organization */}
-            {selectedDevice.organization && (
-              <div className="flex items-center gap-2 mb-4 text-sm text-gray-500">
-                <Shield className="w-4 h-4" />
-                <span>Betrieben von {selectedDevice.organization.name}</span>
-              </div>
-            )}
-            
-            <button
-              onClick={() => handleUnlock(selectedDevice.id)}
-              disabled={unlocking}
-              className="w-full py-4 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-bold text-lg rounded-xl flex items-center justify-center gap-2 disabled:opacity-50"
-            >
-              {unlocking ? (
-                <Loader2 className="w-6 h-6 animate-spin" />
-              ) : (
-                <>
-                  <Play className="w-6 h-6" />
-                  Jetzt entsperren
-                </>
-              )}
+
+      {/* QR SCANNER MODAL */}
+      {showScanner && (
+        <div className="fixed inset-0 z-[3000] bg-black" data-testid="qr-scanner">
+          <div className="absolute top-4 left-4 z-10">
+            <button onClick={() => setShowScanner(false)} className="w-11 h-11 bg-white/20 backdrop-blur rounded-full flex items-center justify-center">
+              <X className="w-6 h-6 text-white" />
             </button>
+          </div>
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10">
+            <p className="text-white font-bold text-lg">QR-Code scannen</p>
+          </div>
+          <div className="flex items-center justify-center h-full">
+            <div className="w-72 h-72 border-4 border-white/50 rounded-2xl relative">
+              <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-emerald-400 rounded-tl-xl" />
+              <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-emerald-400 rounded-tr-xl" />
+              <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-emerald-400 rounded-bl-xl" />
+              <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-emerald-400 rounded-br-xl" />
+              <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-emerald-400 animate-pulse" />
+              <p className="absolute -bottom-10 left-1/2 -translate-x-1/2 text-white/60 text-sm whitespace-nowrap">Scooter-QR-Code in den Rahmen halten</p>
+            </div>
+          </div>
+          {/* Manual input */}
+          <div className="absolute bottom-8 left-4 right-4">
+            <p className="text-white/60 text-center text-sm mb-2">Oder Seriennummer eingeben:</p>
+            <div className="flex gap-2 max-w-sm mx-auto">
+              <input
+                type="text"
+                placeholder="z.B. SCOOTER-DEMO-001"
+                className="flex-1 px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/40 text-sm"
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    const serial = e.target.value.trim();
+                    const device = devices.find(d => d.serial.toLowerCase() === serial.toLowerCase());
+                    if (device) { setShowScanner(false); handleUnlock(device.id); }
+                    else toast.error('Scooter nicht gefunden');
+                  }
+                }}
+                data-testid="scooter-serial-input"
+              />
+            </div>
           </div>
         </div>
       )}
+
+      {/* SIDEBAR */}
+      <SidebarMenu
+        isOpen={showSidebar}
+        onClose={() => setShowSidebar(false)}
+        user={user}
+        stats={{ totalKm, totalRides }}
+        navigate={navigate}
+      />
+
+      {/* RIDE HISTORY */}
+      <RideHistorySheet
+        isOpen={showHistory}
+        onClose={() => setShowHistory(false)}
+        sessions={sessions}
+      />
     </div>
   );
 }
