@@ -28,6 +28,7 @@ export default function ScooterAboPage() {
   const [mySub, setMySub] = useState(null);
   const [loading, setLoading] = useState(true);
   const [subscribing, setSubscribing] = useState(false);
+  const [walletBalance, setWalletBalance] = useState(0);
 
   useEffect(() => {
     Promise.all([
