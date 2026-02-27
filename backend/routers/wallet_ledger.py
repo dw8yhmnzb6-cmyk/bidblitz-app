@@ -1,6 +1,6 @@
 """
-Wallet Ledger System - Tracks all financial transactions
-Extends existing wallet with proper double-entry bookkeeping for scooter rides
+Wallet Ledger System - Integrated with existing user wallet
+Uses wallet_balance_cents on user document + ledger entries for audit trail
 """
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
@@ -8,7 +8,7 @@ from typing import Optional
 from datetime import datetime, timezone
 import uuid
 
-from dependencies import get_current_user
+from dependencies import get_current_user, get_admin_user
 from config import db
 
 router = APIRouter(prefix="/wallet-ledger", tags=["Wallet Ledger"])
@@ -18,49 +18,52 @@ class WalletTopup(BaseModel):
     amount_cents: int
     method: str = "card"  # card, bank_transfer, cash
 
-class WalletTransfer(BaseModel):
-    to_user_id: str
-    amount_cents: int
-    note: Optional[str] = None
-
 
 async def get_wallet_balance(user_id: str) -> int:
-    """Calculate balance from ledger entries (sum of all credits minus debits)"""
-    pipeline = [
-        {"$match": {"user_id": user_id}},
-        {"$group": {
-            "_id": None,
-            "total_credit": {"$sum": {"$cond": [{"$eq": ["$type", "credit"]}, "$amount_cents", 0]}},
-            "total_debit": {"$sum": {"$cond": [{"$eq": ["$type", "debit"]}, "$amount_cents", 0]}}
-        }}
-    ]
-    result = await db.wallet_ledger.aggregate(pipeline).to_list(1)
-    if result:
-        return result[0]["total_credit"] - result[0]["total_debit"]
-    return 0
+    """Get wallet balance from user document"""
+    user = await db.users.find_one({"id": user_id}, {"wallet_balance_cents": 1})
+    return user.get("wallet_balance_cents", 0) if user else 0
 
 
-async def create_ledger_entry(user_id: str, entry_type: str, amount_cents: int, 
-                               category: str, description: str, reference_id: str = None):
-    """Create a wallet ledger entry"""
+async def create_ledger_entry(user_id: str, entry_type: str, amount_cents: int,
+                               category: str, description: str, reference_id: str = None) -> dict:
+    """Create a ledger entry AND update user balance atomically"""
+    amount = abs(amount_cents)
+    
+    if entry_type == "debit":
+        # Check sufficient balance
+        current = await get_wallet_balance(user_id)
+        if current < amount:
+            raise HTTPException(402, f"Nicht genug Guthaben. Verfuegbar: EUR {current/100:.2f}")
+        
+        # Deduct from user balance
+        result = await db.users.update_one(
+            {"id": user_id, "wallet_balance_cents": {"$gte": amount}},
+            {"$inc": {"wallet_balance_cents": -amount}}
+        )
+        if result.modified_count == 0:
+            raise HTTPException(402, "Nicht genug Guthaben")
+    else:
+        # Credit to user balance
+        await db.users.update_one(
+            {"id": user_id},
+            {"$inc": {"wallet_balance_cents": amount}},
+        )
+    
+    # Get new balance
+    new_balance = await get_wallet_balance(user_id)
+    
     entry = {
         "id": str(uuid.uuid4()),
         "user_id": user_id,
-        "type": entry_type,  # credit or debit
-        "amount_cents": abs(amount_cents),
-        "category": category,  # topup, ride_fee, ride_unlock, loan, repayment, transfer, refund, bid_purchase
+        "type": entry_type,
+        "amount_cents": amount,
+        "category": category,
         "description": description,
         "reference_id": reference_id,
-        "balance_after_cents": None,  # Will be calculated
+        "balance_after_cents": new_balance,
         "created_at": datetime.now(timezone.utc).isoformat()
     }
-    
-    # Calculate new balance
-    current_balance = await get_wallet_balance(user_id)
-    if entry_type == "credit":
-        entry["balance_after_cents"] = current_balance + abs(amount_cents)
-    else:
-        entry["balance_after_cents"] = current_balance - abs(amount_cents)
     
     await db.wallet_ledger.insert_one(entry)
     entry.pop("_id", None)
@@ -69,12 +72,13 @@ async def create_ledger_entry(user_id: str, entry_type: str, amount_cents: int,
 
 @router.get("/balance")
 async def get_balance(user: dict = Depends(get_current_user)):
-    """Get wallet balance from ledger"""
-    balance = await get_wallet_balance(user["id"])
+    """Get wallet balance"""
+    balance = user.get("wallet_balance_cents", 0)
     return {
         "user_id": user["id"],
         "balance_cents": balance,
         "balance_eur": round(balance / 100, 2),
+        "bids_balance": user.get("bids_balance", 0),
         "currency": "EUR"
     }
 
@@ -87,19 +91,16 @@ async def get_transactions(limit: int = 50, user: dict = Depends(get_current_use
         {"_id": 0}
     ).sort("created_at", -1).to_list(limit)
     
-    return {
-        "transactions": entries,
-        "total": len(entries)
-    }
+    return {"transactions": entries, "total": len(entries)}
 
 
 @router.post("/topup")
 async def topup_wallet(data: WalletTopup, user: dict = Depends(get_current_user)):
     """Add funds to wallet"""
-    if data.amount_cents < 100:  # Min 1€
-        raise HTTPException(400, "Mindestbetrag: €1.00")
-    if data.amount_cents > 50000:  # Max 500€
-        raise HTTPException(400, "Maximalbetrag: €500.00")
+    if data.amount_cents < 100:
+        raise HTTPException(400, "Mindestbetrag: EUR 1.00")
+    if data.amount_cents > 50000:
+        raise HTTPException(400, "Maximalbetrag: EUR 500.00")
     
     entry = await create_ledger_entry(
         user_id=user["id"],
@@ -113,5 +114,41 @@ async def topup_wallet(data: WalletTopup, user: dict = Depends(get_current_user)
         "success": True,
         "entry": entry,
         "new_balance_cents": entry["balance_after_cents"],
-        "message": f"€{data.amount_cents/100:.2f} eingezahlt"
+        "message": f"EUR {data.amount_cents/100:.2f} eingezahlt"
     }
+
+
+# ==================== ADMIN ====================
+
+@router.get("/admin/user/{user_id}")
+async def admin_get_user_ledger(user_id: str, admin: dict = Depends(get_admin_user)):
+    """Admin: View user's ledger"""
+    entries = await db.wallet_ledger.find(
+        {"user_id": user_id}, {"_id": 0}
+    ).sort("created_at", -1).to_list(100)
+    
+    target_user = await db.users.find_one({"id": user_id}, {"_id": 0, "name": 1, "email": 1, "wallet_balance_cents": 1})
+    
+    return {
+        "user": target_user,
+        "transactions": entries,
+        "balance_cents": target_user.get("wallet_balance_cents", 0) if target_user else 0
+    }
+
+
+@router.post("/admin/credit/{user_id}")
+async def admin_credit_user(user_id: str, amount_cents: int = 0, reason: str = "Admin Gutschrift", admin: dict = Depends(get_admin_user)):
+    """Admin: Credit user's wallet"""
+    if amount_cents <= 0:
+        raise HTTPException(400, "Betrag muss positiv sein")
+    
+    entry = await create_ledger_entry(
+        user_id=user_id,
+        entry_type="credit",
+        amount_cents=amount_cents,
+        category="admin_credit",
+        description=f"Admin Gutschrift: {reason}",
+        reference_id=f"admin-{admin['id']}"
+    )
+    
+    return {"success": True, "entry": entry}
