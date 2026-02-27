@@ -72,7 +72,7 @@ export default function ScooterAboPage() {
       <div className="px-6 pt-8 pb-6 text-center text-white">
         <Crown className="w-12 h-12 mx-auto mb-3 text-amber-400" />
         <h1 className="text-2xl font-bold">Scooter-Abo</h1>
-        <p className="text-slate-400 text-sm mt-1">Spar dir die Entsperrgebuehr - fahr unbegrenzt</p>
+        <p className="text-slate-400 text-sm mt-1">Spar dir die Entsperrgebühr - fahr unbegrenzt</p>
       </div>
 
       {/* Active Subscription */}
