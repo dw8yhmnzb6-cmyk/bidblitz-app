@@ -163,7 +163,12 @@ async def request_unlock(data: UnlockRequest, user: dict = Depends(get_current_u
         "ended_at": None,
         "duration_seconds": None,
         "cost_cents": None,
-        "failure_reason": None
+        "failure_reason": None,
+        "pricing_snapshot": {
+            "unlock_cents": unlock_fee,
+            "per_minute_cents": per_minute
+        },
+        "unlock_ledger_id": unlock_entry["id"]
     }
     
     await db.unlock_sessions.insert_one(session)
