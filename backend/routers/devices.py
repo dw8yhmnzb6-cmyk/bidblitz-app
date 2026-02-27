@@ -464,3 +464,93 @@ async def get_my_reservations(user: dict = Depends(get_current_user)):
     ).sort("created_at", -1).to_list(10)
     
     return {"reservations": reservations}
+
+
+# ==================== ROLE MANAGEMENT (Admin) ====================
+
+@router.post("/admin/set-partner/{user_id}")
+async def set_user_as_partner(user_id: str, organization_id: str = None, admin: dict = Depends(get_admin_user)):
+    """Admin: Promote user to partner_admin role"""
+    user = await db.users.find_one({"id": user_id})
+    if not user:
+        raise HTTPException(404, "Benutzer nicht gefunden")
+    
+    update = {"role": "partner_admin"}
+    if organization_id:
+        update["organization_id"] = organization_id
+    
+    await db.users.update_one({"id": user_id}, {"$set": update})
+    logger.info(f"User {user_id} promoted to partner_admin")
+    
+    return {
+        "success": True,
+        "message": f"{user.get('name')} ist jetzt Partner-Admin",
+        "role": "partner_admin"
+    }
+
+
+@router.post("/admin/remove-partner/{user_id}")
+async def remove_partner_role(user_id: str, admin: dict = Depends(get_admin_user)):
+    """Admin: Remove partner_admin role from user"""
+    await db.users.update_one(
+        {"id": user_id},
+        {"$set": {"role": "user"}, "$unset": {"organization_id": ""}}
+    )
+    return {"success": True, "message": "Partner-Rolle entfernt"}
+
+
+@router.get("/admin/partners")
+async def list_partner_admins(admin: dict = Depends(get_admin_user)):
+    """Admin: List all users with partner_admin role"""
+    partners = await db.users.find(
+        {"role": "partner_admin"},
+        {"_id": 0, "password": 0}
+    ).to_list(100)
+    return {"partners": partners}
+
+
+# ==================== PARTNER ENDPOINTS ====================
+
+@router.get("/partner/my-devices")
+async def partner_get_my_devices(user: dict = Depends(get_current_user)):
+    """Partner: Get devices assigned to their organization"""
+    if user.get("role") != "partner_admin" and not user.get("is_admin"):
+        raise HTTPException(403, "Nur fuer Partner-Admins")
+    
+    org_id = user.get("organization_id")
+    if not org_id and not user.get("is_admin"):
+        raise HTTPException(404, "Keine Organisation zugewiesen")
+    
+    query = {}
+    if org_id and not user.get("is_admin"):
+        query["organization_id"] = org_id
+    
+    devices = await db.devices.find(query, {"_id": 0}).to_list(500)
+    return {"devices": devices, "count": len(devices)}
+
+
+@router.get("/partner/my-rides")
+async def partner_get_rides(user: dict = Depends(get_current_user)):
+    """Partner: Get ride sessions for their devices"""
+    if user.get("role") != "partner_admin" and not user.get("is_admin"):
+        raise HTTPException(403, "Nur fuer Partner-Admins")
+    
+    org_id = user.get("organization_id")
+    
+    # Get org device IDs
+    query = {}
+    if org_id and not user.get("is_admin"):
+        org_devices = await db.devices.find({"organization_id": org_id}, {"id": 1}).to_list(500)
+        device_ids = [d["id"] for d in org_devices]
+        query["device_id"] = {"$in": device_ids}
+    
+    sessions = await db.unlock_sessions.find(query, {"_id": 0}).sort("requested_at", -1).to_list(100)
+    
+    total_revenue = sum(s.get("cost_cents", 0) for s in sessions if s.get("status") == "ended")
+    
+    return {
+        "sessions": sessions,
+        "count": len(sessions),
+        "total_revenue_cents": total_revenue,
+        "total_revenue_eur": round(total_revenue / 100, 2)
+    }
