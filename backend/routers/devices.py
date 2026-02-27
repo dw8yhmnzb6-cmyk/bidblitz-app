@@ -240,8 +240,23 @@ async def end_session(session_id: str, data: Optional[SessionEnd] = None, user: 
     started_at = datetime.fromisoformat(session.get("started_at") or session["requested_at"])
     duration_seconds = int((ended_at - started_at).total_seconds())
     
-    # Calculate cost (example: 0.15€ per minute, minimum 1€)
-    cost_cents = max(100, int(duration_seconds / 60 * 15))
+    # Calculate cost based on device pricing
+    pricing = session.get("pricing_snapshot", {})
+    per_minute_cents = pricing.get("per_minute_cents", 25)
+    ride_minutes = max(1, duration_seconds // 60)
+    cost_cents = ride_minutes * per_minute_cents
+    
+    # Charge ride fee from wallet (unlock was already charged)
+    try:
+        ride_entry = await _charge_wallet(
+            user["id"], cost_cents, "ride_fee",
+            f"Fahrt: {session.get('device_type', 'scooter')} ({ride_minutes} Min)",
+            reference_id=session_id
+        )
+    except HTTPException:
+        # If wallet empty, still end the ride but mark as unpaid
+        cost_cents = 0
+        ride_entry = None
     
     await db.unlock_sessions.update_one(
         {"id": session_id},
