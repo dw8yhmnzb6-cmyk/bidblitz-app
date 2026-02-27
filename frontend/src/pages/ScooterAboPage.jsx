@@ -138,7 +138,7 @@ export default function ScooterAboPage() {
                   }`}
                   data-testid={`subscribe-${plan.id}`}
                 >
-                  {isActive ? 'Aktuelles Abo' : subscribing ? 'Wird gebucht...' : `${plan.name} waehlen`}
+                  {isActive ? 'Aktuelles Abo' : subscribing ? 'Wird gebucht...' : `${plan.name} wählen`}
                 </button>
               </div>
             </div>
