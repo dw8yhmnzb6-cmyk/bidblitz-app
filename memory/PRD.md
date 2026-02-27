@@ -1,71 +1,59 @@
-# BidBlitz PRD - Product Requirements Document
+# BidBlitz PRD
 
-## Original Problem Statement
-BidBlitz is a penny auction platform expanded with Scooter/Mobility, Microfinance, and Support systems.
+## Architektur - Alles in EINEM System
+- **Frontend:** React + TailwindCSS
+- **Backend:** FastAPI (ein Server)
+- **Database:** MongoDB (ein Login, ein Wallet, alles zusammen)
+- **Server:** IONOS 212.227.20.190 / bidblitz.ae
 
-## Architecture
-- **Frontend:** React (CRA) + TailwindCSS + Shadcn UI
-- **Backend:** FastAPI with modular routers
-- **Database:** MongoDB (Local on IONOS production, Atlas for development)
-- **Deployment:** IONOS server (212.227.20.190), GitHub Actions CI/CD
-- **Production URL:** bidblitz.ae
+## Integriertes Scooter/Mobility System
 
-## Implemented Features (Feb 27, 2026)
+### Benutzer-Rollen (bestehende Users-Collection)
+- `user` - Normaler Benutzer
+- `partner_admin` - Scooter-Partner (sieht eigene Flotte)
+- `super_admin` - Super-Admin (sieht alles)
 
-### Core Auction Platform
-- 30 live auctions with real product photos, starting at 0.01 EUR
-- Active bots, WebSocket real-time updates
-- KYC verification, user management
+### Wallet-System (integriert)
+- `wallet_balance_cents` auf User-Dokument (EUR-Guthaben)
+- `bids_balance` bleibt separat (Auktions-Gebote)
+- Wallet-Ledger: Doppelte Buchfuehrung fuer alle Transaktionen
+- Kategorien: topup, ride_unlock, ride_fee, loan, repayment, admin_credit
 
-### Scooter/Mobility System (Lime-Style)
-- **Backend APIs:**
-  - `/api/devices/available` - Public device listing with GPS coordinates
-  - `/api/devices/reserve/{id}` - Reserve device (free 10 min)
-  - `/api/devices/ring/{id}` - Ring/locate device
-  - `/api/devices/report/{id}` - Report problem
-  - `/api/devices/unlock/request` - Start ride
-  - `/api/devices/unlock/{id}/end` - End ride
-  - `/api/devices/my-sessions` - Ride history
-- **15 demo scooters** in Dubai + Pristina with GPS, battery, range
-- **ScooterApp.jsx** - Full map interface with QR scanner
+### Scooter-APIs
+- `GET /api/devices/available` - Verfuegbare Geraete (oeffentlich)
+- `POST /api/devices/reserve/{id}` - Reservieren (10 Min kostenlos)
+- `POST /api/devices/ring/{id}` - Klingeln/Orten
+- `POST /api/devices/report/{id}` - Problem melden
+- `POST /api/devices/unlock/request` - Fahrt starten (bucht Entsperrgebuehr vom Wallet)
+- `POST /api/devices/unlock/{id}/end` - Fahrt beenden (bucht Minutengebuehr vom Wallet)
+- `GET /api/devices/my-sessions` - Fahrtverlauf
+- `GET /api/devices/my-reservations` - Aktive Reservierungen
 
-### Partner Auth System (Separate)
-- `/api/partner-auth/register` - Partner registration
-- `/api/partner-auth/login` - Partner login (separate JWT)
-- Roles: PARTNER_ADMIN, PARTNER_STAFF
-- Admin endpoints for activation/suspension
+### Wallet-APIs
+- `GET /api/wallet-ledger/balance` - Saldo (EUR + Gebote)
+- `GET /api/wallet-ledger/transactions` - Transaktionshistorie
+- `POST /api/wallet-ledger/topup` - Wallet aufladen
 
-### Wallet Ledger System
-- `/api/wallet-ledger/balance` - Balance from double-entry ledger
-- `/api/wallet-ledger/transactions` - Transaction history
-- `/api/wallet-ledger/topup` - Add funds
-- Categories: topup, ride_fee, ride_unlock, loan, repayment, transfer, refund
+### Partner-APIs
+- `GET /api/devices/partner/my-devices` - Eigene Geraete
+- `GET /api/devices/partner/my-rides` - Fahrten auf eigenen Geraeten
+- `POST /api/devices/admin/set-partner/{user_id}` - User zum Partner machen
+- `GET /api/devices/admin/partners` - Alle Partner auflisten
 
-### Support Tickets (User-Facing)
-- `/support-tickets` - Create, view, reply to tickets
-- Categories: general, billing, device, account, auction
+### User-Seiten
+- `/scooter` - Karten-Ansicht mit QR-Scanner
+- `/support-tickets` - Support-Tickets
+- `/loans` - Mikrokredite
 
-### Microfinance/Loans (User-Facing)
-- `/loans` - Apply for EUR 50-5000 loans, 7-365 days
-- Status tracking, repayment via wallet
+### Dashboard-Kacheln
+- Scooter, Support, Kredite als Quick-Access im Dashboard
 
-### Dashboard Quick Access
-- New service tiles: Scooter, Support, Kredite
-- Positioned below stats cards on user dashboard
+## Status: LIVE auf bidblitz.ae
+- 16 Demo-Scooter (Dubai + Pristina)
+- 30 Auktionen mit echten Fotos
+- Wallet mit Ledger-System
+- Mobile-responsive Admin-Panel
 
-### Admin Panel (Mobile-Responsive)
-- AdminDevices, AdminTickets, AdminLoans, AdminOrganizations
-- Card layout on mobile, table on desktop
-
-## Important Notes
-- **Production DB:** MongoDB localhost:27017/bidblitz (NOT Atlas)
-- **Changes must be made directly on IONOS server**
-- **Admin:** admin@bidblitz.ae / AfrimKrasniqi123
-- **Server:** 212.227.20.190 / root / neew7ky3xhyt3H
-
-## Backlog
-- Push Notifications
-- Haendler-Finder (Map View)
-- WhatsApp Integration
-- App Store submission
-- CI/CD pipeline end-to-end verification
+## Credentials
+- Admin: admin@bidblitz.ae / AfrimKrasniqi123
+- Server: 212.227.20.190 / root / neew7ky3xhyt3H
