@@ -223,6 +223,10 @@ German (Deutsch)
   - 🕐 KYC prüfen (Dokumente hochgeladen, wartet auf Admin)
   - 🚫 Gesperrt
 - [x] **E-Mail-Versand funktioniert** - Resend API korrekt konfiguriert
+- [x] **Automatische E-Mail-Erinnerungen** - Benutzer werden nach 24h erinnert, wenn sie ihre E-Mail nicht verifiziert haben
+  - Hintergrund-Task läuft stündlich
+  - Max. 1 Erinnerung pro 48h
+  - Admin-Endpunkt: `POST /api/health/send-reminders`
 - [x] ✅ Datenbank mit Auktionen, Benutzern, Bots befüllen (2026-02-26)
   - 50 Auktionen (verschiedene Kategorien: Elektronik, Gaming, Haushalt, Luxus, Gutscheine)
   - 100 Bots mit deutschen Namen
