@@ -1,13 +1,15 @@
 /**
- * User Microfinance/Loans Page - Apply for and manage micro-loans
+ * User Microfinance/Loans Page - Multi-language with payout options
  */
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import axios from 'axios';
 import { toast } from 'sonner';
 import {
   Banknote, Euro, Clock, CheckCircle, XCircle, AlertCircle,
-  ArrowLeft, ChevronRight, Loader2, Shield, Calendar, Percent
+  ArrowLeft, ChevronRight, Loader2, Shield, Calendar, Percent,
+  CreditCard, Building2, Wallet
 } from 'lucide-react';
 
 const API = process.env.REACT_APP_BACKEND_URL + '/api';
