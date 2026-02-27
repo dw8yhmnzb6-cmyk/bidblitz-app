@@ -1,31 +1,36 @@
-# BidBlitz PRD - Aktuell
+# BidBlitz PRD
 
-## Neue Features (Feb 28, 2026)
+## Provisions-System (LIVE)
 
-### Übersetzungen (DE/EN/SQ/TR/FR)
-- mobilityTranslations.js: Zentrale Übersetzungsdatei für alle Mobility-Seiten
-- ScooterGuide, HändlerFinder, SupportTickets, GroupRides - alle 5 Sprachen
+### Gebühren (Admin-konfigurierbar 1-20%)
+- Topup Fee: 2.5%
+- Ride Commission: 15% (Plattform)
+- Merchant Fee: 1.5%
+- Payout Fee: 1€ + 1%
 
-### Geofencing System
-- **11 Zonen** erstellt: Dubai + Pristina
-- Zonentypen: parking, no_parking, speed_limit, service_area
-- API: /api/geofencing/zones (öffentlich für Karten-Anzeige)
-- API: /api/geofencing/check-location (prüft ob Parken erlaubt)
-- API: /api/geofencing/track/{session_id} (Live-Tracking während Fahrt)
+### Split Payment Flow
+1. User zahlt Brutto (z.B. 5€ Fahrt)
+2. Plattform bekommt 15% Commission (0.75€) -> Platform Wallet
+3. Partner bekommt 85% Settlement (4.25€) -> Partner Balance
+4. Alles in Ledger nachvollziehbar
 
-### Scooter-Tracking
-- GPS-Punkte während Fahrt speichern
-- Route nach Fahrt abrufbar
-- Geschwindigkeits-Warnungen in Tempo-Zonen
+### APIs
+- GET /api/provisions/fees - Aktuelle Gebühren
+- PUT /api/provisions/fees - Gebühren ändern (Admin, 1-20%)
+- GET /api/provisions/platform/balance - Plattform-Einnahmen
+- GET /api/provisions/platform/transactions - Alle Provisionen
+- GET /api/provisions/partners/balances - Partner-Guthaben
+- GET /api/provisions/partners/{id}/ledger - Partner-Buchungen
+- POST /api/provisions/partners/payout - Partner-Auszahlung
+- GET /api/provisions/reports/summary - Zusammenfassung
+- GET /api/provisions/reports/by-partner - Report pro Partner
 
-### Verfügbarkeits-Alarm
-- API: /api/geofencing/alerts/subscribe (Alarm setzen)
-- Benachrichtigung wenn Scooter in der Nähe verfügbar wird
-- Radius + Gerätetyp konfigurierbar
-
-### Footer Reorganisiert
-- EXTRAS → aufgeteilt in "Partner" und "Marketing"
-- Partner: Händler-Portal, Partner Portal, Kassen-Terminal, Großkunden, Investoren
-- Marketing: Influencer, Auto-Werbung, VIP
+### Datenbank-Collections
+- wallet_ledger: Alle Wallet-Transaktionen
+- partner_ledger: Partner-Buchungen (Settlement/Payout)
+- partner_balances: Partner-Guthaben
+- split_transactions: Aufschlüsselung jeder Zahlung
+- partner_payouts: Auszahlungs-Historie
+- platform_config: Gebühren-Konfiguration
 
 ## Server: 212.227.20.190 | Admin: admin@bidblitz.ae
