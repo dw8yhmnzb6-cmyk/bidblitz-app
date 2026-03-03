@@ -20,11 +20,14 @@ Migration und Weiterentwicklung der BidBlitz Auktionsplattform zu einer vollstä
 ### Hotel Booking System - Dark Theme Frontend ✅
 **Status: COMPLETED (March 3, 2026)**
 
-Deployed a new dark-themed Airbnb-style hotel booking frontend:
+Deployed a new dark-themed hotel booking frontend:
 
 **Frontend Files:**
 - `/var/www/bidblitz/frontend/src/pages/HotelsPage.jsx` - Hotel search/list page
-- `/var/www/bidblitz/frontend/src/pages/HotelDetailPage.jsx` - Hotel detail & booking page
+- `/var/www/bidblitz/frontend/src/pages/HotelDetail.jsx` - Hotel detail & booking page
+
+**Backend API:**
+- `/var/www/bidblitz/backend/routers/hotels.py` - Main Hotels API router
 
 **Features:**
 - Dark slate-950 background theme
