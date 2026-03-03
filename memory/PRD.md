@@ -34,9 +34,15 @@ Deployed a new dark-themed hotel booking frontend:
 - Filter system: Region, Stadt, Suche, Gäste, Max €/Nacht
 - Hotel cards with images, ratings, prices
 - Detailed view with photo gallery
-- Booking widget with Genius discount display
-- Price breakdown (subtotal, discount, total)
-- Booking confirmation modal with level-up notification
+- Booking widget with price breakdown
+- Booking via Wallet payment
+- Booking confirmation modal
+
+**API Endpoints:**
+- `GET /api/hotels/listings` - Search hotels with filters
+- `GET /api/hotels/listings/{id}` - Get hotel details
+- `POST /api/hotels/bookings` - Create booking (wallet payment)
+- `GET /api/hotels/bookings/my` - User's booking history
 
 **Routes:**
 - `/hotels` - Hotel search/browse
