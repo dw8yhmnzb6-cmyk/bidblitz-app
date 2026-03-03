@@ -66,10 +66,22 @@ INTERNAL:
 - Logic: Finds bookings with past checkout, credits host wallet, logs ledger entry, marks completed
 
 **Frontend Pages:**
-- `/hotels` - Hotel search/browse
-- `/hotels/:id` - Hotel detail & booking
-- `/hotels/host` - Host dashboard (create/edit listings)
-- `/hotels/bookings` - Booking history (guest & host tabs)
+- `/hotels` - Hotel search/browse with filters and sorting
+- `/hotels/:id` - Hotel detail & booking with price breakdown
+- `/hotels/host` - Host dashboard (create/edit/activate/deactivate listings)
+- `/hotels/bookings` - Booking history (guest & host tabs with actions)
+
+**Frontend Files:**
+- `/var/www/bidblitz/frontend/src/pages/HotelsPage.jsx`
+- `/var/www/bidblitz/frontend/src/pages/HotelDetail.jsx`
+- `/var/www/bidblitz/frontend/src/pages/HotelsHost.jsx`
+- `/var/www/bidblitz/frontend/src/pages/HotelBookings.jsx`
+- `/var/www/bidblitz/frontend/src/components/Navbar.js` (Hotels link added)
+
+**Backend Files:**
+- `/var/www/bidblitz/backend/routers/hotels.py`
+- `/var/www/bidblitz/backend/routers/hotels_host.py`
+- `/var/www/bidblitz/backend/routers/hotels_level3.py`
 
 **Routes:**
 - `/hotels` - Hotel search/browse
