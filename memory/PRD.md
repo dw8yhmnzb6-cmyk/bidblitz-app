@@ -1,38 +1,45 @@
 # BidBlitz Super-App - PRD
 
 ## Architecture
-Frontend: React + Tailwind + Leaflet | Backend: FastAPI | DB: MongoDB | Server: IONOS 212.227.20.190 | Domain: bidblitz.ae
+Frontend: React + Tailwind + Leaflet | Backend: FastAPI | DB: MongoDB | Server: IONOS 212.227.20.190
 
-## Implemented Modules
+## Level 10 Production-Grade Features (March 2026)
 
-### Hotels (COMPLETE)
-- 55 listings, search/filter, booking, host dashboard, payouts, mobile UI
-- Reviews & Ratings, Star Filter (3/4/5★), Loyalty Points, Dynamic Pricing, Coupons
-- Growth: AI descriptions, promos, affiliate, map
+### Security & Rate Limiting
+- MongoDB-backed rate limits (key: ip+user+route, 60/min + 300/10min windows)
+- Auto-block on exceed with 429
 
-### Taxi (COMPLETE)
-- Rider: nearby taxis on map, ETA badges, booking, tracking, wallet, ratings
-- Driver App (`/taxi/driver`): registration, admin approval, online/offline, ride mgmt, earnings
-- Admin: approve/block drivers, stats, pricing
+### Audit Logs
+- All critical actions logged to `audit_logs` collection
+- Admin endpoint: `GET /api/admin/audit?action=&actor=&limit=`
 
-### Admin Dashboard (`/admin/dashboard`) - COMPLETE March 2026
-- **6 Tabs**: Statistiken, Bewertungen, Gutscheine, Hotels, Buchungen, Fahrer
-- Hotel Stats: listings, active, bookings, revenue
-- Taxi Stats: drivers, online, pending, rides
-- Reviews: list all, delete (moderation)
-- Coupons: create new codes, delete existing
-- Hotels: list all DB listings, activate/deactivate
-- Bookings: view all with status
-- Drivers: approve pending, block problematic
+### Marketplace Moderation
+- Auto-moderation on listing create: banned keyword check, spam detection, risk scoring (0-100)
+- Status: approved/pending/rejected with flagged_terms
+- Admin review: `GET /api/admin/marketplace/review` + `PATCH /api/admin/marketplace/{id}`
 
-## Backend Routers
-- hotels.py, hotels_host.py, hotels_level3.py, hotels_growth.py
-- hotels_loyalty.py, hotels_dynamic_pricing.py, hotels_coupons.py, hotels_reviews.py
-- taxi_pro.py, taxi_extended.py, taxi_nearby.py, taxi_*.py
-- admin_dashboard.py
+### Fraud Detection
+- Fraud event recording for: failed payments, cancel abuse, promo abuse, high-freq posts
+- Auto-flag users with 10+ events/day
+- Admin: `GET /api/admin/fraud?type=&user_id=`
 
-## Cleanup Done
-- Removed hotels_booking.py and hotels_airbnb.py from server.py
+### Business Accounts (KYC-lite)
+- `POST /api/business/create` with pending status + kyc_level=none
+- `GET /api/business/me` + `PATCH /api/business/me`
+
+### Hotels Dynamic Pricing (Real Logic)
+- Per-night pricing with: weekend +20%, seasonal multiplier by month, occupancy surcharge
+- `GET /api/hotels/pricing/quote?listing_id=&checkin=&checkout=` returns full breakdown
+- Host can set rules: `POST /api/hotels/host/pricing/rules`
+- Admin override: `PATCH /api/admin/hotels/pricing/override/{listing_id}`
+
+### Frontend
+- `/admin/audit` - Audit log viewer with action filter
+- `/admin/fraud` - Fraud events viewer with type filter
+
+## All Backend Routers
+security_rate_limit, audit_logs, marketplace_moderation, fraud_signals, business_accounts, hotels_pricing
++ hotels (7 routers), taxi (8 routers), admin_dashboard, marketplace_extended, ai_search, recommendations, user_reputation
 
 ## Pending: P2
-- Guest-Host chat, Genius loyalty, Insurance, Parking, KI-Chatbot, App Store
+Guest-Host chat, Genius loyalty, Insurance, Parking, KI-Chatbot, App Store
