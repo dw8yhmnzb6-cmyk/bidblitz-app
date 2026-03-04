@@ -1,45 +1,38 @@
-# BidBlitz Super-App - Product Requirements Document
-
-## Original Problem Statement
-Build a full-featured "Super App" (BidBlitz) with Hotels (Airbnb-style), Taxi (Uber-style), Auctions, Wallet, Genius loyalty.
+# BidBlitz Super-App - PRD
 
 ## Architecture
-- Frontend: React + Tailwind CSS + Leaflet | Backend: FastAPI | DB: MongoDB
-- Server: IONOS VPS 212.227.20.190 | Domain: bidblitz.ae
+Frontend: React + Tailwind + Leaflet | Backend: FastAPI | DB: MongoDB | Server: IONOS 212.227.20.190 | Domain: bidblitz.ae
 
 ## Implemented Modules
 
-### Hotels Module (COMPLETE)
-- 55 listings, search/filter, booking, host dashboard, mobile-responsive
-- **Reviews & Ratings**: Post-stay reviews (1-5 stars + text), auto-updates listing average
-- **Star Filter**: 3★/4★/5★ filter on search page
-- **Loyalty Points**: Earn points for reviews, view balance
-- **Dynamic Pricing**: Weekend surcharge (+20%)
-- **Coupons**: BIDBLITZ10 (10%), WELCOME20 (20%)
-- **Growth**: AI descriptions, promo codes, affiliate tracking
-- **Map endpoint** for hotel locations
+### Hotels (COMPLETE)
+- 55 listings, search/filter, booking, host dashboard, payouts, mobile UI
+- Reviews & Ratings, Star Filter (3/4/5★), Loyalty Points, Dynamic Pricing, Coupons
+- Growth: AI descriptions, promos, affiliate, map
 
-### Taxi Module (COMPLETE)
-- **Rider App**: Nearby taxis on map, ETA badges, booking, tracking, wallet, ratings
-- **Driver App** (`/taxi/driver`): Registration, admin approval, online/offline, ride management, earnings dashboard
+### Taxi (COMPLETE)
+- Rider: nearby taxis on map, ETA badges, booking, tracking, wallet, ratings
+- Driver App (`/taxi/driver`): registration, admin approval, online/offline, ride mgmt, earnings
+- Admin: approve/block drivers, stats, pricing
 
-### Admin Taxi Dashboard
-- Approve/block drivers, view stats, pricing config, ride management
+### Admin Dashboard (`/admin/dashboard`) - COMPLETE March 2026
+- **6 Tabs**: Statistiken, Bewertungen, Gutscheine, Hotels, Buchungen, Fahrer
+- Hotel Stats: listings, active, bookings, revenue
+- Taxi Stats: drivers, online, pending, rides
+- Reviews: list all, delete (moderation)
+- Coupons: create new codes, delete existing
+- Hotels: list all DB listings, activate/deactivate
+- Bookings: view all with status
+- Drivers: approve pending, block problematic
 
-## Backend Routers (Hotels)
-- `hotels.py` - Listings + bookings (with min_rating filter)
-- `hotels_host.py` - Host management
-- `hotels_level3.py` - Payouts cron
-- `hotels_growth.py` - AI desc, promos, affiliate, map
-- `hotels_loyalty.py` - Points system
-- `hotels_dynamic_pricing.py` - Weekend pricing
-- `hotels_coupons.py` - Gift/coupon codes
-- `hotels_reviews.py` - Reviews & ratings
+## Backend Routers
+- hotels.py, hotels_host.py, hotels_level3.py, hotels_growth.py
+- hotels_loyalty.py, hotels_dynamic_pricing.py, hotels_coupons.py, hotels_reviews.py
+- taxi_pro.py, taxi_extended.py, taxi_nearby.py, taxi_*.py
+- admin_dashboard.py
 
 ## Cleanup Done
-- Removed obsolete `hotels_booking.py` and `hotels_airbnb.py` from server.py
+- Removed hotels_booking.py and hotels_airbnb.py from server.py
 
-## Pending Tasks
-### P2
-- Guest-Host chat, Genius loyalty, Insurance, Parking
-- KI-Chatbot, App Store prep
+## Pending: P2
+- Guest-Host chat, Genius loyalty, Insurance, Parking, KI-Chatbot, App Store
