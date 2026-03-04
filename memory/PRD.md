@@ -3,39 +3,41 @@
 ## Architecture
 Frontend: React + Tailwind + Leaflet | Backend: FastAPI | DB: MongoDB | Server: IONOS 212.227.20.190
 
-## Level 16: Web Push + PWA + Background Sync (March 2026)
+## Level 17: Multi-Tenant SaaS (March 2026)
 
-### Push Notifications
-- VAPID keys configured, pywebpush installed
-- Subscribe/unsubscribe via pushClient.js utility
-- Triggers: chat messages, booking completion
-- Admin test endpoint: POST /api/push/admin/send
+### Tenant System
+- Default tenant: "bidblitz" (backward compatible)
+- Resolution: X-Tenant-ID header > domain mapping > query param > default
+- Each tenant: own fees, wallet, branding, users, ledger
 
-### PWA
-- manifest.json (standalone, BidBlitz branding)
-- Service Worker v5: offline fallback, static caching, push handler, background sync
-- offline.html fallback page
-- Notification click → opens correct URL
+### Collections
+- tenants (id, name, domains, branding, status)
+- tenant_users (user_id, tenant_id, role)
+- tenant_fees (per-module fee percentages)
+- tenant_wallets (balance_cents)
+- tenant_ledgers (audit trail)
 
-### iOS Install
-- IOSInstallHint component detects iOS Safari
-- Shows "Teilen → Zum Home-Bildschirm" banner (dismissible)
+### Tenant Admin (/tenant-admin)
+- Dashboard with wallet + fees + branding
+- Set fees: hotels/taxi/marketplace %
+- Manage team: invite users with roles
+- Update branding: colors + logo
 
-### Background Sync
-- offlineQueue.js: queues failed requests in localStorage
-- Auto-replay on online event
-- SW sync event handler for background replay
+### Super Admin (/super-admin/tenants)
+- Create/list/suspend tenants
+- View per-tenant stats (bookings, users, revenue)
+- Domain mapping for white-label
 
-### Frontend Pages
-- /settings/notifications — Push toggle + iOS install hint
+### Public Config
+- GET /api/tenant/public-config — branding + modules per domain
 
-### Files Created
-- sw.js (v5), offline.html, pushClient.js, offlineQueue.js, PushSettings.jsx
+### Frontend
+- /tenant-admin — Tenant dashboard
+- /super-admin/tenants — Tenant management
 
-### Files Modified
-- hotel_chat.py (push trigger on messages)
-- hotels_host.py (push on booking complete)
-- server.py, App.js (route)
+### Files Created (6)
+- utils/tenant.py, tenants_admin.py, super_admin_tenants.py, tenant_public.py
+- TenantAdminDashboard.jsx, SuperAdminTenants.jsx
 
-## All Levels: L1-16
-Hotels, Taxi, Marketplace, Admin, Security, Monetization, Genius, Reviews, Chat, Push/PWA
+## All Levels: L1-17
+Hotels, Taxi, Marketplace, Admin, Security, Monetization, Genius, Reviews, Chat, Push/PWA, Multi-Tenant
