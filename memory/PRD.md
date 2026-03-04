@@ -3,41 +3,37 @@
 ## Architecture
 Frontend: React + Tailwind + Leaflet | Backend: FastAPI | DB: MongoDB | Server: IONOS 212.227.20.190
 
-## Level 13: Genius Loyalty Program (March 2026)
+## Level 14: Enhanced Reviews System (March 2026)
 
-### Level Rules
-- Level 1: 0-4 Nächte → 10% Rabatt
-- Level 2: 5-14 Nächte → 15% Rabatt + Late Checkout
-- Level 3: 15+ Nächte → 20% Rabatt + Late Checkout + Priority Support + Upgrade
+### Features
+- Photos support (up to 5 URLs per review)
+- Profanity auto-moderation (DE+EN keyword list + spam patterns)
+- Clean reviews → auto-APPROVED, flagged → PENDING for admin
+- Breakdown response: {5: count, 4: count, 3: count, 2: count, 1: count}
+- Helpful votes (1 per user per review)
+- Can-review check endpoint (validates booking ownership + completion + uniqueness)
+- Host reply (unique per review, host-only)
+- Report system (SPAM/ABUSE/FAKE/OTHER)
 
-### Auto Level-Up
-- Hooked into booking completion (hotels_host.py)
-- Automatic recalculation on every completed booking
-- Daily reconciliation cron job for safety
+### Frontend
+- `/hotels/:id/review/:bookingId` — Review form with 5-star selector + title + comment
+- Validates can-review before showing form
+- Success/error states
 
-### Collections
-- loyalty_profile (user_id, level, qualified_nights/bookings, total_spend)
-- loyalty_events (audit trail: BOOKING_COMPLETED, LEVEL_UP/DOWN, MANUAL_ADJUST)
+### Endpoints (hotels_reviews.py)
+- GET /api/hotels/{id}/reviews — avg_rating, breakdown, paginated items with user+reply
+- POST /api/hotels/{id}/reviews — booking-verified, profanity-checked
+- POST /api/hotels/reviews/{id}/reply — host only
+- POST /api/hotels/reviews/{id}/helpful — vote helpful
+- POST /api/hotels/reviews/{id}/report — report abuse
+- GET /api/hotels/reviews/can-review/{bookingId} — pre-check
 
-### Endpoints
-- GET /api/loyalty/benefits (public)
-- GET /api/loyalty/me (user, includes progress bar data)
-- POST /api/admin/loyalty/{user_id}/adjust (admin only)
-- POST /api/loyalty/internal/reconcile?secret=... (cron, localhost)
+### Admin (admin_reviews.py)
+- GET /api/admin/hotel-reviews — filter by status/reported/hotel
+- POST /api/admin/hotel-reviews/{id}/approve
+- POST /api/admin/hotel-reviews/{id}/reject
 
-### Frontend: /loyalty/genius
-- Current level card with progress bar
-- Benefits cards for all 3 levels
-- Stats: nights, bookings, total spend
-- "Hotels finden" CTA
-
-## Previous Levels
-- L1-5: Hotels, Taxi (rider+driver), Admin Dashboard
-- L6: Loyalty Points, Dynamic Pricing, Coupons, Star Filter
-- L7: Marketplace (Real Estate, Cars, Jobs), Search
-- L10: Rate Limiting, Audit Logs, Moderation, Fraud, Business Accounts
-- L11: Monetization (Boosts, Featured, Subscriptions, Revenue)
-- L12: Booking-Verified Reviews, Verification System, Admin Moderation
+## Previous Levels: L1-13 (Hotels, Taxi, Marketplace, Admin, Security, Monetization, Genius Loyalty)
 
 ## Pending: P2
-Guest-Host chat, Insurance, Parking, KI-Chatbot, App Store, Analytics Dashboard
+Guest-Host Chat (L15), Insurance, Parking, KI-Chatbot, App Store, Analytics
