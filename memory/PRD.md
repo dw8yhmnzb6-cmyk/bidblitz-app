@@ -1,93 +1,76 @@
 # BidBlitz Super-App - Product Requirements Document
 
 ## Original Problem Statement
-Build a full-featured "Super App" (BidBlitz) with multiple modules including Hotels (Airbnb-style), Auctions, Wallet, Genius loyalty, and more. The app uses a dark-themed UI, React frontend with Tailwind CSS, FastAPI backend, and MongoDB.
+Build a full-featured "Super App" (BidBlitz) with multiple modules including Hotels (Airbnb-style), Taxi (Uber-style), Auctions, Wallet, Genius loyalty, and more. Dark-themed UI, React frontend with Tailwind CSS, FastAPI backend, MongoDB.
 
 ## Architecture
-- **Frontend:** React + Tailwind CSS (served as static build via nginx)
+- **Frontend:** React + Tailwind CSS + Leaflet (maps) (served as static build via nginx)
 - **Backend:** FastAPI with modular routers (systemd-managed)
 - **Database:** MongoDB
 - **Server:** IONOS VPS at 212.227.20.190
 - **Domain:** bidblitz.ae
 
-## Code Structure
-```
-/var/www/bidblitz/
-├── backend/
-│   ├── server.py
-│   ├── config.py
-│   ├── routers/
-│   │   ├── hotels.py          # Guest-facing API (search, book, cancel) + 55 sample listings
-│   │   ├── hotels_host.py     # Host-facing API (manage listings/bookings)
-│   │   ├── hotels_level3.py   # Internal Payouts API (cron job)
-│   │   ├── auth.py, genius.py, etc.
-│   └── .env
-├── frontend/
-│   └── src/
-│       ├── App.js
-│       ├── components/Navbar.js
-│       └── pages/
-│           ├── HotelsPage.jsx
-│           ├── HotelDetail.jsx
-│           ├── HotelsHost.jsx
-│           └── HotelBookings.jsx
-```
-
 ## What's Been Implemented
 
 ### Hotels Module (COMPLETE)
-- **Search & Filter:** 55 professional listings, region/city/type/price/superhost filters, sorting
-- **Detail & Booking:** Full detail page with photo gallery, amenities, pricing breakdown, wallet-based booking
-- **Host Dashboard:** Create/edit/activate listings, manage bookings
-- **Booking History:** Guest and Host views with cancel/confirm/complete actions
-- **Payouts:** Cron-triggered monthly host payouts via internal API
-- **Mobile UI:** Fully responsive dark-themed pages for all hotel screens (completed Dec 2025)
+- Search/Filter 55 professional listings, booking, host dashboard, payouts
+- Mobile-responsive dark-themed UI on all pages
+- Growth features: AI descriptions, promo codes, affiliate tracking, map endpoint
 
-### Mobile UI Improvements (COMPLETE - March 2026)
-- Optimized all 4 hotel pages for mobile viewports
-- Compact headers, smaller text sizes on mobile (text-xs/text-sm)
-- Stacking layouts (flex-col on mobile, flex-row on desktop)
-- Bottom padding for floating CTA on Hotels page
-- Proper Unicode character encoding for German text
-- data-testid attributes added throughout
+### Taxi Module - Uber-Style (COMPLETE - March 2026)
+- **Live map** with dark tiles (Leaflet/CartoDB)
+- **Nearby taxis on map**: Simulated driver pool (12 drivers) with blue car icons visible on the map
+- **"X Taxis in der Nähe"** badge showing available taxi count
+- **"~X Min" ETA badge** showing nearest taxi arrival time
+- **Periodic refresh**: Nearby drivers update every 4 seconds with simulated movement
+- **Driver details**: Name, car model, plate, rating, ride count, vehicle type
+- **Booking flow**: pickup/dropoff → vehicle select → confirm → searching → tracking → complete
+- **Vehicle types**: Standard, Premium, Van
+- **Live tracking** with driver location, SOS button, cancel option
+- **Wallet payment** with balance check
+- **Rating system** with tip support
+- **Saved places & ride history**
+- **Airport shortcuts** (Pristina International)
+
+### Backend Taxi Endpoints
+- `GET /api/taxi/nearby-drivers` - Simulated nearby available drivers with positions/ETA
+- `GET /api/taxi/estimate` - Fare estimation
+- `POST /api/taxi/request-ride` - Book a ride
+- `GET /api/taxi/my-ride` - Active ride status
+- `POST /api/taxi/cancel/{ride_id}` - Cancel ride
+- `GET /api/taxi/history` - Ride history
+- Plus: places, ratings, offers, geocoding, websocket endpoints
+
+## Code Structure
+```
+/var/www/bidblitz/
+├── backend/routers/
+│   ├── hotels.py, hotels_host.py, hotels_level3.py, hotels_growth.py
+│   ├── taxi_pro.py, taxi_extended.py, taxi_nearby.py
+│   ├── taxi_geocode.py, taxi_offers.py, taxi_places.py
+│   ├── taxi_ratings.py, taxi_websocket.py
+│   └── ... (auth, genius, devices, etc.)
+├── frontend/src/pages/
+│   ├── HotelsPage.jsx, HotelDetail.jsx, HotelsHost.jsx, HotelBookings.jsx, HotelsMap.jsx
+│   ├── TaxiPage.jsx, TaxiProfile.jsx
+│   └── ... (other pages)
+```
 
 ## Pending/Upcoming Tasks
-
-### P1 - Next
-- Reviews & Ratings system for hotels
-- Star-based filter (3★, 4★, 5★)
+### P1
+- Reviews & Ratings for Hotels
+- Star-based filter (3/4/5 star) on hotel search
 - Clean up obsolete routers (hotels_booking.py, hotels_airbnb.py)
-- Create MongoDB indexes for genius/genius_events collections
 
-### P2 - Future
-- Chat between guests and hosts
+### P2
+- Guest-Host chat
 - Genius loyalty link in navigation
-- Insurance module
-- Parking Finder module
+- Insurance module, Parking Finder module
 - KI-Support-Chatbot
 - App Store preparation
 
-## Key API Endpoints
-- `GET /api/hotels/listings` - Search listings
-- `GET /api/hotels/listings/:id` - Get listing detail
-- `POST /api/hotels/bookings` - Create booking
-- `POST /api/hotels/bookings/:id/cancel` - Cancel booking
-- `GET /api/hotels/bookings/my` - Guest bookings
-- `GET /api/hotels/host/listings` - Host listings
-- `POST /api/hotels/host/listings` - Create listing
-- `GET /api/hotels/host/bookings` - Host bookings
-- `POST /api/hotels/internal/payouts/run` - Cron payouts
-
-## DB Collections
-- `hotel_listings` - User-created listings
-- `hotel_bookings` - Booking records
-- Backend also serves 55 hardcoded SAMPLE_LISTINGS when DB is empty
-
 ## 3rd Party Integrations
-- Resend (email)
-- Google Maps
-- Tawk.to (chat widget)
+- Resend (email), Google Maps, Tawk.to (chat widget)
 
 ## Mocked Features
-- Crypto Wallet
-- OEM Scooter Hardware integration
+- Crypto Wallet, OEM Scooter Hardware, Taxi drivers (simulated positions)
