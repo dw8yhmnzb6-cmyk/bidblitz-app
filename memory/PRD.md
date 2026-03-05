@@ -1,30 +1,42 @@
 # BidBlitz Super-App - PRD (Final)
 
-## Complete System: 45+ Pages, 80+ Routers
+## 50+ Pages, 90+ Routers — Enterprise Super-App
 
-### KYC + Risk (kyc_system.py)
-- 3 KYC levels (0/1/2) with transfer/wallet limits
-- Document + selfie upload, admin approve/reject
-- Risk score tracking
+### New: Spin & Win + Social Feed + Analytics Control
 
-### Growth Engine (growth_engine.py)
-- Daily rewards (Day 1-5: 10-200 points)
-- Activity rewards per module
-- Campaigns + leaderboard
+#### Spin & Win (/spin)
+- 8 Prizes: 10P, 25P, 50P, 0.50/1/2 EUR, 5% Rabatt, Niete
+- Weighted random, 1x/Tag, wallet credit for EUR prizes
+- Animated wheel with SVG segments
 
-### Super Marketplace V3 (marketplace_v3.py)
-- Products/Cars/RealEstate/Services
-- Wallet-based orders, seller reviews
+#### Social Feed (/social)
+- Posts (text + images + video), likes (toggle), comments
+- Stories (24h expiry), post types (deal/promotion/story/normal)
+- User avatars + timestamps
 
-### AI Assistant (ai_assistant.py)
-- Command routing (12 modules: taxi, hotels, deals, wallet, etc.)
-- Chat with action buttons
+#### Analytics Control (/admin/control)
+- Users: total, active today, new 7d/30d
+- Revenue: gross + fees by module
+- Transactions: today + total
+- Services: Taxi, Hotels, Marketplace, Deals, Merchants counts
 
-### Merchant Ecosystem (merchants.py)
-- Registration, products, orders, reviews
-- Admin verification
-
-### Frontend
-- /rewards — Daily rewards + leaderboard + campaigns
-- /assistant — AI chat with module routing
-- /admin/kyc — KYC review + approve/reject
+## Complete Stack:
+- Hotels (55 listings, reviews, verification, dynamic pricing, loyalty)
+- Taxi (rider + driver app, nearby drivers)
+- Marketplace (products, cars, real estate, services)
+- Games (Match-3 with levels + leaderboard)
+- Monetization (boosts, featured, subscriptions)
+- Genius Loyalty (3 levels, auto level-up)
+- Chat (guest-host, admin escalation)
+- Support (KI-chatbot, AI assistant)
+- Push (VAPID, PWA, service worker)
+- Multi-Tenant SaaS (white-label)
+- KYC + Risk Control
+- Growth Engine (daily rewards, campaigns)
+- Merchant Ecosystem
+- Revenue Engine (fees, ledger, payouts, invoices)
+- Deals & Ads
+- Referrals 2.0 (tiers)
+- Social Feed + Stories
+- Spin & Win
+- Insurance + Parking
