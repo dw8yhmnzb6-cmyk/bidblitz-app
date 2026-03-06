@@ -1071,8 +1071,8 @@ function AppContent() {
           <Route path="/match3" element={<Match3Game />} />
           <Route path="/spin-wheel" element={<SpinWheel />} />
           <Route path="/gluecksrad" element={<SpinWheel />} />
-          <Route path="/referral" element={<Referral />} />
-          <Route path="/invite" element={<Referral />} />
+          <Route path="/app-referral" element={<Referral />} />
+          <Route path="/invite-friends" element={<Referral />} />
           
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
