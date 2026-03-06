@@ -555,6 +555,9 @@ app.include_router(referral_router, prefix="/api")
 # NEW: Digital Payment API for External Integrations (POS Systems)
 app.include_router(digital_api_router, prefix="/api")
 
+# NEW: Mining Features (Crypto Mining Simulation Game)
+app.include_router(mining_features_router)
+
 # NEW: Enterprise Portal for Large Retailers (Großhändler)
 from routers.enterprise_portal import router as enterprise_portal_router
 app.include_router(enterprise_portal_router, prefix="/api")
