@@ -166,6 +166,7 @@ import TreasureHunt from "./pages/TreasureHunt";
 import AppAdminPanel from "./pages/AppAdminPanel";
 import AppLeaderboard from "./pages/AppLeaderboard";
 import AppProfile from "./pages/AppProfile";
+import AppVIP from "./pages/AppVIP";
 
 // New Feature Components
 import Watchlist from "./components/Watchlist";
