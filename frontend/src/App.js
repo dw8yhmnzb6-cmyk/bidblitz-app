@@ -1085,6 +1085,7 @@ function AppContent() {
             </ProtectedRoute>
           } />
           <Route path="/app-leaderboard" element={<AppLeaderboard />} />
+          <Route path="/app-profile" element={<AppProfile />} />
           
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
