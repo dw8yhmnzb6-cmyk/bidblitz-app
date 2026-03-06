@@ -1094,7 +1094,7 @@ function AppContent() {
           <Route path="/app-vip" element={<AppVIP />} />
           <Route path="/vip" element={<AppVIP />} />
           <Route path="/app-statistics" element={<AppStatistics />} />
-          <Route path="/stats" element={<AppStatistics />} />
+          <Route path="/platform-stats" element={<AppStatistics />} />
           <Route path="/taxi" element={<AppTaxi />} />
           <Route path="/scooter" element={<AppScooter />} />
           <Route path="/vip-games" element={<AppVIPGames />} />
