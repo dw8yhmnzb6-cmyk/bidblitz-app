@@ -15,11 +15,10 @@ import BottomNav from '../components/BottomNav';
 const API = process.env.REACT_APP_BACKEND_URL + '/api';
 
 // Game Card
-const GameCard = ({ icon: Icon, name, description, reward, color, onClick, disabled }) => (
-  <button
-    onClick={onClick}
-    disabled={disabled}
-    className="w-full bg-[#1c213f] rounded-xl p-4 text-left hover:bg-[#252b4d] transition-colors disabled:opacity-50"
+const GameCard = ({ icon: Icon, name, description, reward, color, to }) => (
+  <Link
+    to={to}
+    className="w-full bg-[#1c213f] rounded-xl p-4 text-left hover:bg-[#252b4d] transition-colors block"
   >
     <div className="flex items-center gap-4">
       <div 
@@ -37,7 +36,7 @@ const GameCard = ({ icon: Icon, name, description, reward, color, onClick, disab
         <p className="text-xs text-slate-500">Coins</p>
       </div>
     </div>
-  </button>
+  </Link>
 );
 
 // Daily Reward Day
