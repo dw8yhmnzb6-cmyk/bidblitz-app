@@ -1,20 +1,25 @@
 /**
- * BidBlitz Games Hub - Minimalistic Dark Theme
- * Play games and earn coins
+ * BidBlitz Games Hub - With Real Backend Connection
+ * Play games and earn coins with Daily Rewards
  */
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import axios from 'axios';
 import {
   Gamepad2, Dices, RotateCcw, Gift, Coins, Trophy,
-  Sparkles, Target, Puzzle, Crown, ChevronRight
+  Sparkles, Target, Puzzle, Crown, ChevronRight,
+  Calendar, Check, Lock, Star
 } from 'lucide-react';
 import BottomNav from '../components/BottomNav';
 
+const API = process.env.REACT_APP_BACKEND_URL + '/api';
+
 // Game Card
-const GameCard = ({ icon: Icon, name, description, reward, color, onClick }) => (
+const GameCard = ({ icon: Icon, name, description, reward, color, onClick, disabled }) => (
   <button
     onClick={onClick}
-    className="w-full bg-[#1c213f] rounded-xl p-4 text-left hover:bg-[#252b4d] transition-colors"
+    disabled={disabled}
+    className="w-full bg-[#1c213f] rounded-xl p-4 text-left hover:bg-[#252b4d] transition-colors disabled:opacity-50"
   >
     <div className="flex items-center gap-4">
       <div 
@@ -35,19 +40,102 @@ const GameCard = ({ icon: Icon, name, description, reward, color, onClick }) => 
   </button>
 );
 
+// Daily Reward Day
+const DayReward = ({ day, coins, bonus, isCurrent, isClaimed, canClaim }) => (
+  <div className={`flex flex-col items-center p-2 rounded-xl ${
+    isClaimed ? 'bg-green-500/20' : 
+    isCurrent ? 'bg-[#6c63ff]/30 ring-2 ring-[#6c63ff]' : 
+    'bg-[#0c0f22]'
+  }`}>
+    <span className="text-xs text-slate-400 mb-1">Tag {day}</span>
+    {isClaimed ? (
+      <Check className="w-5 h-5 text-green-400" />
+    ) : isCurrent && canClaim ? (
+      <Gift className="w-5 h-5 text-amber-400 animate-bounce" />
+    ) : (
+      <Lock className="w-5 h-5 text-slate-600" />
+    )}
+    <span className={`text-sm font-bold mt-1 ${isClaimed ? 'text-green-400' : 'text-white'}`}>
+      {coins}
+    </span>
+    {bonus && <Star className="w-3 h-3 text-amber-400 mt-0.5" />}
+  </div>
+);
+
 export default function GamesHub() {
   const [reward, setReward] = useState(null);
   const [playing, setPlaying] = useState(false);
+  const [balance, setBalance] = useState(0);
+  const [dailyStatus, setDailyStatus] = useState(null);
+  const [claiming, setClaiming] = useState(false);
+  const [message, setMessage] = useState('');
   
-  const playQuickGame = () => {
+  useEffect(() => {
+    fetchData();
+  }, []);
+  
+  const fetchData = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      
+      const [walletRes, dailyRes] = await Promise.all([
+        axios.get(`${API}/app/wallet/balance`, { headers }),
+        axios.get(`${API}/app/daily-reward/status`, { headers })
+      ]);
+      
+      setBalance(walletRes.data.coins || 0);
+      setDailyStatus(dailyRes.data);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    }
+  };
+  
+  const playQuickGame = async () => {
     setPlaying(true);
     setReward(null);
+    setMessage('');
     
-    setTimeout(() => {
-      const won = Math.floor(Math.random() * 50) + 10;
-      setReward(won);
+    try {
+      const token = localStorage.getItem('token');
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      
+      // Simulate game animation
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      const res = await axios.post(`${API}/app/games/play`, 
+        { game_type: 'quick_play' },
+        { headers }
+      );
+      
+      setReward(res.data.reward);
+      setBalance(res.data.new_balance);
+      setMessage(res.data.message);
+    } catch (error) {
+      setMessage(error.response?.data?.detail || 'Fehler beim Spielen');
+    } finally {
       setPlaying(false);
-    }, 1500);
+    }
+  };
+  
+  const claimDailyReward = async () => {
+    setClaiming(true);
+    setMessage('');
+    
+    try {
+      const token = localStorage.getItem('token');
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      
+      const res = await axios.post(`${API}/app/daily-reward/claim`, {}, { headers });
+      
+      setBalance(res.data.new_balance);
+      setMessage(res.data.message);
+      fetchData(); // Refresh daily status
+    } catch (error) {
+      setMessage(error.response?.data?.detail || 'Fehler beim Abholen');
+    } finally {
+      setClaiming(false);
+    }
   };
   
   const games = [
@@ -59,10 +147,16 @@ export default function GamesHub() {
   
   return (
     <div className="min-h-screen bg-[#0c0f22] text-white pb-24">
-      {/* Header */}
-      <div className="p-5 pt-6">
-        <h1 className="text-2xl font-bold mb-1">Games</h1>
-        <p className="text-slate-400 text-sm">Spiele und verdiene Coins</p>
+      {/* Header with Balance */}
+      <div className="p-5 pt-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold mb-1">Games</h1>
+          <p className="text-slate-400 text-sm">Spiele und verdiene Coins</p>
+        </div>
+        <div className="bg-[#1c213f] px-4 py-2 rounded-xl flex items-center gap-2">
+          <Coins className="w-5 h-5 text-amber-400" />
+          <span className="font-bold">{balance.toLocaleString()}</span>
+        </div>
       </div>
       
       {/* Quick Play Card */}
@@ -95,28 +189,78 @@ export default function GamesHub() {
           </button>
           
           {reward !== null && (
-            <div className="mt-4 p-3 bg-white/10 rounded-xl text-center">
+            <div className="mt-4 p-3 bg-white/10 rounded-xl text-center animate-bounce">
               <Gift className="w-6 h-6 mx-auto mb-1 text-amber-300" />
-              <p className="font-bold text-lg">Du hast {reward} Coins gewonnen!</p>
+              <p className="font-bold text-lg">+{reward} Coins!</p>
             </div>
           )}
         </div>
       </div>
       
+      {/* Message */}
+      {message && (
+        <div className="mx-5 mb-4 p-3 rounded-xl bg-[#1c213f] text-center text-sm">
+          {message}
+        </div>
+      )}
+      
       {/* Daily Rewards */}
       <div className="px-5 mb-6">
-        <div className="bg-[#1c213f] rounded-xl p-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-amber-500/20 rounded-lg">
-              <Gift className="w-5 h-5 text-amber-400" />
-            </div>
-            <div>
-              <p className="font-semibold">Tägliche Belohnung</p>
-              <p className="text-xs text-slate-400">Hole dir deine Coins</p>
-            </div>
+        <div className="bg-[#1c213f] rounded-xl p-4">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-amber-400" />
+              Tägliche Belohnung
+            </h3>
+            {dailyStatus && (
+              <span className="text-xs text-slate-400">
+                Streak: {dailyStatus.streak} Tage
+              </span>
+            )}
           </div>
-          <button className="px-4 py-2 bg-amber-500 text-black rounded-lg font-semibold text-sm">
-            Abholen
+          
+          {/* 7-Day Rewards Grid */}
+          {dailyStatus && (
+            <div className="grid grid-cols-7 gap-2 mb-4">
+              {dailyStatus.rewards.map((r, idx) => (
+                <DayReward 
+                  key={idx}
+                  day={r.day}
+                  coins={r.coins}
+                  bonus={r.bonus}
+                  isCurrent={idx === (dailyStatus.streak % 7)}
+                  isClaimed={idx < (dailyStatus.streak % 7) || !dailyStatus.can_claim && idx === (dailyStatus.streak % 7)}
+                  canClaim={dailyStatus.can_claim && idx === (dailyStatus.streak % 7)}
+                />
+              ))}
+            </div>
+          )}
+          
+          <button
+            onClick={claimDailyReward}
+            disabled={claiming || !dailyStatus?.can_claim}
+            className={`w-full py-3 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-all ${
+              dailyStatus?.can_claim
+                ? 'bg-amber-500 text-black hover:bg-amber-400'
+                : 'bg-slate-700/50 text-slate-500 cursor-not-allowed'
+            }`}
+          >
+            {claiming ? (
+              <>
+                <RotateCcw className="w-4 h-4 animate-spin" />
+                Abholen...
+              </>
+            ) : dailyStatus?.can_claim ? (
+              <>
+                <Gift className="w-4 h-4" />
+                Abholen (+{dailyStatus?.next_reward?.coins} Coins)
+              </>
+            ) : (
+              <>
+                <Check className="w-4 h-4" />
+                Bereits abgeholt
+              </>
+            )}
           </button>
         </div>
       </div>
@@ -130,7 +274,7 @@ export default function GamesHub() {
         
         <div className="space-y-3">
           {games.map((game, idx) => (
-            <GameCard key={idx} {...game} onClick={() => {}} />
+            <GameCard key={idx} {...game} onClick={playQuickGame} />
           ))}
         </div>
       </div>
