@@ -1,6 +1,6 @@
 /**
  * BidBlitz Game Center
- * 2x2 Grid with Lucky Wheel, Slot Machine, Reaction Game, Daily Bonus
+ * 10 Games in 2-column Grid
  */
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
@@ -11,14 +11,8 @@ const API = process.env.REACT_APP_BACKEND_URL + '/api';
 
 export default function GamesHub() {
   const [coins, setCoins] = useState(500);
-  const [wheelResult, setWheelResult] = useState('');
-  const [slotResult, setSlotResult] = useState('');
-  const [reactionResult, setReactionResult] = useState('');
-  const [dailyResult, setDailyResult] = useState('');
-  const [spinning, setSpinning] = useState(false);
-  const [playing, setPlaying] = useState(false);
-  const [reacting, setReacting] = useState(false);
-  const [claiming, setClaiming] = useState(false);
+  const [result, setResult] = useState('');
+  const [loading, setLoading] = useState('');
   
   useEffect(() => {
     fetchCoins();
@@ -35,7 +29,15 @@ export default function GamesHub() {
     }
   };
   
-  const saveGameResult = async (gameType, reward) => {
+  const playGame = async (gameType, calculateWin) => {
+    setLoading(gameType);
+    setResult('');
+    
+    // Short delay for animation feel
+    await new Promise(r => setTimeout(r, 500));
+    
+    const win = calculateWin();
+    
     try {
       const token = localStorage.getItem('token');
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
@@ -43,160 +45,83 @@ export default function GamesHub() {
         { game_type: gameType },
         { headers }
       );
-      return res.data.new_balance;
+      setCoins(res.data.new_balance || coins + Math.max(0, win));
     } catch (error) {
-      return coins + reward;
+      setCoins(prev => Math.max(0, prev + win));
     }
+    
+    setResult(win >= 0 ? `+${win}` : `${win}`);
+    setLoading('');
   };
   
-  const wheel = async () => {
-    setSpinning(true);
-    setWheelResult('');
-    
-    // Simulate spin animation
-    await new Promise(r => setTimeout(r, 1500));
-    
-    const win = Math.floor(Math.random() * 100);
-    const newBalance = await saveGameResult('lucky_wheel', win);
-    
-    setWheelResult(`You won ${win} coins`);
-    setCoins(newBalance);
-    setSpinning(false);
-  };
+  // Game functions
+  const wheel = () => playGame('lucky_wheel', () => Math.floor(Math.random() * 100));
+  const slot = () => playGame('slot_machine', () => Math.floor(Math.random() * 200) - 50);
+  const reaction = () => playGame('reaction', () => Math.floor(Math.random() * 20));
+  const daily = () => playGame('daily_bonus', () => 50);
+  const dice = () => playGame('dice', () => Math.floor(Math.random() * 60));
+  const flip = () => playGame('coin_flip', () => Math.random() > 0.5 ? 30 : -10);
+  const bomb = () => playGame('bomb_game', () => Math.random() > 0.7 ? 100 : -50);
+  const jackpot = () => playGame('jackpot', () => Math.floor(Math.random() * 500));
+  const puzzle = () => playGame('puzzle', () => 20);
+  const boost = () => playGame('boost_game', () => Math.floor(Math.random() * 150));
   
-  const slot = async () => {
-    setPlaying(true);
-    setSlotResult('');
-    
-    // Simulate slot animation
-    await new Promise(r => setTimeout(r, 1000));
-    
-    const win = Math.floor(Math.random() * 200) - 50;
-    const newBalance = await saveGameResult('slot_machine', Math.max(0, win));
-    
-    setSlotResult(`Result ${win > 0 ? '+' : ''}${win} coins`);
-    setCoins(newBalance);
-    setPlaying(false);
-  };
-  
-  const reaction = async () => {
-    setReacting(true);
-    setReactionResult('');
-    
-    // Quick reaction game
-    await new Promise(r => setTimeout(r, 300));
-    
-    const win = Math.floor(Math.random() * 20);
-    const newBalance = await saveGameResult('reaction_game', win);
-    
-    setReactionResult(`+ ${win} coins`);
-    setCoins(newBalance);
-    setReacting(false);
-  };
-  
-  const daily = async () => {
-    setClaiming(true);
-    setDailyResult('');
-    
-    try {
-      const token = localStorage.getItem('token');
-      const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      const res = await axios.post(`${API}/app/daily-reward/claim`, {}, { headers });
-      
-      setDailyResult(`Daily reward ${res.data.coins}`);
-      setCoins(res.data.new_balance);
-    } catch (error) {
-      setDailyResult(error.response?.data?.detail || 'Already claimed today');
-    } finally {
-      setClaiming(false);
-    }
-  };
+  const games = [
+    { id: 'lucky_wheel', emoji: '🎡', name: 'Lucky Wheel', action: wheel, btn: 'Play' },
+    { id: 'slot_machine', emoji: '🎰', name: 'Slot Machine', action: slot, btn: 'Play' },
+    { id: 'reaction', emoji: '⚡', name: 'Reaction', action: reaction, btn: 'Play' },
+    { id: 'daily_bonus', emoji: '🎁', name: 'Daily Bonus', action: daily, btn: 'Claim' },
+    { id: 'dice', emoji: '🎲', name: 'Dice', action: dice, btn: 'Roll' },
+    { id: 'coin_flip', emoji: '🪙', name: 'Coin Flip', action: flip, btn: 'Flip' },
+    { id: 'bomb_game', emoji: '💣', name: 'Bomb Game', action: bomb, btn: 'Try' },
+    { id: 'jackpot', emoji: '🏆', name: 'Jackpot', action: jackpot, btn: 'Play' },
+    { id: 'puzzle', emoji: '🧠', name: 'Puzzle', action: puzzle, btn: 'Solve' },
+    { id: 'boost_game', emoji: '🚀', name: 'Boost Game', action: boost, btn: 'Boost' },
+  ];
   
   return (
     <div className="min-h-screen bg-[#0b0e24] text-white pb-20">
       <div className="p-5">
         <h2 className="text-2xl font-bold mb-2">BidBlitz Game Center</h2>
-        <h3 className="text-lg mb-6">
+        <h3 className="text-lg mb-4">
           Coins: <span className="font-bold text-amber-400" data-testid="coins-display">{coins.toLocaleString()}</span>
         </h3>
         
-        {/* 2x2 Games Grid */}
-        <div className="grid grid-cols-2 gap-5 mb-6" data-testid="games-grid">
-          
-          {/* Lucky Wheel */}
-          <div className="bg-[#171a3a] p-5 rounded-2xl text-center" data-testid="game-wheel">
-            <h3 className="font-semibold mb-4">🎡 Lucky Wheel</h3>
-            <button
-              onClick={wheel}
-              disabled={spinning}
-              className="px-5 py-2.5 bg-[#6c63ff] hover:bg-[#8b6dff] rounded-xl font-medium 
-                         disabled:opacity-50 transition-colors"
-              data-testid="wheel-btn"
+        {/* 10 Games Grid (2 columns) */}
+        <div className="grid grid-cols-2 gap-5 mb-4" data-testid="games-grid">
+          {games.map((game) => (
+            <div 
+              key={game.id}
+              className="bg-[#171a3a] p-5 rounded-2xl text-center"
+              data-testid={`game-${game.id}`}
             >
-              {spinning ? '...' : 'Spin'}
-            </button>
-            {wheelResult && (
-              <p className="mt-3 text-sm text-green-400" data-testid="wheel-result">{wheelResult}</p>
-            )}
-          </div>
-          
-          {/* Slot Machine */}
-          <div className="bg-[#171a3a] p-5 rounded-2xl text-center" data-testid="game-slot">
-            <h3 className="font-semibold mb-4">🎰 Slot Machine</h3>
-            <button
-              onClick={slot}
-              disabled={playing}
-              className="px-5 py-2.5 bg-[#6c63ff] hover:bg-[#8b6dff] rounded-xl font-medium 
-                         disabled:opacity-50 transition-colors"
-              data-testid="slot-btn"
-            >
-              {playing ? '...' : 'Play'}
-            </button>
-            {slotResult && (
-              <p className={`mt-3 text-sm ${slotResult.includes('-') ? 'text-red-400' : 'text-green-400'}`} 
-                 data-testid="slot-result">
-                {slotResult}
-              </p>
-            )}
-          </div>
-          
-          {/* Reaction Game */}
-          <div className="bg-[#171a3a] p-5 rounded-2xl text-center" data-testid="game-reaction">
-            <h3 className="font-semibold mb-4">⚡ Reaction Game</h3>
-            <button
-              onClick={reaction}
-              disabled={reacting}
-              className="px-5 py-2.5 bg-[#6c63ff] hover:bg-[#8b6dff] rounded-xl font-medium 
-                         disabled:opacity-50 transition-colors"
-              data-testid="reaction-btn"
-            >
-              {reacting ? '...' : 'Tap'}
-            </button>
-            {reactionResult && (
-              <p className="mt-3 text-sm text-green-400" data-testid="reaction-result">{reactionResult}</p>
-            )}
-          </div>
-          
-          {/* Daily Bonus */}
-          <div className="bg-[#171a3a] p-5 rounded-2xl text-center" data-testid="game-daily">
-            <h3 className="font-semibold mb-4">🎁 Daily Bonus</h3>
-            <button
-              onClick={daily}
-              disabled={claiming}
-              className="px-5 py-2.5 bg-[#6c63ff] hover:bg-[#8b6dff] rounded-xl font-medium 
-                         disabled:opacity-50 transition-colors"
-              data-testid="daily-btn"
-            >
-              {claiming ? '...' : 'Claim'}
-            </button>
-            {dailyResult && (
-              <p className={`mt-3 text-sm ${dailyResult.includes('reward') ? 'text-green-400' : 'text-amber-400'}`}
-                 data-testid="daily-result">
-                {dailyResult}
-              </p>
-            )}
-          </div>
+              <h4 className="font-semibold mb-3">
+                {game.emoji} {game.name}
+              </h4>
+              <button
+                onClick={game.action}
+                disabled={loading === game.id}
+                className="px-5 py-2.5 bg-[#6c63ff] hover:bg-[#8b6dff] rounded-xl font-medium 
+                           disabled:opacity-50 transition-colors min-w-[80px]"
+                data-testid={`btn-${game.id}`}
+              >
+                {loading === game.id ? '...' : game.btn}
+              </button>
+            </div>
+          ))}
         </div>
+        
+        {/* Result Display */}
+        {result && (
+          <p 
+            className={`text-center text-lg font-bold mb-4 p-3 rounded-xl ${
+              result.startsWith('+') ? 'text-green-400 bg-green-500/10' : 'text-red-400 bg-red-500/10'
+            }`}
+            data-testid="game-result"
+          >
+            {result} Coins
+          </p>
+        )}
         
         {/* More Games Links */}
         <div className="bg-[#171a3a] p-5 rounded-2xl">
@@ -205,35 +130,23 @@ export default function GamesHub() {
             <Link 
               to="/match3" 
               className="block py-3 px-4 bg-[#0b0e24] rounded-xl hover:bg-[#6c63ff]/20 transition-colors"
-              data-testid="link-match3"
             >
               🧩 Match Game
             </Link>
             <Link 
-              to="/spin-wheel" 
-              className="block py-3 px-4 bg-[#0b0e24] rounded-xl hover:bg-[#6c63ff]/20 transition-colors"
-              data-testid="link-spinwheel"
-            >
-              🎡 Spin Wheel
-            </Link>
-            <Link 
               to="/treasure-hunt" 
               className="block py-3 px-4 bg-[#0b0e24] rounded-xl hover:bg-[#6c63ff]/20 transition-colors"
-              data-testid="link-treasure"
             >
               🗺️ Schatzsuche
             </Link>
+            <Link 
+              to="/app-leaderboard"
+              className="block py-3 px-4 bg-[#0b0e24] rounded-xl hover:bg-[#6c63ff]/20 transition-colors"
+            >
+              🏆 Rangliste
+            </Link>
           </div>
         </div>
-        
-        {/* Leaderboard Link */}
-        <Link 
-          to="/app-leaderboard"
-          className="block mt-4 py-3 px-4 bg-[#171a3a] rounded-xl hover:bg-[#252b4d] transition-colors text-center"
-          data-testid="link-leaderboard"
-        >
-          🏆 Rangliste anzeigen
-        </Link>
       </div>
       
       <BottomNav />
