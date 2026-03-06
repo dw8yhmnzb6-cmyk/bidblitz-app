@@ -1,5 +1,5 @@
 /**
- * BidBlitz Mining Farm - With Pool Stats
+ * BidBlitz Mining Farm - With Pool Stats & VIP Bonus
  */
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
@@ -35,6 +35,8 @@ export default function MinerDashboard() {
   const [poolStats, setPoolStats] = useState(null);
   const [liveBtc, setLiveBtc] = useState(0.00000001);
   const [message, setMessage] = useState('');
+  const [vipLevel, setVipLevel] = useState(1);
+  const [vipBonus, setVipBonus] = useState(0);
   
   useEffect(() => {
     fetchData();
@@ -51,16 +53,27 @@ export default function MinerDashboard() {
       const token = localStorage.getItem('token');
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
       
-      const [statsRes, minersRes, poolRes] = await Promise.all([
+      const [statsRes, minersRes, poolRes, walletRes] = await Promise.all([
         axios.get(`${API}/app/mining/stats`, { headers }),
         axios.get(`${API}/app/miners/my`, { headers }),
-        axios.get(`${API}/app/pool/stats`)
+        axios.get(`${API}/app/pool/stats`),
+        axios.get(`${API}/app/wallet/balance`, { headers })
       ]);
+      
+      // Calculate VIP level and bonus
+      const totalEarned = walletRes.data.total_earned || 0;
+      let level = 1, bonus = 0;
+      if (totalEarned > 20000) { level = 5; bonus = 20; }
+      else if (totalEarned > 10000) { level = 4; bonus = 20; }
+      else if (totalEarned > 5000) { level = 3; bonus = 20; }
+      else if (totalEarned > 2000) { level = 2; bonus = 10; }
+      setVipLevel(level);
+      setVipBonus(bonus);
       
       setStats({
         hashrate: statsRes.data.total_hashrate || 0,
         daily: statsRes.data.daily_reward || 0,
-        coins: statsRes.data.coins || 0
+        coins: walletRes.data.coins || 0
       });
       setMiners(minersRes.data.miners || []);
       setPoolStats(poolRes.data);
