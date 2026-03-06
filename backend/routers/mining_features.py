@@ -1246,3 +1246,120 @@ async def get_top_referrals(limit: int = 10):
     leaderboard.sort(key=lambda x: x["friends"], reverse=True)
     
     return {"leaderboard": leaderboard[:limit]}
+
+
+
+# ======================== ADMIN ENDPOINTS ========================
+
+class AdminCoinsRequest(BaseModel):
+    user_id: str
+    amount: int
+    action: str = "add"  # add or remove
+
+@router.get("/admin/stats")
+async def get_admin_stats(authorization: str = Header(None)):
+    """Get admin statistics"""
+    # In production, verify admin role
+    
+    # Total users (unique wallets)
+    total_users = wallets_col.count_documents({})
+    
+    # Total miners
+    miners_data = list(miners_col.find({}, {"miners": 1}))
+    total_miners = sum(len(m.get("miners", [])) for m in miners_data)
+    
+    # Total coins in circulation
+    total_coins_data = wallets_col.aggregate([
+        {"$group": {"_id": None, "total": {"$sum": "$coins"}}}
+    ])
+    total_coins = 0
+    for c in total_coins_data:
+        total_coins = c.get("total", 0)
+    
+    # Games played today
+    from datetime import timedelta
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    games_today = games_history_col.count_documents({
+        "played_at": {"$regex": f"^{today}"}
+    })
+    
+    return {
+        "total_users": total_users,
+        "total_miners": total_miners,
+        "total_coins": total_coins,
+        "games_today": games_today
+    }
+
+@router.post("/admin/coins")
+async def admin_modify_coins(request: AdminCoinsRequest, authorization: str = Header(None)):
+    """Admin endpoint to add or remove coins from a user"""
+    # In production, verify admin role from token
+    
+    user_id = request.user_id
+    amount = request.amount
+    now = datetime.now(timezone.utc)
+    
+    # Check if user exists
+    wallet = wallets_col.find_one({"user_id": user_id})
+    
+    if not wallet and amount < 0:
+        raise HTTPException(status_code=404, detail="User nicht gefunden")
+    
+    # Update or create wallet
+    if amount > 0:
+        wallets_col.update_one(
+            {"user_id": user_id},
+            {
+                "$inc": {"coins": amount, "total_earned": amount},
+                "$setOnInsert": {"created_at": now.isoformat()}
+            },
+            upsert=True
+        )
+    else:
+        # For negative amounts, ensure balance doesn't go below 0
+        current_coins = wallet.get("coins", 0) if wallet else 0
+        new_balance = max(0, current_coins + amount)
+        actual_deduction = current_coins - new_balance
+        
+        wallets_col.update_one(
+            {"user_id": user_id},
+            {
+                "$set": {"coins": new_balance},
+                "$inc": {"total_spent": actual_deduction}
+            }
+        )
+    
+    # Get updated balance
+    updated_wallet = wallets_col.find_one({"user_id": user_id}, {"_id": 0})
+    new_balance = updated_wallet.get("coins", 0) if updated_wallet else 0
+    
+    action_text = "hinzugefügt" if amount > 0 else "abgezogen"
+    
+    return {
+        "success": True,
+        "message": f"{abs(amount)} Coins {action_text}. Neues Guthaben: {new_balance}",
+        "new_balance": new_balance,
+        "user_id": user_id
+    }
+
+@router.get("/admin/user/{user_id}")
+async def get_user_details(user_id: str, authorization: str = Header(None)):
+    """Get detailed information about a specific user"""
+    
+    wallet = wallets_col.find_one({"user_id": user_id}, {"_id": 0})
+    miners_data = miners_col.find_one({"user_id": user_id}, {"_id": 0})
+    referral_data = referral_col.find_one({"user_id": user_id}, {"_id": 0})
+    vip_data = vip_col.find_one({"user_id": user_id}, {"_id": 0})
+    
+    if not wallet and not miners_data:
+        raise HTTPException(status_code=404, detail="User nicht gefunden")
+    
+    return {
+        "user_id": user_id,
+        "wallet": wallet or {"coins": 0, "total_earned": 0, "total_spent": 0},
+        "miners": miners_data.get("miners", []) if miners_data else [],
+        "miner_count": len(miners_data.get("miners", [])) if miners_data else 0,
+        "referral_code": referral_data.get("code") if referral_data else None,
+        "referral_count": len(referral_data.get("referrals", [])) if referral_data else 0,
+        "vip_points": vip_data.get("points", 0) if vip_data else 0
+    }
