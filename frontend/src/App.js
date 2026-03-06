@@ -162,6 +162,9 @@ import AppWallet from "./pages/AppWallet";
 import Match3Game from "./pages/Match3Game";
 import SpinWheel from "./pages/SpinWheel";
 import Referral from "./pages/Referral";
+import TreasureHunt from "./pages/TreasureHunt";
+import AppAdminPanel from "./pages/AppAdminPanel";
+import AppLeaderboard from "./pages/AppLeaderboard";
 
 // New Feature Components
 import Watchlist from "./components/Watchlist";
