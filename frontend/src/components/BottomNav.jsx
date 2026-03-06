@@ -10,7 +10,7 @@ const tabs = [
   { id: 'wallet', emoji: '💰', label: 'Wallet', path: '/app-wallet' },
   { id: 'games', emoji: '🎮', label: 'Games', path: '/games' },
   { id: 'mining', emoji: '⛏️', label: 'Mining', path: '/miner' },
-  { id: 'market', emoji: '🛒', label: 'Market', path: '/miner-market' },
+  { id: 'referral', emoji: '👥', label: 'Friends', path: '/app-referral' },
 ];
 
 export default function BottomNav() {
