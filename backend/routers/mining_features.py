@@ -1363,3 +1363,135 @@ async def get_user_details(user_id: str, authorization: str = Header(None)):
         "referral_count": len(referral_data.get("referrals", [])) if referral_data else 0,
         "vip_points": vip_data.get("points", 0) if vip_data else 0
     }
+
+
+
+# ======================== PLATFORM STATS ========================
+
+@router.get("/platform/stats")
+async def get_platform_stats():
+    """Get platform-wide statistics"""
+    
+    # Count users
+    total_users = wallets_col.count_documents({})
+    
+    # Simulate online users (10-30% of total)
+    online_users = max(1, int(total_users * (0.1 + random.random() * 0.2)))
+    
+    # Total coins in circulation
+    total_coins_data = wallets_col.aggregate([
+        {"$group": {"_id": None, "total": {"$sum": "$coins"}}}
+    ])
+    total_coins = 0
+    for c in total_coins_data:
+        total_coins = c.get("total", 0)
+    
+    # Total mining power
+    miners_data = list(miners_col.find({}, {"miners": 1}))
+    total_power = sum(
+        sum(m.get("hashrate", 0) for m in doc.get("miners", []))
+        for doc in miners_data
+    )
+    
+    # Games played
+    games_played = games_history_col.count_documents({})
+    
+    # Market volume (simulate)
+    market_volume = total_coins * 0.2  # 20% of total coins traded
+    
+    return {
+        "total_users": total_users + 1500,  # Base users
+        "online_users": online_users + 200,
+        "total_coins": total_coins + 450000,
+        "mining_power": total_power + 1800,
+        "games_played": games_played + 24000,
+        "market_volume": int(market_volume + 90000)
+    }
+
+# ======================== TAXI BOOKING ========================
+
+class TaxiBookingRequest(BaseModel):
+    pickup: str
+    destination: str
+    cost: int
+
+@router.post("/taxi/book")
+async def book_taxi(request: TaxiBookingRequest, authorization: str = Header(None)):
+    """Book a taxi ride"""
+    user_id = get_user_id_from_token(authorization)
+    
+    # Check balance
+    wallet = wallets_col.find_one({"user_id": user_id})
+    current_coins = wallet.get("coins", 0) if wallet else 0
+    
+    if current_coins < request.cost:
+        raise HTTPException(status_code=400, detail="Nicht genug Coins")
+    
+    # Deduct coins
+    wallets_col.update_one(
+        {"user_id": user_id},
+        {"$inc": {"coins": -request.cost, "total_spent": request.cost}}
+    )
+    
+    # Generate booking
+    booking_id = f"TX{random.randint(10000, 99999)}"
+    drivers = ["Max M.", "Anna K.", "Tom B.", "Lisa S."]
+    cars = ["BMW 3er", "Mercedes C", "VW Passat", "Audi A4"]
+    
+    return {
+        "booking_id": booking_id,
+        "driver": random.choice(drivers),
+        "car": random.choice(cars),
+        "plate": f"B-TX {random.randint(100, 999)}",
+        "eta": f"{random.randint(2, 8)} Min",
+        "new_balance": current_coins - request.cost
+    }
+
+# ======================== SCOOTER RENTAL ========================
+
+class ScooterRentRequest(BaseModel):
+    scooter_id: str
+    price: int
+
+@router.post("/scooter/rent")
+async def rent_scooter(request: ScooterRentRequest, authorization: str = Header(None)):
+    """Rent an e-scooter"""
+    user_id = get_user_id_from_token(authorization)
+    
+    # Check balance
+    wallet = wallets_col.find_one({"user_id": user_id})
+    current_coins = wallet.get("coins", 0) if wallet else 0
+    
+    if current_coins < request.price:
+        raise HTTPException(status_code=400, detail="Nicht genug Coins")
+    
+    # Deduct unlock fee
+    wallets_col.update_one(
+        {"user_id": user_id},
+        {"$inc": {"coins": -request.price, "total_spent": request.price}}
+    )
+    
+    return {
+        "success": True,
+        "scooter_id": request.scooter_id,
+        "new_balance": current_coins - request.price
+    }
+
+@router.post("/scooter/end")
+async def end_scooter_ride(cost: int = 0, authorization: str = Header(None)):
+    """End a scooter ride"""
+    user_id = get_user_id_from_token(authorization)
+    
+    if cost > 0:
+        wallets_col.update_one(
+            {"user_id": user_id},
+            {"$inc": {"coins": -cost, "total_spent": cost}}
+        )
+    
+    wallet = wallets_col.find_one({"user_id": user_id}, {"_id": 0, "coins": 1})
+    
+    return {
+        "success": True,
+        "cost": cost,
+        "new_balance": wallet.get("coins", 0) if wallet else 0
+    }
