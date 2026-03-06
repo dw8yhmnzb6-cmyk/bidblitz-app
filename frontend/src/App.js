@@ -1058,6 +1058,14 @@ function AppContent() {
           <Route path="/miner-market" element={<MinerMarket />} />
           <Route path="/miner-markt" element={<MinerMarket />} />
           
+          {/* Super App Minimal & New Pages */}
+          <Route path="/super-app" element={<SuperAppMinimal />} />
+          <Route path="/app-home" element={<SuperAppMinimal />} />
+          <Route path="/games" element={<GamesHub />} />
+          <Route path="/spiele" element={<GamesHub />} />
+          <Route path="/app-wallet" element={<AppWallet />} />
+          <Route path="/coins" element={<AppWallet />} />
+          
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
