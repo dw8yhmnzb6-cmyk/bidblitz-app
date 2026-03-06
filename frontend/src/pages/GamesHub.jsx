@@ -139,10 +139,10 @@ export default function GamesHub() {
   };
   
   const games = [
-    { icon: Dices, name: 'Glücksrad', description: 'Drehe und gewinne', reward: '10-100', color: '#f59e0b' },
-    { icon: Puzzle, name: 'Match-3', description: 'Puzzle-Spiel', reward: '5-50', color: '#8b5cf6' },
-    { icon: Target, name: 'Schatzsuche', description: 'Finde den Schatz', reward: '20-200', color: '#10b981' },
-    { icon: Crown, name: 'Slot Machine', description: 'Jackpot gewinnen', reward: '0-500', color: '#ec4899' },
+    { icon: Dices, name: 'Glücksrad', description: 'Drehe und gewinne', reward: '10-200', color: '#f59e0b', to: '/spin-wheel' },
+    { icon: Puzzle, name: 'Match-3', description: 'Puzzle-Spiel', reward: '5-500', color: '#8b5cf6', to: '/match3' },
+    { icon: Target, name: 'Schatzsuche', description: 'Finde den Schatz', reward: '20-200', color: '#10b981', to: '/games' },
+    { icon: Crown, name: 'Slot Machine', description: 'Jackpot gewinnen', reward: '0-500', color: '#ec4899', to: '/games' },
   ];
   
   return (
