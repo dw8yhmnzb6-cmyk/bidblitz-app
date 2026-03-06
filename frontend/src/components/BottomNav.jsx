@@ -1,17 +1,16 @@
 /**
- * Mobile Bottom Navigation Component
- * Fixed bottom nav with 5 tabs: Home, Mining, Games, Market, Wallet
+ * Mobile Bottom Navigation with Emoji Icons
+ * Simple 5-tab navigation
  */
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Home, Cpu, Gamepad2, Store, Wallet } from 'lucide-react';
 
 const tabs = [
-  { id: 'home', label: 'Home', icon: Home, path: '/super-app' },
-  { id: 'mining', label: 'Mining', icon: Cpu, path: '/miner' },
-  { id: 'games', label: 'Games', icon: Gamepad2, path: '/games' },
-  { id: 'market', label: 'Market', icon: Store, path: '/miner-market' },
-  { id: 'wallet', label: 'Wallet', icon: Wallet, path: '/app-wallet' },
+  { id: 'home', emoji: '🏠', label: 'Home', path: '/super-app' },
+  { id: 'wallet', emoji: '💰', label: 'Wallet', path: '/app-wallet' },
+  { id: 'games', emoji: '🎮', label: 'Games', path: '/games' },
+  { id: 'mining', emoji: '⛏️', label: 'Mining', path: '/miner' },
+  { id: 'market', emoji: '🛒', label: 'Market', path: '/miner-market' },
 ];
 
 export default function BottomNav() {
@@ -26,24 +25,24 @@ export default function BottomNav() {
   };
   
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-[#11142a] border-t border-slate-700/50 safe-area-bottom">
-      <div className="flex items-center justify-around max-w-lg mx-auto">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-[#11142a]">
+      <div className="flex items-center justify-around">
         {tabs.map((tab) => {
-          const Icon = tab.icon;
           const active = isActive(tab.path);
           
           return (
             <button
               key={tab.id}
               onClick={() => navigate(tab.path)}
-              className={`flex flex-col items-center justify-center py-3 px-4 flex-1 transition-all duration-200 ${
+              className={`flex-1 py-4 text-center text-xl transition-all ${
                 active 
-                  ? 'text-[#6c63ff]' 
-                  : 'text-slate-400 hover:text-slate-200'
+                  ? 'bg-[#1c213f] scale-110' 
+                  : 'hover:bg-[#1c213f]/50'
               }`}
             >
-              <Icon className={`w-5 h-5 mb-1 ${active ? 'scale-110' : ''} transition-transform`} />
-              <span className="text-xs font-medium">{tab.label}</span>
+              <span className={active ? 'filter-none' : 'opacity-60'}>
+                {tab.emoji}
+              </span>
             </button>
           );
         })}
