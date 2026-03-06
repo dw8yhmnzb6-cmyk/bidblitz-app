@@ -1,5 +1,6 @@
 /**
- * BidBlitz Match Game - Simple Colorful Grid
+ * BidBlitz Match Game - With Gravity Drop-Down
+ * Tiles fall down when matched
  */
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
@@ -30,14 +31,18 @@ export default function Match3Game() {
   
   const createBoard = () => {
     const newBoard = [];
-    for (let i = 0; i < GRID_SIZE * GRID_SIZE; i++) {
-      const color = COLORS[Math.floor(Math.random() * COLORS.length)];
-      newBoard.push({
-        id: i,
-        color: color.name,
-        bg: color.bg,
-        visible: true
-      });
+    for (let row = 0; row < GRID_SIZE; row++) {
+      const rowData = [];
+      for (let col = 0; col < GRID_SIZE; col++) {
+        const color = COLORS[Math.floor(Math.random() * COLORS.length)];
+        rowData.push({
+          id: `${row}-${col}`,
+          color: color.name,
+          bg: color.bg,
+          visible: true
+        });
+      }
+      newBoard.push(rowData);
     }
     setBoard(newBoard);
     setScore(0);
@@ -45,55 +50,130 @@ export default function Match3Game() {
     setMessage('');
   };
   
-  const handleTileClick = (index) => {
-    if (!board[index].visible || gameOver) return;
+  const handleTileClick = (row, col) => {
+    if (!board[row][col].visible || gameOver) return;
     
-    const clickedColor = board[index].color;
+    const clickedColor = board[row][col].color;
     
     // Find all connected tiles of same color
-    const toRemove = findConnected(index, clickedColor);
+    const toRemove = findConnected(row, col, clickedColor);
     
     if (toRemove.size >= 3) {
-      // Remove tiles and add score
-      const newBoard = [...board];
-      toRemove.forEach(idx => {
-        newBoard[idx] = { ...newBoard[idx], visible: false };
+      // Remove tiles
+      let newBoard = board.map(r => r.map(t => ({ ...t })));
+      toRemove.forEach(pos => {
+        const [r, c] = pos.split(',').map(Number);
+        newBoard[r][c].visible = false;
       });
       
+      // Calculate score
       const points = toRemove.size * 10;
       setScore(prev => prev + points);
-      setBoard(newBoard);
       
-      // Check if game over (no more moves)
-      const remaining = newBoard.filter(t => t.visible);
-      if (remaining.length < 3) {
-        endGame();
-      }
+      // Apply gravity - tiles fall down
+      setTimeout(() => {
+        newBoard = applyGravity(newBoard);
+        setBoard(newBoard);
+        
+        // Check if game over
+        const hasValidMoves = checkValidMoves(newBoard);
+        if (!hasValidMoves) {
+          endGame();
+        }
+      }, 200);
+      
+      setBoard(newBoard);
     }
   };
   
-  const findConnected = (startIndex, color) => {
+  const findConnected = (startRow, startCol, color) => {
     const connected = new Set();
-    const queue = [startIndex];
+    const queue = [[startRow, startCol]];
     
     while (queue.length > 0) {
-      const idx = queue.shift();
-      if (connected.has(idx)) continue;
-      if (!board[idx].visible || board[idx].color !== color) continue;
+      const [row, col] = queue.shift();
+      const key = `${row},${col}`;
       
-      connected.add(idx);
+      if (connected.has(key)) continue;
+      if (row < 0 || row >= GRID_SIZE || col < 0 || col >= GRID_SIZE) continue;
+      if (!board[row][col].visible || board[row][col].color !== color) continue;
       
-      // Check neighbors (up, down, left, right)
-      const row = Math.floor(idx / GRID_SIZE);
-      const col = idx % GRID_SIZE;
+      connected.add(key);
       
-      if (row > 0) queue.push(idx - GRID_SIZE); // up
-      if (row < GRID_SIZE - 1) queue.push(idx + GRID_SIZE); // down
-      if (col > 0) queue.push(idx - 1); // left
-      if (col < GRID_SIZE - 1) queue.push(idx + 1); // right
+      // Check neighbors
+      queue.push([row - 1, col]); // up
+      queue.push([row + 1, col]); // down
+      queue.push([row, col - 1]); // left
+      queue.push([row, col + 1]); // right
     }
     
     return connected;
+  };
+  
+  const applyGravity = (currentBoard) => {
+    const newBoard = currentBoard.map(r => r.map(t => ({ ...t })));
+    
+    // Process each column
+    for (let col = 0; col < GRID_SIZE; col++) {
+      // Collect visible tiles from bottom to top
+      const visibleTiles = [];
+      for (let row = GRID_SIZE - 1; row >= 0; row--) {
+        if (newBoard[row][col].visible) {
+          visibleTiles.push({ ...newBoard[row][col] });
+        }
+      }
+      
+      // Fill column from bottom with visible tiles, then new tiles
+      for (let row = GRID_SIZE - 1; row >= 0; row--) {
+        const tileIndex = GRID_SIZE - 1 - row;
+        if (tileIndex < visibleTiles.length) {
+          // Use existing tile
+          newBoard[row][col] = {
+            ...visibleTiles[tileIndex],
+            id: `${row}-${col}`
+          };
+        } else {
+          // Create new tile
+          const color = COLORS[Math.floor(Math.random() * COLORS.length)];
+          newBoard[row][col] = {
+            id: `${row}-${col}`,
+            color: color.name,
+            bg: color.bg,
+            visible: true
+          };
+        }
+      }
+    }
+    
+    return newBoard;
+  };
+  
+  const checkValidMoves = (currentBoard) => {
+    // Check if any 3+ connected tiles exist
+    for (let row = 0; row < GRID_SIZE; row++) {
+      for (let col = 0; col < GRID_SIZE; col++) {
+        if (currentBoard[row][col].visible) {
+          const connected = new Set();
+          const queue = [[row, col]];
+          const color = currentBoard[row][col].color;
+          
+          while (queue.length > 0) {
+            const [r, c] = queue.shift();
+            const key = `${r},${c}`;
+            
+            if (connected.has(key)) continue;
+            if (r < 0 || r >= GRID_SIZE || c < 0 || c >= GRID_SIZE) continue;
+            if (!currentBoard[r][c].visible || currentBoard[r][c].color !== color) continue;
+            
+            connected.add(key);
+            queue.push([r - 1, c], [r + 1, c], [r, c - 1], [r, c + 1]);
+          }
+          
+          if (connected.size >= 3) return true;
+        }
+      }
+    }
+    return false;
   };
   
   const endGame = async () => {
@@ -104,7 +184,6 @@ export default function Match3Game() {
         const token = localStorage.getItem('token');
         const headers = token ? { Authorization: `Bearer ${token}` } : {};
         
-        const coins = Math.floor(score / 10);
         const res = await axios.post(`${API}/app/games/play`, 
           { game_type: 'match_game', score },
           { headers }
@@ -124,24 +203,23 @@ export default function Match3Game() {
         
         {/* Game Board */}
         <div 
-          className="mx-auto mb-4"
-          style={{
-            width: `${GRID_SIZE * 55 + (GRID_SIZE - 1) * 5}px`,
-            display: 'grid',
-            gridTemplateColumns: `repeat(${GRID_SIZE}, 50px)`,
-            gap: '5px'
-          }}
+          className="mx-auto mb-4 bg-[#1c213f] p-3 rounded-xl inline-block"
         >
-          {board.map((tile, index) => (
-            <div
-              key={tile.id}
-              onClick={() => handleTileClick(index)}
-              className="w-[50px] h-[50px] rounded-lg cursor-pointer transition-all duration-200 hover:scale-105"
-              style={{
-                backgroundColor: tile.visible ? tile.bg : 'transparent',
-                opacity: tile.visible ? 1 : 0,
-              }}
-            />
+          {board.map((row, rowIndex) => (
+            <div key={rowIndex} className="flex gap-1">
+              {row.map((tile, colIndex) => (
+                <div
+                  key={tile.id}
+                  onClick={() => handleTileClick(rowIndex, colIndex)}
+                  className="w-12 h-12 rounded-lg cursor-pointer transition-all duration-300 hover:scale-105"
+                  style={{
+                    backgroundColor: tile.visible ? tile.bg : '#0c0f22',
+                    opacity: tile.visible ? 1 : 0.3,
+                    transform: tile.visible ? 'translateY(0)' : 'translateY(-10px)',
+                  }}
+                />
+              ))}
+            </div>
           ))}
         </div>
         
@@ -171,7 +249,7 @@ export default function Match3Game() {
         
         {/* Instructions */}
         <div className="mt-6 text-sm text-slate-400">
-          <p>Tap 3+ connected tiles of the same color to score!</p>
+          <p>Tap 3+ connected tiles to match & drop!</p>
         </div>
       </div>
       
