@@ -5,62 +5,59 @@ BidBlitz ist eine Super-App mit über 50 Seiten und 90+ Routern - eine Enterpris
 
 ## Neue Features (März 2026)
 
+### Minimalistisches Dark-Theme Design (NEU!)
+- **Mobile-First UI** mit Bottom Navigation (Home, Mining, Games, Market, Wallet)
+- **Farbschema:**
+  - Hintergrund: `#0c0f22`
+  - Cards: `#1c213f`
+  - Accent: `#6c63ff`
+- **Neue Seiten:**
+  - `/super-app` - Minimalistisches Dashboard
+  - `/games` - Games Hub mit Quick Play
+  - `/app-wallet` - Coin-Wallet mit Transaktionen
+
 ### Mining-System (GoMining-Style)
-- **MinerDashboard** (`/miner`): Professionelles dark-theme Dashboard
-  - Animierte Coin-Counter
-  - Stats-Grid (Coins, Hashrate, Power, Daily Reward)
-  - Mining Farm Übersicht mit Miner-Karten
+- **MinerDashboard** (`/miner`): Clean Card-basiertes Dashboard
+  - Balance und Stats in kompakter Darstellung
+  - Mining Farm mit Miner-Karten
   - VIP-Level System basierend auf Hashrate
-  - Belohnungen sammeln (24h Cooldown)
   
-- **MinerMarket** (`/miner-market`): Shop für Miner
+- **MinerMarket** (`/miner-market`): Miner-Shop
   - 5 Miner-Tiers: Bronze, Silver, Gold, Platinum, Diamond
-  - Spezielle Deals und Bundles
+  - Deals mit Rabatt-Badges
   - ROI-Berechnung
-  - Test-Coins für Entwicklung
 
-- **Backend-Endpoints:**
-  - `GET /api/app/wallet/balance` - Coin-Guthaben
-  - `POST /api/app/wallet/add-coins` - Test-Coins hinzufügen
-  - `GET /api/app/miners/catalog` - Alle verfügbaren Miner
-  - `GET /api/app/miners/my` - Eigene Miner
-  - `POST /api/app/miner/buy` - Miner kaufen
-  - `POST /api/app/miner/upgrade` - Miner upgraden
-  - `GET /api/app/miner/claim` - Belohnungen sammeln
-  - `GET /api/app/mining/stats` - Mining-Statistiken
-  - `GET /api/app/market/miners` - Markt-Miner
-  - `GET /api/app/market/deals` - Aktuelle Deals
+### Backend-Endpoints
+- `GET /api/app/wallet/balance` - Coin-Guthaben
+- `POST /api/app/wallet/add-coins` - Test-Coins hinzufügen
+- `GET /api/app/miners/catalog` - Alle verfügbaren Miner
+- `GET /api/app/miners/my` - Eigene Miner
+- `POST /api/app/miner/buy` - Miner kaufen
+- `POST /api/app/miner/upgrade` - Miner upgraden
+- `GET /api/app/miner/claim` - Belohnungen sammeln
+- `GET /api/app/mining/stats` - Mining-Statistiken
 
-## Bestehende Module
+## Komponenten
 
-### Core Features
-- Hotels (55 Listings, Reviews, Verifizierung, dynamische Preise, Loyalty)
-- Taxi (Rider + Driver App, Nearby Drivers)
-- Marketplace (Produkte, Autos, Immobilien, Services)
-- Games (Match-3 mit Levels + Leaderboard)
+### BottomNav Component
+```jsx
+// /app/frontend/src/components/BottomNav.jsx
+// Fixed bottom navigation with 5 tabs
+// Active tab highlighting with #6c63ff
+```
 
-### Monetarisierung
-- Boosts, Featured Listings, Subscriptions
-- Genius Loyalty (3 Level, Auto Level-up)
-- BidBlitz Plus Abonnement
-
-### Engagement
-- Chat (Guest-Host, Admin Escalation)
-- Push (VAPID, PWA, Service Worker)
-- Daily Rewards, Missions, Weekly Leagues
-- Social Feed + Stories
-- Spin & Win
-
-### Admin & Sicherheit
-- KYC + Risk Control
-- Multi-Tenant SaaS (White-Label)
-- Revenue Engine (Fees, Ledger, Payouts, Invoices)
+### Seiten-Struktur
+- `SuperAppMinimal.jsx` - Home mit Quick Access Grid
+- `MinerDashboard.jsx` - Mining Dashboard
+- `MinerMarket.jsx` - Miner Shop
+- `GamesHub.jsx` - Spiele-Übersicht
+- `AppWallet.jsx` - Coin-Wallet
 
 ## Tech Stack
 - **Frontend:** React, TailwindCSS, Lucide Icons
 - **Backend:** FastAPI, Python
 - **Database:** MongoDB
-- **Hosting:** Emergent Preview / IONOS Production
+- **Design:** Dark theme, mobile-first, card-based UI
 
 ## Datenbank-Schema
 
@@ -69,14 +66,19 @@ BidBlitz ist eine Super-App mit über 50 Seiten und 90+ Routern - eine Enterpris
 - `app_miners`: `{user_id, miners: [{id, type_id, level, is_active, last_claim, total_mined}]}`
 - `mining_history`: `{user_id, amount, miners_claimed, claimed_at}`
 
+## URLs
+- `/super-app` - Home Dashboard
+- `/miner` - Mining Dashboard
+- `/miner-market` - Miner Shop
+- `/games` - Games Hub
+- `/app-wallet` - Wallet
+
 ## Bekannte Probleme
 1. **KRITISCH:** Einige ältere Features nutzen in-memory Dicts statt MongoDB
 2. Veraltete Router-Dateien sollten entfernt werden
-3. Fehlende MongoDB-Indexes für `genius` und `genius_events`
 
 ## Nächste Schritte
-- [ ] Mining-Verlauf Seite implementieren
-- [ ] VIP-Bonusberechnung verfeinern
-- [ ] Match-3 Spiel UI/UX verbessern
-- [ ] White-Label Demo für Multi-Tenant
+- [ ] Quick Play Game-Logik mit Backend verbinden
+- [ ] Tägliche Belohnungen implementieren
+- [ ] Match-3 Spiel fertigstellen
 - [ ] In-Memory Daten auf MongoDB migrieren
