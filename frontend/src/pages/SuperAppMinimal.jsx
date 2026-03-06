@@ -68,7 +68,7 @@ export default function SuperAppMinimal() {
     { emoji: '🛍️', label: 'Marketplace', path: '/miner-market' },
     { emoji: '🎁', label: 'Rewards', path: '/daily' },
     { emoji: '👥', label: 'Referral', path: '/app-referral' },
-    { emoji: '⚙️', label: 'Settings', path: '/profile' },
+    { emoji: '⚙️', label: 'Settings', path: '/app-profile' },
   ];
   
   return (
