@@ -480,3 +480,274 @@ async def get_market_deals():
         }
     ]
     return {"deals": deals}
+
+# ======================== GAMES ENDPOINTS ========================
+
+# Collections for games
+games_history_col = db["games_history"]
+daily_rewards_col = db["daily_rewards"]
+live_feed_col = db["live_feed"]
+
+import random
+
+class PlayGameRequest(BaseModel):
+    game_type: str = "quick_play"
+
+@router.post("/games/play")
+async def play_game(request: PlayGameRequest, authorization: str = Header(None)):
+    """Play a game and win coins"""
+    user_id = get_user_id_from_token(authorization)
+    now = datetime.now(timezone.utc)
+    
+    # Random reward between 10-50 coins
+    reward = random.randint(10, 50)
+    
+    # Add to wallet
+    wallets_col.update_one(
+        {"user_id": user_id},
+        {
+            "$inc": {"coins": reward, "total_earned": reward},
+            "$setOnInsert": {"created_at": now.isoformat()}
+        },
+        upsert=True
+    )
+    
+    # Log game history
+    games_history_col.insert_one({
+        "user_id": user_id,
+        "game_type": request.game_type,
+        "reward": reward,
+        "played_at": now.isoformat()
+    })
+    
+    # Add to live feed
+    live_feed_col.insert_one({
+        "user_id": user_id,
+        "action": f"User won {reward} Coins",
+        "type": "game_win",
+        "timestamp": now.isoformat()
+    })
+    
+    wallet = wallets_col.find_one({"user_id": user_id}, {"_id": 0})
+    
+    return {
+        "success": True,
+        "reward": reward,
+        "message": f"Du hast {reward} Coins gewonnen!",
+        "new_balance": wallet.get("coins", 0) if wallet else reward
+    }
+
+@router.get("/games/history")
+async def get_games_history(limit: int = 20, authorization: str = Header(None)):
+    """Get game play history"""
+    user_id = get_user_id_from_token(authorization)
+    
+    history = list(games_history_col.find(
+        {"user_id": user_id},
+        {"_id": 0}
+    ).sort("played_at", -1).limit(limit))
+    
+    return {"history": history}
+
+# ======================== DAILY REWARDS ========================
+
+DAILY_REWARDS = [
+    {"day": 1, "coins": 10, "bonus": None},
+    {"day": 2, "coins": 15, "bonus": None},
+    {"day": 3, "coins": 20, "bonus": None},
+    {"day": 4, "coins": 30, "bonus": None},
+    {"day": 5, "coins": 50, "bonus": None},
+    {"day": 6, "coins": 75, "bonus": None},
+    {"day": 7, "coins": 100, "bonus": "mystery_box"},
+]
+
+@router.get("/daily-reward/status")
+async def get_daily_reward_status(authorization: str = Header(None)):
+    """Get daily reward status"""
+    user_id = get_user_id_from_token(authorization)
+    now = datetime.now(timezone.utc)
+    today = now.strftime("%Y-%m-%d")
+    
+    user_rewards = daily_rewards_col.find_one({"user_id": user_id})
+    
+    if not user_rewards:
+        return {
+            "streak": 0,
+            "can_claim": True,
+            "next_reward": DAILY_REWARDS[0],
+            "last_claim": None,
+            "rewards": DAILY_REWARDS
+        }
+    
+    last_claim = user_rewards.get("last_claim_date")
+    streak = user_rewards.get("streak", 0)
+    
+    # Check if already claimed today
+    can_claim = last_claim != today
+    
+    # Check if streak broken (missed a day)
+    if last_claim:
+        from datetime import timedelta
+        yesterday = (now - timedelta(days=1)).strftime("%Y-%m-%d")
+        if last_claim != yesterday and last_claim != today:
+            streak = 0  # Reset streak
+    
+    # Get next reward (cycle through week)
+    next_day = (streak % 7) + 1
+    next_reward = DAILY_REWARDS[next_day - 1]
+    
+    return {
+        "streak": streak,
+        "can_claim": can_claim,
+        "next_reward": next_reward,
+        "last_claim": last_claim,
+        "rewards": DAILY_REWARDS
+    }
+
+@router.post("/daily-reward/claim")
+async def claim_daily_reward(authorization: str = Header(None)):
+    """Claim daily reward"""
+    user_id = get_user_id_from_token(authorization)
+    now = datetime.now(timezone.utc)
+    today = now.strftime("%Y-%m-%d")
+    
+    user_rewards = daily_rewards_col.find_one({"user_id": user_id})
+    
+    # Check if already claimed
+    if user_rewards and user_rewards.get("last_claim_date") == today:
+        raise HTTPException(status_code=400, detail="Bereits heute abgeholt!")
+    
+    # Calculate streak
+    streak = 0
+    if user_rewards:
+        from datetime import timedelta
+        yesterday = (now - timedelta(days=1)).strftime("%Y-%m-%d")
+        last_claim = user_rewards.get("last_claim_date")
+        if last_claim == yesterday:
+            streak = user_rewards.get("streak", 0) + 1
+        else:
+            streak = 1
+    else:
+        streak = 1
+    
+    # Get reward for current day
+    reward_day = ((streak - 1) % 7) + 1
+    reward = DAILY_REWARDS[reward_day - 1]
+    coins = reward["coins"]
+    
+    # Update daily rewards record
+    daily_rewards_col.update_one(
+        {"user_id": user_id},
+        {
+            "$set": {
+                "last_claim_date": today,
+                "streak": streak,
+                "updated_at": now.isoformat()
+            },
+            "$inc": {"total_claimed": coins},
+            "$setOnInsert": {"created_at": now.isoformat()}
+        },
+        upsert=True
+    )
+    
+    # Add coins to wallet
+    wallets_col.update_one(
+        {"user_id": user_id},
+        {
+            "$inc": {"coins": coins, "total_earned": coins},
+            "$setOnInsert": {"created_at": now.isoformat()}
+        },
+        upsert=True
+    )
+    
+    # Add to live feed
+    live_feed_col.insert_one({
+        "user_id": user_id,
+        "action": f"Daily Reward: +{coins} Coins (Tag {reward_day})",
+        "type": "daily_reward",
+        "timestamp": now.isoformat()
+    })
+    
+    wallet = wallets_col.find_one({"user_id": user_id}, {"_id": 0})
+    
+    return {
+        "success": True,
+        "coins": coins,
+        "streak": streak,
+        "day": reward_day,
+        "bonus": reward.get("bonus"),
+        "message": f"Tag {reward_day}: +{coins} Coins!",
+        "new_balance": wallet.get("coins", 0) if wallet else coins
+    }
+
+# ======================== LIVE FEED ========================
+
+@router.get("/live-feed")
+async def get_live_feed(limit: int = 20):
+    """Get live activity feed"""
+    feed = list(live_feed_col.find(
+        {},
+        {"_id": 0}
+    ).sort("timestamp", -1).limit(limit))
+    
+    # If empty, return some mock data
+    if not feed:
+        feed = [
+            {"action": "User bought Miner", "type": "purchase", "timestamp": datetime.now(timezone.utc).isoformat()},
+            {"action": "User won 50 Coins", "type": "game_win", "timestamp": datetime.now(timezone.utc).isoformat()},
+            {"action": "User joined Auction", "type": "auction", "timestamp": datetime.now(timezone.utc).isoformat()},
+            {"action": "User opened Treasure Box", "type": "treasure", "timestamp": datetime.now(timezone.utc).isoformat()},
+        ]
+    
+    return {"feed": feed}
+
+# ======================== PROFIT CHART DATA ========================
+
+@router.get("/mining/chart-data")
+async def get_mining_chart_data(days: int = 7, authorization: str = Header(None)):
+    """Get mining profit chart data"""
+    user_id = get_user_id_from_token(authorization)
+    
+    # Get mining history for chart
+    from datetime import timedelta
+    now = datetime.now(timezone.utc)
+    
+    # Generate labels for last N days
+    labels = []
+    data = []
+    weekdays = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
+    
+    for i in range(days - 1, -1, -1):
+        day = now - timedelta(days=i)
+        labels.append(weekdays[day.weekday()])
+        
+        # Get earnings for that day from history
+        day_start = day.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+        day_end = day.replace(hour=23, minute=59, second=59, microsecond=999999).isoformat()
+        
+        earnings = mining_history_col.aggregate([
+            {
+                "$match": {
+                    "user_id": user_id,
+                    "claimed_at": {"$gte": day_start, "$lte": day_end}
+                }
+            },
+            {"$group": {"_id": None, "total": {"$sum": "$amount"}}}
+        ])
+        
+        total = 0
+        for e in earnings:
+            total = e.get("total", 0)
+        
+        # Add some mock data if no real data
+        if total == 0:
+            total = random.randint(5, 50)
+        
+        data.append(total)
+    
+    return {
+        "labels": labels,
+        "data": data,
+        "total_week": sum(data)
+    }
+
