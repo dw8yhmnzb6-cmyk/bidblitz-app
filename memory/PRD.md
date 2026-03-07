@@ -282,3 +282,24 @@ Alle Frontend-Mock-Features wurden mit echten Backend-APIs verbunden:
 - Backend: 21/21 Tests bestanden (100%)
 - Frontend: 9/9 Seiten getestet (100%)
 - Siehe `/app/test_reports/iteration_117.json`
+
+---
+
+## Changelog - Update 14 (2026-03-07)
+
+### ✅ NEUE ROUTER-ARCHITEKTUR
+Backend wurde refactored mit neuen separaten Router-Dateien:
+
+**Neue Router-Dateien:**
+| Datei | Endpoints | Beschreibung |
+|-------|-----------|--------------|
+| `shop_router.py` | `/api/app/shop/packages`, `/buy`, `/history` | Coin-Pakete kaufen |
+| `vip_router.py` | `/api/app/vip/tiers`, `/buy`, `/status`, `/benefits` | VIP Membership System |
+| `referral_router.py` | `/api/app/referral/create`, `/use`, `/stats`, `/leaderboard` | Referral mit Tier-System |
+| `admin_router.py` | `/api/system/admin/*` | Admin Dashboard APIs |
+
+**Features:**
+- **Shop:** 4 Coin-Pakete (100/1000/5000/10000 Coins)
+- **VIP Tiers:** Bronze, Silver, Gold, Platinum mit 30-Tage Laufzeit
+- **Referral Tiers:** Starter → Promoter → Ambassador → Elite
+- **Admin:** User-Liste, Coins hinzufügen/entfernen, System-Statistiken, Ban/Unban
