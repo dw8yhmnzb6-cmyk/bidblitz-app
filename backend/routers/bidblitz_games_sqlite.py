@@ -25,12 +25,12 @@ CREATE TABLE IF NOT EXISTS users(
 """)
 
 cursor.execute("""
-CREATE TABLE IF NOT EXISTS games(
+CREATE TABLE IF NOT EXISTS game_portal(
     id INTEGER PRIMARY KEY,
     name TEXT,
-    category TEXT,
-    reward INTEGER,
-    url TEXT
+    image TEXT,
+    url TEXT,
+    reward INTEGER
 )
 """)
 
@@ -54,21 +54,21 @@ CREATE TABLE IF NOT EXISTS game_plays(
 conn.commit()
 
 # Spiele in DB einfügen (nur wenn leer)
-cursor.execute("SELECT COUNT(*) FROM games")
+cursor.execute("SELECT COUNT(*) FROM game_portal")
 if cursor.fetchone()[0] == 0:
     cursor.executemany("""
-        INSERT INTO games(name, category, reward, url) VALUES (?, ?, ?, ?)
+        INSERT INTO game_portal(name, image, url, reward) VALUES (?, ?, ?, ?)
     """, [
-        ("Puzzle Blocks", "Puzzle", 5, "https://play.famobi.com/puzzle-block"),
-        ("Idle Miner", "Tycoon", 10, "https://play.famobi.com/idle-mining"),
-        ("Car Traffic Jam", "Puzzle", 6, "https://play.famobi.com/parking-fury-3d"),
-        ("Space Battle", "Action", 12, "https://play.famobi.com/alien-attack"),
-        ("Fruit Match", "Puzzle", 7, "https://play.famobi.com/fruits-link"),
-        ("Treasure Hunter", "Adventure", 8, "https://play.famobi.com/treasure-hunter"),
-        ("Speed Racer", "Racing", 9, "https://play.famobi.com/road-racer"),
-        ("City Builder", "Tycoon", 15, "https://play.famobi.com/building-rush"),
-        ("Zombie Attack", "Action", 11, "https://play.famobi.com/zombie-hunter"),
-        ("Dragon Quest", "RPG", 20, "https://play.famobi.com/knight-hero")
+        ("Idle Miner", "/images/games/miner.png", "https://html5.gamedistribution.com/rvvASMiM/b68ef3ae807e448eacb411d23b115063/index.html", 10),
+        ("Car Jam", "/images/games/car.png", "https://html5.gamedistribution.com/rvvASMiM/d8b7f4e5c2a94f8d9e3c1a7b6d5e4f3a/index.html", 8),
+        ("Puzzle Blocks", "/images/games/puzzle.png", "https://html5.gamedistribution.com/rvvASMiM/a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6/index.html", 6),
+        ("Fruit Match", "/images/games/fruit.png", "https://html5.gamedistribution.com/rvvASMiM/f7e6d5c4b3a2918070605040302010a0/index.html", 7),
+        ("Space Battle", "/images/games/space.png", "https://html5.gamedistribution.com/rvvASMiM/9a8b7c6d5e4f3g2h1i0j9k8l7m6n5o4p/index.html", 12),
+        ("Treasure Hunt", "/images/games/treasure.png", "https://html5.gamedistribution.com/rvvASMiM/t1r2e3a4s5u6r7e8h9u0n1t2e3r4s5/index.html", 9),
+        ("Zombie Run", "/images/games/zombie.png", "https://html5.gamedistribution.com/rvvASMiM/z1o2m3b4i5e6r7u8n9g0a1m2e3s4h5/index.html", 11),
+        ("Dragon Quest", "/images/games/dragon.png", "https://html5.gamedistribution.com/rvvASMiM/d1r2a3g4o5n6q7u8e9s0t1a2d3v4e5/index.html", 15),
+        ("Racing Pro", "/images/games/racing.png", "https://html5.gamedistribution.com/rvvASMiM/r1a2c3i4n5g6p7r8o9s0p1e2e3d4y5/index.html", 8),
+        ("Tower Defense", "/images/games/tower.png", "https://html5.gamedistribution.com/rvvASMiM/t1o2w3e4r5d6e7f8e9n0s1e2g3a4m5/index.html", 13)
     ])
     conn.commit()
 
