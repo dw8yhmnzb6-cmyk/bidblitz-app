@@ -1,15 +1,16 @@
 /**
- * BidBlitz Game Center
- * 10 Games in 2-column Grid
+ * BidBlitz Games Hub
+ * Featured games in 2x2 grid with quick play
  */
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import BottomNav from '../components/BottomNav';
 
 const API = process.env.REACT_APP_BACKEND_URL + '/api';
 
 export default function GamesHub() {
+  const navigate = useNavigate();
   const [coins, setCoins] = useState(500);
   const [result, setResult] = useState('');
   const [loading, setLoading] = useState('');
@@ -33,8 +34,7 @@ export default function GamesHub() {
     setLoading(gameType);
     setResult('');
     
-    // Short delay for animation feel
-    await new Promise(r => setTimeout(r, 500));
+    await new Promise(r => setTimeout(r, 800));
     
     const win = calculateWin();
     
@@ -50,102 +50,189 @@ export default function GamesHub() {
       setCoins(prev => Math.max(0, prev + win));
     }
     
-    setResult(win >= 0 ? `+${win}` : `${win}`);
+    setResult({ game: gameType, amount: win >= 0 ? `+${win}` : `${win}` });
     setLoading('');
+    
+    setTimeout(() => setResult(''), 3000);
   };
   
-  // Game functions
-  const wheel = () => playGame('lucky_wheel', () => Math.floor(Math.random() * 100));
-  const slot = () => playGame('slot_machine', () => Math.floor(Math.random() * 200) - 50);
-  const reaction = () => playGame('reaction', () => Math.floor(Math.random() * 20));
-  const daily = () => playGame('daily_bonus', () => 50);
-  const dice = () => playGame('dice', () => Math.floor(Math.random() * 60));
-  const flip = () => playGame('coin_flip', () => Math.random() > 0.5 ? 30 : -10);
-  const bomb = () => playGame('bomb_game', () => Math.random() > 0.7 ? 100 : -50);
-  const jackpot = () => playGame('jackpot', () => Math.floor(Math.random() * 500));
-  const puzzle = () => playGame('puzzle', () => 20);
-  const boost = () => playGame('boost_game', () => Math.floor(Math.random() * 150));
-  
-  const games = [
-    { id: 'lucky_wheel', emoji: '🎡', name: 'Lucky Wheel', action: wheel, btn: 'Play' },
-    { id: 'slot_machine', emoji: '🎰', name: 'Slot Machine', action: slot, btn: 'Play' },
-    { id: 'reaction', emoji: '⚡', name: 'Reaction', action: reaction, btn: 'Play' },
-    { id: 'daily_bonus', emoji: '🎁', name: 'Daily Bonus', action: daily, btn: 'Claim' },
-    { id: 'dice', emoji: '🎲', name: 'Dice', action: dice, btn: 'Roll' },
-    { id: 'coin_flip', emoji: '🪙', name: 'Coin Flip', action: flip, btn: 'Flip' },
-    { id: 'bomb_game', emoji: '💣', name: 'Bomb Game', action: bomb, btn: 'Try' },
-    { id: 'jackpot', emoji: '🏆', name: 'Jackpot', action: jackpot, btn: 'Play' },
-    { id: 'puzzle', emoji: '🧠', name: 'Puzzle', action: puzzle, btn: 'Solve' },
-    { id: 'boost_game', emoji: '🚀', name: 'Boost Game', action: boost, btn: 'Boost' },
+  // Featured games
+  const featuredGames = [
+    { 
+      id: 'spin_wheel', 
+      icon: '🎡', 
+      name: 'Spin Wheel', 
+      btn: 'Play',
+      color: 'from-purple-500/20 to-pink-500/10',
+      border: 'border-purple-500/30',
+      action: () => playGame('spin_wheel', () => [5, 10, 20, 50][Math.floor(Math.random() * 4)])
+    },
+    { 
+      id: 'mystery_box', 
+      icon: '🎁', 
+      name: 'Mystery Box', 
+      btn: 'Open',
+      color: 'from-amber-500/20 to-orange-500/10',
+      border: 'border-amber-500/30',
+      action: () => playGame('mystery_box', () => [10, 25, 50, 100][Math.floor(Math.random() * 4)])
+    },
+    { 
+      id: 'coin_hunt', 
+      icon: '🗺️', 
+      name: 'Coin Hunt', 
+      btn: 'Collect',
+      color: 'from-emerald-500/20 to-green-500/10',
+      border: 'border-emerald-500/30',
+      action: () => navigate('/map')
+    },
+    { 
+      id: 'leaderboard', 
+      icon: '🏆', 
+      name: 'Leaderboard', 
+      btn: 'View',
+      color: 'from-cyan-500/20 to-blue-500/10',
+      border: 'border-cyan-500/30',
+      action: () => navigate('/app-leaderboard')
+    },
+    { 
+      id: 'live_auction', 
+      icon: '🔥', 
+      name: 'Live Auction', 
+      btn: 'Bid',
+      color: 'from-red-500/20 to-orange-500/10',
+      border: 'border-red-500/30',
+      action: () => navigate('/live-auction')
+    },
+  ];
+
+  // More games
+  const moreGames = [
+    { id: 'slot', icon: '🎰', name: 'Slots', action: () => playGame('slots', () => Math.floor(Math.random() * 200) - 50) },
+    { id: 'dice', icon: '🎲', name: 'Würfel', action: () => playGame('dice', () => Math.floor(Math.random() * 60)) },
+    { id: 'flip', icon: '🪙', name: 'Flip', action: () => playGame('flip', () => Math.random() > 0.5 ? 30 : -10) },
+    { id: 'bomb', icon: '💣', name: 'Bomb', action: () => playGame('bomb', () => Math.random() > 0.7 ? 100 : -50) },
+    { id: 'jackpot', icon: '💎', name: 'Jackpot', action: () => playGame('jackpot', () => Math.floor(Math.random() * 500)) },
+    { id: 'daily', icon: '📅', name: 'Daily', action: () => playGame('daily', () => 50) },
   ];
   
   return (
-    <div className="min-h-screen bg-[#0b0e24] text-white pb-20">
-      <div className="p-5">
-        <h2 className="text-2xl font-bold mb-2">BidBlitz Game Center</h2>
-        <h3 className="text-lg mb-4">
-          Coins: <span className="font-bold text-amber-400" data-testid="coins-display">{coins.toLocaleString()}</span>
-        </h3>
-        
-        {/* 10 Games Grid (2 columns) */}
-        <div className="grid grid-cols-2 gap-5 mb-4" data-testid="games-grid">
-          {games.map((game) => (
-            <div 
-              key={game.id}
-              className="bg-[#171a3a] p-5 rounded-2xl text-center"
-              data-testid={`game-${game.id}`}
-            >
-              <h4 className="font-semibold mb-3">
-                {game.emoji} {game.name}
-              </h4>
-              <button
-                onClick={game.action}
-                disabled={loading === game.id}
-                className="px-5 py-2.5 bg-[#6c63ff] hover:bg-[#8b6dff] rounded-xl font-medium 
-                           disabled:opacity-50 transition-colors min-w-[80px]"
-                data-testid={`btn-${game.id}`}
-              >
-                {loading === game.id ? '...' : game.btn}
-              </button>
-            </div>
-          ))}
+    <div className="min-h-screen bg-gradient-to-b from-[#0b0e24] via-[#0f1332] to-[#0b0e24] text-white pb-24">
+      {/* Background */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-20 -left-20 w-60 h-60 bg-purple-500/10 rounded-full blur-[80px]"></div>
+        <div className="absolute bottom-40 -right-20 w-60 h-60 bg-cyan-500/10 rounded-full blur-[80px]"></div>
+      </div>
+
+      <div className="relative p-5">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h2 className="text-2xl font-bold">BidBlitz Games</h2>
+            <p className="text-xs text-slate-400">Spiele & gewinne Coins!</p>
+          </div>
+          <div className="bg-amber-500/20 px-4 py-2 rounded-xl border border-amber-500/30">
+            <span className="text-amber-400 font-bold" data-testid="coins-display">
+              {coins.toLocaleString()} 💰
+            </span>
+          </div>
         </div>
-        
-        {/* Result Display */}
+
+        {/* Result Toast */}
         {result && (
-          <p 
-            className={`text-center text-lg font-bold mb-4 p-3 rounded-xl ${
-              result.startsWith('+') ? 'text-green-400 bg-green-500/10' : 'text-red-400 bg-red-500/10'
-            }`}
-            data-testid="game-result"
-          >
-            {result} Coins
-          </p>
+          <div className={`mb-4 p-4 rounded-2xl text-center font-bold text-lg animate-bounce ${
+            result.amount?.startsWith('+') 
+              ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
+              : 'bg-red-500/20 text-red-400 border border-red-500/30'
+          }`} data-testid="game-result">
+            {result.amount} Coins
+          </div>
         )}
         
-        {/* More Games Links */}
-        <div className="bg-[#171a3a] p-5 rounded-2xl">
-          <h3 className="font-semibold mb-3">More Games</h3>
-          <div className="space-y-2">
-            <Link 
-              to="/match3" 
-              className="block py-3 px-4 bg-[#0b0e24] rounded-xl hover:bg-[#6c63ff]/20 transition-colors"
-            >
-              🧩 Match Game
-            </Link>
-            <Link 
-              to="/treasure-hunt" 
-              className="block py-3 px-4 bg-[#0b0e24] rounded-xl hover:bg-[#6c63ff]/20 transition-colors"
-            >
-              🗺️ Schatzsuche
-            </Link>
-            <Link 
-              to="/app-leaderboard"
-              className="block py-3 px-4 bg-[#0b0e24] rounded-xl hover:bg-[#6c63ff]/20 transition-colors"
-            >
-              🏆 Rangliste
-            </Link>
+        {/* Featured Games 2x2 Grid + 1 */}
+        <div className="mb-6">
+          <h3 className="text-sm text-slate-400 uppercase tracking-wider mb-3">Featured Games</h3>
+          <div className="grid grid-cols-2 gap-4" data-testid="games-grid">
+            {featuredGames.slice(0, 4).map((game) => (
+              <div 
+                key={game.id}
+                className={`bg-gradient-to-br ${game.color} p-5 rounded-2xl text-center border ${game.border} transition-all hover:scale-[1.02] active:scale-[0.98]`}
+                data-testid={`game-${game.id}`}
+              >
+                <span className="text-5xl block mb-3">{game.icon}</span>
+                <h4 className="font-semibold mb-3">{game.name}</h4>
+                <button
+                  onClick={game.action}
+                  disabled={loading === game.id}
+                  className="w-full py-2.5 bg-[#6c63ff] hover:bg-[#8b6dff] rounded-xl font-medium disabled:opacity-50 transition-all"
+                  data-testid={`btn-${game.id}`}
+                >
+                  {loading === game.id ? '⏳' : game.btn}
+                </button>
+              </div>
+            ))}
           </div>
+          
+          {/* Live Auction Card - Full Width */}
+          <div 
+            className={`mt-4 bg-gradient-to-br ${featuredGames[4].color} p-5 rounded-2xl border ${featuredGames[4].border} transition-all hover:scale-[1.01]`}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <span className="text-4xl">{featuredGames[4].icon}</span>
+                <div>
+                  <h4 className="font-bold text-lg">{featuredGames[4].name}</h4>
+                  <p className="text-xs text-slate-400">Biete & gewinne Produkte!</p>
+                </div>
+              </div>
+              <button
+                onClick={featuredGames[4].action}
+                className="px-6 py-3 bg-[#6c63ff] hover:bg-[#8b6dff] rounded-xl font-medium transition-all"
+                data-testid="btn-live_auction"
+              >
+                {featuredGames[4].btn}
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        {/* More Games */}
+        <div className="bg-white/5 backdrop-blur-sm p-5 rounded-2xl border border-white/10">
+          <h3 className="font-semibold mb-4 flex items-center gap-2">
+            <span>🎮</span> Mehr Spiele
+          </h3>
+          <div className="grid grid-cols-3 gap-3">
+            {moreGames.map((game) => (
+              <button
+                key={game.id}
+                onClick={game.action}
+                disabled={loading === game.id}
+                className="bg-black/20 p-4 rounded-xl text-center hover:bg-[#6c63ff]/20 transition-all disabled:opacity-50"
+                data-testid={`btn-${game.id}`}
+              >
+                <span className="text-2xl block mb-1">{game.icon}</span>
+                <span className="text-xs">{game.name}</span>
+                {loading === game.id && <span className="text-xs block">⏳</span>}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Quick Links */}
+        <div className="mt-6 grid grid-cols-2 gap-3">
+          <Link 
+            to="/match3"
+            className="bg-white/5 p-4 rounded-xl flex items-center gap-3 hover:bg-white/10 transition-all border border-white/5"
+          >
+            <span className="text-2xl">🧩</span>
+            <span className="text-sm">Match Game</span>
+          </Link>
+          <Link 
+            to="/treasure-hunt"
+            className="bg-white/5 p-4 rounded-xl flex items-center gap-3 hover:bg-white/10 transition-all border border-white/5"
+          >
+            <span className="text-2xl">🗺️</span>
+            <span className="text-sm">Schatzsuche</span>
+          </Link>
         </div>
       </div>
       
