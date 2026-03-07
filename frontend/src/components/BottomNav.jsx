@@ -7,9 +7,9 @@ import { useLocation, useNavigate } from 'react-router-dom';
 
 const tabs = [
   { id: 'home', emoji: '🏠', label: 'Home', path: '/super-app' },
-  { id: 'wallet', emoji: '💳', label: 'Wallet', path: '/app-wallet' },
-  { id: 'transport', emoji: '🚗', label: 'Transport', path: '/map' },
   { id: 'games', emoji: '🎮', label: 'Games', path: '/games' },
+  { id: 'wallet', emoji: '💳', label: 'Wallet', path: '/app-wallet' },
+  { id: 'bbz', emoji: '💎', label: 'BBZ', path: '/bbz' },
   { id: 'profile', emoji: '👤', label: 'Profile', path: '/app-profile' },
 ];
 
