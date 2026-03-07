@@ -1113,6 +1113,8 @@ function AppContent() {
           <Route path="/friends" element={<Friends />} />
           <Route path="/live-events" element={<LiveEvents />} />
           <Route path="/store" element={<Store />} />
+          <Route path="/merchant" element={<Merchant />} />
+          <Route path="/loans" element={<Loans />} />
           <Route path="/app-vip" element={<AppVIP />} />
           <Route path="/vip" element={<AppVIP />} />
           <Route path="/app-statistics" element={<AppStatistics />} />
