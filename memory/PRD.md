@@ -502,4 +502,40 @@ Getestete Collections mit bestätigter Datenspeicherung:
 2. Push-Notification-System
 3. Link zu "Missions" in BottomNav hinzufügen
 4. Smart Contract auf Testnet deployen
-5. Frontend-Validierung der neuen persistenten Backend-Endpoints
+
+---
+
+## Changelog - 7. März 2026 (Update 21) - P2 GAMES & MINER FIX
+
+### ✅ Neues Games Hub Design implementiert
+- 1:1 Umsetzung des User-HTML-Templates
+- Weekly League Banner mit Rang & Punkten
+- Games Pass Active Status-Anzeige  
+- 12 Spiele im 3-spalten Grid mit farbigen Gradienten
+
+### ✅ Fehlende Spiel-Dateien erstellt
+| Datei | Beschreibung |
+|-------|-------------|
+| `quiz.html` | Daily Quiz mit Timer & Streak |
+| `scratch.html` | Interaktive Rubbelkarte mit Touch-Support |
+| `coin_drop.html` | Plinko-Style Münzwurf-Spiel |
+| `word.html` | Symlink zu word_hunt.html |
+
+### ✅ Miner Dashboard funktioniert
+- Zeigt echte Backend-Daten: 25.6 TH, 3 Miners
+- Mining Pool Stats: Block Height, Pool Luck, Est. Daily BTC
+- Upgrade-Buttons für jeden Miner
+
+### Alle verfügbaren Spiele (12)
+1. ⭐ BidBlitz Match → bbz_match3.html
+2. 🎰 Lucky Spin → lucky_spin.html
+3. ❓ Daily Quiz → quiz.html ✅ NEU
+4. 🔤 Word Daily → word_hunt.html
+5. 💳 Scratch Card → scratch.html ✅ NEU
+6. 🧠 Memory → memory.html
+7. ⚡ Reaction Test → reaction.html
+8. 👏 Speed Tap → speed_tap.html
+9. 🗺 Treasure Hunt → bbz_match3.html
+10. 🎰 Slots → slots.html
+11. 🎲 Dice Roll → dice.html
+12. 🪙 Coin Drop → coin_drop.html ✅ NEU
