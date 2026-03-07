@@ -685,6 +685,9 @@ app.include_router(hub_router, prefix="/api")
 # NEW: BidBlitz Dashboard
 app.include_router(dashboard_router, prefix="/api")
 
+# NEW: BidBlitz AI Analytics
+app.include_router(ai_router, prefix="/api")
+
 # ==================== HEALTH & BASIC ENDPOINTS ====================
 
 @app.get("/")
