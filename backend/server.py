@@ -264,6 +264,9 @@ from routers.bidblitz_ai import router as ai_router
 # NEW: BidBlitz Miner Dashboard
 from routers.bidblitz_miner_dashboard import router as miner_dashboard_router
 
+# NEW: BidBlitz BBZ Wallet
+from routers.bidblitz_bbz_wallet import router as bbz_wallet_router
+
 # WebSocket manager
 from services.websocket import ws_manager, broadcast_bid_update, broadcast_auction_ended, notify_payment_received
 
