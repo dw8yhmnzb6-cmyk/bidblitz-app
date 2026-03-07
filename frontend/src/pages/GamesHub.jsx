@@ -144,7 +144,7 @@ export default function GamesHub() {
           </div>
           <div className="grid grid-cols-2 gap-4" data-testid="games-grid">
             {Object.entries(games).map(([key, game]) => {
-              const remaining = getRemainingPlays(key);
+              const remaining = getPlaysLeft(key);
               const isLimitReached = remaining <= 0;
               
               return (
@@ -178,6 +178,23 @@ export default function GamesHub() {
             })}
           </div>
         </div>
+
+        {/* Coin Hunt Card */}
+        <Link 
+          to="/map"
+          className="block mb-6 bg-gradient-to-br from-yellow-500/20 to-amber-500/10 p-5 rounded-2xl border border-yellow-500/30 transition-all hover:scale-[1.01]"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <span className="text-4xl">🗺️</span>
+              <div>
+                <h3 className="font-bold text-lg">Coin Hunt</h3>
+                <p className="text-sm text-yellow-400">{coinsOnMap} Coins auf der Map!</p>
+              </div>
+            </div>
+            <span className="text-2xl">→</span>
+          </div>
+        </Link>
 
         {/* Live Auction Card */}
         <Link 
