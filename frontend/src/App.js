@@ -188,6 +188,7 @@ import LiveEvents from "./pages/LiveEvents";
 import Store from "./pages/Store";
 import Merchant from "./pages/Merchant";
 import Loans from "./pages/Loans";
+import Assistant from "./pages/Assistant";
 
 // New Feature Components
 import Watchlist from "./components/Watchlist";
