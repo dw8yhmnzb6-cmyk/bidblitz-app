@@ -271,182 +271,385 @@ export default function AppAdminPanel() {
           ))}
         </div>
         
-        {/* Stats Grid - 3x2 */}
-        <div className="mb-6">
-          <h3 className="text-sm text-slate-400 uppercase tracking-wider mb-3">Übersicht</h3>
-          <div className="grid grid-cols-3 gap-3" data-testid="stats-grid">
-            {statCards.map((stat, index) => (
-              <div 
-                key={stat.label}
-                className={`bg-gradient-to-br ${stat.color} p-4 rounded-2xl border ${stat.border} transition-all hover:scale-[1.02]`}
-                data-testid={`stat-card-${index}`}
-              >
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-xl">{stat.icon}</span>
-                  <p className="text-xs text-slate-400">{stat.label}</p>
-                </div>
-                <p className={`text-2xl font-bold ${stat.textColor}`}>{stat.value}</p>
+        {/* Overview Tab */}
+        {activeTab === 'overview' && (
+          <>
+            {/* Stats Grid - 3x2 */}
+            <div className="mb-6">
+              <h3 className="text-sm text-slate-400 uppercase tracking-wider mb-3">Übersicht</h3>
+              <div className="grid grid-cols-3 gap-3" data-testid="stats-grid">
+                {statCards.map((stat, index) => (
+                  <div 
+                    key={stat.label}
+                    className={`bg-gradient-to-br ${stat.color} p-4 rounded-2xl border ${stat.border} transition-all hover:scale-[1.02]`}
+                    data-testid={`stat-card-${index}`}
+                  >
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-xl">{stat.icon}</span>
+                      <p className="text-xs text-slate-400">{stat.label}</p>
+                    </div>
+                    <p className={`text-2xl font-bold ${stat.textColor}`}>{stat.value}</p>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        </div>
+            </div>
 
-        {/* Live Activity Feed */}
-        <div className="mb-6 bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 overflow-hidden">
-          <div className="p-4 border-b border-white/10 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="text-lg">📡</span>
-              <h3 className="font-semibold">Live Activity</h3>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-              <span className="text-xs text-green-400">Live</span>
-            </div>
-          </div>
-          <div 
-            ref={activityRef}
-            className="max-h-64 overflow-y-auto p-3 space-y-2"
-            data-testid="activity-feed"
-          >
-            {activities.map((activity) => (
-              <div 
-                key={activity.id}
-                className="bg-white/5 p-3 rounded-xl flex items-center gap-3 animate-fadeIn"
-              >
-                <span className="text-xl">{activity.icon}</span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm">
-                    <span className={`font-semibold ${activity.color}`}>{activity.user}</span>
-                    {' '}{activity.text}
-                  </p>
+            {/* Live Activity Feed */}
+            <div className="mb-6 bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 overflow-hidden">
+              <div className="p-4 border-b border-white/10 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">📡</span>
+                  <h3 className="font-semibold">Live Activity</h3>
                 </div>
-                <span className="text-xs text-slate-500 flex-shrink-0">{activity.time}</span>
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                  <span className="text-xs text-green-400">Live</span>
+                </div>
               </div>
-            ))}
-          </div>
-        </div>
-        
-        {/* Coin Management */}
-        <div className="bg-white/5 backdrop-blur-sm p-5 rounded-2xl border border-white/10 mb-6">
-          <div className="flex items-center gap-2 mb-4">
-            <span className="text-xl">💰</span>
-            <h3 className="font-semibold">Coins verwalten</h3>
-          </div>
-          
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm text-slate-400 mb-2">User ID</label>
-              <input
-                type="text"
-                value={userId}
-                onChange={(e) => setUserId(e.target.value)}
-                placeholder="z.B. demo_user"
-                className="w-full p-3.5 rounded-xl bg-black/30 border border-white/10 text-white placeholder-slate-500 focus:border-[#6c63ff] focus:outline-none transition-all"
-                data-testid="user-id-input"
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm text-slate-400 mb-2">Aktion</label>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setAction('add')}
-                  className={`flex-1 py-3 rounded-xl font-medium transition-all flex items-center justify-center gap-2 ${
-                    action === 'add' 
-                      ? 'bg-emerald-500 text-white' 
-                      : 'bg-white/5 text-slate-400 hover:bg-white/10'
-                  }`}
-                  data-testid="add-action-btn"
-                >
-                  <span>➕</span> Hinzufügen
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setAction('remove')}
-                  className={`flex-1 py-3 rounded-xl font-medium transition-all flex items-center justify-center gap-2 ${
-                    action === 'remove' 
-                      ? 'bg-red-500 text-white' 
-                      : 'bg-white/5 text-slate-400 hover:bg-white/10'
-                  }`}
-                  data-testid="remove-action-btn"
-                >
-                  <span>➖</span> Abziehen
-                </button>
+              <div 
+                ref={activityRef}
+                className="max-h-64 overflow-y-auto p-3 space-y-2"
+                data-testid="activity-feed"
+              >
+                {activities.map((activity) => (
+                  <div 
+                    key={activity.id}
+                    className="bg-white/5 p-3 rounded-xl flex items-center gap-3 animate-fadeIn"
+                  >
+                    <span className="text-xl">{activity.icon}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm">
+                        <span className={`font-semibold ${activity.color}`}>{activity.user}</span>
+                        {' '}{activity.text}
+                      </p>
+                    </div>
+                    <span className="text-xs text-slate-500 flex-shrink-0">{activity.time}</span>
+                  </div>
+                ))}
               </div>
             </div>
-            
-            <div>
-              <label className="block text-sm text-slate-400 mb-2">Anzahl Coins</label>
-              <input
-                type="number"
-                value={amount}
-                onChange={(e) => setAmount(Number(e.target.value))}
-                min="1"
-                max="1000000"
-                className="w-full p-3.5 rounded-xl bg-black/30 border border-white/10 text-white focus:border-[#6c63ff] focus:outline-none transition-all"
-                data-testid="amount-input"
-              />
-            </div>
-            
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-3.5 bg-[#6c63ff] hover:bg-[#5a52e0] rounded-xl font-semibold disabled:opacity-50 transition-all flex items-center justify-center gap-2"
-              data-testid="submit-btn"
-            >
-              {loading ? (
-                <>
-                  <span className="animate-spin">⏳</span> Wird verarbeitet...
-                </>
-              ) : (
-                <>
-                  <span>✓</span> Ausführen
-                </>
+          </>
+        )}
+
+        {/* Coins Tab */}
+        {activeTab === 'coins' && (
+          <>
+            {/* Coin Management */}
+            <div className="bg-white/5 backdrop-blur-sm p-5 rounded-2xl border border-white/10 mb-6">
+              <div className="flex items-center gap-2 mb-4">
+                <span className="text-xl">💰</span>
+                <h3 className="font-semibold">Coins verwalten</h3>
+              </div>
+              
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-sm text-slate-400 mb-2">User ID</label>
+                  <input
+                    type="text"
+                    value={userId}
+                    onChange={(e) => setUserId(e.target.value)}
+                    placeholder="z.B. demo_user"
+                    className="w-full p-3.5 rounded-xl bg-black/30 border border-white/10 text-white placeholder-slate-500 focus:border-[#6c63ff] focus:outline-none transition-all"
+                    data-testid="user-id-input"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm text-slate-400 mb-2">Aktion</label>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setAction('add')}
+                      className={`flex-1 py-3 rounded-xl font-medium transition-all flex items-center justify-center gap-2 ${
+                        action === 'add' 
+                          ? 'bg-emerald-500 text-white' 
+                          : 'bg-white/5 text-slate-400 hover:bg-white/10'
+                      }`}
+                      data-testid="add-action-btn"
+                    >
+                      <span>➕</span> Hinzufügen
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAction('remove')}
+                      className={`flex-1 py-3 rounded-xl font-medium transition-all flex items-center justify-center gap-2 ${
+                        action === 'remove' 
+                          ? 'bg-red-500 text-white' 
+                          : 'bg-white/5 text-slate-400 hover:bg-white/10'
+                      }`}
+                      data-testid="remove-action-btn"
+                    >
+                      <span>➖</span> Abziehen
+                    </button>
+                  </div>
+                </div>
+                
+                <div>
+                  <label className="block text-sm text-slate-400 mb-2">Anzahl Coins</label>
+                  <input
+                    type="number"
+                    value={amount}
+                    onChange={(e) => setAmount(Number(e.target.value))}
+                    min="1"
+                    max="1000000"
+                    className="w-full p-3.5 rounded-xl bg-black/30 border border-white/10 text-white focus:border-[#6c63ff] focus:outline-none transition-all"
+                    data-testid="amount-input"
+                  />
+                </div>
+                
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full py-3.5 bg-[#6c63ff] hover:bg-[#5a52e0] rounded-xl font-semibold disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+                  data-testid="submit-btn"
+                >
+                  {loading ? (
+                    <>
+                      <span className="animate-spin">⏳</span> Wird verarbeitet...
+                    </>
+                  ) : (
+                    <>
+                      <span>✓</span> Ausführen
+                    </>
+                  )}
+                </button>
+              </form>
+              
+              {result && (
+                <div className={`mt-4 p-4 rounded-xl text-center ${
+                  result.includes('✅') 
+                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
+                    : 'bg-red-500/20 text-red-400 border border-red-500/30'
+                }`}>
+                  {result}
+                </div>
               )}
-            </button>
-          </form>
-          
-          {result && (
-            <div className={`mt-4 p-4 rounded-xl text-center ${
-              result.includes('✅') 
-                ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
-                : 'bg-red-500/20 text-red-400 border border-red-500/30'
-            }`}>
-              {result}
             </div>
-          )}
-        </div>
-        
-        {/* Quick Actions */}
-        <div className="bg-white/5 backdrop-blur-sm p-5 rounded-2xl border border-white/10">
-          <div className="flex items-center gap-2 mb-4">
-            <span className="text-lg">⚡</span>
-            <h3 className="font-semibold">Schnellaktionen</h3>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              onClick={() => {
-                setUserId('demo_user');
-                setAmount(10000);
-                setAction('add');
-              }}
-              className="p-4 bg-gradient-to-br from-purple-500/20 to-purple-600/10 hover:from-purple-500/30 hover:to-purple-600/20 rounded-xl text-left border border-purple-500/20 transition-all"
-            >
-              <span className="text-2xl mb-2 block">🎁</span>
-              <p className="font-medium text-sm">Demo +10k</p>
-              <p className="text-xs text-slate-500">Coins hinzufügen</p>
-            </button>
-            <button
-              onClick={fetchStats}
-              className="p-4 bg-gradient-to-br from-cyan-500/20 to-cyan-600/10 hover:from-cyan-500/30 hover:to-cyan-600/20 rounded-xl text-left border border-cyan-500/20 transition-all"
-            >
-              <span className="text-2xl mb-2 block">🔄</span>
-              <p className="font-medium text-sm">Refresh</p>
-              <p className="text-xs text-slate-500">Stats aktualisieren</p>
-            </button>
-          </div>
-        </div>
+            
+            {/* Quick Actions */}
+            <div className="bg-white/5 backdrop-blur-sm p-5 rounded-2xl border border-white/10">
+              <div className="flex items-center gap-2 mb-4">
+                <span className="text-lg">⚡</span>
+                <h3 className="font-semibold">Schnellaktionen</h3>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => {
+                    setUserId('demo_user');
+                    setAmount(10000);
+                    setAction('add');
+                  }}
+                  className="p-4 bg-gradient-to-br from-purple-500/20 to-purple-600/10 hover:from-purple-500/30 hover:to-purple-600/20 rounded-xl text-left border border-purple-500/20 transition-all"
+                >
+                  <span className="text-2xl mb-2 block">🎁</span>
+                  <p className="font-medium text-sm">Demo +10k</p>
+                  <p className="text-xs text-slate-500">Coins hinzufügen</p>
+                </button>
+                <button
+                  onClick={fetchStats}
+                  className="p-4 bg-gradient-to-br from-cyan-500/20 to-cyan-600/10 hover:from-cyan-500/30 hover:to-cyan-600/20 rounded-xl text-left border border-cyan-500/20 transition-all"
+                >
+                  <span className="text-2xl mb-2 block">🔄</span>
+                  <p className="font-medium text-sm">Refresh</p>
+                  <p className="text-xs text-slate-500">Stats aktualisieren</p>
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Miners Tab */}
+        {activeTab === 'miners' && (
+          <>
+            {/* Give Miner Form */}
+            <div className="bg-white/5 backdrop-blur-sm p-5 rounded-2xl border border-white/10 mb-6">
+              <div className="flex items-center gap-2 mb-4">
+                <span className="text-xl">⛏️</span>
+                <h3 className="font-semibold">Miner vergeben</h3>
+              </div>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm text-slate-400 mb-2">User ID</label>
+                  <input
+                    type="text"
+                    value={minerUserId}
+                    onChange={(e) => setMinerUserId(e.target.value)}
+                    placeholder="z.B. demo_user"
+                    className="w-full p-3.5 rounded-xl bg-black/30 border border-white/10 text-white placeholder-slate-500 focus:border-[#6c63ff] focus:outline-none transition-all"
+                    data-testid="miner-user-id-input"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm text-slate-400 mb-2">Miner Typ</label>
+                  <select
+                    value={selectedMinerType}
+                    onChange={(e) => setSelectedMinerType(e.target.value)}
+                    className="w-full p-3.5 rounded-xl bg-black/30 border border-white/10 text-white focus:border-[#6c63ff] focus:outline-none transition-all"
+                    data-testid="miner-type-select"
+                  >
+                    {minerCatalog.map(miner => (
+                      <option key={miner.id} value={miner.id}>
+                        {miner.name} ({miner.tier}) - {miner.daily_reward} Coins/Tag
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-sm text-slate-400 mb-2">Level (1-10)</label>
+                  <input
+                    type="number"
+                    value={minerLevel}
+                    onChange={(e) => setMinerLevel(Math.min(10, Math.max(1, Number(e.target.value))))}
+                    min="1"
+                    max="10"
+                    className="w-full p-3.5 rounded-xl bg-black/30 border border-white/10 text-white focus:border-[#6c63ff] focus:outline-none transition-all"
+                    data-testid="miner-level-input"
+                  />
+                </div>
+                
+                <button
+                  onClick={handleGiveMiner}
+                  disabled={minerLoading}
+                  className="w-full py-3.5 bg-cyan-500 hover:bg-cyan-600 rounded-xl font-semibold disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+                  data-testid="give-miner-btn"
+                >
+                  {minerLoading ? (
+                    <>
+                      <span className="animate-spin">⏳</span> Wird verarbeitet...
+                    </>
+                  ) : (
+                    <>
+                      <span>⛏️</span> Miner vergeben
+                    </>
+                  )}
+                </button>
+              </div>
+              
+              {minerResult && (
+                <div className={`mt-4 p-4 rounded-xl text-center ${
+                  minerResult.includes('✅') 
+                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
+                    : 'bg-red-500/20 text-red-400 border border-red-500/30'
+                }`}>
+                  {minerResult}
+                </div>
+              )}
+            </div>
+
+            {/* Quick Miner Actions */}
+            <div className="bg-white/5 backdrop-blur-sm p-5 rounded-2xl border border-white/10 mb-6">
+              <div className="flex items-center gap-2 mb-4">
+                <span className="text-lg">⚡</span>
+                <h3 className="font-semibold">Schnelle Miner-Vergabe</h3>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => {
+                    setMinerUserId('demo_user');
+                    setSelectedMinerType('starter_1');
+                    setMinerLevel(1);
+                  }}
+                  className="p-4 bg-gradient-to-br from-amber-500/20 to-amber-600/10 hover:from-amber-500/30 hover:to-amber-600/20 rounded-xl text-left border border-amber-500/20 transition-all"
+                >
+                  <span className="text-2xl mb-2 block">🥉</span>
+                  <p className="font-medium text-sm">Starter Miner</p>
+                  <p className="text-xs text-slate-500">Bronze - 5 Coins/Tag</p>
+                </button>
+                <button
+                  onClick={() => {
+                    setMinerUserId('demo_user');
+                    setSelectedMinerType('pro_1');
+                    setMinerLevel(5);
+                  }}
+                  className="p-4 bg-gradient-to-br from-yellow-500/20 to-yellow-600/10 hover:from-yellow-500/30 hover:to-yellow-600/20 rounded-xl text-left border border-yellow-500/20 transition-all"
+                >
+                  <span className="text-2xl mb-2 block">🥇</span>
+                  <p className="font-medium text-sm">Pro Miner Lv.5</p>
+                  <p className="text-xs text-slate-500">Gold - 50 Coins/Tag</p>
+                </button>
+                <button
+                  onClick={() => {
+                    setMinerUserId('demo_user');
+                    setSelectedMinerType('elite_1');
+                    setMinerLevel(10);
+                  }}
+                  className="p-4 bg-gradient-to-br from-purple-500/20 to-purple-600/10 hover:from-purple-500/30 hover:to-purple-600/20 rounded-xl text-left border border-purple-500/20 transition-all"
+                >
+                  <span className="text-2xl mb-2 block">💎</span>
+                  <p className="font-medium text-sm">Elite Miner MAX</p>
+                  <p className="text-xs text-slate-500">Platinum - 150 Coins/Tag</p>
+                </button>
+                <button
+                  onClick={() => {
+                    setMinerUserId('demo_user');
+                    setSelectedMinerType('ultra_1');
+                    setMinerLevel(10);
+                  }}
+                  className="p-4 bg-gradient-to-br from-pink-500/20 to-pink-600/10 hover:from-pink-500/30 hover:to-pink-600/20 rounded-xl text-left border border-pink-500/20 transition-all"
+                >
+                  <span className="text-2xl mb-2 block">👑</span>
+                  <p className="font-medium text-sm">Ultra Miner MAX</p>
+                  <p className="text-xs text-slate-500">Diamond - 500 Coins/Tag</p>
+                </button>
+              </div>
+            </div>
+
+            {/* All Miners List */}
+            <div className="bg-white/5 backdrop-blur-sm p-5 rounded-2xl border border-white/10">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">📋</span>
+                  <h3 className="font-semibold">Alle Miner ({allMiners.length})</h3>
+                </div>
+                <button
+                  onClick={fetchAllMiners}
+                  className="p-2 bg-white/5 rounded-xl hover:bg-white/10 transition-all"
+                >
+                  <span>🔄</span>
+                </button>
+              </div>
+              
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {allMiners.length === 0 ? (
+                  <p className="text-center text-slate-400 py-4">Keine Miner gefunden. Klicke 🔄 zum Laden.</p>
+                ) : (
+                  allMiners.map((miner, idx) => (
+                    <div key={idx} className="bg-black/20 p-3 rounded-xl flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-cyan-500/30 to-purple-500/30 flex items-center justify-center">
+                        <span className="text-lg">⛏️</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{miner.name}</p>
+                        <p className="text-xs text-slate-400">
+                          {miner.user_id} • Lv.{miner.level} • {miner.tier}
+                        </p>
+                      </div>
+                      <div className="flex gap-1">
+                        <button
+                          onClick={() => handleUpgradeMiner(miner.user_id, miner.miner_id)}
+                          className="p-2 bg-emerald-500/20 hover:bg-emerald-500/30 rounded-lg text-emerald-400 transition-all"
+                          title="Upgrade"
+                        >
+                          ⬆️
+                        </button>
+                        <button
+                          onClick={() => handleRemoveMiner(miner.user_id, miner.miner_id)}
+                          className="p-2 bg-red-500/20 hover:bg-red-500/30 rounded-lg text-red-400 transition-all"
+                          title="Entfernen"
+                        >
+                          🗑️
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </>
+        )}
       </div>
       
       <BottomNav />
