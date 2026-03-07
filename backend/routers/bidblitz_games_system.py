@@ -23,6 +23,18 @@ referrals_col = db["bbz_referrals"]
 daily_claims_col = db["bbz_daily_claims"]
 game_plays_col = db["bbz_game_plays"]
 
+# Games Catalog
+GAMES = [
+    {"id": 1, "name": "Idle Miner", "category": "Strategy", "reward": 10, "icon": "⛏️"},
+    {"id": 2, "name": "Car Jam Puzzle", "category": "Puzzle", "reward": 5, "icon": "🚗"},
+    {"id": 3, "name": "Total Battle", "category": "Strategy", "reward": 20, "icon": "⚔️"},
+    {"id": 4, "name": "Cinema World", "category": "Tycoon", "reward": 15, "icon": "🎬"},
+    {"id": 5, "name": "Color Blocks", "category": "Puzzle", "reward": 8, "icon": "🧩"},
+    {"id": 6, "name": "Lucky Wheel", "category": "Casino", "reward": 50, "icon": "🎡"},
+    {"id": 7, "name": "Scratch Card", "category": "Casino", "reward": 100, "icon": "🎫"},
+    {"id": 8, "name": "Reaction Test", "category": "Arcade", "reward": 5, "icon": "⚡"},
+]
+
 
 def add_coins(user_id: str, amount: int):
     """Add coins to user wallet and update leaderboard"""
