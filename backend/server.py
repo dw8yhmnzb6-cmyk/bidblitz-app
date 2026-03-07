@@ -655,6 +655,9 @@ app.include_router(bbz_router, prefix="/api/app")
 # NEW: Games V2 (Pokemon GO Style)
 app.include_router(games_v2_router, prefix="/api/app")
 
+# NEW: BidBlitz Games System (Simplified)
+app.include_router(bidblitz_games_router, prefix="/api")
+
 # ==================== HEALTH & BASIC ENDPOINTS ====================
 
 @app.get("/")
