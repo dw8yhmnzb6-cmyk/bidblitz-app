@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BidBlitz Speed Tap</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    background: linear-gradient(135deg, #0f172a, #1e293b);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Segoe UI', sans-serif;
+    color: white;
+    user-select: none;
+}
+
+h1 { font-size: 28px; margin-bottom: 10px; }
+.subtitle { color: #64748b; margin-bottom: 20px; }
+
+.stats {
+    display: flex;
+    gap: 40px;
+    margin-bottom: 20px;
+}
+
+.stat-value {
+    font-size: 36px;
+    font-weight: bold;
+    color: #fbbf24;
+    text-align: center;
+}
+
+.stat-label { font-size: 12px; color: #64748b; }
+
+.tap-btn {
+    width: 200px;
+    height: 200px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    border: none;
+    cursor: pointer;
+    font-size: 24px;
+    color: white;
+    font-weight: bold;
+    transition: transform 0.1s;
+    box-shadow: 0 10px 30px rgba(239, 68, 68, 0.4);
+}
+
+.tap-btn:active {
+    transform: scale(0.95);
+}
+
+.tap-btn:disabled {
+    background: #64748b;
+    cursor: not-allowed;
+}
+
+.start-btn {
+    margin-top: 20px;
+    padding: 15px 40px;
+    background: linear-gradient(135deg, #22c55e, #16a34a);
+    border: none;
+    border-radius: 25px;
+    color: white;
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.highscore {
+    margin-top: 20px;
+    padding: 15px 30px;
+    background: rgba(251, 191, 36, 0.2);
+    border-radius: 10px;
+}
+</style>
+</head>
+<body>
+
+<h1>👆 Speed Tap</h1>
+<p class="subtitle">Tippe so oft wie möglich in 10 Sekunden!</p>
+
+<div class="stats">
+    <div>
+        <div class="stat-value" id="taps">0</div>
+        <div class="stat-label">Taps</div>
+    </div>
+    <div>
+        <div class="stat-value" id="time">10</div>
+        <div class="stat-label">Sekunden</div>
+    </div>
+</div>
+
+<button class="tap-btn" id="tapBtn" disabled>TAP!</button>
+
+<button class="start-btn" id="startBtn" onclick="startGame()">▶️ START</button>
+
+<div class="highscore">
+    Highscore: <span id="highscore" style="color: #fbbf24; font-weight: bold;">0</span>
+</div>
+
+<script>
+let taps = 0;
+let timeLeft = 10;
+let timer = null;
+let highscore = 0;
+
+const tapBtn = document.getElementById('tapBtn');
+const startBtn = document.getElementById('startBtn');
+const tapsEl = document.getElementById('taps');
+const timeEl = document.getElementById('time');
+const highscoreEl = document.getElementById('highscore');
+
+tapBtn.addEventListener('click', () => {
+    if (timeLeft > 0) {
+        taps++;
+        tapsEl.textContent = taps;
+    }
+});
+
+function startGame() {
+    taps = 0;
+    timeLeft = 10;
+    tapsEl.textContent = taps;
+    timeEl.textContent = timeLeft;
+    
+    tapBtn.disabled = false;
+    startBtn.style.display = 'none';
+    
+    timer = setInterval(() => {
+        timeLeft--;
+        timeEl.textContent = timeLeft;
+        
+        if (timeLeft <= 0) {
+            clearInterval(timer);
+            endGame();
+        }
+    }, 1000);
+}
+
+function endGame() {
+    tapBtn.disabled = true;
+    startBtn.style.display = 'block';
+    startBtn.textContent = '🔄 Nochmal';
+    
+    if (taps > highscore) {
+        highscore = taps;
+        highscoreEl.textContent = highscore;
+    }
+}
+</script>
+
+</body>
+</html>

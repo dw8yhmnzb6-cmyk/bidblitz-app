@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BidBlitz Dice Roll</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    background: linear-gradient(135deg, #0f172a, #1e293b);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Segoe UI', sans-serif;
+    color: white;
+}
+
+h1 { font-size: 28px; margin-bottom: 20px; }
+
+.dice-container {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.dice {
+    width: 80px;
+    height: 80px;
+    background: white;
+    border-radius: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 48px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+    transition: transform 0.3s;
+}
+
+.dice.rolling {
+    animation: roll 0.2s linear infinite;
+}
+
+@keyframes roll {
+    0% { transform: rotate(0deg); }
+    25% { transform: rotate(90deg); }
+    50% { transform: rotate(180deg); }
+    75% { transform: rotate(270deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.roll-btn {
+    padding: 15px 50px;
+    font-size: 20px;
+    font-weight: bold;
+    background: linear-gradient(135deg, #8b5cf6, #6d28d9);
+    border: none;
+    border-radius: 30px;
+    color: white;
+    cursor: pointer;
+}
+
+.roll-btn:hover {
+    transform: scale(1.05);
+}
+
+.roll-btn:disabled {
+    opacity: 0.5;
+}
+
+.result {
+    margin-top: 30px;
+    padding: 20px 40px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 15px;
+    text-align: center;
+}
+
+.result-sum {
+    font-size: 48px;
+    font-weight: bold;
+    color: #fbbf24;
+}
+
+.history {
+    margin-top: 30px;
+    max-width: 300px;
+}
+
+.history h3 { margin-bottom: 10px; color: #64748b; }
+
+.history-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 15px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 8px;
+    margin-bottom: 5px;
+}
+</style>
+</head>
+<body>
+
+<h1>🎲 Dice Roll</h1>
+
+<div class="dice-container">
+    <div class="dice" id="dice1">⚀</div>
+    <div class="dice" id="dice2">⚀</div>
+</div>
+
+<button class="roll-btn" id="rollBtn" onclick="roll()">🎲 WÜRFELN</button>
+
+<div class="result">
+    <p>Summe</p>
+    <p class="result-sum" id="sum">-</p>
+</div>
+
+<div class="history">
+    <h3>Letzte Würfe</h3>
+    <div id="historyList"></div>
+</div>
+
+<script>
+const diceFaces = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
+
+let rolling = false;
+
+function roll() {
+    if (rolling) return;
+    rolling = true;
+    
+    const dice1 = document.getElementById('dice1');
+    const dice2 = document.getElementById('dice2');
+    const rollBtn = document.getElementById('rollBtn');
+    
+    rollBtn.disabled = true;
+    dice1.classList.add('rolling');
+    dice2.classList.add('rolling');
+    
+    const result1 = Math.floor(Math.random() * 6);
+    const result2 = Math.floor(Math.random() * 6);
+    
+    setTimeout(() => {
+        dice1.classList.remove('rolling');
+        dice2.classList.remove('rolling');
+        dice1.textContent = diceFaces[result1];
+        dice2.textContent = diceFaces[result2];
+        
+        const sum = (result1 + 1) + (result2 + 1);
+        document.getElementById('sum').textContent = sum;
+        
+        addToHistory(result1 + 1, result2 + 1, sum);
+        
+        rolling = false;
+        rollBtn.disabled = false;
+    }, 1000);
+}
+
+function addToHistory(d1, d2, sum) {
+    const historyList = document.getElementById('historyList');
+    const item = document.createElement('div');
+    item.className = 'history-item';
+    item.innerHTML = `<span>${diceFaces[d1-1]} + ${diceFaces[d2-1]}</span><span style="color: #fbbf24">${sum}</span>`;
+    historyList.insertBefore(item, historyList.firstChild);
+    
+    if (historyList.children.length > 5) {
+        historyList.removeChild(historyList.lastChild);
+    }
+}
+</script>
+
+</body>
+</html>

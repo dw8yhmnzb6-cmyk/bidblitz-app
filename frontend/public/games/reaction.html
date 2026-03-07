@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BidBlitz Reaction Test</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    background: linear-gradient(135deg, #0f172a, #1e293b);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Segoe UI', sans-serif;
+    color: white;
+}
+
+h1 { font-size: 28px; margin-bottom: 20px; }
+
+.game-area {
+    width: 300px;
+    height: 300px;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-size: 24px;
+    text-align: center;
+    padding: 20px;
+}
+
+.waiting { background: #ef4444; }
+.ready { background: #22c55e; }
+.result { background: #3b82f6; }
+.early { background: #f59e0b; }
+
+.stats {
+    margin-top: 30px;
+    display: flex;
+    gap: 30px;
+}
+
+.stat-value {
+    font-size: 24px;
+    font-weight: bold;
+    color: #fbbf24;
+    text-align: center;
+}
+
+.stat-label {
+    font-size: 12px;
+    color: #64748b;
+}
+
+.best-time {
+    margin-top: 20px;
+    padding: 15px 30px;
+    background: rgba(34, 197, 94, 0.2);
+    border-radius: 10px;
+}
+</style>
+</head>
+<body>
+
+<h1>⚡ Reaction Test</h1>
+
+<div class="game-area waiting" id="gameArea" onclick="handleClick()">
+    Klicke um zu starten
+</div>
+
+<div class="stats">
+    <div>
+        <div class="stat-value" id="lastTime">-</div>
+        <div class="stat-label">Letzte Zeit</div>
+    </div>
+    <div>
+        <div class="stat-value" id="bestTime">-</div>
+        <div class="stat-label">Bestzeit</div>
+    </div>
+    <div>
+        <div class="stat-value" id="attempts">0</div>
+        <div class="stat-label">Versuche</div>
+    </div>
+</div>
+
+<script>
+const gameArea = document.getElementById('gameArea');
+const lastTimeEl = document.getElementById('lastTime');
+const bestTimeEl = document.getElementById('bestTime');
+const attemptsEl = document.getElementById('attempts');
+
+let state = 'waiting';
+let startTime = 0;
+let timeout = null;
+let bestTime = Infinity;
+let attempts = 0;
+
+function handleClick() {
+    if (state === 'waiting') {
+        state = 'countdown';
+        gameArea.className = 'game-area';
+        gameArea.style.background = '#ef4444';
+        gameArea.textContent = 'Warte auf GRÜN...';
+        
+        const delay = 1000 + Math.random() * 4000;
+        timeout = setTimeout(() => {
+            state = 'ready';
+            gameArea.className = 'game-area ready';
+            gameArea.textContent = 'KLICK!';
+            startTime = Date.now();
+        }, delay);
+        
+    } else if (state === 'countdown') {
+        clearTimeout(timeout);
+        state = 'waiting';
+        gameArea.className = 'game-area early';
+        gameArea.textContent = 'Zu früh! Nochmal...';
+        
+    } else if (state === 'ready') {
+        const reactionTime = Date.now() - startTime;
+        state = 'waiting';
+        attempts++;
+        attemptsEl.textContent = attempts;
+        
+        lastTimeEl.textContent = reactionTime + 'ms';
+        
+        if (reactionTime < bestTime) {
+            bestTime = reactionTime;
+            bestTimeEl.textContent = reactionTime + 'ms';
+        }
+        
+        let grade = '';
+        if (reactionTime < 200) grade = '🏆 Unglaublich!';
+        else if (reactionTime < 250) grade = '⚡ Super schnell!';
+        else if (reactionTime < 300) grade = '👍 Gut!';
+        else if (reactionTime < 400) grade = '😊 OK';
+        else grade = '🐢 Langsam...';
+        
+        gameArea.className = 'game-area result';
+        gameArea.textContent = `${reactionTime}ms\n${grade}\n\nKlicke für nächsten Versuch`;
+    }
+}
+</script>
+
+</body>
+</html>
