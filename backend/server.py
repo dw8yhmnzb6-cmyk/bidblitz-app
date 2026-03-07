@@ -246,6 +246,9 @@ from routers.games_v2 import router as games_v2_router
 # NEW: BidBlitz Games System (Simplified & Persistent)
 from routers.bidblitz_games_system import router as bidblitz_games_router
 
+# NEW: BidBlitz Games SQLite (Fallback/Alternative)
+from routers.bidblitz_games_sqlite import router as bidblitz_sqlite_router
+
 # WebSocket manager
 from services.websocket import ws_manager, broadcast_bid_update, broadcast_auction_ended, notify_payment_received
 
