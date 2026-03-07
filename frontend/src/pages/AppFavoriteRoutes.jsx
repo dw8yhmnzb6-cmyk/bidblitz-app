@@ -62,17 +62,6 @@ export default function AppFavoriteRoutes() {
     setTimeout(() => setMessage(''), 2000);
   };
   
-  const useFavorite = (fav) => {
-    // Update usage count
-    const updated = favorites.map(f => 
-      f.id === fav.id ? { ...f, usageCount: f.usageCount + 1 } : f
-    );
-    saveFavorites(updated);
-    
-    // Navigate to taxi with pre-filled route - using window.location for simplicity
-    window.location.href = `/taxi?pickup=${encodeURIComponent(fav.pickup)}&destination=${encodeURIComponent(fav.destination)}`;
-  };
-  
   return (
     <div className="min-h-screen bg-[#0b0e24] text-white pb-20">
       <div className="p-5">
