@@ -703,6 +703,9 @@ app.include_router(miner_dashboard_router, prefix="/api")
 # NEW: BidBlitz BBZ Wallet
 app.include_router(bbz_wallet_router, prefix="/api")
 
+# NEW: BidBlitz Weekly League & Missions
+app.include_router(league_router, prefix="/api")
+
 # ==================== HEALTH & BASIC ENDPOINTS ====================
 
 @app.get("/")
