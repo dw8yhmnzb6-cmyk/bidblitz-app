@@ -51,6 +51,7 @@ export default function AppAdminPanel() {
   
   useEffect(() => {
     fetchStats();
+    fetchMinerCatalog();
     
     // Add initial activities
     for (let i = 0; i < 5; i++) {
@@ -62,6 +63,87 @@ export default function AppAdminPanel() {
     
     return () => clearInterval(activityInterval);
   }, []);
+
+  const fetchMinerCatalog = async () => {
+    try {
+      const res = await axios.get(`${API}/app/miners/catalog`);
+      setMinerCatalog(res.data.miners || []);
+    } catch (error) {
+      console.log('Could not fetch miner catalog');
+    }
+  };
+
+  const fetchAllMiners = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      const res = await axios.get(`${API}/app/admin/miners/list`, { headers });
+      setAllMiners(res.data.miners || []);
+    } catch (error) {
+      console.log('Could not fetch all miners');
+    }
+  };
+
+  const handleGiveMiner = async () => {
+    if (!minerUserId.trim()) {
+      setMinerResult('❌ Bitte User ID eingeben');
+      return;
+    }
+    
+    setMinerLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      
+      const res = await axios.post(`${API}/app/admin/miners/give`, {
+        user_id: minerUserId,
+        miner_type_id: selectedMinerType,
+        level: minerLevel
+      }, { headers });
+      
+      setMinerResult(`✅ ${res.data.message}`);
+      setMinerUserId('');
+      fetchStats();
+    } catch (error) {
+      setMinerResult(`❌ ${error.response?.data?.detail || 'Fehler'}`);
+    } finally {
+      setMinerLoading(false);
+    }
+  };
+
+  const handleUpgradeMiner = async (targetUserId, minerId) => {
+    try {
+      const token = localStorage.getItem('token');
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      
+      const res = await axios.post(`${API}/app/admin/miners/upgrade`, {
+        user_id: targetUserId,
+        miner_id: minerId
+      }, { headers });
+      
+      setMinerResult(`✅ ${res.data.message}`);
+      fetchAllMiners();
+    } catch (error) {
+      setMinerResult(`❌ ${error.response?.data?.detail || 'Fehler'}`);
+    }
+  };
+
+  const handleRemoveMiner = async (targetUserId, minerId) => {
+    try {
+      const token = localStorage.getItem('token');
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      
+      const res = await axios.post(`${API}/app/admin/miners/remove`, {
+        user_id: targetUserId,
+        miner_id: minerId
+      }, { headers });
+      
+      setMinerResult(`✅ ${res.data.message}`);
+      fetchAllMiners();
+    } catch (error) {
+      setMinerResult(`❌ ${error.response?.data?.detail || 'Fehler'}`);
+    }
+  };
 
   const addRandomActivity = () => {
     const randomUser = userNames[Math.floor(Math.random() * userNames.length)];
