@@ -3,13 +3,14 @@
  * Modern 8-card grid with glassmorphism design + Sponsored Ads
  */
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import BottomNav from '../components/BottomNav';
 
 const API = process.env.REACT_APP_BACKEND_URL + '/api';
 
 export default function SuperAppMinimal() {
+  const navigate = useNavigate();
   const [balance, setBalance] = useState(0);
   const [notifications, setNotifications] = useState(0);
   const [userName, setUserName] = useState('User');
