@@ -266,3 +266,73 @@ def get_leaderboard():
     ).sort("coins", -1).limit(10))
     
     return {"leaderboard": top}
+
+
+# -------------------------
+# GAMES CATALOG
+# -------------------------
+
+@router.get("/games")
+def get_games():
+    """Get all available games"""
+    return {"games": GAMES}
+
+
+@router.get("/games/categories")
+def get_categories():
+    """Get game categories"""
+    categories = list(set(g["category"] for g in GAMES))
+    return {"categories": categories}
+
+
+@router.get("/games/play")
+def play_game(game_id: int, user_id: str = "anonymous"):
+    """Play a game and get reward"""
+    now = datetime.now(timezone.utc)
+    
+    # Find game
+    game = None
+    for g in GAMES:
+        if g["id"] == game_id:
+            game = g
+            break
+    
+    if not game:
+        return {"error": "game not found"}
+    
+    # Base reward with some randomness
+    base_reward = game["reward"]
+    reward = random.randint(max(1, base_reward - 5), base_reward + 5)
+    
+    # Add coins
+    add_coins(user_id, reward)
+    
+    # Record play
+    game_plays_col.insert_one({
+        "user_id": user_id,
+        "game": game["name"],
+        "game_id": game_id,
+        "reward": reward,
+        "played_at": now.isoformat()
+    })
+    
+    wallet = wallets_col.find_one({"user_id": user_id}, {"_id": 0})
+    
+    return {
+        "game": game["name"],
+        "icon": game["icon"],
+        "reward": reward,
+        "balance": wallet.get("coins", 0) if wallet else reward,
+        "message": "game completed"
+    }
+
+
+@router.get("/games/history")
+def get_game_history(user_id: str):
+    """Get user's game history"""
+    history = list(game_plays_col.find(
+        {"user_id": user_id},
+        {"_id": 0}
+    ).sort("played_at", -1).limit(20))
+    
+    return {"history": history}
