@@ -539,3 +539,41 @@ Getestete Collections mit bestätigter Datenspeicherung:
 10. 🎰 Slots → slots.html
 11. 🎲 Dice Roll → dice.html
 12. 🪙 Coin Drop → coin_drop.html ✅ NEU
+
+---
+
+## Changelog - 7. März 2026 (Update 22) - P1 & P2 FEATURES
+
+### ✅ P1: Sound-System implementiert
+- `/app/frontend/src/utils/soundManager.js`
+- Web Audio API basierte Sounds
+- Methoden: `coin()`, `win()`, `gameStart()`, `gameEnd()`, `reward()`, `notification()`
+- Einstellungen werden in localStorage gespeichert
+
+### ✅ P1: Push-Notification-System implementiert  
+- `/app/frontend/src/utils/notificationManager.js`
+- Browser-Notifications + In-App Alerts
+- Methoden: `coinEarned()`, `levelUp()`, `dailyReward()`, `missionComplete()`, `leagueUpdate()`
+
+### ✅ P2: Weekly League Backend
+- `/app/backend/routers/bidblitz_league.py`
+- MongoDB Collections: `league_users`, `league_history`, `user_missions`, `mission_definitions`
+- League Tiers: Bronze, Silver, Gold, Platinum, Diamond
+- API Endpoints:
+  - `GET /api/league/status` - User League Status
+  - `POST /api/league/add-points` - Punkte hinzufügen
+  - `GET /api/league/leaderboard` - Wöchentliche Rangliste
+  - `GET /api/league/missions` - Tägliche & Wöchentliche Missionen
+  - `POST /api/league/missions/progress` - Mission-Fortschritt aktualisieren
+  - `POST /api/league/missions/claim` - Belohnung abholen
+
+### ✅ P2: Games Hub mit League-Integration
+- Weekly League zeigt echte Daten aus Backend
+- Tier-Emoji basierend auf Rang (🥉🥈🥇💎👑)
+- Sound-Effekte beim Spielstart/Ende
+- Klick auf League führt zu Missions-Seite
+
+### Nächste Schritte
+1. Smart Contract auf Testnet deployen
+2. Transport-Feature erweitern (Tracking, Bewertungen)
+3. App.js Routing aufräumen
