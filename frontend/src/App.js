@@ -1118,6 +1118,9 @@ function AppContent() {
           <Route path="/assistant" element={<Assistant />} />
           <Route path="/missions" element={<Missions />} />
           <Route path="/challenges" element={<Missions />} />
+          <Route path="/bbz" element={<BBZWallet />} />
+          <Route path="/bbz-wallet" element={<BBZWallet />} />
+          <Route path="/token" element={<BBZWallet />} />
           <Route path="/app-vip" element={<AppVIP />} />
           <Route path="/vip" element={<AppVIP />} />
           <Route path="/app-statistics" element={<AppStatistics />} />
