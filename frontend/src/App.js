@@ -1105,11 +1105,8 @@ function AppContent() {
           <Route path="/invite-friends" element={<Referral />} />
           <Route path="/treasure-hunt" element={<TreasureHunt />} />
           <Route path="/schatzsuche" element={<TreasureHunt />} />
-          <Route path="/app-admin" element={
-            <ProtectedRoute requireAdmin>
-              <AppAdminPanel />
-            </ProtectedRoute>
-          } />
+          <Route path="/app-admin" element={<AppAdminPanel />} />
+          <Route path="/admin" element={<AppAdminPanel />} />
           <Route path="/app-leaderboard" element={<AppLeaderboard />} />
           <Route path="/app-profile" element={<AppProfile />} />
           <Route path="/friends" element={<Friends />} />
