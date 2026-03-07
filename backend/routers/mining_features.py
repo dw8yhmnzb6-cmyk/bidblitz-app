@@ -1819,3 +1819,645 @@ async def get_withdrawal_history(authorization: str = Header(None)):
     ]
     
     return {"history": history}
+
+
+
+# ======================== FRIENDS SYSTEM ========================
+
+friends_col = db["friends"]
+
+class SendCoinsRequest(BaseModel):
+    to: str
+    amount: int
+
+class AddFriendRequest(BaseModel):
+    friend_name: str
+
+@router.get("/friends/list")
+async def get_friends(authorization: str = Header(None)):
+    """Get user's friends list"""
+    user_id = get_user_id_from_token(authorization)
+    
+    friends_data = friends_col.find_one({"user_id": user_id})
+    friends = friends_data.get("friends", []) if friends_data else []
+    
+    return {
+        "friends": friends,
+        "count": len(friends)
+    }
+
+@router.post("/friends/add")
+async def add_friend(request: AddFriendRequest, authorization: str = Header(None)):
+    """Add a new friend"""
+    user_id = get_user_id_from_token(authorization)
+    now = datetime.now(timezone.utc)
+    
+    new_friend = {
+        "id": str(ObjectId()),
+        "name": request.friend_name,
+        "level": 1,
+        "coins": 0,
+        "online": False,
+        "added_at": now.isoformat()
+    }
+    
+    friends_col.update_one(
+        {"user_id": user_id},
+        {
+            "$push": {"friends": new_friend},
+            "$setOnInsert": {"created_at": now.isoformat()}
+        },
+        upsert=True
+    )
+    
+    return {
+        "success": True,
+        "message": f"{request.friend_name} wurde hinzugefügt!",
+        "friend": new_friend
+    }
+
+@router.post("/friends/send-coins")
+async def send_coins_to_friend(request: SendCoinsRequest, authorization: str = Header(None)):
+    """Send coins to a friend"""
+    user_id = get_user_id_from_token(authorization)
+    now = datetime.now(timezone.utc)
+    
+    # Check wallet balance
+    wallet = wallets_col.find_one({"user_id": user_id})
+    current_coins = wallet.get("coins", 0) if wallet else 0
+    
+    if current_coins < request.amount:
+        raise HTTPException(status_code=400, detail="Nicht genug Coins!")
+    
+    if request.amount <= 0:
+        raise HTTPException(status_code=400, detail="Ungültiger Betrag")
+    
+    # Deduct from sender
+    wallets_col.update_one(
+        {"user_id": user_id},
+        {"$inc": {"coins": -request.amount, "total_spent": request.amount}}
+    )
+    
+    # Add to live feed
+    live_feed_col.insert_one({
+        "user_id": user_id,
+        "action": f"Sent {request.amount} Coins to {request.to}",
+        "type": "friend_transfer",
+        "timestamp": now.isoformat()
+    })
+    
+    new_balance = current_coins - request.amount
+    
+    return {
+        "success": True,
+        "message": f"{request.amount} Coins an {request.to} gesendet!",
+        "new_balance": new_balance
+    }
+
+# ======================== EVENTS SYSTEM ========================
+
+events_col = db["events"]
+user_events_col = db["user_events"]
+
+@router.get("/events/list")
+async def get_events():
+    """Get active events"""
+    events = [
+        {"id": 1, "name": "Coin Hunt Weekend", "icon": "🗺️", "reward": "+50% Coins", "ends_in": "2 Tage"},
+        {"id": 2, "name": "Auction Night", "icon": "🔥", "reward": "Exklusive Items", "ends_in": "8 Stunden"},
+        {"id": 3, "name": "Mystery Box Festival", "icon": "🎁", "reward": "3x Chance", "ends_in": "1 Tag"},
+        {"id": 4, "name": "VIP Double Coins", "icon": "👑", "reward": "2x Mining", "ends_in": "3 Tage"},
+        {"id": 5, "name": "Referral Bonus Week", "icon": "👥", "reward": "+100 Coins", "ends_in": "5 Tage"},
+    ]
+    return {"events": events}
+
+class JoinEventRequest(BaseModel):
+    event_id: int
+
+@router.post("/events/join")
+async def join_event(request: JoinEventRequest, authorization: str = Header(None)):
+    """Join an event"""
+    user_id = get_user_id_from_token(authorization)
+    now = datetime.now(timezone.utc)
+    
+    user_events_col.update_one(
+        {"user_id": user_id},
+        {
+            "$addToSet": {"joined_events": request.event_id},
+            "$set": {"updated_at": now.isoformat()},
+            "$setOnInsert": {"created_at": now.isoformat()}
+        },
+        upsert=True
+    )
+    
+    # Add to live feed
+    live_feed_col.insert_one({
+        "user_id": user_id,
+        "action": f"Joined Event #{request.event_id}",
+        "type": "event_join",
+        "timestamp": now.isoformat()
+    })
+    
+    return {
+        "success": True,
+        "message": f"Event #{request.event_id} beigetreten!",
+        "event_id": request.event_id
+    }
+
+# ======================== STORE SYSTEM ========================
+
+purchases_col = db["purchases"]
+inventory_col = db["inventory"]
+
+class StoreBuyRequest(BaseModel):
+    item_id: str
+    price: int
+
+@router.post("/store/buy")
+async def buy_store_item(request: StoreBuyRequest, authorization: str = Header(None)):
+    """Buy an item from the store"""
+    user_id = get_user_id_from_token(authorization)
+    now = datetime.now(timezone.utc)
+    
+    # Check wallet
+    wallet = wallets_col.find_one({"user_id": user_id})
+    current_coins = wallet.get("coins", 0) if wallet else 0
+    
+    if current_coins < request.price:
+        raise HTTPException(status_code=400, detail="Nicht genug Coins!")
+    
+    # Deduct coins
+    wallets_col.update_one(
+        {"user_id": user_id},
+        {"$inc": {"coins": -request.price, "total_spent": request.price}}
+    )
+    
+    # Add to inventory
+    inventory_col.update_one(
+        {"user_id": user_id},
+        {
+            "$push": {"items": {
+                "item_id": request.item_id,
+                "purchased_at": now.isoformat()
+            }},
+            "$setOnInsert": {"created_at": now.isoformat()}
+        },
+        upsert=True
+    )
+    
+    # Record purchase
+    purchases_col.insert_one({
+        "user_id": user_id,
+        "item_id": request.item_id,
+        "price": request.price,
+        "purchased_at": now.isoformat()
+    })
+    
+    # Add to live feed
+    live_feed_col.insert_one({
+        "user_id": user_id,
+        "action": f"Bought {request.item_id} for {request.price} Coins",
+        "type": "store_purchase",
+        "timestamp": now.isoformat()
+    })
+    
+    new_balance = current_coins - request.price
+    
+    return {
+        "success": True,
+        "message": f"{request.item_id} gekauft!",
+        "new_balance": new_balance
+    }
+
+# ======================== LOAN SYSTEM ========================
+
+loans_col = db["loans"]
+
+class LoanRequest(BaseModel):
+    amount: int
+    interest_rate: int = 10
+
+class RepayLoanRequest(BaseModel):
+    loan_id: int
+
+@router.post("/loans/request")
+async def request_loan(request: LoanRequest, authorization: str = Header(None)):
+    """Request a loan"""
+    user_id = get_user_id_from_token(authorization)
+    now = datetime.now(timezone.utc)
+    
+    if request.amount <= 0 or request.amount > 10000:
+        raise HTTPException(status_code=400, detail="Ungültiger Betrag (max. 10.000)")
+    
+    # Check for existing active loan
+    existing_loan = loans_col.find_one({"user_id": user_id, "status": "active"})
+    if existing_loan:
+        raise HTTPException(status_code=400, detail="Du hast bereits einen aktiven Kredit!")
+    
+    # Calculate repay amount
+    repay_amount = int(request.amount * (1 + request.interest_rate / 100))
+    
+    # Create loan
+    loan = {
+        "user_id": user_id,
+        "amount": request.amount,
+        "repay_amount": repay_amount,
+        "interest_rate": request.interest_rate,
+        "status": "active",
+        "created_at": now.isoformat()
+    }
+    result = loans_col.insert_one(loan)
+    
+    # Add coins to wallet
+    wallets_col.update_one(
+        {"user_id": user_id},
+        {
+            "$inc": {"coins": request.amount},
+            "$setOnInsert": {"created_at": now.isoformat()}
+        },
+        upsert=True
+    )
+    
+    # Add to live feed
+    live_feed_col.insert_one({
+        "user_id": user_id,
+        "action": f"Loan of {request.amount} Coins approved",
+        "type": "loan",
+        "timestamp": now.isoformat()
+    })
+    
+    wallet = wallets_col.find_one({"user_id": user_id}, {"_id": 0})
+    
+    return {
+        "success": True,
+        "message": f"Kredit von {request.amount} Coins genehmigt!",
+        "loan_id": str(result.inserted_id),
+        "amount": request.amount,
+        "repay_amount": repay_amount,
+        "new_balance": wallet.get("coins", 0)
+    }
+
+@router.post("/loans/repay")
+async def repay_loan(request: RepayLoanRequest, authorization: str = Header(None)):
+    """Repay a loan"""
+    user_id = get_user_id_from_token(authorization)
+    now = datetime.now(timezone.utc)
+    
+    # Find active loan
+    loan = loans_col.find_one({"user_id": user_id, "status": "active"})
+    if not loan:
+        raise HTTPException(status_code=404, detail="Kein aktiver Kredit gefunden")
+    
+    repay_amount = loan.get("repay_amount", 0)
+    
+    # Check balance
+    wallet = wallets_col.find_one({"user_id": user_id})
+    current_coins = wallet.get("coins", 0) if wallet else 0
+    
+    if current_coins < repay_amount:
+        raise HTTPException(status_code=400, detail=f"Nicht genug Coins ({repay_amount} benötigt)")
+    
+    # Deduct coins
+    wallets_col.update_one(
+        {"user_id": user_id},
+        {"$inc": {"coins": -repay_amount, "total_spent": repay_amount}}
+    )
+    
+    # Update loan status
+    loans_col.update_one(
+        {"_id": loan["_id"]},
+        {"$set": {"status": "repaid", "repaid_at": now.isoformat()}}
+    )
+    
+    new_balance = current_coins - repay_amount
+    
+    return {
+        "success": True,
+        "message": "Kredit zurückgezahlt!",
+        "new_balance": new_balance
+    }
+
+@router.get("/loans/active")
+async def get_active_loan(authorization: str = Header(None)):
+    """Get user's active loan"""
+    user_id = get_user_id_from_token(authorization)
+    
+    loan = loans_col.find_one({"user_id": user_id, "status": "active"}, {"_id": 0})
+    
+    return {
+        "has_active_loan": loan is not None,
+        "loan": loan
+    }
+
+# ======================== MERCHANT SYSTEM ========================
+
+merchants_col = db["merchants"]
+merchant_transactions_col = db["merchant_transactions"]
+
+class MerchantReceiveRequest(BaseModel):
+    amount: int
+
+@router.post("/merchant/register")
+async def register_merchant(name: str, authorization: str = Header(None)):
+    """Register as a merchant"""
+    user_id = get_user_id_from_token(authorization)
+    now = datetime.now(timezone.utc)
+    
+    merchants_col.update_one(
+        {"user_id": user_id},
+        {
+            "$set": {
+                "business_name": name,
+                "is_active": True,
+                "updated_at": now.isoformat()
+            },
+            "$setOnInsert": {"created_at": now.isoformat(), "total_received": 0}
+        },
+        upsert=True
+    )
+    
+    return {
+        "success": True,
+        "message": f"Händler '{name}' registriert!",
+        "business_name": name
+    }
+
+@router.post("/merchant/receive")
+async def receive_merchant_payment(request: MerchantReceiveRequest, authorization: str = Header(None)):
+    """Receive a payment as merchant"""
+    user_id = get_user_id_from_token(authorization)
+    now = datetime.now(timezone.utc)
+    
+    if request.amount <= 0:
+        raise HTTPException(status_code=400, detail="Ungültiger Betrag")
+    
+    # Add coins to wallet
+    wallets_col.update_one(
+        {"user_id": user_id},
+        {
+            "$inc": {"coins": request.amount, "total_earned": request.amount},
+            "$setOnInsert": {"created_at": now.isoformat()}
+        },
+        upsert=True
+    )
+    
+    # Update merchant total
+    merchants_col.update_one(
+        {"user_id": user_id},
+        {"$inc": {"total_received": request.amount}}
+    )
+    
+    # Record transaction
+    merchant_transactions_col.insert_one({
+        "user_id": user_id,
+        "amount": request.amount,
+        "type": "incoming",
+        "timestamp": now.isoformat()
+    })
+    
+    wallet = wallets_col.find_one({"user_id": user_id}, {"_id": 0})
+    
+    return {
+        "success": True,
+        "message": f"+{request.amount} Coins empfangen!",
+        "new_balance": wallet.get("coins", 0)
+    }
+
+@router.get("/merchant/status")
+async def get_merchant_status(authorization: str = Header(None)):
+    """Get merchant status and transactions"""
+    user_id = get_user_id_from_token(authorization)
+    
+    merchant = merchants_col.find_one({"user_id": user_id}, {"_id": 0})
+    transactions = list(merchant_transactions_col.find(
+        {"user_id": user_id},
+        {"_id": 0}
+    ).sort("timestamp", -1).limit(20))
+    
+    return {
+        "is_registered": merchant is not None,
+        "merchant": merchant,
+        "transactions": transactions
+    }
+
+# ======================== AUCTION SYSTEM ========================
+
+auctions_col = db["auctions"]
+auction_bids_col = db["auction_bids"]
+
+class AuctionBidRequest(BaseModel):
+    item_id: int
+    bid_amount: int
+
+@router.post("/auction/bid")
+async def place_auction_bid(request: AuctionBidRequest, authorization: str = Header(None)):
+    """Place a bid in an auction"""
+    user_id = get_user_id_from_token(authorization)
+    now = datetime.now(timezone.utc)
+    
+    # Each bid costs 1 coin
+    bid_cost = 1
+    
+    # Check wallet
+    wallet = wallets_col.find_one({"user_id": user_id})
+    current_coins = wallet.get("coins", 0) if wallet else 0
+    
+    if current_coins < bid_cost:
+        raise HTTPException(status_code=400, detail="Nicht genug Coins!")
+    
+    # Deduct bid cost
+    wallets_col.update_one(
+        {"user_id": user_id},
+        {"$inc": {"coins": -bid_cost, "total_spent": bid_cost}}
+    )
+    
+    # Record bid
+    auction_bids_col.insert_one({
+        "user_id": user_id,
+        "item_id": request.item_id,
+        "bid_amount": request.bid_amount,
+        "timestamp": now.isoformat()
+    })
+    
+    # Add to live feed
+    live_feed_col.insert_one({
+        "user_id": user_id,
+        "action": f"Bid {request.bid_amount} on Item #{request.item_id}",
+        "type": "auction_bid",
+        "timestamp": now.isoformat()
+    })
+    
+    return {
+        "success": True,
+        "message": f"Gebot von {request.bid_amount} platziert!",
+        "new_balance": current_coins - bid_cost
+    }
+
+@router.get("/auction/active")
+async def get_active_auctions():
+    """Get active auctions"""
+    auctions = [
+        {"id": 1, "name": "AirPods Pro", "image": "🎧", "current_bid": 10, "ends_in": 20},
+        {"id": 2, "name": "PlayStation 5", "image": "🎮", "current_bid": 50, "ends_in": 45},
+        {"id": 3, "name": "iPhone 15", "image": "📱", "current_bid": 100, "ends_in": 120},
+    ]
+    return {"auctions": auctions}
+
+# ======================== VIP UPGRADE ========================
+
+class VIPUpgradeRequest(BaseModel):
+    level: int
+    price: int
+
+@router.post("/vip/upgrade")
+async def upgrade_vip(request: VIPUpgradeRequest, authorization: str = Header(None)):
+    """Upgrade VIP level"""
+    user_id = get_user_id_from_token(authorization)
+    now = datetime.now(timezone.utc)
+    
+    # Check wallet
+    wallet = wallets_col.find_one({"user_id": user_id})
+    current_coins = wallet.get("coins", 0) if wallet else 0
+    
+    if current_coins < request.price:
+        raise HTTPException(status_code=400, detail="Nicht genug Coins!")
+    
+    # Deduct coins
+    wallets_col.update_one(
+        {"user_id": user_id},
+        {"$inc": {"coins": -request.price, "total_spent": request.price}}
+    )
+    
+    # Update VIP level
+    vip_col.update_one(
+        {"user_id": user_id},
+        {
+            "$set": {
+                "level": request.level,
+                "upgraded_at": now.isoformat()
+            },
+            "$setOnInsert": {"created_at": now.isoformat()}
+        },
+        upsert=True
+    )
+    
+    # Add to live feed
+    live_feed_col.insert_one({
+        "user_id": user_id,
+        "action": f"Upgraded to VIP Level {request.level}",
+        "type": "vip_upgrade",
+        "timestamp": now.isoformat()
+    })
+    
+    return {
+        "success": True,
+        "message": f"VIP Level {request.level} aktiviert!",
+        "new_balance": current_coins - request.price,
+        "level": request.level
+    }
+
+# ======================== COIN HUNT (MAP) ========================
+
+coin_hunt_col = db["coin_hunt"]
+
+class CollectCoinRequest(BaseModel):
+    coin_id: str
+    value: int
+
+@router.post("/coins/collect")
+async def collect_coin(request: CollectCoinRequest, authorization: str = Header(None)):
+    """Collect a coin from the map"""
+    user_id = get_user_id_from_token(authorization)
+    now = datetime.now(timezone.utc)
+    
+    # Check if already collected
+    existing = coin_hunt_col.find_one({
+        "user_id": user_id,
+        "coin_id": request.coin_id
+    })
+    
+    if existing:
+        raise HTTPException(status_code=400, detail="Coin bereits gesammelt!")
+    
+    # Record collection
+    coin_hunt_col.insert_one({
+        "user_id": user_id,
+        "coin_id": request.coin_id,
+        "value": request.value,
+        "collected_at": now.isoformat()
+    })
+    
+    # Add to wallet
+    wallets_col.update_one(
+        {"user_id": user_id},
+        {
+            "$inc": {"coins": request.value, "total_earned": request.value},
+            "$setOnInsert": {"created_at": now.isoformat()}
+        },
+        upsert=True
+    )
+    
+    # Add to live feed
+    live_feed_col.insert_one({
+        "user_id": user_id,
+        "action": f"Found {request.value} Coins on Map!",
+        "type": "coin_hunt",
+        "timestamp": now.isoformat()
+    })
+    
+    wallet = wallets_col.find_one({"user_id": user_id}, {"_id": 0})
+    
+    return {
+        "success": True,
+        "message": f"+{request.value} Coins gesammelt!",
+        "new_balance": wallet.get("coins", 0)
+    }
+
+@router.get("/coins/collected")
+async def get_collected_coins(authorization: str = Header(None)):
+    """Get user's collected coins from map"""
+    user_id = get_user_id_from_token(authorization)
+    
+    collected = list(coin_hunt_col.find(
+        {"user_id": user_id},
+        {"_id": 0}
+    ))
+    
+    total_value = sum(c.get("value", 0) for c in collected)
+    
+    return {
+        "collected": [c.get("coin_id") for c in collected],
+        "total_value": total_value,
+        "count": len(collected)
+    }
+
+# ======================== MARKETPLACE EXTENDED ========================
+
+class MarketplaceCreateRequest(BaseModel):
+    title: str
+    price: int
+
+@router.post("/marketplace/create")
+async def create_marketplace_listing(request: MarketplaceCreateRequest, authorization: str = Header(None)):
+    """Create a new marketplace listing"""
+    user_id = get_user_id_from_token(authorization)
+    now = datetime.now(timezone.utc)
+    
+    if request.price <= 0:
+        raise HTTPException(status_code=400, detail="Ungültiger Preis")
+    
+    listing_id = random.randint(1000, 9999)
+    
+    # Store in database (would need a marketplace_listings_col)
+    live_feed_col.insert_one({
+        "user_id": user_id,
+        "action": f"Listed '{request.title}' for {request.price} Coins",
+        "type": "marketplace_listing",
+        "timestamp": now.isoformat()
+    })
+    
+    return {
+        "success": True,
+        "message": f"'{request.title}' gelistet!",
+        "listing_id": listing_id
+    }
