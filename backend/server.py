@@ -234,6 +234,9 @@ from routers.vip_router import router as vip_router_new
 from routers.referral_router import router as referral_router_new
 from routers.admin_router import router as admin_router_new
 
+# NEW: Core Game System (Daily, Missions, Challenges, Tournament)
+from routers.core_game import router as core_game_router
+
 # WebSocket manager
 from services.websocket import ws_manager, broadcast_bid_update, broadcast_auction_ended, notify_payment_received
 
