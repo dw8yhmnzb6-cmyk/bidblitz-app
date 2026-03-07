@@ -21,11 +21,15 @@ export default function BottomNav() {
     if (path === '/super-app') {
       return location.pathname === '/super-app' || location.pathname === '/';
     }
-    if (path === '/map') {
-      return location.pathname === '/map' || 
-             location.pathname === '/taxi' || 
-             location.pathname === '/scooter' ||
-             location.pathname === '/ride-tracking';
+    if (path === '/bbz') {
+      return location.pathname === '/bbz' || 
+             location.pathname === '/bbz-wallet' ||
+             location.pathname === '/token';
+    }
+    if (path === '/games') {
+      return location.pathname === '/games' || 
+             location.pathname === '/map' || 
+             location.pathname === '/missions';
     }
     return location.pathname.startsWith(path);
   };
