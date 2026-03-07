@@ -110,6 +110,24 @@ BidBlitz ist eine vollständige Super-App mit Mining, Games, Mobilität, Chat, M
 
 ## Changelog
 
+### 2026-03-07 (Update 8) - Live Auction & Games Update
+- ✅ **Live Auction** (`/live-auction`)
+  - Echtzeit-Auktion mit 20-Sek Countdown
+  - "+1 Coin" Bieten-System
+  - Timer Reset bei jedem Gebot
+  - Gewinner-Benachrichtigung
+  - Gebotsverlauf mit Historie
+  - Mehrere Auktions-Items (AirPods, PS5, iPhone, MacBook, Gutschein)
+- ✅ **Games Hub Update**
+  - 5 Featured Games im 2x2 Grid + Live Auction Karte
+  - Spin Wheel, Mystery Box, Coin Hunt, Leaderboard, Live Auction
+  - "Mehr Spiele" Sektion mit 6 Schnellspielen
+- ✅ **Profile Update**
+  - Neues Design mit Level-System (1-10+)
+  - VIP Status Badge (Bronze/Silver/Gold/Platinum)
+  - Stats: Coins, Games, Ranking, Miners, Referrals
+  - Schnellzugriff Buttons
+
 ### 2026-03-07 (Update 7) - Coin Hunt & Transport
 - ✅ **Coin Hunt auf Map** (`/map`)
   - 7 sammelbare Coins auf der Karte (10-100 Wert)
