@@ -7,7 +7,7 @@ import requests
 import os
 import time
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://coin-hunt-game.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://bidblitz-gaming.preview.emergentagent.com').rstrip('/')
 
 # Test credentials
 ADMIN_EMAIL = "admin@bidblitz.ae"
@@ -115,7 +115,7 @@ class TestBidPackages:
             f"{BASE_URL}/api/checkout/create-session",
             json={
                 "package_id": "pack_25",
-                "origin_url": "https://coin-hunt-game.preview.emergentagent.com"
+                "origin_url": "https://bidblitz-gaming.preview.emergentagent.com"
             },
             headers={"Authorization": f"Bearer {token}"}
         )

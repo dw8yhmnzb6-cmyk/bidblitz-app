@@ -7,7 +7,7 @@ import requests
 import os
 from datetime import datetime, timedelta, timezone
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://coin-hunt-game.preview.emergentagent.com')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://bidblitz-gaming.preview.emergentagent.com')
 
 # Test credentials
 ADMIN_EMAIL = "admin@bidblitz.ae"
