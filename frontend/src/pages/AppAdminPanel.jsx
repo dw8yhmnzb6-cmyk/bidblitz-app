@@ -213,6 +213,12 @@ export default function AppAdminPanel() {
     { label: 'Marketplace Sales', value: stats.marketplace_sales, icon: '🛒', color: 'from-pink-500/20 to-pink-600/10', border: 'border-pink-500/30', textColor: 'text-pink-400' },
     { label: 'Revenue', value: `€${stats.revenue?.toLocaleString()}`, icon: '💶', color: 'from-emerald-500/20 to-emerald-600/10', border: 'border-emerald-500/30', textColor: 'text-emerald-400' },
   ];
+
+  const tabs = [
+    { id: 'overview', label: 'Übersicht', icon: '📊' },
+    { id: 'coins', label: 'Coins', icon: '💰' },
+    { id: 'miners', label: 'Miner', icon: '⛏️' },
+  ];
   
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#0b0e24] via-[#0f1332] to-[#0b0e24] text-white pb-24">
