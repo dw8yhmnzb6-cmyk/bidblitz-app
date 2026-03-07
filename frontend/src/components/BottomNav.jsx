@@ -7,10 +7,10 @@ import { useLocation, useNavigate } from 'react-router-dom';
 
 const tabs = [
   { id: 'home', emoji: '🏠', label: 'Home', path: '/super-app' },
-  { id: 'wallet', emoji: '💰', label: 'Wallet', path: '/app-wallet' },
+  { id: 'wallet', emoji: '💳', label: 'Wallet', path: '/app-wallet' },
   { id: 'games', emoji: '🎮', label: 'Games', path: '/games' },
   { id: 'mining', emoji: '⛏️', label: 'Mining', path: '/miner' },
-  { id: 'referral', emoji: '👥', label: 'Friends', path: '/app-referral' },
+  { id: 'profile', emoji: '👤', label: 'Profile', path: '/app-profile' },
 ];
 
 export default function BottomNav() {
