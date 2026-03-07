@@ -709,6 +709,9 @@ app.include_router(bbz_wallet_router, prefix="/api")
 # NEW: BidBlitz Weekly League & Missions
 app.include_router(league_router, prefix="/api")
 
+# NEW: BidBlitz Transport & Taxi
+app.include_router(transport_router, prefix="/api")
+
 # ==================== HEALTH & BASIC ENDPOINTS ====================
 
 @app.get("/")
