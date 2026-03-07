@@ -980,6 +980,62 @@ async def add_vip_points(points: int = 10, authorization: str = Header(None)):
     }
 
 
+@router.post("/vip/add-xp")
+async def add_vip_xp(xp: int = 10, authorization: str = Header(None)):
+    """Add XP points for leveling"""
+    user_id = get_user_id_from_token(authorization)
+    now = datetime.now(timezone.utc)
+    
+    # Get current XP and Level
+    vip_data = vip_col.find_one({"user_id": user_id})
+    current_xp = vip_data.get("xp", 0) if vip_data else 0
+    current_level = vip_data.get("level", 1) if vip_data else 1
+    
+    new_xp = current_xp + xp
+    new_level = current_level
+    leveled_up = False
+    
+    # Level up at 100 XP
+    while new_xp >= 100:
+        new_level += 1
+        new_xp -= 100
+        leveled_up = True
+    
+    vip_col.update_one(
+        {"user_id": user_id},
+        {
+            "$set": {
+                "xp": new_xp,
+                "level": new_level,
+                "updated_at": now.isoformat()
+            },
+            "$setOnInsert": {"created_at": now.isoformat()}
+        },
+        upsert=True
+    )
+    
+    return {
+        "success": True,
+        "xp": new_xp,
+        "level": new_level,
+        "leveled_up": leveled_up,
+        "xp_to_next": 100 - new_xp
+    }
+
+@router.get("/vip/xp-status")
+async def get_vip_xp_status(authorization: str = Header(None)):
+    """Get XP and Level status"""
+    user_id = get_user_id_from_token(authorization)
+    
+    vip_data = vip_col.find_one({"user_id": user_id}, {"_id": 0})
+    
+    return {
+        "xp": vip_data.get("xp", 0) if vip_data else 0,
+        "level": vip_data.get("level", 1) if vip_data else 1,
+        "xp_to_next": 100 - (vip_data.get("xp", 0) if vip_data else 0)
+    }
+
+
 # ======================== REFERRAL SYSTEM ========================
 
 referral_col = db["referrals"]
