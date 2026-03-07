@@ -413,3 +413,28 @@ Admin Panel erweitert mit neuem Miner-Tab:
 - Leaderboard für Coin Collectors
 
 **Frontend:** Map Seite (`/map`) mit interaktiver Coin Hunt
+
+---
+
+## Changelog - Update 19 (2026-03-07)
+
+### ✅ ERC-20 SMART CONTRACT + NEUE WALLET UI
+
+**Smart Contract:**
+- Datei: `/app/contracts/BidBlitzToken.sol`
+- Solidity ^0.8.20
+- ERC-20 kompatibel mit: transfer, approve, transferFrom, burn, mint
+- 1 Milliarde BBZ Total Supply
+- BNB Smart Chain (BSC) ready
+
+**BBZ Wallet UI Redesign:**
+| Tab | Funktion |
+|-----|----------|
+| 💰 **Balance** | Token-Guthaben, USD-Wert, Quick Actions |
+| 📤 **Senden** | BBZ zu anderer Adresse senden |
+| 📥 **Empfangen** | QR Code + Wallet-Adresse kopieren |
+| 🔄 **Swap** | Token tauschen (Coming Soon) |
+| 📋 **Transaktionen** | Auszahlungs-Historie |
+
+**Bottom Navigation Update:**
+- Home | Games | Wallet | 💎 BBZ | Profile
