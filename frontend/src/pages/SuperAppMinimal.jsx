@@ -278,14 +278,17 @@ export default function SuperAppMinimal() {
               <Link
                 key={card.id}
                 to={card.path}
-                className="group relative bg-white/5 backdrop-blur-sm p-4 rounded-2xl text-center cursor-pointer transition-all duration-300 hover:scale-105 hover:bg-white/10 border border-white/5 hover:border-white/20 active:scale-95 touch-manipulation"
+                className="group relative bg-white/5 backdrop-blur-sm p-4 rounded-2xl text-center cursor-pointer transition-all duration-300 hover:scale-105 hover:bg-white/10 border border-white/5 hover:border-white/20 active:scale-95"
                 data-testid={`card-${card.id}`}
-                style={{ WebkitTapHighlightColor: 'rgba(108, 99, 255, 0.3)' }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  console.log('Navigating to:', card.path);
+                }}
               >
-                <div className={`absolute inset-0 bg-gradient-to-br ${card.gradient} rounded-2xl opacity-0 group-hover:opacity-20 group-active:opacity-30 transition-opacity`}></div>
-                <p className="text-3xl sm:text-4xl mb-2 group-hover:scale-110 group-active:scale-95 transition-transform">{card.icon}</p>
-                <p className="text-sm font-semibold text-white/90">{card.label}</p>
-                <p className="text-xs text-slate-500 mt-0.5 hidden sm:block">{card.desc}</p>
+                <div className={`absolute inset-0 bg-gradient-to-br ${card.gradient} rounded-2xl opacity-0 group-hover:opacity-20 group-active:opacity-30 transition-opacity pointer-events-none`}></div>
+                <p className="text-3xl sm:text-4xl mb-2 group-hover:scale-110 group-active:scale-95 transition-transform pointer-events-none">{card.icon}</p>
+                <p className="text-sm font-semibold text-white/90 pointer-events-none">{card.label}</p>
+                <p className="text-xs text-slate-500 mt-0.5 hidden sm:block pointer-events-none">{card.desc}</p>
               </Link>
             ))}
           </div>
