@@ -110,6 +110,23 @@ BidBlitz ist eine vollständige Super-App mit Mining, Games, Mobilität, Chat, M
 
 ## Changelog
 
+### 2026-03-07 (Update 9) - Social Features
+- ✅ **Profile Enhancement**
+  - "Earn Coins (+50)" Button
+  - Level-Up System (Level steigt bei Coins-Schwelle)
+  - Ziele-Sektion: Level, Coins, Ranking Fortschritt
+- ✅ **Friends System** (`/friends`)
+  - Freunde hinzufügen
+  - Coins an Freunde senden
+  - Freundesliste mit Online-Status
+- ✅ **Live Events** (`/live-events`)
+  - 5 Events mit Beitreten/Verlassen
+  - Rewards & Countdown-Timer
+  - Events: Coin Hunt, Auction Night, Mystery Box, VIP Double, Referral Bonus
+- ✅ **Chat** (bereits vorhanden)
+  - Nachrichten senden
+  - Quick Messages
+
 ### 2026-03-07 (Update 8) - Live Auction & Games Update
 - ✅ **Live Auction** (`/live-auction`)
   - Echtzeit-Auktion mit 20-Sek Countdown
