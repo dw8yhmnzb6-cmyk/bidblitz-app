@@ -427,6 +427,190 @@ async def get_mining_stats(authorization: str = Header(None)):
         "vip_bonus": vip_level * 5  # 5% bonus per VIP level
     }
 
+# ======================== ADMIN MINER ENDPOINTS ========================
+
+class AdminGiveMinerRequest(BaseModel):
+    user_id: str
+    miner_type_id: str
+    level: int = 1
+
+class AdminMinerActionRequest(BaseModel):
+    user_id: str
+    miner_id: str
+
+@router.get("/admin/miners/list")
+async def admin_list_all_miners(authorization: str = Header(None)):
+    """Admin: Get all miners from all users"""
+    # In production, verify admin role
+    all_miners = list(miners_col.find({}, {"_id": 0}))
+    
+    enriched_list = []
+    for user_data in all_miners:
+        user_id = user_data.get("user_id")
+        miners = user_data.get("miners", [])
+        for miner in miners:
+            miner_type = MINER_TYPES.get(miner.get("type_id"))
+            if miner_type:
+                enriched_list.append({
+                    "user_id": user_id,
+                    "miner_id": miner.get("id"),
+                    "type_id": miner.get("type_id"),
+                    "name": miner_type["name"],
+                    "level": miner.get("level", 1),
+                    "tier": miner_type["tier"],
+                    "is_active": miner.get("is_active", True),
+                    "daily_reward": miner_type["daily_reward"],
+                    "purchased_at": miner.get("purchased_at")
+                })
+    
+    return {
+        "miners": enriched_list,
+        "total_count": len(enriched_list),
+        "total_users": len(all_miners)
+    }
+
+@router.post("/admin/miners/give")
+async def admin_give_miner(request: AdminGiveMinerRequest, authorization: str = Header(None)):
+    """Admin: Give a miner to a user (free)"""
+    # In production, verify admin role
+    miner_type = MINER_TYPES.get(request.miner_type_id)
+    
+    if not miner_type:
+        raise HTTPException(status_code=400, detail="Ungültiger Miner-Typ")
+    
+    if request.level < 1 or request.level > 10:
+        raise HTTPException(status_code=400, detail="Level muss zwischen 1 und 10 sein")
+    
+    now = datetime.now(timezone.utc)
+    new_miner = {
+        "id": str(ObjectId()),
+        "type_id": request.miner_type_id,
+        "level": request.level,
+        "is_active": True,
+        "purchased_at": now.isoformat(),
+        "last_claim": None,
+        "total_mined": 0,
+        "admin_granted": True
+    }
+    
+    miners_col.update_one(
+        {"user_id": request.user_id},
+        {
+            "$push": {"miners": new_miner},
+            "$setOnInsert": {"created_at": now.isoformat()}
+        },
+        upsert=True
+    )
+    
+    # Log action
+    live_feed_col.insert_one({
+        "user_id": "admin",
+        "action": f"Gave {miner_type['name']} (Lv.{request.level}) to {request.user_id}",
+        "type": "admin_miner_give",
+        "timestamp": now.isoformat()
+    })
+    
+    return {
+        "success": True,
+        "message": f"{miner_type['name']} (Level {request.level}) an {request.user_id} gegeben!",
+        "miner": {
+            "id": new_miner["id"],
+            "name": miner_type["name"],
+            "level": request.level,
+            "tier": miner_type["tier"]
+        }
+    }
+
+@router.post("/admin/miners/upgrade")
+async def admin_upgrade_miner(request: AdminMinerActionRequest, authorization: str = Header(None)):
+    """Admin: Upgrade a user's miner (free)"""
+    # In production, verify admin role
+    user_data = miners_col.find_one({"user_id": request.user_id})
+    if not user_data:
+        raise HTTPException(status_code=404, detail="User hat keine Miner")
+    
+    miners = user_data.get("miners", [])
+    target_miner = None
+    
+    for miner in miners:
+        if miner.get("id") == request.miner_id:
+            target_miner = miner
+            break
+    
+    if not target_miner:
+        raise HTTPException(status_code=404, detail="Miner nicht gefunden")
+    
+    current_level = target_miner.get("level", 1)
+    if current_level >= 10:
+        raise HTTPException(status_code=400, detail="Miner ist bereits auf Maximum Level 10")
+    
+    miners_col.update_one(
+        {"user_id": request.user_id, "miners.id": request.miner_id},
+        {"$inc": {"miners.$.level": 1}}
+    )
+    
+    miner_type = MINER_TYPES.get(target_miner.get("type_id"))
+    
+    # Log action
+    now = datetime.now(timezone.utc)
+    live_feed_col.insert_one({
+        "user_id": "admin",
+        "action": f"Upgraded {miner_type['name']} to Level {current_level + 1} for {request.user_id}",
+        "type": "admin_miner_upgrade",
+        "timestamp": now.isoformat()
+    })
+    
+    return {
+        "success": True,
+        "message": f"Miner auf Level {current_level + 1} aufgewertet!",
+        "new_level": current_level + 1
+    }
+
+@router.post("/admin/miners/remove")
+async def admin_remove_miner(request: AdminMinerActionRequest, authorization: str = Header(None)):
+    """Admin: Remove a miner from a user"""
+    # In production, verify admin role
+    result = miners_col.update_one(
+        {"user_id": request.user_id},
+        {"$pull": {"miners": {"id": request.miner_id}}}
+    )
+    
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Miner nicht gefunden")
+    
+    # Log action
+    now = datetime.now(timezone.utc)
+    live_feed_col.insert_one({
+        "user_id": "admin",
+        "action": f"Removed miner {request.miner_id} from {request.user_id}",
+        "type": "admin_miner_remove",
+        "timestamp": now.isoformat()
+    })
+    
+    return {
+        "success": True,
+        "message": "Miner wurde entfernt!"
+    }
+
+@router.post("/admin/miners/set-level")
+async def admin_set_miner_level(user_id: str, miner_id: str, level: int, authorization: str = Header(None)):
+    """Admin: Set a miner's level directly"""
+    if level < 1 or level > 10:
+        raise HTTPException(status_code=400, detail="Level muss zwischen 1 und 10 sein")
+    
+    result = miners_col.update_one(
+        {"user_id": user_id, "miners.id": miner_id},
+        {"$set": {"miners.$.level": level}}
+    )
+    
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Miner nicht gefunden")
+    
+    return {
+        "success": True,
+        "message": f"Miner Level auf {level} gesetzt!"
+    }
+
 @router.get("/mining/history")
 async def get_mining_history(limit: int = 20, authorization: str = Header(None)):
     """Get mining claim history"""
