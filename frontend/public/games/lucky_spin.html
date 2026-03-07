@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BidBlitz Lucky Spin</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    background: linear-gradient(135deg, #0f172a, #1e293b);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Segoe UI', sans-serif;
+    color: white;
+    padding: 20px;
+}
+
+h1 {
+    font-size: 28px;
+    margin-bottom: 10px;
+    background: linear-gradient(90deg, #f59e0b, #ef4444, #8b5cf6);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.subtitle {
+    color: #64748b;
+    margin-bottom: 30px;
+}
+
+.wheel-container {
+    position: relative;
+    width: 300px;
+    height: 300px;
+}
+
+.wheel {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    position: relative;
+    transition: transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99);
+    box-shadow: 0 0 30px rgba(245, 158, 11, 0.3);
+}
+
+.segment {
+    position: absolute;
+    width: 50%;
+    height: 50%;
+    transform-origin: 100% 100%;
+    clip-path: polygon(0 0, 100% 0, 100% 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.pointer {
+    position: absolute;
+    top: -15px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 20px solid transparent;
+    border-right: 20px solid transparent;
+    border-top: 30px solid #f59e0b;
+    z-index: 10;
+    filter: drop-shadow(0 3px 5px rgba(0,0,0,0.3));
+}
+
+.spin-btn {
+    margin-top: 30px;
+    padding: 15px 50px;
+    font-size: 20px;
+    font-weight: bold;
+    background: linear-gradient(135deg, #f59e0b, #ef4444);
+    border: none;
+    border-radius: 30px;
+    color: white;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.spin-btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 10px 30px rgba(245, 158, 11, 0.4);
+}
+
+.spin-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.result {
+    margin-top: 30px;
+    padding: 20px 40px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 15px;
+    text-align: center;
+    display: none;
+}
+
+.result.show {
+    display: block;
+    animation: fadeIn 0.5s ease;
+}
+
+.result-amount {
+    font-size: 36px;
+    font-weight: bold;
+    color: #fbbf24;
+}
+
+.history {
+    margin-top: 30px;
+    width: 100%;
+    max-width: 300px;
+}
+
+.history h3 {
+    margin-bottom: 10px;
+    color: #94a3b8;
+}
+
+.history-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 8px;
+    margin-bottom: 5px;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+</style>
+</head>
+<body>
+
+<h1>🎰 Lucky Spin</h1>
+<p class="subtitle">1x pro Tag</p>
+
+<div class="wheel-container">
+    <div class="pointer"></div>
+    <canvas id="wheel" width="300" height="300"></canvas>
+</div>
+
+<button class="spin-btn" id="spinBtn" onclick="spin()">🎡 SPIN</button>
+
+<div class="result" id="result">
+    <p>Du hast gewonnen:</p>
+    <p class="result-amount" id="resultAmount">0 Punkte</p>
+</div>
+
+<div class="history">
+    <h3>Letzte Spins</h3>
+    <div id="historyList"></div>
+</div>
+
+<script>
+const canvas = document.getElementById('wheel');
+const ctx = canvas.getContext('2d');
+
+const segments = [
+    { label: '5P', color: '#ef4444', value: 5 },
+    { label: '10P', color: '#f97316', value: 10 },
+    { label: '25P', color: '#eab308', value: 25 },
+    { label: '50P', color: '#22c55e', value: 50 },
+    { label: '5% Rabatt', color: '#06b6d4', value: 'rabatt' },
+    { label: 'Niete', color: '#6b7280', value: 0 },
+    { label: '0,50€', color: '#8b5cf6', value: '0.50' },
+    { label: '1€', color: '#ec4899', value: '1' }
+];
+
+let rotation = 0;
+let spinning = false;
+
+function drawWheel() {
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+    const radius = canvas.width / 2 - 5;
+    
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    const arcSize = (2 * Math.PI) / segments.length;
+    
+    segments.forEach((seg, i) => {
+        const startAngle = i * arcSize + rotation;
+        const endAngle = startAngle + arcSize;
+        
+        ctx.beginPath();
+        ctx.moveTo(centerX, centerY);
+        ctx.arc(centerX, centerY, radius, startAngle, endAngle);
+        ctx.closePath();
+        ctx.fillStyle = seg.color;
+        ctx.fill();
+        ctx.strokeStyle = '#1e293b';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        
+        // Label
+        ctx.save();
+        ctx.translate(centerX, centerY);
+        ctx.rotate(startAngle + arcSize / 2);
+        ctx.textAlign = 'right';
+        ctx.fillStyle = 'white';
+        ctx.font = 'bold 14px sans-serif';
+        ctx.fillText(seg.label, radius - 20, 5);
+        ctx.restore();
+    });
+    
+    // Center circle
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, 30, 0, 2 * Math.PI);
+    ctx.fillStyle = '#f59e0b';
+    ctx.fill();
+    ctx.fillStyle = 'white';
+    ctx.font = 'bold 16px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('SPIN', centerX, centerY + 5);
+}
+
+function spin() {
+    if (spinning) return;
+    spinning = true;
+    document.getElementById('spinBtn').disabled = true;
+    document.getElementById('result').classList.remove('show');
+    
+    const winIndex = Math.floor(Math.random() * segments.length);
+    const extraSpins = 5 + Math.random() * 3;
+    const targetRotation = rotation + (extraSpins * 2 * Math.PI) - (winIndex * (2 * Math.PI / segments.length)) - (Math.PI / segments.length);
+    
+    const startTime = Date.now();
+    const duration = 4000;
+    const startRotation = rotation;
+    
+    function animate() {
+        const elapsed = Date.now() - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const easeOut = 1 - Math.pow(1 - progress, 3);
+        
+        rotation = startRotation + (targetRotation - startRotation) * easeOut;
+        drawWheel();
+        
+        if (progress < 1) {
+            requestAnimationFrame(animate);
+        } else {
+            spinning = false;
+            document.getElementById('spinBtn').disabled = false;
+            showResult(segments[winIndex]);
+        }
+    }
+    
+    animate();
+}
+
+function showResult(segment) {
+    const resultEl = document.getElementById('result');
+    const amountEl = document.getElementById('resultAmount');
+    
+    if (segment.value === 0) {
+        amountEl.textContent = 'Leider nichts 😢';
+    } else if (segment.value === 'rabatt') {
+        amountEl.textContent = '5% Rabatt! 🎉';
+    } else if (typeof segment.value === 'string') {
+        amountEl.textContent = segment.value + ' €! 💰';
+    } else {
+        amountEl.textContent = segment.value + ' Punkte! 🎯';
+    }
+    
+    resultEl.classList.add('show');
+    addToHistory(segment.label);
+}
+
+function addToHistory(result) {
+    const historyList = document.getElementById('historyList');
+    const today = new Date().toLocaleDateString('de-DE');
+    
+    const item = document.createElement('div');
+    item.className = 'history-item';
+    item.innerHTML = `<span>${today}</span><span style="color: #fbbf24">${result}</span>`;
+    
+    historyList.insertBefore(item, historyList.firstChild);
+    
+    if (historyList.children.length > 5) {
+        historyList.removeChild(historyList.lastChild);
+    }
+}
+
+drawWheel();
+</script>
+
+</body>
+</html>
