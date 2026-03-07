@@ -89,29 +89,17 @@ export default function GamesHub() {
     } catch (error) {
       // Fallback to local
       const reward = Math.floor(Math.random() * (game.max - game.min + 1)) + game.min;
-      
-      const newPlays = { ...dailyPlays, [gameKey]: currentPlays + 1 };
-      setDailyPlays(newPlays);
-      saveDailyPlays(newPlays);
       setCoins(prev => prev + reward);
-      
       setResult({ type: 'win', game: gameKey, amount: reward });
     }
     
     setLoading('');
     setTimeout(() => setResult(''), 3000);
   };
-  
-  const getRemainingPlays = (gameKey) => {
-    const game = games[gameKey];
-    const played = dailyPlays[gameKey] || 0;
-    return game.limit - played;
-  };
 
   // Quick games (no limits)
   const quickGames = [
     { id: 'slots', icon: '🎰', name: 'Slots' },
-    { id: 'dice', icon: '🎲', name: 'Würfel' },
     { id: 'flip', icon: '🪙', name: 'Flip' },
   ];
   
