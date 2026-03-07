@@ -10,6 +10,7 @@ import BottomNav from '../components/BottomNav';
 const API = process.env.REACT_APP_BACKEND_URL + '/api';
 
 export default function AppAdminPanel() {
+  const [activeTab, setActiveTab] = useState('overview');
   const [userId, setUserId] = useState('');
   const [amount, setAmount] = useState(1000);
   const [action, setAction] = useState('add');
@@ -25,6 +26,15 @@ export default function AppAdminPanel() {
   });
   const [activities, setActivities] = useState([]);
   const activityRef = useRef(null);
+  
+  // Miner Admin State
+  const [minerUserId, setMinerUserId] = useState('');
+  const [selectedMinerType, setSelectedMinerType] = useState('starter_1');
+  const [minerLevel, setMinerLevel] = useState(1);
+  const [minerResult, setMinerResult] = useState('');
+  const [minerLoading, setMinerLoading] = useState(false);
+  const [allMiners, setAllMiners] = useState([]);
+  const [minerCatalog, setMinerCatalog] = useState([]);
   
   const activityTemplates = [
     { text: "hat einen Miner gekauft", icon: "⛏️", color: "text-cyan-400" },
