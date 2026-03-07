@@ -1,76 +1,55 @@
 """
-BidBlitz Games System - SQLite Version
-Wallet, Games (from DB), Leaderboard
+BidBlitz Games System - Lite Version
+Wallet, Games, Daily Rewards, Leaderboard
+MongoDB-persistent storage (migrated from SQLite)
 """
 from fastapi import APIRouter
-import sqlite3
+from datetime import datetime, timezone, timedelta
+from pymongo import MongoClient
 import random
-import time
 import os
 
-router = APIRouter(prefix="/bbz-lite", tags=["BBZ Games SQLite"])
+router = APIRouter(prefix="/bbz-lite", tags=["BBZ Games Lite"])
 
-# SQLite Database
-DB_PATH = os.path.join(os.path.dirname(__file__), "..", "bidblitz_games.db")
+# MongoDB Connection
+mongo_url = os.environ.get("MONGO_URL")
+db_name = os.environ.get("DB_NAME", "bidblitz")
+client = MongoClient(mongo_url)
+db = client[db_name]
 
-conn = sqlite3.connect(DB_PATH, check_same_thread=False)
-cursor = conn.cursor()
+# Collections
+users_col = db["bbz_lite_users"]
+game_portal_col = db["bbz_lite_games"]
+daily_rewards_col = db["bbz_lite_daily"]
+game_plays_col = db["bbz_lite_plays"]
 
-# Tabellen erstellen
-cursor.execute("""
-CREATE TABLE IF NOT EXISTS users(
-    user_id TEXT PRIMARY KEY,
-    coins INTEGER DEFAULT 0
-)
-""")
+# Initialize games if collection is empty
+def init_games():
+    if game_portal_col.count_documents({}) == 0:
+        games = [
+            {"id": 1, "name": "🧩 Puzzle Blocks", "image": "puzzle", "url": "https://html5.gamedistribution.com/puzzle", "reward": 5},
+            {"id": 2, "name": "🚗 Car Jam", "image": "car", "url": "https://html5.gamedistribution.com/car", "reward": 6},
+            {"id": 3, "name": "⛏️ Idle Miner", "image": "miner", "url": "https://html5.gamedistribution.com/miner", "reward": 10},
+            {"id": 4, "name": "🍓 Fruit Match", "image": "fruit", "url": "https://html5.gamedistribution.com/fruit", "reward": 7},
+            {"id": 5, "name": "🚀 Space Battle", "image": "space", "url": "https://html5.gamedistribution.com/space", "reward": 12},
+            {"id": 6, "name": "🧟 Zombie Attack", "image": "zombie", "url": "https://html5.gamedistribution.com/zombie", "reward": 9},
+            {"id": 7, "name": "🏎️ Speed Racer", "image": "racer", "url": "https://html5.gamedistribution.com/racer", "reward": 8},
+            {"id": 8, "name": "💎 Treasure Hunter", "image": "treasure", "url": "https://html5.gamedistribution.com/treasure", "reward": 11},
+            {"id": 9, "name": "🐉 Dragon Quest", "image": "dragon", "url": "https://html5.gamedistribution.com/dragon", "reward": 15},
+            {"id": 10, "name": "🏙️ City Builder", "image": "city", "url": "https://html5.gamedistribution.com/city", "reward": 13}
+        ]
+        game_portal_col.insert_many(games)
 
-cursor.execute("""
-CREATE TABLE IF NOT EXISTS game_portal(
-    id INTEGER PRIMARY KEY,
-    name TEXT,
-    image TEXT,
-    url TEXT,
-    reward INTEGER
-)
-""")
+init_games()
 
-cursor.execute("""
-CREATE TABLE IF NOT EXISTS daily_rewards(
-    user_id TEXT PRIMARY KEY,
-    last_claim INTEGER
-)
-""")
 
-cursor.execute("""
-CREATE TABLE IF NOT EXISTS game_plays(
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id TEXT,
-    game_id INTEGER,
-    reward INTEGER,
-    played_at INTEGER
-)
-""")
-
-conn.commit()
-
-# Spiele in DB einfügen (nur wenn leer)
-cursor.execute("SELECT COUNT(*) FROM game_portal")
-if cursor.fetchone()[0] == 0:
-    cursor.executemany("""
-        INSERT INTO game_portal(name, image, url, reward) VALUES (?, ?, ?, ?)
-    """, [
-        ("🧩 Puzzle Blocks", "puzzle", "https://html5.gamedistribution.com/puzzle", 5),
-        ("🚗 Car Jam", "car", "https://html5.gamedistribution.com/car", 6),
-        ("⛏️ Idle Miner", "miner", "https://html5.gamedistribution.com/miner", 10),
-        ("🍓 Fruit Match", "fruit", "https://html5.gamedistribution.com/fruit", 7),
-        ("🚀 Space Battle", "space", "https://html5.gamedistribution.com/space", 12),
-        ("🧟 Zombie Attack", "zombie", "https://html5.gamedistribution.com/zombie", 9),
-        ("🏎️ Speed Racer", "racer", "https://html5.gamedistribution.com/racer", 8),
-        ("💎 Treasure Hunter", "treasure", "https://html5.gamedistribution.com/treasure", 11),
-        ("🐉 Dragon Quest", "dragon", "https://html5.gamedistribution.com/dragon", 15),
-        ("🏙️ City Builder", "city", "https://html5.gamedistribution.com/city", 13)
-    ])
-    conn.commit()
+def get_or_create_user(user_id: str) -> dict:
+    """Get or create a user with initial coins"""
+    user = users_col.find_one({"user_id": user_id}, {"_id": 0})
+    if not user:
+        user = {"user_id": user_id, "coins": 50}
+        users_col.insert_one(user)
+    return user
 
 
 # -------------------------
@@ -80,27 +59,15 @@ if cursor.fetchone()[0] == 0:
 @router.post("/wallet/create")
 def create_wallet(user_id: str):
     """Create wallet with 50 coins"""
-    cursor.execute("SELECT coins FROM users WHERE user_id=?", (user_id,))
-    row = cursor.fetchone()
-    if row:
-        return {"message": "wallet exists", "coins": row[0]}
-    
-    cursor.execute("INSERT INTO users VALUES (?,?)", (user_id, 50))
-    conn.commit()
-    
-    return {"user_id": user_id, "coins": 50}
+    user = get_or_create_user(user_id)
+    return {"user_id": user_id, "coins": user.get("coins", 50)}
 
 
 @router.get("/wallet")
 def wallet(user_id: str):
     """Get wallet balance"""
-    cursor.execute("SELECT coins FROM users WHERE user_id=?", (user_id,))
-    row = cursor.fetchone()
-    
-    if not row:
-        return {"coins": 0}
-    
-    return {"coins": row[0]}
+    user = users_col.find_one({"user_id": user_id}, {"_id": 0})
+    return {"coins": user.get("coins", 0) if user else 0}
 
 
 @router.get("/wallet/balance")
@@ -111,15 +78,13 @@ def wallet_balance(user_id: str):
 @router.post("/wallet/add")
 def add_coins(user_id: str, amount: int):
     """Add coins to wallet"""
-    cursor.execute("SELECT * FROM users WHERE user_id=?", (user_id,))
-    if not cursor.fetchone():
-        cursor.execute("INSERT INTO users VALUES (?,?)", (user_id, 0))
-    
-    cursor.execute("UPDATE users SET coins = coins + ? WHERE user_id=?", (amount, user_id))
-    conn.commit()
-    
-    cursor.execute("SELECT coins FROM users WHERE user_id=?", (user_id,))
-    return {"wallet": cursor.fetchone()[0]}
+    get_or_create_user(user_id)
+    users_col.update_one(
+        {"user_id": user_id},
+        {"$inc": {"coins": amount}}
+    )
+    user = users_col.find_one({"user_id": user_id}, {"_id": 0})
+    return {"wallet": user.get("coins", 0)}
 
 
 # -------------------------
@@ -129,73 +94,55 @@ def add_coins(user_id: str, amount: int):
 @router.get("/games")
 def get_games():
     """Get all games from database"""
-    cursor.execute("SELECT * FROM game_portal")
-    rows = cursor.fetchall()
-    
-    games = []
-    for r in rows:
-        games.append({
-            "id": r[0],
-            "name": r[1],
-            "image": r[2],
-            "url": r[3],
-            "reward": r[4]
-        })
-    
+    games = list(game_portal_col.find({}, {"_id": 0}))
     return {"games": games}
 
 
 @router.get("/games/play")
 def play_game(game_id: int, user_id: str = None):
     """Get game info and play URL"""
-    cursor.execute(
-        "SELECT name, url, reward, image FROM game_portal WHERE id=?",
-        (game_id,)
-    )
-    
-    game = cursor.fetchone()
+    game = game_portal_col.find_one({"id": game_id}, {"_id": 0})
     
     if not game:
         return {"error": "game not found"}
     
     # If user_id provided, add reward
     if user_id:
-        now = int(time.time())
-        reward = random.randint(max(1, game[2] - 3), game[2] + 3)
+        now = datetime.now(timezone.utc)
+        reward = random.randint(max(1, game["reward"] - 3), game["reward"] + 3)
         
         # Ensure user exists
-        cursor.execute("SELECT * FROM users WHERE user_id=?", (user_id,))
-        if not cursor.fetchone():
-            cursor.execute("INSERT INTO users VALUES (?,?)", (user_id, 0))
+        get_or_create_user(user_id)
         
-        cursor.execute(
-            "UPDATE users SET coins = coins + ? WHERE user_id=?",
-            (reward, user_id)
+        # Add coins
+        users_col.update_one(
+            {"user_id": user_id},
+            {"$inc": {"coins": reward}}
         )
         
-        cursor.execute(
-            "INSERT INTO game_plays (user_id, game_id, reward, played_at) VALUES (?,?,?,?)",
-            (user_id, game_id, reward, now)
-        )
+        # Log game play
+        game_plays_col.insert_one({
+            "user_id": user_id,
+            "game_id": game_id,
+            "reward": reward,
+            "played_at": now.isoformat()
+        })
         
-        conn.commit()
-        
-        cursor.execute("SELECT coins FROM users WHERE user_id=?", (user_id,))
-        balance = cursor.fetchone()[0]
+        user = users_col.find_one({"user_id": user_id}, {"_id": 0})
         
         return {
-            "game": game[0],
-            "image": game[3],
-            "play_url": game[1],
+            "game": game["name"],
+            "image": game.get("image"),
+            "play_url": game.get("url"),
             "reward": reward,
-            "balance": balance
+            "balance": user.get("coins", 0)
         }
     
     return {
-        "game": game[0],
-        "image": game[3],
-        "play_url": game[1],
-        "reward": game[2]
+        "game": game["name"],
+        "image": game.get("image"),
+        "play_url": game.get("url"),
+        "reward": game["reward"]
     }
 
 
@@ -206,30 +153,41 @@ def play_game(game_id: int, user_id: str = None):
 @router.get("/reward/daily")
 def daily_reward(user_id: str):
     """Claim daily reward"""
-    now = int(time.time())
+    now = datetime.now(timezone.utc)
+    today = now.date().isoformat()
     
-    cursor.execute("SELECT * FROM users WHERE user_id=?", (user_id,))
-    if not cursor.fetchone():
-        cursor.execute("INSERT INTO users VALUES (?,?)", (user_id, 0))
+    # Ensure user exists
+    get_or_create_user(user_id)
     
-    cursor.execute("SELECT last_claim FROM daily_rewards WHERE user_id=?", (user_id,))
-    row = cursor.fetchone()
+    # Check if already claimed today
+    last_claim = daily_rewards_col.find_one({"user_id": user_id}, {"_id": 0})
     
-    if row and now - row[0] < 86400:
-        return {"error": "already claimed", "wait": 86400 - (now - row[0])}
+    if last_claim:
+        try:
+            last_claim_date = last_claim.get("last_claim_date", "")
+            if last_claim_date == today:
+                return {"error": "already claimed", "wait": 86400}
+        except:
+            pass
     
     reward = random.choice([10, 15, 20, 25, 50])
     
-    cursor.execute("UPDATE users SET coins = coins + ? WHERE user_id=?", (reward, user_id))
-    cursor.execute("DELETE FROM daily_rewards WHERE user_id=?", (user_id,))
-    cursor.execute("INSERT INTO daily_rewards VALUES (?,?)", (user_id, now))
+    # Add reward
+    users_col.update_one(
+        {"user_id": user_id},
+        {"$inc": {"coins": reward}}
+    )
     
-    conn.commit()
+    # Update last claim
+    daily_rewards_col.update_one(
+        {"user_id": user_id},
+        {"$set": {"last_claim": now.isoformat(), "last_claim_date": today}},
+        upsert=True
+    )
     
-    cursor.execute("SELECT coins FROM users WHERE user_id=?", (user_id,))
-    balance = cursor.fetchone()[0]
+    user = users_col.find_one({"user_id": user_id}, {"_id": 0})
     
-    return {"reward": reward, "balance": balance}
+    return {"reward": reward, "balance": user.get("coins", 0)}
 
 
 # -------------------------
@@ -239,21 +197,17 @@ def daily_reward(user_id: str):
 @router.get("/leaderboard")
 def leaderboard():
     """Get top 10 players"""
-    cursor.execute("SELECT user_id, coins FROM users ORDER BY coins DESC LIMIT 10")
-    rows = cursor.fetchall()
-    
+    users = list(users_col.find({}, {"_id": 0}).sort("coins", -1).limit(10))
     return {
-        "leaderboard": [{"user_id": r[0], "coins": r[1]} for r in rows]
+        "leaderboard": [{"user_id": u["user_id"], "coins": u.get("coins", 0)} for u in users]
     }
 
 
 @router.get("/games/leaderboard")
 def games_leaderboard():
     """Alias: Get top 10 players"""
-    cursor.execute("SELECT user_id, coins FROM users ORDER BY coins DESC LIMIT 10")
-    rows = cursor.fetchall()
-    
-    return [[r[0], r[1]] for r in rows]
+    users = list(users_col.find({}, {"_id": 0}).sort("coins", -1).limit(10))
+    return [[u["user_id"], u.get("coins", 0)] for u in users]
 
 
 # -------------------------
@@ -263,18 +217,16 @@ def games_leaderboard():
 @router.get("/stats")
 def stats(user_id: str):
     """Get user stats"""
-    cursor.execute("SELECT coins FROM users WHERE user_id=?", (user_id,))
-    row = cursor.fetchone()
+    user = users_col.find_one({"user_id": user_id}, {"_id": 0})
     
-    if not row:
+    if not user:
         return {"error": "user not found"}
     
-    cursor.execute("SELECT COUNT(*) FROM game_plays WHERE user_id=?", (user_id,))
-    games_played = cursor.fetchone()[0]
+    games_played = game_plays_col.count_documents({"user_id": user_id})
     
     return {
         "user_id": user_id,
-        "coins": row[0],
+        "coins": user.get("coins", 0),
         "games_played": games_played
     }
 
@@ -286,10 +238,16 @@ def stats(user_id: str):
 @router.post("/admin/games/add")
 def add_game(name: str, image: str, url: str, reward: int):
     """Admin: Add a new game"""
-    cursor.execute(
-        "INSERT INTO game_portal(name, image, url, reward) VALUES (?,?,?,?)",
-        (name, image, url, reward)
-    )
-    conn.commit()
+    # Get next ID
+    last_game = game_portal_col.find_one(sort=[("id", -1)])
+    next_id = (last_game["id"] + 1) if last_game else 1
+    
+    game_portal_col.insert_one({
+        "id": next_id,
+        "name": name,
+        "image": image,
+        "url": url,
+        "reward": reward
+    })
     
     return {"success": True, "message": f"Game '{name}' added"}
