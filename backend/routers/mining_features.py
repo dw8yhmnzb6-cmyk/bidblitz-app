@@ -1682,3 +1682,84 @@ async def list_marketplace_item(request: MarketplaceListRequest, authorization: 
     marketplace_listings.append(new_listing)
     
     return {"success": True, "listing_id": new_listing["id"]}
+
+
+
+# ======================== ANALYTICS ========================
+
+@router.get("/analytics/weekly")
+async def get_weekly_analytics(authorization: str = Header(None)):
+    """Get weekly analytics data"""
+    user_id = get_user_id_from_token(authorization) if authorization else None
+    
+    # Generate sample weekly data
+    # In production, this would aggregate from games_history_col
+    base_coins = random.randint(800, 1500)
+    
+    coins_data = [base_coins + i * random.randint(100, 400) for i in range(7)]
+    mining_data = [random.randint(30, 100) + i * 20 for i in range(7)]
+    games_data = [random.randint(5, 20) + i * 3 for i in range(7)]
+    
+    return {
+        "coins": coins_data,
+        "mining": mining_data,
+        "games": games_data
+    }
+
+# ======================== WITHDRAW ========================
+
+class WithdrawRequest(BaseModel):
+    address: str
+    amount: int
+
+@router.post("/withdraw/request")
+async def request_withdrawal(request: WithdrawRequest, authorization: str = Header(None)):
+    """Request a coin withdrawal"""
+    user_id = get_user_id_from_token(authorization)
+    
+    # Validate
+    if request.amount < 100:
+        raise HTTPException(status_code=400, detail="Mindestbetrag: 100 Coins")
+    
+    # Check balance
+    wallet = wallets_col.find_one({"user_id": user_id})
+    current_coins = wallet.get("coins", 0) if wallet else 0
+    
+    if current_coins < request.amount:
+        raise HTTPException(status_code=400, detail="Nicht genug Coins")
+    
+    # Calculate fee (2%, min 10)
+    fee = max(10, int(request.amount * 0.02))
+    total_deduction = request.amount
+    
+    # Deduct coins
+    wallets_col.update_one(
+        {"user_id": user_id},
+        {"$inc": {"coins": -total_deduction, "total_withdrawn": request.amount - fee}}
+    )
+    
+    # Store withdrawal request (in production, would store in separate collection)
+    withdrawal_id = f"WD{random.randint(10000, 99999)}"
+    
+    return {
+        "success": True,
+        "withdrawal_id": withdrawal_id,
+        "amount": request.amount,
+        "fee": fee,
+        "net_amount": request.amount - fee,
+        "new_balance": current_coins - total_deduction,
+        "status": "pending"
+    }
+
+@router.get("/withdraw/history")
+async def get_withdrawal_history(authorization: str = Header(None)):
+    """Get withdrawal history"""
+    user_id = get_user_id_from_token(authorization)
+    
+    # Sample history
+    history = [
+        {"id": 1, "amount": 500, "address": "DE89...1234", "status": "completed", "date": "03.03.2026"},
+        {"id": 2, "amount": 1000, "address": "0x1234...abcd", "status": "pending", "date": "05.03.2026"},
+    ]
+    
+    return {"history": history}
