@@ -115,7 +115,7 @@ def wallet_balance(user_id: str):
 @router.get("/games")
 def get_games():
     """Get all games from database"""
-    cursor.execute("SELECT * FROM games")
+    cursor.execute("SELECT * FROM game_portal")
     rows = cursor.fetchall()
     
     games = []
@@ -123,9 +123,9 @@ def get_games():
         games.append({
             "id": r[0],
             "name": r[1],
-            "category": r[2],
-            "reward": r[3],
-            "url": r[4]
+            "image": r[2],
+            "url": r[3],
+            "reward": r[4]
         })
     
     return {"games": games}
@@ -135,7 +135,7 @@ def get_games():
 def play_game(game_id: int, user_id: str = None):
     """Get game info and play URL"""
     cursor.execute(
-        "SELECT name, reward, url, category FROM games WHERE id=?",
+        "SELECT name, url, reward, image FROM game_portal WHERE id=?",
         (game_id,)
     )
     
@@ -147,7 +147,7 @@ def play_game(game_id: int, user_id: str = None):
     # If user_id provided, add reward
     if user_id:
         now = int(time.time())
-        reward = random.randint(max(1, game[1] - 3), game[1] + 3)
+        reward = random.randint(max(1, game[2] - 3), game[2] + 3)
         
         # Ensure user exists
         cursor.execute("SELECT * FROM users WHERE user_id=?", (user_id,))
@@ -171,26 +171,18 @@ def play_game(game_id: int, user_id: str = None):
         
         return {
             "game": game[0],
-            "category": game[3],
+            "image": game[3],
+            "play_url": game[1],
             "reward": reward,
-            "balance": balance,
-            "play_url": game[2]
+            "balance": balance
         }
     
     return {
         "game": game[0],
-        "category": game[3],
-        "reward": game[1],
-        "play_url": game[2]
+        "image": game[3],
+        "play_url": game[1],
+        "reward": game[2]
     }
-
-
-@router.get("/games/categories")
-def get_categories():
-    """Get all game categories"""
-    cursor.execute("SELECT DISTINCT category FROM games")
-    rows = cursor.fetchall()
-    return {"categories": [r[0] for r in rows]}
 
 
 # -------------------------
