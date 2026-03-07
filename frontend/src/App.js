@@ -1114,6 +1114,8 @@ function AppContent() {
           <Route path="/app-marketplace" element={<AppMarketplace />} />
           <Route path="/market" element={<AppMarketplace />} />
           <Route path="/sound-settings" element={<AppSoundSettings />} />
+          <Route path="/analytics" element={<AppAnalytics />} />
+          <Route path="/withdraw" element={<AppWithdraw />} />
           
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
