@@ -39,11 +39,33 @@ export default function SuperAppMinimal() {
       const token = localStorage.getItem('token');
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
       
-      const res = await axios.get(`${API}/app/wallet/balance`, { headers });
-      setBalance(res.data.coins || 0);
-      setUserName(res.data.username || 'User');
+      const [walletRes, dailyRes, statsRes] = await Promise.all([
+        axios.get(`${API}/app/wallet/balance`, { headers }),
+        axios.get(`${API}/app/core/daily/status`, { headers }),
+        axios.get(`${API}/app/core/stats/overview`, { headers })
+      ]);
+      
+      setBalance(walletRes.data.coins || 0);
+      setUserName(walletRes.data.username || 'User');
+      setDailyStatus(dailyRes.data);
+      setStats(statsRes.data);
     } catch (error) {
       console.log('Data error');
+    }
+  };
+
+  const claimDaily = async () => {
+    setClaiming(true);
+    try {
+      const token = localStorage.getItem('token');
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      const res = await axios.post(`${API}/app/core/daily/claim`, {}, { headers });
+      setBalance(res.data.new_balance);
+      setDailyStatus(prev => ({ ...prev, claimed_today: true, day: res.data.day, streak: res.data.streak }));
+    } catch (error) {
+      console.log('Claim error');
+    } finally {
+      setClaiming(false);
     }
   };
 
