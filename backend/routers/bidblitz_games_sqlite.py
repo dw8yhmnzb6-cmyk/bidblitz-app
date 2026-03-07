@@ -108,6 +108,20 @@ def wallet_balance(user_id: str):
     return wallet(user_id)
 
 
+@router.post("/wallet/add")
+def add_coins(user_id: str, amount: int):
+    """Add coins to wallet"""
+    cursor.execute("SELECT * FROM users WHERE user_id=?", (user_id,))
+    if not cursor.fetchone():
+        cursor.execute("INSERT INTO users VALUES (?,?)", (user_id, 0))
+    
+    cursor.execute("UPDATE users SET coins = coins + ? WHERE user_id=?", (amount, user_id))
+    conn.commit()
+    
+    cursor.execute("SELECT coins FROM users WHERE user_id=?", (user_id,))
+    return {"wallet": cursor.fetchone()[0]}
+
+
 # -------------------------
 # GAMES (from Database)
 # -------------------------
