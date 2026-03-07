@@ -248,6 +248,28 @@ export default function AppAdminPanel() {
             <span className="text-lg">🔄</span>
           </button>
         </div>
+
+        {/* Tabs */}
+        <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
+          {tabs.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => {
+                setActiveTab(tab.id);
+                if (tab.id === 'miners') fetchAllMiners();
+              }}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium transition-all whitespace-nowrap ${
+                activeTab === tab.id
+                  ? 'bg-[#6c63ff] text-white'
+                  : 'bg-white/5 text-slate-400 hover:bg-white/10'
+              }`}
+              data-testid={`tab-${tab.id}`}
+            >
+              <span>{tab.icon}</span>
+              {tab.label}
+            </button>
+          ))}
+        </div>
         
         {/* Stats Grid - 3x2 */}
         <div className="mb-6">
