@@ -679,6 +679,9 @@ app.include_router(games_router, prefix="/api")
 # NEW: BidBlitz Game Hub (20 Games)
 app.include_router(hub_router, prefix="/api")
 
+# NEW: BidBlitz Dashboard
+app.include_router(dashboard_router, prefix="/api")
+
 # ==================== HEALTH & BASIC ENDPOINTS ====================
 
 @app.get("/")
