@@ -186,6 +186,8 @@ import LiveAuction from "./pages/LiveAuction";
 import Friends from "./pages/Friends";
 import LiveEvents from "./pages/LiveEvents";
 import Store from "./pages/Store";
+import Merchant from "./pages/Merchant";
+import Loans from "./pages/Loans";
 
 // New Feature Components
 import Watchlist from "./components/Watchlist";
