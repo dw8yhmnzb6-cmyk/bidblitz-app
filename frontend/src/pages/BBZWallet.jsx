@@ -338,7 +338,7 @@ export default function BBZWallet() {
                   <span className="text-4xl mb-4 block">🔗</span>
                   <p className="text-slate-400 mb-4">Bitte zuerst eine Wallet verbinden</p>
                   <button
-                    onClick={() => setActiveTab('wallet')}
+                    onClick={() => setActiveTab('balance')}
                     className="px-6 py-2 bg-amber-500 hover:bg-amber-600 rounded-xl font-medium transition-all"
                   >
                     Wallet verbinden
