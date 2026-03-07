@@ -171,6 +171,11 @@ import AppStatistics from "./pages/AppStatistics";
 import AppTaxi from "./pages/AppTaxi";
 import AppScooter from "./pages/AppScooter";
 import AppVIPGames from "./pages/AppVIPGames";
+import AppAchievements from "./pages/AppAchievements";
+import AppNotifications from "./pages/AppNotifications";
+import AppChat from "./pages/AppChat";
+import AppMarketplace from "./pages/AppMarketplace";
+import AppSoundSettings from "./pages/AppSoundSettings";
 
 // New Feature Components
 import Watchlist from "./components/Watchlist";
