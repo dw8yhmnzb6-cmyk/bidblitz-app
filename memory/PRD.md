@@ -352,3 +352,36 @@ Admin Panel erweitert mit neuem Miner-Tab:
 - **Games Hub:** Verbunden mit Backend `/core/games/play`
 
 **Neue Route:** `/missions` und `/challenges`
+
+---
+
+## Changelog - Update 17 (2026-03-07)
+
+### ✅ ADMIN PANEL OHNE LOGIN + BBZ TOKEN SYSTEM
+
+**Admin Panel:**
+- Route `/app-admin` und `/admin` ohne Login-Schutz
+- 3 Tabs: Übersicht, Coins, ⛏️ Miner
+- Miner vergeben an beliebige User
+- Alle Miner auflisten, upgraden, entfernen
+
+**BBZ Token System (Phase 1 → Phase 2 Vorbereitung):**
+
+| Feature | Endpoint | Status |
+|---------|----------|--------|
+| Token Info | `/api/app/bbz/info` | ✅ |
+| Wallet Connect | `/api/app/bbz/wallet/connect` | ✅ |
+| Wallet Status | `/api/app/bbz/wallet/status` | ✅ |
+| Withdraw | `/api/app/bbz/withdraw` | ✅ |
+| P2P Transfer | `/api/app/bbz/transfer` | ✅ |
+| History | `/api/app/bbz/withdrawals` | ✅ |
+
+**BBZ Token Config:**
+- Name: BidBlitz Coin (BBZ)
+- Network: BNB Smart Chain (Chain ID: 56)
+- Total Supply: 1,000,000,000
+- Exchange Rate: 1:1 (1 In-App Coin = 1 BBZ)
+- Min Withdraw: 100 Coins
+- Withdraw Fee: 2% (min. 10 Coins)
+
+**Frontend:** Neue Seite `/bbz` mit 4 Tabs (Wallet, Auszahlen, Senden, Historie)
