@@ -1,164 +1,400 @@
 <!DOCTYPE html>
-<html>
+<html lang="de">
 <head>
 <meta charset="UTF-8">
-<title>BidBlitz Match Game</title>
-
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BidBlitz Match-3</title>
 <style>
-
-body{
-background:#0f172a;
-display:flex;
-justify-content:center;
-align-items:center;
-height:100vh;
-font-family:sans-serif;
-color:white;
-flex-direction:column;
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
 }
 
-#score{
-font-size:24px;
-margin-bottom:20px;
+body {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Segoe UI', sans-serif;
+    color: white;
+    padding: 20px;
 }
 
-#board{
-display:grid;
-grid-template-columns:repeat(8,70px);
-grid-gap:5px;
+.header {
+    text-align: center;
+    margin-bottom: 20px;
 }
 
-.tile{
-width:70px;
-height:70px;
-border-radius:12px;
-cursor:pointer;
-transition:transform 0.1s;
+.header h1 {
+    font-size: 28px;
+    background: linear-gradient(90deg, #ff6b6b, #ffd93d, #6bcb77, #4d96ff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 10px;
 }
 
-.tile:hover{
-transform:scale(1.05);
+.stats {
+    display: flex;
+    gap: 30px;
+    justify-content: center;
+    margin-bottom: 15px;
 }
 
-.tile:active{
-transform:scale(0.95);
+.stat {
+    text-align: center;
 }
 
-.red{background:#ff4d4d}
-.blue{background:#4da6ff}
-.green{background:#4dff88}
-.yellow{background:#ffd24d}
-.purple{background:#b84dff}
+.stat-value {
+    font-size: 24px;
+    font-weight: bold;
+    color: #ffd93d;
+}
 
+.stat-label {
+    font-size: 12px;
+    color: #888;
+}
+
+#board {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 4px;
+    padding: 15px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 20px;
+    border: 2px solid rgba(255,255,255,0.1);
+    max-width: 400px;
+}
+
+.tile {
+    width: 42px;
+    height: 42px;
+    border-radius: 10px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    transition: all 0.15s ease;
+    border: 2px solid transparent;
+}
+
+.tile:hover {
+    transform: scale(1.1);
+    z-index: 10;
+}
+
+.tile:active {
+    transform: scale(0.95);
+}
+
+.tile.selected {
+    border: 3px solid white;
+    box-shadow: 0 0 15px rgba(255,255,255,0.5);
+}
+
+.tile.matched {
+    animation: pop 0.3s ease;
+}
+
+@keyframes pop {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.3); opacity: 0.5; }
+    100% { transform: scale(0); opacity: 0; }
+}
+
+.apple { background: linear-gradient(135deg, #ff6b6b, #ee5a5a); }
+.grape { background: linear-gradient(135deg, #9b59b6, #8e44ad); }
+.lemon { background: linear-gradient(135deg, #f1c40f, #f39c12); }
+.orange { background: linear-gradient(135deg, #e67e22, #d35400); }
+.berry { background: linear-gradient(135deg, #3498db, #2980b9); }
+.cherry { background: linear-gradient(135deg, #e74c3c, #c0392b); }
+
+.controls {
+    margin-top: 20px;
+    display: flex;
+    gap: 15px;
+}
+
+.btn {
+    padding: 12px 30px;
+    border: none;
+    border-radius: 25px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-restart {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+}
+
+.btn-restart:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+}
+
+.combo-text {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 48px;
+    font-weight: bold;
+    color: #ffd93d;
+    text-shadow: 0 0 20px rgba(255, 217, 61, 0.8);
+    animation: comboAnim 0.8s ease forwards;
+    pointer-events: none;
+    z-index: 100;
+}
+
+@keyframes comboAnim {
+    0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+    50% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+    100% { transform: translate(-50%, -50%) scale(1); opacity: 0; }
+}
+
+@media (max-width: 500px) {
+    .tile {
+        width: 38px;
+        height: 38px;
+        font-size: 24px;
+    }
+    #board {
+        gap: 3px;
+        padding: 10px;
+    }
+}
 </style>
-
 </head>
-
 <body>
 
-<div id="score">Score: 0</div>
+<div class="header">
+    <h1>🎮 BidBlitz Match-3</h1>
+</div>
+
+<div class="stats">
+    <div class="stat">
+        <div class="stat-value" id="score">0</div>
+        <div class="stat-label">Score</div>
+    </div>
+    <div class="stat">
+        <div class="stat-value" id="moves">30</div>
+        <div class="stat-label">Moves</div>
+    </div>
+    <div class="stat">
+        <div class="stat-value" id="combo">0</div>
+        <div class="stat-label">Combo</div>
+    </div>
+</div>
 
 <div id="board"></div>
 
+<div class="controls">
+    <button class="btn btn-restart" onclick="restartGame()">🔄 Neu starten</button>
+</div>
+
 <script>
+const WIDTH = 8;
+const HEIGHT = 8;
+const fruits = [
+    { class: 'apple', emoji: '🍎' },
+    { class: 'grape', emoji: '🍇' },
+    { class: 'lemon', emoji: '🍋' },
+    { class: 'orange', emoji: '🍊' },
+    { class: 'berry', emoji: '🫐' },
+    { class: 'cherry', emoji: '🍒' }
+];
 
-const width=8
-const colors=["red","blue","green","yellow","purple"]
+let board = [];
+let selected = null;
+let score = 0;
+let moves = 30;
+let combo = 0;
 
-let board=[]
-let score=0
+const boardEl = document.getElementById('board');
+const scoreEl = document.getElementById('score');
+const movesEl = document.getElementById('moves');
+const comboEl = document.getElementById('combo');
 
-const gameBoard=document.getElementById("board")
-
-function createBoard(){
-
-for(let i=0;i<width*width;i++){
-
-let tile=document.createElement("div")
-
-tile.classList.add("tile")
-
-let color=colors[Math.floor(Math.random()*colors.length)]
-
-tile.classList.add(color)
-
-tile.setAttribute("id",i)
-
-tile.addEventListener("click",swapTile)
-
-gameBoard.appendChild(tile)
-
-board.push(tile)
-
+function createBoard() {
+    boardEl.innerHTML = '';
+    board = [];
+    
+    for (let i = 0; i < WIDTH * HEIGHT; i++) {
+        const fruit = fruits[Math.floor(Math.random() * fruits.length)];
+        const tile = document.createElement('div');
+        tile.className = `tile ${fruit.class}`;
+        tile.innerHTML = fruit.emoji;
+        tile.dataset.index = i;
+        tile.dataset.type = fruit.class;
+        tile.addEventListener('click', () => selectTile(i));
+        boardEl.appendChild(tile);
+        board.push(tile);
+    }
+    
+    // Remove initial matches
+    while (checkMatches(false)) {
+        refillBoard();
+    }
 }
 
+function selectTile(index) {
+    if (moves <= 0) return;
+    
+    const tile = board[index];
+    
+    if (selected === null) {
+        selected = index;
+        tile.classList.add('selected');
+    } else if (selected === index) {
+        tile.classList.remove('selected');
+        selected = null;
+    } else {
+        // Check if adjacent
+        const diff = Math.abs(selected - index);
+        const sameRow = Math.floor(selected / WIDTH) === Math.floor(index / WIDTH);
+        
+        if ((diff === 1 && sameRow) || diff === WIDTH) {
+            swapTiles(selected, index);
+            moves--;
+            movesEl.textContent = moves;
+            
+            if (!checkMatches(true)) {
+                // Swap back if no match
+                setTimeout(() => swapTiles(selected, index), 300);
+            } else {
+                combo = 0;
+                cascadeMatches();
+            }
+        }
+        
+        board[selected].classList.remove('selected');
+        selected = null;
+    }
 }
 
-createBoard()
-
-let first=null
-
-function swapTile(){
-
-if(first==null){
-
-first=this
-this.style.border="3px solid white"
-
-return
-
+function swapTiles(i1, i2) {
+    const tile1 = board[i1];
+    const tile2 = board[i2];
+    
+    const tempClass = tile1.dataset.type;
+    const tempEmoji = tile1.innerHTML;
+    
+    tile1.dataset.type = tile2.dataset.type;
+    tile1.innerHTML = tile2.innerHTML;
+    tile1.className = `tile ${tile2.dataset.type}`;
+    
+    tile2.dataset.type = tempClass;
+    tile2.innerHTML = tempEmoji;
+    tile2.className = `tile ${tempClass}`;
 }
 
-let second=this
-
-let temp=first.className
-
-first.className=second.className
-
-second.className=temp
-
-first.style.border=""
-
-checkMatches()
-
-first=null
-
+function checkMatches(animate) {
+    let matched = false;
+    const toRemove = new Set();
+    
+    // Check horizontal
+    for (let row = 0; row < HEIGHT; row++) {
+        for (let col = 0; col < WIDTH - 2; col++) {
+            const i = row * WIDTH + col;
+            const type = board[i].dataset.type;
+            
+            if (type && type === board[i+1].dataset.type && type === board[i+2].dataset.type) {
+                toRemove.add(i);
+                toRemove.add(i+1);
+                toRemove.add(i+2);
+                matched = true;
+            }
+        }
+    }
+    
+    // Check vertical
+    for (let col = 0; col < WIDTH; col++) {
+        for (let row = 0; row < HEIGHT - 2; row++) {
+            const i = row * WIDTH + col;
+            const type = board[i].dataset.type;
+            
+            if (type && type === board[i+WIDTH].dataset.type && type === board[i+WIDTH*2].dataset.type) {
+                toRemove.add(i);
+                toRemove.add(i+WIDTH);
+                toRemove.add(i+WIDTH*2);
+                matched = true;
+            }
+        }
+    }
+    
+    if (matched && animate) {
+        combo++;
+        const points = toRemove.size * 10 * combo;
+        score += points;
+        scoreEl.textContent = score;
+        comboEl.textContent = combo;
+        
+        if (combo > 1) {
+            showCombo(combo);
+        }
+        
+        toRemove.forEach(i => {
+            board[i].classList.add('matched');
+            board[i].dataset.type = '';
+        });
+        
+        setTimeout(() => {
+            toRemove.forEach(i => {
+                const fruit = fruits[Math.floor(Math.random() * fruits.length)];
+                board[i].className = `tile ${fruit.class}`;
+                board[i].innerHTML = fruit.emoji;
+                board[i].dataset.type = fruit.class;
+            });
+        }, 300);
+    }
+    
+    return matched;
 }
 
-function checkMatches(){
-
-for(let i=0;i<board.length;i++){
-
-if(i%8<6){
-
-let a=board[i]
-let b=board[i+1]
-let c=board[i+2]
-
-if(a.className==b.className && b.className==c.className){
-
-a.className="tile"
-b.className="tile"
-c.className="tile"
-
-score+=10
-
-document.getElementById("score").innerText="Score: "+score
-
-setTimeout(()=>{
-a.classList.add(colors[Math.floor(Math.random()*colors.length)])
-b.classList.add(colors[Math.floor(Math.random()*colors.length)])
-c.classList.add(colors[Math.floor(Math.random()*colors.length)])
-},300)
-
+function cascadeMatches() {
+    setTimeout(() => {
+        if (checkMatches(true)) {
+            cascadeMatches();
+        }
+    }, 400);
 }
 
+function refillBoard() {
+    board.forEach((tile, i) => {
+        const fruit = fruits[Math.floor(Math.random() * fruits.length)];
+        tile.className = `tile ${fruit.class}`;
+        tile.innerHTML = fruit.emoji;
+        tile.dataset.type = fruit.class;
+    });
 }
 
+function showCombo(num) {
+    const el = document.createElement('div');
+    el.className = 'combo-text';
+    el.textContent = `${num}x COMBO!`;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 800);
 }
 
+function restartGame() {
+    score = 0;
+    moves = 30;
+    combo = 0;
+    scoreEl.textContent = score;
+    movesEl.textContent = moves;
+    comboEl.textContent = combo;
+    selected = null;
+    createBoard();
 }
 
+createBoard();
 </script>
 
 </body>
