@@ -3,11 +3,7 @@
  * Save and manage favorite routes
  */
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import BottomNav from '../components/BottomNav';
-
-const API = process.env.REACT_APP_BACKEND_URL + '/api';
 
 export default function AppFavoriteRoutes() {
   const navigate = useNavigate();
