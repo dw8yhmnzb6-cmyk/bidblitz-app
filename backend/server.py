@@ -228,6 +228,12 @@ from routers.referral_notifications import router as referral_router
 # NEW: Digital Payment API for External Integrations (POS Systems like Edeka)
 from routers.digital_api import router as digital_api_router
 
+# NEW: Shop, VIP, Referral, Admin Routers (Refactored)
+from routers.shop_router import router as shop_router
+from routers.vip_router import router as vip_router_new
+from routers.referral_router import router as referral_router_new
+from routers.admin_router import router as admin_router_new
+
 # WebSocket manager
 from services.websocket import ws_manager, broadcast_bid_update, broadcast_auction_ended, notify_payment_received
 
