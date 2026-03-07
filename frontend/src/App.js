@@ -1117,6 +1117,8 @@ function AppContent() {
           <Route path="/sound-settings" element={<AppSoundSettings />} />
           <Route path="/analytics" element={<AppAnalytics />} />
           <Route path="/withdraw" element={<AppWithdraw />} />
+          <Route path="/map" element={<AppMap />} />
+          <Route path="/live-map" element={<AppMap />} />
           
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
