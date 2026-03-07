@@ -649,6 +649,9 @@ app.include_router(core_game_router, prefix="/api/app")
 # NEW: BBZ Token System
 app.include_router(bbz_router, prefix="/api/app")
 
+# NEW: Games V2 (Pokemon GO Style)
+app.include_router(games_v2_router, prefix="/api/app")
+
 # ==================== HEALTH & BASIC ENDPOINTS ====================
 
 @app.get("/")
