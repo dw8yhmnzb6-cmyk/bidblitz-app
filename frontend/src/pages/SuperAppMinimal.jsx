@@ -97,11 +97,6 @@ export default function SuperAppMinimal() {
   ];
   
   const [activeCategory, setActiveCategory] = useState('auktionen');
-    { id: 'games', icon: '🎮', label: 'Games', desc: '10+ Spiele', path: '/games', gradient: 'from-purple-500 to-purple-600' },
-    { id: 'mining', icon: '⛏️', label: 'Mining', desc: 'Coins sammeln', path: '/miner', gradient: 'from-blue-500 to-blue-600' },
-    { id: 'marketplace', icon: '🛒', label: 'Market', desc: 'Handeln', path: '/market', gradient: 'from-pink-500 to-pink-600' },
-    { id: 'auctions', icon: '🔨', label: 'Auctions', desc: 'Bieten', path: '/auctions', gradient: 'from-red-500 to-red-600' },
-  ];
 
   const quickLinks = [
     { icon: '🎯', label: 'Missionen', path: '/missions' },
