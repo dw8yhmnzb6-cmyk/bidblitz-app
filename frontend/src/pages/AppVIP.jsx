@@ -1,6 +1,6 @@
 /**
- * BidBlitz VIP Status
- * VIP Levels based on total coins earned, with benefits
+ * BidBlitz VIP Level System
+ * XP-based leveling with progress bar
  */
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
@@ -9,178 +9,167 @@ import BottomNav from '../components/BottomNav';
 const API = process.env.REACT_APP_BACKEND_URL + '/api';
 
 export default function AppVIP() {
-  const [vipLevel, setVipLevel] = useState('VIP 1');
-  const [totalEarned, setTotalEarned] = useState(1500);
+  const [level, setLevel] = useState(1);
+  const [xp, setXp] = useState(0);
+  const [totalCoins, setTotalCoins] = useState(0);
   const [message, setMessage] = useState('');
   
   useEffect(() => {
     fetchVIPStatus();
   }, []);
   
-  useEffect(() => {
-    updateVIPLevel();
-  }, [totalEarned]);
-  
   const fetchVIPStatus = async () => {
     try {
       const token = localStorage.getItem('token');
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
       
-      const res = await axios.get(`${API}/app/wallet/balance`, { headers });
-      setTotalEarned(res.data.total_earned || 0);
+      const res = await axios.get(`${API}/app/vip/status`, { headers });
+      setLevel(res.data.level || 1);
+      setXp(res.data.xp || 0);
+      setTotalCoins(res.data.total_earned || 0);
     } catch (error) {
-      console.log('VIP fetch error');
+      // Load from localStorage
+      const savedXp = parseInt(localStorage.getItem('vipXp') || '0');
+      const savedLevel = parseInt(localStorage.getItem('vipLevel') || '1');
+      setXp(savedXp);
+      setLevel(savedLevel);
     }
   };
   
-  const updateVIPLevel = () => {
-    let level = 'VIP 1';
-    if (totalEarned > 20000) level = 'VIP 5';
-    else if (totalEarned > 10000) level = 'VIP 4';
-    else if (totalEarned > 5000) level = 'VIP 3';
-    else if (totalEarned > 2000) level = 'VIP 2';
-    setVipLevel(level);
-  };
-  
-  const earnCoins = async () => {
-    const win = Math.floor(Math.random() * 200);
+  const earnXP = async () => {
+    let newXp = xp + 10;
+    let newLevel = level;
     
+    if (newXp >= 100) {
+      newLevel++;
+      newXp = 0;
+      setMessage(`🎉 Level Up! Du bist jetzt Level ${newLevel}!`);
+    } else {
+      setMessage(`+10 XP verdient!`);
+    }
+    
+    setXp(newXp);
+    setLevel(newLevel);
+    
+    // Save to localStorage
+    localStorage.setItem('vipXp', newXp.toString());
+    localStorage.setItem('vipLevel', newLevel.toString());
+    
+    // Save to backend
     try {
       const token = localStorage.getItem('token');
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      
-      const res = await axios.post(`${API}/app/games/play`, 
-        { game_type: 'vip_earn' },
-        { headers }
-      );
-      
-      // Update total earned
-      const newTotal = totalEarned + (res.data.reward || win);
-      setTotalEarned(newTotal);
-      setMessage(`+${res.data.reward || win} Coins verdient!`);
+      await axios.post(`${API}/app/vip/add-xp?xp=10`, {}, { headers });
     } catch (error) {
-      setTotalEarned(prev => prev + win);
-      setMessage(`+${win} Coins verdient!`);
+      console.log('XP save error');
     }
     
     setTimeout(() => setMessage(''), 2000);
   };
   
-  const getVIPColor = () => {
-    switch (vipLevel) {
-      case 'VIP 5': return '#ffd700'; // Gold
-      case 'VIP 4': return '#a855f7'; // Purple
-      case 'VIP 3': return '#f59e0b'; // Orange
-      case 'VIP 2': return '#94a3b8'; // Silver
-      default: return '#6c63ff'; // Default
-    }
+  const getLevelBadge = () => {
+    if (level >= 50) return { name: 'Diamond', color: '#00bcd4', icon: '💎' };
+    if (level >= 30) return { name: 'Platinum', color: '#a855f7', icon: '👑' };
+    if (level >= 20) return { name: 'Gold', color: '#f59e0b', icon: '🥇' };
+    if (level >= 10) return { name: 'Silver', color: '#94a3b8', icon: '🥈' };
+    if (level >= 5) return { name: 'Bronze', color: '#cd7f32', icon: '🥉' };
+    return { name: 'Starter', color: '#6c63ff', icon: '⭐' };
   };
   
-  const getNextLevel = () => {
-    if (totalEarned <= 2000) return { level: 'VIP 2', needed: 2000 - totalEarned };
-    if (totalEarned <= 5000) return { level: 'VIP 3', needed: 5000 - totalEarned };
-    if (totalEarned <= 10000) return { level: 'VIP 4', needed: 10000 - totalEarned };
-    if (totalEarned <= 20000) return { level: 'VIP 5', needed: 20000 - totalEarned };
-    return null;
-  };
-  
-  const nextLevel = getNextLevel();
+  const badge = getLevelBadge();
   
   const benefits = [
-    { level: 'VIP 1', benefit: 'Normal Rewards', unlocked: true },
-    { level: 'VIP 2', benefit: '+10% Mining Profit', unlocked: totalEarned > 2000 },
-    { level: 'VIP 3', benefit: '+20% Mining Profit', unlocked: totalEarned > 5000 },
-    { level: 'VIP 4', benefit: '-10% Marketplace Fees', unlocked: totalEarned > 10000 },
-    { level: 'VIP 5', benefit: 'Exclusive Games', unlocked: totalEarned > 20000 },
+    { level: 1, benefit: 'Basis Features', unlocked: level >= 1 },
+    { level: 5, benefit: '+5% Daily Bonus', unlocked: level >= 5 },
+    { level: 10, benefit: '+10% Mining Profit', unlocked: level >= 10 },
+    { level: 20, benefit: '+20% Game Rewards', unlocked: level >= 20 },
+    { level: 30, benefit: 'Exclusive Games', unlocked: level >= 30 },
+    { level: 50, benefit: 'VIP Support', unlocked: level >= 50 },
   ];
   
   return (
     <div className="min-h-screen bg-[#0b0e24] text-white pb-20">
       <div className="p-5">
-        <h2 className="text-2xl font-bold mb-5">BidBlitz VIP Status</h2>
+        <h2 className="text-2xl font-bold mb-5">🏆 BidBlitz VIP Level</h2>
         
         {/* Message */}
         {message && (
-          <div className="mb-4 p-3 bg-green-500/20 border border-green-500/30 rounded-xl text-center text-green-400">
+          <div className={`mb-4 p-3 rounded-xl text-center ${
+            message.includes('Level Up') ? 'bg-amber-500/20 text-amber-400' : 'bg-green-500/20 text-green-400'
+          }`}>
             {message}
           </div>
         )}
         
-        {/* VIP Card */}
+        {/* Level Card */}
         <div 
           className="p-6 rounded-2xl text-center mb-5"
           style={{
-            background: 'linear-gradient(135deg, #5f63ff, #8b6dff)',
+            background: `linear-gradient(135deg, ${badge.color}33, ${badge.color}11)`,
+            border: `2px solid ${badge.color}55`
           }}
-          data-testid="vip-card"
         >
-          <p className="text-white/80 text-sm mb-1">Your VIP Level</p>
-          <h1 
-            className="text-4xl font-bold mb-4"
-            style={{ color: getVIPColor() }}
-            data-testid="vip-level"
-          >
-            {vipLevel}
+          <p className="text-5xl mb-2">{badge.icon}</p>
+          <p className="text-sm text-slate-400 mb-1">Your Level</p>
+          <h1 className="text-4xl font-bold mb-2" style={{ color: badge.color }}>
+            {level}
           </h1>
-          <p className="text-white/80 text-sm mb-1">Total Coins Earned</p>
-          <h3 className="text-2xl font-bold" data-testid="total-earned">
-            {totalEarned.toLocaleString()}
-          </h3>
+          <p className="text-sm" style={{ color: badge.color }}>{badge.name}</p>
           
-          {nextLevel && (
-            <p className="mt-3 text-sm text-white/60">
-              Noch {nextLevel.needed.toLocaleString()} Coins bis {nextLevel.level}
-            </p>
-          )}
+          <div className="mt-4">
+            <p className="text-sm text-slate-400 mb-1">XP Points: <span className="text-white font-bold">{xp}</span> / 100</p>
+          </div>
         </div>
         
-        {/* Benefits */}
-        <div 
-          className="bg-[#171a3a] p-5 rounded-2xl mb-5"
-          data-testid="benefits-card"
+        {/* Progress Bar */}
+        <div className="mb-5">
+          <div className="w-full h-5 bg-[#1f2245] rounded-xl overflow-hidden">
+            <div 
+              className="h-full rounded-xl transition-all duration-500"
+              style={{ 
+                width: `${xp}%`,
+                background: badge.color
+              }}
+            />
+          </div>
+          <p className="text-xs text-slate-500 mt-1 text-center">
+            {100 - xp} XP bis Level {level + 1}
+          </p>
+        </div>
+        
+        {/* Use App Button */}
+        <button
+          onClick={earnXP}
+          className="w-full py-3 bg-[#6c63ff] hover:bg-[#8b6dff] rounded-xl font-semibold
+                     transition-colors active:scale-98 mb-5"
         >
-          <h3 className="font-semibold mb-4">VIP Benefits</h3>
-          <ul className="space-y-3">
+          Use App (+10 XP)
+        </button>
+        
+        {/* Benefits */}
+        <div className="bg-[#171a3a] p-5 rounded-2xl">
+          <h3 className="font-semibold mb-4">Level Benefits</h3>
+          <div className="space-y-3">
             {benefits.map((item, index) => (
-              <li 
+              <div 
                 key={index}
-                className={`flex items-center justify-between py-2 border-b border-slate-700/50 last:border-0 ${
-                  item.unlocked ? 'text-white' : 'text-slate-500'
+                className={`flex items-center justify-between p-3 rounded-xl ${
+                  item.unlocked ? 'bg-green-500/10' : 'bg-slate-800/30'
                 }`}
               >
-                <span>
+                <div className="flex items-center gap-3">
                   <span className={item.unlocked ? 'text-green-400' : 'text-slate-600'}>
                     {item.unlocked ? '✓' : '○'}
                   </span>
-                  {' '}{item.level}
-                </span>
-                <span className={`text-sm ${item.unlocked ? 'text-amber-400' : 'text-slate-500'}`}>
+                  <span className={item.unlocked ? 'text-white' : 'text-slate-500'}>
+                    Level {item.level}
+                  </span>
+                </div>
+                <span className={`text-sm ${item.unlocked ? 'text-amber-400' : 'text-slate-600'}`}>
                   {item.benefit}
                 </span>
-              </li>
+              </div>
             ))}
-          </ul>
-        </div>
-        
-        {/* Earn Button */}
-        <button
-          onClick={earnCoins}
-          className="w-full py-3 bg-[#6c63ff] hover:bg-[#8b6dff] rounded-xl font-semibold
-                     transition-colors active:scale-98"
-          data-testid="earn-btn"
-        >
-          Earn Coins
-        </button>
-        
-        {/* VIP Tier Info */}
-        <div className="mt-5 bg-[#171a3a] p-4 rounded-xl text-sm text-slate-400">
-          <h4 className="font-semibold text-white mb-2">VIP Stufen:</h4>
-          <div className="space-y-1">
-            <p>VIP 1 → 0 - 2.000 Coins</p>
-            <p>VIP 2 → 2.001 - 5.000 Coins</p>
-            <p>VIP 3 → 5.001 - 10.000 Coins</p>
-            <p>VIP 4 → 10.001 - 20.000 Coins</p>
-            <p>VIP 5 → 20.001+ Coins</p>
           </div>
         </div>
       </div>
