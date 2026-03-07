@@ -2,8 +2,13 @@
  * BidBlitz Games - Clean Mobile Design
  * Based on user's HTML template
  */
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import BottomNav from '../components/BottomNav';
+import soundManager from '../utils/soundManager';
+
+const API = process.env.REACT_APP_BACKEND_URL + '/api';
 
 const GAMES = [
   { id: 1, name: 'BidBlitz Match', icon: '⭐', gradient: 'from-purple-500 to-violet-700', url: '/games/bbz_match3.html' },
@@ -21,16 +26,53 @@ const GAMES = [
 ];
 
 export default function GamesHub() {
+  const navigate = useNavigate();
   const [showGame, setShowGame] = useState(null);
-  const [rank] = useState(1);
-  const [points] = useState(72);
+  const [leagueStatus, setLeagueStatus] = useState({ rank: 1, points: 0, tier: 'bronze' });
+  const [hasGamePass, setHasGamePass] = useState(true);
 
-  const playGame = (game) => {
+  const userId = localStorage.getItem('userId') || 'guest_' + Math.random().toString(36).substr(2, 9);
+
+  useEffect(() => {
+    if (!localStorage.getItem('userId')) {
+      localStorage.setItem('userId', userId);
+    }
+    fetchLeagueStatus();
+    soundManager.init();
+  }, []);
+
+  const fetchLeagueStatus = async () => {
+    try {
+      const res = await axios.get(`${API}/league/status?user_id=${userId}`);
+      setLeagueStatus(res.data);
+    } catch (error) {
+      console.log('Using default league status');
+    }
+  };
+
+  const playGame = async (game) => {
+    soundManager.gameStart();
     setShowGame(game);
+    
+    // Add league points when playing
+    try {
+      await axios.post(`${API}/league/add-points?user_id=${userId}&points=5&source=game`);
+      // Update mission progress
+      await axios.post(`${API}/league/missions/progress?user_id=${userId}&mission_id=play_3_games&amount=1`);
+    } catch (error) {
+      console.log('Could not update league');
+    }
   };
 
   const closeGame = () => {
+    soundManager.gameEnd();
     setShowGame(null);
+    fetchLeagueStatus(); // Refresh stats
+  };
+
+  const getTierEmoji = (tier) => {
+    const emojis = { bronze: '🥉', silver: '🥈', gold: '🥇', platinum: '💎', diamond: '👑' };
+    return emojis[tier] || '🥉';
   };
 
   return (
@@ -39,7 +81,12 @@ export default function GamesHub() {
       {/* Header */}
       <header className="flex justify-between items-center p-4" style={{ background: '#0b1023' }}>
         <div className="text-2xl font-bold text-amber-500">⚡ BidBlitz</div>
-        <div className="text-2xl cursor-pointer">☰</div>
+        <div 
+          className="text-2xl cursor-pointer"
+          onClick={() => navigate('/missions')}
+        >
+          🎯
+        </div>
       </header>
 
       {/* Container */}
@@ -47,21 +94,29 @@ export default function GamesHub() {
         
         {/* Weekly League */}
         <div 
-          className="rounded-[20px] p-5 mb-5"
+          className="rounded-[20px] p-5 mb-5 cursor-pointer hover:scale-[1.02] transition-transform"
           style={{ background: 'linear-gradient(135deg, #4c1d95, #1e1b4b)' }}
+          onClick={() => navigate('/missions')}
         >
-          <h3 className="text-lg font-semibold mb-1">Weekly League</h3>
-          <p className="text-white/80">#{rank} Rang • {points} Punkte</p>
+          <div className="flex justify-between items-center">
+            <div>
+              <h3 className="text-lg font-semibold mb-1">Weekly League {getTierEmoji(leagueStatus.tier)}</h3>
+              <p className="text-white/80">#{leagueStatus.rank} Rang • {leagueStatus.points} Punkte</p>
+            </div>
+            <div className="text-3xl">{getTierEmoji(leagueStatus.tier)}</div>
+          </div>
         </div>
 
         {/* Games Pass */}
-        <div 
-          className="rounded-[15px] p-4 mb-5 text-center"
-          style={{ background: 'linear-gradient(135deg, #92400e, #f59e0b)' }}
-        >
-          <h4 className="text-lg font-semibold">🎮 Games Pass Active</h4>
-          <p className="text-white/90">+20% Daily • +10% Liga</p>
-        </div>
+        {hasGamePass && (
+          <div 
+            className="rounded-[15px] p-4 mb-5 text-center"
+            style={{ background: 'linear-gradient(135deg, #92400e, #f59e0b)' }}
+          >
+            <h4 className="text-lg font-semibold">🎮 Games Pass Active</h4>
+            <p className="text-white/90">+20% Daily • +10% Liga</p>
+          </div>
+        )}
 
         {/* Games Grid */}
         <div className="grid grid-cols-3 gap-4">
@@ -69,7 +124,7 @@ export default function GamesHub() {
             <div
               key={game.id}
               onClick={() => playGame(game)}
-              className={`bg-gradient-to-br ${game.gradient} rounded-[20px] p-6 text-center cursor-pointer transition-transform duration-200 hover:scale-105`}
+              className={`bg-gradient-to-br ${game.gradient} rounded-[20px] p-6 text-center cursor-pointer transition-transform duration-200 hover:scale-105 active:scale-95`}
             >
               <div className="text-3xl mb-2">{game.icon}</div>
               <div className="text-sm font-medium mb-2">{game.name}</div>
