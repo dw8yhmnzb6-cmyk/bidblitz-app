@@ -1,6 +1,7 @@
 /**
  * BidBlitz Games Hub V2
  * All games with daily limits, rewards, and new mini-games
+ * Connected to Games V2 API
  */
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -14,70 +15,77 @@ export default function GamesHub() {
   const [coins, setCoins] = useState(500);
   const [result, setResult] = useState('');
   const [loading, setLoading] = useState('');
-  const [dailyPlays, setDailyPlays] = useState({});
+  const [gamesStatus, setGamesStatus] = useState([]);
+  const [coinsOnMap, setCoinsOnMap] = useState(0);
   
   // Games with daily limits and reward ranges
   const games = {
-    wheel: { name: 'Spin Wheel', icon: '🎡', min: 5, max: 50, limit: 3, color: 'from-purple-500/20 to-pink-500/10', border: 'border-purple-500/30' },
-    scratch: { name: 'Scratch Card', icon: '🎫', min: 10, max: 40, limit: 5, color: 'from-amber-500/20 to-orange-500/10', border: 'border-amber-500/30' },
-    reaction: { name: 'Reaction Game', icon: '⚡', min: 3, max: 10, limit: 20, color: 'from-cyan-500/20 to-blue-500/10', border: 'border-cyan-500/30' },
-    taprush: { name: 'Tap Rush', icon: '👆', min: 5, max: 25, limit: 10, color: 'from-emerald-500/20 to-green-500/10', border: 'border-emerald-500/30' },
-    coinhunt: { name: 'Coin Hunt', icon: '🗺️', min: 10, max: 30, limit: 10, color: 'from-yellow-500/20 to-amber-500/10', border: 'border-yellow-500/30' },
+    wheel: { name: 'Lucky Wheel', icon: '🎡', endpoint: 'lucky-wheel/spin', min: 5, max: 100, limit: 5, color: 'from-purple-500/20 to-pink-500/10', border: 'border-purple-500/30' },
+    scratch: { name: 'Scratch Card', icon: '🪙', endpoint: 'scratch/reveal', min: 0, max: 50, limit: 10, color: 'from-amber-500/20 to-orange-500/10', border: 'border-amber-500/30' },
+    reaction: { name: 'Reaction', icon: '⚡', endpoint: 'reaction/submit', min: 3, max: 20, limit: 20, color: 'from-cyan-500/20 to-blue-500/10', border: 'border-cyan-500/30' },
+    tap: { name: 'Tap Rush', icon: '👆', endpoint: 'tap-rush/submit', min: 5, max: 50, limit: 10, color: 'from-emerald-500/20 to-green-500/10', border: 'border-emerald-500/30' },
+    dice: { name: 'Dice', icon: '🎲', endpoint: 'dice/roll', min: 0, max: 30, limit: 10, color: 'from-red-500/20 to-orange-500/10', border: 'border-red-500/30' },
   };
   
   useEffect(() => {
     fetchData();
-    loadDailyPlays();
   }, []);
   
   const fetchData = async () => {
     try {
       const token = localStorage.getItem('token');
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      const res = await axios.get(`${API}/app/wallet/balance`, { headers });
-      setCoins(res.data.coins || 500);
+      
+      const [walletRes, statusRes] = await Promise.all([
+        axios.get(`${API}/app/wallet/balance`, { headers }),
+        axios.get(`${API}/app/games-v2/status`, { headers })
+      ]);
+      
+      setCoins(walletRes.data.coins || 0);
+      setGamesStatus(statusRes.data.games || []);
+      setCoinsOnMap(statusRes.data.coins_on_map || 0);
     } catch (error) {
-      console.log('Coins error');
+      console.log('Fetch error');
     }
   };
 
-  const loadDailyPlays = () => {
-    const today = new Date().toISOString().split('T')[0];
-    const saved = localStorage.getItem(`dailyPlays_${today}`);
-    if (saved) {
-      setDailyPlays(JSON.parse(saved));
-    }
-  };
-
-  const saveDailyPlays = (plays) => {
-    const today = new Date().toISOString().split('T')[0];
-    localStorage.setItem(`dailyPlays_${today}`, JSON.stringify(plays));
+  const getPlaysLeft = (gameId) => {
+    const status = gamesStatus.find(g => g.id === gameId);
+    return status ? status.plays_left : games[gameId]?.limit || 0;
   };
   
   const playGame = async (gameKey) => {
     const game = games[gameKey];
-    const currentPlays = dailyPlays[gameKey] || 0;
+    const playsLeft = getPlaysLeft(gameKey);
     
-    if (currentPlays >= game.limit) {
-      setResult({ type: 'limit', game: gameKey, message: `Tägliches Limit erreicht! (${game.limit}/${game.limit})` });
+    if (playsLeft <= 0) {
+      setResult({ type: 'limit', game: gameKey, message: 'Tageslimit erreicht!' });
       setTimeout(() => setResult(''), 3000);
       return;
     }
     
     setLoading(gameKey);
     
-    // Try backend first
     try {
       const token = localStorage.getItem('token');
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      const res = await axios.post(`${API}/app/core/games/play`, { game: gameKey }, { headers });
       
-      setCoins(res.data.new_balance);
-      const newPlays = { ...dailyPlays, [gameKey]: currentPlays + 1 };
-      setDailyPlays(newPlays);
-      saveDailyPlays(newPlays);
+      let body = {};
+      if (gameKey === 'reaction') {
+        body = { reaction_time_ms: Math.floor(Math.random() * 300) + 150 };
+      } else if (gameKey === 'tap') {
+        body = { taps: Math.floor(Math.random() * 50) + 30, duration_seconds: 10 };
+      } else if (gameKey === 'dice') {
+        body = { bet_high: Math.random() > 0.5 };
+      }
       
-      setResult({ type: 'win', game: gameKey, amount: res.data.reward });
+      const res = await axios.post(`${API}/app/games-v2/${game.endpoint}`, body, { headers });
+      
+      setCoins(res.data.balance);
+      setResult({ type: 'win', game: gameKey, amount: res.data.reward, message: res.data.message || res.data.rating });
+      
+      // Refresh status
+      fetchData();
     } catch (error) {
       // Fallback to local
       const reward = Math.floor(Math.random() * (game.max - game.min + 1)) + game.min;
