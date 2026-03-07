@@ -1,51 +1,92 @@
 """
 BidBlitz BBZ Token Wallet
 Create wallet, check balance, send tokens, view transactions
+MongoDB-persistent storage
 """
 from fastapi import APIRouter
-import time
+from datetime import datetime, timezone
+from pymongo import MongoClient
+import os
 
 router = APIRouter(tags=["BBZ Token Wallet"])
 
-bbz_wallets = {}
-transactions = []
+# MongoDB Connection
+mongo_url = os.environ.get("MONGO_URL")
+db_name = os.environ.get("DB_NAME", "bidblitz")
+client = MongoClient(mongo_url)
+db = client[db_name]
+
+# Collections - reuse existing wallets collection
+wallets_col = db["wallets"]
+bbz_tx_col = db["bbz_simple_transactions"]
+
+
+def get_or_create_wallet(user_id: str) -> dict:
+    """Get or create a wallet for user"""
+    wallet = wallets_col.find_one({"user_id": user_id}, {"_id": 0})
+    if not wallet:
+        now = datetime.now(timezone.utc)
+        wallet = {
+            "user_id": user_id,
+            "coins": 100,  # Starting balance
+            "created_at": now.isoformat()
+        }
+        wallets_col.insert_one(wallet)
+    return wallet
 
 
 # Wallet erstellen
 @router.post("/bbz/create")
 def create_wallet(user_id: str):
-    if user_id not in bbz_wallets:
-        bbz_wallets[user_id] = 100
-    
+    wallet = get_or_create_wallet(user_id)
     return {
         "user": user_id,
-        "bbz_balance": bbz_wallets[user_id]
+        "bbz_balance": wallet.get("coins", 0)
     }
 
 
 # Balance anzeigen
 @router.get("/bbz/balance")
 def balance(user_id: str):
+    wallet = wallets_col.find_one({"user_id": user_id}, {"_id": 0})
     return {
         "user": user_id,
-        "bbz_balance": bbz_wallets.get(user_id, 0)
+        "bbz_balance": wallet.get("coins", 0) if wallet else 0
     }
 
 
 # Coins senden
 @router.post("/bbz/send")
 def send(from_user: str, to_user: str, amount: int):
-    if bbz_wallets.get(from_user, 0) < amount:
+    # Get sender wallet
+    sender = wallets_col.find_one({"user_id": from_user})
+    if not sender or sender.get("coins", 0) < amount:
         return {"error": "not enough BBZ"}
     
-    bbz_wallets[from_user] -= amount
-    bbz_wallets[to_user] = bbz_wallets.get(to_user, 0) + amount
+    # Ensure receiver wallet exists
+    get_or_create_wallet(to_user)
     
-    transactions.append({
-        "from": from_user,
-        "to": to_user,
+    now = datetime.now(timezone.utc)
+    
+    # Deduct from sender
+    wallets_col.update_one(
+        {"user_id": from_user},
+        {"$inc": {"coins": -amount}}
+    )
+    
+    # Add to receiver
+    wallets_col.update_one(
+        {"user_id": to_user},
+        {"$inc": {"coins": amount}}
+    )
+    
+    # Log transaction
+    bbz_tx_col.insert_one({
+        "from_user": from_user,
+        "to_user": to_user,
         "amount": amount,
-        "time": time.time()
+        "timestamp": now.isoformat(),
+        "type": "transfer"
     })
     
     return {
@@ -58,4 +99,5 @@ def send(from_user: str, to_user: str, amount: int):
 # Transaktionen anzeigen
 @router.get("/bbz/transactions")
 def tx():
+    transactions = list(bbz_tx_col.find({}, {"_id": 0}).sort("timestamp", -1).limit(50))
     return transactions
