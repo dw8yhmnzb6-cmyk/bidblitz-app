@@ -1,5 +1,6 @@
 /**
- * BidBlitz Super App Home - Neues Design mit Wallet
+ * BidBlitz Super App Home - Erweitertes Design
+ * Mit Hero Banner, Quick Services und Trending Games
  */
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -7,16 +8,24 @@ import axios from 'axios';
 
 const API = process.env.REACT_APP_BACKEND_URL + '/api';
 
-// 8 Services
+// Quick Services
 const SERVICES = [
   { id: 1, name: 'Games', emoji: '🎮', route: '/games' },
   { id: 2, name: 'Mining', emoji: '⛏', route: '/mining' },
   { id: 3, name: 'Taxi', emoji: '🚕', route: '/ride-pay' },
   { id: 4, name: 'Scooter', emoji: '🛴', route: '/ride-pay' },
   { id: 5, name: 'Bike', emoji: '🚲', route: '/ride-pay' },
-  { id: 6, name: 'Marketplace', emoji: '🛒', route: '/auctions' },
+  { id: 6, name: 'Market', emoji: '🛒', route: '/auctions' },
   { id: 7, name: 'Casino', emoji: '🎰', route: '/slot-machine' },
-  { id: 8, name: 'Leaderboard', emoji: '🏆', route: '/game-leaderboard' },
+  { id: 8, name: 'Rank', emoji: '🏆', route: '/game-leaderboard' },
+];
+
+// Trending Games
+const TRENDING_GAMES = [
+  { id: 1, name: 'Candy Match', emoji: '🍬', route: '/candy-match' },
+  { id: 2, name: 'Lucky Wheel', emoji: '🎡', route: '/lucky-wheel' },
+  { id: 3, name: 'Coin Tap', emoji: '🪙', route: '/coin-tap' },
+  { id: 4, name: 'Runner', emoji: '🏃', route: '/runner-game' },
 ];
 
 // Nav Items
@@ -61,8 +70,8 @@ export default function SuperAppHome() {
         .super-home {
           margin: 0;
           background: #0f172a;
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
           color: white;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
           min-height: 100vh;
           position: fixed;
           top: 0;
@@ -74,27 +83,46 @@ export default function SuperAppHome() {
           padding-bottom: 80px;
         }
         .home-header {
-          background: linear-gradient(90deg, #7c3aed, #9333ea);
-          padding: 20px;
-          font-size: 28px;
-          text-align: center;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 18px;
+          font-size: 24px;
           font-weight: bold;
         }
         .home-wallet {
+          background: #7c3aed;
+          padding: 6px 14px;
+          border-radius: 8px;
+          font-size: 18px;
+          display: flex;
+          align-items: center;
+          gap: 4px;
+        }
+        .home-hero {
+          margin: 20px;
+          padding: 40px 20px;
+          border-radius: 18px;
+          background: linear-gradient(90deg, #9333ea, #7c3aed);
           text-align: center;
           font-size: 22px;
-          padding: 15px 10px;
+          font-weight: 500;
+        }
+        .section-title {
+          padding: 16px;
+          font-size: 20px;
+          font-weight: bold;
         }
         .services-grid {
           display: grid;
           grid-template-columns: repeat(4, 1fr);
-          gap: 16px;
-          padding: 20px;
+          gap: 14px;
+          padding: 0 16px 16px;
         }
         .service-card {
           background: #1f2937;
-          border-radius: 16px;
-          padding: 20px 10px;
+          border-radius: 14px;
+          padding: 18px 8px;
           text-align: center;
           cursor: pointer;
           transition: all 0.2s ease;
@@ -103,7 +131,7 @@ export default function SuperAppHome() {
           display: flex;
           flex-direction: column;
           align-items: center;
-          gap: 8px;
+          gap: 6px;
         }
         .service-card:hover {
           background: #7c3aed;
@@ -113,12 +141,43 @@ export default function SuperAppHome() {
           transform: scale(0.95);
         }
         .service-icon {
-          font-size: 34px;
+          font-size: 30px;
           line-height: 1;
         }
         .service-name {
           font-size: 12px;
           font-weight: 600;
+        }
+        .games-grid {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 16px;
+          padding: 0 16px 16px;
+        }
+        .game-card {
+          background: #1f2937;
+          padding: 24px 16px;
+          border-radius: 14px;
+          text-align: center;
+          font-size: 18px;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          border: none;
+          color: white;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 10px;
+        }
+        .game-card:hover {
+          background: #7c3aed;
+          transform: scale(1.02);
+        }
+        .game-card:active {
+          transform: scale(0.98);
+        }
+        .game-emoji {
+          font-size: 24px;
         }
         .bottom-nav {
           position: fixed;
@@ -129,7 +188,7 @@ export default function SuperAppHome() {
           background: #111827;
           display: flex;
           justify-content: space-around;
-          padding: 12px;
+          padding: 14px;
           z-index: 1000;
         }
         .nav-btn {
@@ -150,15 +209,20 @@ export default function SuperAppHome() {
       <div className="super-home" data-testid="super-app-home">
         {/* Header */}
         <div className="home-header">
-          🚀 BidBlitz
+          <div>BidBlitz</div>
+          <div className="home-wallet">
+            <span>💰</span>
+            <span>{coins.toLocaleString()}</span>
+          </div>
         </div>
 
-        {/* Wallet */}
-        <div className="home-wallet">
-          💰 Wallet: {coins.toLocaleString()} Coins
+        {/* Hero Banner */}
+        <div className="home-hero">
+          🚀 Play Games • Ride • Earn Coins
         </div>
 
-        {/* Services Grid */}
+        {/* Quick Services */}
+        <div className="section-title">⚡ Quick Services</div>
         <div className="services-grid">
           {SERVICES.map((service) => (
             <button
@@ -169,6 +233,22 @@ export default function SuperAppHome() {
             >
               <div className="service-icon">{service.emoji}</div>
               <div className="service-name">{service.name}</div>
+            </button>
+          ))}
+        </div>
+
+        {/* Trending Games */}
+        <div className="section-title">🔥 Trending Games</div>
+        <div className="games-grid">
+          {TRENDING_GAMES.map((game) => (
+            <button
+              key={game.id}
+              onClick={() => navigate(game.route)}
+              className="game-card"
+              data-testid={`game-${game.id}`}
+            >
+              <span className="game-emoji">{game.emoji}</span>
+              <span>{game.name}</span>
             </button>
           ))}
         </div>
