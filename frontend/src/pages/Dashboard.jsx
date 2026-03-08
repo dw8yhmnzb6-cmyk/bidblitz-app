@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import WalletCard from "../components/WalletCard";
 import QuickActions from "../components/QuickActions";
-import RideServices from "../components/RideServices";
+import RideDashboard from "../components/RideDashboard";
 import RewardsPanel from "../components/RewardsPanel";
 import BottomNav from "../components/BottomNav";
 
@@ -93,7 +93,7 @@ export default function Dashboard() {
         <QuickActions />
 
         {/* Ride Services */}
-        <RideServices />
+        <RideDashboard />
 
       </div>
 
