@@ -339,6 +339,10 @@ export default function AdminPanelNew() {
         {/* Kategorien */}
         {Object.entries(CATEGORIES).map(([key, category]) => {
           const colorClasses = {
+            purple: 'bg-purple-500/10 text-purple-400',
+            cyan: 'bg-cyan-500/10 text-cyan-400',
+            blue: 'bg-blue-500/10 text-blue-400',
+            amber: 'bg-amber-500/10 text-amber-400',
             orange: 'bg-orange-500/10 text-orange-400',
             pink: 'bg-pink-500/10 text-pink-400',
             green: 'bg-green-500/10 text-green-400',
