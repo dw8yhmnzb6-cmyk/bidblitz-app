@@ -581,3 +581,396 @@ async def get_daily_bonus_status(user_id: str):
 
 # Import missing
 from datetime import timedelta
+
+# ═══════════════════════════════════
+# MINING API
+# ═══════════════════════════════════
+
+# Miner Types Configuration
+MINER_TYPES = {
+    "basic": {"name": "Basic Miner B1", "base_hashrate": 1.5, "price": 100, "tier": "bronze"},
+    "nano": {"name": "Nano Miner S1", "base_hashrate": 0.65, "price": 50, "tier": "bronze"},
+    "pro": {"name": "Pro Miner P1", "base_hashrate": 5.5, "price": 300, "tier": "silver"},
+    "elite": {"name": "Elite Miner E1", "base_hashrate": 15.0, "price": 800, "tier": "gold"},
+    "ultra": {"name": "Ultra Miner U1", "base_hashrate": 50.0, "price": 2000, "tier": "platinum"},
+    "bonus": {"name": "Bonus Miner", "base_hashrate": 16.0, "price": 0, "tier": "gold"},
+}
+
+class MinerCreate(BaseModel):
+    user_id: str
+    miner_type: str
+
+class MinerUpgrade(BaseModel):
+    user_id: str
+    miner_id: str
+
+class MinerSell(BaseModel):
+    user_id: str
+    miner_id: str
+
+@router.get("/miners/{user_id}")
+async def get_user_miners(user_id: str):
+    """Get all miners owned by user"""
+    miners = await db.bbz_miners.find(
+        {"user_id": user_id, "active": True},
+        {"_id": 0}
+    ).to_list(100)
+    
+    # Calculate totals
+    total_hashrate = sum(m.get("hashrate", 0) for m in miners)
+    daily_btc = total_hashrate * 0.00000001 * 24  # Simplified calculation
+    
+    return {
+        "miners": miners,
+        "count": len(miners),
+        "total_hashrate": round(total_hashrate, 2),
+        "daily_btc": f"{daily_btc:.8f}",
+        "estimated_daily_coins": int(total_hashrate * 10)
+    }
+
+@router.post("/miners/create")
+async def create_miner(data: MinerCreate):
+    """Buy a new miner"""
+    miner_config = MINER_TYPES.get(data.miner_type)
+    if not miner_config:
+        raise HTTPException(status_code=400, detail="Invalid miner type")
+    
+    # Check wallet
+    wallet = await db.bbz_wallets.find_one({"user_id": data.user_id})
+    if not wallet:
+        raise HTTPException(status_code=404, detail="Wallet not found")
+    
+    price = miner_config["price"]
+    if wallet.get("coins", 0) < price:
+        raise HTTPException(status_code=400, detail=f"Not enough coins. Need {price}, have {wallet.get('coins', 0)}")
+    
+    # Deduct coins
+    new_balance = wallet.get("coins", 0) - price
+    await db.bbz_wallets.update_one(
+        {"user_id": data.user_id},
+        {"$set": {
+            "coins": new_balance,
+            "total_spent": wallet.get("total_spent", 0) + price,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    # Create miner
+    miner_id = str(uuid.uuid4())[:8]
+    miner = {
+        "id": miner_id,
+        "user_id": data.user_id,
+        "type": data.miner_type,
+        "name": miner_config["name"],
+        "hashrate": miner_config["base_hashrate"],
+        "tier": miner_config["tier"],
+        "level": 1,
+        "efficiency": 15,  # W/TH
+        "active": True,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.bbz_miners.insert_one(miner)
+    
+    # Log transaction
+    await db.bbz_transactions.insert_one({
+        "id": str(uuid.uuid4()),
+        "user_id": data.user_id,
+        "type": "miner_purchase",
+        "amount": price,
+        "source": f"miner:{data.miner_type}",
+        "balance_after": new_balance,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    })
+    
+    logger.info(f"⛏️ User {data.user_id} bought {miner_config['name']} for {price} coins")
+    
+    return {
+        "success": True,
+        "miner": {k: v for k, v in miner.items() if k != "_id"},
+        "new_balance": new_balance,
+        "cost": price
+    }
+
+@router.post("/miners/upgrade")
+async def upgrade_miner(data: MinerUpgrade):
+    """Upgrade a miner to next level"""
+    # Find miner
+    miner = await db.bbz_miners.find_one({
+        "id": data.miner_id,
+        "user_id": data.user_id,
+        "active": True
+    })
+    
+    if not miner:
+        raise HTTPException(status_code=404, detail="Miner not found")
+    
+    current_level = miner.get("level", 1)
+    if current_level >= 10:
+        raise HTTPException(status_code=400, detail="Miner already at max level")
+    
+    # Calculate upgrade cost (increases per level)
+    upgrade_cost = current_level * 50  # 50, 100, 150, 200...
+    
+    # Check wallet
+    wallet = await db.bbz_wallets.find_one({"user_id": data.user_id})
+    if not wallet or wallet.get("coins", 0) < upgrade_cost:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Not enough coins. Need {upgrade_cost}, have {wallet.get('coins', 0) if wallet else 0}"
+        )
+    
+    # Deduct coins
+    new_balance = wallet.get("coins", 0) - upgrade_cost
+    await db.bbz_wallets.update_one(
+        {"user_id": data.user_id},
+        {"$set": {
+            "coins": new_balance,
+            "total_spent": wallet.get("total_spent", 0) + upgrade_cost,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    # Upgrade miner (hashrate increases by 15% per level)
+    new_level = current_level + 1
+    new_hashrate = round(miner.get("hashrate", 1) * 1.15, 2)
+    
+    await db.bbz_miners.update_one(
+        {"id": data.miner_id},
+        {"$set": {
+            "level": new_level,
+            "hashrate": new_hashrate,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    # Log transaction
+    await db.bbz_transactions.insert_one({
+        "id": str(uuid.uuid4()),
+        "user_id": data.user_id,
+        "type": "miner_upgrade",
+        "amount": upgrade_cost,
+        "source": f"upgrade:miner_{data.miner_id}:lv{new_level}",
+        "balance_after": new_balance,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    })
+    
+    logger.info(f"⬆️ User {data.user_id} upgraded miner {data.miner_id} to Lv.{new_level}")
+    
+    return {
+        "success": True,
+        "miner_id": data.miner_id,
+        "new_level": new_level,
+        "new_hashrate": new_hashrate,
+        "cost": upgrade_cost,
+        "new_balance": new_balance
+    }
+
+@router.post("/miners/sell")
+async def sell_miner(data: MinerSell):
+    """Sell a miner back for coins"""
+    # Find miner
+    miner = await db.bbz_miners.find_one({
+        "id": data.miner_id,
+        "user_id": data.user_id,
+        "active": True
+    })
+    
+    if not miner:
+        raise HTTPException(status_code=404, detail="Miner not found")
+    
+    # Calculate sell value (50% of base price + level bonus)
+    miner_type = miner.get("type", "basic")
+    base_price = MINER_TYPES.get(miner_type, {}).get("price", 100)
+    level_bonus = (miner.get("level", 1) - 1) * 25
+    sell_value = int(base_price * 0.5) + level_bonus
+    
+    # Add coins to wallet
+    wallet = await db.bbz_wallets.find_one({"user_id": data.user_id})
+    if not wallet:
+        wallet = {"coins": 0, "total_earned": 0}
+    
+    new_balance = wallet.get("coins", 0) + sell_value
+    await db.bbz_wallets.update_one(
+        {"user_id": data.user_id},
+        {"$set": {
+            "coins": new_balance,
+            "total_earned": wallet.get("total_earned", 0) + sell_value,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }},
+        upsert=True
+    )
+    
+    # Deactivate miner
+    await db.bbz_miners.update_one(
+        {"id": data.miner_id},
+        {"$set": {
+            "active": False,
+            "sold_at": datetime.now(timezone.utc).isoformat(),
+            "sell_value": sell_value
+        }}
+    )
+    
+    # Log transaction
+    await db.bbz_transactions.insert_one({
+        "id": str(uuid.uuid4()),
+        "user_id": data.user_id,
+        "type": "miner_sold",
+        "amount": sell_value,
+        "source": f"sell:miner_{data.miner_id}",
+        "balance_after": new_balance,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    })
+    
+    logger.info(f"💰 User {data.user_id} sold miner {data.miner_id} for {sell_value} coins")
+    
+    return {
+        "success": True,
+        "miner_id": data.miner_id,
+        "sell_value": sell_value,
+        "new_balance": new_balance
+    }
+
+@router.post("/miners/claim-rewards/{user_id}")
+async def claim_mining_rewards(user_id: str):
+    """Claim accumulated mining rewards"""
+    miners = await db.bbz_miners.find(
+        {"user_id": user_id, "active": True}
+    ).to_list(100)
+    
+    if not miners:
+        raise HTTPException(status_code=404, detail="No active miners found")
+    
+    # Calculate rewards based on hashrate and time since last claim
+    total_hashrate = sum(m.get("hashrate", 0) for m in miners)
+    
+    # Check last claim time
+    last_claim = await db.bbz_mining_claims.find_one(
+        {"user_id": user_id},
+        sort=[("created_at", -1)]
+    )
+    
+    if last_claim:
+        last_claim_time = datetime.fromisoformat(last_claim.get("created_at", "2020-01-01"))
+        hours_since = (datetime.now(timezone.utc) - last_claim_time).total_seconds() / 3600
+        if hours_since < 1:
+            raise HTTPException(status_code=400, detail=f"Wait {int(60 - hours_since * 60)} more minutes")
+    else:
+        hours_since = 1
+    
+    # Calculate reward (coins per hour per TH)
+    reward = int(total_hashrate * hours_since * 2)  # 2 coins per TH per hour
+    if reward < 1:
+        reward = 1
+    
+    # Add to wallet
+    wallet = await db.bbz_wallets.find_one({"user_id": user_id})
+    if not wallet:
+        wallet = {"coins": 0, "total_earned": 0}
+    
+    new_balance = wallet.get("coins", 0) + reward
+    await db.bbz_wallets.update_one(
+        {"user_id": user_id},
+        {"$set": {
+            "coins": new_balance,
+            "total_earned": wallet.get("total_earned", 0) + reward,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }},
+        upsert=True
+    )
+    
+    # Record claim
+    await db.bbz_mining_claims.insert_one({
+        "user_id": user_id,
+        "reward": reward,
+        "hashrate": total_hashrate,
+        "hours": round(hours_since, 2),
+        "created_at": datetime.now(timezone.utc).isoformat()
+    })
+    
+    logger.info(f"⛏️ User {user_id} claimed {reward} mining coins")
+    
+    return {
+        "success": True,
+        "reward": reward,
+        "new_balance": new_balance,
+        "hashrate": total_hashrate
+    }
+
+@router.get("/miners/shop")
+async def get_miner_shop():
+    """Get available miners for purchase"""
+    return {
+        "miners": [
+            {
+                "type": k,
+                "name": v["name"],
+                "price": v["price"],
+                "hashrate": v["base_hashrate"],
+                "tier": v["tier"]
+            }
+            for k, v in MINER_TYPES.items()
+            if v["price"] > 0  # Exclude free bonus miner
+        ]
+    }
+
+@router.get("/miners/pool-stats")
+async def get_pool_stats():
+    """Get global mining pool statistics"""
+    # Get total active miners across all users
+    total_miners = await db.bbz_miners.count_documents({"active": True})
+    
+    # Get total hashrate
+    pipeline = [
+        {"$match": {"active": True}},
+        {"$group": {"_id": None, "total": {"$sum": "$hashrate"}}}
+    ]
+    result = await db.bbz_miners.aggregate(pipeline).to_list(1)
+    total_hashrate = result[0]["total"] if result else 0
+    
+    return {
+        "total_hashrate": round(total_hashrate, 2),
+        "total_miners": total_miners,
+        "block_height": 832145 + random.randint(0, 1000),
+        "next_block_reward": 6.25,
+        "pool_luck": random.randint(85, 115),
+        "estimated_daily_btc": f"{total_hashrate * 0.00000001 * 24:.8f}"
+    }
+
+@router.post("/miners/give-bonus/{user_id}")
+async def give_bonus_miner(user_id: str):
+    """Give a free bonus miner to new user (once only)"""
+    # Check if already received
+    existing = await db.bbz_miners.find_one({
+        "user_id": user_id,
+        "type": "bonus"
+    })
+    
+    if existing:
+        raise HTTPException(status_code=400, detail="Bonus miner already claimed")
+    
+    # Create bonus miner
+    bonus_config = MINER_TYPES["bonus"]
+    miner_id = f"BONUS-{str(uuid.uuid4())[:4].upper()}"
+    
+    miner = {
+        "id": miner_id,
+        "user_id": user_id,
+        "type": "bonus",
+        "name": bonus_config["name"],
+        "hashrate": bonus_config["base_hashrate"],
+        "tier": bonus_config["tier"],
+        "level": 1,
+        "efficiency": 15,
+        "active": True,
+        "is_bonus": True,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.bbz_miners.insert_one(miner)
+    
+    logger.info(f"🎁 User {user_id} received bonus miner")
+    
+    return {
+        "success": True,
+        "miner": {k: v for k, v in miner.items() if k != "_id"},
+        "message": "Bonus miner activated!"
+    }
