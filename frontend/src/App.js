@@ -1201,6 +1201,8 @@ function AppContent() {
           <Route path="/mining" element={<MiningPage />} />
           <Route path="/wallet-page" element={<WalletPage />} />
           <Route path="/profile-page" element={<ProfilePage />} />
+          <Route path="/admin-full" element={<AdminPanelFull />} />
+          <Route path="/super-home" element={<SuperAppHome />} />
           
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
