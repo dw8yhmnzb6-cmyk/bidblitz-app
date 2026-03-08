@@ -1,6 +1,5 @@
 /**
- * BidBlitz Super App Home - Clean Minimal Design
- * Exaktes Design wie vom Benutzer gewünscht
+ * BidBlitz Super App Home - 12 Karten Design
  */
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -8,7 +7,7 @@ import axios from 'axios';
 
 const API = process.env.REACT_APP_BACKEND_URL + '/api';
 
-// Quick Actions mit Emojis
+// 12 Quick Actions
 const QUICK_ACTIONS = [
   { id: 1, name: 'Games', emoji: '🎮', route: '/games' },
   { id: 2, name: 'Mining', emoji: '⛏', route: '/mining' },
@@ -16,8 +15,12 @@ const QUICK_ACTIONS = [
   { id: 4, name: 'Scooter', emoji: '🛴', route: '/ride-pay' },
   { id: 5, name: 'Bike', emoji: '🚲', route: '/ride-pay' },
   { id: 6, name: 'Market', emoji: '🛒', route: '/auctions' },
-  { id: 7, name: 'Lottery', emoji: '🎲', route: '/games' },
-  { id: 8, name: 'Ranking', emoji: '🏆', route: '/leaderboard' },
+  { id: 7, name: 'Lucky', emoji: '🎡', route: '/lucky-wheel' },
+  { id: 8, name: 'Rank', emoji: '🏆', route: '/game-leaderboard' },
+  { id: 9, name: 'Casino', emoji: '🎰', route: '/slot-machine' },
+  { id: 10, name: 'Memory', emoji: '🧠', route: '/candy-match' },
+  { id: 11, name: 'Speed', emoji: '⚡', route: '/reaction-game' },
+  { id: 12, name: 'Profile', emoji: '👤', route: '/profile' },
 ];
 
 // Navigation Items
@@ -38,12 +41,10 @@ export default function SuperAppHome() {
     if (!localStorage.getItem('userId')) localStorage.setItem('userId', userId);
     fetchCoins();
     
-    // Hide the main header
     const header = document.querySelector('header');
     if (header) header.style.display = 'none';
     
     return () => {
-      // Show header again when leaving
       const header = document.querySelector('header');
       if (header) header.style.display = '';
     };
@@ -80,14 +81,14 @@ export default function SuperAppHome() {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          padding: 20px;
-          font-size: 26px;
+          padding: 18px;
+          font-size: 24px;
           font-weight: bold;
         }
         .bbz-wallet {
           background: #7c3aed;
-          padding: 8px 14px;
-          border-radius: 10px;
+          padding: 6px 14px;
+          border-radius: 8px;
           display: flex;
           align-items: center;
           gap: 6px;
@@ -96,13 +97,13 @@ export default function SuperAppHome() {
         .bbz-grid {
           display: grid;
           grid-template-columns: repeat(4, 1fr);
-          gap: 16px;
-          padding: 20px;
+          gap: 14px;
+          padding: 18px;
         }
-        .bbz-item {
+        .bbz-card {
           background: #1f2937;
-          padding: 25px 10px;
-          border-radius: 14px;
+          padding: 20px 10px;
+          border-radius: 12px;
           text-align: center;
           cursor: pointer;
           transition: all 0.2s ease;
@@ -111,33 +112,33 @@ export default function SuperAppHome() {
           display: flex;
           flex-direction: column;
           align-items: center;
-          gap: 10px;
+          gap: 8px;
         }
-        .bbz-item:hover {
+        .bbz-card:hover {
           background: #7c3aed;
           transform: translateY(-2px);
         }
-        .bbz-item:active {
+        .bbz-card:active {
           transform: scale(0.95);
         }
         .bbz-emoji {
-          font-size: 36px;
+          font-size: 32px;
           line-height: 1;
         }
         .bbz-name {
           font-weight: 600;
-          font-size: 14px;
+          font-size: 13px;
         }
-        .bbz-nav {
+        .bbz-bottom {
           position: fixed;
           bottom: 0;
           left: 0;
           right: 0;
           width: 100%;
+          background: #111827;
           display: flex;
           justify-content: space-around;
-          background: #111827;
-          padding: 16px 12px;
+          padding: 12px;
           z-index: 1000;
         }
         .bbz-nav-item {
@@ -145,7 +146,7 @@ export default function SuperAppHome() {
           border: none;
           cursor: pointer;
           padding: 8px 20px;
-          font-size: 26px;
+          font-size: 22px;
           opacity: 0.6;
           transition: all 0.2s ease;
         }
@@ -168,13 +169,13 @@ export default function SuperAppHome() {
           </div>
         </div>
 
-        {/* Grid */}
+        {/* Grid - 4x3 = 12 Karten */}
         <div className="bbz-grid">
           {QUICK_ACTIONS.map((action) => (
             <button
               key={action.id}
               onClick={() => navigate(action.route)}
-              className="bbz-item"
+              className="bbz-card"
               data-testid={`quick-action-${action.name.toLowerCase()}`}
             >
               <span className="bbz-emoji">{action.emoji}</span>
@@ -184,7 +185,7 @@ export default function SuperAppHome() {
         </div>
 
         {/* Bottom Navigation */}
-        <nav className="bbz-nav">
+        <nav className="bbz-bottom">
           {NAV_ITEMS.map((item, index) => (
             <button
               key={index}
