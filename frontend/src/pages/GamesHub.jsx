@@ -7,26 +7,28 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import BottomNav from '../components/BottomNav';
 import soundManager from '../utils/soundManager';
+import { useLanguage } from '../context/LanguageContext';
 
 const API = process.env.REACT_APP_BACKEND_URL + '/api';
 
 const GAMES = [
-  { id: 1, name: 'BidBlitz Match', icon: '⭐', gradient: 'from-purple-500 to-violet-700', url: '/games/bbz_match3.html' },
-  { id: 2, name: 'Lucky Spin', icon: '🎰', gradient: 'from-purple-600 to-violet-600', url: '/games/lucky_spin.html' },
-  { id: 3, name: 'Daily Quiz', icon: '❓', gradient: 'from-blue-600 to-blue-900', url: '/games/quiz.html' },
-  { id: 4, name: 'Word Daily', icon: '🔤', gradient: 'from-emerald-600 to-emerald-800', url: '/games/word.html' },
-  { id: 5, name: 'Scratch Card', icon: '💳', gradient: 'from-amber-600 to-amber-800', url: '/games/scratch.html' },
-  { id: 6, name: 'Memory', icon: '🧠', gradient: 'from-fuchsia-600 to-purple-600', url: '/games/memory.html' },
-  { id: 7, name: 'Reaction Test', icon: '⚡', gradient: 'from-red-600 to-red-900', url: '/games/reaction.html' },
-  { id: 8, name: 'Speed Tap', icon: '👏', gradient: 'from-blue-700 to-blue-900', url: '/games/speed_tap.html' },
-  { id: 9, name: 'Treasure Hunt', icon: '🗺', gradient: 'from-amber-500 to-amber-800', url: '/games/bbz_match3.html' },
-  { id: 10, name: 'Slots', icon: '🎰', gradient: 'from-orange-600 to-orange-900', url: '/games/slots.html' },
-  { id: 11, name: 'Dice Roll', icon: '🎲', gradient: 'from-blue-600 to-blue-800', url: '/games/dice.html' },
-  { id: 12, name: 'Coin Drop', icon: '🪙', gradient: 'from-yellow-500 to-yellow-800', url: '/games/coin_drop.html' },
+  { id: 1, name: 'BidBlitz Match', icon: '⭐', gradient: 'from-purple-500 to-violet-700', url: '/games/bbz_match3.html', key: 'bidblitzMatch' },
+  { id: 2, name: 'Lucky Spin', icon: '🎰', gradient: 'from-purple-600 to-violet-600', url: '/games/lucky_spin.html', key: 'luckySpin' },
+  { id: 3, name: 'Daily Quiz', icon: '❓', gradient: 'from-blue-600 to-blue-900', url: '/games/quiz.html', key: 'dailyQuiz' },
+  { id: 4, name: 'Word Daily', icon: '🔤', gradient: 'from-emerald-600 to-emerald-800', url: '/games/word.html', key: 'wordDaily' },
+  { id: 5, name: 'Scratch Card', icon: '💳', gradient: 'from-amber-600 to-amber-800', url: '/games/scratch.html', key: 'scratchCard' },
+  { id: 6, name: 'Memory', icon: '🧠', gradient: 'from-fuchsia-600 to-purple-600', url: '/games/memory.html', key: 'memory' },
+  { id: 7, name: 'Reaction Test', icon: '⚡', gradient: 'from-red-600 to-red-900', url: '/games/reaction.html', key: 'reactionTest' },
+  { id: 8, name: 'Speed Tap', icon: '👏', gradient: 'from-blue-700 to-blue-900', url: '/games/speed_tap.html', key: 'speedTap' },
+  { id: 9, name: 'Treasure Hunt', icon: '🗺', gradient: 'from-amber-500 to-amber-800', url: '/games/bbz_match3.html', key: 'treasureHunt' },
+  { id: 10, name: 'Slots', icon: '🎰', gradient: 'from-orange-600 to-orange-900', url: '/games/slots.html', key: 'slots' },
+  { id: 11, name: 'Dice Roll', icon: '🎲', gradient: 'from-blue-600 to-blue-800', url: '/games/dice.html', key: 'diceRoll' },
+  { id: 12, name: 'Coin Drop', icon: '🪙', gradient: 'from-yellow-500 to-yellow-800', url: '/games/coin_drop.html', key: 'coinDrop' },
 ];
 
 export default function GamesHub() {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [showGame, setShowGame] = useState(null);
   const [leagueStatus, setLeagueStatus] = useState({ rank: 1, points: 0, tier: 'bronze' });
   const [hasGamePass, setHasGamePass] = useState(true);
