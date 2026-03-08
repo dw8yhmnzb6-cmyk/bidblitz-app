@@ -346,13 +346,8 @@ export default function MinerDashboard() {
             to="/miner-market" 
             className="flex-1 py-3 bg-[#6c63ff] hover:bg-[#5a52e0] active:scale-98 rounded-xl font-semibold text-center transition-all"
           >
-            🛒 Buy
+            🛒 Kaufen
           </Link>
-        </div>
-        
-        {/* Balance */}
-        <div className="mt-4 text-center">
-          <p className="text-slate-400 text-sm">Dein Guthaben: <span className="text-amber-400 font-bold">{stats.coins} Coins</span></p>
         </div>
       </div>
       
