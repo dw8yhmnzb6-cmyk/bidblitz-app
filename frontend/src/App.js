@@ -18,6 +18,7 @@ import SupportButton from "./components/SupportButton";
 
 // Pages
 import Home from "./pages/Home";
+import HomeModern from "./pages/HomeModern";
 import Auctions from "./pages/Auctions";
 import AuctionDetail from "./pages/AuctionDetail";
 import MysteryBoxDetail from "./pages/MysteryBoxDetail";
