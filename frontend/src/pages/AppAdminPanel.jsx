@@ -36,6 +36,11 @@ export default function AppAdminPanel() {
   const [allMiners, setAllMiners] = useState([]);
   const [minerCatalog, setMinerCatalog] = useState([]);
   
+  // Users Admin State
+  const [allUsers, setAllUsers] = useState([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  
   const activityTemplates = [
     { text: "hat einen Miner gekauft", icon: "⛏️", color: "text-cyan-400" },
     { text: "hat 100 Coins im Spiel gewonnen", icon: "🎮", color: "text-purple-400" },
