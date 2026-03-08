@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>🌺 Garden Match</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
+    body { 
+      background: linear-gradient(180deg, #87CEEB 0%, #98FB98 50%, #228B22 100%);
+      min-height: 100vh;
+      font-family: 'Segoe UI', sans-serif;
+      color: white;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    /* Header */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 15px;
+      background: rgba(0,0,0,0.3);
+    }
+    .header-left, .header-right {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+    .stat-box {
+      background: rgba(255,255,255,0.2);
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .level-box {
+      background: linear-gradient(135deg, #9333ea, #7c3aed);
+      padding: 8px 15px;
+      border-radius: 25px;
+      font-weight: bold;
+    }
+    
+    /* Game Area */
+    .game-container {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 10px;
+      position: relative;
+    }
+    
+    /* Power-ups */
+    .powerups {
+      position: absolute;
+      left: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .powerup {
+      width: 50px;
+      height: 50px;
+      background: linear-gradient(135deg, #fbbf24, #f59e0b);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      cursor: pointer;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.3);
+      transition: 0.2s;
+      position: relative;
+    }
+    .powerup:hover { transform: scale(1.1); }
+    .powerup:active { transform: scale(0.95); }
+    .powerup-count {
+      position: absolute;
+      bottom: -5px;
+      right: -5px;
+      background: #ef4444;
+      color: white;
+      font-size: 12px;
+      font-weight: bold;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    /* Goal Panel */
+    .goal-panel {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: rgba(0,0,0,0.4);
+      padding: 15px;
+      border-radius: 15px;
+      text-align: center;
+    }
+    .goal-title {
+      font-size: 12px;
+      margin-bottom: 10px;
+      color: rgba(255,255,255,0.8);
+    }
+    .goal-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 8px 0;
+      font-size: 16px;
+    }
+    .goal-progress {
+      font-weight: bold;
+    }
+    
+    /* Game Board */
+    #board {
+      display: grid;
+      grid-template-columns: repeat(7, 45px);
+      gap: 4px;
+      padding: 15px;
+      background: linear-gradient(135deg, #8B4513 0%, #654321 100%);
+      border-radius: 20px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+      position: relative;
+    }
+    
+    .cell {
+      width: 45px;
+      height: 45px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 30px;
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s;
+      position: relative;
+    }
+    .cell:hover { transform: scale(1.08); }
+    .cell:active { transform: scale(0.95); }
+    
+    .cell.normal { background: linear-gradient(135deg, #4ade80, #22c55e); }
+    .cell.obstacle {
+      background: linear-gradient(135deg, #ef4444, #dc2626);
+      box-shadow: inset 0 0 10px rgba(0,0,0,0.3);
+    }
+    .cell.selected {
+      box-shadow: 0 0 15px 5px rgba(255,255,255,0.8);
+      transform: scale(1.1);
+    }
+    .cell.matched {
+      animation: pop 0.3s forwards;
+    }
+    @keyframes pop {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.3); }
+      100% { transform: scale(0); opacity: 0; }
+    }
+    .cell.falling {
+      animation: fall 0.3s ease-in;
+    }
+    @keyframes fall {
+      from { transform: translateY(-50px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+    
+    /* Special tiles */
+    .cell.rainbow {
+      background: linear-gradient(135deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #9400d3);
+      animation: rainbow-pulse 1s infinite alternate;
+    }
+    @keyframes rainbow-pulse {
+      from { box-shadow: 0 0 10px rgba(255,255,255,0.5); }
+      to { box-shadow: 0 0 20px rgba(255,255,255,0.9); }
+    }
+    
+    .cell.bomb {
+      background: linear-gradient(135deg, #1f2937, #374151);
+    }
+    
+    /* Character */
+    .character {
+      position: absolute;
+      bottom: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 50px;
+      animation: bounce 1s ease-in-out infinite;
+    }
+    @keyframes bounce {
+      0%, 100% { transform: translateX(-50%) translateY(0); }
+      50% { transform: translateX(-50%) translateY(-10px); }
+    }
+    
+    /* Overlay */
+    #overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.85);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      gap: 20px;
+    }
+    #overlay.hidden { display: none; }
+    #overlay h2 { font-size: 32px; }
+    #overlay p { font-size: 18px; color: rgba(255,255,255,0.8); }
+    #overlay .stars { font-size: 40px; margin: 10px 0; }
+    #overlay .reward { color: #fbbf24; font-size: 24px; font-weight: bold; }
+    #overlay button {
+      padding: 15px 40px;
+      font-size: 18px;
+      border: none;
+      border-radius: 25px;
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: white;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    #overlay button:hover { transform: scale(1.05); }
+    
+    /* Combo text */
+    .combo-text {
+      position: fixed;
+      font-size: 28px;
+      font-weight: bold;
+      color: #fbbf24;
+      text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+      animation: combo-float 1s forwards;
+      pointer-events: none;
+      z-index: 50;
+    }
+    @keyframes combo-float {
+      0% { transform: scale(0.5) translateY(0); opacity: 1; }
+      100% { transform: scale(1.5) translateY(-50px); opacity: 0; }
+    }
+  </style>
+</head>
+<body>
+  
+  <!-- Header -->
+  <div class="header">
+    <div class="header-left">
+      <div class="level-box">Level <span id="level">1</span></div>
+    </div>
+    <div class="header-right">
+      <div class="stat-box">⭐ <span id="score">0</span></div>
+      <div class="stat-box">🎯 <span id="moves">25</span></div>
+    </div>
+  </div>
+  
+  <!-- Game Area -->
+  <div class="game-container">
+    
+    <!-- Power-ups -->
+    <div class="powerups">
+      <div class="powerup" onclick="usePowerup('shovel')" title="Schaufel - Entfernt 1 Kachel">
+        🪴
+        <span class="powerup-count" id="shovel-count">3</span>
+      </div>
+      <div class="powerup" onclick="usePowerup('bomb')" title="Bombe - Entfernt 3x3 Bereich">
+        💣
+        <span class="powerup-count" id="bomb-count">2</span>
+      </div>
+      <div class="powerup" onclick="usePowerup('rainbow')" title="Regenbogen - Entfernt alle einer Farbe">
+        🌈
+        <span class="powerup-count" id="rainbow-count">1</span>
+      </div>
+    </div>
+    
+    <!-- Game Board -->
+    <div id="board">
+      <div class="character">🧙</div>
+    </div>
+    
+    <!-- Goals -->
+    <div class="goal-panel">
+      <div class="goal-title">ZIEL</div>
+      <div class="goal-item">
+        <span>🟥</span>
+        <span class="goal-progress"><span id="obstacles-left">10</span></span>
+      </div>
+      <div class="goal-item">
+        <span>⭐</span>
+        <span class="goal-progress"><span id="target-score">500</span></span>
+      </div>
+    </div>
+    
+  </div>
+  
+  <!-- Overlay -->
+  <div id="overlay">
+    <h2>🌺 Garden Match</h2>
+    <p>Matche 3 gleiche Früchte!</p>
+    <p>Entferne alle roten Hindernisse!</p>
+    <button onclick="startGame()">▶️ Spielen</button>
+  </div>
+
+  <script>
+    const ROWS = 7;
+    const COLS = 7;
+    const FRUITS = ['🍎', '🍊', '🍋', '🍇', '🫐', '🍒'];
+    
+    let board = [];
+    let selected = null;
+    let score = 0;
+    let moves = 25;
+    let level = 1;
+    let obstaclesLeft = 10;
+    let targetScore = 500;
+    let gameOver = false;
+    let activePowerup = null;
+    let powerups = { shovel: 3, bomb: 2, rainbow: 1 };
+    let comboCount = 0;
+    
+    const boardEl = document.getElementById('board');
+    const overlay = document.getElementById('overlay');
+    
+    function startGame() {
+      score = 0;
+      moves = 25;
+      obstaclesLeft = 8 + level * 2;
+      targetScore = 400 + level * 100;
+      gameOver = false;
+      selected = null;
+      activePowerup = null;
+      comboCount = 0;
+      
+      updateUI();
+      createBoard();
+      overlay.classList.add('hidden');
+    }
+    
+    function createBoard() {
+      board = [];
+      
+      // Create random board with some obstacles
+      for (let r = 0; r < ROWS; r++) {
+        board[r] = [];
+        for (let c = 0; c < COLS; c++) {
+          const isObstacle = Math.random() < 0.15 && obstaclesLeft > 0;
+          if (isObstacle) {
+            board[r][c] = { fruit: null, obstacle: true };
+          } else {
+            board[r][c] = { fruit: FRUITS[Math.floor(Math.random() * FRUITS.length)], obstacle: false };
+          }
+        }
+      }
+      
+      // Remove initial matches
+      while (findMatches().length > 0) {
+        for (let r = 0; r < ROWS; r++) {
+          for (let c = 0; c < COLS; c++) {
+            if (!board[r][c].obstacle) {
+              board[r][c].fruit = FRUITS[Math.floor(Math.random() * FRUITS.length)];
+            }
+          }
+        }
+      }
+      
+      render();
+    }
+    
+    function render() {
+      boardEl.innerHTML = '<div class="character">🧙</div>';
+      
+      for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+          const cell = document.createElement('div');
+          cell.className = 'cell';
+          cell.dataset.row = r;
+          cell.dataset.col = c;
+          
+          if (board[r][c].obstacle) {
+            cell.classList.add('obstacle');
+            cell.textContent = '🪨';
+          } else {
+            cell.classList.add('normal');
+            cell.textContent = board[r][c].fruit;
+            
+            if (board[r][c].special === 'bomb') {
+              cell.classList.add('bomb');
+              cell.textContent = '💣';
+            } else if (board[r][c].special === 'rainbow') {
+              cell.classList.add('rainbow');
+              cell.textContent = '🌈';
+            }
+          }
+          
+          if (selected && selected.r === r && selected.c === c) {
+            cell.classList.add('selected');
+          }
+          
+          cell.onclick = () => cellClick(r, c);
+          boardEl.appendChild(cell);
+        }
+      }
+    }
+    
+    function cellClick(r, c) {
+      if (gameOver) return;
+      
+      // Handle powerup usage
+      if (activePowerup) {
+        usePowerupAt(r, c);
+        return;
+      }
+      
+      if (board[r][c].obstacle) return;
+      
+      if (!selected) {
+        selected = { r, c };
+        render();
+        return;
+      }
+      
+      // Check if adjacent
+      const dr = Math.abs(selected.r - r);
+      const dc = Math.abs(selected.c - c);
+      
+      if ((dr === 1 && dc === 0) || (dr === 0 && dc === 1)) {
+        // Swap
+        swap(selected.r, selected.c, r, c);
+        
+        const matches = findMatches();
+        if (matches.length > 0) {
+          moves--;
+          comboCount = 0;
+          processMatches();
+        } else {
+          // Swap back
+          swap(selected.r, selected.c, r, c);
+        }
+      }
+      
+      selected = null;
+      render();
+    }
+    
+    function swap(r1, c1, r2, c2) {
+      const temp = board[r1][c1];
+      board[r1][c1] = board[r2][c2];
+      board[r2][c2] = temp;
+    }
+    
+    function findMatches() {
+      const matches = new Set();
+      
+      // Horizontal
+      for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS - 2; c++) {
+          if (board[r][c].obstacle || !board[r][c].fruit) continue;
+          const f = board[r][c].fruit;
+          if (board[r][c+1].fruit === f && board[r][c+2].fruit === f) {
+            matches.add(`${r},${c}`);
+            matches.add(`${r},${c+1}`);
+            matches.add(`${r},${c+2}`);
+            // Check for 4 or 5 match
+            if (c + 3 < COLS && board[r][c+3].fruit === f) matches.add(`${r},${c+3}`);
+            if (c + 4 < COLS && board[r][c+4].fruit === f) matches.add(`${r},${c+4}`);
+          }
+        }
+      }
+      
+      // Vertical
+      for (let c = 0; c < COLS; c++) {
+        for (let r = 0; r < ROWS - 2; r++) {
+          if (board[r][c].obstacle || !board[r][c].fruit) continue;
+          const f = board[r][c].fruit;
+          if (board[r+1][c].fruit === f && board[r+2][c].fruit === f) {
+            matches.add(`${r},${c}`);
+            matches.add(`${r+1},${c}`);
+            matches.add(`${r+2},${c}`);
+            if (r + 3 < ROWS && board[r+3][c].fruit === f) matches.add(`${r+3},${c}`);
+            if (r + 4 < ROWS && board[r+4][c].fruit === f) matches.add(`${r+4},${c}`);
+          }
+        }
+      }
+      
+      return [...matches].map(s => {
+        const [r, c] = s.split(',').map(Number);
+        return { r, c };
+      });
+    }
+    
+    function processMatches() {
+      const matches = findMatches();
+      if (matches.length === 0) {
+        updateUI();
+        checkGameState();
+        return;
+      }
+      
+      comboCount++;
+      
+      // Show combo text
+      if (comboCount > 1) {
+        showCombo(comboCount);
+      }
+      
+      // Calculate score
+      const basePoints = matches.length * 10;
+      const comboBonus = comboCount > 1 ? comboCount * 20 : 0;
+      score += basePoints + comboBonus;
+      
+      // Clear obstacles adjacent to matches
+      matches.forEach(({ r, c }) => {
+        // Check neighbors for obstacles
+        const neighbors = [
+          [r-1, c], [r+1, c], [r, c-1], [r, c+1]
+        ];
+        neighbors.forEach(([nr, nc]) => {
+          if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS) {
+            if (board[nr][nc].obstacle) {
+              board[nr][nc] = { fruit: FRUITS[Math.floor(Math.random() * FRUITS.length)], obstacle: false };
+              obstaclesLeft--;
+            }
+          }
+        });
+      });
+      
+      // Create special tiles for large matches
+      if (matches.length >= 5) {
+        const pos = matches[Math.floor(matches.length / 2)];
+        board[pos.r][pos.c] = { fruit: FRUITS[0], special: 'rainbow', obstacle: false };
+      } else if (matches.length >= 4) {
+        const pos = matches[Math.floor(matches.length / 2)];
+        board[pos.r][pos.c] = { fruit: FRUITS[0], special: 'bomb', obstacle: false };
+      }
+      
+      // Remove matched cells
+      matches.forEach(({ r, c }) => {
+        if (!board[r][c].special) {
+          board[r][c] = { fruit: null, obstacle: false };
+        }
+      });
+      
+      render();
+      
+      // Drop and refill
+      setTimeout(() => {
+        dropTiles();
+        fillEmpty();
+        render();
+        
+        // Check for more matches
+        setTimeout(() => processMatches(), 300);
+      }, 300);
+    }
+    
+    function dropTiles() {
+      for (let c = 0; c < COLS; c++) {
+        let emptyRow = ROWS - 1;
+        for (let r = ROWS - 1; r >= 0; r--) {
+          if (!board[r][c].obstacle && board[r][c].fruit) {
+            if (r !== emptyRow) {
+              board[emptyRow][c] = board[r][c];
+              board[r][c] = { fruit: null, obstacle: false };
+            }
+            emptyRow--;
+          } else if (board[r][c].obstacle) {
+            emptyRow = r - 1;
+          }
+        }
+      }
+    }
+    
+    function fillEmpty() {
+      for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+          if (!board[r][c].obstacle && !board[r][c].fruit) {
+            board[r][c] = { fruit: FRUITS[Math.floor(Math.random() * FRUITS.length)], obstacle: false };
+          }
+        }
+      }
+    }
+    
+    function showCombo(count) {
+      const text = document.createElement('div');
+      text.className = 'combo-text';
+      text.textContent = `${count}x COMBO!`;
+      text.style.left = '50%';
+      text.style.top = '40%';
+      text.style.transform = 'translateX(-50%)';
+      document.body.appendChild(text);
+      setTimeout(() => text.remove(), 1000);
+    }
+    
+    function usePowerup(type) {
+      if (powerups[type] <= 0 || gameOver) return;
+      activePowerup = type;
+      document.body.style.cursor = 'crosshair';
+    }
+    
+    function usePowerupAt(r, c) {
+      if (!activePowerup) return;
+      
+      powerups[activePowerup]--;
+      
+      if (activePowerup === 'shovel') {
+        // Remove single tile
+        if (board[r][c].obstacle) {
+          obstaclesLeft--;
+        }
+        board[r][c] = { fruit: FRUITS[Math.floor(Math.random() * FRUITS.length)], obstacle: false };
+      } else if (activePowerup === 'bomb') {
+        // Remove 3x3 area
+        for (let dr = -1; dr <= 1; dr++) {
+          for (let dc = -1; dc <= 1; dc++) {
+            const nr = r + dr;
+            const nc = c + dc;
+            if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS) {
+              if (board[nr][nc].obstacle) obstaclesLeft--;
+              board[nr][nc] = { fruit: FRUITS[Math.floor(Math.random() * FRUITS.length)], obstacle: false };
+            }
+          }
+        }
+        score += 50;
+      } else if (activePowerup === 'rainbow') {
+        // Remove all of one fruit type
+        const targetFruit = board[r][c].fruit;
+        if (targetFruit) {
+          for (let row = 0; row < ROWS; row++) {
+            for (let col = 0; col < COLS; col++) {
+              if (board[row][col].fruit === targetFruit) {
+                board[row][col] = { fruit: null, obstacle: false };
+                score += 10;
+              }
+            }
+          }
+          fillEmpty();
+        }
+      }
+      
+      activePowerup = null;
+      document.body.style.cursor = 'default';
+      updatePowerupUI();
+      render();
+      
+      setTimeout(() => processMatches(), 300);
+    }
+    
+    function updateUI() {
+      document.getElementById('score').textContent = score;
+      document.getElementById('moves').textContent = moves;
+      document.getElementById('level').textContent = level;
+      document.getElementById('obstacles-left').textContent = obstaclesLeft;
+      document.getElementById('target-score').textContent = targetScore;
+      updatePowerupUI();
+    }
+    
+    function updatePowerupUI() {
+      document.getElementById('shovel-count').textContent = powerups.shovel;
+      document.getElementById('bomb-count').textContent = powerups.bomb;
+      document.getElementById('rainbow-count').textContent = powerups.rainbow;
+    }
+    
+    function checkGameState() {
+      updateUI();
+      
+      // Win condition
+      if (obstaclesLeft <= 0 && score >= targetScore) {
+        gameOver = true;
+        const stars = moves > 15 ? 3 : moves > 5 ? 2 : 1;
+        const reward = score / 10 + level * 20;
+        
+        overlay.innerHTML = `
+          <h2>🎉 Level ${level} geschafft!</h2>
+          <div class="stars">${'⭐'.repeat(stars)}${'☆'.repeat(3-stars)}</div>
+          <p>Score: ${score}</p>
+          <p class="reward">+${Math.floor(reward)} 🪙 Coins</p>
+          <button onclick="nextLevel()">▶️ Level ${level + 1}</button>
+        `;
+        overlay.classList.remove('hidden');
+        return;
+      }
+      
+      // Lose condition
+      if (moves <= 0) {
+        gameOver = true;
+        overlay.innerHTML = `
+          <h2>💔 Keine Züge mehr!</h2>
+          <p>Score: ${score}</p>
+          <p>Hindernisse übrig: ${obstaclesLeft}</p>
+          <button onclick="startGame()">🔄 Nochmal</button>
+        `;
+        overlay.classList.remove('hidden');
+      }
+    }
+    
+    function nextLevel() {
+      level++;
+      powerups.shovel = Math.min(5, powerups.shovel + 1);
+      powerups.bomb = Math.min(3, powerups.bomb + 1);
+      powerups.rainbow = Math.min(2, powerups.rainbow + 1);
+      startGame();
+    }
+    
+    // Initialize
+    updateUI();
+  </script>
+</body>
+</html>
