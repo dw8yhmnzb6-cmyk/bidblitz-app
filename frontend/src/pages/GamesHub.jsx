@@ -12,8 +12,8 @@ const API = process.env.REACT_APP_BACKEND_URL + '/api';
 const GAMES = [
   { id: 1, name: 'Candy Match', emoji: '🍬', route: '/candy-match' },
   { id: 2, name: 'Reaction Game', emoji: '🎯', route: '/games/reaction.html' },
-  { id: 3, name: 'Lucky Wheel', emoji: '🎰', route: '/games/wheel.html' },
-  { id: 4, name: 'Coin Tap', emoji: '🪙', route: '/games/clicker.html' },
+  { id: 3, name: 'Lucky Wheel', emoji: '🎰', route: '/lucky-wheel' },
+  { id: 4, name: 'Coin Tap', emoji: '🪙', route: '/coin-tap' },
   { id: 5, name: 'Dice Game', emoji: '🎲', route: '/games/dice.html' },
   { id: 6, name: 'Speed Click', emoji: '⚡', route: '/games/speed.html' },
   { id: 7, name: 'Garden Match', emoji: '🌺', route: '/games/garden.html' },
