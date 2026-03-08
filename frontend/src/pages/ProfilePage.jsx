@@ -1,70 +1,253 @@
-import React, {useState} from "react";
+/**
+ * BidBlitz Profile - Benutzer Einstellungen
+ */
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
+import { useAuth } from '../context/AuthContext';
 
-export default function ProfilePage(){
+const API = process.env.REACT_APP_BACKEND_URL + '/api';
 
-const [user] = useState({
-name:"Max Mustermann",
-email:"max@bidblitz.ae",
-coins:1200,
-level:5,
-gamesPlayed:42,
-totalEarned:5000
-})
+// Menu Items
+const MENU_ITEMS = [
+  { id: 1, name: 'Meine Auktionen', emoji: '🛒', route: '/my-auctions' },
+  { id: 2, name: 'Gewonnene Preise', emoji: '🏆', route: '/won-auctions' },
+  { id: 3, name: 'Spiel-Statistiken', emoji: '📊', route: '/game-leaderboard' },
+  { id: 4, name: 'Einstellungen', emoji: '⚙️', route: '/settings' },
+  { id: 5, name: 'Hilfe & Support', emoji: '❓', route: '/support' },
+  { id: 6, name: 'Abmelden', emoji: '🚪', route: '/logout' },
+];
 
-const menuItems = [
-{icon:"👤",label:"Profil bearbeiten"},
-{icon:"🔔",label:"Benachrichtigungen"},
-{icon:"🔒",label:"Sicherheit"},
-{icon:"🌐",label:"Sprache"},
-{icon:"❓",label:"Hilfe"}
-]
+// Nav Items
+const NAV_ITEMS = [
+  { emoji: '🏠', route: '/super-home' },
+  { emoji: '🎮', route: '/games' },
+  { emoji: '💰', route: '/wallet' },
+  { emoji: '👤', route: '/profile', active: true },
+];
 
-return(
-<div className="min-h-screen bg-gradient-to-b from-purple-700 to-slate-900 text-white p-6">
+export default function ProfilePage() {
+  const navigate = useNavigate();
+  const { user, logout, isAuthenticated } = useAuth();
+  const [coins, setCoins] = useState(0);
 
-<h1 className="text-3xl font-bold mb-6">👤 Profil</h1>
+  const userId = localStorage.getItem('userId') || 'guest';
 
-<div className="bg-slate-800 p-6 rounded-xl mb-6 text-center">
-<div className="w-20 h-20 bg-purple-500 rounded-full mx-auto mb-3 flex items-center justify-center text-3xl">
-{user.name.charAt(0)}
-</div>
-<p className="text-xl font-bold">{user.name}</p>
-<p className="text-sm opacity-50">{user.email}</p>
-<p className="mt-2 text-amber-400">Level {user.level}</p>
-</div>
+  useEffect(() => {
+    fetchCoins();
+    
+    const header = document.querySelector('header');
+    if (header) header.style.display = 'none';
+    
+    return () => {
+      const header = document.querySelector('header');
+      if (header) header.style.display = '';
+    };
+  }, []);
 
-<div className="grid grid-cols-3 gap-4 mb-6">
-<div className="bg-slate-800 p-4 rounded-xl text-center">
-<p className="text-2xl font-bold">{user.coins}</p>
-<p className="text-xs opacity-50">Coins</p>
-</div>
-<div className="bg-slate-800 p-4 rounded-xl text-center">
-<p className="text-2xl font-bold">{user.gamesPlayed}</p>
-<p className="text-xs opacity-50">Spiele</p>
-</div>
-<div className="bg-slate-800 p-4 rounded-xl text-center">
-<p className="text-2xl font-bold">{user.totalEarned}</p>
-<p className="text-xs opacity-50">Verdient</p>
-</div>
-</div>
+  const fetchCoins = async () => {
+    try {
+      const res = await axios.get(`${API}/bbz/coins/${userId}`);
+      setCoins(res.data.coins || 0);
+    } catch {
+      setCoins(1200);
+    }
+  };
 
-<div className="bg-slate-800 rounded-xl overflow-hidden">
-{menuItems.map((item,i)=>(
-<button
-key={i}
-className="w-full p-4 flex items-center gap-4 hover:bg-slate-700 transition border-b border-slate-700 last:border-0"
->
-<span className="text-xl">{item.icon}</span>
-<span>{item.label}</span>
-<span className="ml-auto opacity-50">→</span>
-</button>
-))}
-</div>
+  const handleMenuClick = (item) => {
+    if (item.route === '/logout') {
+      logout();
+      navigate('/');
+    } else {
+      navigate(item.route);
+    }
+  };
 
-<button className="w-full mt-6 bg-red-600 p-4 rounded-xl font-bold">
-🚪 Abmelden
-</button>
+  return (
+    <>
+      <style>{`
+        .profile-page {
+          margin: 0;
+          background: #0f172a;
+          color: white;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+          min-height: 100vh;
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          overflow-y: auto;
+          z-index: 999;
+          padding: 30px 20px 100px;
+          text-align: center;
+        }
+        .profile-title {
+          font-size: 28px;
+          font-weight: bold;
+          margin-bottom: 30px;
+        }
+        .profile-avatar {
+          width: 100px;
+          height: 100px;
+          background: linear-gradient(90deg, #7c3aed, #9333ea);
+          border-radius: 50%;
+          margin: 0 auto 20px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 50px;
+        }
+        .profile-name {
+          font-size: 24px;
+          font-weight: bold;
+          margin-bottom: 5px;
+        }
+        .profile-email {
+          font-size: 14px;
+          color: #9ca3af;
+          margin-bottom: 20px;
+        }
+        .profile-stats {
+          display: flex;
+          justify-content: center;
+          gap: 20px;
+          margin-bottom: 30px;
+        }
+        .stat-box {
+          background: #1f2937;
+          padding: 15px 25px;
+          border-radius: 12px;
+          text-align: center;
+        }
+        .stat-value {
+          font-size: 24px;
+          font-weight: bold;
+          color: #7c3aed;
+        }
+        .stat-label {
+          font-size: 12px;
+          color: #9ca3af;
+        }
+        .profile-menu {
+          text-align: left;
+        }
+        .menu-item {
+          background: #1f2937;
+          padding: 18px 20px;
+          border-radius: 12px;
+          margin-bottom: 10px;
+          display: flex;
+          align-items: center;
+          gap: 15px;
+          cursor: pointer;
+          transition: all 0.2s;
+          border: none;
+          color: white;
+          width: 100%;
+          font-size: 16px;
+        }
+        .menu-item:hover {
+          background: #374151;
+        }
+        .menu-emoji {
+          font-size: 22px;
+        }
+        .menu-name {
+          font-weight: 500;
+        }
+        .menu-arrow {
+          margin-left: auto;
+          color: #6b7280;
+        }
+        .bottom-nav {
+          position: fixed;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          width: 100%;
+          background: #111827;
+          display: flex;
+          justify-content: space-around;
+          padding: 14px;
+          z-index: 1000;
+        }
+        .nav-btn {
+          background: none;
+          border: none;
+          font-size: 22px;
+          cursor: pointer;
+          padding: 8px 16px;
+          opacity: 0.6;
+          transition: all 0.2s;
+        }
+        .nav-btn:hover, .nav-btn.active {
+          opacity: 1;
+          transform: scale(1.1);
+        }
+      `}</style>
+      
+      <div className="profile-page" data-testid="profile-page">
+        {/* Title */}
+        <div className="profile-title">👤 Profile</div>
 
-</div>
-)
+        {/* Avatar */}
+        <div className="profile-avatar">
+          {user?.first_name?.charAt(0) || '👤'}
+        </div>
+
+        {/* Name & Email */}
+        <div className="profile-name">
+          {user?.first_name || 'Gast'} {user?.last_name || 'Benutzer'}
+        </div>
+        <div className="profile-email">
+          {user?.email || 'gast@bidblitz.de'}
+        </div>
+
+        {/* Stats */}
+        <div className="profile-stats">
+          <div className="stat-box">
+            <div className="stat-value">{coins.toLocaleString()}</div>
+            <div className="stat-label">Coins</div>
+          </div>
+          <div className="stat-box">
+            <div className="stat-value">12</div>
+            <div className="stat-label">Level</div>
+          </div>
+          <div className="stat-box">
+            <div className="stat-value">5</div>
+            <div className="stat-label">Gewinne</div>
+          </div>
+        </div>
+
+        {/* Menu */}
+        <div className="profile-menu">
+          {MENU_ITEMS.map((item) => (
+            <button
+              key={item.id}
+              className="menu-item"
+              onClick={() => handleMenuClick(item)}
+            >
+              <span className="menu-emoji">{item.emoji}</span>
+              <span className="menu-name">{item.name}</span>
+              <span className="menu-arrow">→</span>
+            </button>
+          ))}
+        </div>
+
+        {/* Bottom Navigation */}
+        <nav className="bottom-nav">
+          {NAV_ITEMS.map((item, index) => (
+            <button
+              key={index}
+              onClick={() => navigate(item.route)}
+              className={`nav-btn ${item.active ? 'active' : ''}`}
+            >
+              {item.emoji}
+            </button>
+          ))}
+        </nav>
+      </div>
+    </>
+  );
 }
