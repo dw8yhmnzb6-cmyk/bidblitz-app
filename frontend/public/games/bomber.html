@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🧨 Bomber</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      background: linear-gradient(135deg, #1a1a2e, #16213e);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      font-family: 'Segoe UI', sans-serif;
+      color: white;
+      padding: 20px;
+    }
+    h1 { margin-bottom: 15px; }
+    .stats { display: flex; gap: 30px; margin-bottom: 15px; font-size: 18px; }
+    .stats span { color: #f59e0b; font-weight: bold; }
+    #grid {
+      display: grid;
+      grid-template-columns: repeat(8, 40px);
+      gap: 2px;
+      padding: 10px;
+      background: #1f2937;
+      border-radius: 10px;
+    }
+    .cell {
+      width: 40px;
+      height: 40px;
+      background: #374151;
+      border-radius: 5px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    .cell:hover { background: #4b5563; }
+    .cell.revealed { background: #1f2937; cursor: default; }
+    .cell.bomb { background: #ef4444; }
+    .cell.flag { background: #f59e0b; }
+    button {
+      margin-top: 20px;
+      padding: 15px 40px;
+      font-size: 18px;
+      border: none;
+      border-radius: 10px;
+      background: #8b5cf6;
+      color: white;
+      cursor: pointer;
+    }
+    #message {
+      margin-top: 15px;
+      padding: 15px 30px;
+      border-radius: 10px;
+      font-size: 18px;
+      font-weight: bold;
+      display: none;
+    }
+    .win { background: #10b981; }
+    .lose { background: #ef4444; }
+    p { margin-top: 10px; color: #94a3b8; }
+  </style>
+</head>
+<body>
+  <h1>🧨 Bomber</h1>
+  <div class="stats">
+    <div>💣 Bomben: <span id="bombs">10</span></div>
+    <div>🚩 Flaggen: <span id="flags">0</span></div>
+  </div>
+  
+  <div id="grid"></div>
+  
+  <div id="message"></div>
+  <button onclick="initGame()">🔄 Neues Spiel</button>
+  <p>Klick = Aufdecken | Rechtsklick = Flagge</p>
+
+  <script>
+    const SIZE = 8;
+    const BOMBS = 10;
+    let grid = [];
+    let revealed = [];
+    let flagged = [];
+    let gameOver = false;
+    
+    function initGame() {
+      grid = Array(SIZE * SIZE).fill(0);
+      revealed = Array(SIZE * SIZE).fill(false);
+      flagged = Array(SIZE * SIZE).fill(false);
+      gameOver = false;
+      document.getElementById('message').style.display = 'none';
+      document.getElementById('flags').textContent = '0';
+      
+      // Place bombs
+      let placed = 0;
+      while (placed < BOMBS) {
+        const i = Math.floor(Math.random() * SIZE * SIZE);
+        if (grid[i] !== -1) {
+          grid[i] = -1;
+          placed++;
+        }
+      }
+      
+      // Calculate numbers
+      for (let i = 0; i < SIZE * SIZE; i++) {
+        if (grid[i] === -1) continue;
+        let count = 0;
+        getNeighbors(i).forEach(n => {
+          if (grid[n] === -1) count++;
+        });
+        grid[i] = count;
+      }
+      
+      render();
+    }
+    
+    function getNeighbors(i) {
+      const neighbors = [];
+      const row = Math.floor(i / SIZE);
+      const col = i % SIZE;
+      
+      for (let dr = -1; dr <= 1; dr++) {
+        for (let dc = -1; dc <= 1; dc++) {
+          if (dr === 0 && dc === 0) continue;
+          const nr = row + dr;
+          const nc = col + dc;
+          if (nr >= 0 && nr < SIZE && nc >= 0 && nc < SIZE) {
+            neighbors.push(nr * SIZE + nc);
+          }
+        }
+      }
+      return neighbors;
+    }
+    
+    function reveal(i) {
+      if (gameOver || revealed[i] || flagged[i]) return;
+      
+      revealed[i] = true;
+      
+      if (grid[i] === -1) {
+        // Hit bomb
+        gameOver = true;
+        revealAll();
+        showMessage(false);
+        return;
+      }
+      
+      if (grid[i] === 0) {
+        getNeighbors(i).forEach(n => reveal(n));
+      }
+      
+      checkWin();
+      render();
+    }
+    
+    function toggleFlag(i, e) {
+      e.preventDefault();
+      if (gameOver || revealed[i]) return;
+      
+      flagged[i] = !flagged[i];
+      document.getElementById('flags').textContent = flagged.filter(f => f).length;
+      render();
+    }
+    
+    function revealAll() {
+      revealed = Array(SIZE * SIZE).fill(true);
+      render();
+    }
+    
+    function checkWin() {
+      const unrevealed = revealed.filter((r, i) => !r && grid[i] !== -1).length;
+      if (unrevealed === 0) {
+        gameOver = true;
+        showMessage(true);
+      }
+    }
+    
+    function showMessage(won) {
+      const msg = document.getElementById('message');
+      msg.textContent = won ? '🏆 Gewonnen! +50 Coins' : '💥 Boom! Game Over';
+      msg.className = won ? 'win' : 'lose';
+      msg.style.display = 'block';
+    }
+    
+    function render() {
+      const container = document.getElementById('grid');
+      container.innerHTML = '';
+      
+      for (let i = 0; i < SIZE * SIZE; i++) {
+        const cell = document.createElement('div');
+        cell.className = 'cell';
+        
+        if (revealed[i]) {
+          cell.classList.add('revealed');
+          if (grid[i] === -1) {
+            cell.textContent = '💣';
+            cell.classList.add('bomb');
+          } else if (grid[i] > 0) {
+            cell.textContent = grid[i];
+            cell.style.color = ['', '#3b82f6', '#10b981', '#ef4444', '#8b5cf6', '#f59e0b', '#14b8a6', '#000', '#fff'][grid[i]];
+          }
+        } else if (flagged[i]) {
+          cell.textContent = '🚩';
+          cell.classList.add('flag');
+        }
+        
+        cell.onclick = () => reveal(i);
+        cell.oncontextmenu = (e) => toggleFlag(i, e);
+        container.appendChild(cell);
+      }
+    }
+    
+    initGame();
+  </script>
+</body>
+</html>

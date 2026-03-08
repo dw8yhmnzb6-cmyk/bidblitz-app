@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🧗 Climb</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      background: linear-gradient(180deg, #87ceeb, #1a1a2e);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      font-family: 'Segoe UI', sans-serif;
+      color: white;
+      overflow: hidden;
+    }
+    .hud {
+      width: 100%;
+      padding: 15px 20px;
+      display: flex;
+      justify-content: space-between;
+      background: rgba(0,0,0,0.5);
+      z-index: 10;
+    }
+    .hud div { font-size: 18px; font-weight: bold; }
+    .hud span { color: #10b981; }
+    #game {
+      flex: 1;
+      width: 100%;
+      max-width: 400px;
+      position: relative;
+      overflow: hidden;
+    }
+    .player {
+      position: absolute;
+      font-size: 40px;
+      transition: left 0.15s, bottom 0.1s;
+      z-index: 5;
+    }
+    .platform {
+      position: absolute;
+      height: 15px;
+      background: linear-gradient(90deg, #10b981, #059669);
+      border-radius: 5px;
+    }
+    .coin {
+      position: absolute;
+      font-size: 25px;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      from { transform: rotateY(0deg); }
+      to { transform: rotateY(360deg); }
+    }
+    .controls {
+      width: 100%;
+      max-width: 400px;
+      display: flex;
+      gap: 15px;
+      padding: 20px;
+      background: rgba(0,0,0,0.8);
+    }
+    .controls button {
+      flex: 1;
+      padding: 20px;
+      font-size: 24px;
+      border: none;
+      border-radius: 15px;
+      background: #6366f1;
+      color: white;
+      cursor: pointer;
+    }
+    .controls button:active { transform: scale(0.95); background: #818cf8; }
+    #overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0.85);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 15px;
+      z-index: 20;
+    }
+    #overlay h2 { font-size: 28px; }
+    #overlay p { font-size: 18px; }
+    #overlay .gold { color: #fbbf24; font-size: 24px; }
+    #overlay button {
+      padding: 15px 40px;
+      font-size: 18px;
+      border: none;
+      border-radius: 12px;
+      background: #10b981;
+      color: white;
+      cursor: pointer;
+    }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="hud">
+    <div>🧗 Höhe: <span id="height">0</span>m</div>
+    <div>🪙 <span id="coins">0</span></div>
+    <div>🏆 Best: <span id="best">0</span>m</div>
+  </div>
+  
+  <div id="game">
+    <div class="player" id="player">🧗</div>
+    
+    <div id="overlay">
+      <h2>🧗 Climb</h2>
+      <p>Springe von Plattform zu Plattform!</p>
+      <button onclick="startGame()">▶️ Start</button>
+    </div>
+  </div>
+  
+  <div class="controls">
+    <button onmousedown="move(-1)" ontouchstart="move(-1)">⬅️</button>
+    <button onmousedown="jump()" ontouchstart="jump()">⬆️</button>
+    <button onmousedown="move(1)" ontouchstart="move(1)">➡️</button>
+  </div>
+
+  <script>
+    const game = document.getElementById('game');
+    const player = document.getElementById('player');
+    const overlay = document.getElementById('overlay');
+    
+    let playerX = 50;
+    let playerY = 50;
+    let velocityY = 0;
+    let height = 0;
+    let coins = 0;
+    let platforms = [];
+    let coinItems = [];
+    let gameRunning = false;
+    let best = parseInt(localStorage.getItem('climbBest')) || 0;
+    
+    document.getElementById('best').textContent = best;
+    
+    function startGame() {
+      height = 0;
+      coins = 0;
+      playerX = 50;
+      playerY = 100;
+      velocityY = 0;
+      platforms = [];
+      coinItems.forEach(c => c.el.remove());
+      coinItems = [];
+      
+      document.querySelectorAll('.platform').forEach(p => p.remove());
+      
+      // Create starting platform
+      createPlatform(30, 50, 40);
+      
+      // Create initial platforms
+      for (let i = 1; i < 8; i++) {
+        createPlatform(Math.random() * 60 + 10, 50 + i * 80, 25 + Math.random() * 20);
+      }
+      
+      gameRunning = true;
+      overlay.classList.add('hidden');
+      updateHUD();
+      requestAnimationFrame(gameLoop);
+    }
+    
+    function createPlatform(x, y, width) {
+      const el = document.createElement('div');
+      el.className = 'platform';
+      el.style.left = x + '%';
+      el.style.bottom = y + 'px';
+      el.style.width = width + '%';
+      game.appendChild(el);
+      platforms.push({ el, x, y, width });
+      
+      // Maybe add coin
+      if (Math.random() > 0.5) {
+        const coin = document.createElement('div');
+        coin.className = 'coin';
+        coin.textContent = '🪙';
+        coin.style.left = (x + width/2) + '%';
+        coin.style.bottom = (y + 30) + 'px';
+        game.appendChild(coin);
+        coinItems.push({ el: coin, x: x + width/2, y: y + 30 });
+      }
+    }
+    
+    function move(dir) {
+      if (!gameRunning) return;
+      playerX += dir * 8;
+      playerX = Math.max(5, Math.min(95, playerX));
+    }
+    
+    function jump() {
+      if (!gameRunning) return;
+      velocityY = 15;
+    }
+    
+    function gameLoop() {
+      if (!gameRunning) return;
+      
+      // Apply gravity
+      velocityY -= 0.5;
+      playerY += velocityY;
+      
+      // Update camera (scroll up)
+      if (playerY > 300) {
+        const scroll = playerY - 300;
+        playerY = 300;
+        height += scroll / 10;
+        
+        // Move platforms down
+        platforms.forEach((p, i) => {
+          p.y -= scroll;
+          p.el.style.bottom = p.y + 'px';
+          
+          if (p.y < -20) {
+            p.el.remove();
+            platforms.splice(i, 1);
+            // Add new platform at top
+            createPlatform(Math.random() * 60 + 10, game.clientHeight + 50, 25 + Math.random() * 20);
+          }
+        });
+        
+        // Move coins down
+        coinItems.forEach((c, i) => {
+          c.y -= scroll;
+          c.el.style.bottom = c.y + 'px';
+          if (c.y < -20) {
+            c.el.remove();
+            coinItems.splice(i, 1);
+          }
+        });
+      }
+      
+      // Check platform collision
+      const playerBottom = playerY;
+      const playerLeft = playerX - 5;
+      const playerRight = playerX + 5;
+      
+      if (velocityY < 0) {
+        platforms.forEach(p => {
+          if (
+            playerBottom <= p.y + 20 &&
+            playerBottom >= p.y - 5 &&
+            playerRight > p.x &&
+            playerLeft < p.x + p.width
+          ) {
+            playerY = p.y + 20;
+            velocityY = 0;
+          }
+        });
+      }
+      
+      // Check coin collision
+      coinItems.forEach((c, i) => {
+        if (
+          Math.abs(playerX - c.x) < 10 &&
+          Math.abs(playerY - c.y) < 30
+        ) {
+          c.el.remove();
+          coinItems.splice(i, 1);
+          coins++;
+        }
+      });
+      
+      // Game over if fall
+      if (playerY < -50) {
+        endGame();
+        return;
+      }
+      
+      // Update player position
+      player.style.left = `calc(${playerX}% - 20px)`;
+      player.style.bottom = playerY + 'px';
+      
+      updateHUD();
+      requestAnimationFrame(gameLoop);
+    }
+    
+    function updateHUD() {
+      document.getElementById('height').textContent = Math.floor(height);
+      document.getElementById('coins').textContent = coins;
+    }
+    
+    function endGame() {
+      gameRunning = false;
+      
+      const finalHeight = Math.floor(height);
+      if (finalHeight > best) {
+        best = finalHeight;
+        localStorage.setItem('climbBest', best);
+        document.getElementById('best').textContent = best;
+      }
+      
+      const reward = coins + Math.floor(height / 10);
+      
+      overlay.innerHTML = `
+        <h2>💀 Gefallen!</h2>
+        <p>Höhe: ${finalHeight}m</p>
+        <p>Coins: ${coins}</p>
+        <p class="gold">+${reward} 🪙 Belohnung</p>
+        <button onclick="startGame()">🔄 Nochmal</button>
+      `;
+      overlay.classList.remove('hidden');
+    }
+    
+    // Keyboard
+    document.addEventListener('keydown', e => {
+      if (e.key === 'ArrowLeft') move(-1);
+      if (e.key === 'ArrowRight') move(1);
+      if (e.key === 'ArrowUp' || e.key === ' ') jump();
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🏹 Archer</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      background: linear-gradient(180deg, #87ceeb 0%, #228b22 60%, #1a1a2e 100%);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      font-family: 'Segoe UI', sans-serif;
+      color: white;
+      overflow: hidden;
+    }
+    .hud {
+      width: 100%;
+      padding: 15px 20px;
+      display: flex;
+      justify-content: space-around;
+      background: rgba(0,0,0,0.5);
+    }
+    .hud div { font-size: 16px; font-weight: bold; }
+    .hud span { color: #10b981; }
+    #game {
+      flex: 1;
+      width: 100%;
+      max-width: 400px;
+      position: relative;
+      overflow: hidden;
+    }
+    .archer {
+      position: absolute;
+      left: 30px;
+      bottom: 100px;
+      font-size: 50px;
+      transform-origin: center;
+    }
+    .arrow {
+      position: absolute;
+      font-size: 30px;
+      transform-origin: left center;
+    }
+    .target {
+      position: absolute;
+      right: 30px;
+      font-size: 50px;
+    }
+    .bullseye {
+      position: absolute;
+      right: 30px;
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: radial-gradient(circle, #ef4444 0%, #ef4444 20%, white 20%, white 40%, #ef4444 40%, #ef4444 60%, white 60%, white 80%, #ef4444 80%);
+    }
+    .power-bar {
+      position: absolute;
+      left: 20px;
+      bottom: 50px;
+      width: 100px;
+      height: 15px;
+      background: #374151;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .power-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #10b981, #f59e0b, #ef4444);
+      width: 0%;
+      transition: width 0.05s;
+    }
+    .controls {
+      width: 100%;
+      max-width: 400px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 15px;
+      background: rgba(0,0,0,0.8);
+    }
+    .angle-controls {
+      display: flex;
+      gap: 10px;
+    }
+    .controls button {
+      flex: 1;
+      padding: 15px;
+      font-size: 18px;
+      border: none;
+      border-radius: 10px;
+      background: #6366f1;
+      color: white;
+      cursor: pointer;
+    }
+    .controls button:active { background: #818cf8; }
+    .shoot-btn {
+      background: #ef4444 !important;
+      font-size: 22px !important;
+    }
+    #overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0.85);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 15px;
+      z-index: 20;
+    }
+    #overlay h2 { font-size: 28px; }
+    #overlay p { font-size: 18px; }
+    #overlay button {
+      padding: 15px 40px;
+      font-size: 18px;
+      border: none;
+      border-radius: 12px;
+      background: #10b981;
+      color: white;
+      cursor: pointer;
+    }
+    .hidden { display: none !important; }
+    .hit-text {
+      position: absolute;
+      font-size: 24px;
+      font-weight: bold;
+      animation: floatUp 1s forwards;
+    }
+    @keyframes floatUp {
+      to { transform: translateY(-50px); opacity: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="hud">
+    <div>🎯 Score: <span id="score">0</span></div>
+    <div>🏹 Pfeile: <span id="arrows">10</span></div>
+    <div>📐 Winkel: <span id="angle">45</span>°</div>
+  </div>
+  
+  <div id="game">
+    <div class="archer" id="archer">🏹</div>
+    <div class="bullseye" id="target"></div>
+    <div class="power-bar">
+      <div class="power-fill" id="power"></div>
+    </div>
+    
+    <div id="overlay">
+      <h2>🏹 Archer</h2>
+      <p>Triff das Ziel!</p>
+      <p style="font-size: 14px; color: #94a3b8">Halte zum Laden, loslassen zum Schießen</p>
+      <button onclick="startGame()">▶️ Start</button>
+    </div>
+  </div>
+  
+  <div class="controls">
+    <div class="angle-controls">
+      <button onmousedown="adjustAngle(-5)" ontouchstart="adjustAngle(-5)">📐 -5°</button>
+      <button onmousedown="adjustAngle(5)" ontouchstart="adjustAngle(5)">📐 +5°</button>
+    </div>
+    <button class="shoot-btn" onmousedown="startCharge()" onmouseup="shoot()" ontouchstart="startCharge()" ontouchend="shoot()">
+      🏹 Halten zum Schießen
+    </button>
+  </div>
+
+  <script>
+    const game = document.getElementById('game');
+    const archer = document.getElementById('archer');
+    const target = document.getElementById('target');
+    const powerBar = document.getElementById('power');
+    const overlay = document.getElementById('overlay');
+    
+    let score = 0;
+    let arrows = 10;
+    let angle = 45;
+    let power = 0;
+    let charging = false;
+    let chargeInterval;
+    let gameRunning = false;
+    let targetY = 200;
+    
+    function startGame() {
+      score = 0;
+      arrows = 10;
+      angle = 45;
+      gameRunning = true;
+      overlay.classList.add('hidden');
+      updateHUD();
+      moveTarget();
+    }
+    
+    function moveTarget() {
+      if (!gameRunning) return;
+      targetY = 100 + Math.random() * (game.clientHeight - 250);
+      target.style.bottom = targetY + 'px';
+      setTimeout(moveTarget, 3000);
+    }
+    
+    function adjustAngle(delta) {
+      if (!gameRunning) return;
+      angle = Math.max(10, Math.min(80, angle + delta));
+      document.getElementById('angle').textContent = angle;
+      archer.style.transform = `rotate(-${angle}deg)`;
+    }
+    
+    function startCharge() {
+      if (!gameRunning || arrows <= 0) return;
+      charging = true;
+      power = 0;
+      chargeInterval = setInterval(() => {
+        power = Math.min(100, power + 3);
+        powerBar.style.width = power + '%';
+      }, 30);
+    }
+    
+    function shoot() {
+      if (!charging || !gameRunning) return;
+      charging = false;
+      clearInterval(chargeInterval);
+      
+      arrows--;
+      updateHUD();
+      
+      // Create arrow
+      const arrow = document.createElement('div');
+      arrow.className = 'arrow';
+      arrow.textContent = '➡️';
+      arrow.style.left = '80px';
+      arrow.style.bottom = '120px';
+      arrow.style.transform = `rotate(-${angle}deg)`;
+      game.appendChild(arrow);
+      
+      // Animate arrow
+      const velocity = power * 0.15;
+      const vx = velocity * Math.cos(angle * Math.PI / 180);
+      const vy = velocity * Math.sin(angle * Math.PI / 180);
+      let x = 80;
+      let y = 120;
+      let velY = vy;
+      
+      const moveArrow = () => {
+        x += vx * 3;
+        velY -= 0.3;
+        y += velY * 3;
+        
+        arrow.style.left = x + 'px';
+        arrow.style.bottom = y + 'px';
+        arrow.style.transform = `rotate(${-Math.atan2(velY, vx) * 180 / Math.PI}deg)`;
+        
+        // Check hit
+        const targetRect = target.getBoundingClientRect();
+        const arrowRect = arrow.getBoundingClientRect();
+        
+        if (
+          arrowRect.right > targetRect.left &&
+          arrowRect.left < targetRect.right &&
+          arrowRect.bottom > targetRect.top &&
+          arrowRect.top < targetRect.bottom
+        ) {
+          // Hit!
+          const centerY = targetRect.top + targetRect.height / 2;
+          const hitY = arrowRect.top + arrowRect.height / 2;
+          const distance = Math.abs(centerY - hitY);
+          
+          let points = 10;
+          let text = '+10';
+          if (distance < 10) { points = 50; text = '🎯 BULLSEYE! +50'; }
+          else if (distance < 20) { points = 30; text = '+30'; }
+          else if (distance < 30) { points = 20; text = '+20'; }
+          
+          score += points;
+          showHitText(text, x, y);
+          arrow.remove();
+          updateHUD();
+          checkGameOver();
+          return;
+        }
+        
+        // Out of bounds
+        if (x > game.clientWidth || y < 0) {
+          arrow.remove();
+          checkGameOver();
+          return;
+        }
+        
+        requestAnimationFrame(moveArrow);
+      };
+      
+      moveArrow();
+      power = 0;
+      powerBar.style.width = '0%';
+    }
+    
+    function showHitText(text, x, y) {
+      const el = document.createElement('div');
+      el.className = 'hit-text';
+      el.textContent = text;
+      el.style.left = x + 'px';
+      el.style.bottom = y + 'px';
+      el.style.color = text.includes('BULLSEYE') ? '#fbbf24' : '#10b981';
+      game.appendChild(el);
+      setTimeout(() => el.remove(), 1000);
+    }
+    
+    function updateHUD() {
+      document.getElementById('score').textContent = score;
+      document.getElementById('arrows').textContent = arrows;
+    }
+    
+    function checkGameOver() {
+      if (arrows <= 0) {
+        gameRunning = false;
+        const reward = Math.floor(score / 5);
+        overlay.innerHTML = `
+          <h2>🏹 Spiel vorbei!</h2>
+          <p>Score: ${score}</p>
+          <p style="color: #fbbf24; font-size: 24px">+${reward} 🪙</p>
+          <button onclick="startGame()">🔄 Nochmal</button>
+        `;
+        overlay.classList.remove('hidden');
+      }
+    }
+    
+    // Initial setup
+    archer.style.transform = `rotate(-${angle}deg)`;
+    target.style.bottom = '200px';
+  </script>
+</body>
+</html>
