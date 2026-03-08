@@ -1204,6 +1204,7 @@ function AppContent() {
           <Route path="/profile-page" element={<ProfilePage />} />
           <Route path="/admin-full" element={<AdminPanelFull />} />
           <Route path="/super-home" element={<SuperAppHome />} />
+          <Route path="/bbz-home" element={<BidBlitzHome />} />
           
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
