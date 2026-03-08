@@ -55,7 +55,7 @@ npx expo start --android
 Die API-URL ist in `/src/services/api.js` konfiguriert:
 
 ```javascript
-const API_BASE_URL = 'https://game-economy-demo.preview.emergentagent.com/api';
+const API_BASE_URL = 'https://blitz-arcade.preview.emergentagent.com/api';
 ```
 
 Für lokale Entwicklung ändern zu:
