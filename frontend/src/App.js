@@ -171,6 +171,10 @@ import CoinTap from "./pages/CoinTap";
 import ReactionGame from "./pages/ReactionGame";
 import RunnerGame from "./pages/RunnerGame";
 
+// Slot Machine & Game Leaderboard
+import SlotMachine from "./pages/SlotMachine";
+import GameLeaderboard from "./pages/GameLeaderboard";
+
 // Super App Minimal + New Pages
 import SuperAppMinimal from "./pages/SuperAppMinimal";
 import GamesHub from "./pages/GamesHub";
