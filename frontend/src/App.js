@@ -1141,7 +1141,7 @@ function AppContent() {
           <Route path="/treasure-hunt" element={<TreasureHunt />} />
           <Route path="/schatzsuche" element={<TreasureHunt />} />
           <Route path="/app-admin" element={<AppAdminPanel />} />
-          <Route path="/admin" element={<AppAdminPanel />} />
+          {/* /admin route defined above - using Admin component */}
           <Route path="/app-leaderboard" element={<AppLeaderboard />} />
           <Route path="/app-profile" element={<AppProfile />} />
           <Route path="/friends" element={<Friends />} />
