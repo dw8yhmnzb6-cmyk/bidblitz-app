@@ -160,6 +160,9 @@ import MinerMarket from "./pages/MinerMarket";
 // New Admin Panel with Grid Design
 import AdminPanelNew from "./pages/AdminPanelNew";
 
+// Candy Match Game
+import CandyMatch from "./pages/CandyMatch";
+
 // Super App Minimal + New Pages
 import SuperAppMinimal from "./pages/SuperAppMinimal";
 import GamesHub from "./pages/GamesHub";
