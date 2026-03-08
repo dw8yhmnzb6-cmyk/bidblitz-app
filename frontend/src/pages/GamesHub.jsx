@@ -102,8 +102,8 @@ export default function GamesHub() {
         >
           <div className="flex justify-between items-center">
             <div>
-              <h3 className="text-lg font-semibold mb-1">Weekly League {getTierEmoji(leagueStatus.tier)}</h3>
-              <p className="text-white/80">#{leagueStatus.rank} Rang • {leagueStatus.points} Punkte</p>
+              <h3 className="text-lg font-semibold mb-1">{t('games.weeklyLeague')} {getTierEmoji(leagueStatus.tier)}</h3>
+              <p className="text-white/80">#{leagueStatus.rank} {t('games.rank')} • {leagueStatus.points} {t('games.points')}</p>
             </div>
             <div className="text-3xl">{getTierEmoji(leagueStatus.tier)}</div>
           </div>
@@ -115,8 +115,8 @@ export default function GamesHub() {
             className="rounded-[15px] p-4 mb-5 text-center"
             style={{ background: 'linear-gradient(135deg, #92400e, #f59e0b)' }}
           >
-            <h4 className="text-lg font-semibold">🎮 Games Pass Active</h4>
-            <p className="text-white/90">+20% Daily • +10% Liga</p>
+            <h4 className="text-lg font-semibold">🎮 {t('games.gamesPass')}</h4>
+            <p className="text-white/90">{t('games.dailyBonus')} • {t('games.leagueBonus')}</p>
           </div>
         )}
 
@@ -129,12 +129,12 @@ export default function GamesHub() {
               className={`bg-gradient-to-br ${game.gradient} rounded-[20px] p-6 text-center cursor-pointer transition-transform duration-200 hover:scale-105 active:scale-95`}
             >
               <div className="text-3xl mb-2">{game.icon}</div>
-              <div className="text-sm font-medium mb-2">{game.name}</div>
+              <div className="text-sm font-medium mb-2">{t(`games.${game.key}`) || game.name}</div>
               <button 
                 className="mt-1 px-3 py-1.5 rounded-[10px] text-sm text-white"
                 style={{ background: 'rgba(255,255,255,0.15)' }}
               >
-                Play
+                {t('games.play')}
               </button>
             </div>
           ))}
@@ -148,14 +148,14 @@ export default function GamesHub() {
           <div className="flex justify-between items-center p-4" style={{ background: 'linear-gradient(135deg, #4c1d95, #1e1b4b)' }}>
             <div className="flex items-center gap-3">
               <span className="text-3xl">{showGame.icon}</span>
-              <h3 className="font-bold text-white text-lg">{showGame.name}</h3>
+              <h3 className="font-bold text-white text-lg">{t(`games.${showGame.key}`) || showGame.name}</h3>
             </div>
             <button 
               onClick={closeGame}
               className="px-4 py-2 rounded-xl text-white font-bold transition-all"
               style={{ background: 'rgba(255,255,255,0.2)' }}
             >
-              ✕ Schließen
+              ✕ {t('games.closeGame')}
             </button>
           </div>
           <iframe 
