@@ -1130,7 +1130,7 @@ function AppContent() {
           <Route path="/games" element={<GamesHub />} />
           <Route path="/spiele" element={<GamesHub />} />
           <Route path="/live-auction" element={<LiveAuction />} />
-          <Route path="/auctions" element={<LiveAuction />} />
+          {/* /auctions route defined above - using Auctions component */}
           <Route path="/app-wallet" element={<AppWallet />} />
           <Route path="/coins" element={<AppWallet />} />
           <Route path="/match3" element={<Match3Game />} />
