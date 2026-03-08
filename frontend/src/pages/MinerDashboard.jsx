@@ -383,12 +383,25 @@ export default function MinerDashboard() {
   return (
     <div className="min-h-screen bg-gray-100 pb-20">
       <style>{`
-        @keyframes spin-slow {
+        @keyframes spin {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
         }
-        .animate-spin-slow {
-          animation: spin-slow 3s linear infinite;
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
+        }
+        @keyframes scanline {
+          0% { top: 0; }
+          100% { top: 100%; }
+        }
+        @keyframes blink {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.3; }
+        }
+        @keyframes float {
+          0%, 100% { transform: rotateY(-8deg) rotateX(5deg) translateY(0); }
+          50% { transform: rotateY(-8deg) rotateX(5deg) translateY(-10px); }
         }
       `}</style>
       
