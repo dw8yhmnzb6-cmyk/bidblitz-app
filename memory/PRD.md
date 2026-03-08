@@ -237,6 +237,17 @@ BidBlitz ist eine vollständige Super-App mit Mining, Games, Mobilität, Chat, M
   - Belohnungs-Stufen System (Level 1/2/3)
   - Code einlösen Funktion
 
+### 2026-03-08 (Update 25) - RideServices Komponente
+- ✅ **RideServices Komponente** erstellt und integriert
+  - In SuperAppMinimal am unteren Bereich eingefügt
+  - Deutsche Übersetzungen (Fahrdienste, Taxi, E-Scooter, E-Bike)
+  - Navigation zu /taxi, /scooter, /bike funktioniert
+  - Quick Stats: 24/7 Verfügbar, Schnelle Buchung, Mit Coins bezahlen
+- ✅ **AppBike Seite** (/bike) neu erstellt
+  - QR-Scanner für E-Bike Entsperrung
+  - Preise: 3 Coins Entsperren, 1 Coin/Minute
+  - E-Bike Vorteile Bereich mit Umwelt-Infos
+
 ### 2026-03-08 (Update 24) - Admin Panel & Übersetzungen
 - ✅ **Admin Panel Users Tab** hinzugefügt
   - Neuer "Benutzer" Tab mit Suchfunktion
