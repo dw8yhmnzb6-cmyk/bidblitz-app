@@ -282,6 +282,7 @@ export default function AppAdminPanel() {
               onClick={() => {
                 setActiveTab(tab.id);
                 if (tab.id === 'miners') fetchAllMiners();
+                if (tab.id === 'users') fetchAllUsers();
               }}
               className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium transition-all whitespace-nowrap ${
                 activeTab === tab.id
