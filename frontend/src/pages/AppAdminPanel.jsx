@@ -89,6 +89,25 @@ export default function AppAdminPanel() {
     }
   };
 
+  const fetchAllUsers = async () => {
+    setUsersLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      const res = await axios.get(`${API}/admin/users`, { headers });
+      setAllUsers(res.data || []);
+    } catch (error) {
+      console.log('Could not fetch users:', error.message);
+    } finally {
+      setUsersLoading(false);
+    }
+  };
+
+  const filteredUsers = allUsers.filter(user => 
+    user.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    user.email?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   const handleGiveMiner = async () => {
     if (!minerUserId.trim()) {
       setMinerResult('❌ Bitte User ID eingeben');
