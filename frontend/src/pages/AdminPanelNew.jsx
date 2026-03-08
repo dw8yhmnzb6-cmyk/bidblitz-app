@@ -13,7 +13,10 @@ import {
   Mail, Zap, Building2, Wrench, FileText, Database,
   CreditCard, Leaf, Key, Bug, Activity, UserPlus,
   Crown, Store, Bike, MessageSquare, Map, Car, Banknote,
-  Euro, Headphones, History
+  Euro, Headphones, History, Coins, Award, Clock,
+  Truck, Navigation, DollarSign as Tariff, MapPin,
+  UserCheck, HeadphonesIcon, BadgeCheck, Briefcase,
+  Handshake, ClipboardList, Users2, Sparkles
 } from 'lucide-react';
 
 const API = process.env.REACT_APP_BACKEND_URL + '/api';
