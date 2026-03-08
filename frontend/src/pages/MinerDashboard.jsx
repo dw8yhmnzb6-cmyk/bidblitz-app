@@ -8,49 +8,213 @@ import axios from 'axios';
 
 const API = process.env.REACT_APP_BACKEND_URL + '/api';
 
-// Miner Images (using gradient boxes as 3D-style placeholders)
-const MinerVisual = ({ tier, level, size = 'normal' }) => {
-  const tierColors = {
-    bronze: 'from-amber-600 to-amber-800',
-    silver: 'from-slate-400 to-slate-600',
-    gold: 'from-yellow-400 to-amber-500',
-    platinum: 'from-cyan-400 to-blue-500',
-    diamond: 'from-purple-400 to-pink-500',
+// 3D Miner Visual Component
+const MinerVisual = ({ tier, level, size = 'normal', isBonus = false }) => {
+  const tierConfig = {
+    bronze: { 
+      main: '#CD7F32', 
+      accent: '#8B5A2B',
+      glow: 'rgba(205, 127, 50, 0.4)',
+      screen: '#00FF00'
+    },
+    silver: { 
+      main: '#7c3aed', 
+      accent: '#5b21b6',
+      glow: 'rgba(124, 58, 237, 0.5)',
+      screen: '#a855f7'
+    },
+    gold: { 
+      main: '#FFD700', 
+      accent: '#DAA520',
+      glow: 'rgba(255, 215, 0, 0.5)',
+      screen: '#FFA500'
+    },
+    platinum: { 
+      main: '#00BFFF', 
+      accent: '#1E90FF',
+      glow: 'rgba(0, 191, 255, 0.5)',
+      screen: '#00FFFF'
+    },
+    diamond: { 
+      main: '#FF69B4', 
+      accent: '#DB7093',
+      glow: 'rgba(255, 105, 180, 0.5)',
+      screen: '#FF1493'
+    },
   };
   
-  const sizeClasses = {
-    small: 'w-12 h-16',
-    normal: 'w-20 h-28',
-    large: 'w-32 h-44',
+  const config = tierConfig[tier] || tierConfig.bronze;
+  
+  const sizeStyles = {
+    small: { width: 60, height: 80, fontSize: 8 },
+    normal: { width: 90, height: 120, fontSize: 10 },
+    large: { width: 140, height: 180, fontSize: 14 },
   };
+  
+  const s = sizeStyles[size];
   
   return (
-    <div className={`${sizeClasses[size]} mx-auto relative`}>
-      {/* Main Box */}
-      <div 
-        className={`w-full h-full rounded-lg bg-gradient-to-br ${tierColors[tier] || tierColors.bronze} shadow-2xl`}
-        style={{ 
-          transform: 'perspective(500px) rotateY(-5deg)',
-          boxShadow: '8px 8px 20px rgba(0,0,0,0.4), -2px -2px 10px rgba(255,255,255,0.1)'
-        }}
-      >
-        {/* Screen */}
-        <div className="absolute top-2 left-2 right-2 h-1/3 bg-black/80 rounded flex items-center justify-center">
-          <span className="text-green-400 font-mono text-xs font-bold tracking-wider">
-            {level >= 5 ? 'BONUS' : `LV.${level}`}
-          </span>
+    <div className="miner-3d-container" style={{ 
+      width: s.width, 
+      height: s.height, 
+      margin: '0 auto',
+      position: 'relative',
+      perspective: '500px'
+    }}>
+      {/* Main Miner Box */}
+      <div className="miner-3d-box" style={{
+        width: '100%',
+        height: '100%',
+        background: `linear-gradient(145deg, ${config.main}, ${config.accent})`,
+        borderRadius: 12,
+        position: 'relative',
+        transform: 'rotateY(-8deg) rotateX(5deg)',
+        transformStyle: 'preserve-3d',
+        boxShadow: `
+          10px 10px 30px rgba(0,0,0,0.4),
+          -3px -3px 15px rgba(255,255,255,0.1),
+          0 0 40px ${config.glow}
+        `,
+        animation: isBonus ? 'float 3s ease-in-out infinite' : 'none'
+      }}>
+        {/* Top Panel with Screen */}
+        <div style={{
+          position: 'absolute',
+          top: '8%',
+          left: '10%',
+          right: '10%',
+          height: '30%',
+          background: '#111',
+          borderRadius: 6,
+          border: `2px solid ${config.accent}`,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          overflow: 'hidden'
+        }}>
+          {/* Screen Content */}
+          <div style={{
+            fontFamily: 'monospace',
+            fontSize: s.fontSize,
+            fontWeight: 'bold',
+            color: config.screen,
+            textShadow: `0 0 10px ${config.screen}`,
+            animation: 'pulse 2s ease-in-out infinite'
+          }}>
+            {isBonus ? 'BONUS' : `LV.${level}`}
+          </div>
+          {/* Scan Line Effect */}
+          <div style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            height: 2,
+            background: `linear-gradient(90deg, transparent, ${config.screen}, transparent)`,
+            animation: 'scanline 2s linear infinite'
+          }} />
         </div>
         
-        {/* Fans/Vents */}
-        <div className="absolute bottom-2 left-2 right-2 flex gap-1 justify-center">
-          <div className="w-4 h-4 rounded-full bg-black/60 animate-spin-slow" style={{animationDuration: '3s'}} />
-          <div className="w-4 h-4 rounded-full bg-black/60 animate-spin-slow" style={{animationDuration: '2.5s'}} />
-          <div className="w-4 h-4 rounded-full bg-black/60 animate-spin-slow" style={{animationDuration: '3.5s'}} />
+        {/* Vents/Grille */}
+        <div style={{
+          position: 'absolute',
+          top: '45%',
+          left: '15%',
+          right: '15%',
+          height: '15%',
+          display: 'flex',
+          gap: 3,
+          justifyContent: 'center'
+        }}>
+          {[...Array(5)].map((_, i) => (
+            <div key={i} style={{
+              flex: 1,
+              background: '#222',
+              borderRadius: 2
+            }} />
+          ))}
         </div>
+        
+        {/* Fans */}
+        <div style={{
+          position: 'absolute',
+          bottom: '10%',
+          left: '10%',
+          right: '10%',
+          display: 'flex',
+          gap: 6,
+          justifyContent: 'center'
+        }}>
+          {[0, 1, 2].map((i) => (
+            <div key={i} style={{
+              width: s.width * 0.2,
+              height: s.width * 0.2,
+              borderRadius: '50%',
+              background: `radial-gradient(circle, #333 30%, #111 70%)`,
+              border: '2px solid #444',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              animation: `spin ${2 + i * 0.5}s linear infinite`
+            }}>
+              <div style={{
+                width: '60%',
+                height: '60%',
+                borderRadius: '50%',
+                background: '#222',
+                position: 'relative'
+              }}>
+                {/* Fan Blades */}
+                {[0, 90, 180, 270].map((deg) => (
+                  <div key={deg} style={{
+                    position: 'absolute',
+                    top: '40%',
+                    left: '40%',
+                    width: '60%',
+                    height: '20%',
+                    background: config.accent,
+                    transform: `rotate(${deg}deg)`,
+                    transformOrigin: '0 50%',
+                    borderRadius: 2
+                  }} />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+        
+        {/* Power LED */}
+        <div style={{
+          position: 'absolute',
+          top: 8,
+          right: 8,
+          width: 6,
+          height: 6,
+          borderRadius: '50%',
+          background: '#00FF00',
+          boxShadow: '0 0 8px #00FF00',
+          animation: 'blink 1.5s ease-in-out infinite'
+        }} />
       </div>
       
-      {/* Level indicator */}
-      <div className="absolute -top-2 -right-2 w-6 h-6 bg-purple-600 rounded-full flex items-center justify-center text-xs font-bold shadow-lg">
+      {/* Level Badge */}
+      <div style={{
+        position: 'absolute',
+        top: -8,
+        right: -8,
+        width: 24,
+        height: 24,
+        background: 'linear-gradient(135deg, #7c3aed, #a855f7)',
+        borderRadius: '50%',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: 11,
+        fontWeight: 'bold',
+        color: 'white',
+        boxShadow: '0 2px 8px rgba(124, 58, 237, 0.5)',
+        zIndex: 10
+      }}>
         {level}
       </div>
     </div>
