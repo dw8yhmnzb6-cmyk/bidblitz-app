@@ -560,6 +560,8 @@ function AppContent() {
           {/* Ride & Pay */}
           <Route path="/ride-pay" element={<RidePay />} />
           <Route path="/fahrt" element={<RidePay />} />
+          {/* Candy Match Game */}
+          <Route path="/candy-match" element={<CandyMatch />} />
           {/* Beginner Auctions */}
           <Route path="/beginner-auctions" element={
             <ProtectedRoute>
