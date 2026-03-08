@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🏁 Speed Race</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      background: #0a0a0a;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      font-family: 'Segoe UI', sans-serif;
+      color: white;
+      overflow: hidden;
+    }
+    .hud {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      padding: 15px 20px;
+      display: flex;
+      justify-content: space-between;
+      background: linear-gradient(180deg, rgba(0,0,0,0.8), transparent);
+      z-index: 10;
+    }
+    .hud div { font-size: 18px; font-weight: bold; }
+    .hud span { color: #10b981; }
+    #game {
+      flex: 1;
+      width: 100%;
+      max-width: 400px;
+      position: relative;
+      background: #1a1a2e;
+      overflow: hidden;
+    }
+    .track {
+      position: absolute;
+      width: 70%;
+      left: 15%;
+      height: 100%;
+      background: #2d2d44;
+      border-left: 8px solid white;
+      border-right: 8px solid white;
+    }
+    .line {
+      position: absolute;
+      left: 50%;
+      width: 4px;
+      height: 40px;
+      background: white;
+      animation: moveLine 0.3s linear infinite;
+    }
+    @keyframes moveLine {
+      from { transform: translateY(-100px); }
+      to { transform: translateY(100vh); }
+    }
+    .car {
+      position: absolute;
+      bottom: 100px;
+      font-size: 50px;
+      text-align: center;
+      width: 60px;
+      transition: left 0.15s ease-out;
+      z-index: 5;
+    }
+    .enemy {
+      position: absolute;
+      font-size: 45px;
+      z-index: 4;
+    }
+    .controls {
+      position: fixed;
+      bottom: 0;
+      width: 100%;
+      max-width: 400px;
+      display: flex;
+      padding: 20px;
+      gap: 20px;
+      background: rgba(0,0,0,0.9);
+    }
+    .controls button {
+      flex: 1;
+      padding: 25px;
+      font-size: 28px;
+      border: none;
+      border-radius: 15px;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      color: white;
+      cursor: pointer;
+    }
+    .controls button:active { transform: scale(0.95); }
+    #overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0.9);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      z-index: 20;
+    }
+    #overlay h2 { font-size: 32px; }
+    #overlay p { font-size: 22px; }
+    #overlay .reward { color: #fbbf24; }
+    #overlay button {
+      padding: 18px 50px;
+      font-size: 20px;
+      border: none;
+      border-radius: 15px;
+      background: #10b981;
+      color: white;
+      cursor: pointer;
+    }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="hud">
+    <div>🏁 <span id="distance">0</span>m</div>
+    <div>⚡ <span id="speed">60</span> km/h</div>
+    <div>🏆 <span id="best">0</span>m</div>
+  </div>
+  
+  <div id="game">
+    <div class="track"></div>
+    <div class="car" id="car">🏎️</div>
+    
+    <div id="overlay">
+      <h2>🏁 Speed Race</h2>
+      <p>Fahre so weit wie möglich!</p>
+      <p style="color: #94a3b8; font-size: 16px;">← → zum Steuern</p>
+      <button onclick="startGame()">🚀 START</button>
+    </div>
+  </div>
+  
+  <div class="controls">
+    <button onmousedown="steer(-1)" ontouchstart="steer(-1)">⬅️</button>
+    <button onmousedown="steer(1)" ontouchstart="steer(1)">➡️</button>
+  </div>
+
+  <script>
+    const game = document.getElementById('game');
+    const car = document.getElementById('car');
+    const overlay = document.getElementById('overlay');
+    
+    let carX = 50;
+    let distance = 0;
+    let speed = 60;
+    let enemies = [];
+    let gameRunning = false;
+    let lastEnemy = 0;
+    let best = parseInt(localStorage.getItem('speedBest')) || 0;
+    
+    document.getElementById('best').textContent = best;
+    car.style.left = 'calc(50% - 30px)';
+    
+    // Create moving lines
+    for (let i = 0; i < 10; i++) {
+      const line = document.createElement('div');
+      line.className = 'line';
+      line.style.top = (i * 80) + 'px';
+      line.style.animationDelay = (i * 0.08) + 's';
+      game.querySelector('.track').appendChild(line);
+    }
+    
+    function startGame() {
+      distance = 0;
+      speed = 60;
+      carX = 50;
+      enemies.forEach(e => e.el.remove());
+      enemies = [];
+      gameRunning = true;
+      overlay.classList.add('hidden');
+      car.style.left = 'calc(50% - 30px)';
+      lastEnemy = Date.now();
+      requestAnimationFrame(gameLoop);
+    }
+    
+    function steer(dir) {
+      if (!gameRunning) return;
+      carX += dir * 12;
+      carX = Math.max(18, Math.min(82, carX));
+      car.style.left = `calc(${carX}% - 30px)`;
+    }
+    
+    function spawnEnemy() {
+      const types = ['🚗', '🚙', '🚕', '🚌', '🚐'];
+      const el = document.createElement('div');
+      el.className = 'enemy';
+      el.textContent = types[Math.floor(Math.random() * types.length)];
+      el.style.top = '-60px';
+      el.style.left = `calc(${20 + Math.random() * 60}% - 25px)`;
+      game.appendChild(el);
+      enemies.push({ el, y: -60 });
+    }
+    
+    function gameLoop() {
+      if (!gameRunning) return;
+      
+      // Increase distance and speed
+      distance += speed / 60;
+      if (distance % 100 < 2) speed = Math.min(200, speed + 5);
+      
+      document.getElementById('distance').textContent = Math.floor(distance);
+      document.getElementById('speed').textContent = Math.floor(speed);
+      
+      // Spawn enemies
+      const spawnRate = Math.max(500, 2000 - distance);
+      if (Date.now() - lastEnemy > spawnRate) {
+        spawnEnemy();
+        lastEnemy = Date.now();
+      }
+      
+      // Move enemies
+      const carRect = car.getBoundingClientRect();
+      
+      enemies.forEach((enemy, i) => {
+        enemy.y += speed / 15;
+        enemy.el.style.top = enemy.y + 'px';
+        
+        // Collision
+        const eRect = enemy.el.getBoundingClientRect();
+        if (
+          eRect.left < carRect.right - 15 &&
+          eRect.right > carRect.left + 15 &&
+          eRect.top < carRect.bottom - 10 &&
+          eRect.bottom > carRect.top + 10
+        ) {
+          endGame();
+          return;
+        }
+        
+        // Remove off-screen
+        if (enemy.y > game.clientHeight) {
+          enemy.el.remove();
+          enemies.splice(i, 1);
+        }
+      });
+      
+      requestAnimationFrame(gameLoop);
+    }
+    
+    function endGame() {
+      gameRunning = false;
+      
+      const finalDistance = Math.floor(distance);
+      if (finalDistance > best) {
+        best = finalDistance;
+        localStorage.setItem('speedBest', best);
+        document.getElementById('best').textContent = best;
+      }
+      
+      const reward = Math.floor(finalDistance / 10);
+      overlay.innerHTML = `
+        <h2>💥 Crash!</h2>
+        <p>Distanz: ${finalDistance}m</p>
+        <p class="reward">+${reward} 🪙 Coins</p>
+        <button onclick="startGame()">🔄 Nochmal</button>
+      `;
+      overlay.classList.remove('hidden');
+    }
+    
+    // Keyboard
+    document.addEventListener('keydown', e => {
+      if (e.key === 'ArrowLeft') steer(-1);
+      if (e.key === 'ArrowRight') steer(1);
+      if (e.key === ' ' && !gameRunning) startGame();
+    });
+  </script>
+</body>
+</html>

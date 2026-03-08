@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🚗 Racing Game</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      background: linear-gradient(180deg, #1a1a2e, #16213e);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      font-family: 'Segoe UI', sans-serif;
+      color: white;
+      overflow: hidden;
+    }
+    .hud {
+      width: 100%;
+      max-width: 400px;
+      padding: 15px;
+      display: flex;
+      justify-content: space-around;
+      background: rgba(0,0,0,0.5);
+    }
+    .hud-item { text-align: center; }
+    .hud-item span { color: #10b981; font-size: 24px; font-weight: bold; display: block; }
+    #game {
+      flex: 1;
+      width: 100%;
+      max-width: 400px;
+      position: relative;
+      background: #374151;
+      overflow: hidden;
+    }
+    .road {
+      position: absolute;
+      width: 65%;
+      left: 17.5%;
+      height: 100%;
+      background: linear-gradient(90deg, #4a5568 0%, #2d3748 10%, #2d3748 90%, #4a5568 100%);
+    }
+    .road::before {
+      content: '';
+      position: absolute;
+      left: 50%;
+      width: 6px;
+      height: 100%;
+      background: repeating-linear-gradient(
+        to bottom,
+        #fbbf24 0px,
+        #fbbf24 40px,
+        transparent 40px,
+        transparent 80px
+      );
+      animation: roadMove 0.5s linear infinite;
+    }
+    @keyframes roadMove {
+      from { transform: translateY(0); }
+      to { transform: translateY(80px); }
+    }
+    .player {
+      position: absolute;
+      bottom: 80px;
+      font-size: 55px;
+      transition: left 0.15s;
+      filter: drop-shadow(0 5px 10px rgba(0,0,0,0.5));
+    }
+    .obstacle {
+      position: absolute;
+      font-size: 45px;
+      filter: drop-shadow(0 3px 5px rgba(0,0,0,0.3));
+    }
+    .coin {
+      position: absolute;
+      font-size: 30px;
+      animation: coinSpin 0.5s linear infinite;
+    }
+    @keyframes coinSpin {
+      from { transform: rotateY(0deg); }
+      to { transform: rotateY(360deg); }
+    }
+    .controls {
+      width: 100%;
+      max-width: 400px;
+      display: flex;
+      gap: 15px;
+      padding: 20px;
+      background: #111827;
+    }
+    .controls button {
+      flex: 1;
+      padding: 25px;
+      font-size: 24px;
+      border: none;
+      border-radius: 15px;
+      background: #6366f1;
+      color: white;
+      cursor: pointer;
+    }
+    .controls button:active { background: #818cf8; transform: scale(0.95); }
+    #overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0.85);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 15px;
+      z-index: 10;
+    }
+    #overlay h2 { font-size: 28px; }
+    #overlay p { font-size: 18px; }
+    #overlay .gold { color: #fbbf24; font-size: 24px; }
+    #overlay button {
+      margin-top: 10px;
+      padding: 15px 40px;
+      font-size: 18px;
+      border: none;
+      border-radius: 12px;
+      background: #10b981;
+      color: white;
+      cursor: pointer;
+    }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="hud">
+    <div class="hud-item">
+      <span id="score">0</span>
+      Score
+    </div>
+    <div class="hud-item">
+      <span id="coins">0</span>
+      🪙 Coins
+    </div>
+    <div class="hud-item">
+      <span id="speed">1.0</span>
+      Speed
+    </div>
+  </div>
+  
+  <div id="game">
+    <div class="road"></div>
+    <div class="player" id="player">🚗</div>
+    
+    <div id="overlay">
+      <h2>🚗 Racing Game</h2>
+      <p>Sammle Coins, weiche Hindernissen aus!</p>
+      <button onclick="startGame()">▶️ Start</button>
+    </div>
+  </div>
+  
+  <div class="controls">
+    <button onmousedown="move(-1)" ontouchstart="move(-1)">⬅️</button>
+    <button onmousedown="move(1)" ontouchstart="move(1)">➡️</button>
+  </div>
+
+  <script>
+    const game = document.getElementById('game');
+    const player = document.getElementById('player');
+    const overlay = document.getElementById('overlay');
+    
+    let playerX = 50;
+    let score = 0;
+    let coins = 0;
+    let speed = 1;
+    let objects = [];
+    let gameRunning = false;
+    let lastSpawn = 0;
+    
+    function startGame() {
+      score = 0;
+      coins = 0;
+      speed = 1;
+      playerX = 50;
+      objects.forEach(o => o.el.remove());
+      objects = [];
+      gameRunning = true;
+      overlay.classList.add('hidden');
+      player.style.left = 'calc(50% - 30px)';
+      updateHUD();
+      requestAnimationFrame(loop);
+    }
+    
+    function move(dir) {
+      if (!gameRunning) return;
+      playerX += dir * 10;
+      playerX = Math.max(20, Math.min(80, playerX));
+      player.style.left = `calc(${playerX}% - 30px)`;
+    }
+    
+    function spawn() {
+      const isCoin = Math.random() > 0.6;
+      const el = document.createElement('div');
+      el.className = isCoin ? 'coin' : 'obstacle';
+      el.textContent = isCoin ? '🪙' : ['🚙', '🚕', '🚌', '🛻', '🚐'][Math.floor(Math.random() * 5)];
+      el.style.top = '-50px';
+      el.style.left = `calc(${22 + Math.random() * 56}% - 25px)`;
+      game.appendChild(el);
+      objects.push({ el, y: -50, isCoin });
+    }
+    
+    function loop() {
+      if (!gameRunning) return;
+      
+      score++;
+      if (score % 500 === 0) speed = Math.min(2.5, speed + 0.2);
+      
+      // Spawn
+      if (Date.now() - lastSpawn > 800 / speed) {
+        spawn();
+        lastSpawn = Date.now();
+      }
+      
+      // Move objects
+      const pRect = player.getBoundingClientRect();
+      
+      objects.forEach((obj, i) => {
+        obj.y += 4 * speed;
+        obj.el.style.top = obj.y + 'px';
+        
+        const oRect = obj.el.getBoundingClientRect();
+        
+        // Collision
+        if (
+          oRect.left < pRect.right - 10 &&
+          oRect.right > pRect.left + 10 &&
+          oRect.top < pRect.bottom - 5 &&
+          oRect.bottom > pRect.top + 5
+        ) {
+          if (obj.isCoin) {
+            coins++;
+            obj.el.remove();
+            objects.splice(i, 1);
+          } else {
+            endGame();
+            return;
+          }
+        }
+        
+        // Remove off-screen
+        if (obj.y > game.clientHeight) {
+          obj.el.remove();
+          objects.splice(i, 1);
+        }
+      });
+      
+      updateHUD();
+      requestAnimationFrame(loop);
+    }
+    
+    function updateHUD() {
+      document.getElementById('score').textContent = score;
+      document.getElementById('coins').textContent = coins;
+      document.getElementById('speed').textContent = speed.toFixed(1);
+    }
+    
+    function endGame() {
+      gameRunning = false;
+      const reward = coins + Math.floor(score / 100);
+      
+      overlay.innerHTML = `
+        <h2>💥 Crash!</h2>
+        <p>Score: ${score}</p>
+        <p>Coins gesammelt: ${coins}</p>
+        <p class="gold">+${reward} 🪙 Belohnung</p>
+        <button onclick="startGame()">🔄 Nochmal</button>
+      `;
+      overlay.classList.remove('hidden');
+    }
+    
+    // Keyboard
+    document.addEventListener('keydown', e => {
+      if (e.key === 'ArrowLeft') move(-1);
+      if (e.key === 'ArrowRight') move(1);
+      if (e.key === ' ' && !gameRunning) startGame();
+    });
+    
+    updateHUD();
+  </script>
+</body>
+</html>
