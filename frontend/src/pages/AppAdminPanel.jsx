@@ -357,6 +357,144 @@ export default function AppAdminPanel() {
           </>
         )}
 
+        {/* Users Tab */}
+        {activeTab === 'users' && (
+          <>
+            {/* Users Management */}
+            <div className="bg-white/5 backdrop-blur-sm p-5 rounded-2xl border border-white/10 mb-6">
+              <div className="flex items-center gap-2 mb-4">
+                <span className="text-xl">👥</span>
+                <h3 className="font-semibold">Benutzer verwalten</h3>
+              </div>
+              
+              {/* Search Bar */}
+              <div className="mb-4">
+                <label className="block text-sm text-slate-400 mb-2">Benutzer suchen</label>
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Name oder E-Mail eingeben..."
+                  className="w-full p-3.5 rounded-xl bg-black/30 border border-white/10 text-white placeholder-slate-500 focus:border-[#6c63ff] focus:outline-none transition-all"
+                  data-testid="user-search-input"
+                />
+              </div>
+
+              {/* Users List */}
+              <div className="space-y-2 max-h-96 overflow-y-auto">
+                {usersLoading ? (
+                  <div className="text-center py-8">
+                    <span className="animate-spin text-2xl">⏳</span>
+                    <p className="text-slate-400 mt-2">Lade Benutzer...</p>
+                  </div>
+                ) : filteredUsers.length === 0 ? (
+                  <div className="text-center py-8">
+                    <span className="text-4xl mb-2 block">👤</span>
+                    <p className="text-slate-400">
+                      {searchQuery ? 'Keine Benutzer gefunden' : 'Keine Benutzer vorhanden'}
+                    </p>
+                  </div>
+                ) : (
+                  filteredUsers.map((user, idx) => (
+                    <div key={user.id || idx} className="bg-black/20 p-4 rounded-xl flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500/30 to-purple-500/30 flex items-center justify-center">
+                        <span className="text-lg">👤</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">{user.name || 'Unbekannt'}</p>
+                        <p className="text-sm text-slate-400 truncate">{user.email || 'Keine E-Mail'}</p>
+                        <div className="flex gap-4 mt-1">
+                          <span className="text-xs text-amber-400">💰 {user.coins || 0} Coins</span>
+                          <span className="text-xs text-cyan-400">⛏️ {user.miners_count || 0} Miner</span>
+                        </div>
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <button
+                          onClick={() => {
+                            setUserId(user.id || user.name || '');
+                            setActiveTab('coins');
+                          }}
+                          className="px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 rounded-lg text-amber-400 text-xs transition-all"
+                          title="Coins verwalten"
+                        >
+                          💰 Coins
+                        </button>
+                        <button
+                          onClick={() => {
+                            setMinerUserId(user.id || user.name || '');
+                            setActiveTab('miners');
+                          }}
+                          className="px-3 py-1.5 bg-cyan-500/20 hover:bg-cyan-500/30 rounded-lg text-cyan-400 text-xs transition-all"
+                          title="Miner verwalten"
+                        >
+                          ⛏️ Miner
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* User Stats */}
+            <div className="bg-white/5 backdrop-blur-sm p-5 rounded-2xl border border-white/10">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">📊</span>
+                  <h3 className="font-semibold">Benutzer-Statistiken</h3>
+                </div>
+                <button
+                  onClick={fetchAllUsers}
+                  className="p-2 bg-white/5 rounded-xl hover:bg-white/10 transition-all"
+                  disabled={usersLoading}
+                >
+                  <span>🔄</span>
+                </button>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-gradient-to-br from-blue-500/20 to-blue-600/10 p-4 rounded-xl border border-blue-500/30">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-xl">👥</span>
+                    <p className="text-xs text-slate-400">Gesamt Benutzer</p>
+                  </div>
+                  <p className="text-2xl font-bold text-blue-400">{allUsers.length}</p>
+                </div>
+                
+                <div className="bg-gradient-to-br from-amber-500/20 to-amber-600/10 p-4 rounded-xl border border-amber-500/30">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-xl">💰</span>
+                    <p className="text-xs text-slate-400">Gesamt Coins</p>
+                  </div>
+                  <p className="text-2xl font-bold text-amber-400">
+                    {allUsers.reduce((sum, user) => sum + (user.coins || 0), 0).toLocaleString()}
+                  </p>
+                </div>
+                
+                <div className="bg-gradient-to-br from-cyan-500/20 to-cyan-600/10 p-4 rounded-xl border border-cyan-500/30">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-xl">⛏️</span>
+                    <p className="text-xs text-slate-400">Aktive Miner</p>
+                  </div>
+                  <p className="text-2xl font-bold text-cyan-400">
+                    {allUsers.reduce((sum, user) => sum + (user.miners_count || 0), 0)}
+                  </p>
+                </div>
+                
+                <div className="bg-gradient-to-br from-emerald-500/20 to-emerald-600/10 p-4 rounded-xl border border-emerald-500/30">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-xl">🎯</span>
+                    <p className="text-xs text-slate-400">Durchschn. Coins</p>
+                  </div>
+                  <p className="text-2xl font-bold text-emerald-400">
+                    {allUsers.length > 0 ? Math.round(allUsers.reduce((sum, user) => sum + (user.coins || 0), 0) / allUsers.length).toLocaleString() : 0}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+
         {/* Coins Tab */}
         {activeTab === 'coins' && (
           <>
