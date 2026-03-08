@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>BidBlitz Coin Collector 3D</title>
+<style>
+body{margin:0;overflow:hidden;background:#0f0a1e;font-family:Arial}
+#ui{position:fixed;top:20px;left:20px;color:#fff;z-index:100}
+#ui h1{margin:0 0 10px;font-size:24px}
+#score{background:rgba(139,92,246,0.8);padding:10px 20px;border-radius:10px}
+#controls{position:fixed;bottom:20px;left:20px;color:#fff;opacity:0.7;font-size:14px}
+canvas{display:block}
+</style>
+</head>
+<body>
+
+<div id="ui">
+<h1>🪙 Coin Collector</h1>
+<div id="score">Coins: <span id="pts">0</span></div>
+</div>
+
+<div id="controls">Arrow keys to move</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.152.0/build/three.min.js"></script>
+<canvas id="c"></canvas>
+
+<script>
+
+let score=0
+
+let s=new THREE.Scene()
+s.background=new THREE.Color(0x0f0a1e)
+
+let cam=new THREE.PerspectiveCamera(75,innerWidth/innerHeight,0.1,1000)
+let r=new THREE.WebGLRenderer({canvas:document.getElementById("c")})
+r.setSize(innerWidth,innerHeight)
+
+// Player
+let player=new THREE.Mesh(
+new THREE.BoxGeometry(),
+new THREE.MeshBasicMaterial({color:0x00ff00})
+)
+s.add(player)
+
+// Coins
+let coins=[]
+function spawnCoin(){
+let coin=new THREE.Mesh(
+new THREE.SphereGeometry(0.3),
+new THREE.MeshBasicMaterial({color:0xffff00})
+)
+coin.position.x=(Math.random()-0.5)*10
+coin.position.y=(Math.random()-0.5)*6
+coin.position.z=(Math.random()-0.5)*5
+coins.push(coin)
+s.add(coin)
+}
+
+for(let i=0;i<5;i++) spawnCoin()
+
+// Ground
+let ground=new THREE.Mesh(
+new THREE.PlaneGeometry(20,20),
+new THREE.MeshBasicMaterial({color:0x1e1b4b,side:THREE.DoubleSide})
+)
+ground.rotation.x=Math.PI/2
+ground.position.y=-1.5
+s.add(ground)
+
+cam.position.z=8
+cam.position.y=2
+
+// Controls
+let keys={}
+document.addEventListener("keydown",e=>keys[e.key]=true)
+document.addEventListener("keyup",e=>keys[e.key]=false)
+
+function a(){
+requestAnimationFrame(a)
+
+// Player movement
+if(keys["ArrowLeft"]) player.position.x-=0.1
+if(keys["ArrowRight"]) player.position.x+=0.1
+if(keys["ArrowUp"]) player.position.y+=0.1
+if(keys["ArrowDown"]) player.position.y-=0.1
+
+// Animate
+player.rotation.y+=0.02
+
+// Coins spin & collision
+coins.forEach((coin,i)=>{
+coin.rotation.y+=0.05
+
+// Check collision
+let dist=player.position.distanceTo(coin.position)
+if(dist<1){
+score+=10
+document.getElementById("pts").innerText=score
+s.remove(coin)
+coins.splice(i,1)
+spawnCoin()
+}
+})
+
+r.render(s,cam)
+}
+
+a()
+
+window.addEventListener("resize",()=>{
+cam.aspect=innerWidth/innerHeight
+cam.updateProjectionMatrix()
+r.setSize(innerWidth,innerHeight)
+})
+
+</script>
+
+</body>
+</html>
