@@ -214,6 +214,8 @@ import RideModule from "./pages/RideModule";
 import MiningPage from "./pages/MiningPage";
 import WalletPage from "./pages/WalletPage";
 import ProfilePage from "./pages/ProfilePage";
+import AdminPanelFull from "./pages/AdminPanelFull";
+import SuperAppHome from "./pages/SuperAppHome";
 
 // New Feature Components
 import Watchlist from "./components/Watchlist";
