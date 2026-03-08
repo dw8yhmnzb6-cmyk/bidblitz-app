@@ -11,13 +11,13 @@ const API = process.env.REACT_APP_BACKEND_URL + '/api';
 // Games mit Emojis
 const GAMES = [
   { id: 1, name: 'Candy Match', emoji: '🍬', route: '/candy-match' },
-  { id: 2, name: 'Reaction Game', emoji: '🎯', route: '/games/reaction.html' },
+  { id: 2, name: 'Reaction', emoji: '⚡', route: '/reaction-game' },
   { id: 3, name: 'Lucky Wheel', emoji: '🎰', route: '/lucky-wheel' },
   { id: 4, name: 'Coin Tap', emoji: '🪙', route: '/coin-tap' },
-  { id: 5, name: 'Dice Game', emoji: '🎲', route: '/games/dice.html' },
-  { id: 6, name: 'Speed Click', emoji: '⚡', route: '/games/speed.html' },
-  { id: 7, name: 'Garden Match', emoji: '🌺', route: '/games/garden.html' },
-  { id: 8, name: 'Archer', emoji: '🏹', route: '/games/archer.html' },
+  { id: 5, name: 'Runner', emoji: '🏃', route: '/runner-game' },
+  { id: 6, name: 'Garden', emoji: '🌺', route: '/games/garden.html' },
+  { id: 7, name: 'Archer', emoji: '🏹', route: '/games/archer.html' },
+  { id: 8, name: 'Dice', emoji: '🎲', route: '/games/dice.html' },
 ];
 
 export default function GamesHub() {
