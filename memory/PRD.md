@@ -5,6 +5,19 @@ BidBlitz ist eine vollständige Super-App mit Mining, Games, Mobilität, Chat, M
 
 ## Alle Features (März 2026)
 
+### ✅ Admin Panel (`/app-admin`) - UPDATED!
+- 4 Tabs: Übersicht, Benutzer, Coins, Miner
+- Benutzer-Tab mit Suchfunktion und Statistiken
+- Live Activity Feed
+- Coin-Management für User
+- Miner-Vergabe und Verwaltung
+
+### ✅ Multi-Language System - IN PROGRESS
+- Deutsch (Standard), English, + weitere Sprachen
+- LanguageContext für globale Übersetzungen
+- Games Hub vollständig übersetzt
+- `/settings` Seite für Sprachauswahl
+
 ### ✅ Analytics Dashboard (`/analytics`) - NEU!
 - Chart.js Linien-Diagramm
 - 3 Tabs: Coins, Mining, Games
