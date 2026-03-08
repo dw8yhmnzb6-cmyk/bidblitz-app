@@ -20,6 +20,7 @@ const CATEGORIES = {
   newGames: {
     title: '🆕 New Games',
     games: [
+      { name: 'Garden', icon: '🌺', url: '/games/garden.html', key: 'garden_match' },
       { name: 'Snake', icon: '🐍', url: '/games/snake.html', key: 'snake' },
       { name: 'Puzzle', icon: '🧠', url: '/games/puzzle.html', key: 'puzzle' },
       { name: 'Blocks', icon: '🧱', url: '/games/blocks.html', key: 'blocks' },
@@ -27,7 +28,6 @@ const CATEGORIES = {
       { name: 'Arcade', icon: '🎮', url: '/games/arcade.html', key: 'arcade' },
       { name: 'Dice', icon: '🎲', url: '/games/dice.html', key: 'dice' },
       { name: 'Archer', icon: '🏹', url: '/games/archer.html', key: 'archer' },
-      { name: 'Space', icon: '🚀', url: '/games/space.html', key: 'space' },
     ]
   },
   racing: {
