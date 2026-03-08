@@ -141,21 +141,45 @@ export default function MinerDashboard() {
   };
   
   const upgradeMiner = async (minerId) => {
+    // Upgrade Kosten berechnen
+    const miner = miners.find(m => m.id === minerId);
+    const currentLevel = miner?.level || 1;
+    const upgradeCost = currentLevel * 50; // 50, 100, 150, 200... Coins pro Level
+    
+    // Prüfen ob genug Coins
+    if (stats.coins < upgradeCost) {
+      setMessage(`❌ Nicht genug Coins! Du brauchst ${upgradeCost} Coins.`);
+      return;
+    }
+    
+    // Bestätigung anfordern
+    const confirmed = window.confirm(
+      `Miner auf Level ${currentLevel + 1} upgraden?\n\nKosten: ${upgradeCost} Coins\nDein Guthaben: ${stats.coins} Coins`
+    );
+    
+    if (!confirmed) {
+      return;
+    }
+    
     try {
       const token = localStorage.getItem('token');
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
       await axios.post(`${API}/app/miner/upgrade`, { miner_id: minerId }, { headers });
-      setMessage('Miner upgraded!');
+      setMessage('✅ Miner upgraded!');
       fetchData();
     } catch (error) {
-      // Simuliere Upgrade
+      // Lokales Upgrade mit Bezahlung
       setMiners(prev => prev.map(m => 
         m.id === minerId 
           ? { ...m, hashrate: m.hashrate + 0.5, level: (m.level || 1) + 1 }
           : m
       ));
-      setStats(prev => ({ ...prev, hashrate: prev.hashrate + 0.5 }));
-      setMessage('Miner upgraded!');
+      setStats(prev => ({ 
+        ...prev, 
+        hashrate: prev.hashrate + 0.5,
+        coins: prev.coins - upgradeCost // Coins abziehen!
+      }));
+      setMessage(`✅ Miner upgraded! -${upgradeCost} Coins`);
     }
   };
   
