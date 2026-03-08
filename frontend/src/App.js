@@ -533,6 +533,9 @@ function AppContent() {
           {/* Leaderboard */}
           <Route path="/leaderboard" element={<Leaderboard />} />
           <Route path="/rangliste" element={<Leaderboard />} />
+          {/* Ride & Pay */}
+          <Route path="/ride-pay" element={<RidePay />} />
+          <Route path="/fahrt" element={<RidePay />} />
           {/* Beginner Auctions */}
           <Route path="/beginner-auctions" element={
             <ProtectedRoute>
