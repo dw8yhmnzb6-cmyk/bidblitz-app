@@ -37,6 +37,16 @@ export default function SuperAppHome() {
   useEffect(() => {
     if (!localStorage.getItem('userId')) localStorage.setItem('userId', userId);
     fetchCoins();
+    
+    // Hide the main header
+    const header = document.querySelector('header');
+    if (header) header.style.display = 'none';
+    
+    return () => {
+      // Show header again when leaving
+      const header = document.querySelector('header');
+      if (header) header.style.display = '';
+    };
   }, []);
 
   const fetchCoins = async () => {
@@ -55,9 +65,16 @@ export default function SuperAppHome() {
           margin: 0;
           background: #0f172a;
           color: white;
-          font-family: sans-serif;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
           min-height: 100vh;
           padding-bottom: 80px;
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          overflow-y: auto;
+          z-index: 999;
         }
         .bbz-top {
           display: flex;
@@ -74,7 +91,7 @@ export default function SuperAppHome() {
           display: flex;
           align-items: center;
           gap: 6px;
-          font-size: 20px;
+          font-size: 18px;
         }
         .bbz-grid {
           display: grid;
@@ -87,29 +104,29 @@ export default function SuperAppHome() {
           padding: 25px 10px;
           border-radius: 14px;
           text-align: center;
-          font-size: 14px;
           cursor: pointer;
-          transition: 0.2s;
+          transition: all 0.2s ease;
           border: none;
           color: white;
           display: flex;
           flex-direction: column;
           align-items: center;
-          gap: 8px;
+          gap: 10px;
         }
         .bbz-item:hover {
           background: #7c3aed;
+          transform: translateY(-2px);
         }
         .bbz-item:active {
           transform: scale(0.95);
         }
         .bbz-emoji {
-          font-size: 32px;
+          font-size: 36px;
           line-height: 1;
         }
         .bbz-name {
-          font-weight: 500;
-          font-size: 13px;
+          font-weight: 600;
+          font-size: 14px;
         }
         .bbz-nav {
           position: fixed;
@@ -121,21 +138,20 @@ export default function SuperAppHome() {
           justify-content: space-around;
           background: #111827;
           padding: 16px 12px;
-          font-size: 24px;
-          z-index: 100;
+          z-index: 1000;
         }
         .bbz-nav-item {
           background: none;
           border: none;
           cursor: pointer;
           padding: 8px 20px;
-          font-size: 24px;
-          opacity: 0.7;
-          transition: 0.2s;
+          font-size: 26px;
+          opacity: 0.6;
+          transition: all 0.2s ease;
         }
         .bbz-nav-item:hover {
           opacity: 1;
-          transform: scale(1.1);
+          transform: scale(1.15);
         }
         .bbz-nav-item.active {
           opacity: 1;
