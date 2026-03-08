@@ -1,5 +1,5 @@
 /**
- * BidBlitz Games Hub - Gradient Header Design
+ * BidBlitz Game Store - Mit Kategorien
  */
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -7,14 +7,18 @@ import axios from 'axios';
 
 const API = process.env.REACT_APP_BACKEND_URL + '/api';
 
-// 8 Games
-const GAMES = [
+// Trending Games
+const TRENDING_GAMES = [
   { id: 1, name: 'Candy Match', emoji: '🍬', route: '/candy-match' },
   { id: 2, name: 'Slot Machine', emoji: '🎰', route: '/slot-machine' },
   { id: 3, name: 'Lucky Wheel', emoji: '🎡', route: '/lucky-wheel' },
-  { id: 4, name: 'Reaction Game', emoji: '⚡', route: '/reaction-game' },
-  { id: 5, name: 'Runner', emoji: '🏃', route: '/runner-game' },
-  { id: 6, name: 'Memory Game', emoji: '🧠', route: '/candy-match' },
+  { id: 4, name: 'Runner Game', emoji: '🏃', route: '/runner-game' },
+];
+
+// Casual Games
+const CASUAL_GAMES = [
+  { id: 5, name: 'Memory Game', emoji: '🧠', route: '/candy-match' },
+  { id: 6, name: 'Reaction Game', emoji: '⚡', route: '/reaction-game' },
   { id: 7, name: 'Coin Tap', emoji: '🪙', route: '/coin-tap' },
   { id: 8, name: 'Dice Game', emoji: '🎲', route: '/games/dice.html' },
 ];
@@ -55,14 +59,25 @@ export default function GamesHub() {
     }
   };
 
+  const GameCard = ({ game }) => (
+    <button
+      onClick={() => handleGameClick(game)}
+      className="game-card"
+      data-testid={`game-${game.id}`}
+    >
+      <div className="game-icon">{game.emoji}</div>
+      <div className="game-title">{game.name}</div>
+    </button>
+  );
+
   return (
     <>
       <style>{`
-        .games-hub {
+        .game-store {
           margin: 0;
           background: #0f172a;
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
           color: white;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
           min-height: 100vh;
           position: fixed;
           top: 0;
@@ -71,16 +86,17 @@ export default function GamesHub() {
           bottom: 0;
           overflow-y: auto;
           z-index: 999;
+          padding-bottom: 40px;
         }
-        .games-header {
+        .store-header {
           background: linear-gradient(90deg, #7c3aed, #9333ea);
           padding: 22px;
           font-size: 28px;
-          font-weight: bold;
           text-align: center;
+          font-weight: bold;
           position: relative;
         }
-        .games-back {
+        .store-back {
           position: absolute;
           left: 20px;
           top: 50%;
@@ -91,7 +107,7 @@ export default function GamesHub() {
           font-size: 24px;
           cursor: pointer;
         }
-        .games-coins {
+        .store-coins {
           position: absolute;
           right: 20px;
           top: 50%;
@@ -101,16 +117,21 @@ export default function GamesHub() {
           border-radius: 8px;
           font-size: 16px;
         }
+        .section-title {
+          padding: 20px 20px 10px;
+          font-size: 20px;
+          font-weight: bold;
+        }
         .games-grid {
           display: grid;
           grid-template-columns: repeat(2, 1fr);
           gap: 18px;
-          padding: 20px;
+          padding: 0 20px 20px;
         }
         .game-card {
           background: #1f2937;
           border-radius: 18px;
-          padding: 30px 20px;
+          padding: 26px 20px;
           text-align: center;
           cursor: pointer;
           transition: all 0.2s ease;
@@ -129,35 +150,36 @@ export default function GamesHub() {
         }
         .game-icon {
           font-size: 42px;
-          margin-bottom: 12px;
+          margin-bottom: 10px;
           line-height: 1;
         }
         .game-title {
-          font-size: 20px;
+          font-size: 16px;
           font-weight: 600;
         }
       `}</style>
       
-      <div className="games-hub" data-testid="games-hub">
-        {/* Gradient Header */}
-        <div className="games-header">
-          <button className="games-back" onClick={() => navigate('/super-home')}>←</button>
-          🎮 BidBlitz Games
-          <div className="games-coins">💰 {coins}</div>
+      <div className="game-store" data-testid="games-hub">
+        {/* Header */}
+        <div className="store-header">
+          <button className="store-back" onClick={() => navigate('/super-home')}>←</button>
+          🎮 BidBlitz Game Store
+          <div className="store-coins">💰 {coins}</div>
         </div>
 
-        {/* Grid */}
+        {/* Trending Games */}
+        <div className="section-title">🔥 Trending Games</div>
         <div className="games-grid">
-          {GAMES.map((game) => (
-            <button
-              key={game.id}
-              onClick={() => handleGameClick(game)}
-              className="game-card"
-              data-testid={`game-${game.id}`}
-            >
-              <div className="game-icon">{game.emoji}</div>
-              <div className="game-title">{game.name}</div>
-            </button>
+          {TRENDING_GAMES.map((game) => (
+            <GameCard key={game.id} game={game} />
+          ))}
+        </div>
+
+        {/* Casual Games */}
+        <div className="section-title">🎲 Casual Games</div>
+        <div className="games-grid">
+          {CASUAL_GAMES.map((game) => (
+            <GameCard key={game.id} game={game} />
           ))}
         </div>
       </div>
