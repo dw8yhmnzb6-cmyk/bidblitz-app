@@ -718,6 +718,28 @@ export const translations = {
       activeMiners: "Active Miners",
       avgCoins: "Avg. Coins",
       userStats: "User Statistics"
+    },
+    rides: {
+      title: "Ride Services",
+      taxi: "Taxi",
+      scooter: "E-Scooter",
+      bike: "E-Bike",
+      from: "from",
+      taxiDesc: "Fast & comfortable",
+      scooterDesc: "Flexible & affordable",
+      bikeDesc: "Eco-friendly",
+      available: "Available",
+      fastBooking: "Fast Booking",
+      payWithCoins: "Pay with Coins"
+    },
+    common: {
+      viewAll: "View all",
+      loading: "Loading...",
+      error: "Error",
+      success: "Success",
+      save: "Save",
+      cancel: "Cancel",
+      back: "Back"
     }
   },
   us: {
