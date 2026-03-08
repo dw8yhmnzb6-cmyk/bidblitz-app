@@ -36,6 +36,60 @@ const TABS = [
 
 // Kategorien für das Grid-Menü
 const CATEGORIES = {
+  // NEU: Spiele & Gaming
+  spiele: {
+    title: 'Spiele & Gaming',
+    color: 'purple',
+    count: 6,
+    items: [
+      { name: 'Spiel-Statistiken', icon: BarChart3, tab: 'game-stats' },
+      { name: 'Coin-Verwaltung', icon: Coins, tab: 'coin-management' },
+      { name: 'Miner-Dashboard', icon: Pickaxe, tab: 'miner-admin' },
+      { name: 'Belohnungen', icon: Award, tab: 'rewards-config' },
+      { name: 'Leaderboard', icon: Trophy, tab: 'leaderboard-admin' },
+      { name: 'Daily Bonus', icon: Clock, tab: 'daily-bonus-config' },
+    ]
+  },
+  // NEU: Mobility
+  mobility: {
+    title: 'Mobility',
+    color: 'cyan',
+    count: 5,
+    items: [
+      { name: 'Fahrten-Übersicht', icon: Navigation, tab: 'rides-overview' },
+      { name: 'Fahrzeug-Verwaltung', icon: Car, tab: 'fleet' },
+      { name: 'Fahrer-Management', icon: UserCheck, tab: 'drivers' },
+      { name: 'Tarife & Preise', icon: DollarSign, tab: 'ride-pricing' },
+      { name: 'Ride-Statistiken', icon: MapPin, tab: 'mobility-dashboard' },
+    ]
+  },
+  // NEU: Kunden & Personal
+  kunden: {
+    title: 'Kunden & Personal',
+    color: 'blue',
+    count: 7,
+    items: [
+      { name: 'Alle Benutzer', icon: Users, tab: 'users' },
+      { name: 'Support-Tickets', icon: Headphones, tab: 'support' },
+      { name: 'KYC-Freischaltung', icon: BadgeCheck, tab: 'kyc-management' },
+      { name: 'Mitarbeiter', icon: Briefcase, tab: 'staff' },
+      { name: 'Manager', icon: UserPlus, tab: 'managers' },
+      { name: 'Influencer', icon: Star, tab: 'influencers' },
+      { name: 'Großkunden', icon: Building2, tab: 'wholesale' },
+    ]
+  },
+  // NEU: Partner & Händler
+  partner: {
+    title: 'Partner & Händler',
+    color: 'amber',
+    count: 4,
+    items: [
+      { name: 'Partner Portal', icon: Handshake, tab: 'partner-portal' },
+      { name: 'Händler-Bewerbungen', icon: ClipboardList, tab: 'restaurant-applications' },
+      { name: 'Restaurant-Partner', icon: Store, tab: 'restaurant-vouchers' },
+      { name: 'Auto-Werbung', icon: Car, tab: 'car-advertising' },
+    ]
+  },
   auktionen: {
     title: 'Auktionen',
     color: 'orange',
