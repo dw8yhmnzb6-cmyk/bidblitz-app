@@ -62,6 +62,7 @@ import GiftBids from "./pages/GiftBids";
 import GiftCards from "./pages/GiftCards";
 import GiftCardSuccess from "./pages/GiftCardSuccess";
 import Leaderboard from "./pages/Leaderboard";
+import RidePay from "./pages/RidePay";
 import BeginnerAuctions from "./pages/BeginnerAuctions";
 import ReferralDashboard from "./pages/ReferralDashboard";
 import FlashEvents from "./pages/FlashEvents";
