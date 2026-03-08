@@ -259,28 +259,37 @@ export default function MinerDashboard() {
         
         {/* Miners Grid */}
         <div className="grid grid-cols-2 gap-3 mb-5">
-          {miners.map((miner) => (
-            <div 
-              key={miner.id} 
-              className="bg-[#14183a] p-4 rounded-xl text-center"
-              style={{ boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }}
-            >
-              <Machine tier={miner.tier} />
-              <h3 className="font-semibold mt-2 text-sm">{miner.name}</h3>
-              <p className="text-xs text-cyan-400 mb-2">{miner.hashrate} TH</p>
-              <button
-                onClick={() => upgradeMiner(miner.id)}
-                disabled={miner.level >= 10}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                  miner.level >= 10
-                    ? 'bg-slate-700 text-slate-500'
-                    : 'bg-[#6c63ff] hover:bg-[#5a52e0] active:scale-95'
-                }`}
+          {miners.map((miner) => {
+            const currentLevel = miner.level || 1;
+            const upgradeCost = currentLevel * 50;
+            const canAfford = stats.coins >= upgradeCost;
+            
+            return (
+              <div 
+                key={miner.id} 
+                className="bg-[#14183a] p-4 rounded-xl text-center"
+                style={{ boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }}
               >
-                {miner.level >= 10 ? 'Max' : `Upgrade (Lv.${miner.level || 1})`}
-              </button>
-            </div>
-          ))}
+                <Machine tier={miner.tier} />
+                <h3 className="font-semibold mt-2 text-sm">{miner.name}</h3>
+                <p className="text-xs text-cyan-400 mb-1">{miner.hashrate} TH</p>
+                <p className="text-xs text-slate-500 mb-2">Level {currentLevel}</p>
+                <button
+                  onClick={() => upgradeMiner(miner.id)}
+                  disabled={miner.level >= 10}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                    miner.level >= 10
+                      ? 'bg-slate-700 text-slate-500'
+                      : canAfford
+                        ? 'bg-[#6c63ff] hover:bg-[#5a52e0] active:scale-95'
+                        : 'bg-red-900/50 text-red-400'
+                  }`}
+                >
+                  {miner.level >= 10 ? 'Max Level' : `⬆️ ${upgradeCost} Coins`}
+                </button>
+              </div>
+            );
+          })}
         </div>
         
         {/* Live Mining */}
