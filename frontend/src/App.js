@@ -1090,9 +1090,17 @@ function AppContent() {
           <Route path="/miner-market" element={<MinerMarket />} />
           <Route path="/miner-markt" element={<MinerMarket />} />
           
-          {/* Super App Minimal & New Pages */}
-          <Route path="/super-app" element={<SuperAppMinimal />} />
-          <Route path="/app-home" element={<SuperAppMinimal />} />
+          {/* Super App Minimal & New Pages - Nur mit Login */}
+          <Route path="/super-app" element={
+            <ProtectedRoute>
+              <SuperAppMinimal />
+            </ProtectedRoute>
+          } />
+          <Route path="/app-home" element={
+            <ProtectedRoute>
+              <SuperAppMinimal />
+            </ProtectedRoute>
+          } />
           <Route path="/games" element={<GamesHub />} />
           <Route path="/spiele" element={<GamesHub />} />
           <Route path="/live-auction" element={<LiveAuction />} />
