@@ -374,6 +374,42 @@ export const translations = {
       backToHome: "Zurück zur Startseite",
       fillAllFields: "Bitte füllen Sie alle Pflichtfelder aus",
       submitError: "Fehler beim Einreichen"
+    },
+    games: {
+      title: "Spiele",
+      weeklyLeague: "Wöchentliche Liga",
+      rank: "Rang",
+      points: "Punkte",
+      gamesPass: "Games Pass Aktiv",
+      dailyBonus: "+20% Täglich",
+      leagueBonus: "+10% Liga",
+      play: "Spielen",
+      bidblitzMatch: "BidBlitz Match",
+      luckySpin: "Glücksrad",
+      dailyQuiz: "Tägliches Quiz",
+      wordDaily: "Wort des Tages",
+      scratchCard: "Rubbellos",
+      memory: "Memory",
+      reactionTest: "Reaktionstest",
+      speedTap: "Speed Tap",
+      treasureHunt: "Schatzsuche",
+      slots: "Spielautomat",
+      diceRoll: "Würfelspiel",
+      coinDrop: "Münzwurf",
+      closeGame: "Spiel schließen",
+      loading: "Lädt..."
+    },
+    admin: {
+      users: "Benutzer",
+      manageUsers: "Benutzer verwalten",
+      searchUsers: "Benutzer suchen",
+      noUsersFound: "Keine Benutzer gefunden",
+      noUsers: "Keine Benutzer vorhanden",
+      totalUsers: "Gesamt Benutzer",
+      totalCoins: "Gesamt Coins",
+      activeMiners: "Aktive Miner",
+      avgCoins: "Durchschn. Coins",
+      userStats: "Benutzer-Statistiken"
     }
   },
   en: {
