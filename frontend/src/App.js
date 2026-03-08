@@ -170,6 +170,7 @@ import AppVIP from "./pages/AppVIP";
 import AppStatistics from "./pages/AppStatistics";
 import AppTaxi from "./pages/AppTaxi";
 import AppScooter from "./pages/AppScooter";
+import AppBike from "./pages/AppBike";
 import AppVIPGames from "./pages/AppVIPGames";
 import AppAchievements from "./pages/AppAchievements";
 import AppNotifications from "./pages/AppNotifications";
