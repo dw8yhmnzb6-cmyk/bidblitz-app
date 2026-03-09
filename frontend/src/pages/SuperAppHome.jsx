@@ -1,6 +1,6 @@
 /**
- * BidBlitz Gaming - Clean Panel Design
- * Games, Miner Panel, Auction Panel, Bottom Nav
+ * BidBlitz - Complete Super App Design
+ * Service Cards + Games + Miner + Auction + Bottom Nav
  */
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -8,9 +8,18 @@ import axios from 'axios';
 
 const API = process.env.REACT_APP_BACKEND_URL + '/api';
 
+const SERVICE_CARDS = [
+  { emoji: '🎮', name: 'Games', route: '/games' },
+  { emoji: '⛏', name: 'Miner', route: '/mining' },
+  { emoji: '🔥', name: 'Auctions', route: '/live-auction' },
+  { emoji: '💎', name: 'VIP', route: '/vip-auctions' },
+  { emoji: '🚕', name: 'Taxi', route: '/taxi' },
+  { emoji: '🛴', name: 'Scooter', route: '/scooter' },
+];
+
 const GAMES = [
   { name: 'Lucky Wheel', reward: 10 },
-  { name: 'Scratch Card', reward: 20 },
+  { name: 'Scratch', reward: 20 },
   { name: 'Reaction', reward: 5 },
   { name: 'Runner', reward: 15 },
   { name: 'Puzzle', reward: 25 },
@@ -86,7 +95,7 @@ export default function SuperAppHome() {
       const res = await axios.post(`${API}/bbz/coins/earn`, {
         user_id: userId,
         amount: reward,
-        source: `game_${gameName.toLowerCase().replace(' ', '_')}`
+        source: `game_${gameName.toLowerCase()}`
       });
       setCoins(res.data.new_balance);
     } catch {
@@ -141,7 +150,7 @@ export default function SuperAppHome() {
   return (
     <div style={styles.page} data-testid="super-app-home">
       {/* Header */}
-      <header style={styles.header}>⚡ BidBlitz Gaming</header>
+      <header style={styles.header}>⚡ BidBlitz</header>
 
       {/* Wallet */}
       <div style={styles.wallet} data-testid="wallet-balance">
@@ -153,6 +162,22 @@ export default function SuperAppHome() {
 
       {/* Container */}
       <div style={styles.container}>
+        
+        {/* Service Cards Grid */}
+        <div style={styles.grid}>
+          {SERVICE_CARDS.map((item, index) => (
+            <div
+              key={index}
+              style={styles.card}
+              onClick={() => navigate(item.route)}
+              data-testid={`service-${item.name.toLowerCase()}`}
+            >
+              <div style={styles.cardEmoji}>{item.emoji}</div>
+              <div style={styles.cardName}>{item.name}</div>
+            </div>
+          ))}
+        </div>
+
         {/* Games Section */}
         <h2 style={styles.title}>Games</h2>
         <div style={styles.games}>
@@ -161,7 +186,7 @@ export default function SuperAppHome() {
               key={index}
               style={styles.game}
               onClick={() => playGame(game.name, game.reward)}
-              data-testid={`game-${game.name.toLowerCase().replace(' ', '-')}`}
+              data-testid={`game-${game.name.toLowerCase()}`}
             >
               {game.name}
             </div>
@@ -175,7 +200,7 @@ export default function SuperAppHome() {
             Buy Miner (50 Coins)
           </button>
           <p style={styles.info}>
-            Miners: {miners} | Income: +{miners} coin every 5 sec
+            {miners > 0 ? `Miners: ${miners} | ` : ''}+1 Coin every 5 sec
           </p>
         </div>
 
@@ -188,7 +213,7 @@ export default function SuperAppHome() {
             <div>Timer: <span style={{...styles.timer, color: timer <= 3 ? '#ef4444' : '#22c55e'}}>{timer}</span></div>
           </div>
           <button style={styles.button} onClick={bid} data-testid="bid-button">
-            Bid
+            Bid (1 Coin)
           </button>
         </div>
       </div>
@@ -223,15 +248,15 @@ const styles = {
     overflowY: 'auto',
   },
   header: {
-    background: '#020617',
-    padding: '20px',
-    textAlign: 'center',
+    background: '#111827',
+    padding: '18px',
     fontSize: '26px',
+    textAlign: 'center',
     fontWeight: 'bold',
   },
   wallet: {
     background: '#1e293b',
-    padding: '15px',
+    padding: '14px',
     textAlign: 'center',
     fontSize: '20px',
   },
@@ -248,19 +273,40 @@ const styles = {
   container: {
     padding: '20px',
   },
+  grid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(3, 1fr)',
+    gap: '12px',
+    marginBottom: '20px',
+  },
+  card: {
+    background: '#1e293b',
+    padding: '20px 10px',
+    borderRadius: '12px',
+    textAlign: 'center',
+    cursor: 'pointer',
+  },
+  cardEmoji: {
+    fontSize: '28px',
+    marginBottom: '6px',
+  },
+  cardName: {
+    fontSize: '12px',
+    fontWeight: '500',
+  },
   title: {
-    margin: '0 0 15px 0',
-    fontSize: '20px',
+    margin: '0 0 12px 0',
+    fontSize: '18px',
   },
   games: {
     display: 'grid',
     gridTemplateColumns: 'repeat(3, 1fr)',
-    gap: '12px',
+    gap: '10px',
   },
   game: {
     background: '#7c3aed',
-    padding: '20px 10px',
-    borderRadius: '12px',
+    padding: '16px 8px',
+    borderRadius: '10px',
     textAlign: 'center',
     cursor: 'pointer',
     fontSize: '13px',
