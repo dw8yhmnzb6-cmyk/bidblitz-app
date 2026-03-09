@@ -1,6 +1,6 @@
 /**
- * BidBlitz Super App - Clean Minimal Design
- * Connected to Backend API for coins
+ * BidBlitz Super App - Clean Design with Live Auction
+ * 3-column grid + Penny Auction (0.01€ per bid)
  */
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -18,18 +18,21 @@ const SERVICE_CARDS = [
 ];
 
 const GAMES = [
-  { name: 'Lucky Wheel', route: '/lucky-wheel', reward: 10 },
-  { name: 'Scratch Card', route: '/scratch-card', reward: 20 },
-  { name: 'Reaction Game', route: '/reaction-game', reward: 5 },
-  { name: 'Runner Game', route: '/runner-game', reward: 15 },
-  { name: 'Puzzle Match', route: '/candy-match', reward: 25 },
-  { name: 'Treasure Box', route: '/coin-tap', reward: 30 },
+  { name: 'Lucky Wheel', reward: 10 },
+  { name: 'Scratch Card', reward: 20 },
+  { name: 'Reaction', reward: 5 },
+  { name: 'Runner', reward: 15 },
+  { name: 'Puzzle', reward: 25 },
+  { name: 'Treasure', reward: 30 },
 ];
 
 export default function SuperAppHome() {
   const navigate = useNavigate();
   const [coins, setCoins] = useState(100);
-  const [showWinAlert, setShowWinAlert] = useState(null);
+  const [price, setPrice] = useState(0.00);
+  const [bids, setBids] = useState(0);
+  const [timer, setTimer] = useState(10);
+  const [showAlert, setShowAlert] = useState(null);
   
   const userId = localStorage.getItem('userId') || 'guest_' + Math.random().toString(36).substr(2, 9);
   
@@ -41,7 +44,13 @@ export default function SuperAppHome() {
     const header = document.querySelector('header');
     if (header) header.style.display = 'none';
     
+    // Timer countdown
+    const interval = setInterval(() => {
+      setTimer(prev => prev > 0 ? prev - 1 : 0);
+    }, 1000);
+    
     return () => {
+      clearInterval(interval);
       const header = document.querySelector('header');
       if (header) header.style.display = '';
     };
@@ -64,35 +73,58 @@ export default function SuperAppHome() {
         source: `game_${gameName.toLowerCase().replace(' ', '_')}`
       });
       setCoins(res.data.new_balance);
-      setShowWinAlert(reward);
-      setTimeout(() => setShowWinAlert(null), 2000);
     } catch {
       setCoins(prev => prev + reward);
-      setShowWinAlert(reward);
-      setTimeout(() => setShowWinAlert(null), 2000);
     }
+    setShowAlert(`Gewonnen: ${reward} Coins`);
+    setTimeout(() => setShowAlert(null), 2000);
+  };
+  
+  const bid = async () => {
+    if (coins < 1) {
+      setShowAlert('Keine Coins!');
+      setTimeout(() => setShowAlert(null), 2000);
+      return;
+    }
+    
+    // Spend 1 coin for bid
+    try {
+      const res = await axios.post(`${API}/bbz/coins/spend`, {
+        user_id: userId,
+        amount: 1,
+        source: 'auction_bid'
+      });
+      setCoins(res.data.new_balance);
+    } catch {
+      setCoins(prev => prev - 1);
+    }
+    
+    // Increase price by 0.01€
+    setPrice(prev => prev + 0.01);
+    setBids(prev => prev + 1);
+    setTimer(10);
   };
 
   return (
     <div style={styles.page} data-testid="super-app-home">
       {/* Header */}
       <header style={styles.header}>
-        <span style={styles.logo}>⚡</span> BidBlitz Super App
+        ⚡ BidBlitz
       </header>
 
-      {/* Wallet Balance */}
+      {/* Wallet */}
       <div style={styles.wallet} data-testid="wallet-balance">
-        Wallet Balance: <span style={styles.coinCount}>{coins}</span> Coins
+        Coins: <span style={styles.coinCount}>{coins}</span>
       </div>
 
-      {/* Win Alert */}
-      {showWinAlert && (
-        <div style={styles.winAlert} data-testid="win-alert">
-          🎉 You won {showWinAlert} Coins!
+      {/* Alert */}
+      {showAlert && (
+        <div style={styles.alert} data-testid="alert">
+          {showAlert}
         </div>
       )}
 
-      {/* Service Cards Grid */}
+      {/* Service Cards - 3 columns */}
       <div style={styles.grid}>
         {SERVICE_CARDS.map((item, index) => (
           <div
@@ -108,7 +140,7 @@ export default function SuperAppHome() {
       </div>
 
       {/* Games Section */}
-      <h2 style={styles.sectionTitle}>🎮 Games</h2>
+      <h2 style={styles.sectionTitle}>Games</h2>
       
       <div style={styles.gamesGrid}>
         {GAMES.map((game, index) => (
@@ -118,31 +150,32 @@ export default function SuperAppHome() {
             onClick={() => playGame(game.name, game.reward)}
             data-testid={`game-${game.name.toLowerCase().replace(' ', '-')}`}
           >
-            <div style={styles.gameName}>{game.name}</div>
-            <div style={styles.gameReward}>+{game.reward} 🪙</div>
+            {game.name}
           </div>
         ))}
       </div>
 
-      {/* Bottom Navigation */}
-      <div style={styles.bottomNav}>
-        <div style={styles.navItem} onClick={() => navigate('/')}>
-          <span>🏠</span>
-          <span style={styles.navLabel}>Home</span>
+      {/* Live Auction */}
+      <div style={styles.auction} data-testid="live-auction">
+        <h3 style={styles.auctionTitle}>Live Auction</h3>
+        
+        <div style={styles.auctionInfo}>
+          <div>Preis: <span style={styles.priceValue}>€{price.toFixed(2)}</span></div>
+          <div>Gebote: <span style={styles.bidCount}>{bids}</span></div>
+          <div>Timer: <span style={{...styles.timerValue, color: timer <= 3 ? '#ef4444' : '#22c55e'}}>{timer}</span></div>
         </div>
-        <div style={styles.navItem} onClick={() => navigate('/games')}>
-          <span>🎮</span>
-          <span style={styles.navLabel}>Games</span>
-        </div>
-        <div style={styles.navItem} onClick={() => navigate('/wallet')}>
-          <span>💰</span>
-          <span style={styles.navLabel}>Wallet</span>
-        </div>
-        <div style={styles.navItem} onClick={() => navigate('/profile')}>
-          <span>👤</span>
-          <span style={styles.navLabel}>Profile</span>
-        </div>
+        
+        <button 
+          style={styles.bidButton} 
+          onClick={bid}
+          data-testid="bid-button"
+        >
+          Bieten (0.50€ / 1 Coin)
+        </button>
       </div>
+
+      {/* Bottom Spacer */}
+      <div style={{height: '20px'}} />
     </div>
   );
 }
@@ -154,7 +187,6 @@ const styles = {
     background: '#0f172a',
     color: 'white',
     minHeight: '100vh',
-    paddingBottom: '80px',
     position: 'fixed',
     top: 0,
     left: 0,
@@ -165,102 +197,105 @@ const styles = {
   header: {
     background: '#020617',
     padding: '20px',
-    fontSize: '24px',
     textAlign: 'center',
+    fontSize: '26px',
     fontWeight: 'bold',
-  },
-  logo: {
-    marginRight: '8px',
   },
   wallet: {
     background: '#1e293b',
-    padding: '20px',
+    padding: '15px',
     textAlign: 'center',
-    fontSize: '22px',
+    fontSize: '20px',
   },
   coinCount: {
     color: '#fbbf24',
     fontWeight: 'bold',
   },
-  winAlert: {
-    background: 'linear-gradient(135deg, #22c55e, #16a34a)',
-    padding: '15px',
+  alert: {
+    background: '#22c55e',
+    padding: '12px',
     textAlign: 'center',
-    fontSize: '18px',
+    fontSize: '16px',
     fontWeight: 'bold',
-    animation: 'pulse 0.5s ease-in-out',
   },
   grid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(2, 1fr)',
-    gap: '15px',
+    gridTemplateColumns: 'repeat(3, 1fr)',
+    gap: '12px',
     padding: '20px',
   },
   card: {
     background: '#1e293b',
-    padding: '20px',
-    borderRadius: '15px',
+    padding: '20px 10px',
+    borderRadius: '12px',
     textAlign: 'center',
     cursor: 'pointer',
-    transition: 'transform 0.2s, background 0.2s',
   },
   cardEmoji: {
-    fontSize: '32px',
-    marginBottom: '8px',
+    fontSize: '28px',
+    marginBottom: '6px',
   },
   cardName: {
-    fontSize: '16px',
+    fontSize: '12px',
     fontWeight: '500',
   },
   sectionTitle: {
     paddingLeft: '20px',
-    margin: '10px 0',
-    fontSize: '20px',
+    margin: '5px 0 10px',
+    fontSize: '18px',
   },
   gamesGrid: {
     display: 'grid',
     gridTemplateColumns: 'repeat(3, 1fr)',
     gap: '10px',
-    padding: '0 20px 20px',
+    padding: '0 20px',
   },
   gameCard: {
     background: '#7c3aed',
-    padding: '15px 10px',
+    padding: '15px 8px',
     borderRadius: '10px',
     textAlign: 'center',
     cursor: 'pointer',
-    transition: 'transform 0.2s, background 0.2s',
-  },
-  gameName: {
-    fontSize: '14px',
+    fontSize: '13px',
     fontWeight: '500',
-    marginBottom: '5px',
   },
-  gameReward: {
-    fontSize: '12px',
-    opacity: 0.9,
+  auction: {
+    background: '#1e293b',
+    padding: '20px',
+    margin: '20px',
+    borderRadius: '12px',
   },
-  bottomNav: {
-    position: 'fixed',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    background: '#020617',
-    display: 'flex',
-    justifyContent: 'space-around',
-    padding: '15px 0',
-    borderTop: '1px solid #1e293b',
+  auctionTitle: {
+    margin: '0 0 15px 0',
+    fontSize: '18px',
   },
-  navItem: {
+  auctionInfo: {
     display: 'flex',
     flexDirection: 'column',
-    alignItems: 'center',
-    cursor: 'pointer',
-    fontSize: '20px',
+    gap: '8px',
+    marginBottom: '15px',
+    fontSize: '16px',
   },
-  navLabel: {
-    fontSize: '12px',
-    marginTop: '4px',
-    opacity: 0.8,
+  priceValue: {
+    color: '#22c55e',
+    fontWeight: 'bold',
+  },
+  bidCount: {
+    color: '#fbbf24',
+    fontWeight: 'bold',
+  },
+  timerValue: {
+    fontWeight: 'bold',
+  },
+  bidButton: {
+    background: '#a855f7',
+    border: 'none',
+    padding: '12px 20px',
+    borderRadius: '10px',
+    color: 'white',
+    cursor: 'pointer',
+    fontSize: '16px',
+    fontWeight: 'bold',
+    width: '100%',
   },
 };
