@@ -1,6 +1,6 @@
 /**
- * BidBlitz Super App - Clean Design with Live Auction
- * 3-column grid + Penny Auction (0.01€ per bid)
+ * BidBlitz Super App - Full Featured Design
+ * Games, Miner (passive income), Auction, Leaderboard, Bottom Nav
  */
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -8,18 +8,9 @@ import axios from 'axios';
 
 const API = process.env.REACT_APP_BACKEND_URL + '/api';
 
-const SERVICE_CARDS = [
-  { emoji: '🎮', name: 'Games', route: '/games' },
-  { emoji: '⛏', name: 'Miner', route: '/mining' },
-  { emoji: '🔥', name: 'Live Auctions', route: '/live-auction' },
-  { emoji: '💎', name: 'VIP Auctions', route: '/vip-auctions' },
-  { emoji: '🚕', name: 'Taxi', route: '/taxi' },
-  { emoji: '🛴', name: 'Scooter', route: '/scooter' },
-];
-
 const GAMES = [
   { name: 'Lucky Wheel', reward: 10 },
-  { name: 'Scratch Card', reward: 20 },
+  { name: 'Scratch', reward: 20 },
   { name: 'Reaction', reward: 5 },
   { name: 'Runner', reward: 15 },
   { name: 'Puzzle', reward: 25 },
@@ -29,32 +20,59 @@ const GAMES = [
 export default function SuperAppHome() {
   const navigate = useNavigate();
   const [coins, setCoins] = useState(100);
+  const [miners, setMiners] = useState(0);
   const [price, setPrice] = useState(0.00);
   const [bids, setBids] = useState(0);
   const [timer, setTimer] = useState(10);
   const [showAlert, setShowAlert] = useState(null);
+  const [leaderboard, setLeaderboard] = useState([
+    { name: 'User123', score: 5000 },
+    { name: 'Player42', score: 3500 },
+    { name: 'Gamer99', score: 2100 },
+  ]);
   
   const userId = localStorage.getItem('userId') || 'guest_' + Math.random().toString(36).substr(2, 9);
   
   useEffect(() => {
     if (!localStorage.getItem('userId')) localStorage.setItem('userId', userId);
     fetchCoins();
+    fetchMiners();
     
     // Hide main navbar
     const header = document.querySelector('header');
     if (header) header.style.display = 'none';
     
-    // Timer countdown
-    const interval = setInterval(() => {
+    // Auction timer countdown
+    const timerInterval = setInterval(() => {
       setTimer(prev => prev > 0 ? prev - 1 : 0);
     }, 1000);
     
+    // Miner passive income: +1 coin per miner every 5 seconds
+    const minerInterval = setInterval(() => {
+      setMiners(currentMiners => {
+        if (currentMiners > 0) {
+          setCoins(prev => {
+            const newBalance = prev + currentMiners;
+            // Also update backend
+            axios.post(`${API}/bbz/coins/earn`, {
+              user_id: userId,
+              amount: currentMiners,
+              source: 'miner_income'
+            }).catch(() => {});
+            return newBalance;
+          });
+        }
+        return currentMiners;
+      });
+    }, 5000);
+    
     return () => {
-      clearInterval(interval);
+      clearInterval(timerInterval);
+      clearInterval(minerInterval);
       const header = document.querySelector('header');
       if (header) header.style.display = '';
     };
-  }, []);
+  }, [userId]);
   
   const fetchCoins = async () => {
     try {
@@ -65,29 +83,61 @@ export default function SuperAppHome() {
     }
   };
   
+  const fetchMiners = async () => {
+    try {
+      const res = await axios.get(`${API}/bbz/miners?user_id=${userId}`);
+      setMiners(res.data.miners?.length || 0);
+    } catch {
+      setMiners(0);
+    }
+  };
+  
+  const alert = (msg) => {
+    setShowAlert(msg);
+    setTimeout(() => setShowAlert(null), 2000);
+  };
+  
   const playGame = async (gameName, reward) => {
     try {
       const res = await axios.post(`${API}/bbz/coins/earn`, {
         user_id: userId,
         amount: reward,
-        source: `game_${gameName.toLowerCase().replace(' ', '_')}`
+        source: `game_${gameName.toLowerCase()}`
       });
       setCoins(res.data.new_balance);
     } catch {
       setCoins(prev => prev + reward);
     }
-    setShowAlert(`Gewonnen: ${reward} Coins`);
-    setTimeout(() => setShowAlert(null), 2000);
+    alert(`+${reward} Coins!`);
+  };
+  
+  const buyMiner = async () => {
+    if (coins < 50) {
+      alert('Not enough coins!');
+      return;
+    }
+    
+    try {
+      const res = await axios.post(`${API}/bbz/coins/spend`, {
+        user_id: userId,
+        amount: 50,
+        source: 'buy_miner'
+      });
+      setCoins(res.data.new_balance);
+    } catch {
+      setCoins(prev => prev - 50);
+    }
+    
+    setMiners(prev => prev + 1);
+    alert('Miner purchased!');
   };
   
   const bid = async () => {
     if (coins < 1) {
-      setShowAlert('Keine Coins!');
-      setTimeout(() => setShowAlert(null), 2000);
+      alert('No coins!');
       return;
     }
     
-    // Spend 1 coin for bid
     try {
       const res = await axios.post(`${API}/bbz/coins/spend`, {
         user_id: userId,
@@ -99,7 +149,6 @@ export default function SuperAppHome() {
       setCoins(prev => prev - 1);
     }
     
-    // Increase price by 0.01€
     setPrice(prev => prev + 0.01);
     setBids(prev => prev + 1);
     setTimer(10);
@@ -108,74 +157,89 @@ export default function SuperAppHome() {
   return (
     <div style={styles.page} data-testid="super-app-home">
       {/* Header */}
-      <header style={styles.header}>
-        ⚡ BidBlitz
-      </header>
+      <header style={styles.header}>⚡ BidBlitz</header>
 
       {/* Wallet */}
       <div style={styles.wallet} data-testid="wallet-balance">
         Coins: <span style={styles.coinCount}>{coins}</span>
+        {miners > 0 && <span style={styles.minerBadge}>⛏ {miners}</span>}
       </div>
 
       {/* Alert */}
-      {showAlert && (
-        <div style={styles.alert} data-testid="alert">
-          {showAlert}
-        </div>
-      )}
-
-      {/* Service Cards - 3 columns */}
-      <div style={styles.grid}>
-        {SERVICE_CARDS.map((item, index) => (
-          <div
-            key={index}
-            style={styles.card}
-            onClick={() => navigate(item.route)}
-            data-testid={`service-${item.name.toLowerCase().replace(' ', '-')}`}
-          >
-            <div style={styles.cardEmoji}>{item.emoji}</div>
-            <div style={styles.cardName}>{item.name}</div>
-          </div>
-        ))}
-      </div>
+      {showAlert && <div style={styles.alert}>{showAlert}</div>}
 
       {/* Games Section */}
-      <h2 style={styles.sectionTitle}>Games</h2>
-      
-      <div style={styles.gamesGrid}>
-        {GAMES.map((game, index) => (
-          <div
-            key={index}
-            style={styles.gameCard}
-            onClick={() => playGame(game.name, game.reward)}
-            data-testid={`game-${game.name.toLowerCase().replace(' ', '-')}`}
-          >
-            {game.name}
-          </div>
-        ))}
-      </div>
-
-      {/* Live Auction */}
-      <div style={styles.auction} data-testid="live-auction">
-        <h3 style={styles.auctionTitle}>Live Auction</h3>
-        
-        <div style={styles.auctionInfo}>
-          <div>Preis: <span style={styles.priceValue}>€{price.toFixed(2)}</span></div>
-          <div>Gebote: <span style={styles.bidCount}>{bids}</span></div>
-          <div>Timer: <span style={{...styles.timerValue, color: timer <= 3 ? '#ef4444' : '#22c55e'}}>{timer}</span></div>
+      <div style={styles.section}>
+        <h2 style={styles.sectionTitle}>🎮 Games</h2>
+        <div style={styles.grid}>
+          {GAMES.map((game, index) => (
+            <div
+              key={index}
+              style={styles.game}
+              onClick={() => playGame(game.name, game.reward)}
+              data-testid={`game-${game.name.toLowerCase()}`}
+            >
+              {game.name}
+            </div>
+          ))}
         </div>
-        
-        <button 
-          style={styles.bidButton} 
-          onClick={bid}
-          data-testid="bid-button"
-        >
-          Bieten (0.50€ / 1 Coin)
-        </button>
       </div>
 
-      {/* Bottom Spacer */}
-      <div style={{height: '20px'}} />
+      {/* Miner Section */}
+      <div style={styles.section}>
+        <h2 style={styles.sectionTitle}>⛏ Miner</h2>
+        <button style={styles.button} onClick={buyMiner} data-testid="buy-miner">
+          Buy Miner (50 Coins)
+        </button>
+        <p style={styles.minerInfo}>
+          Miners: {miners} | Income: +{miners} Coin / 5 sec
+        </p>
+      </div>
+
+      {/* Auction Section */}
+      <div style={styles.section}>
+        <h2 style={styles.sectionTitle}>🔥 Auction</h2>
+        <div style={styles.auction} data-testid="auction">
+          <div style={styles.auctionRow}>
+            Preis: <span style={styles.priceValue}>€{price.toFixed(2)}</span>
+          </div>
+          <div style={styles.auctionRow}>
+            Gebote: <span style={styles.bidValue}>{bids}</span>
+          </div>
+          <div style={styles.auctionRow}>
+            Timer: <span style={{...styles.timerValue, color: timer <= 3 ? '#ef4444' : '#22c55e'}}>{timer}</span>
+          </div>
+          <button style={styles.bidButton} onClick={bid} data-testid="bid-button">
+            Bid (1 Coin)
+          </button>
+        </div>
+      </div>
+
+      {/* Leaderboard Section */}
+      <div style={styles.section}>
+        <h2 style={styles.sectionTitle}>🏆 Leaderboard</h2>
+        <div style={styles.leaderboard}>
+          {leaderboard.map((player, index) => (
+            <div key={index} style={styles.leaderRow}>
+              <span style={styles.rank}>#{index + 1}</span>
+              <span style={styles.playerName}>{player.name}</span>
+              <span style={styles.playerScore}>{player.score}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Bottom Spacer for Nav */}
+      <div style={{height: '70px'}} />
+
+      {/* Bottom Navigation */}
+      <nav style={styles.nav}>
+        <div style={styles.navItem} onClick={() => navigate('/super-home')}>🏠</div>
+        <div style={styles.navItem} onClick={() => navigate('/games')}>🎮</div>
+        <div style={styles.navItem} onClick={() => navigate('/wallet')}>💰</div>
+        <div style={styles.navItem} onClick={() => navigate('/live-auction')}>🔥</div>
+        <div style={styles.navItem} onClick={() => navigate('/profile')}>👤</div>
+      </nav>
     </div>
   );
 }
@@ -206,81 +270,77 @@ const styles = {
     padding: '15px',
     textAlign: 'center',
     fontSize: '20px',
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: '15px',
   },
   coinCount: {
     color: '#fbbf24',
     fontWeight: 'bold',
   },
+  minerBadge: {
+    background: '#7c3aed',
+    padding: '4px 10px',
+    borderRadius: '20px',
+    fontSize: '14px',
+  },
   alert: {
     background: '#22c55e',
-    padding: '12px',
+    padding: '10px',
     textAlign: 'center',
-    fontSize: '16px',
     fontWeight: 'bold',
+  },
+  section: {
+    padding: '20px',
+  },
+  sectionTitle: {
+    margin: '0 0 15px 0',
+    fontSize: '18px',
   },
   grid: {
     display: 'grid',
     gridTemplateColumns: 'repeat(3, 1fr)',
-    gap: '12px',
-    padding: '20px',
-  },
-  card: {
-    background: '#1e293b',
-    padding: '20px 10px',
-    borderRadius: '12px',
-    textAlign: 'center',
-    cursor: 'pointer',
-  },
-  cardEmoji: {
-    fontSize: '28px',
-    marginBottom: '6px',
-  },
-  cardName: {
-    fontSize: '12px',
-    fontWeight: '500',
-  },
-  sectionTitle: {
-    paddingLeft: '20px',
-    margin: '5px 0 10px',
-    fontSize: '18px',
-  },
-  gamesGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(3, 1fr)',
     gap: '10px',
-    padding: '0 20px',
   },
-  gameCard: {
+  game: {
     background: '#7c3aed',
-    padding: '15px 8px',
+    padding: '15px 10px',
     borderRadius: '10px',
     textAlign: 'center',
     cursor: 'pointer',
     fontSize: '13px',
     fontWeight: '500',
   },
+  button: {
+    background: '#a855f7',
+    border: 'none',
+    padding: '12px 20px',
+    borderRadius: '10px',
+    color: 'white',
+    cursor: 'pointer',
+    fontSize: '14px',
+    fontWeight: 'bold',
+  },
+  minerInfo: {
+    marginTop: '10px',
+    color: '#94a3b8',
+    fontSize: '14px',
+  },
   auction: {
     background: '#1e293b',
     padding: '20px',
-    margin: '20px',
     borderRadius: '12px',
   },
-  auctionTitle: {
-    margin: '0 0 15px 0',
-    fontSize: '18px',
-  },
-  auctionInfo: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '8px',
-    marginBottom: '15px',
+  auctionRow: {
+    marginBottom: '8px',
     fontSize: '16px',
   },
   priceValue: {
     color: '#22c55e',
     fontWeight: 'bold',
   },
-  bidCount: {
+  bidValue: {
     color: '#fbbf24',
     fontWeight: 'bold',
   },
@@ -290,12 +350,50 @@ const styles = {
   bidButton: {
     background: '#a855f7',
     border: 'none',
-    padding: '12px 20px',
+    padding: '12px 25px',
     borderRadius: '10px',
     color: 'white',
     cursor: 'pointer',
-    fontSize: '16px',
+    fontSize: '14px',
     fontWeight: 'bold',
-    width: '100%',
+    marginTop: '10px',
+  },
+  leaderboard: {
+    background: '#1e293b',
+    borderRadius: '12px',
+    overflow: 'hidden',
+  },
+  leaderRow: {
+    display: 'flex',
+    padding: '12px 15px',
+    borderBottom: '1px solid #334155',
+    alignItems: 'center',
+  },
+  rank: {
+    width: '40px',
+    fontWeight: 'bold',
+    color: '#fbbf24',
+  },
+  playerName: {
+    flex: 1,
+  },
+  playerScore: {
+    color: '#22c55e',
+    fontWeight: 'bold',
+  },
+  nav: {
+    position: 'fixed',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    background: '#020617',
+    display: 'flex',
+    justifyContent: 'space-around',
+    padding: '15px 10px',
+    borderTop: '1px solid #1e293b',
+  },
+  navItem: {
+    fontSize: '24px',
+    cursor: 'pointer',
   },
 };
