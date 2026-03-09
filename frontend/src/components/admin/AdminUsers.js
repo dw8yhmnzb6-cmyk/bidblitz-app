@@ -35,12 +35,22 @@ export default function AdminUsers({
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const headers = { Authorization: `Bearer ${token}` };
-      const res = await axios.get(`${API}/admin/users`, { headers });
-      console.log('AdminUsers: Loaded', res.data?.length, 'users');
-      setUsers(res.data || []);
+      // Use native fetch instead of axios to avoid potential interceptor issues
+      const response = await fetch(`${API}/admin/users`, {
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      const data = await response.json();
+      console.log('AdminUsers: Loaded', data?.length, 'users');
+      setUsers(data || []);
     } catch (error) {
       console.error('AdminUsers: Error fetching users', error);
+      setUsers([]);
     } finally {
       setLoading(false);
     }
