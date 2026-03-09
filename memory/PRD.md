@@ -43,10 +43,11 @@ Build a "Super App" called BidBlitz that consolidates auctions, games, mobility 
 ## P0 - Critical (COMPLETED ✅)
 1. ~~**Code Cleanup**: Delete 200+ obsolete files in `/pages` directory~~ - DONE (39 files deleted)
 2. ~~**Connect games to backend economy**: All games use local state, need API integration~~ - DONE (CandyMatch, SlotMachine, LuckyWheel, CoinTap)
+3. ~~**Admin Panel Navigation Bug**: Tabs navigated away from `/admin-panel` to `/admin`~~ - FIXED (March 2026) - Updated `handleTabClick` and `handleItemClick` to use `setActiveTab` instead of `navigate()`
 
 ## P1 - High Priority
-3. **Navigation standardization**: Convert remaining vanilla JS onclick to React Router
-4. **Leaderboard consolidation**: Two components exist (Leaderboard.jsx, GameLeaderboard.jsx)
+4. **Navigation standardization**: Convert remaining vanilla JS onclick to React Router
+5. **Leaderboard consolidation**: Two components exist (Leaderboard.jsx, GameLeaderboard.jsx)
 
 ## P2 - Medium Priority
 5. **Translations**: Most new components have hardcoded German text
@@ -74,3 +75,6 @@ Build a "Super App" called BidBlitz that consolidates auctions, games, mobility 
 - Game components use client-side coin counters (not connected to backend)
 - GameLeaderboard uses static data
 - Some navigation uses vanilla JS instead of React Router
+
+## Changelog - March 2026
+- **[FIXED] AdminPanelNew Tab Navigation**: Fixed bug where clicking tabs navigated to `/admin?tab=X` instead of staying on `/admin-panel`. Updated `handleTabClick()` and `handleItemClick()` to update state without navigation.
