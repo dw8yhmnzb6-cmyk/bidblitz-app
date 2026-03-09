@@ -1381,7 +1381,14 @@ export default function Admin() {
                       onClick={async (e) => {
                         e.stopPropagation();
                         setMobileMenuOpen(false);
+                        // Force immediate data fetch for the new tab
                         setActiveTab(tab.id);
+                        // Manually trigger fetchData after small delay to ensure state is updated
+                        setTimeout(() => {
+                          if (typeof window !== 'undefined') {
+                            window.dispatchEvent(new CustomEvent('admin-tab-changed', { detail: tab.id }));
+                          }
+                        }, 100);
                       }}
                       className={`flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl transition-all border min-h-[70px] select-none ${
                         activeTab === tab.id
