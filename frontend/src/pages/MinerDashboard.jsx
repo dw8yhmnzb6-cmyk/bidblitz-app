@@ -282,12 +282,13 @@ export default function MinerDashboard() {
   const upgradeMiner = async (minerId, currentLevel) => {
     const cost = currentLevel * 50;
     
+    // Frontend validation
     if (coins < cost) {
-      showMessage(`❌ Nicht genug Coins! Du brauchst ${cost} Coins.`, 'error');
+      showMessage(`❌ Nicht genug Coins! Du brauchst ${cost} Coins, du hast nur ${coins}.`, 'error');
       return;
     }
     
-    if (!window.confirm(`Miner auf Level ${currentLevel + 1} upgraden?\n\nKosten: ${cost} Coins`)) {
+    if (!window.confirm(`Miner auf Level ${currentLevel + 1} upgraden?\n\nKosten: ${cost} Coins\nDein Guthaben: ${coins} Coins`)) {
       return;
     }
     
@@ -297,11 +298,19 @@ export default function MinerDashboard() {
         miner_id: minerId
       });
       
-      showMessage(`✅ Miner upgraded! -${res.data.cost} Coins`);
-      setCoins(res.data.new_balance);
-      fetchData();
+      // Update coins ONLY after successful API response
+      if (res.data.success && res.data.new_balance !== undefined) {
+        setCoins(res.data.new_balance);
+        showMessage(`✅ Miner upgraded! -${res.data.cost} Coins. Neues Guthaben: ${res.data.new_balance}`, 'success');
+        fetchData(); // Refresh miner data
+      } else {
+        showMessage('Upgrade fehlgeschlagen - Server Fehler', 'error');
+      }
     } catch (error) {
-      showMessage(error.response?.data?.detail || 'Upgrade fehlgeschlagen', 'error');
+      const errorMsg = error.response?.data?.detail || 'Upgrade fehlgeschlagen';
+      showMessage(`❌ ${errorMsg}`, 'error');
+      // Refresh coins to ensure UI is in sync
+      fetchData();
     }
   };
   
