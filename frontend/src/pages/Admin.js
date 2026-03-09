@@ -375,7 +375,9 @@ export default function Admin() {
         setProducts(productsRes.data);
         setAuctions(allAuctionsRes.data);
       } else if (activeTab === 'users') {
+        console.log('Fetching users from:', `${API}/admin/users`);
         const res = await axios.get(`${API}/admin/users`, { headers });
+        console.log('Users response:', res.data?.length, 'users');
         setUsers(res.data);
       } else if (activeTab === 'vouchers') {
         const res = await axios.get(`${API}/admin/vouchers`, { headers });
