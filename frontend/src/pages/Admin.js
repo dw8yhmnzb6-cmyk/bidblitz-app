@@ -1406,9 +1406,16 @@ export default function Admin() {
                         e.stopPropagation();
                         setMobileMenuOpen(false);
                         setActiveTab(tab.id);
-                        // Directly fetch data for specific tabs that might have issues
-                        if (tab.id === 'users' || tab.id === 'auctions') {
-                          setTimeout(() => fetchDataForTab(tab.id), 200);
+                        // Directly fetch users data
+                        if (tab.id === 'users') {
+                          try {
+                            const headers = { Authorization: `Bearer ${token}` };
+                            const res = await axios.get(`${API}/admin/users`, { headers });
+                            setUsers(res.data);
+                            console.log('Users loaded:', res.data.length);
+                          } catch (error) {
+                            console.error('Error fetching users:', error);
+                          }
                         }
                       }}
                       className={`flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl transition-all border min-h-[70px] select-none ${
