@@ -1,31 +1,30 @@
 /**
- * BidBlitz Live Auction - Einfaches Design
+ * BidBlitz Live Auctions - Mit VIP Sektion
  */
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
-
-const API = process.env.REACT_APP_BACKEND_URL + '/api';
-
-const BID_COST = 0.50;
 
 export default function LiveAuction() {
   const navigate = useNavigate();
   
   // Auction state
   const [productName, setProductName] = useState('Product');
+  const [productValue, setProductValue] = useState(0);
   const [price, setPrice] = useState(0);
   const [timer, setTimer] = useState(10);
   const [bids, setBids] = useState(0);
   const [minRevenue, setMinRevenue] = useState(200);
   const [auctionFinished, setAuctionFinished] = useState(false);
   
+  // VIP Auctions list
+  const [vipAuctions, setVipAuctions] = useState([]);
+  
   // Admin inputs
   const [adminProduct, setAdminProduct] = useState('');
   const [adminValue, setAdminValue] = useState('');
   const [adminMinRevenue, setAdminMinRevenue] = useState('');
   
-  const timerRef = useRef(timer);
+  const bidCost = 0.50;
   
   useEffect(() => {
     const header = document.querySelector('header');
@@ -54,11 +53,11 @@ export default function LiveAuction() {
   // Check auction end
   useEffect(() => {
     if (timer === 0 && !auctionFinished) {
-      const revenue = bids * BID_COST;
+      const revenue = bids * bidCost;
       
       if (revenue >= minRevenue) {
         setAuctionFinished(true);
-        alert('Auction finished');
+        alert('Auktion beendet');
       } else {
         // Extend timer
         setTimer(5);
@@ -67,11 +66,17 @@ export default function LiveAuction() {
   }, [timer, bids, minRevenue, auctionFinished]);
   
   const createAuction = () => {
-    if (adminProduct) {
-      setProductName(adminProduct);
-    }
-    if (adminMinRevenue) {
-      setMinRevenue(parseFloat(adminMinRevenue) || 200);
+    const name = adminProduct || 'Product';
+    const value = parseFloat(adminValue) || 0;
+    const minRev = parseFloat(adminMinRevenue) || 200;
+    
+    setProductName(name);
+    setProductValue(value);
+    setMinRevenue(minRev);
+    
+    // If product value >= 1000, add to VIP list
+    if (value >= 1000) {
+      setVipAuctions(prev => [...prev, { name, value }]);
     }
     
     setPrice(0);
@@ -93,7 +98,7 @@ export default function LiveAuction() {
     setTimer(10);
   };
   
-  const revenue = bids * BID_COST;
+  const revenue = bids * bidCost;
   
   return (
     <>
@@ -116,7 +121,7 @@ export default function LiveAuction() {
         .auction-header {
           background: #020617;
           padding: 20px;
-          font-size: 22px;
+          font-size: 24px;
           display: flex;
           align-items: center;
           gap: 15px;
@@ -150,6 +155,44 @@ export default function LiveAuction() {
           font-size: 18px;
         }
         
+        .vip-card {
+          background: #7c3aed;
+          padding: 20px;
+          border-radius: 15px;
+          margin-bottom: 20px;
+        }
+        
+        .vip-card h2 {
+          margin: 0 0 10px 0;
+        }
+        
+        .vip-card p {
+          margin: 5px 0;
+          opacity: 0.9;
+        }
+        
+        .vip-list {
+          margin-top: 15px;
+        }
+        
+        .vip-item {
+          background: rgba(255,255,255,0.1);
+          padding: 10px 15px;
+          border-radius: 8px;
+          margin: 5px 0;
+        }
+        
+        .admin-card {
+          background: #111827;
+          padding: 20px;
+          border-radius: 15px;
+          margin-top: 20px;
+        }
+        
+        .admin-card h3 {
+          margin: 0 0 15px 0;
+        }
+        
         .bid-btn {
           background: #a855f7;
           border: none;
@@ -170,23 +213,12 @@ export default function LiveAuction() {
           cursor: not-allowed;
         }
         
-        .admin-card {
-          background: #1e293b;
-          padding: 20px;
-          border-radius: 15px;
-          margin-top: 20px;
-        }
-        
-        .admin-card h3 {
-          margin: 0 0 15px 0;
-        }
-        
         .admin-input {
           padding: 10px;
           margin: 5px;
+          border-radius: 5px;
           border: none;
-          border-radius: 8px;
-          background: #0f172a;
+          background: #1e293b;
           color: white;
           font-size: 14px;
           width: calc(100% - 30px);
@@ -215,7 +247,7 @@ export default function LiveAuction() {
           color: #ef4444;
         }
         
-        .revenue {
+        .revenue-text {
           color: #22c55e;
         }
       `}</style>
@@ -224,11 +256,11 @@ export default function LiveAuction() {
         {/* Header */}
         <header className="auction-header">
           <button className="back-btn" onClick={() => navigate('/super-home')}>←</button>
-          <span>⚡ BidBlitz Live Auction</span>
+          <span>⚡ BidBlitz Live Auctions</span>
         </header>
         
         <div className="container">
-          {/* Auction Card */}
+          {/* Current Auction */}
           <div className="auction-card">
             <h2>{productName}</h2>
             
@@ -240,7 +272,7 @@ export default function LiveAuction() {
             
             <p>Gebote: <strong>{bids}</strong></p>
             
-            <p className="revenue">
+            <p className="revenue-text">
               Umsatz: €<strong>{revenue.toFixed(2)}</strong>
             </p>
             
@@ -249,13 +281,31 @@ export default function LiveAuction() {
               onClick={bid}
               disabled={auctionFinished}
             >
-              Bieten
+              Bieten (0,50 €)
             </button>
+          </div>
+          
+          {/* VIP Auctions */}
+          <div className="vip-card">
+            <h2>👑 VIP Auktionen</h2>
+            <p>Produkte über 1000 € erscheinen hier</p>
+            
+            <div className="vip-list">
+              {vipAuctions.length === 0 ? (
+                <p style={{ opacity: 0.6, fontStyle: 'italic' }}>Noch keine VIP Auktionen</p>
+              ) : (
+                vipAuctions.map((auction, index) => (
+                  <div key={index} className="vip-item">
+                    {auction.name} (€{auction.value.toFixed(2)})
+                  </div>
+                ))
+              )}
+            </div>
           </div>
           
           {/* Admin Panel */}
           <div className="admin-card">
-            <h3>Admin Panel</h3>
+            <h3>⚙️ Admin Panel</h3>
             
             <input 
               className="admin-input"
@@ -266,7 +316,7 @@ export default function LiveAuction() {
             
             <input 
               className="admin-input"
-              placeholder="Produktwert €"
+              placeholder="Produktwert"
               type="number"
               value={adminValue}
               onChange={(e) => setAdminValue(e.target.value)}
@@ -274,14 +324,14 @@ export default function LiveAuction() {
             
             <input 
               className="admin-input"
-              placeholder="Minimum Umsatz €"
+              placeholder="Minimum Umsatz"
               type="number"
               value={adminMinRevenue}
               onChange={(e) => setAdminMinRevenue(e.target.value)}
             />
             
             <button className="admin-btn" onClick={createAuction}>
-              Auktion starten
+              Auktion erstellen
             </button>
           </div>
         </div>
