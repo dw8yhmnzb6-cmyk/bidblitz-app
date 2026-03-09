@@ -1378,10 +1378,10 @@ export default function Admin() {
                   {category.tabs.map((tab) => (
                     <button
                       key={tab.id}
-                      onClick={(e) => {
+                      onClick={async (e) => {
                         e.stopPropagation();
+                        setMobileMenuOpen(false);
                         setActiveTab(tab.id);
-                        setTimeout(() => setMobileMenuOpen(false), 150);
                       }}
                       className={`flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl transition-all border min-h-[70px] select-none ${
                         activeTab === tab.id
