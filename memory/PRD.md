@@ -78,3 +78,9 @@ Build a "Super App" called BidBlitz that consolidates auctions, games, mobility 
 
 ## Changelog - March 2026
 - **[FIXED] AdminPanelNew Tab Navigation**: Fixed bug where clicking tabs navigated to `/admin?tab=X` instead of staying on `/admin-panel`. Updated `handleTabClick()` and `handleItemClick()` to update state without navigation.
+- **[UPDATED] SuperAppHome Redesign**: Replaced the complex SuperAppHome with a clean, minimal design featuring:
+  - 6 Service Cards (Games, Miner, Live Auctions, VIP Auctions, Taxi, Scooter)
+  - 6 Game Cards with rewards (+5 to +30 coins)
+  - Wallet Balance display connected to backend API
+  - Win Alert animation when earning coins
+  - Bottom navigation bar (Home, Games, Wallet, Profile)
