@@ -243,6 +243,7 @@ export default function MinerDashboard() {
   const [poolStats, setPoolStats] = useState(null);
   const [shop, setShop] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [upgrading, setUpgrading] = useState(false); // NEW: Track upgrade in progress
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState('success');
   
@@ -254,20 +255,27 @@ export default function MinerDashboard() {
   }, []);
   
   const fetchData = async () => {
+    setLoading(true);
     try {
-      const [minersRes, walletRes, poolRes, shopRes] = await Promise.all([
+      // Fetch coins first - most important
+      const walletRes = await axios.get(`${API}/bbz/coins/${userId}`);
+      const currentCoins = walletRes.data.coins ?? 0;
+      setCoins(currentCoins);
+      console.log('Loaded coins:', currentCoins);
+      
+      // Fetch other data
+      const [minersRes, poolRes, shopRes] = await Promise.all([
         axios.get(`${API}/bbz/miners/${userId}`).catch(() => ({ data: { miners: [] } })),
-        axios.get(`${API}/bbz/coins/${userId}`).catch(() => ({ data: { coins: 100 } })),
         axios.get(`${API}/bbz/miners/pool-stats`).catch(() => ({ data: null })),
         axios.get(`${API}/bbz/miners/shop`).catch(() => ({ data: { miners: [] } })),
       ]);
       
       setMiners(minersRes.data.miners || []);
-      setCoins(walletRes.data.coins || 100);
       setPoolStats(poolRes.data);
       setShop(shopRes.data.miners || []);
     } catch (error) {
       console.error('Error fetching data:', error);
+      setCoins(0); // If error, set to 0 to prevent upgrades
     } finally {
       setLoading(false);
     }
