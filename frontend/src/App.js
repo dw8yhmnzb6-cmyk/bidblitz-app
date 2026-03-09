@@ -1176,7 +1176,7 @@ function AppContent() {
               <SuperAppMinimal />
             </ProtectedRoute>
           } />
-          <Route path="/games" element={<GamesHub />} />
+          <Route path="/games" element={<GamesLobby />} />
           <Route path="/spiele" element={<GamesHub />} />
           <Route path="/live-auction" element={<LiveAuction />} />
           {/* /auctions route defined above - using Auctions component */}
