@@ -18,12 +18,12 @@ const SERVICE_CARDS = [
 ];
 
 const GAMES = [
-  { name: 'Lucky Wheel', reward: 10 },
-  { name: 'Scratch', reward: 20 },
-  { name: 'Reaction', reward: 5 },
-  { name: 'Runner', reward: 15 },
-  { name: 'Puzzle', reward: 25 },
-  { name: 'Treasure', reward: 30 },
+  { name: 'Lucky Wheel', reward: 10, route: '/lucky-wheel' },
+  { name: 'Scratch', reward: 20, route: '/scratch-card' },
+  { name: 'Reaction', reward: 5, route: '/reaction-game' },
+  { name: 'Runner', reward: 15, route: '/runner-game' },
+  { name: 'Puzzle', reward: 25, route: '/puzzle-game' },
+  { name: 'Treasure', reward: 30, route: '/coin-tap' },
 ];
 
 export default function SuperAppHome() {
