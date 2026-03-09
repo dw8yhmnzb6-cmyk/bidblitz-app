@@ -314,6 +314,30 @@ export default function Admin() {
     }
   }, [isAdmin, activeTab]);
 
+  // Direct fetch function that can be called with a specific tab
+  const fetchDataForTab = async (tabId) => {
+    setLoading(true);
+    try {
+      const headers = { Authorization: `Bearer ${token}` };
+      
+      if (tabId === 'users') {
+        const res = await axios.get(`${API}/admin/users`, { headers });
+        setUsers(res.data);
+      } else if (tabId === 'auctions') {
+        const [auctionsRes, productsRes] = await Promise.all([
+          axios.get(`${API}/auctions`),
+          axios.get(`${API}/products`)
+        ]);
+        setAuctions(auctionsRes.data);
+        setProducts(productsRes.data);
+      }
+    } catch (error) {
+      console.error('Error fetching data for tab:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const fetchData = async () => {
     setLoading(true);
     try {
