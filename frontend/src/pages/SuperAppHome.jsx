@@ -1,5 +1,6 @@
 /**
- * BidBlitz Dashboard - Mit VIP Logic
+ * BidBlitz Landing Page - Complete Design
+ * Hero + Dashboard + Gaming Lobby
  */
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -7,29 +8,29 @@ import axios from 'axios';
 
 const API = process.env.REACT_APP_BACKEND_URL + '/api';
 
-const SERVICES = [
+const DASHBOARD_ITEMS = [
   { emoji: '🎮', name: 'Games', route: '/games' },
-  { emoji: '💰', name: 'Wallet', route: '/wallet' },
   { emoji: '🔥', name: 'Live Auctions', route: '/auctions' },
   { emoji: '👑', name: 'VIP Auctions', route: '/vip-auctions' },
   { emoji: '⛏', name: 'Mining', route: '/mining' },
+  { emoji: '💰', name: 'Wallet', route: '/wallet' },
   { emoji: '🛍', name: 'Marketplace', route: '/marketplace' },
   { emoji: '🚕', name: 'Taxi', route: '/taxi' },
   { emoji: '🛴', name: 'Scooter', route: '/scooter' },
 ];
 
-// VIP Check Function
-const checkVIP = (price) => {
-  if (price >= 1000) {
-    return "VIP";
-  }
-  return "NORMAL";
-};
+const GAMES = [
+  { name: 'Dice Game', route: '/simple' },
+  { name: 'Match-3', route: '/candy-match' },
+  { name: 'Runner', route: '/runner-game' },
+  { name: 'Puzzle', route: '/reaction-game' },
+  { name: 'Strategy', route: '/coin-tap' },
+  { name: 'Lucky Wheel', route: '/lucky-wheel' },
+];
 
 export default function SuperAppHome() {
   const navigate = useNavigate();
   const [coins, setCoins] = useState(0);
-  const [vipStatus, setVipStatus] = useState('NORMAL');
   
   const userId = localStorage.getItem('userId') || 'guest_' + Math.random().toString(36).substr(2, 9);
   
@@ -49,18 +50,89 @@ export default function SuperAppHome() {
   const fetchCoins = async () => {
     try {
       const res = await axios.get(`${API}/bbz/coins/${userId}`);
-      const userCoins = res.data.coins || 0;
-      setCoins(userCoins);
-      setVipStatus(checkVIP(userCoins));
+      setCoins(res.data.coins || 0);
     } catch {
-      setCoins(100);
-      setVipStatus('NORMAL');
+      setCoins(1200);
     }
   };
   
   return (
     <>
       <style>{`
+        .bbz-page {
+          margin: 0;
+          font-family: Arial, sans-serif;
+          background: #0f172a;
+          color: white;
+          min-height: 100vh;
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          overflow-y: auto;
+          z-index: 999;
+        }
+        
+        .bbz-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 20px;
+          background: #020617;
+          font-size: 20px;
+        }
+        
+        .logo {
+          font-weight: bold;
+          color: #a855f7;
+        }
+        
+        .wallet {
+          background: #1e293b;
+          padding: 10px 20px;
+          border-radius: 20px;
+          cursor: pointer;
+          transition: 0.3s;
+        }
+        
+        .wallet:hover {
+          background: #334155;
+        }
+        
+        .hero {
+          text-align: center;
+          padding: 40px 20px;
+        }
+        
+        .hero h1 {
+          font-size: 40px;
+          color: #a855f7;
+          margin: 0 0 10px 0;
+        }
+        
+        .hero p {
+          color: #94a3b8;
+          margin: 0 0 20px 0;
+        }
+        
+        .hero button {
+          padding: 15px 30px;
+          background: #a855f7;
+          border: none;
+          border-radius: 10px;
+          color: white;
+          font-size: 16px;
+          font-weight: bold;
+          cursor: pointer;
+          transition: 0.3s;
+        }
+        
+        .hero button:hover {
+          background: #9333ea;
+          transform: scale(1.05);
+        }
+        
         .dashboard {
           display: grid;
           grid-template-columns: repeat(2, 1fr);
@@ -70,10 +142,11 @@ export default function SuperAppHome() {
         
         .card {
           background: #1e293b;
-          border-radius: 15px;
-          padding: 25px;
-          font-size: 18px;
+          border-radius: 20px;
+          padding: 30px;
           text-align: center;
+          font-size: 20px;
+          transform-style: preserve-3d;
           transition: 0.3s;
           cursor: pointer;
           border: none;
@@ -81,104 +154,135 @@ export default function SuperAppHome() {
         }
         
         .card:hover {
-          transform: scale(1.05);
+          transform: rotateY(10deg) scale(1.05);
           background: #334155;
         }
         
         .card-emoji {
-          font-size: 36px;
+          font-size: 32px;
           display: block;
-          margin-bottom: 10px;
+          margin-bottom: 8px;
+        }
+        
+        .games-section {
+          padding: 20px;
+        }
+        
+        .games-section h2 {
+          margin: 0 0 20px 0;
+        }
+        
+        .game-grid {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 15px;
+        }
+        
+        .game {
+          background: #1e293b;
+          padding: 20px;
+          border-radius: 15px;
+          text-align: center;
+          transition: 0.3s;
+          cursor: pointer;
+          border: none;
+          color: white;
+          font-size: 16px;
+        }
+        
+        .game:hover {
+          transform: scale(1.1);
+          background: #334155;
+        }
+        
+        .bottom-nav {
+          position: fixed;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          width: 100%;
+          background: #020617;
+          display: flex;
+          justify-content: space-around;
+          padding: 15px 0;
+        }
+        
+        .bottom-nav button {
+          background: none;
+          border: none;
+          color: white;
+          font-size: 16px;
+          cursor: pointer;
+          transition: 0.3s;
+          padding: 5px 10px;
+        }
+        
+        .bottom-nav button:hover {
+          color: #a855f7;
+        }
+        
+        .bottom-nav button.active {
+          color: #a855f7;
         }
       `}</style>
       
-      <div style={{
-        background: '#0f172a',
-        color: 'white',
-        fontFamily: 'Arial, sans-serif',
-        minHeight: '100vh',
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        overflowY: 'auto',
-        zIndex: 999
-      }}>
+      <div className="bbz-page">
         {/* Header */}
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          padding: '20px'
-        }}>
-          <h2 style={{ margin: 0, fontSize: '24px' }}>⚡ BidBlitz</h2>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            {vipStatus === 'VIP' && (
-              <span style={{
-                background: 'linear-gradient(135deg, #fbbf24, #f59e0b)',
-                padding: '4px 10px',
-                borderRadius: '8px',
-                fontSize: '12px',
-                fontWeight: 'bold'
-              }}>
-                👑 VIP
-              </span>
-            )}
-            <div 
-              onClick={() => navigate('/wallet')}
-              style={{
-                background: '#7c3aed',
-                padding: '8px 16px',
-                borderRadius: '10px',
-                fontWeight: 'bold',
-                cursor: 'pointer'
-              }}
-            >
-              💰 {coins.toLocaleString()}
-            </div>
+        <header className="bbz-header">
+          <div className="logo">⚡ BidBlitz</div>
+          <div className="wallet" onClick={() => navigate('/wallet')}>
+            💰 Coins: {coins.toLocaleString()}
           </div>
+        </header>
+        
+        {/* Hero Section */}
+        <div className="hero">
+          <h1>Play • Bid • Win</h1>
+          <p>Gaming • Auctions • Rewards</p>
+          <button onClick={() => navigate('/games')}>Start Playing</button>
         </div>
         
         {/* Dashboard Grid */}
-        <div className="dashboard" style={{ paddingBottom: '100px' }}>
-          {SERVICES.map((service, index) => (
+        <div className="dashboard">
+          {DASHBOARD_ITEMS.map((item, index) => (
             <button
               key={index}
               className="card"
-              onClick={() => navigate(service.route)}
+              onClick={() => navigate(item.route)}
             >
-              <span className="card-emoji">{service.emoji}</span>
-              {service.name}
+              <span className="card-emoji">{item.emoji}</span>
+              {item.name}
             </button>
           ))}
         </div>
         
-        {/* Bottom Navigation */}
-        <div style={{
-          position: 'fixed',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          background: '#111827',
-          display: 'flex',
-          justifyContent: 'space-around',
-          padding: '15px',
-          borderTop: '1px solid #1f2937'
-        }}>
-          <button style={{ background: 'none', border: 'none', color: '#7c3aed', fontSize: '24px', cursor: 'pointer' }}>
-            🏠
-          </button>
-          <button onClick={() => navigate('/games')} style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '24px', cursor: 'pointer' }}>
-            🎮
-          </button>
-          <button onClick={() => navigate('/mining')} style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '24px', cursor: 'pointer' }}>
-            ⛏
-          </button>
-          <button onClick={() => navigate('/wallet')} style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '24px', cursor: 'pointer' }}>
-            💰
-          </button>
+        {/* Gaming Lobby */}
+        <div className="games-section">
+          <h2>🎮 Gaming Lobby</h2>
+          <div className="game-grid">
+            {GAMES.map((game, index) => (
+              <button
+                key={index}
+                className="game"
+                onClick={() => navigate(game.route)}
+              >
+                {game.name}
+              </button>
+            ))}
+          </div>
         </div>
+        
+        {/* Spacer for bottom nav */}
+        <div style={{ height: '80px' }} />
+        
+        {/* Bottom Navigation */}
+        <nav className="bottom-nav">
+          <button className="active">Home</button>
+          <button onClick={() => navigate('/games')}>Games</button>
+          <button onClick={() => navigate('/wallet')}>Wallet</button>
+          <button onClick={() => navigate('/auctions')}>Auctions</button>
+          <button onClick={() => navigate('/profile')}>Profile</button>
+        </nav>
       </div>
     </>
   );
