@@ -1,21 +1,21 @@
 /**
- * BidBlitz Lucky Wheel - Mit Einsatz
+ * BidBlitz Lucky Wheel - Verbessertes Design
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
 const API = process.env.REACT_APP_BACKEND_URL + '/api';
 
-const REWARDS = [
-  { value: 0, label: '💀', color: '#374151' },
-  { value: 5, label: '5', color: '#ef4444' },
-  { value: 10, label: '10', color: '#f59e0b' },
-  { value: 0, label: '💀', color: '#374151' },
-  { value: 20, label: '20', color: '#22c55e' },
-  { value: 50, label: '50', color: '#3b82f6' },
-  { value: 0, label: '💀', color: '#374151' },
-  { value: 100, label: '💎', color: '#8b5cf6' },
+const SEGMENTS = [
+  { value: 0, label: '💀', color: '#374151', textColor: '#fff' },
+  { value: 5, label: '5', color: '#ef4444', textColor: '#fff' },
+  { value: 10, label: '10', color: '#f59e0b', textColor: '#000' },
+  { value: 0, label: '💀', color: '#374151', textColor: '#fff' },
+  { value: 20, label: '20', color: '#22c55e', textColor: '#fff' },
+  { value: 50, label: '50', color: '#3b82f6', textColor: '#fff' },
+  { value: 0, label: '💀', color: '#374151', textColor: '#fff' },
+  { value: 100, label: '💎', color: '#a855f7', textColor: '#fff' },
 ];
 
 const BET_COST = 10;
@@ -24,16 +24,17 @@ export default function LuckyWheel() {
   const navigate = useNavigate();
   const [coins, setCoins] = useState(0);
   const [spinning, setSpinning] = useState(false);
-  const [rotation, setRotation] = useState(0);
-  const [lastWin, setLastWin] = useState(null);
+  const [currentRotation, setCurrentRotation] = useState(0);
+  const [result, setResult] = useState(null);
   const [message, setMessage] = useState('');
-  const [spinsToday, setSpinsToday] = useState(0);
+  const canvasRef = useRef(null);
 
   const userId = localStorage.getItem('userId') || 'guest_' + Math.random().toString(36).substr(2, 9);
 
   useEffect(() => {
     if (!localStorage.getItem('userId')) localStorage.setItem('userId', userId);
     fetchCoins();
+    drawWheel(0);
     
     const header = document.querySelector('header');
     if (header) header.style.display = 'none';
@@ -53,30 +54,57 @@ export default function LuckyWheel() {
     }
   };
 
-  const spendCoins = async (amount, source) => {
-    try {
-      const res = await axios.post(`${API}/bbz/coins/spend`, {
-        user_id: userId,
-        amount: amount,
-        source: source
-      });
-      return { success: true, balance: res.data.new_balance };
-    } catch (error) {
-      return { success: false, error: error.response?.data?.detail || 'Error' };
-    }
-  };
-
-  const earnCoins = async (amount, source) => {
-    try {
-      const res = await axios.post(`${API}/bbz/coins/earn`, {
-        user_id: userId,
-        amount: amount,
-        source: source
-      });
-      return res.data.new_balance;
-    } catch (error) {
-      return coins + amount;
-    }
+  const drawWheel = (rotation) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    
+    const ctx = canvas.getContext('2d');
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+    const radius = Math.min(centerX, centerY) - 10;
+    
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.save();
+    ctx.translate(centerX, centerY);
+    ctx.rotate((rotation * Math.PI) / 180);
+    
+    const segmentAngle = (2 * Math.PI) / SEGMENTS.length;
+    
+    SEGMENTS.forEach((segment, i) => {
+      const startAngle = i * segmentAngle - Math.PI / 2;
+      const endAngle = startAngle + segmentAngle;
+      
+      // Draw segment
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.arc(0, 0, radius, startAngle, endAngle);
+      ctx.closePath();
+      ctx.fillStyle = segment.color;
+      ctx.fill();
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      
+      // Draw label
+      ctx.save();
+      ctx.rotate(startAngle + segmentAngle / 2);
+      ctx.textAlign = 'right';
+      ctx.fillStyle = segment.textColor;
+      ctx.font = 'bold 24px Arial';
+      ctx.fillText(segment.label, radius - 20, 8);
+      ctx.restore();
+    });
+    
+    // Center circle
+    ctx.beginPath();
+    ctx.arc(0, 0, 30, 0, 2 * Math.PI);
+    ctx.fillStyle = '#fbbf24';
+    ctx.fill();
+    ctx.strokeStyle = '#b45309';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    
+    ctx.restore();
   };
 
   const spin = async () => {
@@ -84,66 +112,104 @@ export default function LuckyWheel() {
     
     if (coins < BET_COST) {
       setMessage(`❌ Du brauchst ${BET_COST} Coins!`);
+      setTimeout(() => setMessage(''), 3000);
       return;
     }
 
-    // Einsatz abziehen
-    const spendResult = await spendCoins(BET_COST, 'lucky_wheel_bet');
-    if (!spendResult.success) {
-      setMessage(spendResult.error);
+    // Spend coins
+    try {
+      const res = await axios.post(`${API}/bbz/coins/spend`, {
+        user_id: userId,
+        amount: BET_COST,
+        source: 'lucky_wheel_bet'
+      });
+      setCoins(res.data.new_balance);
+    } catch (error) {
+      setMessage(error.response?.data?.detail || 'Fehler');
       return;
     }
     
-    setCoins(spendResult.balance);
     setSpinning(true);
-    setLastWin(null);
-    setMessage(`🎡 Spinning... -${BET_COST} Coins`);
+    setResult(null);
+    setMessage(`🎡 Drehen... -${BET_COST} Coins`);
     
-    // Weighted random - more likely to lose or get small wins
+    // Determine result with weighted odds
     const rand = Math.random();
     let winIndex;
     
-    if (rand < 0.35) winIndex = 0;      // 35% - Loss
-    else if (rand < 0.55) winIndex = 3; // 20% - Loss
-    else if (rand < 0.70) winIndex = 6; // 15% - Loss
-    else if (rand < 0.85) winIndex = 1; // 15% - 5 coins
-    else if (rand < 0.93) winIndex = 2; // 8% - 10 coins
-    else if (rand < 0.97) winIndex = 4; // 4% - 20 coins
-    else if (rand < 0.99) winIndex = 5; // 2% - 50 coins
+    if (rand < 0.30) winIndex = 0;      // 30% - Loss (💀)
+    else if (rand < 0.50) winIndex = 3; // 20% - Loss (💀)
+    else if (rand < 0.65) winIndex = 6; // 15% - Loss (💀)
+    else if (rand < 0.80) winIndex = 1; // 15% - 5 coins
+    else if (rand < 0.90) winIndex = 2; // 10% - 10 coins
+    else if (rand < 0.96) winIndex = 4; // 6% - 20 coins
+    else if (rand < 0.99) winIndex = 5; // 3% - 50 coins
     else winIndex = 7;                   // 1% - 100 coins JACKPOT
     
-    const win = REWARDS[winIndex].value;
+    const winAmount = SEGMENTS[winIndex].value;
     
-    // Calculate rotation
-    const segmentAngle = 360 / REWARDS.length;
-    const newRotation = rotation + 1800 + (winIndex * segmentAngle) + (segmentAngle / 2);
+    // Calculate final rotation
+    // The pointer is at the top (12 o'clock), so we need to rotate to bring the winning segment to that position
+    const segmentAngle = 360 / SEGMENTS.length;
+    const targetAngle = 360 - (winIndex * segmentAngle) - (segmentAngle / 2);
+    const spins = 5; // Number of full rotations
+    const finalRotation = currentRotation + (spins * 360) + targetAngle - (currentRotation % 360);
     
-    setRotation(newRotation);
+    // Animate
+    let startTime = null;
+    const duration = 4000;
+    const startRotation = currentRotation;
     
-    setTimeout(async () => {
-      if (win > 0) {
-        const newBalance = await earnCoins(win, 'lucky_wheel_win');
-        setCoins(newBalance);
-        setLastWin(win);
-        setMessage(`🎉 Gewonnen! +${win} Coins!`);
+    const animate = (timestamp) => {
+      if (!startTime) startTime = timestamp;
+      const progress = Math.min((timestamp - startTime) / duration, 1);
+      
+      // Ease out cubic
+      const easeOut = 1 - Math.pow(1 - progress, 3);
+      const rotation = startRotation + (finalRotation - startRotation) * easeOut;
+      
+      setCurrentRotation(rotation);
+      drawWheel(rotation);
+      
+      if (progress < 1) {
+        requestAnimationFrame(animate);
       } else {
-        setMessage('💀 Kein Gewinn. Versuche es nochmal!');
+        // Spin complete
+        setSpinning(false);
+        setResult({ index: winIndex, amount: winAmount });
+        
+        if (winAmount > 0) {
+          // Award coins
+          axios.post(`${API}/bbz/coins/earn`, {
+            user_id: userId,
+            amount: winAmount,
+            source: 'lucky_wheel_win'
+          }).then(res => {
+            setCoins(res.data.new_balance);
+            setMessage(`🎉 Gewonnen! +${winAmount} Coins!`);
+          }).catch(() => {
+            setCoins(prev => prev + winAmount);
+            setMessage(`🎉 Gewonnen! +${winAmount} Coins!`);
+          });
+        } else {
+          setMessage('💀 Verloren! Versuche es nochmal!');
+        }
+        
+        setTimeout(() => setMessage(''), 3000);
       }
-      setSpinning(false);
-      setSpinsToday(prev => prev + 1);
-    }, 3000);
+    };
+    
+    requestAnimationFrame(animate);
   };
 
   return (
     <>
       <style>{`
-        .wheel-game {
-          text-align: center;
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-          background: linear-gradient(180deg, #0f172a 0%, #1e1b4b 100%);
+        .wheel-page {
+          background: linear-gradient(180deg, #1e1b4b 0%, #0f172a 100%);
           color: white;
+          font-family: Arial, sans-serif;
           min-height: 100vh;
-          padding: 20px;
           position: fixed;
           top: 0;
           left: 0;
@@ -151,70 +217,49 @@ export default function LuckyWheel() {
           bottom: 0;
           overflow-y: auto;
           z-index: 999;
+          text-align: center;
+          padding: 20px;
         }
+        
         .wheel-header {
           display: flex;
           justify-content: space-between;
           align-items: center;
           margin-bottom: 20px;
         }
-        .wheel-back {
+        
+        .back-btn {
           background: none;
           border: none;
           color: white;
-          font-size: 24px;
+          font-size: 28px;
           cursor: pointer;
         }
-        .wheel-title {
-          font-size: 24px;
-          font-weight: bold;
-        }
-        .wheel-coins {
+        
+        .coins-badge {
           background: linear-gradient(135deg, #7c3aed, #a855f7);
-          padding: 8px 14px;
-          border-radius: 10px;
-          font-size: 16px;
+          padding: 10px 20px;
+          border-radius: 20px;
           font-weight: bold;
         }
-        .wheel-message {
-          padding: 10px 20px;
-          border-radius: 10px;
-          margin: 10px auto;
-          max-width: 350px;
-          background: rgba(124, 58, 237, 0.3);
-          font-weight: 500;
+        
+        .wheel-title {
+          font-size: 32px;
+          margin-bottom: 10px;
         }
+        
         .wheel-container {
           position: relative;
-          width: 280px;
-          height: 280px;
+          width: 300px;
+          height: 300px;
           margin: 30px auto;
         }
-        .wheel {
+        
+        .wheel-canvas {
           width: 100%;
           height: 100%;
-          border-radius: 50%;
-          position: relative;
-          transition: transform 3s cubic-bezier(0.17, 0.67, 0.12, 0.99);
-          box-shadow: 0 0 30px rgba(124, 58, 237, 0.5);
         }
-        .wheel-segment {
-          position: absolute;
-          width: 50%;
-          height: 50%;
-          top: 0;
-          left: 50%;
-          transform-origin: 0% 100%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          clip-path: polygon(0% 100%, 100% 0%, 100% 100%);
-        }
-        .wheel-segment span {
-          transform: rotate(22.5deg) translateX(30px);
-          font-size: 20px;
-          font-weight: bold;
-        }
+        
         .wheel-pointer {
           position: absolute;
           top: -15px;
@@ -222,128 +267,121 @@ export default function LuckyWheel() {
           transform: translateX(-50%);
           width: 0;
           height: 0;
-          border-left: 15px solid transparent;
-          border-right: 15px solid transparent;
-          border-top: 25px solid #fbbf24;
+          border-left: 20px solid transparent;
+          border-right: 20px solid transparent;
+          border-top: 35px solid #fbbf24;
+          filter: drop-shadow(0 3px 5px rgba(0,0,0,0.5));
           z-index: 10;
-          filter: drop-shadow(0 2px 5px rgba(0,0,0,0.3));
         }
-        .wheel-center {
-          position: absolute;
-          top: 50%;
-          left: 50%;
-          transform: translate(-50%, -50%);
-          width: 50px;
-          height: 50px;
-          background: linear-gradient(135deg, #fbbf24, #f59e0b);
-          border-radius: 50%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 24px;
-          box-shadow: 0 3px 10px rgba(0,0,0,0.3);
-          z-index: 5;
-        }
-        .wheel-spin-btn {
-          margin-top: 30px;
-          padding: 18px 50px;
-          font-size: 20px;
-          font-weight: bold;
-          background: linear-gradient(135deg, #7c3aed, #a855f7);
-          border: none;
+        
+        .message-box {
+          background: rgba(124, 58, 237, 0.3);
+          padding: 15px 30px;
           border-radius: 15px;
+          margin: 20px auto;
+          max-width: 300px;
+          font-size: 18px;
+          font-weight: bold;
+        }
+        
+        .spin-btn {
+          background: linear-gradient(135deg, #22c55e, #10b981);
+          border: none;
+          padding: 18px 50px;
+          border-radius: 20px;
           color: white;
+          font-size: 22px;
+          font-weight: bold;
           cursor: pointer;
-          transition: all 0.2s ease;
+          transition: all 0.3s;
+          margin-top: 20px;
         }
-        .wheel-spin-btn:hover:not(:disabled) {
+        
+        .spin-btn:hover:not(:disabled) {
           transform: scale(1.05);
-          box-shadow: 0 5px 25px rgba(124, 58, 237, 0.5);
+          box-shadow: 0 5px 25px rgba(34, 197, 94, 0.5);
         }
-        .wheel-spin-btn:disabled {
-          opacity: 0.6;
+        
+        .spin-btn:disabled {
+          background: #4b5563;
           cursor: not-allowed;
         }
-        .wheel-win {
-          background: linear-gradient(135deg, #22c55e, #10b981);
-          padding: 20px 40px;
-          border-radius: 15px;
-          font-size: 28px;
-          font-weight: bold;
-          margin: 20px auto;
-          display: inline-block;
-          animation: pop 0.3s ease;
-        }
-        @keyframes pop {
-          0% { transform: scale(0); }
-          100% { transform: scale(1); }
-        }
-        .wheel-stats {
-          margin-top: 20px;
+        
+        .cost-info {
+          margin-top: 15px;
           color: #94a3b8;
           font-size: 14px;
         }
+        
+        .prizes-grid {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 10px;
+          margin-top: 30px;
+          max-width: 350px;
+          margin-left: auto;
+          margin-right: auto;
+        }
+        
+        .prize-item {
+          background: rgba(255,255,255,0.1);
+          padding: 10px;
+          border-radius: 10px;
+          text-align: center;
+        }
+        
+        .prize-icon {
+          font-size: 24px;
+        }
+        
+        .prize-value {
+          font-size: 12px;
+          color: #fbbf24;
+          font-weight: bold;
+        }
       `}</style>
       
-      <div className="wheel-game" data-testid="lucky-wheel">
+      <div className="wheel-page">
         {/* Header */}
         <div className="wheel-header">
-          <button className="wheel-back" onClick={() => navigate('/games')}>←</button>
-          <span className="wheel-title">🎡 Lucky Wheel</span>
-          <div className="wheel-coins">💰 {coins}</div>
+          <button className="back-btn" onClick={() => navigate('/games')}>←</button>
+          <h1 className="wheel-title">🎡 Lucky Wheel</h1>
+          <div className="coins-badge">💰 {coins}</div>
         </div>
-
+        
         {/* Message */}
-        {message && <div className="wheel-message">{message}</div>}
-
+        {message && <div className="message-box">{message}</div>}
+        
         {/* Wheel */}
         <div className="wheel-container">
           <div className="wheel-pointer" />
-          <div 
-            className="wheel"
-            style={{ 
-              transform: `rotate(${rotation}deg)`,
-              background: `conic-gradient(${REWARDS.map((r, i) => 
-                `${r.color} ${i * 45}deg ${(i + 1) * 45}deg`
-              ).join(', ')})`
-            }}
-          >
-            {REWARDS.map((reward, i) => (
-              <div 
-                key={i}
-                className="wheel-segment"
-                style={{ 
-                  transform: `rotate(${i * 45 + 22.5}deg)`,
-                }}
-              >
-                <span style={{ color: 'white', textShadow: '0 1px 3px rgba(0,0,0,0.5)' }}>
-                  {reward.label}
-                </span>
-              </div>
-            ))}
-          </div>
-          <div className="wheel-center">🎡</div>
+          <canvas 
+            ref={canvasRef} 
+            className="wheel-canvas"
+            width={300}
+            height={300}
+          />
         </div>
-
-        {/* Win */}
-        {lastWin && (
-          <div className="wheel-win">
-            🎉 +{lastWin} Coins!
-          </div>
-        )}
-
+        
         {/* Spin Button */}
         <button 
-          className="wheel-spin-btn" 
+          className="spin-btn"
           onClick={spin}
           disabled={spinning || coins < BET_COST}
         >
-          {spinning ? '⏳ Spinning...' : `🎡 Drehen (${BET_COST} Coins)`}
+          {spinning ? '🎡 Dreht...' : `🎰 DREHEN`}
         </button>
-
-        {/* Stats */}
-        <div className="wheel-stats">
-          Spins heute: {spinsToday}
+        
+        <p className="cost-info">Kosten: {BET_COST} Coins pro Dreh</p>
+        
+        {/* Prizes */}
+        <div className="prizes-grid">
+          {SEGMENTS.filter(s => s.value > 0).map((s, i) => (
+            <div key={i} className="prize-item" style={{ borderLeft: `4px solid ${s.color}` }}>
+              <div className="prize-icon">{s.label}</div>
+              <div className="prize-value">{s.value} Coins</div>
+            </div>
+          ))}
         </div>
       </div>
     </>
