@@ -171,6 +171,7 @@ import CoinTap from "./pages/CoinTap";
 
 // Reaction & Runner Games
 import ReactionGame from "./pages/ReactionGame";
+import ScratchCard from "./pages/ScratchCard";
 import RunnerGame from "./pages/RunnerGame";
 import PuzzleGame from "./pages/PuzzleGame";
 
