@@ -1464,10 +1464,33 @@ export default function Admin() {
                   {category.tabs.map((tab) => (
                     <button
                       key={tab.id}
-                      onClick={() => setActiveTab(tab.id)}
-                      onTouchEnd={(e) => {
+                      onClick={async () => {
+                        setActiveTab(tab.id);
+                        // Directly fetch users data when clicking users tab
+                        if (tab.id === 'users') {
+                          try {
+                            const headers = { Authorization: `Bearer ${token}` };
+                            const res = await axios.get(`${API}/admin/users`, { headers });
+                            setUsers(res.data);
+                            console.log('Sidebar: Users loaded:', res.data.length);
+                          } catch (error) {
+                            console.error('Error fetching users:', error);
+                          }
+                        }
+                      }}
+                      onTouchEnd={async (e) => {
                         e.preventDefault();
                         setActiveTab(tab.id);
+                        if (tab.id === 'users') {
+                          try {
+                            const headers = { Authorization: `Bearer ${token}` };
+                            const res = await axios.get(`${API}/admin/users`, { headers });
+                            setUsers(res.data);
+                            console.log('TouchEnd: Users loaded:', res.data.length);
+                          } catch (error) {
+                            console.error('Error fetching users:', error);
+                          }
+                        }
                       }}
                       className={`w-full flex items-center gap-2 lg:gap-3 px-3 lg:px-4 py-2 rounded-lg transition-colors text-sm touch-manipulation ${
                         activeTab === tab.id
