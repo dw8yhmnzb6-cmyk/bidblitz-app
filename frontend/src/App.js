@@ -172,6 +172,7 @@ import CoinTap from "./pages/CoinTap";
 // Reaction & Runner Games
 import ReactionGame from "./pages/ReactionGame";
 import RunnerGame from "./pages/RunnerGame";
+import PuzzleGame from "./pages/PuzzleGame";
 
 // Slot Machine & Game Leaderboard
 import SlotMachine from "./pages/SlotMachine";
