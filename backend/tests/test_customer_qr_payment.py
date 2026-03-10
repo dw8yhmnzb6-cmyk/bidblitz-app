@@ -18,7 +18,7 @@ import os
 import time
 import uuid
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://bidblitz-gaming-2.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://gaming-platform-129.preview.emergentagent.com').rstrip('/')
 
 
 class TestCustomerQRPaymentFlow:
