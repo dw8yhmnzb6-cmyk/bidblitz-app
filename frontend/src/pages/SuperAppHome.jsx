@@ -173,7 +173,24 @@ export default function SuperAppHome() {
       {/* Container */}
       <div style={styles.container}>
         
+        {/* Quick Actions */}
+        <h2 style={styles.title}>Quick Actions</h2>
+        <div style={styles.quickActions}>
+          {QUICK_ACTIONS.map((action, index) => (
+            <div
+              key={index}
+              style={styles.actionCard}
+              onClick={() => navigate(action.route)}
+              data-testid={`quick-${action.name.toLowerCase()}`}
+            >
+              <div style={styles.actionEmoji}>{action.emoji}</div>
+              <div style={styles.actionName}>{action.name}</div>
+            </div>
+          ))}
+        </div>
+
         {/* Service Cards Grid */}
+        <h2 style={styles.title}>Services</h2>
         <div style={styles.grid}>
           {SERVICE_CARDS.map((item, index) => (
             <div
