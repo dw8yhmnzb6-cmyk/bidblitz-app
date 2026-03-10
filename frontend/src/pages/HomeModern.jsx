@@ -359,6 +359,48 @@ export default function HomeModern() {
         </div>
       </div>
 
+      {/* Services Section */}
+      <div className="relative z-10 px-4 mb-6">
+        <h2 className="text-lg font-bold text-white mb-3">Services</h2>
+        <div className="grid grid-cols-3 gap-3">
+          {SERVICES.map((service, index) => (
+            <button
+              key={index}
+              onClick={() => navigate(service.route)}
+              className={`flex flex-col items-center justify-center p-4 rounded-2xl bg-gradient-to-br ${service.color} shadow-lg hover:scale-105 transition-all active:scale-95`}
+              data-testid={`service-${service.name.toLowerCase()}`}
+            >
+              <span className="text-2xl mb-1">{service.emoji}</span>
+              <span className="text-xs text-white font-medium">{service.name}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Games Section */}
+      <div className="relative z-10 px-4 mb-6">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-lg font-bold text-white">Games</h2>
+          <Link to="/game-platform" className="text-purple-400 text-sm hover:text-purple-300 flex items-center gap-1">
+            Alle Spiele <ChevronRight className="w-4 h-4" />
+          </Link>
+        </div>
+        <div className="grid grid-cols-3 gap-3">
+          {GAMES.map((game, index) => (
+            <button
+              key={index}
+              onClick={() => navigate(game.route)}
+              className="flex flex-col items-center justify-center p-4 rounded-2xl bg-gradient-to-br from-violet-600 to-purple-700 shadow-lg hover:scale-105 transition-all active:scale-95"
+              data-testid={`game-${game.name.toLowerCase().replace(' ', '-')}`}
+            >
+              <span className="text-2xl mb-1">{game.emoji}</span>
+              <span className="text-xs text-white font-medium">{game.name}</span>
+              <span className="text-[10px] text-purple-200">+{game.reward} Coins</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Featured Banner */}
       <FeaturedBanner onNavigate={navigate} />
 
