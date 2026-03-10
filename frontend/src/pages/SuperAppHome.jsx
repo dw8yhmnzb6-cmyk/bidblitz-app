@@ -306,6 +306,29 @@ const styles = {
     gap: '12px',
     marginBottom: '20px',
   },
+  quickActions: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(6, 1fr)',
+    gap: '10px',
+    marginBottom: '25px',
+  },
+  actionCard: {
+    background: 'linear-gradient(135deg, #1e293b 0%, #334155 100%)',
+    padding: '15px 8px',
+    borderRadius: '12px',
+    textAlign: 'center',
+    cursor: 'pointer',
+    transition: 'transform 0.2s, box-shadow 0.2s',
+  },
+  actionEmoji: {
+    fontSize: '24px',
+    marginBottom: '6px',
+  },
+  actionName: {
+    fontSize: '11px',
+    fontWeight: '500',
+    color: '#94a3b8',
+  },
   card: {
     background: '#1e293b',
     padding: '20px 10px',
