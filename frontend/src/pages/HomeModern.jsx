@@ -322,6 +322,23 @@ export default function HomeModern() {
         </div>
       </div>
 
+      {/* Quick Actions */}
+      <div className="relative z-10 px-4 mb-6">
+        <div className="grid grid-cols-6 gap-3">
+          {QUICK_ACTIONS.map((action, index) => (
+            <button
+              key={index}
+              onClick={() => navigate(action.route)}
+              className="flex flex-col items-center justify-center p-3 rounded-2xl bg-[#252540]/80 backdrop-blur-sm border border-white/5 hover:border-purple-500/30 transition-all hover:scale-105 active:scale-95"
+              data-testid={`quick-action-${action.name.toLowerCase()}`}
+            >
+              <span className="text-2xl mb-1">{action.emoji}</span>
+              <span className="text-xs text-gray-400 font-medium">{action.name}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Featured Banner */}
       <FeaturedBanner onNavigate={navigate} />
 
