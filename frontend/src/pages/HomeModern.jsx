@@ -27,6 +27,26 @@ const QUICK_ACTIONS = [
   { emoji: '🛍️', name: 'Shop', route: '/shop', color: 'from-rose-500 to-red-500' },
 ];
 
+// Services
+const SERVICES = [
+  { emoji: '🎮', name: 'Games', route: '/game-platform', color: 'from-purple-500 to-violet-600' },
+  { emoji: '⛏️', name: 'Miner', route: '/mining', color: 'from-amber-500 to-yellow-500' },
+  { emoji: '🔥', name: 'Auctions', route: '/live-auction', color: 'from-red-500 to-orange-500' },
+  { emoji: '💎', name: 'VIP', route: '/vip-auctions', color: 'from-cyan-500 to-blue-500' },
+  { emoji: '🚕', name: 'Taxi', route: '/taxi', color: 'from-yellow-500 to-amber-500' },
+  { emoji: '🛴', name: 'Scooter', route: '/scooter', color: 'from-green-500 to-emerald-500' },
+];
+
+// Games
+const GAMES = [
+  { name: 'Lucky Wheel', reward: 10, route: '/lucky-wheel', emoji: '🎡' },
+  { name: 'Scratch', reward: 20, route: '/scratch-card', emoji: '🎫' },
+  { name: 'Reaction', reward: 5, route: '/reaction-game', emoji: '⚡' },
+  { name: 'Runner', reward: 15, route: '/runner-game', emoji: '🏃' },
+  { name: 'Puzzle', reward: 25, route: '/puzzle-game', emoji: '🧩' },
+  { name: 'Treasure', reward: 30, route: '/coin-tap', emoji: '💰' },
+];
+
 // Kategorien
 const CATEGORIES = [
   { id: 'all', name: 'Alle', icon: Grid, color: 'from-violet-500 to-purple-600' },
