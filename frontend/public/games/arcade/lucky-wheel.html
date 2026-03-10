@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BidBlitz Lucky Wheel</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:Arial,sans-serif;background:#0f172a;color:#fff;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:20px}
+h1{font-size:24px;margin-bottom:10px}
+.stats{font-size:18px;margin:15px 0}
+.stats span{color:#fbbf24;font-weight:bold}
+.wheel-container{position:relative;width:250px;height:250px;margin:20px 0}
+.pointer{position:absolute;top:-20px;left:50%;transform:translateX(-50%);font-size:30px;z-index:10}
+#wheel{width:250px;height:250px;border-radius:50%;background:conic-gradient(#ef4444 0deg 60deg,#22c55e 60deg 120deg,#3b82f6 120deg 180deg,#eab308 180deg 240deg,#a855f7 240deg 300deg,#f97316 300deg 360deg);transition:transform 3s cubic-bezier(0.17,0.67,0.12,0.99);box-shadow:0 0 20px rgba(168,85,247,0.5)}
+.win{background:#22c55e;padding:15px 25px;border-radius:10px;margin:15px 0;font-weight:bold;display:none}
+button{padding:15px 40px;border:none;border-radius:10px;font-size:18px;cursor:pointer;font-weight:bold;background:#a855f7;color:#fff;margin:10px 0}
+button:disabled{opacity:0.5;cursor:not-allowed}
+</style>
+</head>
+<body>
+<h1>🎰 BidBlitz Lucky Wheel</h1>
+<div class="stats">Coins: <span id="coins">100</span></div>
+<div class="wheel-container">
+  <div class="pointer">▼</div>
+  <div id="wheel"></div>
+</div>
+<div class="win" id="win"></div>
+<button id="spinBtn" onclick="spin()">SPIN (10 Coins)</button>
+<script>
+const API = window.API_URL || '';
+const wheel = document.getElementById('wheel');
+const spinBtn = document.getElementById('spinBtn');
+const winDiv = document.getElementById('win');
+const rewards = [5, 25, 10, 50, 15, 30];
+let coins = 100;
+let rotation = 0;
+let spinning = false;
+let userId = localStorage.getItem('userId') || 'guest';
+
+async function spin() {
+  if(spinning || coins < 10) return;
+  spinning = true;
+  spinBtn.disabled = true;
+  winDiv.style.display = 'none';
+  
+  coins -= 10;
+  document.getElementById('coins').innerText = coins;
+  
+  const spins = 3 + Math.random() * 2;
+  const deg = Math.floor(Math.random() * 360);
+  rotation += spins * 360 + deg;
+  wheel.style.transform = 'rotate(' + rotation + 'deg)';
+  
+  setTimeout(async () => {
+    const idx = Math.floor(((360 - (rotation % 360)) % 360) / 60);
+    const reward = rewards[idx];
+    coins += reward;
+    document.getElementById('coins').innerText = coins;
+    
+    winDiv.innerText = '🎉 +' + reward + ' Coins!';
+    winDiv.style.display = 'block';
+    
+    try {
+      await fetch(API + '/api/games/score', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({user_id: userId, game_id: 'lucky-wheel', score: reward})
+      });
+    } catch(e) {}
+    
+    spinning = false;
+    spinBtn.disabled = false;
+  }, 3000);
+}
+</script>
+</body>
+</html>

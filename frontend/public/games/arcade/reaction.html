@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BidBlitz Reaction Game</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:Arial,sans-serif;background:#0f172a;color:#fff;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:20px}
+h1{font-size:24px;margin-bottom:10px}
+.stats{font-size:18px;margin:15px 0}
+.stats span{color:#fbbf24;font-weight:bold}
+#box{width:200px;height:200px;background:#1e293b;border-radius:15px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:22px;font-weight:bold;transition:background 0.2s;box-shadow:0 10px 30px rgba(0,0,0,0.3)}
+#box.ready{background:#22c55e}
+#box.fail{background:#ef4444}
+#box.done{background:#3b82f6}
+.result{margin:20px 0;padding:15px;background:#1e293b;border-radius:10px;text-align:center}
+.result .time{font-size:32px;font-weight:bold;color:#22c55e}
+.result .reward{margin-top:10px;font-size:18px;color:#fbbf24}
+button{padding:15px 40px;border:none;border-radius:10px;font-size:18px;cursor:pointer;font-weight:bold;background:#a855f7;color:#fff;margin:10px 0}
+button:disabled{opacity:0.5}
+</style>
+</head>
+<body>
+<h1>⚡ BidBlitz Reaction Game</h1>
+<div class="stats">Coins: <span id="coins">100</span></div>
+<div id="box" onclick="handleClick()">Drücke Start</div>
+<div class="result" id="result" style="display:none">
+  <div class="time" id="time"></div>
+  <div class="reward" id="reward"></div>
+</div>
+<button id="btn" onclick="startGame()">Start</button>
+<script>
+const API = window.API_URL || '';
+let coins = 100;
+let state = 'idle';
+let startTime;
+let timeout;
+let userId = localStorage.getItem('userId') || 'guest';
+
+function startGame() {
+  const box = document.getElementById('box');
+  const btn = document.getElementById('btn');
+  const result = document.getElementById('result');
+  
+  state = 'waiting';
+  box.className = '';
+  box.innerText = 'WARTE...';
+  result.style.display = 'none';
+  btn.disabled = true;
+  
+  const delay = Math.random() * 3000 + 1000;
+  timeout = setTimeout(() => {
+    state = 'ready';
+    box.className = 'ready';
+    box.innerText = 'KLICK!';
+    startTime = Date.now();
+  }, delay);
+}
+
+async function handleClick() {
+  const box = document.getElementById('box');
+  const btn = document.getElementById('btn');
+  const result = document.getElementById('result');
+  
+  if(state === 'waiting') {
+    clearTimeout(timeout);
+    state = 'idle';
+    box.className = 'fail';
+    box.innerText = 'Zu früh! ❌';
+    btn.disabled = false;
+    return;
+  }
+  
+  if(state === 'ready') {
+    const time = Date.now() - startTime;
+    const reward = Math.max(5, 50 - Math.floor(time / 10));
+    coins += reward;
+    
+    state = 'done';
+    box.className = 'done';
+    box.innerText = time + ' ms';
+    
+    document.getElementById('coins').innerText = coins;
+    document.getElementById('time').innerText = time + ' ms';
+    document.getElementById('reward').innerText = '+' + reward + ' Coins! 🪙';
+    result.style.display = 'block';
+    btn.disabled = false;
+    btn.innerText = 'Nochmal';
+    
+    try {
+      await fetch(API + '/api/games/score', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({user_id: userId, game_id: 'reaction', score: 1000 - time})
+      });
+    } catch(e) {}
+  }
+}
+</script>
+</body>
+</html>

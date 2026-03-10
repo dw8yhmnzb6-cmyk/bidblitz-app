@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BidBlitz Scratch Card</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:Arial,sans-serif;background:#0f172a;color:#fff;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:20px}
+h1{font-size:24px;margin-bottom:10px}
+.stats{font-size:18px;margin:15px 0}
+.stats span{color:#fbbf24;font-weight:bold}
+#card{width:200px;height:200px;background:#1e293b;border-radius:15px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:all 0.3s;box-shadow:0 10px 30px rgba(0,0,0,0.3)}
+#card.revealed{background:#22c55e}
+#card .value{font-size:50px;font-weight:bold}
+#card .icon{font-size:24px;margin-top:5px}
+.win{background:#22c55e;padding:12px 20px;border-radius:10px;margin:15px 0;font-weight:bold}
+button{padding:15px 30px;border:none;border-radius:10px;font-size:16px;cursor:pointer;font-weight:bold;background:#a855f7;color:#fff;margin:10px 0}
+</style>
+</head>
+<body>
+<h1>🎫 BidBlitz Scratch Card</h1>
+<div class="stats">Coins: <span id="coins">100</span></div>
+<div id="card" onclick="scratch()">
+  <span class="value" id="value">?</span>
+</div>
+<div class="win" id="win" style="display:none"></div>
+<button id="btn" onclick="scratch()">Scratch (5 Coins)</button>
+<script>
+const API = window.API_URL || '';
+let coins = 100;
+let scratched = false;
+let userId = localStorage.getItem('userId') || 'guest';
+
+async function scratch() {
+  const card = document.getElementById('card');
+  const value = document.getElementById('value');
+  const win = document.getElementById('win');
+  const btn = document.getElementById('btn');
+  
+  if(scratched) {
+    card.classList.remove('revealed');
+    value.innerText = '?';
+    win.style.display = 'none';
+    btn.innerText = 'Scratch (5 Coins)';
+    scratched = false;
+    return;
+  }
+  
+  if(coins < 5) { alert('Nicht genug Coins!'); return; }
+  
+  coins -= 5;
+  const reward = Math.floor(Math.random() * 100);
+  coins += reward;
+  document.getElementById('coins').innerText = coins;
+  
+  card.classList.add('revealed');
+  value.innerText = reward;
+  win.innerText = '🎉 +' + reward + ' Coins!';
+  win.style.display = 'block';
+  btn.innerText = 'Neue Karte';
+  scratched = true;
+  
+  try {
+    await fetch(API + '/api/games/score', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({user_id: userId, game_id: 'scratch-card', score: reward})
+    });
+  } catch(e) {}
+}
+</script>
+</body>
+</html>

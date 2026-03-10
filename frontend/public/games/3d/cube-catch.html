@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BidBlitz 3D Cube</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:Arial,sans-serif;background:#0f172a;color:#fff;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:20px;overflow:hidden}
+h1{font-size:24px;margin-bottom:10px}
+.stats{font-size:16px;margin:10px 0}
+.stats span{color:#fbbf24;font-weight:bold}
+#scene{width:300px;height:300px;perspective:600px;margin:20px 0}
+#cube{width:100px;height:100px;position:relative;transform-style:preserve-3d;margin:100px auto;animation:rotate 10s infinite linear}
+.face{position:absolute;width:100px;height:100px;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:bold;border:2px solid rgba(255,255,255,0.3)}
+.front{background:rgba(168,85,247,0.8);transform:translateZ(50px)}
+.back{background:rgba(239,68,68,0.8);transform:translateZ(-50px) rotateY(180deg)}
+.left{background:rgba(34,197,94,0.8);transform:translateX(-50px) rotateY(-90deg)}
+.right{background:rgba(59,130,246,0.8);transform:translateX(50px) rotateY(90deg)}
+.top{background:rgba(234,179,8,0.8);transform:translateY(-50px) rotateX(90deg)}
+.bottom{background:rgba(236,72,153,0.8);transform:translateY(50px) rotateX(-90deg)}
+@keyframes rotate{from{transform:rotateX(0) rotateY(0)}to{transform:rotateX(360deg) rotateY(360deg)}}
+.target{width:50px;height:50px;background:#fbbf24;border-radius:50%;position:absolute;cursor:pointer;animation:float 2s infinite ease-in-out}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-20px)}}
+button{padding:12px 25px;border:none;border-radius:10px;font-size:16px;cursor:pointer;font-weight:bold;background:#a855f7;color:#fff;margin:10px}
+</style>
+</head>
+<body>
+<h1>🎲 BidBlitz 3D Cube</h1>
+<div class="stats">Score: <span id="score">0</span> | Time: <span id="time">30</span>s</div>
+<div id="scene">
+  <div id="cube">
+    <div class="face front">🎮</div>
+    <div class="face back">💎</div>
+    <div class="face left">🎯</div>
+    <div class="face right">🏆</div>
+    <div class="face top">⚡</div>
+    <div class="face bottom">🔥</div>
+  </div>
+</div>
+<div id="targets"></div>
+<button onclick="startGame()">Start Game</button>
+<script>
+const API = window.API_URL || '';
+let score = 0;
+let timeLeft = 30;
+let gameActive = false;
+let interval;
+let userId = localStorage.getItem('userId') || 'guest';
+
+function createTarget() {
+  if(!gameActive) return;
+  const target = document.createElement('div');
+  target.className = 'target';
+  target.style.left = Math.random() * 250 + 'px';
+  target.style.top = Math.random() * 200 + 100 + 'px';
+  target.innerText = '🪙';
+  target.onclick = () => {
+    score += 10;
+    document.getElementById('score').innerText = score;
+    target.remove();
+  };
+  document.getElementById('targets').appendChild(target);
+  setTimeout(() => target.remove(), 2000);
+}
+
+function startGame() {
+  score = 0;
+  timeLeft = 30;
+  gameActive = true;
+  document.getElementById('score').innerText = 0;
+  document.getElementById('time').innerText = 30;
+  document.getElementById('targets').innerHTML = '';
+  
+  interval = setInterval(() => {
+    timeLeft--;
+    document.getElementById('time').innerText = timeLeft;
+    if(timeLeft <= 0) endGame();
+  }, 1000);
+  
+  setInterval(createTarget, 800);
+}
+
+async function endGame() {
+  gameActive = false;
+  clearInterval(interval);
+  
+  try {
+    await fetch(API + '/api/games/score', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({user_id: userId, game_id: '3d-cube', score: score})
+    });
+  } catch(e) {}
+  
+  alert('Game Over! Score: ' + score);
+}
+</script>
+</body>
+</html>

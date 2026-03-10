@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BidBlitz Coin Tycoon</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:Arial,sans-serif;background:#0f172a;color:#fff;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:20px}
+h1{font-size:24px;margin-bottom:10px}
+.stats{background:#1e293b;padding:15px 25px;border-radius:12px;margin:15px 0;text-align:center}
+.coins{font-size:32px;color:#fbbf24;font-weight:bold}
+.rate{font-size:14px;color:#94a3b8;margin-top:5px}
+#coin{width:150px;height:150px;background:linear-gradient(135deg,#fbbf24,#f59e0b);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:60px;cursor:pointer;box-shadow:0 10px 30px rgba(251,191,36,0.3);transition:transform 0.1s;margin:20px 0}
+#coin:active{transform:scale(0.95)}
+.upgrades{width:100%;max-width:320px}
+.upgrade{background:#1e293b;padding:15px;border-radius:10px;margin:10px 0;display:flex;justify-content:space-between;align-items:center}
+.upgrade-info h3{font-size:14px;margin-bottom:5px}
+.upgrade-info p{font-size:12px;color:#94a3b8}
+.upgrade button{padding:10px 15px;background:#a855f7;border:none;border-radius:8px;color:#fff;font-weight:bold;cursor:pointer}
+.upgrade button:disabled{opacity:0.5;cursor:not-allowed}
+</style>
+</head>
+<body>
+<h1>💰 BidBlitz Coin Tycoon</h1>
+<div class="stats">
+  <div class="coins"><span id="coins">0</span> 🪙</div>
+  <div class="rate"><span id="rate">0</span> coins/sec</div>
+</div>
+<div id="coin" onclick="tap()">🪙</div>
+<div class="upgrades">
+  <div class="upgrade">
+    <div class="upgrade-info">
+      <h3>Auto Clicker</h3>
+      <p>+1 coin/sec</p>
+    </div>
+    <button onclick="buyUpgrade(0)"><span id="price0">10</span> 🪙</button>
+  </div>
+  <div class="upgrade">
+    <div class="upgrade-info">
+      <h3>Double Tap</h3>
+      <p>2x per click</p>
+    </div>
+    <button onclick="buyUpgrade(1)"><span id="price1">50</span> 🪙</button>
+  </div>
+  <div class="upgrade">
+    <div class="upgrade-info">
+      <h3>Gold Mine</h3>
+      <p>+10 coins/sec</p>
+    </div>
+    <button onclick="buyUpgrade(2)"><span id="price2">200</span> 🪙</button>
+  </div>
+</div>
+<script>
+const API = window.API_URL || '';
+let coins = parseInt(localStorage.getItem('tycoonCoins') || '0');
+let tapPower = 1;
+let autoRate = 0;
+let upgrades = JSON.parse(localStorage.getItem('tycoonUpgrades') || '[0,0,0]');
+let userId = localStorage.getItem('userId') || 'guest';
+
+const prices = [10, 50, 200];
+const multipliers = [1.5, 2, 1.8];
+
+function updateUI() {
+  document.getElementById('coins').innerText = Math.floor(coins);
+  document.getElementById('rate').innerText = autoRate;
+  for(let i=0; i<3; i++) {
+    document.getElementById('price' + i).innerText = Math.floor(prices[i] * Math.pow(multipliers[i], upgrades[i]));
+  }
+}
+
+function tap() {
+  coins += tapPower;
+  updateUI();
+  save();
+}
+
+function buyUpgrade(i) {
+  const cost = Math.floor(prices[i] * Math.pow(multipliers[i], upgrades[i]));
+  if(coins >= cost) {
+    coins -= cost;
+    upgrades[i]++;
+    if(i === 0) autoRate += 1;
+    if(i === 1) tapPower *= 2;
+    if(i === 2) autoRate += 10;
+    updateUI();
+    save();
+  }
+}
+
+function save() {
+  localStorage.setItem('tycoonCoins', Math.floor(coins));
+  localStorage.setItem('tycoonUpgrades', JSON.stringify(upgrades));
+}
+
+// Auto coins
+setInterval(() => {
+  if(autoRate > 0) {
+    coins += autoRate;
+    updateUI();
+    save();
+  }
+}, 1000);
+
+// Submit score periodically
+setInterval(async () => {
+  if(coins > 100) {
+    try {
+      await fetch(API + '/api/games/score', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({user_id: userId, game_id: 'tycoon', score: Math.floor(coins)})
+      });
+    } catch(e) {}
+  }
+}, 30000);
+
+// Initialize upgrades
+for(let i=0; i<upgrades[0]; i++) autoRate += 1;
+for(let i=0; i<upgrades[1]; i++) tapPower *= 2;
+for(let i=0; i<upgrades[2]; i++) autoRate += 10;
+
+updateUI();
+</script>
+</body>
+</html>

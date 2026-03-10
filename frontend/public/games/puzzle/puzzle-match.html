@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BidBlitz Puzzle Match</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:Arial,sans-serif;background:#0f172a;color:#fff;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:20px}
+h1{font-size:24px;margin-bottom:10px}
+.stats{display:flex;gap:20px;margin:15px 0;font-size:16px}
+.stats span{color:#fbbf24;font-weight:bold}
+#board{width:320px;height:320px;display:grid;grid-template-columns:repeat(8,1fr);gap:4px;margin:20px 0}
+.tile{border-radius:6px;cursor:pointer;transition:transform 0.1s}
+.tile:hover{transform:scale(1.1)}
+.red{background:#ef4444}
+.blue{background:#3b82f6}
+.green{background:#22c55e}
+.yellow{background:#eab308}
+.purple{background:#a855f7}
+.buttons{display:flex;gap:10px;margin-top:15px}
+button{padding:12px 25px;border:none;border-radius:10px;font-size:16px;cursor:pointer;font-weight:bold}
+.primary{background:#a855f7;color:#fff}
+.secondary{background:#374151;color:#fff}
+</style>
+</head>
+<body>
+<h1>🧩 BidBlitz Puzzle Match</h1>
+<div class="stats">
+  <div>Score: <span id="score">0</span></div>
+  <div>Coins: <span id="coins">0</span></div>
+</div>
+<div id="board"></div>
+<div class="buttons">
+  <button class="primary" onclick="claimReward()">Belohnung</button>
+  <button class="secondary" onclick="window.parent.postMessage({type:'close'},'*')">Zurück</button>
+</div>
+<script>
+const API = window.API_URL || '';
+const colors = ['red','blue','green','yellow','purple'];
+const board = document.getElementById('board');
+let score = 0;
+let userId = localStorage.getItem('userId') || 'guest';
+
+function randomColor() { return colors[Math.floor(Math.random()*colors.length)]; }
+
+function createBoard() {
+  board.innerHTML = '';
+  for(let i=0; i<64; i++) {
+    const tile = document.createElement('div');
+    tile.className = 'tile ' + randomColor();
+    tile.onclick = () => {
+      score += 5;
+      document.getElementById('score').innerText = score;
+      tile.className = 'tile ' + randomColor();
+    };
+    board.appendChild(tile);
+  }
+}
+
+async function claimReward() {
+  if(score < 50) { alert('Mindestens 50 Punkte!'); return; }
+  const reward = Math.floor(score / 10);
+  try {
+    const res = await fetch(API + '/api/games/score', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({user_id: userId, game_id: 'puzzle-match', score: score})
+    });
+    const data = await res.json();
+    document.getElementById('coins').innerText = data.reward || reward;
+    alert('+'+ (data.reward || reward) + ' Coins!');
+  } catch(e) {
+    alert('+' + reward + ' Coins!');
+  }
+  score = 0;
+  document.getElementById('score').innerText = 0;
+  createBoard();
+}
+
+createBoard();
+</script>
+</body>
+</html>
