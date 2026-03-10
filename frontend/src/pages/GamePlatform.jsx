@@ -178,6 +178,7 @@ export default function GamePlatform() {
               key={game.slug || i}
               style={styles.gameCard}
               onClick={() => openGame(game)}
+              data-testid={`game-card-${game.slug || i}`}
             >
               <div style={styles.gameThumb}>
                 {game.thumbnail ? (
@@ -192,6 +193,11 @@ export default function GamePlatform() {
               <div style={styles.gameCategory}>
                 {CATEGORIES.find(c => c.id === game.category)?.name || game.category}
               </div>
+              {game.max_reward > 0 && (
+                <div style={styles.gameReward}>
+                  +{game.max_reward} 🪙
+                </div>
+              )}
             </div>
           ))}
         </div>
