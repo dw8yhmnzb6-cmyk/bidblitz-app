@@ -17,6 +17,16 @@ import {
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
+// Quick Actions für die Startseite
+const QUICK_ACTIONS = [
+  { emoji: '📷', name: 'Scan', route: '/scan', color: 'from-blue-500 to-cyan-500' },
+  { emoji: '💳', name: 'Pay', route: '/bidblitz-pay', color: 'from-purple-500 to-pink-500' },
+  { emoji: '⛏️', name: 'Mining', route: '/mining', color: 'from-amber-500 to-orange-500' },
+  { emoji: '🚕', name: 'Ride', route: '/taxi', color: 'from-yellow-500 to-amber-500' },
+  { emoji: '💸', name: 'Send', route: '/transfer', color: 'from-emerald-500 to-green-500' },
+  { emoji: '🛍️', name: 'Shop', route: '/shop', color: 'from-rose-500 to-red-500' },
+];
+
 // Kategorien
 const CATEGORIES = [
   { id: 'all', name: 'Alle', icon: Grid, color: 'from-violet-500 to-purple-600' },
