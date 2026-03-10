@@ -1178,6 +1178,7 @@ function AppContent() {
             </ProtectedRoute>
           } />
           <Route path="/games" element={<GamesLobby />} />
+          <Route path="/game-platform" element={<GamePlatform />} />
           <Route path="/spiele" element={<GamesHub />} />
           <Route path="/live-auction" element={<LiveAuction />} />
           {/* /auctions route defined above - using Auctions component */}
