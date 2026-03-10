@@ -183,6 +183,7 @@ import GameLeaderboard from "./pages/GameLeaderboard";
 import SuperAppMinimal from "./pages/SuperAppMinimal";
 import GamesHub from "./pages/GamesHub";
 import GamesLobby from "./pages/GamesLobby";
+import GamePlatform from "./pages/GamePlatform";
 import AppWallet from "./pages/AppWallet";
 import Match3Game from "./pages/Match3Game";
 import SpinWheel from "./pages/SpinWheel";
