@@ -58,6 +58,15 @@ jobs:
             echo "🎨 Building frontend..."
             cd /var/www/bidblitz/frontend
             
+            # Fix missing word.html (copy from word_hunt.html if exists)
+            if [ -f "public/games/word_hunt.html" ] && [ ! -f "public/games/word.html" ]; then
+                cp public/games/word_hunt.html public/games/word.html
+                echo "✅ Created word.html from word_hunt.html"
+            fi
+            
+            # Remove broken symlinks in games folder
+            find public/games -type l ! -exec test -e {} \; -delete 2>/dev/null || true
+            
             # Clear old build
             rm -rf build
             
