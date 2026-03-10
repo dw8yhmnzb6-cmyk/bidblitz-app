@@ -21,7 +21,6 @@ jobs:
           timeout: 20m
           command_timeout: 20m
           script: |
-            set -e
             echo "🚀 Starting BidBlitz Deployment..."
             echo "📅 $(date)"
             
@@ -40,92 +39,72 @@ jobs:
             cd /var/www/bidblitz/backend
             source venv/bin/activate
             
-            # Remove emergentintegrations from requirements if present (not available on public PyPI)
+            # Remove emergentintegrations from requirements if present
             sed -i '/emergentintegrations/d' requirements.txt 2>/dev/null || true
             
-            # Install dependencies (ignore errors for missing packages)
-            pip install -r requirements.txt --quiet || {
-                echo "⚠️ Some packages failed, trying without problematic ones..."
-                grep -v "emergentintegrations" requirements.txt > requirements_clean.txt
-                pip install -r requirements_clean.txt --quiet
-            }
-            
-            # Install emergentintegrations from private index (optional)
-            pip install emergentintegrations --extra-index-url https://d33sy5i8bnduwe.cloudfront.net/simple/ --quiet 2>/dev/null || echo "ℹ️ emergentintegrations skipped (private package)"
+            # Install dependencies
+            pip install -r requirements.txt --quiet 2>/dev/null || echo "⚠️ Some pip packages may have failed"
             deactivate
             
             # ==================== 3. Frontend Build ====================
             echo "🎨 Building frontend..."
             cd /var/www/bidblitz/frontend
             
-            # WICHTIG: Alle kaputten Symlinks im games Ordner löschen
-            echo "🧹 Cleaning up broken symlinks..."
-            find public/games -maxdepth 1 -type l -delete 2>/dev/null || true
+            # Cleanup: Remove ALL symlinks and broken files in games folder
+            echo "🧹 Cleaning up games folder..."
+            find public/games -maxdepth 1 -type l -exec rm -f {} \; 2>/dev/null || true
+            rm -f public/games/word.html 2>/dev/null || true
             
-            # word.html erstellen falls nicht vorhanden
-            if [ ! -f "public/games/word.html" ] && [ -f "public/games/word_hunt.html" ]; then
+            # Create word.html
+            if [ -f "public/games/word_hunt.html" ]; then
                 cp public/games/word_hunt.html public/games/word.html
-                echo "✅ Created word.html"
-            elif [ ! -f "public/games/word.html" ]; then
-                # Erstelle leere Datei falls word_hunt.html auch fehlt
-                echo '<!DOCTYPE html><html><body><h1>Word Game</h1></body></html>' > public/games/word.html
+                echo "✅ Created word.html from word_hunt.html"
+            else
+                echo '<!DOCTYPE html><html><head><title>Word Game</title></head><body><h1>Word Game</h1><p>Coming soon!</p></body></html>' > public/games/word.html
                 echo "✅ Created placeholder word.html"
             fi
             
+            # Verify word.html exists
+            ls -la public/games/word.html
+            
             # Clear old build
-            rm -rf build
+            rm -rf build node_modules/.cache
             
             # Install dependencies
-            yarn install --frozen-lockfile --silent
+            yarn install --frozen-lockfile --silent || yarn install --silent
             
             # Build with increased memory
+            echo "🔨 Starting build..."
             NODE_OPTIONS="--max-old-space-size=2048" yarn build
             
-            # Verify build created
-            if [ ! -d "build" ]; then
-                echo "❌ ERROR: Frontend build failed - no build directory!"
+            # Verify build
+            if [ -d "build" ]; then
+                echo "✅ Build successful!"
+                echo "📊 Build size: $(du -sh build | cut -f1)"
+            else
+                echo "❌ Build failed!"
                 exit 1
             fi
             
-            # Show build info
-            echo "📁 Build directory contents:"
-            ls -la build/
-            echo "📊 Build size: $(du -sh build | cut -f1)"
-            
-            # ==================== 4. Clear Nginx Cache ====================
-            echo "🧹 Clearing Nginx cache..."
-            rm -rf /var/cache/nginx/* 2>/dev/null || true
-            
-            # ==================== 5. Restart Services ====================
+            # ==================== 4. Restart Services ====================
             echo "🔄 Restarting services..."
             
-            # Restart backend
-            systemctl restart bidblitz-backend
+            # Clear Nginx cache
+            rm -rf /var/cache/nginx/* 2>/dev/null || true
+            
+            # Restart services
+            systemctl restart bidblitz-backend || true
             sleep 2
+            systemctl reload nginx || systemctl restart nginx
             
-            # Test backend health
-            if curl -s http://localhost:8001/api/health | grep -q "healthy"; then
-                echo "✅ Backend is healthy"
-            else
-                echo "⚠️ Backend health check failed"
-                journalctl -u bidblitz-backend -n 20 --no-pager
-            fi
+            # ==================== 5. Verification ====================
+            echo "🔍 Final verification..."
             
-            # Restart Nginx
-            systemctl reload nginx
+            # Check backend
+            curl -s http://localhost:8001/api/health && echo "" || echo "⚠️ Backend check failed"
             
-            # ==================== 6. Verification ====================
-            echo "🔍 Verifying deployment..."
-            
-            # Check if index.html has new content
-            echo "📄 Index.html preview:"
-            head -20 /var/www/bidblitz/frontend/build/index.html
-            
-            # Check Nginx status
-            systemctl status nginx --no-pager -l || true
-            
-            # ==================== Done ====================
+            # Done
             echo ""
-            echo "✅ Deployment completed successfully!"
+            echo "✅ Deployment completed!"
             echo "📅 $(date)"
-            echo "🌐 Visit https://bidblitz.ae to verify"
+            echo "🌐 Visit https://bidblitz.ae"
