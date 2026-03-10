@@ -9,12 +9,22 @@ import axios from 'axios';
 const API = process.env.REACT_APP_BACKEND_URL + '/api';
 
 const SERVICE_CARDS = [
-  { emoji: '🎮', name: 'Games', route: '/games' },
+  { emoji: '🎮', name: 'Games', route: '/game-platform' },
   { emoji: '⛏', name: 'Miner', route: '/mining' },
   { emoji: '🔥', name: 'Auctions', route: '/live-auction' },
   { emoji: '💎', name: 'VIP', route: '/vip-auctions' },
   { emoji: '🚕', name: 'Taxi', route: '/taxi' },
   { emoji: '🛴', name: 'Scooter', route: '/scooter' },
+];
+
+// Quick Actions für BidBlitz Pay
+const QUICK_ACTIONS = [
+  { emoji: '📷', name: 'Scan', route: '/scan' },
+  { emoji: '💳', name: 'Pay', route: '/bidblitz-pay' },
+  { emoji: '⛏️', name: 'Mining', route: '/mining' },
+  { emoji: '🚕', name: 'Ride', route: '/taxi' },
+  { emoji: '💸', name: 'Send', route: '/transfer' },
+  { emoji: '🛍️', name: 'Shop', route: '/shop' },
 ];
 
 const GAMES = [
