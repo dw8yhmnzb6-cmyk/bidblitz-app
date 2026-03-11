@@ -342,6 +342,11 @@ export default function HomeModern() {
         </div>
       </div>
 
+      {/* Version Marker - für Debug */}
+      <div className="relative z-10 px-4 mb-2">
+        <p className="text-xs text-gray-600 text-center">v2.1.0</p>
+      </div>
+
       {/* Quick Actions */}
       <div className="relative z-10 px-4 mb-6">
         <div className="grid grid-cols-6 gap-3">
