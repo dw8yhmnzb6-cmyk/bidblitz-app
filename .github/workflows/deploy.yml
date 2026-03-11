@@ -27,12 +27,22 @@ jobs:
             # ==================== 1. Git Pull ====================
             echo "📥 Pulling latest code..."
             cd /var/www/bidblitz
-            git fetch origin main
+            
+            # Show current state
+            echo "🔍 Current commit BEFORE pull:"
+            git log -1 --oneline
+            
+            # Fetch and reset
+            git fetch origin main --force
             git reset --hard origin/main
             
-            # Show last commit
-            echo "📌 Latest commit:"
+            # Show new state
+            echo "📌 Latest commit AFTER pull:"
             git log -1 --oneline
+            
+            # Verify HomeModern.jsx has SERVICES
+            echo "🔍 Checking if SERVICES exists in HomeModern.jsx:"
+            grep -c "SERVICES" frontend/src/pages/HomeModern.jsx || echo "❌ SERVICES NOT FOUND!"
             
             # ==================== 2. Backend Update ====================
             echo "📦 Updating backend dependencies..."
