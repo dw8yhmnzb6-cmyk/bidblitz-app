@@ -1,0 +1,147 @@
+{
+  "project_name": "BidBlitz V2",
+  "theme_strategy": {
+    "theme": "dark",
+    "archetype": "Archetype 4 (Swiss & High-Contrast) adapted for Fintech",
+    "rationale": "High-end Revolut/Apple Wallet aesthetic demands a pure dark UI (#0A0A0A) rather than standard dark gray. High contrast pure whites and a striking cyan (#00C2FF) provide a premium 'Electric' punch while maintaining functional clarity.",
+    "font_strategy": "Outfit (Headings) + Inter (Body). Outfit offers a geometric, modern tech feel."
+  },
+  "colors": {
+    "primary": "#0A0A0A",
+    "surface": "#141414",
+    "surface_hover": "#1A1A1A",
+    "accent": "#00C2FF",
+    "accent_glow": "rgba(0, 194, 255, 0.4)",
+    "text_main": "#FFFFFF",
+    "text_muted": "#A1A1AA",
+    "border_light": "rgba(255,255,255,0.08)",
+    "success": "#22C55E",
+    "error": "#EF4444"
+  },
+  "typography": {
+    "families": {
+      "heading": "'Outfit', sans-serif",
+      "body": "'Inter', sans-serif"
+    },
+    "scales": {
+      "h1": "text-4xl sm:text-5xl font-semibold tracking-tighter text-white",
+      "h2": "text-2xl sm:text-3xl font-medium tracking-tight text-white",
+      "h3": "text-xl font-medium tracking-tight text-white",
+      "body": "text-base text-[#A1A1AA] leading-relaxed",
+      "label": "text-[10px] uppercase tracking-[0.2em] font-bold text-[#A1A1AA]"
+    }
+  },
+  "spacing_and_layout": {
+    "app_container": "max-w-md mx-auto w-full min-h-screen bg-[#0A0A0A] text-white relative overflow-x-hidden pb-24 shadow-2xl border-x border-white/5",
+    "bento_padding": "p-5",
+    "grid_gap": "gap-4",
+    "radii": {
+      "card": "rounded-3xl",
+      "button": "rounded-full",
+      "icon_wrapper": "rounded-2xl"
+    }
+  },
+  "ui_components": {
+    "bottom_nav": {
+      "container": "fixed bottom-0 w-full max-w-md left-1/2 -translate-x-1/2 bg-[#0A0A0A]/80 backdrop-blur-2xl border-t border-white/10 px-6 py-4 flex justify-between items-center z-50",
+      "item": "flex flex-col items-center gap-1 text-[10px] text-[#A1A1AA] hover:text-white transition-colors",
+      "active_item": "text-[#00C2FF]",
+      "center_action": "h-14 w-14 rounded-full bg-[#00C2FF] text-black flex items-center justify-center shadow-[0_0_20px_rgba(0,194,255,0.4)] -translate-y-6"
+    },
+    "card": {
+      "default": "bg-[#141414] border border-white/5 rounded-3xl p-5 hover:bg-[#1a1a1a] transition-colors relative overflow-hidden",
+      "glass": "bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6"
+    },
+    "premium_credit_card": {
+      "style": "relative w-full aspect-[1.58/1] rounded-2xl bg-gradient-to-br from-[#1A1A1A] to-[#0A0A0A] border border-white/10 p-6 flex flex-col justify-between overflow-hidden shadow-2xl",
+      "glow_effect": "absolute inset-0 bg-gradient-to-tr from-[#00C2FF]/10 to-transparent opacity-50 pointer-events-none"
+    }
+  },
+  "pages": {
+    "homepage": {
+      "structure": [
+        "Header: User avatar, Greeting ('Good Evening, Alex'), Notification icon.",
+        "Hero: Glass panel with abstract background. Tagline: 'All-in-One App for Payments, Mobility & More'. Prominent total balance display.",
+        "Feature Grid (Bento): 'Wallet' (large span), 'Taxi' & 'Scooter' (medium span with background images), 'Food' & 'Auctions' (small spans). Use Lucide icons + subtle images."
+      ]
+    },
+    "wallet": {
+      "structure": [
+        "Header: 'Wallet' title.",
+        "Card Display: Premium black credit card visual with cyan glow edges. Shows card number ending and exp date.",
+        "Quick Actions: Add Money, Send, History. Circular buttons.",
+        "Transactions: List view. Date headers (e.g., 'Today'). Items have rounded icon backgrounds, merchant name, time, and right-aligned amount."
+      ]
+    },
+    "scanner_payment": {
+      "structure": [
+        "Full screen modal style.",
+        "Camera Viewfinder: Dark background with a centered rounded-3xl frame.",
+        "Animation: Cyan laser line sweeping up and down inside the frame using Framer Motion.",
+        "Amount Input: Massive text (e.g., text-6xl+) in cyan or white.",
+        "Action: 'Activate Scan' or 'Confirm Payment' button."
+      ]
+    },
+    "merchant": {
+      "structure": [
+        "Header: 'Händler Dashboard'.",
+        "Overview: Today's Earnings large display.",
+        "Chart: Recharts simple AreaChart showing week earnings (Cyan stroke, cyan to transparent gradient fill).",
+        "Action: 'Create Payment Request' big button.",
+        "Recent Payments: List of incoming transactions."
+      ]
+    }
+  },
+  "animations": {
+    "library": "framer-motion",
+    "page_transition": {
+      "initial": { "opacity": 0, "y": 10 },
+      "animate": { "opacity": 1, "y": 0 },
+      "exit": { "opacity": 0, "y": -10 }
+    },
+    "list_stagger": "staggerChildren: 0.05",
+    "tap_effect": "whileTap: { scale: 0.96 }",
+    "scanner_laser": "animate: { y: [0, 200, 0] }, transition: { repeat: Infinity, duration: 2, ease: 'linear' }"
+  },
+  "media": {
+    "user_avatar": {
+      "url": "https://images.unsplash.com/photo-1737574821698-862e77f044c1?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NjZ8MHwxfHNlYXJjaHwxfHxwb3J0cmFpdCUyMG1vZGVybiUyMHByb2Zlc3Npb25hbHxlbnwwfHx8fDE3NzUxNjE1Nzh8MA&ixlib=rb-4.1.0&q=85",
+      "description": "Professional user profile avatar"
+    },
+    "hero_abstract_bg": {
+      "url": "https://images.pexels.com/photos/31032751/pexels-photo-31032751.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "description": "Dark abstract glowing cyan texture for hero cards"
+    },
+    "premium_card_bg": {
+      "url": "https://images.unsplash.com/photo-1764258906159-3f5952286f5e?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA2MjJ8MHwxfHNlYXJjaHwzfHxkYXJrJTIwYWJzdHJhY3QlMjB0ZXh0dXJlJTIwbmVvbiUyMGN5YW58ZW58MHx8fHwxNzc1MTYxNTg5fDA&ixlib=rb-4.1.0&q=85",
+      "description": "Subtle dark fluid background for premium credit card"
+    },
+    "scooter_image": {
+      "url": "https://images.unsplash.com/photo-1762350988150-4fff02852a35?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NzV8MHwxfHNlYXJjaHwyfHxtb2Rlcm4lMjBzY29vdGVyJTIwbmlnaHR8ZW58MHx8fHwxNzc1MTYxNTc4fDA&ixlib=rb-4.1.0&q=85",
+      "description": "Modern night scooter image for feature grid background"
+    },
+    "food_image": {
+      "url": "https://images.unsplash.com/photo-1761315600943-d8a5bb0c499f?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NDh8MHwxfHNlYXJjaHwxfHxyZXN0YXVyYW50JTIwZm9vZCUyMHByZW1pdW0lMjBkYXJrfGVufDB8fHx8MTc3NTE2MTU4OXww&ixlib=rb-4.1.0&q=85",
+      "description": "Premium dark restaurant food for feature grid background"
+    }
+  },
+  "iconography": {
+    "library": "lucide-react",
+    "instructions": "Use strokeWidth={1.5} for all icons to maintain a delicate, premium aesthetic. Avoid chunky icons."
+  },
+  "testing_and_accessibility": {
+    "data_testid": "ALL interactive components (buttons, links, inputs, tabs) MUST have a data-testid attribute in kebab-case representing their function (e.g., 'home-tab-btn', 'add-funds-btn').",
+    "aria_labels": "Include aria-labels for icon-only buttons like the Scanner button."
+  },
+  "instructions_to_main_agent": [
+    "Build the application in /app/frontend/src/.",
+    "Install framer-motion, lucide-react, recharts, and clsx/tailwind-merge if not already present.",
+    "Use pure HTML + Tailwind for complex asymmetrical layouts like the Feature Bento Grid. Use custom divs instead of Shadcn standard Cards if they restrict the design.",
+    "Implement the 4 main pages and wire them with react-router-dom.",
+    "Force dark mode via Tailwind 'dark' class or strictly use the dark color palette (#0A0A0A base).",
+    "Ensure the mobile-first layout is constrained within a 'max-w-md mx-auto' container so it looks like a mobile app even on desktop browsers.",
+    "Populate the app with realistic mock data (e.g., 'Uber Trip', 'Apple Store', 'Merchant Dashboard Earnings').",
+    "Do NOT use placeholder image URLs. Use ONLY the provided URLs in the media section.",
+    "Ensure the bottom navigation stays fixed and layered above all content (z-50)."
+  ]
+}
