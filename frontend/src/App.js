@@ -2,6 +2,9 @@ import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import "@/App.css";
 
+// Store providers
+import { AppProvider } from "./store";
+
 // Pages
 import HomePage from "./pages/HomePage";
 import WalletPage from "./pages/WalletPage";
@@ -23,7 +26,7 @@ const pageTransition = {
   ease: "easeInOut"
 };
 
-function App() {
+function AppContent() {
   const [currentPath, setCurrentPath] = useState("/");
 
   const handleNavigate = (path) => {
@@ -70,6 +73,14 @@ function App() {
         <BottomNav currentPath={currentPath} onNavigate={handleNavigate} />
       )}
     </div>
+  );
+}
+
+function App() {
+  return (
+    <AppProvider>
+      <AppContent />
+    </AppProvider>
   );
 }
 

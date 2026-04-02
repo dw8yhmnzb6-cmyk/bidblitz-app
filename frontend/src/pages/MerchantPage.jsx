@@ -1,7 +1,9 @@
 import { motion } from "framer-motion";
 import { ArrowLeft, TrendingUp, Plus, DollarSign, ArrowUpRight, Store } from "lucide-react";
 import { AreaChart, Area, XAxis, ResponsiveContainer, Tooltip } from "recharts";
-import { merchantData } from "../data/mockData";
+import { useMerchant } from "../store";
+import { useMerchantStats } from "../hooks";
+import { formatRelativeTime } from "../models";
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -24,7 +26,7 @@ const CustomTooltip = ({ active, payload }) => {
   if (active && payload && payload.length) {
     return (
       <motion.div 
-        className="px-4 py-2.5 rounded-xl"
+        className="px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl"
         style={{
           background: "linear-gradient(135deg, #1A1A1A 0%, #111111 100%)",
           border: "1px solid rgba(255, 255, 255, 0.1)",
@@ -33,7 +35,7 @@ const CustomTooltip = ({ active, payload }) => {
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
       >
-        <p className="text-[#00C2FF] font-bold font-outfit text-lg">
+        <p className="text-[#00C2FF] font-bold font-outfit text-base sm:text-lg">
           €{payload[0].value.toLocaleString()}
         </p>
       </motion.div>
@@ -43,22 +45,31 @@ const CustomTooltip = ({ active, payload }) => {
 };
 
 export const MerchantPage = ({ onNavigate }) => {
+  const merchant = useMerchant();
+  const stats = useMerchantStats();
+
+  // Get payments with updated relative times
+  const recentPayments = merchant.payments.slice(0, 5).map(payment => ({
+    ...payment,
+    time: formatRelativeTime(payment.date),
+  }));
+
   return (
     <motion.div
       data-testid="merchant-page"
-      className="px-6 pt-8"
+      className="px-4 sm:px-6 pt-6 sm:pt-8"
       initial="hidden"
       animate="visible"
       variants={containerVariants}
     >
       {/* Header */}
       <motion.header 
-        className="flex items-center gap-4 mb-8"
+        className="flex items-center gap-3 sm:gap-4 mb-6 sm:mb-8"
         variants={itemVariants}
       >
         <motion.button
           data-testid="merchant-back-btn"
-          className="w-11 h-11 rounded-full bg-[#141414] border border-white/5 flex items-center justify-center"
+          className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-[#141414] border border-white/5 flex items-center justify-center"
           whileHover={{ scale: 1.08, backgroundColor: "#1A1A1A" }}
           whileTap={{ scale: 0.95 }}
           onClick={() => onNavigate("/")}
@@ -67,92 +78,89 @@ export const MerchantPage = ({ onNavigate }) => {
           <ArrowLeft size={18} strokeWidth={1.5} className="text-white" />
         </motion.button>
         <div>
-          <h1 className="text-xl font-semibold font-outfit text-white tracking-tight">Händler Dashboard</h1>
-          <p className="text-xs text-[#666] font-medium">{merchantData.businessName}</p>
+          <h1 className="text-lg sm:text-xl font-semibold font-outfit text-white tracking-tight">Händler Dashboard</h1>
+          <p className="text-[10px] sm:text-xs text-[#666] font-medium">{merchant.businessName}</p>
         </div>
       </motion.header>
 
-      {/* Stats Cards - Premium */}
+      {/* Stats Cards */}
       <motion.div 
-        className="grid grid-cols-2 gap-4 mb-8"
+        className="grid grid-cols-2 gap-3 sm:gap-4 mb-6 sm:mb-8"
         variants={itemVariants}
       >
         {/* Today's Earnings */}
         <motion.div 
-          className="rounded-2xl p-5 relative overflow-hidden"
+          className="rounded-xl sm:rounded-2xl p-4 sm:p-5 relative overflow-hidden"
           style={{
             background: "linear-gradient(145deg, #111111 0%, #0D0D0D 100%)",
             border: "1px solid rgba(255, 255, 255, 0.05)"
           }}
           whileHover={{ scale: 1.02, borderColor: "rgba(0, 210, 106, 0.2)" }}
         >
-          {/* Glow */}
-          <div className="absolute -top-10 -right-10 w-24 h-24 rounded-full blur-2xl bg-[#00D26A]/10" />
+          <div className="absolute -top-10 -right-10 w-20 sm:w-24 h-20 sm:h-24 rounded-full blur-2xl bg-[#00D26A]/10" />
           
-          <div className="flex items-center gap-2 mb-3 relative z-10">
+          <div className="flex items-center gap-2 mb-2 sm:mb-3 relative z-10">
             <div 
-              className="w-9 h-9 rounded-xl flex items-center justify-center"
+              className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl flex items-center justify-center"
               style={{ background: "linear-gradient(135deg, rgba(0, 210, 106, 0.2) 0%, rgba(0, 210, 106, 0.1) 100%)" }}
             >
-              <TrendingUp size={18} className="text-[#00D26A]" />
+              <TrendingUp size={16} className="text-[#00D26A]" />
             </div>
-            <span className="text-[10px] text-[#666] uppercase tracking-widest font-bold">Today</span>
+            <span className="text-[9px] sm:text-[10px] text-[#666] uppercase tracking-widest font-bold">Today</span>
           </div>
           
-          <p className="text-2xl font-bold font-outfit text-white relative z-10">
-            €{merchantData.todayEarnings.toLocaleString("de-DE", { minimumFractionDigits: 2 })}
+          <p className="text-xl sm:text-2xl font-bold font-outfit text-white relative z-10">
+            €{stats.todayEarnings.toLocaleString("de-DE", { minimumFractionDigits: 2 })}
           </p>
-          <p className="text-xs text-[#00D26A] mt-1.5 font-semibold flex items-center gap-1">
-            <ArrowUpRight size={12} />
-            +18.5% vs yesterday
+          <p className="text-[10px] sm:text-xs text-[#00D26A] mt-1 sm:mt-1.5 font-semibold flex items-center gap-1">
+            <ArrowUpRight size={10} className="sm:w-3 sm:h-3" />
+            +{stats.changeFromYesterday}% vs yesterday
           </p>
         </motion.div>
 
         {/* Total Earnings */}
         <motion.div 
-          className="rounded-2xl p-5 relative overflow-hidden"
+          className="rounded-xl sm:rounded-2xl p-4 sm:p-5 relative overflow-hidden"
           style={{
             background: "linear-gradient(145deg, #111111 0%, #0D0D0D 100%)",
             border: "1px solid rgba(255, 255, 255, 0.05)"
           }}
           whileHover={{ scale: 1.02, borderColor: "rgba(0, 194, 255, 0.2)" }}
         >
-          {/* Glow */}
-          <div className="absolute -top-10 -right-10 w-24 h-24 rounded-full blur-2xl bg-[#00C2FF]/10" />
+          <div className="absolute -top-10 -right-10 w-20 sm:w-24 h-20 sm:h-24 rounded-full blur-2xl bg-[#00C2FF]/10" />
           
-          <div className="flex items-center gap-2 mb-3 relative z-10">
+          <div className="flex items-center gap-2 mb-2 sm:mb-3 relative z-10">
             <div 
-              className="w-9 h-9 rounded-xl flex items-center justify-center"
+              className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl flex items-center justify-center"
               style={{ background: "linear-gradient(135deg, rgba(0, 194, 255, 0.2) 0%, rgba(0, 194, 255, 0.1) 100%)" }}
             >
-              <Store size={18} className="text-[#00C2FF]" />
+              <Store size={16} className="text-[#00C2FF]" />
             </div>
-            <span className="text-[10px] text-[#666] uppercase tracking-widest font-bold">Total</span>
+            <span className="text-[9px] sm:text-[10px] text-[#666] uppercase tracking-widest font-bold">Total</span>
           </div>
           
-          <p className="text-2xl font-bold font-outfit text-white relative z-10">
-            €{merchantData.totalEarnings.toLocaleString("de-DE", { minimumFractionDigits: 2 })}
+          <p className="text-xl sm:text-2xl font-bold font-outfit text-white relative z-10">
+            €{stats.totalEarnings.toLocaleString("de-DE", { minimumFractionDigits: 2 })}
           </p>
-          <p className="text-xs text-[#666] mt-1.5 font-medium">All time earnings</p>
+          <p className="text-[10px] sm:text-xs text-[#666] mt-1 sm:mt-1.5 font-medium">All time earnings</p>
         </motion.div>
       </motion.div>
 
-      {/* Chart - Premium */}
+      {/* Chart */}
       <motion.div 
-        className="rounded-3xl p-6 mb-8 relative overflow-hidden"
+        className="rounded-2xl sm:rounded-3xl p-4 sm:p-6 mb-6 sm:mb-8 relative overflow-hidden"
         variants={itemVariants}
         style={{
           background: "linear-gradient(145deg, #111111 0%, #0A0A0A 100%)",
           border: "1px solid rgba(255, 255, 255, 0.05)"
         }}
       >
-        {/* Chart glow */}
-        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-3/4 h-32 blur-3xl bg-[#00C2FF]/5" />
+        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-3/4 h-24 sm:h-32 blur-3xl bg-[#00C2FF]/5" />
         
-        <h3 className="font-semibold font-outfit text-white mb-6 relative z-10">Weekly Overview</h3>
-        <div className="h-52 relative z-10">
+        <h3 className="font-semibold font-outfit text-white mb-4 sm:mb-6 relative z-10 text-sm sm:text-base">Weekly Overview</h3>
+        <div className="h-40 sm:h-52 relative z-10">
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={merchantData.weeklyData}>
+            <AreaChart data={stats.weeklyData}>
               <defs>
                 <linearGradient id="colorEarnings" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="#00C2FF" stopOpacity={0.4} />
@@ -164,7 +172,7 @@ export const MerchantPage = ({ onNavigate }) => {
                 dataKey="day" 
                 axisLine={false}
                 tickLine={false}
-                tick={{ fill: '#555', fontSize: 11, fontWeight: 500 }}
+                tick={{ fill: '#555', fontSize: 10 }}
                 dy={10}
               />
               <Tooltip content={<CustomTooltip />} cursor={false} />
@@ -172,20 +180,20 @@ export const MerchantPage = ({ onNavigate }) => {
                 type="monotone"
                 dataKey="earnings"
                 stroke="#00C2FF"
-                strokeWidth={2.5}
+                strokeWidth={2}
                 fill="url(#colorEarnings)"
                 dot={false}
-                activeDot={{ r: 6, fill: "#00C2FF", stroke: "#0A0A0A", strokeWidth: 3 }}
+                activeDot={{ r: 5, fill: "#00C2FF", stroke: "#0A0A0A", strokeWidth: 2 }}
               />
             </AreaChart>
           </ResponsiveContainer>
         </div>
       </motion.div>
 
-      {/* Create Payment Button - Premium */}
+      {/* Create Payment Button */}
       <motion.button
         data-testid="create-payment-btn"
-        className="w-full py-5 bg-gradient-to-r from-[#00C2FF] to-[#00A8CC] text-[#0A0A0A] font-bold rounded-full flex items-center justify-center gap-3 mb-10 btn-premium relative overflow-hidden"
+        className="w-full py-4 sm:py-5 bg-gradient-to-r from-[#00C2FF] to-[#00A8CC] text-[#0A0A0A] font-bold rounded-full flex items-center justify-center gap-2 sm:gap-3 mb-8 sm:mb-10 btn-premium relative overflow-hidden text-sm sm:text-base"
         variants={itemVariants}
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
@@ -194,16 +202,16 @@ export const MerchantPage = ({ onNavigate }) => {
           boxShadow: "0 8px 32px rgba(0, 194, 255, 0.35)"
         }}
       >
-        <Plus size={22} strokeWidth={2.5} />
-        <span className="text-base">Create Payment</span>
+        <Plus size={20} strokeWidth={2.5} />
+        <span>Create Payment</span>
       </motion.button>
 
       {/* Recent Payments */}
       <motion.section variants={itemVariants}>
         <div className="section-header">
-          <h3 className="section-title">Recent Payments</h3>
+          <h3 className="section-title text-sm sm:text-base">Recent Payments</h3>
           <motion.span 
-            className="section-link"
+            className="section-link text-xs sm:text-sm"
             whileHover={{ x: 4 }}
           >
             View All
@@ -211,36 +219,36 @@ export const MerchantPage = ({ onNavigate }) => {
         </div>
 
         <div 
-          className="rounded-2xl px-5 border border-white/5"
+          className="rounded-xl sm:rounded-2xl px-4 sm:px-5 border border-white/5"
           style={{
             background: "linear-gradient(145deg, #111111 0%, #0D0D0D 100%)"
           }}
         >
-          {merchantData.recentPayments.map((payment, index) => (
+          {recentPayments.map((payment, index) => (
             <motion.div
               key={payment.id}
               data-testid={`payment-${payment.id}`}
-              className="flex items-center justify-between py-4 border-b border-white/5 last:border-b-0"
+              className="flex items-center justify-between py-3 sm:py-4 border-b border-white/5 last:border-b-0"
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.1 + index * 0.05 }}
               whileHover={{ x: 4 }}
             >
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 sm:gap-3">
                 <div 
-                  className="w-11 h-11 rounded-full flex items-center justify-center"
+                  className="w-9 h-9 sm:w-11 sm:h-11 rounded-full flex items-center justify-center"
                   style={{
                     background: "linear-gradient(135deg, rgba(0, 210, 106, 0.15) 0%, rgba(0, 210, 106, 0.05) 100%)"
                   }}
                 >
-                  <DollarSign size={20} className="text-[#00D26A]" />
+                  <DollarSign size={18} className="text-[#00D26A]" />
                 </div>
                 <div>
-                  <p className="font-medium text-white text-sm">{payment.customer}</p>
-                  <p className="text-xs text-[#555]">{payment.time}</p>
+                  <p className="font-medium text-white text-xs sm:text-sm">{payment.customerId}</p>
+                  <p className="text-[10px] sm:text-xs text-[#555]">{payment.time}</p>
                 </div>
               </div>
-              <span className="font-bold text-[#00D26A]">
+              <span className="font-bold text-[#00D26A] text-sm">
                 +€{payment.amount.toFixed(2)}
               </span>
             </motion.div>

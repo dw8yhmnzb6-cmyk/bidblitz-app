@@ -1,6 +1,10 @@
 import { motion } from "framer-motion";
 import { Bell, ChevronRight, Sparkles, TrendingUp } from "lucide-react";
-import { userData, walletData, features, getGreeting } from "../data/mockData";
+import { useUser } from "../store";
+import { useWallet } from "../store";
+import { useWalletStats } from "../hooks";
+import { getGreeting } from "../models";
+import { features } from "../models/initialData";
 import { FeatureCard } from "../components/FeatureCard";
 
 const containerVariants = {
@@ -21,6 +25,10 @@ const itemVariants = {
 };
 
 export const HomePage = ({ onNavigate }) => {
+  const user = useUser();
+  const { balance, currency } = useWallet();
+  const { percentageChange } = useWalletStats();
+
   return (
     <motion.div
       data-testid="home-page"
@@ -41,7 +49,7 @@ export const HomePage = ({ onNavigate }) => {
             whileTap={{ scale: 0.95 }}
           >
             <img
-              src={userData.avatar}
+              src={user.avatar}
               alt="Profile"
               className="w-11 h-11 sm:w-14 sm:h-14 rounded-full object-cover"
               style={{
@@ -54,7 +62,7 @@ export const HomePage = ({ onNavigate }) => {
           </motion.div>
           <div>
             <p className="text-[#666] text-xs sm:text-sm font-medium">{getGreeting()}</p>
-            <h2 className="text-white font-semibold font-outfit text-lg sm:text-xl tracking-tight">{userData.name}</h2>
+            <h2 className="text-white font-semibold font-outfit text-lg sm:text-xl tracking-tight">{user.name}</h2>
           </div>
         </div>
         
@@ -114,7 +122,7 @@ export const HomePage = ({ onNavigate }) => {
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.3, duration: 0.6, ease: [0.4, 0, 0.2, 1] }}
           >
-            {walletData.currency}{walletData.balance.toLocaleString("de-DE", { minimumFractionDigits: 2 })}
+            {currency}{balance.toLocaleString("de-DE", { minimumFractionDigits: 2 })}
           </motion.h1>
           
           <motion.div 
@@ -125,7 +133,7 @@ export const HomePage = ({ onNavigate }) => {
           >
             <span className="px-3 sm:px-4 py-1 sm:py-1.5 bg-[#00D26A]/10 text-[#00D26A] text-[10px] sm:text-xs font-semibold rounded-full border border-[#00D26A]/20 flex items-center gap-1.5">
               <TrendingUp size={10} className="sm:w-3 sm:h-3" />
-              +12.5% this month
+              {percentageChange > 0 ? '+' : ''}{percentageChange}% this month
             </span>
           </motion.div>
         </div>
