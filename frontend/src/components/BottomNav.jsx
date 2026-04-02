@@ -30,7 +30,7 @@ export const BottomNav = ({ currentPath, onNavigate }) => {
               className="nav-center"
               onClick={() => onNavigate(item.path)}
               whileTap={{ scale: 0.92 }}
-              whileHover={{ scale: 1.08 }}
+              whileHover={{ scale: 1.05 }}
               aria-label="Scan QR Code"
               initial={{ scale: 0, y: 20 }}
               animate={{ scale: 1, y: 0 }}
@@ -40,7 +40,7 @@ export const BottomNav = ({ currentPath, onNavigate }) => {
                 animate={{ rotate: [0, 5, -5, 0] }}
                 transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
               >
-                <Icon size={26} strokeWidth={2.5} />
+                <Icon size={22} strokeWidth={2.5} className="sm:w-6 sm:h-6" />
               </motion.div>
               
               {/* Pulse ring effect */}
@@ -69,14 +69,14 @@ export const BottomNav = ({ currentPath, onNavigate }) => {
               animate={isActive ? { scale: [1, 1.15, 1] } : {}}
               transition={{ duration: 0.3 }}
             >
-              <Icon size={22} strokeWidth={isActive ? 2 : 1.5} />
+              <Icon size={18} strokeWidth={isActive ? 2 : 1.5} className="sm:w-5 sm:h-5" />
             </motion.div>
-            <span className="uppercase tracking-widest font-medium">{item.label}</span>
+            <span className="uppercase tracking-wider font-medium">{item.label}</span>
             
             {/* Active indicator dot */}
             {isActive && (
               <motion.div
-                className="absolute -bottom-1 w-1 h-1 rounded-full bg-[#00C2FF]"
+                className="absolute -bottom-0.5 w-1 h-1 rounded-full bg-[#00C2FF]"
                 layoutId="activeIndicator"
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
