@@ -1,52 +1,74 @@
-import { useEffect } from "react";
+import { useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import "@/App.css";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import axios from "axios";
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
+// Pages
+import HomePage from "./pages/HomePage";
+import WalletPage from "./pages/WalletPage";
+import ScannerPage from "./pages/ScannerPage";
+import MerchantPage from "./pages/MerchantPage";
+import MorePage from "./pages/MorePage";
 
-const Home = () => {
-  const helloWorldApi = async () => {
-    try {
-      const response = await axios.get(`${API}/`);
-      console.log(response.data.message);
-    } catch (e) {
-      console.error(e, `errored out requesting / api`);
-    }
-  };
+// Components
+import BottomNav from "./components/BottomNav";
 
-  useEffect(() => {
-    helloWorldApi();
-  }, []);
+const pageVariants = {
+  initial: { opacity: 0, y: 10 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -10 }
+};
 
-  return (
-    <div>
-      <header className="App-header">
-        <a
-          className="App-link"
-          href="https://emergent.sh"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <img src="https://avatars.githubusercontent.com/in/1201222?s=120&u=2686cf91179bbafbc7a71bfbc43004cf9ae1acea&v=4" />
-        </a>
-        <p className="mt-5">Building something incredible ~!</p>
-      </header>
-    </div>
-  );
+const pageTransition = {
+  duration: 0.3,
+  ease: "easeInOut"
 };
 
 function App() {
+  const [currentPath, setCurrentPath] = useState("/");
+
+  const handleNavigate = (path) => {
+    setCurrentPath(path);
+  };
+
+  const renderPage = () => {
+    switch (currentPath) {
+      case "/":
+        return <HomePage onNavigate={handleNavigate} />;
+      case "/wallet":
+        return <WalletPage onNavigate={handleNavigate} />;
+      case "/scan":
+        return <ScannerPage onNavigate={handleNavigate} />;
+      case "/merchant":
+        return <MerchantPage onNavigate={handleNavigate} />;
+      case "/more":
+        return <MorePage onNavigate={handleNavigate} />;
+      default:
+        return <HomePage onNavigate={handleNavigate} />;
+    }
+  };
+
+  // Hide bottom nav on scanner page for full-screen experience
+  const showBottomNav = currentPath !== "/scan";
+
   return (
-    <div className="App">
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Home />}>
-            <Route index element={<Home />} />
-          </Route>
-        </Routes>
-      </BrowserRouter>
+    <div className="app-container" data-testid="app-container">
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={currentPath}
+          variants={pageVariants}
+          initial="initial"
+          animate="animate"
+          exit="exit"
+          transition={pageTransition}
+          className="min-h-screen"
+        >
+          {renderPage()}
+        </motion.div>
+      </AnimatePresence>
+
+      {showBottomNav && (
+        <BottomNav currentPath={currentPath} onNavigate={handleNavigate} />
+      )}
     </div>
   );
 }
