@@ -291,3 +291,17 @@ h1, h2, h3, h4, h5, h6 {
     @apply bg-[#050505] text-white;
   }
 }
+
+/* Hide external preview environment elements */
+[class*="emergent"],
+[id*="emergent"],
+[data-emergent],
+div[style*="Made with"],
+iframe[src*="emergent"],
+.preview-badge,
+.watermark {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
