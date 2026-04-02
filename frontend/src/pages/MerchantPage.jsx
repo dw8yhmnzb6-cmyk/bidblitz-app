@@ -1,29 +1,42 @@
 import { motion } from "framer-motion";
-import { ArrowLeft, TrendingUp, Plus, DollarSign } from "lucide-react";
-import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip } from "recharts";
+import { ArrowLeft, TrendingUp, Plus, DollarSign, ArrowUpRight, Store } from "lucide-react";
+import { AreaChart, Area, XAxis, ResponsiveContainer, Tooltip } from "recharts";
 import { merchantData } from "../data/mockData";
 
 const containerVariants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
-    transition: { staggerChildren: 0.1 }
+    transition: { staggerChildren: 0.08, delayChildren: 0.1 }
   }
 };
 
 const itemVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0 }
+  hidden: { opacity: 0, y: 25 },
+  visible: { 
+    opacity: 1, 
+    y: 0,
+    transition: { duration: 0.5, ease: [0.4, 0, 0.2, 1] }
+  }
 };
 
 const CustomTooltip = ({ active, payload }) => {
   if (active && payload && payload.length) {
     return (
-      <div className="bg-[#1A1A1A] border border-white/10 rounded-xl px-3 py-2">
-        <p className="text-[#00C2FF] font-semibold">
+      <motion.div 
+        className="px-4 py-2.5 rounded-xl"
+        style={{
+          background: "linear-gradient(135deg, #1A1A1A 0%, #111111 100%)",
+          border: "1px solid rgba(255, 255, 255, 0.1)",
+          boxShadow: "0 10px 30px rgba(0,0,0,0.5)"
+        }}
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+      >
+        <p className="text-[#00C2FF] font-bold font-outfit text-lg">
           €{payload[0].value.toLocaleString()}
         </p>
-      </div>
+      </motion.div>
     );
   }
   return null;
@@ -33,117 +46,176 @@ export const MerchantPage = ({ onNavigate }) => {
   return (
     <motion.div
       data-testid="merchant-page"
-      className="px-5 pt-6"
+      className="px-6 pt-8"
       initial="hidden"
       animate="visible"
       variants={containerVariants}
     >
       {/* Header */}
       <motion.header 
-        className="flex items-center gap-4 mb-6"
+        className="flex items-center gap-4 mb-8"
         variants={itemVariants}
       >
         <motion.button
           data-testid="merchant-back-btn"
-          className="w-10 h-10 rounded-full bg-[#141414] border border-white/5 flex items-center justify-center"
-          whileHover={{ scale: 1.05 }}
+          className="w-11 h-11 rounded-full bg-[#141414] border border-white/5 flex items-center justify-center"
+          whileHover={{ scale: 1.08, backgroundColor: "#1A1A1A" }}
           whileTap={{ scale: 0.95 }}
           onClick={() => onNavigate("/")}
+          style={{ boxShadow: "0 4px 20px rgba(0,0,0,0.3)" }}
         >
           <ArrowLeft size={18} strokeWidth={1.5} className="text-white" />
         </motion.button>
-        <h1 className="text-xl font-semibold font-outfit text-white">Händler Dashboard</h1>
+        <div>
+          <h1 className="text-xl font-semibold font-outfit text-white tracking-tight">Händler Dashboard</h1>
+          <p className="text-xs text-[#666] font-medium">{merchantData.businessName}</p>
+        </div>
       </motion.header>
 
-      {/* Stats Cards */}
+      {/* Stats Cards - Premium */}
       <motion.div 
-        className="grid grid-cols-2 gap-4 mb-6"
+        className="grid grid-cols-2 gap-4 mb-8"
         variants={itemVariants}
       >
-        <div className="bg-[#141414] rounded-2xl p-5 border border-white/5">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-8 h-8 rounded-lg bg-[#22C55E]/15 flex items-center justify-center">
-              <TrendingUp size={16} className="text-[#22C55E]" />
+        {/* Today's Earnings */}
+        <motion.div 
+          className="rounded-2xl p-5 relative overflow-hidden"
+          style={{
+            background: "linear-gradient(145deg, #111111 0%, #0D0D0D 100%)",
+            border: "1px solid rgba(255, 255, 255, 0.05)"
+          }}
+          whileHover={{ scale: 1.02, borderColor: "rgba(0, 210, 106, 0.2)" }}
+        >
+          {/* Glow */}
+          <div className="absolute -top-10 -right-10 w-24 h-24 rounded-full blur-2xl bg-[#00D26A]/10" />
+          
+          <div className="flex items-center gap-2 mb-3 relative z-10">
+            <div 
+              className="w-9 h-9 rounded-xl flex items-center justify-center"
+              style={{ background: "linear-gradient(135deg, rgba(0, 210, 106, 0.2) 0%, rgba(0, 210, 106, 0.1) 100%)" }}
+            >
+              <TrendingUp size={18} className="text-[#00D26A]" />
             </div>
-            <span className="text-xs text-[#A1A1AA] uppercase tracking-wider">Today</span>
+            <span className="text-[10px] text-[#666] uppercase tracking-widest font-bold">Today</span>
           </div>
-          <p className="text-2xl font-semibold font-outfit text-white">
+          
+          <p className="text-2xl font-bold font-outfit text-white relative z-10">
             €{merchantData.todayEarnings.toLocaleString("de-DE", { minimumFractionDigits: 2 })}
           </p>
-          <p className="text-xs text-[#22C55E] mt-1">+18.5% vs yesterday</p>
-        </div>
+          <p className="text-xs text-[#00D26A] mt-1.5 font-semibold flex items-center gap-1">
+            <ArrowUpRight size={12} />
+            +18.5% vs yesterday
+          </p>
+        </motion.div>
 
-        <div className="bg-[#141414] rounded-2xl p-5 border border-white/5">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-8 h-8 rounded-lg bg-[#00C2FF]/15 flex items-center justify-center">
-              <DollarSign size={16} className="text-[#00C2FF]" />
+        {/* Total Earnings */}
+        <motion.div 
+          className="rounded-2xl p-5 relative overflow-hidden"
+          style={{
+            background: "linear-gradient(145deg, #111111 0%, #0D0D0D 100%)",
+            border: "1px solid rgba(255, 255, 255, 0.05)"
+          }}
+          whileHover={{ scale: 1.02, borderColor: "rgba(0, 194, 255, 0.2)" }}
+        >
+          {/* Glow */}
+          <div className="absolute -top-10 -right-10 w-24 h-24 rounded-full blur-2xl bg-[#00C2FF]/10" />
+          
+          <div className="flex items-center gap-2 mb-3 relative z-10">
+            <div 
+              className="w-9 h-9 rounded-xl flex items-center justify-center"
+              style={{ background: "linear-gradient(135deg, rgba(0, 194, 255, 0.2) 0%, rgba(0, 194, 255, 0.1) 100%)" }}
+            >
+              <Store size={18} className="text-[#00C2FF]" />
             </div>
-            <span className="text-xs text-[#A1A1AA] uppercase tracking-wider">Total</span>
+            <span className="text-[10px] text-[#666] uppercase tracking-widest font-bold">Total</span>
           </div>
-          <p className="text-2xl font-semibold font-outfit text-white">
+          
+          <p className="text-2xl font-bold font-outfit text-white relative z-10">
             €{merchantData.totalEarnings.toLocaleString("de-DE", { minimumFractionDigits: 2 })}
           </p>
-          <p className="text-xs text-[#A1A1AA] mt-1">All time earnings</p>
-        </div>
+          <p className="text-xs text-[#666] mt-1.5 font-medium">All time earnings</p>
+        </motion.div>
       </motion.div>
 
-      {/* Chart */}
+      {/* Chart - Premium */}
       <motion.div 
-        className="bg-[#141414] rounded-3xl p-5 border border-white/5 mb-6"
+        className="rounded-3xl p-6 mb-8 relative overflow-hidden"
         variants={itemVariants}
+        style={{
+          background: "linear-gradient(145deg, #111111 0%, #0A0A0A 100%)",
+          border: "1px solid rgba(255, 255, 255, 0.05)"
+        }}
       >
-        <h3 className="font-semibold font-outfit text-white mb-4">Weekly Overview</h3>
-        <div className="h-48">
+        {/* Chart glow */}
+        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-3/4 h-32 blur-3xl bg-[#00C2FF]/5" />
+        
+        <h3 className="font-semibold font-outfit text-white mb-6 relative z-10">Weekly Overview</h3>
+        <div className="h-52 relative z-10">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={merchantData.weeklyData}>
               <defs>
                 <linearGradient id="colorEarnings" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#00C2FF" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#00C2FF" stopOpacity={0} />
+                  <stop offset="0%" stopColor="#00C2FF" stopOpacity={0.4} />
+                  <stop offset="50%" stopColor="#00C2FF" stopOpacity={0.15} />
+                  <stop offset="100%" stopColor="#00C2FF" stopOpacity={0} />
                 </linearGradient>
               </defs>
               <XAxis 
                 dataKey="day" 
                 axisLine={false}
                 tickLine={false}
-                tick={{ fill: '#A1A1AA', fontSize: 12 }}
+                tick={{ fill: '#555', fontSize: 11, fontWeight: 500 }}
                 dy={10}
               />
-              <YAxis hide />
-              <Tooltip content={<CustomTooltip />} />
+              <Tooltip content={<CustomTooltip />} cursor={false} />
               <Area
                 type="monotone"
                 dataKey="earnings"
                 stroke="#00C2FF"
-                strokeWidth={2}
+                strokeWidth={2.5}
                 fill="url(#colorEarnings)"
+                dot={false}
+                activeDot={{ r: 6, fill: "#00C2FF", stroke: "#0A0A0A", strokeWidth: 3 }}
               />
             </AreaChart>
           </ResponsiveContainer>
         </div>
       </motion.div>
 
-      {/* Create Payment Button */}
+      {/* Create Payment Button - Premium */}
       <motion.button
         data-testid="create-payment-btn"
-        className="w-full py-4 bg-[#00C2FF] text-[#0A0A0A] font-semibold rounded-full flex items-center justify-center gap-2 mb-8"
+        className="w-full py-5 bg-gradient-to-r from-[#00C2FF] to-[#00A8CC] text-[#0A0A0A] font-bold rounded-full flex items-center justify-center gap-3 mb-10 btn-premium relative overflow-hidden"
         variants={itemVariants}
-        whileHover={{ scale: 1.02, boxShadow: "0 0 30px rgba(0, 194, 255, 0.4)" }}
+        whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
         onClick={() => onNavigate("/scan")}
+        style={{
+          boxShadow: "0 8px 32px rgba(0, 194, 255, 0.35)"
+        }}
       >
-        <Plus size={20} strokeWidth={2} />
-        Create Payment
+        <Plus size={22} strokeWidth={2.5} />
+        <span className="text-base">Create Payment</span>
       </motion.button>
 
       {/* Recent Payments */}
       <motion.section variants={itemVariants}>
         <div className="section-header">
           <h3 className="section-title">Recent Payments</h3>
-          <span className="section-link">View All</span>
+          <motion.span 
+            className="section-link"
+            whileHover={{ x: 4 }}
+          >
+            View All
+          </motion.span>
         </div>
 
-        <div className="bg-[#141414] rounded-2xl px-4 border border-white/5">
+        <div 
+          className="rounded-2xl px-5 border border-white/5"
+          style={{
+            background: "linear-gradient(145deg, #111111 0%, #0D0D0D 100%)"
+          }}
+        >
           {merchantData.recentPayments.map((payment, index) => (
             <motion.div
               key={payment.id}
@@ -151,18 +223,24 @@ export const MerchantPage = ({ onNavigate }) => {
               className="flex items-center justify-between py-4 border-b border-white/5 last:border-b-0"
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: index * 0.05 }}
+              transition={{ delay: 0.1 + index * 0.05 }}
+              whileHover={{ x: 4 }}
             >
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-[#22C55E]/15 flex items-center justify-center">
-                  <DollarSign size={18} className="text-[#22C55E]" />
+                <div 
+                  className="w-11 h-11 rounded-full flex items-center justify-center"
+                  style={{
+                    background: "linear-gradient(135deg, rgba(0, 210, 106, 0.15) 0%, rgba(0, 210, 106, 0.05) 100%)"
+                  }}
+                >
+                  <DollarSign size={20} className="text-[#00D26A]" />
                 </div>
                 <div>
                   <p className="font-medium text-white text-sm">{payment.customer}</p>
-                  <p className="text-xs text-[#A1A1AA]">{payment.time}</p>
+                  <p className="text-xs text-[#555]">{payment.time}</p>
                 </div>
               </div>
-              <span className="font-semibold text-[#22C55E]">
+              <span className="font-bold text-[#00D26A]">
                 +€{payment.amount.toFixed(2)}
               </span>
             </motion.div>

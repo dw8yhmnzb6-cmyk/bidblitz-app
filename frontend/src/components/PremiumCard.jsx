@@ -1,102 +1,169 @@
 import { motion } from "framer-motion";
-import { Wifi } from "lucide-react";
+import { Wifi, Nfc } from "lucide-react";
 
 export const PremiumCard = ({ cardNumber, expiry, holder }) => {
   return (
     <motion.div
       data-testid="premium-card"
-      className="premium-card"
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.5 }}
-      whileHover={{ scale: 1.02 }}
+      className="premium-card holographic"
+      initial={{ opacity: 0, y: 30, rotateX: -10 }}
+      animate={{ opacity: 1, y: 0, rotateX: 0 }}
+      transition={{ duration: 0.6, ease: [0.4, 0, 0.2, 1] }}
+      whileHover={{ scale: 1.02, rotateX: 2 }}
     >
-      {/* Glow effect */}
-      <div className="absolute inset-0 bg-gradient-to-tr from-[#00C2FF]/10 via-transparent to-transparent opacity-60 pointer-events-none" />
+      {/* Animated gradient overlay */}
+      <motion.div 
+        className="absolute inset-0 opacity-40"
+        style={{
+          background: "linear-gradient(135deg, rgba(0, 194, 255, 0.15) 0%, transparent 40%, rgba(0, 194, 255, 0.1) 100%)"
+        }}
+        animate={{
+          background: [
+            "linear-gradient(135deg, rgba(0, 194, 255, 0.15) 0%, transparent 40%, rgba(0, 194, 255, 0.1) 100%)",
+            "linear-gradient(225deg, rgba(0, 194, 255, 0.15) 0%, transparent 40%, rgba(0, 194, 255, 0.1) 100%)",
+            "linear-gradient(135deg, rgba(0, 194, 255, 0.15) 0%, transparent 40%, rgba(0, 194, 255, 0.1) 100%)"
+          ]
+        }}
+        transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
+      />
       
-      {/* Decorative circles */}
-      <div className="absolute -right-10 -top-10 w-40 h-40 rounded-full bg-[#00C2FF]/5 blur-2xl" />
-      <div className="absolute -left-10 -bottom-10 w-32 h-32 rounded-full bg-white/5 blur-xl" />
+      {/* Light reflection */}
+      <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-transparent pointer-events-none" />
+      
+      {/* Noise texture */}
+      <div 
+        className="absolute inset-0 opacity-[0.03] pointer-events-none"
+        style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")`
+        }}
+      />
 
-      {/* Top row */}
-      <div className="relative flex justify-between items-start">
+      {/* Card glow edges */}
+      <div className="absolute inset-0 rounded-[1.25rem] pointer-events-none"
+        style={{
+          boxShadow: "inset 0 0 30px rgba(0, 194, 255, 0.1), inset 0 1px 0 rgba(255,255,255,0.1)"
+        }}
+      />
+
+      {/* Top row - Logo & NFC */}
+      <div className="relative flex justify-between items-start z-10">
         <div>
-          <span className="text-[10px] uppercase tracking-[0.2em] text-[#A1A1AA] font-bold">
-            BidBlitz
-          </span>
-          <div className="text-lg font-semibold text-white mt-1 font-outfit">
-            Premium
-          </div>
+          <motion.div 
+            className="flex items-center gap-2"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.3 }}
+          >
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#00C2FF] to-[#0088CC] flex items-center justify-center">
+              <span className="text-[10px] font-bold text-white">BB</span>
+            </div>
+            <div>
+              <span className="text-[9px] uppercase tracking-[0.25em] text-[#888] font-semibold block">
+                BidBlitz
+              </span>
+              <span className="text-sm font-semibold text-white font-outfit">
+                Premium
+              </span>
+            </div>
+          </motion.div>
         </div>
-        <motion.div
-          animate={{ rotate: [0, 10, 0] }}
-          transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
+        
+        <div className="flex items-center gap-3">
+          <motion.div
+            animate={{ opacity: [0.5, 1, 0.5] }}
+            transition={{ duration: 2, repeat: Infinity }}
+          >
+            <Nfc size={20} className="text-[#00C2FF]/60" strokeWidth={1.5} />
+          </motion.div>
+          <motion.div
+            animate={{ rotate: [0, 10, 0] }}
+            transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+          >
+            <Wifi size={22} className="text-white/80 rotate-90" strokeWidth={1.5} />
+          </motion.div>
+        </div>
+      </div>
+
+      {/* Card chip - Ultra realistic */}
+      <div className="relative z-10 my-4">
+        <motion.div 
+          className="w-12 h-9 rounded-md overflow-hidden"
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.4 }}
+          style={{
+            background: "linear-gradient(135deg, #D4AF37 0%, #F4E5B0 25%, #D4AF37 50%, #B8860B 75%, #D4AF37 100%)",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.4)"
+          }}
         >
-          <Wifi size={24} className="text-[#00C2FF] rotate-90" strokeWidth={1.5} />
+          <div className="w-full h-full grid grid-cols-4 gap-[1px] p-[3px]">
+            {[...Array(8)].map((_, i) => (
+              <div 
+                key={i} 
+                className="rounded-[1px]"
+                style={{ 
+                  background: i % 2 === 0 
+                    ? "linear-gradient(180deg, #B8860B 0%, #8B6914 100%)" 
+                    : "linear-gradient(180deg, #DAA520 0%, #B8860B 100%)"
+                }} 
+              />
+            ))}
+          </div>
         </motion.div>
       </div>
 
       {/* Card number */}
-      <div className="relative flex items-center gap-3 my-4">
-        <div className="flex gap-1">
-          {[1, 2, 3, 4].map((i) => (
-            <div
-              key={i}
-              className="w-2 h-2 rounded-full bg-white/40"
-            />
-          ))}
-        </div>
-        <div className="flex gap-1">
-          {[1, 2, 3, 4].map((i) => (
-            <div
-              key={i}
-              className="w-2 h-2 rounded-full bg-white/40"
-            />
-          ))}
-        </div>
-        <div className="flex gap-1">
-          {[1, 2, 3, 4].map((i) => (
-            <div
-              key={i}
-              className="w-2 h-2 rounded-full bg-white/40"
-            />
-          ))}
-        </div>
-        <span className="text-white font-medium tracking-wider text-lg">
+      <motion.div 
+        className="relative z-10 flex items-center gap-4 mb-4"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.5 }}
+      >
+        {[1, 2, 3].map((group) => (
+          <div key={group} className="flex gap-1.5">
+            {[1, 2, 3, 4].map((dot) => (
+              <div
+                key={dot}
+                className="w-2 h-2 rounded-full bg-white/30"
+              />
+            ))}
+          </div>
+        ))}
+        <span className="text-xl font-medium tracking-[0.15em] text-white font-outfit">
           {cardNumber.split(" ").pop()}
         </span>
-      </div>
+      </motion.div>
 
-      {/* Bottom row */}
-      <div className="relative flex justify-between items-end">
+      {/* Bottom row - Holder & Expiry */}
+      <motion.div 
+        className="relative z-10 flex justify-between items-end"
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.6 }}
+      >
         <div>
-          <span className="text-[10px] uppercase tracking-[0.15em] text-[#A1A1AA] block mb-0.5">
+          <span className="text-[9px] uppercase tracking-[0.2em] text-[#666] block mb-1 font-semibold">
             Card Holder
           </span>
-          <span className="text-white font-medium text-sm tracking-wide">
+          <span className="text-white font-medium text-sm tracking-wide font-outfit">
             {holder}
           </span>
         </div>
         <div className="text-right">
-          <span className="text-[10px] uppercase tracking-[0.15em] text-[#A1A1AA] block mb-0.5">
-            Expires
+          <span className="text-[9px] uppercase tracking-[0.2em] text-[#666] block mb-1 font-semibold">
+            Valid Thru
           </span>
-          <span className="text-white font-medium text-sm">
+          <span className="text-white font-medium text-sm tracking-wide font-outfit">
             {expiry}
           </span>
         </div>
-      </div>
-
-      {/* Card chip */}
-      <div className="absolute top-1/2 left-6 -translate-y-1/2">
-        <div className="w-10 h-8 rounded-md bg-gradient-to-br from-yellow-400/80 to-yellow-600/80 border border-yellow-500/50">
-          <div className="w-full h-full grid grid-cols-3 gap-px p-1">
-            {[...Array(6)].map((_, i) => (
-              <div key={i} className="bg-yellow-700/30 rounded-sm" />
-            ))}
-          </div>
+        
+        {/* Card network logo */}
+        <div className="flex -space-x-2">
+          <div className="w-8 h-8 rounded-full bg-[#EB001B]/90" />
+          <div className="w-8 h-8 rounded-full bg-[#F79E1B]/90" />
         </div>
-      </div>
+      </motion.div>
     </motion.div>
   );
 };
