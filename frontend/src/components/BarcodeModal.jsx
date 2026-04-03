@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Copy, Check, QrCode, ShieldCheck, Loader2 } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
 import { api } from "../services/api";
 import { useI18n } from "../store";
 
@@ -100,22 +101,18 @@ const BarcodeModal = ({ isOpen, onClose }) => {
             </div>
           ) : barcode ? (
             <div className="flex flex-col items-center">
-              {/* Barcode visual */}
+              {/* QR Code */}
               <div className="w-full bg-white rounded-2xl p-6 mb-5 relative overflow-hidden">
                 <div className="flex flex-col items-center">
-                  {/* Barcode lines simulation */}
-                  <div className="flex items-end justify-center gap-[2px] mb-3 h-24">
-                    {barcode.barcode.split("").map((char, i) => {
-                      const h = 40 + ((char.charCodeAt(0) * 7 + i * 13) % 56);
-                      const w = (i % 3 === 0) ? 3 : (i % 2 === 0 ? 2 : 1);
-                      return (
-                        <div
-                          key={i}
-                          className="bg-black rounded-sm"
-                          style={{ width: `${w}px`, height: `${h}px` }}
-                        />
-                      );
-                    })}
+                  <div className="mb-3">
+                    <QRCodeSVG
+                      value={barcode.barcode}
+                      size={160}
+                      level="H"
+                      bgColor="#ffffff"
+                      fgColor="#000000"
+                      includeMargin={false}
+                    />
                   </div>
                   <p className="text-black font-mono text-sm font-bold tracking-[0.15em]">
                     {barcode.barcode}
