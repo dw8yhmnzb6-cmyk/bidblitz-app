@@ -2,10 +2,13 @@ import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, QrCode, Check, AlertCircle, Sparkles, Loader2 } from "lucide-react";
 import { useWallet, useMerchant } from "../store";
+import { PaymentRequestSummary } from "../components/PaymentRequestSummary";
+import { generateReference } from "../models";
 
 // Payment flow states
 const PaymentStatus = {
   INPUT: 'input',
+  REVIEW: 'review',
   SCANNING: 'scanning',
   PROCESSING: 'processing',
   SUCCESS: 'success',
@@ -17,6 +20,7 @@ export const ScannerPage = ({ onNavigate }) => {
   const [amount, setAmount] = useState("");
   const [scanProgress, setScanProgress] = useState(0);
   const [error, setError] = useState(null);
+  const [reference, setReference] = useState("");
   
   const wallet = useWallet();
   const merchant = useMerchant();
@@ -70,17 +74,19 @@ export const ScannerPage = ({ onNavigate }) => {
     }
   }, [status, scanProgress, processPayment]);
 
-  const handleActivateScan = () => {
+  const handleContinueToReview = () => {
     if (!amount || parseFloat(amount) <= 0) {
       setError("Please enter a valid amount");
       return;
     }
-    
     setError(null);
-    
+    setReference(generateReference());
+    setStatus(PaymentStatus.REVIEW);
+  };
+
+  const handleActivateScan = () => {
     // Create payment request on merchant side
     merchant.createPaymentRequest(parseFloat(amount));
-    
     setStatus(PaymentStatus.SCANNING);
   };
 
@@ -89,6 +95,7 @@ export const ScannerPage = ({ onNavigate }) => {
     setAmount("");
     setScanProgress(0);
     setError(null);
+    setReference("");
     merchant.cancelPaymentRequest();
   };
 
@@ -111,6 +118,7 @@ export const ScannerPage = ({ onNavigate }) => {
       <div className="flex items-center justify-between px-4 sm:px-6 pt-6 sm:pt-8 pb-4 relative z-10">
         <h1 className="text-lg sm:text-xl font-semibold font-outfit text-white tracking-tight">
           {status === PaymentStatus.INPUT ? "Payment" : 
+           status === PaymentStatus.REVIEW ? "Review" :
            status === PaymentStatus.SCANNING ? "Scanning" :
            status === PaymentStatus.PROCESSING ? "Processing" :
            status === PaymentStatus.SUCCESS ? "Success" : "Failed"}
@@ -199,19 +207,39 @@ export const ScannerPage = ({ onNavigate }) => {
               </p>
 
               <motion.button
-                data-testid="activate-scan-btn"
+                data-testid="continue-to-review-btn"
                 className="w-full py-4 sm:py-5 bg-gradient-to-r from-[#00C2FF] to-[#00A8CC] text-[#0A0A0A] font-bold rounded-full flex items-center justify-center gap-2 sm:gap-3 disabled:opacity-40 disabled:cursor-not-allowed btn-premium relative overflow-hidden text-sm sm:text-base"
                 whileHover={{ scale: amount ? 1.02 : 1 }}
                 whileTap={{ scale: amount ? 0.98 : 1 }}
-                onClick={handleActivateScan}
+                onClick={handleContinueToReview}
                 disabled={!amount || parseFloat(amount) <= 0}
                 style={{
                   boxShadow: amount ? "0 8px 32px rgba(0, 194, 255, 0.4)" : "none"
                 }}
               >
-                <QrCode size={20} strokeWidth={2.5} />
-                <span>Activate Scan</span>
+                <span>Continue</span>
               </motion.button>
+            </motion.div>
+          )}
+
+          {/* Review State */}
+          {status === PaymentStatus.REVIEW && (
+            <motion.div
+              key="review"
+              className="w-full max-w-sm"
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -30 }}
+              transition={{ duration: 0.4 }}
+            >
+              <PaymentRequestSummary
+                amount={parseFloat(amount)}
+                merchantName={merchant.businessName}
+                reference={reference}
+                expiresIn="5:00 min"
+                onEdit={() => setStatus(PaymentStatus.INPUT)}
+                onConfirm={handleActivateScan}
+              />
             </motion.div>
           )}
 
@@ -305,12 +333,14 @@ export const ScannerPage = ({ onNavigate }) => {
               </motion.p>
 
               <motion.p 
-                className="text-3xl sm:text-4xl font-bold font-outfit text-[#00C2FF] mb-4"
+                className="text-3xl sm:text-4xl font-bold font-outfit text-[#00C2FF] mb-2"
                 animate={{ textShadow: ["0 0 20px rgba(0, 194, 255, 0.3)", "0 0 40px rgba(0, 194, 255, 0.5)", "0 0 20px rgba(0, 194, 255, 0.3)"] }}
                 transition={{ duration: 2, repeat: Infinity }}
               >
                 €{parseFloat(amount).toFixed(2)}
               </motion.p>
+
+              <p className="text-[10px] text-[#555] font-mono mb-4">{reference}</p>
 
               {/* Progress bar */}
               <div className="w-40 sm:w-48 h-1 bg-[#1A1A1A] rounded-full overflow-hidden">
@@ -411,7 +441,8 @@ export const ScannerPage = ({ onNavigate }) => {
                     Payment Successful
                   </h2>
                 </div>
-                <p className="text-[#666] text-sm mb-4 sm:mb-6">Transaction completed</p>
+                <p className="text-[#666] text-sm mb-1">Transaction completed</p>
+                <p className="text-[10px] text-[#555] font-mono mb-4 sm:mb-6">{reference}</p>
               </motion.div>
 
               <motion.p 

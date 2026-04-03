@@ -40,7 +40,7 @@ const categoryConfig = {
   payment: { color: "#FF4757", gradient: ["#FF4757", "#FF3344"] },
 };
 
-export const TransactionItem = ({ transaction, index }) => {
+export const TransactionItem = ({ transaction, index, onClick }) => {
   const Icon = iconMap[transaction.icon] || Wallet;
   const config = categoryConfig[transaction.category] || categoryConfig.transfer;
   const isPositive = transaction.amount > 0;
@@ -48,11 +48,12 @@ export const TransactionItem = ({ transaction, index }) => {
   return (
     <motion.div
       data-testid={`transaction-${transaction.id}`}
-      className="transaction-item group"
+      className="transaction-item group cursor-pointer"
       initial={{ opacity: 0, x: -20 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay: index * 0.04, duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
       whileHover={{ x: 4 }}
+      onClick={() => onClick && onClick(transaction)}
     >
       {/* Icon with gradient background */}
       <motion.div

@@ -6,6 +6,9 @@ import { useGroupedTransactions } from "../hooks";
 import { PremiumCard } from "../components/PremiumCard";
 import { QuickAction } from "../components/QuickAction";
 import { TransactionItem } from "../components/TransactionItem";
+import { TopUpModal } from "../components/TopUpModal";
+import { TransactionDetailModal } from "../components/TransactionDetailModal";
+import { TransactionFilters, filterTransactions } from "../components/TransactionFilters";
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -26,13 +29,26 @@ const itemVariants = {
 
 export const WalletPage = ({ onNavigate }) => {
   const [showBalance, setShowBalance] = useState(true);
-  const { balance, currency, cardNumber, cardExpiry, cardHolder, addMoney } = useWallet();
+  const [showTopUp, setShowTopUp] = useState(false);
+  const [selectedTransaction, setSelectedTransaction] = useState(null);
+  const [typeFilter, setTypeFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
+  
+  const { balance, currency, cardNumber, cardExpiry, cardHolder, addMoney, transactions } = useWallet();
   const groupedTransactions = useGroupedTransactions();
 
-  const handleAddMoney = () => {
-    // Simulate adding €100 - in production, this would open a modal
-    addMoney(100, 'Demo Top-up');
+  const handleTopUpSuccess = (transaction) => {
+    addMoney(transaction.amount, transaction.description || 'Top-up');
   };
+
+  // Apply filters to grouped transactions
+  const filteredGrouped = Object.entries(groupedTransactions).reduce((acc, [date, txns]) => {
+    const filtered = filterTransactions(txns, typeFilter, statusFilter);
+    if (filtered.length > 0) {
+      acc[date] = filtered;
+    }
+    return acc;
+  }, {});
 
   return (
     <motion.div
@@ -62,6 +78,7 @@ export const WalletPage = ({ onNavigate }) => {
         </div>
         
         <motion.button
+          data-testid="toggle-balance-btn"
           onClick={() => setShowBalance(!showBalance)}
           className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-[#141414] border border-white/5 flex items-center justify-center"
           whileHover={{ scale: 1.08 }}
@@ -128,9 +145,20 @@ export const WalletPage = ({ onNavigate }) => {
         className="flex justify-center gap-8 sm:gap-12 mb-8 sm:mb-10"
         variants={itemVariants}
       >
-        <QuickAction id="add" icon="add" label="Add Money" onClick={handleAddMoney} />
+        <QuickAction id="add" icon="add" label="Add Money" onClick={() => setShowTopUp(true)} />
         <QuickAction id="send" icon="send" label="Send" />
         <QuickAction id="history" icon="history" label="History" />
+      </motion.div>
+
+      {/* Transaction Filters */}
+      <motion.div variants={itemVariants} className="mb-4">
+        <TransactionFilters
+          activeTypeFilter={typeFilter}
+          activeStatusFilter={statusFilter}
+          onTypeFilterChange={setTypeFilter}
+          onStatusFilterChange={setStatusFilter}
+          showStatusFilter={typeFilter !== 'all'}
+        />
       </motion.div>
 
       {/* Transactions */}
@@ -146,34 +174,56 @@ export const WalletPage = ({ onNavigate }) => {
         </div>
 
         <div className="space-y-4 sm:space-y-5">
-          {Object.entries(groupedTransactions).map(([date, txns], groupIndex) => (
-            <motion.div 
-              key={date}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: groupIndex * 0.1 }}
-            >
-              <p className="text-[10px] sm:text-xs text-[#555] uppercase tracking-widest mb-2 sm:mb-3 font-semibold">
-                {date}
-              </p>
-              <div 
-                className="rounded-xl sm:rounded-2xl px-4 sm:px-5 border border-white/5"
-                style={{
-                  background: "linear-gradient(145deg, #111111 0%, #0D0D0D 100%)"
-                }}
+          {Object.keys(filteredGrouped).length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-[#555] text-sm">No transactions found</p>
+            </div>
+          ) : (
+            Object.entries(filteredGrouped).map(([date, txns], groupIndex) => (
+              <motion.div 
+                key={date}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: groupIndex * 0.1 }}
               >
-                {txns.map((txn, index) => (
-                  <TransactionItem
-                    key={txn.id}
-                    transaction={txn}
-                    index={index}
-                  />
-                ))}
-              </div>
-            </motion.div>
-          ))}
+                <p className="text-[10px] sm:text-xs text-[#555] uppercase tracking-widest mb-2 sm:mb-3 font-semibold">
+                  {date}
+                </p>
+                <div 
+                  className="rounded-xl sm:rounded-2xl px-4 sm:px-5 border border-white/5"
+                  style={{
+                    background: "linear-gradient(145deg, #111111 0%, #0D0D0D 100%)"
+                  }}
+                >
+                  {txns.map((txn, index) => (
+                    <TransactionItem
+                      key={txn.id}
+                      transaction={txn}
+                      index={index}
+                      onClick={setSelectedTransaction}
+                    />
+                  ))}
+                </div>
+              </motion.div>
+            ))
+          )}
         </div>
       </motion.section>
+
+      {/* Top Up Modal */}
+      <TopUpModal
+        isOpen={showTopUp}
+        onClose={() => setShowTopUp(false)}
+        onSuccess={handleTopUpSuccess}
+        currentBalance={balance}
+      />
+
+      {/* Transaction Detail Modal */}
+      <TransactionDetailModal
+        isOpen={!!selectedTransaction}
+        onClose={() => setSelectedTransaction(null)}
+        transaction={selectedTransaction}
+      />
     </motion.div>
   );
 };
