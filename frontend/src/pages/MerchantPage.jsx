@@ -1,44 +1,96 @@
-import { motion } from "framer-motion";
-import { ArrowLeft, TrendingUp, Plus, DollarSign, ArrowUpRight, Store } from "lucide-react";
+import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  ArrowLeft, TrendingUp, Plus, ArrowUpRight, Store,
+  ChevronRight, Check, Clock, AlertTriangle, Banknote,
+  BarChart3, Users, CircleDollarSign
+} from "lucide-react";
 import { AreaChart, Area, XAxis, ResponsiveContainer, Tooltip } from "recharts";
 import { useMerchant } from "../store";
 import { useMerchantStats } from "../hooks";
 import { formatRelativeTime } from "../models";
 
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { staggerChildren: 0.08, delayChildren: 0.1 }
-  }
-};
+const slide = { duration: 0.35, ease: [0.32, 0.72, 0, 1] };
 
-const itemVariants = {
-  hidden: { opacity: 0, y: 25 },
-  visible: { 
-    opacity: 1, 
-    y: 0,
-    transition: { duration: 0.5, ease: [0.4, 0, 0.2, 1] }
-  }
-};
+// Skeleton shimmer
+const Skeleton = ({ className, style }) => (
+  <div className={`relative overflow-hidden rounded-xl ${className}`} style={{ background: "rgba(255,255,255,0.025)", ...style }}>
+    <motion.div
+      className="absolute inset-0"
+      style={{ background: "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.04) 50%, transparent 100%)" }}
+      animate={{ x: ["-100%", "100%"] }}
+      transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+    />
+  </div>
+);
 
-const CustomTooltip = ({ active, payload }) => {
+// Stat card
+const StatCard = ({ icon: Icon, label, value, sub, color, delay = 0 }) => (
+  <motion.div
+    className="rounded-2xl p-4 relative overflow-hidden"
+    style={{
+      background: "rgba(255,255,255,0.018)",
+      border: "1px solid rgba(255,255,255,0.04)",
+    }}
+    initial={{ opacity: 0, y: 14 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ delay, ...slide }}
+    whileHover={{ borderColor: `${color}25` }}
+  >
+    {/* Corner glow */}
+    <div
+      className="absolute -top-8 -right-8 w-20 h-20 rounded-full pointer-events-none"
+      style={{ background: color, filter: "blur(40px)", opacity: 0.08 }}
+    />
+    <div className="flex items-center gap-2 mb-2.5 relative z-10">
+      <div
+        className="w-7 h-7 rounded-lg flex items-center justify-center"
+        style={{ background: `${color}10`, border: `1px solid ${color}15` }}
+      >
+        <Icon size={13} style={{ color }} />
+      </div>
+      <span className="text-[9px] text-[#3A3A3A] uppercase tracking-[0.12em] font-semibold">{label}</span>
+    </div>
+    <p className="text-[17px] font-bold font-outfit text-white/90 relative z-10 leading-tight">{value}</p>
+    {sub && (
+      <p className="text-[10px] text-[#333] font-medium mt-1 relative z-10">{sub}</p>
+    )}
+  </motion.div>
+);
+
+// Activity dot
+const ActivityRow = ({ label, count, color, delay = 0 }) => (
+  <motion.div
+    className="flex items-center justify-between py-[11px]"
+    initial={{ opacity: 0, x: -8 }}
+    animate={{ opacity: 1, x: 0 }}
+    transition={{ delay, ...slide }}
+  >
+    <div className="flex items-center gap-2.5">
+      <div className="w-2 h-2 rounded-full" style={{ background: color, boxShadow: `0 0 8px ${color}40` }} />
+      <span className="text-[12px] text-white/60 font-medium">{label}</span>
+    </div>
+    <span className="text-[13px] font-semibold font-outfit text-white/80">{count}</span>
+  </motion.div>
+);
+
+// Chart tooltip
+const ChartTooltip = ({ active, payload }) => {
   if (active && payload && payload.length) {
     return (
-      <motion.div 
-        className="px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl"
+      <div
+        className="px-3 py-2 rounded-xl"
         style={{
-          background: "linear-gradient(135deg, #1A1A1A 0%, #111111 100%)",
-          border: "1px solid rgba(255, 255, 255, 0.1)",
-          boxShadow: "0 10px 30px rgba(0,0,0,0.5)"
+          background: "rgba(15,15,15,0.95)",
+          border: "1px solid rgba(255,255,255,0.08)",
+          backdropFilter: "blur(12px)",
+          boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
         }}
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
       >
-        <p className="text-[#00C2FF] font-bold font-outfit text-base sm:text-lg">
-          €{payload[0].value.toLocaleString()}
+        <p className="text-[#00C2FF] font-bold font-outfit text-[14px]">
+          &euro;{payload[0].value.toLocaleString("de-DE")}
         </p>
-      </motion.div>
+      </div>
     );
   }
   return null;
@@ -47,211 +99,342 @@ const CustomTooltip = ({ active, payload }) => {
 export const MerchantPage = ({ onNavigate }) => {
   const merchant = useMerchant();
   const stats = useMerchantStats();
+  const [isLoading, setIsLoading] = useState(true);
 
-  const recentPayments = merchant.payments.slice(0, 5).map(payment => ({
-    ...payment,
-    time: formatRelativeTime(payment.date),
+  useEffect(() => {
+    const t = setTimeout(() => setIsLoading(false), 500);
+    return () => clearTimeout(t);
+  }, []);
+
+  const recentPayments = merchant.payments.slice(0, 6).map((p) => ({
+    ...p,
+    time: formatRelativeTime(p.date),
   }));
+
+  const successCount = merchant.payments.length;
+  const failedCount = 0;
 
   return (
     <motion.div
       data-testid="merchant-page"
-      className="px-4 sm:px-6 pt-6 sm:pt-8"
-      initial="hidden"
-      animate="visible"
-      variants={containerVariants}
+      className="min-h-screen relative overflow-hidden"
+      style={{ background: "#030303" }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
     >
+      {/* Ambient glow */}
+      <motion.div
+        className="absolute top-[-18%] left-1/2 -translate-x-1/2 w-[480px] h-[480px] rounded-full pointer-events-none"
+        style={{ filter: "blur(140px)", background: "rgba(0,210,106,0.035)" }}
+      />
+
       {/* Header */}
-      <motion.header 
-        className="flex items-center gap-3 sm:gap-4 mb-6 sm:mb-8"
-        variants={itemVariants}
-      >
-        <motion.button
-          data-testid="merchant-back-btn"
-          className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-[#141414] border border-white/5 flex items-center justify-center"
-          whileHover={{ scale: 1.08, backgroundColor: "#1A1A1A" }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => onNavigate("/")}
-          style={{ boxShadow: "0 4px 20px rgba(0,0,0,0.3)" }}
-        >
-          <ArrowLeft size={18} strokeWidth={1.5} className="text-white" />
-        </motion.button>
-        <div>
-          <h1 className="text-lg sm:text-xl font-semibold font-outfit text-white tracking-tight">Händler Dashboard</h1>
-          <p className="text-[10px] sm:text-xs text-[#666] font-medium">{merchant.businessName}</p>
-        </div>
-      </motion.header>
-
-      {/* Stats Cards */}
-      <motion.div 
-        className="grid grid-cols-2 gap-3 sm:gap-4 mb-6 sm:mb-8"
-        variants={itemVariants}
-      >
-        {/* Today's Earnings */}
-        <motion.div 
-          className="rounded-xl sm:rounded-2xl p-4 sm:p-5 relative overflow-hidden"
-          style={{
-            background: "linear-gradient(145deg, #111111 0%, #0D0D0D 100%)",
-            border: "1px solid rgba(255, 255, 255, 0.05)"
-          }}
-          whileHover={{ scale: 1.02, borderColor: "rgba(0, 210, 106, 0.2)" }}
-        >
-          <div className="absolute -top-10 -right-10 w-20 sm:w-24 h-20 sm:h-24 rounded-full blur-2xl bg-[#00D26A]/10" />
-          
-          <div className="flex items-center gap-2 mb-2 sm:mb-3 relative z-10">
-            <div 
-              className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl flex items-center justify-center"
-              style={{ background: "linear-gradient(135deg, rgba(0, 210, 106, 0.2) 0%, rgba(0, 210, 106, 0.1) 100%)" }}
-            >
-              <TrendingUp size={16} className="text-[#00D26A]" />
-            </div>
-            <span className="text-[9px] sm:text-[10px] text-[#666] uppercase tracking-widest font-bold">Today</span>
-          </div>
-          
-          <p className="text-xl sm:text-2xl font-bold font-outfit text-white relative z-10">
-            €{stats.todayEarnings.toLocaleString("de-DE", { minimumFractionDigits: 2 })}
-          </p>
-          <p className="text-[10px] sm:text-xs text-[#00D26A] mt-1 sm:mt-1.5 font-semibold flex items-center gap-1">
-            <ArrowUpRight size={10} className="sm:w-3 sm:h-3" />
-            +{stats.changeFromYesterday}% vs yesterday
-          </p>
-        </motion.div>
-
-        {/* Total Earnings */}
-        <motion.div 
-          className="rounded-xl sm:rounded-2xl p-4 sm:p-5 relative overflow-hidden"
-          style={{
-            background: "linear-gradient(145deg, #111111 0%, #0D0D0D 100%)",
-            border: "1px solid rgba(255, 255, 255, 0.05)"
-          }}
-          whileHover={{ scale: 1.02, borderColor: "rgba(0, 194, 255, 0.2)" }}
-        >
-          <div className="absolute -top-10 -right-10 w-20 sm:w-24 h-20 sm:h-24 rounded-full blur-2xl bg-[#00C2FF]/10" />
-          
-          <div className="flex items-center gap-2 mb-2 sm:mb-3 relative z-10">
-            <div 
-              className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl flex items-center justify-center"
-              style={{ background: "linear-gradient(135deg, rgba(0, 194, 255, 0.2) 0%, rgba(0, 194, 255, 0.1) 100%)" }}
-            >
-              <Store size={16} className="text-[#00C2FF]" />
-            </div>
-            <span className="text-[9px] sm:text-[10px] text-[#666] uppercase tracking-widest font-bold">Total</span>
-          </div>
-          
-          <p className="text-xl sm:text-2xl font-bold font-outfit text-white relative z-10">
-            €{stats.totalEarnings.toLocaleString("de-DE", { minimumFractionDigits: 2 })}
-          </p>
-          <p className="text-[10px] sm:text-xs text-[#666] mt-1 sm:mt-1.5 font-medium">All time earnings</p>
-        </motion.div>
-      </motion.div>
-
-      {/* Chart */}
-      <motion.div 
-        className="rounded-2xl sm:rounded-3xl p-4 sm:p-6 mb-6 sm:mb-8 relative overflow-hidden"
-        variants={itemVariants}
-        style={{
-          background: "linear-gradient(145deg, #111111 0%, #0A0A0A 100%)",
-          border: "1px solid rgba(255, 255, 255, 0.05)"
-        }}
-      >
-        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-3/4 h-24 sm:h-32 blur-3xl bg-[#00C2FF]/5" />
-        
-        <h3 className="font-semibold font-outfit text-white mb-4 sm:mb-6 relative z-10 text-sm sm:text-base">Weekly Overview</h3>
-        <div className="h-40 sm:h-52 relative z-10">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={stats.weeklyData}>
-              <defs>
-                <linearGradient id="colorEarnings" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#00C2FF" stopOpacity={0.4} />
-                  <stop offset="50%" stopColor="#00C2FF" stopOpacity={0.15} />
-                  <stop offset="100%" stopColor="#00C2FF" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <XAxis 
-                dataKey="day" 
-                axisLine={false}
-                tickLine={false}
-                tick={{ fill: '#555', fontSize: 10 }}
-                dy={10}
-              />
-              <Tooltip content={<CustomTooltip />} cursor={false} />
-              <Area
-                type="monotone"
-                dataKey="earnings"
-                stroke="#00C2FF"
-                strokeWidth={2}
-                fill="url(#colorEarnings)"
-                dot={false}
-                activeDot={{ r: 5, fill: "#00C2FF", stroke: "#0A0A0A", strokeWidth: 2 }}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-      </motion.div>
-
-      {/* Create Payment Button */}
-      <motion.button
-        data-testid="create-payment-btn"
-        className="w-full py-4 sm:py-5 bg-gradient-to-r from-[#00C2FF] to-[#00A8CC] text-[#0A0A0A] font-bold rounded-full flex items-center justify-center gap-2 sm:gap-3 mb-8 sm:mb-10 btn-premium relative overflow-hidden text-sm sm:text-base"
-        variants={itemVariants}
-        whileHover={{ scale: 1.02 }}
-        whileTap={{ scale: 0.98 }}
-        onClick={() => onNavigate("/scan")}
-        style={{
-          boxShadow: "0 8px 32px rgba(0, 194, 255, 0.35)"
-        }}
-      >
-        <Plus size={20} strokeWidth={2.5} />
-        <span>Create Payment</span>
-      </motion.button>
-
-      {/* Recent Payments */}
-      <motion.section variants={itemVariants}>
-        <div className="section-header">
-          <h3 className="section-title text-sm sm:text-base">Recent Payments</h3>
-          <motion.span 
-            className="section-link text-xs sm:text-sm"
-            whileHover={{ x: 4 }}
+      <div className="flex items-center justify-between px-5 pt-[max(env(safe-area-inset-top,0px),24px)] pb-3 relative z-10">
+        <div className="flex items-center gap-3">
+          <motion.button
+            data-testid="merchant-back-btn"
+            className="w-10 h-10 rounded-full bg-white/[0.04] border border-white/[0.05] flex items-center justify-center"
+            whileTap={{ scale: 0.88 }}
+            onClick={() => onNavigate("/")}
           >
-            View All
-          </motion.span>
-        </div>
-
-        <div 
-          className="rounded-xl sm:rounded-2xl px-4 sm:px-5 border border-white/5"
-          style={{
-            background: "linear-gradient(145deg, #111111 0%, #0D0D0D 100%)"
-          }}
-        >
-          {recentPayments.map((payment, index) => (
-            <motion.div
-              key={payment.id}
-              data-testid={`payment-${payment.id}`}
-              className="flex items-center justify-between py-3 sm:py-4 border-b border-white/5 last:border-b-0"
-              initial={{ opacity: 0, x: -20 }}
+            <ArrowLeft size={15} strokeWidth={1.5} className="text-white/50" />
+          </motion.button>
+          <div>
+            <motion.h1
+              className="text-[15px] font-semibold font-outfit text-white tracking-tight"
+              initial={{ opacity: 0, x: -8 }}
               animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.1 + index * 0.05 }}
-              whileHover={{ x: 4 }}
+              transition={{ delay: 0.05 }}
             >
-              <div className="flex items-center gap-2 sm:gap-3">
-                <div
-                  className="w-9 h-9 sm:w-11 sm:h-11 rounded-full flex items-center justify-center"
-                  style={{ background: "linear-gradient(135deg, rgba(0, 210, 106, 0.15) 0%, rgba(0, 210, 106, 0.05) 100%)" }}
-                >
-                  <DollarSign size={18} className="text-[#00D26A]" />
+              Dashboard
+            </motion.h1>
+            <motion.p
+              className="text-[10px] text-[#333] font-medium"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.1 }}
+            >
+              {merchant.businessName}
+            </motion.p>
+          </div>
+        </div>
+        <motion.div
+          className="w-10 h-10 rounded-full bg-white/[0.04] border border-white/[0.05] flex items-center justify-center"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.08 }}
+        >
+          <Store size={15} strokeWidth={1.5} className="text-[#00D26A]/60" />
+        </motion.div>
+      </div>
+
+      {/* Content */}
+      <div className="px-5 pb-8 relative z-10">
+
+        {/* ── Earnings Hero ── */}
+        <motion.div
+          className="text-center pt-4 pb-5 relative"
+          initial={{ opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.06, ...slide }}
+        >
+          <p className="text-[10px] text-[#3A3A3A] font-semibold tracking-[0.14em] uppercase mb-3">Today's Earnings</p>
+          <AnimatePresence mode="wait">
+            {isLoading ? (
+              <Skeleton className="h-[48px] w-40 mx-auto" />
+            ) : (
+              <motion.div
+                initial={{ opacity: 0, y: 8, filter: "blur(4px)" }}
+                animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                transition={{ duration: 0.25 }}
+              >
+                <div className="flex items-baseline justify-center gap-1">
+                  <span className="text-[24px] text-[#2A2A2A] font-outfit font-light">&euro;</span>
+                  <motion.span
+                    className="text-[46px] font-bold font-outfit text-white tracking-[-0.03em] leading-none"
+                    key={stats.todayEarnings}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ type: "spring", stiffness: 200, damping: 20 }}
+                  >
+                    {stats.todayEarnings.toLocaleString("de-DE", { minimumFractionDigits: 2 })}
+                  </motion.span>
                 </div>
-                <div>
-                  <p className="font-medium text-white text-xs sm:text-sm">{payment.customerId}</p>
-                  <p className="text-[10px] sm:text-xs text-[#555]">{payment.time}</p>
-                </div>
-              </div>
-              <span className="font-bold text-[#00D26A] text-sm">
-                +€{payment.amount.toFixed(2)}
+              </motion.div>
+            )}
+          </AnimatePresence>
+          {!isLoading && (
+            <motion.div
+              className="flex items-center justify-center gap-1.5 mt-2"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.25 }}
+            >
+              <TrendingUp size={11} className="text-[#00D26A]" />
+              <span className="text-[11px] font-medium text-[#00D26A]">
+                +{stats.changeFromYesterday}% vs yesterday
               </span>
             </motion.div>
-          ))}
-        </div>
-      </motion.section>
+          )}
+          <div
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 h-36 pointer-events-none"
+            style={{ filter: "blur(80px)", background: "radial-gradient(ellipse, rgba(0,210,106,0.06), transparent 70%)" }}
+          />
+        </motion.div>
+
+        {/* ── Stat Cards Grid ── */}
+        {isLoading ? (
+          <div className="grid grid-cols-2 gap-2.5 mb-6">
+            {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-[100px]" />)}
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-2.5 mb-6">
+            <StatCard
+              icon={CircleDollarSign}
+              label="Total Earnings"
+              value={`\u20AC${stats.totalEarnings.toLocaleString("de-DE", { minimumFractionDigits: 2 })}`}
+              sub="All time"
+              color="#00C2FF"
+              delay={0.12}
+            />
+            <StatCard
+              icon={Users}
+              label="Payments"
+              value={stats.todayPaymentCount.toString()}
+              sub="Today"
+              color="#A855F7"
+              delay={0.16}
+            />
+            <StatCard
+              icon={BarChart3}
+              label="Avg. Transaction"
+              value={`\u20AC${parseFloat(stats.averageTransactionValue).toLocaleString("de-DE", { minimumFractionDigits: 2 })}`}
+              sub="Per payment"
+              color="#FFB800"
+              delay={0.20}
+            />
+            <StatCard
+              icon={Banknote}
+              label="Total Payments"
+              value={merchant.payments.length.toString()}
+              sub="All time"
+              color="#00D26A"
+              delay={0.24}
+            />
+          </div>
+        )}
+
+        {/* ── Weekly Chart ── */}
+        <motion.div
+          className="rounded-2xl p-4 mb-6 relative overflow-hidden"
+          style={{
+            background: "rgba(255,255,255,0.015)",
+            border: "1px solid rgba(255,255,255,0.035)",
+          }}
+          initial={{ opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.26, ...slide }}
+        >
+          <div
+            className="absolute bottom-0 left-1/2 -translate-x-1/2 w-3/4 h-20 pointer-events-none"
+            style={{ filter: "blur(50px)", background: "rgba(0,194,255,0.04)" }}
+          />
+          <div className="flex items-center justify-between mb-4 relative z-10">
+            <h3 className="text-[12px] font-semibold font-outfit text-white/80">Weekly Overview</h3>
+            <span className="text-[10px] text-[#333] font-medium">Last 7 days</span>
+          </div>
+          <div className="h-[140px] relative z-10">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={stats.weeklyData}>
+                <defs>
+                  <linearGradient id="merchantGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#00C2FF" stopOpacity={0.3} />
+                    <stop offset="50%" stopColor="#00C2FF" stopOpacity={0.08} />
+                    <stop offset="100%" stopColor="#00C2FF" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <XAxis
+                  dataKey="day"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: "#2A2A2A", fontSize: 10, fontWeight: 500 }}
+                  dy={8}
+                />
+                <Tooltip content={<ChartTooltip />} cursor={false} />
+                <Area
+                  type="monotone"
+                  dataKey="earnings"
+                  stroke="#00C2FF"
+                  strokeWidth={2}
+                  fill="url(#merchantGrad)"
+                  dot={false}
+                  activeDot={{ r: 4, fill: "#00C2FF", stroke: "#030303", strokeWidth: 2 }}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </motion.div>
+
+        {/* ── Create Payment CTA ── */}
+        <motion.button
+          data-testid="create-payment-btn"
+          className="w-full py-[13px] rounded-[14px] bg-[#00C2FF] text-[#020202] font-semibold text-[13px] flex items-center justify-center gap-2 mb-6 relative overflow-hidden"
+          style={{ boxShadow: "0 6px 36px rgba(0,194,255,0.3), 0 2px 10px rgba(0,194,255,0.15)" }}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.32, ...slide }}
+          whileTap={{ scale: 0.96 }}
+          onClick={() => onNavigate("/scan")}
+        >
+          <Plus size={16} strokeWidth={2.5} />
+          Create Payment
+        </motion.button>
+
+        {/* ── Activity Status ── */}
+        <motion.div
+          className="rounded-2xl p-4 mb-6"
+          style={{
+            background: "rgba(255,255,255,0.012)",
+            border: "1px solid rgba(255,255,255,0.03)",
+          }}
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.34, ...slide }}
+        >
+          <h3 className="text-[11px] font-semibold font-outfit text-[#444] uppercase tracking-[0.1em] mb-1">Activity</h3>
+          <div className="divide-y divide-white/[0.03]">
+            <ActivityRow label="Payments today" count={stats.todayPaymentCount} color="#00C2FF" delay={0.36} />
+            <ActivityRow label="Successful" count={successCount} color="#00D26A" delay={0.38} />
+            <ActivityRow label="Failed" count={failedCount} color="#FF4757" delay={0.40} />
+          </div>
+        </motion.div>
+
+        {/* ── Recent Payments ── */}
+        <motion.section
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.42 }}
+        >
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-[13px] font-semibold font-outfit text-white">Recent Payments</h3>
+            <motion.span
+              className="text-[11px] text-[#00C2FF] font-medium cursor-pointer flex items-center gap-0.5"
+              whileHover={{ x: 3 }}
+            >
+              View All <ChevronRight size={12} strokeWidth={2} />
+            </motion.span>
+          </div>
+
+          {isLoading ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => <Skeleton key={i} className="h-[58px] w-full" />)}
+            </div>
+          ) : recentPayments.length === 0 ? (
+            /* Empty state */
+            <motion.div
+              className="py-12 text-center rounded-2xl"
+              style={{ background: "rgba(255,255,255,0.012)", border: "1px solid rgba(255,255,255,0.03)" }}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+            >
+              <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-white/[0.03] flex items-center justify-center">
+                <Banknote size={20} className="text-[#2A2A2A]" />
+              </div>
+              <p className="text-[13px] text-[#333] font-medium mb-1">No payments yet</p>
+              <p className="text-[11px] text-[#222]">Create your first payment to get started</p>
+            </motion.div>
+          ) : (
+            <div
+              className="rounded-2xl overflow-hidden"
+              style={{
+                background: "rgba(255,255,255,0.015)",
+                border: "1px solid rgba(255,255,255,0.035)",
+              }}
+            >
+              {recentPayments.map((payment, i) => (
+                <motion.div
+                  key={payment.id}
+                  data-testid={`payment-${payment.id}`}
+                  className={`flex items-center gap-3.5 px-4 py-[13px] group transition-colors duration-200 hover:bg-white/[0.015] ${
+                    i < recentPayments.length - 1 ? "border-b border-white/[0.03]" : ""
+                  }`}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.44 + i * 0.04, duration: 0.25, ease: [0.32, 0.72, 0, 1] }}
+                >
+                  {/* Icon */}
+                  <div
+                    className="w-[42px] h-[42px] rounded-[14px] flex items-center justify-center flex-shrink-0 relative"
+                    style={{ background: "rgba(0,210,106,0.06)", border: "1px solid rgba(0,210,106,0.1)" }}
+                  >
+                    <ArrowUpRight size={17} strokeWidth={1.6} className="text-[#00D26A]" />
+                    {/* Success dot */}
+                    <div
+                      className="absolute -bottom-0.5 -right-0.5 w-[16px] h-[16px] rounded-full flex items-center justify-center"
+                      style={{ background: "#00D26A", border: "2px solid #030303" }}
+                    >
+                      <Check size={7} className="text-white" strokeWidth={3} />
+                    </div>
+                  </div>
+
+                  {/* Details */}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[13px] font-medium text-white/90 truncate group-hover:text-white transition-colors">
+                      {payment.customerId}
+                    </p>
+                    <p className="text-[10px] text-[#333] font-medium mt-0.5">{payment.time}</p>
+                  </div>
+
+                  {/* Amount */}
+                  <span className="text-[14px] font-bold font-outfit text-[#00D26A] tracking-tight flex-shrink-0">
+                    +&euro;{payment.amount.toFixed(2)}
+                  </span>
+                </motion.div>
+              ))}
+            </div>
+          )}
+        </motion.section>
+      </div>
     </motion.div>
   );
 };
