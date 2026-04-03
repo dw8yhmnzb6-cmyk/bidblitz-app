@@ -58,11 +58,23 @@ Create a modern, professional fintech web app called BidBlitz V2. Build Revolut-
 - WalletPage i18n: Fixed 3 hardcoded strings
 - Settings Language Picker: Added functional language picker UI with 12 language grid
 
+### Completed (Apr 3, Session 2)
+- BUG FIX: Service cards (Taxi, Scooter, Food, Auctions) now show "Coming Soon" toast on click (were dead)
+- BUG FIX: Notification bell on HomePage now navigates to /notifications (was not wired)
+- NEW: /notifications route added to App.js router + NotificationsPage imported
+- NEW: Sonner Toaster mounted in App.js for global toast notifications
+- BUG FIX: Stray 'age;' at end of HomePage.jsx causing runtime crash removed
+- i18n: 'coming_soon' and 'coming_soon_hint' translation keys added to all 12 languages
+- i18n: HomePage hardcoded English strings (Get Started, Services, View All, Total Balance, etc.) replaced with t() calls
+- Frontend Error Handling: ErrorState component wired into MerchantPage, AdminPage, NotificationsPage with retry logic
+
 ### Not Yet Implemented
 - Onboarding-Flow UI (Welcome screens, progress checklists)
-- Frontend Offline/Error State
 - Support Center / Help Page
 - Activity Feed, Streaks/Milestones, Feature Flags
+- Negative Balance / Duplicate Prevention (Idempotenz)
+- Wire audit.py + compliance.py into security flows
+- Merchant Performance Insights UI
 
 ## Prioritized Backlog
 ### P0
@@ -72,7 +84,7 @@ Create a modern, professional fintech web app called BidBlitz V2. Build Revolut-
 ### P1
 3. ~~i18n: Complete remaining 10 languages~~ DONE (Apr 3, 2026)
 4. Negative Balance / Duplicate Prevention
-5. Frontend Offline/Error handling
+5. ~~Frontend Offline/Error handling~~ DONE (Apr 3, 2026)
 6. Onboarding Welcome Flow UI
 
 ### P2
