@@ -79,10 +79,10 @@ const SubPage = ({ title, onBack, children }) => (
 );
 
 // ── Profile Sub-page ──
-const ProfileView = ({ user, onBack }) => {
+const ProfileView = ({ user, onBack, t }) => {
   const joined = "January 2024";
   return (
-    <SubPage title="Profile" onBack={onBack}>
+    <SubPage title={t("profile.title")} onBack={onBack}>
       {/* Avatar + Name */}
       <motion.div
         className="flex flex-col items-center py-6"
@@ -118,7 +118,7 @@ const ProfileView = ({ user, onBack }) => {
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.2 }}
           >
-            Premium Member
+            {t("profile.premium_member")}
           </motion.span>
         )}
       </motion.div>
@@ -132,11 +132,11 @@ const ProfileView = ({ user, onBack }) => {
         transition={{ delay: 0.12 }}
       >
         {[
-          { icon: User, label: "Full Name", value: user.name, color: "#00C2FF" },
-          { icon: Mail, label: "Email", value: user.email, color: "#A855F7" },
-          { icon: Shield, label: "Account Status", value: "Verified", color: "#00D26A" },
-          { icon: Calendar, label: "Member Since", value: joined, color: "#FFB800" },
-          { icon: Fingerprint, label: "Account ID", value: user.id || "user_001", color: "#888" },
+          { icon: User, label: t("profile.full_name"), value: user.name, color: "#00C2FF" },
+          { icon: Mail, label: t("profile.email"), value: user.email, color: "#A855F7" },
+          { icon: Shield, label: t("profile.account_status"), value: t("profile.verified"), color: "#00D26A" },
+          { icon: Calendar, label: t("profile.member_since"), value: joined, color: "#FFB800" },
+          { icon: Fingerprint, label: t("profile.account_id"), value: user.id || "user_001", color: "#888" },
         ].map((row, i, arr) => (
           <div
             key={i}
@@ -155,40 +155,40 @@ const ProfileView = ({ user, onBack }) => {
 };
 
 // ── Settings Sub-page ──
-const SettingsView = ({ onBack }) => {
+const SettingsView = ({ onBack, t }) => {
   const [notifs, setNotifs] = useState(true);
   const [biometric, setBiometric] = useState(false);
   const [darkMode] = useState(true);
 
   return (
-    <SubPage title="Settings" onBack={onBack}>
+    <SubPage title={t("settings.title")} onBack={onBack}>
       {/* Personal */}
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.06 }}>
-        <p className="text-[9px] text-[#333] uppercase tracking-[0.14em] font-semibold mb-2.5 pl-1">Personal</p>
+        <p className="text-[9px] text-[#333] uppercase tracking-[0.14em] font-semibold mb-2.5 pl-1">{t("settings.personal")}</p>
         <div className="rounded-2xl overflow-hidden mb-5" style={{ background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.035)" }}>
-          <MenuRow icon={User} label="Personal Information" color="#00C2FF" isLast={false} />
-          <MenuRow icon={Globe} label="Language" desc="English" color="#A855F7" isLast={false} />
-          <MenuRow icon={Moon} label="Appearance" desc="Dark mode" color="#6366F1" isLast right={<Toggle on={darkMode} onToggle={() => {}} />} />
+          <MenuRow icon={User} label={t("settings.personal_info")} color="#00C2FF" isLast={false} />
+          <MenuRow icon={Globe} label={t("settings.language")} desc="English" color="#A855F7" isLast={false} />
+          <MenuRow icon={Moon} label={t("settings.appearance")} desc={t("settings.dark_mode")} color="#6366F1" isLast right={<Toggle on={darkMode} onToggle={() => {}} />} />
         </div>
       </motion.div>
 
       {/* Notifications */}
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-        <p className="text-[9px] text-[#333] uppercase tracking-[0.14em] font-semibold mb-2.5 pl-1">Notifications</p>
+        <p className="text-[9px] text-[#333] uppercase tracking-[0.14em] font-semibold mb-2.5 pl-1">{t("settings.notifications")}</p>
         <div className="rounded-2xl overflow-hidden mb-5" style={{ background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.035)" }}>
-          <MenuRow icon={Bell} label="Push Notifications" color="#FFB800" isLast={false} right={<Toggle on={notifs} onToggle={() => setNotifs(!notifs)} />} />
-          <MenuRow icon={Mail} label="Email Notifications" desc="Weekly summary" color="#FF6B6B" isLast />
+          <MenuRow icon={Bell} label={t("settings.push")} color="#FFB800" isLast={false} right={<Toggle on={notifs} onToggle={() => setNotifs(!notifs)} />} />
+          <MenuRow icon={Mail} label={t("settings.email_notif")} desc={t("settings.weekly_summary")} color="#FF6B6B" isLast />
         </div>
       </motion.div>
 
       {/* Security */}
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.14 }}>
-        <p className="text-[9px] text-[#333] uppercase tracking-[0.14em] font-semibold mb-2.5 pl-1">Security & Privacy</p>
+        <p className="text-[9px] text-[#333] uppercase tracking-[0.14em] font-semibold mb-2.5 pl-1">{t("settings.security_privacy")}</p>
         <div className="rounded-2xl overflow-hidden mb-5" style={{ background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.035)" }}>
-          <MenuRow icon={Lock} label="Change Password" color="#00D26A" isLast={false} />
-          <MenuRow icon={Fingerprint} label="Biometric Login" color="#00C2FF" isLast={false} right={<Toggle on={biometric} onToggle={() => setBiometric(!biometric)} />} />
-          <MenuRow icon={Eye} label="Privacy Settings" color="#888" isLast={false} />
-          <MenuRow icon={Smartphone} label="Active Sessions" desc="1 device" color="#A855F7" isLast />
+          <MenuRow icon={Lock} label={t("settings.change_password")} color="#00D26A" isLast={false} />
+          <MenuRow icon={Fingerprint} label={t("settings.biometric")} color="#00C2FF" isLast={false} right={<Toggle on={biometric} onToggle={() => setBiometric(!biometric)} />} />
+          <MenuRow icon={Eye} label={t("settings.privacy")} color="#888" isLast={false} />
+          <MenuRow icon={Smartphone} label={t("settings.active_sessions")} desc={t("settings.devices")} color="#A855F7" isLast />
         </div>
       </motion.div>
     </SubPage>
@@ -208,10 +208,10 @@ export const MorePage = ({ onNavigate }) => {
 
   // Sub-page rendering
   if (subPage === "profile") {
-    return <ProfileView user={user} onBack={() => setSubPage(null)} />;
+    return <ProfileView user={user} onBack={() => setSubPage(null)} t={t} />;
   }
   if (subPage === "settings") {
-    return <SettingsView onBack={() => setSubPage(null)} />;
+    return <SettingsView onBack={() => setSubPage(null)} t={t} />;
   }
   if (subPage === "referral") {
     return <ReferralPage onBack={() => setSubPage(null)} />;

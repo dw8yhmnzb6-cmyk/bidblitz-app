@@ -22,7 +22,7 @@ Create a modern, professional fintech web app called BidBlitz V2. Build Revolut-
 
 ## What's Been Implemented
 
-### Fully Completed & Working (Backend + Frontend)
+### Fully Completed & Working
 - JWT Cookie-based Auth (Login/Register/Logout/Refresh)
 - Wallet (Balance, Card Display, Currency EUR)
 - Stripe Top-up (Checkout Sessions, Status Verification, Packages)
@@ -32,22 +32,21 @@ Create a modern, professional fintech web app called BidBlitz V2. Build Revolut-
 - Admin Dashboard (Users, Merchants, Payouts, Config, Overview)
 - Payout System (Request, History, Cancel, Admin Approve)
 - Role-based Access Control (user/admin/merchant, 403 on unauthorized)
-- CSV Export (User/Merchant/Admin, all endpoints + Frontend UI with ExportSection) ✅ COMPLETED Apr 3
+- CSV Export Backend + Frontend UI (WalletPage, MerchantPage, AdminPage) ✅
 - Report Summaries (Aggregated JSON endpoints)
 - Referral System (Code Generation, Apply, Reward Check, Leaderboard)
 - Notifications (Onboarding, Admin Send, Mark All Read)
 - Promotions Engine (Create, Toggle, Active Filter)
 - Growth Analytics (Funnel, Retention, Campaigns, Overview)
 - Profile & Password Management
+- MorePage Sub-Pages i18n: Profile + Settings fully translated (EN/DE) ✅ Apr 3
 - Health Check Endpoint
 - Structured Logging & Global Error Handler
-- Database Indexes (email, user_id, created_at)
-- Deployment Scripts (deploy.sh, rollback.sh, nginx.conf, systemd)
-- i18n: EN + DE (~90% complete)
+- Database Indexes
+- Deployment Scripts
 
 ### Partially Completed
 - i18n: Other 10 languages (sq, tr, fr, es, it, pt, nl, pl, ru, ar) ~40% of keys translated
-- MorePage Sub-Pages (Profile, Settings): hardcoded English strings remain
 - ScannerPage: STEP_LABELS array hardcoded instead of using t()
 - AdminPage: Some tab labels still hardcoded
 - Security: rate_limit.py exists but NOT wired into server.py
@@ -56,35 +55,21 @@ Create a modern, professional fintech web app called BidBlitz V2. Build Revolut-
 
 ### Not Yet Implemented
 - Onboarding-Flow UI (Welcome screens, progress checklists)
-- Frontend Offline/Error State (graceful backend-unavailable handling)
-- Support Center / Help Page (placeholder only)
-- Activity Feed
-- User Streaks/Milestones
-- Feature Flags / Soft-Launch mode
-- Merchant Performance Insights UI
-
-## Credentials
-- Admin: admin@bidblitz.com / BidBlitz2026!
-- Test User: audit_test@test.com / Test1234!
+- Frontend Offline/Error State
+- Support Center / Help Page
+- Activity Feed, Streaks/Milestones, Feature Flags
 
 ## Prioritized Backlog
-### P0 (Must do next)
-1. i18n: Complete MorePage Sub-Pages (Profile, Settings) translations
-2. Rate Limiting: Wire rate_limit.py into server.py
-3. i18n: Complete ScannerPage and AdminPage translations
+### P0
+1. Rate Limiting: Wire rate_limit.py into server.py
+2. ScannerPage + AdminPage hardcoded strings → i18n
 
-### P1 (Important)
-4. i18n: Complete remaining 10 languages
-5. Frontend Offline/Error handling
-6. Onboarding Welcome Flow UI
+### P1
+3. i18n: Complete remaining 10 languages
+4. Frontend Offline/Error handling
+5. Onboarding Welcome Flow UI
 
-### P2 (Nice to have)
-7. Support Center / Help Page
-8. Wire audit.py into security-critical endpoints
-9. Merchant Performance Insights UI
-10. Activity Feed
-
-### P3 (Future)
-11. User Streaks/Milestones
-12. Feature Flags / Soft-Launch
-13. Real deployment to production server
+### P2
+6. Support Center / Help Page
+7. Wire audit.py into security-critical endpoints
+8. Merchant Performance Insights UI
