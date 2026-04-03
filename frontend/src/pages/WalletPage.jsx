@@ -95,14 +95,18 @@ const StatPill = ({ label, value, trend, delay = 0 }) => (
 );
 
 export const WalletPage = ({ onNavigate }) => {
+  // Auto-open TopUp modal if returning from Stripe
+  const hasStripeParam = typeof window !== "undefined" &&
+    (window.location.search.includes("stripe_session_id") || window.location.search.includes("stripe_cancelled"));
+
   const [showBalance, setShowBalance] = useState(true);
-  const [showTopUp, setShowTopUp] = useState(false);
+  const [showTopUp, setShowTopUp] = useState(hasStripeParam);
   const [selectedTx, setSelectedTx] = useState(null);
   const [typeFilter, setTypeFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [isLoading, setIsLoading] = useState(true);
 
-  const { balance, currency, cardNumber, cardExpiry, cardHolder, addMoney, transactions } = useWallet();
+  const { balance, currency, cardNumber, cardExpiry, cardHolder, refreshWallet, transactions } = useWallet();
   const groupedTransactions = useGroupedTransactions();
   const stats = useWalletStats();
 
@@ -112,8 +116,9 @@ export const WalletPage = ({ onNavigate }) => {
     return () => clearTimeout(t);
   }, []);
 
-  const handleTopUpSuccess = async (transaction) => {
-    await addMoney(transaction.amount, transaction.paymentMethod || "card");
+  const handleTopUpSuccess = async () => {
+    // Stripe already credited via backend — just refresh wallet data
+    await refreshWallet();
   };
 
   const filteredGrouped = Object.entries(groupedTransactions).reduce((acc, [date, txns]) => {

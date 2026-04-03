@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import "@/App.css";
 
@@ -16,7 +16,12 @@ import BottomNav from "./components/BottomNav";
 const pageTransition = { duration: 0.25, ease: [0.32, 0.72, 0, 1] };
 
 function AppContent() {
-  const [currentPath, setCurrentPath] = useState("/");
+  // Detect Stripe return — if URL has stripe_session_id, start on wallet
+  const hasStripeReturn = typeof window !== "undefined" &&
+    (window.location.search.includes("stripe_session_id") || window.location.search.includes("stripe_cancelled"));
+
+  const [currentPath, setCurrentPath] = useState(hasStripeReturn ? "/wallet" : "/");
+  const [stripeReturn, setStripeReturn] = useState(hasStripeReturn);
   const user = useUser();
 
   const handleNavigate = (path) => setCurrentPath(path);

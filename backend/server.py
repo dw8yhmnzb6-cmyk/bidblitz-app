@@ -19,6 +19,7 @@ from routes.wallet import router as wallet_router
 from routes.payment import router as payment_router
 from routes.merchant import router as merchant_router
 from routes.transactions import router as transactions_router
+from routes.stripe import router as stripe_router
 
 app = FastAPI(title="BidBlitz V2 API", version="1.0.0")
 
@@ -38,6 +39,11 @@ app.include_router(wallet_router)
 app.include_router(payment_router)
 app.include_router(merchant_router)
 app.include_router(transactions_router)
+app.include_router(stripe_router)
+
+# Stripe webhook needs to be at /api/webhook/stripe
+from routes.stripe import stripe_webhook as _stripe_wh
+app.post("/api/webhook/stripe")(_stripe_wh)
 
 # Health check
 @app.get("/api")
