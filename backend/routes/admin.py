@@ -280,3 +280,89 @@ async def get_audit_logs(
                     details={"action": "view_audit_logs", "filters": {"event": event, "user_id": user_id, "severity": severity}})
 
     return {"logs": logs, "total": total}
+
+
+# ── Compliance Flags (Admin Review) ──
+@router.get("/compliance-flags")
+async def get_compliance_flags(
+    request: Request,
+    status: str = "",
+    user_id: str = "",
+    limit: int = 50,
+    skip: int = 0,
+):
+    admin = await require_admin(request)
+    ip, ua = get_client_info(request)
+
+    query = {}
+    if status:
+        query["status"] = status
+    if user_id:
+        query["user_id"] = user_id
+
+    flags = await db.compliance_flags.find(query, {"_id": 0}).sort("created_at", -1).skip(skip).limit(limit).to_list(limit)
+    total = await db.compliance_flags.count_documents(query)
+
+    await log_audit(AuditEvent.ADMIN_ACTION, user_id=str(admin["_id"]), email=admin.get("email", ""),
+                    ip=ip, user_agent=ua,
+                    details={"action": "view_compliance_flags", "filters": {"status": status, "user_id": user_id}})
+
+    return {"flags": flags, "total": total}
+
+
+class ResolveFlagRequest(BaseModel):
+    resolution: str = ""  # notes about resolution
+
+
+@router.post("/compliance-flags/{flag_index}/resolve")
+@limiter.limit(RATE_ADMIN_ACTION)
+async def resolve_compliance_flag(flag_index: int, req: ResolveFlagRequest, request: Request):
+    admin = await require_admin(request)
+    admin_id = str(admin["_id"])
+    ip, ua = get_client_info(request)
+
+    # Get the nth open flag
+    open_flags = await db.compliance_flags.find({"status": "open"}).sort("created_at", -1).to_list(1000)
+    if flag_index < 0 or flag_index >= len(open_flags):
+        raise HTTPException(status_code=404, detail="Flag not found")
+
+    flag = open_flags[flag_index]
+    now = datetime.now(timezone.utc).isoformat()
+
+    await db.compliance_flags.update_one(
+        {"_id": flag["_id"]},
+        {"$set": {"status": "resolved", "resolved_at": now, "resolved_by": admin_id, "resolution": req.resolution}},
+    )
+
+    await log_audit(AuditEvent.ADMIN_ACTION, user_id=admin_id, email=admin.get("email", ""),
+                    ip=ip, user_agent=ua,
+                    details={"action": "resolve_compliance_flag", "flag_user": flag.get("user_id", ""),
+                             "flag_reason": flag.get("reason", "")})
+
+    return {"success": True, "message": "Flag resolved"}
+
+
+# ── Compliance Check History ──
+@router.get("/compliance-checks")
+async def get_compliance_checks(
+    request: Request,
+    outcome: str = "",
+    user_id: str = "",
+    txn_type: str = "",
+    limit: int = 50,
+    skip: int = 0,
+):
+    await require_admin(request)
+
+    query = {}
+    if outcome:
+        query["outcome"] = outcome
+    if user_id:
+        query["user_id"] = user_id
+    if txn_type:
+        query["txn_type"] = txn_type
+
+    checks = await db.compliance_checks.find(query, {"_id": 0}).sort("timestamp", -1).skip(skip).limit(limit).to_list(limit)
+    total = await db.compliance_checks.count_documents(query)
+
+    return {"checks": checks, "total": total}

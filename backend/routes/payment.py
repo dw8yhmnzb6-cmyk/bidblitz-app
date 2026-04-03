@@ -6,6 +6,7 @@ from core.security import get_current_user
 from core.config import calculate_fee, FEES
 from core.rate_limit import limiter, RATE_PAYMENT
 from core.audit import log_audit, AuditEvent, get_client_info
+from core.compliance import run_compliance_check, BLOCKED, FLAGGED
 from schemas.models import PaymentRequest, SendRequest
 import secrets
 
@@ -41,6 +42,20 @@ async def pay(req: PaymentRequest, request: Request):
 
     if req.amount <= 0:
         raise HTTPException(status_code=400, detail="Amount must be positive")
+
+    # ── Compliance check ──
+    compliance = await run_compliance_check(user_id, "payment", req.amount)
+    if compliance["outcome"] == BLOCKED:
+        await log_audit(AuditEvent.PAYMENT_FAILED, user_id=user_id, email=user["email"],
+                        ip=ip, user_agent=ua,
+                        details={"reason": "compliance_blocked", "rules": compliance["rules"], "amount": req.amount},
+                        severity="warn")
+        raise HTTPException(status_code=403, detail=compliance["reason"])
+    if compliance["outcome"] == FLAGGED:
+        await log_audit(AuditEvent.SUSPICIOUS_ACTIVITY, user_id=user_id, email=user["email"],
+                        ip=ip, user_agent=ua,
+                        details={"txn_type": "payment", "rules": compliance["rules"], "amount": req.amount},
+                        severity="warn")
 
     if current_balance < req.amount:
         await log_audit(AuditEvent.PAYMENT_FAILED, user_id=user_id, email=user["email"],
@@ -155,6 +170,20 @@ async def send_money(req: SendRequest, request: Request):
 
     if req.amount <= 0:
         raise HTTPException(status_code=400, detail="Amount must be positive")
+
+    # ── Compliance check ──
+    compliance = await run_compliance_check(user_id, "send", req.amount)
+    if compliance["outcome"] == BLOCKED:
+        await log_audit(AuditEvent.SEND_FAILED, user_id=user_id, email=user["email"],
+                        ip=ip, user_agent=ua,
+                        details={"reason": "compliance_blocked", "rules": compliance["rules"], "amount": req.amount},
+                        severity="warn")
+        raise HTTPException(status_code=403, detail=compliance["reason"])
+    if compliance["outcome"] == FLAGGED:
+        await log_audit(AuditEvent.SUSPICIOUS_ACTIVITY, user_id=user_id, email=user["email"],
+                        ip=ip, user_agent=ua,
+                        details={"txn_type": "send", "rules": compliance["rules"], "amount": req.amount},
+                        severity="warn")
 
     # Calculate send fee
     fee = calculate_fee(req.amount, "send")

@@ -12,6 +12,7 @@ from core.security import get_current_user
 from core.config import FEES, calculate_payout_fee
 from core.rate_limit import limiter, RATE_PAYOUT
 from core.audit import log_audit, AuditEvent, get_client_info
+from core.compliance import run_compliance_check, BLOCKED, FLAGGED
 import secrets
 
 router = APIRouter(prefix="/api/payout", tags=["payout"])
@@ -46,6 +47,20 @@ async def request_payout(req: PayoutRequest, request: Request):
 
     if req.amount > available:
         raise HTTPException(status_code=400, detail=f"Insufficient available balance. Available: EUR {available:.2f}")
+
+    # ── Compliance check ──
+    compliance = await run_compliance_check(user_id, "payout", req.amount)
+    if compliance["outcome"] == BLOCKED:
+        await log_audit(AuditEvent.PAYOUT_CANCELLED, user_id=user_id, email=user.get("email", ""),
+                        ip=ip, user_agent=ua,
+                        details={"reason": "compliance_blocked", "rules": compliance["rules"], "amount": req.amount},
+                        severity="warn")
+        raise HTTPException(status_code=403, detail=compliance["reason"])
+    if compliance["outcome"] == FLAGGED:
+        await log_audit(AuditEvent.SUSPICIOUS_ACTIVITY, user_id=user_id, email=user.get("email", ""),
+                        ip=ip, user_agent=ua,
+                        details={"txn_type": "payout", "rules": compliance["rules"], "amount": req.amount},
+                        severity="warn")
 
     # Check for existing pending payout (prevent duplicates)
     existing = await db.payouts.find_one({

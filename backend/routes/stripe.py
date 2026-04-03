@@ -18,6 +18,7 @@ from core.database import db
 from core.security import get_current_user
 from core.rate_limit import limiter, RATE_STRIPE
 from core.audit import log_audit, AuditEvent, get_client_info
+from core.compliance import run_compliance_check, BLOCKED, FLAGGED
 
 router = APIRouter(prefix="/api/stripe", tags=["stripe"])
 
@@ -54,6 +55,20 @@ async def create_checkout(req: CheckoutRequest, request: Request):
         raise HTTPException(status_code=400, detail=f"Invalid package. Choose from: {', '.join(TOPUP_PACKAGES.keys())}")
 
     amount = TOPUP_PACKAGES[req.package_id]
+
+    # ── Compliance check ──
+    compliance = await run_compliance_check(user_id, "topup", amount)
+    if compliance["outcome"] == BLOCKED:
+        await log_audit(AuditEvent.TOPUP_FAILED, user_id=user_id, email=user["email"],
+                        ip=ip, user_agent=ua,
+                        details={"reason": "compliance_blocked", "rules": compliance["rules"], "amount": amount},
+                        severity="warn")
+        raise HTTPException(status_code=403, detail=compliance["reason"])
+    if compliance["outcome"] == FLAGGED:
+        await log_audit(AuditEvent.SUSPICIOUS_ACTIVITY, user_id=user_id, email=user["email"],
+                        ip=ip, user_agent=ua,
+                        details={"txn_type": "topup", "rules": compliance["rules"], "amount": amount},
+                        severity="warn")
 
     # Build redirect URLs from frontend origin
     origin = req.origin_url.rstrip("/")
