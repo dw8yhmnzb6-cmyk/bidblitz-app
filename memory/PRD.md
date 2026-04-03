@@ -51,12 +51,12 @@ Create a modern, professional fintech web app called BidBlitz V2. Build Revolut-
 - Security: compliance.py exists but NOT used
 
 ### Completed in Latest Session (Apr 3)
-- Rate Limiting: Wired rate_limit.py into server.py (slowapi limiter, exception handler, decorators on auth/stripe/payment endpoints)
-- ScannerPage i18n: All hardcoded strings replaced with t() calls (STEP_LABELS, processing steps, receipt labels, error messages)
-- AdminPage i18n: All hardcoded strings replaced with t() calls (tabs, stat cards, section headers, buttons, empty states)
-- i18n expanded: All 10 remaining languages (sq, tr, fr, es, it, pt, nl, pl, ru, ar) expanded from ~40% to ~95% coverage (~150+ keys each)
-- WalletPage i18n: Fixed 3 hardcoded strings (title, available balance, this month)
-- Settings Language Picker: Added functional language picker UI with 12 language grid (replaces static "English" text)
+- Rate Limiting: FULLY WIRED — centralized config in rate_limit.py, decorators on 7 sensitive endpoints, custom 429 JSON handler, X-Forwarded-For IP extraction
+- ScannerPage i18n: All hardcoded strings replaced with t() calls
+- AdminPage i18n: All hardcoded strings replaced with t() calls
+- i18n expanded: All 10 remaining languages expanded from ~40% to ~95% coverage (~150+ keys each)
+- WalletPage i18n: Fixed 3 hardcoded strings
+- Settings Language Picker: Added functional language picker UI with 12 language grid
 
 ### Not Yet Implemented
 - Onboarding-Flow UI (Welcome screens, progress checklists)
