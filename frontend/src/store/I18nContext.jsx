@@ -1,0 +1,432 @@
+import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
+
+const STORAGE_KEY = "bidblitz_lang";
+const DEFAULT_LANG = "de";
+
+export const LANGUAGES = [
+  { code: "de", label: "Deutsch", flag: "DE" },
+  { code: "en", label: "English", flag: "GB" },
+  { code: "sq", label: "Shqip", flag: "AL" },
+  { code: "sq-XK", label: "Shqip (Kosovë)", flag: "XK" },
+  { code: "tr", label: "Türkçe", flag: "TR" },
+  { code: "fr", label: "Français", flag: "FR" },
+  { code: "es", label: "Español", flag: "ES" },
+  { code: "it", label: "Italiano", flag: "IT" },
+  { code: "pt", label: "Português", flag: "PT" },
+  { code: "nl", label: "Nederlands", flag: "NL" },
+  { code: "pl", label: "Polski", flag: "PL" },
+  { code: "ru", label: "Русский", flag: "RU" },
+  { code: "ar", label: "العربية", flag: "SA", rtl: true },
+];
+
+// sq-XK maps to sq translations internally
+function resolveCode(code) {
+  return code === "sq-XK" ? "sq" : code;
+}
+
+const I18nContext = createContext(null);
+
+export function I18nProvider({ children }) {
+  const [lang, setLangState] = useState(() => {
+    try { return localStorage.getItem(STORAGE_KEY) || DEFAULT_LANG; } catch { return DEFAULT_LANG; }
+  });
+
+  const setLang = useCallback((code) => {
+    setLangState(code);
+    try { localStorage.setItem(STORAGE_KEY, code); } catch {}
+    // Set RTL on body
+    const info = LANGUAGES.find(l => l.code === code);
+    document.documentElement.dir = info?.rtl ? "rtl" : "ltr";
+  }, []);
+
+  useEffect(() => {
+    const info = LANGUAGES.find(l => l.code === lang);
+    document.documentElement.dir = info?.rtl ? "rtl" : "ltr";
+  }, [lang]);
+
+  const t = useCallback((key, params) => {
+    const resolved = resolveCode(lang);
+    const dict = translations[resolved] || translations.en;
+    let text = dict[key] ?? translations.en[key] ?? key;
+    if (params) {
+      Object.entries(params).forEach(([k, v]) => { text = text.replace(`{${k}}`, v); });
+    }
+    return text;
+  }, [lang]);
+
+  return (
+    <I18nContext.Provider value={{ lang, setLang, t, LANGUAGES }}>
+      {children}
+    </I18nContext.Provider>
+  );
+}
+
+export function useI18n() {
+  const ctx = useContext(I18nContext);
+  if (!ctx) throw new Error("useI18n must be used within I18nProvider");
+  return ctx;
+}
+
+// ── Translation Dictionaries ──
+const translations = {
+  en: {
+    // Nav
+    "nav.home": "HOME", "nav.wallet": "WALLET", "nav.scan": "SCAN", "nav.merchant": "MERCHANT", "nav.more": "MORE",
+    // Auth
+    "auth.welcome": "Welcome back", "auth.create": "Create your account", "auth.email": "Email address", "auth.password": "Password",
+    "auth.name": "Full name", "auth.confirm": "Confirm password", "auth.signin": "Sign In", "auth.signing": "Signing in...",
+    "auth.register": "Create Account", "auth.registering": "Creating account...", "auth.no_account": "Don't have an account?",
+    "auth.has_account": "Already have an account?", "auth.create_link": "Create account", "auth.signin_link": "Sign in",
+    "auth.secure": "Secured with end-to-end encryption", "auth.fill_all": "Please fill in all fields",
+    "auth.pw_mismatch": "Passwords do not match", "auth.pw_short": "Password must be at least 6 characters",
+    // Home
+    "home.balance": "Total Balance", "home.month": "this month", "home.tagline_1": "All-in-One for", "home.tagline_2": "Payments",
+    "home.tagline_3": "Mobility", "home.tagline_more": "& More", "home.subtitle": "Pay. Ride. Book. Earn.",
+    "home.get_started": "Get Started", "home.services": "Services", "home.view_all": "View All",
+    "home.wallet_banner": "Everything runs through BidBlitz Wallet", "home.wallet_sub": "One wallet for all your payments",
+    // Wallet
+    "wallet.title": "Wallet", "wallet.available": "Available Balance", "wallet.spent": "Spent", "wallet.income": "Income",
+    "wallet.add": "Add Money", "wallet.send": "Send", "wallet.history": "History", "wallet.transactions": "Transactions",
+    "wallet.see_all": "See All", "wallet.no_txns": "No transactions yet", "wallet.txn_hint": "Your payment history will appear here",
+    // Scanner
+    "scan.enter_amount": "Enter Amount", "scan.confirm": "Confirm Payment", "scan.start_pay": "Start Payment", "scan.cancel": "Cancel",
+    "scan.scanning": "Scan customer code", "scan.processing": "Securely processing payment...", "scan.success": "Payment Successful",
+    "scan.done": "Done", "scan.error": "Payment Failed", "scan.try_again": "Try Again", "scan.insufficient": "Insufficient balance",
+    "scan.amount_label": "Amount", "scan.fee_label": "Fee", "scan.total_label": "Total", "scan.merchant_label": "Merchant",
+    "scan.ref_label": "Reference", "scan.date_label": "Date",
+    // Merchant
+    "merchant.dashboard": "Dashboard", "merchant.today": "Today's Earnings", "merchant.vs_yesterday": "vs yesterday",
+    "merchant.balance_overview": "Balance Overview", "merchant.available": "Available", "merchant.pending": "Pending",
+    "merchant.paid_out": "Paid Out", "merchant.platform_fee": "Platform fee", "merchant.total_fees": "Total fees",
+    "merchant.gross": "Gross Earnings", "merchant.net": "Net Earnings", "merchant.payments_today": "Payments",
+    "merchant.total_txns": "Total Txns", "merchant.before_fees": "Before fees", "merchant.after_fees": "After fees",
+    "merchant.weekly": "Weekly Overview", "merchant.last_7": "Last 7 days", "merchant.create_payment": "Create Payment",
+    "merchant.payout": "Payout", "merchant.payout_history": "Payout History", "merchant.activity": "Activity",
+    "merchant.payments_today_label": "Payments today", "merchant.successful": "Successful", "merchant.failed": "Failed",
+    "merchant.recent": "Recent Payments", "merchant.no_payments": "No payments yet", "merchant.no_payments_hint": "Create your first payment to get started",
+    // Payout
+    "payout.request": "Request Payout", "payout.requested": "Payout Requested", "payout.available_label": "Available",
+    "payout.min": "Min. payout", "payout.fee_label": "Fee", "payout.you_receive": "You receive", "payout.exceeds": "Amount exceeds available balance",
+    "payout.submit": "Request Payout", "payout.processing": "Processing...", "payout.success_msg": "Your payout will be processed shortly",
+    "payout.failed": "Payout Failed", "payout.retry": "Retry",
+    // More / Account
+    "more.account": "Account", "more.profile": "Profile", "more.view_account": "View your account", "more.payment_methods": "Payment Methods",
+    "more.cards_banks": "Cards & bank accounts", "more.security": "Security", "more.pw_2fa": "Password & 2FA",
+    "more.settings": "Settings", "more.preferences": "Preferences & privacy", "more.notifications": "Notifications",
+    "more.manage_alerts": "Manage alerts", "more.appearance": "Appearance", "more.dark_enabled": "Dark mode enabled",
+    "more.help": "Help & Support", "more.faq": "FAQ & contact us", "more.logout": "Log Out", "more.version": "Version",
+    "more.premium": "Premium Member", "more.premium_badge": "Premium",
+    // Profile
+    "profile.title": "Profile", "profile.full_name": "Full Name", "profile.email_label": "Email",
+    "profile.status": "Account Status", "profile.verified": "Verified", "profile.member_since": "Member Since",
+    "profile.account_id": "Account ID", "profile.edit": "Edit Profile", "profile.save": "Save Changes",
+    "profile.saving": "Saving...", "profile.saved": "Profile updated",
+    // Settings
+    "settings.title": "Settings", "settings.personal": "Personal", "settings.personal_info": "Personal Information",
+    "settings.language": "Language", "settings.appearance_label": "Appearance", "settings.dark_mode": "Dark mode",
+    "settings.notif": "Notifications", "settings.push": "Push Notifications", "settings.email_notif": "Email Notifications",
+    "settings.weekly_summary": "Weekly summary", "settings.security_privacy": "Security & Privacy",
+    "settings.change_pw": "Change Password", "settings.biometric": "Biometric Login", "settings.privacy": "Privacy Settings",
+    "settings.sessions": "Active Sessions", "settings.device": "1 device",
+    "settings.current_pw": "Current password", "settings.new_pw": "New password", "settings.confirm_pw": "Confirm new password",
+    "settings.update_pw": "Update Password", "settings.updating": "Updating...", "settings.pw_updated": "Password updated",
+    // Admin
+    "admin.title": "Admin Panel", "admin.subtitle": "Platform Control Center", "admin.overview": "Overview",
+    "admin.users": "Users", "admin.merchants": "Merchants", "admin.payouts": "Payouts", "admin.txns": "Txns",
+    "admin.config": "Config", "admin.total_users": "Total Users", "admin.total_merchants": "Merchants",
+    "admin.payment_volume": "Payment Volume", "admin.fee_revenue": "Fee Revenue", "admin.pending_payouts": "Pending Payouts",
+    "admin.processed_payouts": "Processed Payouts", "admin.today_label": "Today", "admin.search": "Search",
+    "admin.approve": "Approve", "admin.process": "Mark Processed", "admin.fail": "Fail",
+    "admin.fee_config": "Fee Configuration", "admin.server_config": "Server Config",
+    "admin.fee_note": "Fee values are set in backend/core/config.py. Changes require a server restart.",
+    "admin.access_denied": "Access Denied", "admin.admin_required": "Admin privileges required",
+    "admin.go_home": "Go Home", "admin.no_results": "No results found",
+    // TopUp
+    "topup.title": "Add Money", "topup.redirecting": "Redirecting...", "topup.verifying": "Verifying Payment",
+    "topup.success": "Success", "topup.failed_title": "Failed", "topup.current": "Current balance",
+    "topup.fee": "Fee", "topup.free": "Free", "topup.total": "Total", "topup.stripe_badge": "Powered by Stripe (Test Mode)",
+    "topup.pay_stripe": "Pay with Stripe", "topup.creating": "Creating checkout...",
+    "topup.redirect_msg": "You'll be redirected to secure payment", "topup.verifying_msg": "Confirming with Stripe",
+    "topup.success_msg": "Top-up Successful!", "topup.added": "Added to your wallet via Stripe",
+    "topup.failed_msg": "Payment could not be verified", "topup.cancelled": "Payment was cancelled",
+    "topup.try_again": "Try Again", "topup.secured": "Secured by Stripe",
+    // Common
+    "common.done": "Done", "common.cancel": "Cancel", "common.all": "All", "common.today": "Today",
+    "common.loading": "Loading...", "common.error": "Something went wrong",
+  },
+  de: {
+    "nav.home": "START", "nav.wallet": "WALLET", "nav.scan": "SCAN", "nav.merchant": "HÄNDLER", "nav.more": "MEHR",
+    "auth.welcome": "Willkommen zurück", "auth.create": "Konto erstellen", "auth.email": "E-Mail-Adresse", "auth.password": "Passwort",
+    "auth.name": "Vollständiger Name", "auth.confirm": "Passwort bestätigen", "auth.signin": "Anmelden", "auth.signing": "Anmeldung...",
+    "auth.register": "Konto erstellen", "auth.registering": "Konto wird erstellt...", "auth.no_account": "Noch kein Konto?",
+    "auth.has_account": "Bereits ein Konto?", "auth.create_link": "Registrieren", "auth.signin_link": "Anmelden",
+    "auth.secure": "End-to-End verschlüsselt", "auth.fill_all": "Bitte alle Felder ausfüllen",
+    "auth.pw_mismatch": "Passwörter stimmen nicht überein", "auth.pw_short": "Passwort muss mindestens 6 Zeichen haben",
+    "home.balance": "Gesamtguthaben", "home.month": "diesen Monat", "home.tagline_1": "Alles in einem für",
+    "home.tagline_2": "Zahlungen", "home.tagline_3": "Mobilität", "home.tagline_more": "& mehr",
+    "home.subtitle": "Zahlen. Fahren. Buchen. Verdienen.", "home.get_started": "Loslegen",
+    "home.services": "Dienste", "home.view_all": "Alle anzeigen",
+    "home.wallet_banner": "Alles läuft über dein BidBlitz Wallet", "home.wallet_sub": "Ein Wallet für alle Zahlungen",
+    "wallet.title": "Wallet", "wallet.available": "Verfügbares Guthaben", "wallet.spent": "Ausgegeben", "wallet.income": "Einnahmen",
+    "wallet.add": "Aufladen", "wallet.send": "Senden", "wallet.history": "Verlauf", "wallet.transactions": "Transaktionen",
+    "wallet.see_all": "Alle", "wallet.no_txns": "Noch keine Transaktionen", "wallet.txn_hint": "Dein Zahlungsverlauf erscheint hier",
+    "scan.enter_amount": "Betrag eingeben", "scan.confirm": "Zahlung bestätigen", "scan.start_pay": "Zahlung starten",
+    "scan.cancel": "Abbrechen", "scan.scanning": "Kundencode scannen", "scan.processing": "Zahlung wird sicher verarbeitet...",
+    "scan.success": "Zahlung erfolgreich", "scan.done": "Fertig", "scan.error": "Zahlung fehlgeschlagen",
+    "scan.try_again": "Erneut versuchen", "scan.insufficient": "Unzureichendes Guthaben",
+    "scan.amount_label": "Betrag", "scan.fee_label": "Gebühr", "scan.total_label": "Gesamt",
+    "scan.merchant_label": "Händler", "scan.ref_label": "Referenz", "scan.date_label": "Datum",
+    "merchant.dashboard": "Dashboard", "merchant.today": "Heutige Einnahmen", "merchant.vs_yesterday": "ggü. gestern",
+    "merchant.balance_overview": "Guthabenübersicht", "merchant.available": "Verfügbar", "merchant.pending": "Ausstehend",
+    "merchant.paid_out": "Ausgezahlt", "merchant.platform_fee": "Plattformgebühr", "merchant.total_fees": "Gebühren gesamt",
+    "merchant.gross": "Brutto", "merchant.net": "Netto", "merchant.payments_today": "Zahlungen",
+    "merchant.total_txns": "Gesamt", "merchant.before_fees": "Vor Gebühren", "merchant.after_fees": "Nach Gebühren",
+    "merchant.weekly": "Wochenübersicht", "merchant.last_7": "Letzte 7 Tage",
+    "merchant.create_payment": "Zahlung erstellen", "merchant.payout": "Auszahlung",
+    "merchant.payout_history": "Auszahlungsverlauf", "merchant.activity": "Aktivität",
+    "merchant.payments_today_label": "Zahlungen heute", "merchant.successful": "Erfolgreich", "merchant.failed": "Fehlgeschlagen",
+    "merchant.recent": "Letzte Zahlungen", "merchant.no_payments": "Noch keine Zahlungen",
+    "merchant.no_payments_hint": "Erstelle deine erste Zahlung",
+    "payout.request": "Auszahlung anfordern", "payout.requested": "Auszahlung angefordert",
+    "payout.available_label": "Verfügbar", "payout.min": "Min. Auszahlung", "payout.fee_label": "Gebühr",
+    "payout.you_receive": "Du erhältst", "payout.exceeds": "Betrag übersteigt verfügbares Guthaben",
+    "payout.submit": "Auszahlung anfordern", "payout.processing": "Verarbeitung...",
+    "payout.success_msg": "Deine Auszahlung wird in Kürze bearbeitet", "payout.failed": "Auszahlung fehlgeschlagen",
+    "payout.retry": "Erneut",
+    "more.account": "Konto", "more.profile": "Profil", "more.view_account": "Konto anzeigen",
+    "more.payment_methods": "Zahlungsmethoden", "more.cards_banks": "Karten & Bankkonten",
+    "more.security": "Sicherheit", "more.pw_2fa": "Passwort & 2FA", "more.settings": "Einstellungen",
+    "more.preferences": "Einstellungen & Datenschutz", "more.notifications": "Benachrichtigungen",
+    "more.manage_alerts": "Benachrichtigungen verwalten", "more.appearance": "Erscheinungsbild",
+    "more.dark_enabled": "Dunkler Modus aktiv", "more.help": "Hilfe & Support", "more.faq": "FAQ & Kontakt",
+    "more.logout": "Abmelden", "more.version": "Version", "more.premium": "Premium-Mitglied", "more.premium_badge": "Premium",
+    "profile.title": "Profil", "profile.full_name": "Vollständiger Name", "profile.email_label": "E-Mail",
+    "profile.status": "Kontostatus", "profile.verified": "Verifiziert", "profile.member_since": "Mitglied seit",
+    "profile.account_id": "Konto-ID", "profile.edit": "Profil bearbeiten", "profile.save": "Speichern",
+    "profile.saving": "Speichern...", "profile.saved": "Profil aktualisiert",
+    "settings.title": "Einstellungen", "settings.personal": "Persönlich", "settings.personal_info": "Persönliche Daten",
+    "settings.language": "Sprache", "settings.appearance_label": "Erscheinungsbild", "settings.dark_mode": "Dunkler Modus",
+    "settings.notif": "Benachrichtigungen", "settings.push": "Push-Benachrichtigungen",
+    "settings.email_notif": "E-Mail-Benachrichtigungen", "settings.weekly_summary": "Wöchentliche Zusammenfassung",
+    "settings.security_privacy": "Sicherheit & Datenschutz", "settings.change_pw": "Passwort ändern",
+    "settings.biometric": "Biometrische Anmeldung", "settings.privacy": "Datenschutz",
+    "settings.sessions": "Aktive Sitzungen", "settings.device": "1 Gerät",
+    "settings.current_pw": "Aktuelles Passwort", "settings.new_pw": "Neues Passwort",
+    "settings.confirm_pw": "Neues Passwort bestätigen", "settings.update_pw": "Passwort aktualisieren",
+    "settings.updating": "Aktualisierung...", "settings.pw_updated": "Passwort aktualisiert",
+    "topup.title": "Aufladen", "topup.redirecting": "Weiterleitung...", "topup.verifying": "Zahlung wird geprüft",
+    "topup.success": "Erfolg", "topup.failed_title": "Fehlgeschlagen", "topup.current": "Aktuelles Guthaben",
+    "topup.fee": "Gebühr", "topup.free": "Kostenlos", "topup.total": "Gesamt",
+    "topup.stripe_badge": "Powered by Stripe (Testmodus)", "topup.pay_stripe": "Mit Stripe bezahlen",
+    "topup.creating": "Checkout wird erstellt...", "topup.redirect_msg": "Weiterleitung zur sicheren Zahlung",
+    "topup.verifying_msg": "Bestätigung mit Stripe", "topup.success_msg": "Aufladung erfolgreich!",
+    "topup.added": "Deinem Wallet über Stripe hinzugefügt", "topup.failed_msg": "Zahlung konnte nicht verifiziert werden",
+    "topup.cancelled": "Zahlung abgebrochen", "topup.try_again": "Erneut versuchen", "topup.secured": "Gesichert durch Stripe",
+    "common.done": "Fertig", "common.cancel": "Abbrechen", "common.all": "Alle", "common.today": "Heute",
+    "common.loading": "Laden...", "common.error": "Etwas ist schiefgegangen",
+    "admin.title": "Admin-Panel", "admin.subtitle": "Plattform-Kontrollzentrum", "admin.overview": "Übersicht",
+    "admin.users": "Benutzer", "admin.merchants": "Händler", "admin.payouts": "Auszahlungen", "admin.txns": "Transaktionen",
+    "admin.config": "Konfig", "admin.total_users": "Benutzer gesamt", "admin.total_merchants": "Händler",
+    "admin.payment_volume": "Zahlungsvolumen", "admin.fee_revenue": "Gebühreneinnahmen",
+    "admin.pending_payouts": "Ausstehende Auszahlungen", "admin.processed_payouts": "Bearbeitete Auszahlungen",
+    "admin.today_label": "Heute", "admin.search": "Suche", "admin.approve": "Genehmigen",
+    "admin.process": "Als bearbeitet markieren", "admin.fail": "Ablehnen",
+    "admin.fee_config": "Gebührenkonfiguration", "admin.server_config": "Server-Konfiguration",
+    "admin.fee_note": "Gebühren werden in backend/core/config.py festgelegt. Änderungen erfordern einen Neustart.",
+    "admin.access_denied": "Zugriff verweigert", "admin.admin_required": "Admin-Rechte erforderlich",
+    "admin.go_home": "Zur Startseite", "admin.no_results": "Keine Ergebnisse",
+  },
+  sq: {
+    "nav.home": "BALLINA", "nav.wallet": "PORTOFOLI", "nav.scan": "SKANIM", "nav.merchant": "TREGTARI", "nav.more": "MË SHUMË",
+    "auth.welcome": "Mirëseerdhët", "auth.create": "Krijo llogarinë", "auth.email": "Adresa e emailit",
+    "auth.password": "Fjalëkalimi", "auth.name": "Emri i plotë", "auth.confirm": "Konfirmo fjalëkalimin",
+    "auth.signin": "Hyr", "auth.signing": "Duke hyrë...", "auth.register": "Krijo llogarinë",
+    "auth.registering": "Duke krijuar...", "auth.no_account": "Nuk keni llogari?", "auth.has_account": "Keni llogari?",
+    "auth.create_link": "Regjistrohu", "auth.signin_link": "Hyr", "auth.secure": "E sigurt me enkriptim",
+    "auth.fill_all": "Ju lutem plotësoni të gjitha fushat", "auth.pw_mismatch": "Fjalëkalimet nuk përputhen",
+    "auth.pw_short": "Fjalëkalimi duhet të ketë të paktën 6 karaktere",
+    "home.balance": "Bilanci Total", "home.month": "këtë muaj", "home.tagline_1": "Gjithçka në një për",
+    "home.tagline_2": "Pagesa", "home.tagline_3": "Mobilitet", "home.tagline_more": "& Më shumë",
+    "home.subtitle": "Paguaj. Udhëto. Rezervo. Fito.", "home.get_started": "Fillo",
+    "home.services": "Shërbimet", "home.view_all": "Shiko të gjitha",
+    "home.wallet_banner": "Gjithçka kalon përmes BidBlitz Wallet", "home.wallet_sub": "Një portofol për të gjitha pagesat",
+    "wallet.title": "Portofoli", "wallet.available": "Bilanci i Disponueshëm", "wallet.spent": "Shpenzuar",
+    "wallet.income": "Të ardhura", "wallet.add": "Shto Para", "wallet.send": "Dërgo", "wallet.history": "Historia",
+    "wallet.transactions": "Transaksionet", "wallet.see_all": "Shiko të gjitha",
+    "wallet.no_txns": "Ende asnjë transaksion", "wallet.txn_hint": "Historia juaj e pagesave do të shfaqet këtu",
+    "scan.enter_amount": "Vendos shumën", "scan.confirm": "Konfirmo pagesën", "scan.start_pay": "Fillo pagesën",
+    "scan.cancel": "Anulo", "scan.scanning": "Skanoni kodin", "scan.processing": "Duke përpunuar me siguri...",
+    "scan.success": "Pagesa u krye", "scan.done": "Gati", "scan.error": "Pagesa dështoi",
+    "scan.try_again": "Provo përsëri", "scan.insufficient": "Bilanci i pamjaftueshëm",
+    "scan.amount_label": "Shuma", "scan.fee_label": "Tarifa", "scan.total_label": "Totali",
+    "scan.merchant_label": "Tregtari", "scan.ref_label": "Referenca", "scan.date_label": "Data",
+    "merchant.dashboard": "Paneli", "merchant.today": "Fitimet e sotme", "merchant.vs_yesterday": "kundrejt djeshme",
+    "merchant.balance_overview": "Pasqyra e bilancit", "merchant.available": "E disponueshme",
+    "merchant.pending": "Në pritje", "merchant.paid_out": "E paguar",
+    "merchant.create_payment": "Krijo Pagesë", "merchant.payout": "Tërheqje",
+    "merchant.recent": "Pagesat e Fundit", "merchant.no_payments": "Ende asnjë pagesë",
+    "more.account": "Llogaria", "more.profile": "Profili", "more.logout": "Dilni", "more.settings": "Cilësimet",
+    "common.done": "Gati", "common.cancel": "Anulo", "common.all": "Të gjitha", "common.today": "Sot",
+    "topup.title": "Shto Para", "topup.pay_stripe": "Paguaj me Stripe", "topup.success_msg": "Mbushja u krye!",
+    "profile.title": "Profili", "profile.save": "Ruaj", "settings.title": "Cilësimet", "settings.language": "Gjuha",
+  },
+  tr: {
+    "nav.home": "ANA SAYFA", "nav.wallet": "CÜZDAN", "nav.scan": "TARA", "nav.merchant": "İŞLETME", "nav.more": "DAHA FAZLA",
+    "auth.welcome": "Hoş geldiniz", "auth.create": "Hesap oluştur", "auth.email": "E-posta adresi",
+    "auth.password": "Şifre", "auth.name": "Ad Soyad", "auth.confirm": "Şifreyi onayla",
+    "auth.signin": "Giriş Yap", "auth.signing": "Giriş yapılıyor...", "auth.register": "Hesap Oluştur",
+    "auth.registering": "Hesap oluşturuluyor...", "auth.no_account": "Hesabınız yok mu?",
+    "auth.has_account": "Zaten hesabınız var mı?", "auth.create_link": "Kayıt ol", "auth.signin_link": "Giriş yap",
+    "auth.secure": "Uçtan uca şifreleme ile korunuyor", "auth.fill_all": "Lütfen tüm alanları doldurun",
+    "auth.pw_mismatch": "Şifreler eşleşmiyor", "auth.pw_short": "Şifre en az 6 karakter olmalı",
+    "home.balance": "Toplam Bakiye", "home.month": "bu ay", "home.tagline_1": "Hepsi bir arada",
+    "home.tagline_2": "Ödemeler", "home.tagline_3": "Mobilite", "home.tagline_more": "& Daha Fazla",
+    "home.subtitle": "Öde. Sür. Rezerve et. Kazan.", "home.get_started": "Başla",
+    "home.services": "Hizmetler", "home.view_all": "Tümünü Gör",
+    "wallet.title": "Cüzdan", "wallet.available": "Kullanılabilir Bakiye", "wallet.spent": "Harcanan",
+    "wallet.income": "Gelir", "wallet.add": "Para Ekle", "wallet.send": "Gönder", "wallet.history": "Geçmiş",
+    "wallet.transactions": "İşlemler", "wallet.no_txns": "Henüz işlem yok",
+    "scan.enter_amount": "Tutar Girin", "scan.confirm": "Ödemeyi Onayla", "scan.start_pay": "Ödemeyi Başlat",
+    "scan.cancel": "İptal", "scan.processing": "Ödeme güvenli şekilde işleniyor...",
+    "scan.success": "Ödeme Başarılı", "scan.done": "Tamam", "scan.error": "Ödeme Başarısız",
+    "scan.try_again": "Tekrar Dene", "scan.insufficient": "Yetersiz bakiye",
+    "merchant.dashboard": "Kontrol Paneli", "merchant.today": "Bugünün Kazancı",
+    "merchant.create_payment": "Ödeme Oluştur", "merchant.payout": "Ödeme Al",
+    "merchant.recent": "Son Ödemeler", "merchant.no_payments": "Henüz ödeme yok",
+    "more.account": "Hesap", "more.profile": "Profil", "more.logout": "Çıkış Yap", "more.settings": "Ayarlar",
+    "common.done": "Tamam", "common.cancel": "İptal", "common.all": "Tümü", "common.today": "Bugün",
+    "topup.title": "Para Ekle", "topup.pay_stripe": "Stripe ile Öde", "topup.success_msg": "Yükleme Başarılı!",
+    "profile.title": "Profil", "profile.save": "Kaydet", "settings.title": "Ayarlar", "settings.language": "Dil",
+  },
+  fr: {
+    "nav.home": "ACCUEIL", "nav.wallet": "PORTEFEUILLE", "nav.scan": "SCANNER", "nav.merchant": "COMMERCE", "nav.more": "PLUS",
+    "auth.welcome": "Bon retour", "auth.create": "Créer un compte", "auth.email": "Adresse e-mail",
+    "auth.password": "Mot de passe", "auth.name": "Nom complet", "auth.confirm": "Confirmer le mot de passe",
+    "auth.signin": "Connexion", "auth.signing": "Connexion en cours...", "auth.register": "Créer un compte",
+    "auth.no_account": "Pas de compte ?", "auth.has_account": "Déjà un compte ?",
+    "auth.create_link": "S'inscrire", "auth.signin_link": "Se connecter",
+    "home.balance": "Solde Total", "home.month": "ce mois", "home.get_started": "Commencer",
+    "home.services": "Services", "home.tagline_1": "Tout-en-un pour", "home.tagline_2": "Paiements", "home.tagline_3": "Mobilité",
+    "wallet.title": "Portefeuille", "wallet.available": "Solde Disponible", "wallet.add": "Ajouter", "wallet.send": "Envoyer",
+    "wallet.transactions": "Transactions", "wallet.no_txns": "Aucune transaction",
+    "scan.enter_amount": "Entrer le montant", "scan.confirm": "Confirmer le paiement", "scan.start_pay": "Démarrer",
+    "scan.success": "Paiement Réussi", "scan.done": "Terminé", "scan.error": "Paiement Échoué",
+    "scan.try_again": "Réessayer", "scan.cancel": "Annuler",
+    "merchant.dashboard": "Tableau de bord", "merchant.today": "Gains du jour",
+    "merchant.create_payment": "Créer un paiement", "merchant.payout": "Retrait",
+    "more.account": "Compte", "more.profile": "Profil", "more.logout": "Déconnexion", "more.settings": "Paramètres",
+    "common.done": "Terminé", "common.cancel": "Annuler", "common.all": "Tout", "common.today": "Aujourd'hui",
+    "topup.title": "Recharger", "topup.pay_stripe": "Payer avec Stripe", "topup.success_msg": "Rechargement réussi !",
+    "profile.title": "Profil", "profile.save": "Enregistrer", "settings.title": "Paramètres", "settings.language": "Langue",
+  },
+  es: {
+    "nav.home": "INICIO", "nav.wallet": "BILLETERA", "nav.scan": "ESCANEAR", "nav.merchant": "COMERCIO", "nav.more": "MÁS",
+    "auth.welcome": "Bienvenido de nuevo", "auth.create": "Crear cuenta", "auth.email": "Correo electrónico",
+    "auth.password": "Contraseña", "auth.name": "Nombre completo", "auth.signin": "Iniciar sesión",
+    "auth.register": "Crear Cuenta", "auth.no_account": "¿No tienes cuenta?", "auth.has_account": "¿Ya tienes cuenta?",
+    "home.balance": "Saldo Total", "home.get_started": "Comenzar", "home.services": "Servicios",
+    "wallet.title": "Billetera", "wallet.available": "Saldo Disponible", "wallet.add": "Añadir", "wallet.send": "Enviar",
+    "wallet.transactions": "Transacciones", "wallet.no_txns": "Sin transacciones",
+    "scan.enter_amount": "Ingrese monto", "scan.success": "Pago Exitoso", "scan.error": "Pago Fallido",
+    "scan.done": "Listo", "scan.try_again": "Reintentar", "scan.cancel": "Cancelar",
+    "merchant.dashboard": "Panel", "merchant.today": "Ganancias de Hoy",
+    "merchant.create_payment": "Crear Pago", "merchant.payout": "Retiro",
+    "more.account": "Cuenta", "more.logout": "Cerrar sesión", "more.settings": "Configuración",
+    "common.done": "Listo", "common.cancel": "Cancelar", "common.all": "Todo",
+    "topup.title": "Recargar", "topup.pay_stripe": "Pagar con Stripe",
+    "profile.title": "Perfil", "profile.save": "Guardar", "settings.title": "Configuración", "settings.language": "Idioma",
+  },
+  it: {
+    "nav.home": "HOME", "nav.wallet": "PORTAFOGLIO", "nav.scan": "SCANSIONA", "nav.merchant": "NEGOZIO", "nav.more": "ALTRO",
+    "auth.welcome": "Bentornato", "auth.create": "Crea account", "auth.email": "Indirizzo email",
+    "auth.password": "Password", "auth.name": "Nome completo", "auth.signin": "Accedi", "auth.register": "Crea Account",
+    "home.balance": "Saldo Totale", "home.get_started": "Inizia", "home.services": "Servizi",
+    "wallet.title": "Portafoglio", "wallet.available": "Saldo Disponibile", "wallet.add": "Aggiungi", "wallet.send": "Invia",
+    "wallet.transactions": "Transazioni", "wallet.no_txns": "Nessuna transazione",
+    "scan.enter_amount": "Inserisci importo", "scan.success": "Pagamento Riuscito", "scan.error": "Pagamento Fallito",
+    "scan.done": "Fatto", "scan.try_again": "Riprova", "scan.cancel": "Annulla",
+    "merchant.dashboard": "Dashboard", "merchant.today": "Guadagni di Oggi",
+    "more.account": "Account", "more.logout": "Esci", "more.settings": "Impostazioni",
+    "common.done": "Fatto", "common.cancel": "Annulla",
+    "topup.title": "Ricarica", "topup.pay_stripe": "Paga con Stripe",
+    "profile.title": "Profilo", "profile.save": "Salva", "settings.title": "Impostazioni", "settings.language": "Lingua",
+  },
+  pt: {
+    "nav.home": "INÍCIO", "nav.wallet": "CARTEIRA", "nav.scan": "ESCANEAR", "nav.merchant": "LOJA", "nav.more": "MAIS",
+    "auth.welcome": "Bem-vindo de volta", "auth.create": "Criar conta", "auth.email": "Endereço de e-mail",
+    "auth.password": "Senha", "auth.name": "Nome completo", "auth.signin": "Entrar", "auth.register": "Criar Conta",
+    "home.balance": "Saldo Total", "home.get_started": "Começar", "home.services": "Serviços",
+    "wallet.title": "Carteira", "wallet.available": "Saldo Disponível", "wallet.add": "Adicionar", "wallet.send": "Enviar",
+    "wallet.transactions": "Transações", "wallet.no_txns": "Nenhuma transação",
+    "scan.success": "Pagamento Bem-sucedido", "scan.error": "Pagamento Falhou",
+    "scan.done": "Pronto", "scan.try_again": "Tentar novamente", "scan.cancel": "Cancelar",
+    "merchant.dashboard": "Painel", "merchant.today": "Ganhos de Hoje",
+    "more.account": "Conta", "more.logout": "Sair", "more.settings": "Configurações",
+    "common.done": "Pronto", "common.cancel": "Cancelar",
+    "topup.title": "Recarregar", "topup.pay_stripe": "Pagar com Stripe",
+    "profile.title": "Perfil", "profile.save": "Salvar", "settings.title": "Configurações", "settings.language": "Idioma",
+  },
+  nl: {
+    "nav.home": "HOME", "nav.wallet": "PORTEMONNEE", "nav.scan": "SCANNEN", "nav.merchant": "WINKEL", "nav.more": "MEER",
+    "auth.welcome": "Welkom terug", "auth.create": "Account aanmaken", "auth.email": "E-mailadres",
+    "auth.password": "Wachtwoord", "auth.name": "Volledige naam", "auth.signin": "Inloggen", "auth.register": "Account Aanmaken",
+    "home.balance": "Totaal Saldo", "home.get_started": "Beginnen", "home.services": "Diensten",
+    "wallet.title": "Portemonnee", "wallet.available": "Beschikbaar Saldo", "wallet.add": "Toevoegen", "wallet.send": "Versturen",
+    "wallet.transactions": "Transacties", "wallet.no_txns": "Geen transacties",
+    "scan.success": "Betaling Geslaagd", "scan.error": "Betaling Mislukt",
+    "scan.done": "Klaar", "scan.try_again": "Opnieuw", "scan.cancel": "Annuleren",
+    "merchant.dashboard": "Dashboard", "merchant.today": "Inkomsten Vandaag",
+    "more.account": "Account", "more.logout": "Uitloggen", "more.settings": "Instellingen",
+    "common.done": "Klaar", "common.cancel": "Annuleren",
+    "topup.title": "Opwaarderen", "topup.pay_stripe": "Betaal met Stripe",
+    "profile.title": "Profiel", "profile.save": "Opslaan", "settings.title": "Instellingen", "settings.language": "Taal",
+  },
+  pl: {
+    "nav.home": "STRONA GŁÓWNA", "nav.wallet": "PORTFEL", "nav.scan": "SKANUJ", "nav.merchant": "SKLEP", "nav.more": "WIĘCEJ",
+    "auth.welcome": "Witaj ponownie", "auth.create": "Utwórz konto", "auth.email": "Adres e-mail",
+    "auth.password": "Hasło", "auth.name": "Imię i nazwisko", "auth.signin": "Zaloguj się", "auth.register": "Utwórz Konto",
+    "home.balance": "Całkowite Saldo", "home.get_started": "Rozpocznij", "home.services": "Usługi",
+    "wallet.title": "Portfel", "wallet.available": "Dostępne Saldo", "wallet.add": "Doładuj", "wallet.send": "Wyślij",
+    "wallet.transactions": "Transakcje", "wallet.no_txns": "Brak transakcji",
+    "scan.success": "Płatność Udana", "scan.error": "Płatność Nieudana",
+    "scan.done": "Gotowe", "scan.try_again": "Ponów", "scan.cancel": "Anuluj",
+    "merchant.dashboard": "Panel", "merchant.today": "Dzisiejsze Zarobki",
+    "more.account": "Konto", "more.logout": "Wyloguj", "more.settings": "Ustawienia",
+    "common.done": "Gotowe", "common.cancel": "Anuluj",
+    "topup.title": "Doładuj", "topup.pay_stripe": "Zapłać przez Stripe",
+    "profile.title": "Profil", "profile.save": "Zapisz", "settings.title": "Ustawienia", "settings.language": "Język",
+  },
+  ru: {
+    "nav.home": "ГЛАВНАЯ", "nav.wallet": "КОШЕЛЁК", "nav.scan": "СКАНЕР", "nav.merchant": "МАГАЗИН", "nav.more": "ЕЩЁ",
+    "auth.welcome": "С возвращением", "auth.create": "Создать аккаунт", "auth.email": "Электронная почта",
+    "auth.password": "Пароль", "auth.name": "Полное имя", "auth.signin": "Войти", "auth.register": "Создать Аккаунт",
+    "home.balance": "Общий Баланс", "home.get_started": "Начать", "home.services": "Сервисы",
+    "wallet.title": "Кошелёк", "wallet.available": "Доступный Баланс", "wallet.add": "Пополнить", "wallet.send": "Отправить",
+    "wallet.transactions": "Транзакции", "wallet.no_txns": "Транзакций пока нет",
+    "scan.success": "Оплата Успешна", "scan.error": "Ошибка Оплаты",
+    "scan.done": "Готово", "scan.try_again": "Повторить", "scan.cancel": "Отмена",
+    "merchant.dashboard": "Панель", "merchant.today": "Доход Сегодня",
+    "more.account": "Аккаунт", "more.logout": "Выйти", "more.settings": "Настройки",
+    "common.done": "Готово", "common.cancel": "Отмена",
+    "topup.title": "Пополнить", "topup.pay_stripe": "Оплатить через Stripe",
+    "profile.title": "Профиль", "profile.save": "Сохранить", "settings.title": "Настройки", "settings.language": "Язык",
+  },
+  ar: {
+    "nav.home": "الرئيسية", "nav.wallet": "المحفظة", "nav.scan": "مسح", "nav.merchant": "التاجر", "nav.more": "المزيد",
+    "auth.welcome": "مرحباً بعودتك", "auth.create": "إنشاء حساب", "auth.email": "البريد الإلكتروني",
+    "auth.password": "كلمة المرور", "auth.name": "الاسم الكامل", "auth.signin": "تسجيل الدخول",
+    "auth.register": "إنشاء حساب", "auth.no_account": "ليس لديك حساب؟", "auth.has_account": "لديك حساب بالفعل؟",
+    "home.balance": "الرصيد الإجمالي", "home.get_started": "ابدأ الآن", "home.services": "الخدمات",
+    "wallet.title": "المحفظة", "wallet.available": "الرصيد المتاح", "wallet.add": "إضافة", "wallet.send": "إرسال",
+    "wallet.transactions": "المعاملات", "wallet.no_txns": "لا توجد معاملات",
+    "scan.success": "تم الدفع بنجاح", "scan.error": "فشل الدفع",
+    "scan.done": "تم", "scan.try_again": "إعادة المحاولة", "scan.cancel": "إلغاء",
+    "merchant.dashboard": "لوحة التحكم", "merchant.today": "أرباح اليوم",
+    "more.account": "الحساب", "more.logout": "تسجيل الخروج", "more.settings": "الإعدادات",
+    "common.done": "تم", "common.cancel": "إلغاء",
+    "topup.title": "شحن الرصيد", "topup.pay_stripe": "الدفع عبر Stripe",
+    "profile.title": "الملف الشخصي", "profile.save": "حفظ", "settings.title": "الإعدادات", "settings.language": "اللغة",
+  },
+};
+
+export default translations;
