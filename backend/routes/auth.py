@@ -8,6 +8,7 @@ from core.security import (
 )
 from core.config import MAX_LOGIN_ATTEMPTS, LOCKOUT_MINUTES
 from core.rate_limit import limiter, RATE_REGISTER, RATE_LOGIN
+from core.audit import log_audit, AuditEvent, get_client_info
 from schemas.models import RegisterRequest, LoginRequest
 import secrets
 import random
@@ -30,6 +31,8 @@ def generate_card_expiry():
 @limiter.limit(RATE_REGISTER)
 async def register(req: RegisterRequest, request: Request, response: Response):
     email = req.email.lower().strip()
+    ip, ua = get_client_info(request)
+
     existing = await db.users.find_one({"email": email})
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
@@ -47,24 +50,28 @@ async def register(req: RegisterRequest, request: Request, response: Response):
     }
     result = await db.users.insert_one(user_doc)
     user_doc["_id"] = result.inserted_id
+    user_id = str(result.inserted_id)
 
     # Create merchant profile for every user
     await db.merchants.insert_one({
-        "user_id": str(result.inserted_id),
+        "user_id": user_id,
         "business_name": f"{req.name.strip()}'s Store",
         "total_earnings": 0.0,
         "total_transactions": 0,
         "created_at": datetime.now(timezone.utc).isoformat(),
     })
 
-    access_token = create_access_token(str(result.inserted_id), email)
-    refresh_token = create_refresh_token(str(result.inserted_id))
+    access_token = create_access_token(user_id, email)
+    refresh_token = create_refresh_token(user_id)
     set_auth_cookies(response, access_token, refresh_token)
+
+    await log_audit(AuditEvent.REGISTER, user_id=user_id, email=email,
+                    ip=ip, user_agent=ua, details={"role": "user"})
 
     # Send onboarding notifications
     try:
         from routes.notifications import create_onboarding_notifications
-        await create_onboarding_notifications(str(result.inserted_id), req.name.strip())
+        await create_onboarding_notifications(user_id, req.name.strip())
     except Exception:
         pass
 
@@ -75,7 +82,7 @@ async def register(req: RegisterRequest, request: Request, response: Response):
 @limiter.limit(RATE_LOGIN)
 async def login(req: LoginRequest, request: Request, response: Response):
     email = req.email.lower().strip()
-    ip = request.client.host if request.client else "unknown"
+    ip, ua = get_client_info(request)
     identifier = f"{ip}:{email}"
 
     # Brute force check
@@ -83,6 +90,8 @@ async def login(req: LoginRequest, request: Request, response: Response):
     if attempt and attempt.get("attempts", 0) >= MAX_LOGIN_ATTEMPTS:
         locked_until = attempt.get("locked_until")
         if locked_until and datetime.now(timezone.utc) < datetime.fromisoformat(locked_until):
+            await log_audit(AuditEvent.LOGIN_LOCKED, email=email, ip=ip, user_agent=ua,
+                            details={"reason": "brute_force_lockout"}, severity="warn")
             raise HTTPException(status_code=429, detail=f"Account locked. Try again in {LOCKOUT_MINUTES} minutes.")
         else:
             await db.login_attempts.delete_one({"identifier": identifier})
@@ -99,14 +108,21 @@ async def login(req: LoginRequest, request: Request, response: Response):
             await db.login_attempts.update_one({"identifier": identifier}, update)
         else:
             await db.login_attempts.insert_one({"identifier": identifier, "attempts": 1})
+
+        await log_audit(AuditEvent.LOGIN_FAILED, email=email, ip=ip, user_agent=ua,
+                        details={"reason": "invalid_credentials"}, severity="warn")
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
     # Clear failed attempts on success
     await db.login_attempts.delete_many({"identifier": identifier})
 
-    access_token = create_access_token(str(user["_id"]), email)
-    refresh_token = create_refresh_token(str(user["_id"]))
+    user_id = str(user["_id"])
+    access_token = create_access_token(user_id, email)
+    refresh_token = create_refresh_token(user_id)
     set_auth_cookies(response, access_token, refresh_token)
+
+    await log_audit(AuditEvent.LOGIN_SUCCESS, user_id=user_id, email=email,
+                    ip=ip, user_agent=ua, details={"role": user.get("role", "user")})
 
     return serialize_user(user)
 
@@ -118,7 +134,14 @@ async def get_me(request: Request):
 
 
 @router.post("/logout")
-async def logout(response: Response):
+async def logout(request: Request, response: Response):
+    try:
+        user = await get_current_user(request)
+        ip, ua = get_client_info(request)
+        await log_audit(AuditEvent.LOGOUT, user_id=str(user["_id"]), email=user.get("email", ""),
+                        ip=ip, user_agent=ua)
+    except Exception:
+        pass
     clear_auth_cookies(response)
     return {"message": "Logged out"}
 

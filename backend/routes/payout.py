@@ -11,6 +11,7 @@ from core.database import db
 from core.security import get_current_user
 from core.config import FEES, calculate_payout_fee
 from core.rate_limit import limiter, RATE_PAYOUT
+from core.audit import log_audit, AuditEvent, get_client_info
 import secrets
 
 router = APIRouter(prefix="/api/payout", tags=["payout"])
@@ -31,6 +32,7 @@ def payout_ref():
 async def request_payout(req: PayoutRequest, request: Request):
     user = await get_current_user(request)
     user_id = str(user["_id"])
+    ip, ua = get_client_info(request)
 
     merchant = await db.merchants.find_one({"user_id": user_id})
     if not merchant:
@@ -84,6 +86,11 @@ async def request_payout(req: PayoutRequest, request: Request):
         {"$inc": {"available_payout": -req.amount, "pending_payout": req.amount}},
     )
 
+    await log_audit(AuditEvent.PAYOUT_REQUESTED, user_id=user_id, email=user.get("email", ""),
+                    ip=ip, user_agent=ua,
+                    details={"reference": ref, "amount": req.amount, "fee": fee,
+                             "net_amount": net_payout, "merchant": merchant.get("business_name", "")})
+
     return {
         "success": True,
         "payout": payout_doc,
@@ -116,6 +123,7 @@ async def payout_history(request: Request, limit: int = 20, skip: int = 0):
 async def cancel_payout(payout_ref: str, request: Request):
     user = await get_current_user(request)
     user_id = str(user["_id"])
+    ip, ua = get_client_info(request)
 
     payout = await db.payouts.find_one({"reference": payout_ref, "user_id": user_id})
     if not payout:
@@ -135,6 +143,10 @@ async def cancel_payout(payout_ref: str, request: Request):
         {"user_id": user_id},
         {"$inc": {"available_payout": payout["amount"], "pending_payout": -payout["amount"]}},
     )
+
+    await log_audit(AuditEvent.PAYOUT_CANCELLED, user_id=user_id, email=user.get("email", ""),
+                    ip=ip, user_agent=ua,
+                    details={"reference": payout_ref, "amount": payout["amount"]})
 
     return {"success": True, "message": "Payout cancelled. Funds returned to available balance."}
 

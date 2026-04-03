@@ -44,6 +44,7 @@ async def update_profile(req: ProfileUpdate, request: Request):
     """Update user profile fields."""
     user = await get_current_user(request)
     user_id = str(user["_id"])
+    ip, ua = get_client_info(request)
 
     update = {}
     if req.name is not None:
@@ -56,6 +57,10 @@ async def update_profile(req: ProfileUpdate, request: Request):
 
     update["updated_at"] = datetime.now(timezone.utc).isoformat()
     await db.users.update_one({"_id": user["_id"]}, {"$set": update})
+
+    await log_audit(AuditEvent.PROFILE_UPDATE, user_id=user_id, email=user["email"],
+                    ip=ip, user_agent=ua,
+                    details={"fields_changed": list(update.keys())})
 
     updated_user = await db.users.find_one({"_id": user["_id"]})
     return {

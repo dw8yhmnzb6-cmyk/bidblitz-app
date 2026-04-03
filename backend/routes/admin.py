@@ -11,6 +11,7 @@ from core.database import db
 from core.security import get_current_user
 from core.config import FEES
 from core.rate_limit import limiter, RATE_ADMIN_ACTION
+from core.audit import log_audit, AuditEvent, get_client_info
 from typing import Optional
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
@@ -161,7 +162,9 @@ class PayoutAction(BaseModel):
 @router.post("/payouts/{payout_ref}/action")
 @limiter.limit(RATE_ADMIN_ACTION)
 async def payout_action(payout_ref: str, req: PayoutAction, request: Request):
-    await require_admin(request)
+    admin = await require_admin(request)
+    admin_id = str(admin["_id"])
+    ip, ua = get_client_info(request)
 
     payout = await db.payouts.find_one({"reference": payout_ref})
     if not payout:
@@ -198,6 +201,12 @@ async def payout_action(payout_ref: str, req: PayoutAction, request: Request):
             {"_id": ObjectId(payout["merchant_id"])} if ObjectId.is_valid(payout["merchant_id"]) else {"user_id": payout["user_id"]},
             {"$inc": {"pending_payout": -payout["amount"]}},
         )
+
+    await log_audit(AuditEvent.PAYOUT_ACTION, user_id=admin_id, email=admin.get("email", ""),
+                    ip=ip, user_agent=ua,
+                    details={"action": req.action, "reference": payout_ref,
+                             "new_status": new_status, "amount": payout.get("amount", 0),
+                             "merchant_id": payout.get("merchant_id", "")})
 
     return {"success": True, "new_status": new_status, "reference": payout_ref}
 
@@ -240,3 +249,34 @@ async def get_settings(request: Request):
         "fees": FEES,
         "note": "Fee changes require server restart. These are read-only from the API.",
     }
+
+
+# ── Audit Logs (Admin Review) ──
+@router.get("/audit-logs")
+async def get_audit_logs(
+    request: Request,
+    event: str = "",
+    user_id: str = "",
+    severity: str = "",
+    limit: int = 50,
+    skip: int = 0,
+):
+    admin = await require_admin(request)
+    ip, ua = get_client_info(request)
+
+    query = {}
+    if event:
+        query["event"] = event
+    if user_id:
+        query["user_id"] = user_id
+    if severity:
+        query["severity"] = severity
+
+    logs = await db.audit_logs.find(query, {"_id": 0}).sort("timestamp", -1).skip(skip).limit(limit).to_list(limit)
+    total = await db.audit_logs.count_documents(query)
+
+    await log_audit(AuditEvent.ADMIN_ACTION, user_id=str(admin["_id"]), email=admin.get("email", ""),
+                    ip=ip, user_agent=ua,
+                    details={"action": "view_audit_logs", "filters": {"event": event, "user_id": user_id, "severity": severity}})
+
+    return {"logs": logs, "total": total}

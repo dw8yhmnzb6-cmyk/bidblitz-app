@@ -17,6 +17,7 @@ from core.config import STRIPE_API_KEY
 from core.database import db
 from core.security import get_current_user
 from core.rate_limit import limiter, RATE_STRIPE
+from core.audit import log_audit, AuditEvent, get_client_info
 
 router = APIRouter(prefix="/api/stripe", tags=["stripe"])
 
@@ -46,6 +47,7 @@ class CheckoutStatusRequest(BaseModel):
 async def create_checkout(req: CheckoutRequest, request: Request):
     user = await get_current_user(request)
     user_id = str(user["_id"])
+    ip, ua = get_client_info(request)
 
     # Validate package
     if req.package_id not in TOPUP_PACKAGES:
@@ -97,6 +99,11 @@ async def create_checkout(req: CheckoutRequest, request: Request):
     await db.payment_transactions.insert_one(payment_record)
     payment_record.pop("_id", None)
 
+    await log_audit(AuditEvent.TOPUP_INITIATED, user_id=user_id, email=user["email"],
+                    ip=ip, user_agent=ua,
+                    details={"session_id": session.session_id, "amount": amount,
+                             "package_id": req.package_id})
+
     return {
         "checkout_url": session.url,
         "session_id": session.session_id,
@@ -108,6 +115,7 @@ async def create_checkout(req: CheckoutRequest, request: Request):
 async def checkout_status(session_id: str, request: Request):
     user = await get_current_user(request)
     user_id = str(user["_id"])
+    ip, ua = get_client_info(request)
 
     # Find the payment record
     payment = await db.payment_transactions.find_one(
@@ -183,6 +191,18 @@ async def checkout_status(session_id: str, request: Request):
             txn.pop("_id", None)
 
             credited = True
+
+            await log_audit(AuditEvent.TOPUP_SUCCESS, user_id=user_id, email=user.get("email", ""),
+                            ip=ip, user_agent=ua,
+                            details={"session_id": session_id, "amount": payment["amount"],
+                                     "reference": txn["reference"]})
+
+    if stripe_status.payment_status != "paid" and payment["status"] not in ("completed", "credited"):
+        await log_audit(AuditEvent.TOPUP_FAILED, user_id=user_id, email=user.get("email", ""),
+                        ip=ip, user_agent=ua,
+                        details={"session_id": session_id, "stripe_status": stripe_status.status,
+                                 "payment_status": stripe_status.payment_status},
+                        severity="warn")
 
     return {
         "status": new_status if not credited else "credited",

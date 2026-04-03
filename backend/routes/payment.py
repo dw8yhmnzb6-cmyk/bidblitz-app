@@ -5,6 +5,7 @@ from core.database import db
 from core.security import get_current_user
 from core.config import calculate_fee, FEES
 from core.rate_limit import limiter, RATE_PAYMENT
+from core.audit import log_audit, AuditEvent, get_client_info
 from schemas.models import PaymentRequest, SendRequest
 import secrets
 
@@ -36,11 +37,16 @@ async def pay(req: PaymentRequest, request: Request):
     user = await get_current_user(request)
     user_id = str(user["_id"])
     current_balance = user.get("balance", 0.0)
+    ip, ua = get_client_info(request)
 
     if req.amount <= 0:
         raise HTTPException(status_code=400, detail="Amount must be positive")
 
     if current_balance < req.amount:
+        await log_audit(AuditEvent.PAYMENT_FAILED, user_id=user_id, email=user["email"],
+                        ip=ip, user_agent=ua,
+                        details={"reason": "insufficient_balance", "amount": req.amount, "balance": current_balance},
+                        severity="warn")
         raise HTTPException(status_code=400, detail=f"Insufficient balance. Current: EUR {current_balance:.2f}")
 
     ref = generate_reference()
@@ -123,6 +129,11 @@ async def pay(req: PaymentRequest, request: Request):
 
     updated_user = await db.users.find_one({"_id": user["_id"]})
 
+    await log_audit(AuditEvent.PAYMENT_SUCCESS, user_id=user_id, email=user["email"],
+                    ip=ip, user_agent=ua,
+                    details={"reference": ref, "amount": req.amount, "fee": fee,
+                             "merchant": merchant_name, "new_balance": updated_user["balance"]})
+
     return {
         "success": True,
         "new_balance": updated_user["balance"],
@@ -140,6 +151,7 @@ async def send_money(req: SendRequest, request: Request):
     user = await get_current_user(request)
     user_id = str(user["_id"])
     current_balance = user.get("balance", 0.0)
+    ip, ua = get_client_info(request)
 
     if req.amount <= 0:
         raise HTTPException(status_code=400, detail="Amount must be positive")
@@ -149,6 +161,10 @@ async def send_money(req: SendRequest, request: Request):
     total_debit = round(req.amount + fee, 2)
 
     if current_balance < total_debit:
+        await log_audit(AuditEvent.SEND_FAILED, user_id=user_id, email=user["email"],
+                        ip=ip, user_agent=ua,
+                        details={"reason": "insufficient_balance", "amount": req.amount, "balance": current_balance},
+                        severity="warn")
         raise HTTPException(status_code=400, detail=f"Insufficient balance. Need EUR {total_debit:.2f}, have EUR {current_balance:.2f}")
 
     recipient = await db.users.find_one({"email": req.recipient_email.lower().strip()})
@@ -202,6 +218,11 @@ async def send_money(req: SendRequest, request: Request):
     sender_txn.pop("_id", None)
 
     updated_user = await db.users.find_one({"_id": user["_id"]})
+
+    await log_audit(AuditEvent.SEND_SUCCESS, user_id=user_id, email=user["email"],
+                    ip=ip, user_agent=ua,
+                    details={"reference": ref, "amount": req.amount, "fee": fee,
+                             "recipient_email": req.recipient_email, "new_balance": updated_user["balance"]})
 
     return {
         "success": True,
