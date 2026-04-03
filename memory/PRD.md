@@ -1,84 +1,79 @@
 # BidBlitz V2 - Product Requirements Document
 
 ## Original Problem Statement
-Create a modern, professional web app called BidBlitz V2 - an ultra-modern fintech app similar to Uber, Revolut, Apple with premium, clean UI. Mobile-first design with dark mode (#0A0A0A primary, #00C2FF accent), smooth Framer Motion animations.
+Create a modern, professional web app called BidBlitz V2 — an ultra-modern fintech app similar to Uber, Revolut, Apple with premium dark-mode UI. Mobile-first design, smooth animations, realistic dummy-data payment flows.
 
-## User Personas
-- **Consumer**: Uses wallet, books rides, orders food, participates in auctions
-- **Merchant/Händler**: Receives payments, tracks earnings, views analytics
-
-## Core Requirements (Phase 1 - Frontend Foundation)
-- [x] Dark mode with premium fintech aesthetic
-- [x] Mobile-first responsive design
-- [x] Bottom navigation (Home, Wallet, Scan, Händler, More)
-- [x] Framer Motion animations for page transitions
-- [x] Lucide React icons throughout
-
-## What's Been Implemented
-
-### Phase 1 - UI Scaffolding (DONE - Jan 27, 2026)
-- 5 main pages: Home, Wallet, Scanner, Merchant, More
-- Bottom navigation with center scan button
-- Premium dark theme with glassmorphism
-
-### Phase 2 - State Management (DONE - Jan 27, 2026)
-- WalletContext with reducer for balance, transactions
-- MerchantContext for earnings, payments
-- UserContext for profile data
-- Custom hooks: usePaymentFlow, useGroupedTransactions, useWalletStats, useMerchantStats
-
-### Phase 3 - Payment Architecture (DONE - Apr 3, 2026)
-- **TopUpModal**: Full top-up flow (amount → payment method → processing → success/error). Integrated into WalletPage via "Add Money" quick action. 90% simulated success rate.
-- **TransactionDetailModal**: Shows transaction reference, type, status, date, payment method. Integrated into WalletPage via transaction item click. Copy Reference button.
-- **TransactionFilters**: Filter tabs (All, Payments, Top-ups, Transfers) with optional status sub-filters. Integrated above transaction list in WalletPage.
-- **PaymentRequestSummary**: Review step before QR scan showing reference, amount, merchant, expiry. Integrated into ScannerPage as intermediate step.
-- **Services**: paymentService, walletService, merchantService, scannerService - all simulate backend delays and success/failure states.
-
-### Pages
-- **Homepage**: User greeting, total balance hero, feature grid, Get Started CTA
-- **Wallet**: Balance display, premium card, quick actions (Add Money opens TopUpModal, Send, History), transaction filters, grouped transactions (click opens detail modal)
-- **Scanner/Payment**: Amount input → Review (PaymentRequestSummary) → QR scan animation → processing → success/error
-- **Händler Dashboard**: Today/Total earnings stats, Recharts area chart, Create Payment button, recent payments
-- **More**: Profile card, settings menu, Logout
-
-### Components
-- BottomNav, FeatureCard, TransactionItem (with onClick), PremiumCard, StatusBadge, QuickAction
-- TopUpModal, TransactionDetailModal, TransactionFilters, PaymentRequestSummary
-
-### Technical
-- React with custom navigation state management (useState in App.js)
-- Framer Motion for all animations
-- Recharts for merchant analytics
-- Context API for wallet/transaction/merchant state
-- TailwindCSS with custom design tokens
-- Services layer simulating backend API calls
-
-## Prioritized Backlog
-
-### P0 (Critical for MVP)
-- [ ] Backend API integration for wallet operations
-- [ ] User authentication system
-- [ ] Real payment gateway integration (Stripe)
-
-### P1 (High Priority)
-- [ ] Push notifications
-- [ ] QR code generation for merchants
-- [ ] Real-time balance updates
-- [ ] Transaction history pagination
-
-### P2 (Nice to Have)
-- [ ] Biometric authentication
-- [ ] Multi-currency support
-- [ ] Spending analytics & insights
-- [ ] Referral program
-- [ ] Light mode toggle
+## Tech Stack
+- React, TailwindCSS, Framer Motion, Lucide React, Recharts
+- Context API for mock state management
+- FastAPI + MongoDB backend (created, not yet connected to frontend)
 
 ## Design Tokens
-- Primary: #0A0A0A (dark background)
+- Background: #0A0A0A / #050505
 - Accent: #00C2FF (cyan)
 - Success: #00D26A
 - Error: #FF4757
-- Gold: #FFD700
-- Surface: #111111
-- Border-medium: rgba(255,255,255,0.1)
-- Font: Outfit (headings), system stack (body)
+- Surface: #111111 / #0E0E0E
+- Font: Outfit (headings), Inter/system (body)
+
+## What's Been Implemented
+
+### Phase 1 — UI Scaffolding (DONE)
+- 5 main pages: Home, Wallet, Scanner, Merchant, More
+- Bottom navigation with center scan button (hidden on Scanner page)
+- Premium dark theme with glassmorphism
+
+### Phase 2 — State Management (DONE)
+- WalletContext: balance, transactions, pay, addMoney, canAfford
+- MerchantContext: earnings, payments, createPaymentRequest, receivePayment
+- UserContext: profile data
+- Custom hooks: usePaymentFlow, useGroupedTransactions, useWalletStats, useMerchantStats
+
+### Phase 3 — Payment Components (DONE)
+- TopUpModal: Full top-up flow with presets, payment methods, processing states
+- TransactionDetailModal: Reference, type, status, date, payment method
+- TransactionFilters: All, Payments, Top-ups, Transfers tabs
+- PaymentRequestSummary: Review card before QR scan
+
+### Phase 4 — Scanner Flow Refinement (DONE - Apr 2026)
+Rebuilt ScannerPage as premium 5-step payment experience:
+1. **Amount Input**: Custom NumPad, quick amount chips (€5/€10/€25/€50), live balance indicator, validation
+2. **Confirmation**: Big amount display, merchant info, reference with Copy, payment method, countdown timer with animated ring, "BidBlitz Secure Pay" badge
+3. **Scanning**: QR grid with animated blocks, laser line, progress bar, amount/reference display
+4. **Processing**: Pulsing rings, "Verifying Payment / Contacting payment network"
+5. **Success**: Green checkmark with expanding rings, receipt card (reference, status, new balance), Done button
+6. **Error**: Shake animation, decline message, Try Again / Cancel buttons
+
+### Phase 5 — Backend (CREATED, NOT CONNECTED)
+- FastAPI backend with modular routes (auth, wallet, payment, merchant, transactions)
+- MongoDB integration with indexes
+- JWT auth with httpOnly cookies, bcrypt password hashing
+- Admin seeding, brute force protection
+- **Frontend is NOT connected to backend yet** — uses Context API mock data only
+
+### Pages
+- **Home**: Greeting, balance hero, services grid, Get Started CTA
+- **Wallet**: Balance, premium card, quick actions (Add Money/Send/History), filters, grouped transactions
+- **Scanner**: 5-step premium payment flow (Amount → Confirm → Scan → Processing → Success/Error)
+- **Merchant (Händler)**: Today/Total earnings, Recharts chart, recent payments
+- **More**: Profile card, settings menu, Logout
+
+## Prioritized Backlog
+
+### P0 (Next)
+- [ ] Connect frontend to FastAPI backend (replace Context with API calls)
+- [ ] Auth gate (login/register page with real backend)
+- [ ] Real payment gateway integration (Stripe)
+
+### P1
+- [ ] Push notifications
+- [ ] QR code generation for merchants
+- [ ] Real-time balance updates via WebSocket
+- [ ] Transaction history pagination
+
+### P2
+- [ ] Biometric authentication
+- [ ] Multi-currency support
+- [ ] Spending analytics & insights
+- [ ] Light mode toggle
+- [ ] Referral program
