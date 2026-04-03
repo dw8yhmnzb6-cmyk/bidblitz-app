@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, User, CreditCard, Bell, Shield, Moon, Settings,
   HelpCircle, LogOut, ChevronRight, ChevronLeft, Sparkles,
-  Globe, Lock, Eye, Fingerprint, Smartphone, Mail, Calendar, Gift, LayoutDashboard, Activity
+  Globe, Lock, Eye, Fingerprint, Smartphone, Mail, Calendar, Gift, LayoutDashboard, Activity, Users
 } from "lucide-react";
 import { useUser, useI18n } from "../store";
 import { api } from "../services/api";
@@ -11,6 +11,7 @@ import ReferralPage from "./ReferralPage";
 import NotificationsPage from "./NotificationsPage";
 import SupportPage from "./SupportPage";
 import ActivityPage from "./ActivityPage";
+import KidsPaywall from "./KidsPaywall";
 
 const slide = { duration: 0.3, ease: [0.32, 0.72, 0, 1] };
 
@@ -263,6 +264,9 @@ export const MorePage = ({ onNavigate }) => {
   if (subPage === "activity") {
     return <ActivityPage onBack={() => setSubPage(null)} />;
   }
+  if (subPage === "kids") {
+    return <KidsPaywall onBack={() => setSubPage(null)} onSubscribed={() => setSubPage(null)} />;
+  }
 
   const accountMenu = [
     { id: "profile", icon: User, label: t("more.profile"), desc: t("more.profile_desc"), color: "#00C2FF", action: () => setSubPage("profile") },
@@ -278,6 +282,7 @@ export const MorePage = ({ onNavigate }) => {
       badge: unreadCount > 0 ? unreadCount : null,
     },
     { id: "activity", icon: Activity, label: t("activity.title"), desc: t("activity.menu_desc"), color: "#00C2FF", action: () => setSubPage("activity") },
+    { id: "kids", icon: Users, label: t("kids.title"), desc: t("kids.menu_desc"), color: "#A855F7", action: () => setSubPage("kids") },
   ];
 
   const appMenu = [

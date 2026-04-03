@@ -8,6 +8,7 @@ import { useUser, useWallet, useI18n } from "../store";
 import { useWalletStats } from "../hooks";
 import { getGreeting } from "../models";
 import { features } from "../models/initialData";
+import LanguageSwitcher from "../components/LanguageSwitcher";
 
 const slide = { duration: 0.35, ease: [0.32, 0.72, 0, 1] };
 
@@ -164,20 +165,23 @@ export const HomePage = ({ onNavigate }) => {
             </div>
           </div>
 
-          <motion.button
-            data-testid="notification-btn"
-            className="w-10 h-10 rounded-full bg-white/[0.04] border border-white/[0.05] flex items-center justify-center relative"
-            whileTap={{ scale: 0.88 }}
-            onClick={() => onNavigate("/notifications")}
-          >
-            <Bell size={15} strokeWidth={1.5} className="text-white/50" />
-            <motion.span
-              className="absolute top-2.5 right-2.5 w-[6px] h-[6px] bg-[#00C2FF] rounded-full"
-              animate={{ scale: [1, 1.4, 1] }}
-              transition={{ duration: 2, repeat: Infinity }}
-              style={{ boxShadow: "0 0 6px rgba(0,194,255,0.8)" }}
-            />
-          </motion.button>
+          <div className="flex items-center gap-2">
+            <LanguageSwitcher />
+            <motion.button
+              data-testid="notification-btn"
+              className="w-10 h-10 rounded-full bg-white/[0.04] border border-white/[0.05] flex items-center justify-center relative"
+              whileTap={{ scale: 0.88 }}
+              onClick={() => onNavigate("/notifications")}
+            >
+              <Bell size={15} strokeWidth={1.5} className="text-white/50" />
+              <motion.span
+                className="absolute top-2.5 right-2.5 w-[6px] h-[6px] bg-[#00C2FF] rounded-full"
+                animate={{ scale: [1, 1.4, 1] }}
+                transition={{ duration: 2, repeat: Infinity }}
+                style={{ boxShadow: "0 0 6px rgba(0,194,255,0.8)" }}
+              />
+            </motion.button>
+          </div>
         </motion.header>
 
         {/* ── Hero Balance Card ── */}

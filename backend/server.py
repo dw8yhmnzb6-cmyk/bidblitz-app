@@ -87,6 +87,7 @@ from routes.referral import router as referral_router
 from routes.notifications import router as notifications_router
 from routes.promotions import router as promotions_router
 from routes.analytics import router as analytics_router
+from routes.kids import router as kids_router
 
 app.include_router(auth_router)
 app.include_router(wallet_router)
@@ -103,6 +104,7 @@ app.include_router(referral_router)
 app.include_router(notifications_router)
 app.include_router(promotions_router)
 app.include_router(analytics_router)
+app.include_router(kids_router)
 
 # Stripe webhook at /api/webhook/stripe
 from routes.stripe import stripe_webhook as _stripe_wh
@@ -118,6 +120,18 @@ async def health_check():
         "version": "2.0.0",
         "environment": APP_ENV,
     }
+
+
+# ── Public Feature Flags (for frontend) ──
+@app.get("/api/feature-flags")
+async def public_feature_flags():
+    from core.feature_flags import get_all_flags
+    flags = await get_all_flags()
+    # Return simplified version for frontend
+    result = {}
+    for k, v in flags.items():
+        result[k] = {"enabled": v.get("enabled", False), "access": v.get("access", "all")}
+    return {"flags": result}
 
 
 # ── Startup ──

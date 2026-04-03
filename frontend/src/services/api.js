@@ -198,4 +198,15 @@ export const api = {
   getConversionFunnel: () => request("/api/analytics/growth/funnel"),
   getRetentionMetrics: () => request("/api/analytics/growth/retention"),
   getCampaignPerformance: () => request("/api/analytics/growth/campaigns"),
+
+  // Feature Flags
+  getFeatureFlags: () => request("/api/feature-flags"),
+  getAdminFeatureFlags: () => request("/api/admin/feature-flags"),
+  updateFeatureFlag: (name, body) => request(`/api/admin/feature-flags/${name}`, { method: "PUT", body: JSON.stringify(body) }),
+
+  // Kids Subscription
+  getKidsSubscription: () => request("/api/kids/subscription"),
+  createKidsCheckout: (body) => request("/api/kids/create-checkout", { method: "POST", body: JSON.stringify(body) }),
+  startKidsTrial: () => request("/api/kids/start-trial", { method: "POST" }),
+  verifyKidsCheckout: (sessionId) => request(`/api/kids/verify-checkout/${sessionId}`),
 };

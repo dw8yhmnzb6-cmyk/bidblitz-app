@@ -366,3 +366,31 @@ async def get_compliance_checks(
     total = await db.compliance_checks.count_documents(query)
 
     return {"checks": checks, "total": total}
+
+
+
+# ── Feature Flags Management ──
+@router.get("/feature-flags")
+async def get_feature_flags(request: Request):
+    admin = await require_admin(request)
+    from core.feature_flags import get_all_flags
+    flags = await get_all_flags()
+    return {"flags": flags}
+
+
+@router.put("/feature-flags/{flag_name}")
+async def update_feature_flag(flag_name: str, request: Request):
+    admin = await require_admin(request)
+    from core.feature_flags import update_flag, DEFAULT_FLAGS
+    body = await request.json()
+    if flag_name not in DEFAULT_FLAGS and flag_name not in (await get_all_flags()):
+        raise HTTPException(status_code=404, detail="Unknown feature flag")
+    from core.feature_flags import get_all_flags
+    result = await update_flag(
+        flag_name,
+        enabled=body.get("enabled"),
+        access=body.get("access"),
+    )
+    ip, ua = get_client_info(request)
+    await log_audit(AuditEvent.ADMIN_ACTION, str(admin["_id"]), "admin", ip, ua, "success", f"Updated flag: {flag_name}")
+    return {"flag": flag_name, "data": result}
