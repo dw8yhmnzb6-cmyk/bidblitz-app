@@ -65,3 +65,9 @@ class MerchantDashboard(BaseModel):
     today_earnings: float
     today_transactions: int
     recent_payments: list
+
+
+class MerchantScanPayment(BaseModel):
+    customer_barcode: str = Field(min_length=6, max_length=64)
+    amount: float = Field(gt=0)
+    description: Optional[str] = ""

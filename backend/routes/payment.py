@@ -7,7 +7,7 @@ from core.config import calculate_fee, FEES
 from core.rate_limit import limiter, RATE_PAYMENT
 from core.audit import log_audit, AuditEvent, get_client_info
 from core.compliance import run_compliance_check, BLOCKED, FLAGGED
-from schemas.models import PaymentRequest, SendRequest
+from schemas.models import PaymentRequest, SendRequest, MerchantScanPayment
 import secrets
 
 router = APIRouter(prefix="/api/payment", tags=["payment"])
@@ -258,4 +258,159 @@ async def send_money(req: SendRequest, request: Request):
         "new_balance": updated_user["balance"],
         "fee_amount": fee,
         "transaction": sender_txn,
+    }
+
+
+# ── Customer Barcode ──
+
+@router.get("/my-barcode")
+async def get_my_barcode(request: Request):
+    """Get or generate a personal payment barcode for the current user."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+
+    barcode = user.get("payment_barcode")
+    if not barcode:
+        barcode = f"BLZ-{secrets.token_hex(6).upper()}"
+        await db.users.update_one({"_id": user["_id"]}, {"$set": {"payment_barcode": barcode}})
+
+    return {
+        "barcode": barcode,
+        "user_id": user_id,
+        "name": user.get("name", ""),
+    }
+
+
+# ── Merchant-Initiated Scan Payment ──
+
+@router.post("/merchant-scan")
+@limiter.limit(RATE_PAYMENT)
+async def merchant_scan_payment(req: MerchantScanPayment, request: Request):
+    """
+    Merchant scans customer barcode to initiate a payment.
+    The merchant must be authenticated. The customer's wallet is charged.
+    """
+    merchant_user = await get_current_user(request)
+    merchant_user_id = str(merchant_user["_id"])
+    ip, ua = get_client_info(request)
+
+    # Find the merchant profile
+    merchant = await db.merchants.find_one({"user_id": merchant_user_id})
+    if not merchant:
+        raise HTTPException(status_code=403, detail="No merchant profile found")
+
+    merchant_name = merchant.get("business_name", "Unknown Merchant")
+
+    # Find customer by barcode
+    customer = await db.users.find_one({"payment_barcode": req.customer_barcode})
+    if not customer:
+        await log_audit(AuditEvent.PAYMENT_FAILED, user_id=merchant_user_id, email=merchant_user["email"],
+                        ip=ip, user_agent=ua,
+                        details={"reason": "invalid_barcode", "barcode": req.customer_barcode[:8] + "***"},
+                        severity="warn")
+        raise HTTPException(status_code=404, detail="Customer barcode not found")
+
+    customer_id = str(customer["_id"])
+    customer_balance = customer.get("balance", 0.0)
+
+    if customer_id == merchant_user_id:
+        raise HTTPException(status_code=400, detail="Cannot charge yourself")
+
+    # ── Compliance check on customer ──
+    compliance = await run_compliance_check(customer_id, "payment", req.amount)
+    if compliance["outcome"] == BLOCKED:
+        await log_audit(AuditEvent.PAYMENT_FAILED, user_id=customer_id, email=customer["email"],
+                        ip=ip, user_agent=ua,
+                        details={"reason": "compliance_blocked", "rules": compliance["rules"], "amount": req.amount,
+                                 "initiated_by": "merchant", "merchant_id": merchant_user_id},
+                        severity="warn")
+        raise HTTPException(status_code=403, detail=compliance["reason"])
+
+    # ── Balance check ──
+    if customer_balance < req.amount:
+        await log_audit(AuditEvent.PAYMENT_FAILED, user_id=customer_id, email=customer["email"],
+                        ip=ip, user_agent=ua,
+                        details={"reason": "insufficient_balance", "amount": req.amount, "balance": customer_balance,
+                                 "initiated_by": "merchant"},
+                        severity="warn")
+        raise HTTPException(status_code=400, detail="Customer has insufficient balance")
+
+    ref = generate_reference()
+    fee = calculate_fee(req.amount, "payment")
+    net_to_merchant = round(req.amount - fee, 2)
+    now = datetime.now(timezone.utc).isoformat()
+
+    # Deduct from customer
+    await db.users.update_one({"_id": customer["_id"]}, {"$inc": {"balance": -req.amount}})
+
+    # Credit merchant
+    await db.merchants.update_one(
+        {"_id": merchant["_id"]},
+        {"$inc": {
+            "total_earnings": net_to_merchant,
+            "gross_earnings": req.amount,
+            "total_fees": fee,
+            "total_transactions": 1,
+            "available_payout": net_to_merchant,
+        }}
+    )
+
+    # Customer transaction (debit)
+    customer_txn = {
+        "id": secrets.token_hex(8),
+        "user_id": customer_id,
+        "type": "payment",
+        "amount": -req.amount,
+        "gross_amount": req.amount,
+        "fee_amount": fee,
+        "net_amount": net_to_merchant,
+        "description": req.description or f"Payment to {merchant_name}",
+        "merchant_name": merchant_name,
+        "merchant_id": str(merchant["_id"]),
+        "status": "completed",
+        "reference": ref,
+        "payment_method": "barcode_scan",
+        "category": "payment",
+        "created_at": now,
+    }
+    await db.transactions.insert_one(customer_txn)
+    customer_txn.pop("_id", None)
+
+    # Merchant transaction (credit)
+    merchant_txn = {
+        "id": secrets.token_hex(8),
+        "user_id": merchant_user_id,
+        "type": "merchant_credit",
+        "amount": net_to_merchant,
+        "gross_amount": req.amount,
+        "fee_amount": fee,
+        "description": f"Barcode payment from {customer.get('name', 'Customer')}",
+        "merchant_name": merchant_name,
+        "merchant_id": str(merchant["_id"]),
+        "status": "completed",
+        "reference": ref,
+        "payment_method": "barcode_scan",
+        "category": "income",
+        "created_at": now,
+    }
+    await db.transactions.insert_one(merchant_txn)
+
+    updated_customer = await db.users.find_one({"_id": customer["_id"]})
+
+    await log_audit(AuditEvent.PAYMENT_SUCCESS, user_id=customer_id, email=customer["email"],
+                    ip=ip, user_agent=ua,
+                    details={"reference": ref, "amount": req.amount, "fee": fee,
+                             "merchant": merchant_name, "initiated_by": "merchant_scan",
+                             "merchant_user_id": merchant_user_id})
+
+    return {
+        "success": True,
+        "reference": ref,
+        "amount": req.amount,
+        "fee": fee,
+        "net_to_merchant": net_to_merchant,
+        "customer_name": customer.get("name", "Customer"),
+        "customer_new_balance": updated_customer["balance"],
+        "merchant_name": merchant_name,
+        "transaction": customer_txn,
     }

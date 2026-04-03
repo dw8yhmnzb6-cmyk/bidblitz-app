@@ -1,8 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Eye, EyeOff, Shield, Plus, ArrowUpRight,
-  Clock, TrendingUp, TrendingDown, ChevronRight
+  Clock, TrendingUp, TrendingDown, ChevronRight, QrCode
 } from "lucide-react";
 import { useWallet } from "../store";
 import { useGroupedTransactions, useWalletStats } from "../hooks";
@@ -13,6 +13,7 @@ import { TransactionDetailModal } from "../components/TransactionDetailModal";
 import { TransactionFilters, filterTransactions } from "../components/TransactionFilters";
 import ExportSection from "../components/ExportSection";
 import ErrorState from "../components/ErrorState";
+import BarcodeModal from "../components/BarcodeModal";
 import { api } from "../services/api";
 import { useI18n } from "../store";
 
@@ -105,6 +106,7 @@ export const WalletPage = ({ onNavigate }) => {
 
   const [showBalance, setShowBalance] = useState(true);
   const [showTopUp, setShowTopUp] = useState(hasStripeParam);
+  const [showBarcode, setShowBarcode] = useState(false);
   const [selectedTx, setSelectedTx] = useState(null);
   const [typeFilter, setTypeFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -308,22 +310,30 @@ export const WalletPage = ({ onNavigate }) => {
           <WalletAction
             testId="quick-action-add"
             icon={Plus}
-            label="Add Money"
+            label={t("wallet.add") || "Add Money"}
             color="#00C2FF"
             onClick={() => setShowTopUp(true)}
             delay={0.22}
           />
           <WalletAction
+            testId="quick-action-barcode"
+            icon={QrCode}
+            label={t("wallet.my_barcode") || "My Barcode"}
+            color="#FFB800"
+            onClick={() => setShowBarcode(true)}
+            delay={0.24}
+          />
+          <WalletAction
             testId="quick-action-send"
             icon={ArrowUpRight}
-            label="Send"
+            label={t("wallet.send") || "Send"}
             color="#A855F7"
             delay={0.26}
           />
           <WalletAction
             testId="quick-action-history"
             icon={Clock}
-            label="History"
+            label={t("wallet.history") || "History"}
             color="#00D26A"
             delay={0.30}
           />
@@ -433,6 +443,7 @@ export const WalletPage = ({ onNavigate }) => {
       {/* Modals */}
       <TopUpModal isOpen={showTopUp} onClose={() => setShowTopUp(false)} onSuccess={handleTopUpSuccess} currentBalance={balance} />
       <TransactionDetailModal isOpen={!!selectedTx} onClose={() => setSelectedTx(null)} transaction={selectedTx} />
+      <BarcodeModal isOpen={showBarcode} onClose={() => setShowBarcode(false)} />
     </motion.div>
   );
 };
