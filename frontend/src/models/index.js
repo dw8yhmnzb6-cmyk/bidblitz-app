@@ -60,6 +60,35 @@ export const CurrencySymbol = {
 };
 
 /**
+ * @typedef {Object} User
+ * @property {string} id - Unique user ID (user_xxxxx)
+ * @property {string} name - Full display name
+ * @property {string} email - Email address
+ * @property {string} avatar - Avatar URL
+ * @property {boolean} isPremium - Premium membership status
+ * @property {boolean} isAuthenticated - Current auth state
+ */
+
+/**
+ * @typedef {Object} Wallet
+ * @property {number} balance - Current balance
+ * @property {string} currency - Currency code (EUR)
+ * @property {string} cardNumber - Masked card number
+ * @property {string} cardExpiry - Card expiry date
+ * @property {string} cardHolder - Cardholder name
+ * @property {Array<Transaction>} transactions - Transaction history
+ */
+
+/**
+ * @typedef {Object} Merchant
+ * @property {string} id - Merchant ID (merchant_xxxxx)
+ * @property {string} businessName - Business display name
+ * @property {number} balance - Merchant balance
+ * @property {string} currency - Currency code
+ * @property {Array<Object>} payments - Received payments
+ */
+
+/**
  * @typedef {Object} Transaction
  * @property {string} id - Unique transaction ID (txn_xxxxx)
  * @property {string} reference - Human-readable reference (BLZ-XXXXXX)
