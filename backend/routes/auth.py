@@ -7,7 +7,7 @@ from core.security import (
     set_auth_cookies, clear_auth_cookies, serialize_user, get_current_user
 )
 from core.config import MAX_LOGIN_ATTEMPTS, LOCKOUT_MINUTES
-from core.rate_limit import limiter
+from core.rate_limit import limiter, RATE_REGISTER, RATE_LOGIN
 from schemas.models import RegisterRequest, LoginRequest
 import secrets
 import random
@@ -27,7 +27,7 @@ def generate_card_expiry():
 
 
 @router.post("/register")
-@limiter.limit("5/minute")
+@limiter.limit(RATE_REGISTER)
 async def register(req: RegisterRequest, request: Request, response: Response):
     email = req.email.lower().strip()
     existing = await db.users.find_one({"email": email})
@@ -72,7 +72,7 @@ async def register(req: RegisterRequest, request: Request, response: Response):
 
 
 @router.post("/login")
-@limiter.limit("10/minute")
+@limiter.limit(RATE_LOGIN)
 async def login(req: LoginRequest, request: Request, response: Response):
     email = req.email.lower().strip()
     ip = request.client.host if request.client else "unknown"

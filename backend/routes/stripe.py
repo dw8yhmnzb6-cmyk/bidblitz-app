@@ -16,7 +16,7 @@ from emergentintegrations.payments.stripe.checkout import (
 from core.config import STRIPE_API_KEY
 from core.database import db
 from core.security import get_current_user
-from core.rate_limit import limiter
+from core.rate_limit import limiter, RATE_STRIPE
 
 router = APIRouter(prefix="/api/stripe", tags=["stripe"])
 
@@ -42,7 +42,7 @@ class CheckoutStatusRequest(BaseModel):
 
 # ── Create Checkout Session ──
 @router.post("/checkout")
-@limiter.limit("10/minute")
+@limiter.limit(RATE_STRIPE)
 async def create_checkout(req: CheckoutRequest, request: Request):
     user = await get_current_user(request)
     user_id = str(user["_id"])

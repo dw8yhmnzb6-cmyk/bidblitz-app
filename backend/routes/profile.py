@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 from core.database import db
 from core.security import get_current_user, hash_password, verify_password, serialize_user
 from core.audit import log_audit, AuditEvent, get_client_info
+from core.rate_limit import limiter, RATE_PASSWORD
 
 router = APIRouter(prefix="/api/user", tags=["user"])
 
@@ -66,6 +67,7 @@ async def update_profile(req: ProfileUpdate, request: Request):
 
 
 @router.post("/change-password")
+@limiter.limit(RATE_PASSWORD)
 async def change_password(req: ChangePasswordRequest, request: Request):
     """Change user password."""
     user = await get_current_user(request)

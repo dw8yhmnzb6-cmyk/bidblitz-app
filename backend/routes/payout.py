@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 from core.database import db
 from core.security import get_current_user
 from core.config import FEES, calculate_payout_fee
+from core.rate_limit import limiter, RATE_PAYOUT
 import secrets
 
 router = APIRouter(prefix="/api/payout", tags=["payout"])
@@ -26,6 +27,7 @@ def payout_ref():
 
 # ── Request Payout ──
 @router.post("/request")
+@limiter.limit(RATE_PAYOUT)
 async def request_payout(req: PayoutRequest, request: Request):
     user = await get_current_user(request)
     user_id = str(user["_id"])

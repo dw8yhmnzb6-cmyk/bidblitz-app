@@ -13,7 +13,6 @@ from datetime import datetime, timezone
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from starlette.middleware.cors import CORSMiddleware
-from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from core.config import APP_ENV, IS_PRODUCTION
@@ -39,7 +38,20 @@ app = FastAPI(
 
 # ── Rate Limiting ──
 app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):
+    retry = getattr(exc, "retry_after", 60)
+    return JSONResponse(
+        status_code=429,
+        content={
+            "error": "rate_limit_exceeded",
+            "message": "Too many requests. Please slow down and try again.",
+            "retry_after": retry,
+        },
+        headers={"Retry-After": str(retry)},
+    )
+
+app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 
 # ── Global Error Handler ──
 @app.exception_handler(Exception)

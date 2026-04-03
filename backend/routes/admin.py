@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 from core.database import db
 from core.security import get_current_user
 from core.config import FEES
+from core.rate_limit import limiter, RATE_ADMIN_ACTION
 from typing import Optional
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
@@ -158,6 +159,7 @@ class PayoutAction(BaseModel):
 
 
 @router.post("/payouts/{payout_ref}/action")
+@limiter.limit(RATE_ADMIN_ACTION)
 async def payout_action(payout_ref: str, req: PayoutAction, request: Request):
     await require_admin(request)
 

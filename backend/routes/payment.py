@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from core.database import db
 from core.security import get_current_user
 from core.config import calculate_fee, FEES
-from core.rate_limit import limiter
+from core.rate_limit import limiter, RATE_PAYMENT
 from schemas.models import PaymentRequest, SendRequest
 import secrets
 
@@ -31,7 +31,7 @@ async def fee_preview(amount: float, fee_type: str = "payment"):
 
 
 @router.post("/pay")
-@limiter.limit("20/minute")
+@limiter.limit(RATE_PAYMENT)
 async def pay(req: PaymentRequest, request: Request):
     user = await get_current_user(request)
     user_id = str(user["_id"])
