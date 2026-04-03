@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { Toaster } from "sonner";
 import "@/App.css";
 
 import { AppProvider, useUser } from "./store";
@@ -11,6 +12,7 @@ import MerchantPage from "./pages/MerchantPage";
 import AdminPage from "./pages/AdminPage";
 import MorePage from "./pages/MorePage";
 import AuthPage from "./pages/AuthPage";
+import NotificationsPage from "./pages/NotificationsPage";
 
 import BottomNav from "./components/BottomNav";
 
@@ -68,6 +70,8 @@ function AppContent() {
         return <MerchantPage onNavigate={handleNavigate} />;
       case "/admin":
         return user.role === "admin" ? <AdminPage onNavigate={handleNavigate} /> : <HomePage onNavigate={handleNavigate} />;
+      case "/notifications":
+        return <NotificationsPage onBack={() => handleNavigate("/")} />;
       case "/more":
         return <MorePage onNavigate={handleNavigate} />;
       default:
@@ -79,6 +83,12 @@ function AppContent() {
 
   return (
     <div className="app-container" data-testid="app-container">
+      <Toaster
+        position="top-center"
+        toastOptions={{
+          style: { background: "#141414", color: "#fff", border: "1px solid rgba(255,255,255,0.08)", fontSize: "13px", fontFamily: "Outfit, sans-serif" },
+        }}
+      />
       <AnimatePresence mode="wait">
         <motion.div
           key={currentPath}

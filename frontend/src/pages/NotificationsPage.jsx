@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Bell, ChevronLeft, Check, Gift, AlertCircle, Megaphone, Info, Loader2 } from "lucide-react";
 import { api } from "../services/api";
 import { useI18n } from "../store";
+import ErrorState from "../components/ErrorState";
 
 const slide = { duration: 0.3, ease: [0.32, 0.72, 0, 1] };
 
@@ -27,13 +28,15 @@ const NotificationsPage = ({ onBack }) => {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const fetchNotifications = async () => {
+    setError(null);
     try {
       const data = await api.getNotifications();
       setNotifications(data.notifications || []);
       setUnreadCount(data.unread_count || 0);
-    } catch {} finally { setLoading(false); }
+    } catch (e) { setError(e); } finally { setLoading(false); }
   };
 
   useEffect(() => { fetchNotifications(); }, []);
@@ -83,7 +86,9 @@ const NotificationsPage = ({ onBack }) => {
       </div>
 
       <div className="px-5 pb-8">
-        {loading ? (
+        {error && !loading ? (
+          <ErrorState error={error} onRetry={fetchNotifications} />
+        ) : loading ? (
           <div className="flex items-center justify-center py-16">
             <Loader2 size={20} className="animate-spin text-[#00C2FF]" />
           </div>

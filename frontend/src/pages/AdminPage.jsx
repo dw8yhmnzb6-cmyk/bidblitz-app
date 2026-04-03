@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { useUser, useI18n } from "../store";
 import ExportSection from "../components/ExportSection";
+import ErrorState from "../components/ErrorState";
 import { api as apiService } from "../services/api";
 
 const API = process.env.REACT_APP_BACKEND_URL;
@@ -65,6 +66,7 @@ export const AdminPage = ({ onNavigate }) => {
   const [search, setSearch] = useState("");
   const [payoutFilter, setPayoutFilter] = useState("");
   const [actionLoading, setActionLoading] = useState(null);
+  const [error, setError] = useState(null);
 
   const adminExports = [
     { key: "transactions", label: t("export.transactions"), action: (f) => apiService.exportAdminTransactions(f) },
@@ -76,6 +78,7 @@ export const AdminPage = ({ onNavigate }) => {
 
   const load = useCallback(async (t) => {
     setLoading(true);
+    setError(null);
     try {
       if (t === "overview") { const d = await api("/api/admin/overview"); setOverview(d); }
       if (t === "users") { const d = await api(`/api/admin/users?search=${encodeURIComponent(search)}`); setUsers(d.users); }
@@ -83,7 +86,7 @@ export const AdminPage = ({ onNavigate }) => {
       if (t === "payouts") { const d = await api(`/api/admin/payouts?status=${payoutFilter}`); setPayouts(d.payouts); }
       if (t === "transactions") { const d = await api(`/api/admin/transactions?search=${encodeURIComponent(search)}&limit=30`); setTxns(d.transactions); }
       if (t === "settings") { const d = await api("/api/admin/settings"); setSettings(d); }
-    } catch {}
+    } catch (e) { setError(e); }
     setLoading(false);
   }, [search, payoutFilter]);
 
@@ -94,7 +97,7 @@ export const AdminPage = ({ onNavigate }) => {
     try {
       await api(`/api/admin/payouts/${ref}/action`, { method: "POST", body: JSON.stringify({ action }) });
       load("payouts");
-    } catch {}
+    } catch (e) { setError(e); }
     setActionLoading(null);
   };
 
@@ -144,6 +147,12 @@ export const AdminPage = ({ onNavigate }) => {
       </div>
 
       <div className="px-5 pb-8 relative z-10">
+        {/* ── Error State ── */}
+        {error && !loading && (
+          <div className="mb-4">
+            <ErrorState error={error} onRetry={() => load(tab)} compact />
+          </div>
+        )}
         <AnimatePresence mode="wait">
 
           {/* ── Overview Tab ── */}

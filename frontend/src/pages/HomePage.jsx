@@ -1,9 +1,10 @@
 import { motion } from "framer-motion";
+import { toast } from "sonner";
 import {
   Bell, ChevronRight, TrendingUp, Shield, Wallet,
   Car, Zap, UtensilsCrossed, Gavel, ArrowUpRight, CreditCard
 } from "lucide-react";
-import { useUser, useWallet } from "../store";
+import { useUser, useWallet, useI18n } from "../store";
 import { useWalletStats } from "../hooks";
 import { getGreeting } from "../models";
 import { features } from "../models/initialData";
@@ -70,7 +71,7 @@ const ServiceCard = ({ feature, index, onClick }) => {
 
         {isLarge && (
           <motion.div className="mt-auto pt-3 flex items-center gap-1.5">
-            <span className="text-[11px] text-[#00C2FF] font-medium">View Balance</span>
+            <span className="text-[11px] text-[#00C2FF] font-medium">{feature.linkText || "View Balance"}</span>
             <motion.div
               animate={{ x: [0, 4, 0] }}
               transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
@@ -99,6 +100,18 @@ export const HomePage = ({ onNavigate }) => {
   const user = useUser();
   const { balance, currency } = useWallet();
   const { percentageChange } = useWalletStats();
+  const { t } = useI18n();
+
+  const handleServiceClick = (featureId) => {
+    if (featureId === "wallet") {
+      onNavigate("/wallet");
+    } else {
+      toast(t("home.coming_soon") || "Coming Soon", {
+        description: t("home.coming_soon_hint") || "This feature is coming soon!",
+        duration: 2000,
+      });
+    }
+  };
 
   return (
     <motion.div
@@ -155,6 +168,7 @@ export const HomePage = ({ onNavigate }) => {
             data-testid="notification-btn"
             className="w-10 h-10 rounded-full bg-white/[0.04] border border-white/[0.05] flex items-center justify-center relative"
             whileTap={{ scale: 0.88 }}
+            onClick={() => onNavigate("/notifications")}
           >
             <Bell size={15} strokeWidth={1.5} className="text-white/50" />
             <motion.span
@@ -198,7 +212,7 @@ export const HomePage = ({ onNavigate }) => {
           <div className="relative z-10">
             <div className="flex items-center gap-1.5 mb-2.5">
               <Shield size={10} className="text-[#00C2FF]/50" />
-              <p className="text-[10px] text-[#3A3A3A] font-semibold tracking-[0.12em] uppercase">Total Balance</p>
+              <p className="text-[10px] text-[#3A3A3A] font-semibold tracking-[0.12em] uppercase">{t("home.balance")}</p>
             </div>
 
             <motion.div
@@ -222,7 +236,7 @@ export const HomePage = ({ onNavigate }) => {
             >
               <TrendingUp size={10} className="text-[#00D26A]" />
               <span className="text-[10px] text-[#00D26A] font-semibold">
-                +{percentageChange}% this month
+                +{percentageChange}% {t("home.month")}
               </span>
             </motion.div>
           </div>
@@ -236,11 +250,11 @@ export const HomePage = ({ onNavigate }) => {
           transition={{ delay: 0.14, ...slide }}
         >
           <h2 className="text-[22px] font-outfit font-bold text-white leading-[1.2] tracking-tight mb-1.5">
-            All-in-One for{" "}
-            <span className="text-[#00C2FF]">Payments</span>,{" "}
-            <span className="text-[#00C2FF]">Mobility</span> & More
+            {t("home.tagline_1")}{" "}
+            <span className="text-[#00C2FF]">{t("home.tagline_2")}</span>,{" "}
+            <span className="text-[#00C2FF]">{t("home.tagline_3")}</span> {t("home.tagline_more")}
           </h2>
-          <p className="text-[12px] text-[#333] font-medium">Pay. Ride. Book. Earn.</p>
+          <p className="text-[12px] text-[#333] font-medium">{t("home.subtitle")}</p>
         </motion.div>
 
         {/* ── Get Started CTA ── */}
@@ -254,7 +268,7 @@ export const HomePage = ({ onNavigate }) => {
           whileTap={{ scale: 0.96 }}
           onClick={() => onNavigate("/wallet")}
         >
-          Get Started
+          {t("home.get_started")}
           <motion.div
             animate={{ x: [0, 3, 0] }}
             transition={{ duration: 1.5, repeat: Infinity }}
@@ -270,12 +284,12 @@ export const HomePage = ({ onNavigate }) => {
           transition={{ delay: 0.26 }}
         >
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-[13px] font-semibold font-outfit text-white">Services</h3>
+            <h3 className="text-[13px] font-semibold font-outfit text-white">{t("home.services")}</h3>
             <motion.span
               className="text-[11px] text-[#00C2FF] font-medium cursor-pointer flex items-center gap-0.5"
               whileHover={{ x: 3 }}
             >
-              View All <ChevronRight size={12} strokeWidth={2} />
+              {t("home.view_all")} <ChevronRight size={12} strokeWidth={2} />
             </motion.span>
           </div>
 
@@ -285,9 +299,7 @@ export const HomePage = ({ onNavigate }) => {
                 key={feature.id}
                 feature={feature}
                 index={index}
-                onClick={() => {
-                  if (feature.id === "wallet") onNavigate("/wallet");
-                }}
+                onClick={() => handleServiceClick(feature.id)}
               />
             ))}
           </div>

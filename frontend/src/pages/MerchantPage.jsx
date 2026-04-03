@@ -182,6 +182,7 @@ export const MerchantPage = ({ onNavigate }) => {
   const { t } = useI18n();
   const [isLoading, setIsLoading] = useState(true);
   const [showPayout, setShowPayout] = useState(false);
+  const [error, setError] = useState(null);
   const [balance, setBalance] = useState({ available: 0, pending_payout: 0, total_paid_out: 0, total_fees: 0, min_payout: 5, payout_flat_fee: 0.5 });
   const [payouts, setPayouts] = useState([]);
 
@@ -196,15 +197,16 @@ export const MerchantPage = ({ onNavigate }) => {
     try {
       const b = await api("/api/payout/balance");
       setBalance(b);
-    } catch {}
+      setError(null);
+    } catch (e) { setError(e); }
   }, []);
 
   const fetchPayouts = useCallback(async () => {
     try {
       const h = await api("/api/payout/history?limit=5");
       setPayouts(h.payouts || []);
-    } catch {}
-  }, []);
+    } catch (e) { if (!error) setError(e); }
+  }, [error]);
 
   useEffect(() => {
     const t = setTimeout(() => setIsLoading(false), 500);
@@ -213,6 +215,14 @@ export const MerchantPage = ({ onNavigate }) => {
   }, [fetchBalance, fetchPayouts]);
 
   const handlePayoutSuccess = () => { fetchBalance(); fetchPayouts(); merchant.refreshDashboard && merchant.refreshDashboard(); };
+
+  const handleRetry = () => {
+    setError(null);
+    setIsLoading(true);
+    fetchBalance();
+    fetchPayouts();
+    setTimeout(() => setIsLoading(false), 500);
+  };
 
   const recentPayments = merchant.payments.slice(0, 6).map((p) => ({ ...p, time: formatRelativeTime(p.date) }));
 
@@ -237,6 +247,11 @@ export const MerchantPage = ({ onNavigate }) => {
       </div>
 
       <div className="px-5 pb-8 relative z-10">
+
+        {/* ── Error State ── */}
+        {error && !isLoading && (
+          <ErrorState error={error} onRetry={handleRetry} compact />
+        )}
 
         {/* ── Earnings Hero ── */}
         <motion.div className="text-center pt-4 pb-5 relative" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.06, ...slide }}>
