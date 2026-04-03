@@ -47,11 +47,13 @@ Create a modern, professional fintech web app called BidBlitz V2. Build Revolut-
 
 ### Partially Completed
 - i18n: Other 10 languages (sq, tr, fr, es, it, pt, nl, pl, ru, ar) ~40% of keys translated
-- ScannerPage: STEP_LABELS array hardcoded instead of using t()
-- AdminPage: Some tab labels still hardcoded
-- Security: rate_limit.py exists but NOT wired into server.py
 - Security: audit.py exists but NOT called anywhere
 - Security: compliance.py exists but NOT used
+
+### Completed in Latest Session (Apr 3)
+- Rate Limiting: Wired rate_limit.py into server.py (slowapi limiter, exception handler, decorators on auth/stripe/payment endpoints)
+- ScannerPage i18n: All hardcoded strings replaced with t() calls (STEP_LABELS, processing steps, receipt labels, error messages)
+- AdminPage i18n: All hardcoded strings replaced with t() calls (tabs, stat cards, section headers, buttons, empty states)
 
 ### Not Yet Implemented
 - Onboarding-Flow UI (Welcome screens, progress checklists)
@@ -61,13 +63,14 @@ Create a modern, professional fintech web app called BidBlitz V2. Build Revolut-
 
 ## Prioritized Backlog
 ### P0
-1. Rate Limiting: Wire rate_limit.py into server.py
-2. ScannerPage + AdminPage hardcoded strings → i18n
+1. ~~Rate Limiting: Wire rate_limit.py into server.py~~ DONE
+2. ~~ScannerPage + AdminPage hardcoded strings -> i18n~~ DONE
 
 ### P1
 3. i18n: Complete remaining 10 languages
-4. Frontend Offline/Error handling
-5. Onboarding Welcome Flow UI
+4. Negative Balance / Duplicate Prevention
+5. Frontend Offline/Error handling
+6. Onboarding Welcome Flow UI
 
 ### P2
 6. Support Center / Help Page
