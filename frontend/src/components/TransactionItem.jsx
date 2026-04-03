@@ -1,18 +1,7 @@
 import { motion } from "framer-motion";
-import { 
-  Car, 
-  ShoppingBag, 
-  Wallet, 
-  Play, 
-  Coffee, 
-  Send, 
-  Zap, 
-  Package,
-  ArrowUpRight,
-  ArrowDownLeft,
-  CreditCard,
-  PlusCircle,
-  Download
+import {
+  Car, ShoppingBag, Wallet, Play, Coffee, Send, Zap, Package,
+  ArrowUpRight, ArrowDownLeft, CreditCard, PlusCircle, Download, Check, X as XIcon
 } from "lucide-react";
 import { formatCurrency, formatTime } from "../models";
 
@@ -30,80 +19,91 @@ const iconMap = {
   download: Download,
 };
 
-const categoryConfig = {
-  transport: { color: "#FFB800", gradient: ["#FFB800", "#FF9500"] },
-  shopping: { color: "#A855F7", gradient: ["#A855F7", "#9333EA"] },
-  income: { color: "#00D26A", gradient: ["#00D26A", "#00B85C"] },
-  entertainment: { color: "#FF4757", gradient: ["#FF4757", "#FF3344"] },
-  food: { color: "#FF6B6B", gradient: ["#FF6B6B", "#FF5252"] },
-  transfer: { color: "#00C2FF", gradient: ["#00C2FF", "#0099FF"] },
-  payment: { color: "#FF4757", gradient: ["#FF4757", "#FF3344"] },
+const categoryColor = {
+  transport: "#FFB800",
+  shopping: "#A855F7",
+  income: "#00D26A",
+  entertainment: "#FF4757",
+  food: "#FF6B6B",
+  transfer: "#00C2FF",
+  payment: "#FF4757",
 };
 
-export const TransactionItem = ({ transaction, index, onClick }) => {
+const statusConfig = {
+  success: { label: "Completed", color: "#00D26A", Icon: Check },
+  failed: { label: "Failed", color: "#FF4757", Icon: XIcon },
+  pending: { label: "Pending", color: "#00C2FF", Icon: null },
+};
+
+export const TransactionItem = ({ transaction, index, isLast, onClick }) => {
   const Icon = iconMap[transaction.icon] || Wallet;
-  const config = categoryConfig[transaction.category] || categoryConfig.transfer;
+  const color = categoryColor[transaction.category] || "#00C2FF";
   const isPositive = transaction.amount > 0;
+  const status = statusConfig[transaction.status];
 
   return (
     <motion.div
       data-testid={`transaction-${transaction.id}`}
-      className="transaction-item group cursor-pointer"
-      initial={{ opacity: 0, x: -20 }}
+      className={`flex items-center gap-3.5 px-4 py-[14px] cursor-pointer group transition-colors duration-200 hover:bg-white/[0.015] ${!isLast ? "border-b border-white/[0.03]" : ""}`}
+      initial={{ opacity: 0, x: -10 }}
       animate={{ opacity: 1, x: 0 }}
-      transition={{ delay: index * 0.04, duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
-      whileHover={{ x: 4 }}
+      transition={{ delay: index * 0.03, duration: 0.25, ease: [0.32, 0.72, 0, 1] }}
       onClick={() => onClick && onClick(transaction)}
     >
-      {/* Icon with gradient background */}
-      <motion.div
-        className="w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center flex-shrink-0 relative"
-        style={{ 
-          background: `linear-gradient(135deg, ${config.color}15 0%, ${config.color}08 100%)` 
-        }}
-        whileHover={{ scale: 1.08 }}
-        transition={{ type: "spring", stiffness: 400, damping: 20 }}
-      >
-        <Icon size={18} strokeWidth={1.5} style={{ color: config.color }} className="sm:w-5 sm:h-5" />
-        
-        {/* Direction indicator */}
-        <div 
-          className="absolute -bottom-0.5 -right-0.5 w-4 h-4 sm:w-5 sm:h-5 rounded-full flex items-center justify-center"
+      {/* Icon */}
+      <div className="relative flex-shrink-0">
+        <div
+          className="w-[42px] h-[42px] rounded-[14px] flex items-center justify-center transition-transform duration-200 group-hover:scale-105"
+          style={{ background: `${color}08`, border: `1px solid ${color}10` }}
+        >
+          <Icon size={17} strokeWidth={1.6} style={{ color }} />
+        </div>
+        {/* Direction dot */}
+        <div
+          className="absolute -bottom-0.5 -right-0.5 w-[16px] h-[16px] rounded-full flex items-center justify-center"
           style={{
-            background: isPositive 
-              ? "linear-gradient(135deg, #00D26A 0%, #00B85C 100%)" 
-              : "linear-gradient(135deg, #333 0%, #222 100%)",
-            boxShadow: "0 2px 8px rgba(0,0,0,0.3)"
+            background: isPositive ? "#00D26A" : "rgba(255,255,255,0.06)",
+            border: isPositive ? "2px solid #030303" : "2px solid #030303",
           }}
         >
           {isPositive ? (
-            <ArrowDownLeft size={8} className="text-white sm:w-2.5 sm:h-2.5" strokeWidth={2.5} />
+            <ArrowDownLeft size={7} className="text-white" strokeWidth={3} />
           ) : (
-            <ArrowUpRight size={8} className="text-white/70 sm:w-2.5 sm:h-2.5" strokeWidth={2.5} />
+            <ArrowUpRight size={7} className="text-white/50" strokeWidth={3} />
           )}
         </div>
-      </motion.div>
-
-      <div className="flex-1 min-w-0">
-        <h4 className="font-medium text-white text-xs sm:text-sm truncate group-hover:text-[#00C2FF] transition-colors">
-          {transaction.merchantName}
-        </h4>
-        <p className="text-[10px] sm:text-xs text-[#555] font-medium">
-          {formatTime(transaction.date)}
-        </p>
       </div>
 
+      {/* Details */}
+      <div className="flex-1 min-w-0">
+        <p className="text-[13px] font-medium text-white/90 truncate group-hover:text-white transition-colors">
+          {transaction.merchantName}
+        </p>
+        <div className="flex items-center gap-1.5 mt-0.5">
+          <span className="text-[10px] text-[#333] font-medium">{formatTime(transaction.date)}</span>
+          {status && transaction.status !== "success" && (
+            <>
+              <span className="text-[#222]">·</span>
+              <span
+                className="text-[9px] font-semibold uppercase tracking-[0.06em]"
+                style={{ color: status.color }}
+              >
+                {status.label}
+              </span>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Amount */}
       <div className="text-right flex-shrink-0">
         <span
-          className={`font-bold text-xs sm:text-sm tracking-tight ${
-            isPositive ? "text-[#00D26A]" : "text-white"
+          className={`text-[14px] font-bold font-outfit tracking-tight ${
+            isPositive ? "text-[#00D26A]" : "text-white/90"
           }`}
         >
           {formatCurrency(transaction.amount)}
         </span>
-        {transaction.status === 'failed' && (
-          <p className="text-[9px] text-[#FF4757]">Failed</p>
-        )}
       </div>
     </motion.div>
   );

@@ -1,73 +1,52 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import { motion, AnimatePresence, useMotionValue, useTransform } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
-  X, QrCode, Check, AlertCircle, Loader2,
-  ArrowRight, ShieldCheck, Copy,
-  ChevronLeft, CreditCard, Nfc, Fingerprint,
-  Clock, Store, Wifi
+  X, QrCode, Check, Loader2, ArrowRight, ShieldCheck, Copy,
+  ChevronLeft, CreditCard, Nfc, Fingerprint, Wifi, AlertTriangle
 } from "lucide-react";
 import { useWallet, useMerchant } from "../store";
 
-const Step = {
-  AMOUNT: "amount",
-  CONFIRM: "confirm",
-  SCAN: "scan",
-  PROCESSING: "processing",
-  SUCCESS: "success",
-  ERROR: "error",
-};
+// ── Constants ──
+const Step = { AMOUNT: 0, CONFIRM: 1, SCAN: 2, PROCESSING: 3, SUCCESS: 4, ERROR: 5 };
+const STEP_LABELS = ["New Payment", "Confirm", "Scanning", "Processing", "Completed", "Declined"];
 
-function generateRef() {
+function ref() {
   const c = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
   let r = "BLZ-";
-  for (let i = 0; i < 6; i++) r += c[Math.floor(Math.random() * c.length)];
+  for (let i = 0; i < 6; i++) r += c[(Math.random() * c.length) | 0];
   return r;
 }
+const fmtDate = (d) => d.toLocaleDateString("de-DE", { day: "2-digit", month: "short", year: "numeric" });
+const fmtTime = (d) => d.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 
-function formatTime(d) {
-  return d.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-}
-function formatDate(d) {
-  return d.toLocaleDateString("de-DE", { day: "2-digit", month: "short", year: "numeric" });
-}
+// Shared transition presets
+const slide = { duration: 0.35, ease: [0.32, 0.72, 0, 1] };
 
-// ═══════════════════════════════════
-// SUB-COMPONENTS
-// ═══════════════════════════════════
-
-const NumPad = ({ onKey, onDelete, disabled }) => {
+// ═══════════════════════════════════════════
+// NumPad
+// ═══════════════════════════════════════════
+const NumPad = ({ onKey, onDel, locked }) => {
   const keys = ["1","2","3","4","5","6","7","8","9",".","0","del"];
-  const [tapped, setTapped] = useState(null);
-
-  const handleTap = (k) => {
-    if (disabled) return;
-    setTapped(k);
-    setTimeout(() => setTapped(null), 120);
-    if (k === "del") onDelete();
-    else onKey(k);
+  const [flash, setFlash] = useState(null);
+  const tap = (k) => {
+    if (locked) return;
+    setFlash(k); setTimeout(() => setFlash(null), 100);
+    k === "del" ? onDel() : onKey(k);
   };
-
   return (
-    <div className="grid grid-cols-3 gap-[6px] w-full max-w-[280px] mx-auto">
+    <div className="grid grid-cols-3 gap-[5px] w-full max-w-[272px] mx-auto">
       {keys.map((k) => (
-        <motion.button
-          key={k}
-          data-testid={`numpad-${k}`}
-          className={`h-[52px] rounded-[18px] font-outfit text-[17px] font-medium flex items-center justify-center select-none relative overflow-hidden
-            ${k === "del"
-              ? "bg-transparent text-[#666]"
-              : "text-white"}`}
+        <motion.button key={k} data-testid={`numpad-${k}`}
+          className={`h-[50px] rounded-[16px] font-outfit text-[17px] font-medium flex items-center justify-center select-none
+            ${k === "del" ? "bg-transparent text-[#555]" : "text-white"}`}
           style={k !== "del" ? {
-            background: tapped === k ? "rgba(0,194,255,0.12)" : "rgba(255,255,255,0.03)",
-            border: `1px solid ${tapped === k ? "rgba(0,194,255,0.3)" : "rgba(255,255,255,0.04)"}`,
-            transition: "background 0.15s, border-color 0.15s",
+            background: flash === k ? "rgba(0,194,255,0.12)" : "rgba(255,255,255,0.025)",
+            border: `1px solid ${flash === k ? "rgba(0,194,255,0.25)" : "rgba(255,255,255,0.035)"}`,
           } : undefined}
-          whileTap={{ scale: 0.9 }}
-          onClick={() => handleTap(k)}
-          disabled={disabled}
+          whileTap={{ scale: 0.88 }} onClick={() => tap(k)} disabled={locked}
         >
           {k === "del" ? (
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 4H8l-7 8 7 8h13a2 2 0 002-2V6a2 2 0 00-2-2z"/><line x1="18" y1="9" x2="12" y2="15"/><line x1="12" y1="9" x2="18" y2="15"/></svg>
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 4H8l-7 8 7 8h13a2 2 0 002-2V6a2 2 0 00-2-2z"/><line x1="18" y1="9" x2="12" y2="15"/><line x1="12" y1="9" x2="18" y2="15"/></svg>
           ) : k}
         </motion.button>
       ))}
@@ -75,82 +54,60 @@ const NumPad = ({ onKey, onDelete, disabled }) => {
   );
 };
 
-const QuickAmounts = ({ onSelect, selected, disabled }) => {
-  const amounts = [5, 10, 25, 50];
-  return (
-    <div className="flex gap-2 justify-center mb-3">
-      {amounts.map((a) => (
-        <motion.button
-          key={a}
-          data-testid={`quick-amount-${a}`}
-          className={`px-4 py-1.5 rounded-full text-[11px] font-semibold transition-all duration-200
-            ${selected === String(a)
-              ? "bg-[#00C2FF]/15 text-[#00C2FF] border border-[#00C2FF]/30"
-              : "bg-white/[0.03] text-[#666] border border-white/[0.04]"}`}
-          whileTap={{ scale: 0.93 }}
-          onClick={() => !disabled && onSelect(String(a))}
-          disabled={disabled}
-        >
-          €{a}
-        </motion.button>
-      ))}
-    </div>
-  );
-};
+// ═══════════════════════════════════════════
+// Quick chips
+// ═══════════════════════════════════════════
+const Chips = ({ onPick, active }) => [5, 10, 25, 50].map((v) => (
+  <motion.button key={v} data-testid={`quick-amount-${v}`}
+    className={`px-4 py-1.5 rounded-full text-[11px] font-semibold transition-all
+      ${active === String(v) ? "bg-[#00C2FF]/12 text-[#00C2FF] border border-[#00C2FF]/25" : "bg-white/[0.025] text-[#555] border border-white/[0.035]"}`}
+    whileTap={{ scale: 0.92 }} onClick={() => onPick(String(v))}
+  >€{v}</motion.button>
+));
 
-const TimerRing = ({ seconds, total }) => {
-  const pct = (seconds / total) * 100;
-  const r = 13;
-  const circ = 2 * Math.PI * r;
-  const offset = circ - (pct / 100) * circ;
+// ═══════════════════════════════════════════
+// Timer ring (confirmation countdown)
+// ═══════════════════════════════════════════
+const Ring = ({ sec, total }) => {
+  const r = 13, c = 2 * Math.PI * r, off = c - (sec / total) * c;
   return (
-    <svg width="34" height="34" className="rotate-[-90deg]">
-      <circle cx="17" cy="17" r={r} fill="none" stroke="rgba(255,255,255,0.04)" strokeWidth="2.5" />
-      <circle cx="17" cy="17" r={r} fill="none" stroke="#00C2FF" strokeWidth="2.5"
-        strokeDasharray={circ} strokeDashoffset={offset} strokeLinecap="round"
+    <svg width="32" height="32" className="-rotate-90">
+      <circle cx="16" cy="16" r={r} fill="none" stroke="rgba(255,255,255,0.04)" strokeWidth="2.5" />
+      <circle cx="16" cy="16" r={r} fill="none" stroke="#00C2FF" strokeWidth="2.5"
+        strokeDasharray={c} strokeDashoffset={off} strokeLinecap="round"
         style={{ transition: "stroke-dashoffset 1s linear" }} />
     </svg>
   );
 };
 
-// Processing steps sub-component
-const ProcessingSteps = ({ activeStep }) => {
-  const steps = [
-    { label: "Authenticating", icon: Fingerprint },
-    { label: "Verifying payment", icon: ShieldCheck },
-    { label: "Completing transfer", icon: Wifi },
+// ═══════════════════════════════════════════
+// Processing steps indicator
+// ═══════════════════════════════════════════
+const Steps = ({ at }) => {
+  const list = [
+    { l: "Authenticating", I: Fingerprint },
+    { l: "Verifying payment", I: ShieldCheck },
+    { l: "Completing transfer", I: Wifi },
   ];
   return (
-    <div className="space-y-3 w-full max-w-[240px]">
-      {steps.map((s, i) => {
-        const isActive = i === activeStep;
-        const isDone = i < activeStep;
-        const Icon = s.icon;
+    <div className="space-y-3 w-full max-w-[220px]">
+      {list.map(({ l, I }, i) => {
+        const done = i < at, active = i === at;
         return (
-          <motion.div
-            key={i}
-            className="flex items-center gap-3"
-            initial={{ opacity: 0, x: -10 }}
-            animate={{ opacity: isDone || isActive ? 1 : 0.3, x: 0 }}
-            transition={{ delay: i * 0.15, duration: 0.3 }}
-          >
-            <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 transition-colors duration-500
-              ${isDone ? "bg-[#00D26A]/15 border border-[#00D26A]/30"
-                : isActive ? "bg-[#00C2FF]/10 border border-[#00C2FF]/25"
-                : "bg-white/[0.03] border border-white/[0.04]"}`}>
-              {isDone ? (
-                <Check size={12} className="text-[#00D26A]" />
-              ) : isActive ? (
-                <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }}>
-                  <Loader2 size={12} className="text-[#00C2FF]" />
-                </motion.div>
-              ) : (
-                <Icon size={12} className="text-[#333]" />
-              )}
+          <motion.div key={i} className="flex items-center gap-3"
+            initial={{ opacity: 0, x: -8 }} animate={{ opacity: done || active ? 1 : 0.25, x: 0 }}
+            transition={{ delay: i * 0.12, duration: 0.3 }}>
+            <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 transition-all duration-500
+              ${done ? "bg-[#00D26A]/12 border border-[#00D26A]/25"
+              : active ? "bg-[#00C2FF]/8 border border-[#00C2FF]/20"
+              : "bg-white/[0.02] border border-white/[0.04]"}`}>
+              {done ? <Check size={11} className="text-[#00D26A]" />
+              : active ? <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }}><Loader2 size={11} className="text-[#00C2FF]" /></motion.div>
+              : <I size={11} className="text-[#2A2A2A]" />}
             </div>
-            <span className={`text-xs font-medium transition-colors duration-500
-              ${isDone ? "text-[#00D26A]" : isActive ? "text-white" : "text-[#333]"}`}>
-              {s.label}{isDone ? "" : isActive ? "..." : ""}
+            <span className={`text-[12px] font-medium transition-colors duration-500
+              ${done ? "text-[#00D26A]" : active ? "text-white" : "text-[#2A2A2A]"}`}>
+              {l}{active ? "..." : ""}
             </span>
           </motion.div>
         );
@@ -159,833 +116,520 @@ const ProcessingSteps = ({ activeStep }) => {
   );
 };
 
-// Floating success particles
-const SuccessParticles = () => {
-  const particles = useMemo(() => {
-    return Array.from({ length: 18 }, (_, i) => ({
-      id: i,
-      x: Math.random() * 300 - 150,
-      y: -(Math.random() * 350 + 80),
-      r: Math.random() * 360,
-      size: Math.random() * 4 + 2,
-      delay: Math.random() * 0.6,
-      dur: 1.5 + Math.random() * 1.2,
-      color: ["#00D26A", "#00E57A", "#00C2FF", "#FFD700", "#FFFFFF"][Math.floor(Math.random() * 5)],
-    }));
-  }, []);
-
+// ═══════════════════════════════════════════
+// Confetti particles on success
+// ═══════════════════════════════════════════
+const Confetti = () => {
+  const dots = useMemo(() => Array.from({ length: 20 }, (_, i) => ({
+    i, x: Math.random() * 320 - 160, y: -(Math.random() * 380 + 60),
+    s: Math.random() * 4 + 2, d: Math.random() * 0.5, dur: 1.4 + Math.random(),
+    c: ["#00D26A","#00E57A","#00C2FF","#FFD700","#fff"][Math.floor(Math.random() * 5)],
+  })), []);
   return (
     <div className="absolute inset-0 pointer-events-none overflow-hidden">
-      {particles.map((p) => (
-        <motion.div
-          key={p.id}
-          className="absolute rounded-full"
-          style={{
-            width: p.size,
-            height: p.size,
-            background: p.color,
-            left: "50%",
-            top: "45%",
-            boxShadow: `0 0 ${p.size * 2}px ${p.color}40`,
-          }}
-          initial={{ x: 0, y: 0, opacity: 1, scale: 0, rotate: 0 }}
-          animate={{ x: p.x, y: p.y, opacity: [1, 1, 0], scale: [0, 1.2, 0.6], rotate: p.r }}
-          transition={{ delay: 0.2 + p.delay, duration: p.dur, ease: "easeOut" }}
+      {dots.map((p) => (
+        <motion.div key={p.i} className="absolute rounded-full"
+          style={{ width: p.s, height: p.s, background: p.c, left: "50%", top: "42%", boxShadow: `0 0 ${p.s * 3}px ${p.c}30` }}
+          initial={{ x: 0, y: 0, opacity: 1, scale: 0 }}
+          animate={{ x: p.x, y: p.y, opacity: [1, 1, 0], scale: [0, 1.3, 0.5] }}
+          transition={{ delay: 0.15 + p.d, duration: p.dur, ease: "easeOut" }}
         />
       ))}
     </div>
   );
 };
 
-// ═══════════════════════════════════
-// MAIN SCANNER PAGE
-// ═══════════════════════════════════
+// ═══════════════════════════════════════════
+// MAIN
+// ═══════════════════════════════════════════
 export const ScannerPage = ({ onNavigate }) => {
   const [step, setStep] = useState(Step.AMOUNT);
-  const [amount, setAmount] = useState("");
-  const [reference, setReference] = useState("");
-  const [error, setError] = useState(null);
-  const [scanProgress, setScanProgress] = useState(0);
-  const [expirySeconds, setExpirySeconds] = useState(300);
+  const [amt, setAmt] = useState("");
+  const [txRef, setTxRef] = useState("");
+  const [err, setErr] = useState(null);
+  const [prog, setProg] = useState(0);
+  const [expiry, setExpiry] = useState(300);
   const [copied, setCopied] = useState(false);
-  const [processingStep, setProcessingStep] = useState(0);
-  const [completedAt, setCompletedAt] = useState(null);
-  const scanTimer = useRef(null);
-  const expiryTimer = useRef(null);
+  const [pStep, setPStep] = useState(0);
+  const [doneAt, setDoneAt] = useState(null);
+  const scanT = useRef(null);
+  const expT = useRef(null);
 
-  const wallet = useWallet();
-  const merchant = useMerchant();
+  const w = useWallet();
+  const m = useMerchant();
+  const num = parseFloat(amt) || 0;
+  const valid = num > 0 && num <= w.balance;
+  const locked = step === Step.SCAN || step === Step.PROCESSING;
 
-  // Numpad handler
-  const handleKey = (k) => {
-    setAmount((prev) => {
-      if (k === "." && prev.includes(".")) return prev;
-      if (k === "." && prev === "") return "0.";
-      const next = prev + k;
-      const [int, dec] = next.split(".");
-      if (dec && dec.length > 2) return prev;
-      if (int.length > 5) return prev;
-      return next;
+  // Ambient glow
+  const glow = step === Step.SUCCESS ? "rgba(0,210,106,0.07)"
+    : step === Step.ERROR ? "rgba(255,71,87,0.07)" : "rgba(0,194,255,0.04)";
+
+  // ── Input ──
+  const key = (k) => {
+    setAmt((p) => {
+      if (k === "." && p.includes(".")) return p;
+      if (k === "." && !p) return "0.";
+      const n = p + k, [i, d] = n.split(".");
+      if (d && d.length > 2) return p;
+      if (i.length > 5) return p;
+      return n;
     });
-    setError(null);
+    setErr(null);
   };
-  const handleDelete = () => { setAmount((p) => p.slice(0, -1)); setError(null); };
+  const del = () => { setAmt((p) => p.slice(0, -1)); setErr(null); };
 
-  const handleContinue = () => {
-    const n = parseFloat(amount);
-    if (!n || n <= 0) { setError("Enter a valid amount"); return; }
-    if (n > wallet.balance) { setError("Exceeds available balance"); return; }
-    setError(null);
-    setReference(generateRef());
-    setExpirySeconds(300);
-    setStep(Step.CONFIRM);
+  // ── Flow control ──
+  const goConfirm = () => {
+    if (!num || num <= 0) { setErr("Enter a valid amount"); return; }
+    if (num > w.balance) { setErr("Exceeds available balance"); return; }
+    setErr(null); setTxRef(ref()); setExpiry(300); setStep(Step.CONFIRM);
   };
+  const goScan = () => { m.createPaymentRequest(num); setProg(0); setStep(Step.SCAN); };
 
-  const handleStartScan = () => {
-    merchant.createPaymentRequest(parseFloat(amount));
-    setScanProgress(0);
-    setStep(Step.SCAN);
-  };
+  const reset = useCallback(() => {
+    setStep(Step.AMOUNT); setAmt(""); setProg(0); setErr(null); setTxRef("");
+    setExpiry(300); setCopied(false); setPStep(0); setDoneAt(null);
+    m.cancelPaymentRequest();
+    clearInterval(scanT.current); clearInterval(expT.current);
+  }, [m]);
 
-  // Scan progress
+  // ── Scan progress ──
   useEffect(() => {
     if (step !== Step.SCAN) return;
-    scanTimer.current = setInterval(() => {
-      setScanProgress((p) => {
-        if (p >= 100) { clearInterval(scanTimer.current); return 100; }
-        return p + 2.5;
-      });
-    }, 50);
-    return () => clearInterval(scanTimer.current);
+    scanT.current = setInterval(() => {
+      setProg((p) => { if (p >= 100) { clearInterval(scanT.current); return 100; } return p + 2; });
+    }, 40);
+    return () => clearInterval(scanT.current);
   }, [step]);
 
-  // Scan → Processing
+  // ── Scan done → process ──
   useEffect(() => {
-    if (step === Step.SCAN && scanProgress >= 100) processPayment();
+    if (step === Step.SCAN && prog >= 100) processPayment();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, scanProgress]);
+  }, [step, prog]);
 
-  // Expiry countdown
+  // ── Expiry countdown ──
   useEffect(() => {
     if (step !== Step.CONFIRM) return;
-    expiryTimer.current = setInterval(() => {
-      setExpirySeconds((s) => {
-        if (s <= 1) { clearInterval(expiryTimer.current); handleReset(); return 0; }
-        return s - 1;
-      });
+    expT.current = setInterval(() => {
+      setExpiry((s) => { if (s <= 1) { clearInterval(expT.current); reset(); return 0; } return s - 1; });
     }, 1000);
-    return () => clearInterval(expiryTimer.current);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step]);
+    return () => clearInterval(expT.current);
+  }, [step, reset]);
 
-  // Processing with stepped progress
+  // ── Process payment ──
   const processPayment = useCallback(async () => {
-    setStep(Step.PROCESSING);
-    setProcessingStep(0);
-
-    // Step 1: Authenticating
-    await new Promise((r) => setTimeout(r, 800));
-    setProcessingStep(1);
-
-    // Step 2: Verifying
-    await new Promise((r) => setTimeout(r, 1000));
-    setProcessingStep(2);
-
-    // Step 3: Completing
-    await new Promise((r) => setTimeout(r, 700));
-
-    const n = parseFloat(amount);
-    if (wallet.canAfford(n)) {
-      wallet.pay(n, merchant.businessName, merchant.id);
-      merchant.receivePayment(n);
-      setCompletedAt(new Date());
-      setProcessingStep(3);
-      await new Promise((r) => setTimeout(r, 300));
+    setStep(Step.PROCESSING); setPStep(0);
+    await new Promise((r) => setTimeout(r, 700)); setPStep(1);
+    await new Promise((r) => setTimeout(r, 900)); setPStep(2);
+    await new Promise((r) => setTimeout(r, 600));
+    if (w.canAfford(num)) {
+      w.pay(num, m.businessName, m.id); m.receivePayment(num);
+      setDoneAt(new Date()); setPStep(3);
+      await new Promise((r) => setTimeout(r, 250));
       setStep(Step.SUCCESS);
     } else {
-      setError("Insufficient balance — transaction declined by your wallet.");
-      setStep(Step.ERROR);
+      setErr("Insufficient balance"); setStep(Step.ERROR);
     }
-  }, [amount, wallet, merchant]);
+  }, [num, w, m]);
 
-  const handleReset = () => {
-    setStep(Step.AMOUNT);
-    setAmount("");
-    setScanProgress(0);
-    setError(null);
-    setReference("");
-    setExpirySeconds(300);
-    setCopied(false);
-    setProcessingStep(0);
-    setCompletedAt(null);
-    merchant.cancelPaymentRequest();
-    clearInterval(scanTimer.current);
-    clearInterval(expiryTimer.current);
-  };
+  const copyRef = () => { navigator.clipboard.writeText(txRef).catch(() => {}); setCopied(true); setTimeout(() => setCopied(false), 1800); };
+  const expStr = `${Math.floor(expiry / 60)}:${String(expiry % 60).padStart(2, "0")}`;
 
-  const handleCopyRef = () => {
-    navigator.clipboard.writeText(reference).catch(() => {});
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  const fmtExpiry = `${Math.floor(expirySeconds / 60)}:${String(expirySeconds % 60).padStart(2, "0")}`;
-  const numericAmount = parseFloat(amount) || 0;
-  const isValidAmount = numericAmount > 0 && numericAmount <= wallet.balance;
-  const isTerminal = step === Step.SUCCESS || step === Step.ERROR;
-  const isLocked = step === Step.PROCESSING || step === Step.SCAN;
-
-  // Ambient glow color
-  const glowColor = step === Step.SUCCESS ? "rgba(0,210,106,0.08)"
-    : step === Step.ERROR ? "rgba(255,71,87,0.08)"
-    : "rgba(0,194,255,0.05)";
-
+  // ═══════════════════════════════════════════
   return (
-    <motion.div
-      data-testid="scanner-page"
-      className="min-h-screen flex flex-col relative overflow-hidden"
-      style={{ background: "#030303" }}
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-    >
-      {/* Ambient glow */}
-      <motion.div
-        className="absolute top-[-20%] left-1/2 -translate-x-1/2 w-[600px] h-[600px] rounded-full pointer-events-none"
-        style={{ filter: "blur(140px)" }}
-        animate={{ background: glowColor }}
-        transition={{ duration: 0.8 }}
-      />
+    <motion.div data-testid="scanner-page"
+      className="min-h-screen flex flex-col relative overflow-hidden" style={{ background: "#030303" }}
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+
+      {/* Ambient */}
+      <motion.div className="absolute top-[-25%] left-1/2 -translate-x-1/2 w-[600px] h-[600px] rounded-full pointer-events-none"
+        style={{ filter: "blur(150px)" }} animate={{ background: glow }} transition={{ duration: 0.6 }} />
 
       {/* Header */}
-      <div className="flex items-center justify-between px-5 pt-6 pb-2 relative z-10">
-        <motion.button
-          data-testid="scanner-back-btn"
-          className="w-10 h-10 rounded-full bg-white/[0.04] border border-white/[0.06] flex items-center justify-center backdrop-blur-sm"
-          whileHover={{ scale: 1.08 }}
-          whileTap={{ scale: 0.9 }}
-          onClick={step === Step.AMOUNT ? () => onNavigate("/") : isLocked ? undefined : handleReset}
-          style={{ pointerEvents: isLocked ? "none" : "auto", opacity: isLocked ? 0.3 : 1 }}
-        >
+      <div className="flex items-center justify-between px-5 pt-[max(env(safe-area-inset-top,0px),24px)] pb-2 relative z-10">
+        <motion.button data-testid="scanner-back-btn"
+          className="w-10 h-10 rounded-full bg-white/[0.04] border border-white/[0.05] flex items-center justify-center"
+          whileTap={{ scale: 0.88 }}
+          style={{ pointerEvents: locked ? "none" : "auto", opacity: locked ? 0.25 : 1 }}
+          onClick={step === Step.AMOUNT ? () => onNavigate("/") : reset}>
           {step === Step.AMOUNT
-            ? <X size={16} strokeWidth={1.5} className="text-white/60" />
-            : <ChevronLeft size={16} strokeWidth={1.5} className="text-white/60" />}
+            ? <X size={15} strokeWidth={1.5} className="text-white/50" />
+            : <ChevronLeft size={15} strokeWidth={1.5} className="text-white/50" />}
         </motion.button>
-
         <AnimatePresence mode="wait">
-          <motion.p
-            key={step}
-            className="text-[12px] text-[#555] font-medium font-outfit tracking-[0.08em] uppercase"
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 8 }}
-            transition={{ duration: 0.2 }}
-          >
-            {step === Step.AMOUNT && "New Payment"}
-            {step === Step.CONFIRM && "Confirm"}
-            {step === Step.SCAN && "Scanning"}
-            {step === Step.PROCESSING && "Processing"}
-            {step === Step.SUCCESS && "Completed"}
-            {step === Step.ERROR && "Declined"}
+          <motion.p key={step} className="text-[11px] text-[#444] font-medium font-outfit tracking-[0.1em] uppercase"
+            initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 6 }} transition={{ duration: 0.18 }}>
+            {STEP_LABELS[step]}
           </motion.p>
         </AnimatePresence>
-
         <div className="w-10" />
       </div>
 
-      {/* Content */}
+      {/* Body */}
       <div className="flex-1 flex flex-col relative z-10">
         <AnimatePresence mode="wait">
 
-          {/* ════ AMOUNT ════ */}
+          {/* ──────── STEP 1: AMOUNT ──────── */}
           {step === Step.AMOUNT && (
-            <motion.div
-              key="amount"
-              className="flex-1 flex flex-col px-5 pb-6"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 20 }}
-              transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
-            >
+            <motion.div key="s1" className="flex-1 flex flex-col px-5 pb-5"
+              initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={slide}>
               <div className="flex-1 flex flex-col items-center justify-center">
-                <p className="text-[#444] text-[10px] font-semibold mb-4 tracking-[0.15em] uppercase">Payment Amount</p>
-
-                <div className="flex items-baseline gap-1 mb-2 min-h-[68px]">
-                  <span className="text-[28px] text-[#333] font-outfit font-light">€</span>
+                <p className="text-[#3A3A3A] text-[10px] font-semibold tracking-[0.16em] uppercase mb-4">Payment Amount</p>
+                <div className="flex items-baseline gap-1 mb-2 min-h-[66px]">
+                  <span className="text-[26px] text-[#2A2A2A] font-outfit font-light select-none">€</span>
                   <AnimatePresence mode="popLayout">
-                    <motion.span
-                      key={amount || "placeholder"}
-                      className={`text-[56px] font-bold font-outfit tracking-tighter leading-none
-                        ${amount ? "text-white" : "text-[#1A1A1A]"}`}
-                      initial={{ opacity: 0, y: 8, filter: "blur(4px)" }}
-                      animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-                      exit={{ opacity: 0, y: -8, filter: "blur(4px)" }}
-                      transition={{ duration: 0.12 }}
-                    >
-                      {amount || "0.00"}
+                    <motion.span key={amt || "ph"} className={`text-[54px] font-bold font-outfit tracking-[-0.03em] leading-none ${amt ? "text-white" : "text-[#161616]"}`}
+                      initial={{ opacity: 0, y: 6, filter: "blur(3px)" }} animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                      exit={{ opacity: 0, y: -6, filter: "blur(3px)" }} transition={{ duration: 0.1 }}>
+                      {amt || "0.00"}
                     </motion.span>
                   </AnimatePresence>
                 </div>
-
-                <p className={`text-[11px] font-medium transition-colors duration-200
-                  ${numericAmount > wallet.balance ? "text-[#FF4757]" : "text-[#333]"}`}>
-                  Balance: €{wallet.balance.toLocaleString("de-DE", { minimumFractionDigits: 2 })}
+                <p className={`text-[11px] font-medium ${num > w.balance ? "text-[#FF4757]" : "text-[#2A2A2A]"}`}>
+                  Balance: €{w.balance.toLocaleString("de-DE", { minimumFractionDigits: 2 })}
                 </p>
-
                 <AnimatePresence>
-                  {error && (
-                    <motion.p
-                      className="text-[#FF4757] text-[11px] mt-2 font-medium"
-                      initial={{ opacity: 0, y: 4 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -4 }}
-                    >
-                      {error}
-                    </motion.p>
-                  )}
+                  {err && <motion.p className="text-[#FF4757] text-[11px] mt-2 font-medium"
+                    initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}>{err}</motion.p>}
                 </AnimatePresence>
               </div>
-
-              <QuickAmounts onSelect={setAmount} selected={amount} />
-              <NumPad onKey={handleKey} onDelete={handleDelete} />
-
-              <motion.button
-                data-testid="continue-to-confirm-btn"
-                className={`w-full mt-4 py-[14px] rounded-2xl font-semibold text-[13px] flex items-center justify-center gap-2 transition-all duration-300
-                  ${isValidAmount
-                    ? "bg-[#00C2FF] text-[#030303]"
-                    : "bg-white/[0.03] text-[#222] cursor-not-allowed border border-white/[0.03]"}`}
-                style={isValidAmount ? { boxShadow: "0 8px 40px rgba(0,194,255,0.3), 0 2px 12px rgba(0,194,255,0.2)" } : {}}
-                whileHover={isValidAmount ? { scale: 1.01 } : {}}
-                whileTap={isValidAmount ? { scale: 0.97 } : {}}
-                onClick={handleContinue}
-                disabled={!isValidAmount}
-              >
+              <div className="flex gap-2 justify-center mb-3"><Chips onPick={setAmt} active={amt} /></div>
+              <NumPad onKey={key} onDel={del} locked={false} />
+              <motion.button data-testid="continue-to-confirm-btn"
+                className={`w-full mt-4 py-[13px] rounded-[14px] font-semibold text-[13px] flex items-center justify-center gap-2 transition-all duration-300
+                  ${valid ? "bg-[#00C2FF] text-[#020202]" : "bg-white/[0.025] text-[#1A1A1A] cursor-not-allowed border border-white/[0.025]"}`}
+                style={valid ? { boxShadow: "0 6px 36px rgba(0,194,255,0.3), 0 2px 10px rgba(0,194,255,0.15)" } : {}}
+                whileTap={valid ? { scale: 0.96 } : {}} onClick={goConfirm} disabled={!valid}>
                 Continue <ArrowRight size={14} strokeWidth={2.5} />
               </motion.button>
             </motion.div>
           )}
 
-          {/* ════ CONFIRM ════ */}
+          {/* ──────── STEP 2: CONFIRM ──────── */}
           {step === Step.CONFIRM && (
-            <motion.div
-              key="confirm"
-              className="flex-1 flex flex-col px-5 pb-6"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 20 }}
-              transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
-            >
+            <motion.div key="s2" className="flex-1 flex flex-col px-5 pb-5"
+              initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={slide}>
               <div className="flex-1 flex flex-col items-center justify-center">
-                {/* Amount */}
-                <motion.div
-                  className="text-center mb-8"
-                  initial={{ scale: 0.92, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  transition={{ type: "spring", stiffness: 200, damping: 20, delay: 0.05 }}
-                >
-                  <p className="text-[50px] font-bold font-outfit text-white tracking-tighter leading-none mb-1">
-                    €{numericAmount.toFixed(2)}
-                  </p>
+                {/* Amount hero */}
+                <motion.div className="text-center mb-7"
+                  initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+                  transition={{ type: "spring", stiffness: 220, damping: 22, delay: 0.04 }}>
+                  <p className="text-[48px] font-bold font-outfit text-white tracking-[-0.03em] leading-none mb-1">€{num.toFixed(2)}</p>
                   <div className="flex items-center justify-center gap-1.5">
-                    <Store size={12} className="text-[#555]" />
-                    <p className="text-[#555] text-[13px]">{merchant.businessName}</p>
+                    <div className="w-5 h-5 rounded-md bg-[#00C2FF]/10 flex items-center justify-center"><Nfc size={10} className="text-[#00C2FF]" /></div>
+                    <p className="text-[#555] text-[13px]">{m.businessName}</p>
                   </div>
                 </motion.div>
 
-                {/* Detail card */}
-                <motion.div
-                  className="w-full rounded-[20px] overflow-hidden mb-5"
-                  style={{
-                    background: "rgba(255,255,255,0.02)",
-                    border: "1px solid rgba(255,255,255,0.05)",
-                    backdropFilter: "blur(20px)",
-                  }}
-                  initial={{ opacity: 0, y: 24 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1, duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
-                >
+                {/* Glass card */}
+                <motion.div className="w-full rounded-[18px] overflow-hidden mb-5"
+                  style={{ background: "rgba(255,255,255,0.018)", border: "1px solid rgba(255,255,255,0.045)", backdropFilter: "blur(24px)" }}
+                  initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08, ...slide }}>
                   {[
-                    { label: "Reference", value: reference, mono: true, action: (
-                      <motion.button className="text-[#00C2FF] text-[10px] font-semibold flex items-center gap-1" whileTap={{ scale: 0.9 }} onClick={handleCopyRef}>
-                        <Copy size={10} /> {copied ? "Copied" : "Copy"}
-                      </motion.button>
-                    )},
-                    { label: "Merchant", value: merchant.businessName, right: (
-                      <div className="w-7 h-7 rounded-lg bg-[#00C2FF]/8 flex items-center justify-center"><Nfc size={13} className="text-[#00C2FF]" /></div>
-                    )},
-                    { label: "Payment Method", value: "BidBlitz Wallet", right: <CreditCard size={14} className="text-[#333]" /> },
-                    { label: "Expires in", value: fmtExpiry, cyan: true, right: <TimerRing seconds={expirySeconds} total={300} /> },
-                  ].map((row, i) => (
-                    <motion.div
-                      key={i}
-                      className={`flex items-center justify-between px-4 py-3 ${i < 3 ? "border-b border-white/[0.04]" : ""}`}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.15 + i * 0.06 }}
-                    >
+                    { lbl: "Reference", val: txRef, mono: true,
+                      right: <motion.button className="text-[#00C2FF] text-[10px] font-semibold flex items-center gap-1" whileTap={{ scale: 0.88 }} onClick={copyRef}><Copy size={10} />{copied ? "Copied" : "Copy"}</motion.button> },
+                    { lbl: "Merchant", val: m.businessName,
+                      right: <div className="w-7 h-7 rounded-lg bg-[#00C2FF]/6 flex items-center justify-center"><Nfc size={12} className="text-[#00C2FF]" /></div> },
+                    { lbl: "Method", val: "BidBlitz Wallet", right: <CreditCard size={13} className="text-[#333]" /> },
+                    { lbl: "Expires in", val: expStr, cyan: true, right: <Ring sec={expiry} total={300} /> },
+                  ].map((r, i) => (
+                    <motion.div key={i} className={`flex items-center justify-between px-4 py-[11px] ${i < 3 ? "border-b border-white/[0.035]" : ""}`}
+                      initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 + i * 0.05 }}>
                       <div>
-                        <p className="text-[9px] text-[#444] uppercase tracking-[0.1em] mb-0.5 font-semibold">{row.label}</p>
-                        <p className={`text-[13px] ${row.mono ? "font-mono" : ""} ${row.cyan ? "text-[#00C2FF]" : "text-white"}`}>{row.value}</p>
+                        <p className="text-[9px] text-[#3A3A3A] uppercase tracking-[0.1em] mb-[2px] font-semibold">{r.lbl}</p>
+                        <p className={`text-[13px] ${r.mono ? "font-mono" : ""} ${r.cyan ? "text-[#00C2FF]" : "text-white/90"}`}>{r.val}</p>
                       </div>
-                      {row.action || row.right}
+                      {r.right}
                     </motion.div>
                   ))}
                 </motion.div>
 
-                <motion.div
-                  className="flex items-center gap-1.5 text-[#333]"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.4 }}
-                >
-                  <ShieldCheck size={12} className="text-[#00D26A]" />
-                  <span className="text-[10px] font-medium">End-to-end encrypted</span>
+                <motion.div className="flex items-center gap-1.5" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.35 }}>
+                  <ShieldCheck size={11} className="text-[#00D26A]/70" />
+                  <span className="text-[10px] text-[#333] font-medium">End-to-end encrypted</span>
                 </motion.div>
               </div>
 
-              <div className="space-y-2.5">
-                <motion.button
-                  data-testid="confirm-pay-btn"
-                  className="w-full py-[14px] rounded-2xl bg-[#00C2FF] text-[#030303] font-semibold text-[13px] flex items-center justify-center gap-2"
-                  style={{ boxShadow: "0 8px 40px rgba(0,194,255,0.3), 0 2px 12px rgba(0,194,255,0.2)" }}
-                  whileHover={{ scale: 1.01 }}
-                  whileTap={{ scale: 0.97 }}
-                  onClick={handleStartScan}
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.25 }}
-                >
-                  <Fingerprint size={16} strokeWidth={2} /> Confirm & Pay
+              <div className="space-y-2">
+                <motion.button data-testid="confirm-pay-btn"
+                  className="w-full py-[13px] rounded-[14px] bg-[#00C2FF] text-[#020202] font-semibold text-[13px] flex items-center justify-center gap-2"
+                  style={{ boxShadow: "0 6px 36px rgba(0,194,255,0.3), 0 2px 10px rgba(0,194,255,0.15)" }}
+                  whileTap={{ scale: 0.96 }} onClick={goScan}
+                  initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+                  <Fingerprint size={15} strokeWidth={2} /> Start Payment
                 </motion.button>
-                <motion.button
-                  data-testid="edit-amount-btn"
-                  className="w-full py-3 rounded-2xl bg-transparent text-[#555] font-semibold text-[13px]"
-                  whileTap={{ scale: 0.97 }}
-                  onClick={handleReset}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.3 }}
-                >
-                  Edit Amount
+                <motion.button data-testid="cancel-confirm-btn"
+                  className="w-full py-3 rounded-[14px] text-[#444] font-semibold text-[13px]"
+                  whileTap={{ scale: 0.96 }} onClick={() => { reset(); onNavigate("/"); }}
+                  initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.28 }}>
+                  Cancel
                 </motion.button>
               </div>
             </motion.div>
           )}
 
-          {/* ════ SCANNING ════ */}
+          {/* ──────── STEP 3: SCANNING ──────── */}
           {step === Step.SCAN && (
-            <motion.div
-              key="scan"
-              className="flex-1 flex flex-col items-center justify-center px-5 pb-6"
-              initial={{ opacity: 0, scale: 0.96 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.96 }}
-              transition={{ duration: 0.35 }}
-            >
-              {/* Scanner viewport */}
-              <div className="relative w-[260px] h-[260px] mb-7">
-                {/* Outer glow */}
-                <motion.div
-                  className="absolute -inset-6 rounded-[28px] pointer-events-none"
-                  animate={{
-                    boxShadow: [
-                      "0 0 40px rgba(0,194,255,0.06), inset 0 0 40px rgba(0,194,255,0.02)",
-                      "0 0 80px rgba(0,194,255,0.12), inset 0 0 60px rgba(0,194,255,0.04)",
-                      "0 0 40px rgba(0,194,255,0.06), inset 0 0 40px rgba(0,194,255,0.02)",
-                    ],
-                  }}
-                  transition={{ duration: 2.5, repeat: Infinity }}
-                />
+            <motion.div key="s3" className="flex-1 flex flex-col items-center justify-center px-5 pb-5"
+              initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.97 }} transition={{ duration: 0.3 }}>
 
-                {/* Corner brackets — thicker, more defined */}
-                {[
-                  { pos: "top-0 left-0", border: "border-t-[2.5px] border-l-[2.5px]", radius: "rounded-tl-2xl" },
-                  { pos: "top-0 right-0", border: "border-t-[2.5px] border-r-[2.5px]", radius: "rounded-tr-2xl" },
-                  { pos: "bottom-0 left-0", border: "border-b-[2.5px] border-l-[2.5px]", radius: "rounded-bl-2xl" },
-                  { pos: "bottom-0 right-0", border: "border-b-[2.5px] border-r-[2.5px]", radius: "rounded-br-2xl" },
-                ].map((c, i) => (
-                  <motion.div
-                    key={i}
-                    className={`absolute w-14 h-14 ${c.pos} ${c.border} ${c.radius} border-[#00C2FF]`}
-                    animate={{ opacity: [0.5, 1, 0.5] }}
-                    transition={{ duration: 1.8, repeat: Infinity, delay: i * 0.12 }}
-                  />
+              {/* Viewfinder */}
+              <div className="relative w-[250px] h-[250px] mb-6">
+                {/* Breathing glow */}
+                <motion.div className="absolute -inset-5 rounded-[26px] pointer-events-none"
+                  animate={{ boxShadow: ["0 0 30px rgba(0,194,255,0.04)","0 0 70px rgba(0,194,255,0.1)","0 0 30px rgba(0,194,255,0.04)"] }}
+                  transition={{ duration: 2.8, repeat: Infinity }} />
+
+                {/* Corner brackets */}
+                {["top-0 left-0 border-t-[2px] border-l-[2px] rounded-tl-xl",
+                  "top-0 right-0 border-t-[2px] border-r-[2px] rounded-tr-xl",
+                  "bottom-0 left-0 border-b-[2px] border-l-[2px] rounded-bl-xl",
+                  "bottom-0 right-0 border-b-[2px] border-r-[2px] rounded-br-xl"
+                ].map((cls, i) => (
+                  <motion.div key={i} className={`absolute w-12 h-12 border-[#00C2FF] ${cls}`}
+                    animate={{ opacity: [0.45, 1, 0.45] }} transition={{ duration: 1.6, repeat: Infinity, delay: i * 0.1 }} />
                 ))}
 
-                {/* Camera viewfinder body */}
-                <div className="absolute inset-[18px] rounded-xl bg-[#060606] overflow-hidden">
-                  {/* QR code pattern */}
-                  <div className="absolute inset-0 grid grid-cols-9 gap-[2px] p-3 opacity-70">
-                    {[...Array(81)].map((_, i) => {
-                      const isCornerModule = (i < 3 || (i >= 6 && i < 9)) && (Math.floor(i / 9) < 3);
-                      return (
-                        <motion.div
-                          key={i}
-                          className="rounded-[2px]"
-                          style={{
-                            background: isCornerModule ? "#222" : Math.random() > 0.4 ? "#151515" : "#0C0C0C",
-                            aspectRatio: "1",
-                          }}
-                          animate={{ opacity: [0.4, 0.85, 0.4] }}
-                          transition={{ duration: 1 + Math.random(), repeat: Infinity, delay: i * 0.015 }}
-                        />
-                      );
-                    })}
+                {/* Inner dark surface */}
+                <div className="absolute inset-[16px] rounded-xl bg-[#050505] overflow-hidden">
+                  {/* QR pattern */}
+                  <div className="absolute inset-0 grid grid-cols-9 gap-[2px] p-[10px]">
+                    {Array.from({ length: 81 }, (_, i) => (
+                      <motion.div key={i} className="rounded-[2px]"
+                        style={{ background: Math.random() > 0.42 ? "#141414" : "#0A0A0A", aspectRatio: "1" }}
+                        animate={{ opacity: [0.35, 0.8, 0.35] }}
+                        transition={{ duration: 0.9 + Math.random() * 0.8, repeat: Infinity, delay: i * 0.012 }} />
+                    ))}
                   </div>
-
-                  {/* Focus ring effect in center */}
-                  <motion.div
-                    className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 rounded-full border border-[#00C2FF]/20"
-                    animate={{ scale: [0.8, 1.1, 0.8], opacity: [0.3, 0.6, 0.3] }}
-                    transition={{ duration: 2, repeat: Infinity }}
-                  />
+                  {/* Focus ring */}
+                  <motion.div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-14 h-14 rounded-full border border-[#00C2FF]/15"
+                    animate={{ scale: [0.85, 1.12, 0.85], opacity: [0.2, 0.5, 0.2] }} transition={{ duration: 2.2, repeat: Infinity }} />
                 </div>
 
-                {/* Laser line — double beam */}
-                <motion.div
-                  className="absolute left-[18px] right-[18px] h-[3px] z-10"
+                {/* Primary laser */}
+                <motion.div className="absolute left-[16px] right-[16px] h-[2.5px] z-10"
                   style={{
-                    background: "linear-gradient(90deg, transparent 0%, rgba(0,194,255,0.4) 15%, #00C2FF 40%, #00E5FF 50%, #00C2FF 60%, rgba(0,194,255,0.4) 85%, transparent 100%)",
-                    boxShadow: "0 0 16px rgba(0,194,255,0.7), 0 0 40px rgba(0,194,255,0.3), 0 0 80px rgba(0,194,255,0.15)",
+                    background: "linear-gradient(90deg, transparent 0%, rgba(0,194,255,0.35) 12%, #00C2FF 38%, #00E5FF 50%, #00C2FF 62%, rgba(0,194,255,0.35) 88%, transparent 100%)",
+                    boxShadow: "0 0 14px rgba(0,194,255,0.6), 0 0 36px rgba(0,194,255,0.25), 0 0 70px rgba(0,194,255,0.1)",
                   }}
-                  initial={{ top: 24 }}
-                  animate={{ top: [24, 236, 24] }}
-                  transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                />
-                {/* Secondary subtle laser (offset) */}
-                <motion.div
-                  className="absolute left-[24px] right-[24px] h-[1px] z-10 opacity-30"
-                  style={{
-                    background: "linear-gradient(90deg, transparent, #00C2FF, transparent)",
-                  }}
-                  initial={{ top: 28 }}
-                  animate={{ top: [232, 28, 232] }}
-                  transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
-                />
+                  initial={{ top: 20 }} animate={{ top: [20, 228, 20] }}
+                  transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }} />
+                {/* Ghost laser */}
+                <motion.div className="absolute left-[22px] right-[22px] h-px z-10 opacity-25"
+                  style={{ background: "linear-gradient(90deg, transparent, #00C2FF, transparent)" }}
+                  initial={{ top: 225 }} animate={{ top: [225, 22, 225] }}
+                  transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }} />
               </div>
 
-              {/* Amount + ref */}
-              <motion.p
-                className="text-[28px] font-bold font-outfit text-[#00C2FF] mb-0.5"
-                animate={{ textShadow: ["0 0 20px rgba(0,194,255,0.2)", "0 0 40px rgba(0,194,255,0.5)", "0 0 20px rgba(0,194,255,0.2)"] }}
-                transition={{ duration: 2, repeat: Infinity }}
-              >
-                €{numericAmount.toFixed(2)}
+              {/* Amount */}
+              <motion.p className="text-[26px] font-bold font-outfit text-[#00C2FF] mb-0.5"
+                animate={{ textShadow: ["0 0 16px rgba(0,194,255,0.15)","0 0 36px rgba(0,194,255,0.4)","0 0 16px rgba(0,194,255,0.15)"] }}
+                transition={{ duration: 2, repeat: Infinity }}>
+                €{num.toFixed(2)}
               </motion.p>
-              <p className="text-[9px] text-[#333] font-mono tracking-wider mb-4">{reference}</p>
+              <p className="text-[9px] text-[#2A2A2A] font-mono tracking-wider mb-4">{txRef}</p>
 
-              {/* Progress */}
-              <div className="w-44 h-[3px] bg-white/[0.04] rounded-full overflow-hidden mb-2">
-                <motion.div
-                  className="h-full rounded-full"
-                  style={{
-                    width: `${scanProgress}%`,
-                    background: "linear-gradient(90deg, #00C2FF, #00E5FF)",
-                    boxShadow: "0 0 10px rgba(0,194,255,0.6)",
-                  }}
-                />
+              {/* Progress bar */}
+              <div className="w-40 h-[2.5px] bg-white/[0.035] rounded-full overflow-hidden mb-3">
+                <motion.div className="h-full rounded-full"
+                  style={{ width: `${prog}%`, background: "linear-gradient(90deg,#00C2FF,#00E5FF)", boxShadow: "0 0 8px rgba(0,194,255,0.5)" }} />
               </div>
 
-              <motion.p
-                className="text-[#444] text-[11px]"
-                animate={{ opacity: [0.3, 0.8, 0.3] }}
-                transition={{ duration: 1.5, repeat: Infinity }}
-              >
-                Hold device near terminal...
-              </motion.p>
+              {/* Instruction badge */}
+              <motion.div className="flex items-center gap-2 px-3.5 py-[6px] rounded-full"
+                style={{ background: "rgba(0,194,255,0.05)", border: "1px solid rgba(0,194,255,0.08)" }}
+                animate={{ opacity: [0.5, 1, 0.5] }} transition={{ duration: 2, repeat: Infinity }}>
+                <QrCode size={12} className="text-[#00C2FF]" />
+                <span className="text-[10px] text-[#00C2FF]/80 font-medium">Scan customer code</span>
+              </motion.div>
             </motion.div>
           )}
 
-          {/* ════ PROCESSING ════ */}
+          {/* ──────── STEP 4: PROCESSING ──────── */}
           {step === Step.PROCESSING && (
-            <motion.div
-              key="processing"
-              className="flex-1 flex flex-col items-center justify-center px-5"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.3 }}
-            >
-              {/* Icon */}
-              <div className="relative w-24 h-24 mb-7">
+            <motion.div key="s4" className="flex-1 flex flex-col items-center justify-center px-5"
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }}>
+              <div className="relative w-[88px] h-[88px] mb-6">
                 {[0, 1, 2].map((i) => (
-                  <motion.div
-                    key={i}
-                    className="absolute inset-0 rounded-full border border-[#00C2FF]/20"
-                    animate={{ scale: [1, 1.5 + i * 0.15], opacity: [0.4, 0] }}
-                    transition={{ duration: 1.5, repeat: Infinity, delay: i * 0.35 }}
-                  />
+                  <motion.div key={i} className="absolute inset-0 rounded-full border border-[#00C2FF]/15"
+                    animate={{ scale: [1, 1.45 + i * 0.12], opacity: [0.35, 0] }}
+                    transition={{ duration: 1.4, repeat: Infinity, delay: i * 0.3 }} />
                 ))}
-                <div
-                  className="absolute inset-0 rounded-full flex items-center justify-center"
-                  style={{
-                    background: "radial-gradient(circle, rgba(0,194,255,0.08) 0%, rgba(0,194,255,0.02) 100%)",
-                    border: "1px solid rgba(0,194,255,0.15)",
-                  }}
-                >
-                  <motion.div animate={{ rotate: 360 }} transition={{ duration: 1.2, repeat: Infinity, ease: "linear" }}>
-                    <Loader2 size={30} strokeWidth={1.5} className="text-[#00C2FF]" />
+                <div className="absolute inset-0 rounded-full flex items-center justify-center"
+                  style={{ background: "radial-gradient(circle,rgba(0,194,255,0.06) 0%,rgba(0,194,255,0.015) 100%)", border: "1px solid rgba(0,194,255,0.12)" }}>
+                  <motion.div animate={{ rotate: 360 }} transition={{ duration: 1.1, repeat: Infinity, ease: "linear" }}>
+                    <Loader2 size={28} strokeWidth={1.5} className="text-[#00C2FF]" />
                   </motion.div>
                 </div>
               </div>
-
-              <motion.p
-                className="text-[28px] font-bold font-outfit text-white tracking-tight mb-6"
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
-              >
-                €{numericAmount.toFixed(2)}
+              <motion.p className="text-[26px] font-bold font-outfit text-white tracking-tight mb-1.5"
+                initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}>
+                €{num.toFixed(2)}
               </motion.p>
-
-              <ProcessingSteps activeStep={processingStep} />
-
-              <motion.p
-                className="text-[10px] text-[#333] font-mono mt-6 tracking-wider"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.3 }}
-              >
-                {reference}
+              <motion.p className="text-[12px] text-[#444] font-medium mb-5"
+                animate={{ opacity: [0.35, 0.85, 0.35] }} transition={{ duration: 2, repeat: Infinity }}>
+                Securely processing payment...
               </motion.p>
+              <Steps at={pStep} />
+              <p className="text-[9px] text-[#1A1A1A] font-mono mt-5 tracking-wider">{txRef}</p>
             </motion.div>
           )}
 
-          {/* ════ SUCCESS ════ */}
+          {/* ──────── STEP 5: SUCCESS ──────── */}
           {step === Step.SUCCESS && (
-            <motion.div
-              key="success"
-              className="flex-1 flex flex-col items-center justify-center px-5 pb-6 relative"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-            >
-              <SuccessParticles />
+            <motion.div key="s5" className="flex-1 flex flex-col items-center justify-center px-5 pb-5 relative"
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              <Confetti />
 
-              {/* Vibration-style shimmer overlay */}
-              <motion.div
-                className="absolute inset-0 pointer-events-none"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: [0, 0.03, 0, 0.02, 0] }}
-                transition={{ duration: 0.5, delay: 0.1 }}
-                style={{ background: "linear-gradient(180deg, transparent 30%, rgba(0,210,106,0.15) 50%, transparent 70%)" }}
-              />
+              {/* Flash overlay */}
+              <motion.div className="absolute inset-0 pointer-events-none"
+                initial={{ opacity: 0 }} animate={{ opacity: [0, 0.04, 0, 0.02, 0] }} transition={{ duration: 0.5 }}
+                style={{ background: "linear-gradient(180deg,transparent 25%,rgba(0,210,106,0.18) 50%,transparent 75%)" }} />
 
               {/* Checkmark */}
-              <div className="relative w-[100px] h-[100px] mb-6">
-                {[0, 1, 2].map((i) => (
-                  <motion.div
-                    key={i}
-                    className="absolute inset-0 rounded-full border border-[#00D26A]/40"
-                    initial={{ scale: 1, opacity: 0.5 }}
-                    animate={{ scale: 1.4 + i * 0.2, opacity: 0 }}
-                    transition={{ duration: 2, repeat: Infinity, delay: 0.4 + i * 0.25 }}
-                  />
+              <div className="relative w-[118px] h-[118px] mb-6">
+                {[0, 1, 2, 3].map((i) => (
+                  <motion.div key={i} className="absolute inset-0 rounded-full border border-[#00D26A]/25"
+                    initial={{ scale: 1, opacity: 0.5 }} animate={{ scale: 1.35 + i * 0.22, opacity: 0 }}
+                    transition={{ duration: 2, repeat: Infinity, delay: 0.25 + i * 0.18 }} />
                 ))}
-                <motion.div
-                  className="absolute inset-0 rounded-full flex items-center justify-center"
+                <motion.div className="absolute inset-0 rounded-full flex items-center justify-center"
                   style={{
-                    background: "radial-gradient(circle at 40% 35%, rgba(0,210,106,0.2) 0%, rgba(0,210,106,0.04) 100%)",
-                    border: "1.5px solid rgba(0,210,106,0.25)",
+                    background: "radial-gradient(circle at 45% 38%,rgba(0,210,106,0.22) 0%,rgba(0,210,106,0.04) 100%)",
+                    border: "2px solid rgba(0,210,106,0.28)",
+                    boxShadow: "0 0 50px rgba(0,210,106,0.12), inset 0 0 24px rgba(0,210,106,0.04)",
                   }}
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ type: "spring", stiffness: 300, damping: 18, delay: 0.08 }}
-                >
-                  {/* Animated check path */}
-                  <motion.div
-                    initial={{ scale: 0, rotate: -45 }}
-                    animate={{ scale: 1, rotate: 0 }}
-                    transition={{ delay: 0.3, type: "spring", stiffness: 350, damping: 15 }}
-                  >
-                    <Check size={42} strokeWidth={2.5} className="text-[#00D26A]" />
+                  initial={{ scale: 0 }} animate={{ scale: [0, 1.1, 0.96, 1] }}
+                  transition={{ duration: 0.55, ease: [0.34, 1.56, 0.64, 1], delay: 0.04 }}>
+                  <motion.div initial={{ scale: 0, rotate: -50 }} animate={{ scale: 1, rotate: 0 }}
+                    transition={{ delay: 0.3, type: "spring", stiffness: 400, damping: 12 }}>
+                    <Check size={50} strokeWidth={2.5} className="text-[#00D26A]" />
                   </motion.div>
                 </motion.div>
-                <div className="absolute inset-0 rounded-full blur-3xl bg-[#00D26A]/20 pointer-events-none" />
+                {/* Glow bloom */}
+                <motion.div className="absolute inset-[-24px] rounded-full pointer-events-none" style={{ filter: "blur(44px)" }}
+                  initial={{ opacity: 0 }} animate={{ opacity: [0, 0.3, 0.18] }} transition={{ duration: 0.8, delay: 0.08 }}>
+                  <div className="w-full h-full rounded-full bg-[#00D26A]" />
+                </motion.div>
               </div>
 
-              {/* Amount + "vibration" wobble */}
-              <motion.p
-                className="text-[46px] font-bold font-outfit text-white tracking-tighter leading-none mb-1"
-                initial={{ scale: 0.8, opacity: 0 }}
-                animate={{ scale: [0.8, 1.04, 0.98, 1], opacity: 1 }}
-                transition={{ delay: 0.35, duration: 0.5 }}
-              >
-                €{numericAmount.toFixed(2)}
+              {/* Amount — scale + blur reveal */}
+              <motion.p className="text-[46px] font-bold font-outfit text-white tracking-[-0.03em] leading-none mb-1"
+                initial={{ scale: 0.7, opacity: 0, filter: "blur(6px)" }}
+                animate={{ scale: [0.7, 1.05, 0.97, 1], opacity: 1, filter: "blur(0px)" }}
+                transition={{ delay: 0.28, duration: 0.55 }}>
+                €{num.toFixed(2)}
               </motion.p>
-
-              <motion.p
-                className="text-[#00D26A] text-[13px] font-semibold mb-0.5"
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5 }}
-              >
+              <motion.p className="text-[#00D26A] text-[13px] font-semibold mb-0.5"
+                initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 }}>
                 Payment Successful
               </motion.p>
-
-              <motion.p
-                className="text-[#444] text-[11px] mb-5"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.55 }}
-              >
-                {merchant.businessName}
+              <motion.p className="text-[#444] text-[11px] mb-4"
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}>
+                {m.businessName}
               </motion.p>
 
-              {/* Receipt card */}
-              <motion.div
-                className="w-full rounded-[18px] overflow-hidden mb-5"
-                style={{
-                  background: "rgba(255,255,255,0.02)",
-                  border: "1px solid rgba(255,255,255,0.04)",
-                }}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.6 }}
-              >
+              {/* Receipt */}
+              <motion.div className="w-full rounded-[16px] overflow-hidden mb-5"
+                style={{ background: "rgba(255,255,255,0.018)", border: "1px solid rgba(255,255,255,0.035)" }}
+                initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.55 }}>
                 {[
-                  { label: "Reference", value: reference, mono: true },
-                  { label: "Date", value: completedAt ? formatDate(completedAt) : "—" },
-                  { label: "Time", value: completedAt ? formatTime(completedAt) : "—" },
-                  { label: "Status", value: "Completed", green: true, icon: <Check size={10} className="text-[#00D26A]" /> },
-                  { label: "New Balance", value: `€${wallet.balance.toLocaleString("de-DE", { minimumFractionDigits: 2 })}`, bold: true },
-                ].map((row, i, arr) => (
-                  <div key={i} className={`flex items-center justify-between px-4 py-2.5 ${i < arr.length - 1 ? "border-b border-white/[0.03]" : ""}`}>
-                    <span className="text-[9px] text-[#444] uppercase tracking-[0.1em] font-semibold">{row.label}</span>
+                  { l: "Reference", v: txRef, mono: true },
+                  { l: "Date", v: doneAt ? fmtDate(doneAt) : "—" },
+                  { l: "Time", v: doneAt ? fmtTime(doneAt) : "—" },
+                  { l: "Status", v: "Completed", green: true, icon: <Check size={9} className="text-[#00D26A]" /> },
+                  { l: "New Balance", v: `€${w.balance.toLocaleString("de-DE", { minimumFractionDigits: 2 })}`, bold: true },
+                ].map((r, i, a) => (
+                  <div key={i} className={`flex items-center justify-between px-4 py-[9px] ${i < a.length - 1 ? "border-b border-white/[0.03]" : ""}`}>
+                    <span className="text-[9px] text-[#3A3A3A] uppercase tracking-[0.1em] font-semibold">{r.l}</span>
                     <span className={`text-[11px] flex items-center gap-1
-                      ${row.mono ? "font-mono text-white/80" : ""}
-                      ${row.green ? "text-[#00D26A] font-semibold" : ""}
-                      ${row.bold ? "text-white font-semibold" : ""}
-                      ${!row.mono && !row.green && !row.bold ? "text-white/70" : ""}`}>
-                      {row.icon}{row.value}
+                      ${r.mono ? "font-mono text-white/75" : ""} ${r.green ? "text-[#00D26A] font-semibold" : ""}
+                      ${r.bold ? "text-white font-semibold" : ""} ${!r.mono && !r.green && !r.bold ? "text-white/60" : ""}`}>
+                      {r.icon}{r.v}
                     </span>
                   </div>
                 ))}
               </motion.div>
 
-              {/* Done */}
-              <motion.button
-                data-testid="done-btn"
-                className="w-full py-[14px] rounded-2xl bg-white/[0.04] text-white font-semibold text-[13px] border border-white/[0.06]"
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.7 }}
-                whileHover={{ backgroundColor: "rgba(255,255,255,0.07)" }}
-                whileTap={{ scale: 0.97 }}
-                onClick={() => { handleReset(); onNavigate("/"); }}
-              >
+              <motion.button data-testid="done-btn"
+                className="w-full py-[13px] rounded-[14px] bg-white/[0.035] text-white font-semibold text-[13px] border border-white/[0.05]"
+                initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.65 }}
+                whileHover={{ backgroundColor: "rgba(255,255,255,0.06)" }} whileTap={{ scale: 0.96 }}
+                onClick={() => { reset(); onNavigate("/"); }}>
                 Done
               </motion.button>
             </motion.div>
           )}
 
-          {/* ════ ERROR ════ */}
+          {/* ──────── STEP 6: ERROR ──────── */}
           {step === Step.ERROR && (
-            <motion.div
-              key="error"
-              className="flex-1 flex flex-col items-center justify-center px-5 pb-6 relative"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-            >
-              {/* Red flash overlay */}
-              <motion.div
-                className="absolute inset-0 pointer-events-none"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: [0, 0.08, 0, 0.04, 0] }}
-                transition={{ duration: 0.6 }}
-                style={{ background: "radial-gradient(circle at 50% 40%, rgba(255,71,87,0.3) 0%, transparent 70%)" }}
-              />
+            <motion.div key="s6" className="flex-1 flex flex-col items-center justify-center px-5 pb-5 relative"
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+
+              {/* Red flash */}
+              <motion.div className="absolute inset-0 pointer-events-none"
+                initial={{ opacity: 0 }} animate={{ opacity: [0, 0.1, 0, 0.05, 0] }} transition={{ duration: 0.55 }}
+                style={{ background: "radial-gradient(circle at 50% 38%,rgba(255,71,87,0.35) 0%,transparent 65%)" }} />
 
               {/* Error icon with shake */}
-              <div className="relative w-[100px] h-[100px] mb-6">
-                {/* Pulsing red glow rings */}
+              <div className="relative w-[110px] h-[110px] mb-6">
                 {[0, 1].map((i) => (
-                  <motion.div
-                    key={i}
-                    className="absolute inset-0 rounded-full border border-[#FF4757]/25"
-                    animate={{ scale: [1, 1.35 + i * 0.15], opacity: [0.4, 0] }}
-                    transition={{ duration: 1.5, repeat: Infinity, delay: i * 0.3 }}
-                  />
+                  <motion.div key={i} className="absolute inset-0 rounded-full border border-[#FF4757]/20"
+                    animate={{ scale: [1, 1.3 + i * 0.12], opacity: [0.3, 0] }}
+                    transition={{ duration: 1.4, repeat: Infinity, delay: i * 0.25 }} />
                 ))}
-                <motion.div
-                  className="absolute inset-0 rounded-full flex items-center justify-center"
+                <motion.div className="absolute inset-0 rounded-full flex items-center justify-center"
                   style={{
-                    background: "radial-gradient(circle at 40% 35%, rgba(255,71,87,0.18) 0%, rgba(255,71,87,0.03) 100%)",
-                    border: "1.5px solid rgba(255,71,87,0.25)",
+                    background: "radial-gradient(circle at 42% 38%,rgba(255,71,87,0.18) 0%,rgba(255,71,87,0.03) 100%)",
+                    border: "2px solid rgba(255,71,87,0.22)",
+                    boxShadow: "0 0 50px rgba(255,71,87,0.1)",
                   }}
                   initial={{ scale: 0 }}
-                  animate={{ scale: [0, 1.06, 0.97, 1], x: [0, 0, -8, 10, -10, 8, -6, 4, 0] }}
+                  animate={{ scale: [0, 1.08, 0.96, 1], x: [0, 0, -10, 12, -12, 10, -6, 4, 0] }}
                   transition={{
-                    scale: { duration: 0.35, ease: "easeOut" },
-                    x: { delay: 0.3, duration: 0.6, ease: "easeInOut" },
-                  }}
-                >
-                  <motion.div
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    transition={{ delay: 0.2, type: "spring", stiffness: 350 }}
-                  >
-                    <X size={42} strokeWidth={2.5} className="text-[#FF4757]" />
+                    scale: { duration: 0.4, ease: "easeOut" },
+                    x: { delay: 0.35, duration: 0.55, ease: "easeInOut" },
+                  }}>
+                  <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}
+                    transition={{ delay: 0.18, type: "spring", stiffness: 380 }}>
+                    <AlertTriangle size={44} strokeWidth={2} className="text-[#FF4757]" />
                   </motion.div>
                 </motion.div>
-                <div className="absolute inset-0 rounded-full blur-3xl bg-[#FF4757]/20 pointer-events-none" />
+                <motion.div className="absolute inset-[-18px] rounded-full pointer-events-none" style={{ filter: "blur(40px)" }}
+                  initial={{ opacity: 0 }} animate={{ opacity: [0, 0.25, 0.15] }} transition={{ duration: 0.7, delay: 0.1 }}>
+                  <div className="w-full h-full rounded-full bg-[#FF4757]" />
+                </motion.div>
               </div>
 
-              {/* Amount with wobble */}
-              <motion.p
-                className="text-[46px] font-bold font-outfit text-white tracking-tighter leading-none mb-1"
-                initial={{ scale: 0.85, opacity: 0 }}
-                animate={{ scale: [0.85, 1.03, 0.98, 1], opacity: 1 }}
-                transition={{ delay: 0.25, duration: 0.5 }}
-              >
-                €{numericAmount.toFixed(2)}
+              <motion.p className="text-[44px] font-bold font-outfit text-white tracking-[-0.03em] leading-none mb-1"
+                initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: [0.8, 1.04, 0.97, 1], opacity: 1 }}
+                transition={{ delay: 0.22, duration: 0.5 }}>
+                €{num.toFixed(2)}
               </motion.p>
-
-              <motion.p
-                className="text-[#FF4757] text-[13px] font-semibold mb-2"
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4 }}
-              >
+              <motion.p className="text-[#FF4757] text-[13px] font-semibold mb-1.5"
+                initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.38 }}>
                 Payment Declined
               </motion.p>
-
-              <motion.p
-                className="text-[#444] text-[11px] text-center mb-8 max-w-[260px] leading-relaxed"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.45 }}
-              >
-                {error || "Insufficient balance. Please top up your wallet and try again."}
+              <motion.p className="text-[#444] text-[11px] text-center max-w-[250px] leading-relaxed mb-7"
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.42 }}>
+                {err || "Insufficient balance. Please top up your wallet and try again."}
               </motion.p>
 
-              <div className="w-full space-y-2.5">
-                <motion.button
-                  data-testid="try-again-btn"
-                  className="w-full py-[14px] rounded-2xl font-semibold text-[13px] text-white"
-                  style={{
-                    background: "linear-gradient(135deg, #FF4757, #E8384F)",
-                    boxShadow: "0 8px 32px rgba(255,71,87,0.25)",
-                  }}
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.5 }}
-                  whileHover={{ scale: 1.01 }}
-                  whileTap={{ scale: 0.97 }}
-                  onClick={handleReset}
-                >
+              <div className="w-full space-y-2">
+                <motion.button data-testid="try-again-btn"
+                  className="w-full py-[13px] rounded-[14px] font-semibold text-[13px] text-white"
+                  style={{ background: "linear-gradient(135deg,#FF4757,#E8384F)", boxShadow: "0 6px 28px rgba(255,71,87,0.22)" }}
+                  initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.48 }}
+                  whileTap={{ scale: 0.96 }} onClick={reset}>
                   Try Again
                 </motion.button>
-                <motion.button
-                  data-testid="cancel-btn"
-                  className="w-full py-3 rounded-2xl bg-transparent text-[#555] font-semibold text-[13px]"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.55 }}
-                  whileTap={{ scale: 0.97 }}
-                  onClick={() => { handleReset(); onNavigate("/"); }}
-                >
+                <motion.button data-testid="cancel-btn"
+                  className="w-full py-3 rounded-[14px] text-[#444] font-semibold text-[13px]"
+                  initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.53 }}
+                  whileTap={{ scale: 0.96 }} onClick={() => { reset(); onNavigate("/"); }}>
                   Cancel
                 </motion.button>
               </div>
