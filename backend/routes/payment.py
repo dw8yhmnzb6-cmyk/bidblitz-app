@@ -283,40 +283,71 @@ async def get_my_barcode(request: Request):
 
 # ── Merchant-Initiated Scan Payment ──
 
+import re
+_BARCODE_RE = re.compile(r"^BLZ-[A-F0-9]{12}$")
+
+
 @router.post("/merchant-scan")
 @limiter.limit(RATE_PAYMENT)
 async def merchant_scan_payment(req: MerchantScanPayment, request: Request):
     """
     Merchant scans customer barcode to initiate a payment.
-    The merchant must be authenticated. The customer's wallet is charged.
+    Idempotent: if idempotency_key is provided and already processed, returns cached result.
+    Uses atomic balance update to prevent double-charge.
     """
     merchant_user = await get_current_user(request)
     merchant_user_id = str(merchant_user["_id"])
     ip, ua = get_client_info(request)
 
-    # Find the merchant profile
+    # ── 1. Barcode format validation ──
+    barcode = req.customer_barcode.strip().upper()
+    if not _BARCODE_RE.match(barcode):
+        raise HTTPException(status_code=400, detail="scan.invalid_barcode_format")
+
+    # ── 2. Idempotency check ──
+    idem_key = req.idempotency_key
+    if idem_key:
+        existing = await db.transactions.find_one(
+            {"idempotency_key": idem_key, "payment_method": "barcode_scan"},
+            {"_id": 0}
+        )
+        if existing:
+            # Already processed — return cached success
+            return {
+                "success": True,
+                "reference": existing["reference"],
+                "amount": existing.get("gross_amount", abs(existing.get("amount", 0))),
+                "fee": existing.get("fee_amount", 0),
+                "net_to_merchant": existing.get("net_amount", 0),
+                "customer_name": existing.get("description", "").replace("Payment to ", ""),
+                "customer_new_balance": 0,  # Not re-fetched for cached
+                "merchant_name": existing.get("merchant_name", ""),
+                "transaction": existing,
+                "duplicate": True,
+            }
+
+    # ── 3. Merchant profile ──
     merchant = await db.merchants.find_one({"user_id": merchant_user_id})
     if not merchant:
         raise HTTPException(status_code=403, detail="No merchant profile found")
 
     merchant_name = merchant.get("business_name", "Unknown Merchant")
 
-    # Find customer by barcode
-    customer = await db.users.find_one({"payment_barcode": req.customer_barcode})
+    # ── 4. Find customer by barcode ──
+    customer = await db.users.find_one({"payment_barcode": barcode})
     if not customer:
         await log_audit(AuditEvent.PAYMENT_FAILED, user_id=merchant_user_id, email=merchant_user["email"],
                         ip=ip, user_agent=ua,
-                        details={"reason": "invalid_barcode", "barcode": req.customer_barcode[:8] + "***"},
+                        details={"reason": "invalid_barcode", "barcode": barcode[:8] + "***"},
                         severity="warn")
-        raise HTTPException(status_code=404, detail="Customer barcode not found")
+        raise HTTPException(status_code=404, detail="scan.barcode_not_found")
 
     customer_id = str(customer["_id"])
-    customer_balance = customer.get("balance", 0.0)
 
     if customer_id == merchant_user_id:
         raise HTTPException(status_code=400, detail="Cannot charge yourself")
 
-    # ── Compliance check on customer ──
+    # ── 5. Compliance check ──
     compliance = await run_compliance_check(customer_id, "payment", req.amount)
     if compliance["outcome"] == BLOCKED:
         await log_audit(AuditEvent.PAYMENT_FAILED, user_id=customer_id, email=customer["email"],
@@ -326,24 +357,26 @@ async def merchant_scan_payment(req: MerchantScanPayment, request: Request):
                         severity="warn")
         raise HTTPException(status_code=403, detail=compliance["reason"])
 
-    # ── Balance check ──
-    if customer_balance < req.amount:
-        await log_audit(AuditEvent.PAYMENT_FAILED, user_id=customer_id, email=customer["email"],
-                        ip=ip, user_agent=ua,
-                        details={"reason": "insufficient_balance", "amount": req.amount, "balance": customer_balance,
-                                 "initiated_by": "merchant"},
-                        severity="warn")
-        raise HTTPException(status_code=400, detail="Customer has insufficient balance")
-
+    # ── 6. Atomic balance deduction (prevents double-charge via race condition) ──
     ref = generate_reference()
     fee = calculate_fee(req.amount, "payment")
     net_to_merchant = round(req.amount - fee, 2)
     now = datetime.now(timezone.utc).isoformat()
 
-    # Deduct from customer
-    await db.users.update_one({"_id": customer["_id"]}, {"$inc": {"balance": -req.amount}})
+    deduct_result = await db.users.update_one(
+        {"_id": customer["_id"], "balance": {"$gte": req.amount}},
+        {"$inc": {"balance": -req.amount}},
+    )
 
-    # Credit merchant
+    if deduct_result.modified_count == 0:
+        # Balance was insufficient (or changed between check and deduct)
+        await log_audit(AuditEvent.PAYMENT_FAILED, user_id=customer_id, email=customer["email"],
+                        ip=ip, user_agent=ua,
+                        details={"reason": "insufficient_balance", "amount": req.amount, "initiated_by": "merchant"},
+                        severity="warn")
+        raise HTTPException(status_code=400, detail="scan.insufficient")
+
+    # ── 7. Credit merchant (only after successful deduction) ──
     await db.merchants.update_one(
         {"_id": merchant["_id"]},
         {"$inc": {
@@ -355,53 +388,54 @@ async def merchant_scan_payment(req: MerchantScanPayment, request: Request):
         }}
     )
 
-    # Customer transaction (debit)
+    # ── 8. Create transaction records ──
+    base_txn = {
+        "reference": ref,
+        "gross_amount": req.amount,
+        "fee_amount": fee,
+        "net_amount": net_to_merchant,
+        "merchant_name": merchant_name,
+        "merchant_id": str(merchant["_id"]),
+        "status": "completed",
+        "payment_method": "barcode_scan",
+        "created_at": now,
+    }
+    if idem_key:
+        base_txn["idempotency_key"] = idem_key
+
     customer_txn = {
+        **base_txn,
         "id": secrets.token_hex(8),
         "user_id": customer_id,
         "type": "payment",
         "amount": -req.amount,
-        "gross_amount": req.amount,
-        "fee_amount": fee,
-        "net_amount": net_to_merchant,
         "description": req.description or f"Payment to {merchant_name}",
-        "merchant_name": merchant_name,
-        "merchant_id": str(merchant["_id"]),
-        "status": "completed",
-        "reference": ref,
-        "payment_method": "barcode_scan",
         "category": "payment",
-        "created_at": now,
     }
     await db.transactions.insert_one(customer_txn)
     customer_txn.pop("_id", None)
 
-    # Merchant transaction (credit)
     merchant_txn = {
+        **base_txn,
         "id": secrets.token_hex(8),
         "user_id": merchant_user_id,
         "type": "merchant_credit",
         "amount": net_to_merchant,
-        "gross_amount": req.amount,
-        "fee_amount": fee,
         "description": f"Barcode payment from {customer.get('name', 'Customer')}",
-        "merchant_name": merchant_name,
-        "merchant_id": str(merchant["_id"]),
-        "status": "completed",
-        "reference": ref,
-        "payment_method": "barcode_scan",
         "category": "income",
-        "created_at": now,
     }
     await db.transactions.insert_one(merchant_txn)
 
+    # ── 9. Fetch updated balance ──
     updated_customer = await db.users.find_one({"_id": customer["_id"]})
 
+    # ── 10. Audit log ──
     await log_audit(AuditEvent.PAYMENT_SUCCESS, user_id=customer_id, email=customer["email"],
                     ip=ip, user_agent=ua,
                     details={"reference": ref, "amount": req.amount, "fee": fee,
                              "merchant": merchant_name, "initiated_by": "merchant_scan",
-                             "merchant_user_id": merchant_user_id})
+                             "merchant_user_id": merchant_user_id,
+                             "idempotency_key": idem_key or "none"})
 
     return {
         "success": True,

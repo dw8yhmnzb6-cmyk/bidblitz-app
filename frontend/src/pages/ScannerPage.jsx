@@ -12,6 +12,9 @@ import ErrorState from "../components/ErrorState";
 const Step = { AMOUNT: 0, SCANNING: 1, PROCESSING: 2, SUCCESS: 3, ERROR: 4 };
 
 const QUICK_AMOUNTS = [5, 10, 15, 25, 50, 100];
+const BARCODE_RE = /^BLZ-[A-F0-9]{12}$/;
+
+const generateIdempotencyKey = () => `idem_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 
 const ScannerPage = ({ onNavigate }) => {
   const user = useUser();
@@ -25,6 +28,7 @@ const ScannerPage = ({ onNavigate }) => {
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
   const [processing, setProcessing] = useState(false);
+  const [idempotencyKey, setIdempotencyKey] = useState(null);
   const barcodeRef = useRef(null);
 
   const numAmount = parseFloat(amount) || 0;
@@ -41,13 +45,22 @@ const ScannerPage = ({ onNavigate }) => {
     if (!isValidAmount) return;
     if (!online) { setError(t("error.offline")); setStep(Step.ERROR); return; }
     setBarcodeInput("");
+    setIdempotencyKey(generateIdempotencyKey());
     setStep(Step.SCANNING);
   };
 
   const handleBarcodeSubmit = useCallback(async () => {
-    const code = barcodeInput.trim();
+    if (processing) return; // Prevent double-submit
+    const code = barcodeInput.trim().toUpperCase();
     if (!code || code.length < 6) return;
     if (!online) { setError(t("error.offline")); setStep(Step.ERROR); return; }
+
+    // Client-side barcode format validation
+    if (!BARCODE_RE.test(code)) {
+      setError(t("scan.invalid_barcode_format") || "Invalid barcode format. Expected: BLZ-XXXXXXXXXXXX");
+      setStep(Step.ERROR);
+      return;
+    }
 
     setStep(Step.PROCESSING);
     setProcessing(true);
@@ -57,6 +70,7 @@ const ScannerPage = ({ onNavigate }) => {
         customer_barcode: code,
         amount: numAmount,
         description: `Barcode payment EUR ${numAmount.toFixed(2)}`,
+        idempotency_key: idempotencyKey,
       });
 
       if (res.success) {
@@ -71,10 +85,12 @@ const ScannerPage = ({ onNavigate }) => {
       const msg = e?.message || "";
       if (msg.startsWith("compliance.")) {
         setError(t(msg.split("|")[0]) || t("scan.error"));
-      } else if (msg.includes("insufficient")) {
-        setError(t("scan.insufficient") || msg);
-      } else if (msg.includes("not found")) {
-        setError(t("scan.barcode_not_found") || msg);
+      } else if (msg.includes("insufficient") || msg === "scan.insufficient") {
+        setError(t("scan.insufficient") || "Insufficient balance");
+      } else if (msg.includes("not found") || msg === "scan.barcode_not_found") {
+        setError(t("scan.barcode_not_found") || "Barcode not found");
+      } else if (msg === "scan.invalid_barcode_format") {
+        setError(t("scan.invalid_barcode_format") || "Invalid barcode format");
       } else {
         setError(msg || t("scan.error"));
       }
@@ -82,7 +98,7 @@ const ScannerPage = ({ onNavigate }) => {
     } finally {
       setProcessing(false);
     }
-  }, [barcodeInput, numAmount, online, t, wallet]);
+  }, [barcodeInput, numAmount, online, t, wallet, processing, idempotencyKey]);
 
   // Auto-submit when barcode is typed/scanned (13+ chars or Enter)
   const handleBarcodeKeyDown = (e) => {
@@ -97,6 +113,7 @@ const ScannerPage = ({ onNavigate }) => {
     setBarcodeInput("");
     setResult(null);
     setError("");
+    setIdempotencyKey(null);
   };
 
   const handleNewPayment = () => {
@@ -104,6 +121,7 @@ const ScannerPage = ({ onNavigate }) => {
     setBarcodeInput("");
     setResult(null);
     setError("");
+    setIdempotencyKey(null);
   };
 
   // ─────── Render ───────
@@ -258,13 +276,13 @@ const ScannerPage = ({ onNavigate }) => {
                 <motion.button
                   data-testid="confirm-barcode-btn"
                   onClick={handleBarcodeSubmit}
-                  disabled={barcodeInput.trim().length < 6}
+                  disabled={barcodeInput.trim().length < 6 || processing}
                   className={`w-full py-3.5 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all ${
-                    barcodeInput.trim().length >= 6
+                    barcodeInput.trim().length >= 6 && !processing
                       ? "bg-[#00D26A] text-white"
                       : "bg-white/[0.04] text-[#444] cursor-not-allowed"
                   }`}
-                  whileTap={barcodeInput.trim().length >= 6 ? { scale: 0.98 } : {}}
+                  whileTap={barcodeInput.trim().length >= 6 && !processing ? { scale: 0.98 } : {}}
                 >
                   <Zap size={16} />
                   {t("scan.charge") || "Charge Customer"}

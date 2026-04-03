@@ -71,3 +71,4 @@ class MerchantScanPayment(BaseModel):
     customer_barcode: str = Field(min_length=6, max_length=64)
     amount: float = Field(gt=0)
     description: Optional[str] = ""
+    idempotency_key: Optional[str] = None
