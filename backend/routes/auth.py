@@ -1,0 +1,137 @@
+from fastapi import APIRouter, HTTPException, Request, Response
+from datetime import datetime, timezone
+from bson import ObjectId
+from core.database import db
+from core.security import (
+    hash_password, verify_password, create_access_token, create_refresh_token,
+    set_auth_cookies, clear_auth_cookies, serialize_user, get_current_user
+)
+from core.config import MAX_LOGIN_ATTEMPTS, LOCKOUT_MINUTES
+from schemas.models import RegisterRequest, LoginRequest
+import secrets
+import random
+
+router = APIRouter(prefix="/api/auth", tags=["auth"])
+
+
+def generate_card_number():
+    groups = [str(random.randint(1000, 9999)) for _ in range(4)]
+    return " ".join(groups)
+
+
+def generate_card_expiry():
+    month = random.randint(1, 12)
+    year = random.randint(27, 32)
+    return f"{month:02d}/{year}"
+
+
+@router.post("/register")
+async def register(req: RegisterRequest, response: Response):
+    email = req.email.lower().strip()
+    existing = await db.users.find_one({"email": email})
+    if existing:
+        raise HTTPException(status_code=400, detail="Email already registered")
+
+    user_doc = {
+        "email": email,
+        "password_hash": hash_password(req.password),
+        "name": req.name.strip(),
+        "role": "user",
+        "balance": 0.0,
+        "currency": "EUR",
+        "card_number": generate_card_number(),
+        "card_expiry": generate_card_expiry(),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    result = await db.users.insert_one(user_doc)
+    user_doc["_id"] = result.inserted_id
+
+    # Create merchant profile for every user
+    await db.merchants.insert_one({
+        "user_id": str(result.inserted_id),
+        "business_name": f"{req.name.strip()}'s Store",
+        "total_earnings": 0.0,
+        "total_transactions": 0,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    })
+
+    access_token = create_access_token(str(result.inserted_id), email)
+    refresh_token = create_refresh_token(str(result.inserted_id))
+    set_auth_cookies(response, access_token, refresh_token)
+
+    return serialize_user(user_doc)
+
+
+@router.post("/login")
+async def login(req: LoginRequest, request: Request, response: Response):
+    email = req.email.lower().strip()
+    ip = request.client.host if request.client else "unknown"
+    identifier = f"{ip}:{email}"
+
+    # Brute force check
+    attempt = await db.login_attempts.find_one({"identifier": identifier})
+    if attempt and attempt.get("attempts", 0) >= MAX_LOGIN_ATTEMPTS:
+        locked_until = attempt.get("locked_until")
+        if locked_until and datetime.now(timezone.utc) < datetime.fromisoformat(locked_until):
+            raise HTTPException(status_code=429, detail=f"Account locked. Try again in {LOCKOUT_MINUTES} minutes.")
+        else:
+            await db.login_attempts.delete_one({"identifier": identifier})
+
+    user = await db.users.find_one({"email": email})
+    if not user or not verify_password(req.password, user["password_hash"]):
+        # Track failed attempt
+        if attempt:
+            new_attempts = attempt.get("attempts", 0) + 1
+            update = {"$set": {"attempts": new_attempts}}
+            if new_attempts >= MAX_LOGIN_ATTEMPTS:
+                locked = (datetime.now(timezone.utc) + __import__("datetime").timedelta(minutes=LOCKOUT_MINUTES)).isoformat()
+                update["$set"]["locked_until"] = locked
+            await db.login_attempts.update_one({"identifier": identifier}, update)
+        else:
+            await db.login_attempts.insert_one({"identifier": identifier, "attempts": 1})
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+
+    # Clear failed attempts on success
+    await db.login_attempts.delete_many({"identifier": identifier})
+
+    access_token = create_access_token(str(user["_id"]), email)
+    refresh_token = create_refresh_token(str(user["_id"]))
+    set_auth_cookies(response, access_token, refresh_token)
+
+    return serialize_user(user)
+
+
+@router.get("/me")
+async def get_me(request: Request):
+    user = await get_current_user(request)
+    return serialize_user(user)
+
+
+@router.post("/logout")
+async def logout(response: Response):
+    clear_auth_cookies(response)
+    return {"message": "Logged out"}
+
+
+@router.post("/refresh")
+async def refresh_token(request: Request, response: Response):
+    import jwt as pyjwt
+    from core.config import JWT_SECRET, JWT_ALGORITHM
+
+    token = request.cookies.get("refresh_token")
+    if not token:
+        raise HTTPException(status_code=401, detail="No refresh token")
+    try:
+        payload = pyjwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        if payload.get("type") != "refresh":
+            raise HTTPException(status_code=401, detail="Invalid token type")
+        user = await db.users.find_one({"_id": ObjectId(payload["sub"])})
+        if not user:
+            raise HTTPException(status_code=401, detail="User not found")
+        new_access = create_access_token(str(user["_id"]), user["email"])
+        response.set_cookie(key="access_token", value=new_access, httponly=True, secure=False, samesite="lax", max_age=900, path="/")
+        return serialize_user(user)
+    except pyjwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Refresh token expired")
+    except pyjwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid refresh token")

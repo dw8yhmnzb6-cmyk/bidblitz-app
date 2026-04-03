@@ -1,8 +1,6 @@
 import { motion } from "framer-motion";
 import { Bell, ChevronRight, Sparkles, TrendingUp } from "lucide-react";
-import { useUser } from "../store";
-import { useWallet } from "../store";
-import { useWalletStats } from "../hooks";
+import { useAuth } from "../store/AuthContext";
 import { getGreeting } from "../models";
 import { features } from "../models/initialData";
 import { FeatureCard } from "../components/FeatureCard";
@@ -25,9 +23,10 @@ const itemVariants = {
 };
 
 export const HomePage = ({ onNavigate }) => {
-  const user = useUser();
-  const { balance, currency } = useWallet();
-  const { percentageChange } = useWalletStats();
+  const { user } = useAuth();
+  const balance = user?.balance ?? 0;
+  const currency = user?.currency === "EUR" ? "\u20AC" : (user?.currency ?? "\u20AC");
+  const userName = user?.name ?? "User";
 
   return (
     <motion.div
@@ -49,7 +48,7 @@ export const HomePage = ({ onNavigate }) => {
             whileTap={{ scale: 0.95 }}
           >
             <img
-              src={user.avatar}
+              src={`https://api.dicebear.com/7.x/initials/svg?seed=${userName}&backgroundColor=00C2FF`}
               alt="Profile"
               className="w-11 h-11 sm:w-14 sm:h-14 rounded-full object-cover"
               style={{
@@ -62,7 +61,7 @@ export const HomePage = ({ onNavigate }) => {
           </motion.div>
           <div>
             <p className="text-[#666] text-xs sm:text-sm font-medium">{getGreeting()}</p>
-            <h2 className="text-white font-semibold font-outfit text-lg sm:text-xl tracking-tight">{user.name}</h2>
+            <h2 className="text-white font-semibold font-outfit text-lg sm:text-xl tracking-tight">{userName}</h2>
           </div>
         </div>
         
@@ -133,7 +132,7 @@ export const HomePage = ({ onNavigate }) => {
           >
             <span className="px-3 sm:px-4 py-1 sm:py-1.5 bg-[#00D26A]/10 text-[#00D26A] text-[10px] sm:text-xs font-semibold rounded-full border border-[#00D26A]/20 flex items-center gap-1.5">
               <TrendingUp size={10} className="sm:w-3 sm:h-3" />
-              {percentageChange > 0 ? '+' : ''}{percentageChange}% this month
+              +2.4% this month
             </span>
           </motion.div>
         </div>

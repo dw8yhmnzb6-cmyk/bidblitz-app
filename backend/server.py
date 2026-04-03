@@ -1,89 +1,102 @@
-from fastapi import FastAPI, APIRouter
+import sys
+from pathlib import Path
+
+# Ensure backend root is in Python path
+sys.path.insert(0, str(Path(__file__).parent))
+
 from dotenv import load_dotenv
+load_dotenv(Path(__file__).parent / '.env')
+
+from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware
-from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
-from pathlib import Path
-from pydantic import BaseModel, Field, ConfigDict
-from typing import List
-import uuid
-from datetime import datetime, timezone
 
+from core.database import db, create_indexes, close_connection
+from core.security import hash_password, verify_password
+from routes.auth import router as auth_router
+from routes.wallet import router as wallet_router
+from routes.payment import router as payment_router
+from routes.merchant import router as merchant_router
+from routes.transactions import router as transactions_router
 
-ROOT_DIR = Path(__file__).parent
-load_dotenv(ROOT_DIR / '.env')
+app = FastAPI(title="BidBlitz V2 API", version="1.0.0")
 
-# MongoDB connection
-mongo_url = os.environ['MONGO_URL']
-client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ['DB_NAME']]
-
-# Create the main app without a prefix
-app = FastAPI()
-
-# Create a router with the /api prefix
-api_router = APIRouter(prefix="/api")
-
-
-# Define Models
-class StatusCheck(BaseModel):
-    model_config = ConfigDict(extra="ignore")  # Ignore MongoDB's _id field
-    
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    client_name: str
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-
-class StatusCheckCreate(BaseModel):
-    client_name: str
-
-# Add your routes to the router instead of directly to app
-@api_router.get("/")
-async def root():
-    return {"message": "Hello World"}
-
-@api_router.post("/status", response_model=StatusCheck)
-async def create_status_check(input: StatusCheckCreate):
-    status_dict = input.model_dump()
-    status_obj = StatusCheck(**status_dict)
-    
-    # Convert to dict and serialize datetime to ISO string for MongoDB
-    doc = status_obj.model_dump()
-    doc['timestamp'] = doc['timestamp'].isoformat()
-    
-    _ = await db.status_checks.insert_one(doc)
-    return status_obj
-
-@api_router.get("/status", response_model=List[StatusCheck])
-async def get_status_checks():
-    # Exclude MongoDB's _id field from the query results
-    status_checks = await db.status_checks.find({}, {"_id": 0}).to_list(1000)
-    
-    # Convert ISO string timestamps back to datetime objects
-    for check in status_checks:
-        if isinstance(check['timestamp'], str):
-            check['timestamp'] = datetime.fromisoformat(check['timestamp'])
-    
-    return status_checks
-
-# Include the router in the main app
-app.include_router(api_router)
-
+# CORS
+frontend_url = os.environ.get("FRONTEND_URL", "http://localhost:3000")
 app.add_middleware(
     CORSMiddleware,
+    allow_origins=["*"],
     allow_credentials=True,
-    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Configure logging
+# Include routers
+app.include_router(auth_router)
+app.include_router(wallet_router)
+app.include_router(payment_router)
+app.include_router(merchant_router)
+app.include_router(transactions_router)
+
+# Health check
+@app.get("/api")
+async def root():
+    return {"message": "BidBlitz V2 API", "status": "online"}
+
+
+@app.on_event("startup")
+async def startup():
+    await create_indexes()
+    await seed_admin()
+    logger.info("BidBlitz V2 API started")
+
+
+@app.on_event("shutdown")
+async def shutdown():
+    await close_connection()
+
+
+async def seed_admin():
+    from datetime import datetime, timezone
+    from core.config import ADMIN_EMAIL, ADMIN_PASSWORD
+    import random
+
+    admin_email = ADMIN_EMAIL.lower().strip()
+    existing = await db.users.find_one({"email": admin_email})
+
+    if existing is None:
+        hashed = hash_password(ADMIN_PASSWORD)
+        result = await db.users.insert_one({
+            "email": admin_email,
+            "password_hash": hashed,
+            "name": "Admin",
+            "role": "admin",
+            "balance": 1500.00,
+            "currency": "EUR",
+            "card_number": f"{random.randint(4000,4999)} {random.randint(1000,9999)} {random.randint(1000,9999)} {random.randint(1000,9999)}",
+            "card_expiry": "09/28",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        })
+        # Create merchant profile for admin
+        await db.merchants.insert_one({
+            "user_id": str(result.inserted_id),
+            "business_name": "BidBlitz HQ",
+            "total_earnings": 0.0,
+            "total_transactions": 0,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        })
+        logger.info(f"Admin user seeded: {admin_email}")
+    elif not verify_password(ADMIN_PASSWORD, existing["password_hash"]):
+        await db.users.update_one(
+            {"email": admin_email},
+            {"$set": {"password_hash": hash_password(ADMIN_PASSWORD)}}
+        )
+        logger.info("Admin password updated")
+
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
-
-@app.on_event("shutdown")
-async def shutdown_db_client():
-    client.close()
