@@ -8,6 +8,7 @@ import HomePage from "./pages/HomePage";
 import WalletPage from "./pages/WalletPage";
 import ScannerPage from "./pages/ScannerPage";
 import MerchantPage from "./pages/MerchantPage";
+import AdminPage from "./pages/AdminPage";
 import MorePage from "./pages/MorePage";
 import AuthPage from "./pages/AuthPage";
 
@@ -65,6 +66,8 @@ function AppContent() {
         return <ScannerPage onNavigate={handleNavigate} />;
       case "/merchant":
         return <MerchantPage onNavigate={handleNavigate} />;
+      case "/admin":
+        return user.role === "admin" ? <AdminPage onNavigate={handleNavigate} /> : <HomePage onNavigate={handleNavigate} />;
       case "/more":
         return <MorePage onNavigate={handleNavigate} />;
       default:

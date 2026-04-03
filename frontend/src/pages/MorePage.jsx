@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, User, CreditCard, Bell, Shield, Moon, Settings,
   HelpCircle, LogOut, ChevronRight, ChevronLeft, Sparkles,
-  Globe, Lock, Eye, Fingerprint, Smartphone, Mail, Calendar, Gift
+  Globe, Lock, Eye, Fingerprint, Smartphone, Mail, Calendar, Gift, LayoutDashboard
 } from "lucide-react";
 import { useUser, useI18n } from "../store";
 import { api } from "../services/api";
@@ -244,6 +244,10 @@ export const MorePage = ({ onNavigate }) => {
     { id: "help", icon: HelpCircle, label: t("more.help"), desc: t("more.help_desc"), color: "#FF6B6B" },
   ];
 
+  const adminMenu = user.role === "admin" ? [
+    { id: "admin-dashboard", icon: LayoutDashboard, label: "Admin Dashboard", desc: "Platform Management", color: "#FF6B6B", action: () => onNavigate("/admin") },
+  ] : [];
+
   const renderGroup = (title, items, delay) => (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
@@ -364,6 +368,7 @@ export const MorePage = ({ onNavigate }) => {
         {renderGroup(t("more.growth"), growthMenu, 0.2)}
         {renderGroup(t("more.app"), appMenu, 0.26)}
         {renderGroup(t("more.support"), supportMenu, 0.32)}
+        {adminMenu.length > 0 && renderGroup("Admin", adminMenu, 0.38)}
 
         {/* ── Logout ── */}
         <motion.button

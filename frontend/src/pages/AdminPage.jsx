@@ -5,7 +5,9 @@ import {
   Download, Search, ChevronRight, Loader2, Check, X,
   Clock, AlertCircle, CircleDollarSign, Activity, Settings
 } from "lucide-react";
-import { useUser } from "../store";
+import { useUser, useI18n } from "../store";
+import ExportSection from "../components/ExportSection";
+import { api as apiService } from "../services/api";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 const slide = { duration: 0.3, ease: [0.32, 0.72, 0, 1] };
@@ -51,6 +53,7 @@ const tabs = [
 
 export const AdminPage = ({ onNavigate }) => {
   const user = useUser();
+  const { t } = useI18n();
   const [tab, setTab] = useState("overview");
   const [loading, setLoading] = useState(true);
   const [overview, setOverview] = useState(null);
@@ -62,6 +65,14 @@ export const AdminPage = ({ onNavigate }) => {
   const [search, setSearch] = useState("");
   const [payoutFilter, setPayoutFilter] = useState("");
   const [actionLoading, setActionLoading] = useState(null);
+
+  const adminExports = [
+    { key: "transactions", label: t("export.transactions"), action: (f) => apiService.exportAdminTransactions(f) },
+    { key: "payouts", label: t("export.payouts"), action: (f) => apiService.exportAdminPayouts(f) },
+    { key: "merchants", label: t("export.merchants"), action: () => apiService.exportAdminMerchants() },
+    { key: "revenue", label: t("export.revenue"), action: (f) => apiService.exportAdminRevenue(f) },
+    { key: "users", label: t("export.users"), action: () => apiService.exportAdminUsers() },
+  ];
 
   const load = useCallback(async (t) => {
     setLoading(true);
@@ -161,6 +172,15 @@ export const AdminPage = ({ onNavigate }) => {
                       <span className="text-[12px] text-white/60">New Users</span>
                       <span className="text-[13px] font-semibold font-outfit text-white/80">{overview.today_new_users}</span>
                     </div>
+                  </motion.div>
+                  {/* ── Admin Exports ── */}
+                  <motion.div className="mt-5" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.28 }}>
+                    <ExportSection
+                      title={t("export.admin_reports")}
+                      exports={adminExports}
+                      t={t}
+                      testIdPrefix="admin-export"
+                    />
                   </motion.div>
                 </>
               )}

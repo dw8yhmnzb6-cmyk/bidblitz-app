@@ -10,6 +10,9 @@ import { AreaChart, Area, XAxis, ResponsiveContainer, Tooltip } from "recharts";
 import { useMerchant } from "../store";
 import { useMerchantStats } from "../hooks";
 import { formatRelativeTime } from "../models";
+import ExportSection from "../components/ExportSection";
+import { api as apiService } from "../services/api";
+import { useI18n } from "../store";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 const slide = { duration: 0.35, ease: [0.32, 0.72, 0, 1] };
@@ -175,10 +178,18 @@ const PayoutModal = ({ isOpen, onClose, available, minPayout, flatFee, onSuccess
 export const MerchantPage = ({ onNavigate }) => {
   const merchant = useMerchant();
   const stats = useMerchantStats();
+  const { t } = useI18n();
   const [isLoading, setIsLoading] = useState(true);
   const [showPayout, setShowPayout] = useState(false);
   const [balance, setBalance] = useState({ available: 0, pending_payout: 0, total_paid_out: 0, total_fees: 0, min_payout: 5, payout_flat_fee: 0.5 });
   const [payouts, setPayouts] = useState([]);
+
+  const merchantExports = [
+    { key: "payments", label: t("export.payments"), action: (f) => apiService.exportMerchantPayments(f) },
+    { key: "fees", label: t("export.fees"), action: (f) => apiService.exportMerchantFees(f) },
+    { key: "payouts", label: t("export.payouts"), action: (f) => apiService.exportMerchantPayouts(f) },
+    { key: "settlements", label: t("export.settlements"), action: (f) => apiService.exportMerchantSettlements(f) },
+  ];
 
   const fetchBalance = useCallback(async () => {
     try {
@@ -413,6 +424,21 @@ export const MerchantPage = ({ onNavigate }) => {
             </div>
           )}
         </motion.section>
+
+        {/* ── Export Section ── */}
+        <motion.div
+          className="mt-5"
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+        >
+          <ExportSection
+            title={t("export.merchant_reports")}
+            exports={merchantExports}
+            t={t}
+            testIdPrefix="merchant-export"
+          />
+        </motion.div>
       </div>
 
       {/* Payout Modal */}

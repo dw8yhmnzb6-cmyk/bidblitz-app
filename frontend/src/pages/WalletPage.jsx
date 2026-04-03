@@ -112,6 +112,14 @@ export const WalletPage = ({ onNavigate }) => {
   const { balance, currency, cardNumber, cardExpiry, cardHolder, refreshWallet, transactions } = useWallet();
   const groupedTransactions = useGroupedTransactions();
   const stats = useWalletStats();
+  const { t } = useI18n();
+
+  const userExports = [
+    { key: "transactions", label: t("export.transactions"), action: (f) => api.exportUserTransactions(f) },
+    { key: "topups", label: t("export.topups"), action: (f) => api.exportUserTopups(f) },
+    { key: "payments-sent", label: t("export.sent"), action: (f) => api.exportUserPayments({ ...f, direction: "sent" }) },
+    { key: "payments-received", label: t("export.received"), action: (f) => api.exportUserPayments({ ...f, direction: "received" }) },
+  ];
 
   // Simulate loading
   useEffect(() => {
@@ -326,6 +334,21 @@ export const WalletPage = ({ onNavigate }) => {
             onTypeFilterChange={setTypeFilter}
             onStatusFilterChange={setStatusFilter}
             showStatusFilter={typeFilter !== "all"}
+          />
+        </motion.div>
+
+        {/* ── Export Section ── */}
+        <motion.div
+          className="mb-4"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.34 }}
+        >
+          <ExportSection
+            title={t("export.user_reports")}
+            exports={userExports}
+            t={t}
+            testIdPrefix="wallet-export"
           />
         </motion.div>
 
