@@ -1,32 +1,49 @@
 import sys
 from pathlib import Path
 
-# Ensure backend root is in Python path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from dotenv import load_dotenv
 load_dotenv(Path(__file__).parent / '.env')
 
-from fastapi import FastAPI
-from starlette.middleware.cors import CORSMiddleware
-import os
 import logging
+import traceback
+from datetime import datetime, timezone
 
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
+from starlette.middleware.cors import CORSMiddleware
+
+from core.config import APP_ENV, IS_PRODUCTION
 from core.database import db, create_indexes, close_connection
 from core.security import hash_password, verify_password
-from routes.auth import router as auth_router
-from routes.wallet import router as wallet_router
-from routes.payment import router as payment_router
-from routes.merchant import router as merchant_router
-from routes.transactions import router as transactions_router
-from routes.stripe import router as stripe_router
-from routes.payout import router as payout_router
-from routes.admin import router as admin_router
 
-app = FastAPI(title="BidBlitz V2 API", version="1.0.0")
+# ── Structured Logging ──
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+logger = logging.getLogger("bidblitz")
 
-# CORS
-frontend_url = os.environ.get("FRONTEND_URL", "http://localhost:3000")
+# ── App ──
+app = FastAPI(
+    title="BidBlitz V2 API",
+    version="2.0.0",
+    docs_url=None if IS_PRODUCTION else "/docs",
+    redoc_url=None if IS_PRODUCTION else "/redoc",
+)
+
+# ── Global Error Handler ──
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.error(f"Unhandled error: {exc}\n{traceback.format_exc()}")
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal server error" if IS_PRODUCTION else str(exc)},
+    )
+
+# ── CORS ──
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -35,7 +52,23 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include routers
+# ── Import & Register ALL Routers ──
+from routes.auth import router as auth_router
+from routes.wallet import router as wallet_router
+from routes.payment import router as payment_router
+from routes.merchant import router as merchant_router
+from routes.transactions import router as transactions_router
+from routes.stripe import router as stripe_router
+from routes.payout import router as payout_router
+from routes.admin import router as admin_router
+from routes.export import router as export_router
+from routes.profile import router as profile_router
+from routes.sessions import router as sessions_router
+from routes.referral import router as referral_router
+from routes.notifications import router as notifications_router
+from routes.promotions import router as promotions_router
+from routes.analytics import router as analytics_router
+
 app.include_router(auth_router)
 app.include_router(wallet_router)
 app.include_router(payment_router)
@@ -44,31 +77,46 @@ app.include_router(transactions_router)
 app.include_router(stripe_router)
 app.include_router(payout_router)
 app.include_router(admin_router)
+app.include_router(export_router)
+app.include_router(profile_router)
+app.include_router(sessions_router)
+app.include_router(referral_router)
+app.include_router(notifications_router)
+app.include_router(promotions_router)
+app.include_router(analytics_router)
 
-# Stripe webhook needs to be at /api/webhook/stripe
+# Stripe webhook at /api/webhook/stripe
 from routes.stripe import stripe_webhook as _stripe_wh
 app.post("/api/webhook/stripe")(_stripe_wh)
 
-# Health check
+
+# ── Health Check ──
 @app.get("/api")
-async def root():
-    return {"message": "BidBlitz V2 API", "status": "online"}
+async def health_check():
+    return {
+        "service": "BidBlitz V2 API",
+        "status": "online",
+        "version": "2.0.0",
+        "environment": APP_ENV,
+    }
 
 
+# ── Startup ──
 @app.on_event("startup")
 async def startup():
     await create_indexes()
     await seed_admin()
-    logger.info("BidBlitz V2 API started")
+    logger.info(f"BidBlitz V2 API started [env={APP_ENV}]")
 
 
 @app.on_event("shutdown")
 async def shutdown():
     await close_connection()
+    logger.info("BidBlitz V2 API shutdown")
 
 
+# ── Admin Seeder ──
 async def seed_admin():
-    from datetime import datetime, timezone
     from core.config import ADMIN_EMAIL, ADMIN_PASSWORD
     import random
 
@@ -88,7 +136,6 @@ async def seed_admin():
             "card_expiry": "09/28",
             "created_at": datetime.now(timezone.utc).isoformat(),
         })
-        # Create merchant profile for admin
         await db.merchants.insert_one({
             "user_id": str(result.inserted_id),
             "business_name": "BidBlitz HQ",
@@ -103,10 +150,3 @@ async def seed_admin():
             {"$set": {"password_hash": hash_password(ADMIN_PASSWORD)}}
         )
         logger.info("Admin password updated")
-
-
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)

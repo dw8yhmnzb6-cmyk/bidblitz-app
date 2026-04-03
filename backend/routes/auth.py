@@ -59,6 +59,13 @@ async def register(req: RegisterRequest, response: Response):
     refresh_token = create_refresh_token(str(result.inserted_id))
     set_auth_cookies(response, access_token, refresh_token)
 
+    # Send onboarding notifications
+    try:
+        from routes.notifications import create_onboarding_notifications
+        await create_onboarding_notifications(str(result.inserted_id), req.name.strip())
+    except Exception:
+        pass
+
     return serialize_user(user_doc)
 
 
@@ -129,7 +136,8 @@ async def refresh_token(request: Request, response: Response):
         if not user:
             raise HTTPException(status_code=401, detail="User not found")
         new_access = create_access_token(str(user["_id"]), user["email"])
-        response.set_cookie(key="access_token", value=new_access, httponly=True, secure=False, samesite="lax", max_age=900, path="/")
+        from core.config import COOKIE_SECURE, COOKIE_SAMESITE
+        response.set_cookie(key="access_token", value=new_access, httponly=True, secure=COOKIE_SECURE, samesite=COOKIE_SAMESITE, max_age=900, path="/")
         return serialize_user(user)
     except pyjwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Refresh token expired")

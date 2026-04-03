@@ -1,15 +1,18 @@
 import { motion } from "framer-motion";
 import { Home, Wallet, QrCode, Store, MoreHorizontal } from "lucide-react";
+import { useI18n } from "../store";
 
 const navItems = [
-  { id: "home", label: "HOME", icon: Home, path: "/" },
-  { id: "wallet", label: "WALLET", icon: Wallet, path: "/wallet" },
-  { id: "scan", label: "SCAN", icon: QrCode, path: "/scan", center: true },
-  { id: "merchant", label: "HÄNDLER", icon: Store, path: "/merchant" },
-  { id: "more", label: "MORE", icon: MoreHorizontal, path: "/more" },
+  { id: "home", tKey: "nav.home", icon: Home, path: "/" },
+  { id: "wallet", tKey: "nav.wallet", icon: Wallet, path: "/wallet" },
+  { id: "scan", tKey: "nav.scan", icon: QrCode, path: "/scan", center: true },
+  { id: "merchant", tKey: "nav.merchant", icon: Store, path: "/merchant" },
+  { id: "more", tKey: "nav.more", icon: MoreHorizontal, path: "/more" },
 ];
 
-export const BottomNav = ({ currentPath, onNavigate }) => (
+export const BottomNav = ({ currentPath, onNavigate }) => {
+  const { t } = useI18n();
+  return (
   <motion.nav
     className="bottom-nav"
     data-testid="bottom-nav"
@@ -53,7 +56,7 @@ export const BottomNav = ({ currentPath, onNavigate }) => (
           <motion.div animate={isActive ? { y: -1 } : { y: 0 }} transition={{ type: "spring", stiffness: 400, damping: 20 }}>
             <Icon size={17} strokeWidth={isActive ? 2 : 1.5} />
           </motion.div>
-          <span className="uppercase tracking-[0.06em] font-medium">{item.label}</span>
+          <span className="uppercase tracking-[0.06em] font-medium">{t(item.tKey)}</span>
           {isActive && (
             <motion.div
               className="absolute -bottom-0.5 w-1 h-1 rounded-full bg-[#00C2FF]"
@@ -66,6 +69,7 @@ export const BottomNav = ({ currentPath, onNavigate }) => (
       );
     })}
   </motion.nav>
-);
+  );
+};
 
 export default BottomNav;

@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Mail, Lock, User, Eye, EyeOff, ArrowRight, Loader2, AlertCircle, Shield
 } from "lucide-react";
-import { useUser } from "../store";
+import { useUser, useI18n } from "../store";
 
 const slide = { duration: 0.35, ease: [0.32, 0.72, 0, 1] };
 
@@ -57,11 +57,12 @@ const Field = ({ icon: Icon, type, value, onChange, placeholder, testId, autoFoc
 };
 
 export const AuthPage = () => {
-  const [mode, setMode] = useState("login"); // login | register
+  const [mode, setMode] = useState("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [confirm, setConfirm] = useState("");
+  const { t } = useI18n();
 
   const user = useUser();
 

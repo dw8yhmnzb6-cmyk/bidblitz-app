@@ -1,11 +1,14 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, User, CreditCard, Bell, Shield, Moon, Settings,
   HelpCircle, LogOut, ChevronRight, ChevronLeft, Sparkles,
-  Globe, Lock, Eye, Fingerprint, Smartphone, Mail, Calendar
+  Globe, Lock, Eye, Fingerprint, Smartphone, Mail, Calendar, Gift
 } from "lucide-react";
-import { useUser } from "../store";
+import { useUser, useI18n } from "../store";
+import { api } from "../services/api";
+import ReferralPage from "./ReferralPage";
+import NotificationsPage from "./NotificationsPage";
 
 const slide = { duration: 0.3, ease: [0.32, 0.72, 0, 1] };
 
@@ -195,7 +198,13 @@ const SettingsView = ({ onBack }) => {
 // ── Main More Page ──
 export const MorePage = ({ onNavigate }) => {
   const user = useUser();
-  const [subPage, setSubPage] = useState(null); // null | "profile" | "settings"
+  const { t } = useI18n();
+  const [subPage, setSubPage] = useState(null);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    api.getNotifications(true).then(d => setUnreadCount(d.unread_count || 0)).catch(() => {});
+  }, []);
 
   // Sub-page rendering
   if (subPage === "profile") {
@@ -204,21 +213,35 @@ export const MorePage = ({ onNavigate }) => {
   if (subPage === "settings") {
     return <SettingsView onBack={() => setSubPage(null)} />;
   }
+  if (subPage === "referral") {
+    return <ReferralPage onBack={() => setSubPage(null)} />;
+  }
+  if (subPage === "notifications") {
+    return <NotificationsPage onBack={() => { setSubPage(null); setUnreadCount(0); }} />;
+  }
 
   const accountMenu = [
-    { id: "profile", icon: User, label: "Profile", desc: "View your account", color: "#00C2FF", action: () => setSubPage("profile") },
-    { id: "cards", icon: CreditCard, label: "Payment Methods", desc: "Cards & bank accounts", color: "#A855F7" },
-    { id: "security", icon: Shield, label: "Security", desc: "Password & 2FA", color: "#00D26A" },
+    { id: "profile", icon: User, label: t("more.profile"), desc: t("more.profile_desc"), color: "#00C2FF", action: () => setSubPage("profile") },
+    { id: "cards", icon: CreditCard, label: t("more.payment_methods"), desc: t("more.cards_desc"), color: "#A855F7" },
+    { id: "security", icon: Shield, label: t("more.security"), desc: t("more.security_desc"), color: "#00D26A" },
+  ];
+
+  const growthMenu = [
+    { id: "referral", icon: Gift, label: t("referral.title"), desc: t("referral.menu_desc"), color: "#FFD700", action: () => setSubPage("referral") },
+    {
+      id: "notifications", icon: Bell, label: t("notif.title"), desc: unreadCount > 0 ? `${unreadCount} ${t("notif.unread")}` : t("notif.menu_desc"), color: "#FFB800",
+      action: () => setSubPage("notifications"),
+      badge: unreadCount > 0 ? unreadCount : null,
+    },
   ];
 
   const appMenu = [
-    { id: "settings", icon: Settings, label: "Settings", desc: "Preferences & privacy", color: "#888", action: () => setSubPage("settings") },
-    { id: "notifications", icon: Bell, label: "Notifications", desc: "Manage alerts", color: "#FFB800" },
-    { id: "appearance", icon: Moon, label: "Appearance", desc: "Dark mode enabled", color: "#6366F1" },
+    { id: "settings", icon: Settings, label: t("more.settings"), desc: t("more.settings_desc"), color: "#888", action: () => setSubPage("settings") },
+    { id: "appearance", icon: Moon, label: t("more.appearance"), desc: t("more.appearance_desc"), color: "#6366F1" },
   ];
 
   const supportMenu = [
-    { id: "help", icon: HelpCircle, label: "Help & Support", desc: "FAQ & contact us", color: "#FF6B6B" },
+    { id: "help", icon: HelpCircle, label: t("more.help"), desc: t("more.help_desc"), color: "#FF6B6B" },
   ];
 
   const renderGroup = (title, items, delay) => (
@@ -243,6 +266,14 @@ export const MorePage = ({ onNavigate }) => {
             color={item.color}
             isLast={i === items.length - 1}
             onClick={item.action}
+            right={item.badge ? (
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold" style={{ background: "rgba(255,184,0,0.15)", color: "#FFB800" }}>
+                  {item.badge}
+                </span>
+                <ChevronRight size={14} className="text-[#222]" />
+              </div>
+            ) : undefined}
           />
         ))}
       </div>
@@ -279,7 +310,7 @@ export const MorePage = ({ onNavigate }) => {
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.05 }}
         >
-          Account
+          {t("more.title")}
         </motion.h1>
       </div>
 
@@ -324,22 +355,15 @@ export const MorePage = ({ onNavigate }) => {
           <div className="flex-1 min-w-0 relative z-10">
             <p className="text-[14px] font-semibold font-outfit text-white truncate">{user.name}</p>
             <p className="text-[11px] text-[#444] font-medium truncate">{user.email}</p>
-            {user.isPremium && (
-              <span
-                className="inline-block mt-1.5 text-[8px] uppercase tracking-[0.12em] font-bold px-2 py-0.5 rounded-full"
-                style={{ background: "rgba(255,215,0,0.06)", color: "#FFD700", border: "1px solid rgba(255,215,0,0.12)" }}
-              >
-                Premium
-              </span>
-            )}
           </div>
           <ChevronRight size={14} className="text-[#222] flex-shrink-0" />
         </motion.div>
 
         {/* ── Menu Groups ── */}
-        {renderGroup("Account", accountMenu, 0.14)}
-        {renderGroup("App", appMenu, 0.2)}
-        {renderGroup("Support", supportMenu, 0.26)}
+        {renderGroup(t("more.account"), accountMenu, 0.14)}
+        {renderGroup(t("more.growth"), growthMenu, 0.2)}
+        {renderGroup(t("more.app"), appMenu, 0.26)}
+        {renderGroup(t("more.support"), supportMenu, 0.32)}
 
         {/* ── Logout ── */}
         <motion.button

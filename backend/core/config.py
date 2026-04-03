@@ -5,8 +5,15 @@ from pathlib import Path
 ROOT_DIR = Path(__file__).parent.parent
 load_dotenv(ROOT_DIR / '.env')
 
+# ── Environment ──
+APP_ENV = os.environ.get("APP_ENV", "development")
+IS_PRODUCTION = APP_ENV == "production"
+
+# ── Database ──
 MONGO_URL = os.environ["MONGO_URL"]
 DB_NAME = os.environ["DB_NAME"]
+
+# ── Auth ──
 JWT_SECRET = os.environ["JWT_SECRET"]
 JWT_ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 15
@@ -15,6 +22,22 @@ ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "admin@bidblitz.com")
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "BidBlitz2026!")
 MAX_LOGIN_ATTEMPTS = 5
 LOCKOUT_MINUTES = 15
+
+# ── Cookie Security (environment-aware) ──
+COOKIE_SECURE = not (APP_ENV == "development" and "localhost" in os.environ.get("FRONTEND_URL", "localhost"))
+COOKIE_SAMESITE = "none" if COOKIE_SECURE else "lax"
+
+# ── Stripe ──
+STRIPE_API_KEY = os.environ.get("STRIPE_API_KEY", "")
+
+# ── Rewards & Growth ──
+REWARDS = {
+    "signup_bonus": 0.0,
+    "referral_bonus": 5.0,
+    "first_payment_bonus": 2.0,
+    "first_topup_bonus": 1.0,
+    "merchant_onboarding_bonus": 10.0,
+}
 
 # ── Platform Fee Configuration ──
 # All percentages as decimals (0.025 = 2.5%)

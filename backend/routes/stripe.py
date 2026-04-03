@@ -3,26 +3,21 @@ BidBlitz V2 - Stripe Checkout Routes
 Handles wallet top-up via Stripe Checkout Sessions.
 """
 
-import os
 import secrets
 from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 from typing import Optional
-from dotenv import load_dotenv
-
-load_dotenv()
 
 from emergentintegrations.payments.stripe.checkout import (
     StripeCheckout,
     CheckoutSessionRequest,
 )
+from core.config import STRIPE_API_KEY
 from core.database import db
 from core.security import get_current_user
 
 router = APIRouter(prefix="/api/stripe", tags=["stripe"])
-
-STRIPE_API_KEY = os.environ.get("STRIPE_API_KEY")
 
 # Fixed top-up packages — amounts defined server-side only
 TOPUP_PACKAGES = {

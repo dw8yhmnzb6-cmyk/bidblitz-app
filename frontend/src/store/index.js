@@ -1,26 +1,24 @@
-/**
- * BidBlitz V2 - Store Index
- * Export all contexts and providers
- */
-
 export { WalletProvider, useWallet } from './WalletContext';
 export { MerchantProvider, useMerchant } from './MerchantContext';
 export { UserProvider, useUser } from './UserContext';
+export { I18nProvider, useI18n, LANGUAGES } from './I18nContext';
 
-// Combined provider for convenience
 import React from 'react';
 import { WalletProvider } from './WalletContext';
 import { MerchantProvider } from './MerchantContext';
 import { UserProvider } from './UserContext';
+import { I18nProvider } from './I18nContext';
 
 export function AppProvider({ children }) {
   return (
-    <UserProvider>
-      <WalletProvider>
-        <MerchantProvider>
-          {children}
-        </MerchantProvider>
-      </WalletProvider>
-    </UserProvider>
+    <I18nProvider>
+      <UserProvider>
+        <WalletProvider>
+          <MerchantProvider>
+            {children}
+          </MerchantProvider>
+        </WalletProvider>
+      </UserProvider>
+    </I18nProvider>
   );
 }
