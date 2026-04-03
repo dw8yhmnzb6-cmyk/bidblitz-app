@@ -12,6 +12,7 @@ import NotificationsPage from "./NotificationsPage";
 import SupportPage from "./SupportPage";
 import ActivityPage from "./ActivityPage";
 import KidsPaywall from "./KidsPaywall";
+import FeatureGate from "../components/FeatureGate";
 
 const slide = { duration: 0.3, ease: [0.32, 0.72, 0, 1] };
 
@@ -253,19 +254,19 @@ export const MorePage = ({ onNavigate }) => {
     return <SettingsView onBack={() => setSubPage(null)} t={t} locale={locale} setLocale={setLocale} />;
   }
   if (subPage === "referral") {
-    return <ReferralPage onBack={() => setSubPage(null)} />;
+    return <FeatureGate flag="referral" onBack={() => setSubPage(null)}><ReferralPage onBack={() => setSubPage(null)} /></FeatureGate>;
   }
   if (subPage === "notifications") {
     return <NotificationsPage onBack={() => { setSubPage(null); setUnreadCount(0); }} />;
   }
   if (subPage === "support") {
-    return <SupportPage onBack={() => setSubPage(null)} />;
+    return <FeatureGate flag="support_center" onBack={() => setSubPage(null)}><SupportPage onBack={() => setSubPage(null)} /></FeatureGate>;
   }
   if (subPage === "activity") {
-    return <ActivityPage onBack={() => setSubPage(null)} />;
+    return <FeatureGate flag="activity_feed" onBack={() => setSubPage(null)}><ActivityPage onBack={() => setSubPage(null)} /></FeatureGate>;
   }
   if (subPage === "kids") {
-    return <KidsPaywall onBack={() => setSubPage(null)} onSubscribed={() => setSubPage(null)} />;
+    return <FeatureGate flag="kids" onBack={() => setSubPage(null)}><KidsPaywall onBack={() => setSubPage(null)} onSubscribed={() => setSubPage(null)} /></FeatureGate>;
   }
 
   const accountMenu = [
