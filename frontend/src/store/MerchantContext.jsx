@@ -1,34 +1,65 @@
-/**
- * BidBlitz V2 - Merchant Context
- * Global state management for merchant operations
- */
+import React, { createContext, useContext, useReducer, useCallback, useEffect } from 'react';
+import { api } from '../services/api';
+import { useUser } from './UserContext';
+import { formatRelativeTime, generateId } from '../models';
 
-import React, { createContext, useContext, useReducer, useCallback } from 'react';
-import { generateId, formatRelativeTime } from '../models';
-import { initialMerchant } from '../models/initialData';
-
-// Action types
-const MERCHANT_ACTIONS = {
+const ACTIONS = {
+  SET_DASHBOARD: 'SET_DASHBOARD',
+  SET_LOADING: 'SET_LOADING',
   RECEIVE_PAYMENT: 'RECEIVE_PAYMENT',
   CREATE_PAYMENT_REQUEST: 'CREATE_PAYMENT_REQUEST',
   UPDATE_PAYMENT_REQUEST: 'UPDATE_PAYMENT_REQUEST',
   CANCEL_PAYMENT_REQUEST: 'CANCEL_PAYMENT_REQUEST',
-  UPDATE_WEEKLY_DATA: 'UPDATE_WEEKLY_DATA',
-  RESET_MERCHANT: 'RESET_MERCHANT',
+  RESET: 'RESET',
 };
 
-// Initial state
+const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+function defaultWeeklyData() {
+  return daysOfWeek.map((day) => ({ day, earnings: 0 }));
+}
+
 const initialState = {
-  ...initialMerchant,
+  id: '',
+  businessName: '',
+  totalEarnings: 0,
+  todayEarnings: 0,
+  totalTransactions: 0,
+  todayTransactions: 0,
+  payments: [],
+  weeklyData: defaultWeeklyData(),
   currentPaymentRequest: null,
   isProcessing: false,
+  isLoading: false,
   error: null,
 };
 
-// Reducer
 function merchantReducer(state, action) {
   switch (action.type) {
-    case MERCHANT_ACTIONS.RECEIVE_PAYMENT: {
+    case ACTIONS.SET_LOADING:
+      return { ...state, isLoading: action.payload };
+    case ACTIONS.SET_DASHBOARD: {
+      const d = action.payload;
+      return {
+        ...state,
+        id: d.merchant_id || '',
+        businessName: d.business_name || '',
+        totalEarnings: d.total_earnings || 0,
+        todayEarnings: d.today_earnings || 0,
+        totalTransactions: d.total_transactions || 0,
+        todayTransactions: d.today_transactions || 0,
+        payments: (d.recent_payments || []).map((p) => ({
+          id: p.id || generateId('pay'),
+          customerId: p.merchant_name || p.description || `Customer`,
+          amount: Math.abs(p.amount || 0),
+          time: formatRelativeTime(p.created_at || new Date().toISOString()),
+          date: p.created_at || new Date().toISOString(),
+        })),
+        isLoading: false,
+        error: null,
+      };
+    }
+    case ACTIONS.RECEIVE_PAYMENT: {
       const { amount, customerId } = action.payload;
       const payment = {
         id: generateId('pay'),
@@ -37,171 +68,133 @@ function merchantReducer(state, action) {
         time: 'Just now',
         date: new Date().toISOString(),
       };
-
-      // Update weekly data for today
       const today = new Date().toLocaleDateString('en-US', { weekday: 'short' });
       const updatedWeeklyData = state.weeklyData.map((day) =>
-        day.day === today
-          ? { ...day, earnings: day.earnings + Math.abs(amount) }
-          : day
+        day.day === today ? { ...day, earnings: day.earnings + Math.abs(amount) } : day
       );
-
       return {
         ...state,
         totalEarnings: state.totalEarnings + Math.abs(amount),
         todayEarnings: state.todayEarnings + Math.abs(amount),
-        payments: [payment, ...state.payments.slice(0, 19)], // Keep last 20 payments
+        payments: [payment, ...state.payments.slice(0, 19)],
         weeklyData: updatedWeeklyData,
         currentPaymentRequest: null,
         isProcessing: false,
-        error: null,
       };
     }
-
-    case MERCHANT_ACTIONS.CREATE_PAYMENT_REQUEST: {
+    case ACTIONS.CREATE_PAYMENT_REQUEST: {
       const { amount } = action.payload;
-      const paymentRequest = {
-        id: generateId('req'),
-        amount: Math.abs(amount),
-        merchantId: state.id,
-        merchantName: state.businessName,
-        status: 'pending',
-        createdAt: new Date().toISOString(),
-      };
-      return {
-        ...state,
-        currentPaymentRequest: paymentRequest,
-        isProcessing: false,
-        error: null,
-      };
-    }
-
-    case MERCHANT_ACTIONS.UPDATE_PAYMENT_REQUEST: {
-      const { status, completedAt } = action.payload;
-      if (!state.currentPaymentRequest) return state;
-      
       return {
         ...state,
         currentPaymentRequest: {
-          ...state.currentPaymentRequest,
-          status,
-          completedAt: completedAt || (status === 'success' || status === 'failed' ? new Date().toISOString() : undefined),
+          id: generateId('req'),
+          amount: Math.abs(amount),
+          merchantId: state.id,
+          merchantName: state.businessName,
+          status: 'pending',
+          createdAt: new Date().toISOString(),
         },
-        isProcessing: status === 'processing' || status === 'scanning',
-      };
-    }
-
-    case MERCHANT_ACTIONS.CANCEL_PAYMENT_REQUEST: {
-      return {
-        ...state,
-        currentPaymentRequest: null,
         isProcessing: false,
         error: null,
       };
     }
-
-    case MERCHANT_ACTIONS.UPDATE_WEEKLY_DATA: {
+    case ACTIONS.UPDATE_PAYMENT_REQUEST: {
+      if (!state.currentPaymentRequest) return state;
       return {
         ...state,
-        weeklyData: action.payload,
+        currentPaymentRequest: { ...state.currentPaymentRequest, status: action.payload.status },
+        isProcessing: action.payload.status === 'processing' || action.payload.status === 'scanning',
       };
     }
-
-    case MERCHANT_ACTIONS.RESET_MERCHANT: {
+    case ACTIONS.CANCEL_PAYMENT_REQUEST:
+      return { ...state, currentPaymentRequest: null, isProcessing: false, error: null };
+    case ACTIONS.RESET:
       return initialState;
-    }
-
     default:
       return state;
   }
 }
 
-// Context
 const MerchantContext = createContext(null);
 
-// Provider component
 export function MerchantProvider({ children }) {
   const [state, dispatch] = useReducer(merchantReducer, initialState);
+  const user = useUser();
 
-  // Action creators
+  // Fetch merchant dashboard when authenticated
+  useEffect(() => {
+    if (!user.isAuthenticated) {
+      dispatch({ type: ACTIONS.RESET });
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      dispatch({ type: ACTIONS.SET_LOADING, payload: true });
+      try {
+        const data = await api.getMerchantDashboard();
+        if (!cancelled) dispatch({ type: ACTIONS.SET_DASHBOARD, payload: data });
+      } catch {
+        if (!cancelled) dispatch({ type: ACTIONS.SET_LOADING, payload: false });
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [user.isAuthenticated]);
+
+  const refreshDashboard = useCallback(async () => {
+    try {
+      const data = await api.getMerchantDashboard();
+      dispatch({ type: ACTIONS.SET_DASHBOARD, payload: data });
+    } catch {}
+  }, []);
+
   const receivePayment = useCallback((amount, customerId) => {
-    dispatch({
-      type: MERCHANT_ACTIONS.RECEIVE_PAYMENT,
-      payload: { amount, customerId },
-    });
+    dispatch({ type: ACTIONS.RECEIVE_PAYMENT, payload: { amount, customerId } });
     return { success: true, amount };
   }, []);
 
   const createPaymentRequest = useCallback((amount) => {
-    dispatch({
-      type: MERCHANT_ACTIONS.CREATE_PAYMENT_REQUEST,
-      payload: { amount },
-    });
-    return { 
-      success: true, 
-      requestId: generateId('req'),
-    };
+    dispatch({ type: ACTIONS.CREATE_PAYMENT_REQUEST, payload: { amount } });
   }, []);
 
   const updatePaymentRequest = useCallback((status) => {
-    dispatch({
-      type: MERCHANT_ACTIONS.UPDATE_PAYMENT_REQUEST,
-      payload: { status },
-    });
+    dispatch({ type: ACTIONS.UPDATE_PAYMENT_REQUEST, payload: { status } });
   }, []);
 
   const cancelPaymentRequest = useCallback(() => {
-    dispatch({ type: MERCHANT_ACTIONS.CANCEL_PAYMENT_REQUEST });
+    dispatch({ type: ACTIONS.CANCEL_PAYMENT_REQUEST });
   }, []);
 
-  const resetMerchant = useCallback(() => {
-    dispatch({ type: MERCHANT_ACTIONS.RESET_MERCHANT });
-  }, []);
-
-  // Update relative times for payments
   const getPaymentsWithRelativeTime = useCallback(() => {
-    return state.payments.map((payment) => ({
-      ...payment,
-      time: formatRelativeTime(payment.date),
-    }));
+    return state.payments.map((p) => ({ ...p, time: formatRelativeTime(p.date) }));
   }, [state.payments]);
 
   const value = {
-    // State
     id: state.id,
     businessName: state.businessName,
     totalEarnings: state.totalEarnings,
     todayEarnings: state.todayEarnings,
+    totalTransactions: state.totalTransactions,
+    todayTransactions: state.todayTransactions,
     payments: state.payments,
     weeklyData: state.weeklyData,
     currentPaymentRequest: state.currentPaymentRequest,
     isProcessing: state.isProcessing,
+    isLoading: state.isLoading,
     error: state.error,
-    
-    // Actions
     receivePayment,
     createPaymentRequest,
     updatePaymentRequest,
     cancelPaymentRequest,
-    resetMerchant,
-    
-    // Helpers
     getPaymentsWithRelativeTime,
+    refreshDashboard,
   };
 
-  return (
-    <MerchantContext.Provider value={value}>
-      {children}
-    </MerchantContext.Provider>
-  );
+  return <MerchantContext.Provider value={value}>{children}</MerchantContext.Provider>;
 }
 
-// Hook
 export function useMerchant() {
   const context = useContext(MerchantContext);
-  if (!context) {
-    throw new Error('useMerchant must be used within a MerchantProvider');
-  }
+  if (!context) throw new Error('useMerchant must be used within a MerchantProvider');
   return context;
 }
 

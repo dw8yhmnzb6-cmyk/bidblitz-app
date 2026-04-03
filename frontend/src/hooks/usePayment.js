@@ -68,8 +68,8 @@ export function usePaymentFlow() {
     // Simulate processing delay
     await new Promise((resolve) => setTimeout(resolve, 1500));
 
-    // Attempt payment
-    const result = wallet.pay(
+    // Attempt payment (async API call)
+    const result = await wallet.pay(
       paymentState.amount,
       merchant.businessName,
       merchant.id
@@ -162,7 +162,7 @@ export function useWalletStats() {
   
   const stats = transactions.reduce(
     (acc, txn) => {
-      if (txn.status !== 'success') return acc;
+      if (txn.status !== 'success' && txn.status !== 'completed') return acc;
       
       if (txn.amount > 0) {
         acc.totalIncome += txn.amount;

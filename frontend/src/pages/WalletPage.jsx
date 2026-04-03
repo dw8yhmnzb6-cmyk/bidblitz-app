@@ -112,8 +112,8 @@ export const WalletPage = ({ onNavigate }) => {
     return () => clearTimeout(t);
   }, []);
 
-  const handleTopUpSuccess = (transaction) => {
-    addMoney(transaction.amount, transaction.description || "Top-up");
+  const handleTopUpSuccess = async (transaction) => {
+    await addMoney(transaction.amount, transaction.paymentMethod || "card");
   };
 
   const filteredGrouped = Object.entries(groupedTransactions).reduce((acc, [date, txns]) => {

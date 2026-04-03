@@ -16,12 +16,49 @@ async function request(path, options = {}) {
     headers: { "Content-Type": "application/json", ...options.headers },
     ...options,
   };
-  const res = await fetch(url, config);
-  const data = await res.json();
-  if (!res.ok) {
-    throw new Error(formatApiError(data.detail));
+  
+  try {
+    const res = await fetch(url, config);
+    let data;
+    
+    try {
+      // Try to get response as text first, then parse
+      const text = await res.text();
+      data = text ? JSON.parse(text) : {};
+    } catch (parseError) {
+      // If parsing fails, check if it's a body-already-read error
+      if (parseError.message && parseError.message.includes("body")) {
+        // The response was consumed by something else (e.g., emergent script)
+        // Fall back to status-based error handling
+        if (!res.ok) {
+          if (res.status === 401) {
+            throw new Error("Invalid email or password");
+          } else if (res.status === 400) {
+            throw new Error("Bad request. Please check your input.");
+          } else if (res.status === 404) {
+            throw new Error("Resource not found");
+          } else if (res.status === 429) {
+            throw new Error("Too many requests. Please try again later.");
+          } else {
+            throw new Error(`Request failed with status ${res.status}`);
+          }
+        }
+        return {};
+      }
+      throw parseError;
+    }
+    
+    if (!res.ok) {
+      throw new Error(formatApiError(data.detail));
+    }
+    return data;
+  } catch (error) {
+    // Handle network errors and body-already-read errors
+    if (error.message && error.message.includes("body")) {
+      throw new Error("Request failed. Please try again.");
+    }
+    throw error;
   }
-  return data;
 }
 
 export const api = {

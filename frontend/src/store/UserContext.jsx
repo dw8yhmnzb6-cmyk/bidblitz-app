@@ -1,78 +1,61 @@
 import React, { createContext, useContext, useReducer, useCallback, useEffect } from 'react';
-import { initialUser } from '../models/initialData';
-
-const STORAGE_KEY = 'bidblitz_auth';
+import { api } from '../services/api';
 
 const AUTH_ACTIONS = {
-  LOGIN: 'LOGIN',
-  REGISTER: 'REGISTER',
+  SET_USER: 'SET_USER',
   LOGOUT: 'LOGOUT',
   SET_LOADING: 'SET_LOADING',
   SET_ERROR: 'SET_ERROR',
-  RESTORE_SESSION: 'RESTORE_SESSION',
+  SESSION_CHECKED: 'SESSION_CHECKED',
 };
-
-function loadSession() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
-  } catch {}
-  return null;
-}
-
-function saveSession(user) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
-  } catch {}
-}
-
-function clearSession() {
-  try {
-    localStorage.removeItem(STORAGE_KEY);
-  } catch {}
-}
 
 const guestState = {
   id: null,
   name: '',
   email: '',
-  avatar: '',
-  isPremium: false,
+  role: '',
+  balance: 0,
+  currency: 'EUR',
+  cardNumber: '',
+  cardExpiry: '',
+  avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=BidBlitz',
+  isPremium: true,
   isAuthenticated: false,
   isLoading: false,
   error: null,
   sessionReady: false,
 };
 
+function mapUser(u) {
+  return {
+    id: u.id,
+    name: u.name,
+    email: u.email,
+    role: u.role || 'user',
+    balance: u.balance ?? 0,
+    currency: u.currency || 'EUR',
+    cardNumber: u.card_number || '',
+    cardExpiry: u.card_expiry || '',
+    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=BidBlitz',
+    isPremium: true,
+    isAuthenticated: true,
+  };
+}
+
 function authReducer(state, action) {
   switch (action.type) {
     case AUTH_ACTIONS.SET_LOADING:
       return { ...state, isLoading: action.payload, error: null };
-
     case AUTH_ACTIONS.SET_ERROR:
       return { ...state, error: action.payload, isLoading: false };
-
-    case AUTH_ACTIONS.LOGIN:
-    case AUTH_ACTIONS.REGISTER:
-    case AUTH_ACTIONS.RESTORE_SESSION: {
+    case AUTH_ACTIONS.SET_USER: {
       const u = action.payload;
-      return {
-        ...state,
-        id: u.id,
-        name: u.name,
-        email: u.email,
-        avatar: u.avatar || initialUser.avatar,
-        isPremium: u.isPremium ?? true,
-        isAuthenticated: true,
-        isLoading: false,
-        error: null,
-        sessionReady: true,
-      };
+      return { ...state, ...mapUser(u), isLoading: false, error: null, sessionReady: true };
     }
-
     case AUTH_ACTIONS.LOGOUT:
       return { ...guestState, sessionReady: true };
-
+    case AUTH_ACTIONS.SESSION_CHECKED:
+      return { ...state, sessionReady: true };
     default:
       return state;
   }
@@ -83,14 +66,18 @@ const UserContext = createContext(null);
 export function UserProvider({ children }) {
   const [state, dispatch] = useReducer(authReducer, guestState);
 
-  // Restore session on mount
+  // Restore session via cookie on mount
   useEffect(() => {
-    const saved = loadSession();
-    if (saved && saved.isAuthenticated) {
-      dispatch({ type: AUTH_ACTIONS.RESTORE_SESSION, payload: saved });
-    } else {
-      dispatch({ type: AUTH_ACTIONS.LOGOUT });
-    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const user = await api.getMe();
+        if (!cancelled) dispatch({ type: AUTH_ACTIONS.SET_USER, payload: user });
+      } catch {
+        if (!cancelled) dispatch({ type: AUTH_ACTIONS.SESSION_CHECKED });
+      }
+    })();
+    return () => { cancelled = true; };
   }, []);
 
   const login = useCallback(async (email, password) => {
@@ -99,21 +86,14 @@ export function UserProvider({ children }) {
       return false;
     }
     dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: true });
-
-    // Simulate network delay
-    await new Promise((r) => setTimeout(r, 1200));
-
-    const user = {
-      id: 'user_' + Date.now().toString(36),
-      name: email.split('@')[0].charAt(0).toUpperCase() + email.split('@')[0].slice(1),
-      email,
-      avatar: initialUser.avatar,
-      isPremium: true,
-      isAuthenticated: true,
-    };
-    saveSession(user);
-    dispatch({ type: AUTH_ACTIONS.LOGIN, payload: user });
-    return true;
+    try {
+      const user = await api.login({ email, password });
+      dispatch({ type: AUTH_ACTIONS.SET_USER, payload: user });
+      return true;
+    } catch (err) {
+      dispatch({ type: AUTH_ACTIONS.SET_ERROR, payload: err.message });
+      return false;
+    }
   }, []);
 
   const register = useCallback(async (name, email, password, confirmPassword) => {
@@ -130,37 +110,33 @@ export function UserProvider({ children }) {
       return false;
     }
     dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: true });
-
-    await new Promise((r) => setTimeout(r, 1400));
-
-    const user = {
-      id: 'user_' + Date.now().toString(36),
-      name,
-      email,
-      avatar: initialUser.avatar,
-      isPremium: true,
-      isAuthenticated: true,
-    };
-    saveSession(user);
-    dispatch({ type: AUTH_ACTIONS.REGISTER, payload: user });
-    return true;
+    try {
+      const user = await api.register({ name, email, password });
+      dispatch({ type: AUTH_ACTIONS.SET_USER, payload: user });
+      return true;
+    } catch (err) {
+      dispatch({ type: AUTH_ACTIONS.SET_ERROR, payload: err.message });
+      return false;
+    }
   }, []);
 
-  const logout = useCallback(() => {
-    clearSession();
+  const logout = useCallback(async () => {
+    try { await api.logout(); } catch {}
     dispatch({ type: AUTH_ACTIONS.LOGOUT });
   }, []);
 
-  const updateUser = useCallback((updates) => {
-    const merged = { ...state, ...updates };
-    saveSession(merged);
-    dispatch({ type: AUTH_ACTIONS.RESTORE_SESSION, payload: merged });
-  }, [state]);
+  const refreshUser = useCallback(async () => {
+    try {
+      const user = await api.getMe();
+      dispatch({ type: AUTH_ACTIONS.SET_USER, payload: user });
+    } catch {}
+  }, []);
 
   const value = {
     id: state.id,
     name: state.name,
     email: state.email,
+    role: state.role,
     avatar: state.avatar,
     isPremium: state.isPremium,
     isAuthenticated: state.isAuthenticated,
@@ -170,21 +146,15 @@ export function UserProvider({ children }) {
     login,
     register,
     logout,
-    updateUser,
+    refreshUser,
   };
 
-  return (
-    <UserContext.Provider value={value}>
-      {children}
-    </UserContext.Provider>
-  );
+  return <UserContext.Provider value={value}>{children}</UserContext.Provider>;
 }
 
 export function useUser() {
   const context = useContext(UserContext);
-  if (!context) {
-    throw new Error('useUser must be used within a UserProvider');
-  }
+  if (!context) throw new Error('useUser must be used within a UserProvider');
   return context;
 }
 

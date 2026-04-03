@@ -224,13 +224,18 @@ export const ScannerPage = ({ onNavigate }) => {
     await new Promise((r) => setTimeout(r, 700)); setPStep(1);
     await new Promise((r) => setTimeout(r, 900)); setPStep(2);
     await new Promise((r) => setTimeout(r, 600));
-    if (w.canAfford(num)) {
-      w.pay(num, m.businessName, m.id); m.receivePayment(num);
-      setDoneAt(new Date()); setPStep(3);
-      await new Promise((r) => setTimeout(r, 250));
-      setStep(Step.SUCCESS);
-    } else {
-      setErr("Insufficient balance"); setStep(Step.ERROR);
+    try {
+      const result = await w.pay(num, m.businessName || "BidBlitz HQ", m.id);
+      if (result.success) {
+        m.receivePayment(num);
+        setDoneAt(new Date()); setPStep(3);
+        await new Promise((r) => setTimeout(r, 250));
+        setStep(Step.SUCCESS);
+      } else {
+        setErr(result.error || "Insufficient balance"); setStep(Step.ERROR);
+      }
+    } catch {
+      setErr("Payment failed"); setStep(Step.ERROR);
     }
   }, [num, w, m]);
 
