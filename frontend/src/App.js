@@ -4,7 +4,6 @@ import "@/App.css";
 
 // Store providers
 import { AppProvider } from "./store";
-import { AuthProvider, useAuth } from "./store/AuthContext";
 
 // Pages
 import HomePage from "./pages/HomePage";
@@ -12,7 +11,6 @@ import WalletPage from "./pages/WalletPage";
 import ScannerPage from "./pages/ScannerPage";
 import MerchantPage from "./pages/MerchantPage";
 import MorePage from "./pages/MorePage";
-import AuthPage from "./pages/AuthPage";
 
 // Components
 import BottomNav from "./components/BottomNav";
@@ -30,37 +28,10 @@ const pageTransition = {
 
 function AppContent() {
   const [currentPath, setCurrentPath] = useState("/");
-  const { user, loading, logout } = useAuth();
 
   const handleNavigate = (path) => {
     setCurrentPath(path);
   };
-
-  // Loading state
-  if (loading) {
-    return (
-      <div
-        className="min-h-screen flex items-center justify-center"
-        style={{ background: "#0A0A0A" }}
-      >
-        <motion.div
-          className="text-center"
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-        >
-          <h1 className="text-2xl font-bold font-outfit text-white mb-2">
-            Bid<span className="text-[#00C2FF]">Blitz</span>
-          </h1>
-          <div className="w-8 h-8 border-2 border-[#00C2FF] border-t-transparent rounded-full animate-spin mx-auto" />
-        </motion.div>
-      </div>
-    );
-  }
-
-  // Not authenticated
-  if (!user) {
-    return <AuthPage />;
-  }
 
   const renderPage = () => {
     switch (currentPath) {
@@ -73,7 +44,7 @@ function AppContent() {
       case "/merchant":
         return <MerchantPage onNavigate={handleNavigate} />;
       case "/more":
-        return <MorePage onNavigate={handleNavigate} onLogout={logout} />;
+        return <MorePage onNavigate={handleNavigate} />;
       default:
         return <HomePage onNavigate={handleNavigate} />;
     }
@@ -106,11 +77,9 @@ function AppContent() {
 
 function App() {
   return (
-    <AuthProvider>
-      <AppProvider>
-        <AppContent />
-      </AppProvider>
-    </AuthProvider>
+    <AppProvider>
+      <AppContent />
+    </AppProvider>
   );
 }
 

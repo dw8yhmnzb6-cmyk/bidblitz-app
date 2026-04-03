@@ -12,7 +12,7 @@ import {
   ChevronRight,
   Sparkles
 } from "lucide-react";
-import { useAuth } from "../store/AuthContext";
+import { useUser } from "../store";
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -41,13 +41,8 @@ const menuItems = [
   { id: "help", icon: HelpCircle, label: "Help & Support", description: "Get assistance", color: "#FF6B6B" },
 ];
 
-export const MorePage = ({ onNavigate, onLogout }) => {
-  const { user, logout } = useAuth();
-
-  const handleLogout = async () => {
-    if (onLogout) await onLogout();
-    else await logout();
-  };
+export const MorePage = ({ onNavigate }) => {
+  const user = useUser();
 
   return (
     <motion.div
@@ -90,7 +85,7 @@ export const MorePage = ({ onNavigate, onLogout }) => {
         
         <div className="relative">
           <img
-            src={`https://api.dicebear.com/7.x/initials/svg?seed=${user?.name || 'U'}&backgroundColor=00C2FF`}
+            src={user.avatar}
             alt="Profile"
             className="rounded-full object-cover"
             style={{
@@ -100,7 +95,7 @@ export const MorePage = ({ onNavigate, onLogout }) => {
               boxShadow: "0 0 30px rgba(0, 194, 255, 0.2)"
             }}
           />
-          {user?.role === "admin" && (
+          {user.isPremium && (
             <motion.div 
               className="absolute -bottom-1 -right-1 w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center"
               style={{
@@ -116,9 +111,9 @@ export const MorePage = ({ onNavigate, onLogout }) => {
         </div>
         
         <div className="flex-1 relative z-10 min-w-0">
-          <h2 className="text-base sm:text-lg font-semibold font-outfit text-white truncate">{user?.name}</h2>
-          <p className="text-xs sm:text-sm text-[#666] truncate">{user?.email}</p>
-          {user?.role === "admin" && (
+          <h2 className="text-base sm:text-lg font-semibold font-outfit text-white truncate">{user.name}</h2>
+          <p className="text-xs sm:text-sm text-[#666] truncate">{user.email}</p>
+          {user.isPremium && (
             <span 
               className="inline-block mt-1.5 sm:mt-2 text-[9px] sm:text-[10px] uppercase tracking-widest font-bold px-2 sm:px-3 py-0.5 sm:py-1 rounded-full"
               style={{
@@ -127,7 +122,7 @@ export const MorePage = ({ onNavigate, onLogout }) => {
                 border: "1px solid rgba(255, 215, 0, 0.2)"
               }}
             >
-              Admin
+              Premium
             </span>
           )}
         </div>
@@ -184,7 +179,7 @@ export const MorePage = ({ onNavigate, onLogout }) => {
         }}
         whileHover={{ scale: 1.02, borderColor: "rgba(255, 71, 87, 0.4)" }}
         whileTap={{ scale: 0.98 }}
-        onClick={handleLogout}
+        onClick={user.logout}
       >
         <LogOut size={18} strokeWidth={1.5} className="text-[#FF4757]" />
         <span className="text-[#FF4757]">Log Out</span>

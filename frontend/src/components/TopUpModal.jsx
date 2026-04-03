@@ -15,26 +15,8 @@ import {
   AlertCircle,
   ChevronRight
 } from "lucide-react";
-
-const PaymentMethod = {
-  CARD: 'credit_card',
-  APPLE_PAY: 'apple_pay',
-  GOOGLE_PAY: 'google_pay',
-  BANK: 'bank_transfer',
-};
-
-const formatCurrency = (amount, currency = 'EUR') => {
-  return `€${(amount || 0).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-};
-
-const topUpPresets = [10, 25, 50, 100, 250, 500];
-
-const paymentMethods = [
-  { id: PaymentMethod.CARD, label: 'Credit / Debit Card', icon: 'credit-card', enabled: true },
-  { id: PaymentMethod.APPLE_PAY, label: 'Apple Pay', icon: 'apple', enabled: true },
-  { id: PaymentMethod.GOOGLE_PAY, label: 'Google Pay', icon: 'smartphone', enabled: true },
-  { id: PaymentMethod.BANK, label: 'Bank Transfer', icon: 'building', enabled: true },
-];
+import { walletService } from "../services";
+import { PaymentMethod, PaymentStatus, formatCurrency } from "../models";
 
 const iconMap = {
   'credit-card': CreditCard,
@@ -50,8 +32,8 @@ export const TopUpModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
   const [error, setError] = useState(null);
   const [transaction, setTransaction] = useState(null);
 
-  const presets = topUpPresets;
-  const methods = paymentMethods;
+  const presets = walletService.getTopUpPresets();
+  const paymentMethods = walletService.getAvailablePaymentMethods();
 
   const handleAmountSelect = (preset) => {
     setAmount(preset.toString());
@@ -59,20 +41,16 @@ export const TopUpModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
   };
 
   const handleContinue = () => {
-    const amt = parseFloat(amount);
-    if (!amt || amt <= 0) {
-      setError('Please enter a valid amount');
-      return;
-    }
-    if (amt > 50000) {
-      setError('Maximum top-up amount is €50,000');
+    const validation = walletService.validateTopUpAmount(parseFloat(amount));
+    if (!validation.valid) {
+      setError(validation.error);
       return;
     }
     setStep('method');
   };
 
   const handleMethodSelect = (methodId) => {
-    const method = methods.find(m => m.id === methodId);
+    const method = paymentMethods.find(m => m.id === methodId);
     if (method && method.enabled) {
       setSelectedMethod(methodId);
     }
@@ -83,20 +61,32 @@ export const TopUpModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
     setError(null);
 
     try {
-      const result = await onSuccess({
+      const requestResult = await walletService.createTopUpRequest({
+        userId: 'current_user',
         amount: parseFloat(amount),
         paymentMethod: selectedMethod,
-        description: `Top-up via ${selectedMethod}`,
       });
 
-      if (result && result.success) {
-        setTransaction(result.transaction);
+      if (!requestResult.success) {
+        setError(requestResult.error);
+        setStep('error');
+        return;
+      }
+
+      const processResult = await walletService.processTopUp(requestResult.request);
+
+      if (processResult.success) {
+        setTransaction(processResult.transaction);
         setStep('success');
+        if (onSuccess) {
+          onSuccess(processResult.transaction);
+        }
       } else {
-        setStep('success'); // onSuccess already handled the update
+        setError(processResult.error);
+        setStep('error');
       }
     } catch (err) {
-      setError(err.message || 'An unexpected error occurred');
+      setError('An unexpected error occurred');
       setStep('error');
     }
   };
@@ -110,7 +100,7 @@ export const TopUpModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
     onClose();
   };
 
-  const fees = { amount: parseFloat(amount) || 0, fee: 0, total: parseFloat(amount) || 0 };
+  const fees = walletService.calculateFees(parseFloat(amount) || 0, selectedMethod);
 
   if (!isOpen) return null;
 
@@ -242,7 +232,7 @@ export const TopUpModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
                   <p className="text-sm text-[#666] mb-3">Select payment method</p>
 
                   <div className="space-y-2 mb-6">
-                    {methods.map((method) => {
+                    {paymentMethods.map((method) => {
                       const Icon = iconMap[method.icon] || CreditCard;
                       return (
                         <motion.button

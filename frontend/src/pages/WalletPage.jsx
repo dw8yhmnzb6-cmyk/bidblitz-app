@@ -1,8 +1,8 @@
 import { motion } from "framer-motion";
-import { ArrowLeft, Eye, EyeOff, Shield, RefreshCw } from "lucide-react";
-import { useState, useEffect, useCallback } from "react";
-import { useAuth } from "../store/AuthContext";
-import { api } from "../services/api";
+import { ArrowLeft, Eye, EyeOff, Shield } from "lucide-react";
+import { useState } from "react";
+import { useWallet } from "../store";
+import { useGroupedTransactions } from "../hooks";
 import { PremiumCard } from "../components/PremiumCard";
 import { QuickAction } from "../components/QuickAction";
 import { TransactionItem } from "../components/TransactionItem";
@@ -19,76 +19,21 @@ const itemVariants = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.4, 0, 0.2, 1] } },
 };
 
-function groupByDate(transactions) {
-  const groups = {};
-  for (const txn of transactions) {
-    const d = new Date(txn.created_at);
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-
-    let label;
-    if (d.toDateString() === today.toDateString()) label = "Today";
-    else if (d.toDateString() === yesterday.toDateString()) label = "Yesterday";
-    else label = d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-
-    if (!groups[label]) groups[label] = [];
-    groups[label].push(txn);
-  }
-  return groups;
-}
-
 export const WalletPage = ({ onNavigate }) => {
-  const { user, refreshUser } = useAuth();
   const [showBalance, setShowBalance] = useState(true);
   const [showTopUp, setShowTopUp] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState(null);
   const [typeFilter, setTypeFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [walletData, setWalletData] = useState(null);
-  const [loading, setLoading] = useState(true);
 
-  const fetchWallet = useCallback(async () => {
-    try {
-      const data = await api.getWallet();
-      setWalletData(data);
-    } catch {
-      // fallback to user data
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const { balance, currency, cardNumber, cardExpiry, cardHolder, addMoney, transactions } = useWallet();
+  const groupedTransactions = useGroupedTransactions();
 
-  useEffect(() => {
-    fetchWallet();
-  }, [fetchWallet]);
-
-  const balance = walletData?.balance ?? user?.balance ?? 0;
-  const currency = walletData?.currency ?? "EUR";
-  const cardNumber = walletData?.card_number ?? user?.card_number ?? "";
-  const cardExpiry = walletData?.card_expiry ?? user?.card_expiry ?? "";
-  const cardHolder = walletData?.card_holder ?? user?.name ?? "";
-  const transactions = walletData?.transactions ?? [];
-
-  const handleTopUpSuccess = async (txn) => {
-    try {
-      const result = await api.topUp({
-        amount: txn.amount,
-        payment_method: txn.paymentMethod || "bank_transfer",
-      });
-      if (result.success) {
-        await fetchWallet();
-        await refreshUser();
-      }
-      return result;
-    } catch (err) {
-      throw err;
-    }
+  const handleTopUpSuccess = (transaction) => {
+    addMoney(transaction.amount, transaction.description || "Top-up");
   };
 
-  // Group + filter transactions
-  const grouped = groupByDate(transactions);
-  const filteredGrouped = Object.entries(grouped).reduce((acc, [date, txns]) => {
+  const filteredGrouped = Object.entries(groupedTransactions).reduce((acc, [date, txns]) => {
     const filtered = filterTransactions(txns, typeFilter, statusFilter);
     if (filtered.length > 0) acc[date] = filtered;
     return acc;
@@ -117,26 +62,15 @@ export const WalletPage = ({ onNavigate }) => {
           </motion.button>
           <h1 className="text-lg sm:text-xl font-semibold font-outfit text-white tracking-tight">Wallet</h1>
         </div>
-        <div className="flex items-center gap-2">
-          <motion.button
-            data-testid="refresh-wallet-btn"
-            onClick={() => { setLoading(true); fetchWallet(); }}
-            className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-[#141414] border border-white/5 flex items-center justify-center"
-            whileHover={{ scale: 1.08 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            <RefreshCw size={16} strokeWidth={1.5} className={`text-[#888] ${loading ? "animate-spin" : ""}`} />
-          </motion.button>
-          <motion.button
-            data-testid="toggle-balance-btn"
-            onClick={() => setShowBalance(!showBalance)}
-            className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-[#141414] border border-white/5 flex items-center justify-center"
-            whileHover={{ scale: 1.08 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            {showBalance ? <Eye size={18} strokeWidth={1.5} className="text-[#888]" /> : <EyeOff size={18} strokeWidth={1.5} className="text-[#888]" />}
-          </motion.button>
-        </div>
+        <motion.button
+          data-testid="toggle-balance-btn"
+          onClick={() => setShowBalance(!showBalance)}
+          className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-[#141414] border border-white/5 flex items-center justify-center"
+          whileHover={{ scale: 1.08 }}
+          whileTap={{ scale: 0.95 }}
+        >
+          {showBalance ? <Eye size={18} strokeWidth={1.5} className="text-[#888]" /> : <EyeOff size={18} strokeWidth={1.5} className="text-[#888]" />}
+        </motion.button>
       </motion.header>
 
       {/* Balance */}
@@ -153,13 +87,13 @@ export const WalletPage = ({ onNavigate }) => {
         >
           {showBalance ? (
             <>
-              {currency === "EUR" ? "\u20AC" : currency}
+              {currency}
               <motion.span key={balance} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
                 {balance.toLocaleString("de-DE", { minimumFractionDigits: 2 })}
               </motion.span>
             </>
           ) : (
-            <span className="text-[#444]">{currency === "EUR" ? "\u20AC" : currency}••••••</span>
+            <span className="text-[#444]">{currency}••••••</span>
           )}
         </motion.h2>
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-32 blur-3xl opacity-20 pointer-events-none" style={{ background: "radial-gradient(ellipse, #00C2FF 0%, transparent 70%)" }} />
@@ -197,7 +131,7 @@ export const WalletPage = ({ onNavigate }) => {
         <div className="space-y-4 sm:space-y-5">
           {Object.keys(filteredGrouped).length === 0 ? (
             <div className="text-center py-8">
-              <p className="text-[#555] text-sm">{loading ? "Loading..." : "No transactions yet"}</p>
+              <p className="text-[#555] text-sm">No transactions found</p>
             </div>
           ) : (
             Object.entries(filteredGrouped).map(([date, txns], gi) => (
@@ -214,7 +148,6 @@ export const WalletPage = ({ onNavigate }) => {
         </div>
       </motion.section>
 
-      {/* Modals */}
       <TopUpModal isOpen={showTopUp} onClose={() => setShowTopUp(false)} onSuccess={handleTopUpSuccess} currentBalance={balance} />
       <TransactionDetailModal isOpen={!!selectedTransaction} onClose={() => setSelectedTransaction(null)} transaction={selectedTransaction} />
     </motion.div>
