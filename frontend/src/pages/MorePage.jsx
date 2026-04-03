@@ -3,12 +3,14 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, User, CreditCard, Bell, Shield, Moon, Settings,
   HelpCircle, LogOut, ChevronRight, ChevronLeft, Sparkles,
-  Globe, Lock, Eye, Fingerprint, Smartphone, Mail, Calendar, Gift, LayoutDashboard
+  Globe, Lock, Eye, Fingerprint, Smartphone, Mail, Calendar, Gift, LayoutDashboard, Activity
 } from "lucide-react";
 import { useUser, useI18n } from "../store";
 import { api } from "../services/api";
 import ReferralPage from "./ReferralPage";
 import NotificationsPage from "./NotificationsPage";
+import SupportPage from "./SupportPage";
+import ActivityPage from "./ActivityPage";
 
 const slide = { duration: 0.3, ease: [0.32, 0.72, 0, 1] };
 
@@ -234,7 +236,7 @@ const SettingsView = ({ onBack, t, locale, setLocale }) => {
 // ── Main More Page ──
 export const MorePage = ({ onNavigate }) => {
   const user = useUser();
-  const { t, locale, setLocale } = useI18n();
+  const { t, lang: locale, setLang: setLocale } = useI18n();
   const [subPage, setSubPage] = useState(null);
   const [unreadCount, setUnreadCount] = useState(0);
 
@@ -255,6 +257,12 @@ export const MorePage = ({ onNavigate }) => {
   if (subPage === "notifications") {
     return <NotificationsPage onBack={() => { setSubPage(null); setUnreadCount(0); }} />;
   }
+  if (subPage === "support") {
+    return <SupportPage onBack={() => setSubPage(null)} />;
+  }
+  if (subPage === "activity") {
+    return <ActivityPage onBack={() => setSubPage(null)} />;
+  }
 
   const accountMenu = [
     { id: "profile", icon: User, label: t("more.profile"), desc: t("more.profile_desc"), color: "#00C2FF", action: () => setSubPage("profile") },
@@ -269,6 +277,7 @@ export const MorePage = ({ onNavigate }) => {
       action: () => setSubPage("notifications"),
       badge: unreadCount > 0 ? unreadCount : null,
     },
+    { id: "activity", icon: Activity, label: t("activity.title"), desc: t("activity.menu_desc"), color: "#00C2FF", action: () => setSubPage("activity") },
   ];
 
   const appMenu = [
@@ -277,7 +286,7 @@ export const MorePage = ({ onNavigate }) => {
   ];
 
   const supportMenu = [
-    { id: "help", icon: HelpCircle, label: t("more.help"), desc: t("more.help_desc"), color: "#FF6B6B" },
+    { id: "help", icon: HelpCircle, label: t("more.help"), desc: t("more.help_desc"), color: "#FF6B6B", action: () => setSubPage("support") },
   ];
 
   const adminMenu = user.role === "admin" ? [
