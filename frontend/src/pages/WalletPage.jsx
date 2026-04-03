@@ -12,6 +12,7 @@ import { TopUpModal } from "../components/TopUpModal";
 import { TransactionDetailModal } from "../components/TransactionDetailModal";
 import { TransactionFilters, filterTransactions } from "../components/TransactionFilters";
 import ExportSection from "../components/ExportSection";
+import ErrorState from "../components/ErrorState";
 import { api } from "../services/api";
 import { useI18n } from "../store";
 
@@ -109,7 +110,7 @@ export const WalletPage = ({ onNavigate }) => {
   const [statusFilter, setStatusFilter] = useState("all");
   const [isLoading, setIsLoading] = useState(true);
 
-  const { balance, currency, cardNumber, cardExpiry, cardHolder, refreshWallet, transactions } = useWallet();
+  const { balance, currency, cardNumber, cardExpiry, cardHolder, refreshWallet, transactions, error: walletError } = useWallet();
   const groupedTransactions = useGroupedTransactions();
   const stats = useWalletStats();
   const { t } = useI18n();
@@ -183,6 +184,13 @@ export const WalletPage = ({ onNavigate }) => {
             : <EyeOff size={15} strokeWidth={1.5} className="text-[#444]" />}
         </motion.button>
       </div>
+
+      {/* Error Banner */}
+      {walletError && !isLoading && (
+        <div className="px-5 mb-3 relative z-10">
+          <ErrorState error={{ message: walletError, code: "network" }} onRetry={refreshWallet} compact />
+        </div>
+      )}
 
       {/* Content */}
       <div className="px-5 pb-8 relative z-10">

@@ -1,4 +1,16 @@
 const API_URL = process.env.REACT_APP_BACKEND_URL;
+const REQUEST_TIMEOUT = 15000; // 15 seconds
+
+// ── Structured Error ──
+class ApiError extends Error {
+  constructor(message, { status = 0, code = "unknown", retryable = false } = {}) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.code = code;
+    this.retryable = retryable;
+  }
+}
 
 function formatApiError(detail) {
   if (detail == null) return "Something went wrong. Please try again.";
@@ -10,48 +22,60 @@ function formatApiError(detail) {
 }
 
 async function request(path, options = {}) {
+  // Block if offline
+  if (typeof navigator !== "undefined" && !navigator.onLine) {
+    throw new ApiError("You are offline. Please check your connection.", { code: "offline", retryable: true });
+  }
+
   const url = `${API_URL}${path}`;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
+
   const config = {
     credentials: "include",
     headers: { "Content-Type": "application/json", ...options.headers },
+    signal: controller.signal,
     ...options,
   };
 
   try {
     const res = await fetch(url, config);
-    let data;
+    clearTimeout(timeout);
 
+    let data;
     try {
       const text = await res.text();
       data = text ? JSON.parse(text) : {};
     } catch (parseError) {
-      if (parseError.message && parseError.message.includes("body")) {
-        if (!res.ok) {
-          if (res.status === 401) throw new Error("Invalid email or password");
-          if (res.status === 400) throw new Error("Bad request. Please check your input.");
-          if (res.status === 404) throw new Error("Resource not found");
-          if (res.status === 429) throw new Error("Too many requests. Please try again later.");
-          if (res.status === 403) throw new Error("Access denied");
-          if (res.status >= 500) throw new Error("Server error. Please try again later.");
-          throw new Error(`Request failed with status ${res.status}`);
-        }
-        return {};
+      if (!res.ok) {
+        if (res.status === 401) throw new ApiError("Invalid email or password", { status: 401, code: "auth" });
+        if (res.status === 400) throw new ApiError("Bad request. Please check your input.", { status: 400, code: "validation" });
+        if (res.status === 404) throw new ApiError("Resource not found", { status: 404, code: "not_found" });
+        if (res.status === 429) throw new ApiError("Too many requests. Please try again later.", { status: 429, code: "rate_limit", retryable: true });
+        if (res.status === 403) throw new ApiError("Access denied", { status: 403, code: "forbidden" });
+        if (res.status >= 500) throw new ApiError("Server error. Please try again later.", { status: res.status, code: "server", retryable: true });
+        throw new ApiError(`Request failed (${res.status})`, { status: res.status, code: "unknown", retryable: true });
       }
-      throw parseError;
+      return {};
     }
 
     if (!res.ok) {
-      throw new Error(formatApiError(data.detail));
+      const msg = formatApiError(data.detail || data.message);
+      if (res.status === 429) throw new ApiError(data.message || msg, { status: 429, code: "rate_limit", retryable: true });
+      if (res.status >= 500) throw new ApiError(msg, { status: res.status, code: "server", retryable: true });
+      throw new ApiError(msg, { status: res.status, code: res.status === 401 ? "auth" : "api" });
     }
     return data;
   } catch (error) {
+    clearTimeout(timeout);
+    if (error instanceof ApiError) throw error;
+    if (error.name === "AbortError") {
+      throw new ApiError("Request timed out. Please try again.", { code: "timeout", retryable: true });
+    }
     if (error.name === "TypeError" && error.message === "Failed to fetch") {
-      throw new Error("Network error. Please check your connection.");
+      throw new ApiError("Cannot reach server. Please check your connection.", { code: "network", retryable: true });
     }
-    if (error.message && error.message.includes("body")) {
-      throw new Error("Request failed. Please try again.");
-    }
-    throw error;
+    throw new ApiError(error.message || "Request failed.", { code: "unknown", retryable: true });
   }
 }
 

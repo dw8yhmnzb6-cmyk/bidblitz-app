@@ -11,6 +11,7 @@ import { useMerchant } from "../store";
 import { useMerchantStats } from "../hooks";
 import { formatRelativeTime } from "../models";
 import ExportSection from "../components/ExportSection";
+import ErrorState from "../components/ErrorState";
 import { api as apiService } from "../services/api";
 import { useI18n } from "../store";
 
