@@ -292,16 +292,36 @@ h1, h2, h3, h4, h5, h6 {
   }
 }
 
-/* Hide external preview environment elements */
+/* Hide ALL external preview environment & testing agent elements */
 [class*="emergent"],
 [id*="emergent"],
 [data-emergent],
+[class*="testing-agent"],
+[id*="testing-agent"],
+[class*="test-panel"],
+[id*="test-panel"],
+[class*="TestingAgent"],
+[id*="TestingAgent"],
+[class*="test-runner"],
+[id*="test-runner"],
+[class*="agent-panel"],
+[id*="agent-panel"],
+[class*="agent-overlay"],
+[id*="agent-overlay"],
 div[style*="Made with"],
 iframe[src*="emergent"],
 .preview-badge,
-.watermark {
+.watermark,
+[data-testing],
+[data-test-panel],
+[data-agent] {
   display: none !important;
   visibility: hidden !important;
   opacity: 0 !important;
   pointer-events: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  overflow: hidden !important;
+  position: absolute !important;
+  z-index: -9999 !important;
 }
