@@ -169,7 +169,7 @@ export const WalletPage = ({ onNavigate }) => {
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.05 }}
           >
-            Wallet
+            {t("wallet.title")}
           </motion.h1>
         </div>
         <motion.button
@@ -196,7 +196,7 @@ export const WalletPage = ({ onNavigate }) => {
         >
           <div className="flex items-center justify-center gap-1.5 mb-3">
             <Shield size={11} className="text-[#00C2FF]/60" />
-            <p className="text-[10px] text-[#3A3A3A] font-semibold tracking-[0.14em] uppercase">Available Balance</p>
+            <p className="text-[10px] text-[#3A3A3A] font-semibold tracking-[0.14em] uppercase">{t("wallet.available")}</p>
           </div>
 
           <AnimatePresence mode="wait">
@@ -247,7 +247,7 @@ export const WalletPage = ({ onNavigate }) => {
                 <TrendingDown size={11} className="text-[#FF4757]" />
               )}
               <span className={`text-[11px] font-medium ${parseFloat(stats.percentageChange) >= 0 ? "text-[#00D26A]" : "text-[#FF4757]"}`}>
-                {parseFloat(stats.percentageChange) >= 0 ? "+" : ""}{stats.percentageChange}% this month
+                {parseFloat(stats.percentageChange) >= 0 ? "+" : ""}{stats.percentageChange}% {t("home.month")}
               </span>
             </motion.div>
           )}

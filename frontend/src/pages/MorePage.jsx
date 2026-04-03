@@ -154,11 +154,18 @@ const ProfileView = ({ user, onBack, t }) => {
   );
 };
 
+// ── Language Names Map ──
+const LANG_NAMES = {
+  en: "English", de: "Deutsch", sq: "Shqip", tr: "Türkçe", fr: "Français",
+  es: "Español", it: "Italiano", pt: "Português", nl: "Nederlands", pl: "Polski", ru: "Русский", ar: "العربية",
+};
+
 // ── Settings Sub-page ──
-const SettingsView = ({ onBack, t }) => {
+const SettingsView = ({ onBack, t, locale, setLocale }) => {
   const [notifs, setNotifs] = useState(true);
   const [biometric, setBiometric] = useState(false);
   const [darkMode] = useState(true);
+  const [showLangPicker, setShowLangPicker] = useState(false);
 
   return (
     <SubPage title={t("settings.title")} onBack={onBack}>
@@ -167,7 +174,36 @@ const SettingsView = ({ onBack, t }) => {
         <p className="text-[9px] text-[#333] uppercase tracking-[0.14em] font-semibold mb-2.5 pl-1">{t("settings.personal")}</p>
         <div className="rounded-2xl overflow-hidden mb-5" style={{ background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.035)" }}>
           <MenuRow icon={User} label={t("settings.personal_info")} color="#00C2FF" isLast={false} />
-          <MenuRow icon={Globe} label={t("settings.language")} desc="English" color="#A855F7" isLast={false} />
+          <MenuRow icon={Globe} label={t("settings.language")} desc={LANG_NAMES[locale] || locale} color="#A855F7" isLast={false} onClick={() => setShowLangPicker(!showLangPicker)} />
+          <AnimatePresence>
+            {showLangPicker && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.25 }}
+                className="overflow-hidden border-b border-white/[0.03]"
+              >
+                <div className="grid grid-cols-3 gap-1.5 p-3" data-testid="language-picker">
+                  {Object.entries(LANG_NAMES).map(([code, name]) => (
+                    <motion.button
+                      key={code}
+                      data-testid={`lang-${code}`}
+                      onClick={() => { setLocale(code); setShowLangPicker(false); }}
+                      whileTap={{ scale: 0.95 }}
+                      className={`px-2 py-2 rounded-xl text-[11px] font-medium transition-all ${
+                        locale === code
+                          ? "bg-[#A855F7]/15 text-[#A855F7] border border-[#A855F7]/30"
+                          : "bg-white/[0.02] text-white/50 border border-white/[0.04] hover:bg-white/[0.04]"
+                      }`}
+                    >
+                      {name}
+                    </motion.button>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
           <MenuRow icon={Moon} label={t("settings.appearance")} desc={t("settings.dark_mode")} color="#6366F1" isLast right={<Toggle on={darkMode} onToggle={() => {}} />} />
         </div>
       </motion.div>
@@ -198,7 +234,7 @@ const SettingsView = ({ onBack, t }) => {
 // ── Main More Page ──
 export const MorePage = ({ onNavigate }) => {
   const user = useUser();
-  const { t } = useI18n();
+  const { t, locale, setLocale } = useI18n();
   const [subPage, setSubPage] = useState(null);
   const [unreadCount, setUnreadCount] = useState(0);
 
@@ -211,7 +247,7 @@ export const MorePage = ({ onNavigate }) => {
     return <ProfileView user={user} onBack={() => setSubPage(null)} t={t} />;
   }
   if (subPage === "settings") {
-    return <SettingsView onBack={() => setSubPage(null)} t={t} />;
+    return <SettingsView onBack={() => setSubPage(null)} t={t} locale={locale} setLocale={setLocale} />;
   }
   if (subPage === "referral") {
     return <ReferralPage onBack={() => setSubPage(null)} />;
