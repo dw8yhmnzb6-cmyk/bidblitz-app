@@ -67,6 +67,10 @@ Create a modern, professional fintech web app called BidBlitz V2. Build Revolut-
 - i18n: 'coming_soon' and 'coming_soon_hint' translation keys added to all 12 languages
 - i18n: HomePage hardcoded English strings (Get Started, Services, View All, Total Balance, etc.) replaced with t() calls
 - Frontend Error Handling: ErrorState component wired into MerchantPage, AdminPage, NotificationsPage with retry logic
+- AUDIT LOGGING: Fully wired into all critical backend flows (auth, payment, payout, admin, stripe, profile)
+  - Events: login_success, login_failed, login_locked, register, logout, password_change, profile_update, payment_success, payment_failed, send_success, send_failed, topup_initiated, topup_success, topup_failed, payout_requested, payout_cancelled, payout_action, admin_action
+  - Admin endpoint: GET /api/admin/audit-logs with filters (event, user_id, severity)
+  - 18/18 backend tests passed, no sensitive data leaked
 
 ### Not Yet Implemented
 - Onboarding-Flow UI (Welcome screens, progress checklists)
