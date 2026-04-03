@@ -4,11 +4,10 @@ import {
   X, QrCode, Check, Loader2, ArrowRight, ShieldCheck, Copy,
   ChevronLeft, CreditCard, Nfc, Fingerprint, Wifi, AlertTriangle
 } from "lucide-react";
-import { useWallet, useMerchant } from "../store";
+import { useWallet, useMerchant, useI18n } from "../store";
 
 // ── Constants ──
 const Step = { AMOUNT: 0, CONFIRM: 1, SCAN: 2, PROCESSING: 3, SUCCESS: 4, ERROR: 5 };
-const STEP_LABELS = ["New Payment", "Confirm", "Scanning", "Processing", "Completed", "Declined"];
 
 function ref() {
   const c = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -83,11 +82,11 @@ const Ring = ({ sec, total }) => {
 // ═══════════════════════════════════════════
 // Processing steps indicator
 // ═══════════════════════════════════════════
-const Steps = ({ at }) => {
+const Steps = ({ at, t }) => {
   const list = [
-    { l: "Authenticating", I: Fingerprint },
-    { l: "Verifying payment", I: ShieldCheck },
-    { l: "Completing transfer", I: Wifi },
+    { l: t("scan.step_auth"), I: Fingerprint },
+    { l: t("scan.step_verify"), I: ShieldCheck },
+    { l: t("scan.step_transfer"), I: Wifi },
   ];
   return (
     <div className="space-y-3 w-full max-w-[220px]">
@@ -157,6 +156,8 @@ export const ScannerPage = ({ onNavigate }) => {
 
   const w = useWallet();
   const m = useMerchant();
+  const { t } = useI18n();
+  const STEP_LABELS = [t("scan.step_new"), t("scan.step_confirm"), t("scan.step_scanning"), t("scan.step_processing"), t("scan.step_completed"), t("scan.step_declined")];
   const num = parseFloat(amt) || 0;
   const valid = num > 0 && num <= w.balance;
   const locked = step === Step.SCAN || step === Step.PROCESSING;
@@ -181,8 +182,8 @@ export const ScannerPage = ({ onNavigate }) => {
 
   // ── Flow control ──
   const goConfirm = () => {
-    if (!num || num <= 0) { setErr("Enter a valid amount"); return; }
-    if (num > w.balance) { setErr("Exceeds available balance"); return; }
+    if (!num || num <= 0) { setErr(t("scan.invalid_amount")); return; }
+    if (num > w.balance) { setErr(t("scan.exceeds_balance")); return; }
     setErr(null); setTxRef(ref()); setExpiry(300); setStep(Step.CONFIRM);
   };
   const goScan = () => { m.createPaymentRequest(num); setProg(0); setStep(Step.SCAN); };
@@ -232,10 +233,10 @@ export const ScannerPage = ({ onNavigate }) => {
         await new Promise((r) => setTimeout(r, 250));
         setStep(Step.SUCCESS);
       } else {
-        setErr(result.error || "Insufficient balance"); setStep(Step.ERROR);
+        setErr(result.error || t("scan.insufficient")); setStep(Step.ERROR);
       }
     } catch {
-      setErr("Payment failed"); setStep(Step.ERROR);
+      setErr(t("scan.error")); setStep(Step.ERROR);
     }
   }, [num, w, m]);
 
@@ -281,7 +282,7 @@ export const ScannerPage = ({ onNavigate }) => {
             <motion.div key="s1" className="flex-1 flex flex-col px-5 pb-5"
               initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={slide}>
               <div className="flex-1 flex flex-col items-center justify-center">
-                <p className="text-[#3A3A3A] text-[10px] font-semibold tracking-[0.16em] uppercase mb-4">Payment Amount</p>
+                <p className="text-[#3A3A3A] text-[10px] font-semibold tracking-[0.16em] uppercase mb-4">{t("scan.amount_label")}</p>
                 <div className="flex items-baseline gap-1 mb-2 min-h-[66px]">
                   <span className="text-[26px] text-[#2A2A2A] font-outfit font-light select-none">€</span>
                   <AnimatePresence mode="popLayout">
@@ -293,7 +294,7 @@ export const ScannerPage = ({ onNavigate }) => {
                   </AnimatePresence>
                 </div>
                 <p className={`text-[11px] font-medium ${num > w.balance ? "text-[#FF4757]" : "text-[#2A2A2A]"}`}>
-                  Balance: €{w.balance.toLocaleString("de-DE", { minimumFractionDigits: 2 })}
+                  {t("wallet.available")}: €{w.balance.toLocaleString("de-DE", { minimumFractionDigits: 2 })}
                 </p>
                 <AnimatePresence>
                   {err && <motion.p className="text-[#FF4757] text-[11px] mt-2 font-medium"
@@ -307,7 +308,7 @@ export const ScannerPage = ({ onNavigate }) => {
                   ${valid ? "bg-[#00C2FF] text-[#020202]" : "bg-white/[0.025] text-[#1A1A1A] cursor-not-allowed border border-white/[0.025]"}`}
                 style={valid ? { boxShadow: "0 6px 36px rgba(0,194,255,0.3), 0 2px 10px rgba(0,194,255,0.15)" } : {}}
                 whileTap={valid ? { scale: 0.96 } : {}} onClick={goConfirm} disabled={!valid}>
-                Continue <ArrowRight size={14} strokeWidth={2.5} />
+                {t("scan.continue")} <ArrowRight size={14} strokeWidth={2.5} />
               </motion.button>
             </motion.div>
           )}
@@ -333,12 +334,12 @@ export const ScannerPage = ({ onNavigate }) => {
                   style={{ background: "rgba(255,255,255,0.018)", border: "1px solid rgba(255,255,255,0.045)", backdropFilter: "blur(24px)" }}
                   initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08, ...slide }}>
                   {[
-                    { lbl: "Reference", val: txRef, mono: true,
-                      right: <motion.button className="text-[#00C2FF] text-[10px] font-semibold flex items-center gap-1" whileTap={{ scale: 0.88 }} onClick={copyRef}><Copy size={10} />{copied ? "Copied" : "Copy"}</motion.button> },
-                    { lbl: "Merchant", val: m.businessName,
+                    { lbl: t("scan.ref_label"), val: txRef, mono: true,
+                      right: <motion.button className="text-[#00C2FF] text-[10px] font-semibold flex items-center gap-1" whileTap={{ scale: 0.88 }} onClick={copyRef}><Copy size={10} />{copied ? t("scan.copied") : t("scan.copy")}</motion.button> },
+                    { lbl: t("scan.merchant_label"), val: m.businessName,
                       right: <div className="w-7 h-7 rounded-lg bg-[#00C2FF]/6 flex items-center justify-center"><Nfc size={12} className="text-[#00C2FF]" /></div> },
-                    { lbl: "Method", val: "BidBlitz Wallet", right: <CreditCard size={13} className="text-[#333]" /> },
-                    { lbl: "Expires in", val: expStr, cyan: true, right: <Ring sec={expiry} total={300} /> },
+                    { lbl: t("scan.method_label"), val: "BidBlitz Wallet", right: <CreditCard size={13} className="text-[#333]" /> },
+                    { lbl: t("scan.expires_label"), val: expStr, cyan: true, right: <Ring sec={expiry} total={300} /> },
                   ].map((r, i) => (
                     <motion.div key={i} className={`flex items-center justify-between px-4 py-[11px] ${i < 3 ? "border-b border-white/[0.035]" : ""}`}
                       initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 + i * 0.05 }}>
@@ -353,7 +354,7 @@ export const ScannerPage = ({ onNavigate }) => {
 
                 <motion.div className="flex items-center gap-1.5" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.35 }}>
                   <ShieldCheck size={11} className="text-[#00D26A]/70" />
-                  <span className="text-[10px] text-[#333] font-medium">End-to-end encrypted</span>
+                  <span className="text-[10px] text-[#333] font-medium">{t("scan.encrypted")}</span>
                 </motion.div>
               </div>
 
@@ -363,13 +364,13 @@ export const ScannerPage = ({ onNavigate }) => {
                   style={{ boxShadow: "0 6px 36px rgba(0,194,255,0.3), 0 2px 10px rgba(0,194,255,0.15)" }}
                   whileTap={{ scale: 0.96 }} onClick={goScan}
                   initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-                  <Fingerprint size={15} strokeWidth={2} /> Start Payment
+                  <Fingerprint size={15} strokeWidth={2} /> {t("scan.start_pay")}
                 </motion.button>
                 <motion.button data-testid="cancel-confirm-btn"
                   className="w-full py-3 rounded-[14px] text-[#444] font-semibold text-[13px]"
                   whileTap={{ scale: 0.96 }} onClick={() => { reset(); onNavigate("/"); }}
                   initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.28 }}>
-                  Cancel
+                  {t("scan.cancel")}
                 </motion.button>
               </div>
             </motion.div>
@@ -448,7 +449,7 @@ export const ScannerPage = ({ onNavigate }) => {
                 style={{ background: "rgba(0,194,255,0.05)", border: "1px solid rgba(0,194,255,0.08)" }}
                 animate={{ opacity: [0.5, 1, 0.5] }} transition={{ duration: 2, repeat: Infinity }}>
                 <QrCode size={12} className="text-[#00C2FF]" />
-                <span className="text-[10px] text-[#00C2FF]/80 font-medium">Scan customer code</span>
+                <span className="text-[10px] text-[#00C2FF]/80 font-medium">{t("scan.scanning")}</span>
               </motion.div>
             </motion.div>
           )}
@@ -476,9 +477,9 @@ export const ScannerPage = ({ onNavigate }) => {
               </motion.p>
               <motion.p className="text-[12px] text-[#444] font-medium mb-5"
                 animate={{ opacity: [0.35, 0.85, 0.35] }} transition={{ duration: 2, repeat: Infinity }}>
-                Securely processing payment...
+                {t("scan.processing")}
               </motion.p>
-              <Steps at={pStep} />
+              <Steps at={pStep} t={t} />
               <p className="text-[9px] text-[#1A1A1A] font-mono mt-5 tracking-wider">{txRef}</p>
             </motion.div>
           )}
@@ -530,7 +531,7 @@ export const ScannerPage = ({ onNavigate }) => {
               </motion.p>
               <motion.p className="text-[#00D26A] text-[13px] font-semibold mb-0.5"
                 initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 }}>
-                Payment Successful
+                {t("scan.success")}
               </motion.p>
               <motion.p className="text-[#444] text-[11px] mb-4"
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}>
@@ -542,11 +543,11 @@ export const ScannerPage = ({ onNavigate }) => {
                 style={{ background: "rgba(255,255,255,0.018)", border: "1px solid rgba(255,255,255,0.035)" }}
                 initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.55 }}>
                 {[
-                  { l: "Reference", v: txRef, mono: true },
-                  { l: "Date", v: doneAt ? fmtDate(doneAt) : "—" },
-                  { l: "Time", v: doneAt ? fmtTime(doneAt) : "—" },
-                  { l: "Status", v: "Completed", green: true, icon: <Check size={9} className="text-[#00D26A]" /> },
-                  { l: "New Balance", v: `€${w.balance.toLocaleString("de-DE", { minimumFractionDigits: 2 })}`, bold: true },
+                  { l: t("scan.ref_label"), v: txRef, mono: true },
+                  { l: t("scan.date_label"), v: doneAt ? fmtDate(doneAt) : "—" },
+                  { l: t("scan.time_label"), v: doneAt ? fmtTime(doneAt) : "—" },
+                  { l: t("scan.status_label"), v: t("scan.status_completed"), green: true, icon: <Check size={9} className="text-[#00D26A]" /> },
+                  { l: t("scan.new_balance"), v: `€${w.balance.toLocaleString("de-DE", { minimumFractionDigits: 2 })}`, bold: true },
                 ].map((r, i, a) => (
                   <div key={i} className={`flex items-center justify-between px-4 py-[9px] ${i < a.length - 1 ? "border-b border-white/[0.03]" : ""}`}>
                     <span className="text-[9px] text-[#3A3A3A] uppercase tracking-[0.1em] font-semibold">{r.l}</span>
@@ -564,7 +565,7 @@ export const ScannerPage = ({ onNavigate }) => {
                 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.65 }}
                 whileHover={{ backgroundColor: "rgba(255,255,255,0.06)" }} whileTap={{ scale: 0.96 }}
                 onClick={() => { reset(); onNavigate("/"); }}>
-                Done
+                {t("scan.done")}
               </motion.button>
             </motion.div>
           )}
@@ -616,11 +617,11 @@ export const ScannerPage = ({ onNavigate }) => {
               </motion.p>
               <motion.p className="text-[#FF4757] text-[13px] font-semibold mb-1.5"
                 initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.38 }}>
-                Payment Declined
+                {t("scan.declined")}
               </motion.p>
               <motion.p className="text-[#444] text-[11px] text-center max-w-[250px] leading-relaxed mb-7"
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.42 }}>
-                {err || "Insufficient balance. Please top up your wallet and try again."}
+                {err || t("scan.insufficient_hint")}
               </motion.p>
 
               <div className="w-full space-y-2">
@@ -629,13 +630,13 @@ export const ScannerPage = ({ onNavigate }) => {
                   style={{ background: "linear-gradient(135deg,#FF4757,#E8384F)", boxShadow: "0 6px 28px rgba(255,71,87,0.22)" }}
                   initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.48 }}
                   whileTap={{ scale: 0.96 }} onClick={reset}>
-                  Try Again
+                  {t("scan.try_again")}
                 </motion.button>
                 <motion.button data-testid="cancel-btn"
                   className="w-full py-3 rounded-[14px] text-[#444] font-semibold text-[13px]"
                   initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.53 }}
                   whileTap={{ scale: 0.96 }} onClick={() => { reset(); onNavigate("/"); }}>
-                  Cancel
+                  {t("scan.cancel")}
                 </motion.button>
               </div>
             </motion.div>

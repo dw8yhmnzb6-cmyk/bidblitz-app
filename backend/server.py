@@ -13,10 +13,13 @@ from datetime import datetime, timezone
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from starlette.middleware.cors import CORSMiddleware
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
 from core.config import APP_ENV, IS_PRODUCTION
 from core.database import db, create_indexes, close_connection
 from core.security import hash_password, verify_password
+from core.rate_limit import limiter
 
 # ── Structured Logging ──
 logging.basicConfig(
@@ -33,6 +36,10 @@ app = FastAPI(
     docs_url=None if IS_PRODUCTION else "/docs",
     redoc_url=None if IS_PRODUCTION else "/redoc",
 )
+
+# ── Rate Limiting ──
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # ── Global Error Handler ──
 @app.exception_handler(Exception)

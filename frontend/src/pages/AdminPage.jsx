@@ -43,12 +43,12 @@ const StatCard = ({ icon: Icon, label, value, sub, color, delay = 0 }) => (
 const statusColors = { pending: "#FFB800", approved: "#00C2FF", processed: "#00D26A", failed: "#FF4757", cancelled: "#666", completed: "#00D26A" };
 
 const tabs = [
-  { id: "overview", label: "Overview", icon: BarChart3 },
-  { id: "users", label: "Users", icon: Users },
-  { id: "merchants", label: "Merchants", icon: Store },
-  { id: "payouts", label: "Payouts", icon: Download },
-  { id: "transactions", label: "Txns", icon: CreditCard },
-  { id: "settings", label: "Config", icon: Settings },
+  { id: "overview", key: "admin.overview", icon: BarChart3 },
+  { id: "users", key: "admin.users", icon: Users },
+  { id: "merchants", key: "admin.merchants", icon: Store },
+  { id: "payouts", key: "admin.payouts", icon: Download },
+  { id: "transactions", key: "admin.txns", icon: CreditCard },
+  { id: "settings", key: "admin.config", icon: Settings },
 ];
 
 export const AdminPage = ({ onNavigate }) => {
@@ -103,9 +103,9 @@ export const AdminPage = ({ onNavigate }) => {
       <motion.div className="min-h-screen flex items-center justify-center" style={{ background: "#030303" }}>
         <div className="text-center">
           <Shield size={40} className="text-[#FF4757] mx-auto mb-3" />
-          <p className="text-white font-semibold mb-1">Access Denied</p>
-          <p className="text-sm text-[#666]">Admin privileges required</p>
-          <motion.button onClick={() => onNavigate("/")} className="mt-4 px-6 py-2 bg-white/5 text-white rounded-xl text-sm" whileTap={{ scale: 0.95 }}>Go Home</motion.button>
+          <p className="text-white font-semibold mb-1">{t("admin.access_denied")}</p>
+          <p className="text-sm text-[#666]">{t("admin.admin_required")}</p>
+          <motion.button onClick={() => onNavigate("/")} className="mt-4 px-6 py-2 bg-white/5 text-white rounded-xl text-sm" whileTap={{ scale: 0.95 }}>{t("admin.go_home")}</motion.button>
         </div>
       </motion.div>
     );
@@ -120,8 +120,8 @@ export const AdminPage = ({ onNavigate }) => {
           <ArrowLeft size={15} strokeWidth={1.5} className="text-white/50" />
         </motion.button>
         <div>
-          <h1 className="text-[15px] font-semibold font-outfit text-white tracking-tight">Admin Panel</h1>
-          <p className="text-[10px] text-[#333] font-medium">Platform Control Center</p>
+          <h1 className="text-[15px] font-semibold font-outfit text-white tracking-tight">{t("admin.title")}</h1>
+          <p className="text-[10px] text-[#333] font-medium">{t("admin.subtitle")}</p>
         </div>
         <div className="ml-auto flex items-center gap-1.5 px-2.5 py-1 rounded-full" style={{ background: "rgba(255,71,87,0.06)", border: "1px solid rgba(255,71,87,0.12)" }}>
           <Shield size={10} className="text-[#FF4757]" />
@@ -132,12 +132,12 @@ export const AdminPage = ({ onNavigate }) => {
       {/* Tab Bar */}
       <div className="px-5 mb-4 relative z-10">
         <div className="flex gap-1 overflow-x-auto no-scrollbar">
-          {tabs.map((t) => (
-            <motion.button key={t.id} onClick={() => setTab(t.id)} whileTap={{ scale: 0.95 }}
+          {tabs.map((tb) => (
+            <motion.button key={tb.id} onClick={() => setTab(tb.id)} whileTap={{ scale: 0.95 }}
               className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-medium whitespace-nowrap transition-all ${
-                tab === t.id ? "bg-[#00C2FF]/10 text-[#00C2FF] border border-[#00C2FF]/20" : "bg-white/[0.02] text-[#444] border border-white/[0.04]"
+                tab === tb.id ? "bg-[#00C2FF]/10 text-[#00C2FF] border border-[#00C2FF]/20" : "bg-white/[0.02] text-[#444] border border-white/[0.04]"
               }`}>
-              <t.icon size={12} /> {t.label}
+              <tb.icon size={12} /> {t(tb.key)}
             </motion.button>
           ))}
         </div>
@@ -154,22 +154,22 @@ export const AdminPage = ({ onNavigate }) => {
               ) : (
                 <>
                   <div className="grid grid-cols-2 gap-2.5 mb-5">
-                    <StatCard icon={Users} label="Total Users" value={overview.total_users} sub={`+${overview.today_new_users} today`} color="#00C2FF" delay={0.06} />
-                    <StatCard icon={Store} label="Merchants" value={overview.total_merchants} color="#A855F7" delay={0.08} />
-                    <StatCard icon={CreditCard} label="Payment Volume" value={`\u20AC${overview.payment_volume.toLocaleString("de-DE",{minimumFractionDigits:2})}`} sub={`${overview.total_transactions} txns`} color="#00D26A" delay={0.10} />
-                    <StatCard icon={CircleDollarSign} label="Fee Revenue" value={`\u20AC${overview.platform_fee_revenue.toLocaleString("de-DE",{minimumFractionDigits:2})}`} color="#FFB800" delay={0.12} />
-                    <StatCard icon={Clock} label="Pending Payouts" value={overview.pending_payouts_count} sub={`\u20AC${overview.pending_payouts_amount.toFixed(2)}`} color="#FF6B6B" delay={0.14} />
-                    <StatCard icon={Check} label="Processed Payouts" value={overview.processed_payouts_count} sub={`\u20AC${overview.processed_payouts_amount.toFixed(2)}`} color="#00D26A" delay={0.16} />
+                    <StatCard icon={Users} label={t("admin.total_users")} value={overview.total_users} sub={`+${overview.today_new_users} ${t("common.today").toLowerCase()}`} color="#00C2FF" delay={0.06} />
+                    <StatCard icon={Store} label={t("admin.total_merchants")} value={overview.total_merchants} color="#A855F7" delay={0.08} />
+                    <StatCard icon={CreditCard} label={t("admin.payment_volume")} value={`\u20AC${overview.payment_volume.toLocaleString("de-DE",{minimumFractionDigits:2})}`} sub={`${overview.total_transactions} txns`} color="#00D26A" delay={0.10} />
+                    <StatCard icon={CircleDollarSign} label={t("admin.fee_revenue")} value={`\u20AC${overview.platform_fee_revenue.toLocaleString("de-DE",{minimumFractionDigits:2})}`} color="#FFB800" delay={0.12} />
+                    <StatCard icon={Clock} label={t("admin.pending_payouts")} value={overview.pending_payouts_count} sub={`\u20AC${overview.pending_payouts_amount.toFixed(2)}`} color="#FF6B6B" delay={0.14} />
+                    <StatCard icon={Check} label={t("admin.processed_payouts")} value={overview.processed_payouts_count} sub={`\u20AC${overview.processed_payouts_amount.toFixed(2)}`} color="#00D26A" delay={0.16} />
                   </div>
                   <motion.div className="rounded-2xl p-4" style={{ background: "rgba(255,255,255,0.012)", border: "1px solid rgba(255,255,255,0.03)" }}
                     initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-                    <h3 className="text-[11px] font-semibold text-[#444] uppercase tracking-[0.1em] mb-2">Today</h3>
+                    <h3 className="text-[11px] font-semibold text-[#444] uppercase tracking-[0.1em] mb-2">{t("admin.today_label")}</h3>
                     <div className="flex items-center justify-between py-2 border-b border-white/[0.03]">
-                      <span className="text-[12px] text-white/60">Transactions</span>
+                      <span className="text-[12px] text-white/60">{t("admin.txns")}</span>
                       <span className="text-[13px] font-semibold font-outfit text-white/80">{overview.today_transactions}</span>
                     </div>
                     <div className="flex items-center justify-between py-2">
-                      <span className="text-[12px] text-white/60">New Users</span>
+                      <span className="text-[12px] text-white/60">{t("admin.new_users")}</span>
                       <span className="text-[13px] font-semibold font-outfit text-white/80">{overview.today_new_users}</span>
                     </div>
                   </motion.div>
@@ -194,9 +194,9 @@ export const AdminPage = ({ onNavigate }) => {
                 <div className="flex-1 flex items-center gap-2 px-3 py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.05]">
                   <Search size={14} className="text-[#333]" />
                   <input value={search} onChange={e => setSearch(e.target.value)} onKeyDown={e => e.key === "Enter" && load("users")}
-                    placeholder="Search users..." className="flex-1 bg-transparent text-[12px] text-white outline-none placeholder:text-[#2A2A2A]" />
+                    placeholder={t("admin.search") + "..."} className="flex-1 bg-transparent text-[12px] text-white outline-none placeholder:text-[#2A2A2A]" />
                 </div>
-                <motion.button onClick={() => load("users")} className="px-3 py-2.5 bg-[#00C2FF]/10 text-[#00C2FF] rounded-xl text-[11px] font-semibold" whileTap={{ scale: 0.95 }}>Search</motion.button>
+                <motion.button onClick={() => load("users")} className="px-3 py-2.5 bg-[#00C2FF]/10 text-[#00C2FF] rounded-xl text-[11px] font-semibold" whileTap={{ scale: 0.95 }}>{t("admin.search")}</motion.button>
               </div>
               {loading ? <div className="space-y-2">{[1,2,3].map(i => <Skeleton key={i} className="h-[60px]" />)}</div> : (
                 <div className="rounded-2xl overflow-hidden" style={{ background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.035)" }}>
@@ -218,7 +218,7 @@ export const AdminPage = ({ onNavigate }) => {
                       </div>
                     </div>
                   ))}
-                  {users.length === 0 && <p className="text-center py-8 text-[12px] text-[#333]">No users found</p>}
+                  {users.length === 0 && <p className="text-center py-8 text-[12px] text-[#333]">{t("admin.no_results")}</p>}
                 </div>
               )}
             </motion.div>
@@ -244,7 +244,7 @@ export const AdminPage = ({ onNavigate }) => {
                       </div>
                     </div>
                   ))}
-                  {merchants.length === 0 && <p className="text-center py-8 text-[12px] text-[#333]">No merchants found</p>}
+                  {merchants.length === 0 && <p className="text-center py-8 text-[12px] text-[#333]">{t("admin.no_results")}</p>}
                 </div>
               )}
             </motion.div>
@@ -257,7 +257,7 @@ export const AdminPage = ({ onNavigate }) => {
                 {["", "pending", "approved", "processed", "failed", "cancelled"].map(s => (
                   <motion.button key={s} onClick={() => setPayoutFilter(s)} whileTap={{ scale: 0.95 }}
                     className={`px-3 py-1.5 rounded-lg text-[10px] font-semibold whitespace-nowrap ${payoutFilter === s ? "bg-[#00C2FF]/10 text-[#00C2FF]" : "bg-white/[0.02] text-[#444]"}`}>
-                    {s || "All"}
+                    {s || t("common.all")}
                   </motion.button>
                 ))}
               </div>
@@ -284,24 +284,24 @@ export const AdminPage = ({ onNavigate }) => {
                           {po.status === "pending" && (
                             <motion.button onClick={() => handlePayoutAction(po.reference, "approve")} disabled={actionLoading === po.reference}
                               className="flex-1 py-2 bg-[#00C2FF]/10 text-[#00C2FF] rounded-lg text-[10px] font-semibold" whileTap={{ scale: 0.95 }}>
-                              {actionLoading === po.reference ? <Loader2 size={12} className="animate-spin mx-auto" /> : "Approve"}
+                              {actionLoading === po.reference ? <Loader2 size={12} className="animate-spin mx-auto" /> : t("admin.approve")}
                             </motion.button>
                           )}
                           {po.status === "approved" && (
                             <motion.button onClick={() => handlePayoutAction(po.reference, "process")} disabled={actionLoading === po.reference}
                               className="flex-1 py-2 bg-[#00D26A]/10 text-[#00D26A] rounded-lg text-[10px] font-semibold" whileTap={{ scale: 0.95 }}>
-                              {actionLoading === po.reference ? <Loader2 size={12} className="animate-spin mx-auto" /> : "Mark Processed"}
+                              {actionLoading === po.reference ? <Loader2 size={12} className="animate-spin mx-auto" /> : t("admin.process")}
                             </motion.button>
                           )}
                           <motion.button onClick={() => handlePayoutAction(po.reference, po.status === "pending" ? "cancel" : "fail")} disabled={actionLoading === po.reference}
                             className="flex-1 py-2 bg-[#FF4757]/10 text-[#FF4757] rounded-lg text-[10px] font-semibold" whileTap={{ scale: 0.95 }}>
-                            {po.status === "pending" ? "Cancel" : "Fail"}
+                            {po.status === "pending" ? t("scan.cancel") : t("admin.fail")}
                           </motion.button>
                         </div>
                       )}
                     </div>
                   ))}
-                  {payouts.length === 0 && <p className="text-center py-8 text-[12px] text-[#333]">No payouts found</p>}
+                  {payouts.length === 0 && <p className="text-center py-8 text-[12px] text-[#333]">{t("admin.no_results")}</p>}
                 </div>
               )}
             </motion.div>
@@ -314,9 +314,9 @@ export const AdminPage = ({ onNavigate }) => {
                 <div className="flex-1 flex items-center gap-2 px-3 py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.05]">
                   <Search size={14} className="text-[#333]" />
                   <input value={search} onChange={e => setSearch(e.target.value)} onKeyDown={e => e.key === "Enter" && load("transactions")}
-                    placeholder="Search ref / merchant..." className="flex-1 bg-transparent text-[12px] text-white outline-none placeholder:text-[#2A2A2A]" />
+                    placeholder={t("admin.search") + "..."} className="flex-1 bg-transparent text-[12px] text-white outline-none placeholder:text-[#2A2A2A]" />
                 </div>
-                <motion.button onClick={() => load("transactions")} className="px-3 py-2.5 bg-[#00C2FF]/10 text-[#00C2FF] rounded-xl text-[11px] font-semibold" whileTap={{ scale: 0.95 }}>Go</motion.button>
+                <motion.button onClick={() => load("transactions")} className="px-3 py-2.5 bg-[#00C2FF]/10 text-[#00C2FF] rounded-xl text-[11px] font-semibold" whileTap={{ scale: 0.95 }}>{t("admin.search")}</motion.button>
               </div>
               {loading ? <div className="space-y-2">{[1,2,3,4].map(i => <Skeleton key={i} className="h-[50px]" />)}</div> : (
                 <div className="rounded-2xl overflow-hidden" style={{ background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.035)" }}>
@@ -341,7 +341,7 @@ export const AdminPage = ({ onNavigate }) => {
                       </div>
                     </div>
                   ))}
-                  {txns.length === 0 && <p className="text-center py-8 text-[12px] text-[#333]">No transactions found</p>}
+                  {txns.length === 0 && <p className="text-center py-8 text-[12px] text-[#333]">{t("admin.no_results")}</p>}
                 </div>
               )}
             </motion.div>
@@ -354,7 +354,7 @@ export const AdminPage = ({ onNavigate }) => {
                 <div className="space-y-4">
                   <motion.div className="rounded-2xl p-4" style={{ background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.035)" }}
                     initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-                    <h3 className="text-[11px] font-semibold text-[#444] uppercase tracking-[0.1em] mb-3">Fee Configuration</h3>
+                    <h3 className="text-[11px] font-semibold text-[#444] uppercase tracking-[0.1em] mb-3">{t("admin.fee_config")}</h3>
                     {[
                       { label: "Payment Fee", value: `${(settings.fees.payment * 100).toFixed(1)}%`, color: "#00C2FF" },
                       { label: "Send Fee", value: `${(settings.fees.send * 100).toFixed(1)}%`, color: "#A855F7" },
@@ -373,9 +373,9 @@ export const AdminPage = ({ onNavigate }) => {
                     initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
                     <div className="flex items-center gap-2 mb-1">
                       <AlertCircle size={12} className="text-[#FF6B6B]" />
-                      <span className="text-[11px] text-[#FF6B6B] font-semibold">Server Config</span>
+                      <span className="text-[11px] text-[#FF6B6B] font-semibold">{t("admin.server_config")}</span>
                     </div>
-                    <p className="text-[10px] text-[#444]">Fee values are set in backend/core/config.py. Changes require a server restart to take effect.</p>
+                    <p className="text-[10px] text-[#444]">{t("admin.fee_note")}</p>
                   </motion.div>
                 </div>
               )}
