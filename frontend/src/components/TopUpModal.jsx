@@ -9,6 +9,8 @@ import {
   X, CreditCard, Check, Loader2, AlertCircle, ExternalLink, Shield
 } from "lucide-react";
 import { formatCurrency } from "../models";
+import { useI18n } from "../store";
+import { useNetwork } from "../store/NetworkContext";
 
 const API_BASE = process.env.REACT_APP_BACKEND_URL;
 
@@ -85,6 +87,8 @@ export const TopUpModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
   const [stripeSessionId, setStripeSessionId] = useState(null);
   const [creditedAmount, setCreditedAmount] = useState(0);
   const [isCreating, setIsCreating] = useState(false);
+  const { t } = useI18n();
+  const { online } = useNetwork();
 
   const handleCredited = useCallback((amt) => {
     setCreditedAmount(amt);
@@ -119,6 +123,11 @@ export const TopUpModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
     const pkgId = selectedId;
     if (!pkgId) return;
 
+    if (!online) {
+      setError(t("error.offline"));
+      return;
+    }
+
     setIsCreating(true);
     setError(null);
 
@@ -133,13 +142,19 @@ export const TopUpModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
 
       if (data.checkout_url) {
         setStep("redirecting");
-        // Short delay for UX, then redirect
         setTimeout(() => {
           window.location.href = data.checkout_url;
         }, 800);
       }
     } catch (err) {
-      setError(err.message);
+      const msg = err.message || "";
+      // Map compliance errors to translated messages
+      if (msg.startsWith("compliance.")) {
+        const key = msg.split("|")[0];
+        setError(t(key) || msg);
+      } else {
+        setError(msg);
+      }
       setIsCreating(false);
     }
   };
@@ -187,11 +202,11 @@ export const TopUpModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
           {/* Header */}
           <div className="flex items-center justify-between p-4 sm:p-5 border-b border-white/5">
             <h2 className="text-lg font-semibold font-outfit text-white">
-              {step === "amount" && "Add Money"}
-              {step === "redirecting" && "Redirecting..."}
-              {step === "verifying" && "Verifying Payment"}
-              {step === "success" && "Success"}
-              {step === "error" && "Failed"}
+              {step === "amount" && (t("topup.title") || "Add Money")}
+              {step === "redirecting" && (t("topup.redirecting") || "Redirecting...")}
+              {step === "verifying" && (t("topup.verifying") || "Verifying Payment")}
+              {step === "success" && (t("topup.success") || "Success")}
+              {step === "error" && (t("topup.failed") || "Failed")}
             </h2>
             {step !== "redirecting" && step !== "verifying" && (
               <motion.button
@@ -217,7 +232,7 @@ export const TopUpModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
                   exit={{ opacity: 0, x: -20 }}
                 >
                   <p className="text-sm text-[#666] mb-4">
-                    Current balance: {formatCurrency(currentBalance, "EUR", false)}
+                    {t("topup.current") || "Current balance"}: {formatCurrency(currentBalance, "EUR", false)}
                   </p>
 
                   {/* Package grid */}
@@ -247,15 +262,15 @@ export const TopUpModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
                       animate={{ opacity: 1, height: "auto" }}
                     >
                       <div className="flex justify-between text-sm">
-                        <span className="text-[#666]">Amount</span>
+                        <span className="text-[#666]">{t("topup.amount") || "Amount"}</span>
                         <span className="text-white">&euro;{selectedPreset.amount.toFixed(2)}</span>
                       </div>
                       <div className="flex justify-between text-sm">
-                        <span className="text-[#666]">Fee</span>
-                        <span className="text-[#00D26A]">Free</span>
+                        <span className="text-[#666]">{t("topup.fee") || "Fee"}</span>
+                        <span className="text-[#00D26A]">{t("topup.free") || "Free"}</span>
                       </div>
                       <div className="border-t border-white/5 pt-2 flex justify-between">
-                        <span className="text-white font-medium">Total</span>
+                        <span className="text-white font-medium">{t("topup.total") || "Total"}</span>
                         <span className="text-white font-bold">&euro;{selectedPreset.amount.toFixed(2)}</span>
                       </div>
                       <div className="flex items-center gap-1.5 pt-1">
@@ -285,12 +300,12 @@ export const TopUpModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
                         <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }}>
                           <Loader2 size={15} />
                         </motion.div>
-                        Creating checkout...
+                        {t("topup.creating") || "Creating checkout..."}
                       </>
                     ) : (
                       <>
                         <ExternalLink size={15} />
-                        Pay with Stripe
+                        {t("topup.pay_stripe") || "Pay with Stripe"}
                       </>
                     )}
                   </motion.button>
@@ -317,8 +332,8 @@ export const TopUpModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
                   >
                     <Loader2 size={28} className="text-[#00C2FF]" />
                   </motion.div>
-                  <p className="text-white font-medium">Redirecting to Stripe...</p>
-                  <p className="text-sm text-[#666] mt-1">You'll be redirected to secure payment</p>
+                  <p className="text-white font-medium">{t("topup.redirecting") || "Redirecting to Stripe..."}</p>
+                  <p className="text-sm text-[#666] mt-1">{t("topup.redirect_msg") || "You'll be redirected to secure payment"}</p>
                 </motion.div>
               )}
 
@@ -337,8 +352,8 @@ export const TopUpModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
                   >
                     <Loader2 size={28} className="text-[#00C2FF]" />
                   </motion.div>
-                  <p className="text-white font-medium">Verifying payment...</p>
-                  <p className="text-sm text-[#666] mt-1">Confirming with Stripe</p>
+                  <p className="text-white font-medium">{t("topup.verifying") || "Verifying payment..."}</p>
+                  <p className="text-sm text-[#666] mt-1">{t("topup.verifying_msg") || "Confirming with Stripe"}</p>
                 </motion.div>
               )}
 
@@ -358,18 +373,18 @@ export const TopUpModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
                   >
                     <Check size={28} className="text-[#00D26A]" />
                   </motion.div>
-                  <p className="text-white font-semibold text-lg mb-1">Top-up Successful!</p>
+                  <p className="text-white font-semibold text-lg mb-1">{t("topup.success_msg") || "Top-up Successful!"}</p>
                   <p className="text-3xl font-bold font-outfit text-[#00D26A] mb-2">
                     +&euro;{(creditedAmount || pollResult.amount || 0).toFixed(2)}
                   </p>
-                  <p className="text-sm text-[#666] mb-6">Added to your wallet via Stripe</p>
+                  <p className="text-sm text-[#666] mb-6">{t("topup.added") || "Added to your wallet via Stripe"}</p>
                   <motion.button
                     data-testid="topup-done-btn"
                     onClick={handleClose}
                     className="w-full py-3.5 bg-[#00D26A] text-white font-semibold rounded-full"
                     whileTap={{ scale: 0.98 }}
                   >
-                    Done
+                    {t("topup.done") || "Done"}
                   </motion.button>
                 </motion.div>
               )}
@@ -390,22 +405,22 @@ export const TopUpModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
                   >
                     <AlertCircle size={28} className="text-[#FF4757]" />
                   </motion.div>
-                  <p className="text-white font-semibold text-lg mb-1">Payment Failed</p>
-                  <p className="text-sm text-[#666] mb-6">{error || "Payment could not be verified"}</p>
+                  <p className="text-white font-semibold text-lg mb-1">{t("topup.failed_title") || "Payment Failed"}</p>
+                  <p className="text-sm text-[#666] mb-6">{error || t("topup.failed_msg") || "Payment could not be verified"}</p>
                   <div className="flex gap-3">
                     <motion.button
                       onClick={handleClose}
                       className="flex-1 py-3.5 bg-[#141414] text-white font-semibold rounded-full border border-white/10"
                       whileTap={{ scale: 0.98 }}
                     >
-                      Cancel
+                      {t("topup.cancel") || "Cancel"}
                     </motion.button>
                     <motion.button
                       onClick={() => { setStep("amount"); setError(null); }}
                       className="flex-1 py-3.5 bg-[#FF4757] text-white font-semibold rounded-full"
                       whileTap={{ scale: 0.98 }}
                     >
-                      Try Again
+                      {t("topup.try_again") || "Try Again"}
                     </motion.button>
                   </div>
                 </motion.div>

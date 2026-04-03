@@ -235,8 +235,16 @@ export const ScannerPage = ({ onNavigate }) => {
       } else {
         setErr(result.error || t("scan.insufficient")); setStep(Step.ERROR);
       }
-    } catch {
-      setErr(t("scan.error")); setStep(Step.ERROR);
+    } catch (e) {
+      const msg = e?.message || t("scan.error");
+      // Map compliance/known errors to user-friendly messages
+      if (msg.startsWith("compliance.")) {
+        const key = msg.split("|")[0];
+        setErr(t(key) || t("scan.error"));
+      } else {
+        setErr(msg);
+      }
+      setStep(Step.ERROR);
     }
   }, [num, w, m]);
 

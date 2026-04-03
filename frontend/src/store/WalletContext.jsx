@@ -102,7 +102,9 @@ export function WalletProvider({ children }) {
     try {
       const data = await api.getWallet();
       dispatch({ type: ACTIONS.SET_WALLET, payload: data });
-    } catch {}
+    } catch (err) {
+      dispatch({ type: ACTIONS.SET_ERROR, payload: err.message || "Failed to refresh wallet" });
+    }
   }, []);
 
   const addMoney = useCallback(async (amount, paymentMethod = 'card') => {
