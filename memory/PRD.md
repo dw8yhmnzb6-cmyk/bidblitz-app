@@ -10,66 +10,37 @@ Create a modern, professional fintech web app called BidBlitz V2 with Revolut-le
 
 ## What's Implemented
 
-### Core Infrastructure (DONE)
-- JWT Auth with register/login/logout/refresh, brute-force lockout
-- MongoDB with Motor async driver
-- Rate limiting on all sensitive endpoints
-- CORS, global error handling, offline detection
-
-### Payments (DONE)
-- Wallet top-up via Stripe checkout (6 packages)
-- Customer → Merchant payments with compliance checks
-- Peer-to-peer send with fees
-- Merchant barcode scan payment with idempotency
-- Dynamic QR code (HMAC-based, 5-min rotation)
-- Merchant payouts with admin approval pipeline
-- Platform fee engine (configurable)
-- Promotions wired into all payment flows
-- All balance responses use round(value, 2)
-
-### System/Security (DONE)
-- Audit logging (17 event types, MongoDB-backed)
-- Compliance engine (KYC tiers, velocity detection, payout risk)
-- Feature flags (10 flags, MongoDB-backed, CRUD)
-- Session management
-
-### UI/UX (DONE)
-- 12-language i18n (en, de, sq, tr, fr, es, it, pt, nl, pl, ru, ar)
-- Premium dark theme, glass-morphism, Framer Motion
-- Offline detection, role-aware navigation
-
-### Admin Dashboard (DONE)
-- Overview, Users, Merchants, Payouts, Transactions
-- Feature Flags, Audit logs, Compliance, Growth Analytics, Promotions, Config
-- N+1 query optimization (aggregation pipelines)
-
-### All Other Features (DONE)
-- Profile & Account, Support Center, Kids Feature, Growth/Referral, Settings, Export
+### Core (DONE)
+- JWT Auth, MongoDB, Rate limiting, CORS, offline detection
+- Wallet top-up (Stripe), Merchant payments, P2P send, QR scan, Payouts
+- Audit logging, Compliance engine, Feature flags, Session management
+- 12-language i18n, Premium dark UI, Framer Motion
+- Admin Dashboard (full), Profile, Support, Kids, Growth/Referral, Settings, Export
+- All balance returns use round(value, 2)
 
 ### Backups & Monitoring (DONE - Apr 2026)
-- Daily MongoDB backup via cron (2:00 AM UTC), 7-day retention
+- Daily MongoDB backup (cron 2AM UTC), 7-day retention
 - Rotating error/access logs, uptime monitor every 5 min
-- Enhanced /api health check: DB status, backup info
+- Enhanced /api health check
 
 ### Admin Alerts (DONE - Apr 2026)
-- Auto in-app notifications to admins on: payment_failed, send_failed, topup_failed, payout_cancelled, suspicious_activity, login_locked, system_error
+- Auto notifications on: payment_failed, send_failed, topup_failed, payout_cancelled, suspicious_activity, login_locked, system_error
 
 ### Soft Launch Mode (DONE - Apr 2026)
-- Invite-only access gate: registration blocked unless email is whitelisted or soft launch disabled
-- Existing users can always log in (configurable via allow_existing_users)
-- Admin whitelist management: add/remove emails via API
-- Admin toggle: enable/disable soft launch, open/close registration
-- Live activity dashboard: payments (24h/1h), failed payments, volume, support tickets, logins, new users, alerts
-- All config stored in MongoDB (platform_config collection)
-- Admin endpoints: GET/PUT /api/admin/soft-launch, POST/DELETE /api/admin/soft-launch/whitelist
+- Invite-only gate, admin whitelist, toggle on/off
+- Live dashboard: payments, failures, volume, tickets, logins, users, alerts
 
-### Production Readiness (DONE - Apr 2026)
-- All float rounding fixed across every endpoint
-- Production frontend build (1.4MB)
-- Full live test: 34/34 checks passed
+### First Users & Merchants Onboarded (DONE - Apr 2026)
+- 15 test users created and funded (EUR 15-50 each)
+- 3 merchants onboarded: Boulangerie Paris, Pizzeria Roma, TechShop Berlin
+- 10 real merchant payments executed (EUR 1.50-12.99)
+- 5 P2P sends executed
+- All whitelisted in soft launch
+- Platform stats: 54 users, 159 transactions, EUR 631 volume, EUR 15.77 revenue
+- 0 backend errors, monitoring active
 
 ## Not Implemented (Backlog)
-- Taxi, Scooter, Food, Auctions (placeholder cards only)
+- Taxi, Scooter, Food, Auctions (placeholder cards)
 - Onboarding welcome flow
 - User streaks/milestones
 - Merchant performance insights
@@ -81,10 +52,4 @@ Create a modern, professional fintech web app called BidBlitz V2 with Revolut-le
 - Admin: admin@bidblitz.com / BidBlitz2026!
 - Customer: kunde@bidblitz.com / Kunde2026!
 - Merchant: haendler@bidblitz.com / BidBlitz2026!
-- VIP (whitelisted): vip@example.com / Vip2026!
-
-## Operations
-- Backup: /app/scripts/backup_db.sh (cron: 0 2 * * *)
-- Monitor: /app/scripts/monitor.sh (cron: */5 * * * *)
-- Logs: /app/backend/logs/
-- Soft launch config: MongoDB platform_config collection
+- 15 launch users + 3 merchants: Launch2026! (see test_credentials.md)
