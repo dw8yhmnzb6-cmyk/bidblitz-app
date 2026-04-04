@@ -177,7 +177,7 @@ async def pay(req: PaymentRequest, request: Request):
 
     return {
         "success": True,
-        "new_balance": updated_user["balance"],
+        "new_balance": round(updated_user["balance"], 2),
         "gross_amount": req.amount,
         "fee_amount": fee,
         "fee_percent": FEES["payment"] * 100,
@@ -303,7 +303,7 @@ async def send_money(req: SendRequest, request: Request):
 
     return {
         "success": True,
-        "new_balance": updated_user["balance"],
+        "new_balance": round(updated_user["balance"], 2),
         "fee_amount": fee,
         "transaction": sender_txn,
         "promotion": promo_applied,
