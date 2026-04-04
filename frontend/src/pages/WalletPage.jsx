@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { toast } from "sonner";
 import {
   ArrowLeft, Eye, EyeOff, Shield, Plus, ArrowUpRight,
   Clock, TrendingUp, TrendingDown, ChevronRight, QrCode
@@ -16,6 +17,7 @@ import ErrorState from "../components/ErrorState";
 import BarcodeModal from "../components/BarcodeModal";
 import { api } from "../services/api";
 import { useI18n } from "../store";
+import { DEMO_BALANCE, DEMO_CURRENCY, DEMO_CARD_NUMBER, DEMO_CARD_EXPIRY, DEMO_CARD_HOLDER, DEMO_TRANSACTIONS } from "../models/demoData";
 
 const slide = { duration: 0.35, ease: [0.32, 0.72, 0, 1] };
 
@@ -99,7 +101,7 @@ const StatPill = ({ label, value, trend, delay = 0 }) => (
   </motion.div>
 );
 
-export const WalletPage = ({ onNavigate, isGuest, onAuthRequired }) => {
+export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired }) => {
   // Auto-open TopUp modal if returning from Stripe
   const hasStripeParam = typeof window !== "undefined" &&
     (window.location.search.includes("stripe_session_id") || window.location.search.includes("stripe_cancelled"));
@@ -112,10 +114,36 @@ export const WalletPage = ({ onNavigate, isGuest, onAuthRequired }) => {
   const [statusFilter, setStatusFilter] = useState("all");
   const [isLoading, setIsLoading] = useState(true);
 
-  const { balance, currency, cardNumber, cardExpiry, cardHolder, refreshWallet, transactions, error: walletError } = useWallet();
-  const groupedTransactions = useGroupedTransactions();
-  const stats = useWalletStats();
+  const wallet = useWallet();
+  const realGrouped = useGroupedTransactions();
+  const realStats = useWalletStats();
   const { t } = useI18n();
+
+  // Demo mode: override data
+  const balance = isDemoMode ? DEMO_BALANCE : wallet.balance;
+  const currency = isDemoMode ? DEMO_CURRENCY : wallet.currency;
+  const cardNumber = isDemoMode ? DEMO_CARD_NUMBER : wallet.cardNumber;
+  const cardExpiry = isDemoMode ? DEMO_CARD_EXPIRY : wallet.cardExpiry;
+  const cardHolder = isDemoMode ? DEMO_CARD_HOLDER : wallet.cardHolder;
+  const walletError = isDemoMode ? null : wallet.error;
+  const refreshWallet = wallet.refreshWallet;
+
+  // Group demo transactions by date
+  const demoGrouped = isDemoMode ? DEMO_TRANSACTIONS.reduce((acc, txn) => {
+    const d = new Date(txn.date);
+    const today = new Date();
+    const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
+    let key;
+    if (d.toDateString() === today.toDateString()) key = "Today";
+    else if (d.toDateString() === yesterday.toDateString()) key = "Yesterday";
+    else key = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(txn);
+    return acc;
+  }, {}) : null;
+
+  const groupedTransactions = isDemoMode ? demoGrouped : realGrouped;
+  const stats = isDemoMode ? { totalSpent: 180.39, totalIncome: 700.0, percentageChange: "12.4" } : realStats;
 
   const userExports = [
     { key: "transactions", label: t("export.transactions"), action: (f) => api.exportUserTransactions(f) },
@@ -212,7 +240,7 @@ export const WalletPage = ({ onNavigate, isGuest, onAuthRequired }) => {
           <AnimatePresence mode="wait">
             {isLoading ? (
               <Skeleton className="h-[56px] w-48 mx-auto mb-2" />
-            ) : isGuest ? (
+            ) : (isGuest && !isDemoMode) ? (
               <motion.div
                 key="preview"
                 initial={{ opacity: 0, y: 8 }}
@@ -324,7 +352,7 @@ export const WalletPage = ({ onNavigate, isGuest, onAuthRequired }) => {
             icon={Plus}
             label={t("wallet.add") || "Add Money"}
             color="#00C2FF"
-            onClick={() => isGuest ? onAuthRequired("Top up your wallet") : setShowTopUp(true)}
+            onClick={() => (isGuest && !isDemoMode) ? onAuthRequired("Top up your wallet") : isDemoMode ? toast(t("wallet.add") || "Add Money", { description: "Demo: Top-up simulated" }) : setShowTopUp(true)}
             delay={0.22}
           />
           <WalletAction
@@ -332,7 +360,7 @@ export const WalletPage = ({ onNavigate, isGuest, onAuthRequired }) => {
             icon={QrCode}
             label={t("wallet.my_barcode") || "My Barcode"}
             color="#FFB800"
-            onClick={() => isGuest ? onAuthRequired("View your barcode") : setShowBarcode(true)}
+            onClick={() => (isGuest && !isDemoMode) ? onAuthRequired("View your barcode") : isDemoMode ? toast(t("wallet.my_barcode") || "Barcode", { description: "Demo: Barcode simulated" }) : setShowBarcode(true)}
             delay={0.24}
           />
           <WalletAction
@@ -340,7 +368,7 @@ export const WalletPage = ({ onNavigate, isGuest, onAuthRequired }) => {
             icon={ArrowUpRight}
             label={t("wallet.send") || "Send"}
             color="#A855F7"
-            onClick={() => isGuest ? onAuthRequired("Send money") : null}
+            onClick={() => (isGuest && !isDemoMode) ? onAuthRequired("Send money") : isDemoMode ? toast(t("wallet.send") || "Send", { description: "Demo: Send simulated" }) : null}
             delay={0.26}
           />
           <WalletAction

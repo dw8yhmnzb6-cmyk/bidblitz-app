@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { useUser, useI18n } from "../store";
 import { api } from "../services/api";
+import { DEMO_USER } from "../models/demoData";
 import ReferralPage from "./ReferralPage";
 import NotificationsPage from "./NotificationsPage";
 import SupportPage from "./SupportPage";
@@ -539,12 +540,17 @@ const SettingsView = ({ onBack, t, locale, setLocale, onOpenPasswordChange }) =>
 };
 
 // ── Main More Page ──
-export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, onAuthRequired }) => {
+export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDemoMode, onAuthRequired }) => {
   const user = useUser();
   const { t, lang: locale, setLang: setLocale } = useI18n();
   const [subPage, setSubPage] = useState(kidsReturn ? "kids" : null);
   const [profileOpenPw, setProfileOpenPw] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+
+  // Demo mode: overlay mock user data
+  const displayName = isDemoMode ? DEMO_USER.name : (isGuest ? "BidBlitz" : user.name);
+  const displayEmail = isDemoMode ? DEMO_USER.email : (isGuest ? (t("auth.signin") || "Sign in to view profile") : user.email);
+  const displayAvatar = isDemoMode ? DEMO_USER.avatar : user.avatar;
 
   useEffect(() => {
     if (kidsReturn && onKidsHandled) onKidsHandled();
@@ -557,7 +563,8 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, onAut
   }, [isGuest]);
 
   const gatedAction = (fn) => () => {
-    if (isGuest) { onAuthRequired(); return; }
+    if (isGuest && !isDemoMode) { onAuthRequired(); return; }
+    if (isDemoMode) { return; } // Demo: show menu but no sub-page navigation
     fn();
   };
 
@@ -700,7 +707,7 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, onAut
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.08, ...slide }}
           whileTap={{ scale: 0.98 }}
-          onClick={() => isGuest ? onAuthRequired() : setSubPage("profile")}
+          onClick={() => (isGuest && !isDemoMode) ? onAuthRequired() : isDemoMode ? null : setSubPage("profile")}
         >
           <div
             className="absolute -top-8 -left-8 w-24 h-24 rounded-full pointer-events-none"
@@ -708,12 +715,12 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, onAut
           />
           <div className="relative flex-shrink-0">
             <img
-              src={user.avatar}
+              src={displayAvatar}
               alt="Avatar"
               className="w-[52px] h-[52px] rounded-full object-cover"
               style={{ border: "2px solid rgba(0,194,255,0.2)", boxShadow: "0 0 16px rgba(0,194,255,0.08)" }}
             />
-            {!isGuest && user.isPremium && (
+            {((!isGuest && user.isPremium) || isDemoMode) && (
               <motion.div
                 className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full flex items-center justify-center"
                 style={{ background: "linear-gradient(135deg, #FFD700, #FFA500)", border: "2px solid #030303" }}
@@ -725,8 +732,8 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, onAut
             )}
           </div>
           <div className="flex-1 min-w-0 relative z-10">
-            <p className="text-[14px] font-semibold font-outfit text-white truncate">{isGuest ? "BidBlitz" : user.name}</p>
-            <p className="text-[11px] text-[#444] font-medium truncate">{isGuest ? (t("auth.signin") || "Sign in to view profile") : user.email}</p>
+            <p className="text-[14px] font-semibold font-outfit text-white truncate">{displayName}</p>
+            <p className="text-[11px] text-[#444] font-medium truncate">{displayEmail}</p>
           </div>
           <ChevronRight size={14} className="text-[#222] flex-shrink-0" />
         </motion.div>

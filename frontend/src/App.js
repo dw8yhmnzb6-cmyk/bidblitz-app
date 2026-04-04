@@ -17,6 +17,7 @@ import NotificationsPage from "./pages/NotificationsPage";
 import BottomNav from "./components/BottomNav";
 import BarcodeModal from "./components/BarcodeModal";
 import AuthGateOverlay from "./components/AuthGateOverlay";
+import DemoBanner from "./components/DemoBanner";
 
 const pageTransition = { duration: 0.25, ease: [0.32, 0.72, 0, 1] };
 
@@ -30,6 +31,7 @@ function AppContent() {
   const [showAuthGate, setShowAuthGate] = useState(false);
   const [authGateMessage, setAuthGateMessage] = useState("");
   const [showFullAuth, setShowFullAuth] = useState(false);
+  const [isDemoMode, setIsDemoMode] = useState(false);
   const user = useUser();
   const { setLang } = useI18n();
 
@@ -44,6 +46,7 @@ function AppContent() {
     if (user.isAuthenticated) {
       setShowAuthGate(false);
       setShowFullAuth(false);
+      setIsDemoMode(false);
     }
   }, [user.isAuthenticated]);
 
@@ -106,7 +109,9 @@ function AppContent() {
           <HomePage
             onNavigate={handleNavigate}
             isGuest={isGuest}
+            isDemoMode={isDemoMode}
             onAuthRequired={() => setShowFullAuth(true)}
+            onStartDemo={() => { setIsDemoMode(true); setCurrentPath("/wallet"); }}
           />
         );
       case "/wallet":
@@ -114,6 +119,7 @@ function AppContent() {
           <WalletPage
             onNavigate={handleNavigate}
             isGuest={isGuest}
+            isDemoMode={isDemoMode}
             onAuthRequired={requireAuth}
           />
         );
@@ -121,33 +127,35 @@ function AppContent() {
         if (user.role === "merchant" || user.role === "admin") {
           return <ScannerPage onNavigate={handleNavigate} />;
         }
-        return <HomePage onNavigate={handleNavigate} isGuest={isGuest} onAuthRequired={() => setShowFullAuth(true)} />;
+        return <HomePage onNavigate={handleNavigate} isGuest={isGuest} isDemoMode={isDemoMode} onAuthRequired={() => setShowFullAuth(true)} onStartDemo={() => { setIsDemoMode(true); setCurrentPath("/wallet"); }} />;
       case "/merchant":
         return (
           <MerchantPage
             onNavigate={handleNavigate}
             isGuest={isGuest}
+            isDemoMode={isDemoMode}
             onAuthRequired={requireAuth}
           />
         );
       case "/admin":
         return user.role === "admin"
           ? <AdminPage onNavigate={handleNavigate} />
-          : <HomePage onNavigate={handleNavigate} isGuest={isGuest} onAuthRequired={() => setShowFullAuth(true)} />;
+          : <HomePage onNavigate={handleNavigate} isGuest={isGuest} isDemoMode={isDemoMode} onAuthRequired={() => setShowFullAuth(true)} onStartDemo={() => { setIsDemoMode(true); setCurrentPath("/wallet"); }} />;
       case "/notifications":
         return isGuest
-          ? <HomePage onNavigate={handleNavigate} isGuest={isGuest} onAuthRequired={() => setShowFullAuth(true)} />
+          ? <HomePage onNavigate={handleNavigate} isGuest={isGuest} isDemoMode={isDemoMode} onAuthRequired={() => setShowFullAuth(true)} onStartDemo={() => { setIsDemoMode(true); setCurrentPath("/wallet"); }} />
           : <NotificationsPage onBack={() => handleNavigate("/")} />;
       case "/more":
         return (
           <MorePage
             onNavigate={handleNavigate}
             isGuest={isGuest}
+            isDemoMode={isDemoMode}
             onAuthRequired={requireAuth}
           />
         );
       default:
-        return <HomePage onNavigate={handleNavigate} isGuest={isGuest} onAuthRequired={() => setShowFullAuth(true)} />;
+        return <HomePage onNavigate={handleNavigate} isGuest={isGuest} isDemoMode={isDemoMode} onAuthRequired={() => setShowFullAuth(true)} onStartDemo={() => { setIsDemoMode(true); setCurrentPath("/wallet"); }} />;
     }
   };
 
@@ -161,6 +169,7 @@ function AppContent() {
           style: { background: "#141414", color: "#fff", border: "1px solid rgba(255,255,255,0.08)", fontSize: "13px", fontFamily: "Outfit, sans-serif" },
         }}
       />
+      {isDemoMode && <DemoBanner onExit={() => { setIsDemoMode(false); setCurrentPath("/"); }} />}
       <AnimatePresence mode="wait">
         <motion.div
           key={currentPath}
@@ -169,6 +178,7 @@ function AppContent() {
           exit={{ opacity: 0, y: -8 }}
           transition={pageTransition}
           className="min-h-screen"
+          style={isDemoMode ? { paddingTop: 36 } : undefined}
         >
           {renderPage()}
         </motion.div>

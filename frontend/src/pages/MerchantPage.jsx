@@ -7,6 +7,7 @@ import {
   ArrowDownToLine, Wallet, Shield
 } from "lucide-react";
 import { AreaChart, Area, XAxis, ResponsiveContainer, Tooltip } from "recharts";
+import { toast } from "sonner";
 import { useMerchant } from "../store";
 import { useMerchantStats } from "../hooks";
 import { formatRelativeTime } from "../models";
@@ -14,6 +15,7 @@ import ExportSection from "../components/ExportSection";
 import ErrorState from "../components/ErrorState";
 import { api as apiService } from "../services/api";
 import { useI18n } from "../store";
+import { DEMO_MERCHANT } from "../models/demoData";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 const slide = { duration: 0.35, ease: [0.32, 0.72, 0, 1] };
@@ -176,15 +178,26 @@ const PayoutModal = ({ isOpen, onClose, available, minPayout, flatFee, onSuccess
 };
 
 // ── Main MerchantPage ──
-export const MerchantPage = ({ onNavigate, isGuest, onAuthRequired }) => {
+export const MerchantPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired }) => {
   const merchant = useMerchant();
-  const stats = useMerchantStats();
+  const realStats = useMerchantStats();
   const { t } = useI18n();
   const [isLoading, setIsLoading] = useState(true);
   const [showPayout, setShowPayout] = useState(false);
   const [error, setError] = useState(null);
-  const [balance, setBalance] = useState({ available: 0, pending_payout: 0, total_paid_out: 0, total_fees: 0, min_payout: 5, payout_flat_fee: 0.5 });
+  const [balance, setBalance] = useState({ available: 0, pending_payout: 0, total_paid_out: 0, total_fees: 0, total_earnings: 0, gross_earnings: 0, min_payout: 5, payout_flat_fee: 0.5 });
   const [payouts, setPayouts] = useState([]);
+
+  // Demo overrides
+  const stats = isDemoMode ? DEMO_MERCHANT : realStats;
+  const displayBalance = isDemoMode ? DEMO_MERCHANT.balance : balance;
+  const displayBusinessName = isDemoMode ? DEMO_MERCHANT.businessName : merchant.businessName;
+  const displayTotalTransactions = isDemoMode ? DEMO_MERCHANT.totalTransactions : merchant.totalTransactions;
+  const recentPayments = isDemoMode
+    ? DEMO_MERCHANT.recentPayments
+    : merchant.payments.slice(0, 6).map((p) => ({ ...p, time: formatRelativeTime(p.date) }));
+  const displayWeeklyData = isDemoMode ? DEMO_MERCHANT.weeklyData : stats.weeklyData;
+  const displayPayments = isDemoMode ? DEMO_MERCHANT.recentPayments : merchant.payments;
 
   const merchantExports = [
     { key: "payments", label: t("export.payments"), action: (f) => apiService.exportMerchantPayments(f) },
@@ -226,8 +239,6 @@ export const MerchantPage = ({ onNavigate, isGuest, onAuthRequired }) => {
     setTimeout(() => setIsLoading(false), 500);
   };
 
-  const recentPayments = merchant.payments.slice(0, 6).map((p) => ({ ...p, time: formatRelativeTime(p.date) }));
-
   return (
     <motion.div data-testid="merchant-page" className="min-h-screen relative overflow-hidden" style={{ background: "#030303" }} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
       <motion.div className="absolute top-[-18%] left-1/2 -translate-x-1/2 w-[480px] h-[480px] rounded-full pointer-events-none" style={{ filter: "blur(140px)", background: "rgba(0,210,106,0.035)" }} />
@@ -240,7 +251,7 @@ export const MerchantPage = ({ onNavigate, isGuest, onAuthRequired }) => {
           </motion.button>
           <div>
             <motion.h1 className="text-[15px] font-semibold font-outfit text-white tracking-tight" initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.05 }}>Dashboard</motion.h1>
-            <motion.p className="text-[10px] text-[#333] font-medium" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }}>{merchant.businessName}</motion.p>
+            <motion.p className="text-[10px] text-[#333] font-medium" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }}>{displayBusinessName}</motion.p>
           </div>
         </div>
         <motion.div className="w-10 h-10 rounded-full bg-white/[0.04] border border-white/[0.05] flex items-center justify-center" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.08 }}>
@@ -291,27 +302,27 @@ export const MerchantPage = ({ onNavigate, isGuest, onAuthRequired }) => {
                 <Wallet size={10} className="text-[#00D26A]" />
                 <span className="text-[8px] text-[#444] uppercase tracking-[0.1em] font-semibold">Available</span>
               </div>
-              <p className="text-[16px] font-bold font-outfit text-[#00D26A]">&euro;{balance.available.toFixed(2)}</p>
+              <p className="text-[16px] font-bold font-outfit text-[#00D26A]">&euro;{displayBalance.available.toFixed(2)}</p>
             </div>
             <div className="text-center">
               <div className="flex items-center justify-center gap-1 mb-1">
                 <Clock size={10} className="text-[#FFB800]" />
                 <span className="text-[8px] text-[#444] uppercase tracking-[0.1em] font-semibold">Pending</span>
               </div>
-              <p className="text-[16px] font-bold font-outfit text-[#FFB800]">&euro;{balance.pending_payout.toFixed(2)}</p>
+              <p className="text-[16px] font-bold font-outfit text-[#FFB800]">&euro;{displayBalance.pending_payout.toFixed(2)}</p>
             </div>
             <div className="text-center">
               <div className="flex items-center justify-center gap-1 mb-1">
                 <Check size={10} className="text-[#00C2FF]" />
                 <span className="text-[8px] text-[#444] uppercase tracking-[0.1em] font-semibold">Paid Out</span>
               </div>
-              <p className="text-[16px] font-bold font-outfit text-[#00C2FF]">&euro;{balance.total_paid_out.toFixed(2)}</p>
+              <p className="text-[16px] font-bold font-outfit text-[#00C2FF]">&euro;{displayBalance.total_paid_out.toFixed(2)}</p>
             </div>
           </div>
           {/* Fee info */}
           <div className="flex items-center justify-center gap-1.5 mt-3 pt-3 border-t border-white/[0.03]">
             <Shield size={9} className="text-[#333]" />
-            <span className="text-[9px] text-[#333]">Platform fee: 2.5% &middot; Total fees: &euro;{balance.total_fees.toFixed(2)}</span>
+            <span className="text-[9px] text-[#333]">Platform fee: 2.5% &middot; Total fees: &euro;{displayBalance.total_fees.toFixed(2)}</span>
           </div>
         </motion.div>
 
@@ -320,10 +331,10 @@ export const MerchantPage = ({ onNavigate, isGuest, onAuthRequired }) => {
           <div className="grid grid-cols-2 gap-2.5 mb-5">{[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-[100px]" />)}</div>
         ) : (
           <div className="grid grid-cols-2 gap-2.5 mb-5">
-            <StatCard icon={CircleDollarSign} label="Gross Earnings" value={`\u20AC${(balance.gross_earnings || stats.totalEarnings).toLocaleString("de-DE", { minimumFractionDigits: 2 })}`} sub="Before fees" color="#00C2FF" delay={0.14} />
+            <StatCard icon={CircleDollarSign} label="Gross Earnings" value={`\u20AC${(displayBalance.gross_earnings || stats.totalEarnings || 0).toLocaleString("de-DE", { minimumFractionDigits: 2 })}`} sub="Before fees" color="#00C2FF" delay={0.14} />
             <StatCard icon={Users} label="Payments" value={stats.todayPaymentCount.toString()} sub="Today" color="#A855F7" delay={0.18} />
-            <StatCard icon={BarChart3} label="Net Earnings" value={`\u20AC${balance.total_earnings.toLocaleString("de-DE", { minimumFractionDigits: 2 })}`} sub="After fees" color="#00D26A" delay={0.22} />
-            <StatCard icon={Banknote} label="Total Txns" value={merchant.totalTransactions.toString()} sub="All time" color="#FFB800" delay={0.26} />
+            <StatCard icon={BarChart3} label="Net Earnings" value={`\u20AC${(displayBalance.total_earnings || 0).toLocaleString("de-DE", { minimumFractionDigits: 2 })}`} sub="After fees" color="#00D26A" delay={0.22} />
+            <StatCard icon={Banknote} label="Total Txns" value={displayTotalTransactions.toString()} sub="All time" color="#FFB800" delay={0.26} />
           </div>
         )}
 
@@ -337,7 +348,7 @@ export const MerchantPage = ({ onNavigate, isGuest, onAuthRequired }) => {
           </div>
           <div className="h-[120px] relative z-10">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={stats.weeklyData}>
+              <AreaChart data={displayWeeklyData}>
                 <defs><linearGradient id="mGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#00C2FF" stopOpacity={0.3} /><stop offset="100%" stopColor="#00C2FF" stopOpacity={0} /></linearGradient></defs>
                 <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: "#2A2A2A", fontSize: 10 }} dy={8} />
                 <Tooltip content={<ChartTooltip />} cursor={false} />
@@ -353,14 +364,14 @@ export const MerchantPage = ({ onNavigate, isGuest, onAuthRequired }) => {
             className="flex-1 py-[13px] rounded-[14px] bg-[#00C2FF] text-[#020202] font-semibold text-[13px] flex items-center justify-center gap-2"
             style={{ boxShadow: "0 4px 24px rgba(0,194,255,0.25)" }}
             initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.32, ...slide }}
-            whileTap={{ scale: 0.96 }} onClick={() => onNavigate("/scan")}>
+            whileTap={{ scale: 0.96 }} onClick={() => isDemoMode ? toast("Create Payment", { description: "Demo: Payment simulated" }) : onNavigate("/scan")}>
             <Plus size={15} strokeWidth={2.5} />Create Payment
           </motion.button>
           <motion.button data-testid="request-payout-btn"
             className="flex-1 py-[13px] rounded-[14px] font-semibold text-[13px] flex items-center justify-center gap-2"
             style={{ background: "rgba(0,210,106,0.08)", border: "1px solid rgba(0,210,106,0.15)", color: "#00D26A" }}
             initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.34, ...slide }}
-            whileTap={{ scale: 0.96 }} onClick={() => isGuest ? onAuthRequired("Request a payout") : setShowPayout(true)}>
+            whileTap={{ scale: 0.96 }} onClick={() => (isGuest && !isDemoMode) ? onAuthRequired("Request a payout") : isDemoMode ? toast("Payout", { description: "Demo: Payout simulated" }) : setShowPayout(true)}>
             <ArrowDownToLine size={15} strokeWidth={2} />Payout
           </motion.button>
         </div>
@@ -397,7 +408,7 @@ export const MerchantPage = ({ onNavigate, isGuest, onAuthRequired }) => {
           <h3 className="text-[11px] font-semibold font-outfit text-[#444] uppercase tracking-[0.1em] mb-1">Activity</h3>
           <div className="divide-y divide-white/[0.03]">
             <ActivityRow label="Payments today" count={stats.todayPaymentCount} color="#00C2FF" delay={0.42} />
-            <ActivityRow label="Successful" count={merchant.payments.length} color="#00D26A" delay={0.44} />
+            <ActivityRow label="Successful" count={displayPayments.length} color="#00D26A" delay={0.44} />
             <ActivityRow label="Failed" count={0} color="#FF4757" delay={0.46} />
           </div>
         </motion.div>
@@ -461,7 +472,7 @@ export const MerchantPage = ({ onNavigate, isGuest, onAuthRequired }) => {
 
       {/* Payout Modal */}
       <PayoutModal isOpen={showPayout} onClose={() => setShowPayout(false)}
-        available={balance.available} minPayout={balance.min_payout} flatFee={balance.payout_flat_fee}
+        available={displayBalance.available} minPayout={displayBalance.min_payout} flatFee={displayBalance.payout_flat_fee}
         onSuccess={handlePayoutSuccess} />
     </motion.div>
   );

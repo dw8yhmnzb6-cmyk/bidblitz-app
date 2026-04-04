@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { toast } from "sonner";
 import {
   Bell, ChevronRight, TrendingUp, Shield, Wallet,
-  Car, Zap, UtensilsCrossed, Gavel, ArrowUpRight, CreditCard
+  Car, Zap, UtensilsCrossed, Gavel, ArrowUpRight, CreditCard, FlaskConical
 } from "lucide-react";
 import { useUser, useWallet, useI18n } from "../store";
 import { useWalletStats } from "../hooks";
@@ -97,7 +97,7 @@ const ServiceCard = ({ feature, index, onClick }) => {
 };
 
 // ── Main Page ──
-export const HomePage = ({ onNavigate, isGuest, onAuthRequired }) => {
+export const HomePage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onStartDemo }) => {
   const user = useUser();
   const { balance, currency } = useWallet();
   const { percentageChange } = useWalletStats();
@@ -328,6 +328,27 @@ export const HomePage = ({ onNavigate, isGuest, onAuthRequired }) => {
             <ChevronRight size={16} strokeWidth={2.5} />
           </motion.div>
         </motion.button>
+
+        {/* Try Demo CTA for guests */}
+        {isGuest && !isDemoMode && (
+          <motion.button
+            data-testid="try-demo-btn"
+            className="w-full py-[13px] rounded-[14px] font-semibold text-[13px] flex items-center justify-center gap-2 mb-7 -mt-4"
+            style={{
+              background: "rgba(255,184,0,0.06)",
+              border: "1px solid rgba(255,184,0,0.12)",
+              color: "#FFB800",
+            }}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.26, ...slide }}
+            whileTap={{ scale: 0.96 }}
+            onClick={onStartDemo}
+          >
+            <FlaskConical size={15} strokeWidth={1.8} />
+            Try Demo
+          </motion.button>
+        )}
 
         {/* ── Services Grid ── */}
         <motion.section
