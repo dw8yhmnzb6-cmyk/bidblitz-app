@@ -263,9 +263,31 @@ async def send_money(req: SendRequest, request: Request):
 
 # ── Customer Barcode ──
 
+import re
+import hmac
+import hashlib
+import time
+
+_BARCODE_RE = re.compile(r"^BLZ-[A-F0-9]{12}$")
+_DYNAMIC_QR_RE = re.compile(r"^BLZ-[A-F0-9]{12}-[A-F0-9]{8}$")
+QR_ROTATION_SECONDS = 300  # 5 minutes
+
+
+def _generate_qr_token(base_barcode: str, time_slot: int) -> str:
+    """Generate a time-based token for the dynamic QR code."""
+    payload = f"{base_barcode}:{time_slot}".encode()
+    h = hmac.new(b"bidblitz-qr-secret", payload, hashlib.sha256).hexdigest()[:8].upper()
+    return h
+
+
+def _get_current_time_slot():
+    return int(time.time()) // QR_ROTATION_SECONDS
+
+
 @router.get("/my-barcode")
 async def get_my_barcode(request: Request):
-    """Get or generate a personal payment barcode for the current user."""
+    """Get or generate a dynamic payment QR code for the current user.
+    QR code rotates every 5 minutes for security."""
     user = await get_current_user(request)
     user_id = str(user["_id"])
 
@@ -274,17 +296,23 @@ async def get_my_barcode(request: Request):
         barcode = f"BLZ-{secrets.token_hex(6).upper()}"
         await db.users.update_one({"_id": user["_id"]}, {"$set": {"payment_barcode": barcode}})
 
+    time_slot = _get_current_time_slot()
+    token = _generate_qr_token(barcode, time_slot)
+    dynamic_qr = f"{barcode}-{token}"
+
+    now = int(time.time())
+    expires_in = QR_ROTATION_SECONDS - (now % QR_ROTATION_SECONDS)
+
     return {
-        "barcode": barcode,
+        "barcode": dynamic_qr,
         "user_id": user_id,
         "name": user.get("name", ""),
+        "expires_in": expires_in,
+        "rotation_seconds": QR_ROTATION_SECONDS,
     }
 
 
 # ── Merchant-Initiated Scan Payment ──
-
-import re
-_BARCODE_RE = re.compile(r"^BLZ-[A-F0-9]{12}$")
 
 
 @router.post("/merchant-scan")
@@ -299,9 +327,30 @@ async def merchant_scan_payment(req: MerchantScanPayment, request: Request):
     merchant_user_id = str(merchant_user["_id"])
     ip, ua = get_client_info(request)
 
-    # ── 1. Barcode format validation ──
-    barcode = req.customer_barcode.strip().upper()
-    if not _BARCODE_RE.match(barcode):
+    # ── 1. Dynamic QR code validation ──
+    raw_code = req.customer_barcode.strip().upper()
+
+    # Support both old static format (BLZ-XXXXXXXXXXXX) and new dynamic (BLZ-XXXXXXXXXXXX-XXXXXXXX)
+    if _DYNAMIC_QR_RE.match(raw_code):
+        base_barcode = raw_code[:16]  # BLZ-XXXXXXXXXXXX
+        submitted_token = raw_code[17:]  # XXXXXXXX
+
+        # Validate against current and previous time slot (grace period)
+        current_slot = _get_current_time_slot()
+        valid_token = False
+        for slot in [current_slot, current_slot - 1]:
+            expected = _generate_qr_token(base_barcode, slot)
+            if submitted_token == expected:
+                valid_token = True
+                break
+
+        if not valid_token:
+            raise HTTPException(status_code=400, detail="scan.qr_expired")
+
+        barcode = base_barcode
+    elif _BARCODE_RE.match(raw_code):
+        barcode = raw_code
+    else:
         raise HTTPException(status_code=400, detail="scan.invalid_barcode_format")
 
     # ── 2. Idempotency check ──

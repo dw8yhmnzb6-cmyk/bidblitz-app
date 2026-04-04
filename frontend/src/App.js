@@ -15,6 +15,7 @@ import AuthPage from "./pages/AuthPage";
 import NotificationsPage from "./pages/NotificationsPage";
 
 import BottomNav from "./components/BottomNav";
+import BarcodeModal from "./components/BarcodeModal";
 
 const pageTransition = { duration: 0.25, ease: [0.32, 0.72, 0, 1] };
 
@@ -25,9 +26,17 @@ function AppContent() {
 
   const [currentPath, setCurrentPath] = useState(hasStripeReturn ? "/wallet" : "/");
   const [stripeReturn, setStripeReturn] = useState(hasStripeReturn);
+  const [showBarcode, setShowBarcode] = useState(false);
   const user = useUser();
 
-  const handleNavigate = (path) => setCurrentPath(path);
+  const handleNavigate = (path) => {
+    // For customers: scan tab opens QR modal instead of scanner page
+    if (path === "/scan" && user.role !== "merchant" && user.role !== "admin") {
+      setShowBarcode(true);
+      return;
+    }
+    setCurrentPath(path);
+  };
 
   // Wait for session restore
   if (!user.sessionReady) {
@@ -65,7 +74,12 @@ function AppContent() {
       case "/wallet":
         return <WalletPage onNavigate={handleNavigate} />;
       case "/scan":
-        return <ScannerPage onNavigate={handleNavigate} />;
+        // Merchants get the scanner, customers see their own QR code
+        if (user.role === "merchant" || user.role === "admin") {
+          return <ScannerPage onNavigate={handleNavigate} />;
+        }
+        // For customers, show QR modal over current page
+        return <HomePage onNavigate={handleNavigate} />;
       case "/merchant":
         return <MerchantPage onNavigate={handleNavigate} />;
       case "/admin":
@@ -79,7 +93,7 @@ function AppContent() {
     }
   };
 
-  const showBottomNav = currentPath !== "/scan";
+  const showBottomNav = currentPath !== "/scan" || (user.role !== "merchant" && user.role !== "admin");
 
   return (
     <div className="app-container" data-testid="app-container">
@@ -102,6 +116,7 @@ function AppContent() {
         </motion.div>
       </AnimatePresence>
       {showBottomNav && <BottomNav currentPath={currentPath} onNavigate={handleNavigate} />}
+      <BarcodeModal isOpen={showBarcode} onClose={() => setShowBarcode(false)} />
     </div>
   );
 }

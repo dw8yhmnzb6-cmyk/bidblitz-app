@@ -12,7 +12,7 @@ import ErrorState from "../components/ErrorState";
 const Step = { AMOUNT: 0, SCANNING: 1, PROCESSING: 2, SUCCESS: 3, ERROR: 4 };
 
 const QUICK_AMOUNTS = [5, 10, 15, 25, 50, 100];
-const BARCODE_RE = /^BLZ-[A-F0-9]{12}$/;
+const BARCODE_RE = /^BLZ-[A-F0-9]{12}(-[A-F0-9]{8})?$/;
 
 const generateIdempotencyKey = () => `idem_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 
