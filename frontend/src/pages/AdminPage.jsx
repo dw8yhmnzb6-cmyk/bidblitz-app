@@ -115,13 +115,29 @@ export const AdminPage = ({ onNavigate }) => {
         setComplianceChecks(checksRes.checks || []);
       }
       if (t === "analytics") {
-        const [overview, funnel, retention, campaigns] = await Promise.all([
+        const [overviewRes, funnelRes, retentionRes, campaignsRes] = await Promise.all([
           api("/api/analytics/growth/overview"),
           api("/api/analytics/growth/funnel"),
           api("/api/analytics/growth/retention"),
           api("/api/analytics/growth/campaigns"),
         ]);
-        setAnalyticsData({ overview, funnel, retention, campaigns });
+        setAnalyticsData({
+          overview: {
+            total_users: overviewRes.users?.total || 0,
+            active_30d: retentionRes.active_30d || 0,
+            growth_rate: overviewRes.users?.total > 0 ? (overviewRes.users?.new_this_week || 0) / overviewRes.users.total : 0,
+            arpu: 0,
+          },
+          funnel: {
+            steps: (funnelRes.funnel || []).map(s => ({ name: s.stage, count: s.count })),
+          },
+          retention: {
+            day_1: (retentionRes.retention_7d || 0) / 100,
+            day_7: (retentionRes.retention_7d || 0) / 100,
+            day_30: (retentionRes.retention_30d || 0) / 100,
+          },
+          campaigns: campaignsRes,
+        });
       }
     } catch (e) { setError(e); }
     setLoading(false);
@@ -597,18 +613,18 @@ export const AdminPage = ({ onNavigate }) => {
                 <div className="space-y-4">
                   {/* Overview metrics */}
                   <div>
-                    <p className="text-[9px] text-[#333] uppercase tracking-[0.14em] font-semibold mb-2 pl-1">Growth Overview</p>
+                    <p className="text-[9px] text-[#333] uppercase tracking-[0.14em] font-semibold mb-2 pl-1">{t("admin.ga_overview")}</p>
                     <div className="grid grid-cols-2 gap-2.5">
-                      <StatCard icon={Users} label="Total Users" value={analyticsData.overview.total_users} color="#00C2FF" delay={0.06} />
-                      <StatCard icon={Activity} label="Active (30d)" value={analyticsData.overview.active_30d} color="#00D26A" delay={0.08} />
-                      <StatCard icon={TrendingUp} label="Growth Rate" value={`${(analyticsData.overview.growth_rate * 100).toFixed(1)}%`} color="#A855F7" delay={0.10} />
-                      <StatCard icon={CircleDollarSign} label="ARPU" value={`€${analyticsData.overview.arpu?.toFixed(2) || "0.00"}`} color="#FFB800" delay={0.12} />
+                      <StatCard icon={Users} label={t("admin.ga_total_users")} value={analyticsData.overview.total_users} color="#00C2FF" delay={0.06} />
+                      <StatCard icon={Activity} label={t("admin.ga_active_30d")} value={analyticsData.overview.active_30d} color="#00D26A" delay={0.08} />
+                      <StatCard icon={TrendingUp} label={t("admin.ga_growth")} value={`${(analyticsData.overview.growth_rate * 100).toFixed(1)}%`} color="#A855F7" delay={0.10} />
+                      <StatCard icon={CircleDollarSign} label={t("admin.ga_arpu")} value={`€${analyticsData.overview.arpu?.toFixed(2) || "0.00"}`} color="#FFB800" delay={0.12} />
                     </div>
                   </div>
 
                   {/* Funnel */}
                   <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.14 }}>
-                    <p className="text-[9px] text-[#333] uppercase tracking-[0.14em] font-semibold mb-2 pl-1">Conversion Funnel</p>
+                    <p className="text-[9px] text-[#333] uppercase tracking-[0.14em] font-semibold mb-2 pl-1">{t("admin.ga_funnel")}</p>
                     <div className="rounded-2xl p-4 space-y-3" style={{ background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.035)" }}>
                       {analyticsData.funnel.steps?.map((step, i) => {
                         const pct = analyticsData.funnel.steps[0].count > 0 ? (step.count / analyticsData.funnel.steps[0].count) * 100 : 0;
@@ -632,12 +648,12 @@ export const AdminPage = ({ onNavigate }) => {
 
                   {/* Retention */}
                   <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-                    <p className="text-[9px] text-[#333] uppercase tracking-[0.14em] font-semibold mb-2 pl-1">Retention</p>
+                    <p className="text-[9px] text-[#333] uppercase tracking-[0.14em] font-semibold mb-2 pl-1">{t("admin.ga_retention")}</p>
                     <div className="grid grid-cols-3 gap-2.5">
                       {[
-                        { label: "Day 1", value: `${((analyticsData.retention.day_1 || 0) * 100).toFixed(0)}%`, color: "#00C2FF" },
-                        { label: "Day 7", value: `${((analyticsData.retention.day_7 || 0) * 100).toFixed(0)}%`, color: "#A855F7" },
-                        { label: "Day 30", value: `${((analyticsData.retention.day_30 || 0) * 100).toFixed(0)}%`, color: "#FFB800" },
+                        { label: t("admin.ga_day1"), value: `${((analyticsData.retention.day_1 || 0) * 100).toFixed(0)}%`, color: "#00C2FF" },
+                        { label: t("admin.ga_day7"), value: `${((analyticsData.retention.day_7 || 0) * 100).toFixed(0)}%`, color: "#A855F7" },
+                        { label: t("admin.ga_day30"), value: `${((analyticsData.retention.day_30 || 0) * 100).toFixed(0)}%`, color: "#FFB800" },
                       ].map(r => (
                         <div key={r.label} className="rounded-2xl p-3 text-center" style={{ background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.035)" }}>
                           <p className="text-[15px] font-bold font-outfit" style={{ color: r.color }}>{r.value}</p>
@@ -656,7 +672,7 @@ export const AdminPage = ({ onNavigate }) => {
                           <div key={camp.name} className={`px-4 py-3 ${i < analyticsData.campaigns.campaigns.length - 1 ? "border-b border-white/[0.03]" : ""}`}>
                             <div className="flex items-center justify-between">
                               <span className="text-[11px] font-semibold text-white/80">{camp.name}</span>
-                              <span className="text-[10px] text-[#00D26A] font-bold">{camp.signups} signups</span>
+                              <span className="text-[10px] text-[#00D26A] font-bold">{camp.total_uses || camp.signups || 0} {t("admin.ga_uses")}</span>
                             </div>
                           </div>
                         ))}
