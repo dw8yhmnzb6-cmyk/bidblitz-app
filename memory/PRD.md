@@ -18,31 +18,28 @@ Create a modern, professional fintech web app called BidBlitz V2 with Revolut-le
 - Backups (daily cron), Monitoring (5-min), Error/Access logging
 - Admin alerts on critical events
 - Soft launch mode (whitelist gate, live dashboard)
-- 15 users + 3 merchants onboarded, real payments flowing
+- Invite code system (user + merchant types)
 - Feedback collection system
-- Invite code system (generate, validate, redeem, deactivate)
+- 15 users + 4 merchants onboarded, real payments flowing
 
-### Invite Code System (DONE - Apr 2026)
-- Registration requires valid invite code during soft launch
-- Admin generates codes: `POST /api/admin/invite-codes` (count, max_uses, label)
-- Admin lists codes: `GET /api/admin/invite-codes` (with usage stats)
-- Admin deactivates: `PUT /api/admin/invite-codes/{code}/deactivate`
-- Register with code: `POST /api/auth/register` with `invite_code` field
-- Codes stored in MongoDB `invite_codes` collection
-- Supports single-use and multi-use codes
-- All paths tested: valid, no code, used, invalid, deactivated → all correct
+### Public Browsing (DONE - Apr 2026)
+- Visitors can browse homepage without login (no forced auth)
+- Guest sees: services, features, Taxi/Scooter/Food cards, bottom nav, language switcher
+- Balance card shows masked EUR •••,•• with "Anmelden" CTA
+- Header shows "BidBlitz" name + "Anmelden" sign-in button
+- CTA button shows "Konto erstellen" (Create Account)
+- Protected paths (wallet, scan, merchant, more, notifications, admin) trigger auth overlay
+- Auth page has "Zurück" (Back) button to return to public browsing
+- After login, user returns to app with full access
+- All text translated in 12 languages (common.back key added)
 
-## User Feedback (23 responses, avg 3.7/5)
-### Prioritized Issues
-- P0: Compliance block messages unclear
-- P1: No onboarding tutorial, no merchant refunds, QR code too small
-- P2: Payout auto-approve, animation performance, home page length
-- P3: Apple Pay/Google Pay, merchant daily summary, receipt duration
-
-## Backlog
+## Not Implemented (Backlog)
+- P0: Compliance block messages need human-readable text
+- P1: Onboarding welcome flow, Merchant refunds, QR code zoom
+- P2: Payout auto-approve, Animation performance, Home page length
+- P3: Apple Pay/Google Pay, Merchant daily summary
 - Taxi, Scooter, Food, Auctions (placeholder cards)
-- Onboarding welcome flow, User streaks, Merchant insights
-- Push notifications, KYC upgrade, Saved payment methods
+- User streaks, Push notifications, KYC, Saved payment methods
 
 ## Test Credentials
 - See /app/memory/test_credentials.md for full list

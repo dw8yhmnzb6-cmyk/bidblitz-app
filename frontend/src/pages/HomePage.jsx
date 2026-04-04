@@ -97,13 +97,17 @@ const ServiceCard = ({ feature, index, onClick }) => {
 };
 
 // ── Main Page ──
-export const HomePage = ({ onNavigate }) => {
+export const HomePage = ({ onNavigate, isGuest, onAuthRequired }) => {
   const user = useUser();
   const { balance, currency } = useWallet();
   const { percentageChange } = useWalletStats();
   const { t } = useI18n();
 
   const handleServiceClick = (featureId) => {
+    if (isGuest) {
+      onAuthRequired();
+      return;
+    }
     if (featureId === "wallet") {
       onNavigate("/wallet");
     } else {
@@ -149,38 +153,53 @@ export const HomePage = ({ onNavigate }) => {
                   boxShadow: "0 0 16px rgba(0,194,255,0.12)",
                 }}
               />
-              {/* Online dot */}
-              <div
-                className="absolute bottom-0 right-0 w-3 h-3 rounded-full"
-                style={{
-                  background: "#00D26A",
-                  border: "2px solid #030303",
-                  boxShadow: "0 0 6px rgba(0,210,106,0.5)",
-                }}
-              />
+              {!isGuest && (
+                <div
+                  className="absolute bottom-0 right-0 w-3 h-3 rounded-full"
+                  style={{
+                    background: "#00D26A",
+                    border: "2px solid #030303",
+                    boxShadow: "0 0 6px rgba(0,210,106,0.5)",
+                  }}
+                />
+              )}
             </motion.div>
             <div>
               <p className="text-[10px] text-[#3A3A3A] font-semibold tracking-[0.1em] uppercase">{getGreeting()}</p>
-              <h2 className="text-[16px] text-white font-semibold font-outfit tracking-tight">{user.name}</h2>
+              <h2 className="text-[16px] text-white font-semibold font-outfit tracking-tight">
+                {isGuest ? "BidBlitz" : user.name}
+              </h2>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
             <LanguageSwitcher />
-            <motion.button
-              data-testid="notification-btn"
-              className="w-10 h-10 rounded-full bg-white/[0.04] border border-white/[0.05] flex items-center justify-center relative"
-              whileTap={{ scale: 0.88 }}
-              onClick={() => onNavigate("/notifications")}
-            >
-              <Bell size={15} strokeWidth={1.5} className="text-white/50" />
-              <motion.span
-                className="absolute top-2.5 right-2.5 w-[6px] h-[6px] bg-[#00C2FF] rounded-full"
-                animate={{ scale: [1, 1.4, 1] }}
-                transition={{ duration: 2, repeat: Infinity }}
-                style={{ boxShadow: "0 0 6px rgba(0,194,255,0.8)" }}
-              />
-            </motion.button>
+            {isGuest ? (
+              <motion.button
+                data-testid="login-btn"
+                className="px-4 py-2 rounded-full text-[11px] font-semibold font-outfit"
+                style={{ background: "rgba(0,194,255,0.1)", border: "1px solid rgba(0,194,255,0.2)", color: "#00C2FF" }}
+                whileTap={{ scale: 0.92 }}
+                onClick={onAuthRequired}
+              >
+                {t("auth.signin") || "Sign In"}
+              </motion.button>
+            ) : (
+              <motion.button
+                data-testid="notification-btn"
+                className="w-10 h-10 rounded-full bg-white/[0.04] border border-white/[0.05] flex items-center justify-center relative"
+                whileTap={{ scale: 0.88 }}
+                onClick={() => onNavigate("/notifications")}
+              >
+                <Bell size={15} strokeWidth={1.5} className="text-white/50" />
+                <motion.span
+                  className="absolute top-2.5 right-2.5 w-[6px] h-[6px] bg-[#00C2FF] rounded-full"
+                  animate={{ scale: [1, 1.4, 1] }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                  style={{ boxShadow: "0 0 6px rgba(0,194,255,0.8)" }}
+                />
+              </motion.button>
+            )}
           </div>
         </motion.header>
 
@@ -219,30 +238,59 @@ export const HomePage = ({ onNavigate }) => {
               <p className="text-[10px] text-[#3A3A3A] font-semibold tracking-[0.12em] uppercase">{t("home.balance")}</p>
             </div>
 
-            <motion.div
-              className="flex items-baseline gap-1 mb-3"
-              initial={{ opacity: 0, y: 10, filter: "blur(4px)" }}
-              animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-              transition={{ delay: 0.2, duration: 0.3 }}
-            >
-              <span className="text-[22px] text-[#2A2A2A] font-outfit font-light">{currency}</span>
-              <span className="text-[42px] font-bold font-outfit text-white tracking-[-0.03em] leading-none">
-                {balance.toLocaleString("de-DE", { minimumFractionDigits: 2 })}
-              </span>
-            </motion.div>
+            {isGuest ? (
+              <>
+                <motion.div
+                  className="flex items-baseline gap-1 mb-3"
+                  initial={{ opacity: 0, y: 10, filter: "blur(4px)" }}
+                  animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                  transition={{ delay: 0.2, duration: 0.3 }}
+                >
+                  <span className="text-[22px] text-[#2A2A2A] font-outfit font-light">EUR</span>
+                  <span className="text-[42px] font-bold font-outfit text-white/20 tracking-[-0.03em] leading-none">
+                    &#8226;&#8226;&#8226;,&#8226;&#8226;
+                  </span>
+                </motion.div>
+                <motion.button
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold"
+                  style={{ background: "rgba(0,194,255,0.08)", border: "1px solid rgba(0,194,255,0.15)", color: "#00C2FF" }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.35 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={onAuthRequired}
+                >
+                  {t("auth.signin") || "Sign in to see your balance"}
+                </motion.button>
+              </>
+            ) : (
+              <>
+                <motion.div
+                  className="flex items-baseline gap-1 mb-3"
+                  initial={{ opacity: 0, y: 10, filter: "blur(4px)" }}
+                  animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                  transition={{ delay: 0.2, duration: 0.3 }}
+                >
+                  <span className="text-[22px] text-[#2A2A2A] font-outfit font-light">{currency}</span>
+                  <span className="text-[42px] font-bold font-outfit text-white tracking-[-0.03em] leading-none">
+                    {balance.toLocaleString("de-DE", { minimumFractionDigits: 2 })}
+                  </span>
+                </motion.div>
 
-            <motion.div
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full"
-              style={{ background: "rgba(0,210,106,0.06)", border: "1px solid rgba(0,210,106,0.12)" }}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.35 }}
-            >
-              <TrendingUp size={10} className="text-[#00D26A]" />
-              <span className="text-[10px] text-[#00D26A] font-semibold">
-                +{percentageChange}% {t("home.month")}
-              </span>
-            </motion.div>
+                <motion.div
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full"
+                  style={{ background: "rgba(0,210,106,0.06)", border: "1px solid rgba(0,210,106,0.12)" }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.35 }}
+                >
+                  <TrendingUp size={10} className="text-[#00D26A]" />
+                  <span className="text-[10px] text-[#00D26A] font-semibold">
+                    +{percentageChange}% {t("home.month")}
+                  </span>
+                </motion.div>
+              </>
+            )}
           </div>
         </motion.div>
 
@@ -270,9 +318,9 @@ export const HomePage = ({ onNavigate }) => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2, ...slide }}
           whileTap={{ scale: 0.96 }}
-          onClick={() => onNavigate("/wallet")}
+          onClick={() => isGuest ? onAuthRequired() : onNavigate("/wallet")}
         >
-          {t("home.get_started")}
+          {isGuest ? (t("auth.create") || "Get Started") : t("home.get_started")}
           <motion.div
             animate={{ x: [0, 3, 0] }}
             transition={{ duration: 1.5, repeat: Infinity }}
@@ -321,7 +369,7 @@ export const HomePage = ({ onNavigate }) => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5, ...slide }}
           whileTap={{ scale: 0.98 }}
-          onClick={() => onNavigate("/wallet")}
+          onClick={() => isGuest ? onAuthRequired() : onNavigate("/wallet")}
         >
           {/* Corner glow */}
           <div

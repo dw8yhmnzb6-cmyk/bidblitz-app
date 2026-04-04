@@ -56,7 +56,7 @@ const Field = ({ icon: Icon, type, value, onChange, placeholder, testId, autoFoc
   );
 };
 
-export const AuthPage = () => {
+export const AuthPage = ({ onBack }) => {
   const [mode, setMode] = useState("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -102,6 +102,21 @@ export const AuthPage = () => {
       />
 
       <div className="flex-1 flex flex-col justify-center px-6 py-10 relative z-10 max-w-[400px] mx-auto w-full">
+
+        {/* ── Back Button (when opened from public browsing) ── */}
+        {onBack && (
+          <motion.button
+            data-testid="auth-back-btn"
+            className="absolute top-[max(env(safe-area-inset-top,0px),16px)] left-4 z-20 flex items-center gap-1.5 text-[12px] text-[#555] font-medium"
+            whileTap={{ scale: 0.92 }}
+            onClick={onBack}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+            {t("common.back") || "Back"}
+          </motion.button>
+        )}
 
         {/* ── Logo / Brand ── */}
         <motion.div
