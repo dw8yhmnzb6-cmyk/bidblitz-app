@@ -50,8 +50,11 @@ Create a modern, professional fintech web app called BidBlitz V2 with Revolut-le
 - Friendly error messages (wrong password → localized)
 - Auto-collapse on success
 - Settings → Change Password navigates to Profile with form pre-opened
-- Settings persistence (notifications, biometric, dark mode → backend)
-- All profile/password labels in all 12 languages
+- Settings persistence: language, notifications, email notifications, biometric, dark mode → all saved to backend via PUT /api/user/profile
+- Settings hydrated from backend on login/refresh via serialize_user → /api/auth/me
+- Language synced: backend → I18n on login, I18n → backend on change in Settings
+- localStorage fallback for language (I18nContext STORAGE_KEY)
+- All profile/password/settings labels in all 12 languages
 
 ### Support Center (DONE)
 - FAQ accordion with i18n

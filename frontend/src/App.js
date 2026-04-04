@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Toaster } from "sonner";
 import "@/App.css";
 
-import { AppProvider, useUser } from "./store";
+import { AppProvider, useUser, useI18n } from "./store";
 
 import HomePage from "./pages/HomePage";
 import WalletPage from "./pages/WalletPage";
@@ -28,6 +28,14 @@ function AppContent() {
   const [stripeReturn, setStripeReturn] = useState(hasStripeReturn);
   const [showBarcode, setShowBarcode] = useState(false);
   const user = useUser();
+  const { setLang } = useI18n();
+
+  // Sync language from backend after login/session restore
+  useEffect(() => {
+    if (user.isAuthenticated && user.language) {
+      setLang(user.language);
+    }
+  }, [user.isAuthenticated, user.language, setLang]);
 
   const handleNavigate = (path) => {
     // For customers: scan tab opens QR modal instead of scanner page

@@ -379,6 +379,12 @@ const SettingsView = ({ onBack, t, locale, setLocale, onOpenPasswordChange }) =>
     setSaving(false);
   };
 
+  const handleLangChange = (code) => {
+    setLocale(code);
+    setShowLangPicker(false);
+    persistSetting("language", code);
+  };
+
   const toggleNotifs = () => { const v = !notifs; setNotifs(v); persistSetting("notifications_enabled", v); };
   const toggleEmail = () => { const v = !emailNotifs; setEmailNotifs(v); persistSetting("email_notifications", v); };
   const toggleBio = () => { const v = !biometric; setBiometric(v); persistSetting("biometric_enabled", v); };
@@ -406,7 +412,7 @@ const SettingsView = ({ onBack, t, locale, setLocale, onOpenPasswordChange }) =>
                     <motion.button
                       key={code}
                       data-testid={`lang-${code}`}
-                      onClick={() => { setLocale(code); setShowLangPicker(false); }}
+                      onClick={() => handleLangChange(code)}
                       whileTap={{ scale: 0.95 }}
                       className={`px-2 py-2 rounded-xl text-[11px] font-medium transition-all ${
                         locale === code
