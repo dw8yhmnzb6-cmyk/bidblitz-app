@@ -47,20 +47,21 @@ Create a modern, professional fintech web app called BidBlitz V2 with Revolut-le
 - Profile & Account, Support Center, Kids Feature, Growth/Referral, Settings, Export
 
 ### Backups & Monitoring (DONE - Apr 2026)
-- Daily MongoDB backup via cron (2:00 AM UTC), 7-day retention, compressed .tar.gz
-- Backup integrity verification (tar test on each run)
-- Rotating error log (/app/backend/logs/error.log, 5MB × 5 files)
-- Access log for 4xx/5xx requests (/app/backend/logs/access.log)
-- Request logging middleware (method, path, status, duration)
-- Uptime monitor every 5 min: API, MongoDB, disk, memory, backup freshness
-- Alert log (/app/backend/logs/alerts.log) for critical issues
-- Enhanced /api health check: DB status, backup info, uptime timestamp
+- Daily MongoDB backup via cron (2:00 AM UTC), 7-day retention
+- Rotating error/access logs, uptime monitor every 5 min
+- Enhanced /api health check: DB status, backup info
+
+### Admin Alerts (DONE - Apr 2026)
+- Automatic in-app notifications to all admins on critical events
+- Alert triggers: payment_failed, send_failed, topup_failed, payout_cancelled, suspicious_activity, login_locked, system_error (5xx)
+- Wired into existing audit log system (zero changes to route files)
+- Notifications appear in admin's notification feed with type "admin_alert"
+- Includes: severity, user email, amount, reason
 
 ### Production Readiness (DONE - Apr 2026)
 - All float rounding fixed across every endpoint
-- N+1 admin query optimization
 - Production frontend build (1.4MB)
-- Full live test: login, wallet, topup, send, merchant-scan, payouts, admin — ALL PASSED
+- Full live test: all flows passed
 
 ## Not Implemented (Backlog)
 - Taxi, Scooter, Food, Auctions (placeholder cards only)
@@ -79,5 +80,6 @@ Create a modern, professional fintech web app called BidBlitz V2 with Revolut-le
 ## Operations
 - Backup script: /app/scripts/backup_db.sh (cron: 0 2 * * *)
 - Monitor script: /app/scripts/monitor.sh (cron: */5 * * * *)
-- Backups stored: /app/backups/ (7-day retention)
+- Backups: /app/backups/ (7-day retention)
 - Logs: /app/backend/logs/ (error.log, access.log, backup.log, uptime.log, alerts.log)
+- Admin alerts: automatic via audit.py _notify_admins()

@@ -1,6 +1,7 @@
 """
 BidBlitz V2 - Audit Logging Module
 Structured internal logging for security-sensitive actions.
+Includes admin alert system for critical events.
 """
 
 from datetime import datetime, timezone
@@ -35,6 +36,55 @@ class AuditEvent:
     SUSPICIOUS_ACTIVITY = "suspicious_activity"
 
 
+# Events that trigger admin alerts
+_ALERT_EVENTS = {
+    AuditEvent.PAYMENT_FAILED: "Payment Failed",
+    AuditEvent.SEND_FAILED: "Send Failed",
+    AuditEvent.TOPUP_FAILED: "Top-up Failed",
+    AuditEvent.PAYOUT_CANCELLED: "Payout Cancelled",
+    AuditEvent.SUSPICIOUS_ACTIVITY: "Suspicious Activity",
+    AuditEvent.LOGIN_LOCKED: "Account Locked",
+    "system_error": "System Error",
+}
+
+
+async def _notify_admins(event: str, email: str, details: dict, severity: str):
+    """Send in-app notification to all admin users for critical events."""
+    title = _ALERT_EVENTS.get(event)
+    if not title:
+        return
+    try:
+        reason = details.get("reason", "")
+        amount = details.get("amount", "")
+        parts = [f"[{severity.upper()}] {title}"]
+        if email:
+            parts.append(f"User: {email}")
+        if amount:
+            parts.append(f"Amount: EUR {amount}")
+        if reason:
+            parts.append(f"Reason: {reason}")
+        message = " | ".join(parts)
+
+        admins = await db.users.find({"role": "admin"}, {"_id": 1}).to_list(50)
+        if not admins:
+            return
+        now = datetime.now(timezone.utc).isoformat()
+        notifications = [
+            {
+                "user_id": str(a["_id"]),
+                "type": "admin_alert",
+                "title": f"Alert: {title}",
+                "message": message,
+                "read": False,
+                "created_at": now,
+            }
+            for a in admins
+        ]
+        await db.notifications.insert_many(notifications)
+    except Exception as e:
+        logger.error(f"Admin alert failed: {e}")
+
+
 async def log_audit(
     event: str,
     user_id: str = "",
@@ -44,14 +94,15 @@ async def log_audit(
     details: dict = None,
     severity: str = "info",
 ):
-    """Write a structured audit log entry."""
+    """Write a structured audit log entry and alert admins on critical events."""
+    details = details or {}
     entry = {
         "event": event,
         "user_id": user_id,
         "email": email,
         "ip": ip,
         "user_agent": user_agent[:256] if user_agent else "",
-        "details": details or {},
+        "details": details,
         "severity": severity,
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
@@ -61,6 +112,10 @@ async def log_audit(
         logger.error(f"Audit log write failed: {e}")
     # Also log to stdout for container log aggregation
     logger.info(f"AUDIT [{severity.upper()}] {event} user={user_id or email} ip={ip}")
+
+    # Fire admin alerts for critical events
+    if event in _ALERT_EVENTS:
+        await _notify_admins(event, email, details, severity)
 
 
 def get_client_info(request):

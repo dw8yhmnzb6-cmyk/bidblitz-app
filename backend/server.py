@@ -75,6 +75,16 @@ app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     logger.error(f"Unhandled error: {request.method} {request.url.path} | {exc}\n{traceback.format_exc()}")
+    # Alert admins on system errors
+    try:
+        from core.audit import log_audit, AuditEvent
+        await log_audit(
+            "system_error",
+            details={"path": request.url.path, "method": request.method, "error": str(exc)[:500]},
+            severity="error",
+        )
+    except Exception:
+        pass
     return JSONResponse(
         status_code=500,
         content={"detail": "Internal server error" if IS_PRODUCTION else str(exc)},
