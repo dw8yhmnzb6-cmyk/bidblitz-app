@@ -24,6 +24,11 @@ const guestState = {
   isLoading: false,
   error: null,
   sessionReady: false,
+  created_at: '',
+  notifications_enabled: true,
+  email_notifications: true,
+  biometric_enabled: false,
+  dark_mode: true,
 };
 
 function mapUser(u) {
@@ -39,6 +44,11 @@ function mapUser(u) {
     avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=BidBlitz',
     isPremium: true,
     isAuthenticated: true,
+    created_at: u.created_at || '',
+    notifications_enabled: u.notifications_enabled !== false,
+    email_notifications: u.email_notifications !== false,
+    biometric_enabled: u.biometric_enabled === true,
+    dark_mode: u.dark_mode !== false,
   };
 }
 
@@ -143,6 +153,11 @@ export function UserProvider({ children }) {
     isLoading: state.isLoading,
     error: state.error,
     sessionReady: state.sessionReady,
+    created_at: state.created_at,
+    notifications_enabled: state.notifications_enabled,
+    email_notifications: state.email_notifications,
+    biometric_enabled: state.biometric_enabled,
+    dark_mode: state.dark_mode,
     login,
     register,
     logout,

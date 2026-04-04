@@ -4,7 +4,7 @@ import {
   ArrowLeft, User, CreditCard, Bell, Shield, Moon, Settings,
   HelpCircle, LogOut, ChevronRight, ChevronLeft, Sparkles,
   Globe, Lock, Eye, Fingerprint, Smartphone, Mail, Calendar, Gift, LayoutDashboard, Activity, Users,
-  Pencil, Loader2
+  Pencil, Loader2, Check, X
 } from "lucide-react";
 import { useUser, useI18n } from "../store";
 import { api } from "../services/api";
@@ -84,46 +84,88 @@ const SubPage = ({ title, onBack, children }) => (
 );
 
 // ── Profile Sub-page ──
-const ProfileView = ({ user, onBack, t }) => {
+const ProfileView = ({ user, onBack, t, initialOpenPw }) => {
+  const { refreshUser } = useUser();
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(user.name || "");
+  const [originalName] = useState(user.name || "");
   const [saving, setSaving] = useState(false);
-  const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [showPasswordForm, setShowPasswordForm] = useState(initialOpenPw || false);
   const [currentPw, setCurrentPw] = useState("");
   const [newPw, setNewPw] = useState("");
   const [confirmPw, setConfirmPw] = useState("");
   const [pwSaving, setPwSaving] = useState(false);
   const [pwMsg, setPwMsg] = useState(null);
   const [nameMsg, setNameMsg] = useState(null);
+  const [nameValidation, setNameValidation] = useState(null);
+
+  // Inline validation for name
+  const validateName = (val) => {
+    if (!val.trim()) return t("profile.name_empty");
+    if (val.trim().length < 2) return t("profile.name_too_short");
+    return null;
+  };
+
+  const handleNameChange = (val) => {
+    setName(val);
+    if (nameValidation) setNameValidation(validateName(val));
+  };
 
   const handleSaveName = async () => {
-    if (!name.trim() || name.trim() === user.name) { setEditing(false); return; }
-    setSaving(true); setNameMsg(null);
+    const err = validateName(name);
+    if (err) { setNameValidation(err); return; }
+    if (name.trim() === user.name) { handleCancelEdit(); return; }
+    setSaving(true); setNameMsg(null); setNameValidation(null);
     try {
       await api.updateProfile({ name: name.trim() });
-      user.refreshUser && (await user.refreshUser());
-      setNameMsg({ ok: true, text: t("profile.name_saved") || "Name updated" });
+      await refreshUser();
+      setNameMsg({ ok: true, text: t("profile.name_saved") });
       setEditing(false);
-    } catch (e) { setNameMsg({ ok: false, text: e.message }); }
+      setTimeout(() => setNameMsg(null), 3000);
+    } catch (e) {
+      setNameMsg({ ok: false, text: e.message || t("common.error") });
+    }
     setSaving(false);
+  };
+
+  const handleCancelEdit = () => {
+    setName(user.name || originalName);
+    setEditing(false);
+    setNameValidation(null);
+    setNameMsg(null);
+  };
+
+  // Password validation
+  const pwValidation = () => {
+    if (!currentPw || !newPw || !confirmPw) return t("profile.pw_required");
+    if (newPw.length < 6) return t("profile.pw_too_short");
+    if (newPw !== confirmPw) return t("profile.pw_mismatch");
+    return null;
   };
 
   const handleChangePassword = async (e) => {
     e.preventDefault();
-    if (!currentPw || !newPw) return;
-    if (newPw !== confirmPw) { setPwMsg({ ok: false, text: t("auth.passwords_mismatch") || "Passwords do not match" }); return; }
-    if (newPw.length < 6) { setPwMsg({ ok: false, text: t("auth.password_short") || "Min 6 characters" }); return; }
+    const err = pwValidation();
+    if (err) { setPwMsg({ ok: false, text: err }); return; }
     setPwSaving(true); setPwMsg(null);
     try {
       await api.changePassword({ current_password: currentPw, new_password: newPw });
-      setPwMsg({ ok: true, text: t("profile.password_changed") || "Password changed" });
+      setPwMsg({ ok: true, text: t("profile.password_changed") });
       setCurrentPw(""); setNewPw(""); setConfirmPw("");
-      setTimeout(() => setShowPasswordForm(false), 1500);
-    } catch (e) { setPwMsg({ ok: false, text: e.message }); }
+      setTimeout(() => { setShowPasswordForm(false); setPwMsg(null); }, 2000);
+    } catch (e) {
+      const msg = e.message || "";
+      const userMsg = msg.toLowerCase().includes("invalid") || msg.toLowerCase().includes("incorrect") || msg.toLowerCase().includes("wrong")
+        ? t("profile.pw_wrong") : msg || t("common.error");
+      setPwMsg({ ok: false, text: userMsg });
+    }
     setPwSaving(false);
   };
 
-  const joined = "January 2024";
+  // Format member since date
+  const memberSince = user.created_at
+    ? new Date(user.created_at).toLocaleDateString(undefined, { year: "numeric", month: "long" })
+    : "—";
 
   return (
     <SubPage title={t("profile.title")} onBack={onBack}>
@@ -140,27 +182,64 @@ const ProfileView = ({ user, onBack, t }) => {
             </motion.div>
           )}
         </div>
-        {editing ? (
-          <div className="flex items-center gap-2 w-full max-w-[260px]">
-            <input data-testid="profile-name-input" value={name} onChange={e => setName(e.target.value)}
-              className="flex-1 px-3 py-2 rounded-xl text-[14px] text-white font-outfit font-bold text-center outline-none"
-              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(0,194,255,0.2)" }}
-              autoFocus onKeyDown={e => e.key === "Enter" && handleSaveName()} />
-            <motion.button data-testid="profile-save-name-btn" onClick={handleSaveName} disabled={saving}
-              className="px-3 py-2 rounded-xl text-[12px] font-semibold bg-[#00C2FF]/10 text-[#00C2FF] border border-[#00C2FF]/20"
-              whileTap={{ scale: 0.95 }}>
-              {saving ? <Loader2 size={12} className="animate-spin" /> : (t("common.save") || "Save")}
-            </motion.button>
-          </div>
-        ) : (
-          <motion.button data-testid="profile-edit-name-btn" onClick={() => setEditing(true)} className="group">
-            <p className="text-[18px] font-bold font-outfit text-white mb-0.5 group-hover:text-[#00C2FF] transition-colors">
-              {user.name} <Pencil size={12} className="inline text-[#444] group-hover:text-[#00C2FF] ml-1" />
-            </p>
-          </motion.button>
-        )}
+
+        <AnimatePresence mode="wait">
+          {editing ? (
+            <motion.div key="editing" className="w-full max-w-[280px] space-y-2"
+              initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.2 }}>
+              <input data-testid="profile-name-input" value={name} onChange={e => handleNameChange(e.target.value)}
+                className="w-full px-3 py-2.5 rounded-xl text-[14px] text-white font-outfit font-bold text-center outline-none transition-all"
+                style={{
+                  background: "rgba(255,255,255,0.04)",
+                  border: `1px solid ${nameValidation ? "rgba(255,71,87,0.3)" : "rgba(0,194,255,0.25)"}`,
+                  boxShadow: nameValidation ? "0 0 12px rgba(255,71,87,0.06)" : "0 0 12px rgba(0,194,255,0.06)"
+                }}
+                autoFocus
+                onKeyDown={e => { if (e.key === "Enter") handleSaveName(); if (e.key === "Escape") handleCancelEdit(); }} />
+              {nameValidation && (
+                <motion.p className="text-[10px] text-[#FF4757] font-medium text-center" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                  {nameValidation}
+                </motion.p>
+              )}
+              <div className="flex gap-2">
+                <motion.button data-testid="profile-cancel-edit-btn" onClick={handleCancelEdit}
+                  className="flex-1 py-2 rounded-xl text-[12px] font-semibold text-[#666] bg-white/[0.03] border border-white/[0.06]"
+                  whileTap={{ scale: 0.95 }}>
+                  {t("profile.cancel_edit")}
+                </motion.button>
+                <motion.button data-testid="profile-save-name-btn" onClick={handleSaveName} disabled={saving}
+                  className="flex-1 py-2 rounded-xl text-[12px] font-semibold bg-[#00C2FF]/10 text-[#00C2FF] border border-[#00C2FF]/20 flex items-center justify-center gap-1.5"
+                  whileTap={{ scale: 0.95 }}>
+                  {saving ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
+                  {saving ? t("profile.saving") : t("profile.save_name")}
+                </motion.button>
+              </div>
+            </motion.div>
+          ) : (
+            <motion.div key="display" className="text-center" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.2 }}>
+              <motion.button data-testid="profile-edit-name-btn" onClick={() => { setEditing(true); setNameMsg(null); }} className="group inline-flex items-center gap-1.5">
+                <p className="text-[18px] font-bold font-outfit text-white group-hover:text-[#00C2FF] transition-colors">
+                  {user.name}
+                </p>
+                <Pencil size={12} className="text-[#333] group-hover:text-[#00C2FF] transition-colors" />
+              </motion.button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         <p className="text-[12px] text-[#444] font-medium mt-1">{user.email}</p>
-        {nameMsg && <p className={`text-[11px] mt-1 font-medium ${nameMsg.ok ? "text-[#00D26A]" : "text-[#FF4757]"}`}>{nameMsg.text}</p>}
+
+        {/* Inline feedback message */}
+        <AnimatePresence>
+          {nameMsg && (
+            <motion.div initial={{ opacity: 0, y: 4, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -4, scale: 0.95 }}
+              className={`mt-2 px-3 py-1.5 rounded-full flex items-center gap-1.5 ${nameMsg.ok ? "bg-[#00D26A]/8 border border-[#00D26A]/15" : "bg-[#FF4757]/8 border border-[#FF4757]/15"}`}>
+              {nameMsg.ok ? <Check size={11} className="text-[#00D26A]" /> : <X size={11} className="text-[#FF4757]" />}
+              <span className={`text-[11px] font-medium ${nameMsg.ok ? "text-[#00D26A]" : "text-[#FF4757]"}`}>{nameMsg.text}</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {user.isPremium && (
           <motion.span className="mt-2 text-[9px] uppercase tracking-[0.14em] font-bold px-3 py-1 rounded-full"
             style={{ background: "rgba(255,215,0,0.08)", color: "#FFD700", border: "1px solid rgba(255,215,0,0.15)" }}
@@ -178,8 +257,8 @@ const ProfileView = ({ user, onBack, t }) => {
           { icon: User, label: t("profile.full_name"), value: user.name, color: "#00C2FF" },
           { icon: Mail, label: t("profile.email"), value: user.email, color: "#A855F7" },
           { icon: Shield, label: t("profile.account_status"), value: t("profile.verified"), color: "#00D26A" },
-          { icon: Calendar, label: t("profile.member_since"), value: joined, color: "#FFB800" },
-          { icon: Fingerprint, label: t("profile.account_id"), value: user.id || "user_001", color: "#888" },
+          { icon: Calendar, label: t("profile.member_since"), value: memberSince, color: "#FFB800" },
+          { icon: Fingerprint, label: t("profile.account_id"), value: user.id ? `...${user.id.slice(-8)}` : "—", color: "#888" },
         ].map((row, i, arr) => (
           <div key={i} className={`flex items-center justify-between px-4 py-[12px] ${i < arr.length - 1 ? "border-b border-white/[0.03]" : ""}`}>
             <div className="flex items-center gap-2.5">
@@ -194,15 +273,15 @@ const ProfileView = ({ user, onBack, t }) => {
       {/* Change Password Section */}
       <motion.div className="mt-4" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }}>
         <motion.button data-testid="profile-change-pw-btn"
-          onClick={() => setShowPasswordForm(!showPasswordForm)}
-          className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl"
-          style={{ background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.035)" }}
+          onClick={() => { setShowPasswordForm(!showPasswordForm); setPwMsg(null); }}
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition-colors"
+          style={{ background: showPasswordForm ? "rgba(0,210,106,0.03)" : "rgba(255,255,255,0.015)", border: `1px solid ${showPasswordForm ? "rgba(0,210,106,0.08)" : "rgba(255,255,255,0.035)"}` }}
           whileTap={{ scale: 0.98 }}>
           <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "rgba(0,210,106,0.08)", border: "1px solid rgba(0,210,106,0.12)" }}>
             <Lock size={14} className="text-[#00D26A]" />
           </div>
-          <span className="text-[13px] font-medium text-white/90 flex-1 text-left">{t("settings.change_password") || "Change Password"}</span>
-          <ChevronRight size={14} className={`text-[#333] transition-transform ${showPasswordForm ? "rotate-90" : ""}`} />
+          <span className="text-[13px] font-medium text-white/90 flex-1 text-left">{t("settings.change_password")}</span>
+          <ChevronRight size={14} className={`text-[#333] transition-transform duration-200 ${showPasswordForm ? "rotate-90" : ""}`} />
         </motion.button>
 
         <AnimatePresence>
@@ -212,24 +291,63 @@ const ProfileView = ({ user, onBack, t }) => {
               exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25 }}
               className="overflow-hidden mt-2 rounded-2xl p-4 space-y-3"
               style={{ background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.035)" }}>
-              <input data-testid="pw-current" type="password" value={currentPw} onChange={e => setCurrentPw(e.target.value)}
-                placeholder={t("profile.current_password") || "Current password"}
-                className="w-full px-3 py-2.5 rounded-xl text-[13px] text-white/90 placeholder-[#333] font-medium outline-none"
-                style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }} />
-              <input data-testid="pw-new" type="password" value={newPw} onChange={e => setNewPw(e.target.value)}
-                placeholder={t("profile.new_password") || "New password"}
-                className="w-full px-3 py-2.5 rounded-xl text-[13px] text-white/90 placeholder-[#333] font-medium outline-none"
-                style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }} />
-              <input data-testid="pw-confirm" type="password" value={confirmPw} onChange={e => setConfirmPw(e.target.value)}
-                placeholder={t("profile.confirm_password") || "Confirm new password"}
-                className="w-full px-3 py-2.5 rounded-xl text-[13px] text-white/90 placeholder-[#333] font-medium outline-none"
-                style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }} />
-              {pwMsg && <p className={`text-[11px] font-medium ${pwMsg.ok ? "text-[#00D26A]" : "text-[#FF4757]"}`}>{pwMsg.text}</p>}
-              <motion.button data-testid="pw-submit-btn" type="submit" disabled={pwSaving}
-                className="w-full py-2.5 rounded-xl text-[13px] font-semibold flex items-center justify-center gap-2 bg-[#00D26A]/10 text-[#00D26A] border border-[#00D26A]/15"
+
+              <div className="space-y-2.5">
+                <div>
+                  <label className="text-[9px] text-[#444] font-semibold uppercase tracking-wider mb-1 block pl-0.5">{t("profile.current_password")}</label>
+                  <input data-testid="pw-current" type="password" value={currentPw} onChange={e => { setCurrentPw(e.target.value); setPwMsg(null); }}
+                    placeholder="••••••••"
+                    className="w-full px-3 py-2.5 rounded-xl text-[13px] text-white/90 placeholder-[#222] font-medium outline-none transition-all focus:border-[#00C2FF]/20"
+                    style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }} />
+                </div>
+                <div>
+                  <label className="text-[9px] text-[#444] font-semibold uppercase tracking-wider mb-1 block pl-0.5">{t("profile.new_password")}</label>
+                  <input data-testid="pw-new" type="password" value={newPw} onChange={e => { setNewPw(e.target.value); setPwMsg(null); }}
+                    placeholder="••••••••"
+                    className="w-full px-3 py-2.5 rounded-xl text-[13px] text-white/90 placeholder-[#222] font-medium outline-none transition-all focus:border-[#00C2FF]/20"
+                    style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }} />
+                  {newPw && newPw.length < 6 && (
+                    <p className="text-[9px] text-[#FFB800] font-medium mt-1 pl-0.5">{t("profile.pw_too_short")}</p>
+                  )}
+                </div>
+                <div>
+                  <label className="text-[9px] text-[#444] font-semibold uppercase tracking-wider mb-1 block pl-0.5">{t("profile.confirm_password")}</label>
+                  <input data-testid="pw-confirm" type="password" value={confirmPw} onChange={e => { setConfirmPw(e.target.value); setPwMsg(null); }}
+                    placeholder="••••••••"
+                    className="w-full px-3 py-2.5 rounded-xl text-[13px] text-white/90 placeholder-[#222] font-medium outline-none transition-all focus:border-[#00C2FF]/20"
+                    style={{
+                      background: "rgba(255,255,255,0.03)",
+                      border: `1px solid ${confirmPw && confirmPw !== newPw ? "rgba(255,71,87,0.2)" : "rgba(255,255,255,0.05)"}`
+                    }} />
+                  {confirmPw && confirmPw !== newPw && (
+                    <p className="text-[9px] text-[#FF4757] font-medium mt-1 pl-0.5">{t("profile.pw_mismatch")}</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Success/Error feedback */}
+              <AnimatePresence>
+                {pwMsg && (
+                  <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-xl ${pwMsg.ok ? "bg-[#00D26A]/6 border border-[#00D26A]/12" : "bg-[#FF4757]/6 border border-[#FF4757]/12"}`}>
+                    {pwMsg.ok ? <Check size={12} className="text-[#00D26A]" /> : <X size={12} className="text-[#FF4757]" />}
+                    <span className={`text-[11px] font-medium ${pwMsg.ok ? "text-[#00D26A]" : "text-[#FF4757]"}`}>{pwMsg.text}</span>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              <motion.button data-testid="pw-submit-btn" type="submit"
+                disabled={pwSaving || !currentPw || !newPw || !confirmPw}
+                className="w-full py-2.5 rounded-xl text-[13px] font-semibold flex items-center justify-center gap-2 transition-all"
+                style={{
+                  background: pwSaving ? "rgba(0,210,106,0.05)" : "rgba(0,210,106,0.1)",
+                  border: "1px solid rgba(0,210,106,0.15)",
+                  color: "#00D26A",
+                  opacity: (!currentPw || !newPw || !confirmPw) ? 0.4 : 1,
+                }}
                 whileTap={{ scale: 0.97 }}>
                 {pwSaving ? <Loader2 size={13} className="animate-spin" /> : <Lock size={13} />}
-                {t("profile.update_password") || "Update Password"}
+                {pwSaving ? t("profile.password_updating") : t("profile.update_password")}
               </motion.button>
             </motion.form>
           )}
@@ -246,7 +364,7 @@ const LANG_NAMES = {
 };
 
 // ── Settings Sub-page ──
-const SettingsView = ({ onBack, t, locale, setLocale }) => {
+const SettingsView = ({ onBack, t, locale, setLocale, onOpenPasswordChange }) => {
   const userCtx = useUser();
   const [notifs, setNotifs] = useState(userCtx?.notifications_enabled !== false);
   const [emailNotifs, setEmailNotifs] = useState(userCtx?.email_notifications !== false);
@@ -320,6 +438,7 @@ const SettingsView = ({ onBack, t, locale, setLocale }) => {
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.14 }}>
         <p className="text-[9px] text-[#333] uppercase tracking-[0.14em] font-semibold mb-2.5 pl-1">{t("settings.security_privacy")}</p>
         <div className="rounded-2xl overflow-hidden mb-5" style={{ background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.035)" }}>
+          <MenuRow icon={Lock} label={t("settings.change_password")} color="#00D26A" isLast={false} onClick={onOpenPasswordChange} />
           <MenuRow icon={Fingerprint} label={t("settings.biometric")} color="#00C2FF" isLast={false} right={<Toggle on={biometric} onToggle={toggleBio} />} />
           <MenuRow icon={Eye} label={t("settings.privacy")} color="#888" isLast={false} />
           <MenuRow icon={Smartphone} label={t("settings.active_sessions")} desc={t("settings.devices")} color="#A855F7" isLast />
@@ -335,6 +454,7 @@ export const MorePage = ({ onNavigate }) => {
   const user = useUser();
   const { t, lang: locale, setLang: setLocale } = useI18n();
   const [subPage, setSubPage] = useState(null);
+  const [profileOpenPw, setProfileOpenPw] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
@@ -343,10 +463,10 @@ export const MorePage = ({ onNavigate }) => {
 
   // Sub-page rendering
   if (subPage === "profile") {
-    return <ProfileView user={user} onBack={() => setSubPage(null)} t={t} />;
+    return <ProfileView user={user} onBack={() => { setSubPage(null); setProfileOpenPw(false); }} t={t} initialOpenPw={profileOpenPw} />;
   }
   if (subPage === "settings") {
-    return <SettingsView onBack={() => setSubPage(null)} t={t} locale={locale} setLocale={setLocale} />;
+    return <SettingsView onBack={() => setSubPage(null)} t={t} locale={locale} setLocale={setLocale} onOpenPasswordChange={() => { setProfileOpenPw(true); setSubPage("profile"); }} />;
   }
   if (subPage === "referral") {
     return <FeatureGate flag="referral" onBack={() => setSubPage(null)}><ReferralPage onBack={() => setSubPage(null)} /></FeatureGate>;
