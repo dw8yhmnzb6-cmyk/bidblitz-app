@@ -429,7 +429,7 @@ async def merchant_scan_payment(req: MerchantScanPayment, request: Request):
     if not merchant:
         raise HTTPException(status_code=403, detail="No merchant profile found")
 
-    merchant_name = merchant.get("business_name", "Unknown Merchant")
+    merchant_name = merchant.get("business_name") or merchant_user.get("name", "Unknown Merchant")
 
     # ── 4. Find customer by barcode ──
     customer = await db.users.find_one({"payment_barcode": barcode})
@@ -567,7 +567,7 @@ async def merchant_scan_payment(req: MerchantScanPayment, request: Request):
         "fee": fee,
         "net_to_merchant": net_to_merchant,
         "customer_name": customer.get("name", "Customer"),
-        "customer_new_balance": updated_customer["balance"],
+        "customer_new_balance": round(updated_customer["balance"], 2),
         "merchant_name": merchant_name,
         "transaction": customer_txn,
         "promotion": promo_applied,
