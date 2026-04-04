@@ -514,8 +514,8 @@ export const AdminPage = ({ onNavigate }) => {
                   {/* Sub-tab toggle */}
                   <div className="flex gap-2">
                     {[
-                      { id: "flags", label: `Flags (${complianceFlags.length})`, color: "#FF4757" },
-                      { id: "checks", label: `Checks (${complianceChecks.length})`, color: "#00C2FF" },
+                      { id: "flags", label: `${t("admin.comp_flags")} (${complianceFlags.length})`, color: "#FF4757" },
+                      { id: "checks", label: `${t("admin.comp_checks")} (${complianceChecks.length})`, color: "#00C2FF" },
                     ].map(st => (
                       <motion.button key={st.id} onClick={() => setComplianceTab(st.id)} whileTap={{ scale: 0.95 }}
                         className={`px-3 py-1.5 rounded-xl text-[11px] font-medium transition-all ${
@@ -542,7 +542,7 @@ export const AdminPage = ({ onNavigate }) => {
                               {flag.status}
                             </span>
                           </div>
-                          <p className="text-[9px] text-[#333] mt-1">User: {flag.user_id || "-"} · {flag.txn_type || "-"} · €{flag.amount?.toFixed(2) || "0.00"}</p>
+                          <p className="text-[9px] text-[#333] mt-1">{t("admin.comp_user")}: {flag.user_id || "-"} · {flag.txn_type || "-"} · €{flag.amount?.toFixed(2) || "0.00"}</p>
                           <p className="text-[8px] text-[#222] mt-0.5">{new Date(flag.created_at).toLocaleString()}</p>
                           {flag.status === "open" && (
                             <motion.button data-testid={`resolve-flag-${i}`}
@@ -554,12 +554,12 @@ export const AdminPage = ({ onNavigate }) => {
                               }}
                               className="mt-2 px-3 py-1 rounded-lg text-[10px] font-medium bg-[#00D26A]/10 text-[#00D26A] border border-[#00D26A]/15"
                               whileTap={{ scale: 0.95 }}>
-                              Resolve
+                              {t("admin.comp_resolve")}
                             </motion.button>
                           )}
                         </div>
                       ))}
-                      {complianceFlags.length === 0 && <p className="text-center py-8 text-[12px] text-[#333]">No compliance flags</p>}
+                      {complianceFlags.length === 0 && <p className="text-center py-8 text-[12px] text-[#333]">{t("admin.no_comp_flags")}</p>}
                     </div>
                   )}
 
@@ -576,13 +576,13 @@ export const AdminPage = ({ onNavigate }) => {
                             </div>
                             <p className="text-[9px] text-[#333] mt-0.5">€{chk.amount?.toFixed(2) || "0"} · KYC: {chk.kyc_level || "-"}</p>
                             {chk.rules_triggered?.length > 0 && (
-                              <p className="text-[8px] text-[#FFB800] mt-0.5">Rules: {chk.rules_triggered.join(", ")}</p>
+                              <p className="text-[8px] text-[#FFB800] mt-0.5">{t("admin.comp_rules")}: {chk.rules_triggered.join(", ")}</p>
                             )}
                             <p className="text-[8px] text-[#222] mt-0.5">{new Date(chk.timestamp).toLocaleString()}</p>
                           </div>
                         );
                       })}
-                      {complianceChecks.length === 0 && <p className="text-center py-8 text-[12px] text-[#333]">No compliance checks</p>}
+                      {complianceChecks.length === 0 && <p className="text-center py-8 text-[12px] text-[#333]">{t("admin.no_comp_checks")}</p>}
                     </div>
                   )}
                 </div>
