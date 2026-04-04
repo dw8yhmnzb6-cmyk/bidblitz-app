@@ -74,6 +74,11 @@ Create a modern, professional fintech web app called BidBlitz V2 with Revolut-le
 ### Kids Feature (DONE)
 - Stripe subscription paywall with trial
 - Post-subscription dashboard with child profiles, spending limits
+- Dashboard shows status: Trial (with days remaining), Active, or Expired
+- If expired/inactive → shows paywall with expired notice banner
+- Post-Stripe-checkout redirect auto-routes to Kids dashboard and verifies session
+- Trial start updates subStatus in state for immediate dashboard rendering
+- All dashboard labels fully translated across 12 languages
 
 ### Admin Dashboard (DONE)
 - Overview stats, Users, Merchants, Payouts, Transactions, Settings

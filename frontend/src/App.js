@@ -20,12 +20,14 @@ import BarcodeModal from "./components/BarcodeModal";
 const pageTransition = { duration: 0.25, ease: [0.32, 0.72, 0, 1] };
 
 function AppContent() {
-  // Detect Stripe return — if URL has stripe_session_id, start on wallet
+  // Detect Stripe return — if URL has stripe_session_id, start on wallet; kids_sub → more
   const hasStripeReturn = typeof window !== "undefined" &&
     (window.location.search.includes("stripe_session_id") || window.location.search.includes("stripe_cancelled"));
+  const hasKidsReturn = typeof window !== "undefined" && window.location.search.includes("kids_sub=success");
 
-  const [currentPath, setCurrentPath] = useState(hasStripeReturn ? "/wallet" : "/");
+  const [currentPath, setCurrentPath] = useState(hasKidsReturn ? "/more" : hasStripeReturn ? "/wallet" : "/");
   const [stripeReturn, setStripeReturn] = useState(hasStripeReturn);
+  const [kidsReturn, setKidsReturn] = useState(hasKidsReturn);
   const [showBarcode, setShowBarcode] = useState(false);
   const user = useUser();
   const { setLang } = useI18n();
@@ -95,7 +97,7 @@ function AppContent() {
       case "/notifications":
         return <NotificationsPage onBack={() => handleNavigate("/")} />;
       case "/more":
-        return <MorePage onNavigate={handleNavigate} />;
+        return <MorePage onNavigate={handleNavigate} kidsReturn={kidsReturn} onKidsHandled={() => setKidsReturn(false)} />;
       default:
         return <HomePage onNavigate={handleNavigate} />;
     }

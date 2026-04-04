@@ -456,12 +456,16 @@ const SettingsView = ({ onBack, t, locale, setLocale, onOpenPasswordChange }) =>
 };
 
 // ── Main More Page ──
-export const MorePage = ({ onNavigate }) => {
+export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled }) => {
   const user = useUser();
   const { t, lang: locale, setLang: setLocale } = useI18n();
-  const [subPage, setSubPage] = useState(null);
+  const [subPage, setSubPage] = useState(kidsReturn ? "kids" : null);
   const [profileOpenPw, setProfileOpenPw] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    if (kidsReturn && onKidsHandled) onKidsHandled();
+  }, [kidsReturn, onKidsHandled]);
 
   useEffect(() => {
     api.getNotifications(true).then(d => setUnreadCount(d.unread_count || 0)).catch(() => {});

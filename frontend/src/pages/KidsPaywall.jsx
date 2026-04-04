@@ -37,7 +37,8 @@ const KidsDashboard = ({ onBack, t, subStatus }) => {
     setChildren(children.map(c => c.id === id ? { ...c, weeklyLimit: newLimit } : c));
   };
 
-  const trialDaysLeft = subStatus?.trial_end ? Math.max(0, Math.ceil((new Date(subStatus.trial_end) - new Date()) / 86400000)) : null;
+  const expiresAt = subStatus?.expires_at;
+  const trialDaysLeft = subStatus?.status === "trial" && expiresAt ? Math.max(0, Math.ceil((new Date(expiresAt) - new Date()) / 86400000)) : null;
 
   return (
     <motion.div data-testid="kids-dashboard" className="min-h-screen relative" style={{ background: "#030303" }}
@@ -51,8 +52,8 @@ const KidsDashboard = ({ onBack, t, subStatus }) => {
         <h1 className="text-[15px] font-semibold font-outfit text-white tracking-tight">BidBlitz Kids</h1>
         <div className="ml-auto flex items-center gap-1.5">
           <Crown size={12} className="text-[#FFD700]" />
-          <span className="text-[10px] text-[#FFD700] font-semibold uppercase tracking-wider">
-            {subStatus?.status === "trial" ? `Trial (${trialDaysLeft}d left)` : "Active"}
+          <span data-testid="kids-sub-status" className="text-[10px] text-[#FFD700] font-semibold uppercase tracking-wider">
+            {subStatus?.status === "trial" ? `${t("kids.trial_badge")} (${trialDaysLeft}${t("kids.days_short")})` : t("kids.active_badge")}
           </span>
         </div>
       </div>
@@ -61,9 +62,9 @@ const KidsDashboard = ({ onBack, t, subStatus }) => {
         {/* Overview stats */}
         <motion.div className="grid grid-cols-3 gap-2.5" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.06 }}>
           {[
-            { icon: Users, label: "Children", value: children.length, color: "#00C2FF" },
-            { icon: TrendingDown, label: "This Week", value: `€${children.reduce((s, c) => s + c.spent, 0).toFixed(2)}`, color: "#FF6B6B" },
-            { icon: Wallet, label: "Total Limit", value: `€${children.reduce((s, c) => s + c.weeklyLimit, 0).toFixed(2)}`, color: "#00D26A" },
+            { icon: Users, label: t("kids.stat_children"), value: children.length, color: "#00C2FF" },
+            { icon: TrendingDown, label: t("kids.stat_week"), value: `€${children.reduce((s, c) => s + c.spent, 0).toFixed(2)}`, color: "#FF6B6B" },
+            { icon: Wallet, label: t("kids.stat_limit"), value: `€${children.reduce((s, c) => s + c.weeklyLimit, 0).toFixed(2)}`, color: "#00D26A" },
           ].map((s, i) => (
             <div key={i} className="rounded-2xl p-3 text-center" style={{ background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.035)" }}>
               <s.icon size={16} style={{ color: s.color }} className="mx-auto mb-1.5" />
@@ -75,7 +76,7 @@ const KidsDashboard = ({ onBack, t, subStatus }) => {
 
         {/* Children list */}
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}>
-          <p className="text-[9px] text-[#333] uppercase tracking-[0.14em] font-semibold mb-2.5 pl-1">Children</p>
+          <p className="text-[9px] text-[#333] uppercase tracking-[0.14em] font-semibold mb-2.5 pl-1">{t("kids.children_title")}</p>
           <div className="space-y-2.5">
             {children.map((child) => {
               const pct = child.weeklyLimit > 0 ? Math.min(100, (child.spent / child.weeklyLimit) * 100) : 0;
@@ -91,11 +92,11 @@ const KidsDashboard = ({ onBack, t, subStatus }) => {
                     </div>
                     <div className="flex-1">
                       <p className="text-[13px] font-semibold text-white">{child.name}</p>
-                      <p className="text-[10px] text-[#444] font-medium">€{child.spent.toFixed(2)} / €{child.weeklyLimit.toFixed(2)} weekly</p>
+                      <p className="text-[10px] text-[#444] font-medium">€{child.spent.toFixed(2)} / €{child.weeklyLimit.toFixed(2)} {t("kids.weekly")}</p>
                     </div>
                     <div className="text-right">
                       <p className={`text-[14px] font-bold ${danger ? "text-[#FF4757]" : "text-[#00D26A]"}`}>{pct.toFixed(0)}%</p>
-                      <p className="text-[9px] text-[#333] font-medium">used</p>
+                      <p className="text-[9px] text-[#333] font-medium">{t("kids.used")}</p>
                     </div>
                   </div>
                   {/* Progress bar */}
@@ -105,7 +106,7 @@ const KidsDashboard = ({ onBack, t, subStatus }) => {
                   </div>
                   {/* Limit slider */}
                   <div className="flex items-center gap-3 mt-3">
-                    <span className="text-[10px] text-[#444] font-medium whitespace-nowrap">Weekly Limit:</span>
+                    <span className="text-[10px] text-[#444] font-medium whitespace-nowrap">{t("kids.weekly_limit")}:</span>
                     <input data-testid={`child-limit-${child.id}`} type="range" min={5} max={100} step={5} value={child.weeklyLimit}
                       onChange={e => updateLimit(child.id, Number(e.target.value))}
                       className="flex-1 h-1 rounded-full appearance-none cursor-pointer accent-[#00C2FF]"
@@ -124,38 +125,38 @@ const KidsDashboard = ({ onBack, t, subStatus }) => {
                 className="overflow-hidden mt-2.5 rounded-2xl p-4 space-y-3"
                 style={{ background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.035)" }}>
                 <input data-testid="add-child-name" value={newChildName} onChange={e => setNewChildName(e.target.value)}
-                  placeholder="Child name" autoFocus
+                  placeholder={t("kids.child_name_placeholder")} autoFocus
                   className="w-full px-3 py-2.5 rounded-xl text-[13px] text-white/90 placeholder-[#333] font-medium outline-none"
                   style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}
                   onKeyDown={e => e.key === "Enter" && addChild()} />
                 <div className="flex gap-2">
                   <motion.button data-testid="add-child-confirm" onClick={addChild}
                     className="flex-1 py-2 rounded-xl text-[12px] font-semibold bg-[#00C2FF]/10 text-[#00C2FF] border border-[#00C2FF]/15"
-                    whileTap={{ scale: 0.97 }}>Add Child</motion.button>
+                    whileTap={{ scale: 0.97 }}>{t("kids.add_child")}</motion.button>
                   <motion.button onClick={() => setShowAddChild(false)}
                     className="px-4 py-2 rounded-xl text-[12px] font-medium text-[#444] bg-white/[0.02] border border-white/[0.04]"
-                    whileTap={{ scale: 0.97 }}>Cancel</motion.button>
+                    whileTap={{ scale: 0.97 }}>{t("kids.cancel")}</motion.button>
                 </div>
               </motion.div>
             ) : (
               <motion.button data-testid="add-child-btn" onClick={() => setShowAddChild(true)}
                 className="w-full mt-2.5 py-3 rounded-2xl flex items-center justify-center gap-2 text-[12px] font-medium text-[#00C2FF]/60 border border-dashed border-[#00C2FF]/15"
                 whileTap={{ scale: 0.98 }}>
-                <PlusCircle size={14} /> Add Child Profile
+                <PlusCircle size={14} /> {t("kids.add_child_profile")}
               </motion.button>
             )}
           </AnimatePresence>
         </motion.div>
 
-        {/* Activity summary */}
+        {/* Features */}
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }}>
-          <p className="text-[9px] text-[#333] uppercase tracking-[0.14em] font-semibold mb-2.5 pl-1">Features</p>
+          <p className="text-[9px] text-[#333] uppercase tracking-[0.14em] font-semibold mb-2.5 pl-1">{t("kids.features_title")}</p>
           <div className="grid grid-cols-2 gap-2.5">
             {[
-              { icon: Shield, title: "Parental Controls", desc: "Approve transactions", color: "#00C2FF" },
-              { icon: Eye, title: "Spending Alerts", desc: "Real-time notifications", color: "#FFB800" },
-              { icon: BarChart3, title: "Weekly Reports", desc: "Spending breakdowns", color: "#A855F7" },
-              { icon: Clock, title: "Time Limits", desc: "Transaction schedules", color: "#00D26A" },
+              { icon: Shield, title: t("kids.feat_controls"), desc: t("kids.feat_controls_desc"), color: "#00C2FF" },
+              { icon: Eye, title: t("kids.feat_alerts"), desc: t("kids.feat_alerts_desc"), color: "#FFB800" },
+              { icon: BarChart3, title: t("kids.feat_reports"), desc: t("kids.feat_reports_desc"), color: "#A855F7" },
+              { icon: Clock, title: t("kids.feat_time"), desc: t("kids.feat_time_desc"), color: "#00D26A" },
             ].map((f, i) => (
               <div key={i} className="rounded-2xl p-3.5" style={{ background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.035)" }}>
                 <f.icon size={16} style={{ color: f.color }} className="mb-2" />
@@ -205,12 +206,29 @@ const KidsPaywall = ({ onBack, onSubscribed }) => {
   const handleTrial = async () => {
     setTrialLoading(true);
     try {
-      await api.startKidsTrial();
+      const data = await api.startKidsTrial();
+      setSubStatus({ status: "trial", plan: "trial", trial_available: false, expires_at: data.expires_at, started_at: new Date().toISOString() });
       setShowDashboard(true);
     } catch {
       setTrialLoading(false);
     }
   };
+
+  // Handle Stripe checkout return
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const kidsResult = params.get("kids_sub");
+    const sessionId = params.get("session_id");
+    if (kidsResult === "success" && sessionId) {
+      window.history.replaceState({}, "", window.location.pathname);
+      api.verifyKidsCheckout(sessionId).then(d => {
+        if (d.status === "active") {
+          setSubStatus({ status: "active", plan: d.plan, trial_available: false, expires_at: d.expires_at });
+          setShowDashboard(true);
+        }
+      }).catch(() => {});
+    }
+  }, []);
 
   if (checkingStatus) {
     return (
@@ -268,6 +286,17 @@ const KidsPaywall = ({ onBack, onSubscribed }) => {
           <h2 className="text-[18px] font-bold text-white font-outfit mb-1">{t("kids.hero_title")}</h2>
           <p className="text-[12px] text-[#555] font-medium">{t("kids.hero_desc")}</p>
         </motion.div>
+
+        {/* Expired notice */}
+        {subStatus?.status === "expired" && (
+          <motion.div data-testid="kids-expired-notice"
+            className="rounded-xl px-4 py-3 flex items-center gap-3"
+            style={{ background: "rgba(255,71,87,0.06)", border: "1px solid rgba(255,71,87,0.12)" }}
+            initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}>
+            <Clock size={16} className="text-[#FF4757] flex-shrink-0" />
+            <p className="text-[12px] text-[#FF4757] font-medium">{t("kids.expired_notice")}</p>
+          </motion.div>
+        )}
 
         {/* Benefits */}
         <motion.div
