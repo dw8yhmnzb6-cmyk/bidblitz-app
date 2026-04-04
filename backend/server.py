@@ -21,12 +21,30 @@ from core.security import hash_password, verify_password
 from core.rate_limit import limiter
 
 # ── Structured Logging ──
+from logging.handlers import RotatingFileHandler
+
+LOG_DIR = Path(__file__).parent / "logs"
+LOG_DIR.mkdir(exist_ok=True)
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 logger = logging.getLogger("bidblitz")
+
+# Error log file (rotates at 5MB, keeps 5 files)
+err_handler = RotatingFileHandler(LOG_DIR / "error.log", maxBytes=5_000_000, backupCount=5)
+err_handler.setLevel(logging.ERROR)
+err_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s"))
+logger.addHandler(err_handler)
+
+# Access log file
+access_handler = RotatingFileHandler(LOG_DIR / "access.log", maxBytes=5_000_000, backupCount=3)
+access_handler.setLevel(logging.INFO)
+access_handler.setFormatter(logging.Formatter("%(asctime)s %(message)s"))
+access_logger = logging.getLogger("bidblitz.access")
+access_logger.addHandler(access_handler)
 
 # ── App ──
 app = FastAPI(
@@ -56,11 +74,26 @@ app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 # ── Global Error Handler ──
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    logger.error(f"Unhandled error: {exc}\n{traceback.format_exc()}")
+    logger.error(f"Unhandled error: {request.method} {request.url.path} | {exc}\n{traceback.format_exc()}")
     return JSONResponse(
         status_code=500,
         content={"detail": "Internal server error" if IS_PRODUCTION else str(exc)},
     )
+
+
+# ── Request Logging Middleware ──
+import time as _time
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    start = _time.time()
+    response = await call_next(request)
+    duration = round((_time.time() - start) * 1000)
+    if response.status_code >= 400:
+        access_logger.info(f"{request.method} {request.url.path} → {response.status_code} ({duration}ms)")
+    if response.status_code >= 500:
+        logger.error(f"5xx: {request.method} {request.url.path} → {response.status_code} ({duration}ms)")
+    return response
 
 # ── CORS ──
 app.add_middleware(
@@ -116,11 +149,36 @@ app.post("/api/webhook/stripe")(_stripe_wh)
 # ── Health Check ──
 @app.get("/api")
 async def health_check():
+    import os
+    # Check MongoDB
+    db_ok = False
+    try:
+        await db.command("ping")
+        db_ok = True
+    except Exception:
+        pass
+
+    # Check backup status
+    backup_dir = "/app/backups"
+    backups = sorted(
+        [f for f in os.listdir(backup_dir) if f.endswith(".tar.gz")] if os.path.isdir(backup_dir) else [],
+        reverse=True,
+    )
+    latest_backup = backups[0] if backups else None
+
+    status = "online" if db_ok else "degraded"
+
     return {
         "service": "BidBlitz V2 API",
-        "status": "online",
+        "status": status,
         "version": "2.0.0",
         "environment": APP_ENV,
+        "database": "connected" if db_ok else "disconnected",
+        "uptime_check": datetime.now(timezone.utc).isoformat(),
+        "backup": {
+            "latest": latest_backup,
+            "count": len(backups),
+        },
     }
 
 
