@@ -214,6 +214,20 @@ async def send_money(req: SendRequest, request: Request):
 
     # Calculate send fee
     fee = calculate_fee(req.amount, "send")
+
+    # ── Check for applicable promotions (reduced_fee) ──
+    promo_applied = None
+    try:
+        promo = await check_applicable_promotion(user_id, "send", req.amount)
+        if promo:
+            discount = round(fee * promo["value"] / 100, 2)
+            fee = round(fee - discount, 2)
+            if fee < 0:
+                fee = 0
+            promo_applied = {"name": promo["name"], "discount": discount, "value": promo["value"]}
+    except Exception:
+        pass
+
     total_debit = round(req.amount + fee, 2)
 
     if current_balance < total_debit:
@@ -280,11 +294,19 @@ async def send_money(req: SendRequest, request: Request):
                     details={"reference": ref, "amount": req.amount, "fee": fee,
                              "recipient_email": req.recipient_email, "new_balance": updated_user["balance"]})
 
+    # Record promo usage if applied
+    if promo_applied:
+        try:
+            await apply_promotion(user_id, promo_applied["name"], req.amount)
+        except Exception:
+            pass
+
     return {
         "success": True,
         "new_balance": updated_user["balance"],
         "fee_amount": fee,
         "transaction": sender_txn,
+        "promotion": promo_applied,
     }
 
 
@@ -513,6 +535,31 @@ async def merchant_scan_payment(req: MerchantScanPayment, request: Request):
                              "merchant_user_id": merchant_user_id,
                              "idempotency_key": idem_key or "none"})
 
+    # ── 11. Check for applicable promotions (cashback for customer) ──
+    promo_applied = None
+    try:
+        promo = await check_applicable_promotion(customer_id, "payment", req.amount)
+        if promo:
+            cashback = round(req.amount * promo["value"] / 100, 2)
+            if cashback > 0:
+                await db.users.update_one({"_id": customer["_id"]}, {"$inc": {"balance": cashback}})
+                await db.transactions.insert_one({
+                    "id": secrets.token_hex(8),
+                    "user_id": customer_id,
+                    "type": "reward",
+                    "amount": cashback,
+                    "description": f"Cashback: {promo['name']} ({promo['value']}%)",
+                    "status": "completed",
+                    "reference": f"PROMO-{secrets.token_hex(4).upper()}",
+                    "category": "promotion",
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                })
+                await apply_promotion(customer_id, promo["name"], req.amount)
+                updated_customer = await db.users.find_one({"_id": customer["_id"]})
+                promo_applied = {"name": promo["name"], "cashback": cashback}
+    except Exception:
+        pass
+
     return {
         "success": True,
         "reference": ref,
@@ -523,4 +570,5 @@ async def merchant_scan_payment(req: MerchantScanPayment, request: Request):
         "customer_new_balance": updated_customer["balance"],
         "merchant_name": merchant_name,
         "transaction": customer_txn,
+        "promotion": promo_applied,
     }

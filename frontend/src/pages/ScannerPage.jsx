@@ -392,6 +392,12 @@ const ScannerPage = ({ onNavigate }) => {
                   <span className="text-[#555]">{t("scan.reference") || "Reference"}</span>
                   <span className="text-white/50 font-mono text-xs">{result.reference}</span>
                 </div>
+                {result.promotion && (
+                  <div data-testid="scan-promo-badge" className="flex justify-between text-sm pt-1.5 border-t border-white/[0.05]">
+                    <span className="text-[#FFB800]">{t("promo.cashback")}</span>
+                    <span className="text-[#FFB800] font-semibold">+&euro;{result.promotion.cashback?.toFixed(2)} ({result.promotion.name})</span>
+                  </div>
+                )}
               </motion.div>
 
               <div className="w-full flex gap-3">

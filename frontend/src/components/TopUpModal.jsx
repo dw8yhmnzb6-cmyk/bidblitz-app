@@ -377,6 +377,21 @@ export const TopUpModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
                   <p className="text-3xl font-bold font-outfit text-[#00D26A] mb-2">
                     +&euro;{(creditedAmount || pollResult.amount || 0).toFixed(2)}
                   </p>
+                  {pollResult?.promotion && (
+                    <motion.div
+                      data-testid="topup-promo-badge"
+                      initial={{ opacity: 0, y: 6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.3 }}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full mb-2"
+                      style={{ background: "rgba(255,184,0,0.08)", border: "1px solid rgba(255,184,0,0.15)" }}
+                    >
+                      <span className="text-[11px] font-semibold text-[#FFB800]">
+                        +&euro;{pollResult.promotion.bonus?.toFixed(2)} {t("promo.bonus")}
+                      </span>
+                      <span className="text-[9px] text-[#FFB800]/60">({pollResult.promotion.name})</span>
+                    </motion.div>
+                  )}
                   <p className="text-sm text-[#666] mb-6">{t("topup.added") || "Added to your wallet via Stripe"}</p>
                   <motion.button
                     data-testid="topup-done-btn"

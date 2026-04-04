@@ -161,6 +161,8 @@ const translations = {
     "topup.pay_stripe": "Pay with Stripe", "topup.creating": "Creating checkout...",
     "topup.redirect_msg": "You'll be redirected to secure payment", "topup.verifying_msg": "Confirming with Stripe",
     "topup.success_msg": "Top-up Successful!", "topup.added": "Added to your wallet via Stripe",
+    "promo.cashback": "Cashback", "promo.bonus": "Bonus", "promo.fee_discount": "Fee Discount",
+    "promo.applied": "Promotion Applied", "promo.saved": "You saved",
     "topup.failed_msg": "Payment could not be verified", "topup.cancelled": "Payment was cancelled",
     "topup.try_again": "Try Again", "topup.secured": "Secured by Stripe",
     "topup.amount": "Amount", "topup.done": "Done", "topup.cancel": "Cancel",
@@ -362,6 +364,8 @@ const translations = {
     "topup.added": "Deinem Wallet über Stripe hinzugefügt", "topup.failed_msg": "Zahlung konnte nicht verifiziert werden",
     "topup.cancelled": "Zahlung abgebrochen", "topup.try_again": "Erneut versuchen", "topup.secured": "Gesichert durch Stripe",
     "topup.amount": "Betrag", "topup.done": "Fertig", "topup.cancel": "Abbrechen",
+    "promo.cashback": "Cashback", "promo.bonus": "Bonus", "promo.fee_discount": "Gebührenrabatt",
+    "promo.applied": "Promotion angewendet", "promo.saved": "Du sparst",
     // Export & Reports
     "export.title": "Export & Berichte", "export.download": "CSV herunterladen", "export.downloading": "Exportiere...",
     "export.success": "Export heruntergeladen", "export.failed": "Export fehlgeschlagen", "export.no_data": "Keine Daten zum Exportieren",

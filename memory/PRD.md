@@ -24,7 +24,13 @@ Create a modern, professional fintech web app called BidBlitz V2 with Revolut-le
 - Dynamic QR code (HMAC-based, 5-min rotation)
 - Merchant payouts with admin approval pipeline
 - Platform fee engine (configurable)
-- Promotions wired into payment + topup flows (cashback, bonus_topup)
+- **Promotions wired into all payment flows (Apr 2026)**:
+  - Payment (pay): cashback promo — % of amount credited back after payment
+  - Send: reduced_fee promo — % discount on send fee (up to 100% = free)
+  - Merchant scan: cashback promo — same as pay, customer gets cashback
+  - Topup (Stripe): bonus_topup promo — % bonus credited after top-up
+  - Promo shown in UI: TopUp success screen (bonus badge), Scanner receipt (cashback row)
+  - Per-user once, respects max_uses, date range, min_amount
 
 ### System/Security (DONE)
 - Audit logging (17 event types, MongoDB-backed)

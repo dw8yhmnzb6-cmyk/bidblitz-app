@@ -127,7 +127,11 @@ export function WalletProvider({ children }) {
       if (result.transaction) {
         dispatch({ type: ACTIONS.ADD_TRANSACTION, payload: result.transaction });
       }
-      return { success: true, newBalance: result.new_balance, transaction: result.transaction };
+      // Add cashback reward transaction if promotion applied
+      if (result.promotion?.cashback) {
+        dispatch({ type: ACTIONS.UPDATE_BALANCE, payload: result.new_balance });
+      }
+      return { success: true, newBalance: result.new_balance, transaction: result.transaction, promotion: result.promotion || null };
     } catch (err) {
       return { success: false, error: err.message };
     }
@@ -140,7 +144,7 @@ export function WalletProvider({ children }) {
       if (result.transaction) {
         dispatch({ type: ACTIONS.ADD_TRANSACTION, payload: result.transaction });
       }
-      return { success: true, newBalance: result.new_balance };
+      return { success: true, newBalance: result.new_balance, promotion: result.promotion || null };
     } catch (err) {
       return { success: false, error: err.message };
     }

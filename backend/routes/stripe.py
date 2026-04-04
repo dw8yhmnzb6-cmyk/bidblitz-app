@@ -172,6 +172,7 @@ async def checkout_status(session_id: str, request: Request):
     )
 
     credited = False
+    topup_promo = None
 
     # If paid, credit the wallet (only once)
     if stripe_status.payment_status == "paid" and payment["status"] not in ("completed", "credited"):
@@ -214,6 +215,7 @@ async def checkout_status(session_id: str, request: Request):
                                      "reference": txn["reference"]})
 
             # ── Check for bonus_topup promotions ──
+            topup_promo = None
             try:
                 promo = await check_applicable_promotion(user_id, "topup", payment["amount"])
                 if promo:
@@ -232,6 +234,7 @@ async def checkout_status(session_id: str, request: Request):
                             "created_at": datetime.now(timezone.utc).isoformat(),
                         })
                         await apply_promotion(user_id, promo["name"], payment["amount"])
+                        topup_promo = {"name": promo["name"], "bonus": bonus, "value": promo["value"]}
             except Exception:
                 pass
 
@@ -242,13 +245,16 @@ async def checkout_status(session_id: str, request: Request):
                                  "payment_status": stripe_status.payment_status},
                         severity="warn")
 
-    return {
+    resp = {
         "status": new_status if not credited else "credited",
         "payment_status": new_payment_status,
         "amount": payment["amount"],
         "currency": payment["currency"],
         "credited": credited,
     }
+    if credited and topup_promo:
+        resp["promotion"] = topup_promo
+    return resp
 
 
 # ── Webhook ──
