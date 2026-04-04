@@ -1,67 +1,94 @@
 # BidBlitz V2 - Product Requirements Document
 
 ## Original Problem Statement
-Create a modern, professional fintech web app called BidBlitz V2. Build Revolut-level payment flows, integrate a real backend, add Stripe top-ups, add QR payments, add Admin/Merchant dashboards, and fully support 12 languages with user profiles, notifications, analytics, export tools, and growth/referral systems.
+Create a modern, professional fintech web app called BidBlitz V2 with Revolut-level payment flows, Stripe top-ups, QR payments, Admin/Merchant dashboards, 12-language support, user profiles, notifications, analytics, export tools, feature flags, paywalls, and growth/referral systems.
 
 ## Tech Stack
-- Frontend: React, TailwindCSS, Framer Motion, Shadcn UI, qrcode.react
-- Backend: FastAPI, MongoDB (Motor), slowapi
-- Payments: Stripe (system test key `sk_test_emergent`)
-- Auth: JWT-based (HttpOnly cookies)
-- i18n: 12 languages (en, de, sq, tr, fr, es, it, pt, nl, pl, ru, ar)
+- Frontend: React, TailwindCSS, Framer Motion, qrcode.react
+- Backend: FastAPI, MongoDB (Motor), slowapi, Stripe SDK
+- Auth: JWT with HttpOnly cookies, brute-force lockout
 
-## Architecture
-- `/app/frontend/src/pages/` — Page components
-- `/app/frontend/src/store/` — Context providers (Auth, I18n, Network, Wallet, FeatureFlag)
-- `/app/frontend/src/components/` — Shared components (LanguageSwitcher, FeatureGate, BarcodeModal, etc.)
-- `/app/frontend/src/services/api.js` — API client
-- `/app/backend/routes/` — FastAPI route modules
-- `/app/backend/core/` — Core modules (audit, compliance, rate_limit, security, feature_flags)
+## What's Implemented
 
-## What's Been Implemented
+### Core Infrastructure (DONE)
+- JWT Auth with register/login/logout/refresh, brute-force lockout
+- MongoDB with Motor async driver
+- Rate limiting on all sensitive endpoints
+- CORS, global error handling, offline detection
 
-### Core Features
-- JWT Auth with admin/customer/merchant roles
-- Rate limiting, audit logging, compliance monitoring
-- Stripe top-up flow
-- Merchant barcode scanner payment flow with idempotency
-- Frontend offline detection, API error resilience
-- 12-language i18n (100% coverage)
-- Support Center, Activity Feed, Referral System, Notifications
+### Payments (DONE)
+- Wallet top-up via Stripe checkout (6 packages €10–€500)
+- Customer → Merchant payments with compliance checks
+- Peer-to-peer send with fees
+- Merchant barcode scan payment with idempotency
+- Dynamic QR code (HMAC-based, 5-min rotation)
+- Merchant payouts with admin approval pipeline
+- Platform fee engine (configurable)
+- Promotions wired into payment + topup flows (cashback, bonus_topup)
 
-### Dynamic QR Code Payment (2026-04-04)
-- **QR Code** replaces old linear barcode (uses qrcode.react QRCodeSVG)
-- **Rotates every 5 minutes** with HMAC-based time tokens
-- **Countdown timer** with progress bar shows time until next rotation
-- **Auto-refresh** when timer expires
-- **Customer Scan button** opens QR modal (not merchant scanner)
-- **Merchant Scan button** opens scanner page (role-based routing)
-- **Backend validation** accepts both old static and new dynamic QR format
-- **Format**: `BLZ-XXXXXXXXXXXX-XXXXXXXX` (base + rotating token)
+### System/Security (DONE)
+- Audit logging (17 event types, MongoDB-backed)
+- Compliance engine (KYC tiers, velocity detection, payout risk)
+- Feature flags (10 flags, MongoDB-backed, CRUD, FeatureGate component)
+- Session management
 
-### Soft-Launch / Feature Flags System
-- 10 Feature flags with MongoDB-backed config
-- Public + Admin APIs, FeatureGate component
-- "Coming Soon" premium screen for disabled features
+### UI/UX (DONE)
+- 12-language i18n (en, de, sq, tr, fr, es, it, pt, nl, pl, ru, ar)
+- Global LanguageSwitcher in header + settings
+- Premium dark theme (#030303, glass-morphism, Framer Motion)
+- Offline detection with toast
+- Role-aware bottom navigation
 
-### Global Language Switcher
-- Globe icon in header, dropdown with 12 languages
-- Instant switch, localStorage persistence
+### Profile & Account (DONE - Apr 2026)
+- Profile editing: inline name edit with Edit/Save/Cancel flow
+- Inline validation (empty name, too-short name)
+- Premium success/error feedback (animated badges)
+- Member Since from real backend created_at
+- Account ID (truncated)
+- Password change: current/new/confirm with labeled fields
+- Inline validation (too short, mismatch)
+- Friendly error messages (wrong password → localized)
+- Auto-collapse on success
+- Settings → Change Password navigates to Profile with form pre-opened
+- Settings persistence (notifications, biometric, dark mode → backend)
+- All profile/password labels in all 12 languages
 
-### BidBlitz Kids Paywall
-- Monthly 4.99 EUR / Yearly 49.99 EUR + 7-day trial
-- Stripe checkout integration, subscription status tracking
+### Support Center (DONE)
+- FAQ accordion with i18n
+- Contact form connected to backend (creates real tickets)
+- Admin ticket management endpoints
 
-## Backlog
-### P1
-- Onboarding Welcome Flow UI
-- Admin Feature Flags Management UI
+### Kids Feature (DONE)
+- Stripe subscription paywall with trial
+- Post-subscription dashboard with child profiles, spending limits
 
-### P2
-- User Streaks/Milestones
-- Merchant Performance Insights UI
-- Kids child account management post-subscription
+### Admin Dashboard (DONE)
+- Overview stats, Users, Merchants, Payouts, Transactions, Settings
+- Feature Flags toggle panel
+- Audit log viewer
+- Compliance dashboard (flags + checks)
+- Growth analytics UI (overview, funnel, retention, campaigns)
 
-## Known Info
-- Stripe uses system test key (`sk_test_emergent`) — shows "Sandbox4" in checkout
-- Support contact form is frontend-only
+### Growth Features (DONE)
+- Referral system with codes, rewards, leaderboard
+- Notifications (in-app CRUD + admin broadcast)
+- Export (14 CSV endpoints + 3 JSON summaries)
+
+## Partially Implemented
+- Promotions: Backend CRUD exists but no user-facing promo UI
+- Referral: Share link goes nowhere (no deep-link handling)
+- Settings: Privacy, Active Sessions sub-pages don't exist
+
+## Not Implemented (Backlog)
+- Taxi, Scooter, Food, Auctions (placeholder cards only)
+- Onboarding welcome flow
+- User streaks/milestones
+- Merchant performance insights
+- Push notifications (WebPush)
+- KYC upgrade flow
+- Saved payment methods (Apple Pay, Google Pay)
+
+## Test Credentials
+- Admin: admin@bidblitz.com / BidBlitz2026!
+- Customer: kunde@bidblitz.com / Kunde2026!
+- Merchant: haendler@bidblitz.com / BidBlitz2026!
