@@ -51,7 +51,7 @@ def serialize_user(user: dict) -> dict:
         "email": user["email"],
         "name": user.get("name", ""),
         "role": user.get("role", "user"),
-        "balance": user.get("balance", 0.0),
+        "balance": round(user.get("balance", 0.0), 2),
         "currency": user.get("currency", "EUR"),
         "card_number": user.get("card_number", ""),
         "card_expiry": user.get("card_expiry", ""),

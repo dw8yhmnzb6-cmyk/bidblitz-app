@@ -24,8 +24,8 @@ Create a modern, professional fintech web app called BidBlitz V2 with Revolut-le
 - Dynamic QR code (HMAC-based, 5-min rotation)
 - Merchant payouts with admin approval pipeline
 - Platform fee engine (configurable)
-- Promotions wired into all payment flows (cashback, reduced_fee, bonus_topup)
-- Float precision fixed: all balance returns use round(value, 2)
+- Promotions wired into all payment flows
+- All balance responses use round(value, 2) — no floating-point artifacts
 
 ### System/Security (DONE)
 - Audit logging (17 event types, MongoDB-backed)
@@ -35,39 +35,22 @@ Create a modern, professional fintech web app called BidBlitz V2 with Revolut-le
 
 ### UI/UX (DONE)
 - 12-language i18n (en, de, sq, tr, fr, es, it, pt, nl, pl, ru, ar)
-- Global LanguageSwitcher in header + settings
-- Premium dark theme (#030303, glass-morphism, Framer Motion)
-- Offline detection with toast
-- Role-aware bottom navigation
-
-### Profile & Account (DONE)
-- Profile editing, password change, settings persistence
-- All labels in 12 languages
-
-### Support Center (DONE)
-- FAQ accordion, contact form, admin ticket management
-- All labels in 12 languages
-
-### Kids Feature (DONE)
-- Stripe subscription paywall with trial
-- Post-subscription dashboard with child profiles
+- Premium dark theme, glass-morphism, Framer Motion
+- Offline detection, role-aware navigation
 
 ### Admin Dashboard (DONE)
-- Overview stats, Users, Merchants, Payouts, Transactions
+- Overview, Users, Merchants, Payouts, Transactions
 - Feature Flags, Audit logs, Compliance, Growth Analytics, Promotions, Config
-- N+1 query optimization (aggregation pipelines for users/merchants)
+- N+1 query optimization (aggregation pipelines)
 
-### Growth Features (DONE)
-- Referral system, notifications, export (14 CSV + 3 JSON)
-
-### Settings Sub-pages (DONE)
-- Privacy, Active Sessions
+### All Other Features (DONE)
+- Profile & Account, Support Center, Kids Feature, Growth/Referral, Settings, Export
 
 ### Production Readiness (DONE - Apr 2026)
-- P0 merchant-scan bug fixed (balance rounding + merchant name)
-- N+1 admin query optimization (users + merchants)
-- Production frontend build (1.4MB, sourcemaps disabled)
-- All critical flows verified: login, wallet, send, merchant-scan, admin
+- All float rounding fixed across every endpoint (serialize_user, wallet, topup, send, merchant-scan, pay)
+- N+1 admin query optimization
+- Production frontend build (1.4MB)
+- Full live test: login, wallet, topup, send, merchant-scan, payouts, admin — ALL PASSED
 
 ## Not Implemented (Backlog)
 - Taxi, Scooter, Food, Auctions (placeholder cards only)

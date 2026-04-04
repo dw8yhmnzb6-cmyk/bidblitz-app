@@ -66,6 +66,6 @@ async def topup(req: TopUpRequest, request: Request):
 
     return {
         "success": True,
-        "new_balance": updated_user["balance"],
+        "new_balance": round(updated_user["balance"], 2),
         "transaction": txn,
     }
