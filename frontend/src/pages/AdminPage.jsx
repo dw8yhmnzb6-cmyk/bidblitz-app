@@ -5,7 +5,7 @@ import {
   Download, Search, ChevronRight, Loader2, Check, X,
   Clock, AlertCircle, CircleDollarSign, Activity, Settings,
   Flag, FileText, TrendingUp, Eye, ToggleLeft, ToggleRight,
-  ChevronDown, ChevronUp
+  ChevronDown, ChevronUp, Gift, Plus, Pencil, Save
 } from "lucide-react";
 import { useUser, useI18n } from "../store";
 import ExportSection from "../components/ExportSection";
@@ -45,6 +45,62 @@ const StatCard = ({ icon: Icon, label, value, sub, color, delay = 0 }) => (
 
 const statusColors = { pending: "#FFB800", approved: "#00C2FF", processed: "#00D26A", failed: "#FF4757", cancelled: "#666", completed: "#00D26A" };
 
+const PROMO_TYPES = ["bonus_topup", "reduced_fee", "cashback", "signup_bonus"];
+const CreatePromoForm = ({ t, onCreated, onCancel }) => {
+  const [form, setForm] = useState({ name: "", type: "cashback", value: 5, min_amount: 1, max_uses: 100, target: "all", starts_at: new Date().toISOString().slice(0, 10), expires_at: "2027-12-31" });
+  const [saving, setSaving] = useState(false);
+  const set = (k, v) => setForm({ ...form, [k]: v });
+  const submit = async () => {
+    if (!form.name.trim()) return;
+    setSaving(true);
+    try {
+      const body = { ...form, value: Number(form.value), min_amount: Number(form.min_amount), max_uses: Number(form.max_uses), starts_at: `${form.starts_at}T00:00:00Z`, expires_at: `${form.expires_at}T23:59:59Z`, active: true };
+      await fetch(`${API}/api/promotions/admin/create`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      onCreated({ ...body, current_uses: 0 });
+    } catch {} finally { setSaving(false); }
+  };
+  const inputCls = "w-full px-3 py-2 rounded-xl text-[12px] text-white/90 placeholder-[#333] font-medium outline-none bg-white/[0.03] border border-white/[0.05]";
+  return (
+    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
+      className="overflow-hidden rounded-2xl p-4 space-y-2.5" style={{ background: "rgba(0,194,255,0.02)", border: "1px solid rgba(0,194,255,0.08)" }}>
+      <input data-testid="promo-name" value={form.name} onChange={e => set("name", e.target.value)} placeholder={t("admin.promo_name_ph")} className={inputCls} />
+      <div className="grid grid-cols-2 gap-2">
+        <select data-testid="promo-type" value={form.type} onChange={e => set("type", e.target.value)} className={inputCls + " cursor-pointer"}>
+          {PROMO_TYPES.map(pt => <option key={pt} value={pt}>{pt}</option>)}
+        </select>
+        <select data-testid="promo-target" value={form.target} onChange={e => set("target", e.target.value)} className={inputCls + " cursor-pointer"}>
+          {["all", "new_users", "merchants"].map(tg => <option key={tg} value={tg}>{tg}</option>)}
+        </select>
+      </div>
+      <div className="grid grid-cols-3 gap-2">
+        <div>
+          <label className="text-[9px] text-[#444] font-medium block mb-0.5">{t("admin.promo_value")}</label>
+          <input data-testid="promo-value" type="number" value={form.value} onChange={e => set("value", e.target.value)} className={inputCls} />
+        </div>
+        <div>
+          <label className="text-[9px] text-[#444] font-medium block mb-0.5">{t("admin.promo_min")}</label>
+          <input type="number" value={form.min_amount} onChange={e => set("min_amount", e.target.value)} className={inputCls} />
+        </div>
+        <div>
+          <label className="text-[9px] text-[#444] font-medium block mb-0.5">{t("admin.promo_max_uses")}</label>
+          <input type="number" value={form.max_uses} onChange={e => set("max_uses", e.target.value)} className={inputCls} />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <input type="date" value={form.starts_at} onChange={e => set("starts_at", e.target.value)} className={inputCls} />
+        <input type="date" value={form.expires_at} onChange={e => set("expires_at", e.target.value)} className={inputCls} />
+      </div>
+      <div className="flex gap-2 pt-1">
+        <motion.button data-testid="promo-submit" onClick={submit} disabled={saving}
+          className="flex-1 py-2 rounded-xl text-[12px] font-semibold bg-[#00C2FF]/10 text-[#00C2FF] border border-[#00C2FF]/15 disabled:opacity-50"
+          whileTap={{ scale: 0.97 }}>{saving ? <Loader2 size={14} className="animate-spin mx-auto" /> : t("admin.create_promo")}</motion.button>
+        <motion.button onClick={onCancel} className="px-4 py-2 rounded-xl text-[12px] font-medium text-[#444] bg-white/[0.02] border border-white/[0.04]"
+          whileTap={{ scale: 0.97 }}>{t("admin.cancel")}</motion.button>
+      </div>
+    </motion.div>
+  );
+};
+
 const tabs = [
   { id: "overview", key: "admin.overview", icon: BarChart3 },
   { id: "users", key: "admin.users", icon: Users },
@@ -55,6 +111,7 @@ const tabs = [
   { id: "audit", key: "admin.audit", icon: FileText },
   { id: "compliance", key: "admin.compliance", icon: Shield },
   { id: "analytics", key: "admin.analytics", icon: TrendingUp },
+  { id: "promos", key: "admin.promos", icon: Gift },
   { id: "settings", key: "admin.config", icon: Settings },
 ];
 
@@ -80,6 +137,11 @@ export const AdminPage = ({ onNavigate }) => {
   const [complianceChecks, setComplianceChecks] = useState([]);
   const [complianceTab, setComplianceTab] = useState("flags");
   const [analyticsData, setAnalyticsData] = useState(null);
+  const [promos, setPromos] = useState([]);
+  const [showCreatePromo, setShowCreatePromo] = useState(false);
+  const [editingFees, setEditingFees] = useState(false);
+  const [feeValues, setFeeValues] = useState(null);
+  const [savingFees, setSavingFees] = useState(false);
 
   const adminExports = [
     { key: "transactions", label: t("export.transactions"), action: (f) => apiService.exportAdminTransactions(f) },
@@ -138,6 +200,10 @@ export const AdminPage = ({ onNavigate }) => {
           },
           campaigns: campaignsRes,
         });
+      }
+      if (t === "promos") {
+        const d = await api("/api/promotions/admin/all");
+        setPromos(d.promotions || []);
       }
     } catch (e) { setError(e); }
     setLoading(false);
@@ -409,36 +475,113 @@ export const AdminPage = ({ onNavigate }) => {
             </motion.div>
           )}
 
-          {/* ── Settings Tab ── */}
+          {/* ── Settings Tab (Editable Config) ── */}
           {tab === "settings" && (
             <motion.div key="settings" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
               {loading || !settings ? <Skeleton className="h-[200px]" /> : (
                 <div className="space-y-4">
                   <motion.div className="rounded-2xl p-4" style={{ background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.035)" }}
                     initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-                    <h3 className="text-[11px] font-semibold text-[#444] uppercase tracking-[0.1em] mb-3">{t("admin.fee_config")}</h3>
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-[11px] font-semibold text-[#444] uppercase tracking-[0.1em]">{t("admin.fee_config")}</h3>
+                      <motion.button data-testid="edit-fees-btn" whileTap={{ scale: 0.93 }}
+                        className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-medium"
+                        style={{ background: editingFees ? "rgba(0,210,106,0.1)" : "rgba(255,255,255,0.04)", color: editingFees ? "#00D26A" : "#555", border: `1px solid ${editingFees ? "rgba(0,210,106,0.15)" : "rgba(255,255,255,0.05)"}` }}
+                        onClick={() => {
+                          if (editingFees) {
+                            setSavingFees(true);
+                            api("/api/admin/settings", { method: "PUT", body: JSON.stringify({ fees: feeValues }) })
+                              .then(d => { setSettings({ ...settings, fees: d.fees || feeValues }); setEditingFees(false); })
+                              .catch(() => {})
+                              .finally(() => setSavingFees(false));
+                          } else {
+                            setFeeValues({ ...settings.fees });
+                            setEditingFees(true);
+                          }
+                        }}>
+                        {savingFees ? <Loader2 size={10} className="animate-spin" /> : editingFees ? <><Save size={10} /> {t("admin.save_fees")}</> : <><Pencil size={10} /> {t("admin.edit_fees")}</>}
+                      </motion.button>
+                    </div>
                     {[
-                      { label: "Payment Fee", value: `${(settings.fees.payment * 100).toFixed(1)}%`, color: "#00C2FF" },
-                      { label: "Send Fee", value: `${(settings.fees.send * 100).toFixed(1)}%`, color: "#A855F7" },
-                      { label: "Top-up Fee", value: `${(settings.fees.topup * 100).toFixed(1)}%`, color: "#00D26A" },
-                      { label: "Payout Flat Fee", value: `\u20AC${settings.fees.payout_flat.toFixed(2)}`, color: "#FFB800" },
-                      { label: "Min Payout", value: `\u20AC${settings.fees.min_payout.toFixed(2)}`, color: "#FF6B6B" },
-                      { label: "Settlement Delay", value: `${settings.fees.settlement_delay_hours}h`, color: "#888" },
+                      { key: "payment", label: t("admin.fee_payment"), pct: true, color: "#00C2FF" },
+                      { key: "send", label: t("admin.fee_send"), pct: true, color: "#A855F7" },
+                      { key: "topup", label: t("admin.fee_topup"), pct: true, color: "#00D26A" },
+                      { key: "payout_flat", label: t("admin.fee_payout_flat"), pct: false, color: "#FFB800" },
+                      { key: "min_payout", label: t("admin.fee_min_payout"), pct: false, color: "#FF6B6B" },
+                      { key: "settlement_delay_hours", label: t("admin.fee_settlement"), pct: false, color: "#888" },
                     ].map((row, i, arr) => (
-                      <div key={row.label} className={`flex items-center justify-between py-2.5 ${i < arr.length-1 ? "border-b border-white/[0.03]" : ""}`}>
+                      <div key={row.key} className={`flex items-center justify-between py-2.5 ${i < arr.length-1 ? "border-b border-white/[0.03]" : ""}`}>
                         <span className="text-[12px] text-white/60">{row.label}</span>
-                        <span className="text-[13px] font-bold font-outfit" style={{ color: row.color }}>{row.value}</span>
+                        {editingFees ? (
+                          <input data-testid={`fee-input-${row.key}`} type="number" step={row.pct ? 0.001 : 0.01}
+                            value={feeValues[row.key]} onChange={e => setFeeValues({ ...feeValues, [row.key]: parseFloat(e.target.value) || 0 })}
+                            className="w-20 text-right text-[13px] font-bold font-outfit bg-transparent outline-none border-b border-white/10 text-white"
+                          />
+                        ) : (
+                          <span className="text-[13px] font-bold font-outfit" style={{ color: row.color }}>
+                            {row.pct ? `${(settings.fees[row.key] * 100).toFixed(1)}%` : row.key === "settlement_delay_hours" ? `${settings.fees[row.key]}h` : `€${settings.fees[row.key].toFixed(2)}`}
+                          </span>
+                        )}
                       </div>
                     ))}
                   </motion.div>
-                  <motion.div className="rounded-2xl p-4" style={{ background: "rgba(255,71,87,0.02)", border: "1px solid rgba(255,71,87,0.08)" }}
-                    initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-                    <div className="flex items-center gap-2 mb-1">
-                      <AlertCircle size={12} className="text-[#FF6B6B]" />
-                      <span className="text-[11px] text-[#FF6B6B] font-semibold">{t("admin.server_config")}</span>
-                    </div>
-                    <p className="text-[10px] text-[#444]">{t("admin.fee_note")}</p>
-                  </motion.div>
+                </div>
+              )}
+            </motion.div>
+          )}
+
+          {/* ── Promotions Admin Tab ── */}
+          {tab === "promos" && (
+            <motion.div key="promos" data-testid="admin-promos-tab" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              {loading ? <div className="space-y-2">{[1,2,3].map(i => <Skeleton key={i} className="h-[60px]" />)}</div> : (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-[9px] text-[#333] uppercase tracking-[0.14em] font-semibold pl-1">{t("admin.promos")} ({promos.length})</p>
+                    <motion.button data-testid="create-promo-btn" whileTap={{ scale: 0.93 }}
+                      className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-medium bg-[#00C2FF]/10 text-[#00C2FF] border border-[#00C2FF]/15"
+                      onClick={() => setShowCreatePromo(!showCreatePromo)}>
+                      <Plus size={10} /> {t("admin.create_promo")}
+                    </motion.button>
+                  </div>
+
+                  {/* Create Promo Form */}
+                  <AnimatePresence>
+                    {showCreatePromo && (
+                      <CreatePromoForm t={t} onCreated={(p) => { setPromos([p, ...promos]); setShowCreatePromo(false); }} onCancel={() => setShowCreatePromo(false)} />
+                    )}
+                  </AnimatePresence>
+
+                  {/* Promos List */}
+                  {promos.map((p) => (
+                    <motion.div key={p.name} data-testid={`promo-row-${p.name}`}
+                      className="rounded-2xl px-4 py-3" style={{ background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.035)" }}
+                      initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <Gift size={11} className={p.active ? "text-[#00D26A]" : "text-[#444]"} />
+                            <span className="text-[12px] font-semibold text-white/90">{p.name}</span>
+                            <span className="text-[9px] px-1.5 py-0.5 rounded-md font-medium" style={{ background: p.active ? "rgba(0,210,106,0.1)" : "rgba(255,255,255,0.03)", color: p.active ? "#00D26A" : "#555" }}>
+                              {p.active ? t("admin.promo_active") : t("admin.promo_inactive")}
+                            </span>
+                          </div>
+                          <p className="text-[9px] text-[#333] mt-0.5 pl-[19px]">
+                            {p.type} · {t("admin.promo_value")}: {p.value}{p.type === "bonus_topup" || p.type === "cashback" || p.type === "reduced_fee" ? "%" : ""} · {t("admin.promo_uses")}: {p.current_uses}/{p.max_uses || "∞"} · {t("admin.promo_target")}: {p.target}
+                          </p>
+                        </div>
+                        <motion.button data-testid={`promo-toggle-${p.name}`} whileTap={{ scale: 0.9 }}
+                          onClick={async () => {
+                            try {
+                              await api(`/api/promotions/admin/toggle/${p.name}`, { method: "PUT" });
+                              setPromos(promos.map(x => x.name === p.name ? { ...x, active: !x.active } : x));
+                            } catch {}
+                          }}>
+                          {p.active ? <ToggleRight size={28} className="text-[#00D26A]" /> : <ToggleLeft size={28} className="text-[#333]" />}
+                        </motion.button>
+                      </div>
+                    </motion.div>
+                  ))}
+                  {promos.length === 0 && <p className="text-center py-8 text-[12px] text-[#333]">{t("admin.no_promos")}</p>}
                 </div>
               )}
             </motion.div>

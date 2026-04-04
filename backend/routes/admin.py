@@ -247,8 +247,20 @@ async def get_settings(request: Request):
     await require_admin(request)
     return {
         "fees": FEES,
-        "note": "Fee changes require server restart. These are read-only from the API.",
     }
+
+
+@router.put("/settings")
+async def update_settings(request: Request):
+    user = await require_admin(request)
+    body = await request.json()
+    new_fees = body.get("fees", {})
+    valid_keys = ["payment", "send", "topup", "payout_flat", "payout_percent", "min_payout", "settlement_delay_hours"]
+    for k in valid_keys:
+        if k in new_fees:
+            FEES[k] = float(new_fees[k])
+    await log_audit("admin_settings_update", str(user["_id"]), request, details={"fees": FEES})
+    return {"success": True, "fees": FEES}
 
 
 # ── Audit Logs (Admin Review) ──

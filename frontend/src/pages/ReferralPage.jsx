@@ -35,10 +35,11 @@ const ReferralPage = ({ onBack }) => {
   };
 
   const shareLink = () => {
-    if (data?.referral_link && navigator.share) {
-      navigator.share({ title: "Join BidBlitz", text: `Join BidBlitz and we both earn! Use code: ${data.referral_code}`, url: data.referral_link }).catch(() => {});
+    const appUrl = `${window.location.origin}?ref=${data?.referral_code || ""}`;
+    if (navigator.share) {
+      navigator.share({ title: "BidBlitz", text: t("referral.share_text").replace("{code}", data?.referral_code || ""), url: appUrl }).catch(() => {});
     } else {
-      navigator.clipboard.writeText(data?.referral_link || "").catch(() => {});
+      navigator.clipboard.writeText(appUrl).catch(() => {});
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }

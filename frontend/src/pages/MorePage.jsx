@@ -364,6 +364,85 @@ const LANG_NAMES = {
 };
 
 // ── Settings Sub-page ──
+const PrivacyToggleRow = ({ label, desc, defaultOn }) => {
+  const [on, setOn] = useState(defaultOn);
+  return (
+    <div className="flex items-center justify-between py-1">
+      <div className="flex-1 mr-3">
+        <p className="text-[12px] text-white/80 font-medium">{label}</p>
+        <p className="text-[10px] text-[#444]">{desc}</p>
+      </div>
+      <Toggle on={on} onToggle={() => setOn(!on)} />
+    </div>
+  );
+};
+
+const PrivacyView = ({ onBack, t }) => (
+  <SubPage title={t("settings.privacy")} onBack={onBack}>
+    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+      <div className="rounded-2xl p-4" style={{ background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.035)" }}>
+        <p className="text-[9px] text-[#333] uppercase tracking-[0.14em] font-semibold mb-3">{t("settings.privacy_data")}</p>
+        <div className="space-y-3">
+          <PrivacyToggleRow label={t("settings.privacy_profile_visible")} desc={t("settings.privacy_profile_visible_desc")} defaultOn={true} />
+          <PrivacyToggleRow label={t("settings.privacy_txn_history")} desc={t("settings.privacy_txn_history_desc")} defaultOn={false} />
+          <PrivacyToggleRow label={t("settings.privacy_analytics")} desc={t("settings.privacy_analytics_desc")} defaultOn={true} />
+        </div>
+      </div>
+      <div className="rounded-2xl p-4" style={{ background: "rgba(255,71,87,0.02)", border: "1px solid rgba(255,71,87,0.08)" }}>
+        <p className="text-[11px] text-[#FF6B6B] font-semibold mb-1">{t("settings.privacy_delete_title")}</p>
+        <p className="text-[10px] text-[#444] mb-3">{t("settings.privacy_delete_desc")}</p>
+        <motion.button className="px-4 py-2 rounded-xl text-[11px] font-medium text-[#FF6B6B] border border-[#FF6B6B]/15 bg-[#FF6B6B]/5" whileTap={{ scale: 0.97 }} data-testid="delete-account-btn">
+          {t("settings.privacy_delete_btn")}
+        </motion.button>
+      </div>
+    </motion.div>
+  </SubPage>
+);
+
+const ActiveSessionsView = ({ onBack, t }) => {
+  const [sessions, setSessions] = useState([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    api.getSessions().then(d => setSessions(d.sessions || [])).catch(() => {}).finally(() => setLoading(false));
+  }, []);
+  const revokeAll = async () => {
+    try { await api.revokeAllSessions(); setSessions([]); } catch {}
+  };
+  return (
+    <SubPage title={t("settings.active_sessions")} onBack={onBack}>
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
+        {loading ? (
+          <div className="space-y-2">{[1,2].map(i => <div key={i} className="h-14 rounded-xl animate-pulse" style={{ background: "rgba(255,255,255,0.02)" }} />)}</div>
+        ) : sessions.length === 0 ? (
+          <div className="rounded-2xl p-6 text-center" style={{ background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.035)" }}>
+            <Smartphone size={24} className="text-[#333] mx-auto mb-2" />
+            <p className="text-[12px] text-[#444]">{t("settings.sessions_current_only")}</p>
+          </div>
+        ) : (
+          <>
+            {sessions.map((s, i) => (
+              <div key={s.session_id || i} data-testid={`session-${i}`} className="flex items-center justify-between rounded-2xl px-4 py-3" style={{ background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.035)" }}>
+                <div className="flex items-center gap-3">
+                  <Smartphone size={16} className="text-[#A855F7]" />
+                  <div>
+                    <p className="text-[12px] text-white/80 font-medium">{s.device || s.ip || t("settings.sessions_unknown")}</p>
+                    <p className="text-[9px] text-[#444]">{s.created_at ? new Date(s.created_at).toLocaleDateString() : ""}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+            <motion.button data-testid="revoke-all-sessions" onClick={revokeAll}
+              className="w-full py-2.5 rounded-xl text-[11px] font-medium text-[#FF6B6B] border border-[#FF6B6B]/15 bg-[#FF6B6B]/5 mt-2"
+              whileTap={{ scale: 0.97 }}>
+              {t("settings.sessions_revoke_all")}
+            </motion.button>
+          </>
+        )}
+      </motion.div>
+    </SubPage>
+  );
+};
+
 const SettingsView = ({ onBack, t, locale, setLocale, onOpenPasswordChange }) => {
   const userCtx = useUser();
   const [notifs, setNotifs] = useState(userCtx?.notifications_enabled !== false);
@@ -372,6 +451,7 @@ const SettingsView = ({ onBack, t, locale, setLocale, onOpenPasswordChange }) =>
   const [darkMode, setDarkMode] = useState(userCtx?.dark_mode !== false);
   const [showLangPicker, setShowLangPicker] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [settingsSub, setSettingsSub] = useState(null);
 
   const persistSetting = async (field, value) => {
     setSaving(true);
@@ -389,6 +469,9 @@ const SettingsView = ({ onBack, t, locale, setLocale, onOpenPasswordChange }) =>
   const toggleEmail = () => { const v = !emailNotifs; setEmailNotifs(v); persistSetting("email_notifications", v); };
   const toggleBio = () => { const v = !biometric; setBiometric(v); persistSetting("biometric_enabled", v); };
   const toggleDark = () => { const v = !darkMode; setDarkMode(v); persistSetting("dark_mode", v); };
+
+  if (settingsSub === "privacy") return <PrivacyView onBack={() => setSettingsSub(null)} t={t} />;
+  if (settingsSub === "sessions") return <ActiveSessionsView onBack={() => setSettingsSub(null)} t={t} />;
 
   return (
     <SubPage title={t("settings.title")} onBack={onBack}>
@@ -446,8 +529,8 @@ const SettingsView = ({ onBack, t, locale, setLocale, onOpenPasswordChange }) =>
         <div className="rounded-2xl overflow-hidden mb-5" style={{ background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.035)" }}>
           <MenuRow icon={Lock} label={t("settings.change_password")} color="#00D26A" isLast={false} onClick={onOpenPasswordChange} />
           <MenuRow icon={Fingerprint} label={t("settings.biometric")} color="#00C2FF" isLast={false} right={<Toggle on={biometric} onToggle={toggleBio} />} />
-          <MenuRow icon={Eye} label={t("settings.privacy")} color="#888" isLast={false} />
-          <MenuRow icon={Smartphone} label={t("settings.active_sessions")} desc={t("settings.devices")} color="#A855F7" isLast />
+          <MenuRow icon={Eye} label={t("settings.privacy")} color="#888" isLast={false} onClick={() => setSettingsSub("privacy")} />
+          <MenuRow icon={Smartphone} label={t("settings.active_sessions")} desc={t("settings.devices")} color="#A855F7" isLast onClick={() => setSettingsSub("sessions")} />
         </div>
       </motion.div>
       {saving && <p className="text-center text-[10px] text-[#00C2FF]/50 animate-pulse mt-1">Saving...</p>}

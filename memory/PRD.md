@@ -81,23 +81,25 @@ Create a modern, professional fintech web app called BidBlitz V2 with Revolut-le
 - All dashboard labels fully translated across 12 languages
 
 ### Admin Dashboard (DONE)
-- Overview stats, Users, Merchants, Payouts, Transactions, Settings
-- Feature Flags toggle panel (10 flags, backend-connected, i18n in 12 languages)
+- Overview stats, Users, Merchants, Payouts, Transactions
+- Feature Flags toggle panel (10 flags, backend-connected, i18n)
 - Audit log viewer (350+ logs, severity badges, i18n)
 - Compliance dashboard (flags + checks, resolve actions, i18n)
-- Growth analytics UI (overview stats, conversion funnel, retention, campaigns — all backend-connected, i18n)
-- Fixed: Feature flags API returns dict not array — added Object.entries conversion
-- Fixed: Analytics data mapping — API response structure normalized to match UI expectations
+- Growth analytics UI (overview, funnel, retention, campaigns)
+- Promotions admin UI (create promo form, toggle active/inactive, view all)
+- Editable config form (payment/send/topup/payout fees, settlement delay — live edit + save)
 
 ### Growth Features (DONE)
 - Referral system with codes, rewards, leaderboard
+- Functional share link (navigator.share + clipboard, uses actual app URL)
 - Notifications (in-app CRUD + admin broadcast)
 - Export (14 CSV endpoints + 3 JSON summaries)
 
-## Partially Implemented
-- Promotions: Backend CRUD exists but no user-facing promo UI
-- Referral: Share link goes nowhere (no deep-link handling)
-- Settings: Privacy, Active Sessions sub-pages don't exist
+### Settings Sub-pages (DONE - Apr 2026)
+- Privacy page: 3 toggles (profile visible, txn history, analytics) + delete account
+- Active Sessions page: list sessions from backend + revoke all
+- Both fully navigable from Settings → chevron click
+- All labels in 12 languages
 
 ## Not Implemented (Backlog)
 - Taxi, Scooter, Food, Auctions (placeholder cards only)
