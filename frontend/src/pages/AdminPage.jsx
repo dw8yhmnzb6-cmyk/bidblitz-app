@@ -477,8 +477,8 @@ export const AdminPage = ({ onNavigate }) => {
               {loading ? <div className="space-y-2">{[1,2,3,4,5].map(i => <Skeleton key={i} className="h-[50px]" />)}</div> : (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between mb-2">
-                    <p className="text-[9px] text-[#333] uppercase tracking-[0.14em] font-semibold pl-1">Audit Logs ({auditTotal})</p>
-                    <span className="text-[9px] text-[#333] font-medium">Showing {auditLogs.length}</span>
+                    <p className="text-[9px] text-[#333] uppercase tracking-[0.14em] font-semibold pl-1">{t("admin.audit")} ({auditTotal})</p>
+                    <span className="text-[9px] text-[#333] font-medium">{t("admin.showing")} {auditLogs.length}</span>
                   </div>
                   <div className="rounded-2xl overflow-hidden" style={{ background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.035)" }}>
                     {auditLogs.map((log, i) => {
@@ -499,7 +499,7 @@ export const AdminPage = ({ onNavigate }) => {
                         </div>
                       );
                     })}
-                    {auditLogs.length === 0 && <p className="text-center py-8 text-[12px] text-[#333]">No audit logs found</p>}
+                    {auditLogs.length === 0 && <p className="text-center py-8 text-[12px] text-[#333]">{t("admin.no_audit")}</p>}
                   </div>
                 </div>
               )}
