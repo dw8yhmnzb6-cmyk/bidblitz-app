@@ -17,20 +17,15 @@ Create a modern, professional fintech web app called BidBlitz V2 with Revolut-le
 - CORS, global error handling, offline detection
 
 ### Payments (DONE)
-- Wallet top-up via Stripe checkout (6 packages €10–€500)
+- Wallet top-up via Stripe checkout (6 packages)
 - Customer → Merchant payments with compliance checks
 - Peer-to-peer send with fees
 - Merchant barcode scan payment with idempotency
 - Dynamic QR code (HMAC-based, 5-min rotation)
 - Merchant payouts with admin approval pipeline
 - Platform fee engine (configurable)
-- **Promotions wired into all payment flows (Apr 2026)**:
-  - Payment (pay): cashback promo — % of amount credited back after payment
-  - Send: reduced_fee promo — % discount on send fee (up to 100% = free)
-  - Merchant scan: cashback promo — same as pay, customer gets cashback
-  - Topup (Stripe): bonus_topup promo — % bonus credited after top-up
-  - Promo shown in UI: TopUp success screen (bonus badge), Scanner receipt (cashback row)
-  - Per-user once, respects max_uses, date range, min_amount
+- Promotions wired into all payment flows (cashback, reduced_fee, bonus_topup)
+- Float precision fixed: all balance returns use round(value, 2)
 
 ### System/Security (DONE)
 - Audit logging (17 event types, MongoDB-backed)
@@ -45,61 +40,34 @@ Create a modern, professional fintech web app called BidBlitz V2 with Revolut-le
 - Offline detection with toast
 - Role-aware bottom navigation
 
-### Profile & Account (DONE - Apr 2026)
-- Profile editing: inline name edit with Edit/Save/Cancel flow
-- Inline validation (empty name, too-short name)
-- Premium success/error feedback (animated badges)
-- Member Since from real backend created_at
-- Account ID (truncated)
-- Password change: current/new/confirm with labeled fields
-- Inline validation (too short, mismatch)
-- Friendly error messages (wrong password → localized)
-- Auto-collapse on success
-- Settings → Change Password navigates to Profile with form pre-opened
-- Settings persistence: language, notifications, email notifications, biometric, dark mode → all saved to backend via PUT /api/user/profile
-- Settings hydrated from backend on login/refresh via serialize_user → /api/auth/me
-- Language synced: backend → I18n on login, I18n → backend on change in Settings
-- localStorage fallback for language (I18nContext STORAGE_KEY)
-- All profile/password/settings labels in all 12 languages
+### Profile & Account (DONE)
+- Profile editing, password change, settings persistence
+- All labels in 12 languages
 
-### Support Center (DONE - Apr 2026)
-- FAQ accordion with i18n
-- Contact form with category selector (General, Payments, Account, Security, Merchant), subject, optional reference/transaction ID, message
-- Connected to backend POST /api/support/tickets — creates real stored tickets
-- Success feedback with ticket ID, auto-reset after 4s
-- Validation: subject + message required (localized warning)
-- Admin ticket management: list, filter by status, resolve with response
+### Support Center (DONE)
+- FAQ accordion, contact form, admin ticket management
 - All labels in 12 languages
 
 ### Kids Feature (DONE)
 - Stripe subscription paywall with trial
-- Post-subscription dashboard with child profiles, spending limits
-- Dashboard shows status: Trial (with days remaining), Active, or Expired
-- If expired/inactive → shows paywall with expired notice banner
-- Post-Stripe-checkout redirect auto-routes to Kids dashboard and verifies session
-- Trial start updates subStatus in state for immediate dashboard rendering
-- All dashboard labels fully translated across 12 languages
+- Post-subscription dashboard with child profiles
 
 ### Admin Dashboard (DONE)
 - Overview stats, Users, Merchants, Payouts, Transactions
-- Feature Flags toggle panel (10 flags, backend-connected, i18n)
-- Audit log viewer (350+ logs, severity badges, i18n)
-- Compliance dashboard (flags + checks, resolve actions, i18n)
-- Growth analytics UI (overview, funnel, retention, campaigns)
-- Promotions admin UI (create promo form, toggle active/inactive, view all)
-- Editable config form (payment/send/topup/payout fees, settlement delay — live edit + save)
+- Feature Flags, Audit logs, Compliance, Growth Analytics, Promotions, Config
+- N+1 query optimization (aggregation pipelines for users/merchants)
 
 ### Growth Features (DONE)
-- Referral system with codes, rewards, leaderboard
-- Functional share link (navigator.share + clipboard, uses actual app URL)
-- Notifications (in-app CRUD + admin broadcast)
-- Export (14 CSV endpoints + 3 JSON summaries)
+- Referral system, notifications, export (14 CSV + 3 JSON)
 
-### Settings Sub-pages (DONE - Apr 2026)
-- Privacy page: 3 toggles (profile visible, txn history, analytics) + delete account
-- Active Sessions page: list sessions from backend + revoke all
-- Both fully navigable from Settings → chevron click
-- All labels in 12 languages
+### Settings Sub-pages (DONE)
+- Privacy, Active Sessions
+
+### Production Readiness (DONE - Apr 2026)
+- P0 merchant-scan bug fixed (balance rounding + merchant name)
+- N+1 admin query optimization (users + merchants)
+- Production frontend build (1.4MB, sourcemaps disabled)
+- All critical flows verified: login, wallet, send, merchant-scan, admin
 
 ## Not Implemented (Backlog)
 - Taxi, Scooter, Food, Auctions (placeholder cards only)

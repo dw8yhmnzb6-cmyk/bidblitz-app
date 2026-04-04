@@ -92,16 +92,22 @@ async def list_users(request: Request, search: str = "", limit: int = 50, skip: 
     users = await db.users.find(query, {"password_hash": 0}).sort("created_at", -1).skip(skip).limit(limit).to_list(limit)
     total = await db.users.count_documents(query)
 
+    user_ids = [str(u["_id"]) for u in users]
+    txn_counts = await db.transactions.aggregate([
+        {"$match": {"user_id": {"$in": user_ids}}},
+        {"$group": {"_id": "$user_id", "count": {"$sum": 1}}}
+    ]).to_list(None)
+    txn_map = {t["_id"]: t["count"] for t in txn_counts}
+
     result = []
     for u in users:
-        txn_count = await db.transactions.count_documents({"user_id": str(u["_id"])})
         result.append({
             "id": str(u["_id"]),
             "name": u.get("name", ""),
             "email": u.get("email", ""),
             "role": u.get("role", "user"),
             "balance": u.get("balance", 0),
-            "transaction_count": txn_count,
+            "transaction_count": txn_map.get(str(u["_id"]), 0),
             "created_at": u.get("created_at", ""),
         })
 
@@ -120,9 +126,15 @@ async def list_merchants(request: Request, search: str = "", limit: int = 50, sk
     merchants = await db.merchants.find(query).sort("created_at", -1).skip(skip).limit(limit).to_list(limit)
     total = await db.merchants.count_documents(query)
 
+    merchant_ids = [str(m["_id"]) for m in merchants]
+    payout_counts = await db.payouts.aggregate([
+        {"$match": {"merchant_id": {"$in": merchant_ids}}},
+        {"$group": {"_id": "$merchant_id", "count": {"$sum": 1}}}
+    ]).to_list(None)
+    payout_map = {p["_id"]: p["count"] for p in payout_counts}
+
     result = []
     for m in merchants:
-        payout_count = await db.payouts.count_documents({"merchant_id": str(m["_id"])})
         result.append({
             "id": str(m["_id"]),
             "user_id": m.get("user_id", ""),
@@ -133,7 +145,7 @@ async def list_merchants(request: Request, search: str = "", limit: int = 50, sk
             "available_payout": round(m.get("available_payout", 0), 2),
             "pending_payout": round(m.get("pending_payout", 0), 2),
             "total_transactions": m.get("total_transactions", 0),
-            "payout_requests": payout_count,
+            "payout_requests": payout_map.get(str(m["_id"]), 0),
             "created_at": m.get("created_at", ""),
         })
 
