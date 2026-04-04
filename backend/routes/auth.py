@@ -9,6 +9,7 @@ from core.security import (
 from core.config import MAX_LOGIN_ATTEMPTS, LOCKOUT_MINUTES
 from core.rate_limit import limiter, RATE_REGISTER, RATE_LOGIN
 from core.audit import log_audit, AuditEvent, get_client_info
+from core.soft_launch import is_email_whitelisted, is_registration_open
 from schemas.models import RegisterRequest, LoginRequest
 import secrets
 import random
@@ -32,6 +33,11 @@ def generate_card_expiry():
 async def register(req: RegisterRequest, request: Request, response: Response):
     email = req.email.lower().strip()
     ip, ua = get_client_info(request)
+
+    # Soft launch gate
+    if not await is_registration_open():
+        if not await is_email_whitelisted(email):
+            raise HTTPException(status_code=403, detail="Registration is currently invite-only. Contact support for access.")
 
     existing = await db.users.find_one({"email": email})
     if existing:
@@ -97,6 +103,11 @@ async def login(req: LoginRequest, request: Request, response: Response):
             await db.login_attempts.delete_one({"identifier": identifier})
 
     user = await db.users.find_one({"email": email})
+
+    # Soft launch gate (before password check to avoid leaking user existence)
+    if user and not await is_email_whitelisted(email):
+        raise HTTPException(status_code=403, detail="Access restricted during soft launch. Contact support.")
+
     if not user or not verify_password(req.password, user["password_hash"]):
         # Track failed attempt
         if attempt:

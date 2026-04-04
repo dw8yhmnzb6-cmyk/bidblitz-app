@@ -418,3 +418,140 @@ async def update_feature_flag(flag_name: str, request: Request):
     ip, ua = get_client_info(request)
     await log_audit(AuditEvent.ADMIN_ACTION, str(admin["_id"]), "admin", ip, ua, "success", f"Updated flag: {flag_name}")
     return {"flag": flag_name, "data": result}
+
+
+
+# ── Soft Launch Management ──
+from core.soft_launch import get_soft_launch_config, SOFT_LAUNCH_CONFIG_KEY
+from datetime import timedelta
+
+
+class WhitelistUpdate(BaseModel):
+    emails: list[str]
+
+
+@router.get("/soft-launch")
+async def get_soft_launch(request: Request):
+    """Get soft launch config + live activity dashboard."""
+    await require_admin(request)
+    config = await get_soft_launch_config()
+
+    now = datetime.now(timezone.utc)
+    h24 = (now - timedelta(hours=24)).isoformat()
+    h1 = (now - timedelta(hours=1)).isoformat()
+
+    # Payment activity (24h)
+    payments_24h = await db.transactions.count_documents({
+        "created_at": {"$gte": h24}, "type": {"$in": ["payment", "send", "topup"]}
+    })
+    payments_1h = await db.transactions.count_documents({
+        "created_at": {"$gte": h1}, "type": {"$in": ["payment", "send", "topup"]}
+    })
+
+    # Failed payments (24h)
+    failed_24h = await db.audit_logs.count_documents({
+        "timestamp": {"$gte": h24},
+        "event": {"$in": ["payment_failed", "send_failed", "topup_failed"]},
+    })
+
+    # Payment volume (24h)
+    volume_pipeline = [
+        {"$match": {"created_at": {"$gte": h24}, "type": {"$in": ["payment", "send", "topup"]}, "amount": {"$gt": 0}}},
+        {"$group": {"_id": None, "total": {"$sum": "$amount"}}},
+    ]
+    vol = await db.transactions.aggregate(volume_pipeline).to_list(1)
+    volume_24h = round(vol[0]["total"], 2) if vol else 0
+
+    # Support issues (open)
+    open_tickets = await db.support_tickets.count_documents({"status": {"$in": ["open", "pending"]}})
+    tickets_24h = await db.support_tickets.count_documents({"created_at": {"$gte": h24}})
+
+    # Active users (24h)
+    active_logins = await db.audit_logs.count_documents({
+        "timestamp": {"$gte": h24}, "event": "login_success"
+    })
+
+    # New registrations (24h)
+    new_users = await db.users.count_documents({"created_at": {"$gte": h24}})
+
+    # Alerts (24h)
+    alerts_24h = await db.notifications.count_documents({
+        "type": "admin_alert", "created_at": {"$gte": h24}
+    })
+
+    config.pop("key", None)
+    return {
+        "config": config,
+        "dashboard": {
+            "payments_24h": payments_24h,
+            "payments_1h": payments_1h,
+            "failed_payments_24h": failed_24h,
+            "volume_24h": volume_24h,
+            "open_support_tickets": open_tickets,
+            "new_tickets_24h": tickets_24h,
+            "active_logins_24h": active_logins,
+            "new_users_24h": new_users,
+            "admin_alerts_24h": alerts_24h,
+        },
+    }
+
+
+@router.put("/soft-launch")
+async def update_soft_launch(request: Request):
+    """Toggle soft launch on/off, control registration."""
+    admin = await require_admin(request)
+    body = await request.json()
+    update = {}
+    if "enabled" in body:
+        update["enabled"] = bool(body["enabled"])
+    if "registration_open" in body:
+        update["registration_open"] = bool(body["registration_open"])
+    if "allow_existing_users" in body:
+        update["allow_existing_users"] = bool(body["allow_existing_users"])
+    if not update:
+        raise HTTPException(status_code=400, detail="Nothing to update")
+    await db.platform_config.update_one(
+        {"key": SOFT_LAUNCH_CONFIG_KEY}, {"$set": update}
+    )
+    ip, ua = get_client_info(request)
+    await log_audit(AuditEvent.ADMIN_ACTION, str(admin["_id"]), admin["email"],
+                    ip, ua, details={"action": "soft_launch_update", **update})
+    config = await get_soft_launch_config()
+    config.pop("key", None)
+    return {"success": True, "config": config}
+
+
+@router.post("/soft-launch/whitelist")
+async def add_to_whitelist(req: WhitelistUpdate, request: Request):
+    """Add emails to the soft launch whitelist."""
+    admin = await require_admin(request)
+    emails = [e.lower().strip() for e in req.emails if e.strip()]
+    if not emails:
+        raise HTTPException(status_code=400, detail="No emails provided")
+    await db.platform_config.update_one(
+        {"key": SOFT_LAUNCH_CONFIG_KEY},
+        {"$addToSet": {"whitelist": {"$each": emails}}},
+    )
+    ip, ua = get_client_info(request)
+    await log_audit(AuditEvent.ADMIN_ACTION, str(admin["_id"]), admin["email"],
+                    ip, ua, details={"action": "whitelist_add", "emails": emails})
+    config = await get_soft_launch_config()
+    return {"success": True, "whitelist": config.get("whitelist", []), "count": len(config.get("whitelist", []))}
+
+
+@router.delete("/soft-launch/whitelist")
+async def remove_from_whitelist(req: WhitelistUpdate, request: Request):
+    """Remove emails from the soft launch whitelist."""
+    admin = await require_admin(request)
+    emails = [e.lower().strip() for e in req.emails if e.strip()]
+    if not emails:
+        raise HTTPException(status_code=400, detail="No emails provided")
+    await db.platform_config.update_one(
+        {"key": SOFT_LAUNCH_CONFIG_KEY},
+        {"$pullAll": {"whitelist": emails}},
+    )
+    ip, ua = get_client_info(request)
+    await log_audit(AuditEvent.ADMIN_ACTION, str(admin["_id"]), admin["email"],
+                    ip, ua, details={"action": "whitelist_remove", "emails": emails})
+    config = await get_soft_launch_config()
+    return {"success": True, "whitelist": config.get("whitelist", []), "count": len(config.get("whitelist", []))}

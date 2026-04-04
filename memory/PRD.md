@@ -52,16 +52,21 @@ Create a modern, professional fintech web app called BidBlitz V2 with Revolut-le
 - Enhanced /api health check: DB status, backup info
 
 ### Admin Alerts (DONE - Apr 2026)
-- Automatic in-app notifications to all admins on critical events
-- Alert triggers: payment_failed, send_failed, topup_failed, payout_cancelled, suspicious_activity, login_locked, system_error (5xx)
-- Wired into existing audit log system (zero changes to route files)
-- Notifications appear in admin's notification feed with type "admin_alert"
-- Includes: severity, user email, amount, reason
+- Auto in-app notifications to admins on: payment_failed, send_failed, topup_failed, payout_cancelled, suspicious_activity, login_locked, system_error
+
+### Soft Launch Mode (DONE - Apr 2026)
+- Invite-only access gate: registration blocked unless email is whitelisted or soft launch disabled
+- Existing users can always log in (configurable via allow_existing_users)
+- Admin whitelist management: add/remove emails via API
+- Admin toggle: enable/disable soft launch, open/close registration
+- Live activity dashboard: payments (24h/1h), failed payments, volume, support tickets, logins, new users, alerts
+- All config stored in MongoDB (platform_config collection)
+- Admin endpoints: GET/PUT /api/admin/soft-launch, POST/DELETE /api/admin/soft-launch/whitelist
 
 ### Production Readiness (DONE - Apr 2026)
 - All float rounding fixed across every endpoint
 - Production frontend build (1.4MB)
-- Full live test: all flows passed
+- Full live test: 34/34 checks passed
 
 ## Not Implemented (Backlog)
 - Taxi, Scooter, Food, Auctions (placeholder cards only)
@@ -76,10 +81,10 @@ Create a modern, professional fintech web app called BidBlitz V2 with Revolut-le
 - Admin: admin@bidblitz.com / BidBlitz2026!
 - Customer: kunde@bidblitz.com / Kunde2026!
 - Merchant: haendler@bidblitz.com / BidBlitz2026!
+- VIP (whitelisted): vip@example.com / Vip2026!
 
 ## Operations
-- Backup script: /app/scripts/backup_db.sh (cron: 0 2 * * *)
-- Monitor script: /app/scripts/monitor.sh (cron: */5 * * * *)
-- Backups: /app/backups/ (7-day retention)
-- Logs: /app/backend/logs/ (error.log, access.log, backup.log, uptime.log, alerts.log)
-- Admin alerts: automatic via audit.py _notify_admins()
+- Backup: /app/scripts/backup_db.sh (cron: 0 2 * * *)
+- Monitor: /app/scripts/monitor.sh (cron: */5 * * * *)
+- Logs: /app/backend/logs/
+- Soft launch config: MongoDB platform_config collection
