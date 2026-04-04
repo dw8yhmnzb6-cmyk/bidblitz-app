@@ -539,7 +539,7 @@ const SettingsView = ({ onBack, t, locale, setLocale, onOpenPasswordChange }) =>
 };
 
 // ── Main More Page ──
-export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled }) => {
+export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, onAuthRequired }) => {
   const user = useUser();
   const { t, lang: locale, setLang: setLocale } = useI18n();
   const [subPage, setSubPage] = useState(kidsReturn ? "kids" : null);
@@ -551,56 +551,65 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled }) => {
   }, [kidsReturn, onKidsHandled]);
 
   useEffect(() => {
-    api.getNotifications(true).then(d => setUnreadCount(d.unread_count || 0)).catch(() => {});
-  }, []);
+    if (!isGuest) {
+      api.getNotifications(true).then(d => setUnreadCount(d.unread_count || 0)).catch(() => {});
+    }
+  }, [isGuest]);
 
-  // Sub-page rendering
-  if (subPage === "profile") {
-    return <ProfileView user={user} onBack={() => { setSubPage(null); setProfileOpenPw(false); }} t={t} initialOpenPw={profileOpenPw} />;
-  }
-  if (subPage === "settings") {
-    return <SettingsView onBack={() => setSubPage(null)} t={t} locale={locale} setLocale={setLocale} onOpenPasswordChange={() => { setProfileOpenPw(true); setSubPage("profile"); }} />;
-  }
-  if (subPage === "referral") {
-    return <FeatureGate flag="referral" onBack={() => setSubPage(null)}><ReferralPage onBack={() => setSubPage(null)} /></FeatureGate>;
-  }
-  if (subPage === "notifications") {
-    return <NotificationsPage onBack={() => { setSubPage(null); setUnreadCount(0); }} />;
-  }
-  if (subPage === "support") {
-    return <FeatureGate flag="support_center" onBack={() => setSubPage(null)}><SupportPage onBack={() => setSubPage(null)} /></FeatureGate>;
-  }
-  if (subPage === "activity") {
-    return <FeatureGate flag="activity_feed" onBack={() => setSubPage(null)}><ActivityPage onBack={() => setSubPage(null)} /></FeatureGate>;
-  }
-  if (subPage === "kids") {
-    return <FeatureGate flag="kids" onBack={() => setSubPage(null)}><KidsPaywall onBack={() => setSubPage(null)} onSubscribed={() => setSubPage(null)} /></FeatureGate>;
+  const gatedAction = (fn) => () => {
+    if (isGuest) { onAuthRequired(); return; }
+    fn();
+  };
+
+  // Sub-page rendering — only for authenticated users
+  if (!isGuest) {
+    if (subPage === "profile") {
+      return <ProfileView user={user} onBack={() => { setSubPage(null); setProfileOpenPw(false); }} t={t} initialOpenPw={profileOpenPw} />;
+    }
+    if (subPage === "settings") {
+      return <SettingsView onBack={() => setSubPage(null)} t={t} locale={locale} setLocale={setLocale} onOpenPasswordChange={() => { setProfileOpenPw(true); setSubPage("profile"); }} />;
+    }
+    if (subPage === "referral") {
+      return <FeatureGate flag="referral" onBack={() => setSubPage(null)}><ReferralPage onBack={() => setSubPage(null)} /></FeatureGate>;
+    }
+    if (subPage === "notifications") {
+      return <NotificationsPage onBack={() => { setSubPage(null); setUnreadCount(0); }} />;
+    }
+    if (subPage === "support") {
+      return <FeatureGate flag="support_center" onBack={() => setSubPage(null)}><SupportPage onBack={() => setSubPage(null)} /></FeatureGate>;
+    }
+    if (subPage === "activity") {
+      return <FeatureGate flag="activity_feed" onBack={() => setSubPage(null)}><ActivityPage onBack={() => setSubPage(null)} /></FeatureGate>;
+    }
+    if (subPage === "kids") {
+      return <FeatureGate flag="kids" onBack={() => setSubPage(null)}><KidsPaywall onBack={() => setSubPage(null)} onSubscribed={() => setSubPage(null)} /></FeatureGate>;
+    }
   }
 
   const accountMenu = [
-    { id: "profile", icon: User, label: t("more.profile"), desc: t("more.profile_desc"), color: "#00C2FF", action: () => setSubPage("profile") },
-    { id: "cards", icon: CreditCard, label: t("more.payment_methods"), desc: t("more.cards_desc"), color: "#A855F7" },
-    { id: "security", icon: Shield, label: t("more.security"), desc: t("more.security_desc"), color: "#00D26A" },
+    { id: "profile", icon: User, label: t("more.profile"), desc: t("more.profile_desc"), color: "#00C2FF", action: gatedAction(() => setSubPage("profile")) },
+    { id: "cards", icon: CreditCard, label: t("more.payment_methods"), desc: t("more.cards_desc"), color: "#A855F7", action: gatedAction(() => {}) },
+    { id: "security", icon: Shield, label: t("more.security"), desc: t("more.security_desc"), color: "#00D26A", action: gatedAction(() => {}) },
   ];
 
   const growthMenu = [
-    { id: "referral", icon: Gift, label: t("referral.title"), desc: t("referral.menu_desc"), color: "#FFD700", action: () => setSubPage("referral") },
+    { id: "referral", icon: Gift, label: t("referral.title"), desc: t("referral.menu_desc"), color: "#FFD700", action: gatedAction(() => setSubPage("referral")) },
     {
       id: "notifications", icon: Bell, label: t("notif.title"), desc: unreadCount > 0 ? `${unreadCount} ${t("notif.unread")}` : t("notif.menu_desc"), color: "#FFB800",
-      action: () => setSubPage("notifications"),
+      action: gatedAction(() => setSubPage("notifications")),
       badge: unreadCount > 0 ? unreadCount : null,
     },
-    { id: "activity", icon: Activity, label: t("activity.title"), desc: t("activity.menu_desc"), color: "#00C2FF", action: () => setSubPage("activity") },
-    { id: "kids", icon: Users, label: t("kids.title"), desc: t("kids.menu_desc"), color: "#A855F7", action: () => setSubPage("kids") },
+    { id: "activity", icon: Activity, label: t("activity.title"), desc: t("activity.menu_desc"), color: "#00C2FF", action: gatedAction(() => setSubPage("activity")) },
+    { id: "kids", icon: Users, label: t("kids.title"), desc: t("kids.menu_desc"), color: "#A855F7", action: gatedAction(() => setSubPage("kids")) },
   ];
 
   const appMenu = [
-    { id: "settings", icon: Settings, label: t("more.settings"), desc: t("more.settings_desc"), color: "#888", action: () => setSubPage("settings") },
+    { id: "settings", icon: Settings, label: t("more.settings"), desc: t("more.settings_desc"), color: "#888", action: gatedAction(() => setSubPage("settings")) },
     { id: "appearance", icon: Moon, label: t("more.appearance"), desc: t("more.appearance_desc"), color: "#6366F1" },
   ];
 
   const supportMenu = [
-    { id: "help", icon: HelpCircle, label: t("more.help"), desc: t("more.help_desc"), color: "#FF6B6B", action: () => setSubPage("support") },
+    { id: "help", icon: HelpCircle, label: t("more.help"), desc: t("more.help_desc"), color: "#FF6B6B", action: gatedAction(() => setSubPage("support")) },
   ];
 
   const adminMenu = user.role === "admin" ? [
@@ -691,7 +700,7 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled }) => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.08, ...slide }}
           whileTap={{ scale: 0.98 }}
-          onClick={() => setSubPage("profile")}
+          onClick={() => isGuest ? onAuthRequired() : setSubPage("profile")}
         >
           <div
             className="absolute -top-8 -left-8 w-24 h-24 rounded-full pointer-events-none"
@@ -704,7 +713,7 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled }) => {
               className="w-[52px] h-[52px] rounded-full object-cover"
               style={{ border: "2px solid rgba(0,194,255,0.2)", boxShadow: "0 0 16px rgba(0,194,255,0.08)" }}
             />
-            {user.isPremium && (
+            {!isGuest && user.isPremium && (
               <motion.div
                 className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full flex items-center justify-center"
                 style={{ background: "linear-gradient(135deg, #FFD700, #FFA500)", border: "2px solid #030303" }}
@@ -716,8 +725,8 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled }) => {
             )}
           </div>
           <div className="flex-1 min-w-0 relative z-10">
-            <p className="text-[14px] font-semibold font-outfit text-white truncate">{user.name}</p>
-            <p className="text-[11px] text-[#444] font-medium truncate">{user.email}</p>
+            <p className="text-[14px] font-semibold font-outfit text-white truncate">{isGuest ? "BidBlitz" : user.name}</p>
+            <p className="text-[11px] text-[#444] font-medium truncate">{isGuest ? (t("auth.signin") || "Sign in to view profile") : user.email}</p>
           </div>
           <ChevronRight size={14} className="text-[#222] flex-shrink-0" />
         </motion.div>
@@ -729,23 +738,39 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled }) => {
         {renderGroup(t("more.support"), supportMenu, 0.32)}
         {adminMenu.length > 0 && renderGroup("Admin", adminMenu, 0.38)}
 
-        {/* ── Logout ── */}
-        <motion.button
-          data-testid="logout-btn"
-          className="w-full py-[13px] rounded-[14px] font-semibold text-[13px] flex items-center justify-center gap-2 mt-2"
-          style={{
-            background: "rgba(255,71,87,0.04)",
-            border: "1px solid rgba(255,71,87,0.1)",
-          }}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.32, ...slide }}
-          whileTap={{ scale: 0.96 }}
-          onClick={user.logout}
-        >
-          <LogOut size={15} strokeWidth={1.5} className="text-[#FF4757]" />
-          <span className="text-[#FF4757]">Log Out</span>
-        </motion.button>
+        {/* ── Logout / Sign In ── */}
+        {isGuest ? (
+          <motion.button
+            data-testid="more-signin-btn"
+            className="w-full py-[13px] rounded-[14px] bg-[#00C2FF] text-[#020202] font-semibold text-[13px] flex items-center justify-center gap-2 mt-2"
+            style={{ boxShadow: "0 4px 20px rgba(0,194,255,0.2)" }}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.32, ...slide }}
+            whileTap={{ scale: 0.96 }}
+            onClick={onAuthRequired}
+          >
+            <LogOut size={15} strokeWidth={1.5} className="text-[#020202]" />
+            <span>{t("auth.signin") || "Sign In"}</span>
+          </motion.button>
+        ) : (
+          <motion.button
+            data-testid="logout-btn"
+            className="w-full py-[13px] rounded-[14px] font-semibold text-[13px] flex items-center justify-center gap-2 mt-2"
+            style={{
+              background: "rgba(255,71,87,0.04)",
+              border: "1px solid rgba(255,71,87,0.1)",
+            }}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.32, ...slide }}
+            whileTap={{ scale: 0.96 }}
+            onClick={user.logout}
+          >
+            <LogOut size={15} strokeWidth={1.5} className="text-[#FF4757]" />
+            <span className="text-[#FF4757]">Log Out</span>
+          </motion.button>
+        )}
 
         {/* Version */}
         <motion.p

@@ -16,10 +16,9 @@ import NotificationsPage from "./pages/NotificationsPage";
 
 import BottomNav from "./components/BottomNav";
 import BarcodeModal from "./components/BarcodeModal";
+import AuthGateOverlay from "./components/AuthGateOverlay";
 
 const pageTransition = { duration: 0.25, ease: [0.32, 0.72, 0, 1] };
-
-const PROTECTED_PATHS = ["/wallet", "/scan", "/merchant", "/notifications", "/more", "/admin"];
 
 function AppContent() {
   const hasStripeReturn = typeof window !== "undefined" &&
@@ -27,11 +26,10 @@ function AppContent() {
   const hasKidsReturn = typeof window !== "undefined" && window.location.search.includes("kids_sub=success");
 
   const [currentPath, setCurrentPath] = useState(hasKidsReturn ? "/more" : hasStripeReturn ? "/wallet" : "/");
-  const [stripeReturn, setStripeReturn] = useState(hasStripeReturn);
-  const [kidsReturn, setKidsReturn] = useState(hasKidsReturn);
   const [showBarcode, setShowBarcode] = useState(false);
-  const [showAuth, setShowAuth] = useState(false);
-  const [pendingPath, setPendingPath] = useState(null);
+  const [showAuthGate, setShowAuthGate] = useState(false);
+  const [authGateMessage, setAuthGateMessage] = useState("");
+  const [showFullAuth, setShowFullAuth] = useState(false);
   const user = useUser();
   const { setLang } = useI18n();
 
@@ -41,27 +39,36 @@ function AppContent() {
     }
   }, [user.isAuthenticated, user.language, setLang]);
 
-  // After login, navigate to pending path
+  // Close auth gate after login
   useEffect(() => {
-    if (user.isAuthenticated && pendingPath) {
-      setShowAuth(false);
-      setCurrentPath(pendingPath);
-      setPendingPath(null);
-    } else if (user.isAuthenticated && showAuth) {
-      setShowAuth(false);
+    if (user.isAuthenticated) {
+      setShowAuthGate(false);
+      setShowFullAuth(false);
     }
-  }, [user.isAuthenticated, showAuth, pendingPath]);
+  }, [user.isAuthenticated]);
+
+  const isGuest = !user.isAuthenticated;
+
+  const requireAuth = (message) => {
+    setAuthGateMessage(message || "");
+    setShowAuthGate(true);
+  };
 
   const handleNavigate = (path) => {
-    // Protected paths require login
-    if (!user.isAuthenticated && PROTECTED_PATHS.includes(path)) {
-      setPendingPath(path);
-      setShowAuth(true);
-      return;
+    // For customers: scan tab opens QR modal (or gates if guest)
+    if (path === "/scan") {
+      if (isGuest) {
+        requireAuth();
+        return;
+      }
+      if (user.role !== "merchant" && user.role !== "admin") {
+        setShowBarcode(true);
+        return;
+      }
     }
-    // For customers: scan tab opens QR modal
-    if (path === "/scan" && user.role !== "merchant" && user.role !== "admin") {
-      setShowBarcode(true);
+    // Admin page requires admin role
+    if (path === "/admin" && (!user.isAuthenticated || user.role !== "admin")) {
+      requireAuth();
       return;
     }
     setCurrentPath(path);
@@ -83,11 +90,11 @@ function AppContent() {
     );
   }
 
-  // Auth overlay (shown on demand, not forced)
-  if (showAuth && !user.isAuthenticated) {
+  // Full-screen auth (from header Sign In or homepage CTA)
+  if (showFullAuth && !user.isAuthenticated) {
     return (
       <div className="relative">
-        <AuthPage onBack={() => { setShowAuth(false); setPendingPath(null); }} />
+        <AuthPage onBack={() => setShowFullAuth(false)} />
       </div>
     );
   }
@@ -95,24 +102,52 @@ function AppContent() {
   const renderPage = () => {
     switch (currentPath) {
       case "/":
-        return <HomePage onNavigate={handleNavigate} isGuest={!user.isAuthenticated} onAuthRequired={() => setShowAuth(true)} />;
+        return (
+          <HomePage
+            onNavigate={handleNavigate}
+            isGuest={isGuest}
+            onAuthRequired={() => setShowFullAuth(true)}
+          />
+        );
       case "/wallet":
-        return <WalletPage onNavigate={handleNavigate} />;
+        return (
+          <WalletPage
+            onNavigate={handleNavigate}
+            isGuest={isGuest}
+            onAuthRequired={requireAuth}
+          />
+        );
       case "/scan":
         if (user.role === "merchant" || user.role === "admin") {
           return <ScannerPage onNavigate={handleNavigate} />;
         }
-        return <HomePage onNavigate={handleNavigate} isGuest={!user.isAuthenticated} onAuthRequired={() => setShowAuth(true)} />;
+        return <HomePage onNavigate={handleNavigate} isGuest={isGuest} onAuthRequired={() => setShowFullAuth(true)} />;
       case "/merchant":
-        return <MerchantPage onNavigate={handleNavigate} />;
+        return (
+          <MerchantPage
+            onNavigate={handleNavigate}
+            isGuest={isGuest}
+            onAuthRequired={requireAuth}
+          />
+        );
       case "/admin":
-        return user.role === "admin" ? <AdminPage onNavigate={handleNavigate} /> : <HomePage onNavigate={handleNavigate} isGuest={!user.isAuthenticated} onAuthRequired={() => setShowAuth(true)} />;
+        return user.role === "admin"
+          ? <AdminPage onNavigate={handleNavigate} />
+          : <HomePage onNavigate={handleNavigate} isGuest={isGuest} onAuthRequired={() => setShowFullAuth(true)} />;
       case "/notifications":
-        return <NotificationsPage onBack={() => handleNavigate("/")} />;
+        return isGuest
+          ? <HomePage onNavigate={handleNavigate} isGuest={isGuest} onAuthRequired={() => setShowFullAuth(true)} />
+          : <NotificationsPage onBack={() => handleNavigate("/")} />;
       case "/more":
-        return <MorePage onNavigate={handleNavigate} kidsReturn={kidsReturn} onKidsHandled={() => setKidsReturn(false)} />;
+        return (
+          <MorePage
+            onNavigate={handleNavigate}
+            isGuest={isGuest}
+            onAuthRequired={requireAuth}
+          />
+        );
       default:
-        return <HomePage onNavigate={handleNavigate} isGuest={!user.isAuthenticated} onAuthRequired={() => setShowAuth(true)} />;
+        return <HomePage onNavigate={handleNavigate} isGuest={isGuest} onAuthRequired={() => setShowFullAuth(true)} />;
     }
   };
 
@@ -140,6 +175,11 @@ function AppContent() {
       </AnimatePresence>
       {showBottomNav && <BottomNav currentPath={currentPath} onNavigate={handleNavigate} />}
       <BarcodeModal isOpen={showBarcode} onClose={() => setShowBarcode(false)} />
+      <AuthGateOverlay
+        isOpen={showAuthGate}
+        onClose={() => setShowAuthGate(false)}
+        message={authGateMessage}
+      />
     </div>
   );
 }

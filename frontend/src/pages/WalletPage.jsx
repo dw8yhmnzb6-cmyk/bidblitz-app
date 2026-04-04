@@ -99,7 +99,7 @@ const StatPill = ({ label, value, trend, delay = 0 }) => (
   </motion.div>
 );
 
-export const WalletPage = ({ onNavigate }) => {
+export const WalletPage = ({ onNavigate, isGuest, onAuthRequired }) => {
   // Auto-open TopUp modal if returning from Stripe
   const hasStripeParam = typeof window !== "undefined" &&
     (window.location.search.includes("stripe_session_id") || window.location.search.includes("stripe_cancelled"));
@@ -212,6 +212,18 @@ export const WalletPage = ({ onNavigate }) => {
           <AnimatePresence mode="wait">
             {isLoading ? (
               <Skeleton className="h-[56px] w-48 mx-auto mb-2" />
+            ) : isGuest ? (
+              <motion.div
+                key="preview"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex items-baseline justify-center gap-1.5"
+              >
+                <span className="text-[24px] text-[#2A2A2A] font-outfit font-light">{currency || "EUR"}</span>
+                <span className="text-[48px] font-bold font-outfit text-white/15 tracking-[-0.03em] leading-none">
+                  &#8226;&#8226;&#8226;,&#8226;&#8226;
+                </span>
+              </motion.div>
             ) : (
               <motion.div
                 key={showBalance ? "visible" : "hidden"}
@@ -312,7 +324,7 @@ export const WalletPage = ({ onNavigate }) => {
             icon={Plus}
             label={t("wallet.add") || "Add Money"}
             color="#00C2FF"
-            onClick={() => setShowTopUp(true)}
+            onClick={() => isGuest ? onAuthRequired("Top up your wallet") : setShowTopUp(true)}
             delay={0.22}
           />
           <WalletAction
@@ -320,7 +332,7 @@ export const WalletPage = ({ onNavigate }) => {
             icon={QrCode}
             label={t("wallet.my_barcode") || "My Barcode"}
             color="#FFB800"
-            onClick={() => setShowBarcode(true)}
+            onClick={() => isGuest ? onAuthRequired("View your barcode") : setShowBarcode(true)}
             delay={0.24}
           />
           <WalletAction
@@ -328,6 +340,7 @@ export const WalletPage = ({ onNavigate }) => {
             icon={ArrowUpRight}
             label={t("wallet.send") || "Send"}
             color="#A855F7"
+            onClick={() => isGuest ? onAuthRequired("Send money") : null}
             delay={0.26}
           />
           <WalletAction

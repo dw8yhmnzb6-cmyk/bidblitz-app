@@ -176,7 +176,7 @@ const PayoutModal = ({ isOpen, onClose, available, minPayout, flatFee, onSuccess
 };
 
 // ── Main MerchantPage ──
-export const MerchantPage = ({ onNavigate }) => {
+export const MerchantPage = ({ onNavigate, isGuest, onAuthRequired }) => {
   const merchant = useMerchant();
   const stats = useMerchantStats();
   const { t } = useI18n();
@@ -194,19 +194,21 @@ export const MerchantPage = ({ onNavigate }) => {
   ];
 
   const fetchBalance = useCallback(async () => {
+    if (isGuest) return;
     try {
       const b = await api("/api/payout/balance");
       setBalance(b);
       setError(null);
     } catch (e) { setError(e); }
-  }, []);
+  }, [isGuest]);
 
   const fetchPayouts = useCallback(async () => {
+    if (isGuest) return;
     try {
       const h = await api("/api/payout/history?limit=5");
       setPayouts(h.payouts || []);
     } catch (e) { if (!error) setError(e); }
-  }, [error]);
+  }, [isGuest, error]);
 
   useEffect(() => {
     const t = setTimeout(() => setIsLoading(false), 500);
@@ -358,7 +360,7 @@ export const MerchantPage = ({ onNavigate }) => {
             className="flex-1 py-[13px] rounded-[14px] font-semibold text-[13px] flex items-center justify-center gap-2"
             style={{ background: "rgba(0,210,106,0.08)", border: "1px solid rgba(0,210,106,0.15)", color: "#00D26A" }}
             initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.34, ...slide }}
-            whileTap={{ scale: 0.96 }} onClick={() => setShowPayout(true)}>
+            whileTap={{ scale: 0.96 }} onClick={() => isGuest ? onAuthRequired("Request a payout") : setShowPayout(true)}>
             <ArrowDownToLine size={15} strokeWidth={2} />Payout
           </motion.button>
         </div>
