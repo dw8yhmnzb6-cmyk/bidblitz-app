@@ -82,10 +82,11 @@ Create a modern, professional fintech web app called BidBlitz V2 with Revolut-le
 
 ### Admin Dashboard (DONE)
 - Overview stats, Users, Merchants, Payouts, Transactions, Settings
-- Feature Flags toggle panel
+- Feature Flags toggle panel (10 flags, backend-connected, i18n in 12 languages)
 - Audit log viewer
 - Compliance dashboard (flags + checks)
 - Growth analytics UI (overview, funnel, retention, campaigns)
+- Fixed: Feature flags API returns dict not array — added Object.entries conversion
 
 ### Growth Features (DONE)
 - Referral system with codes, rewards, leaderboard

@@ -51,10 +51,10 @@ const tabs = [
   { id: "merchants", key: "admin.merchants", icon: Store },
   { id: "payouts", key: "admin.payouts", icon: Download },
   { id: "transactions", key: "admin.txns", icon: CreditCard },
-  { id: "flags", key: "Feature Flags", icon: Flag },
-  { id: "audit", key: "Audit Logs", icon: FileText },
-  { id: "compliance", key: "Compliance", icon: Shield },
-  { id: "analytics", key: "Analytics", icon: TrendingUp },
+  { id: "flags", key: "admin.flags", icon: Flag },
+  { id: "audit", key: "admin.audit", icon: FileText },
+  { id: "compliance", key: "admin.compliance", icon: Shield },
+  { id: "analytics", key: "admin.analytics", icon: TrendingUp },
   { id: "settings", key: "admin.config", icon: Settings },
 ];
 
@@ -99,7 +99,12 @@ export const AdminPage = ({ onNavigate }) => {
       if (t === "payouts") { const d = await api(`/api/admin/payouts?status=${payoutFilter}`); setPayouts(d.payouts); }
       if (t === "transactions") { const d = await api(`/api/admin/transactions?search=${encodeURIComponent(search)}&limit=30`); setTxns(d.transactions); }
       if (t === "settings") { const d = await api("/api/admin/settings"); setSettings(d); }
-      if (t === "flags") { const d = await api("/api/admin/feature-flags"); setFeatureFlags(d.flags || []); }
+      if (t === "flags") {
+        const d = await api("/api/admin/feature-flags");
+        const flagsObj = d.flags || {};
+        const flagsArr = Array.isArray(flagsObj) ? flagsObj : Object.entries(flagsObj).map(([name, val]) => ({ name, ...val }));
+        setFeatureFlags(flagsArr);
+      }
       if (t === "audit") { const d = await api("/api/admin/audit-logs?limit=50"); setAuditLogs(d.logs || []); setAuditTotal(d.total || 0); }
       if (t === "compliance") {
         const [flagsRes, checksRes] = await Promise.all([
@@ -428,7 +433,7 @@ export const AdminPage = ({ onNavigate }) => {
             <motion.div key="flags" data-testid="admin-flags-tab" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
               {loading ? <div className="space-y-2">{[1,2,3,4].map(i => <Skeleton key={i} className="h-[56px]" />)}</div> : (
                 <div className="space-y-2">
-                  <p className="text-[9px] text-[#333] uppercase tracking-[0.14em] font-semibold mb-2 pl-1">Feature Flags ({featureFlags.length})</p>
+                  <p className="text-[9px] text-[#333] uppercase tracking-[0.14em] font-semibold mb-2 pl-1">{t("admin.flags")} ({featureFlags.length})</p>
                   {featureFlags.map((flag) => (
                     <motion.div key={flag.name} data-testid={`flag-row-${flag.name}`}
                       className="flex items-center justify-between px-4 py-3 rounded-2xl"
@@ -437,9 +442,9 @@ export const AdminPage = ({ onNavigate }) => {
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
                           <Flag size={11} className={flag.enabled ? "text-[#00D26A]" : "text-[#444]"} />
-                          <span className="text-[12px] font-semibold text-white/90">{flag.name.replace(/_/g, " ")}</span>
+                          <span className="text-[12px] font-semibold text-white/90">{flag.label || flag.name.replace(/_/g, " ")}</span>
                         </div>
-                        <p className="text-[9px] text-[#333] mt-0.5 pl-[19px]">Access: {flag.access || "all"}</p>
+                        <p className="text-[9px] text-[#333] mt-0.5 pl-[19px]">{t("admin.flag_access")}: {flag.access || "all"}</p>
                       </div>
                       <motion.button data-testid={`flag-toggle-${flag.name}`}
                         onClick={async () => {
@@ -460,7 +465,7 @@ export const AdminPage = ({ onNavigate }) => {
                       </motion.button>
                     </motion.div>
                   ))}
-                  {featureFlags.length === 0 && <p className="text-center py-8 text-[12px] text-[#333]">No feature flags found</p>}
+                  {featureFlags.length === 0 && <p className="text-center py-8 text-[12px] text-[#333]">{t("admin.no_flags")}</p>}
                 </div>
               )}
             </motion.div>
