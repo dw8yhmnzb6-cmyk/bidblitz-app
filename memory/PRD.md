@@ -48,31 +48,33 @@ Create a modern, professional fintech web app called BidBlitz V2. Build Revolut-
 ### Try Demo Mode (Complete — April 4, 2026)
 - "Try Demo" button on homepage for guests
 - Persistent demo banner ("DEMO MODE — No real transactions")
-- Wallet page: mock balance, card, stats, 6 demo transactions
-- Merchant page: mock earnings, balance overview, stat cards, weekly chart
-- More page: Demo User profile
+- Wallet/Merchant/More pages show mock data in demo mode
 - All actions show demo toasts (no real API calls)
 - "Exit Demo" returns to guest homepage
 
 ### Clear CTA Buttons (Complete — April 4, 2026)
-- **Homepage header**: Separate "Login" (text) + "Register" (outlined pill) buttons
-- **Homepage hero**: Register (primary blue CTA), Login + Try Demo (secondary row, side-by-side)
-- **Inner pages** (Wallet, Merchant, More): GuestCTABar component with Register (blue) + Login (ghost) + Demo (amber)
-- **AuthPage**: Accepts `initialMode` prop — Login button opens login form, Register opens registration form
-- **AuthGateOverlay**: Also accepts `initialMode` for contextual auth gate popups
-- App.js wires `onLogin` and `onRegister` separately through all page components
+- Homepage header: Separate "Login" + "Register" buttons
+- Homepage hero: Register (primary), Login + Try Demo (secondary row)
+- Inner pages: GuestCTABar component (Register/Login/Demo)
+- AuthPage/AuthGateOverlay accept `initialMode` prop
+
+### Onboarding Hint for Guests (Complete — April 4, 2026)
+- Non-blocking inline banner below header on HomePage
+- Short i18n message explaining app value (12 languages)
+- Dismissible via X button, uses localStorage to show once
+- Smooth enter/exit animation via AnimatePresence
+- Hidden during demo mode and for authenticated users
+- Key: `onboarding.hint` in all 12 language blocks
 
 ## Key Files
-- `/app/frontend/src/App.js` — Routing, demo mode state, auth gate, CTA wiring
-- `/app/frontend/src/components/DemoBanner.jsx` — Demo mode banner
-- `/app/frontend/src/components/GuestCTABar.jsx` — Reusable guest CTA bar for inner pages
-- `/app/frontend/src/models/demoData.js` — Mock data for demo mode
-- `/app/frontend/src/pages/WalletPage.jsx` — Wallet with demo + guest CTA support
-- `/app/frontend/src/pages/MerchantPage.jsx` — Merchant with demo + guest CTA support
-- `/app/frontend/src/pages/MorePage.jsx` — More page with demo + guest CTA support
-- `/app/frontend/src/pages/HomePage.jsx` — Homepage with Login/Register/Demo CTAs
+- `/app/frontend/src/App.js` — Routing, demo mode, auth gate, CTA wiring
+- `/app/frontend/src/pages/HomePage.jsx` — Homepage with CTAs + onboarding hint
 - `/app/frontend/src/pages/AuthPage.jsx` — Auth page with initialMode support
-- `/app/frontend/src/components/AuthGateOverlay.jsx` — Auth popup with initialMode support
+- `/app/frontend/src/components/DemoBanner.jsx` — Demo mode banner
+- `/app/frontend/src/components/GuestCTABar.jsx` — Guest CTA bar for inner pages
+- `/app/frontend/src/components/AuthGateOverlay.jsx` — Auth popup overlay
+- `/app/frontend/src/models/demoData.js` — Mock data for demo mode
+- `/app/frontend/src/store/I18nContext.jsx` — 12-language translations
 
 ## Backlog (P2/P3 — Not Started)
 - Push notifications (WebPush)

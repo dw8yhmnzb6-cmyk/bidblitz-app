@@ -1,8 +1,9 @@
-import { motion } from "framer-motion";
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import {
   Bell, ChevronRight, TrendingUp, Shield, Wallet,
-  Car, Zap, UtensilsCrossed, Gavel, ArrowUpRight, CreditCard, FlaskConical, LogIn, UserPlus
+  Car, Zap, UtensilsCrossed, Gavel, ArrowUpRight, CreditCard, FlaskConical, LogIn, UserPlus, X, Sparkles
 } from "lucide-react";
 import { useUser, useWallet, useI18n } from "../store";
 import { useWalletStats } from "../hooks";
@@ -102,6 +103,15 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
   const { balance, currency } = useWallet();
   const { percentageChange } = useWalletStats();
   const { t } = useI18n();
+
+  const [hintDismissed, setHintDismissed] = useState(() => {
+    try { return localStorage.getItem("bb_hint_dismissed") === "1"; } catch { return false; }
+  });
+
+  const dismissHint = () => {
+    setHintDismissed(true);
+    try { localStorage.setItem("bb_hint_dismissed", "1"); } catch {}
+  };
 
   const handleServiceClick = (featureId) => {
     if (isGuest) {
@@ -213,6 +223,43 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
             )}
           </div>
         </motion.header>
+
+        {/* ── Onboarding Hint (guest, dismissible, show once) ── */}
+        <AnimatePresence>
+          {isGuest && !hintDismissed && !isDemoMode && (
+            <motion.div
+              data-testid="onboarding-hint"
+              className="rounded-[16px] px-4 py-3 mb-4 flex items-start gap-3 relative overflow-hidden"
+              style={{
+                background: "rgba(0,194,255,0.04)",
+                border: "1px solid rgba(0,194,255,0.08)",
+              }}
+              initial={{ opacity: 0, y: -10, height: 0, marginBottom: 0 }}
+              animate={{ opacity: 1, y: 0, height: "auto", marginBottom: 16 }}
+              exit={{ opacity: 0, y: -10, height: 0, marginBottom: 0 }}
+              transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
+            >
+              <div
+                className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"
+                style={{ background: "rgba(0,194,255,0.08)", border: "1px solid rgba(0,194,255,0.12)" }}
+              >
+                <Sparkles size={14} className="text-[#00C2FF]" />
+              </div>
+              <p className="text-[12px] text-[#888] font-medium leading-[1.5] flex-1 pt-1">
+                {t("onboarding.hint")}
+              </p>
+              <motion.button
+                data-testid="onboarding-hint-dismiss"
+                className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
+                style={{ background: "rgba(255,255,255,0.03)" }}
+                whileTap={{ scale: 0.85 }}
+                onClick={dismissHint}
+              >
+                <X size={11} className="text-[#444]" />
+              </motion.button>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* ── Hero Balance Card ── */}
         <motion.div
