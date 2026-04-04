@@ -8,6 +8,7 @@ from core.rate_limit import limiter, RATE_PAYMENT
 from core.audit import log_audit, AuditEvent, get_client_info
 from core.compliance import run_compliance_check, BLOCKED, FLAGGED
 from schemas.models import PaymentRequest, SendRequest, MerchantScanPayment
+from routes.promotions import check_applicable_promotion, apply_promotion
 import secrets
 
 router = APIRouter(prefix="/api/payment", tags=["payment"])
@@ -149,6 +150,31 @@ async def pay(req: PaymentRequest, request: Request):
                     details={"reference": ref, "amount": req.amount, "fee": fee,
                              "merchant": merchant_name, "new_balance": updated_user["balance"]})
 
+    # ── Check for applicable promotions (cashback) ──
+    promo_applied = None
+    try:
+        promo = await check_applicable_promotion(user_id, "payment", req.amount)
+        if promo:
+            cashback = round(req.amount * promo["value"] / 100, 2)
+            if cashback > 0:
+                await db.users.update_one({"_id": user["_id"]}, {"$inc": {"balance": cashback}})
+                await db.transactions.insert_one({
+                    "id": secrets.token_hex(8),
+                    "user_id": user_id,
+                    "type": "reward",
+                    "amount": cashback,
+                    "description": f"Cashback: {promo['name']} ({promo['value']}%)",
+                    "status": "completed",
+                    "reference": f"PROMO-{secrets.token_hex(4).upper()}",
+                    "category": "promotion",
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                })
+                await apply_promotion(user_id, promo["name"], req.amount)
+                updated_user = await db.users.find_one({"_id": user["_id"]})
+                promo_applied = {"name": promo["name"], "cashback": cashback}
+    except Exception:
+        pass
+
     return {
         "success": True,
         "new_balance": updated_user["balance"],
@@ -158,6 +184,7 @@ async def pay(req: PaymentRequest, request: Request):
         "net_amount": net_to_merchant,
         "merchant_name": merchant_name,
         "transaction": txn,
+        "promotion": promo_applied,
     }
 
 

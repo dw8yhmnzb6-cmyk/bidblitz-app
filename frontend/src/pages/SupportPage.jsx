@@ -3,9 +3,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronLeft, Search, ChevronDown, ChevronUp,
   CreditCard, Shield, User, Store, Send, MessageCircle,
-  HelpCircle, BookOpen, Headphones
+  HelpCircle, BookOpen, Headphones, Loader2, CheckCircle
 } from "lucide-react";
 import { useI18n } from "../store";
+import { api } from "../services/api";
 
 const slide = { duration: 0.3, ease: [0.32, 0.72, 0, 1] };
 
@@ -65,17 +66,28 @@ const FaqItem = ({ questionKey, answerKey, t }) => {
   );
 };
 
-// Contact form
+// Contact form – connected to backend
 const ContactForm = ({ t }) => {
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
+  const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
+  const [error, setError] = useState(null);
+  const [ticketId, setTicketId] = useState(null);
 
-  const handleSend = (e) => {
+  const handleSend = async (e) => {
     e.preventDefault();
     if (!subject.trim() || !message.trim()) return;
-    setSent(true);
-    setTimeout(() => { setSent(false); setSubject(""); setMessage(""); }, 3000);
+    setSending(true); setError(null);
+    try {
+      const res = await api.createSupportTicket({ subject: subject.trim(), message: message.trim(), category: "general" });
+      setTicketId(res.ticket_id);
+      setSent(true);
+      setTimeout(() => { setSent(false); setSubject(""); setMessage(""); setTicketId(null); }, 4000);
+    } catch (e) {
+      setError(e.message || "Failed to submit");
+    }
+    setSending(false);
   };
 
   return (
@@ -110,10 +122,12 @@ const ContactForm = ({ t }) => {
         className="w-full px-3 py-2.5 rounded-xl text-[13px] text-white/90 placeholder-[#333] font-medium outline-none resize-none"
         style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}
       />
+      {error && <p className="text-[11px] text-[#FF4757] font-medium">{error}</p>}
+      {sent && ticketId && <p className="text-[11px] text-[#00D26A] font-medium">Ticket #{ticketId} created</p>}
       <motion.button
         data-testid="support-send-btn"
         type="submit"
-        disabled={sent}
+        disabled={sent || sending}
         className="w-full py-2.5 rounded-xl text-[13px] font-semibold flex items-center justify-center gap-2 transition-colors"
         style={{
           background: sent ? "rgba(0,210,106,0.1)" : "rgba(0,194,255,0.1)",
@@ -122,8 +136,10 @@ const ContactForm = ({ t }) => {
         }}
         whileTap={{ scale: 0.97 }}
       >
-        {sent ? (
-          <>{t("support.sent")}</>
+        {sending ? (
+          <Loader2 size={13} className="animate-spin" />
+        ) : sent ? (
+          <><CheckCircle size={13} /> {t("support.sent")}</>
         ) : (
           <><Send size={13} /> {t("support.send_btn")}</>
         )}

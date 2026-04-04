@@ -19,6 +19,7 @@ from core.security import get_current_user
 from core.rate_limit import limiter, RATE_STRIPE
 from core.audit import log_audit, AuditEvent, get_client_info
 from core.compliance import run_compliance_check, BLOCKED, FLAGGED
+from routes.promotions import check_applicable_promotion, apply_promotion
 
 router = APIRouter(prefix="/api/stripe", tags=["stripe"])
 
@@ -211,6 +212,28 @@ async def checkout_status(session_id: str, request: Request):
                             ip=ip, user_agent=ua,
                             details={"session_id": session_id, "amount": payment["amount"],
                                      "reference": txn["reference"]})
+
+            # ── Check for bonus_topup promotions ──
+            try:
+                promo = await check_applicable_promotion(user_id, "topup", payment["amount"])
+                if promo:
+                    bonus = round(payment["amount"] * promo["value"] / 100, 2)
+                    if bonus > 0:
+                        await db.users.update_one({"_id": user["_id"]}, {"$inc": {"balance": bonus}})
+                        await db.transactions.insert_one({
+                            "id": secrets.token_hex(8),
+                            "user_id": user_id,
+                            "type": "reward",
+                            "amount": bonus,
+                            "description": f"Top-up bonus: {promo['name']} ({promo['value']}%)",
+                            "status": "completed",
+                            "reference": f"PROMO-{secrets.token_hex(4).upper()}",
+                            "category": "promotion",
+                            "created_at": datetime.now(timezone.utc).isoformat(),
+                        })
+                        await apply_promotion(user_id, promo["name"], payment["amount"])
+            except Exception:
+                pass
 
     if stripe_status.payment_status != "paid" and payment["status"] not in ("completed", "credited"):
         await log_audit(AuditEvent.TOPUP_FAILED, user_id=user_id, email=user.get("email", ""),

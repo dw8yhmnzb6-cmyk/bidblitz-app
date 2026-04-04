@@ -19,6 +19,10 @@ router = APIRouter(prefix="/api/user", tags=["user"])
 class ProfileUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=100)
     language: Optional[str] = Field(None, max_length=10)
+    notifications_enabled: Optional[bool] = None
+    email_notifications: Optional[bool] = None
+    biometric_enabled: Optional[bool] = None
+    dark_mode: Optional[bool] = None
 
 
 class ChangePasswordRequest(BaseModel):
@@ -36,6 +40,9 @@ async def get_profile(request: Request):
         "kyc_level": user.get("kyc_level", "basic"),
         "kyc_verified": user.get("kyc_level", "basic") in ("verified", "premium"),
         "notifications_enabled": user.get("notifications_enabled", True),
+        "email_notifications": user.get("email_notifications", True),
+        "biometric_enabled": user.get("biometric_enabled", False),
+        "dark_mode": user.get("dark_mode", True),
     }
 
 
@@ -51,6 +58,14 @@ async def update_profile(req: ProfileUpdate, request: Request):
         update["name"] = req.name.strip()
     if req.language is not None:
         update["language"] = req.language
+    if req.notifications_enabled is not None:
+        update["notifications_enabled"] = req.notifications_enabled
+    if req.email_notifications is not None:
+        update["email_notifications"] = req.email_notifications
+    if req.biometric_enabled is not None:
+        update["biometric_enabled"] = req.biometric_enabled
+    if req.dark_mode is not None:
+        update["dark_mode"] = req.dark_mode
 
     if not update:
         raise HTTPException(status_code=400, detail="No fields to update")
@@ -68,6 +83,10 @@ async def update_profile(req: ProfileUpdate, request: Request):
         "language": updated_user.get("language", "de"),
         "kyc_level": updated_user.get("kyc_level", "basic"),
         "kyc_verified": updated_user.get("kyc_level", "basic") in ("verified", "premium"),
+        "notifications_enabled": updated_user.get("notifications_enabled", True),
+        "email_notifications": updated_user.get("email_notifications", True),
+        "biometric_enabled": updated_user.get("biometric_enabled", False),
+        "dark_mode": updated_user.get("dark_mode", True),
     }
 
 

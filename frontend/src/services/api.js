@@ -146,6 +146,31 @@ export const api = {
   getAdminUsers: () => request("/api/admin/users"),
   getAdminMerchants: () => request("/api/admin/merchants"),
   getAdminPayouts: () => request("/api/admin/payouts"),
+  getAdminAuditLogs: (params = {}) => {
+    const q = new URLSearchParams();
+    if (params.event) q.set("event", params.event);
+    if (params.user_id) q.set("user_id", params.user_id);
+    if (params.limit) q.set("limit", params.limit);
+    if (params.skip) q.set("skip", params.skip);
+    const qs = q.toString();
+    return request(`/api/admin/audit-logs${qs ? `?${qs}` : ""}`);
+  },
+  getAdminComplianceFlags: (params = {}) => {
+    const q = new URLSearchParams();
+    if (params.status) q.set("status", params.status);
+    if (params.limit) q.set("limit", params.limit);
+    if (params.skip) q.set("skip", params.skip);
+    const qs = q.toString();
+    return request(`/api/admin/compliance-flags${qs ? `?${qs}` : ""}`);
+  },
+  resolveComplianceFlag: (index, body) => request(`/api/admin/compliance-flags/${index}/resolve`, { method: "POST", body: JSON.stringify(body) }),
+  getAdminComplianceChecks: (params = {}) => {
+    const q = new URLSearchParams();
+    if (params.outcome) q.set("outcome", params.outcome);
+    if (params.limit) q.set("limit", params.limit);
+    const qs = q.toString();
+    return request(`/api/admin/compliance-checks${qs ? `?${qs}` : ""}`);
+  },
 
   // Profile
   getProfile: () => request("/api/user/profile"),
@@ -209,4 +234,16 @@ export const api = {
   createKidsCheckout: (body) => request("/api/kids/create-checkout", { method: "POST", body: JSON.stringify(body) }),
   startKidsTrial: () => request("/api/kids/start-trial", { method: "POST" }),
   verifyKidsCheckout: (sessionId) => request(`/api/kids/verify-checkout/${sessionId}`),
+
+  // Support Tickets
+  createSupportTicket: (body) => request("/api/support/tickets", { method: "POST", body: JSON.stringify(body) }),
+  getMyTickets: () => request("/api/support/tickets"),
+  getAdminTickets: (params = {}) => {
+    const q = new URLSearchParams();
+    if (params.status) q.set("status", params.status);
+    if (params.limit) q.set("limit", params.limit);
+    const qs = q.toString();
+    return request(`/api/support/admin/tickets${qs ? `?${qs}` : ""}`);
+  },
+  resolveTicket: (ticketId, body) => request(`/api/support/admin/tickets/${ticketId}/resolve`, { method: "POST", body: JSON.stringify(body) }),
 };

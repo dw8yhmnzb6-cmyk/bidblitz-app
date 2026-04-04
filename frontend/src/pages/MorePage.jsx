@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, User, CreditCard, Bell, Shield, Moon, Settings,
   HelpCircle, LogOut, ChevronRight, ChevronLeft, Sparkles,
-  Globe, Lock, Eye, Fingerprint, Smartphone, Mail, Calendar, Gift, LayoutDashboard, Activity, Users
+  Globe, Lock, Eye, Fingerprint, Smartphone, Mail, Calendar, Gift, LayoutDashboard, Activity, Users,
+  Pencil, Loader2
 } from "lucide-react";
 import { useUser, useI18n } from "../store";
 import { api } from "../services/api";
@@ -84,57 +85,95 @@ const SubPage = ({ title, onBack, children }) => (
 
 // ── Profile Sub-page ──
 const ProfileView = ({ user, onBack, t }) => {
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState(user.name || "");
+  const [saving, setSaving] = useState(false);
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [currentPw, setCurrentPw] = useState("");
+  const [newPw, setNewPw] = useState("");
+  const [confirmPw, setConfirmPw] = useState("");
+  const [pwSaving, setPwSaving] = useState(false);
+  const [pwMsg, setPwMsg] = useState(null);
+  const [nameMsg, setNameMsg] = useState(null);
+
+  const handleSaveName = async () => {
+    if (!name.trim() || name.trim() === user.name) { setEditing(false); return; }
+    setSaving(true); setNameMsg(null);
+    try {
+      await api.updateProfile({ name: name.trim() });
+      user.refreshUser && (await user.refreshUser());
+      setNameMsg({ ok: true, text: t("profile.name_saved") || "Name updated" });
+      setEditing(false);
+    } catch (e) { setNameMsg({ ok: false, text: e.message }); }
+    setSaving(false);
+  };
+
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    if (!currentPw || !newPw) return;
+    if (newPw !== confirmPw) { setPwMsg({ ok: false, text: t("auth.passwords_mismatch") || "Passwords do not match" }); return; }
+    if (newPw.length < 6) { setPwMsg({ ok: false, text: t("auth.password_short") || "Min 6 characters" }); return; }
+    setPwSaving(true); setPwMsg(null);
+    try {
+      await api.changePassword({ current_password: currentPw, new_password: newPw });
+      setPwMsg({ ok: true, text: t("profile.password_changed") || "Password changed" });
+      setCurrentPw(""); setNewPw(""); setConfirmPw("");
+      setTimeout(() => setShowPasswordForm(false), 1500);
+    } catch (e) { setPwMsg({ ok: false, text: e.message }); }
+    setPwSaving(false);
+  };
+
   const joined = "January 2024";
+
   return (
     <SubPage title={t("profile.title")} onBack={onBack}>
       {/* Avatar + Name */}
-      <motion.div
-        className="flex flex-col items-center py-6"
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.06 }}
-      >
+      <motion.div className="flex flex-col items-center py-6" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.06 }}>
         <div className="relative mb-4">
-          <img
-            src={user.avatar}
-            alt="Avatar"
-            className="w-[80px] h-[80px] rounded-full object-cover"
-            style={{ border: "3px solid rgba(0,194,255,0.2)", boxShadow: "0 0 24px rgba(0,194,255,0.1)" }}
-          />
+          <img src={user.avatar} alt="Avatar" className="w-[80px] h-[80px] rounded-full object-cover"
+            style={{ border: "3px solid rgba(0,194,255,0.2)", boxShadow: "0 0 24px rgba(0,194,255,0.1)" }} />
           {user.isPremium && (
-            <motion.div
-              className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full flex items-center justify-center"
+            <motion.div className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full flex items-center justify-center"
               style={{ background: "linear-gradient(135deg, #FFD700, #FFA500)", boxShadow: "0 2px 10px rgba(255,215,0,0.4)" }}
-              animate={{ scale: [1, 1.1, 1] }}
-              transition={{ duration: 2, repeat: Infinity }}
-            >
+              animate={{ scale: [1, 1.1, 1] }} transition={{ duration: 2, repeat: Infinity }}>
               <Sparkles size={12} className="text-white" />
             </motion.div>
           )}
         </div>
-        <p className="text-[18px] font-bold font-outfit text-white mb-0.5">{user.name}</p>
-        <p className="text-[12px] text-[#444] font-medium">{user.email}</p>
+        {editing ? (
+          <div className="flex items-center gap-2 w-full max-w-[260px]">
+            <input data-testid="profile-name-input" value={name} onChange={e => setName(e.target.value)}
+              className="flex-1 px-3 py-2 rounded-xl text-[14px] text-white font-outfit font-bold text-center outline-none"
+              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(0,194,255,0.2)" }}
+              autoFocus onKeyDown={e => e.key === "Enter" && handleSaveName()} />
+            <motion.button data-testid="profile-save-name-btn" onClick={handleSaveName} disabled={saving}
+              className="px-3 py-2 rounded-xl text-[12px] font-semibold bg-[#00C2FF]/10 text-[#00C2FF] border border-[#00C2FF]/20"
+              whileTap={{ scale: 0.95 }}>
+              {saving ? <Loader2 size={12} className="animate-spin" /> : (t("common.save") || "Save")}
+            </motion.button>
+          </div>
+        ) : (
+          <motion.button data-testid="profile-edit-name-btn" onClick={() => setEditing(true)} className="group">
+            <p className="text-[18px] font-bold font-outfit text-white mb-0.5 group-hover:text-[#00C2FF] transition-colors">
+              {user.name} <Pencil size={12} className="inline text-[#444] group-hover:text-[#00C2FF] ml-1" />
+            </p>
+          </motion.button>
+        )}
+        <p className="text-[12px] text-[#444] font-medium mt-1">{user.email}</p>
+        {nameMsg && <p className={`text-[11px] mt-1 font-medium ${nameMsg.ok ? "text-[#00D26A]" : "text-[#FF4757]"}`}>{nameMsg.text}</p>}
         {user.isPremium && (
-          <motion.span
-            className="mt-2 text-[9px] uppercase tracking-[0.14em] font-bold px-3 py-1 rounded-full"
+          <motion.span className="mt-2 text-[9px] uppercase tracking-[0.14em] font-bold px-3 py-1 rounded-full"
             style={{ background: "rgba(255,215,0,0.08)", color: "#FFD700", border: "1px solid rgba(255,215,0,0.15)" }}
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.2 }}
-          >
+            initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.2 }}>
             {t("profile.premium_member")}
           </motion.span>
         )}
       </motion.div>
 
       {/* Info card */}
-      <motion.div
-        className="rounded-2xl overflow-hidden"
+      <motion.div className="rounded-2xl overflow-hidden"
         style={{ background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.035)" }}
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.12 }}
-      >
+        initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}>
         {[
           { icon: User, label: t("profile.full_name"), value: user.name, color: "#00C2FF" },
           { icon: Mail, label: t("profile.email"), value: user.email, color: "#A855F7" },
@@ -142,10 +181,7 @@ const ProfileView = ({ user, onBack, t }) => {
           { icon: Calendar, label: t("profile.member_since"), value: joined, color: "#FFB800" },
           { icon: Fingerprint, label: t("profile.account_id"), value: user.id || "user_001", color: "#888" },
         ].map((row, i, arr) => (
-          <div
-            key={i}
-            className={`flex items-center justify-between px-4 py-[12px] ${i < arr.length - 1 ? "border-b border-white/[0.03]" : ""}`}
-          >
+          <div key={i} className={`flex items-center justify-between px-4 py-[12px] ${i < arr.length - 1 ? "border-b border-white/[0.03]" : ""}`}>
             <div className="flex items-center gap-2.5">
               <row.icon size={13} style={{ color: row.color }} />
               <span className="text-[11px] text-[#444] font-medium">{row.label}</span>
@@ -153,6 +189,51 @@ const ProfileView = ({ user, onBack, t }) => {
             <span className="text-[12px] text-white/80 font-medium">{row.value}</span>
           </div>
         ))}
+      </motion.div>
+
+      {/* Change Password Section */}
+      <motion.div className="mt-4" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }}>
+        <motion.button data-testid="profile-change-pw-btn"
+          onClick={() => setShowPasswordForm(!showPasswordForm)}
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl"
+          style={{ background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.035)" }}
+          whileTap={{ scale: 0.98 }}>
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "rgba(0,210,106,0.08)", border: "1px solid rgba(0,210,106,0.12)" }}>
+            <Lock size={14} className="text-[#00D26A]" />
+          </div>
+          <span className="text-[13px] font-medium text-white/90 flex-1 text-left">{t("settings.change_password") || "Change Password"}</span>
+          <ChevronRight size={14} className={`text-[#333] transition-transform ${showPasswordForm ? "rotate-90" : ""}`} />
+        </motion.button>
+
+        <AnimatePresence>
+          {showPasswordForm && (
+            <motion.form data-testid="change-password-form" onSubmit={handleChangePassword}
+              initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25 }}
+              className="overflow-hidden mt-2 rounded-2xl p-4 space-y-3"
+              style={{ background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.035)" }}>
+              <input data-testid="pw-current" type="password" value={currentPw} onChange={e => setCurrentPw(e.target.value)}
+                placeholder={t("profile.current_password") || "Current password"}
+                className="w-full px-3 py-2.5 rounded-xl text-[13px] text-white/90 placeholder-[#333] font-medium outline-none"
+                style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }} />
+              <input data-testid="pw-new" type="password" value={newPw} onChange={e => setNewPw(e.target.value)}
+                placeholder={t("profile.new_password") || "New password"}
+                className="w-full px-3 py-2.5 rounded-xl text-[13px] text-white/90 placeholder-[#333] font-medium outline-none"
+                style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }} />
+              <input data-testid="pw-confirm" type="password" value={confirmPw} onChange={e => setConfirmPw(e.target.value)}
+                placeholder={t("profile.confirm_password") || "Confirm new password"}
+                className="w-full px-3 py-2.5 rounded-xl text-[13px] text-white/90 placeholder-[#333] font-medium outline-none"
+                style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }} />
+              {pwMsg && <p className={`text-[11px] font-medium ${pwMsg.ok ? "text-[#00D26A]" : "text-[#FF4757]"}`}>{pwMsg.text}</p>}
+              <motion.button data-testid="pw-submit-btn" type="submit" disabled={pwSaving}
+                className="w-full py-2.5 rounded-xl text-[13px] font-semibold flex items-center justify-center gap-2 bg-[#00D26A]/10 text-[#00D26A] border border-[#00D26A]/15"
+                whileTap={{ scale: 0.97 }}>
+                {pwSaving ? <Loader2 size={13} className="animate-spin" /> : <Lock size={13} />}
+                {t("profile.update_password") || "Update Password"}
+              </motion.button>
+            </motion.form>
+          )}
+        </AnimatePresence>
       </motion.div>
     </SubPage>
   );
@@ -166,10 +247,24 @@ const LANG_NAMES = {
 
 // ── Settings Sub-page ──
 const SettingsView = ({ onBack, t, locale, setLocale }) => {
-  const [notifs, setNotifs] = useState(true);
-  const [biometric, setBiometric] = useState(false);
-  const [darkMode] = useState(true);
+  const userCtx = useUser();
+  const [notifs, setNotifs] = useState(userCtx?.notifications_enabled !== false);
+  const [emailNotifs, setEmailNotifs] = useState(userCtx?.email_notifications !== false);
+  const [biometric, setBiometric] = useState(userCtx?.biometric_enabled === true);
+  const [darkMode, setDarkMode] = useState(userCtx?.dark_mode !== false);
   const [showLangPicker, setShowLangPicker] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const persistSetting = async (field, value) => {
+    setSaving(true);
+    try { await api.updateProfile({ [field]: value }); } catch {}
+    setSaving(false);
+  };
+
+  const toggleNotifs = () => { const v = !notifs; setNotifs(v); persistSetting("notifications_enabled", v); };
+  const toggleEmail = () => { const v = !emailNotifs; setEmailNotifs(v); persistSetting("email_notifications", v); };
+  const toggleBio = () => { const v = !biometric; setBiometric(v); persistSetting("biometric_enabled", v); };
+  const toggleDark = () => { const v = !darkMode; setDarkMode(v); persistSetting("dark_mode", v); };
 
   return (
     <SubPage title={t("settings.title")} onBack={onBack}>
@@ -208,7 +303,7 @@ const SettingsView = ({ onBack, t, locale, setLocale }) => {
               </motion.div>
             )}
           </AnimatePresence>
-          <MenuRow icon={Moon} label={t("settings.appearance")} desc={t("settings.dark_mode")} color="#6366F1" isLast right={<Toggle on={darkMode} onToggle={() => {}} />} />
+          <MenuRow icon={Moon} label={t("settings.appearance")} desc={darkMode ? t("settings.dark_mode") : "Light"} color="#6366F1" isLast right={<Toggle on={darkMode} onToggle={toggleDark} />} />
         </div>
       </motion.div>
 
@@ -216,8 +311,8 @@ const SettingsView = ({ onBack, t, locale, setLocale }) => {
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
         <p className="text-[9px] text-[#333] uppercase tracking-[0.14em] font-semibold mb-2.5 pl-1">{t("settings.notifications")}</p>
         <div className="rounded-2xl overflow-hidden mb-5" style={{ background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.035)" }}>
-          <MenuRow icon={Bell} label={t("settings.push")} color="#FFB800" isLast={false} right={<Toggle on={notifs} onToggle={() => setNotifs(!notifs)} />} />
-          <MenuRow icon={Mail} label={t("settings.email_notif")} desc={t("settings.weekly_summary")} color="#FF6B6B" isLast />
+          <MenuRow icon={Bell} label={t("settings.push")} color="#FFB800" isLast={false} right={<Toggle on={notifs} onToggle={toggleNotifs} />} />
+          <MenuRow icon={Mail} label={t("settings.email_notif")} desc={t("settings.weekly_summary")} color="#FF6B6B" isLast right={<Toggle on={emailNotifs} onToggle={toggleEmail} />} />
         </div>
       </motion.div>
 
@@ -225,12 +320,12 @@ const SettingsView = ({ onBack, t, locale, setLocale }) => {
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.14 }}>
         <p className="text-[9px] text-[#333] uppercase tracking-[0.14em] font-semibold mb-2.5 pl-1">{t("settings.security_privacy")}</p>
         <div className="rounded-2xl overflow-hidden mb-5" style={{ background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.035)" }}>
-          <MenuRow icon={Lock} label={t("settings.change_password")} color="#00D26A" isLast={false} />
-          <MenuRow icon={Fingerprint} label={t("settings.biometric")} color="#00C2FF" isLast={false} right={<Toggle on={biometric} onToggle={() => setBiometric(!biometric)} />} />
+          <MenuRow icon={Fingerprint} label={t("settings.biometric")} color="#00C2FF" isLast={false} right={<Toggle on={biometric} onToggle={toggleBio} />} />
           <MenuRow icon={Eye} label={t("settings.privacy")} color="#888" isLast={false} />
           <MenuRow icon={Smartphone} label={t("settings.active_sessions")} desc={t("settings.devices")} color="#A855F7" isLast />
         </div>
       </motion.div>
+      {saving && <p className="text-center text-[10px] text-[#00C2FF]/50 animate-pulse mt-1">Saving...</p>}
     </SubPage>
   );
 };

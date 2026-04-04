@@ -3,7 +3,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Users, Store, CreditCard, Shield, BarChart3,
   Download, Search, ChevronRight, Loader2, Check, X,
-  Clock, AlertCircle, CircleDollarSign, Activity, Settings
+  Clock, AlertCircle, CircleDollarSign, Activity, Settings,
+  Flag, FileText, TrendingUp, Eye, ToggleLeft, ToggleRight,
+  ChevronDown, ChevronUp
 } from "lucide-react";
 import { useUser, useI18n } from "../store";
 import ExportSection from "../components/ExportSection";
@@ -49,6 +51,10 @@ const tabs = [
   { id: "merchants", key: "admin.merchants", icon: Store },
   { id: "payouts", key: "admin.payouts", icon: Download },
   { id: "transactions", key: "admin.txns", icon: CreditCard },
+  { id: "flags", key: "Feature Flags", icon: Flag },
+  { id: "audit", key: "Audit Logs", icon: FileText },
+  { id: "compliance", key: "Compliance", icon: Shield },
+  { id: "analytics", key: "Analytics", icon: TrendingUp },
   { id: "settings", key: "admin.config", icon: Settings },
 ];
 
@@ -67,6 +73,13 @@ export const AdminPage = ({ onNavigate }) => {
   const [payoutFilter, setPayoutFilter] = useState("");
   const [actionLoading, setActionLoading] = useState(null);
   const [error, setError] = useState(null);
+  const [featureFlags, setFeatureFlags] = useState([]);
+  const [auditLogs, setAuditLogs] = useState([]);
+  const [auditTotal, setAuditTotal] = useState(0);
+  const [complianceFlags, setComplianceFlags] = useState([]);
+  const [complianceChecks, setComplianceChecks] = useState([]);
+  const [complianceTab, setComplianceTab] = useState("flags");
+  const [analyticsData, setAnalyticsData] = useState(null);
 
   const adminExports = [
     { key: "transactions", label: t("export.transactions"), action: (f) => apiService.exportAdminTransactions(f) },
@@ -86,6 +99,25 @@ export const AdminPage = ({ onNavigate }) => {
       if (t === "payouts") { const d = await api(`/api/admin/payouts?status=${payoutFilter}`); setPayouts(d.payouts); }
       if (t === "transactions") { const d = await api(`/api/admin/transactions?search=${encodeURIComponent(search)}&limit=30`); setTxns(d.transactions); }
       if (t === "settings") { const d = await api("/api/admin/settings"); setSettings(d); }
+      if (t === "flags") { const d = await api("/api/admin/feature-flags"); setFeatureFlags(d.flags || []); }
+      if (t === "audit") { const d = await api("/api/admin/audit-logs?limit=50"); setAuditLogs(d.logs || []); setAuditTotal(d.total || 0); }
+      if (t === "compliance") {
+        const [flagsRes, checksRes] = await Promise.all([
+          api("/api/admin/compliance-flags?limit=50"),
+          api("/api/admin/compliance-checks?limit=50"),
+        ]);
+        setComplianceFlags(flagsRes.flags || []);
+        setComplianceChecks(checksRes.checks || []);
+      }
+      if (t === "analytics") {
+        const [overview, funnel, retention, campaigns] = await Promise.all([
+          api("/api/analytics/growth/overview"),
+          api("/api/analytics/growth/funnel"),
+          api("/api/analytics/growth/retention"),
+          api("/api/analytics/growth/campaigns"),
+        ]);
+        setAnalyticsData({ overview, funnel, retention, campaigns });
+      }
     } catch (e) { setError(e); }
     setLoading(false);
   }, [search, payoutFilter]);
@@ -140,7 +172,7 @@ export const AdminPage = ({ onNavigate }) => {
               className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-medium whitespace-nowrap transition-all ${
                 tab === tb.id ? "bg-[#00C2FF]/10 text-[#00C2FF] border border-[#00C2FF]/20" : "bg-white/[0.02] text-[#444] border border-white/[0.04]"
               }`}>
-              <tb.icon size={12} /> {t(tb.key)}
+              <tb.icon size={12} /> {t(tb.key) || tb.key}
             </motion.button>
           ))}
         </div>
@@ -386,6 +418,246 @@ export const AdminPage = ({ onNavigate }) => {
                     </div>
                     <p className="text-[10px] text-[#444]">{t("admin.fee_note")}</p>
                   </motion.div>
+                </div>
+              )}
+            </motion.div>
+          )}
+
+          {/* ── Feature Flags Tab ── */}
+          {tab === "flags" && (
+            <motion.div key="flags" data-testid="admin-flags-tab" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              {loading ? <div className="space-y-2">{[1,2,3,4].map(i => <Skeleton key={i} className="h-[56px]" />)}</div> : (
+                <div className="space-y-2">
+                  <p className="text-[9px] text-[#333] uppercase tracking-[0.14em] font-semibold mb-2 pl-1">Feature Flags ({featureFlags.length})</p>
+                  {featureFlags.map((flag) => (
+                    <motion.div key={flag.name} data-testid={`flag-row-${flag.name}`}
+                      className="flex items-center justify-between px-4 py-3 rounded-2xl"
+                      style={{ background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.035)" }}
+                      initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <Flag size={11} className={flag.enabled ? "text-[#00D26A]" : "text-[#444]"} />
+                          <span className="text-[12px] font-semibold text-white/90">{flag.name.replace(/_/g, " ")}</span>
+                        </div>
+                        <p className="text-[9px] text-[#333] mt-0.5 pl-[19px]">Access: {flag.access || "all"}</p>
+                      </div>
+                      <motion.button data-testid={`flag-toggle-${flag.name}`}
+                        onClick={async () => {
+                          try {
+                            await api(`/api/admin/feature-flags/${flag.name}`, {
+                              method: "PUT", body: JSON.stringify({ enabled: !flag.enabled })
+                            });
+                            setFeatureFlags(featureFlags.map(f => f.name === flag.name ? { ...f, enabled: !f.enabled } : f));
+                          } catch {}
+                        }}
+                        className="flex items-center"
+                        whileTap={{ scale: 0.9 }}>
+                        {flag.enabled ? (
+                          <ToggleRight size={28} className="text-[#00D26A]" />
+                        ) : (
+                          <ToggleLeft size={28} className="text-[#333]" />
+                        )}
+                      </motion.button>
+                    </motion.div>
+                  ))}
+                  {featureFlags.length === 0 && <p className="text-center py-8 text-[12px] text-[#333]">No feature flags found</p>}
+                </div>
+              )}
+            </motion.div>
+          )}
+
+          {/* ── Audit Logs Tab ── */}
+          {tab === "audit" && (
+            <motion.div key="audit" data-testid="admin-audit-tab" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              {loading ? <div className="space-y-2">{[1,2,3,4,5].map(i => <Skeleton key={i} className="h-[50px]" />)}</div> : (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-[9px] text-[#333] uppercase tracking-[0.14em] font-semibold pl-1">Audit Logs ({auditTotal})</p>
+                    <span className="text-[9px] text-[#333] font-medium">Showing {auditLogs.length}</span>
+                  </div>
+                  <div className="rounded-2xl overflow-hidden" style={{ background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.035)" }}>
+                    {auditLogs.map((log, i) => {
+                      const evColor = log.severity === "warn" ? "#FFB800" : log.severity === "error" ? "#FF4757" : "#00D26A";
+                      return (
+                        <div key={i} data-testid={`audit-log-${i}`}
+                          className={`flex items-start gap-3 px-4 py-3 ${i < auditLogs.length - 1 ? "border-b border-white/[0.03]" : ""}`}>
+                          <div className="w-2 h-2 rounded-full mt-1.5 flex-shrink-0" style={{ background: evColor }} />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[11px] font-semibold text-white/80">{log.event}</span>
+                              <span className="text-[8px] px-1.5 py-0.5 rounded-full font-bold uppercase"
+                                style={{ color: evColor, background: `${evColor}10` }}>{log.severity || "info"}</span>
+                            </div>
+                            <p className="text-[9px] text-[#444] truncate mt-0.5">{log.email || log.user_id || "-"}</p>
+                            <p className="text-[8px] text-[#222] mt-0.5">{log.ip} · {new Date(log.timestamp).toLocaleString()}</p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {auditLogs.length === 0 && <p className="text-center py-8 text-[12px] text-[#333]">No audit logs found</p>}
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          )}
+
+          {/* ── Compliance Tab ── */}
+          {tab === "compliance" && (
+            <motion.div key="compliance" data-testid="admin-compliance-tab" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              {loading ? <Skeleton className="h-[200px]" /> : (
+                <div className="space-y-4">
+                  {/* Sub-tab toggle */}
+                  <div className="flex gap-2">
+                    {[
+                      { id: "flags", label: `Flags (${complianceFlags.length})`, color: "#FF4757" },
+                      { id: "checks", label: `Checks (${complianceChecks.length})`, color: "#00C2FF" },
+                    ].map(st => (
+                      <motion.button key={st.id} onClick={() => setComplianceTab(st.id)} whileTap={{ scale: 0.95 }}
+                        className={`px-3 py-1.5 rounded-xl text-[11px] font-medium transition-all ${
+                          complianceTab === st.id ? `border` : "bg-white/[0.02] text-[#444] border border-white/[0.04]"
+                        }`}
+                        style={complianceTab === st.id ? { background: `${st.color}10`, borderColor: `${st.color}30`, color: st.color } : {}}>
+                        {st.label}
+                      </motion.button>
+                    ))}
+                  </div>
+
+                  {complianceTab === "flags" && (
+                    <div className="rounded-2xl overflow-hidden" style={{ background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.035)" }}>
+                      {complianceFlags.map((flag, i) => (
+                        <div key={i} data-testid={`compliance-flag-${i}`}
+                          className={`px-4 py-3 ${i < complianceFlags.length - 1 ? "border-b border-white/[0.03]" : ""}`}>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <AlertCircle size={12} className={flag.status === "open" ? "text-[#FF4757]" : "text-[#00D26A]"} />
+                              <span className="text-[11px] font-semibold text-white/80">{flag.reason || "Flagged"}</span>
+                            </div>
+                            <span className="text-[8px] px-1.5 py-0.5 rounded-full font-bold uppercase"
+                              style={{ color: flag.status === "open" ? "#FF4757" : "#00D26A", background: flag.status === "open" ? "rgba(255,71,87,0.1)" : "rgba(0,210,106,0.1)" }}>
+                              {flag.status}
+                            </span>
+                          </div>
+                          <p className="text-[9px] text-[#333] mt-1">User: {flag.user_id || "-"} · {flag.txn_type || "-"} · €{flag.amount?.toFixed(2) || "0.00"}</p>
+                          <p className="text-[8px] text-[#222] mt-0.5">{new Date(flag.created_at).toLocaleString()}</p>
+                          {flag.status === "open" && (
+                            <motion.button data-testid={`resolve-flag-${i}`}
+                              onClick={async () => {
+                                try {
+                                  await api(`/api/admin/compliance-flags/${i}/resolve`, { method: "POST", body: JSON.stringify({ resolution: "Reviewed and resolved" }) });
+                                  setComplianceFlags(complianceFlags.map((f, idx) => idx === i ? { ...f, status: "resolved" } : f));
+                                } catch {}
+                              }}
+                              className="mt-2 px-3 py-1 rounded-lg text-[10px] font-medium bg-[#00D26A]/10 text-[#00D26A] border border-[#00D26A]/15"
+                              whileTap={{ scale: 0.95 }}>
+                              Resolve
+                            </motion.button>
+                          )}
+                        </div>
+                      ))}
+                      {complianceFlags.length === 0 && <p className="text-center py-8 text-[12px] text-[#333]">No compliance flags</p>}
+                    </div>
+                  )}
+
+                  {complianceTab === "checks" && (
+                    <div className="rounded-2xl overflow-hidden" style={{ background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.035)" }}>
+                      {complianceChecks.map((chk, i) => {
+                        const oc = chk.outcome === "passed" ? "#00D26A" : chk.outcome === "blocked" ? "#FF4757" : "#FFB800";
+                        return (
+                          <div key={i} data-testid={`compliance-check-${i}`}
+                            className={`px-4 py-3 ${i < complianceChecks.length - 1 ? "border-b border-white/[0.03]" : ""}`}>
+                            <div className="flex items-center justify-between">
+                              <span className="text-[11px] font-semibold text-white/80">{chk.txn_type}</span>
+                              <span className="text-[8px] px-1.5 py-0.5 rounded-full font-bold uppercase" style={{ color: oc, background: `${oc}10` }}>{chk.outcome}</span>
+                            </div>
+                            <p className="text-[9px] text-[#333] mt-0.5">€{chk.amount?.toFixed(2) || "0"} · KYC: {chk.kyc_level || "-"}</p>
+                            {chk.rules_triggered?.length > 0 && (
+                              <p className="text-[8px] text-[#FFB800] mt-0.5">Rules: {chk.rules_triggered.join(", ")}</p>
+                            )}
+                            <p className="text-[8px] text-[#222] mt-0.5">{new Date(chk.timestamp).toLocaleString()}</p>
+                          </div>
+                        );
+                      })}
+                      {complianceChecks.length === 0 && <p className="text-center py-8 text-[12px] text-[#333]">No compliance checks</p>}
+                    </div>
+                  )}
+                </div>
+              )}
+            </motion.div>
+          )}
+
+          {/* ── Analytics Tab ── */}
+          {tab === "analytics" && (
+            <motion.div key="analytics" data-testid="admin-analytics-tab" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              {loading || !analyticsData ? <div className="space-y-2">{[1,2,3,4].map(i => <Skeleton key={i} className="h-[80px]" />)}</div> : (
+                <div className="space-y-4">
+                  {/* Overview metrics */}
+                  <div>
+                    <p className="text-[9px] text-[#333] uppercase tracking-[0.14em] font-semibold mb-2 pl-1">Growth Overview</p>
+                    <div className="grid grid-cols-2 gap-2.5">
+                      <StatCard icon={Users} label="Total Users" value={analyticsData.overview.total_users} color="#00C2FF" delay={0.06} />
+                      <StatCard icon={Activity} label="Active (30d)" value={analyticsData.overview.active_30d} color="#00D26A" delay={0.08} />
+                      <StatCard icon={TrendingUp} label="Growth Rate" value={`${(analyticsData.overview.growth_rate * 100).toFixed(1)}%`} color="#A855F7" delay={0.10} />
+                      <StatCard icon={CircleDollarSign} label="ARPU" value={`€${analyticsData.overview.arpu?.toFixed(2) || "0.00"}`} color="#FFB800" delay={0.12} />
+                    </div>
+                  </div>
+
+                  {/* Funnel */}
+                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.14 }}>
+                    <p className="text-[9px] text-[#333] uppercase tracking-[0.14em] font-semibold mb-2 pl-1">Conversion Funnel</p>
+                    <div className="rounded-2xl p-4 space-y-3" style={{ background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.035)" }}>
+                      {analyticsData.funnel.steps?.map((step, i) => {
+                        const pct = analyticsData.funnel.steps[0].count > 0 ? (step.count / analyticsData.funnel.steps[0].count) * 100 : 0;
+                        const barColors = ["#00C2FF", "#A855F7", "#00D26A", "#FFB800", "#FF6B6B"];
+                        const bc = barColors[i % barColors.length];
+                        return (
+                          <div key={step.name}>
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-[11px] font-medium text-white/70">{step.name}</span>
+                              <span className="text-[11px] font-bold text-white/90">{step.count} <span className="text-[9px] text-[#444]">({pct.toFixed(0)}%)</span></span>
+                            </div>
+                            <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.04)" }}>
+                              <motion.div className="h-full rounded-full" style={{ background: bc }}
+                                initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.6, delay: i * 0.1 }} />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </motion.div>
+
+                  {/* Retention */}
+                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+                    <p className="text-[9px] text-[#333] uppercase tracking-[0.14em] font-semibold mb-2 pl-1">Retention</p>
+                    <div className="grid grid-cols-3 gap-2.5">
+                      {[
+                        { label: "Day 1", value: `${((analyticsData.retention.day_1 || 0) * 100).toFixed(0)}%`, color: "#00C2FF" },
+                        { label: "Day 7", value: `${((analyticsData.retention.day_7 || 0) * 100).toFixed(0)}%`, color: "#A855F7" },
+                        { label: "Day 30", value: `${((analyticsData.retention.day_30 || 0) * 100).toFixed(0)}%`, color: "#FFB800" },
+                      ].map(r => (
+                        <div key={r.label} className="rounded-2xl p-3 text-center" style={{ background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.035)" }}>
+                          <p className="text-[15px] font-bold font-outfit" style={{ color: r.color }}>{r.value}</p>
+                          <p className="text-[9px] text-[#444] font-medium mt-0.5">{r.label}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </motion.div>
+
+                  {/* Campaigns */}
+                  {analyticsData.campaigns?.campaigns?.length > 0 && (
+                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.26 }}>
+                      <p className="text-[9px] text-[#333] uppercase tracking-[0.14em] font-semibold mb-2 pl-1">Campaigns</p>
+                      <div className="rounded-2xl overflow-hidden" style={{ background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.035)" }}>
+                        {analyticsData.campaigns.campaigns.map((camp, i) => (
+                          <div key={camp.name} className={`px-4 py-3 ${i < analyticsData.campaigns.campaigns.length - 1 ? "border-b border-white/[0.03]" : ""}`}>
+                            <div className="flex items-center justify-between">
+                              <span className="text-[11px] font-semibold text-white/80">{camp.name}</span>
+                              <span className="text-[10px] text-[#00D26A] font-bold">{camp.signups} signups</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
                 </div>
               )}
             </motion.div>
