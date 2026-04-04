@@ -65,14 +65,18 @@ def generate_invite_code():
     return f"BLZ-{part1}-{part2}"
 
 
-async def create_invite_codes(count: int, created_by: str, max_uses: int = 1, label: str = ""):
-    """Generate batch of invite codes and store in DB."""
+async def create_invite_codes(count: int, created_by: str, max_uses: int = 1, label: str = "", code_type: str = "user"):
+    """Generate batch of invite codes and store in DB. code_type: 'user' or 'merchant'."""
     now = datetime.now(timezone.utc).isoformat()
+    prefix = "MRC" if code_type == "merchant" else "BLZ"
     codes = []
     for _ in range(count):
-        code = generate_invite_code()
+        part1 = secrets.token_hex(2).upper()
+        part2 = secrets.token_hex(2).upper()
+        code = f"{prefix}-{part1}-{part2}"
         doc = {
             "code": code,
+            "type": code_type,
             "max_uses": max_uses,
             "used_count": 0,
             "used_by": [],
@@ -87,16 +91,16 @@ async def create_invite_codes(count: int, created_by: str, max_uses: int = 1, la
 
 
 async def validate_invite_code(code: str):
-    """Check if an invite code is valid and has remaining uses."""
+    """Check if an invite code is valid and has remaining uses. Returns (valid, message, code_type)."""
     code = code.strip().upper()
     invite = await db.invite_codes.find_one({"code": code}, {"_id": 0})
     if not invite:
-        return False, "Invalid invite code"
+        return False, "Invalid invite code", None
     if not invite.get("active", True):
-        return False, "Invite code is deactivated"
+        return False, "Invite code is deactivated", None
     if invite["used_count"] >= invite["max_uses"]:
-        return False, "Invite code has been fully used"
-    return True, "valid"
+        return False, "Invite code has been fully used", None
+    return True, "valid", invite.get("type", "user")
 
 
 async def redeem_invite_code(code: str, email: str, user_id: str):

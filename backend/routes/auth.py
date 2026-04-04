@@ -36,12 +36,14 @@ async def register(req: RegisterRequest, request: Request, response: Response):
 
     # Soft launch gate: invite code OR whitelist OR open registration
     invite_used = None
+    invite_type = "user"
     if not await is_registration_open():
         if req.invite_code:
-            valid, msg = await validate_invite_code(req.invite_code)
+            valid, msg, code_type = await validate_invite_code(req.invite_code)
             if not valid:
                 raise HTTPException(status_code=403, detail=msg)
             invite_used = req.invite_code.strip().upper()
+            invite_type = code_type or "user"
         elif not await is_email_whitelisted(email):
             raise HTTPException(status_code=403, detail="Registration requires an invite code during soft launch.")
 
@@ -49,36 +51,43 @@ async def register(req: RegisterRequest, request: Request, response: Response):
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
 
+    role = "merchant" if invite_type == "merchant" else "user"
     user_doc = {
         "email": email,
         "password_hash": hash_password(req.password),
         "name": req.name.strip(),
-        "role": "user",
+        "role": role,
         "balance": 0.0,
         "currency": "EUR",
         "card_number": generate_card_number(),
         "card_expiry": generate_card_expiry(),
+        "payment_barcode": f"BLZ-{secrets.token_hex(6).upper()}",
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
     result = await db.users.insert_one(user_doc)
     user_doc["_id"] = result.inserted_id
     user_id = str(result.inserted_id)
 
-    # Create merchant profile for every user
-    await db.merchants.insert_one({
+    # Create merchant profile
+    merchant_doc = {
         "user_id": user_id,
-        "business_name": f"{req.name.strip()}'s Store",
+        "business_name": req.name.strip() if role == "merchant" else f"{req.name.strip()}'s Store",
         "total_earnings": 0.0,
+        "gross_earnings": 0.0,
+        "total_fees": 0.0,
+        "available_payout": 0.0,
+        "pending_payout": 0.0,
         "total_transactions": 0,
         "created_at": datetime.now(timezone.utc).isoformat(),
-    })
+    }
+    await db.merchants.insert_one(merchant_doc)
 
     access_token = create_access_token(user_id, email)
     refresh_token = create_refresh_token(user_id)
     set_auth_cookies(response, access_token, refresh_token)
 
     await log_audit(AuditEvent.REGISTER, user_id=user_id, email=email,
-                    ip=ip, user_agent=ua, details={"role": "user", "invite_code": invite_used or ""})
+                    ip=ip, user_agent=ua, details={"role": role, "invite_code": invite_used or ""})
 
     # Redeem invite code if used
     if invite_used:

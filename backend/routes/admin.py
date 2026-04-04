@@ -434,6 +434,7 @@ class InviteCodeRequest(BaseModel):
     count: int = Field(default=5, ge=1, le=100)
     max_uses: int = Field(default=1, ge=1, le=1000)
     label: str = ""
+    type: str = Field(default="user", pattern="^(user|merchant)$")
 
 
 @router.get("/soft-launch")
@@ -574,11 +575,12 @@ async def generate_invite_codes(req: InviteCodeRequest, request: Request):
         created_by=admin["email"],
         max_uses=req.max_uses,
         label=req.label,
+        code_type=req.type,
     )
     ip, ua = get_client_info(request)
     await log_audit(AuditEvent.ADMIN_ACTION, str(admin["_id"]), admin["email"],
-                    ip, ua, details={"action": "invite_codes_created", "count": len(codes), "label": req.label})
-    return {"success": True, "codes": codes, "count": len(codes), "max_uses": req.max_uses}
+                    ip, ua, details={"action": "invite_codes_created", "count": len(codes), "type": req.type, "label": req.label})
+    return {"success": True, "codes": codes, "count": len(codes), "max_uses": req.max_uses, "type": req.type}
 
 
 @router.get("/invite-codes")
