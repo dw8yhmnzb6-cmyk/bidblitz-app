@@ -30,7 +30,7 @@ function AppContent() {
   const [showBarcode, setShowBarcode] = useState(false);
   const [showAuthGate, setShowAuthGate] = useState(false);
   const [authGateMessage, setAuthGateMessage] = useState("");
-  const [showFullAuth, setShowFullAuth] = useState(false);
+  const [showFullAuth, setShowFullAuth] = useState("");
   const [isDemoMode, setIsDemoMode] = useState(false);
   const user = useUser();
   const { setLang } = useI18n();
@@ -45,7 +45,7 @@ function AppContent() {
   useEffect(() => {
     if (user.isAuthenticated) {
       setShowAuthGate(false);
-      setShowFullAuth(false);
+      setShowFullAuth("");
       setIsDemoMode(false);
     }
   }, [user.isAuthenticated]);
@@ -97,65 +97,49 @@ function AppContent() {
   if (showFullAuth && !user.isAuthenticated) {
     return (
       <div className="relative">
-        <AuthPage onBack={() => setShowFullAuth(false)} />
+        <AuthPage onBack={() => setShowFullAuth("")} initialMode={showFullAuth} />
       </div>
     );
   }
 
   const renderPage = () => {
+    const homeProps = {
+      onNavigate: handleNavigate, isGuest, isDemoMode,
+      onLogin: () => setShowFullAuth("login"),
+      onRegister: () => setShowFullAuth("register"),
+      onStartDemo: () => { setIsDemoMode(true); setCurrentPath("/wallet"); },
+    };
+    const pageProps = {
+      onNavigate: handleNavigate, isGuest, isDemoMode,
+      onAuthRequired: requireAuth,
+      onLogin: () => setShowFullAuth("login"),
+      onRegister: () => setShowFullAuth("register"),
+      onStartDemo: () => { setIsDemoMode(true); setCurrentPath("/wallet"); },
+    };
     switch (currentPath) {
       case "/":
-        return (
-          <HomePage
-            onNavigate={handleNavigate}
-            isGuest={isGuest}
-            isDemoMode={isDemoMode}
-            onAuthRequired={() => setShowFullAuth(true)}
-            onStartDemo={() => { setIsDemoMode(true); setCurrentPath("/wallet"); }}
-          />
-        );
+        return <HomePage {...homeProps} />;
       case "/wallet":
-        return (
-          <WalletPage
-            onNavigate={handleNavigate}
-            isGuest={isGuest}
-            isDemoMode={isDemoMode}
-            onAuthRequired={requireAuth}
-          />
-        );
+        return <WalletPage {...pageProps} />;
       case "/scan":
         if (user.role === "merchant" || user.role === "admin") {
           return <ScannerPage onNavigate={handleNavigate} />;
         }
-        return <HomePage onNavigate={handleNavigate} isGuest={isGuest} isDemoMode={isDemoMode} onAuthRequired={() => setShowFullAuth(true)} onStartDemo={() => { setIsDemoMode(true); setCurrentPath("/wallet"); }} />;
+        return <HomePage {...homeProps} />;
       case "/merchant":
-        return (
-          <MerchantPage
-            onNavigate={handleNavigate}
-            isGuest={isGuest}
-            isDemoMode={isDemoMode}
-            onAuthRequired={requireAuth}
-          />
-        );
+        return <MerchantPage {...pageProps} />;
       case "/admin":
         return user.role === "admin"
           ? <AdminPage onNavigate={handleNavigate} />
-          : <HomePage onNavigate={handleNavigate} isGuest={isGuest} isDemoMode={isDemoMode} onAuthRequired={() => setShowFullAuth(true)} onStartDemo={() => { setIsDemoMode(true); setCurrentPath("/wallet"); }} />;
+          : <HomePage {...homeProps} />;
       case "/notifications":
         return isGuest
-          ? <HomePage onNavigate={handleNavigate} isGuest={isGuest} isDemoMode={isDemoMode} onAuthRequired={() => setShowFullAuth(true)} onStartDemo={() => { setIsDemoMode(true); setCurrentPath("/wallet"); }} />
+          ? <HomePage {...homeProps} />
           : <NotificationsPage onBack={() => handleNavigate("/")} />;
       case "/more":
-        return (
-          <MorePage
-            onNavigate={handleNavigate}
-            isGuest={isGuest}
-            isDemoMode={isDemoMode}
-            onAuthRequired={requireAuth}
-          />
-        );
+        return <MorePage {...pageProps} />;
       default:
-        return <HomePage onNavigate={handleNavigate} isGuest={isGuest} isDemoMode={isDemoMode} onAuthRequired={() => setShowFullAuth(true)} onStartDemo={() => { setIsDemoMode(true); setCurrentPath("/wallet"); }} />;
+        return <HomePage {...homeProps} />;
     }
   };
 

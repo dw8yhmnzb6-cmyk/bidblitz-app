@@ -6,8 +6,8 @@ import { toast } from "sonner";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
-export const AuthGateOverlay = ({ isOpen, onClose, message }) => {
-  const [mode, setMode] = useState("login");
+export const AuthGateOverlay = ({ isOpen, onClose, message, initialMode }) => {
+  const [mode, setMode] = useState(initialMode || "login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");

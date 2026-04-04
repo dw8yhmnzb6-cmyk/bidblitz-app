@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { toast } from "sonner";
 import {
   Bell, ChevronRight, TrendingUp, Shield, Wallet,
-  Car, Zap, UtensilsCrossed, Gavel, ArrowUpRight, CreditCard, FlaskConical
+  Car, Zap, UtensilsCrossed, Gavel, ArrowUpRight, CreditCard, FlaskConical, LogIn, UserPlus
 } from "lucide-react";
 import { useUser, useWallet, useI18n } from "../store";
 import { useWalletStats } from "../hooks";
@@ -97,7 +97,7 @@ const ServiceCard = ({ feature, index, onClick }) => {
 };
 
 // ── Main Page ──
-export const HomePage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onStartDemo }) => {
+export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister, onStartDemo }) => {
   const user = useUser();
   const { balance, currency } = useWallet();
   const { percentageChange } = useWalletStats();
@@ -105,7 +105,7 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onSt
 
   const handleServiceClick = (featureId) => {
     if (isGuest) {
-      onAuthRequired();
+      onRegister();
       return;
     }
     if (featureId === "wallet") {
@@ -175,15 +175,26 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onSt
           <div className="flex items-center gap-2">
             <LanguageSwitcher />
             {isGuest ? (
-              <motion.button
-                data-testid="login-btn"
-                className="px-4 py-2 rounded-full text-[11px] font-semibold font-outfit"
-                style={{ background: "rgba(0,194,255,0.1)", border: "1px solid rgba(0,194,255,0.2)", color: "#00C2FF" }}
-                whileTap={{ scale: 0.92 }}
-                onClick={onAuthRequired}
-              >
-                {t("auth.signin") || "Sign In"}
-              </motion.button>
+              <div className="flex items-center gap-1.5">
+                <motion.button
+                  data-testid="header-login-btn"
+                  className="px-3.5 py-[7px] rounded-full text-[11px] font-semibold font-outfit"
+                  style={{ color: "#00C2FF" }}
+                  whileTap={{ scale: 0.92 }}
+                  onClick={onLogin}
+                >
+                  {t("auth.signin") || "Login"}
+                </motion.button>
+                <motion.button
+                  data-testid="header-register-btn"
+                  className="px-3.5 py-[7px] rounded-full text-[11px] font-semibold font-outfit"
+                  style={{ background: "rgba(0,194,255,0.1)", border: "1px solid rgba(0,194,255,0.2)", color: "#00C2FF" }}
+                  whileTap={{ scale: 0.92 }}
+                  onClick={onRegister}
+                >
+                  {t("auth.create") || "Register"}
+                </motion.button>
+              </div>
             ) : (
               <motion.button
                 data-testid="notification-btn"
@@ -258,7 +269,7 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onSt
                   animate={{ opacity: 1 }}
                   transition={{ delay: 0.35 }}
                   whileTap={{ scale: 0.95 }}
-                  onClick={onAuthRequired}
+                  onClick={onLogin}
                 >
                   {t("auth.signin") || "Sign in to see your balance"}
                 </motion.button>
@@ -309,44 +320,75 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onSt
           <p className="text-[12px] text-[#333] font-medium">{t("home.subtitle")}</p>
         </motion.div>
 
-        {/* ── Get Started CTA ── */}
-        <motion.button
-          data-testid="get-started-btn"
-          className="w-full py-[13px] rounded-[14px] bg-[#00C2FF] text-[#020202] font-semibold text-[13px] flex items-center justify-center gap-2 mb-7 relative overflow-hidden"
-          style={{ boxShadow: "0 6px 36px rgba(0,194,255,0.3), 0 2px 10px rgba(0,194,255,0.15)" }}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2, ...slide }}
-          whileTap={{ scale: 0.96 }}
-          onClick={() => isGuest ? onAuthRequired() : onNavigate("/wallet")}
-        >
-          {isGuest ? (t("auth.create") || "Get Started") : t("home.get_started")}
-          <motion.div
-            animate={{ x: [0, 3, 0] }}
-            transition={{ duration: 1.5, repeat: Infinity }}
-          >
-            <ChevronRight size={16} strokeWidth={2.5} />
-          </motion.div>
-        </motion.button>
+        {/* ── CTA Buttons ── */}
+        {isGuest ? (
+          <div className="mb-7">
+            {/* Register - Primary */}
+            <motion.button
+              data-testid="cta-register-btn"
+              className="w-full py-[13px] rounded-[14px] bg-[#00C2FF] text-[#020202] font-semibold text-[13px] flex items-center justify-center gap-2 mb-2.5 relative overflow-hidden"
+              style={{ boxShadow: "0 6px 36px rgba(0,194,255,0.3), 0 2px 10px rgba(0,194,255,0.15)" }}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2, ...slide }}
+              whileTap={{ scale: 0.96 }}
+              onClick={onRegister}
+            >
+              <UserPlus size={15} strokeWidth={2} />
+              {t("auth.create") || "Create Account"}
+              <motion.div animate={{ x: [0, 3, 0] }} transition={{ duration: 1.5, repeat: Infinity }}>
+                <ChevronRight size={16} strokeWidth={2.5} />
+              </motion.div>
+            </motion.button>
 
-        {/* Try Demo CTA for guests */}
-        {isGuest && !isDemoMode && (
+            {/* Login + Try Demo - Secondary row */}
+            <div className="flex gap-2.5">
+              <motion.button
+                data-testid="cta-login-btn"
+                className="flex-1 py-[12px] rounded-[14px] font-semibold text-[13px] flex items-center justify-center gap-2"
+                style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", color: "#fff" }}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.26, ...slide }}
+                whileTap={{ scale: 0.96 }}
+                onClick={onLogin}
+              >
+                <LogIn size={14} strokeWidth={2} />
+                {t("auth.signin") || "Login"}
+              </motion.button>
+
+              {!isDemoMode && (
+                <motion.button
+                  data-testid="try-demo-btn"
+                  className="flex-1 py-[12px] rounded-[14px] font-semibold text-[13px] flex items-center justify-center gap-2"
+                  style={{ background: "rgba(255,184,0,0.06)", border: "1px solid rgba(255,184,0,0.12)", color: "#FFB800" }}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3, ...slide }}
+                  whileTap={{ scale: 0.96 }}
+                  onClick={onStartDemo}
+                >
+                  <FlaskConical size={14} strokeWidth={1.8} />
+                  Try Demo
+                </motion.button>
+              )}
+            </div>
+          </div>
+        ) : (
           <motion.button
-            data-testid="try-demo-btn"
-            className="w-full py-[13px] rounded-[14px] font-semibold text-[13px] flex items-center justify-center gap-2 mb-7 -mt-4"
-            style={{
-              background: "rgba(255,184,0,0.06)",
-              border: "1px solid rgba(255,184,0,0.12)",
-              color: "#FFB800",
-            }}
+            data-testid="get-started-btn"
+            className="w-full py-[13px] rounded-[14px] bg-[#00C2FF] text-[#020202] font-semibold text-[13px] flex items-center justify-center gap-2 mb-7 relative overflow-hidden"
+            style={{ boxShadow: "0 6px 36px rgba(0,194,255,0.3), 0 2px 10px rgba(0,194,255,0.15)" }}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.26, ...slide }}
+            transition={{ delay: 0.2, ...slide }}
             whileTap={{ scale: 0.96 }}
-            onClick={onStartDemo}
+            onClick={() => onNavigate("/wallet")}
           >
-            <FlaskConical size={15} strokeWidth={1.8} />
-            Try Demo
+            {t("home.get_started")}
+            <motion.div animate={{ x: [0, 3, 0] }} transition={{ duration: 1.5, repeat: Infinity }}>
+              <ChevronRight size={16} strokeWidth={2.5} />
+            </motion.div>
           </motion.button>
         )}
 
@@ -390,7 +432,7 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onSt
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5, ...slide }}
           whileTap={{ scale: 0.98 }}
-          onClick={() => isGuest ? onAuthRequired() : onNavigate("/wallet")}
+          onClick={() => isGuest ? onRegister() : onNavigate("/wallet")}
         >
           {/* Corner glow */}
           <div

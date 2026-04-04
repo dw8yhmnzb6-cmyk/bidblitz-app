@@ -9,6 +9,7 @@ import {
 import { useUser, useI18n } from "../store";
 import { api } from "../services/api";
 import { DEMO_USER } from "../models/demoData";
+import GuestCTABar from "../components/GuestCTABar";
 import ReferralPage from "./ReferralPage";
 import NotificationsPage from "./NotificationsPage";
 import SupportPage from "./SupportPage";
@@ -540,7 +541,7 @@ const SettingsView = ({ onBack, t, locale, setLocale, onOpenPasswordChange }) =>
 };
 
 // ── Main More Page ──
-export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDemoMode, onAuthRequired }) => {
+export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDemoMode, onAuthRequired, onLogin, onRegister, onStartDemo }) => {
   const user = useUser();
   const { t, lang: locale, setLang: setLocale } = useI18n();
   const [subPage, setSubPage] = useState(kidsReturn ? "kids" : null);
@@ -692,6 +693,11 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
           {t("more.title")}
         </motion.h1>
       </div>
+
+      {/* Guest CTA Bar */}
+      {isGuest && !isDemoMode && (
+        <GuestCTABar onLogin={onLogin} onRegister={onRegister} onStartDemo={onStartDemo} isDemoMode={isDemoMode} />
+      )}
 
       <div className="px-5 pb-8 relative z-10">
 

@@ -16,6 +16,7 @@ import ErrorState from "../components/ErrorState";
 import { api as apiService } from "../services/api";
 import { useI18n } from "../store";
 import { DEMO_MERCHANT } from "../models/demoData";
+import GuestCTABar from "../components/GuestCTABar";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 const slide = { duration: 0.35, ease: [0.32, 0.72, 0, 1] };
@@ -178,7 +179,7 @@ const PayoutModal = ({ isOpen, onClose, available, minPayout, flatFee, onSuccess
 };
 
 // ── Main MerchantPage ──
-export const MerchantPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired }) => {
+export const MerchantPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onLogin, onRegister, onStartDemo }) => {
   const merchant = useMerchant();
   const realStats = useMerchantStats();
   const { t } = useI18n();
@@ -258,6 +259,11 @@ export const MerchantPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired }
           <Store size={15} strokeWidth={1.5} className="text-[#00D26A]/60" />
         </motion.div>
       </div>
+
+      {/* Guest CTA Bar */}
+      {isGuest && !isDemoMode && (
+        <GuestCTABar onLogin={onLogin} onRegister={onRegister} onStartDemo={onStartDemo} isDemoMode={isDemoMode} />
+      )}
 
       <div className="px-5 pb-8 relative z-10">
 

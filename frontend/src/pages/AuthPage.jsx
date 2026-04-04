@@ -56,8 +56,8 @@ const Field = ({ icon: Icon, type, value, onChange, placeholder, testId, autoFoc
   );
 };
 
-export const AuthPage = ({ onBack }) => {
-  const [mode, setMode] = useState("login");
+export const AuthPage = ({ onBack, initialMode }) => {
+  const [mode, setMode] = useState(initialMode || "login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");

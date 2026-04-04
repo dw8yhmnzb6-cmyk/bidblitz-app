@@ -18,6 +18,7 @@ import BarcodeModal from "../components/BarcodeModal";
 import { api } from "../services/api";
 import { useI18n } from "../store";
 import { DEMO_BALANCE, DEMO_CURRENCY, DEMO_CARD_NUMBER, DEMO_CARD_EXPIRY, DEMO_CARD_HOLDER, DEMO_TRANSACTIONS } from "../models/demoData";
+import GuestCTABar from "../components/GuestCTABar";
 
 const slide = { duration: 0.35, ease: [0.32, 0.72, 0, 1] };
 
@@ -101,7 +102,7 @@ const StatPill = ({ label, value, trend, delay = 0 }) => (
   </motion.div>
 );
 
-export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired }) => {
+export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onLogin, onRegister, onStartDemo }) => {
   // Auto-open TopUp modal if returning from Stripe
   const hasStripeParam = typeof window !== "undefined" &&
     (window.location.search.includes("stripe_session_id") || window.location.search.includes("stripe_cancelled"));
@@ -214,6 +215,11 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired }) 
             : <EyeOff size={15} strokeWidth={1.5} className="text-[#444]" />}
         </motion.button>
       </div>
+
+      {/* Guest CTA Bar */}
+      {isGuest && !isDemoMode && (
+        <GuestCTABar onLogin={onLogin} onRegister={onRegister} onStartDemo={onStartDemo} isDemoMode={isDemoMode} />
+      )}
 
       {/* Error Banner */}
       {walletError && !isLoading && (
