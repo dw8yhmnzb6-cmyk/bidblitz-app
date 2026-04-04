@@ -56,10 +56,14 @@ Create a modern, professional fintech web app called BidBlitz V2 with Revolut-le
 - localStorage fallback for language (I18nContext STORAGE_KEY)
 - All profile/password/settings labels in all 12 languages
 
-### Support Center (DONE)
+### Support Center (DONE - Apr 2026)
 - FAQ accordion with i18n
-- Contact form connected to backend (creates real tickets)
-- Admin ticket management endpoints
+- Contact form with category selector (General, Payments, Account, Security, Merchant), subject, optional reference/transaction ID, message
+- Connected to backend POST /api/support/tickets — creates real stored tickets
+- Success feedback with ticket ID, auto-reset after 4s
+- Validation: subject + message required (localized warning)
+- Admin ticket management: list, filter by status, resolve with response
+- All labels in 12 languages
 
 ### Kids Feature (DONE)
 - Stripe subscription paywall with trial

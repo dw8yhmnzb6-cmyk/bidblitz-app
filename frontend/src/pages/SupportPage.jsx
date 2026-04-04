@@ -70,25 +70,41 @@ const FaqItem = ({ questionKey, answerKey, t }) => {
 const ContactForm = ({ t }) => {
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
+  const [category, setCategory] = useState("general");
+  const [reference, setReference] = useState("");
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState(null);
   const [ticketId, setTicketId] = useState(null);
+  const [validation, setValidation] = useState(null);
+
+  const allCategories = [
+    { id: "general", color: "#888" },
+    ...CATEGORIES,
+  ];
 
   const handleSend = async (e) => {
     e.preventDefault();
-    if (!subject.trim() || !message.trim()) return;
+    if (!subject.trim() || !message.trim()) {
+      setValidation(t("support.field_required"));
+      return;
+    }
+    setValidation(null);
     setSending(true); setError(null);
     try {
-      const res = await api.createSupportTicket({ subject: subject.trim(), message: message.trim(), category: "general" });
+      const body = { subject: subject.trim(), message: message.trim(), category };
+      if (reference.trim()) body.reference = reference.trim();
+      const res = await api.createSupportTicket(body);
       setTicketId(res.ticket_id);
       setSent(true);
-      setTimeout(() => { setSent(false); setSubject(""); setMessage(""); setTicketId(null); }, 4000);
-    } catch (e) {
-      setError(e.message || "Failed to submit");
+      setTimeout(() => { setSent(false); setSubject(""); setMessage(""); setReference(""); setCategory("general"); setTicketId(null); }, 4000);
+    } catch (err) {
+      setError(err.message || "Failed to submit");
     }
     setSending(false);
   };
+
+  const inputStyle = { background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" };
 
   return (
     <motion.form
@@ -104,26 +120,81 @@ const ContactForm = ({ t }) => {
         <Headphones size={14} className="text-[#00C2FF]" />
         <span className="text-[13px] font-semibold text-white/90">{t("support.contact_title")}</span>
       </div>
+
+      {/* Category selector */}
+      <div>
+        <label className="text-[9px] text-[#444] font-semibold uppercase tracking-wider mb-1.5 block pl-0.5">{t("support.category_label")}</label>
+        <div className="flex gap-1.5 flex-wrap" data-testid="support-category-selector">
+          {allCategories.map((cat) => {
+            const active = category === cat.id;
+            return (
+              <motion.button key={cat.id} type="button"
+                data-testid={`support-form-cat-${cat.id}`}
+                onClick={() => setCategory(cat.id)}
+                whileTap={{ scale: 0.95 }}
+                className="px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all"
+                style={{
+                  background: active ? `${cat.color}15` : "rgba(255,255,255,0.02)",
+                  border: `1px solid ${active ? `${cat.color}30` : "rgba(255,255,255,0.04)"}`,
+                  color: active ? cat.color : "rgba(255,255,255,0.4)",
+                }}>
+                {t(`support.cat_${cat.id}`)}
+              </motion.button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Subject */}
       <input
         data-testid="support-subject-input"
         type="text"
         value={subject}
-        onChange={(e) => setSubject(e.target.value)}
+        onChange={(e) => { setSubject(e.target.value); setValidation(null); }}
         placeholder={t("support.subject_placeholder")}
         className="w-full px-3 py-2.5 rounded-xl text-[13px] text-white/90 placeholder-[#333] font-medium outline-none"
-        style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}
+        style={inputStyle}
       />
+
+      {/* Reference (optional) */}
+      <input
+        data-testid="support-reference-input"
+        type="text"
+        value={reference}
+        onChange={(e) => setReference(e.target.value)}
+        placeholder={t("support.ref_placeholder")}
+        className="w-full px-3 py-2.5 rounded-xl text-[13px] text-white/90 placeholder-[#333] font-medium outline-none"
+        style={inputStyle}
+      />
+
+      {/* Message */}
       <textarea
         data-testid="support-message-input"
         value={message}
-        onChange={(e) => setMessage(e.target.value)}
+        onChange={(e) => { setMessage(e.target.value); setValidation(null); }}
         placeholder={t("support.message_placeholder")}
         rows={4}
         className="w-full px-3 py-2.5 rounded-xl text-[13px] text-white/90 placeholder-[#333] font-medium outline-none resize-none"
-        style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}
+        style={inputStyle}
       />
-      {error && <p className="text-[11px] text-[#FF4757] font-medium">{error}</p>}
-      {sent && ticketId && <p className="text-[11px] text-[#00D26A] font-medium">Ticket #{ticketId} created</p>}
+
+      {/* Feedback */}
+      <AnimatePresence>
+        {validation && (
+          <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="text-[11px] text-[#FFB800] font-medium">{validation}</motion.p>
+        )}
+        {error && (
+          <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="text-[11px] text-[#FF4757] font-medium">{error}</motion.p>
+        )}
+        {sent && ticketId && (
+          <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+            className="flex items-center gap-2 px-3 py-2 rounded-xl bg-[#00D26A]/6 border border-[#00D26A]/12">
+            <CheckCircle size={12} className="text-[#00D26A]" />
+            <span className="text-[11px] text-[#00D26A] font-medium">{t("support.ticket_created")} #{ticketId}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <motion.button
         data-testid="support-send-btn"
         type="submit"
@@ -133,6 +204,7 @@ const ContactForm = ({ t }) => {
           background: sent ? "rgba(0,210,106,0.1)" : "rgba(0,194,255,0.1)",
           border: `1px solid ${sent ? "rgba(0,210,106,0.2)" : "rgba(0,194,255,0.15)"}`,
           color: sent ? "#00D26A" : "#00C2FF",
+          opacity: sending ? 0.6 : 1,
         }}
         whileTap={{ scale: 0.97 }}
       >

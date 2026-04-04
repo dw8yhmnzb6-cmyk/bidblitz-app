@@ -17,6 +17,7 @@ class CreateTicketRequest(BaseModel):
     subject: str = Field(..., min_length=1, max_length=200)
     message: str = Field(..., min_length=1, max_length=2000)
     category: str = Field("general", max_length=50)
+    reference: str = Field("", max_length=100)
 
 
 @router.post("/tickets")
@@ -34,6 +35,7 @@ async def create_ticket(req: CreateTicketRequest, request: Request):
         "subject": req.subject,
         "message": req.message,
         "category": req.category,
+        "reference": req.reference or "",
         "status": "open",
         "created_at": now,
         "updated_at": now,
