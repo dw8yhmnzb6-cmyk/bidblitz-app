@@ -18,6 +18,7 @@ import BottomNav from "./components/BottomNav";
 import BarcodeModal from "./components/BarcodeModal";
 import AuthGateOverlay from "./components/AuthGateOverlay";
 import DemoBanner from "./components/DemoBanner";
+import { tracker } from "./services/tracker";
 
 const pageTransition = { duration: 0.25, ease: [0.32, 0.72, 0, 1] };
 
@@ -58,6 +59,9 @@ function AppContent() {
   };
 
   const handleNavigate = (path) => {
+    // Track page view
+    tracker.pageView(path);
+
     // For customers: scan tab opens QR modal (or gates if guest)
     if (path === "/scan") {
       if (isGuest) {
@@ -105,16 +109,16 @@ function AppContent() {
   const renderPage = () => {
     const homeProps = {
       onNavigate: handleNavigate, isGuest, isDemoMode,
-      onLogin: () => setShowFullAuth("login"),
-      onRegister: () => setShowFullAuth("register"),
-      onStartDemo: () => { setIsDemoMode(true); setCurrentPath("/wallet"); },
+      onLogin: () => { tracker.ctaClick("login", "home"); setShowFullAuth("login"); },
+      onRegister: () => { tracker.guestRegisterClick("home"); setShowFullAuth("register"); },
+      onStartDemo: () => { tracker.demoStart(); setIsDemoMode(true); setCurrentPath("/wallet"); },
     };
     const pageProps = {
       onNavigate: handleNavigate, isGuest, isDemoMode,
       onAuthRequired: requireAuth,
-      onLogin: () => setShowFullAuth("login"),
-      onRegister: () => setShowFullAuth("register"),
-      onStartDemo: () => { setIsDemoMode(true); setCurrentPath("/wallet"); },
+      onLogin: () => { tracker.ctaClick("login", currentPath); setShowFullAuth("login"); },
+      onRegister: () => { tracker.guestRegisterClick(currentPath); setShowFullAuth("register"); },
+      onStartDemo: () => { tracker.demoStart(); setIsDemoMode(true); setCurrentPath("/wallet"); },
     };
     switch (currentPath) {
       case "/":
@@ -153,7 +157,7 @@ function AppContent() {
           style: { background: "#141414", color: "#fff", border: "1px solid rgba(255,255,255,0.08)", fontSize: "13px", fontFamily: "Outfit, sans-serif" },
         }}
       />
-      {isDemoMode && <DemoBanner onExit={() => { setIsDemoMode(false); setCurrentPath("/"); }} />}
+      {isDemoMode && <DemoBanner onExit={() => { tracker.demoExit(); setIsDemoMode(false); setCurrentPath("/"); }} />}
       <AnimatePresence mode="wait">
         <motion.div
           key={currentPath}

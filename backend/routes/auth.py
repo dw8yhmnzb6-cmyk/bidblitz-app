@@ -100,6 +100,26 @@ async def register(req: RegisterRequest, request: Request, response: Response):
     except Exception:
         pass
 
+    # Track registration conversion
+    try:
+        day_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        await db.conversion_events.insert_one({
+            "event": "register_complete",
+            "session_id": "",
+            "meta": {"role": role, "invite_code": invite_used or ""},
+            "day": day_key,
+            "ts": datetime.now(timezone.utc).isoformat(),
+            "user_id": user_id,
+            "ip": ip,
+        })
+        await db.conversion_metrics.update_one(
+            {"day": day_key, "event": "register_complete"},
+            {"$inc": {"count": 1}, "$set": {"updated_at": datetime.now(timezone.utc).isoformat()}},
+            upsert=True,
+        )
+    except Exception:
+        pass
+
     return serialize_user(user_doc)
 
 

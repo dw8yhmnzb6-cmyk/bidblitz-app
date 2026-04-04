@@ -1,10 +1,13 @@
 """
-BidBlitz V2 - Growth Analytics
-Referral tracking, conversion funnel, retention metrics, campaign performance.
+BidBlitz V2 - Growth Analytics & Conversion Tracking
+Referral tracking, conversion funnel, retention metrics, campaign performance,
+and lightweight event-based conversion tracking.
 """
 
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, HTTPException, Request, Query
+from pydantic import BaseModel
+from typing import Optional
 from core.database import db
 from core.security import get_current_user
 
@@ -23,7 +26,6 @@ async def growth_overview(request: Request):
     await require_admin(request)
 
     now = datetime.now(timezone.utc)
-    today = now.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
     week_ago = (now - timedelta(days=7)).isoformat()
     month_ago = (now - timedelta(days=30)).isoformat()
 
@@ -169,3 +171,111 @@ async def campaign_performance(request: Request):
         })
 
     return {"campaigns": results}
+
+
+# ═══════════════════════════════════════════════════
+# Conversion Tracking
+# ═══════════════════════════════════════════════════
+
+VALID_EVENTS = {
+    "guest_visit", "guest_register_click", "register_complete",
+    "first_payment", "feature_click", "demo_start", "demo_exit",
+    "cta_click", "page_view",
+}
+
+
+class TrackEvent(BaseModel):
+    event: str
+    session_id: Optional[str] = None
+    meta: Optional[dict] = None
+
+
+@router.post("/track")
+async def track_event(body: TrackEvent, request: Request):
+    """Ingest a conversion/tracking event. No auth required (guests track too)."""
+    if body.event not in VALID_EVENTS:
+        raise HTTPException(status_code=400, detail=f"Unknown event: {body.event}")
+
+    now = datetime.now(timezone.utc)
+    day_key = now.strftime("%Y-%m-%d")
+
+    doc = {
+        "event": body.event,
+        "session_id": body.session_id or "",
+        "meta": body.meta or {},
+        "day": day_key,
+        "ts": now.isoformat(),
+        "ip": request.client.host if request.client else "",
+    }
+
+    # Try to attach user_id if authenticated
+    try:
+        user = await get_current_user(request)
+        doc["user_id"] = str(user["_id"])
+    except Exception:
+        doc["user_id"] = ""
+
+    await db.conversion_events.insert_one(doc)
+
+    # Increment daily counter
+    await db.conversion_metrics.update_one(
+        {"day": day_key, "event": body.event},
+        {"$inc": {"count": 1}, "$set": {"updated_at": now.isoformat()}},
+        upsert=True,
+    )
+
+    return {"ok": True}
+
+
+@router.get("/conversions")
+async def conversion_dashboard(request: Request, days: int = Query(default=30, le=90)):
+    """Admin: aggregated conversion metrics."""
+    await require_admin(request)
+
+    now = datetime.now(timezone.utc)
+    since = (now - timedelta(days=days)).strftime("%Y-%m-%d")
+
+    # Daily metrics
+    metrics = await db.conversion_metrics.find(
+        {"day": {"$gte": since}}, {"_id": 0}
+    ).sort("day", -1).to_list(500)
+
+    # Aggregate totals per event
+    totals = {}
+    daily = {}
+    for m in metrics:
+        ev = m["event"]
+        totals[ev] = totals.get(ev, 0) + m["count"]
+        if m["day"] not in daily:
+            daily[m["day"]] = {}
+        daily[m["day"]][ev] = m["count"]
+
+    # Funnel conversion rates
+    gv = totals.get("guest_visit", 0)
+    rc = totals.get("register_complete", 0)
+    fp = totals.get("first_payment", 0)
+
+    funnel = {
+        "guest_to_register": round(rc / max(gv, 1) * 100, 1),
+        "register_to_payment": round(fp / max(rc, 1) * 100, 1),
+    }
+
+    return {
+        "period_days": days,
+        "totals": totals,
+        "funnel": funnel,
+        "daily": daily,
+        "top_features": await _top_features(since),
+    }
+
+
+async def _top_features(since: str):
+    """Top clicked features."""
+    pipeline = [
+        {"$match": {"event": "feature_click", "day": {"$gte": since}}},
+        {"$group": {"_id": "$meta.feature", "clicks": {"$sum": 1}}},
+        {"$sort": {"clicks": -1}},
+        {"$limit": 10},
+    ]
+    results = await db.conversion_events.aggregate(pipeline).to_list(10)
+    return [{"feature": r["_id"], "clicks": r["clicks"]} for r in results if r["_id"]]

@@ -150,6 +150,28 @@ async def pay(req: PaymentRequest, request: Request):
                     details={"reference": ref, "amount": req.amount, "fee": fee,
                              "merchant": merchant_name, "new_balance": updated_user["balance"]})
 
+    # Track first payment conversion
+    try:
+        existing_payments = await db.transactions.count_documents({"user_id": user_id, "type": "payment", "status": "completed"})
+        if existing_payments <= 1:  # This is the first
+            day_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+            await db.conversion_events.insert_one({
+                "event": "first_payment",
+                "session_id": "",
+                "meta": {"amount": req.amount, "type": "payment"},
+                "day": day_key,
+                "ts": datetime.now(timezone.utc).isoformat(),
+                "user_id": user_id,
+                "ip": ip,
+            })
+            await db.conversion_metrics.update_one(
+                {"day": day_key, "event": "first_payment"},
+                {"$inc": {"count": 1}, "$set": {"updated_at": datetime.now(timezone.utc).isoformat()}},
+                upsert=True,
+            )
+    except Exception:
+        pass
+
     # ── Check for applicable promotions (cashback) ──
     promo_applied = None
     try:

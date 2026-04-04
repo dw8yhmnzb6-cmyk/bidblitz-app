@@ -21,55 +21,59 @@ Create a modern, professional fintech web app called BidBlitz V2. Build Revolut-
 - Wallet: balance, top-up (Stripe), send money, QR barcode
 - Merchant dashboard: earnings, payments, payouts, weekly chart
 - Admin dashboard: platform management, soft-launch controls
-- 12-language i18n support
-- Kids dashboard with paywall
+- 12-language i18n support, Kids dashboard with paywall
 - Notifications, activity feed, referral system
 - Export tools, Feature flags & gating, Premium card display
 - Transaction history with filters
 
 ### Soft Launch Features (Complete)
 - Invite-only gates, admin whitelist, invite codes (standard + MRC-)
-- Soft launch dashboard metrics, DB backups & monitoring cron jobs
-- Admin alerts, user feedback collection, 15 users + 3 merchants seeded
+- Soft launch dashboard, DB backups & monitoring cron jobs
+- Admin alerts, user feedback, 15 users + 3 merchants seeded
 
-### Public Browsing & Auth Gating (Complete)
+### Public Browsing, Auth Gating & Guest Experience (Complete)
 - Homepage publicly accessible to guests
 - Balance/data masked for unauthenticated visitors
 - AuthGateOverlay + GuestCTABar for auth-gated flows
-- Bottom nav accessible for guests
+- Try Demo mode with mock data on Wallet/Merchant/More pages
+- Clear CTA buttons (Login/Register/Demo) in header + hero + inner pages
+- Onboarding hint (dismissible, localStorage-persisted, 12 languages)
+- Improved guest homepage: products, benefits, trust sections
 
-### Try Demo Mode (Complete)
-- "Try Demo" button, persistent demo banner
-- Mock data for Wallet/Merchant/More pages, demo toasts on actions
+### Conversion Tracking (Complete — April 4, 2026)
+**Backend:**
+- `POST /api/analytics/track` — Public event ingestion endpoint (no auth required)
+- `GET /api/analytics/conversions?days=N` — Admin-only conversion dashboard
+- Events stored in `conversion_events` collection, daily rollups in `conversion_metrics`
+- Server-side tracking for `register_complete` (in auth.py) and `first_payment` (in payment.py)
 
-### Clear CTA Buttons (Complete)
-- Homepage header: Login + Register buttons
-- Homepage hero: Register (primary), Login + Try Demo (secondary row)
-- Inner pages: GuestCTABar (Register/Login/Demo)
-- AuthPage/AuthGateOverlay accept initialMode
+**Frontend:**
+- `/app/frontend/src/services/tracker.js` — Lightweight fire-and-forget tracker using `sendBeacon` with fetch fallback
+- Session-based dedup (`fireOnce`) and permanent dedup (`fireOnceEver`)
+- Tracked events:
+  - `guest_visit` — on homepage load (once/session)
+  - `guest_register_click` — every register CTA click with source
+  - `register_complete` — server-side on successful registration (once ever)
+  - `first_payment` — server-side on first payment completion (once ever)
+  - `feature_click` — on product/service card click with feature name
+  - `demo_start` / `demo_exit` — demo mode lifecycle
+  - `cta_click` — login/register button clicks with page context
+  - `page_view` — on every navigation
+- Conversion funnel: guest → register rate, register → first payment rate
+- Top features report: ranked by click count
 
-### Onboarding Hint (Complete)
-- Dismissible inline banner, localStorage-persisted, 12-language i18n
-
-### Improved Guest Homepage (Complete — April 4, 2026)
-- **Key Products section**: 4 product cards (Wallet, QR Payments, Merchant Tools, Rides & More) with icons, descriptions, and "Use now" CTAs that gate behind registration
-- **Benefits section**: 3 benefit pills (Instant, Low Fees, Secure) with icons and descriptions
-- **Trust section**: 3 trust badges (1,200+ users, Encrypted, 12 Languages)
-- **Bottom CTA**: Wallet banner linking to registration
-- **Separate translations file**: `/app/frontend/src/models/homeTranslations.js` with all 12 languages (avoids modifying brittle I18nContext.jsx)
-- **Guest vs Auth split**: Guests see products/benefits/trust; authenticated users see balance card + services grid
-- All action clicks on guest sections trigger Register flow (auth gating on action, not on view)
+**Data model:**
+- `conversion_events`: `{event, session_id, meta, day, ts, user_id, ip}`
+- `conversion_metrics`: `{day, event, count, updated_at}` (upserted daily)
 
 ## Key Files
-- `/app/frontend/src/App.js` — Routing, demo mode state, auth gate, CTA wiring
-- `/app/frontend/src/pages/HomePage.jsx` — Homepage with guest products/benefits/trust sections
-- `/app/frontend/src/models/homeTranslations.js` — Guest homepage translations (12 languages)
-- `/app/frontend/src/models/demoData.js` — Mock data for demo mode
-- `/app/frontend/src/components/DemoBanner.jsx` — Demo mode banner
-- `/app/frontend/src/components/GuestCTABar.jsx` — Guest CTA bar for inner pages
-- `/app/frontend/src/components/AuthGateOverlay.jsx` — Auth popup overlay
-- `/app/frontend/src/pages/AuthPage.jsx` — Auth page with initialMode support
-- `/app/frontend/src/store/I18nContext.jsx` — Main 12-language translations
+- `/app/frontend/src/App.js` — Routing, tracking wiring
+- `/app/frontend/src/services/tracker.js` — Frontend event tracker
+- `/app/frontend/src/pages/HomePage.jsx` — Guest homepage with tracking
+- `/app/backend/routes/analytics.py` — Conversion tracking endpoints
+- `/app/backend/routes/auth.py` — Server-side register_complete tracking
+- `/app/backend/routes/payment.py` — Server-side first_payment tracking
+- `/app/frontend/src/models/homeTranslations.js` — Guest translations (12 lang)
 
 ## Backlog (P2/P3 — Not Started)
 - Push notifications (WebPush)

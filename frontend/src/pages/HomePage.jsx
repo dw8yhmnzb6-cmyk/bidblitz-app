@@ -12,6 +12,7 @@ import { useWalletStats } from "../hooks";
 import { getGreeting } from "../models";
 import { features } from "../models/initialData";
 import { useGuestTranslations } from "../models/homeTranslations";
+import { tracker } from "../services/tracker";
 import LanguageSwitcher from "../components/LanguageSwitcher";
 
 const slide = { duration: 0.35, ease: [0.32, 0.72, 0, 1] };
@@ -167,12 +168,16 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
     try { return localStorage.getItem("bb_hint_dismissed") === "1"; } catch { return false; }
   });
 
+  // Track guest visit (once per session)
+  useState(() => { if (isGuest) tracker.guestVisit(); });
+
   const dismissHint = () => {
     setHintDismissed(true);
     try { localStorage.setItem("bb_hint_dismissed", "1"); } catch {}
   };
 
   const handleServiceClick = (featureId) => {
+    tracker.featureClick(featureId);
     if (isGuest) { onRegister(); return; }
     if (featureId === "wallet") { onNavigate("/wallet"); }
     else { toast(t("home.coming_soon") || "Coming Soon", { description: t("home.coming_soon_hint") || "This feature is coming soon!", duration: 2000 }); }
@@ -302,10 +307,10 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
                 <h3 className="text-[13px] font-semibold font-outfit text-white">{gt("gp.products_title")}</h3>
               </div>
               <div className="grid grid-cols-2 gap-2.5">
-                <ProductCard icon={Wallet} title={gt("gp.wallet_title")} desc={gt("gp.wallet_desc")} color="#00C2FF" delay={0.32} cta={gt("gp.use_now")} onClick={onRegister} />
-                <ProductCard icon={QrCode} title={gt("gp.qr_title")} desc={gt("gp.qr_desc")} color="#00D26A" delay={0.36} cta={gt("gp.use_now")} onClick={onRegister} />
-                <ProductCard icon={Store} title={gt("gp.merchant_title")} desc={gt("gp.merchant_desc")} color="#FFB800" delay={0.4} cta={gt("gp.use_now")} onClick={onRegister} />
-                <ProductCard icon={Car} title={gt("gp.rides_title")} desc={gt("gp.rides_desc")} color="#A855F7" delay={0.44} cta={gt("gp.use_now")} onClick={onRegister} />
+                <ProductCard icon={Wallet} title={gt("gp.wallet_title")} desc={gt("gp.wallet_desc")} color="#00C2FF" delay={0.32} cta={gt("gp.use_now")} onClick={() => { tracker.featureClick("wallet"); onRegister(); }} />
+                <ProductCard icon={QrCode} title={gt("gp.qr_title")} desc={gt("gp.qr_desc")} color="#00D26A" delay={0.36} cta={gt("gp.use_now")} onClick={() => { tracker.featureClick("qr"); onRegister(); }} />
+                <ProductCard icon={Store} title={gt("gp.merchant_title")} desc={gt("gp.merchant_desc")} color="#FFB800" delay={0.4} cta={gt("gp.use_now")} onClick={() => { tracker.featureClick("merchant"); onRegister(); }} />
+                <ProductCard icon={Car} title={gt("gp.rides_title")} desc={gt("gp.rides_desc")} color="#A855F7" delay={0.44} cta={gt("gp.use_now")} onClick={() => { tracker.featureClick("rides"); onRegister(); }} />
               </div>
             </motion.section>
 
