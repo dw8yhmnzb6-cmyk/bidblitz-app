@@ -8,45 +8,40 @@ Create a modern, professional fintech web app called BidBlitz V2 with Revolut-le
 - Backend: FastAPI, MongoDB (Motor), slowapi, Stripe SDK
 - Auth: JWT with HttpOnly cookies, brute-force lockout
 
-## What's Implemented
-
-### Core (DONE)
+## What's Implemented (All DONE)
 - JWT Auth, MongoDB, Rate limiting, CORS, offline detection
 - Wallet top-up (Stripe), Merchant payments, P2P send, QR scan, Payouts
 - Audit logging, Compliance engine, Feature flags, Session management
 - 12-language i18n, Premium dark UI, Framer Motion
 - Admin Dashboard (full), Profile, Support, Kids, Growth/Referral, Settings, Export
 - All balance returns use round(value, 2)
+- Backups (daily cron), Monitoring (5-min), Error/Access logging
+- Admin alerts (payment_failed, send_failed, topup_failed, system_error, etc.)
+- Soft launch mode (whitelist gate, live dashboard)
+- 15 users + 3 merchants onboarded, real payments flowing
+- Feedback collection system (POST/GET /api/feedback, admin review)
 
-### Backups & Monitoring (DONE - Apr 2026)
-- Daily MongoDB backup (cron 2AM UTC), 7-day retention
-- Rotating error/access logs, uptime monitor every 5 min
-- Enhanced /api health check
+## User Feedback Summary (23 responses, avg 3.7/5)
+### P0 — Critical
+1. Compliance block messages unclear (no human-readable reason shown)
+### P1 — High
+2. No onboarding tutorial / barcode explanation
+3. Merchant refunds not possible
+4. QR code too small on mobile
+### P2 — Medium
+5. Payout auto-approve for small amounts
+6. Animations stutter on old Android (prefers-reduced-motion)
+7. Home page too long
+### P3 — Feature Requests
+8. Apple Pay / Google Pay
+9. Daily merchant sales summary
+10. Payment receipt display duration
 
-### Admin Alerts (DONE - Apr 2026)
-- Auto notifications on: payment_failed, send_failed, topup_failed, payout_cancelled, suspicious_activity, login_locked, system_error
-
-### Soft Launch Mode (DONE - Apr 2026)
-- Invite-only gate, admin whitelist, toggle on/off
-- Live dashboard: payments, failures, volume, tickets, logins, users, alerts
-
-### First Users & Merchants Onboarded (DONE - Apr 2026)
-- 15 test users created and funded (EUR 15-50 each)
-- 3 merchants onboarded: Boulangerie Paris, Pizzeria Roma, TechShop Berlin
-- 10 real merchant payments executed (EUR 1.50-12.99)
-- 5 P2P sends executed
-- All whitelisted in soft launch
-- Platform stats: 54 users, 159 transactions, EUR 631 volume, EUR 15.77 revenue
-- 0 backend errors, monitoring active
-
-## Not Implemented (Backlog)
+## Backlog (not started)
 - Taxi, Scooter, Food, Auctions (placeholder cards)
-- Onboarding welcome flow
 - User streaks/milestones
-- Merchant performance insights
 - Push notifications (WebPush)
 - KYC upgrade flow
-- Saved payment methods (Apple Pay, Google Pay)
 
 ## Test Credentials
 - Admin: admin@bidblitz.com / BidBlitz2026!

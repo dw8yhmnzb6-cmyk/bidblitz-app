@@ -132,6 +132,7 @@ from routes.promotions import router as promotions_router
 from routes.analytics import router as analytics_router
 from routes.kids import router as kids_router
 from routes.support import router as support_router
+from routes.feedback import router as feedback_router
 
 app.include_router(auth_router)
 app.include_router(wallet_router)
@@ -150,6 +151,7 @@ app.include_router(promotions_router)
 app.include_router(analytics_router)
 app.include_router(kids_router)
 app.include_router(support_router)
+app.include_router(feedback_router)
 
 # Stripe webhook at /api/webhook/stripe
 from routes.stripe import stripe_webhook as _stripe_wh
