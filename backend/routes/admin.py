@@ -4,7 +4,7 @@ Platform control center: overview, user/merchant management, payout approval, tr
 """
 
 from fastapi import APIRouter, HTTPException, Request, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from bson import ObjectId
 from datetime import datetime, timezone
 from core.database import db
@@ -422,12 +422,18 @@ async def update_feature_flag(flag_name: str, request: Request):
 
 
 # ── Soft Launch Management ──
-from core.soft_launch import get_soft_launch_config, SOFT_LAUNCH_CONFIG_KEY
+from core.soft_launch import get_soft_launch_config, SOFT_LAUNCH_CONFIG_KEY, create_invite_codes
 from datetime import timedelta
 
 
 class WhitelistUpdate(BaseModel):
     emails: list[str]
+
+
+class InviteCodeRequest(BaseModel):
+    count: int = Field(default=5, ge=1, le=100)
+    max_uses: int = Field(default=1, ge=1, le=1000)
+    label: str = ""
 
 
 @router.get("/soft-launch")
@@ -555,3 +561,54 @@ async def remove_from_whitelist(req: WhitelistUpdate, request: Request):
                     ip, ua, details={"action": "whitelist_remove", "emails": emails})
     config = await get_soft_launch_config()
     return {"success": True, "whitelist": config.get("whitelist", []), "count": len(config.get("whitelist", []))}
+
+
+# ── Invite Codes ──
+
+@router.post("/invite-codes")
+async def generate_invite_codes(req: InviteCodeRequest, request: Request):
+    """Generate a batch of invite codes."""
+    admin = await require_admin(request)
+    codes = await create_invite_codes(
+        count=req.count,
+        created_by=admin["email"],
+        max_uses=req.max_uses,
+        label=req.label,
+    )
+    ip, ua = get_client_info(request)
+    await log_audit(AuditEvent.ADMIN_ACTION, str(admin["_id"]), admin["email"],
+                    ip, ua, details={"action": "invite_codes_created", "count": len(codes), "label": req.label})
+    return {"success": True, "codes": codes, "count": len(codes), "max_uses": req.max_uses}
+
+
+@router.get("/invite-codes")
+async def list_invite_codes(request: Request, active_only: bool = False):
+    """List all invite codes with usage stats."""
+    await require_admin(request)
+    query = {"active": True} if active_only else {}
+    codes = await db.invite_codes.find(query, {"_id": 0}).sort("created_at", -1).to_list(500)
+    total = len(codes)
+    total_used = sum(c["used_count"] for c in codes)
+    total_capacity = sum(c["max_uses"] for c in codes)
+    return {
+        "codes": codes,
+        "total": total,
+        "total_used": total_used,
+        "total_capacity": total_capacity,
+        "remaining": total_capacity - total_used,
+    }
+
+
+@router.put("/invite-codes/{code}/deactivate")
+async def deactivate_invite_code(code: str, request: Request):
+    """Deactivate a specific invite code."""
+    admin = await require_admin(request)
+    result = await db.invite_codes.update_one(
+        {"code": code.strip().upper()}, {"$set": {"active": False}}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Invite code not found")
+    ip, ua = get_client_info(request)
+    await log_audit(AuditEvent.ADMIN_ACTION, str(admin["_id"]), admin["email"],
+                    ip, ua, details={"action": "invite_code_deactivated", "code": code})
+    return {"success": True, "code": code, "active": False}

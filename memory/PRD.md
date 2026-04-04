@@ -16,35 +16,33 @@ Create a modern, professional fintech web app called BidBlitz V2 with Revolut-le
 - Admin Dashboard (full), Profile, Support, Kids, Growth/Referral, Settings, Export
 - All balance returns use round(value, 2)
 - Backups (daily cron), Monitoring (5-min), Error/Access logging
-- Admin alerts (payment_failed, send_failed, topup_failed, system_error, etc.)
+- Admin alerts on critical events
 - Soft launch mode (whitelist gate, live dashboard)
 - 15 users + 3 merchants onboarded, real payments flowing
-- Feedback collection system (POST/GET /api/feedback, admin review)
+- Feedback collection system
+- Invite code system (generate, validate, redeem, deactivate)
 
-## User Feedback Summary (23 responses, avg 3.7/5)
-### P0 — Critical
-1. Compliance block messages unclear (no human-readable reason shown)
-### P1 — High
-2. No onboarding tutorial / barcode explanation
-3. Merchant refunds not possible
-4. QR code too small on mobile
-### P2 — Medium
-5. Payout auto-approve for small amounts
-6. Animations stutter on old Android (prefers-reduced-motion)
-7. Home page too long
-### P3 — Feature Requests
-8. Apple Pay / Google Pay
-9. Daily merchant sales summary
-10. Payment receipt display duration
+### Invite Code System (DONE - Apr 2026)
+- Registration requires valid invite code during soft launch
+- Admin generates codes: `POST /api/admin/invite-codes` (count, max_uses, label)
+- Admin lists codes: `GET /api/admin/invite-codes` (with usage stats)
+- Admin deactivates: `PUT /api/admin/invite-codes/{code}/deactivate`
+- Register with code: `POST /api/auth/register` with `invite_code` field
+- Codes stored in MongoDB `invite_codes` collection
+- Supports single-use and multi-use codes
+- All paths tested: valid, no code, used, invalid, deactivated → all correct
 
-## Backlog (not started)
+## User Feedback (23 responses, avg 3.7/5)
+### Prioritized Issues
+- P0: Compliance block messages unclear
+- P1: No onboarding tutorial, no merchant refunds, QR code too small
+- P2: Payout auto-approve, animation performance, home page length
+- P3: Apple Pay/Google Pay, merchant daily summary, receipt duration
+
+## Backlog
 - Taxi, Scooter, Food, Auctions (placeholder cards)
-- User streaks/milestones
-- Push notifications (WebPush)
-- KYC upgrade flow
+- Onboarding welcome flow, User streaks, Merchant insights
+- Push notifications, KYC upgrade, Saved payment methods
 
 ## Test Credentials
-- Admin: admin@bidblitz.com / BidBlitz2026!
-- Customer: kunde@bidblitz.com / Kunde2026!
-- Merchant: haendler@bidblitz.com / BidBlitz2026!
-- 15 launch users + 3 merchants: Launch2026! (see test_credentials.md)
+- See /app/memory/test_credentials.md for full list

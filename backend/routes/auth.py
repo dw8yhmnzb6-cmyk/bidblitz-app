@@ -9,7 +9,7 @@ from core.security import (
 from core.config import MAX_LOGIN_ATTEMPTS, LOCKOUT_MINUTES
 from core.rate_limit import limiter, RATE_REGISTER, RATE_LOGIN
 from core.audit import log_audit, AuditEvent, get_client_info
-from core.soft_launch import is_email_whitelisted, is_registration_open
+from core.soft_launch import is_email_whitelisted, is_registration_open, validate_invite_code, redeem_invite_code
 from schemas.models import RegisterRequest, LoginRequest
 import secrets
 import random
@@ -34,10 +34,16 @@ async def register(req: RegisterRequest, request: Request, response: Response):
     email = req.email.lower().strip()
     ip, ua = get_client_info(request)
 
-    # Soft launch gate
+    # Soft launch gate: invite code OR whitelist OR open registration
+    invite_used = None
     if not await is_registration_open():
-        if not await is_email_whitelisted(email):
-            raise HTTPException(status_code=403, detail="Registration is currently invite-only. Contact support for access.")
+        if req.invite_code:
+            valid, msg = await validate_invite_code(req.invite_code)
+            if not valid:
+                raise HTTPException(status_code=403, detail=msg)
+            invite_used = req.invite_code.strip().upper()
+        elif not await is_email_whitelisted(email):
+            raise HTTPException(status_code=403, detail="Registration requires an invite code during soft launch.")
 
     existing = await db.users.find_one({"email": email})
     if existing:
@@ -72,7 +78,11 @@ async def register(req: RegisterRequest, request: Request, response: Response):
     set_auth_cookies(response, access_token, refresh_token)
 
     await log_audit(AuditEvent.REGISTER, user_id=user_id, email=email,
-                    ip=ip, user_agent=ua, details={"role": "user"})
+                    ip=ip, user_agent=ua, details={"role": "user", "invite_code": invite_used or ""})
+
+    # Redeem invite code if used
+    if invite_used:
+        await redeem_invite_code(invite_used, email, user_id)
 
     # Send onboarding notifications
     try:
