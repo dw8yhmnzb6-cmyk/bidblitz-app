@@ -89,8 +89,14 @@ Create a modern, professional fintech web app called BidBlitz V2. Build Revolut-
 - Apple Watch Ultra 3, Samsung Galaxy Ring 2
 - MacBook Pro 16" M5 Pro, iPad Pro 13" M5
 - Meta Quest 4, Dyson Airstrait Pro
+- Each product includes: detailed description, 6 key features, condition badge, category
 - Easy to update: edit `PRODUCT_CATALOG` list in `routes/auctions.py`
 - Admin endpoints: `POST /api/auctions/admin/refresh` (restart all), `GET /api/auctions/admin/catalog` (view catalog)
+
+**Product Details & Shipping (Complete — April 5, 2026):**
+- Product detail view: description, condition badge (Brand New), key features list with checkmarks
+- Shipping section: Worldwide (190+ countries), estimated delivery (EU 3-5d, US/UK 5-7d, Rest 7-14d), secure packaging, buyer protection
+- i18n: All shipping/feature keys in EN + DE
 
 **Data model:**
 - `auctions` collection: `{auction_id, title, description, retail_price, current_price, ends_at, status, winner_id, total_bids, ...}`

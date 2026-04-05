@@ -305,24 +305,50 @@ async def create_auction(req: CreateAuctionRequest, request: Request):
 
 PRODUCT_CATALOG = [
     # Smartphones
-    {"title": "Samsung Galaxy S26 Ultra", "description": "Samsung Galaxy S26 Ultra 512GB Titanium — AMOLED 6.9\", Snapdragon 8 Elite 2, 200MP Camera", "retail_price": 1499.00, "duration": 600, "category": "phones"},
-    {"title": "iPhone 17 Pro Max", "description": "Apple iPhone 17 Pro Max 256GB — A19 Pro Chip, 48MP Triple Camera, Titanium Design", "retail_price": 1449.00, "duration": 600, "category": "phones"},
-    {"title": "Google Pixel 10 Pro", "description": "Google Pixel 10 Pro 256GB — Tensor G5, AI-First Camera, 7 Years Updates", "retail_price": 1099.00, "duration": 480, "category": "phones"},
+    {"title": "Samsung Galaxy S26 Ultra", "description": "Samsung Galaxy S26 Ultra 512GB Titanium — AMOLED 6.9\", Snapdragon 8 Elite 2, 200MP Camera", "retail_price": 1499.00, "duration": 600, "category": "phones",
+     "features": ["6.9\" Dynamic AMOLED 2X, 3120x1440", "Snapdragon 8 Elite 2 Processor", "200MP Main + 50MP Ultra-Wide + 10MP Telephoto", "5000mAh Battery, 65W Fast Charge", "512GB Storage, 16GB RAM", "S Pen Built-in, IP68 Water Resistant"],
+     "condition": "Brand New — Factory Sealed"},
+    {"title": "iPhone 17 Pro Max", "description": "Apple iPhone 17 Pro Max 256GB — A19 Pro Chip, 48MP Triple Camera, Titanium Design", "retail_price": 1449.00, "duration": 600, "category": "phones",
+     "features": ["6.9\" Super Retina XDR, ProMotion 120Hz", "A19 Pro Chip, 6-Core GPU", "48MP Fusion + 48MP Ultra-Wide + 12MP Telephoto 5x", "Titanium Frame, Ceramic Shield Front", "USB-C, Wi-Fi 7, 5G", "Action Button, Camera Control"],
+     "condition": "Brand New — Factory Sealed"},
+    {"title": "Google Pixel 10 Pro", "description": "Google Pixel 10 Pro 256GB — Tensor G5, AI-First Camera, 7 Years Updates", "retail_price": 1099.00, "duration": 480, "category": "phones",
+     "features": ["6.7\" LTPO OLED, 1-120Hz, 2400 nits", "Google Tensor G5 Processor", "50MP Main + 48MP Ultra-Wide + 48MP Telephoto 5x", "AI Magic Eraser, Best Take, Night Sight", "7 Years OS & Security Updates", "5000mAh Battery, 45W Charging"],
+     "condition": "Brand New — Factory Sealed"},
     # Gaming
-    {"title": "Nintendo Switch 2", "description": "Nintendo Switch 2 Console — 8\" LCD, Magnetic Joy-Cons, Backwards Compatible", "retail_price": 449.00, "duration": 480, "category": "gaming"},
-    {"title": "PlayStation 5 Pro", "description": "Sony PS5 Pro 2TB — Enhanced GPU, 8K Output, DualSense Edge Controller", "retail_price": 799.00, "duration": 540, "category": "gaming"},
+    {"title": "Nintendo Switch 2", "description": "Nintendo Switch 2 Console — 8\" LCD, Magnetic Joy-Cons, Backwards Compatible", "retail_price": 449.00, "duration": 480, "category": "gaming",
+     "features": ["8\" 1080p LCD Display", "NVIDIA Custom Processor", "Magnetic Joy-Con 2 Controllers", "Backwards Compatible with Switch Games", "64GB Internal Storage, microSD Slot", "USB-C Dock for 4K TV Output"],
+     "condition": "Brand New — Factory Sealed"},
+    {"title": "PlayStation 5 Pro", "description": "Sony PS5 Pro 2TB — Enhanced GPU, 8K Output, DualSense Edge Controller", "retail_price": 799.00, "duration": 540, "category": "gaming",
+     "features": ["Enhanced GPU with Ray Tracing", "2TB SSD Ultra-Fast Storage", "8K Video Output Support", "DualSense Edge Wireless Controller", "Tempest 3D Audio Engine", "4K Gaming at 120fps"],
+     "condition": "Brand New — Factory Sealed"},
     # Audio
-    {"title": "AirPods Pro 3", "description": "Apple AirPods Pro 3 — H3 Chip, Adaptive Audio, USB-C MagSafe Case", "retail_price": 299.00, "duration": 300, "category": "audio"},
-    {"title": "Sony WH-1000XM6", "description": "Sony WH-1000XM6 Wireless — Best-in-class ANC, 40h Battery, LDAC Hi-Res", "retail_price": 399.00, "duration": 360, "category": "audio"},
+    {"title": "AirPods Pro 3", "description": "Apple AirPods Pro 3 — H3 Chip, Adaptive Audio, USB-C MagSafe Case", "retail_price": 299.00, "duration": 300, "category": "audio",
+     "features": ["Apple H3 Chip for Intelligent Audio", "Adaptive Noise Cancellation", "Personalized Spatial Audio with Head Tracking", "USB-C MagSafe Charging Case", "Up to 6h Listening, 30h with Case", "IP54 Dust & Water Resistant"],
+     "condition": "Brand New — Factory Sealed"},
+    {"title": "Sony WH-1000XM6", "description": "Sony WH-1000XM6 Wireless — Best-in-class ANC, 40h Battery, LDAC Hi-Res", "retail_price": 399.00, "duration": 360, "category": "audio",
+     "features": ["Industry-Leading Noise Cancellation", "40h Battery Life, 3min Quick Charge = 3h", "LDAC Hi-Res Audio, DSEE Extreme", "Multipoint Connection (2 Devices)", "Speak-to-Chat & Adaptive Sound Control", "Ultra Lightweight 250g, Premium Comfort"],
+     "condition": "Brand New — Factory Sealed"},
     # Wearables
-    {"title": "Apple Watch Ultra 3", "description": "Apple Watch Ultra 3 — Titanium, Satellite SOS, 72h Battery, S10 Chip", "retail_price": 899.00, "duration": 420, "category": "wearables"},
-    {"title": "Samsung Galaxy Ring 2", "description": "Samsung Galaxy Ring 2 — Health Tracking, Sleep Analysis, Titanium, 7-Day Battery", "retail_price": 449.00, "duration": 300, "category": "wearables"},
+    {"title": "Apple Watch Ultra 3", "description": "Apple Watch Ultra 3 — Titanium, Satellite SOS, 72h Battery, S10 Chip", "retail_price": 899.00, "duration": 420, "category": "wearables",
+     "features": ["49mm Titanium Case, Sapphire Crystal", "Apple S10 Chip, Double Tap Gesture", "72h Battery, 36h Normal Use", "Satellite Emergency SOS", "100m Water Resistant, EN13319 Dive", "Precision Dual-Frequency GPS"],
+     "condition": "Brand New — Factory Sealed"},
+    {"title": "Samsung Galaxy Ring 2", "description": "Samsung Galaxy Ring 2 — Health Tracking, Sleep Analysis, Titanium, 7-Day Battery", "retail_price": 449.00, "duration": 300, "category": "wearables",
+     "features": ["Titanium Build, 2.6g Ultra-Light", "Heart Rate & SpO2 Monitoring 24/7", "Advanced Sleep & Stress Tracking", "Cycle Tracking & Skin Temperature", "7-Day Battery, Wireless Charging Case", "IP68 + 10ATM Water Resistant"],
+     "condition": "Brand New — Factory Sealed"},
     # Laptops & Tablets
-    {"title": "MacBook Pro 16\" M5 Pro", "description": "Apple MacBook Pro 16\" M5 Pro — 18GB RAM, 512GB SSD, Liquid Retina XDR", "retail_price": 2899.00, "duration": 720, "category": "laptops"},
-    {"title": "iPad Pro 13\" M5", "description": "Apple iPad Pro 13\" M5 — Tandem OLED, Apple Pencil 3, Thunderbolt 5", "retail_price": 1399.00, "duration": 540, "category": "tablets"},
+    {"title": "MacBook Pro 16\" M5 Pro", "description": "Apple MacBook Pro 16\" M5 Pro — 18GB RAM, 512GB SSD, Liquid Retina XDR", "retail_price": 2899.00, "duration": 720, "category": "laptops",
+     "features": ["16.2\" Liquid Retina XDR, 3456x2234", "Apple M5 Pro, 12-Core CPU, 18-Core GPU", "18GB Unified Memory, 512GB SSD", "Up to 22h Battery Life", "Thunderbolt 5, HDMI 2.1, SD Card Slot", "6-Speaker Sound System, Spatial Audio"],
+     "condition": "Brand New — Factory Sealed"},
+    {"title": "iPad Pro 13\" M5", "description": "Apple iPad Pro 13\" M5 — Tandem OLED, Apple Pencil 3, Thunderbolt 5", "retail_price": 1399.00, "duration": 540, "category": "tablets",
+     "features": ["13\" Tandem OLED, 2752x2064, ProMotion", "Apple M5 Chip, Hardware Ray Tracing", "Apple Pencil 3 & Magic Keyboard Support", "Thunderbolt 5 / USB 4", "12MP Ultra-Wide Front, LiDAR Scanner", "Face ID, Wi-Fi 7, 5G Optional"],
+     "condition": "Brand New — Factory Sealed"},
     # XR / Smart Home
-    {"title": "Meta Quest 4", "description": "Meta Quest 4 — Mixed Reality, Snapdragon XR3, 4K per Eye, 256GB", "retail_price": 549.00, "duration": 420, "category": "xr"},
-    {"title": "Dyson Airstrait Pro", "description": "Dyson Airstrait Pro — Wet-to-Dry Straightener, Intelligent Heat Control", "retail_price": 549.00, "duration": 360, "category": "home"},
+    {"title": "Meta Quest 4", "description": "Meta Quest 4 — Mixed Reality, Snapdragon XR3, 4K per Eye, 256GB", "retail_price": 549.00, "duration": 420, "category": "xr",
+     "features": ["Snapdragon XR3 Gen 1 Processor", "4K per Eye, Pancake Lens 2.0", "Full-Color Mixed Reality Passthrough", "256GB Storage, Wi-Fi 7", "Hand Tracking 3.0, Eye Tracking", "Meta Horizon OS, 1000+ Apps & Games"],
+     "condition": "Brand New — Factory Sealed"},
+    {"title": "Dyson Airstrait Pro", "description": "Dyson Airstrait Pro — Wet-to-Dry Straightener, Intelligent Heat Control", "retail_price": 549.00, "duration": 360, "category": "home",
+     "features": ["Wet-to-Dry Straightening Technology", "Intelligent Heat Control Every 100x/sec", "Flexing Plates for Root-to-Tip Styling", "3 Heat Settings + Cool Mode", "Dual Airflow Jets for Fast Drying", "360° Swivel Cable, Heat-Resistant Case"],
+     "condition": "Brand New — Factory Sealed"},
 ]
 
 
@@ -359,6 +385,8 @@ async def seed_demo_auctions():
             "created_by": "system",
             "created_at": now.isoformat(),
             "category": d.get("category", ""),
+            "features": d.get("features", []),
+            "condition": d.get("condition", "Brand New — Factory Sealed"),
         }
         await db.auctions.insert_one(auction)
         auction.pop("_id", None)
@@ -407,6 +435,8 @@ async def refresh_auctions(request: Request):
             "created_by": str(user["_id"]),
             "created_at": now_iso,
             "category": d.get("category", ""),
+            "features": d.get("features", []),
+            "condition": d.get("condition", "Brand New — Factory Sealed"),
         }
         await db.auctions.insert_one(auction)
         auction.pop("_id", None)

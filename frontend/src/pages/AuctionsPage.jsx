@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Zap, Clock, TrendingUp, ChevronRight,
   Coins, DollarSign, Loader2, X, User, Tag,
-  Gavel, Trophy, ShieldCheck, Timer
+  Gavel, Trophy, ShieldCheck, Timer, Package, Truck, Globe, Check, Box, Shield
 } from "lucide-react";
 import { useUser, useI18n } from "../store";
 import { api } from "../services/api";
@@ -493,15 +493,70 @@ const AuctionDetail = ({ auctionId, onBack, isGuest, onAuthRequired, userCredits
           </div>
         </motion.div>
 
-        {/* Auction description */}
-        {auction.description && (
-          <motion.div className="rounded-2xl p-4"
-            style={{ background: "rgba(255,255,255,0.01)", border: "1px solid rgba(255,255,255,0.03)" }}
-            initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-            <p className="text-[9px] text-[#333] uppercase tracking-wider font-semibold mb-2">{t("auction.about")}</p>
-            <p className="text-[12px] text-white/50 leading-relaxed">{auction.description}</p>
-          </motion.div>
-        )}
+        {/* Product Details */}
+        <motion.div className="space-y-3"
+          initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+
+          {/* Description + Condition */}
+          <div className="rounded-2xl overflow-hidden"
+            style={{ background: "rgba(255,255,255,0.01)", border: "1px solid rgba(255,255,255,0.03)" }}>
+            <div className="px-4 pt-4 pb-2">
+              <p className="text-[9px] text-[#333] uppercase tracking-wider font-semibold mb-2">{t("auction.about")}</p>
+              <p className="text-[12px] text-white/50 leading-relaxed">{auction.description}</p>
+            </div>
+            {/* Condition badge */}
+            <div className="px-4 pb-3 pt-1 flex items-center gap-2">
+              <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-[#00D26A]/[0.06] border border-[#00D26A]/10">
+                <ShieldCheck size={10} className="text-[#00D26A]" />
+                <span className="text-[10px] font-semibold text-[#00D26A]">{auction.condition || t("auction.condition_new")}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Key Features */}
+          {auction.features && auction.features.length > 0 && (
+            <div className="rounded-2xl p-4"
+              style={{ background: "rgba(255,255,255,0.01)", border: "1px solid rgba(255,255,255,0.03)" }}>
+              <p className="text-[9px] text-[#333] uppercase tracking-wider font-semibold mb-3">{t("auction.key_features")}</p>
+              <div className="space-y-2">
+                {auction.features.map((feat, i) => (
+                  <div key={i} className="flex items-start gap-2.5">
+                    <div className="w-4 h-4 rounded flex items-center justify-center flex-shrink-0 mt-0.5"
+                      style={{ background: "rgba(0,194,255,0.06)", border: "1px solid rgba(0,194,255,0.1)" }}>
+                      <Check size={8} className="text-[#00C2FF]" />
+                    </div>
+                    <span className="text-[11px] text-white/55 leading-relaxed">{feat}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Shipping & Delivery */}
+          <div className="rounded-2xl p-4"
+            style={{ background: "rgba(255,255,255,0.01)", border: "1px solid rgba(255,255,255,0.03)" }}>
+            <p className="text-[9px] text-[#333] uppercase tracking-wider font-semibold mb-3">{t("auction.shipping_info")}</p>
+            <div className="space-y-2.5">
+              {[
+                { icon: Globe, color: "#00C2FF", label: t("auction.shipping_worldwide"), desc: t("auction.shipping_worldwide_desc") },
+                { icon: Truck, color: "#A855F7", label: t("auction.shipping_delivery"), desc: t("auction.shipping_delivery_desc") },
+                { icon: Package, color: "#FFB800", label: t("auction.shipping_packaging"), desc: t("auction.shipping_packaging_desc") },
+                { icon: Shield, color: "#00D26A", label: t("auction.shipping_guarantee"), desc: t("auction.shipping_guarantee_desc") },
+              ].map((item, i) => (
+                <div key={i} className="flex items-start gap-2.5">
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                    style={{ background: `${item.color}08`, border: `1px solid ${item.color}12` }}>
+                    <item.icon size={12} style={{ color: item.color }} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[11px] text-white/70 font-medium">{item.label}</p>
+                    <p className="text-[10px] text-[#444] leading-relaxed">{item.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </motion.div>
       </div>
     </motion.div>
   );
