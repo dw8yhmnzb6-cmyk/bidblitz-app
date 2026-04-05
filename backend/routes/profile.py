@@ -1,6 +1,6 @@
 """
 BidBlitz V2 - User Profile Routes
-Profile viewing, editing, and password management.
+Profile viewing, editing, password management, and KYC.
 """
 
 from fastapi import APIRouter, HTTPException, Request
@@ -14,6 +14,86 @@ from core.audit import log_audit, AuditEvent, get_client_info
 from core.rate_limit import limiter, RATE_PASSWORD
 
 router = APIRouter(prefix="/api/user", tags=["user"])
+
+
+# ═══════════════════════════════════════════════════
+# KYC (Know Your Customer)
+# ═══════════════════════════════════════════════════
+
+class KYCSubmitRequest(BaseModel):
+    full_name: str = Field(..., min_length=2, max_length=200)
+    date_of_birth: str = Field(..., description="YYYY-MM-DD")
+    street: str = Field(..., min_length=2, max_length=200)
+    city: str = Field(..., min_length=1, max_length=100)
+    postal_code: str = Field(..., min_length=2, max_length=20)
+    country: str = Field(..., min_length=2, max_length=100)
+
+
+@router.get("/kyc")
+async def get_kyc_status(request: Request):
+    """Get current user's KYC data and verification status."""
+    user = await get_current_user(request)
+    kyc = user.get("kyc")
+    if not kyc:
+        return {"status": "not_submitted", "data": None}
+    return {
+        "status": kyc.get("status", "not_submitted"),
+        "data": {
+            "full_name": kyc.get("full_name", ""),
+            "date_of_birth": kyc.get("date_of_birth", ""),
+            "street": kyc.get("street", ""),
+            "city": kyc.get("city", ""),
+            "postal_code": kyc.get("postal_code", ""),
+            "country": kyc.get("country", ""),
+        },
+        "submitted_at": kyc.get("submitted_at"),
+        "reviewed_at": kyc.get("reviewed_at"),
+    }
+
+
+@router.post("/kyc")
+async def submit_kyc(req: KYCSubmitRequest, request: Request):
+    """Submit KYC data for verification."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    ip, ua = get_client_info(request)
+
+    # Validate date of birth format
+    try:
+        dob = datetime.strptime(req.date_of_birth, "%Y-%m-%d")
+        age = (datetime.now() - dob).days // 365
+        if age < 16:
+            raise HTTPException(status_code=400, detail="You must be at least 16 years old")
+        if age > 120:
+            raise HTTPException(status_code=400, detail="Invalid date of birth")
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
+
+    kyc_data = {
+        "full_name": req.full_name.strip(),
+        "date_of_birth": req.date_of_birth,
+        "street": req.street.strip(),
+        "city": req.city.strip(),
+        "postal_code": req.postal_code.strip(),
+        "country": req.country.strip(),
+        "status": "pending",
+        "submitted_at": datetime.now(timezone.utc).isoformat(),
+        "reviewed_at": None,
+    }
+
+    await db.users.update_one(
+        {"_id": user["_id"]},
+        {"$set": {"kyc": kyc_data, "kyc_level": "pending"}},
+    )
+
+    await log_audit(AuditEvent.PROFILE_UPDATE, user_id=user_id, email=user["email"],
+                    ip=ip, user_agent=ua,
+                    details={"action": "kyc_submitted"})
+
+    return {
+        "status": "pending",
+        "message": "KYC data submitted successfully. Verification in progress.",
+    }
 
 
 class ProfileUpdate(BaseModel):

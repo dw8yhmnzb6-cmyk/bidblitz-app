@@ -44,6 +44,24 @@ Create a modern, professional fintech web app called BidBlitz V2. Build Revolut-
 **Data model (users collection):**
 - `stripe_customer_id`, `stripe_pm_id`, `stripe_card_brand`, `stripe_card_last4`, `stripe_card_exp_month`, `stripe_card_exp_year`, `stripe_pm_saved_at`
 
+### KYC Flow (Complete — April 5, 2026)
+**Backend (profile.py):**
+- `GET /api/user/kyc` — returns KYC status and data
+- `POST /api/user/kyc` — submit KYC data (full_name, date_of_birth, street, city, postal_code, country)
+- Validates age (>=16), stores status as `pending`
+- Audit logging on submission
+
+**Frontend (MorePage.jsx → KYCView):**
+- Accessible via "Sicherheit" menu in Account section
+- Status badge: Not Submitted (grey) / Pending (yellow) / Verified (green) / Rejected (red)
+- Form: Full Name, Date of Birth, Street, Postal Code, City, Country
+- Pre-fills data if already submitted, allows re-submission
+- i18n: `kyc.*` keys in EN + DE
+
+**Data model (users collection → `kyc` subdocument):**
+- `{full_name, date_of_birth, street, city, postal_code, country, status, submitted_at, reviewed_at}`
+- `kyc_level` field on user: `basic` / `pending` / `verified`
+
 ### Child Accounts (Complete)
 - Backend CRUD (`/api/kids/children`), frontend persistent child management
 - Add/select/remove children, weekly limit slider, progress bars
@@ -57,9 +75,16 @@ Create a modern, professional fintech web app called BidBlitz V2. Build Revolut-
 - `/app/frontend/src/services/tracker.js` — Frontend event tracker
 - `/app/frontend/src/pages/HomePage.jsx` — Guest homepage
 
+## Backlog (P0/P1 — Phase 1)
+- Saved Cards Management Seite (P0 — UI to view/delete saved cards)
+- Stripe Connect for Merchant Payouts (P0)
+- Email Notifications — Resend/SendGrid (P0)
+- Push Notifications — WebPush (P1)
+- 2FA Integration (P1)
+- Kids Wallet System with real transactions (P1)
+
 ## Backlog (P2/P3 — Not Started)
-- Push notifications (WebPush)
-- KYC upgrade flow
+- Apple Pay / Google Pay
 - User Streaks/Milestones tracking
 - Auctions, Taxi, Scooter, Food features
 

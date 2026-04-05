@@ -182,6 +182,10 @@ export const api = {
   updateProfile: (body) => request("/api/user/profile", { method: "PUT", body: JSON.stringify(body) }),
   changePassword: (body) => request("/api/user/change-password", { method: "POST", body: JSON.stringify(body) }),
 
+  // KYC
+  getKycStatus: () => request("/api/user/kyc"),
+  submitKyc: (body) => request("/api/user/kyc", { method: "POST", body: JSON.stringify(body) }),
+
   // Sessions
   getSessions: () => request("/api/sessions"),
   revokeSession: (sessionId) => request(`/api/sessions/revoke/${sessionId}`, { method: "POST" }),
