@@ -48,6 +48,7 @@ export default function MiningPage({ onBack }) {
   const [historyFilter, setHistoryFilter] = useState("all");
   const [confirmPkg, setConfirmPkg] = useState(null);
   const [purchaseSuccess, setPurchaseSuccess] = useState(null);
+  const [purchaseError, setPurchaseError] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -79,16 +80,24 @@ export default function MiningPage({ onBack }) {
   };
 
   const buyMiner = async (pkgId) => {
+    setPurchaseError(null);
     setBuying(pkgId);
     try {
       const r = await api("/api/mining/buy-miner", { method: "POST", body: JSON.stringify({ package_id: pkgId }) });
       setConfirmPkg(null);
       const pkg = packages.find(p => p.id === pkgId);
-      setPurchaseSuccess(pkg);
+      setPurchaseSuccess({ ...pkg, new_balance: r.new_balance });
       setTimeout(() => setPurchaseSuccess(null), 3500);
       toast.success(t("mining.purchased") || "Miner purchased!");
       load();
-    } catch (e) { toast.error(e.message); }
+    } catch (e) {
+      const msg = e.message || "Purchase failed";
+      if (msg.toLowerCase().includes("insufficient")) {
+        setPurchaseError(t("mining.err_balance") || "Insufficient wallet balance. Please top up your wallet first.");
+      } else {
+        setPurchaseError(msg);
+      }
+    }
     setBuying(null);
   };
 
@@ -733,7 +742,7 @@ export default function MiningPage({ onBack }) {
         {confirmPkg && (
           <motion.div data-testid="purchase-confirm-modal" className="fixed inset-0 z-50 flex items-end justify-center"
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setConfirmPkg(null)} />
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => { setConfirmPkg(null); setPurchaseError(null); }} />
             <motion.div className="relative w-full max-w-md mx-auto rounded-t-3xl overflow-hidden"
               style={{ background: "#0A0A0A", border: "1px solid rgba(255,255,255,0.06)", borderBottom: "none" }}
               initial={{ y: 300 }} animate={{ y: 0 }} exit={{ y: 300 }} transition={{ type: "spring", damping: 25, stiffness: 300 }}>
@@ -744,6 +753,9 @@ export default function MiningPage({ onBack }) {
                   const dailyBlz = confirmPkg.hashrate * 0.5 * confirmPkg.base_efficiency;
                   const dailyEur = dailyBlz * 0.10;
                   const yearlyEur = dailyEur * 365;
+                  const walletBalance = data?.wallet?.eur_value != null ? (w.blz_balance * 0.10) : 0;
+                  const mainBalance = w.main_balance_eur ?? user?.balance ?? 0;
+                  const canAfford = mainBalance >= confirmPkg.price_eur;
                   return (
                     <>
                       <div className="text-center">
@@ -768,22 +780,45 @@ export default function MiningPage({ onBack }) {
                         ))}
                       </div>
 
-                      <div className="rounded-xl p-3 flex items-center justify-between"
-                        style={{ background: `${color}06`, border: `1px solid ${color}12` }}>
-                        <span className="text-[12px] text-white/50 font-medium">{t("mining.confirm_total") || "Total"}</span>
-                        <span className="text-[20px] font-bold font-outfit" style={{ color }}>{"\u20AC"}{confirmPkg.price_eur.toLocaleString()}</span>
+                      {/* Price + Balance */}
+                      <div className="rounded-xl p-3 space-y-2" style={{ background: `${color}06`, border: `1px solid ${canAfford ? `${color}12` : "rgba(255,71,87,0.15)"}` }}>
+                        <div className="flex items-center justify-between">
+                          <span className="text-[12px] text-white/50 font-medium">{t("mining.confirm_total") || "Total"}</span>
+                          <span className="text-[20px] font-bold font-outfit" style={{ color }}>{"\u20AC"}{confirmPkg.price_eur.toLocaleString()}</span>
+                        </div>
+                        <div className="flex items-center justify-between pt-1 border-t border-white/[0.04]">
+                          <span className="text-[10px] text-white/25">{t("mining.your_balance") || "Your balance"}</span>
+                          <span className={`text-[12px] font-bold font-mono ${canAfford ? "text-[#00E89D]" : "text-[#FF4757]"}`}>{"\u20AC"}{mainBalance.toFixed(2)}</span>
+                        </div>
+                        {!canAfford && (
+                          <p data-testid="balance-warning" className="text-[10px] text-[#FF4757] font-medium pt-1">
+                            {t("mining.err_need_more") || `You need €${(confirmPkg.price_eur - mainBalance).toFixed(2)} more. Top up your wallet first.`}
+                          </p>
+                        )}
                       </div>
 
+                      {/* Error message */}
+                      <AnimatePresence>
+                        {purchaseError && (
+                          <motion.div data-testid="purchase-error" className="rounded-xl px-3 py-2.5 flex items-start gap-2"
+                            style={{ background: "rgba(255,71,87,0.06)", border: "1px solid rgba(255,71,87,0.12)" }}
+                            initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}>
+                            <Shield size={13} className="text-[#FF4757] mt-0.5 flex-shrink-0" />
+                            <p className="text-[11px] text-[#FF4757] font-medium">{purchaseError}</p>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+
                       <div className="flex gap-2">
-                        <motion.button onClick={() => setConfirmPkg(null)} whileTap={{ scale: 0.96 }}
+                        <motion.button onClick={() => { setConfirmPkg(null); setPurchaseError(null); }} whileTap={{ scale: 0.96 }}
                           className="flex-1 py-3 rounded-xl text-[12px] font-semibold bg-white/[0.04] text-white/40 border border-white/[0.06]">
                           {t("mining.cancel") || "Cancel"}
                         </motion.button>
-                        <motion.button data-testid="confirm-buy-btn" onClick={() => buyMiner(confirmPkg.id)} disabled={buying}
-                          whileTap={{ scale: 0.96 }}
-                          className="flex-1 py-3 rounded-xl text-[12px] font-bold flex items-center justify-center gap-1.5"
-                          style={{ background: `${color}15`, color, border: `1px solid ${color}25` }}>
-                          {buying ? <Loader2 size={14} className="animate-spin" /> : <>{t("mining.confirm_buy") || "Buy Now"} <ChevronRight size={14} /></>}
+                        <motion.button data-testid="confirm-buy-btn" onClick={() => buyMiner(confirmPkg.id)} disabled={buying || !canAfford}
+                          whileTap={canAfford ? { scale: 0.96 } : {}}
+                          className={`flex-1 py-3 rounded-xl text-[12px] font-bold flex items-center justify-center gap-1.5 ${!canAfford ? "opacity-40 cursor-not-allowed" : ""}`}
+                          style={{ background: canAfford ? `${color}15` : "rgba(255,255,255,0.02)", color: canAfford ? color : "rgba(255,255,255,0.2)", border: `1px solid ${canAfford ? `${color}25` : "rgba(255,255,255,0.04)"}` }}>
+                          {buying ? <Loader2 size={14} className="animate-spin" /> : canAfford ? <>{t("mining.confirm_buy") || "Buy Now"} <ChevronRight size={14} /></> : (t("mining.insufficient") || "Insufficient Balance")}
                         </motion.button>
                       </div>
                     </>
@@ -817,10 +852,16 @@ export default function MiningPage({ onBack }) {
                 initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.3 }}>
                 {purchaseSuccess.name} · {purchaseSuccess.hashrate} TH/s
               </motion.p>
-              <motion.p className="text-[11px] text-[#00E89D]/60"
+              <motion.p className="text-[11px] text-[#00E89D]/60 mb-1"
                 initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.4 }}>
                 {t("mining.success_desc") || "Your miner is now earning BLZ tokens!"}
               </motion.p>
+              {purchaseSuccess.new_balance != null && (
+                <motion.p className="text-[10px] text-white/20 font-mono"
+                  initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.5 }}>
+                  {t("mining.new_balance") || "New balance"}: {"\u20AC"}{purchaseSuccess.new_balance.toFixed(2)}
+                </motion.p>
+              )}
             </motion.div>
           </motion.div>
         )}

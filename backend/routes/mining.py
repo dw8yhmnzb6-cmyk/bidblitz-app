@@ -143,6 +143,7 @@ async def mining_dashboard(request: Request):
             "eur_value": round(wallet["blz_balance"] * BLZ_TO_EUR, 2),
             "total_mined": wallet["total_mined"],
             "total_withdrawn": wallet["total_withdrawn"],
+            "main_balance_eur": user.get("balance", 0),
         },
         "mining": {
             "total_hashrate": round(total_hashrate, 1),
