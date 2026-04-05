@@ -73,14 +73,16 @@ Create a modern, professional fintech web app called BidBlitz V2. Build Revolut-
 - Auto-seeds 4 demo auctions (iPhone, PS5, AirPods, Galaxy Watch)
 
 **Frontend (pages/AuctionsPage.jsx):**
-- Auction list with live countdown timers (polling every 2.5s/5s)
-- Auction detail: price ticker, timer, animated bid button, live bid history
-- Buy Credits modal with 4 packages
+- Responsive grid layout: 2 cols mobile, 3 cols md, 4 cols xl
+- Grid cards with: product image, countdown timer overlay, "FREE SHIPPING" badge, title, price, "Bieten" button, activity indicator (bid count flame icon)
+- Trust bar: Secure Payments | Real-Time Bids | Free Shipping + recent winners ticker
 - "How it works" section
 - Category filter tabs (All, Phones, Gaming, Audio, Wearables, Laptops, Tablets, XR, Home)
-- Accessible from Homepage via purple "BidBlitz Auktionen" banner
-- Route: `/auctions`
+- Auction detail: hero product image (full-width), "FREE WORLDWIDE SHIPPING" + "Brand New — Factory Sealed" badges, title, description, price ticker, countdown timer, bid button, live bid history, key features (6 items with checkmarks), shipping info (worldwide, delivery times, secure packaging, buyer protection)
+- Buy Credits modal with 4 packages
+- Route: `/auctions`, accessible from Homepage via purple banner
 - i18n: `auction.*` keys in EN + DE
+- Product images from Unsplash (mapped per product in PRODUCT_IMAGES dict)
 
 **Product Catalog (2026 trending):**
 - Samsung Galaxy S26 Ultra, iPhone 17 Pro Max, Google Pixel 10 Pro

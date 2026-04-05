@@ -303,6 +303,23 @@ async def create_auction(req: CreateAuctionRequest, request: Request):
 # Last updated: April 2026
 # ══════════════════════════════════════════════════════
 
+# Product images mapped by title
+PRODUCT_IMAGES = {
+    "Samsung Galaxy S26 Ultra": "https://images.unsplash.com/photo-1773414422164-eefdc240da58?w=600&h=400&fit=crop&q=80",
+    "iPhone 17 Pro Max": "https://images.unsplash.com/photo-1769594362058-d561f024a235?w=600&h=400&fit=crop&q=80",
+    "Google Pixel 10 Pro": "https://images.unsplash.com/photo-1639885339994-59a8ffd15bdb?w=600&h=400&fit=crop&q=80",
+    "Nintendo Switch 2": "https://images.unsplash.com/photo-1761395013766-8416415b0207?w=600&h=400&fit=crop&q=80",
+    "PlayStation 5 Pro": "https://images.unsplash.com/photo-1693929291343-f38cb7519d5d?w=600&h=400&fit=crop&q=80",
+    "AirPods Pro 3": "https://images.unsplash.com/photo-1677346414290-d337cbc682a6?w=600&h=400&fit=crop&q=80",
+    "Sony WH-1000XM6": "https://images.unsplash.com/photo-1748792321323-25d97044ba2c?w=600&h=400&fit=crop&q=80",
+    "Apple Watch Ultra 3": "https://images.unsplash.com/photo-1585823339274-26b392cefe45?w=600&h=400&fit=crop&q=80",
+    "Samsung Galaxy Ring 2": "https://images.unsplash.com/photo-1760088348194-a5ac70a8aa9f?w=600&h=400&fit=crop&q=80",
+    "MacBook Pro 16\" M5 Pro": "https://images.unsplash.com/photo-1627766556564-5d89b3765c46?w=600&h=400&fit=crop&q=80",
+    "iPad Pro 13\" M5": "https://images.unsplash.com/photo-1622849030045-1f2c32ae3099?w=600&h=400&fit=crop&q=80",
+    "Meta Quest 4": "https://images.unsplash.com/photo-1758523670318-f1b79559e1d1?w=600&h=400&fit=crop&q=80",
+    "Dyson Airstrait Pro": "https://images.unsplash.com/photo-1629397683830-9805395892e8?w=600&h=400&fit=crop&q=80",
+}
+
 PRODUCT_CATALOG = [
     # Smartphones
     {"title": "Samsung Galaxy S26 Ultra", "description": "Samsung Galaxy S26 Ultra 512GB Titanium — AMOLED 6.9\", Snapdragon 8 Elite 2, 200MP Camera", "retail_price": 1499.00, "duration": 600, "category": "phones",
@@ -368,7 +385,7 @@ async def seed_demo_auctions():
             "auction_id": auction_id,
             "title": d["title"],
             "description": d["description"],
-            "image_url": "",
+            "image_url": PRODUCT_IMAGES.get(d["title"], ""),
             "retail_price": d["retail_price"],
             "starting_price": 0.00,
             "current_price": 0.00,
@@ -418,7 +435,7 @@ async def refresh_auctions(request: Request):
             "auction_id": auction_id,
             "title": d["title"],
             "description": d["description"],
-            "image_url": "",
+            "image_url": PRODUCT_IMAGES.get(d["title"], ""),
             "retail_price": d["retail_price"],
             "starting_price": 0.00,
             "current_price": 0.00,
