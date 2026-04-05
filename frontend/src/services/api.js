@@ -121,6 +121,11 @@ export const api = {
   getWallet: () => request("/api/wallet"),
   topUp: (body) => request("/api/wallet/topup", { method: "POST", body: JSON.stringify(body) }),
 
+  // Saved Payment Method & 1-Click
+  getSavedMethod: () => request("/api/stripe/saved-method"),
+  quickTopUp: (body) => request("/api/stripe/quick-topup", { method: "POST", body: JSON.stringify(body) }),
+  removeSavedMethod: () => request("/api/stripe/saved-method", { method: "DELETE" }),
+
   // Payment
   pay: (body) => request("/api/payment/pay", { method: "POST", body: JSON.stringify(body) }),
   send: (body) => request("/api/payment/send", { method: "POST", body: JSON.stringify(body) }),

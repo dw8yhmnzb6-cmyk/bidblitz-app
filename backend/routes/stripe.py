@@ -1,9 +1,11 @@
 """
 BidBlitz V2 - Stripe Checkout Routes
 Handles wallet top-up via Stripe Checkout Sessions.
+Supports saved payment methods for 1-click top-up.
 """
 
 import secrets
+import stripe
 from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -22,6 +24,8 @@ from core.compliance import run_compliance_check, BLOCKED, FLAGGED
 from routes.promotions import check_applicable_promotion, apply_promotion
 
 router = APIRouter(prefix="/api/stripe", tags=["stripe"])
+
+stripe.api_key = STRIPE_API_KEY
 
 # Fixed top-up packages — amounts defined server-side only
 TOPUP_PACKAGES = {
@@ -76,31 +80,54 @@ async def create_checkout(req: CheckoutRequest, request: Request):
     success_url = f"{origin}/wallet?stripe_session_id={{CHECKOUT_SESSION_ID}}"
     cancel_url = f"{origin}/wallet?stripe_cancelled=true"
 
-    # Init Stripe
-    host_url = str(request.base_url).rstrip("/")
-    webhook_url = f"{host_url}/api/webhook/stripe"
-    stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=webhook_url)
+    # Get or create Stripe customer for payment method saving
+    stripe_customer_id = user.get("stripe_customer_id")
+    if not stripe_customer_id:
+        try:
+            customer = stripe.Customer.create(
+                email=user["email"],
+                name=user.get("name", ""),
+                metadata={"bidblitz_user_id": user_id},
+            )
+            stripe_customer_id = customer.id
+            await db.users.update_one(
+                {"_id": user["_id"]},
+                {"$set": {"stripe_customer_id": stripe_customer_id}},
+            )
+        except Exception:
+            stripe_customer_id = None
 
-    # Create checkout session
-    checkout_req = CheckoutSessionRequest(
-        amount=float(amount),
-        currency="eur",
-        success_url=success_url,
-        cancel_url=cancel_url,
-        metadata={
+    # Create checkout session (direct Stripe SDK for customer + setup_future_usage)
+    session_params = {
+        "mode": "payment",
+        "payment_method_types": ["card"],
+        "line_items": [{
+            "price_data": {
+                "currency": "eur",
+                "unit_amount": int(amount * 100),
+                "product_data": {"name": f"BidBlitz Wallet Top-Up (EUR {amount:.2f})"},
+            },
+            "quantity": 1,
+        }],
+        "success_url": success_url,
+        "cancel_url": cancel_url,
+        "metadata": {
             "user_id": user_id,
             "user_email": user["email"],
             "package_id": req.package_id,
             "amount": str(amount),
             "type": "wallet_topup",
         },
-    )
+    }
+    if stripe_customer_id:
+        session_params["customer"] = stripe_customer_id
+        session_params["payment_intent_data"] = {"setup_future_usage": "off_session"}
 
-    session = await stripe_checkout.create_checkout_session(checkout_req)
+    session = stripe.checkout.Session.create(**session_params)
 
     # Record pending transaction in payment_transactions collection
     payment_record = {
-        "session_id": session.session_id,
+        "session_id": session.id,
         "user_id": user_id,
         "user_email": user["email"],
         "amount": amount,
@@ -117,12 +144,12 @@ async def create_checkout(req: CheckoutRequest, request: Request):
 
     await log_audit(AuditEvent.TOPUP_INITIATED, user_id=user_id, email=user["email"],
                     ip=ip, user_agent=ua,
-                    details={"session_id": session.session_id, "amount": amount,
+                    details={"session_id": session.id, "amount": amount,
                              "package_id": req.package_id})
 
     return {
         "checkout_url": session.url,
-        "session_id": session.session_id,
+        "session_id": session.id,
     }
 
 
@@ -213,6 +240,30 @@ async def checkout_status(session_id: str, request: Request):
                             ip=ip, user_agent=ua,
                             details={"session_id": session_id, "amount": payment["amount"],
                                      "reference": txn["reference"]})
+
+            # ── Save payment method for 1-click top-up ──
+            try:
+                stripe_session = stripe.checkout.Session.retrieve(session_id, expand=["payment_intent.payment_method"])
+                pi = stripe_session.get("payment_intent")
+                if pi and isinstance(pi, stripe.PaymentIntent):
+                    pm = pi.get("payment_method")
+                    cust_id = stripe_session.get("customer") or pi.get("customer")
+                    if pm and isinstance(pm, stripe.PaymentMethod):
+                        card = pm.get("card", {})
+                        await db.users.update_one(
+                            {"_id": user["_id"]},
+                            {"$set": {
+                                "stripe_customer_id": str(cust_id) if cust_id else "",
+                                "stripe_pm_id": pm.id,
+                                "stripe_card_brand": card.get("brand", ""),
+                                "stripe_card_last4": card.get("last4", ""),
+                                "stripe_card_exp_month": card.get("exp_month", 0),
+                                "stripe_card_exp_year": card.get("exp_year", 0),
+                                "stripe_pm_saved_at": datetime.now(timezone.utc).isoformat(),
+                            }},
+                        )
+            except Exception:
+                pass  # Non-critical — don't break the top-up flow
 
             # ── Check for bonus_topup promotions ──
             topup_promo = None
@@ -312,3 +363,140 @@ async def get_packages():
             for k, v in sorted(TOPUP_PACKAGES.items(), key=lambda x: x[1])
         ]
     }
+
+
+
+# ═══════════════════════════════════════════════════
+# Saved Payment Method & 1-Click Top-Up
+# ═══════════════════════════════════════════════════
+
+@router.get("/saved-method")
+async def get_saved_method(request: Request):
+    """Return the user's saved card details (brand + last4)."""
+    user = await get_current_user(request)
+    pm_id = user.get("stripe_pm_id")
+    if not pm_id:
+        return {"has_saved_method": False}
+
+    return {
+        "has_saved_method": True,
+        "card_brand": user.get("stripe_card_brand", ""),
+        "card_last4": user.get("stripe_card_last4", ""),
+        "card_exp_month": user.get("stripe_card_exp_month", 0),
+        "card_exp_year": user.get("stripe_card_exp_year", 0),
+    }
+
+
+class QuickTopUpRequest(BaseModel):
+    amount: float = Field(..., gt=0, le=500)
+
+
+@router.post("/quick-topup")
+@limiter.limit(RATE_STRIPE)
+async def quick_topup(req: QuickTopUpRequest, request: Request):
+    """1-click top-up using saved payment method."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    ip, ua = get_client_info(request)
+
+    cust_id = user.get("stripe_customer_id")
+    pm_id = user.get("stripe_pm_id")
+    if not cust_id or not pm_id:
+        raise HTTPException(status_code=400, detail="No saved payment method")
+
+    amount = round(req.amount, 2)
+
+    # Compliance check
+    compliance = await run_compliance_check(user, "topup", amount)
+    if compliance["outcome"] == BLOCKED:
+        raise HTTPException(status_code=403, detail=compliance["reason"])
+
+    # Create PaymentIntent off-session
+    try:
+        intent = stripe.PaymentIntent.create(
+            amount=int(amount * 100),
+            currency="eur",
+            customer=cust_id,
+            payment_method=pm_id,
+            off_session=True,
+            confirm=True,
+            metadata={
+                "user_id": user_id,
+                "type": "quick_topup",
+                "amount": str(amount),
+            },
+        )
+    except stripe.error.CardError as e:
+        # Card declined — remove saved method
+        await db.users.update_one(
+            {"_id": user["_id"]},
+            {"$unset": {
+                "stripe_pm_id": "",
+                "stripe_card_brand": "",
+                "stripe_card_last4": "",
+                "stripe_card_exp_month": "",
+                "stripe_card_exp_year": "",
+                "stripe_pm_saved_at": "",
+            }},
+        )
+        raise HTTPException(status_code=402, detail=f"Card declined: {e.user_message}")
+    except Exception:
+        raise HTTPException(status_code=500, detail="Payment failed")
+
+    if intent.status != "succeeded":
+        raise HTTPException(status_code=402, detail=f"Payment not completed: {intent.status}")
+
+    # Credit wallet
+    await db.users.update_one(
+        {"_id": user["_id"]},
+        {"$inc": {"balance": amount}},
+    )
+
+    ref = f"QUICK-{secrets.token_hex(6).upper()}"
+    txn = {
+        "id": secrets.token_hex(8),
+        "user_id": user_id,
+        "type": "topup",
+        "amount": amount,
+        "description": f"1-Click Top-Up (EUR {amount:.2f})",
+        "merchant_name": "Stripe",
+        "status": "completed",
+        "reference": ref,
+        "payment_method": "saved_card",
+        "category": "topup",
+        "stripe_pi_id": intent.id,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.transactions.insert_one(txn)
+    txn.pop("_id", None)
+
+    await log_audit(AuditEvent.TOPUP_SUCCESS, user_id=user_id, email=user.get("email", ""),
+                    ip=ip, user_agent=ua,
+                    details={"reference": ref, "amount": amount, "method": "1-click"})
+
+    updated_user = await db.users.find_one({"_id": user["_id"]})
+
+    return {
+        "status": "credited",
+        "amount": amount,
+        "reference": ref,
+        "new_balance": updated_user["balance"],
+    }
+
+
+@router.delete("/saved-method")
+async def remove_saved_method(request: Request):
+    """Remove saved payment method from user account."""
+    user = await get_current_user(request)
+    await db.users.update_one(
+        {"_id": user["_id"]},
+        {"$unset": {
+            "stripe_pm_id": "",
+            "stripe_card_brand": "",
+            "stripe_card_last4": "",
+            "stripe_card_exp_month": "",
+            "stripe_card_exp_year": "",
+            "stripe_pm_saved_at": "",
+        }},
+    )
+    return {"ok": True}

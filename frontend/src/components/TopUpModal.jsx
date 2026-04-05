@@ -90,6 +90,22 @@ export const TopUpModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
   const { t } = useI18n();
   const { online } = useNetwork();
 
+  // Saved payment method state
+  const [savedMethod, setSavedMethod] = useState(null);
+  const [loadingSaved, setLoadingSaved] = useState(false);
+  const [quickPaying, setQuickPaying] = useState(false);
+  const [useNewMethod, setUseNewMethod] = useState(false);
+
+  // Fetch saved method on open
+  useEffect(() => {
+    if (!isOpen) return;
+    setLoadingSaved(true);
+    apiCall("/api/stripe/saved-method")
+      .then((d) => { if (d.has_saved_method) setSavedMethod(d); else setSavedMethod(null); })
+      .catch(() => setSavedMethod(null))
+      .finally(() => setLoadingSaved(false));
+  }, [isOpen]);
+
   const handleCredited = useCallback((amt) => {
     setCreditedAmount(amt);
     setStep("success");
@@ -148,7 +164,6 @@ export const TopUpModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
       }
     } catch (err) {
       const msg = err.message || "";
-      // Map compliance errors to translated messages
       if (msg.startsWith("compliance.")) {
         const key = msg.split("|")[0];
         setError(t(key) || msg);
@@ -156,6 +171,38 @@ export const TopUpModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
         setError(msg);
       }
       setIsCreating(false);
+    }
+  };
+
+  const handleQuickPay = async () => {
+    const pkgId = selectedId;
+    if (!pkgId) return;
+
+    if (!online) { setError(t("error.offline")); return; }
+
+    const preset = PRESETS.find((p) => p.id === pkgId);
+    if (!preset) return;
+
+    setQuickPaying(true);
+    setError(null);
+
+    try {
+      const data = await apiCall("/api/stripe/quick-topup", {
+        method: "POST",
+        body: JSON.stringify({ amount: preset.amount }),
+      });
+      setCreditedAmount(data.amount);
+      setStep("success");
+      if (onSuccess) onSuccess({ amount: data.amount, paymentMethod: "saved_card" });
+    } catch (err) {
+      const msg = err.message || "";
+      if (msg.includes("declined") || msg.includes("No saved")) {
+        setSavedMethod(null);
+        setUseNewMethod(true);
+      }
+      setError(msg);
+    } finally {
+      setQuickPaying(false);
     }
   };
 
@@ -167,6 +214,8 @@ export const TopUpModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
     setStripeSessionId(null);
     setCreditedAmount(0);
     setIsCreating(false);
+    setQuickPaying(false);
+    setUseNewMethod(false);
     onClose();
   };
 
@@ -288,6 +337,68 @@ export const TopUpModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
                     </div>
                   )}
 
+                  {/* 1-Click Payment with saved card */}
+                  {savedMethod && !useNewMethod && selectedPreset && (
+                    <motion.div
+                      data-testid="saved-card-section"
+                      className="rounded-2xl p-4 mb-3 border"
+                      style={{ background: "rgba(0,194,255,0.03)", borderColor: "rgba(0,194,255,0.1)" }}
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                    >
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center"
+                          style={{ background: "rgba(0,194,255,0.08)", border: "1px solid rgba(0,194,255,0.12)" }}>
+                          <CreditCard size={18} className="text-[#00C2FF]" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-[12px] font-semibold text-white">
+                            {savedMethod.card_brand.charAt(0).toUpperCase() + savedMethod.card_brand.slice(1)} ****{savedMethod.card_last4}
+                          </p>
+                          <p className="text-[10px] text-[#444]">
+                            {t("topup.expires") || "Expires"} {savedMethod.card_exp_month}/{savedMethod.card_exp_year}
+                          </p>
+                        </div>
+                        <div className="px-2 py-0.5 rounded-full" style={{ background: "rgba(0,210,106,0.08)", border: "1px solid rgba(0,210,106,0.12)" }}>
+                          <span className="text-[9px] text-[#00D26A] font-semibold uppercase">{t("topup.saved") || "Saved"}</span>
+                        </div>
+                      </div>
+
+                      <motion.button
+                        data-testid="quick-pay-btn"
+                        onClick={handleQuickPay}
+                        disabled={quickPaying}
+                        className="w-full py-3 bg-[#00C2FF] text-[#0A0A0A] font-semibold rounded-full disabled:opacity-60 flex items-center justify-center gap-2"
+                        whileTap={!quickPaying ? { scale: 0.98 } : {}}
+                      >
+                        {quickPaying ? (
+                          <>
+                            <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }}>
+                              <Loader2 size={15} />
+                            </motion.div>
+                            {t("topup.processing") || "Processing..."}
+                          </>
+                        ) : (
+                          <>
+                            <Check size={15} strokeWidth={2.5} />
+                            {t("topup.confirm_pay") || "Confirm & Pay"} &euro;{selectedPreset.amount.toFixed(2)}
+                          </>
+                        )}
+                      </motion.button>
+
+                      <motion.button
+                        data-testid="use-new-method-btn"
+                        onClick={() => setUseNewMethod(true)}
+                        className="w-full mt-2 py-2 text-[11px] text-[#444] font-medium"
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        {t("topup.new_method") || "Choose new payment method"}
+                      </motion.button>
+                    </motion.div>
+                  )}
+
+                  {/* Standard Stripe checkout button (fallback or primary when no saved method) */}
+                  {(!savedMethod || useNewMethod) && (
                   <motion.button
                     data-testid="topup-checkout-btn"
                     onClick={handleCheckout}
@@ -309,6 +420,19 @@ export const TopUpModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
                       </>
                     )}
                   </motion.button>
+                  )}
+
+                  {/* Back to saved card link */}
+                  {savedMethod && useNewMethod && (
+                    <motion.button
+                      data-testid="back-to-saved-btn"
+                      onClick={() => setUseNewMethod(false)}
+                      className="w-full mt-2 py-2 text-[11px] text-[#00C2FF] font-medium"
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      {t("topup.use_saved") || "Use saved card"} ({savedMethod.card_brand} ****{savedMethod.card_last4})
+                    </motion.button>
+                  )}
 
                   <div className="flex items-center justify-center gap-1.5 mt-3">
                     <Shield size={10} className="text-[#00D26A]/50" />
