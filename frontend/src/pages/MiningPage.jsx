@@ -25,6 +25,80 @@ const TIER_COLORS = { starter: "#00E89D", pro: "#00C2FF", elite: "#A855F7", tita
 
 const VIP_COLORS = { Bronze: "#CD7F32", Silver: "#C0C0C0", Gold: "#FFD700", Platinum: "#E5E4E2", Diamond: "#B9F2FF" };
 
+// ── Auto-Reward Countdown Component ──
+function AutoRewardCard({ reward, data, t }) {
+  const [countdown, setCountdown] = useState("");
+
+  useEffect(() => {
+    if (!reward?.claimed || !reward?.next_reward_at) {
+      setCountdown("");
+      return;
+    }
+    const target = new Date(reward.next_reward_at).getTime();
+    const tick = () => {
+      const diff = target - Date.now();
+      if (diff <= 0) { setCountdown("00:00:00"); return; }
+      const h = String(Math.floor(diff / 3600000)).padStart(2, "0");
+      const m = String(Math.floor((diff % 3600000) / 60000)).padStart(2, "0");
+      const s = String(Math.floor((diff % 60000) / 1000)).padStart(2, "0");
+      setCountdown(`${h}:${m}:${s}`);
+    };
+    tick();
+    const iv = setInterval(tick, 1000);
+    return () => clearInterval(iv);
+  }, [reward?.claimed, reward?.next_reward_at]);
+
+  const isClaimed = reward?.claimed;
+  const streak = data?.streak || 0;
+
+  return (
+    <motion.div data-testid="auto-reward-card" className="rounded-2xl p-3.5"
+      style={{
+        background: isClaimed ? "rgba(0,232,157,0.02)" : "rgba(0,232,157,0.05)",
+        border: `1px solid ${isClaimed ? "rgba(0,232,157,0.06)" : "rgba(0,232,157,0.15)"}`,
+      }}
+      initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "rgba(0,232,157,0.1)" }}>
+            <RefreshCw size={15} className={`text-[#00E89D] ${!isClaimed ? "animate-spin" : ""}`} style={!isClaimed ? { animationDuration: "3s" } : {}} />
+          </div>
+          <div>
+            <p className="text-[12px] font-semibold text-white/80">{t("mining.auto_reward") || "Auto Mining Reward"}</p>
+            {isClaimed ? (
+              <>
+                <p className="text-[10px] text-[#00E89D] font-medium">
+                  +{reward.amount?.toFixed(4) || 0} BLZ {t("mining.auto_collected") || "collected"}
+                </p>
+                {streak > 1 && (
+                  <p className="text-[8px] text-[#FFD700]/60 font-medium mt-0.5">{streak} {t("mining.day_streak") || "day streak"}</p>
+                )}
+              </>
+            ) : (
+              <p className="text-[10px] text-white/30">{t("mining.auto_pending") || "Calculating reward..."} (+{reward?.amount?.toFixed(4) || 0} BLZ)</p>
+            )}
+          </div>
+        </div>
+        <div className="text-right">
+          {isClaimed && countdown ? (
+            <div>
+              <p className="text-[8px] text-white/20 uppercase tracking-wider">{t("mining.next_reward") || "Next reward"}</p>
+              <p data-testid="reward-countdown" className="text-[14px] font-bold font-mono text-[#00C2FF] tabular-nums">{countdown}</p>
+            </div>
+          ) : isClaimed ? (
+            <Check size={16} className="text-[#00E89D]" />
+          ) : (
+            <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-[#00E89D]/10">
+              <Clock size={10} className="text-[#00E89D]" />
+              <span className="text-[9px] text-[#00E89D] font-semibold">{t("mining.auto_active") || "Auto"}</span>
+            </div>
+          )}
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
 const tabs = ["dashboard", "miners", "wallet", "shop", "marketplace", "card", "launchpad", "vip"];
 
 export default function MiningPage({ onBack }) {
@@ -35,7 +109,6 @@ export default function MiningPage({ onBack }) {
   const [data, setData] = useState(null);
   const [packages, setPackages] = useState([]);
   const [buying, setBuying] = useState(null);
-  const [claiming, setClaiming] = useState(false);
   const [upgrading, setUpgrading] = useState(null);
   const [showWithdraw, setShowWithdraw] = useState(false);
   const [withdrawAmt, setWithdrawAmt] = useState("");
@@ -83,16 +156,6 @@ export default function MiningPage({ onBack }) {
   }, []);
 
   useEffect(() => { load(); }, [load]);
-
-  const claimDaily = async () => {
-    setClaiming(true);
-    try {
-      const r = await api("/api/mining/claim-daily", { method: "POST" });
-      toast.success(`+${r.claimed.toFixed(4)} BLZ claimed!`);
-      load();
-    } catch (e) { toast.error(e.message); }
-    setClaiming(false);
-  };
 
   const buyMiner = async (pkgId) => {
     setPurchaseError(null);
@@ -373,28 +436,8 @@ export default function MiningPage({ onBack }) {
                 ))}
               </div>
 
-              {/* Daily Claim */}
-              <motion.div className="rounded-2xl p-3.5 flex items-center justify-between"
-                style={{ background: reward.claimed ? "rgba(255,255,255,0.01)" : "rgba(0,232,157,0.04)", border: `1px solid ${reward.claimed ? "rgba(255,255,255,0.03)" : "rgba(0,232,157,0.12)"}` }}
-                initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
-                <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: reward.claimed ? "rgba(255,255,255,0.03)" : "rgba(0,232,157,0.1)" }}>
-                    <Gift size={16} className={reward.claimed ? "text-white/20" : "text-[#00E89D]"} />
-                  </div>
-                  <div>
-                    <p className="text-[12px] font-semibold text-white/80">{t("mining.daily_reward") || "Daily Mining Reward"}</p>
-                    <p className="text-[10px] text-white/25">{reward.claimed ? (t("mining.claimed") || "Claimed today") : `+${reward.amount?.toFixed(4) || 0} BLZ`}</p>
-                    {(data?.streak || 0) > 1 && (
-                      <p className="text-[8px] text-[#FFD700]/60 font-medium mt-0.5">{data.streak} {t("mining.day_streak") || "day streak"}</p>
-                    )}
-                  </div>
-                </div>
-                <motion.button data-testid="mining-claim-btn" onClick={claimDaily} disabled={claiming || reward.claimed}
-                  className={`px-4 py-2 rounded-xl text-[11px] font-bold ${reward.claimed ? "bg-white/[0.02] text-white/15" : "bg-[#00E89D]/10 text-[#00E89D] border border-[#00E89D]/15"}`}
-                  whileTap={reward.claimed ? {} : { scale: 0.95 }}>
-                  {claiming ? <Loader2 size={12} className="animate-spin" /> : reward.claimed ? <Check size={14} /> : (t("mining.claim") || "Claim")}
-                </motion.button>
-              </motion.div>
+              {/* Auto Daily Reward Status */}
+              <AutoRewardCard reward={reward} data={data} t={t} />
 
               {/* Referral Boost Indicator */}
               {ref.boost_active && (
@@ -590,7 +633,7 @@ export default function MiningPage({ onBack }) {
                     withdraw: "#00C2FF", send: "#FF4757", receive: "#00E89D",
                   };
                   const typeLabels = {
-                    mining_reward: "Claim", referral_bonus: "Referral",
+                    mining_reward: "Auto Reward", referral_bonus: "Referral",
                     purchase: "Purchase", upgrade: "Upgrade",
                     withdraw: "Withdraw", send: "Send", receive: "Receive",
                   };

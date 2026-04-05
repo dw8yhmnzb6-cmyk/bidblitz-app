@@ -228,6 +228,27 @@ async def public_feature_flags():
     return {"flags": result}
 
 
+# ── Mining Auto-Reward Background Loop ──
+import asyncio as _asyncio_loop
+
+def start_auto_reward_loop():
+    """Start background loop that processes auto mining rewards every 60 seconds."""
+    from routes.mining import process_auto_rewards
+
+    async def _auto_reward_loop():
+        while True:
+            try:
+                await _asyncio_loop.sleep(60)
+                rewarded = await process_auto_rewards()
+                if rewarded > 0:
+                    logger.info(f"Auto-rewards processed: {rewarded} users")
+            except Exception as e:
+                logger.error(f"Auto-reward loop error: {e}")
+                await _asyncio_loop.sleep(10)
+
+    _asyncio_loop.get_event_loop().create_task(_auto_reward_loop())
+
+
 # ── Startup ──
 @app.on_event("startup")
 async def startup():
@@ -239,7 +260,9 @@ async def startup():
     # Start bot bidding background loop
     from routes.auctions import start_bot_loop
     start_bot_loop()
-    logger.info(f"BidBlitz V2 API started [env={APP_ENV}] — Bot loop active")
+    # Start mining auto-reward background loop
+    start_auto_reward_loop()
+    logger.info(f"BidBlitz V2 API started [env={APP_ENV}] — Bot loop + Auto-rewards active")
 
 
 @app.on_event("shutdown")

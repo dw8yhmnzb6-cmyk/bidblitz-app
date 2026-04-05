@@ -74,6 +74,108 @@ async def get_or_create_wallet(user_id):
     return wallet
 
 
+# ── Auto-Reward Processing ──
+import logging
+auto_reward_logger = logging.getLogger("bidblitz.auto_reward")
+
+
+async def process_auto_rewards():
+    """Process automatic daily rewards for all users with active miners.
+    Runs as a background task. Prevents duplicates via mining_claims date check."""
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+    # Find distinct user_ids that have active miners
+    pipeline = [
+        {"$match": {"status": "active"}},
+        {"$group": {"_id": "$user_id"}},
+    ]
+    user_groups = await db.mining_miners.aggregate(pipeline).to_list(10000)
+
+    rewarded = 0
+    for ug in user_groups:
+        user_id = ug["_id"]
+        try:
+            # Check if already rewarded today
+            existing = await db.mining_claims.find_one({"user_id": user_id, "date": today})
+            if existing:
+                continue
+
+            # Get active miners
+            miners = await db.mining_miners.find(
+                {"user_id": user_id, "status": "active"}
+            ).to_list(50)
+            if not miners:
+                continue
+
+            total_hashrate = sum(
+                m.get("hashrate", 0) * (1 + m.get("power_level", 0) * 0.1) for m in miners
+            )
+            avg_eff = (
+                sum(m.get("efficiency", 0.85) + m.get("efficiency_level", 0) * 0.01 for m in miners)
+                / len(miners)
+            )
+            vip = get_vip_level(total_hashrate)
+            earnings = calc_daily_earnings(total_hashrate, avg_eff, vip["bonus"])
+
+            if earnings <= 0:
+                continue
+
+            now = datetime.now(timezone.utc).isoformat()
+
+            # Credit wallet
+            await db.mining_wallets.update_one(
+                {"user_id": user_id},
+                {"$inc": {"blz_balance": earnings, "total_mined": earnings}},
+                upsert=True,
+            )
+
+            # Record claim (auto)
+            await db.mining_claims.insert_one({
+                "user_id": user_id,
+                "date": today,
+                "amount": earnings,
+                "claimed_at": now,
+                "type": "auto",
+            })
+
+            # Transaction log
+            await db.mining_transactions.insert_one({
+                "txn_id": secrets.token_hex(6),
+                "user_id": user_id,
+                "type": "mining_reward",
+                "amount_blz": earnings,
+                "description": f"Auto reward ({total_hashrate:.0f} TH/s)",
+                "created_at": now,
+            })
+
+            # Referral bonus
+            ref_entry = await db.mining_referrals.find_one({"referred_id": user_id})
+            if ref_entry:
+                ref_bonus = round(earnings * REFERRAL_BONUS_RATE, 8)
+                if ref_bonus > 0:
+                    await db.mining_wallets.update_one(
+                        {"user_id": ref_entry["referrer_id"]},
+                        {"$inc": {"blz_balance": ref_bonus, "total_mined": ref_bonus}},
+                        upsert=True,
+                    )
+                    await db.mining_transactions.insert_one({
+                        "txn_id": secrets.token_hex(6),
+                        "user_id": ref_entry["referrer_id"],
+                        "type": "referral_bonus",
+                        "amount_blz": ref_bonus,
+                        "description": "Auto referral mining bonus",
+                        "created_at": now,
+                    })
+
+            rewarded += 1
+        except Exception as e:
+            auto_reward_logger.error(f"Auto-reward failed for {user_id}: {e}")
+
+    if rewarded > 0:
+        auto_reward_logger.info(f"Auto-rewards: {rewarded} users rewarded for {today}")
+    return rewarded
+
+
 # ── Dashboard ──
 @router.get("/dashboard")
 async def mining_dashboard(request: Request):
@@ -94,9 +196,15 @@ async def mining_dashboard(request: Request):
     vip = get_vip_level(total_hashrate)
     daily_earnings = calc_daily_earnings(total_hashrate, avg_efficiency, vip["bonus"])
 
-    # Check if daily reward claimed
+    # Check if daily reward claimed (auto or manual)
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     claimed_today = await db.mining_claims.find_one({"user_id": user_id, "date": today})
+
+    # Calculate next reward time (midnight UTC)
+    now_utc = datetime.now(timezone.utc)
+    tomorrow_midnight = (now_utc.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1))
+    next_reward_at = tomorrow_midnight.isoformat() if claimed_today else None
+    last_reward_at = claimed_today.get("claimed_at") if claimed_today else None
 
     # Referral stats
     ref_count = await db.mining_referrals.count_documents({"referrer_id": user_id})
@@ -163,6 +271,10 @@ async def mining_dashboard(request: Request):
         "daily_reward": {
             "claimed": bool(claimed_today),
             "amount": daily_earnings,
+            "auto": True,
+            "type": claimed_today.get("type", "manual") if claimed_today else None,
+            "last_reward_at": last_reward_at,
+            "next_reward_at": next_reward_at,
         },
         "referral": {
             "code": ref_code,

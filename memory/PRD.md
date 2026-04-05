@@ -34,11 +34,21 @@ Ultra-premium fintech web app (year 2040 design) for payments, penny auctions, c
 - **Card**: Virtual BLZ spending card with 4 tiers (Standard/Gold/Platinum/Black). Features: daily spending limits (€100-€10,000), cashback (1-5%), freeze/unfreeze, upgrade with BLZ, card transaction history.
 - **Launchpad**: 3 exclusive limited-edition miner launches (Fusion X1/Neural V2/Solar MK3) with bonus hashrate, supply tracking, progress bars, VIP requirements, and "Mint Now" purchase flow. One purchase per user per project.
 
+### Auto-Rewards System (DONE - 2026-04-05)
+- **Background Loop**: Runs every 60s in `server.py`, processes all users with active miners
+- **Automatic Distribution**: Calculates daily BLZ rewards (hashrate × base_rate × efficiency × VIP bonus) and credits wallets automatically
+- **Duplicate Prevention**: Checks `mining_claims` for today's date before distributing; stores `type: "auto"` on claims
+- **Transaction Logging**: Each auto-reward logged in `mining_transactions` with type `mining_reward`
+- **Referral Bonus**: Auto-distributes 5% referral bonus to referrers
+- **Dashboard UI**: Shows countdown timer to next reward (midnight UTC), auto-collected amount, streak
+- **i18n**: German + English translation keys for auto-reward UI
+
 ### Mining API Endpoints
-Phase 1: /api/mining/dashboard, /packages, /upgrade-costs, /vip-levels, /claim-history, /transactions, /admin/reward-logs
+Phase 1: /api/mining/dashboard (inkl. next_reward_at), /packages, /upgrade-costs, /vip-levels, /claim-history, /transactions, /admin/reward-logs
 Phase 1 POST: /buy-miner, /upgrade, /claim-daily, /withdraw, /send, /apply-referral
 Phase 2: GET /marketplace, /card, /launchpad
 Phase 2 POST: /marketplace/list, /marketplace/buy, /marketplace/cancel, /card/spend, /card/upgrade, /card/freeze, /launchpad/buy
+Background: Auto-reward loop (60s interval in server.py)
 
 ### Backend Files
 - `/app/backend/routes/mining.py` — Phase 1
