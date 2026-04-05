@@ -6,7 +6,7 @@ Create a modern, professional fintech web app called BidBlitz V2. Build Revolut-
 ## Tech Stack
 - **Frontend**: React, TailwindCSS, Framer Motion, Shadcn UI
 - **Backend**: FastAPI, MongoDB (Motor), JWT Auth
-- **Payments**: Stripe (checkout + saved payment methods + 1-click)
+- **Payments**: Stripe (checkout + saved payment methods + 1-click), Web-based wallet top-up
 - **Languages**: 12 (EN, DE, SQ, TR, FR, ES, IT, PT, NL, PL, RU, AR)
 
 ## Implemented Features
@@ -20,87 +20,79 @@ Create a modern, professional fintech web app called BidBlitz V2. Build Revolut-
 ### Penny Auction System (Complete)
 - Full auction CRUD, bidding, auto-bid, daily rewards, credit packages
 - Dual timer system with Final Battle mechanics (20s reset)
-- Category filters, product catalog (13 items)
 
 ### Engagement Features (Complete)
-- One-click checkout, low credits popup, discount badges
-- Watchlist, bid streak, outbid/win notifications, referral sharing
+- One-click checkout, low credits popup, discount badges, watchlist, bid streak
 
 ### Stripe Connect (Complete)
 - Express accounts, onboarding, earnings tracking
 
 ### Influencer System (Complete)
-- Multi-level commission tracking (influencer + manager override)
-- Commission payouts as **bid_credits (Reward Balance)** — no real money
-- Credits auto-added to influencer/manager wallet
-- Admin-configurable rates, bonus campaigns
+- Commission payouts as bid_credits (Reward Balance), admin-configurable
 
 ### Investor Page (Complete)
-- Landing page with investment pitch, contact form
+- Landing page + contact form
 
-### Rewards System (Complete — April 5, 2026)
-- Daily login reward with streak tracking (Day 1-7: 1→2→3→4→5→7→10 credits)
-- Comeback bonus (3 credits after 2+ missed days)
-- Milestones: First Top-Up (5), First Bid (3), First Win (10), First Invite (5)
-- Reward notifications, total earned tracking
-- Backend: `/api/rewards/status`, `/api/rewards/daily-claim`, `/api/rewards/milestone/{id}`
+### Rewards System (Complete)
+- Daily login reward, streak (Day 1-7), comeback bonus, milestones, notifications
 
-### Role Request & Admin Approval System (Complete — April 5, 2026)
-- Registration with role selector (Customer, Merchant, Influencer, Manager, Investor)
-- Admin tab "Rollen" with approve/reject and status filters
-- Backend: `/api/role-requests/request`, `/api/role-requests/admin/decide`
+### Role Request & Admin Approval (Complete)
+- Registration role selector, admin approve/reject, status filters
 
-### Identity Verification System (Complete — April 5, 2026)
-- Upload ID front, ID back, selfie with ID
-- Status tracking: pending → approved/rejected
-- Admin review tab with document image preview
-- Only required for: merchant, influencer, manager, investor
-- Normal customers exempt
-- Backend: `/api/verification/upload`, `/api/verification/admin/decide`
-- Frontend: `VerificationPage.jsx` with upload form + status display
+### Identity Verification (Complete)
+- Upload ID front/back + selfie, admin review with image preview
 
-### Merchant Hierarchy System (Complete — April 5, 2026)
-**Structure**: Main Merchant → Branches → Staff → Registers/POS
-- Branch CRUD with address, city, country, contact person
-- Register/POS device management with API keys
-- Staff management with roles (merchant_owner, branch_admin, cashier, staff)
-- Commission system: 0.5%–3% per merchant (admin-configurable)
-- POS payment processing via API key (`X-API-Key` header)
-- Auto fee calculation and revenue tracking
+### Merchant Hierarchy System (Complete)
+- Main Merchant → Branches → Staff → Registers/POS
+- Staff roles: merchant_owner, branch_admin, cashier, staff
+- Commission system 0.5%–3% per merchant
 
-**Access Control:**
-- Merchant owner: sees all branches, revenue, staff, registers
-- Branch admin: sees only own branch
-- Cashier: sees only assigned register
+### Register Transaction View (Complete — April 5, 2026)
+- Transactions per register with date filter: Today/Week/Month/All
+- Shows amount, time, status, total per filter
+- Register dropdown filter, access scoped by role
+- Backend: `GET /api/merchant-hierarchy/register-transactions`
 
-**Live Revenue View:**
-- Revenue per register, branch, and total
-- Transaction count, latest transactions
-- Online/offline status per register
-- Auto-refresh every 10 seconds
+### Branch Summary View (Complete — April 5, 2026)
+- All branch totals with revenue, payment count, active registers
+- Visual comparison with animated progress bars
+- Backend: `GET /api/merchant-hierarchy/branch-summary`
 
-**Backend Endpoints:**
-- `POST /api/merchant-hierarchy/admin/create-merchant`
-- `POST /api/merchant-hierarchy/admin/set-commission`
-- `POST /api/merchant-hierarchy/branches` (CRUD)
-- `POST /api/merchant-hierarchy/registers` (CRUD + toggle + regen key)
-- `POST /api/merchant-hierarchy/staff` (add/remove)
-- `POST /api/merchant-hierarchy/api/process-payment` (POS API)
-- `GET /api/merchant-hierarchy/revenue` (scoped by access level)
+### Merchant Commission View (Complete — April 5, 2026)
+- Commission % per merchant, earned per register and branch
+- Total commission breakdown
+- Backend: `GET /api/merchant-hierarchy/commission-summary`
 
-**Frontend: `MerchantDashboardPage.jsx`**
-- 5 tabs: Übersicht, Filialen, Kassen, Mitarbeiter, Umsatz
-- Branch creation form, register management with API key visibility
-- Staff assignment with role selector
-- Live revenue with auto-refresh
+### API Key Management (Complete — April 5, 2026)
+- Full CRUD for API keys per register
+- Show/hide, copy, regenerate actions
+- Enable/disable API key (toggle register status)
+- Last activity timestamp, transaction count, revenue per key
+- Linked to register and branch
+- Backend: `GET /api/merchant-hierarchy/api-keys`
+
+### Web-Based Payments (Complete — April 5, 2026)
+- Payments happen on website via Stripe checkout
+- App uses wallet balance for in-app actions
+- Wallet redirect for top-up
+- Balance sync after payment
+- Backend: `GET /api/merchant-hierarchy/wallet-balance`
 
 ## Key Files
-- `/app/backend/routes/rewards.py`, `/app/backend/routes/role_requests.py`
-- `/app/backend/routes/verification.py`, `/app/backend/routes/merchant_hierarchy.py`
-- `/app/backend/routes/influencer.py`, `/app/backend/routes/investor.py`
-- `/app/frontend/src/pages/RewardsPage.jsx`, `/app/frontend/src/pages/VerificationPage.jsx`
-- `/app/frontend/src/pages/MerchantDashboardPage.jsx`, `/app/frontend/src/pages/AdminPage.jsx`
-- `/app/frontend/src/pages/MorePage.jsx`, `/app/frontend/src/services/api.js`
+- Backend: `routes/merchant_hierarchy.py`, `routes/rewards.py`, `routes/verification.py`, `routes/role_requests.py`
+- Frontend: `pages/MerchantDashboardPage.jsx` (9 tabs), `pages/RewardsPage.jsx`, `pages/VerificationPage.jsx`
+- Services: `services/api.js`, `store/I18nContext.jsx`
+
+## Merchant Dashboard Tabs
+1. **Übersicht** — Revenue/Fees/Net cards, register status, recent transactions
+2. **Filialen** — Branch CRUD, address/city/country
+3. **Übersicht (Summary)** — Branch comparison with animated bars
+4. **Kassen** — Register CRUD with API keys
+5. **Transaktionen** — Date-filtered (Today/Week/Month/All), register filter
+6. **Provision** — Commission rate, breakdown by branch and register
+7. **API Schlüssel** — Full key management with show/copy/regenerate
+8. **Mitarbeiter** — Staff CRUD with role assignment
+9. **Umsatz** — Live revenue with auto-refresh
 
 ## Backlog (P1)
 - 2FA Integration (Email OTP / Google Authenticator)
@@ -111,7 +103,6 @@ Create a modern, professional fintech web app called BidBlitz V2. Build Revolut-
 ## Backlog (P2)
 - Taxi, Scooter, Food integrations
 - Chat/Support system
-- Achievements display
 
 ## Credentials
 - See `/app/memory/test_credentials.md`

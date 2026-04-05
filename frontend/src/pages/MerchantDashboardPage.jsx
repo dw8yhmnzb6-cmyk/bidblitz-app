@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { motion } from "framer-motion";
 import {
-  ArrowLeft, Store, MapPin, Plus, Users, Monitor, Key, Loader2,
-  Check, X, ChevronRight, Activity, RefreshCw, Trash2, Shield,
-  BarChart3, Copy, Eye, EyeOff, Zap
+  ArrowLeft, Store, Plus, Users, Monitor, Key, Loader2,
+  Check, X, Activity, RefreshCw, BarChart3, Copy, Eye, EyeOff,
+  Zap, CircleDollarSign, Clock, Filter, ExternalLink, Wallet
 } from "lucide-react";
 import { useI18n } from "../store/I18nContext";
 import { api } from "../services/api";
@@ -19,9 +19,15 @@ const MerchantDashboardPage = ({ onBack }) => {
   const [registers, setRegisters] = useState([]);
   const [staff, setStaff] = useState([]);
   const [revenue, setRevenue] = useState(null);
+  const [branchSummary, setBranchSummary] = useState([]);
+  const [commData, setCommData] = useState(null);
+  const [apiKeys, setApiKeys] = useState([]);
+  const [regTxns, setRegTxns] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState("");
   const [selectedBranch, setSelectedBranch] = useState(null);
+  const [selectedDevice, setSelectedDevice] = useState("");
+  const [txnPeriod, setTxnPeriod] = useState("today");
   const [form, setForm] = useState({});
   const [saving, setSaving] = useState(false);
   const [showKey, setShowKey] = useState({});
@@ -45,7 +51,27 @@ const MerchantDashboardPage = ({ onBack }) => {
 
   useEffect(() => { load(); }, [load]);
 
-  // Auto-refresh revenue every 10s when on overview/revenue tab
+  // Load tab-specific data
+  useEffect(() => {
+    if (tab === "branch-summary") {
+      api.getBranchSummary().then(d => setBranchSummary(d.branches || [])).catch(() => {});
+    }
+    if (tab === "commission") {
+      api.getCommissionSummary().then(d => setCommData(d)).catch(() => {});
+    }
+    if (tab === "api-keys") {
+      api.getApiKeys(selectedBranch || "").then(d => setApiKeys(d.api_keys || [])).catch(() => {});
+    }
+  }, [tab, selectedBranch]);
+
+  // Load register transactions
+  useEffect(() => {
+    if (tab === "transactions") {
+      api.getRegisterTransactions(selectedDevice, selectedBranch || "", txnPeriod).then(d => setRegTxns(d)).catch(() => {});
+    }
+  }, [tab, selectedDevice, selectedBranch, txnPeriod]);
+
+  // Auto-refresh revenue on overview/revenue tab
   useEffect(() => {
     if (tab === "overview" || tab === "revenue") {
       refreshRef.current = setInterval(async () => {
@@ -62,64 +88,46 @@ const MerchantDashboardPage = ({ onBack }) => {
     setSaving(true);
     try {
       await api.createBranch({ name: form.name, address: form.address, city: form.city, country: form.country, contact_person: form.contact });
-      setShowAdd("");
-      setForm({});
-      await load();
-    } catch {}
-    setSaving(false);
+      setShowAdd(""); setForm({}); await load();
+    } catch {} setSaving(false);
   };
-
   const createRegister = async (branchId) => {
     setSaving(true);
     try {
       await api.createRegister({ branch_id: branchId, label: form.regLabel || "" });
-      setShowAdd("");
-      setForm({});
-      await load();
-    } catch {}
-    setSaving(false);
+      setShowAdd(""); setForm({}); await load();
+    } catch {} setSaving(false);
   };
-
   const addStaff = async (branchId) => {
     setSaving(true);
     try {
       await api.addStaff({ branch_id: branchId, user_email: form.staffEmail, staff_role: form.staffRole || "staff" });
-      setShowAdd("");
-      setForm({});
-      await load();
-    } catch {}
-    setSaving(false);
+      setShowAdd(""); setForm({}); await load();
+    } catch {} setSaving(false);
   };
-
-  const toggleReg = async (deviceId) => {
-    await api.toggleRegister(deviceId);
-    await load();
-  };
-
+  const toggleReg = async (deviceId) => { await api.toggleRegister(deviceId); await load(); };
   const regenKey = async (deviceId) => {
     const res = await api.regenerateApiKey(deviceId);
     setShowKey(p => ({ ...p, [deviceId]: res.api_key }));
+    if (tab === "api-keys") api.getApiKeys(selectedBranch || "").then(d => setApiKeys(d.api_keys || [])).catch(() => {});
     await load();
   };
-
-  const copyKey = (key) => {
-    navigator.clipboard.writeText(key).catch(() => {});
-  };
+  const copyKey = (key) => { navigator.clipboard.writeText(key).catch(() => {}); };
 
   const tabs = [
     { id: "overview", label: t("merch.overview") || "Overview", icon: BarChart3 },
     { id: "branches", label: t("merch.branches") || "Branches", icon: Store },
+    { id: "branch-summary", label: t("merch.summary") || "Summary", icon: BarChart3 },
     { id: "registers", label: t("merch.registers") || "Registers", icon: Monitor },
+    { id: "transactions", label: t("merch.txns") || "Txn", icon: Activity },
+    { id: "commission", label: t("merch.commission") || "Commission", icon: CircleDollarSign },
+    { id: "api-keys", label: t("merch.api_keys") || "API Keys", icon: Key },
     { id: "staff", label: t("merch.staff") || "Staff", icon: Users },
     { id: "revenue", label: t("merch.revenue") || "Revenue", icon: Activity },
   ];
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: "#040610" }}>
-        <Loader2 size={24} className="text-white/20 animate-spin" />
-      </div>
-    );
+    return <div className="min-h-screen flex items-center justify-center" style={{ background: "#040610" }}><Loader2 size={24} className="text-white/20 animate-spin" /></div>;
   }
 
   return (
@@ -135,13 +143,11 @@ const MerchantDashboardPage = ({ onBack }) => {
             <p className="text-[9px] text-white/25">{branches.length} {t("merch.branches") || "Branches"} · {registers.length} {t("merch.registers") || "Registers"}</p>
           </div>
         </div>
-        {/* Tabs */}
         <div className="max-w-3xl mx-auto flex gap-1 px-4 pb-2 overflow-x-auto">
           {tabs.map(tb => (
             <motion.button key={tb.id} onClick={() => setTab(tb.id)} whileTap={{ scale: 0.95 }}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-semibold whitespace-nowrap ${tab === tb.id ? "bg-[#00C2FF]/10 text-[#00C2FF] border border-[#00C2FF]/20" : "text-[#444] bg-white/[0.01] border border-white/[0.03]"}`}>
-              <tb.icon size={11} />
-              {tb.label}
+              className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[9px] font-semibold whitespace-nowrap ${tab === tb.id ? "bg-[#00C2FF]/10 text-[#00C2FF] border border-[#00C2FF]/20" : "text-[#444] bg-white/[0.01] border border-white/[0.03]"}`}>
+              <tb.icon size={10} /> {tb.label}
             </motion.button>
           ))}
         </div>
@@ -154,9 +160,9 @@ const MerchantDashboardPage = ({ onBack }) => {
           <>
             <div className="grid grid-cols-3 gap-2">
               {[
-                { label: t("merch.total_rev") || "Revenue", val: `${revenue.total_revenue.toFixed(2)}`, color: "#00E89D" },
-                { label: t("merch.total_fees") || "Fees", val: `${revenue.total_fees.toFixed(2)}`, color: "#FFB800" },
-                { label: t("merch.total_net") || "Net", val: `${revenue.total_net.toFixed(2)}`, color: "#00E0FF" },
+                { label: t("merch.total_rev") || "Revenue", val: revenue.total_revenue.toFixed(2), color: "#00E89D" },
+                { label: t("merch.total_fees") || "Fees", val: revenue.total_fees.toFixed(2), color: "#FFB800" },
+                { label: t("merch.total_net") || "Net", val: revenue.total_net.toFixed(2), color: "#00E0FF" },
               ].map((m, i) => (
                 <motion.div key={i} className={`rounded-2xl p-3 text-center ${glass}`} style={{ background: panelBg, border: panelBorder }} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
                   <p className="text-[18px] font-black font-mono" style={{ color: m.color }}>{m.val}</p>
@@ -164,24 +170,19 @@ const MerchantDashboardPage = ({ onBack }) => {
                 </motion.div>
               ))}
             </div>
-            <motion.div className={`rounded-2xl p-3 ${glass}`} style={{ background: panelBg, border: panelBorder }} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}>
-              <p className="text-[10px] text-[#555] uppercase tracking-widest font-semibold mb-2">{t("merch.register_status") || "Register Status"}</p>
-              <div className="space-y-1.5">
-                {(revenue.registers || []).map((r, i) => (
-                  <div key={i} className="flex items-center gap-2 py-1.5">
-                    <div className={`w-2 h-2 rounded-full ${r.status === "active" ? "bg-[#00E89D]" : "bg-[#FF4757]"}`} />
-                    <span className="text-[10px] text-white/50 flex-1">{r.label || r.device_id}</span>
-                    <span className="text-[9px] text-white/20 font-mono">{r.transaction_count || 0} txn</span>
-                    <span className="text-[10px] text-[#00E0FF] font-bold font-mono">{(r.total_revenue || 0).toFixed(2)}</span>
-                  </div>
-                ))}
-                {(revenue.registers || []).length === 0 && <p className="text-[10px] text-white/15 text-center py-2">{t("merch.no_registers") || "No registers yet"}</p>}
-              </div>
-            </motion.div>
-            {/* Recent Transactions */}
-            <motion.div className={`rounded-2xl p-3 ${glass}`} style={{ background: panelBg, border: panelBorder }} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.16 }}>
-              <p className="text-[10px] text-[#555] uppercase tracking-widest font-semibold mb-2">{t("merch.recent_txns") || "Recent Transactions"}</p>
-              <div className="space-y-1 max-h-48 overflow-y-auto">
+            <Panel title={t("merch.register_status") || "Register Status"}>
+              {(revenue.registers || []).map((r, i) => (
+                <div key={i} className="flex items-center gap-2 py-1.5">
+                  <div className={`w-2 h-2 rounded-full ${r.status === "active" ? "bg-[#00E89D]" : "bg-[#FF4757]"}`} />
+                  <span className="text-[10px] text-white/50 flex-1">{r.label || r.device_id}</span>
+                  <span className="text-[9px] text-white/20 font-mono">{r.transaction_count || 0} txn</span>
+                  <span className="text-[10px] text-[#00E0FF] font-bold font-mono">{(r.total_revenue || 0).toFixed(2)}</span>
+                </div>
+              ))}
+              {(revenue.registers || []).length === 0 && <Empty />}
+            </Panel>
+            <Panel title={t("merch.recent_txns") || "Recent Transactions"}>
+              <div className="max-h-48 overflow-y-auto space-y-1">
                 {(revenue.transactions || []).slice(0, 15).map((tx, i) => (
                   <div key={i} className="flex items-center gap-2 py-1">
                     <Zap size={10} className="text-[#00E89D]" />
@@ -191,9 +192,9 @@ const MerchantDashboardPage = ({ onBack }) => {
                     <span className="text-[8px] text-[#FFB800]/60 font-mono">-{tx.fee.toFixed(2)}</span>
                   </div>
                 ))}
-                {(revenue.transactions || []).length === 0 && <p className="text-[10px] text-white/15 text-center py-2">{t("merch.no_txns") || "No transactions yet"}</p>}
+                {(revenue.transactions || []).length === 0 && <Empty />}
               </div>
-            </motion.div>
+            </Panel>
           </>
         )}
 
@@ -202,34 +203,19 @@ const MerchantDashboardPage = ({ onBack }) => {
           <>
             <div className="flex justify-between items-center">
               <p className="text-[10px] text-[#555] uppercase tracking-widest font-semibold">{t("merch.your_branches") || "Your Branches"}</p>
-              <motion.button data-testid="add-branch-btn" onClick={() => setShowAdd("branch")} whileTap={{ scale: 0.9 }}
-                className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[9px] font-bold" style={{ background: "rgba(0,224,255,0.06)", border: "1px solid rgba(0,224,255,0.12)", color: "#00E0FF" }}>
-                <Plus size={10} /> {t("merch.add_branch") || "Add Branch"}
-              </motion.button>
+              <AddBtn data-testid="add-branch-btn" onClick={() => setShowAdd("branch")} label={t("merch.add_branch") || "Add Branch"} />
             </div>
             {showAdd === "branch" && (
-              <motion.div className={`rounded-2xl p-4 ${glass}`} style={{ background: panelBg, border: "1px solid rgba(0,224,255,0.08)" }} initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
-                <div className="space-y-2">
-                  {[
-                    { key: "name", placeholder: t("merch.branch_name") || "Branch Name" },
-                    { key: "address", placeholder: t("merch.address") || "Address" },
-                    { key: "city", placeholder: t("merch.city") || "City" },
-                    { key: "country", placeholder: t("merch.country") || "Country" },
-                    { key: "contact", placeholder: t("merch.contact") || "Contact Person" },
-                  ].map(f => (
-                    <input key={f.key} data-testid={`branch-${f.key}-input`} value={form[f.key] || ""} onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))} placeholder={f.placeholder}
-                      className="w-full px-3 py-2 rounded-lg bg-white/[0.02] border border-white/[0.05] text-[11px] text-white/80 placeholder:text-white/15 outline-none" />
-                  ))}
-                  <div className="flex gap-2">
-                    <motion.button data-testid="save-branch-btn" onClick={createBranch} disabled={saving || !form.name} whileTap={{ scale: 0.95 }}
-                      className="flex-1 py-2 rounded-lg text-[10px] font-bold" style={{ background: "rgba(0,232,157,0.08)", border: "1px solid rgba(0,232,157,0.15)", color: "#00E89D" }}>
-                      {saving ? <Loader2 size={12} className="animate-spin mx-auto" /> : (t("common.save") || "Save")}
-                    </motion.button>
-                    <motion.button onClick={() => { setShowAdd(""); setForm({}); }} whileTap={{ scale: 0.95 }}
-                      className="px-4 py-2 rounded-lg text-[10px] font-bold text-white/20 bg-white/[0.02] border border-white/[0.04]">{t("common.cancel") || "Cancel"}</motion.button>
-                  </div>
+              <FormPanel>
+                {["name", "address", "city", "country", "contact"].map(k => (
+                  <input key={k} data-testid={`branch-${k}-input`} value={form[k] || ""} onChange={e => setForm(p => ({ ...p, [k]: e.target.value }))} placeholder={t(`merch.${k === "contact" ? "contact" : k === "name" ? "branch_name" : k}`) || k}
+                    className="w-full px-3 py-2 rounded-lg bg-white/[0.02] border border-white/[0.05] text-[11px] text-white/80 placeholder:text-white/15 outline-none" />
+                ))}
+                <div className="flex gap-2">
+                  <SaveBtn data-testid="save-branch-btn" onClick={createBranch} disabled={saving || !form.name} saving={saving} />
+                  <CancelBtn onClick={() => { setShowAdd(""); setForm({}); }} />
                 </div>
-              </motion.div>
+              </FormPanel>
             )}
             <div className="space-y-2">
               {branches.map((b, i) => (
@@ -245,13 +231,60 @@ const MerchantDashboardPage = ({ onBack }) => {
                     </div>
                     <div className="text-right">
                       <p className="text-[11px] font-bold text-[#00E89D] font-mono">{(b.total_revenue || 0).toFixed(2)}</p>
-                      <span className={`px-1.5 py-0.5 rounded-full text-[7px] font-bold ${b.status === "active" ? "bg-[#00E89D]/10 text-[#00E89D]" : "bg-[#FF4757]/10 text-[#FF4757]"}`}>{b.status}</span>
+                      <StatusBadge status={b.status} />
                     </div>
                   </div>
                 </motion.div>
               ))}
-              {branches.length === 0 && <p className="text-[11px] text-white/15 text-center py-6">{t("merch.no_branches") || "No branches yet"}</p>}
+              {branches.length === 0 && <Empty text={t("merch.no_branches") || "No branches yet"} />}
             </div>
+          </>
+        )}
+
+        {/* ── BRANCH SUMMARY ── */}
+        {tab === "branch-summary" && (
+          <>
+            <Panel title={t("merch.branch_comparison") || "Branch Comparison"}>
+              {branchSummary.length === 0 ? <Empty text={t("merch.no_branches") || "No branches"} /> : (
+                <div className="space-y-2">
+                  {branchSummary.map((b, i) => {
+                    const maxRev = Math.max(...branchSummary.map(x => x.total_revenue || 1), 1);
+                    const pct = ((b.total_revenue || 0) / maxRev) * 100;
+                    return (
+                      <motion.div key={b.branch_id} data-testid={`summary-${b.branch_id}`} className="rounded-xl p-3" style={{ background: "rgba(255,255,255,0.01)", border: "1px solid rgba(255,255,255,0.03)" }}
+                        initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.04 }}>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <div className="flex items-center gap-2">
+                            <Store size={12} className="text-[#00E0FF]" />
+                            <span className="text-[11px] font-bold text-white/80">{b.name}</span>
+                            <span className="text-[8px] text-white/20">{b.city}</span>
+                          </div>
+                          <StatusBadge status={b.status} />
+                        </div>
+                        <div className="h-1.5 rounded-full bg-white/[0.02] mb-2 overflow-hidden">
+                          <motion.div className="h-full rounded-full" style={{ background: "linear-gradient(90deg, #00E89D, #00E0FF)" }}
+                            initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.6, delay: i * 0.05 }} />
+                        </div>
+                        <div className="grid grid-cols-3 gap-2">
+                          <div className="text-center">
+                            <p className="text-[13px] font-black text-[#00E89D] font-mono">{(b.total_revenue || 0).toFixed(2)}</p>
+                            <p className="text-[7px] text-white/15">{t("merch.total_rev") || "Revenue"}</p>
+                          </div>
+                          <div className="text-center">
+                            <p className="text-[13px] font-black text-white/60 font-mono">{b.payment_count}</p>
+                            <p className="text-[7px] text-white/15">{t("merch.payments") || "Payments"}</p>
+                          </div>
+                          <div className="text-center">
+                            <p className="text-[13px] font-black text-[#00E0FF] font-mono">{b.active_registers}</p>
+                            <p className="text-[7px] text-white/15">{t("merch.active_reg") || "Active Reg."}</p>
+                          </div>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              )}
+            </Panel>
           </>
         )}
 
@@ -260,31 +293,22 @@ const MerchantDashboardPage = ({ onBack }) => {
           <>
             <div className="flex justify-between items-center">
               <p className="text-[10px] text-[#555] uppercase tracking-widest font-semibold">{t("merch.pos_registers") || "POS Registers"}</p>
-              {branches.length > 0 && (
-                <motion.button data-testid="add-register-btn" onClick={() => setShowAdd("register")} whileTap={{ scale: 0.9 }}
-                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[9px] font-bold" style={{ background: "rgba(0,224,255,0.06)", border: "1px solid rgba(0,224,255,0.12)", color: "#00E0FF" }}>
-                  <Plus size={10} /> {t("merch.add_register") || "Add Register"}
-                </motion.button>
-              )}
+              {branches.length > 0 && <AddBtn data-testid="add-register-btn" onClick={() => setShowAdd("register")} label={t("merch.add_register") || "Add Register"} />}
             </div>
             {showAdd === "register" && (
-              <motion.div className={`rounded-2xl p-4 ${glass}`} style={{ background: panelBg, border: "1px solid rgba(0,224,255,0.08)" }} initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
+              <FormPanel>
                 <select data-testid="register-branch-select" value={form.regBranch || ""} onChange={e => setForm(p => ({ ...p, regBranch: e.target.value }))}
-                  className="w-full px-3 py-2 rounded-lg bg-white/[0.02] border border-white/[0.05] text-[11px] text-white/80 mb-2 outline-none">
+                  className="w-full px-3 py-2 rounded-lg bg-white/[0.02] border border-white/[0.05] text-[11px] text-white/80 outline-none">
                   <option value="" style={{ background: "#111" }}>{t("merch.select_branch") || "Select Branch"}</option>
                   {branches.map(b => <option key={b.branch_id} value={b.branch_id} style={{ background: "#111" }}>{b.name}</option>)}
                 </select>
-                <input data-testid="register-label-input" value={form.regLabel || ""} onChange={e => setForm(p => ({ ...p, regLabel: e.target.value }))} placeholder={t("merch.register_label") || "Register Label (optional)"}
-                  className="w-full px-3 py-2 rounded-lg bg-white/[0.02] border border-white/[0.05] text-[11px] text-white/80 placeholder:text-white/15 outline-none mb-2" />
+                <input data-testid="register-label-input" value={form.regLabel || ""} onChange={e => setForm(p => ({ ...p, regLabel: e.target.value }))} placeholder={t("merch.register_label") || "Label"}
+                  className="w-full px-3 py-2 rounded-lg bg-white/[0.02] border border-white/[0.05] text-[11px] text-white/80 placeholder:text-white/15 outline-none" />
                 <div className="flex gap-2">
-                  <motion.button data-testid="save-register-btn" onClick={() => createRegister(form.regBranch)} disabled={saving || !form.regBranch} whileTap={{ scale: 0.95 }}
-                    className="flex-1 py-2 rounded-lg text-[10px] font-bold" style={{ background: "rgba(0,232,157,0.08)", border: "1px solid rgba(0,232,157,0.15)", color: "#00E89D" }}>
-                    {saving ? <Loader2 size={12} className="animate-spin mx-auto" /> : (t("common.create") || "Create")}
-                  </motion.button>
-                  <motion.button onClick={() => { setShowAdd(""); setForm({}); }} whileTap={{ scale: 0.95 }}
-                    className="px-4 py-2 rounded-lg text-[10px] font-bold text-white/20 bg-white/[0.02] border border-white/[0.04]">{t("common.cancel") || "Cancel"}</motion.button>
+                  <SaveBtn data-testid="save-register-btn" onClick={() => createRegister(form.regBranch)} disabled={saving || !form.regBranch} saving={saving} label={t("common.create") || "Create"} />
+                  <CancelBtn onClick={() => { setShowAdd(""); setForm({}); }} />
                 </div>
-              </motion.div>
+              </FormPanel>
             )}
             <div className="space-y-2">
               {registers.map((r, i) => (
@@ -296,35 +320,144 @@ const MerchantDashboardPage = ({ onBack }) => {
                       <p className="text-[11px] font-bold text-white/80">{r.label || r.device_id}</p>
                       <p className="text-[8px] text-white/20 font-mono">{r.device_id}</p>
                     </div>
-                    <div className="flex items-center gap-1.5">
-                      <motion.button onClick={() => toggleReg(r.device_id)} whileTap={{ scale: 0.9 }}
-                        className={`px-2 py-1 rounded-lg text-[8px] font-bold ${r.status === "active" ? "bg-[#00E89D]/10 text-[#00E89D]" : "bg-[#FF4757]/10 text-[#FF4757]"}`}>
-                        {r.status}
-                      </motion.button>
-                    </div>
-                  </div>
-                  {/* API Key */}
-                  <div className="flex items-center gap-1.5 bg-white/[0.01] rounded-lg px-2 py-1.5">
-                    <Key size={10} className="text-white/15" />
-                    <span className="text-[8px] text-white/20 font-mono flex-1 truncate">{showKey[r.device_id] || r.api_key?.slice(0, 20) + "..."}</span>
-                    <motion.button onClick={() => setShowKey(p => ({ ...p, [r.device_id]: p[r.device_id] ? null : r.api_key }))} whileTap={{ scale: 0.9 }} className="p-1">
-                      {showKey[r.device_id] ? <EyeOff size={10} className="text-white/20" /> : <Eye size={10} className="text-white/20" />}
-                    </motion.button>
-                    <motion.button onClick={() => copyKey(r.api_key)} whileTap={{ scale: 0.9 }} className="p-1">
-                      <Copy size={10} className="text-white/20" />
-                    </motion.button>
-                    <motion.button onClick={() => regenKey(r.device_id)} whileTap={{ scale: 0.9 }} className="p-1">
-                      <RefreshCw size={10} className="text-[#FFB800]" />
+                    <motion.button onClick={() => toggleReg(r.device_id)} whileTap={{ scale: 0.9 }}
+                      className={`px-2 py-1 rounded-lg text-[8px] font-bold ${r.status === "active" ? "bg-[#00E89D]/10 text-[#00E89D]" : "bg-[#FF4757]/10 text-[#FF4757]"}`}>
+                      {r.status}
                     </motion.button>
                   </div>
+                  <ApiKeyRow apiKey={r.api_key} deviceId={r.device_id} showKey={showKey} setShowKey={setShowKey} copyKey={copyKey} regenKey={regenKey} />
                   <div className="flex items-center justify-between mt-1.5">
                     <span className="text-[8px] text-white/15">{r.transaction_count || 0} txn</span>
+                    <span className="text-[8px] text-white/15">{r.last_active?.slice(0, 16) || "—"}</span>
                     <span className="text-[9px] text-[#00E0FF] font-bold font-mono">{(r.total_revenue || 0).toFixed(2)}</span>
                   </div>
                 </motion.div>
               ))}
-              {registers.length === 0 && <p className="text-[11px] text-white/15 text-center py-6">{t("merch.no_registers") || "No registers"}</p>}
+              {registers.length === 0 && <Empty text={t("merch.no_registers") || "No registers"} />}
             </div>
+          </>
+        )}
+
+        {/* ── REGISTER TRANSACTIONS ── */}
+        {tab === "transactions" && (
+          <>
+            <div className="flex items-center gap-2 mb-1">
+              <Filter size={12} className="text-white/20" />
+              <div className="flex gap-1">
+                {["today", "week", "month", "all"].map(p => (
+                  <motion.button key={p} onClick={() => setTxnPeriod(p)} whileTap={{ scale: 0.95 }}
+                    className={`px-2.5 py-1 rounded-lg text-[9px] font-semibold ${txnPeriod === p ? "bg-[#00C2FF]/10 text-[#00C2FF] border border-[#00C2FF]/20" : "text-[#444] bg-white/[0.01] border border-white/[0.03]"}`}>
+                    {t(`merch.period_${p}`) || p}
+                  </motion.button>
+                ))}
+              </div>
+              {registers.length > 0 && (
+                <select value={selectedDevice} onChange={e => setSelectedDevice(e.target.value)}
+                  className="px-2 py-1 rounded-lg bg-white/[0.02] border border-white/[0.05] text-[9px] text-white/60 outline-none">
+                  <option value="" style={{ background: "#111" }}>{t("merch.all_registers") || "All"}</option>
+                  {registers.map(r => <option key={r.device_id} value={r.device_id} style={{ background: "#111" }}>{r.label || r.device_id}</option>)}
+                </select>
+              )}
+            </div>
+            {regTxns && (
+              <>
+                <div className="grid grid-cols-3 gap-2">
+                  <StatCard val={regTxns.total_amount.toFixed(2)} label={t("merch.amount") || "Amount"} color="#00E89D" />
+                  <StatCard val={regTxns.count} label={t("merch.txn_count") || "Count"} color="rgba(255,255,255,0.5)" />
+                  <StatCard val={regTxns.total_fees.toFixed(2)} label={t("merch.total_fees") || "Fees"} color="#FFB800" />
+                </div>
+                <Panel title={`${regTxns.count} ${t("merch.txns") || "Transactions"}`}>
+                  <div className="max-h-72 overflow-y-auto space-y-1">
+                    {(regTxns.transactions || []).map((tx, i) => (
+                      <div key={i} className="flex items-center gap-2 py-1.5 border-b border-white/[0.02]">
+                        <Zap size={9} className="text-[#00E89D]" />
+                        <span className="text-[9px] text-white/30 flex-1 truncate">{tx.description}</span>
+                        <span className="text-[8px] text-white/15 font-mono">{tx.device_id}</span>
+                        <span className="text-[10px] text-[#00E0FF] font-bold font-mono">{tx.amount.toFixed(2)}</span>
+                        <span className={`px-1.5 py-0.5 rounded text-[7px] font-bold ${tx.status === "completed" ? "bg-[#00E89D]/10 text-[#00E89D]" : "bg-[#FFB800]/10 text-[#FFB800]"}`}>{tx.status}</span>
+                        <span className="text-[7px] text-white/10">{tx.created_at?.slice(11, 19)}</span>
+                      </div>
+                    ))}
+                    {(regTxns.transactions || []).length === 0 && <Empty text={t("merch.no_txns") || "No transactions"} />}
+                  </div>
+                </Panel>
+              </>
+            )}
+          </>
+        )}
+
+        {/* ── COMMISSION ── */}
+        {tab === "commission" && commData && (
+          <>
+            <div className="grid grid-cols-2 gap-2">
+              <StatCard val={`${commData.commission_rate || 0}%`} label={t("merch.rate") || "Rate"} color="#FFB800" />
+              <StatCard val={(commData.total_commission || 0).toFixed(2)} label={t("merch.total_commission") || "Total Commission"} color="#FF6B6B" />
+            </div>
+            <Panel title={t("merch.commission_by_branch") || "Commission by Branch"}>
+              {Object.keys(commData.branch_commissions || {}).length === 0 ? <Empty /> : (
+                <div className="space-y-1.5">
+                  {Object.entries(commData.branch_commissions || {}).map(([bid, fee]) => {
+                    const br = branches.find(b => b.branch_id === bid);
+                    return (
+                      <div key={bid} className="flex items-center gap-2 py-1">
+                        <Store size={10} className="text-[#00E0FF]" />
+                        <span className="text-[10px] text-white/50 flex-1">{br?.name || bid.slice(0, 8)}</span>
+                        <span className="text-[10px] text-[#FFB800] font-bold font-mono">{fee.toFixed(2)}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </Panel>
+            <Panel title={t("merch.commission_by_register") || "Commission by Register"}>
+              {Object.keys(commData.register_commissions || {}).length === 0 ? <Empty /> : (
+                <div className="space-y-1.5">
+                  {Object.entries(commData.register_commissions || {}).map(([did, fee]) => {
+                    const reg = registers.find(r => r.device_id === did);
+                    return (
+                      <div key={did} className="flex items-center gap-2 py-1">
+                        <Monitor size={10} className="text-[#A855F7]" />
+                        <span className="text-[10px] text-white/50 flex-1">{reg?.label || did}</span>
+                        <span className="text-[10px] text-[#FFB800] font-bold font-mono">{fee.toFixed(2)}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </Panel>
+          </>
+        )}
+
+        {/* ── API KEYS ── */}
+        {tab === "api-keys" && (
+          <>
+            <Panel title={t("merch.api_key_mgmt") || "API Key Management"}>
+              {apiKeys.length === 0 ? <Empty text={t("merch.no_keys") || "No API keys"} /> : (
+                <div className="space-y-2.5">
+                  {apiKeys.map((k, i) => (
+                    <motion.div key={k.device_id} data-testid={`apikey-${k.device_id}`} className="rounded-xl p-3" style={{ background: "rgba(255,255,255,0.01)", border: "1px solid rgba(255,255,255,0.03)" }}
+                      initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}>
+                      <div className="flex items-center gap-2 mb-2">
+                        <Key size={12} className={k.status === "active" ? "text-[#00E89D]" : "text-[#FF4757]"} />
+                        <div className="flex-1">
+                          <p className="text-[10px] font-bold text-white/70">{k.label || k.device_id}</p>
+                          <p className="text-[8px] text-white/20">{k.branch_name} · {k.device_id}</p>
+                        </div>
+                        <motion.button onClick={() => toggleReg(k.device_id)} whileTap={{ scale: 0.9 }}
+                          className={`px-2 py-0.5 rounded text-[7px] font-bold ${k.status === "active" ? "bg-[#00E89D]/10 text-[#00E89D]" : "bg-[#FF4757]/10 text-[#FF4757]"}`}>
+                          {k.status}
+                        </motion.button>
+                      </div>
+                      <ApiKeyRow apiKey={k.api_key} deviceId={k.device_id} showKey={showKey} setShowKey={setShowKey} copyKey={copyKey} regenKey={regenKey} />
+                      <div className="flex items-center justify-between mt-1.5 text-[8px] text-white/15">
+                        <span>{t("merch.last_active") || "Last"}: {k.last_active?.slice(0, 16) || "—"}</span>
+                        <span>{k.transaction_count} txn · {(k.total_revenue || 0).toFixed(2)}</span>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+            </Panel>
           </>
         )}
 
@@ -332,38 +465,29 @@ const MerchantDashboardPage = ({ onBack }) => {
         {tab === "staff" && (
           <>
             <div className="flex justify-between items-center">
-              <p className="text-[10px] text-[#555] uppercase tracking-widest font-semibold">{t("merch.staff_members") || "Staff Members"}</p>
-              {branches.length > 0 && (
-                <motion.button data-testid="add-staff-btn" onClick={() => setShowAdd("staff")} whileTap={{ scale: 0.9 }}
-                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[9px] font-bold" style={{ background: "rgba(0,224,255,0.06)", border: "1px solid rgba(0,224,255,0.12)", color: "#00E0FF" }}>
-                  <Plus size={10} /> {t("merch.add_staff") || "Add Staff"}
-                </motion.button>
-              )}
+              <p className="text-[10px] text-[#555] uppercase tracking-widest font-semibold">{t("merch.staff_members") || "Staff"}</p>
+              {branches.length > 0 && <AddBtn data-testid="add-staff-btn" onClick={() => setShowAdd("staff")} label={t("merch.add_staff") || "Add Staff"} />}
             </div>
             {showAdd === "staff" && (
-              <motion.div className={`rounded-2xl p-4 ${glass}`} style={{ background: panelBg, border: "1px solid rgba(0,224,255,0.08)" }} initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
+              <FormPanel>
                 <select value={form.staffBranch || ""} onChange={e => setForm(p => ({ ...p, staffBranch: e.target.value }))}
-                  className="w-full px-3 py-2 rounded-lg bg-white/[0.02] border border-white/[0.05] text-[11px] text-white/80 mb-2 outline-none">
+                  className="w-full px-3 py-2 rounded-lg bg-white/[0.02] border border-white/[0.05] text-[11px] text-white/80 outline-none">
                   <option value="" style={{ background: "#111" }}>{t("merch.select_branch") || "Select Branch"}</option>
                   {branches.map(b => <option key={b.branch_id} value={b.branch_id} style={{ background: "#111" }}>{b.name}</option>)}
                 </select>
-                <input data-testid="staff-email-input" value={form.staffEmail || ""} onChange={e => setForm(p => ({ ...p, staffEmail: e.target.value }))} placeholder={t("merch.staff_email") || "Staff Email"}
-                  className="w-full px-3 py-2 rounded-lg bg-white/[0.02] border border-white/[0.05] text-[11px] text-white/80 placeholder:text-white/15 outline-none mb-2" />
+                <input data-testid="staff-email-input" value={form.staffEmail || ""} onChange={e => setForm(p => ({ ...p, staffEmail: e.target.value }))} placeholder={t("merch.staff_email") || "Email"}
+                  className="w-full px-3 py-2 rounded-lg bg-white/[0.02] border border-white/[0.05] text-[11px] text-white/80 placeholder:text-white/15 outline-none" />
                 <select data-testid="staff-role-select" value={form.staffRole || "staff"} onChange={e => setForm(p => ({ ...p, staffRole: e.target.value }))}
-                  className="w-full px-3 py-2 rounded-lg bg-white/[0.02] border border-white/[0.05] text-[11px] text-white/80 mb-2 outline-none">
+                  className="w-full px-3 py-2 rounded-lg bg-white/[0.02] border border-white/[0.05] text-[11px] text-white/80 outline-none">
                   <option value="branch_admin" style={{ background: "#111" }}>Branch Admin</option>
                   <option value="cashier" style={{ background: "#111" }}>Cashier</option>
                   <option value="staff" style={{ background: "#111" }}>Staff</option>
                 </select>
                 <div className="flex gap-2">
-                  <motion.button data-testid="save-staff-btn" onClick={() => addStaff(form.staffBranch)} disabled={saving || !form.staffEmail || !form.staffBranch} whileTap={{ scale: 0.95 }}
-                    className="flex-1 py-2 rounded-lg text-[10px] font-bold" style={{ background: "rgba(0,232,157,0.08)", border: "1px solid rgba(0,232,157,0.15)", color: "#00E89D" }}>
-                    {saving ? <Loader2 size={12} className="animate-spin mx-auto" /> : (t("common.add") || "Add")}
-                  </motion.button>
-                  <motion.button onClick={() => { setShowAdd(""); setForm({}); }} whileTap={{ scale: 0.95 }}
-                    className="px-4 py-2 rounded-lg text-[10px] font-bold text-white/20 bg-white/[0.02] border border-white/[0.04]">{t("common.cancel") || "Cancel"}</motion.button>
+                  <SaveBtn data-testid="save-staff-btn" onClick={() => addStaff(form.staffBranch)} disabled={saving || !form.staffEmail || !form.staffBranch} saving={saving} label={t("common.add") || "Add"} />
+                  <CancelBtn onClick={() => { setShowAdd(""); setForm({}); }} />
                 </div>
-              </motion.div>
+              </FormPanel>
             )}
             <div className="space-y-2">
               {staff.map((s, i) => (
@@ -376,11 +500,11 @@ const MerchantDashboardPage = ({ onBack }) => {
                       <p className="text-[8px] text-white/20">{s.user_email}</p>
                     </div>
                     <span className="px-2 py-0.5 rounded-full text-[8px] font-bold bg-[#A855F7]/10 text-[#A855F7]">{s.staff_role}</span>
-                    <span className={`px-1.5 py-0.5 rounded-full text-[7px] font-bold ${s.status === "active" ? "bg-[#00E89D]/10 text-[#00E89D]" : "bg-[#FF4757]/10 text-[#FF4757]"}`}>{s.status}</span>
+                    <StatusBadge status={s.status} />
                   </div>
                 </motion.div>
               ))}
-              {staff.length === 0 && <p className="text-[11px] text-white/15 text-center py-6">{t("merch.no_staff") || "No staff members"}</p>}
+              {staff.length === 0 && <Empty text={t("merch.no_staff") || "No staff"} />}
             </div>
           </>
         )}
@@ -388,7 +512,6 @@ const MerchantDashboardPage = ({ onBack }) => {
         {/* ── REVENUE (Live) ── */}
         {tab === "revenue" && revenue && (
           <>
-            {/* Branch filter */}
             {branches.length > 1 && (
               <div className="flex gap-1.5 overflow-x-auto pb-1">
                 <motion.button onClick={() => setSelectedBranch(null)} whileTap={{ scale: 0.95 }}
@@ -404,19 +527,11 @@ const MerchantDashboardPage = ({ onBack }) => {
               </div>
             )}
             <div className="grid grid-cols-2 gap-2">
-              <motion.div className={`rounded-2xl p-3 text-center ${glass}`} style={{ background: panelBg, border: panelBorder }}>
-                <p className="text-[20px] font-black text-[#00E89D] font-mono">{revenue.total_revenue.toFixed(2)}</p>
-                <p className="text-[8px] text-white/20">{t("merch.total_rev") || "Revenue"}</p>
-              </motion.div>
-              <motion.div className={`rounded-2xl p-3 text-center ${glass}`} style={{ background: panelBg, border: panelBorder }}>
-                <p className="text-[20px] font-black text-white/60 font-mono">{revenue.total_transactions}</p>
-                <p className="text-[8px] text-white/20">{t("merch.payments") || "Payments"}</p>
-              </motion.div>
+              <StatCard val={revenue.total_revenue.toFixed(2)} label={t("merch.total_rev") || "Revenue"} color="#00E89D" />
+              <StatCard val={revenue.total_transactions} label={t("merch.payments") || "Payments"} color="rgba(255,255,255,0.5)" />
             </div>
-            {/* Live Register Status */}
-            <motion.div className={`rounded-2xl p-3 ${glass}`} style={{ background: panelBg, border: panelBorder }}>
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-[10px] text-[#555] uppercase tracking-widest font-semibold">{t("merch.live_registers") || "Live Registers"}</p>
+            <Panel title={t("merch.live_registers") || "Live Registers"}>
+              <div className="flex items-center justify-between mb-1.5">
                 <div className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-[#00E89D] animate-pulse" /><span className="text-[8px] text-white/15">LIVE</span></div>
               </div>
               {(revenue.registers || []).map((r, i) => (
@@ -428,10 +543,8 @@ const MerchantDashboardPage = ({ onBack }) => {
                   <span className="text-[10px] text-[#00E0FF] font-bold font-mono">{(r.total_revenue || 0).toFixed(2)}</span>
                 </div>
               ))}
-            </motion.div>
-            {/* Latest Transactions */}
-            <motion.div className={`rounded-2xl p-3 ${glass}`} style={{ background: panelBg, border: panelBorder }}>
-              <p className="text-[10px] text-[#555] uppercase tracking-widest font-semibold mb-2">{t("merch.latest_txns") || "Latest Transactions"}</p>
+            </Panel>
+            <Panel title={t("merch.latest_txns") || "Latest Transactions"}>
               <div className="space-y-1 max-h-56 overflow-y-auto">
                 {(revenue.transactions || []).slice(0, 20).map((tx, i) => (
                   <div key={i} className="flex items-center gap-2 py-1">
@@ -442,7 +555,7 @@ const MerchantDashboardPage = ({ onBack }) => {
                   </div>
                 ))}
               </div>
-            </motion.div>
+            </Panel>
           </>
         )}
 
@@ -450,5 +563,55 @@ const MerchantDashboardPage = ({ onBack }) => {
     </motion.div>
   );
 };
+
+// ── Shared micro-components ──
+const Panel = ({ title, children }) => (
+  <motion.div className={`rounded-2xl p-3 backdrop-blur-xl`} style={{ background: "rgba(8,12,20,0.7)", border: "1px solid rgba(255,255,255,0.04)" }} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+    {title && <p className="text-[10px] text-[#555] uppercase tracking-widest font-semibold mb-2">{title}</p>}
+    {children}
+  </motion.div>
+);
+const StatCard = ({ val, label, color }) => (
+  <motion.div className="rounded-2xl p-3 text-center backdrop-blur-xl" style={{ background: "rgba(8,12,20,0.7)", border: "1px solid rgba(255,255,255,0.04)" }} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+    <p className="text-[16px] font-black font-mono" style={{ color }}>{val}</p>
+    <p className="text-[8px] text-white/20 mt-0.5">{label}</p>
+  </motion.div>
+);
+const Empty = ({ text }) => <p className="text-[10px] text-white/15 text-center py-4">{text || "—"}</p>;
+const StatusBadge = ({ status }) => (
+  <span className={`px-1.5 py-0.5 rounded-full text-[7px] font-bold ${status === "active" ? "bg-[#00E89D]/10 text-[#00E89D]" : "bg-[#FF4757]/10 text-[#FF4757]"}`}>{status}</span>
+);
+const AddBtn = ({ onClick, label, ...rest }) => (
+  <motion.button {...rest} onClick={onClick} whileTap={{ scale: 0.9 }}
+    className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[9px] font-bold" style={{ background: "rgba(0,224,255,0.06)", border: "1px solid rgba(0,224,255,0.12)", color: "#00E0FF" }}>
+    <Plus size={10} /> {label}
+  </motion.button>
+);
+const FormPanel = ({ children }) => (
+  <motion.div className="rounded-2xl p-4 backdrop-blur-xl space-y-2" style={{ background: "rgba(8,12,20,0.7)", border: "1px solid rgba(0,224,255,0.08)" }} initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
+    {children}
+  </motion.div>
+);
+const SaveBtn = ({ onClick, disabled, saving, label, ...rest }) => (
+  <motion.button {...rest} onClick={onClick} disabled={disabled} whileTap={{ scale: 0.95 }}
+    className="flex-1 py-2 rounded-lg text-[10px] font-bold" style={{ background: "rgba(0,232,157,0.08)", border: "1px solid rgba(0,232,157,0.15)", color: "#00E89D" }}>
+    {saving ? <Loader2 size={12} className="animate-spin mx-auto" /> : (label || "Save")}
+  </motion.button>
+);
+const CancelBtn = ({ onClick }) => (
+  <motion.button onClick={onClick} whileTap={{ scale: 0.95 }}
+    className="px-4 py-2 rounded-lg text-[10px] font-bold text-white/20 bg-white/[0.02] border border-white/[0.04]">Cancel</motion.button>
+);
+const ApiKeyRow = ({ apiKey, deviceId, showKey, setShowKey, copyKey, regenKey }) => (
+  <div className="flex items-center gap-1.5 bg-white/[0.01] rounded-lg px-2 py-1.5">
+    <Key size={10} className="text-white/15" />
+    <span className="text-[8px] text-white/20 font-mono flex-1 truncate">{showKey[deviceId] || apiKey?.slice(0, 20) + "..."}</span>
+    <motion.button onClick={() => setShowKey(p => ({ ...p, [deviceId]: p[deviceId] ? null : apiKey }))} whileTap={{ scale: 0.9 }} className="p-1">
+      {showKey[deviceId] ? <EyeOff size={10} className="text-white/20" /> : <Eye size={10} className="text-white/20" />}
+    </motion.button>
+    <motion.button onClick={() => copyKey(apiKey)} whileTap={{ scale: 0.9 }} className="p-1"><Copy size={10} className="text-white/20" /></motion.button>
+    <motion.button onClick={() => regenKey(deviceId)} whileTap={{ scale: 0.9 }} className="p-1"><RefreshCw size={10} className="text-[#FFB800]" /></motion.button>
+  </div>
+);
 
 export default MerchantDashboardPage;

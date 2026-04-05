@@ -338,6 +338,16 @@ export const api = {
     if (deviceId) q.push(`device_id=${deviceId}`);
     return request(`/api/merchant-hierarchy/revenue${q.length ? "?" + q.join("&") : ""}`);
   },
+  getRegisterTransactions: (deviceId = "", branchId = "", period = "today") => {
+    let q = [`period=${period}`];
+    if (deviceId) q.push(`device_id=${deviceId}`);
+    if (branchId) q.push(`branch_id=${branchId}`);
+    return request(`/api/merchant-hierarchy/register-transactions?${q.join("&")}`);
+  },
+  getBranchSummary: () => request("/api/merchant-hierarchy/branch-summary"),
+  getCommissionSummary: () => request("/api/merchant-hierarchy/commission-summary"),
+  getApiKeys: (branchId = "") => request(`/api/merchant-hierarchy/api-keys${branchId ? `?branch_id=${branchId}` : ""}`),
+  getWalletBalance: () => request("/api/merchant-hierarchy/wallet-balance"),
   getMyTickets: () => request("/api/support/tickets"),
   getAdminTickets: (params = {}) => {
     const q = new URLSearchParams();

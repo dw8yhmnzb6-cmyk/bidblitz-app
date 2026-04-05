@@ -467,3 +467,220 @@ async def get_revenue(request: Request, branch_id: str = "", device_id: str = ""
         "total_net": round(total_net, 2),
         "registers": registers,
     }
+
+
+# ══════════════════════════════════════
+# REGISTER TRANSACTIONS (with date filter)
+# ══════════════════════════════════════
+
+@router.get("/register-transactions")
+async def get_register_transactions(
+    request: Request, device_id: str = "", branch_id: str = "", period: str = "today"
+):
+    """Transactions per register with date filter: today/week/month/all."""
+    user = await get_current_user(request)
+    uid = str(user["_id"])
+    query = await _build_access_query(user, uid)
+
+    if device_id:
+        query["device_id"] = device_id
+    if branch_id:
+        query["branch_id"] = branch_id
+
+    now = datetime.now(timezone.utc)
+    if period == "today":
+        cutoff = now.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+        query["created_at"] = {"$gte": cutoff}
+    elif period == "week":
+        from datetime import timedelta
+        cutoff = (now - timedelta(days=7)).isoformat()
+        query["created_at"] = {"$gte": cutoff}
+    elif period == "month":
+        from datetime import timedelta
+        cutoff = (now - timedelta(days=30)).isoformat()
+        query["created_at"] = {"$gte": cutoff}
+
+    txns = await db.merchant_transactions.find(query, {"_id": 0}).sort("created_at", -1).to_list(200)
+    total = sum(t.get("amount", 0) for t in txns)
+    total_fees = sum(t.get("fee", 0) for t in txns)
+
+    return {
+        "transactions": txns,
+        "count": len(txns),
+        "total_amount": round(total, 2),
+        "total_fees": round(total_fees, 2),
+        "total_net": round(total - total_fees, 2),
+        "period": period,
+    }
+
+
+async def _build_access_query(user, uid):
+    role = user.get("role", "user")
+    if role == "admin":
+        return {}
+    mp = await db.merchant_profiles.find_one({"user_id": uid})
+    if mp:
+        return {"merchant_id": str(mp["_id"])}
+    staff = await db.merchant_staff.find_one({"user_id": uid, "status": "active"})
+    if not staff:
+        raise HTTPException(status_code=403, detail="No access")
+    if staff["staff_role"] == "branch_admin":
+        return {"branch_id": staff["branch_id"]}
+    elif staff["staff_role"] == "cashier":
+        reg = await db.merchant_registers.find_one({"branch_id": staff["branch_id"]})
+        return {"device_id": reg["device_id"]} if reg else {"device_id": "none"}
+    return {"branch_id": staff["branch_id"]}
+
+
+# ══════════════════════════════════════
+# BRANCH SUMMARY (compare all branches)
+# ══════════════════════════════════════
+
+@router.get("/branch-summary")
+async def get_branch_summary(request: Request):
+    """Summary for all branches: revenue, payment count, active registers."""
+    user = await get_current_user(request)
+    uid = str(user["_id"])
+    query = await _build_access_query(user, uid)
+
+    # Get merchant_id to filter branches
+    mid = query.get("merchant_id")
+    branch_query = {"merchant_id": mid} if mid else {}
+    if "branch_id" in query:
+        branch_query["_id"] = ObjectId(query["branch_id"])
+
+    summaries = []
+    async for b in db.merchant_branches.find(branch_query).sort("created_at", -1):
+        bid = str(b["_id"])
+        reg_count = await db.merchant_registers.count_documents({"branch_id": bid, "status": "active"})
+        txn_count = await db.merchant_transactions.count_documents({"branch_id": bid})
+        summaries.append({
+            "branch_id": bid,
+            "name": b.get("name", ""),
+            "city": b.get("city", ""),
+            "status": b.get("status", "active"),
+            "total_revenue": b.get("total_revenue", 0),
+            "active_registers": reg_count,
+            "payment_count": txn_count,
+        })
+
+    return {"branches": summaries, "total_branches": len(summaries)}
+
+
+# ══════════════════════════════════════
+# COMMISSION SUMMARY
+# ══════════════════════════════════════
+
+@router.get("/commission-summary")
+async def get_commission_summary(request: Request):
+    """Commission breakdown per register, branch, and total."""
+    user = await get_current_user(request)
+    uid = str(user["_id"])
+    role = user.get("role", "user")
+
+    if role == "admin":
+        # Admin sees all merchants
+        merchants = []
+        async for m in db.merchant_profiles.find({}).sort("created_at", -1):
+            mid = str(m["_id"])
+            txns = await db.merchant_transactions.find({"merchant_id": mid}, {"_id": 0, "fee": 1, "branch_id": 1, "device_id": 1}).to_list(500)
+            total_fee = sum(t.get("fee", 0) for t in txns)
+
+            # Per branch
+            branch_fees = {}
+            device_fees = {}
+            for t in txns:
+                br = t.get("branch_id", "")
+                dv = t.get("device_id", "")
+                branch_fees[br] = branch_fees.get(br, 0) + t.get("fee", 0)
+                device_fees[dv] = device_fees.get(dv, 0) + t.get("fee", 0)
+
+            merchants.append({
+                "merchant_id": mid,
+                "business_name": m.get("business_name", ""),
+                "commission_rate": m.get("commission_rate", DEFAULT_COMMISSION),
+                "total_commission": round(total_fee, 2),
+                "total_revenue": m.get("total_revenue", 0),
+                "branch_commissions": {k: round(v, 2) for k, v in branch_fees.items()},
+                "register_commissions": {k: round(v, 2) for k, v in device_fees.items()},
+            })
+        return {"merchants": merchants}
+    else:
+        mp = await db.merchant_profiles.find_one({"user_id": uid})
+        if not mp:
+            raise HTTPException(status_code=403, detail="No merchant profile")
+        mid = str(mp["_id"])
+        txns = await db.merchant_transactions.find({"merchant_id": mid}, {"_id": 0, "fee": 1, "branch_id": 1, "device_id": 1}).to_list(500)
+        total_fee = sum(t.get("fee", 0) for t in txns)
+        branch_fees = {}
+        device_fees = {}
+        for t in txns:
+            br = t.get("branch_id", "")
+            dv = t.get("device_id", "")
+            branch_fees[br] = branch_fees.get(br, 0) + t.get("fee", 0)
+            device_fees[dv] = device_fees.get(dv, 0) + t.get("fee", 0)
+
+        return {
+            "commission_rate": mp.get("commission_rate", DEFAULT_COMMISSION),
+            "total_commission": round(total_fee, 2),
+            "total_revenue": mp.get("total_revenue", 0),
+            "branch_commissions": {k: round(v, 2) for k, v in branch_fees.items()},
+            "register_commissions": {k: round(v, 2) for k, v in device_fees.items()},
+        }
+
+
+# ══════════════════════════════════════
+# API KEY MANAGEMENT (enhanced)
+# ══════════════════════════════════════
+
+@router.get("/api-keys")
+async def list_api_keys(request: Request, branch_id: str = ""):
+    """List all API keys with register/branch info."""
+    user = await get_current_user(request)
+    uid = str(user["_id"])
+    query = {}
+
+    mp = await db.merchant_profiles.find_one({"user_id": uid})
+    if mp:
+        query["merchant_id"] = str(mp["_id"])
+    elif user.get("role") == "admin":
+        pass
+    else:
+        raise HTTPException(status_code=403, detail="No access")
+
+    if branch_id:
+        query["branch_id"] = branch_id
+
+    keys = []
+    async for r in db.merchant_registers.find(query).sort("created_at", -1):
+        branch = await db.merchant_branches.find_one({"_id": ObjectId(r["branch_id"])})
+        keys.append({
+            "device_id": r.get("device_id"),
+            "api_key": r.get("api_key"),
+            "label": r.get("label", ""),
+            "status": r.get("status", "active"),
+            "branch_id": r.get("branch_id"),
+            "branch_name": branch.get("name", "") if branch else "",
+            "last_active": r.get("last_active"),
+            "transaction_count": r.get("transaction_count", 0),
+            "total_revenue": r.get("total_revenue", 0),
+            "created_at": r.get("created_at"),
+        })
+
+    return {"api_keys": keys, "total": len(keys)}
+
+
+# ══════════════════════════════════════
+# WALLET SYNC (for web-based payments)
+# ══════════════════════════════════════
+
+@router.get("/wallet-balance")
+async def get_wallet_balance(request: Request):
+    """Get user's wallet balance for in-app display."""
+    user = await get_current_user(request)
+    return {
+        "balance": user.get("balance", 0),
+        "bid_credits": user.get("bid_credits", 0),
+        "currency": user.get("currency", "EUR"),
+        "topup_url": "/wallet",
+    }
