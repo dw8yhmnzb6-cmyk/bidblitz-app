@@ -937,6 +937,7 @@ const ReferralPanel = ({ t }) => {
   const [showApply, setShowApply] = useState(false);
   const [leaderboard, setLeaderboard] = useState([]);
   const [showBoard, setShowBoard] = useState(false);
+  const [shareSuccess, setShareSuccess] = useState(null);
 
   useEffect(() => {
     api.getAuctionReferral().then(setRef).catch(() => {});
@@ -946,14 +947,16 @@ const ReferralPanel = ({ t }) => {
   const shareUrl = typeof window !== "undefined" ? `${window.location.origin}?ref=${ref?.referral_code || ""}` : "";
   const shareMsg = t("share.invite_msg").replace("{code}", ref?.referral_code || "");
 
+  const showShared = (via) => { setShareSuccess(via); setTimeout(() => setShareSuccess(null), 2500); };
+
   const copy = () => {
-    navigator.clipboard.writeText(shareUrl).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); }).catch(() => {});
+    navigator.clipboard.writeText(`${shareMsg}\n${shareUrl}`).then(() => { setCopied(true); showShared("copy"); setTimeout(() => setCopied(false), 2500); }).catch(() => {});
   };
 
-  const shareWhatsApp = () => window.open(`https://wa.me/?text=${encodeURIComponent(shareMsg + " " + shareUrl)}`, "_blank");
-  const shareEmail = () => window.open(`mailto:?subject=${encodeURIComponent("Join BidBlitz!")}&body=${encodeURIComponent(shareMsg + "\n\n" + shareUrl)}`, "_blank");
+  const shareWhatsApp = () => { window.open(`https://wa.me/?text=${encodeURIComponent(shareMsg + "\n" + shareUrl)}`, "_blank"); showShared("whatsapp"); };
+  const shareEmail = () => { window.open(`mailto:?subject=${encodeURIComponent("BidBlitz — " + t("auction.referral_title"))}&body=${encodeURIComponent(shareMsg + "\n\n" + shareUrl)}`, "_blank"); showShared("email"); };
   const shareNative = () => {
-    if (navigator.share) navigator.share({ title: "BidBlitz", text: shareMsg, url: shareUrl }).catch(() => {});
+    if (navigator.share) { navigator.share({ title: "BidBlitz", text: shareMsg, url: shareUrl }).then(() => showShared("native")).catch(() => {}); }
     else copy();
   };
 
@@ -970,9 +973,8 @@ const ReferralPanel = ({ t }) => {
   return (
     <motion.div className={`rounded-2xl overflow-hidden ${glass}`} style={{ background: panelBg, border: panelBorder }}
       initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.04 }}>
-      {/* Main row */}
       <div className="p-3">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 mb-3">
           <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
             style={{ background: "rgba(0,224,255,0.06)", border: "1px solid rgba(0,224,255,0.1)" }}>
             <Share2 size={14} className="text-[#00E0FF]" />
@@ -981,15 +983,38 @@ const ReferralPanel = ({ t }) => {
             <p className="text-[11px] font-semibold text-white/80">{t("auction.referral_title")}</p>
             <p className="text-[9px] text-white/25">{t("auction.referral_desc")}</p>
           </div>
-          <div className="flex items-center gap-1.5 flex-shrink-0">
-            <div className="px-2 py-1 rounded-lg bg-white/[0.03] border border-white/[0.06]">
-              <span className="text-[11px] font-mono font-bold text-[#00E0FF] tracking-wider">{ref.referral_code}</span>
-            </div>
+          <div className="px-2.5 py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.06]">
+            <span className="text-[12px] font-mono font-bold text-[#00E0FF] tracking-wider">{ref.referral_code}</span>
           </div>
         </div>
 
-        {/* Share buttons row */}
-        <div className="flex items-center gap-2 mt-3">
+        {/* Primary one-tap share button */}
+        <motion.button data-testid="share-primary-btn" onClick={shareNative}
+          className="w-full flex items-center justify-center gap-2 py-3 rounded-xl mb-2.5"
+          style={{ background: "rgba(0,224,255,0.06)", border: "1px solid rgba(0,224,255,0.12)" }}
+          whileTap={{ scale: 0.97 }}
+          whileHover={{ background: "rgba(0,224,255,0.1)", borderColor: "rgba(0,224,255,0.2)" }}>
+          <Share2 size={14} className="text-[#00E0FF]" />
+          <span className="text-[12px] font-bold text-[#00E0FF]">{t("share.native")}</span>
+        </motion.button>
+
+        {/* Share success feedback */}
+        <AnimatePresence>
+          {shareSuccess && (
+            <motion.div className="flex items-center justify-center gap-2 py-2 mb-2.5 rounded-xl"
+              style={{ background: "rgba(0,232,157,0.05)", border: "1px solid rgba(0,232,157,0.1)" }}
+              initial={{ opacity: 0, y: -4, height: 0 }} animate={{ opacity: 1, y: 0, height: "auto" }} exit={{ opacity: 0, y: -4, height: 0 }}
+              transition={{ duration: 0.2 }}>
+              <Check size={12} className="text-[#00E89D]" />
+              <span className="text-[10px] font-bold text-[#00E89D]">
+                {shareSuccess === "copy" ? t("share.copied") : t("share.shared_success")}
+              </span>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Quick share options row */}
+        <div className="flex items-center gap-1.5">
           <motion.button data-testid="share-whatsapp" onClick={shareWhatsApp} whileTap={{ scale: 0.9 }}
             className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg" style={{ background: "rgba(37,211,102,0.06)", border: "1px solid rgba(37,211,102,0.12)" }}>
             <Smartphone size={10} className="text-[#25D366]" /><span className="text-[9px] font-bold text-[#25D366]">{t("share.whatsapp")}</span>
@@ -999,16 +1024,10 @@ const ReferralPanel = ({ t }) => {
             <Mail size={10} className="text-[#00E0FF]" /><span className="text-[9px] font-bold text-[#00E0FF]">{t("share.email")}</span>
           </motion.button>
           <motion.button data-testid="share-copy" onClick={copy} whileTap={{ scale: 0.9 }}
-            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}>
+            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg" style={{ background: copied ? "rgba(0,232,157,0.04)" : "rgba(255,255,255,0.02)", border: `1px solid ${copied ? "rgba(0,232,157,0.1)" : "rgba(255,255,255,0.05)"}` }}>
             {copied ? <Check size={10} className="text-[#00E89D]" /> : <Link2 size={10} className="text-white/30" />}
             <span className={`text-[9px] font-bold ${copied ? "text-[#00E89D]" : "text-white/30"}`}>{copied ? t("share.copied") : t("share.copy_link")}</span>
           </motion.button>
-          {typeof navigator !== "undefined" && navigator.share && (
-            <motion.button data-testid="share-native" onClick={shareNative} whileTap={{ scale: 0.9 }}
-              className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "rgba(176,104,255,0.04)", border: "1px solid rgba(176,104,255,0.1)" }}>
-              <Share2 size={10} className="text-[#B068FF]" />
-            </motion.button>
-          )}
         </div>
 
         {/* Stats + apply */}

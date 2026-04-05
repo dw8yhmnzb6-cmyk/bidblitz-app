@@ -324,6 +324,7 @@ const translations = {
     "lowcredits.get_credits": "Get Credits",
     "share.whatsapp": "WhatsApp", "share.email": "Email", "share.copy_link": "Copy Link", "share.native": "Share",
     "share.copied": "Link copied!", "share.invite_msg": "Join BidBlitz and win premium products for pennies! Use my code {code} for 5 free credits!",
+    "share.shared_success": "Shared successfully!",
     "referral.earned_total": "Earned", "referral.leaderboard": "Top Referrers",
     "discount.per_credit": "/credit", "discount.cheaper": "cheaper", "discount.best_value": "BEST VALUE",
     // Common
@@ -617,6 +618,7 @@ const translations = {
     "lowcredits.get_credits": "Credits holen",
     "share.whatsapp": "WhatsApp", "share.email": "E-Mail", "share.copy_link": "Link kopieren", "share.native": "Teilen",
     "share.copied": "Link kopiert!", "share.invite_msg": "Tritt BidBlitz bei und gewinne Premium-Produkte f\u00fcr Pfennige! Nutze meinen Code {code} f\u00fcr 5 Gratis-Credits!",
+    "share.shared_success": "Erfolgreich geteilt!",
     "referral.earned_total": "Verdient", "referral.leaderboard": "Top-Einlader",
     "discount.per_credit": "/Credit", "discount.cheaper": "g\u00fcnstiger", "discount.best_value": "BESTER WERT",
     "referral.share_text": "Tritt BidBlitz bei und wir verdienen beide! Code: {code}",
