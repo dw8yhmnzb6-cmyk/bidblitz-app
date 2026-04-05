@@ -6,93 +6,65 @@ Create a modern, professional fintech web app called BidBlitz V2. Build Revolut-
 ## Tech Stack
 - **Frontend**: React, TailwindCSS, Framer Motion, Shadcn UI
 - **Backend**: FastAPI, MongoDB (Motor), JWT Auth
-- **Payments**: Stripe (checkout + saved payment methods + 1-click), Web-based wallet top-up
+- **Payments**: Stripe (checkout + saved methods + 1-click), Barcode/QR, NFC
 - **Languages**: 12 (EN, DE, SQ, TR, FR, ES, IT, PT, NL, PL, RU, AR)
 
 ## Implemented Features
 
-### Core (Complete)
-- Full JWT auth, Wallet, Merchant & Admin dashboards, QR payments
-- 12-language i18n, Kids dashboard with paywall
-- Notifications, activity feed, referral system
-- Export tools, Feature flags, Premium card, Transactions
+### Core: Auth, Wallet, Admin, QR, i18n, Kids, Notifications, Referral, Export, Feature Flags
 
-### Penny Auction System (Complete)
-- Full auction CRUD, bidding, auto-bid, daily rewards, credit packages
-- Dual timer system with Final Battle mechanics (20s reset)
+### Penny Auction: CRUD, bidding, auto-bid, dual timer, Final Battle, credit packages
 
-### Engagement Features (Complete)
-- One-click checkout, low credits popup, discount badges, watchlist, bid streak
+### Stripe Connect: Express merchant accounts, earnings tracking
 
-### Stripe Connect (Complete)
-- Express accounts, onboarding, earnings tracking
+### Influencer System: Commission as bid_credits (Reward Balance), admin-configurable
 
-### Influencer System (Complete)
-- Commission payouts as bid_credits (Reward Balance), admin-configurable
+### Investor Page: Landing page + contact form
 
-### Investor Page (Complete)
-- Landing page + contact form
+### Rewards: Daily login, streak (Day 1-7), comeback bonus, milestones, notifications
 
-### Rewards System (Complete)
-- Daily login reward, streak (Day 1-7), comeback bonus, milestones, notifications
+### Role Request & Admin: Registration role selector, admin approve/reject
 
-### Role Request & Admin Approval (Complete)
-- Registration role selector, admin approve/reject, status filters
+### Identity Verification: ID front/back + selfie upload, admin review
 
-### Identity Verification (Complete)
-- Upload ID front/back + selfie, admin review with image preview
+### Merchant Hierarchy: Main Account → Branches → Staff → Registers/POS, 0.5-3% commission
 
-### Merchant Hierarchy System (Complete)
-- Main Merchant → Branches → Staff → Registers/POS
-- Staff roles: merchant_owner, branch_admin, cashier, staff
-- Commission system 0.5%–3% per merchant
+### Merchant Dashboard (9 tabs): Overview, Branches, Summary, Registers, Transactions, Commission, API Keys, Staff, Revenue
 
-### Register Transaction View (Complete — April 5, 2026)
-- Transactions per register with date filter: Today/Week/Month/All
-- Shows amount, time, status, total per filter
-- Register dropdown filter, access scoped by role
-- Backend: `GET /api/merchant-hierarchy/register-transactions`
+### Payment System (Complete — April 5, 2026)
 
-### Branch Summary View (Complete — April 5, 2026)
-- All branch totals with revenue, payment count, active registers
-- Visual comparison with animated progress bars
-- Backend: `GET /api/merchant-hierarchy/branch-summary`
+**Customer Barcode Payment:**
+- Dynamic QR/barcode per user, auto-refreshes every 2 minutes
+- Barcode format: `BLZ-XXXXXXXXXXXXXXXX`
+- Time-based security: barcode invalidated after single use + expiry
+- Backend: `GET /api/payments/my-barcode`, `POST /api/payments/refresh-barcode`
 
-### Merchant Commission View (Complete — April 5, 2026)
-- Commission % per merchant, earned per register and branch
-- Total commission breakdown
-- Backend: `GET /api/merchant-hierarchy/commission-summary`
+**Merchant Payment Terminal:**
+- 4-step flow: Enter Amount → Scan Barcode → Confirm → Done
+- Quick amount buttons (5, 10, 15, 20, 25, 50)
+- Barcode lookup shows customer name before confirming
+- One-tap confirm, payment in seconds
+- Backend: `POST /api/payments/barcode-lookup`, `POST /api/payments/barcode-pay`
 
-### API Key Management (Complete — April 5, 2026)
-- Full CRUD for API keys per register
-- Show/hide, copy, regenerate actions
-- Enable/disable API key (toggle register status)
-- Last activity timestamp, transaction count, revenue per key
-- Linked to register and branch
-- Backend: `GET /api/merchant-hierarchy/api-keys`
+**NFC Payment Strategy:**
+- Wallet NFC: 0.3% fee (lowest, encourages wallet)
+- Barcode/QR: 0.5% fee (low)
+- Card NFC: 2.5% fee (standard)
+- Backend: `POST /api/payments/nfc-pay`, `GET /api/payments/fee-info`
 
-### Web-Based Payments (Complete — April 5, 2026)
-- Payments happen on website via Stripe checkout
-- App uses wallet balance for in-app actions
-- Wallet redirect for top-up
-- Balance sync after payment
-- Backend: `GET /api/merchant-hierarchy/wallet-balance`
+**Web-Based Credit Purchase:**
+- "Buy Credits" buttons (10, 25, 50, 100, 250, 500 EUR)
+- Opens Stripe checkout session
+- Redirects back after payment
+- Wallet auto-syncs
+
+**Frontend Pages:**
+- `PaymentPage.jsx` — Customer barcode display, timer, wallet top-up, fee info
+- `MerchantTerminalPage.jsx` — 4-step payment terminal flow
 
 ## Key Files
-- Backend: `routes/merchant_hierarchy.py`, `routes/rewards.py`, `routes/verification.py`, `routes/role_requests.py`
-- Frontend: `pages/MerchantDashboardPage.jsx` (9 tabs), `pages/RewardsPage.jsx`, `pages/VerificationPage.jsx`
-- Services: `services/api.js`, `store/I18nContext.jsx`
-
-## Merchant Dashboard Tabs
-1. **Übersicht** — Revenue/Fees/Net cards, register status, recent transactions
-2. **Filialen** — Branch CRUD, address/city/country
-3. **Übersicht (Summary)** — Branch comparison with animated bars
-4. **Kassen** — Register CRUD with API keys
-5. **Transaktionen** — Date-filtered (Today/Week/Month/All), register filter
-6. **Provision** — Commission rate, breakdown by branch and register
-7. **API Schlüssel** — Full key management with show/copy/regenerate
-8. **Mitarbeiter** — Staff CRUD with role assignment
-9. **Umsatz** — Live revenue with auto-refresh
+- Backend: `routes/pos_payments.py`, `routes/merchant_hierarchy.py`, `routes/rewards.py`, `routes/verification.py`, `routes/role_requests.py`, `routes/stripe.py`
+- Frontend: `pages/PaymentPage.jsx`, `pages/MerchantTerminalPage.jsx`, `pages/MerchantDashboardPage.jsx`, `pages/RewardsPage.jsx`, `pages/VerificationPage.jsx`
 
 ## Backlog (P1)
 - 2FA Integration (Email OTP / Google Authenticator)

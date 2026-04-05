@@ -18,6 +18,8 @@ import InvestorPage from "./pages/InvestorPage";
 import RewardsPage from "./pages/RewardsPage";
 import VerificationPage from "./pages/VerificationPage";
 import MerchantDashboardPage from "./pages/MerchantDashboardPage";
+import PaymentPage from "./pages/PaymentPage";
+import MerchantTerminalPage from "./pages/MerchantTerminalPage";
 import AuthPage from "./pages/AuthPage";
 import NotificationsPage from "./pages/NotificationsPage";
 
@@ -151,6 +153,10 @@ function AppContent() {
         return <VerificationPage onBack={() => handleNavigate("/more")} />;
       case "/merchant-dashboard":
         return <MerchantDashboardPage onBack={() => handleNavigate("/more")} />;
+      case "/pay":
+        return <PaymentPage onBack={() => handleNavigate("/more")} />;
+      case "/terminal":
+        return <MerchantTerminalPage onBack={() => handleNavigate("/more")} />;
       case "/admin":
         return user.role === "admin"
           ? <AdminPage onNavigate={handleNavigate} />

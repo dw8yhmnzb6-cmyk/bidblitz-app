@@ -348,6 +348,13 @@ export const api = {
   getCommissionSummary: () => request("/api/merchant-hierarchy/commission-summary"),
   getApiKeys: (branchId = "") => request(`/api/merchant-hierarchy/api-keys${branchId ? `?branch_id=${branchId}` : ""}`),
   getWalletBalance: () => request("/api/merchant-hierarchy/wallet-balance"),
+  // POS Payments
+  getMyBarcode: () => request("/api/payments/my-barcode"),
+  refreshBarcode: () => request("/api/payments/refresh-barcode", { method: "POST" }),
+  barcodeLookup: (barcode) => request("/api/payments/barcode-lookup", { method: "POST", body: JSON.stringify({ barcode }) }),
+  barcodePayment: (body) => request("/api/payments/barcode-pay", { method: "POST", body: JSON.stringify(body) }),
+  nfcPayment: (body) => request("/api/payments/nfc-pay", { method: "POST", body: JSON.stringify(body) }),
+  getFeeInfo: () => request("/api/payments/fee-info"),
   getMyTickets: () => request("/api/support/tickets"),
   getAdminTickets: (params = {}) => {
     const q = new URLSearchParams();
