@@ -472,6 +472,10 @@ PRODUCT_IMAGES = {
     "iPad Pro 13\" M5": "https://images.unsplash.com/photo-1622849030045-1f2c32ae3099?w=600&h=400&fit=crop&q=80",
     "Meta Quest 4": "https://images.unsplash.com/photo-1758523670318-f1b79559e1d1?w=600&h=400&fit=crop&q=80",
     "Dyson Airstrait Pro": "https://images.unsplash.com/photo-1629397683830-9805395892e8?w=600&h=400&fit=crop&q=80",
+    "LG OLED G5 77\"": "https://images.unsplash.com/photo-1684777219236-a387cbefb883?w=600&h=400&fit=crop&q=80",
+    "Samsung Neo QLED 8K 75\"": "https://images.unsplash.com/photo-1623902118614-01c68f0508c8?w=600&h=400&fit=crop&q=80",
+    "Roborock S9 MaxV Ultra": "https://images.unsplash.com/photo-1762859731349-c9ff2808b672?w=600&h=400&fit=crop&q=80",
+    "Apple HomePod 3": "https://images.unsplash.com/photo-1617722694908-9be1092d1bc2?w=600&h=400&fit=crop&q=80",
 }
 
 PRODUCT_CATALOG = [
@@ -519,6 +523,21 @@ PRODUCT_CATALOG = [
      "condition": "Brand New — Factory Sealed"},
     {"title": "Dyson Airstrait Pro", "description": "Dyson Airstrait Pro — Wet-to-Dry Straightener, Intelligent Heat Control", "retail_price": 549.00, "duration": 360, "category": "home",
      "features": ["Wet-to-Dry Straightening Technology", "Intelligent Heat Control Every 100x/sec", "Flexing Plates for Root-to-Tip Styling", "3 Heat Settings + Cool Mode", "Dual Airflow Jets for Fast Drying", "360° Swivel Cable, Heat-Resistant Case"],
+     "condition": "Brand New — Factory Sealed"},
+    # TVs
+    {"title": "LG OLED G5 77\"", "description": "LG OLED evo G5 77\" 4K — MLA+ Panel, a11 AI Processor, Dolby Vision & Atmos", "retail_price": 3299.00, "duration": 720, "category": "tvs",
+     "features": ["77\" 4K OLED evo MLA+ Panel, 4000 nits", "a11 AI Processor 4K, AI Upscaling", "Dolby Vision IQ, Dolby Atmos, DTS:X", "4x HDMI 2.1, 144Hz VRR Gaming", "Gallery Design, Flush Wall Mount", "webOS 26, Apple AirPlay 2"],
+     "condition": "Brand New — Factory Sealed"},
+    {"title": "Samsung Neo QLED 8K 75\"", "description": "Samsung QN900F 75\" 8K — Neural Quantum Processor, Infinity Screen, 8K AI Upscaling", "retail_price": 4999.00, "duration": 720, "category": "tvs",
+     "features": ["75\" 8K Neo QLED, Mini LED Backlight", "Neural Quantum Processor 8K", "Anti-Reflection Infinity Screen", "8K AI Upscaling, Real Depth Enhancer", "Dolby Atmos, Object Tracking Sound Pro", "4x HDMI 2.1, SmartThings Hub Built-in"],
+     "condition": "Brand New — Factory Sealed"},
+    # Robot Vacuums
+    {"title": "Roborock S9 MaxV Ultra", "description": "Roborock S9 MaxV Ultra — 10,000Pa Suction, AI Object Avoidance, Self-Wash Mop", "retail_price": 1599.00, "duration": 480, "category": "robots",
+     "features": ["10,000Pa HyperForce Suction", "AI 3D Object Avoidance, ReactiveAI 3.0", "Self-Washing & Self-Drying Mop", "Auto-Empty Dock, 7-Week Dustbin", "Multi-Floor Mapping, No-Go Zones", "Matter & Google/Alexa Compatible"],
+     "condition": "Brand New — Factory Sealed"},
+    # Smart Home
+    {"title": "Apple HomePod 3", "description": "Apple HomePod 3 — Spatial Audio, Siri Intelligence, Matter Hub, Room Sensing", "retail_price": 349.00, "duration": 300, "category": "smarthome",
+     "features": ["High-Excursion Woofer, 5 Tweeters", "Spatial Audio with Room Sensing", "Siri with On-Device Intelligence", "Thread & Matter Smart Home Hub", "Ultra Wideband, Intercom, Find My", "Temperature & Humidity Sensor"],
      "condition": "Brand New — Factory Sealed"},
 ]
 
