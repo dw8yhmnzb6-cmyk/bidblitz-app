@@ -357,6 +357,8 @@ export const api = {
   getFeeInfo: () => request("/api/payments/fee-info"),
   getTerminalSummary: () => request("/api/payments/terminal-summary"),
   getReceipt: (txnId) => request(`/api/payments/receipt/${txnId}`),
+  getAdminFees: () => request("/api/payments/admin/fees"),
+  setAdminFees: (fees) => request("/api/payments/admin/fees", { method: "POST", body: JSON.stringify({ fees }) }),
   requestMerchantTrial: (body) => request("/api/payments/onboarding/request-trial", { method: "POST", body: JSON.stringify(body) }),
   getPricing: () => request("/api/payments/pricing"),
 

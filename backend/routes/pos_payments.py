@@ -23,19 +23,43 @@ from core.database import db
 router = APIRouter(prefix="/api/payments", tags=["Payments"])
 logger = logging.getLogger("bidblitz.payments")
 
-# Fee structure
-WALLET_FEE_RATE = 0.005       # 0.5% for wallet/barcode
-CARD_FEE_RATE = 0.025         # 2.5% for card/NFC
-NFC_WALLET_FEE_RATE = 0.003   # 0.3% for NFC wallet (incentive)
-ULTRA_FAST_LIMIT = 25.0       # EUR — no extra confirmation needed
-PIN_REQUIRED_LIMIT = 50.0     # EUR — PIN required above this
+# Default fee structure (overridable by admin via DB)
+DEFAULT_FEES = {
+    "wallet": 0.005,
+    "barcode": 0.005,
+    "nfc_wallet": 0.003,
+    "nfc_card": 0.025,
+    "apple_pay": 0.025,
+    "google_pay": 0.025,
+    "card": 0.025,
+}
 
+ULTRA_FAST_LIMIT = 25.0
+PIN_REQUIRED_LIMIT = 50.0
 BARCODE_VALIDITY_SECONDS = 120
+
+FEE_LABELS = {
+    "wallet": "BidBlitz Wallet",
+    "barcode": "Barcode/QR",
+    "nfc_wallet": "NFC Wallet",
+    "nfc_card": "Contactless Card",
+    "apple_pay": "Apple Pay",
+    "google_pay": "Google Pay",
+    "card": "Card Payment",
+}
 
 
 async def get_current_user(request: Request):
     from routes.auth import get_current_user as auth_user
     return await auth_user(request)
+
+
+async def get_fee_rates() -> dict:
+    """Get fee rates from DB or fallback to defaults."""
+    cfg = await db.fee_config.find_one({"_id": "merchant_fees"})
+    if cfg:
+        return {k: cfg.get(k, DEFAULT_FEES.get(k, 0.025)) for k in DEFAULT_FEES}
+    return dict(DEFAULT_FEES)
 
 
 def generate_barcode_token(user_id: str) -> str:
@@ -45,18 +69,12 @@ def generate_barcode_token(user_id: str) -> str:
     return f"BLZ-{token}"
 
 
-def detect_payment_type(method: str) -> dict:
+async def detect_payment_type(method: str) -> dict:
     """Detect payment type and return fee rate + label."""
-    types = {
-        "wallet": {"fee_rate": WALLET_FEE_RATE, "label": "BidBlitz Wallet", "category": "wallet"},
-        "barcode": {"fee_rate": WALLET_FEE_RATE, "label": "Barcode/QR", "category": "barcode"},
-        "nfc_wallet": {"fee_rate": NFC_WALLET_FEE_RATE, "label": "NFC Wallet", "category": "nfc_wallet"},
-        "nfc_card": {"fee_rate": CARD_FEE_RATE, "label": "Contactless Card", "category": "nfc_card"},
-        "apple_pay": {"fee_rate": CARD_FEE_RATE, "label": "Apple Pay", "category": "apple_pay"},
-        "google_pay": {"fee_rate": CARD_FEE_RATE, "label": "Google Pay", "category": "google_pay"},
-        "card": {"fee_rate": CARD_FEE_RATE, "label": "Card Payment", "category": "card"},
-    }
-    return types.get(method, types["card"])
+    rates = await get_fee_rates()
+    rate = rates.get(method, rates.get("card", 0.025))
+    label = FEE_LABELS.get(method, FEE_LABELS["card"])
+    return {"fee_rate": rate, "label": label, "category": method if method in FEE_LABELS else "card"}
 
 
 def generate_receipt(txn_id: str, amount: float, fee: float, net: float,
@@ -208,7 +226,7 @@ async def process_barcode_payment(req: BarcodePaymentRequest, request: Request):
     if balance < req.amount:
         raise HTTPException(status_code=400, detail="Insufficient balance")
 
-    pt = detect_payment_type(req.payment_method or "barcode")
+    pt = await detect_payment_type(req.payment_method or "barcode")
     fee = round(req.amount * pt["fee_rate"], 2)
     net = round(req.amount - fee, 2)
 
@@ -300,7 +318,7 @@ async def process_nfc_payment(req: NfcPaymentRequest, request: Request):
     now = datetime.now(timezone.utc)
     now_iso = now.isoformat()
 
-    pt = detect_payment_type(req.payment_method)
+    pt = await detect_payment_type(req.payment_method)
     fee = round(req.amount * pt["fee_rate"], 2)
     net = round(req.amount - fee, 2)
     customer_name = ""
@@ -371,17 +389,53 @@ async def process_nfc_payment(req: NfcPaymentRequest, request: Request):
 
 @router.get("/fee-info")
 async def get_fee_info(request: Request):
+    rates = await get_fee_rates()
+    methods = []
+    for method, rate in rates.items():
+        methods.append({
+            "method": method,
+            "fee_rate": round(rate * 100, 2),
+            "label": FEE_LABELS.get(method, method),
+        })
     return {
-        "methods": [
-            {"method": "nfc_wallet", "fee_rate": NFC_WALLET_FEE_RATE * 100, "label": "NFC Wallet", "description": "Lowest fees — 0.3%"},
-            {"method": "barcode_wallet", "fee_rate": WALLET_FEE_RATE * 100, "label": "Barcode/QR", "description": "Low fees — 0.5%"},
-            {"method": "nfc_card", "fee_rate": CARD_FEE_RATE * 100, "label": "Contactless Card", "description": "Standard — 2.5%"},
-            {"method": "apple_pay", "fee_rate": CARD_FEE_RATE * 100, "label": "Apple Pay", "description": "Standard — 2.5%"},
-            {"method": "google_pay", "fee_rate": CARD_FEE_RATE * 100, "label": "Google Pay", "description": "Standard — 2.5%"},
-        ],
+        "methods": sorted(methods, key=lambda x: x["fee_rate"]),
         "ultra_fast_limit": ULTRA_FAST_LIMIT,
         "pin_required_limit": PIN_REQUIRED_LIMIT,
     }
+
+
+# ══════════════════════════════════════
+# ADMIN: Fee Configuration
+# ══════════════════════════════════════
+
+@router.get("/admin/fees")
+async def get_admin_fees(request: Request):
+    user = await get_current_user(request)
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    rates = await get_fee_rates()
+    return {"fees": {k: round(v * 100, 4) for k, v in rates.items()}}
+
+
+@router.post("/admin/fees")
+async def set_admin_fees(request: Request):
+    user = await get_current_user(request)
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    body = await request.json()
+    fees = body.get("fees", {})
+    update = {}
+    for k in DEFAULT_FEES:
+        if k in fees:
+            val = float(fees[k]) / 100  # Input is percentage, store as decimal
+            if val < 0 or val > 0.5:
+                raise HTTPException(status_code=400, detail=f"Fee for {k} must be between 0% and 50%")
+            update[k] = val
+    if update:
+        await db.fee_config.update_one(
+            {"_id": "merchant_fees"}, {"$set": update}, upsert=True,
+        )
+    return {"ok": True, "fees": {k: round(v * 100, 4) for k, v in (await get_fee_rates()).items()}}
 
 
 # ══════════════════════════════════════
@@ -450,7 +504,7 @@ async def get_receipt(txn_id: str, request: Request):
     if not txn:
         raise HTTPException(status_code=404, detail="Transaction not found")
 
-    pt = detect_payment_type(txn.get("payment_method", "card"))
+    pt = await detect_payment_type(txn.get("payment_method", "card"))
     mp = None
     if txn.get("merchant_id"):
         mp = await db.merchant_profiles.find_one({"_id": ObjectId(txn["merchant_id"])})

@@ -452,6 +452,23 @@ const MerchantTerminalPage = ({ onBack }) => {
 
                 {loading && <Loader2 size={24} className="text-[#A855F7] animate-spin mx-auto mb-3" />}
 
+                {/* Daily Revenue + Recent Txns */}
+                {dailySummary && (
+                  <div className="rounded-xl p-2.5 mb-3 text-left" style={{ background: "rgba(255,255,255,0.01)", border: "1px solid rgba(255,255,255,0.03)" }}>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[7px] text-white/15 uppercase tracking-widest font-bold">{t("terminal.today") || "Today"}</span>
+                      <span className="text-[9px] text-[#00E89D] font-mono font-bold">{dailySummary.total_amount?.toFixed(2)} EUR</span>
+                    </div>
+                    {(dailySummary.recent_transactions || []).slice(0, 3).map((tx, i) => (
+                      <div key={i} className="flex items-center justify-between py-0.5">
+                        <span className="text-[7px] text-white/15">{tx.payment_type_label || tx.payment_method || "?"}</span>
+                        <span className="text-[8px] text-white/25 font-mono">{tx.amount?.toFixed(2)}</span>
+                      </div>
+                    ))}
+                    {dailySummary.total_transactions === 0 && <p className="text-[7px] text-white/10">{t("terminal.no_txns") || "No transactions yet"}</p>}
+                  </div>
+                )}
+
                 <motion.button onClick={() => { setStep("amount"); setNfcReady(false); }} whileTap={{ scale: 0.95 }}
                   className="w-full py-3 rounded-xl text-[11px] font-bold text-white/20" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)" }}>
                   {t("common.cancel") || "Cancel"}

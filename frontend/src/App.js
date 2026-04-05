@@ -22,6 +22,7 @@ import PaymentPage from "./pages/PaymentPage";
 import MerchantTerminalPage from "./pages/MerchantTerminalPage";
 import MerchantOnboardingPage from "./pages/MerchantOnboardingPage";
 import MerchantPricingPage from "./pages/MerchantPricingPage";
+import MerchantLandingPage from "./pages/MerchantLandingPage";
 import AuthPage from "./pages/AuthPage";
 import NotificationsPage from "./pages/NotificationsPage";
 
@@ -163,6 +164,8 @@ function AppContent() {
         return <MerchantOnboardingPage onBack={() => handleNavigate("/more")} />;
       case "/merchant-pricing":
         return <MerchantPricingPage onBack={() => handleNavigate("/more")} onStartTrial={() => handleNavigate("/merchant-onboarding")} />;
+      case "/merchant-landing":
+        return <MerchantLandingPage onNavigate={handleNavigate} />;
       case "/admin":
         return user.role === "admin"
           ? <AdminPage onNavigate={handleNavigate} />
@@ -180,7 +183,7 @@ function AppContent() {
     }
   };
 
-  const showBottomNav = currentPath !== "/scan" || (user.role !== "merchant" && user.role !== "admin");
+  const showBottomNav = currentPath !== "/merchant-landing" && (currentPath !== "/scan" || (user.role !== "merchant" && user.role !== "admin"));
 
   return (
     <div className="app-container" data-testid="app-container">
