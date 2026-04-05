@@ -4,7 +4,8 @@ import {
   ArrowLeft, Cpu, Server, Zap, Flame, Atom, ChevronRight,
   ArrowUpRight, ArrowDownLeft, Send, Gift, Copy, Check,
   Loader2, TrendingUp, Clock, Shield, Star, Wallet, RefreshCw,
-  ChevronUp, DollarSign, BarChart3, Users
+  ChevronUp, DollarSign, BarChart3, Users, ShoppingBag,
+  CreditCard, Rocket, Lock, Snowflake, Tag, X, Percent
 } from "lucide-react";
 import { useUser, useI18n } from "../store";
 import { toast } from "sonner";
@@ -24,7 +25,7 @@ const TIER_COLORS = { starter: "#00E89D", pro: "#00C2FF", elite: "#A855F7", tita
 
 const VIP_COLORS = { Bronze: "#CD7F32", Silver: "#C0C0C0", Gold: "#FFD700", Platinum: "#E5E4E2", Diamond: "#B9F2FF" };
 
-const tabs = ["dashboard", "miners", "wallet", "shop", "vip"];
+const tabs = ["dashboard", "miners", "wallet", "shop", "marketplace", "card", "launchpad", "vip"];
 
 export default function MiningPage({ onBack }) {
   const user = useUser();
@@ -49,18 +50,32 @@ export default function MiningPage({ onBack }) {
   const [confirmPkg, setConfirmPkg] = useState(null);
   const [purchaseSuccess, setPurchaseSuccess] = useState(null);
   const [purchaseError, setPurchaseError] = useState(null);
+  const [marketplace, setMarketplace] = useState([]);
+  const [listMiner, setListMiner] = useState(null);
+  const [listPrice, setListPrice] = useState("");
+  const [listing, setListing] = useState(false);
+  const [buyingListing, setBuyingListing] = useState(null);
+  const [cardData, setCardData] = useState(null);
+  const [launchpad, setLaunchpad] = useState([]);
+  const [buyingLaunch, setBuyingLaunch] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [dash, pkgs, costs] = await Promise.all([
+      const [dash, pkgs, costs, mkt, crd, lp] = await Promise.all([
         api("/api/mining/dashboard"),
         api("/api/mining/packages"),
         api("/api/mining/upgrade-costs"),
+        api("/api/mining/marketplace").catch(() => ({ listings: [] })),
+        api("/api/mining/card").catch(() => null),
+        api("/api/mining/launchpad").catch(() => ({ projects: [] })),
       ]);
       setData(dash);
       setPackages(pkgs.packages || []);
       setUpgradeCosts(costs.costs || {});
+      setMarketplace(mkt.listings || []);
+      setCardData(crd);
+      setLaunchpad(lp.projects || []);
     } catch (e) {
       console.error(e);
     }
@@ -148,6 +163,64 @@ export default function MiningPage({ onBack }) {
     }
   };
 
+  // Marketplace handlers
+  const listMinerForSale = async () => {
+    const price = parseFloat(listPrice);
+    if (!listMiner || !price || price <= 0) return;
+    setListing(true);
+    try {
+      await api("/api/mining/marketplace/list", { method: "POST", body: JSON.stringify({ miner_id: listMiner, price_blz: price }) });
+      toast.success(t("mining.listed") || "Miner listed!");
+      setListMiner(null); setListPrice("");
+      load();
+    } catch (e) { toast.error(e.message); }
+    setListing(false);
+  };
+
+  const buyFromMarketplace = async (listingId) => {
+    setBuyingListing(listingId);
+    try {
+      const r = await api("/api/mining/marketplace/buy", { method: "POST", body: JSON.stringify({ listing_id: listingId }) });
+      toast.success(`Bought ${r.miner_name}!`);
+      load();
+    } catch (e) { toast.error(e.message); }
+    setBuyingListing(null);
+  };
+
+  const cancelListing = async (listingId) => {
+    try {
+      await api("/api/mining/marketplace/cancel", { method: "POST", body: JSON.stringify({ listing_id: listingId }) });
+      toast.success(t("mining.cancelled") || "Listing cancelled");
+      load();
+    } catch (e) { toast.error(e.message); }
+  };
+
+  const buyLaunchpad = async (projectId) => {
+    setBuyingLaunch(projectId);
+    try {
+      const r = await api("/api/mining/launchpad/buy", { method: "POST", body: JSON.stringify({ project_id: projectId }) });
+      toast.success(`${r.miner_name} activated! (${r.hashrate} TH/s)`);
+      load();
+    } catch (e) { toast.error(e.message); }
+    setBuyingLaunch(null);
+  };
+
+  const toggleCardFreeze = async () => {
+    try {
+      const r = await api("/api/mining/card/freeze", { method: "POST" });
+      toast.success(r.frozen ? (t("mining.card_frozen") || "Card frozen") : (t("mining.card_unfrozen") || "Card unfrozen"));
+      load();
+    } catch (e) { toast.error(e.message); }
+  };
+
+  const upgradeCard = async (tier) => {
+    try {
+      const r = await api("/api/mining/card/upgrade", { method: "POST", body: JSON.stringify({ tier }) });
+      toast.success(`Upgraded to ${r.new_tier}!`);
+      load();
+    } catch (e) { toast.error(e.message); }
+  };
+
   const inputCls = "w-full px-3 py-2.5 rounded-xl text-[13px] text-white/90 placeholder-white/15 font-medium outline-none bg-white/[0.03] border border-white/[0.06] focus:border-[#00E89D]/30";
 
   if (loading && !data) {
@@ -191,11 +264,11 @@ export default function MiningPage({ onBack }) {
 
       {/* Tab Bar */}
       <div className="px-5 mb-4 relative z-10">
-        <div className="flex gap-1.5">
+        <div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-1">
           {tabs.map(tb => (
             <motion.button key={tb} onClick={() => setTab(tb)} whileTap={{ scale: 0.95 }}
               data-testid={`mining-tab-${tb}`}
-              className={`flex-1 py-2 rounded-xl text-[11px] font-semibold capitalize transition-all ${
+              className={`flex-shrink-0 px-3 py-2 rounded-xl text-[10px] font-semibold capitalize transition-all ${
                 tab === tb ? "bg-[#00E89D]/10 text-[#00E89D] border border-[#00E89D]/20" : "bg-white/[0.02] text-white/25 border border-white/[0.04]"
               }`}>
               {t(`mining.tab_${tb}`) || tb}
@@ -665,6 +738,311 @@ export default function MiningPage({ onBack }) {
                       whileTap={{ scale: 0.96 }}>
                       {t("mining.select") || "Select Package"} <ChevronRight size={14} />
                     </motion.button>
+                  </motion.div>
+                );
+              })}
+            </motion.div>
+          )}
+
+          {/* ════ MARKETPLACE ════ */}
+          {tab === "marketplace" && (
+            <motion.div key="marketplace" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <ShoppingBag size={12} className="text-[#FF6B6B]" />
+                  <p className="text-[10px] text-white/25 uppercase tracking-[0.12em] font-semibold">{t("mining.mkt_title") || "Marketplace"} ({marketplace.length})</p>
+                </div>
+                <motion.button onClick={load} className="text-white/15" whileTap={{ scale: 0.95 }}><RefreshCw size={11} /></motion.button>
+              </div>
+
+              {/* Sell own miner */}
+              {miners.filter(mn => mn.status === "active").length > 0 && (
+                <motion.div className="rounded-2xl p-3.5" style={{ background: "rgba(255,107,107,0.03)", border: "1px solid rgba(255,107,107,0.08)" }}
+                  initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                  <p className="text-[10px] text-[#FF6B6B] font-semibold mb-2">{t("mining.mkt_sell") || "List your miner for sale"}</p>
+                  <div className="flex items-center gap-2">
+                    <select data-testid="list-miner-select" value={listMiner || ""} onChange={e => setListMiner(e.target.value)}
+                      className="flex-1 px-3 py-2 rounded-xl text-[11px] bg-white/[0.03] border border-white/[0.06] text-white/70 outline-none">
+                      <option value="">{t("mining.mkt_select") || "Select miner..."}</option>
+                      {miners.filter(mn => mn.status === "active").map(mn => (
+                        <option key={mn.miner_id} value={mn.miner_id}>{mn.name} ({mn.hashrate} TH/s)</option>
+                      ))}
+                    </select>
+                    <input data-testid="list-price-input" type="number" step="1" min="1" placeholder="BLZ" value={listPrice} onChange={e => setListPrice(e.target.value)}
+                      className="w-24 px-3 py-2 rounded-xl text-[11px] bg-white/[0.03] border border-white/[0.06] text-white/70 outline-none font-mono" />
+                    <motion.button data-testid="list-miner-btn" onClick={listMinerForSale} disabled={listing || !listMiner || !listPrice}
+                      className="px-3 py-2 rounded-xl text-[10px] font-bold bg-[#FF6B6B]/10 text-[#FF6B6B] border border-[#FF6B6B]/15 disabled:opacity-30"
+                      whileTap={{ scale: 0.95 }}>
+                      {listing ? <Loader2 size={10} className="animate-spin" /> : <><Tag size={10} className="inline mr-1" />{t("mining.mkt_list") || "List"}</>}
+                    </motion.button>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* Listings */}
+              {marketplace.length === 0 && (
+                <div className="text-center py-10">
+                  <ShoppingBag size={28} className="mx-auto text-white/10 mb-2" />
+                  <p className="text-[12px] text-white/25">{t("mining.mkt_empty") || "No listings yet"}</p>
+                  <p className="text-[10px] text-white/15">{t("mining.mkt_empty_d") || "Be the first to list a miner for sale"}</p>
+                </div>
+              )}
+
+              {marketplace.map((ls, idx) => {
+                const Icon = TIER_ICONS[ls.icon] || Cpu;
+                const color = TIER_COLORS[ls.package_id] || "#00E89D";
+                const isOwn = ls.seller_id === (user?.id || "");
+                return (
+                  <motion.div key={ls.listing_id} data-testid={`listing-${ls.listing_id}`}
+                    className="rounded-2xl p-3.5" style={{ background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.04)" }}
+                    initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.03 }}>
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: `${color}10` }}>
+                        <Icon size={16} style={{ color }} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[12px] font-semibold text-white/80 truncate">{ls.miner_name}</p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="text-[9px] font-mono text-white/30"><Zap size={8} className="inline" /> {ls.hashrate} TH/s</span>
+                          <span className="text-[9px] text-white/20">Pwr Lv.{ls.power_level} · Eff Lv.{ls.efficiency_level}</span>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[14px] font-bold font-mono text-[#FFD700]">{ls.price_blz} BLZ</p>
+                        <p className="text-[9px] text-white/20">{"\u20AC"}{ls.price_eur}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[9px] text-white/15">{t("mining.mkt_seller") || "Seller"}: {ls.seller_name}</span>
+                      {isOwn ? (
+                        <motion.button onClick={() => cancelListing(ls.listing_id)} className="px-3 py-1.5 rounded-lg text-[9px] font-semibold bg-white/[0.03] text-white/30 border border-white/[0.05]"
+                          whileTap={{ scale: 0.95 }}><X size={9} className="inline mr-0.5" /> {t("mining.mkt_cancel") || "Cancel"}</motion.button>
+                      ) : (
+                        <motion.button data-testid={`buy-listing-${ls.listing_id}`} onClick={() => buyFromMarketplace(ls.listing_id)} disabled={buyingListing === ls.listing_id}
+                          className="px-4 py-1.5 rounded-lg text-[9px] font-bold bg-[#00E89D]/10 text-[#00E89D] border border-[#00E89D]/15"
+                          whileTap={{ scale: 0.95 }}>
+                          {buyingListing === ls.listing_id ? <Loader2 size={10} className="animate-spin" /> : (t("mining.mkt_buy") || "Buy")}
+                        </motion.button>
+                      )}
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </motion.div>
+          )}
+
+          {/* ════ CARD ════ */}
+          {tab === "card" && (
+            <motion.div key="card" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
+              {cardData?.card && (() => {
+                const c = cardData.card;
+                const cardColor = c.color || "#C0C0C0";
+                const tiers = cardData.tiers || [];
+                const currentIdx = tiers.findIndex(t2 => t2.tier === c.tier);
+                const txns2 = cardData.recent_transactions || [];
+                return (
+                  <>
+                    {/* Card Visual */}
+                    <motion.div className="rounded-3xl p-5 relative overflow-hidden h-48"
+                      style={{ background: `linear-gradient(135deg, ${cardColor}18 0%, ${cardColor}05 100%)`, border: `1px solid ${cardColor}20` }}
+                      initial={{ y: 10 }} animate={{ y: 0 }}>
+                      <div className="absolute -top-10 -right-10 w-36 h-36 rounded-full pointer-events-none" style={{ background: cardColor, filter: "blur(60px)", opacity: 0.08 }} />
+                      <div className="relative z-10 h-full flex flex-col justify-between">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <CreditCard size={16} style={{ color: cardColor }} />
+                            <span className="text-[10px] font-bold uppercase tracking-[0.12em]" style={{ color: cardColor }}>{c.tier_name} Card</span>
+                          </div>
+                          <motion.button data-testid="card-freeze-btn" onClick={toggleCardFreeze} whileTap={{ scale: 0.9 }}
+                            className={`px-2.5 py-1 rounded-lg text-[9px] font-semibold flex items-center gap-1 ${c.frozen ? "bg-[#00C2FF]/10 text-[#00C2FF] border border-[#00C2FF]/15" : "bg-white/[0.04] text-white/30 border border-white/[0.05]"}`}>
+                            {c.frozen ? <><Lock size={8} /> {t("mining.card_unfreeze") || "Unfreeze"}</> : <><Snowflake size={8} /> {t("mining.card_freeze") || "Freeze"}</>}
+                          </motion.button>
+                        </div>
+                        <div>
+                          <p className="text-[17px] font-mono font-bold text-white/60 tracking-[0.2em] mb-1">{c.card_number}</p>
+                          <p className="text-[9px] text-white/20 font-mono">{c.card_id}</p>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-[8px] text-white/15 uppercase">{t("mining.card_limit") || "Daily Limit"}</p>
+                            <p className="text-[12px] font-bold font-mono" style={{ color: cardColor }}>{"\u20AC"}{c.daily_limit}</p>
+                          </div>
+                          <div>
+                            <p className="text-[8px] text-white/15 uppercase">Cashback</p>
+                            <p className="text-[12px] font-bold font-mono" style={{ color: cardColor }}>{(c.cashback_rate * 100).toFixed(0)}%</p>
+                          </div>
+                          <div>
+                            <p className="text-[8px] text-white/15 uppercase">{t("mining.card_remaining") || "Remaining"}</p>
+                            <p className="text-[12px] font-bold font-mono text-[#00E89D]">{"\u20AC"}{cardData.remaining_limit}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
+
+                    {/* Card Stats */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="rounded-xl p-2.5 text-center" style={{ background: "rgba(255,255,255,0.012)", border: "1px solid rgba(255,255,255,0.03)" }}>
+                        <p className="text-[12px] font-bold font-outfit text-white/60">{"\u20AC"}{c.total_spent?.toFixed(2) || "0.00"}</p>
+                        <p className="text-[8px] text-white/15 uppercase">{t("mining.card_spent") || "Total Spent"}</p>
+                      </div>
+                      <div className="rounded-xl p-2.5 text-center" style={{ background: "rgba(255,255,255,0.012)", border: "1px solid rgba(255,255,255,0.03)" }}>
+                        <p className="text-[12px] font-bold font-outfit text-[#00E89D]">{c.total_cashback?.toFixed(2) || "0"} BLZ</p>
+                        <p className="text-[8px] text-white/15 uppercase">{t("mining.card_cashback_total") || "Total Cashback"}</p>
+                      </div>
+                    </div>
+
+                    {/* Upgrade Card */}
+                    <div>
+                      <p className="text-[9px] text-white/20 uppercase tracking-[0.12em] font-semibold mb-2">{t("mining.card_upgrade") || "Upgrade Card"}</p>
+                      <div className="space-y-1.5">
+                        {tiers.map((tier, i) => {
+                          const isCurrent = tier.tier === c.tier;
+                          const isLocked = i <= currentIdx;
+                          return (
+                            <motion.div key={tier.tier} className="flex items-center gap-3 px-3 py-2.5 rounded-xl"
+                              style={{
+                                background: isCurrent ? `${tier.color}08` : "rgba(255,255,255,0.01)",
+                                border: `1px solid ${isCurrent ? `${tier.color}18` : "rgba(255,255,255,0.025)"}`,
+                              }}
+                              initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.04 }}>
+                              <CreditCard size={14} style={{ color: tier.color, opacity: isLocked && !isCurrent ? 0.3 : 1 }} />
+                              <div className="flex-1">
+                                <p className="text-[11px] font-semibold" style={{ color: isCurrent ? tier.color : "rgba(255,255,255,0.4)" }}>{tier.name}</p>
+                                <p className="text-[8px] text-white/15">{"\u20AC"}{tier.daily_limit}/d · {(tier.cashback * 100).toFixed(0)}% cashback</p>
+                              </div>
+                              {isCurrent ? (
+                                <span className="text-[8px] font-bold text-[#00E89D] uppercase">Current</span>
+                              ) : !isLocked ? (
+                                <motion.button data-testid={`upgrade-card-${tier.tier}`} onClick={() => upgradeCard(tier.tier)}
+                                  className="px-2.5 py-1 rounded-lg text-[9px] font-bold" style={{ background: `${tier.color}12`, color: tier.color, border: `1px solid ${tier.color}20` }}
+                                  whileTap={{ scale: 0.95 }}>{tier.cost_blz} BLZ</motion.button>
+                              ) : (
+                                <Check size={12} className="text-white/10" />
+                              )}
+                            </motion.div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Card Transactions */}
+                    {txns2.length > 0 && (
+                      <div>
+                        <p className="text-[9px] text-white/20 uppercase tracking-[0.12em] font-semibold mb-2">{t("mining.card_txns") || "Card Transactions"}</p>
+                        <div className="rounded-2xl overflow-hidden" style={{ background: "rgba(255,255,255,0.012)", border: "1px solid rgba(255,255,255,0.03)" }}>
+                          {txns2.slice(0, 8).map((tx, i) => (
+                            <div key={tx.txn_id} className={`flex items-center gap-3 px-3.5 py-2.5 ${i < Math.min(txns2.length, 8) - 1 ? "border-b border-white/[0.025]" : ""}`}>
+                              <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-white/[0.03]">
+                                <CreditCard size={11} className="text-white/30" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-[11px] text-white/50 truncate">{tx.merchant}</p>
+                                <p className="text-[8px] text-white/15">{tx.created_at?.slice(0, 16)}</p>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-[11px] font-bold font-mono text-[#FF4757]">-{"\u20AC"}{tx.amount_eur?.toFixed(2)}</p>
+                                {tx.cashback_blz > 0 && <p className="text-[8px] text-[#00E89D] font-mono">+{tx.cashback_blz} BLZ</p>}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
+            </motion.div>
+          )}
+
+          {/* ════ LAUNCHPAD ════ */}
+          {tab === "launchpad" && (
+            <motion.div key="launchpad" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
+              <div className="flex items-center gap-2 mb-1">
+                <Rocket size={12} className="text-[#A855F7]" />
+                <p className="text-[10px] text-white/25 uppercase tracking-[0.12em] font-semibold">{t("mining.lp_title") || "Launchpad"} — {t("mining.lp_subtitle") || "Exclusive Limited Miners"}</p>
+              </div>
+
+              {launchpad.length === 0 && (
+                <div className="text-center py-10">
+                  <Rocket size={28} className="mx-auto text-white/10 mb-2" />
+                  <p className="text-[12px] text-white/25">{t("mining.lp_empty") || "No active launches"}</p>
+                </div>
+              )}
+
+              {launchpad.map((p, idx) => {
+                const Icon = TIER_ICONS[p.icon] || Atom;
+                const soldPct = p.total_supply > 0 ? Math.round((p.sold / p.total_supply) * 100) : 0;
+                const remaining = p.total_supply - (p.sold || 0);
+                const colors = { "fusion-x1": "#B9F2FF", "neural-v2": "#FFD700", "solar-mk3": "#FF6B6B" };
+                const color = colors[p.project_id] || "#A855F7";
+
+                return (
+                  <motion.div key={p.project_id} data-testid={`launch-${p.project_id}`}
+                    className="rounded-2xl overflow-hidden relative"
+                    style={{ background: "rgba(255,255,255,0.015)", border: `1px solid ${color}12` }}
+                    initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.06 }}>
+                    <div className="absolute -top-10 -right-10 w-32 h-32 rounded-full pointer-events-none" style={{ background: color, filter: "blur(60px)", opacity: 0.05 }} />
+
+                    {/* Header */}
+                    <div className="p-4 pb-3">
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className="w-12 h-12 rounded-xl flex items-center justify-center relative" style={{ background: `${color}10`, border: `1px solid ${color}20` }}>
+                          <Icon size={22} style={{ color }} />
+                          <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[#A855F7] flex items-center justify-center">
+                            <Rocket size={8} className="text-white" />
+                          </div>
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-[15px] font-bold font-outfit text-white">{p.name}</h3>
+                            <span className="px-1.5 py-0.5 rounded text-[7px] font-bold uppercase tracking-wider" style={{ background: `${color}15`, color, border: `1px solid ${color}20` }}>LAUNCH</span>
+                          </div>
+                          <p className="text-[10px] text-white/30 mt-0.5 leading-relaxed">{p.description}</p>
+                        </div>
+                      </div>
+
+                      {/* Stats */}
+                      <div className="grid grid-cols-4 gap-2 mb-3">
+                        {[
+                          { l: "Hashrate", v: `${(p.hashrate + (p.bonus_hashrate || 0)).toLocaleString()} TH/s`, c: color },
+                          { l: "Efficiency", v: `${(p.efficiency * 100).toFixed(0)}%`, c: "#00C2FF" },
+                          { l: "Bonus", v: `+${p.bonus_hashrate || 0} TH/s`, c: "#00E89D" },
+                          { l: t("mining.lp_vip") || "Min VIP", v: p.min_vip, c: "#FFD700" },
+                        ].map(s => (
+                          <div key={s.l} className="text-center">
+                            <p className="text-[11px] font-bold font-mono" style={{ color: s.c }}>{s.v}</p>
+                            <p className="text-[7px] text-white/15 uppercase">{s.l}</p>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Supply Progress */}
+                      <div className="mb-3">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-[9px] text-white/20">{t("mining.lp_sold") || "Sold"}: {p.sold || 0}/{p.total_supply}</span>
+                          <span className="text-[9px] font-bold" style={{ color: remaining <= 10 ? "#FF4757" : "#00E89D" }}>{remaining} {t("mining.lp_left") || "left"}</span>
+                        </div>
+                        <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.04)" }}>
+                          <motion.div className="h-full rounded-full" style={{ background: color }}
+                            initial={{ width: 0 }} animate={{ width: `${soldPct}%` }} transition={{ duration: 0.5 }} />
+                        </div>
+                      </div>
+
+                      {/* Buy */}
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-[18px] font-bold font-outfit" style={{ color }}>{"\u20AC"}{p.price_eur}</p>
+                          <p className="text-[9px] text-white/15">{p.price_blz} BLZ</p>
+                        </div>
+                        <motion.button data-testid={`buy-launch-${p.project_id}`} onClick={() => buyLaunchpad(p.project_id)} disabled={buyingLaunch === p.project_id || remaining <= 0}
+                          className="px-5 py-2.5 rounded-xl text-[12px] font-bold flex items-center gap-1.5 disabled:opacity-30"
+                          style={{ background: `${color}12`, color, border: `1px solid ${color}20` }}
+                          whileTap={{ scale: 0.96 }}>
+                          {buyingLaunch === p.project_id ? <Loader2 size={14} className="animate-spin" /> :
+                            remaining <= 0 ? (t("mining.lp_sold_out") || "Sold Out") : <><Rocket size={13} /> {t("mining.lp_buy") || "Mint Now"}</>}
+                        </motion.button>
+                      </div>
+                    </div>
                   </motion.div>
                 );
               })}

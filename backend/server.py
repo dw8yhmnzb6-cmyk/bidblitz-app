@@ -143,6 +143,7 @@ from routes.verification import router as verification_router
 from routes.merchant_hierarchy import router as merchant_hierarchy_router
 from routes.pos_payments import router as pos_payments_router
 from routes.mining import router as mining_router
+from routes.mining_phase2 import router as mining_phase2_router
 
 app.include_router(auth_router)
 app.include_router(wallet_router)
@@ -172,6 +173,7 @@ app.include_router(verification_router)
 app.include_router(merchant_hierarchy_router)
 app.include_router(pos_payments_router)
 app.include_router(mining_router)
+app.include_router(mining_phase2_router)
 
 # Stripe webhook at /api/webhook/stripe
 from routes.stripe import stripe_webhook as _stripe_wh

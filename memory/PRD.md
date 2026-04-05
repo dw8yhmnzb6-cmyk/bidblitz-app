@@ -1,7 +1,7 @@
 # BidBlitz V2 — Product Requirements Document
 
 ## Vision
-Ultra-premium fintech web app (year 2040 design) for payments, penny auctions, crypto mining, wallet management, and merchant POS systems.
+Ultra-premium fintech web app (year 2040 design) for payments, penny auctions, crypto mining, wallet management, and merchant POS.
 
 ## Tech Stack
 - Frontend: React, TailwindCSS, Framer Motion, ShadCN/UI
@@ -15,25 +15,39 @@ Ultra-premium fintech web app (year 2040 design) for payments, penny auctions, c
 - Merchant Hierarchy, Barcode/QR/NFC payment flows
 - POS Terminal, Admin Fee Config, Reports, Merchant Landing Page
 - Auction Bot Admin (auto-bidding, target price, 30 bot names)
+- Home Screen: "Available Now" + "Coming Soon" feature sections
 
-## Crypto Mining Module (COMPLETED)
-- Dashboard: BLZ balance, hashrate, daily/total earnings, claim streak, referral boost
-- Daily Rewards: Claim with abuse prevention (1/day), streak tracking
-- Wallet Tab: BLZ→EUR, send BLZ, history with Today/All filter + type badges
-- Package Comparison Table: 5 packages side-by-side with BEST badge
-- **Purchase Flow (FIXED 2026-04-05)**: Select → Confirmation Modal (shows balance in green/red) → Buy if affordable → Success Animation ("Miner Activated!" + new balance) → Auto-dismiss
-- **Balance Validation**: Real-time check against user's EUR wallet, red warning + disabled button if insufficient, error message display in modal with retry
-- Backend returns `main_balance_eur` in dashboard for accurate balance display
-- Upgrade System, VIP Levels, Referral System all working
+## Crypto Mining Module — COMPLETE
 
-## Home Screen
-- "Available Now" + "Coming Soon" feature sections
-- Feature preview on tap
+### Phase 1 (DONE)
+- Mining Dashboard: BLZ balance, hashrate, earnings, streak, referral boost
+- Daily Rewards: Claim with abuse prevention, streak tracking
+- Wallet Tab: BLZ→EUR, send, history with Today/All filter + type badges
+- Package Comparison Table: 5 packages with BEST badge
+- Purchase Flow: Select → Confirm (balance check) → Buy → Success animation
+- Upgrade System: Power & Efficiency (10 levels each)
+- VIP Levels: Bronze→Diamond with mining bonuses (0-15%)
+- Referral System: Unique codes, 5% bonus
+
+### Phase 2 (DONE - 2026-04-05)
+- **Marketplace**: List miners for sale (BLZ price), browse listings, buy from other users, cancel own listings. Transfers miner ownership + BLZ between wallets.
+- **Card**: Virtual BLZ spending card with 4 tiers (Standard/Gold/Platinum/Black). Features: daily spending limits (€100-€10,000), cashback (1-5%), freeze/unfreeze, upgrade with BLZ, card transaction history.
+- **Launchpad**: 3 exclusive limited-edition miner launches (Fusion X1/Neural V2/Solar MK3) with bonus hashrate, supply tracking, progress bars, VIP requirements, and "Mint Now" purchase flow. One purchase per user per project.
+
+### Mining API Endpoints
+Phase 1: /api/mining/dashboard, /packages, /upgrade-costs, /vip-levels, /claim-history, /transactions, /admin/reward-logs
+Phase 1 POST: /buy-miner, /upgrade, /claim-daily, /withdraw, /send, /apply-referral
+Phase 2: GET /marketplace, /card, /launchpad
+Phase 2 POST: /marketplace/list, /marketplace/buy, /marketplace/cancel, /card/spend, /card/upgrade, /card/freeze, /launchpad/buy
+
+### Backend Files
+- `/app/backend/routes/mining.py` — Phase 1
+- `/app/backend/routes/mining_phase2.py` — Marketplace, Card, Launchpad
 
 ## Upcoming Tasks
-- Mining Phase 2: Marketplace, Card, Launchpad (P1)
 - Receipt PDF-Export (P1)
-- 2FA Integration (P1), Kids Wallet (P1)
+- 2FA Integration (P1)
+- Kids Wallet (P1)
 
 ## Backlog (P2)
 - Apple/Google Pay, Developer SDK, Chat/Support
