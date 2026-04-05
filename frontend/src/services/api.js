@@ -265,6 +265,13 @@ export const api = {
   getAutoBid: (auctionId) => request(`/api/auctions/auto-bid/${auctionId}`),
   claimDailyReward: () => request("/api/auctions/daily-reward", { method: "POST" }),
   checkDailyReward: () => request("/api/auctions/daily-reward"),
+  toggleWatchlist: (auctionId) => request(`/api/auctions/${auctionId}/watchlist`, { method: "POST" }),
+  getWatchlist: () => request("/api/auctions/user/watchlist"),
+  getBidStreak: () => request("/api/auctions/user/streak"),
+  getAuctionNotifications: () => request("/api/auctions/user/notifications"),
+  markAuctionNotificationsRead: () => request("/api/auctions/user/notifications/read", { method: "POST" }),
+  getAuctionReferral: () => request("/api/auctions/user/referral"),
+  applyAuctionReferral: (code) => request("/api/auctions/user/apply-referral", { method: "POST", body: JSON.stringify({ code }) }),
   getMyTickets: () => request("/api/support/tickets"),
   getAdminTickets: (params = {}) => {
     const q = new URLSearchParams();

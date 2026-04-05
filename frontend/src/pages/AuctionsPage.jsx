@@ -4,7 +4,8 @@ import {
   ArrowLeft, Zap, Clock, TrendingUp, ChevronRight,
   Coins, Loader2, X, User,
   Gavel, Trophy, ShieldCheck, Timer, Package, Truck, Globe, Check, Shield,
-  Lock, Activity, Flame, Gift, Bot, AlertTriangle, Users
+  Lock, Activity, Flame, Gift, Bot, AlertTriangle, Users,
+  Heart, Share2, Copy, Bell, Sparkles, PartyPopper, XCircle
 } from "lucide-react";
 import { useUser, useI18n } from "../store";
 import { api } from "../services/api";
@@ -60,9 +61,11 @@ const DailyReward = ({ onClaimed }) => {
   const [secs, setSecs] = useState(0);
   const [claiming, setClaiming] = useState(false);
   const [showDone, setShowDone] = useState(false);
+  const [streak, setStreak] = useState(0);
 
   useEffect(() => {
     api.checkDailyReward().then(d => { setAvailable(d.available); setSecs(d.remaining_seconds || 0); }).catch(() => {});
+    api.getBidStreak().then(d => setStreak(d.streak || 0)).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -98,11 +101,19 @@ const DailyReward = ({ onClaimed }) => {
         </motion.div>
         <div className="flex-1 min-w-0">
           <p className="text-[11px] font-semibold text-white/80">{t("auction.daily_reward")}</p>
-          {available ? (
-            <p className="text-[9px] text-[#00E89D] font-medium">{t("auction.daily_available")}</p>
-          ) : (
-            <p className="text-[9px] text-[#444] font-medium">{hh}h {mm}m</p>
-          )}
+          <div className="flex items-center gap-2">
+            {available ? (
+              <p className="text-[9px] text-[#00E89D] font-medium">{t("auction.daily_available")}</p>
+            ) : (
+              <p className="text-[9px] text-[#444] font-medium">{hh}h {mm}m</p>
+            )}
+            {streak > 0 && (
+              <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-md" style={{ background: "rgba(255,138,66,0.06)", border: "1px solid rgba(255,138,66,0.12)" }}>
+                <Flame size={8} className="text-[#FF8C42]" />
+                <span className="text-[8px] font-bold text-[#FF8C42]">{streak} {t("auction.streak_days")}</span>
+              </div>
+            )}
+          </div>
         </div>
         <AnimatePresence mode="wait">
           {showDone ? (
@@ -219,7 +230,7 @@ const AutoBidModal = ({ open, onClose, auctionId, onSet }) => {
 /* ════════════════════════════════════════════
    GRID CARD
    ════════════════════════════════════════════ */
-const AuctionGridCard = ({ auction, onClick, t, idx }) => {
+const AuctionGridCard = ({ auction, onClick, t, idx, isWatched, onToggleWatch }) => {
   const isEnded = auction.status === "ended";
   const [rem, setRem] = useState(0);
   useEffect(() => {
@@ -236,13 +247,11 @@ const AuctionGridCard = ({ auction, onClick, t, idx }) => {
       style={{ background: panelBg, border: panelBorder, boxShadow: crit ? "0 0 20px rgba(255,64,96,0.06)" : "0 2px 16px rgba(0,0,0,0.2)" }}
       whileTap={{ scale: 0.97 }}
       initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.04, duration: 0.35 }}>
-      {/* Glow line on active */}
       {!isEnded && (
         <motion.div className="absolute top-0 left-0 right-0 h-px z-10"
           style={{ background: crit ? `linear-gradient(90deg, transparent, ${accentRed}, transparent)` : `linear-gradient(90deg, transparent, ${accentCyan}40, transparent)` }}
           animate={{ opacity: [0.4, 1, 0.4] }} transition={{ duration: crit ? 0.6 : 2.5, repeat: Infinity }} />
       )}
-      {/* Image */}
       <div className="relative w-full aspect-[4/3] overflow-hidden">
         {auction.image_url ? (
           <img src={auction.image_url} alt={auction.title} className={`w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.04] ${isEnded ? "opacity-30 grayscale" : ""}`} loading="lazy" />
@@ -250,7 +259,6 @@ const AuctionGridCard = ({ auction, onClick, t, idx }) => {
           <div className="w-full h-full bg-[#060810] flex items-center justify-center"><Gavel size={24} className="text-white/5" /></div>
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-[#060810] via-transparent to-transparent opacity-70" />
-        {/* Timer badge */}
         <div className="absolute top-2 left-2 flex items-center gap-1 px-2 py-1 rounded-lg backdrop-blur-xl"
           style={{ background: crit ? "rgba(255,64,96,0.75)" : "rgba(6,8,16,0.7)", border: `1px solid ${crit ? "rgba(255,64,96,0.3)" : "rgba(255,255,255,0.06)"}` }}>
           <Timer size={8} className="text-white/70" />
@@ -258,13 +266,26 @@ const AuctionGridCard = ({ auction, onClick, t, idx }) => {
             {isEnded ? "ENDED" : `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`}
           </span>
         </div>
-        {/* Activity */}
-        {auction.total_bids > 0 && !isEnded && (
+        {/* Watchlist heart */}
+        {onToggleWatch && !isEnded && (
+          <motion.div data-testid={`watchlist-btn-${auction.auction_id}`}
+            className="absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center backdrop-blur-xl cursor-pointer z-20"
+            style={{ background: isWatched ? "rgba(255,64,96,0.2)" : "rgba(6,8,16,0.6)", border: `1px solid ${isWatched ? "rgba(255,64,96,0.3)" : "rgba(255,255,255,0.06)"}` }}
+            onClick={e => { e.stopPropagation(); onToggleWatch(auction.auction_id); }}
+            whileTap={{ scale: 0.85 }}>
+            <Heart size={11} className={isWatched ? "text-[#FF4060]" : "text-white/30"} fill={isWatched ? "#FF4060" : "none"} />
+          </motion.div>
+        )}
+        {!onToggleWatch && auction.total_bids > 0 && !isEnded && (
           <div className="absolute top-2 right-2 flex items-center gap-1 px-1.5 py-0.5 rounded-md backdrop-blur-xl bg-[#060810]/60 border border-white/[0.06]">
             <Flame size={8} className="text-[#FF8C42]" /><span className="text-[8px] font-bold text-white/70">{auction.total_bids}</span>
           </div>
         )}
-        {/* Free shipping */}
+        {auction.total_bids > 0 && !isEnded && onToggleWatch && (
+          <div className="absolute bottom-8 right-2 flex items-center gap-1 px-1.5 py-0.5 rounded-md backdrop-blur-xl bg-[#060810]/60 border border-white/[0.06]">
+            <Flame size={8} className="text-[#FF8C42]" /><span className="text-[8px] font-bold text-white/70">{auction.total_bids}</span>
+          </div>
+        )}
         {!isEnded && (
           <div className="absolute bottom-2 left-2 flex items-center gap-1 px-1.5 py-0.5 rounded-md backdrop-blur-xl"
             style={{ background: "rgba(0,232,157,0.7)", border: "1px solid rgba(0,232,157,0.25)" }}>
@@ -277,7 +298,6 @@ const AuctionGridCard = ({ auction, onClick, t, idx }) => {
           </div>
         )}
       </div>
-      {/* Info */}
       <div className="p-3">
         <h3 className={`text-[11px] font-semibold leading-tight mb-2 line-clamp-2 ${isEnded ? "text-white/30" : "text-white/85"}`}>{auction.title}</h3>
         <div className="flex items-end justify-between">
@@ -592,8 +612,139 @@ const CATS = [
   { id: "laptops", label: "Laptops", color: accentCyan },
   { id: "tablets", label: "Tablets", color: "#FF8C42" },
   { id: "xr", label: "XR", color: "#E040FB" },
-  { id: "home", label: "Home", color: "#26C6DA" },
+  { id: "tvs", label: "TVs", color: "#26C6DA" },
+  { id: "robots", label: "Robots", color: "#FF6B6B" },
+  { id: "smarthome", label: "Smart Home", color: accentGreen },
+  { id: "home", label: "Home", color: "#FF8C42" },
 ];
+
+/* ════════════════════════════════════════════
+   WIN / LOSE MODAL
+   ════════════════════════════════════════════ */
+const WinLoseModal = ({ type, auction, onClose, t }) => {
+  if (!type || !auction) return null;
+  const isWin = type === "won";
+  return (
+    <motion.div className="fixed inset-0 z-[60] flex items-center justify-center" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+      <div className="absolute inset-0 bg-black/85 backdrop-blur-md" onClick={onClose} />
+      <motion.div className="relative w-full max-w-sm mx-4 rounded-3xl overflow-hidden"
+        style={{ background: "rgba(8,12,20,0.95)", border: isWin ? "1px solid rgba(255,209,102,0.15)" : panelBorder }}
+        initial={{ scale: 0.85, y: 30 }} animate={{ scale: 1, y: 0 }} transition={{ type: "spring", damping: 20 }}>
+        {isWin && <motion.div className="absolute inset-0 pointer-events-none" style={{ background: "radial-gradient(circle at center, rgba(255,209,102,0.06) 0%, transparent 70%)" }} animate={{ opacity: [0.5, 1, 0.5] }} transition={{ duration: 2, repeat: Infinity }} />}
+        <div className="pt-8 pb-4 px-6 text-center relative z-10">
+          <motion.div className="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center"
+            style={{ background: isWin ? "rgba(255,209,102,0.08)" : "rgba(255,255,255,0.03)", border: `1px solid ${isWin ? "rgba(255,209,102,0.2)" : "rgba(255,255,255,0.05)"}` }}
+            animate={isWin ? { boxShadow: ["0 0 0px rgba(255,209,102,0)", "0 0 30px rgba(255,209,102,0.15)", "0 0 0px rgba(255,209,102,0)"] } : {}}
+            transition={{ duration: 2, repeat: Infinity }}>
+            {isWin ? <Trophy size={28} className="text-[#FFD166]" /> : <Clock size={28} className="text-white/20" />}
+          </motion.div>
+          <h2 className="text-[20px] font-black font-outfit mb-1" style={{ color: isWin ? accentGold : "rgba(255,255,255,0.5)" }}>{isWin ? t("auction.you_won_title") : t("auction.you_lost_title")}</h2>
+          <p className="text-[11px] text-white/30 mb-4">{isWin ? t("auction.you_won_subtitle") : t("auction.you_lost_subtitle")}</p>
+          {auction.image_url && <img src={auction.image_url} alt="" className="w-full h-32 object-cover rounded-xl mb-3 opacity-80" />}
+          <p className="text-[12px] font-semibold text-white/70 mb-1">{auction.title}</p>
+          {isWin && <p className="text-[22px] font-black font-mono text-[#00E0FF] mb-4" style={{ textShadow: "0 0 12px rgba(0,224,255,0.2)" }}>{auction.current_price?.toFixed(2)}</p>}
+          <motion.button data-testid="winlose-close-btn" onClick={onClose}
+            className="w-full py-3 rounded-xl text-[12px] font-bold"
+            style={{ background: isWin ? "rgba(255,209,102,0.1)" : "rgba(0,224,255,0.06)", border: `1px solid ${isWin ? "rgba(255,209,102,0.2)" : "rgba(0,224,255,0.1)"}`, color: isWin ? accentGold : accentCyan }}
+            whileTap={{ scale: 0.97 }}>
+            {isWin ? t("auction.claim_prize") : t("auction.browse_more")}
+          </motion.button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+};
+
+/* ════════════════════════════════════════════
+   NOTIFICATION TOAST
+   ════════════════════════════════════════════ */
+const NotifToast = ({ notifs, onDismiss }) => {
+  if (!notifs || notifs.length === 0) return null;
+  const n = notifs[0];
+  const isOutbid = n.type === "outbid";
+  const color = isOutbid ? accentRed : n.type === "won" ? accentGold : accentCyan;
+  return (
+    <motion.div className="fixed top-4 left-4 right-4 z-[55] max-w-md mx-auto"
+      initial={{ y: -60, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -60, opacity: 0 }}>
+      <div className={`flex items-center gap-3 px-4 py-3 rounded-xl backdrop-blur-xl`}
+        style={{ background: "rgba(8,12,20,0.92)", border: `1px solid ${color}25`, boxShadow: `0 4px 20px ${color}10` }}>
+        <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${color}10`, border: `1px solid ${color}20` }}>
+          {isOutbid ? <AlertTriangle size={14} style={{ color }} /> : n.type === "won" ? <Trophy size={14} style={{ color }} /> : <Bell size={14} style={{ color }} />}
+        </div>
+        <p className="text-[11px] text-white/70 font-medium flex-1 line-clamp-2">{n.message}</p>
+        <motion.button onClick={onDismiss} whileTap={{ scale: 0.9 }} className="text-white/20 hover:text-white/50"><X size={14} /></motion.button>
+      </div>
+    </motion.div>
+  );
+};
+
+/* ════════════════════════════════════════════
+   REFERRAL PANEL
+   ════════════════════════════════════════════ */
+const ReferralPanel = ({ t }) => {
+  const [ref, setRef] = useState(null);
+  const [copied, setCopied] = useState(false);
+  const [applyCode, setApplyCode] = useState("");
+  const [applyMsg, setApplyMsg] = useState(null);
+  const [showApply, setShowApply] = useState(false);
+
+  useEffect(() => { api.getAuctionReferral().then(setRef).catch(() => {}); }, []);
+
+  const copy = () => {
+    if (!ref?.referral_code) return;
+    navigator.clipboard.writeText(ref.referral_code).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); }).catch(() => {});
+  };
+
+  const apply = async () => {
+    if (!applyCode.trim()) return;
+    try {
+      const r = await api.applyAuctionReferral(applyCode.trim());
+      setApplyMsg({ ok: true, text: `+${r.credits_awarded} Credits!` });
+      setApplyCode("");
+    } catch (e) { setApplyMsg({ ok: false, text: e.message }); }
+  };
+
+  if (!ref) return null;
+  return (
+    <motion.div className={`rounded-2xl p-3 ${glass}`} style={{ background: panelBg, border: panelBorder }}
+      initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.04 }}>
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+          style={{ background: "rgba(0,224,255,0.06)", border: "1px solid rgba(0,224,255,0.1)" }}>
+          <Share2 size={14} className="text-[#00E0FF]" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-[11px] font-semibold text-white/80">{t("auction.referral_title")}</p>
+          <p className="text-[9px] text-white/25">{t("auction.referral_desc")}</p>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="px-2 py-1 rounded-lg bg-white/[0.03] border border-white/[0.06]">
+            <span className="text-[11px] font-mono font-bold text-[#00E0FF] tracking-wider">{ref.referral_code}</span>
+          </div>
+          <motion.button data-testid="referral-copy-btn" onClick={copy} whileTap={{ scale: 0.9 }}
+            className="w-8 h-8 rounded-lg flex items-center justify-center bg-white/[0.03] border border-white/[0.06]">
+            {copied ? <Check size={12} className="text-[#00E89D]" /> : <Copy size={12} className="text-white/30" />}
+          </motion.button>
+        </div>
+      </div>
+      <div className="flex items-center gap-2 mt-2">
+        <span className="text-[9px] text-white/20">{t("auction.referral_count")}: <span className="text-[#00E0FF] font-bold">{ref.referral_count}</span></span>
+        <div className="flex-1" />
+        {!showApply ? (
+          <motion.button onClick={() => setShowApply(true)} className="text-[9px] text-white/25 hover:text-white/50" whileTap={{ scale: 0.95 }}>{t("auction.referral_apply")}</motion.button>
+        ) : (
+          <div className="flex items-center gap-1.5">
+            <input data-testid="referral-apply-input" value={applyCode} onChange={e => setApplyCode(e.target.value)} placeholder="CODE"
+              className="w-20 px-2 py-1 rounded-lg bg-white/[0.03] border border-white/[0.06] text-[10px] text-white/70 font-mono placeholder:text-white/10 outline-none focus:border-[#00E0FF]/20" />
+            <motion.button data-testid="referral-apply-btn" onClick={apply} whileTap={{ scale: 0.95 }}
+              className="px-2 py-1 rounded-lg bg-[#00E0FF]/8 border border-[#00E0FF]/15 text-[9px] font-bold text-[#00E0FF]">OK</motion.button>
+          </div>
+        )}
+      </div>
+      <AnimatePresence>{applyMsg && <motion.p className={`mt-1.5 text-[9px] font-medium ${applyMsg.ok ? "text-[#00E89D]" : "text-[#FF4060]"}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>{applyMsg.text}</motion.p>}</AnimatePresence>
+    </motion.div>
+  );
+};
 
 /* ════════════════════════════════════════════
    MAIN AUCTIONS PAGE
@@ -607,18 +758,70 @@ const AuctionsPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onLogin
   const [showCredits, setShowCredits] = useState(false);
   const [credits, setCredits] = useState(0);
   const [filter, setFilter] = useState("all");
+  const [watchlist, setWatchlist] = useState([]);
+  const [auctionNotifs, setAuctionNotifs] = useState([]);
+  const [showNotifToast, setShowNotifToast] = useState(false);
+  const [winLose, setWinLose] = useState({ type: null, auction: null });
+  const prevAuctionsRef = useRef([]);
   const pollRef = useRef(null);
 
   const fetchAuctions = useCallback(async () => { try { const r = await api.getAuctions(); setAuctions(r.auctions || []); } catch {} }, []);
   const fetchCredits = useCallback(async () => { if (isGuest) return; try { const r = await api.getBidCredits(); setCredits(r.bid_credits || 0); } catch {} }, [isGuest]);
+  const fetchWatchlist = useCallback(async () => { if (isGuest) return; try { const r = await api.getWatchlist(); setWatchlist(r.watchlist || []); } catch {} }, [isGuest]);
+  const fetchNotifs = useCallback(async () => {
+    if (isGuest) return;
+    try {
+      const r = await api.getAuctionNotifications();
+      const unread = (r.notifications || []).filter(n => !n.read);
+      if (unread.length > 0 && unread[0].created_at !== auctionNotifs[0]?.created_at) {
+        setAuctionNotifs(unread);
+        setShowNotifToast(true);
+        setTimeout(() => setShowNotifToast(false), 5000);
+      }
+    } catch {}
+  }, [isGuest, auctionNotifs]);
 
   useEffect(() => {
-    Promise.all([fetchAuctions(), fetchCredits()]).then(() => setLoading(false));
-    pollRef.current = setInterval(fetchAuctions, 5000);
+    Promise.all([fetchAuctions(), fetchCredits(), fetchWatchlist()]).then(() => setLoading(false));
+    pollRef.current = setInterval(() => { fetchAuctions(); fetchNotifs(); }, 5000);
     return () => clearInterval(pollRef.current);
-  }, [fetchAuctions, fetchCredits]);
+  }, [fetchAuctions, fetchCredits, fetchWatchlist, fetchNotifs]);
 
-  if (selected) return <AuctionDetail auctionId={selected} onBack={() => { setSelected(null); fetchAuctions(); fetchCredits(); }} isGuest={isGuest} onAuthRequired={onAuthRequired} userCredits={credits} onCreditsChanged={setCredits} />;
+  // Detect win/lose when auctions transition from active to ended
+  useEffect(() => {
+    if (isGuest || !user?.id) return;
+    const prev = prevAuctionsRef.current;
+    for (const auc of auctions) {
+      if (auc.status !== "ended") continue;
+      const prevAuc = prev.find(p => p.auction_id === auc.auction_id);
+      if (!prevAuc || prevAuc.status !== "active") continue;
+      // This auction just ended
+      if (auc.winner_id === user.id) {
+        setWinLose({ type: "won", auction: auc });
+      } else {
+        // Check if user was a bidder (check last_bidder or bids)
+        const wasBidder = prevAuc.last_bidder_id === user.id;
+        if (wasBidder) setWinLose({ type: "lost", auction: auc });
+      }
+    }
+    prevAuctionsRef.current = auctions;
+  }, [auctions, isGuest, user?.id]);
+
+  const toggleWatch = async (auctionId) => {
+    if (isGuest) { onAuthRequired(); return; }
+    try {
+      const r = await api.toggleWatchlist(auctionId);
+      if (r.watched) setWatchlist(p => [...p, auctionId]);
+      else setWatchlist(p => p.filter(id => id !== auctionId));
+    } catch {}
+  };
+
+  const dismissNotif = () => {
+    setShowNotifToast(false);
+    api.markAuctionNotificationsRead().catch(() => {});
+  };
+
+  if (selected) return <AuctionDetail auctionId={selected} onBack={() => { setSelected(null); fetchAuctions(); fetchCredits(); fetchWatchlist(); }} isGuest={isGuest} onAuthRequired={onAuthRequired} userCredits={credits} onCreditsChanged={setCredits} />;
 
   const active = auctions.filter(a => a.status === "active" && (filter === "all" || a.category === filter));
   const ended = auctions.filter(a => a.status === "ended" && (filter === "all" || a.category === filter));
@@ -627,6 +830,10 @@ const AuctionsPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onLogin
 
   return (
     <motion.div data-testid="auctions-page" className="min-h-screen" style={{ background: "#040610" }} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+      {/* Notification Toast */}
+      <AnimatePresence>{showNotifToast && <NotifToast notifs={auctionNotifs} onDismiss={dismissNotif} />}</AnimatePresence>
+      {/* Win/Lose Modal */}
+      <AnimatePresence>{winLose.type && <WinLoseModal type={winLose.type} auction={winLose.auction} onClose={() => setWinLose({ type: null, auction: null })} t={t} />}</AnimatePresence>
       {/* Ambient */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] rounded-full pointer-events-none" style={{ filter: "blur(160px)", background: "rgba(0,224,255,0.02)" }} />
 
@@ -654,6 +861,9 @@ const AuctionsPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onLogin
       <div className="px-4 pb-8 relative z-10 space-y-3">
         {/* Daily Reward */}
         {!isGuest && <DailyReward onClaimed={setCredits} />}
+
+        {/* Referral */}
+        {!isGuest && <ReferralPanel t={t} />}
 
         {/* Trust */}
         <TrustBar t={t} recentWinners={winners} />
@@ -703,7 +913,7 @@ const AuctionsPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onLogin
                   <span className="text-[8px] text-[#00E89D] font-bold">{active.length}</span>
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2.5">
-                  {active.map((a, i) => <AuctionGridCard key={a.auction_id} auction={a} onClick={() => setSelected(a.auction_id)} t={t} idx={i} />)}
+                  {active.map((a, i) => <AuctionGridCard key={a.auction_id} auction={a} onClick={() => setSelected(a.auction_id)} t={t} idx={i} isWatched={watchlist.includes(a.auction_id)} onToggleWatch={!isGuest ? toggleWatch : null} />)}
                 </div>
               </motion.div>
             )}

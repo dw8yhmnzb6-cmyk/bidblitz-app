@@ -132,15 +132,33 @@ Create a modern, professional fintech web app called BidBlitz V2. Build Revolut-
 
 ## Key Files
 - `/app/backend/routes/stripe.py` — Stripe checkout + saved methods + 1-click
-- `/app/backend/routes/auctions.py` — Penny auction system
+- `/app/backend/routes/auctions.py` — Penny auction system + engagement features
 - `/app/backend/routes/profile.py` — User profile + KYC
-- `/app/frontend/src/pages/AuctionsPage.jsx` — Auction UI
+- `/app/frontend/src/pages/AuctionsPage.jsx` — Auction UI + watchlist, referral, win/lose, notifications
 - `/app/frontend/src/components/TopUpModal.jsx` — Top-up modal with 1-click UI
 - `/app/frontend/src/services/api.js` — API service
 - `/app/backend/routes/kids.py` — Child accounts
 - `/app/backend/routes/analytics.py` — Conversion tracking
 - `/app/frontend/src/services/tracker.js` — Frontend event tracker
 - `/app/frontend/src/pages/HomePage.jsx` — Guest homepage
+
+### Engagement Features (Complete — April 5, 2026)
+**Backend:**
+- Watchlist toggle (`POST /api/auctions/{id}/watchlist`, `GET /api/auctions/user/watchlist`)
+- Bid Streak tracking (auto-increments on daily bids, `GET /api/auctions/user/streak`)
+- Auction notifications (outbid, win alerts: `GET /api/auctions/user/notifications`)
+- Auction referral system (`GET /api/auctions/user/referral`, `POST /api/auctions/user/apply-referral`)
+- Win notifications auto-created when auctions end
+- Outbid notifications auto-created on new bids
+
+**Frontend:**
+- Watchlist heart icon on all active auction cards (toggle on/off)
+- Referral panel with code display, copy, and apply input
+- Bid Streak counter shown in Daily Reward section
+- Win/Lose celebration modal (detects when auctions transition active→ended)
+- Notification toast system (outbid, won alerts)
+- Added missing categories: TVs, Robots, Smart Home
+- Full DE + EN translations for all new features
 
 ## Backlog (P0/P1 — Phase 1)
 - Saved Cards Management Seite (P0 — UI to view/delete saved cards)

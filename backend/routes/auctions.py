@@ -54,6 +54,16 @@ async def list_auctions(request: Request):
                 "ended_at": now,
             }},
         )
+        # Notify winner
+        if winner_id:
+            await db.auction_notifications.insert_one({
+                "user_id": winner_id,
+                "type": "won",
+                "auction_id": auc["auction_id"],
+                "message": f"You won {auc['title']} for just €{auc.get('current_price', 0):.2f}!",
+                "read": False,
+                "created_at": now,
+            })
 
     auctions = await db.auctions.find(
         {"status": {"$in": ["active", "upcoming", "ended"]}},
@@ -181,11 +191,32 @@ async def place_bid(req: BidRequest, request: Request):
     if credits < 1:
         raise HTTPException(status_code=400, detail="Not enough bid credits")
 
-    # Deduct 1 credit
-    await db.users.update_one(
-        {"_id": user["_id"]},
-        {"$inc": {"bid_credits": -1}},
-    )
+    # Deduct 1 credit + update bid streak
+    today_str = now.strftime("%Y-%m-%d")
+    last_bid_date = user.get("last_bid_date", "")
+    streak_update = {}
+    if last_bid_date:
+        try:
+            last_dt = datetime.fromisoformat(last_bid_date)
+            last_day = last_dt.strftime("%Y-%m-%d")
+            if last_day == today_str:
+                pass  # Same day, no streak change
+            elif (now - last_dt).total_seconds() <= 86400 * 1.5:
+                streak_update = {"$inc": {"bid_streak": 1}}
+            else:
+                streak_update = {"$set": {"bid_streak": 1}}
+        except Exception:
+            streak_update = {"$set": {"bid_streak": 1}}
+    else:
+        streak_update = {"$set": {"bid_streak": 1}}
+
+    update_ops = {"$inc": {"bid_credits": -1}, "$set": {"last_bid_date": now.isoformat()}}
+    if "$inc" in streak_update:
+        update_ops["$inc"]["bid_streak"] = streak_update["$inc"]["bid_streak"]
+    elif "$set" in streak_update:
+        update_ops["$set"]["bid_streak"] = streak_update["$set"]["bid_streak"]
+
+    await db.users.update_one({"_id": user["_id"]}, update_ops)
 
     # Calculate new price
     new_price = round(auction["current_price"] + PRICE_INCREMENT, 2)
@@ -222,6 +253,17 @@ async def place_bid(req: BidRequest, request: Request):
     }
     await db.auction_bids.insert_one(bid_record)
     bid_record.pop("_id", None)
+
+    # Notify previous bidder they were outbid
+    if auction.get("last_bidder_id") and auction["last_bidder_id"] != user_id:
+        await db.auction_notifications.insert_one({
+            "user_id": auction["last_bidder_id"],
+            "type": "outbid",
+            "auction_id": req.auction_id,
+            "message": f"You were outbid on {auction['title']}!",
+            "read": False,
+            "created_at": now_iso,
+        })
 
     updated_user = await db.users.find_one({"_id": user["_id"]})
 
@@ -643,3 +685,123 @@ async def get_catalog(request: Request):
     if user.get("role") not in ("admin",):
         raise HTTPException(status_code=403, detail="Admin only")
     return {"products": PRODUCT_CATALOG, "total": len(PRODUCT_CATALOG)}
+
+
+# ══════════════════════════════════════════════════════
+# ENGAGEMENT FEATURES: Watchlist, Streak, Notifications
+# ══════════════════════════════════════════════════════
+
+# ── Watchlist Toggle ──
+@router.post("/{auction_id}/watchlist")
+async def toggle_watchlist(auction_id: str, request: Request):
+    """Toggle auction in user's watchlist."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    existing = await db.watchlist.find_one({"user_id": user_id, "auction_id": auction_id})
+    if existing:
+        await db.watchlist.delete_one({"_id": existing["_id"]})
+        return {"watched": False}
+    await db.watchlist.insert_one({
+        "user_id": user_id,
+        "auction_id": auction_id,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    })
+    return {"watched": True}
+
+
+@router.get("/user/watchlist")
+async def get_watchlist(request: Request):
+    """Get user's watchlist auction IDs."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    items = await db.watchlist.find({"user_id": user_id}, {"_id": 0, "auction_id": 1}).to_list(100)
+    return {"watchlist": [i["auction_id"] for i in items]}
+
+
+# ── Bid Streak ──
+@router.get("/user/streak")
+async def get_streak(request: Request):
+    """Get user's current bid streak info."""
+    user = await get_current_user(request)
+    streak = user.get("bid_streak", 0)
+    last_bid_date = user.get("last_bid_date", "")
+    # Check if streak is still valid (bid within last 24h)
+    if last_bid_date:
+        try:
+            last_dt = datetime.fromisoformat(last_bid_date)
+            elapsed = (datetime.now(timezone.utc) - last_dt).total_seconds()
+            if elapsed > 86400:
+                streak = 0
+        except Exception:
+            streak = 0
+    return {"streak": streak, "last_bid_date": last_bid_date}
+
+
+# ── Auction Notifications ──
+@router.get("/user/notifications")
+async def get_auction_notifications(request: Request):
+    """Get user's auction-related notifications."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    notifs = await db.auction_notifications.find(
+        {"user_id": user_id},
+        {"_id": 0},
+    ).sort("created_at", -1).to_list(20)
+    return {"notifications": notifs}
+
+
+@router.post("/user/notifications/read")
+async def mark_auction_notifications_read(request: Request):
+    """Mark all auction notifications as read."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    await db.auction_notifications.update_many(
+        {"user_id": user_id, "read": False},
+        {"$set": {"read": True}},
+    )
+    return {"ok": True}
+
+
+# ── Referral Code (auction context) ──
+@router.get("/user/referral")
+async def get_auction_referral(request: Request):
+    """Get user's referral code and stats for auction sharing."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    ref_code = user.get("referral_code")
+    if not ref_code:
+        ref_code = secrets.token_hex(4).upper()
+        await db.users.update_one({"_id": user["_id"]}, {"$set": {"referral_code": ref_code}})
+    referral_count = await db.users.count_documents({"referred_by": user_id})
+    return {"referral_code": ref_code, "referral_count": referral_count, "bonus_per_referral": 5}
+
+
+@router.post("/user/apply-referral")
+async def apply_auction_referral(request: Request):
+    """Apply a referral code to get bonus credits."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    body = await request.json()
+    code = body.get("code", "").strip().upper()
+    if not code:
+        raise HTTPException(status_code=400, detail="No code provided")
+    if user.get("referred_by"):
+        raise HTTPException(status_code=400, detail="Already used a referral code")
+    referrer = await db.users.find_one({"referral_code": code})
+    if not referrer:
+        raise HTTPException(status_code=404, detail="Invalid referral code")
+    if str(referrer["_id"]) == user_id:
+        raise HTTPException(status_code=400, detail="Cannot use your own code")
+    # Grant bonus to both
+    await db.users.update_one({"_id": user["_id"]}, {"$inc": {"bid_credits": 5}, "$set": {"referred_by": str(referrer["_id"])}})
+    await db.users.update_one({"_id": referrer["_id"]}, {"$inc": {"bid_credits": 5}})
+    # Notify referrer
+    await db.auction_notifications.insert_one({
+        "user_id": str(referrer["_id"]),
+        "type": "referral",
+        "message": f"{user.get('name', 'Someone')} joined using your code! +5 credits",
+        "read": False,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    })
+    updated = await db.users.find_one({"_id": user["_id"]})
+    return {"credits_awarded": 5, "total_credits": updated.get("bid_credits", 0)}
