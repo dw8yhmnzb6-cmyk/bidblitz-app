@@ -19,22 +19,53 @@ const BENEFITS = [
 
 // ── Kids Dashboard (post-subscription) ──
 const KidsDashboard = ({ onBack, t, subStatus }) => {
-  const [children, setChildren] = useState([
-    { id: 1, name: "Child 1", avatar: "C1", weeklyLimit: 20, spent: 8.50, color: "#00C2FF" },
-  ]);
+  const [children, setChildren] = useState([]);
   const [showAddChild, setShowAddChild] = useState(false);
   const [newChildName, setNewChildName] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [selectedChild, setSelectedChild] = useState(null);
 
-  const addChild = () => {
-    if (!newChildName.trim()) return;
-    const colors = ["#A855F7", "#00D26A", "#FFB800", "#FF6B6B"];
-    const c = { id: Date.now(), name: newChildName.trim(), avatar: newChildName[0]?.toUpperCase() || "?", weeklyLimit: 15, spent: 0, color: colors[children.length % colors.length] };
-    setChildren([...children, c]);
-    setNewChildName(""); setShowAddChild(false);
+  // Load children from backend
+  useEffect(() => {
+    api.listChildren()
+      .then(d => setChildren(d.children || []))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  const addChild = async () => {
+    const name = newChildName.trim();
+    if (!name || saving) return;
+    setSaving(true);
+    try {
+      const child = await api.createChild({ name, weekly_limit: 15 });
+      setChildren(prev => [...prev, child]);
+      setNewChildName("");
+      setShowAddChild(false);
+    } catch {
+      // silent
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const updateLimit = (id, newLimit) => {
-    setChildren(children.map(c => c.id === id ? { ...c, weeklyLimit: newLimit } : c));
+  const updateLimit = async (childId, newLimit) => {
+    setChildren(prev => prev.map(c => c.child_id === childId ? { ...c, weekly_limit: newLimit } : c));
+    try {
+      await api.updateChild(childId, { weekly_limit: newLimit });
+    } catch {
+      // silent
+    }
+  };
+
+  const removeChild = async (childId) => {
+    setChildren(prev => prev.filter(c => c.child_id !== childId));
+    try {
+      await api.deleteChild(childId);
+    } catch {
+      // silent
+    }
   };
 
   const expiresAt = subStatus?.expires_at;
@@ -59,12 +90,18 @@ const KidsDashboard = ({ onBack, t, subStatus }) => {
       </div>
 
       <div className="px-5 pb-28 space-y-4">
+        {/* Loading state */}
+        {loading ? (
+          <div className="flex items-center justify-center py-16">
+            <Loader2 size={22} className="text-[#00C2FF] animate-spin" />
+          </div>
+        ) : (<>
         {/* Overview stats */}
         <motion.div className="grid grid-cols-3 gap-2.5" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.06 }}>
           {[
             { icon: Users, label: t("kids.stat_children"), value: children.length, color: "#00C2FF" },
-            { icon: TrendingDown, label: t("kids.stat_week"), value: `€${children.reduce((s, c) => s + c.spent, 0).toFixed(2)}`, color: "#FF6B6B" },
-            { icon: Wallet, label: t("kids.stat_limit"), value: `€${children.reduce((s, c) => s + c.weeklyLimit, 0).toFixed(2)}`, color: "#00D26A" },
+            { icon: TrendingDown, label: t("kids.stat_week"), value: `€${children.reduce((s, c) => s + (c.spent || 0), 0).toFixed(2)}`, color: "#FF6B6B" },
+            { icon: Wallet, label: t("kids.stat_limit"), value: `€${children.reduce((s, c) => s + (c.weekly_limit || 0), 0).toFixed(2)}`, color: "#00D26A" },
           ].map((s, i) => (
             <div key={i} className="rounded-2xl p-3 text-center" style={{ background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.035)" }}>
               <s.icon size={16} style={{ color: s.color }} className="mx-auto mb-1.5" />
@@ -77,22 +114,44 @@ const KidsDashboard = ({ onBack, t, subStatus }) => {
         {/* Children list */}
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}>
           <p className="text-[9px] text-[#333] uppercase tracking-[0.14em] font-semibold mb-2.5 pl-1">{t("kids.children_title")}</p>
+
+          {children.length === 0 && !showAddChild && (
+            <motion.div className="rounded-2xl p-6 text-center" style={{ background: "rgba(255,255,255,0.01)", border: "1px dashed rgba(255,255,255,0.06)" }}
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+              <Users size={28} className="text-[#222] mx-auto mb-2" />
+              <p className="text-[12px] text-[#444] font-medium mb-1">{t("kids.no_children") || "No children added yet"}</p>
+              <p className="text-[10px] text-[#333]">{t("kids.add_first") || "Add your first child to get started"}</p>
+            </motion.div>
+          )}
+
           <div className="space-y-2.5">
             {children.map((child) => {
-              const pct = child.weeklyLimit > 0 ? Math.min(100, (child.spent / child.weeklyLimit) * 100) : 0;
+              const limit = child.weekly_limit || 0;
+              const spent = child.spent || 0;
+              const pct = limit > 0 ? Math.min(100, (spent / limit) * 100) : 0;
               const danger = pct > 80;
+              const isSelected = selectedChild === child.child_id;
               return (
-                <motion.div key={child.id} data-testid={`child-card-${child.id}`}
-                  className="rounded-2xl p-4" style={{ background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.035)" }}
-                  whileHover={{ scale: 1.005 }}>
+                <motion.div key={child.child_id} data-testid={`child-card-${child.child_id}`}
+                  className="rounded-2xl p-4 cursor-pointer transition-colors"
+                  style={{
+                    background: isSelected ? "rgba(0,194,255,0.04)" : "rgba(255,255,255,0.015)",
+                    border: `1px solid ${isSelected ? "rgba(0,194,255,0.15)" : "rgba(255,255,255,0.035)"}`,
+                  }}
+                  whileTap={{ scale: 0.99 }}
+                  onClick={() => setSelectedChild(isSelected ? null : child.child_id)}>
                   <div className="flex items-center gap-3 mb-3">
-                    <div className="w-10 h-10 rounded-full flex items-center justify-center text-[14px] font-bold text-white"
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center text-[14px] font-bold text-white relative"
                       style={{ background: `${child.color}20`, border: `2px solid ${child.color}40` }}>
                       {child.avatar}
+                      {isSelected && <motion.div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-[#00C2FF] flex items-center justify-center"
+                        initial={{ scale: 0 }} animate={{ scale: 1 }}>
+                        <Check size={8} className="text-white" strokeWidth={3} />
+                      </motion.div>}
                     </div>
                     <div className="flex-1">
                       <p className="text-[13px] font-semibold text-white">{child.name}</p>
-                      <p className="text-[10px] text-[#444] font-medium">€{child.spent.toFixed(2)} / €{child.weeklyLimit.toFixed(2)} {t("kids.weekly")}</p>
+                      <p className="text-[10px] text-[#444] font-medium">€{spent.toFixed(2)} / €{limit.toFixed(2)} {t("kids.weekly")}</p>
                     </div>
                     <div className="text-right">
                       <p className={`text-[14px] font-bold ${danger ? "text-[#FF4757]" : "text-[#00D26A]"}`}>{pct.toFixed(0)}%</p>
@@ -104,15 +163,29 @@ const KidsDashboard = ({ onBack, t, subStatus }) => {
                     <motion.div className="h-full rounded-full" style={{ background: danger ? "#FF4757" : child.color, width: `${pct}%` }}
                       initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.8, ease: "easeOut" }} />
                   </div>
-                  {/* Limit slider */}
-                  <div className="flex items-center gap-3 mt-3">
-                    <span className="text-[10px] text-[#444] font-medium whitespace-nowrap">{t("kids.weekly_limit")}:</span>
-                    <input data-testid={`child-limit-${child.id}`} type="range" min={5} max={100} step={5} value={child.weeklyLimit}
-                      onChange={e => updateLimit(child.id, Number(e.target.value))}
-                      className="flex-1 h-1 rounded-full appearance-none cursor-pointer accent-[#00C2FF]"
-                      style={{ background: "rgba(255,255,255,0.06)" }} />
-                    <span className="text-[11px] font-semibold text-white min-w-[40px] text-right">€{child.weeklyLimit}</span>
-                  </div>
+                  {/* Expanded controls when selected */}
+                  <AnimatePresence>
+                    {isSelected && (
+                      <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
+                        className="overflow-hidden">
+                        <div className="flex items-center gap-3 mt-3">
+                          <span className="text-[10px] text-[#444] font-medium whitespace-nowrap">{t("kids.weekly_limit")}:</span>
+                          <input data-testid={`child-limit-${child.child_id}`} type="range" min={5} max={100} step={5} value={limit}
+                            onChange={e => { e.stopPropagation(); updateLimit(child.child_id, Number(e.target.value)); }}
+                            onClick={e => e.stopPropagation()}
+                            className="flex-1 h-1 rounded-full appearance-none cursor-pointer accent-[#00C2FF]"
+                            style={{ background: "rgba(255,255,255,0.06)" }} />
+                          <span className="text-[11px] font-semibold text-white min-w-[40px] text-right">€{limit}</span>
+                        </div>
+                        <motion.button data-testid={`remove-child-${child.child_id}`}
+                          className="mt-2.5 w-full py-2 rounded-xl text-[11px] font-medium text-[#FF4757]/60 border border-[#FF4757]/10"
+                          whileTap={{ scale: 0.97 }}
+                          onClick={(e) => { e.stopPropagation(); removeChild(child.child_id); }}>
+                          {t("kids.remove_child") || "Remove Child"}
+                        </motion.button>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </motion.div>
               );
             })}
@@ -130,9 +203,12 @@ const KidsDashboard = ({ onBack, t, subStatus }) => {
                   style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}
                   onKeyDown={e => e.key === "Enter" && addChild()} />
                 <div className="flex gap-2">
-                  <motion.button data-testid="add-child-confirm" onClick={addChild}
-                    className="flex-1 py-2 rounded-xl text-[12px] font-semibold bg-[#00C2FF]/10 text-[#00C2FF] border border-[#00C2FF]/15"
-                    whileTap={{ scale: 0.97 }}>{t("kids.add_child")}</motion.button>
+                  <motion.button data-testid="add-child-confirm" onClick={addChild} disabled={saving}
+                    className="flex-1 py-2 rounded-xl text-[12px] font-semibold bg-[#00C2FF]/10 text-[#00C2FF] border border-[#00C2FF]/15 flex items-center justify-center gap-1.5"
+                    whileTap={{ scale: 0.97 }}>
+                    {saving ? <Loader2 size={12} className="animate-spin" /> : null}
+                    {t("kids.add_child")}
+                  </motion.button>
                   <motion.button onClick={() => setShowAddChild(false)}
                     className="px-4 py-2 rounded-xl text-[12px] font-medium text-[#444] bg-white/[0.02] border border-white/[0.04]"
                     whileTap={{ scale: 0.97 }}>{t("kids.cancel")}</motion.button>
@@ -166,6 +242,7 @@ const KidsDashboard = ({ onBack, t, subStatus }) => {
             ))}
           </div>
         </motion.div>
+        </>)}
       </div>
     </motion.div>
   );

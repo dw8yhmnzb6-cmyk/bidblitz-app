@@ -9,71 +9,52 @@ Create a modern, professional fintech web app called BidBlitz V2. Build Revolut-
 - **Payments**: Stripe
 - **Languages**: 12 (EN, DE, SQ, TR, FR, ES, IT, PT, NL, PL, RU, AR)
 
-## Core Architecture
-- `/app/frontend/src/` — React SPA with context-based state management
-- `/app/backend/` — FastAPI with MongoDB, routes under `/api`
-- `/app/scripts/` — Cron-based backup & monitoring scripts
-
 ## What's Been Implemented
 
 ### Core Features (Complete)
-- Full JWT authentication (login/register with invite codes)
-- Wallet: balance, top-up (Stripe), send money, QR barcode
-- Merchant dashboard: earnings, payments, payouts, weekly chart
-- Admin dashboard: platform management, soft-launch controls
-- 12-language i18n support, Kids dashboard with paywall
-- Notifications, activity feed, referral system
-- Export tools, Feature flags & gating, Premium card display
-- Transaction history with filters
+- Full JWT auth, Wallet, Merchant & Admin dashboards, QR payments
+- 12-language i18n, Kids dashboard with paywall, Notifications
+- Export tools, Feature flags, Premium card, Transaction history
 
-### Soft Launch Features (Complete)
-- Invite-only gates, admin whitelist, invite codes (standard + MRC-)
-- Soft launch dashboard, DB backups & monitoring cron jobs
-- Admin alerts, user feedback, 15 users + 3 merchants seeded
+### Soft Launch (Complete)
+- Invite codes, whitelist, dashboard metrics, backups, monitoring, alerts
 
-### Public Browsing, Auth Gating & Guest Experience (Complete)
-- Homepage publicly accessible to guests
-- Balance/data masked for unauthenticated visitors
-- AuthGateOverlay + GuestCTABar for auth-gated flows
-- Try Demo mode with mock data on Wallet/Merchant/More pages
-- Clear CTA buttons (Login/Register/Demo) in header + hero + inner pages
-- Onboarding hint (dismissible, localStorage-persisted, 12 languages)
-- Improved guest homepage: products, benefits, trust sections
+### Public Browsing & Guest Experience (Complete)
+- Homepage public, auth-gated actions, Try Demo mode
+- Clear CTAs (Login/Register/Demo), Onboarding hint, Guest homepage sections
 
-### Conversion Tracking (Complete — April 4, 2026)
-**Backend:**
-- `POST /api/analytics/track` — Public event ingestion endpoint (no auth required)
-- `GET /api/analytics/conversions?days=N` — Admin-only conversion dashboard
-- Events stored in `conversion_events` collection, daily rollups in `conversion_metrics`
-- Server-side tracking for `register_complete` (in auth.py) and `first_payment` (in payment.py)
+### Conversion Tracking (Complete)
+- Event ingestion API, admin dashboard, funnel metrics, feature click tracking
 
-**Frontend:**
-- `/app/frontend/src/services/tracker.js` — Lightweight fire-and-forget tracker using `sendBeacon` with fetch fallback
-- Session-based dedup (`fireOnce`) and permanent dedup (`fireOnceEver`)
-- Tracked events:
-  - `guest_visit` — on homepage load (once/session)
-  - `guest_register_click` — every register CTA click with source
-  - `register_complete` — server-side on successful registration (once ever)
-  - `first_payment` — server-side on first payment completion (once ever)
-  - `feature_click` — on product/service card click with feature name
-  - `demo_start` / `demo_exit` — demo mode lifecycle
-  - `cta_click` — login/register button clicks with page context
-  - `page_view` — on every navigation
-- Conversion funnel: guest → register rate, register → first payment rate
-- Top features report: ranked by click count
+### Child Accounts (Complete — April 5, 2026)
+**Backend (kids.py):**
+- `GET /api/kids/children` — List children for current parent
+- `POST /api/kids/children` — Create child (name, weekly_limit). Max 6 per parent
+- `PUT /api/kids/children/{child_id}` — Update name/limit
+- `DELETE /api/kids/children/{child_id}` — Remove child
+- Data stored in `kids_children` collection: `{child_id, parent_id, name, avatar, weekly_limit, spent, color, created_at}`
 
-**Data model:**
-- `conversion_events`: `{event, session_id, meta, day, ts, user_id, ip}`
-- `conversion_metrics`: `{day, event, count, updated_at}` (upserted daily)
+**Frontend (KidsPaywall.jsx):**
+- Children loaded from backend on mount, persist across sessions
+- "Add Child" button with name input, creates via API
+- Child list: colored avatar (first letter), name, €spent/€limit, progress bar, % used
+- Click to select: expanded controls (weekly limit slider, "Remove Child" button with i18n)
+- Empty state shown when no children exist
+- Loading spinner while fetching from backend
+- Stats: total children count, weekly spending, total limit
+- i18n: `kids.remove_child`, `kids.no_children`, `kids.add_first` added to EN + DE
+
+**Frontend API (api.js):**
+- `listChildren()`, `createChild()`, `updateChild()`, `deleteChild()` methods
 
 ## Key Files
-- `/app/frontend/src/App.js` — Routing, tracking wiring
-- `/app/frontend/src/services/tracker.js` — Frontend event tracker
-- `/app/frontend/src/pages/HomePage.jsx` — Guest homepage with tracking
-- `/app/backend/routes/analytics.py` — Conversion tracking endpoints
-- `/app/backend/routes/auth.py` — Server-side register_complete tracking
-- `/app/backend/routes/payment.py` — Server-side first_payment tracking
-- `/app/frontend/src/models/homeTranslations.js` — Guest translations (12 lang)
+- `/app/backend/routes/kids.py` — Child CRUD endpoints
+- `/app/frontend/src/pages/KidsPaywall.jsx` — Kids dashboard with child management
+- `/app/frontend/src/services/api.js` — API service with child methods
+- `/app/frontend/src/App.js` — Routing, tracking, auth
+- `/app/frontend/src/pages/HomePage.jsx` — Guest homepage
+- `/app/frontend/src/services/tracker.js` — Conversion tracker
+- `/app/backend/routes/analytics.py` — Analytics + conversion endpoints
 
 ## Backlog (P2/P3 — Not Started)
 - Push notifications (WebPush)

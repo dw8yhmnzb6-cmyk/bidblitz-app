@@ -189,3 +189,109 @@ async def verify_kids_checkout(session_id: str, request: Request):
         return {"status": "active", "plan": plan, "expires_at": expires.isoformat()}
 
     return {"status": "pending", "payment_status": stripe_status.payment_status}
+
+
+
+# ═══════════════════════════════════════════════════
+# Child Account Management
+# ═══════════════════════════════════════════════════
+
+class CreateChildRequest(BaseModel):
+    name: str = Field(..., min_length=1, max_length=50)
+    weekly_limit: float = Field(default=15.0, ge=0, le=500)
+
+
+class UpdateChildRequest(BaseModel):
+    name: str = Field(default=None, min_length=1, max_length=50)
+    weekly_limit: float = Field(default=None, ge=0, le=500)
+
+
+@router.get("/children")
+async def list_children(request: Request):
+    """List all children for the current parent."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    children = await db.kids_children.find(
+        {"parent_id": user_id}, {"_id": 0}
+    ).sort("created_at", 1).to_list(20)
+    return {"children": children}
+
+
+@router.post("/children")
+async def create_child(req: CreateChildRequest, request: Request):
+    """Create a child account under the current parent."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    ip, ua = get_client_info(request)
+
+    # Limit to 6 children per parent
+    count = await db.kids_children.count_documents({"parent_id": user_id})
+    if count >= 6:
+        raise HTTPException(status_code=400, detail="Maximum 6 children per account")
+
+    name = req.name.strip()
+    now = datetime.now(timezone.utc)
+    colors = ["#00C2FF", "#A855F7", "#00D26A", "#FFB800", "#FF6B6B", "#E91E63"]
+    import uuid
+    child_id = f"child_{uuid.uuid4().hex[:12]}"
+
+    doc = {
+        "child_id": child_id,
+        "parent_id": user_id,
+        "name": name,
+        "avatar": name[0].upper() if name else "?",
+        "weekly_limit": req.weekly_limit,
+        "spent": 0.0,
+        "color": colors[count % len(colors)],
+        "created_at": now.isoformat(),
+    }
+    await db.kids_children.insert_one(doc)
+
+    await log_audit(AuditEvent.ADMIN_ACTION, user_id, user.get("email", ""), ip, ua,
+                    "success", f"Child account created: {name}")
+
+    # Return without _id
+    doc.pop("_id", None)
+    return doc
+
+
+@router.put("/children/{child_id}")
+async def update_child(child_id: str, req: UpdateChildRequest, request: Request):
+    """Update a child's name or weekly limit."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+
+    child = await db.kids_children.find_one({"child_id": child_id, "parent_id": user_id})
+    if not child:
+        raise HTTPException(status_code=404, detail="Child not found")
+
+    updates = {}
+    if req.name is not None:
+        updates["name"] = req.name.strip()
+        updates["avatar"] = req.name.strip()[0].upper() if req.name.strip() else child.get("avatar", "?")
+    if req.weekly_limit is not None:
+        updates["weekly_limit"] = req.weekly_limit
+
+    if updates:
+        await db.kids_children.update_one(
+            {"child_id": child_id, "parent_id": user_id},
+            {"$set": updates}
+        )
+
+    updated = await db.kids_children.find_one(
+        {"child_id": child_id, "parent_id": user_id}, {"_id": 0}
+    )
+    return updated
+
+
+@router.delete("/children/{child_id}")
+async def delete_child(child_id: str, request: Request):
+    """Remove a child account."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+
+    result = await db.kids_children.delete_one({"child_id": child_id, "parent_id": user_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Child not found")
+
+    return {"ok": True}

@@ -234,6 +234,10 @@ export const api = {
   createKidsCheckout: (body) => request("/api/kids/create-checkout", { method: "POST", body: JSON.stringify(body) }),
   startKidsTrial: () => request("/api/kids/start-trial", { method: "POST" }),
   verifyKidsCheckout: (sessionId) => request(`/api/kids/verify-checkout/${sessionId}`),
+  listChildren: () => request("/api/kids/children"),
+  createChild: (body) => request("/api/kids/children", { method: "POST", body: JSON.stringify(body) }),
+  updateChild: (childId, body) => request(`/api/kids/children/${childId}`, { method: "PUT", body: JSON.stringify(body) }),
+  deleteChild: (childId) => request(`/api/kids/children/${childId}`, { method: "DELETE" }),
 
   // Support Tickets
   createSupportTicket: (body) => request("/api/support/tickets", { method: "POST", body: JSON.stringify(body) }),
