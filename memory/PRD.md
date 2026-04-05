@@ -1,80 +1,104 @@
 # BidBlitz V2 — Product Requirements Document
 
-## Original Problem Statement
-Create a modern, professional fintech web app called BidBlitz V2. Build Revolut-level payment flows, integrate a real backend, add Stripe top-ups, add QR payments, add Admin/Merchant dashboards, and fully support 12 languages with an ultra-premium futuristic 2040 dark glassmorphism design.
+## Vision
+Ultra-premium fintech web app (year 2040 design) for payments, penny auctions, wallet management, and merchant POS systems.
 
 ## Tech Stack
-- **Frontend**: React, TailwindCSS, Framer Motion, Shadcn UI
-- **Backend**: FastAPI, MongoDB (Motor), JWT Auth
-- **Payments**: Stripe (checkout + saved methods + 1-click), Barcode/QR, NFC
-- **Languages**: 12 (EN, DE, SQ, TR, FR, ES, IT, PT, NL, PL, RU, AR)
+- Frontend: React, TailwindCSS, Framer Motion, ShadCN/UI
+- Backend: FastAPI, MongoDB (Motor), JWT Auth
+- Payments: Stripe / Stripe Connect
+- Design: Dark glassmorphism, cyan/gold glow accents
 
-## Implemented Features
+## Core Features (COMPLETED)
+- JWT Auth with email/password (admin seeding)
+- Wallet system with Stripe top-up (checkout redirect)
+- Live dual-timer penny auction system
+- 12-language support (I18nContext)
+- Influencer/Commission payout system (wallet credits)
+- Gamified Rewards (daily login, streaks, milestones, comeback bonus)
+- Role request system + admin approval
+- Identity verification (ID front/back/selfie) for Influencer, Manager, Investor, Merchant
+- Complete Merchant Hierarchy: branches, staff, cash registers, API keys, live revenue
+- Barcode/QR payment flow (customer → merchant)
+- NFC payment strategy + tap-to-pay foundation
 
-### Core: Auth, Wallet, Admin, QR, i18n, Kids, Notifications, Referral, Export, Feature Flags
+## New Features (COMPLETED — April 5, 2026)
+### Merchant Onboarding Strategy
+- Onboarding page targeting small businesses: free 30-day trial, live demo, benefit highlights
+- Low fees (0.3% NFC wallet), fast payments (<2s), customer growth (100K+ users)
+- Business registration form with trial auto-creation
+- Backend: POST `/api/payments/onboarding/request-trial`
 
-### Penny Auction: CRUD, bidding, auto-bid, dual timer, Final Battle, credit packages
+### Redesigned POS Terminal Interface
+- Large numeric amount display with EUR prefix
+- Full numeric keypad (0-9, dot, delete, clear)
+- Scan, QR, and NFC payment method buttons
+- "ZAHLUNG STARTEN" (Start Payment) big CTA
+- Online/offline indicator in header
+- Daily revenue summary dropdown
+- Fullscreen/kiosk mode toggle
+- BidBlitz POS branding with "SECURE PAYMENT TERMINAL"
+- Ultra-fast badge for amounts < 25 EUR
+- PIN required badge for amounts > 50 EUR
+- Success screen with full receipt
 
-### Stripe Connect: Express merchant accounts, earnings tracking
+### NFC Payment System
+- Merchant enters amount → customer taps phone/card
+- Detects payment type: BidBlitz Wallet (0.3%), Card/Contactless (2.5%)
+- NFC ready screen with animated pulse
+- Wallet deduction for app users, card processing for non-app users
+- Receipt generation with all payment details
 
-### Influencer System: Commission as bid_credits (Reward Balance), admin-configurable
+### Payment Type Detection
+- 7 payment methods: wallet, barcode, nfc_wallet, nfc_card, apple_pay, google_pay, card
+- Fee rates: 0.3% (NFC wallet), 0.5% (barcode/wallet), 2.5% (card/contactless/Apple/Google Pay)
+- Payment type shown in receipt and transaction history
 
-### Investor Page: Landing page + contact form
+### Merchant Pricing & Terminal Business Model
+- 3 plans: Starter (Free), Professional (29/mo), Enterprise (99/mo)
+- Terminal hardware: Tablet Stand Kit (149 EUR), Terminal Rental (19/mo), Terminal Purchase (399 EUR)
+- Complete fee structure display
+- Terminal features: tablet stand, NFC, scanner, WiFi+4G, security, kiosk mode
+- Backend: GET `/api/payments/pricing`
 
-### Rewards: Daily login, streak (Day 1-7), comeback bonus, milestones, notifications
+### Merchant Reports & Shifts
+- Daily reports: total revenue, fees, net, transaction count, avg transaction, method breakdown
+- Monthly reports: daily breakdown, method breakdown, best day
+- Shift management: open/close shifts, shift history, per-shift totals
+- New Dashboard tabs: Berichte (Reports), Schichten (Shifts), Rückerstattungen (Refunds)
+- Backend: GET `/api/merchant-hierarchy/reports/daily`, `/reports/monthly`, POST `/shifts`
 
-### Role Request & Admin: Registration role selector, admin approve/reject
+### Refund System
+- Refund with mandatory reason (min 3 chars)
+- Wallet refund to customer if original was wallet payment
+- Merchant total revenue adjusted
+- Transaction marked as refunded with timestamp
+- Backend: POST `/api/merchant-hierarchy/refund`, GET `/refunds`
 
-### Identity Verification: ID front/back + selfie upload, admin review
+## Key API Endpoints
+- `POST /api/auth/login` — JWT login
+- `POST /api/payments/barcode-pay` — Barcode payment
+- `POST /api/payments/nfc-pay` — NFC payment (with type detection)
+- `GET /api/payments/terminal-summary` — Terminal daily summary
+- `GET /api/payments/fee-info` — Fee structure
+- `GET /api/payments/pricing` — Plans, terminals, fees
+- `POST /api/payments/onboarding/request-trial` — Merchant trial signup
+- `GET /api/merchant-hierarchy/reports/daily` — Daily report
+- `GET /api/merchant-hierarchy/reports/monthly` — Monthly report
+- `POST /api/merchant-hierarchy/shifts` — Open/close shift
+- `POST /api/merchant-hierarchy/refund` — Process refund
+- `GET /api/merchant-hierarchy/refunds` — Get refund history
 
-### Merchant Hierarchy: Main Account → Branches → Staff → Registers/POS, 0.5-3% commission
-
-### Merchant Dashboard (9 tabs): Overview, Branches, Summary, Registers, Transactions, Commission, API Keys, Staff, Revenue
-
-### Payment System (Complete — April 5, 2026)
-
-**Customer Barcode Payment:**
-- Dynamic QR/barcode per user, auto-refreshes every 2 minutes
-- Barcode format: `BLZ-XXXXXXXXXXXXXXXX`
-- Time-based security: barcode invalidated after single use + expiry
-- Backend: `GET /api/payments/my-barcode`, `POST /api/payments/refresh-barcode`
-
-**Merchant Payment Terminal:**
-- 4-step flow: Enter Amount → Scan Barcode → Confirm → Done
-- Quick amount buttons (5, 10, 15, 20, 25, 50)
-- Barcode lookup shows customer name before confirming
-- One-tap confirm, payment in seconds
-- Backend: `POST /api/payments/barcode-lookup`, `POST /api/payments/barcode-pay`
-
-**NFC Payment Strategy:**
-- Wallet NFC: 0.3% fee (lowest, encourages wallet)
-- Barcode/QR: 0.5% fee (low)
-- Card NFC: 2.5% fee (standard)
-- Backend: `POST /api/payments/nfc-pay`, `GET /api/payments/fee-info`
-
-**Web-Based Credit Purchase:**
-- "Buy Credits" buttons (10, 25, 50, 100, 250, 500 EUR)
-- Opens Stripe checkout session
-- Redirects back after payment
-- Wallet auto-syncs
-
-**Frontend Pages:**
-- `PaymentPage.jsx` — Customer barcode display, timer, wallet top-up, fee info
-- `MerchantTerminalPage.jsx` — 4-step payment terminal flow
-
-## Key Files
-- Backend: `routes/pos_payments.py`, `routes/merchant_hierarchy.py`, `routes/rewards.py`, `routes/verification.py`, `routes/role_requests.py`, `routes/stripe.py`
-- Frontend: `pages/PaymentPage.jsx`, `pages/MerchantTerminalPage.jsx`, `pages/MerchantDashboardPage.jsx`, `pages/RewardsPage.jsx`, `pages/VerificationPage.jsx`
-
-## Backlog (P1)
-- 2FA Integration (Email OTP / Google Authenticator)
+## Upcoming Tasks (P1)
+- 2FA (Email OTP / Google Authenticator)
 - Kids Wallet with real transactions
-- Apple Pay / Google Pay
-- Push Notifications (WebPush)
+- Apple Pay / Google Pay real integration
 
 ## Backlog (P2)
 - Taxi, Scooter, Food integrations
 - Chat/Support system
+- User milestones expansion
+- Developer SDK/POS plugin documentation
 
 ## Credentials
 - See `/app/memory/test_credentials.md`

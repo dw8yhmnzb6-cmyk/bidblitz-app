@@ -5,9 +5,10 @@ Commission system 0.5%–3% per merchant.
 """
 import secrets
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, HTTPException, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+from typing import Optional
 from typing import Optional
 from bson import ObjectId
 from core.database import db
@@ -684,3 +685,309 @@ async def get_wallet_balance(request: Request):
         "currency": user.get("currency", "EUR"),
         "topup_url": "/wallet",
     }
+
+
+# ══════════════════════════════════════
+# SHIFT REPORTS
+# ══════════════════════════════════════
+
+class ShiftReport(BaseModel):
+    branch_id: Optional[str] = ""
+    register_id: Optional[str] = ""
+    action: str  # "open" or "close"
+    opening_balance: Optional[float] = 0
+    notes: Optional[str] = ""
+
+@router.post("/shifts")
+async def manage_shift(req: ShiftReport, request: Request):
+    """Open or close a cashier shift."""
+    user = await get_current_user(request)
+    uid = str(user["_id"])
+    mp = await get_merchant_profile(user)
+    mid = str(mp["_id"])
+    now_iso = datetime.now(timezone.utc).isoformat()
+
+    if req.action == "open":
+        active = await db.shifts.find_one({"merchant_id": mid, "user_id": uid, "status": "open"})
+        if active:
+            raise HTTPException(status_code=400, detail="You already have an open shift")
+        doc = {
+            "merchant_id": mid, "user_id": uid, "user_name": user.get("name", ""),
+            "branch_id": req.branch_id, "register_id": req.register_id,
+            "opening_balance": req.opening_balance, "notes": req.notes,
+            "status": "open", "opened_at": now_iso,
+            "total_sales": 0, "total_refunds": 0, "transaction_count": 0,
+        }
+        result = await db.shifts.insert_one(doc)
+        doc["id"] = str(result.inserted_id)
+        doc.pop("_id", None)
+        return {"ok": True, "shift": doc}
+
+    elif req.action == "close":
+        active = await db.shifts.find_one({"merchant_id": mid, "user_id": uid, "status": "open"})
+        if not active:
+            raise HTTPException(status_code=400, detail="No open shift found")
+
+        # Calculate shift totals
+        opened_at = active.get("opened_at", now_iso)
+        txns = await db.merchant_transactions.find({
+            "merchant_id": mid, "created_at": {"$gte": opened_at},
+        }, {"_id": 0}).to_list(1000)
+
+        total_sales = sum(t.get("amount", 0) for t in txns if t.get("status") == "completed")
+        total_fees = sum(t.get("fee", 0) for t in txns if t.get("status") == "completed")
+        refunds = sum(t.get("amount", 0) for t in txns if t.get("status") == "refunded")
+
+        await db.shifts.update_one({"_id": active["_id"]}, {"$set": {
+            "status": "closed", "closed_at": now_iso,
+            "total_sales": round(total_sales, 2), "total_fees": round(total_fees, 2),
+            "total_refunds": round(refunds, 2), "transaction_count": len(txns),
+            "closing_notes": req.notes,
+        }})
+
+        shift_id = str(active["_id"])
+        return {
+            "ok": True, "shift_id": shift_id,
+            "total_sales": round(total_sales, 2),
+            "total_fees": round(total_fees, 2),
+            "total_refunds": round(refunds, 2),
+            "transaction_count": len(txns),
+            "opened_at": opened_at, "closed_at": now_iso,
+        }
+
+    raise HTTPException(status_code=400, detail="Invalid action")
+
+
+@router.get("/shifts")
+async def get_shifts(request: Request):
+    user = await get_current_user(request)
+    uid = str(user["_id"])
+    mp = await get_merchant_profile(user)
+    mid = str(mp["_id"])
+
+    shifts = await db.shifts.find(
+        {"merchant_id": mid}, {"_id": 0}
+    ).sort("opened_at", -1).limit(50).to_list(50)
+    return {"shifts": shifts}
+
+
+@router.get("/shifts/active")
+async def get_active_shift(request: Request):
+    user = await get_current_user(request)
+    uid = str(user["_id"])
+    mp = await get_merchant_profile(user)
+    mid = str(mp["_id"])
+
+    active = await db.shifts.find_one({"merchant_id": mid, "user_id": uid, "status": "open"}, {"_id": 0})
+    return {"active_shift": active}
+
+
+# ══════════════════════════════════════
+# DAILY / MONTHLY REPORTS
+# ══════════════════════════════════════
+
+@router.get("/reports/daily")
+async def get_daily_report(request: Request, date: Optional[str] = None):
+    """Get daily report. date format: YYYY-MM-DD"""
+    user = await get_current_user(request)
+    uid = str(user["_id"])
+    mp = await get_merchant_profile(user)
+    mid = str(mp["_id"])
+
+    now = datetime.now(timezone.utc)
+    if date:
+        try:
+            day = datetime.strptime(date, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
+    else:
+        day = now.replace(hour=0, minute=0, second=0, microsecond=0)
+
+    start = day.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+    end = (day + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+
+    txns = await db.merchant_transactions.find({
+        "merchant_id": mid, "created_at": {"$gte": start, "$lt": end},
+    }, {"_id": 0}).to_list(2000)
+
+    completed = [t for t in txns if t.get("status") == "completed"]
+    refunded = [t for t in txns if t.get("status") == "refunded"]
+
+    method_breakdown = {}
+    for t in completed:
+        m = t.get("payment_method", "unknown")
+        if m not in method_breakdown:
+            method_breakdown[m] = {"count": 0, "amount": 0, "fees": 0}
+        method_breakdown[m]["count"] += 1
+        method_breakdown[m]["amount"] += t.get("amount", 0)
+        method_breakdown[m]["fees"] += t.get("fee", 0)
+    for k in method_breakdown:
+        method_breakdown[k]["amount"] = round(method_breakdown[k]["amount"], 2)
+        method_breakdown[k]["fees"] = round(method_breakdown[k]["fees"], 2)
+
+    hourly = {}
+    for t in completed:
+        h = t.get("created_at", "")[:13]
+        if h not in hourly:
+            hourly[h] = {"count": 0, "amount": 0}
+        hourly[h]["count"] += 1
+        hourly[h]["amount"] += t.get("amount", 0)
+
+    return {
+        "date": day.strftime("%Y-%m-%d"),
+        "total_transactions": len(completed),
+        "total_amount": round(sum(t.get("amount", 0) for t in completed), 2),
+        "total_fees": round(sum(t.get("fee", 0) for t in completed), 2),
+        "total_net": round(sum(t.get("net", t.get("amount", 0) - t.get("fee", 0)) for t in completed), 2),
+        "refund_count": len(refunded),
+        "refund_amount": round(sum(t.get("amount", 0) for t in refunded), 2),
+        "method_breakdown": method_breakdown,
+        "hourly_breakdown": hourly,
+        "avg_transaction": round(sum(t.get("amount", 0) for t in completed) / max(len(completed), 1), 2),
+    }
+
+
+@router.get("/reports/monthly")
+async def get_monthly_report(request: Request, year: Optional[int] = None, month: Optional[int] = None):
+    """Get monthly report."""
+    user = await get_current_user(request)
+    uid = str(user["_id"])
+    mp = await get_merchant_profile(user)
+    mid = str(mp["_id"])
+
+    now = datetime.now(timezone.utc)
+    y = year or now.year
+    m = month or now.month
+
+    start = datetime(y, m, 1, tzinfo=timezone.utc).isoformat()
+    if m == 12:
+        end = datetime(y + 1, 1, 1, tzinfo=timezone.utc).isoformat()
+    else:
+        end = datetime(y, m + 1, 1, tzinfo=timezone.utc).isoformat()
+
+    txns = await db.merchant_transactions.find({
+        "merchant_id": mid, "created_at": {"$gte": start, "$lt": end},
+    }, {"_id": 0}).to_list(10000)
+
+    completed = [t for t in txns if t.get("status") == "completed"]
+    refunded = [t for t in txns if t.get("status") == "refunded"]
+
+    daily_breakdown = {}
+    for t in completed:
+        d = t.get("created_at", "")[:10]
+        if d not in daily_breakdown:
+            daily_breakdown[d] = {"count": 0, "amount": 0, "fees": 0}
+        daily_breakdown[d]["count"] += 1
+        daily_breakdown[d]["amount"] += t.get("amount", 0)
+        daily_breakdown[d]["fees"] += t.get("fee", 0)
+    for k in daily_breakdown:
+        daily_breakdown[k]["amount"] = round(daily_breakdown[k]["amount"], 2)
+        daily_breakdown[k]["fees"] = round(daily_breakdown[k]["fees"], 2)
+
+    method_breakdown = {}
+    for t in completed:
+        m_key = t.get("payment_method", "unknown")
+        if m_key not in method_breakdown:
+            method_breakdown[m_key] = {"count": 0, "amount": 0, "fees": 0}
+        method_breakdown[m_key]["count"] += 1
+        method_breakdown[m_key]["amount"] += t.get("amount", 0)
+        method_breakdown[m_key]["fees"] += t.get("fee", 0)
+    for k in method_breakdown:
+        method_breakdown[k]["amount"] = round(method_breakdown[k]["amount"], 2)
+        method_breakdown[k]["fees"] = round(method_breakdown[k]["fees"], 2)
+
+    return {
+        "year": y, "month": m,
+        "total_transactions": len(completed),
+        "total_amount": round(sum(t.get("amount", 0) for t in completed), 2),
+        "total_fees": round(sum(t.get("fee", 0) for t in completed), 2),
+        "total_net": round(sum(t.get("net", t.get("amount", 0) - t.get("fee", 0)) for t in completed), 2),
+        "refund_count": len(refunded),
+        "refund_amount": round(sum(t.get("amount", 0) for t in refunded), 2),
+        "daily_breakdown": daily_breakdown,
+        "method_breakdown": method_breakdown,
+        "avg_transaction": round(sum(t.get("amount", 0) for t in completed) / max(len(completed), 1), 2),
+        "best_day": max(daily_breakdown.items(), key=lambda x: x[1]["amount"])[0] if daily_breakdown else None,
+    }
+
+
+# ══════════════════════════════════════
+# REFUNDS
+# ══════════════════════════════════════
+
+class RefundRequest(BaseModel):
+    transaction_id: str
+    reason: str
+    amount: Optional[float] = None
+
+@router.post("/refund")
+async def process_refund(req: RefundRequest, request: Request):
+    """Process a refund for a merchant transaction."""
+    user = await get_current_user(request)
+    uid = str(user["_id"])
+    mp = await get_merchant_profile(user)
+    mid = str(mp["_id"])
+
+    if not req.reason or len(req.reason.strip()) < 3:
+        raise HTTPException(status_code=400, detail="Refund reason is required (min 3 chars)")
+
+    # Find original transaction
+    txn = await db.merchant_transactions.find_one({
+        "merchant_id": mid,
+        "$or": [
+            {"_id": ObjectId(req.transaction_id) if ObjectId.is_valid(req.transaction_id) else None},
+            {"transaction_id": req.transaction_id},
+        ],
+        "status": "completed",
+    })
+    if not txn:
+        raise HTTPException(status_code=404, detail="Transaction not found or already refunded")
+
+    refund_amount = req.amount or txn.get("amount", 0)
+    if refund_amount > txn.get("amount", 0):
+        raise HTTPException(status_code=400, detail="Refund amount exceeds original")
+
+    now_iso = datetime.now(timezone.utc).isoformat()
+
+    # Refund to customer if wallet payment
+    if txn.get("customer_ref") and txn.get("customer_ref") != "card":
+        customer = await db.users.find_one({"email": txn["customer_ref"]})
+        if customer:
+            await db.users.update_one({"_id": customer["_id"]}, {"$inc": {"balance": refund_amount}})
+            await db.transactions.insert_one({
+                "id": secrets.token_hex(8), "user_id": str(customer["_id"]),
+                "type": "refund", "amount": refund_amount,
+                "description": f"Refund: {req.reason}",
+                "status": "completed", "created_at": now_iso,
+            })
+
+    # Mark transaction as refunded
+    await db.merchant_transactions.update_one({"_id": txn["_id"]}, {"$set": {
+        "status": "refunded", "refund_amount": refund_amount,
+        "refund_reason": req.reason, "refunded_at": now_iso,
+        "refunded_by": uid,
+    }})
+
+    # Reduce merchant totals
+    await db.merchant_profiles.update_one({"_id": mp["_id"]}, {"$inc": {
+        "total_revenue": -refund_amount,
+    }})
+
+    return {
+        "ok": True, "refund_amount": refund_amount,
+        "reason": req.reason, "refunded_at": now_iso,
+    }
+
+
+@router.get("/refunds")
+async def get_refunds(request: Request):
+    """Get all refunded transactions."""
+    user = await get_current_user(request)
+    uid = str(user["_id"])
+    mp = await get_merchant_profile(user)
+    mid = str(mp["_id"])
+
+    refunds = await db.merchant_transactions.find(
+        {"merchant_id": mid, "status": "refunded"}, {"_id": 0}
+    ).sort("refunded_at", -1).limit(100).to_list(100)
+    return {"refunds": refunds, "total": len(refunds)}

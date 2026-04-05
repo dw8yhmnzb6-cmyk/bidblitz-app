@@ -31,6 +31,12 @@ const MerchantDashboardPage = ({ onBack }) => {
   const [form, setForm] = useState({});
   const [saving, setSaving] = useState(false);
   const [showKey, setShowKey] = useState({});
+  const [dailyReport, setDailyReport] = useState(null);
+  const [monthlyReport, setMonthlyReport] = useState(null);
+  const [shifts, setShifts] = useState([]);
+  const [activeShift, setActiveShift] = useState(null);
+  const [refunds, setRefunds] = useState([]);
+  const [refundForm, setRefundForm] = useState(null);
   const refreshRef = useRef(null);
 
   const load = useCallback(async () => {
@@ -61,6 +67,18 @@ const MerchantDashboardPage = ({ onBack }) => {
     }
     if (tab === "api-keys") {
       api.getApiKeys(selectedBranch || "").then(d => setApiKeys(d.api_keys || [])).catch(() => {});
+    }
+    if (tab === "reports") {
+      api.getDailyReport().then(d => setDailyReport(d)).catch(() => {});
+      const now = new Date();
+      api.getMonthlyReport(now.getFullYear(), now.getMonth() + 1).then(d => setMonthlyReport(d)).catch(() => {});
+    }
+    if (tab === "shifts") {
+      api.getShifts().then(d => setShifts(d.shifts || [])).catch(() => {});
+      api.getActiveShift().then(d => setActiveShift(d.active_shift)).catch(() => {});
+    }
+    if (tab === "refunds") {
+      api.getRefunds().then(d => setRefunds(d.refunds || [])).catch(() => {});
     }
   }, [tab, selectedBranch]);
 
@@ -124,6 +142,9 @@ const MerchantDashboardPage = ({ onBack }) => {
     { id: "api-keys", label: t("merch.api_keys") || "API Keys", icon: Key },
     { id: "staff", label: t("merch.staff") || "Staff", icon: Users },
     { id: "revenue", label: t("merch.revenue") || "Revenue", icon: Activity },
+    { id: "reports", label: t("merch.reports") || "Reports", icon: BarChart3 },
+    { id: "shifts", label: t("merch.shifts") || "Shifts", icon: Clock },
+    { id: "refunds", label: t("merch.refunds") || "Refunds", icon: RefreshCw },
   ];
 
   if (loading) {
@@ -555,6 +576,169 @@ const MerchantDashboardPage = ({ onBack }) => {
                   </div>
                 ))}
               </div>
+            </Panel>
+          </>
+        )}
+
+        {/* ── REPORTS ── */}
+        {tab === "reports" && (
+          <>
+            {/* Daily Report */}
+            <Panel title={t("merch.daily_report") || "Daily Report"}>
+              {dailyReport ? (
+                <div className="space-y-2">
+                  <p className="text-[8px] text-white/15">{dailyReport.date}</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    <StatCard val={dailyReport.total_amount?.toFixed(2) || "0"} label={t("merch.total_rev") || "Revenue"} color="#00E89D" />
+                    <StatCard val={dailyReport.total_fees?.toFixed(2) || "0"} label={t("merch.total_fees") || "Fees"} color="#FFB800" />
+                    <StatCard val={dailyReport.total_net?.toFixed(2) || "0"} label={t("merch.total_net") || "Net"} color="#00E0FF" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 mt-2">
+                    <div className="text-center p-2 rounded-lg" style={{ background: "rgba(255,255,255,0.01)" }}>
+                      <p className="text-[14px] font-bold text-white/60 font-mono">{dailyReport.total_transactions}</p>
+                      <p className="text-[7px] text-white/15">{t("merch.txns") || "Transactions"}</p>
+                    </div>
+                    <div className="text-center p-2 rounded-lg" style={{ background: "rgba(255,255,255,0.01)" }}>
+                      <p className="text-[14px] font-bold text-white/60 font-mono">{dailyReport.avg_transaction?.toFixed(2) || "0"}</p>
+                      <p className="text-[7px] text-white/15">{t("merch.avg_txn") || "Avg Transaction"}</p>
+                    </div>
+                  </div>
+                  {dailyReport.method_breakdown && Object.keys(dailyReport.method_breakdown).length > 0 && (
+                    <div className="mt-2 space-y-1">
+                      <p className="text-[8px] text-white/15 uppercase">{t("merch.by_method") || "By Payment Method"}</p>
+                      {Object.entries(dailyReport.method_breakdown).map(([m, d]) => (
+                        <div key={m} className="flex items-center justify-between py-1 px-2 rounded-lg" style={{ background: "rgba(255,255,255,0.01)" }}>
+                          <span className="text-[9px] text-white/30">{m.replace("_", " ")}</span>
+                          <span className="text-[9px] text-[#00E0FF] font-mono">{d.count}x · {d.amount.toFixed(2)} EUR</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : <Empty text={t("merch.no_data") || "No data"} />}
+            </Panel>
+
+            {/* Monthly Report */}
+            <Panel title={t("merch.monthly_report") || "Monthly Report"}>
+              {monthlyReport ? (
+                <div className="space-y-2">
+                  <p className="text-[8px] text-white/15">{monthlyReport.year}-{String(monthlyReport.month).padStart(2, "0")}</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    <StatCard val={monthlyReport.total_amount?.toFixed(2) || "0"} label={t("merch.total_rev") || "Revenue"} color="#00E89D" />
+                    <StatCard val={monthlyReport.total_fees?.toFixed(2) || "0"} label={t("merch.total_fees") || "Fees"} color="#FFB800" />
+                    <StatCard val={monthlyReport.total_net?.toFixed(2) || "0"} label={t("merch.total_net") || "Net"} color="#00E0FF" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 mt-2">
+                    <div className="text-center p-2 rounded-lg" style={{ background: "rgba(255,255,255,0.01)" }}>
+                      <p className="text-[14px] font-bold text-white/60 font-mono">{monthlyReport.total_transactions}</p>
+                      <p className="text-[7px] text-white/15">{t("merch.txns") || "Transactions"}</p>
+                    </div>
+                    <div className="text-center p-2 rounded-lg" style={{ background: "rgba(255,255,255,0.01)" }}>
+                      <p className="text-[14px] font-bold text-white/60 font-mono">{monthlyReport.avg_transaction?.toFixed(2) || "0"}</p>
+                      <p className="text-[7px] text-white/15">{t("merch.avg_txn") || "Avg Transaction"}</p>
+                    </div>
+                  </div>
+                  {monthlyReport.best_day && (
+                    <p className="text-[8px] text-[#00E0FF]/40 mt-1">{t("merch.best_day") || "Best day"}: {monthlyReport.best_day}</p>
+                  )}
+                </div>
+              ) : <Empty text={t("merch.no_data") || "No data"} />}
+            </Panel>
+          </>
+        )}
+
+        {/* ── SHIFTS ── */}
+        {tab === "shifts" && (
+          <>
+            {/* Active Shift */}
+            <Panel title={t("merch.current_shift") || "Current Shift"}>
+              {activeShift ? (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-2 h-2 rounded-full bg-[#00E89D] animate-pulse" />
+                    <span className="text-[10px] text-[#00E89D] font-bold">{t("merch.shift_open") || "Shift Open"}</span>
+                    <span className="text-[8px] text-white/20 ml-auto">{activeShift.opened_at?.slice(11, 19)}</span>
+                  </div>
+                  <motion.button
+                    data-testid="close-shift-btn"
+                    onClick={async () => {
+                      setSaving(true);
+                      try {
+                        await api.closeShift({ notes: "Closed from dashboard" });
+                        api.getShifts().then(d => setShifts(d.shifts || []));
+                        setActiveShift(null);
+                      } catch {}
+                      setSaving(false);
+                    }}
+                    whileTap={{ scale: 0.95 }}
+                    className="w-full py-2 rounded-lg text-[10px] font-bold"
+                    style={{ background: "rgba(255,71,87,0.06)", border: "1px solid rgba(255,71,87,0.12)", color: "#FF4757" }}
+                  >
+                    {saving ? <Loader2 size={12} className="animate-spin mx-auto" /> : (t("merch.close_shift") || "Close Shift")}
+                  </motion.button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-[10px] text-white/20">{t("merch.no_active_shift") || "No active shift"}</p>
+                  <motion.button
+                    data-testid="open-shift-btn"
+                    onClick={async () => {
+                      setSaving(true);
+                      try {
+                        const res = await api.openShift({ opening_balance: 0, notes: "Dashboard shift" });
+                        setActiveShift(res.shift);
+                        api.getShifts().then(d => setShifts(d.shifts || []));
+                      } catch {}
+                      setSaving(false);
+                    }}
+                    whileTap={{ scale: 0.95 }}
+                    className="w-full py-2 rounded-lg text-[10px] font-bold"
+                    style={{ background: "rgba(0,232,157,0.06)", border: "1px solid rgba(0,232,157,0.12)", color: "#00E89D" }}
+                  >
+                    {saving ? <Loader2 size={12} className="animate-spin mx-auto" /> : (t("merch.open_shift") || "Open Shift")}
+                  </motion.button>
+                </div>
+              )}
+            </Panel>
+
+            {/* Shift History */}
+            <Panel title={t("merch.shift_history") || "Shift History"}>
+              {shifts.length > 0 ? shifts.map((s, i) => (
+                <div key={i} className="py-2 border-b border-white/[0.02] last:border-0">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className={`px-1.5 py-0.5 rounded-full text-[7px] font-bold ${s.status === "open" ? "bg-[#00E89D]/10 text-[#00E89D]" : "bg-white/5 text-white/20"}`}>{s.status}</span>
+                      <span className="text-[8px] text-white/20 ml-2">{s.user_name}</span>
+                    </div>
+                    <span className="text-[10px] text-[#00E0FF] font-mono font-bold">{(s.total_sales || 0).toFixed(2)} EUR</span>
+                  </div>
+                  <div className="flex gap-3 mt-1">
+                    <span className="text-[7px] text-white/10">{t("merch.opened") || "Opened"}: {s.opened_at?.slice(11, 16)}</span>
+                    {s.closed_at && <span className="text-[7px] text-white/10">{t("merch.closed") || "Closed"}: {s.closed_at?.slice(11, 16)}</span>}
+                    <span className="text-[7px] text-white/10">{s.transaction_count || 0} txns</span>
+                  </div>
+                </div>
+              )) : <Empty text={t("merch.no_shifts") || "No shifts yet"} />}
+            </Panel>
+          </>
+        )}
+
+        {/* ── REFUNDS ── */}
+        {tab === "refunds" && (
+          <>
+            <Panel title={t("merch.refunds") || "Refunds"}>
+              {refunds.length > 0 ? refunds.map((r, i) => (
+                <div key={i} className="py-2 border-b border-white/[0.02] last:border-0">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-[10px] text-[#FF4757] font-bold">-{(r.refund_amount || r.amount || 0).toFixed(2)} EUR</span>
+                      <span className="text-[8px] text-white/15 ml-2">{r.customer_name || "?"}</span>
+                    </div>
+                    <span className="text-[7px] text-white/15">{r.refunded_at?.slice(0, 10)}</span>
+                  </div>
+                  <p className="text-[8px] text-white/10 mt-0.5">{t("merch.reason") || "Reason"}: {r.refund_reason || "—"}</p>
+                </div>
+              )) : <Empty text={t("merch.no_refunds") || "No refunds yet"} />}
             </Panel>
           </>
         )}

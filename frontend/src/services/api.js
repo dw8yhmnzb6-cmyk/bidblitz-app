@@ -355,6 +355,20 @@ export const api = {
   barcodePayment: (body) => request("/api/payments/barcode-pay", { method: "POST", body: JSON.stringify(body) }),
   nfcPayment: (body) => request("/api/payments/nfc-pay", { method: "POST", body: JSON.stringify(body) }),
   getFeeInfo: () => request("/api/payments/fee-info"),
+  getTerminalSummary: () => request("/api/payments/terminal-summary"),
+  getReceipt: (txnId) => request(`/api/payments/receipt/${txnId}`),
+  requestMerchantTrial: (body) => request("/api/payments/onboarding/request-trial", { method: "POST", body: JSON.stringify(body) }),
+  getPricing: () => request("/api/payments/pricing"),
+
+  // Shifts & Reports
+  openShift: (body) => request("/api/merchant-hierarchy/shifts", { method: "POST", body: JSON.stringify({ ...body, action: "open" }) }),
+  closeShift: (body) => request("/api/merchant-hierarchy/shifts", { method: "POST", body: JSON.stringify({ ...body, action: "close" }) }),
+  getShifts: () => request("/api/merchant-hierarchy/shifts"),
+  getActiveShift: () => request("/api/merchant-hierarchy/shifts/active"),
+  getDailyReport: (date) => request(`/api/merchant-hierarchy/reports/daily${date ? `?date=${date}` : ""}`),
+  getMonthlyReport: (year, month) => request(`/api/merchant-hierarchy/reports/monthly?year=${year}&month=${month}`),
+  processRefund: (body) => request("/api/merchant-hierarchy/refund", { method: "POST", body: JSON.stringify(body) }),
+  getRefunds: () => request("/api/merchant-hierarchy/refunds"),
   getMyTickets: () => request("/api/support/tickets"),
   getAdminTickets: (params = {}) => {
     const q = new URLSearchParams();
