@@ -258,6 +258,8 @@ export const api = {
   buyBidCredits: (body) => request("/api/auctions/buy-credits", { method: "POST", body: JSON.stringify(body) }),
   getBidCredits: () => request("/api/auctions/credits/balance"),
   createAuction: (body) => request("/api/auctions/admin/create", { method: "POST", body: JSON.stringify(body) }),
+  refreshAuctions: () => request("/api/auctions/admin/refresh", { method: "POST" }),
+  getAuctionCatalog: () => request("/api/auctions/admin/catalog"),
   getMyTickets: () => request("/api/support/tickets"),
   getAdminTickets: (params = {}) => {
     const q = new URLSearchParams();

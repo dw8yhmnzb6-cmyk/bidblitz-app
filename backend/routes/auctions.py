@@ -297,42 +297,45 @@ async def create_auction(req: CreateAuctionRequest, request: Request):
     return {"auction": auction}
 
 
+# ══════════════════════════════════════════════════════
+# Product Catalog — Easy to update by admin
+# Keep this list current with trending, high-demand items
+# Last updated: April 2026
+# ══════════════════════════════════════════════════════
+
+PRODUCT_CATALOG = [
+    # Smartphones
+    {"title": "Samsung Galaxy S26 Ultra", "description": "Samsung Galaxy S26 Ultra 512GB Titanium — AMOLED 6.9\", Snapdragon 8 Elite 2, 200MP Camera", "retail_price": 1499.00, "duration": 600, "category": "phones"},
+    {"title": "iPhone 17 Pro Max", "description": "Apple iPhone 17 Pro Max 256GB — A19 Pro Chip, 48MP Triple Camera, Titanium Design", "retail_price": 1449.00, "duration": 600, "category": "phones"},
+    {"title": "Google Pixel 10 Pro", "description": "Google Pixel 10 Pro 256GB — Tensor G5, AI-First Camera, 7 Years Updates", "retail_price": 1099.00, "duration": 480, "category": "phones"},
+    # Gaming
+    {"title": "Nintendo Switch 2", "description": "Nintendo Switch 2 Console — 8\" LCD, Magnetic Joy-Cons, Backwards Compatible", "retail_price": 449.00, "duration": 480, "category": "gaming"},
+    {"title": "PlayStation 5 Pro", "description": "Sony PS5 Pro 2TB — Enhanced GPU, 8K Output, DualSense Edge Controller", "retail_price": 799.00, "duration": 540, "category": "gaming"},
+    # Audio
+    {"title": "AirPods Pro 3", "description": "Apple AirPods Pro 3 — H3 Chip, Adaptive Audio, USB-C MagSafe Case", "retail_price": 299.00, "duration": 300, "category": "audio"},
+    {"title": "Sony WH-1000XM6", "description": "Sony WH-1000XM6 Wireless — Best-in-class ANC, 40h Battery, LDAC Hi-Res", "retail_price": 399.00, "duration": 360, "category": "audio"},
+    # Wearables
+    {"title": "Apple Watch Ultra 3", "description": "Apple Watch Ultra 3 — Titanium, Satellite SOS, 72h Battery, S10 Chip", "retail_price": 899.00, "duration": 420, "category": "wearables"},
+    {"title": "Samsung Galaxy Ring 2", "description": "Samsung Galaxy Ring 2 — Health Tracking, Sleep Analysis, Titanium, 7-Day Battery", "retail_price": 449.00, "duration": 300, "category": "wearables"},
+    # Laptops & Tablets
+    {"title": "MacBook Pro 16\" M5 Pro", "description": "Apple MacBook Pro 16\" M5 Pro — 18GB RAM, 512GB SSD, Liquid Retina XDR", "retail_price": 2899.00, "duration": 720, "category": "laptops"},
+    {"title": "iPad Pro 13\" M5", "description": "Apple iPad Pro 13\" M5 — Tandem OLED, Apple Pencil 3, Thunderbolt 5", "retail_price": 1399.00, "duration": 540, "category": "tablets"},
+    # XR / Smart Home
+    {"title": "Meta Quest 4", "description": "Meta Quest 4 — Mixed Reality, Snapdragon XR3, 4K per Eye, 256GB", "retail_price": 549.00, "duration": 420, "category": "xr"},
+    {"title": "Dyson Airstrait Pro", "description": "Dyson Airstrait Pro — Wet-to-Dry Straightener, Intelligent Heat Control", "retail_price": 549.00, "duration": 360, "category": "home"},
+]
+
+
 # ── Seed demo auctions ──
 async def seed_demo_auctions():
-    """Seed demo auctions if none exist."""
-    count = await db.auctions.count_documents({})
+    """Seed auctions from product catalog if none exist."""
+    count = await db.auctions.count_documents({"status": "active"})
     if count > 0:
         return
 
     now = datetime.now(timezone.utc)
-    demos = [
-        {
-            "title": "iPhone 16 Pro Max",
-            "description": "Brand new Apple iPhone 16 Pro Max 256GB",
-            "retail_price": 1399.00,
-            "duration": 600,
-        },
-        {
-            "title": "PlayStation 5 Pro",
-            "description": "Sony PS5 Pro with DualSense controller",
-            "retail_price": 799.00,
-            "duration": 480,
-        },
-        {
-            "title": "AirPods Pro 3",
-            "description": "Apple AirPods Pro 3rd Generation with case",
-            "retail_price": 279.00,
-            "duration": 300,
-        },
-        {
-            "title": "Samsung Galaxy Watch 7",
-            "description": "Samsung Galaxy Watch 7 Classic 47mm",
-            "retail_price": 429.00,
-            "duration": 360,
-        },
-    ]
-
-    for d in demos:
+    # Pick first 6 products for initial seed
+    for d in PRODUCT_CATALOG[:6]:
         auction_id = secrets.token_hex(8)
         ends_at = (now + timedelta(seconds=d["duration"])).isoformat()
         auction = {
@@ -355,6 +358,68 @@ async def seed_demo_auctions():
             "total_bids": 0,
             "created_by": "system",
             "created_at": now.isoformat(),
+            "category": d.get("category", ""),
         }
         await db.auctions.insert_one(auction)
         auction.pop("_id", None)
+
+
+# ── Admin: Refresh product auctions ──
+@router.post("/admin/refresh")
+async def refresh_auctions(request: Request):
+    """Admin: End all active auctions and launch fresh ones from catalog."""
+    user = await get_current_user(request)
+    if user.get("role") not in ("admin",):
+        raise HTTPException(status_code=403, detail="Admin only")
+
+    now = datetime.now(timezone.utc)
+    now_iso = now.isoformat()
+
+    # End all active auctions
+    await db.auctions.update_many(
+        {"status": "active"},
+        {"$set": {"status": "ended", "ended_at": now_iso}},
+    )
+
+    # Create new auctions from full catalog
+    created = []
+    for d in PRODUCT_CATALOG:
+        auction_id = secrets.token_hex(8)
+        ends_at = (now + timedelta(seconds=d["duration"])).isoformat()
+        auction = {
+            "auction_id": auction_id,
+            "title": d["title"],
+            "description": d["description"],
+            "image_url": "",
+            "retail_price": d["retail_price"],
+            "starting_price": 0.00,
+            "current_price": 0.00,
+            "price_increment": PRICE_INCREMENT,
+            "timer_extension": TIMER_EXTENSION_SECONDS,
+            "duration_seconds": d["duration"],
+            "ends_at": ends_at,
+            "status": "active",
+            "winner_id": None,
+            "winner_name": None,
+            "last_bidder_id": None,
+            "last_bidder_name": None,
+            "total_bids": 0,
+            "created_by": str(user["_id"]),
+            "created_at": now_iso,
+            "category": d.get("category", ""),
+        }
+        await db.auctions.insert_one(auction)
+        auction.pop("_id", None)
+        created.append(auction["auction_id"])
+
+    return {"refreshed": len(created), "auction_ids": created}
+
+
+# ── Admin: Get product catalog ──
+@router.get("/admin/catalog")
+async def get_catalog(request: Request):
+    """Admin: View the current product catalog."""
+    user = await get_current_user(request)
+    if user.get("role") not in ("admin",):
+        raise HTTPException(status_code=403, detail="Admin only")
+    return {"products": PRODUCT_CATALOG, "total": len(PRODUCT_CATALOG)}

@@ -203,6 +203,11 @@ const AuctionCard = ({ auction, onClick }) => {
             <h3 className={`text-[13px] font-semibold truncate ${isEnded ? "text-white/50" : "text-white/90"}`}>
               {auction.title}
             </h3>
+            {auction.category && (
+              <span className="text-[8px] font-bold uppercase px-1.5 py-0.5 rounded-full bg-white/[0.03] border border-white/[0.05] text-[#555] flex-shrink-0">
+                {auction.category}
+              </span>
+            )}
           </div>
           <p className="text-[10px] text-[#444] truncate mb-2">{auction.description}</p>
           <div className="flex items-center gap-3">
@@ -502,6 +507,19 @@ const AuctionDetail = ({ auctionId, onBack, isGuest, onAuthRequired, userCredits
   );
 };
 
+// Category config
+const CATEGORIES = [
+  { id: "all", label: "All", color: "#00C2FF" },
+  { id: "phones", label: "Phones", color: "#A855F7" },
+  { id: "gaming", label: "Gaming", color: "#FF6B6B" },
+  { id: "audio", label: "Audio", color: "#00D26A" },
+  { id: "wearables", label: "Wearables", color: "#FFB800" },
+  { id: "laptops", label: "Laptops", color: "#00C2FF" },
+  { id: "tablets", label: "Tablets", color: "#FF8C42" },
+  { id: "xr", label: "XR", color: "#E040FB" },
+  { id: "home", label: "Home", color: "#26C6DA" },
+];
+
 // ── Main Auctions Page ──
 const AuctionsPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onLogin, onRegister, onStartDemo }) => {
   const { t } = useI18n();
@@ -511,6 +529,7 @@ const AuctionsPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onLogin
   const [selectedAuction, setSelectedAuction] = useState(null);
   const [showCreditsModal, setShowCreditsModal] = useState(false);
   const [credits, setCredits] = useState(0);
+  const [activeFilter, setActiveFilter] = useState("all");
   const pollRef = useRef(null);
 
   const fetchAuctions = useCallback(async () => {
@@ -547,8 +566,9 @@ const AuctionsPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onLogin
     );
   }
 
-  const active = auctions.filter(a => a.status === "active");
-  const ended = auctions.filter(a => a.status === "ended");
+  const active = auctions.filter(a => a.status === "active" && (activeFilter === "all" || a.category === activeFilter));
+  const ended = auctions.filter(a => a.status === "ended" && (activeFilter === "all" || a.category === activeFilter));
+  const activeCategories = [...new Set(auctions.filter(a => a.status === "active").map(a => a.category).filter(Boolean))];
 
   return (
     <motion.div data-testid="auctions-page" className="min-h-screen relative" style={{ background: "#030303" }}
@@ -586,7 +606,7 @@ const AuctionsPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onLogin
 
       <div className="px-5 pb-8 relative z-10">
         {/* How it works */}
-        <motion.div className="rounded-2xl p-4 mb-5"
+        <motion.div className="rounded-2xl p-4 mb-4"
           style={{ background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.04)" }}
           initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.06 }}>
           <p className="text-[9px] text-[#444] uppercase tracking-wider font-semibold mb-2.5">{t("auction.how_it_works")}</p>
@@ -605,6 +625,27 @@ const AuctionsPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onLogin
               </div>
             ))}
           </div>
+        </motion.div>
+
+        {/* Category Filter Tabs */}
+        <motion.div className="flex gap-1.5 overflow-x-auto pb-3 mb-3 -mx-1 px-1 scrollbar-hide"
+          initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}>
+          {CATEGORIES.filter(c => c.id === "all" || activeCategories.includes(c.id)).map(cat => {
+            const isActive = activeFilter === cat.id;
+            return (
+              <motion.button key={cat.id} data-testid={`filter-${cat.id}`}
+                onClick={() => setActiveFilter(cat.id)}
+                className="px-3 py-1.5 rounded-full text-[10px] font-semibold whitespace-nowrap flex-shrink-0 transition-all"
+                style={{
+                  background: isActive ? `${cat.color}15` : "rgba(255,255,255,0.02)",
+                  border: `1px solid ${isActive ? `${cat.color}30` : "rgba(255,255,255,0.04)"}`,
+                  color: isActive ? cat.color : "#555",
+                }}
+                whileTap={{ scale: 0.95 }}>
+                {cat.label}
+              </motion.button>
+            );
+          })}
         </motion.div>
 
         {loading ? (

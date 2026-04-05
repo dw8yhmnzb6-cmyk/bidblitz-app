@@ -77,9 +77,20 @@ Create a modern, professional fintech web app called BidBlitz V2. Build Revolut-
 - Auction detail: price ticker, timer, animated bid button, live bid history
 - Buy Credits modal with 4 packages
 - "How it works" section
+- Category filter tabs (All, Phones, Gaming, Audio, Wearables, Laptops, Tablets, XR, Home)
 - Accessible from Homepage via purple "BidBlitz Auktionen" banner
 - Route: `/auctions`
 - i18n: `auction.*` keys in EN + DE
+
+**Product Catalog (2026 trending):**
+- Samsung Galaxy S26 Ultra, iPhone 17 Pro Max, Google Pixel 10 Pro
+- Nintendo Switch 2, PlayStation 5 Pro
+- AirPods Pro 3, Sony WH-1000XM6
+- Apple Watch Ultra 3, Samsung Galaxy Ring 2
+- MacBook Pro 16" M5 Pro, iPad Pro 13" M5
+- Meta Quest 4, Dyson Airstrait Pro
+- Easy to update: edit `PRODUCT_CATALOG` list in `routes/auctions.py`
+- Admin endpoints: `POST /api/auctions/admin/refresh` (restart all), `GET /api/auctions/admin/catalog` (view catalog)
 
 **Data model:**
 - `auctions` collection: `{auction_id, title, description, retail_price, current_price, ends_at, status, winner_id, total_bids, ...}`
