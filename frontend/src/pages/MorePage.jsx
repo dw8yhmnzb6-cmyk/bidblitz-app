@@ -5,7 +5,7 @@ import {
   HelpCircle, LogOut, ChevronRight, ChevronLeft, Sparkles,
   Globe, Lock, Eye, Fingerprint, Smartphone, Mail, Calendar, Gift, LayoutDashboard, Activity, Users,
   Pencil, Loader2, Check, X, ShieldCheck, Clock, AlertCircle, MapPin,
-  Trophy, TrendingUp, Star, Store, Monitor, Scan, Wallet
+  Trophy, TrendingUp, Star, Store, Monitor, Scan, Wallet, Cpu
 } from "lucide-react";
 import { useUser, useI18n } from "../store";
 import { api } from "../services/api";
@@ -778,6 +778,7 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
 
   const growthMenu = [
     { id: "rewards", icon: Trophy, label: t("rewards.title") || "Rewards", desc: t("rewards.menu_desc") || "Daily rewards & milestones", color: "#00E89D", action: gatedAction(() => onNavigate("/rewards")) },
+    { id: "mining", icon: Cpu, label: t("mining.title") || "Mining", desc: t("mining.menu_desc") || "Mine BLZ tokens", color: "#00E89D", action: gatedAction(() => onNavigate("/mining")) },
     { id: "referral", icon: Gift, label: t("referral.title"), desc: t("referral.menu_desc"), color: "#FFD700", action: gatedAction(() => setSubPage("referral")) },
     {
       id: "notifications", icon: Bell, label: t("notif.title"), desc: unreadCount > 0 ? `${unreadCount} ${t("notif.unread")}` : t("notif.menu_desc"), color: "#FFB800",

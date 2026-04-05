@@ -23,6 +23,7 @@ import MerchantTerminalPage from "./pages/MerchantTerminalPage";
 import MerchantOnboardingPage from "./pages/MerchantOnboardingPage";
 import MerchantPricingPage from "./pages/MerchantPricingPage";
 import MerchantLandingPage from "./pages/MerchantLandingPage";
+import MiningPage from "./pages/MiningPage";
 import AuthPage from "./pages/AuthPage";
 import NotificationsPage from "./pages/NotificationsPage";
 
@@ -166,6 +167,8 @@ function AppContent() {
         return <MerchantPricingPage onBack={() => handleNavigate("/more")} onStartTrial={() => handleNavigate("/merchant-onboarding")} />;
       case "/merchant-landing":
         return <MerchantLandingPage onNavigate={handleNavigate} />;
+      case "/mining":
+        return <MiningPage onBack={() => handleNavigate("/more")} />;
       case "/admin":
         return user.role === "admin"
           ? <AdminPage onNavigate={handleNavigate} />
