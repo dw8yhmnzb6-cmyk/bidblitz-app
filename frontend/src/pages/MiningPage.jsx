@@ -295,6 +295,9 @@ export default function MiningPage({ onBack }) {
                   <div>
                     <p className="text-[12px] font-semibold text-white/80">{t("mining.daily_reward") || "Daily Mining Reward"}</p>
                     <p className="text-[10px] text-white/25">{reward.claimed ? (t("mining.claimed") || "Claimed today") : `+${reward.amount?.toFixed(4) || 0} BLZ`}</p>
+                    {(data?.streak || 0) > 1 && (
+                      <p className="text-[8px] text-[#FFD700]/60 font-medium mt-0.5">{data.streak} {t("mining.day_streak") || "day streak"}</p>
+                    )}
                   </div>
                 </div>
                 <motion.button data-testid="mining-claim-btn" onClick={claimDaily} disabled={claiming || reward.claimed}
@@ -303,6 +306,20 @@ export default function MiningPage({ onBack }) {
                   {claiming ? <Loader2 size={12} className="animate-spin" /> : reward.claimed ? <Check size={14} /> : (t("mining.claim") || "Claim")}
                 </motion.button>
               </motion.div>
+
+              {/* Referral Boost Indicator */}
+              {ref.boost_active && (
+                <motion.div className="rounded-xl px-3.5 py-2.5 flex items-center gap-2"
+                  style={{ background: "rgba(168,85,247,0.04)", border: "1px solid rgba(168,85,247,0.1)" }}
+                  initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }}>
+                  <TrendingUp size={13} className="text-[#A855F7]" />
+                  <div className="flex-1">
+                    <p className="text-[10px] text-[#A855F7] font-semibold">{t("mining.ref_boost") || "Referral Boost Active"}</p>
+                    <p className="text-[8px] text-white/20">+{((ref.bonus_rate || 0.05) * 100).toFixed(0)}% {t("mining.ref_boost_desc") || "bonus on your earnings"}</p>
+                  </div>
+                  <span className="text-[11px] font-bold font-mono text-[#A855F7]">+{ref.boost_bonus_blz?.toFixed(4) || "0"} BLZ/d</span>
+                </motion.div>
+              )}
 
               {/* Referral */}
               <motion.div className="rounded-2xl p-3.5"

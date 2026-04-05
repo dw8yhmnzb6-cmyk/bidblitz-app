@@ -5,12 +5,12 @@ import {
   Bell, ChevronRight, TrendingUp, Shield, Wallet,
   Car, Zap, UtensilsCrossed, Gavel, ArrowUpRight, CreditCard,
   FlaskConical, LogIn, UserPlus, X, Sparkles,
-  QrCode, Store, Lock, Globe, Users, BarChart3
+  QrCode, Store, Lock, Globe, Users, BarChart3,
+  Cpu, Star, Smartphone, Gift, ShoppingBag, Rocket, Clock
 } from "lucide-react";
 import { useUser, useWallet, useI18n } from "../store";
 import { useWalletStats } from "../hooks";
 import { getGreeting } from "../models";
-import { features } from "../models/initialData";
 import { useGuestTranslations } from "../models/homeTranslations";
 import { tracker } from "../services/tracker";
 import LanguageSwitcher from "../components/LanguageSwitcher";
@@ -168,6 +168,8 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
     try { return localStorage.getItem("bb_hint_dismissed") === "1"; } catch { return false; }
   });
 
+  const [previewFeature, setPreviewFeature] = useState(null);
+
   // Track guest visit (once per session)
   useState(() => { if (isGuest) tracker.guestVisit(); });
 
@@ -180,8 +182,27 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
     tracker.featureClick(featureId);
     if (isGuest) { onRegister(); return; }
     if (featureId === "wallet") { onNavigate("/wallet"); }
+    else if (featureId === "auctions") { onNavigate("/auctions"); }
+    else if (featureId === "mining") { onNavigate("/mining"); }
+    else if (featureId === "merchant") { onNavigate("/merchant-landing"); }
     else { toast(t("home.coming_soon") || "Coming Soon", { description: t("home.coming_soon_hint") || "This feature is coming soon!", duration: 2000 }); }
   };
+
+  const availableFeatures = [
+    { id: "wallet", icon: Wallet, title: t("home.f_wallet") || "Wallet", desc: t("home.f_wallet_d") || "Manage your money", color: "#00C2FF", route: "/wallet", large: true },
+    { id: "auctions", icon: Gavel, title: t("home.f_auctions") || "Auctions", desc: t("home.f_auctions_d") || "Bid & win deals", color: "#A855F7", route: "/auctions" },
+    { id: "mining", icon: Cpu, title: t("home.f_mining") || "Mining", desc: t("home.f_mining_d") || "Mine BLZ tokens", color: "#00E89D", route: "/mining" },
+    { id: "merchant", icon: Store, title: t("home.f_merchant") || "Merchant", desc: t("home.f_merchant_d") || "POS & payments", color: "#FFB800", route: "/merchant-landing" },
+  ];
+
+  const comingSoonFeatures = [
+    { id: "nfc", icon: Smartphone, title: t("home.f_nfc") || "NFC Pay", desc: t("home.f_nfc_d") || "Tap to pay contactless", color: "#00C2FF" },
+    { id: "vip", icon: Star, title: t("home.f_vip") || "VIP", desc: t("home.f_vip_d") || "Exclusive VIP rewards & perks", color: "#FFD700" },
+    { id: "referral", icon: Gift, title: t("home.f_referral") || "Referrals", desc: t("home.f_referral_d") || "Invite friends, earn rewards", color: "#00E89D" },
+    { id: "apple-pay", icon: CreditCard, title: t("home.f_apple_pay") || "Apple / Google Pay", desc: t("home.f_apple_pay_d") || "Pay with your phone", color: "#E5E4E2" },
+    { id: "marketplace", icon: ShoppingBag, title: t("home.f_marketplace") || "Marketplace", desc: t("home.f_marketplace_d") || "Buy & sell digital assets", color: "#FF6B6B" },
+    { id: "rewards", icon: Sparkles, title: t("home.f_rewards_more") || "More Rewards", desc: t("home.f_rewards_more_d") || "Enhanced reward system", color: "#A855F7" },
+  ];
 
   return (
     <motion.div
@@ -405,17 +426,98 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
               </div>
             </motion.div>
 
-            {/* Services Grid */}
-            <motion.section initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.26 }}>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-[13px] font-semibold font-outfit text-white">{t("home.services")}</h3>
-                <motion.span className="text-[11px] text-[#00C2FF] font-medium cursor-pointer flex items-center gap-0.5" whileHover={{ x: 3 }}>
-                  {t("home.view_all")} <ChevronRight size={12} strokeWidth={2} />
-                </motion.span>
+            {/* ═══ Available Now ═══ */}
+            <motion.section data-testid="available-now-section" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.26 }}>
+              <div className="flex items-center justify-between mb-3.5">
+                <div className="flex items-center gap-2">
+                  <div className="w-1.5 h-4 rounded-full bg-[#00E89D]" />
+                  <h3 className="text-[13px] font-semibold font-outfit text-white">{t("home.available_now") || "Available Now"}</h3>
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-2.5">
-                {features.map((feature, index) => (
-                  <ServiceCard key={feature.id} feature={feature} index={index} onClick={() => handleServiceClick(feature.id)} />
+                {availableFeatures.map((f, i) => (
+                  <motion.div key={f.id} data-testid={`feature-${f.id}-card`}
+                    className={`rounded-2xl relative overflow-hidden cursor-pointer group ${f.large ? "col-span-2" : ""}`}
+                    style={{ background: "rgba(255,255,255,0.018)", border: "1px solid rgba(255,255,255,0.04)" }}
+                    initial={{ opacity: 0, y: 18, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }}
+                    transition={{ delay: 0.3 + i * 0.06, ...slide }}
+                    whileTap={{ scale: 0.97 }} whileHover={{ borderColor: `${f.color}25` }}
+                    onClick={() => { if (isGuest) onRegister(); else onNavigate(f.route); }}>
+                    <motion.div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-400 pointer-events-none"
+                      style={{ background: `radial-gradient(circle at 30% 30%, ${f.color}10, transparent 70%)` }} />
+                    <div className="relative z-10 p-4 flex flex-col h-full">
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-3 relative"
+                        style={{ background: `${f.color}10`, border: `1px solid ${f.color}12` }}>
+                        <f.icon size={18} strokeWidth={1.6} style={{ color: f.color }} />
+                        <div className="absolute inset-0 rounded-xl opacity-30 pointer-events-none" style={{ background: f.color, filter: "blur(16px)" }} />
+                      </div>
+                      <h3 className="text-[14px] font-semibold font-outfit text-white mb-0.5 tracking-tight">{f.title}</h3>
+                      <p className="text-[11px] text-[#444] font-medium">{f.desc}</p>
+                      {f.large && (
+                        <motion.div className="mt-auto pt-3 flex items-center gap-1.5">
+                          <span className="text-[11px] font-medium" style={{ color: f.color }}>View Balance</span>
+                          <motion.div animate={{ x: [0, 4, 0] }} transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}>
+                            <ArrowUpRight size={12} style={{ color: f.color }} />
+                          </motion.div>
+                        </motion.div>
+                      )}
+                    </div>
+                    {f.large && (
+                      <motion.div className="absolute top-0 right-0 w-28 h-28 rounded-full pointer-events-none"
+                        style={{ background: f.color, filter: "blur(60px)", opacity: 0.06 }}
+                        animate={{ scale: [1, 1.15, 1], opacity: [0.04, 0.08, 0.04] }}
+                        transition={{ duration: 4, repeat: Infinity }} />
+                    )}
+                  </motion.div>
+                ))}
+              </div>
+            </motion.section>
+
+            {/* ═══ Coming Soon ═══ */}
+            <motion.section data-testid="coming-soon-section" className="mt-6" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}>
+              <div className="flex items-center justify-between mb-3.5">
+                <div className="flex items-center gap-2">
+                  <div className="w-1.5 h-4 rounded-full bg-[#FFB800]" />
+                  <h3 className="text-[13px] font-semibold font-outfit text-white">{t("home.coming_soon_title") || "Coming Soon"}</h3>
+                </div>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-semibold uppercase tracking-wider"
+                  style={{ background: "rgba(255,184,0,0.08)", color: "#FFB800", border: "1px solid rgba(255,184,0,0.12)" }}>
+                  <Rocket size={9} /> {t("home.coming_soon_badge") || "Upcoming"}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-2.5">
+                {comingSoonFeatures.map((f, i) => (
+                  <motion.div key={f.id} data-testid={`coming-${f.id}-card`}
+                    className="rounded-2xl relative overflow-hidden cursor-pointer group"
+                    style={{ background: "rgba(255,255,255,0.01)", border: "1px solid rgba(255,255,255,0.03)" }}
+                    initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.55 + i * 0.04, ...slide }}
+                    whileTap={{ scale: 0.97 }}
+                    onClick={() => setPreviewFeature(previewFeature?.id === f.id ? null : f)}>
+                    <div className="relative z-10 p-3.5">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="w-8 h-8 rounded-lg flex items-center justify-center relative"
+                          style={{ background: `${f.color}08`, border: `1px solid ${f.color}08` }}>
+                          <f.icon size={14} strokeWidth={1.6} style={{ color: f.color, opacity: 0.5 }} />
+                        </div>
+                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[7px] font-bold uppercase tracking-wider"
+                          style={{ background: "rgba(255,184,0,0.06)", color: "#FFB800", border: "1px solid rgba(255,184,0,0.1)" }}>
+                          <Clock size={7} /> Soon
+                        </span>
+                      </div>
+                      <h3 className="text-[12px] font-semibold font-outfit text-white/40 mb-0.5">{f.title}</h3>
+                      <AnimatePresence>
+                        {previewFeature?.id === f.id ? (
+                          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}>
+                            <p className="text-[10px] text-white/25 leading-[1.4] mb-2">{f.desc}</p>
+                            <p className="text-[9px] text-[#FFB800]/60 font-medium">{t("home.coming_soon_msg") || "We're building this. Stay tuned!"}</p>
+                          </motion.div>
+                        ) : (
+                          <p className="text-[10px] text-white/15">{t("home.tap_preview") || "Tap for details"}</p>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  </motion.div>
                 ))}
               </div>
             </motion.section>
@@ -427,7 +529,7 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
               style={{ background: "rgba(0,194,255,0.03)", border: "1px solid rgba(0,194,255,0.08)" }}
               initial={{ opacity: 0, y: 14 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5, ...slide }}
+              transition={{ delay: 0.8, ...slide }}
               whileTap={{ scale: 0.98 }}
               onClick={() => onNavigate("/wallet")}
             >
@@ -453,7 +555,7 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
               style={{ background: "rgba(168,85,247,0.03)", border: "1px solid rgba(168,85,247,0.08)" }}
               initial={{ opacity: 0, y: 14 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.55, ...slide }}
+              transition={{ delay: 0.85, ...slide }}
               whileTap={{ scale: 0.98 }}
               onClick={() => onNavigate("/auctions")}
             >

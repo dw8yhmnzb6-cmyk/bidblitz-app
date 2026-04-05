@@ -105,6 +105,26 @@ async def mining_dashboard(request: Request):
         ref_code = f"BLZ-{secrets.token_hex(3).upper()}"
         await db.users.update_one({"_id": user["_id"]}, {"$set": {"mining_ref_code": ref_code}})
 
+    # Referral boost: does this user HAVE a referrer?
+    my_referrer = await db.mining_referrals.find_one({"referred_id": user_id})
+    referral_boost_active = bool(my_referrer)
+    referral_earnings_bonus = 0
+    if my_referrer:
+        referral_earnings_bonus = round(daily_earnings * REFERRAL_BONUS_RATE, 8)
+
+    # Claim streak
+    claim_history = await db.mining_claims.find(
+        {"user_id": user_id}, {"_id": 0}
+    ).sort("date", -1).to_list(30)
+    streak = 0
+    today_d = datetime.now(timezone.utc).date()
+    for i in range(365):
+        d = (today_d - timedelta(days=i)).strftime("%Y-%m-%d")
+        if any(c["date"] == d for c in claim_history):
+            streak += 1
+        else:
+            break
+
     # Recent transactions
     recent_txns = await db.mining_transactions.find(
         {"user_id": user_id}, {"_id": 0}
@@ -147,7 +167,10 @@ async def mining_dashboard(request: Request):
             "code": ref_code,
             "count": ref_count,
             "bonus_rate": REFERRAL_BONUS_RATE,
+            "boost_active": referral_boost_active,
+            "boost_bonus_blz": referral_earnings_bonus,
         },
+        "streak": streak,
         "miners": miners,
         "recent_transactions": recent_txns,
     }
@@ -536,6 +559,51 @@ async def apply_mining_referral(req: MiningReferralRequest, request: Request):
 async def get_vip_levels(request: Request):
     """Get VIP level info."""
     return {"levels": VIP_LEVELS}
+
+
+# ── Claim History ──
+@router.get("/claim-history")
+async def get_claim_history(request: Request):
+    """Get full claim history for the user."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    claims = await db.mining_claims.find(
+        {"user_id": user_id}, {"_id": 0}
+    ).sort("claimed_at", -1).to_list(100)
+
+    streak = 0
+    today = datetime.now(timezone.utc).date()
+    for i in range(365):
+        d = (today - timedelta(days=i)).strftime("%Y-%m-%d")
+        found = any(c["date"] == d for c in claims)
+        if found:
+            streak += 1
+        else:
+            break
+
+    total_claimed = sum(c.get("amount", 0) for c in claims)
+    return {
+        "claims": claims,
+        "total_claims": len(claims),
+        "total_claimed_blz": round(total_claimed, 8),
+        "total_claimed_eur": round(total_claimed * BLZ_TO_EUR, 4),
+        "current_streak": streak,
+    }
+
+
+# ── Reward Log (admin) ──
+@router.get("/admin/reward-logs")
+async def admin_reward_logs(request: Request):
+    """Admin: view all reward logs."""
+    user = await get_current_user(request)
+    if user.get("role") not in ("admin",):
+        raise HTTPException(status_code=403, detail="Admin only")
+
+    recent_claims = await db.mining_claims.find(
+        {}, {"_id": 0}
+    ).sort("claimed_at", -1).to_list(100)
+
+    return {"reward_logs": recent_claims}
 
 
 # ── Transaction History ──
