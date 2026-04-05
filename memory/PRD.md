@@ -169,8 +169,9 @@ Create a modern, professional fintech web app called BidBlitz V2. Build Revolut-
 
 ## Backlog (P0/P1 — Phase 1)
 - Saved Cards Management Seite (P0 — UI to view/delete saved cards)
-- Stripe Connect for Merchant Payouts (P0)
-- Email Notifications — Resend/SendGrid (P0)
+- ~~Stripe Connect for Merchant Payouts~~ (DONE — Express accounts, onboarding, earnings)
+- ~~Email Notifications~~ (DONE — outbid/win/new auction, log-based + Resend-ready)
+- ~~bidblitz.ae Domain Branding~~ (DONE — all referral links, share messages, email templates)
 - Push Notifications — WebPush (P1)
 - 2FA Integration (P1)
 - Kids Wallet System with real transactions (P1)

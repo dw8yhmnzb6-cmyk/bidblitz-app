@@ -276,6 +276,10 @@ export const api = {
   applyAuctionReferral: (code) => request("/api/auctions/user/apply-referral", { method: "POST", body: JSON.stringify({ code }) }),
   checkFirstPurchase: () => request("/api/auctions/first-purchase-check"),
   getReferralLeaderboard: () => request("/api/auctions/referral-leaderboard"),
+  // Stripe Connect
+  createConnectAccount: (body) => request("/api/merchant-connect/create-account", { method: "POST", body: JSON.stringify(body) }),
+  getConnectStatus: () => request("/api/merchant-connect/status"),
+  getMerchantEarnings: () => request("/api/merchant-connect/earnings"),
   getMyTickets: () => request("/api/support/tickets"),
   getAdminTickets: (params = {}) => {
     const q = new URLSearchParams();

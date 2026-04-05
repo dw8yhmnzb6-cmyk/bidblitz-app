@@ -267,6 +267,22 @@ export const MerchantPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, 
 
       <div className="px-5 pb-8 relative z-10">
 
+        {/* ── Stripe Connect CTA ── */}
+        <motion.button data-testid="merchant-stripe-connect-btn" onClick={() => onNavigate("/merchant-connect")}
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl mb-3"
+          style={{ background: "rgba(0,224,255,0.03)", border: "1px solid rgba(0,224,255,0.06)" }}
+          initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.04 }}
+          whileTap={{ scale: 0.98 }}>
+          <div className="w-8 h-8 rounded-lg bg-[#00E0FF]/6 border border-[#00E0FF]/10 flex items-center justify-center">
+            <Shield size={13} className="text-[#00E0FF]" />
+          </div>
+          <div className="flex-1 text-left">
+            <p className="text-[11px] font-semibold text-white/70">{t("merchant.connect_title")}</p>
+            <p className="text-[8px] text-white/20">{t("merchant.connect_desc")}</p>
+          </div>
+          <ChevronRight size={12} className="text-white/15" />
+        </motion.button>
+
         {/* ── Error State ── */}
         {error && !isLoading && (
           <ErrorState error={error} onRetry={handleRetry} compact />

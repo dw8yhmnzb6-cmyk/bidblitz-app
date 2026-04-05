@@ -4,6 +4,7 @@ Users buy bid credits, each bid costs 1 credit, increases price by €0.01, exte
 """
 
 import secrets
+import asyncio
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -64,6 +65,17 @@ async def list_auctions(request: Request):
                 "read": False,
                 "created_at": now,
             })
+            # Email win notification
+            try:
+                from routes.email_service import notify_win
+                winner_user = await db.users.find_one({"_id": ObjectId(winner_id)})
+                if winner_user and winner_user.get("email"):
+                    asyncio.create_task(notify_win(
+                        winner_user["email"], winner_user.get("name", "User"),
+                        auc["title"], auc.get("current_price", 0),
+                    ))
+            except Exception:
+                pass
 
     auctions = await db.auctions.find(
         {"status": {"$in": ["active", "upcoming", "ended"]}},
@@ -408,6 +420,17 @@ async def place_bid(req: BidRequest, request: Request):
             "read": False,
             "created_at": now_iso,
         })
+        # Email outbid notification (fire-and-forget)
+        try:
+            from routes.email_service import notify_outbid
+            prev_user = await db.users.find_one({"_id": ObjectId(auction["last_bidder_id"])})
+            if prev_user and prev_user.get("email"):
+                asyncio.create_task(notify_outbid(
+                    prev_user["email"], prev_user.get("name", "User"),
+                    auction["title"], req.auction_id, new_price,
+                ))
+        except Exception:
+            pass
 
     updated_user = await db.users.find_one({"_id": user["_id"]})
 

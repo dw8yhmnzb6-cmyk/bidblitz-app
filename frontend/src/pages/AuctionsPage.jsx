@@ -944,7 +944,7 @@ const ReferralPanel = ({ t }) => {
     api.getReferralLeaderboard().then(d => setLeaderboard(d.leaderboard || [])).catch(() => {});
   }, []);
 
-  const shareUrl = typeof window !== "undefined" ? `${window.location.origin}?ref=${ref?.referral_code || ""}` : "";
+  const shareUrl = `https://bidblitz.ae?ref=${ref?.referral_code || ""}`;
   const shareMsg = t("share.invite_msg").replace("{code}", ref?.referral_code || "");
 
   const showShared = (via) => { setShareSuccess(via); setTimeout(() => setShareSuccess(null), 2500); };
