@@ -150,15 +150,22 @@ Create a modern, professional fintech web app called BidBlitz V2. Build Revolut-
 - Auction referral system (`GET /api/auctions/user/referral`, `POST /api/auctions/user/apply-referral`)
 - Win notifications auto-created when auctions end
 - Outbid notifications auto-created on new bids
+- Referral leaderboard (`GET /api/auctions/referral-leaderboard`)
+- First purchase bonus check (`GET /api/auctions/first-purchase-check`)
+- Direct card payment for bid credits (`POST /api/auctions/buy-credits-direct`)
+- Saved payment method retrieval (`GET /api/auctions/saved-method`)
 
 **Frontend:**
 - Watchlist heart icon on all active auction cards (toggle on/off)
-- Referral panel with code display, copy, and apply input
+- Referral panel with WhatsApp/Email/Copy Link share buttons, earned rewards stats, and leaderboard
 - Bid Streak counter shown in Daily Reward section
 - Win/Lose celebration modal (detects when auctions transition active→ended)
 - Notification toast system (outbid, won alerts)
 - Added missing categories: TVs, Robots, Smart Home
 - Full DE + EN translations for all new features
+- One-Click Checkout: "Bestätigen & Bezahlen" confirmation screen with saved card selection, wallet balance option, secure badge, discount percentages on packages, first-purchase bonus
+- Low Credits Popup: "Du bist nah am Gewinn!" prompt when credits ≤ 3
+- Discount badges on credit packages: -20%, -28%, BESTER WERT
 
 ## Backlog (P0/P1 — Phase 1)
 - Saved Cards Management Seite (P0 — UI to view/delete saved cards)

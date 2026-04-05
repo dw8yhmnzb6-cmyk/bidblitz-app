@@ -118,6 +118,150 @@ async def check_daily_reward(request: Request):
     return {"available": False, "remaining_seconds": int(86400 - elapsed)}
 
 
+# ── First purchase bonus check ──
+@router.get("/first-purchase-check")
+async def check_first_purchase(request: Request):
+    """Check if user qualifies for first-purchase bonus."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    has_purchased = await db.transactions.find_one({"user_id": user_id, "category": "auction", "type": "purchase"})
+    return {"is_first_purchase": not bool(has_purchased), "bonus_credits": 5}
+
+
+# ── Referral Leaderboard ──
+@router.get("/referral-leaderboard")
+async def referral_leaderboard(request: Request):
+    """Get top referrers."""
+    pipeline = [
+        {"$match": {"referred_by": {"$exists": True, "$ne": None}}},
+        {"$group": {"_id": "$referred_by", "count": {"$sum": 1}}},
+        {"$sort": {"count": -1}},
+        {"$limit": 10},
+    ]
+    results = await db.users.aggregate(pipeline).to_list(10)
+    leaders = []
+    for r in results:
+        referrer = await db.users.find_one({"_id": ObjectId(r["_id"])}, {"_id": 0, "name": 1})
+        if referrer:
+            name = referrer.get("name", "User")
+            display = name[:2] + "***" if len(name) > 2 else name
+            leaders.append({"name": display, "referrals": r["count"], "bonus": r["count"] * 5})
+    return {"leaderboard": leaders}
+
+
+# ── Get saved payment method (for auction checkout) ──
+@router.get("/saved-method")
+async def get_saved_method_auction(request: Request):
+    """Return user's saved card details for auction checkout."""
+    user = await get_current_user(request)
+    pm_id = user.get("stripe_pm_id")
+    if not pm_id:
+        return {"has_saved_method": False}
+    return {
+        "has_saved_method": True,
+        "card_brand": user.get("stripe_card_brand", ""),
+        "card_last4": user.get("stripe_card_last4", ""),
+        "card_exp_month": user.get("stripe_card_exp_month", 0),
+        "card_exp_year": user.get("stripe_card_exp_year", 0),
+    }
+
+
+# ── User Watchlist ──
+@router.get("/user/watchlist")
+async def get_watchlist(request: Request):
+    """Get user's watchlist auction IDs."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    items = await db.watchlist.find({"user_id": user_id}, {"_id": 0, "auction_id": 1}).to_list(100)
+    return {"watchlist": [i["auction_id"] for i in items]}
+
+
+# ── Bid Streak ──
+@router.get("/user/streak")
+async def get_streak(request: Request):
+    """Get user's current bid streak info."""
+    user = await get_current_user(request)
+    streak = user.get("bid_streak", 0)
+    last_bid_date = user.get("last_bid_date", "")
+    if last_bid_date:
+        try:
+            last_dt = datetime.fromisoformat(last_bid_date)
+            elapsed = (datetime.now(timezone.utc) - last_dt).total_seconds()
+            if elapsed > 86400:
+                streak = 0
+        except Exception:
+            streak = 0
+    return {"streak": streak, "last_bid_date": last_bid_date}
+
+
+# ── Auction Notifications ──
+@router.get("/user/notifications")
+async def get_auction_notifications(request: Request):
+    """Get user's auction-related notifications."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    notifs = await db.auction_notifications.find(
+        {"user_id": user_id},
+        {"_id": 0},
+    ).sort("created_at", -1).to_list(20)
+    return {"notifications": notifs}
+
+
+@router.post("/user/notifications/read")
+async def mark_auction_notifications_read(request: Request):
+    """Mark all auction notifications as read."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    await db.auction_notifications.update_many(
+        {"user_id": user_id, "read": False},
+        {"$set": {"read": True}},
+    )
+    return {"ok": True}
+
+
+# ── Referral Code (auction context) ──
+@router.get("/user/referral")
+async def get_auction_referral(request: Request):
+    """Get user's referral code and stats for auction sharing."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    ref_code = user.get("referral_code")
+    if not ref_code:
+        ref_code = secrets.token_hex(4).upper()
+        await db.users.update_one({"_id": user["_id"]}, {"$set": {"referral_code": ref_code}})
+    referral_count = await db.users.count_documents({"referred_by": user_id})
+    return {"referral_code": ref_code, "referral_count": referral_count, "bonus_per_referral": 5}
+
+
+@router.post("/user/apply-referral")
+async def apply_auction_referral(request: Request):
+    """Apply a referral code to get bonus credits."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    body = await request.json()
+    code = body.get("code", "").strip().upper()
+    if not code:
+        raise HTTPException(status_code=400, detail="No code provided")
+    if user.get("referred_by"):
+        raise HTTPException(status_code=400, detail="Already used a referral code")
+    referrer = await db.users.find_one({"referral_code": code})
+    if not referrer:
+        raise HTTPException(status_code=404, detail="Invalid referral code")
+    if str(referrer["_id"]) == user_id:
+        raise HTTPException(status_code=400, detail="Cannot use your own code")
+    await db.users.update_one({"_id": user["_id"]}, {"$inc": {"bid_credits": 5}, "$set": {"referred_by": str(referrer["_id"])}})
+    await db.users.update_one({"_id": referrer["_id"]}, {"$inc": {"bid_credits": 5}})
+    await db.auction_notifications.insert_one({
+        "user_id": str(referrer["_id"]),
+        "type": "referral",
+        "message": f"{user.get('name', 'Someone')} joined using your code! +5 credits",
+        "read": False,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    })
+    updated = await db.users.find_one({"_id": user["_id"]})
+    return {"credits_awarded": 5, "total_credits": updated.get("bid_credits", 0)}
+
+
 # ── Get single auction with bids ──
 @router.get("/{auction_id}")
 async def get_auction(auction_id: str, request: Request):
@@ -413,10 +557,15 @@ async def buy_credits(req: BuyCreditsRequest, request: Request):
         raise HTTPException(status_code=400, detail="Insufficient wallet balance")
 
     # Deduct balance and add credits
+    # Check first purchase bonus
+    has_prev = await db.transactions.find_one({"user_id": user_id, "category": "auction", "type": "purchase"})
+    bonus = 5 if not has_prev else 0
+    total_credits_add = credits + bonus
+
     await db.users.update_one(
         {"_id": user["_id"]},
         {
-            "$inc": {"balance": -price, "bid_credits": credits},
+            "$inc": {"balance": -price, "bid_credits": total_credits_add},
         },
     )
 
@@ -426,7 +575,7 @@ async def buy_credits(req: BuyCreditsRequest, request: Request):
         "user_id": user_id,
         "type": "purchase",
         "amount": -price,
-        "description": f"Bid Credits ({credits}x)",
+        "description": f"Bid Credits ({credits}x)" + (f" + {bonus} Bonus" if bonus else ""),
         "status": "completed",
         "reference": f"BIDS-{secrets.token_hex(4).upper()}",
         "category": "auction",
@@ -439,8 +588,104 @@ async def buy_credits(req: BuyCreditsRequest, request: Request):
 
     return {
         "credits_added": credits,
+        "bonus_credits": bonus,
         "total_credits": updated_user.get("bid_credits", 0),
         "new_balance": updated_user.get("balance", 0),
+        "is_first_purchase": bool(bonus),
+    }
+
+
+# ── Buy bid credits directly with saved Stripe card ──
+class BuyCreditsDirectRequest(BaseModel):
+    package_id: str
+
+
+@router.post("/buy-credits-direct")
+async def buy_credits_direct(req: BuyCreditsDirectRequest, request: Request):
+    """Buy bid credits directly charging saved Stripe card (1-click)."""
+    import stripe as stripe_mod
+    from core.config import STRIPE_API_KEY
+    stripe_mod.api_key = STRIPE_API_KEY
+
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+
+    if req.package_id not in CREDIT_PACKAGES:
+        raise HTTPException(status_code=400, detail="Invalid package")
+
+    pkg = CREDIT_PACKAGES[req.package_id]
+    price = pkg["price"]
+    credits = pkg["credits"]
+
+    cust_id = user.get("stripe_customer_id")
+    pm_id = user.get("stripe_pm_id")
+    if not cust_id or not pm_id:
+        raise HTTPException(status_code=400, detail="No saved payment method")
+
+    # Charge saved card off-session
+    try:
+        intent = stripe_mod.PaymentIntent.create(
+            amount=int(price * 100),
+            currency="eur",
+            customer=cust_id,
+            payment_method=pm_id,
+            off_session=True,
+            confirm=True,
+            metadata={
+                "user_id": user_id,
+                "type": "bid_credits_direct",
+                "package_id": req.package_id,
+                "credits": str(credits),
+            },
+        )
+    except stripe_mod.error.CardError:
+        # Card declined — remove saved method
+        await db.users.update_one(
+            {"_id": user["_id"]},
+            {"$unset": {
+                "stripe_pm_id": "", "stripe_card_brand": "", "stripe_card_last4": "",
+                "stripe_card_exp_month": "", "stripe_card_exp_year": "", "stripe_pm_saved_at": "",
+            }},
+        )
+        raise HTTPException(status_code=402, detail="Card declined. Please use another payment method.")
+    except Exception:
+        raise HTTPException(status_code=500, detail="Payment failed")
+
+    if intent.status != "succeeded":
+        raise HTTPException(status_code=402, detail=f"Payment not completed: {intent.status}")
+
+    # Add credits
+    await db.users.update_one(
+        {"_id": user["_id"]},
+        {"$inc": {"bid_credits": credits}},
+    )
+
+    # Create transaction
+    ref = f"BIDS-D-{secrets.token_hex(4).upper()}"
+    txn = {
+        "id": secrets.token_hex(8),
+        "user_id": user_id,
+        "type": "purchase",
+        "amount": -price,
+        "description": f"Bid Credits ({credits}x) — Card",
+        "status": "completed",
+        "reference": ref,
+        "payment_method": "saved_card",
+        "category": "auction",
+        "stripe_pi_id": intent.id,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.transactions.insert_one(txn)
+    txn.pop("_id", None)
+
+    updated_user = await db.users.find_one({"_id": user["_id"]})
+
+    return {
+        "credits_added": credits,
+        "total_credits": updated_user.get("bid_credits", 0),
+        "new_balance": updated_user.get("balance", 0),
+        "method": "card",
+        "reference": ref,
     }
 
 
@@ -687,10 +932,6 @@ async def get_catalog(request: Request):
     return {"products": PRODUCT_CATALOG, "total": len(PRODUCT_CATALOG)}
 
 
-# ══════════════════════════════════════════════════════
-# ENGAGEMENT FEATURES: Watchlist, Streak, Notifications
-# ══════════════════════════════════════════════════════
-
 # ── Watchlist Toggle ──
 @router.post("/{auction_id}/watchlist")
 async def toggle_watchlist(auction_id: str, request: Request):
@@ -707,101 +948,3 @@ async def toggle_watchlist(auction_id: str, request: Request):
         "created_at": datetime.now(timezone.utc).isoformat(),
     })
     return {"watched": True}
-
-
-@router.get("/user/watchlist")
-async def get_watchlist(request: Request):
-    """Get user's watchlist auction IDs."""
-    user = await get_current_user(request)
-    user_id = str(user["_id"])
-    items = await db.watchlist.find({"user_id": user_id}, {"_id": 0, "auction_id": 1}).to_list(100)
-    return {"watchlist": [i["auction_id"] for i in items]}
-
-
-# ── Bid Streak ──
-@router.get("/user/streak")
-async def get_streak(request: Request):
-    """Get user's current bid streak info."""
-    user = await get_current_user(request)
-    streak = user.get("bid_streak", 0)
-    last_bid_date = user.get("last_bid_date", "")
-    # Check if streak is still valid (bid within last 24h)
-    if last_bid_date:
-        try:
-            last_dt = datetime.fromisoformat(last_bid_date)
-            elapsed = (datetime.now(timezone.utc) - last_dt).total_seconds()
-            if elapsed > 86400:
-                streak = 0
-        except Exception:
-            streak = 0
-    return {"streak": streak, "last_bid_date": last_bid_date}
-
-
-# ── Auction Notifications ──
-@router.get("/user/notifications")
-async def get_auction_notifications(request: Request):
-    """Get user's auction-related notifications."""
-    user = await get_current_user(request)
-    user_id = str(user["_id"])
-    notifs = await db.auction_notifications.find(
-        {"user_id": user_id},
-        {"_id": 0},
-    ).sort("created_at", -1).to_list(20)
-    return {"notifications": notifs}
-
-
-@router.post("/user/notifications/read")
-async def mark_auction_notifications_read(request: Request):
-    """Mark all auction notifications as read."""
-    user = await get_current_user(request)
-    user_id = str(user["_id"])
-    await db.auction_notifications.update_many(
-        {"user_id": user_id, "read": False},
-        {"$set": {"read": True}},
-    )
-    return {"ok": True}
-
-
-# ── Referral Code (auction context) ──
-@router.get("/user/referral")
-async def get_auction_referral(request: Request):
-    """Get user's referral code and stats for auction sharing."""
-    user = await get_current_user(request)
-    user_id = str(user["_id"])
-    ref_code = user.get("referral_code")
-    if not ref_code:
-        ref_code = secrets.token_hex(4).upper()
-        await db.users.update_one({"_id": user["_id"]}, {"$set": {"referral_code": ref_code}})
-    referral_count = await db.users.count_documents({"referred_by": user_id})
-    return {"referral_code": ref_code, "referral_count": referral_count, "bonus_per_referral": 5}
-
-
-@router.post("/user/apply-referral")
-async def apply_auction_referral(request: Request):
-    """Apply a referral code to get bonus credits."""
-    user = await get_current_user(request)
-    user_id = str(user["_id"])
-    body = await request.json()
-    code = body.get("code", "").strip().upper()
-    if not code:
-        raise HTTPException(status_code=400, detail="No code provided")
-    if user.get("referred_by"):
-        raise HTTPException(status_code=400, detail="Already used a referral code")
-    referrer = await db.users.find_one({"referral_code": code})
-    if not referrer:
-        raise HTTPException(status_code=404, detail="Invalid referral code")
-    if str(referrer["_id"]) == user_id:
-        raise HTTPException(status_code=400, detail="Cannot use your own code")
-    # Grant bonus to both
-    await db.users.update_one({"_id": user["_id"]}, {"$inc": {"bid_credits": 5}, "$set": {"referred_by": str(referrer["_id"])}})
-    await db.users.update_one({"_id": referrer["_id"]}, {"$inc": {"bid_credits": 5}})
-    # Notify referrer
-    await db.auction_notifications.insert_one({
-        "user_id": str(referrer["_id"]),
-        "type": "referral",
-        "message": f"{user.get('name', 'Someone')} joined using your code! +5 credits",
-        "read": False,
-        "created_at": datetime.now(timezone.utc).isoformat(),
-    })
-    updated = await db.users.find_one({"_id": user["_id"]})
-    return {"credits_awarded": 5, "total_credits": updated.get("bid_credits", 0)}

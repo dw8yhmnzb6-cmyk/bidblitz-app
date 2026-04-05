@@ -256,6 +256,8 @@ export const api = {
   getAuction: (auctionId) => request(`/api/auctions/${auctionId}`),
   placeBid: (body) => request("/api/auctions/bid", { method: "POST", body: JSON.stringify(body) }),
   buyBidCredits: (body) => request("/api/auctions/buy-credits", { method: "POST", body: JSON.stringify(body) }),
+  buyBidCreditsDirect: (body) => request("/api/auctions/buy-credits-direct", { method: "POST", body: JSON.stringify(body) }),
+  getAuctionSavedMethod: () => request("/api/auctions/saved-method"),
   getBidCredits: () => request("/api/auctions/credits/balance"),
   createAuction: (body) => request("/api/auctions/admin/create", { method: "POST", body: JSON.stringify(body) }),
   refreshAuctions: () => request("/api/auctions/admin/refresh", { method: "POST" }),
@@ -272,6 +274,8 @@ export const api = {
   markAuctionNotificationsRead: () => request("/api/auctions/user/notifications/read", { method: "POST" }),
   getAuctionReferral: () => request("/api/auctions/user/referral"),
   applyAuctionReferral: (code) => request("/api/auctions/user/apply-referral", { method: "POST", body: JSON.stringify({ code }) }),
+  checkFirstPurchase: () => request("/api/auctions/first-purchase-check"),
+  getReferralLeaderboard: () => request("/api/auctions/referral-leaderboard"),
   getMyTickets: () => request("/api/support/tickets"),
   getAdminTickets: (params = {}) => {
     const q = new URLSearchParams();
