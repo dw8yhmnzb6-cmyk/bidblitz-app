@@ -62,12 +62,42 @@ Create a modern, professional fintech web app called BidBlitz V2. Build Revolut-
 - `{full_name, date_of_birth, street, city, postal_code, country, status, submitted_at, reviewed_at}`
 - `kyc_level` field on user: `basic` / `pending` / `verified`
 
+### Penny Auction System (Complete — April 5, 2026)
+**Backend (routes/auctions.py):**
+- `GET /api/auctions` — list all auctions (auto-ends expired ones)
+- `GET /api/auctions/{auction_id}` — auction detail + last 30 bids
+- `POST /api/auctions/bid` — place bid (costs 1 credit, +€0.01, extends timer +10s)
+- `POST /api/auctions/buy-credits` — buy bid credits with wallet balance (4 packages: 10/25/50/100)
+- `GET /api/auctions/credits/balance` — user's credit balance
+- `POST /api/auctions/admin/create` — admin creates auctions
+- Auto-seeds 4 demo auctions (iPhone, PS5, AirPods, Galaxy Watch)
+
+**Frontend (pages/AuctionsPage.jsx):**
+- Auction list with live countdown timers (polling every 2.5s/5s)
+- Auction detail: price ticker, timer, animated bid button, live bid history
+- Buy Credits modal with 4 packages
+- "How it works" section
+- Accessible from Homepage via purple "BidBlitz Auktionen" banner
+- Route: `/auctions`
+- i18n: `auction.*` keys in EN + DE
+
+**Data model:**
+- `auctions` collection: `{auction_id, title, description, retail_price, current_price, ends_at, status, winner_id, total_bids, ...}`
+- `auction_bids` collection: `{bid_id, auction_id, user_id, user_name, bid_price, created_at}`
+- `users.bid_credits`: integer credit balance
+
+**Credit packages:**
+- 10 credits = €5, 25 credits = €10, 50 credits = €18, 100 credits = €30
+
 ### Child Accounts (Complete)
 - Backend CRUD (`/api/kids/children`), frontend persistent child management
 - Add/select/remove children, weekly limit slider, progress bars
 
 ## Key Files
 - `/app/backend/routes/stripe.py` — Stripe checkout + saved methods + 1-click
+- `/app/backend/routes/auctions.py` — Penny auction system
+- `/app/backend/routes/profile.py` — User profile + KYC
+- `/app/frontend/src/pages/AuctionsPage.jsx` — Auction UI
 - `/app/frontend/src/components/TopUpModal.jsx` — Top-up modal with 1-click UI
 - `/app/frontend/src/services/api.js` — API service
 - `/app/backend/routes/kids.py` — Child accounts

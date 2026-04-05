@@ -250,6 +250,14 @@ export const api = {
 
   // Support Tickets
   createSupportTicket: (body) => request("/api/support/tickets", { method: "POST", body: JSON.stringify(body) }),
+
+  // Auctions
+  getAuctions: () => request("/api/auctions"),
+  getAuction: (auctionId) => request(`/api/auctions/${auctionId}`),
+  placeBid: (body) => request("/api/auctions/bid", { method: "POST", body: JSON.stringify(body) }),
+  buyBidCredits: (body) => request("/api/auctions/buy-credits", { method: "POST", body: JSON.stringify(body) }),
+  getBidCredits: () => request("/api/auctions/credits/balance"),
+  createAuction: (body) => request("/api/auctions/admin/create", { method: "POST", body: JSON.stringify(body) }),
   getMyTickets: () => request("/api/support/tickets"),
   getAdminTickets: (params = {}) => {
     const q = new URLSearchParams();

@@ -11,6 +11,7 @@ import ScannerPage from "./pages/ScannerPage";
 import MerchantPage from "./pages/MerchantPage";
 import AdminPage from "./pages/AdminPage";
 import MorePage from "./pages/MorePage";
+import AuctionsPage from "./pages/AuctionsPage";
 import AuthPage from "./pages/AuthPage";
 import NotificationsPage from "./pages/NotificationsPage";
 
@@ -142,6 +143,8 @@ function AppContent() {
           : <NotificationsPage onBack={() => handleNavigate("/")} />;
       case "/more":
         return <MorePage {...pageProps} />;
+      case "/auctions":
+        return <AuctionsPage {...pageProps} />;
       default:
         return <HomePage {...homeProps} />;
     }

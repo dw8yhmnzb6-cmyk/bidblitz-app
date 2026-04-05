@@ -133,6 +133,7 @@ from routes.analytics import router as analytics_router
 from routes.kids import router as kids_router
 from routes.support import router as support_router
 from routes.feedback import router as feedback_router
+from routes.auctions import router as auctions_router
 
 app.include_router(auth_router)
 app.include_router(wallet_router)
@@ -152,6 +153,7 @@ app.include_router(analytics_router)
 app.include_router(kids_router)
 app.include_router(support_router)
 app.include_router(feedback_router)
+app.include_router(auctions_router)
 
 # Stripe webhook at /api/webhook/stripe
 from routes.stripe import stripe_webhook as _stripe_wh
@@ -211,6 +213,9 @@ async def public_feature_flags():
 async def startup():
     await create_indexes()
     await seed_admin()
+    # Seed demo auctions
+    from routes.auctions import seed_demo_auctions
+    await seed_demo_auctions()
     logger.info(f"BidBlitz V2 API started [env={APP_ENV}]")
 
 
