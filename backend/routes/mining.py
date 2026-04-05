@@ -17,7 +17,7 @@ router = APIRouter(prefix="/api/mining", tags=["mining"])
 
 # ── Constants ──
 BLZ_TO_EUR = 0.10  # 1 BLZ token = €0.10
-DAILY_BASE_RATE = 0.00001  # BLZ per TH/s per day
+DAILY_BASE_RATE = 0.5  # BLZ per TH/s per day
 REFERRAL_BONUS_RATE = 0.05  # 5% of referral's mining earnings
 
 MINER_PACKAGES = [

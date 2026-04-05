@@ -45,6 +45,9 @@ export default function MiningPage({ onBack }) {
   const [sending, setSending] = useState(false);
   const [copied, setCopied] = useState(false);
   const [upgradeCosts, setUpgradeCosts] = useState(null);
+  const [historyFilter, setHistoryFilter] = useState("all");
+  const [confirmPkg, setConfirmPkg] = useState(null);
+  const [purchaseSuccess, setPurchaseSuccess] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -78,7 +81,11 @@ export default function MiningPage({ onBack }) {
   const buyMiner = async (pkgId) => {
     setBuying(pkgId);
     try {
-      await api("/api/mining/buy-miner", { method: "POST", body: JSON.stringify({ package_id: pkgId }) });
+      const r = await api("/api/mining/buy-miner", { method: "POST", body: JSON.stringify({ package_id: pkgId }) });
+      setConfirmPkg(null);
+      const pkg = packages.find(p => p.id === pkgId);
+      setPurchaseSuccess(pkg);
+      setTimeout(() => setPurchaseSuccess(null), 3500);
       toast.success(t("mining.purchased") || "Miner purchased!");
       load();
     } catch (e) { toast.error(e.message); }
@@ -471,34 +478,75 @@ export default function MiningPage({ onBack }) {
                 ))}
               </div>
 
-              {/* Full Transaction History */}
+              {/* Transaction History with Filter */}
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-[9px] text-white/20 uppercase tracking-[0.12em] font-semibold">{t("mining.history") || "History"}</p>
-                  <motion.button onClick={load} className="text-[9px] text-white/20" whileTap={{ scale: 0.95 }}>
-                    <RefreshCw size={12} />
-                  </motion.button>
+                  <div className="flex items-center gap-1">
+                    {["today", "all"].map(f => (
+                      <motion.button key={f} data-testid={`history-filter-${f}`} onClick={() => setHistoryFilter(f)} whileTap={{ scale: 0.95 }}
+                        className={`px-2.5 py-1 rounded-lg text-[9px] font-semibold capitalize ${historyFilter === f
+                          ? "bg-[#00E89D]/10 text-[#00E89D] border border-[#00E89D]/15"
+                          : "bg-white/[0.02] text-white/20 border border-white/[0.04]"}`}>
+                        {f === "today" ? (t("mining.filter_today") || "Today") : (t("mining.filter_all") || "All")}
+                      </motion.button>
+                    ))}
+                    <motion.button onClick={load} className="ml-1 text-white/15" whileTap={{ scale: 0.95 }}>
+                      <RefreshCw size={11} />
+                    </motion.button>
+                  </div>
                 </div>
-                <div className="rounded-2xl overflow-hidden" style={{ background: "rgba(255,255,255,0.012)", border: "1px solid rgba(255,255,255,0.03)" }}>
-                  {txns.length === 0 && <p className="text-center py-8 text-[11px] text-white/15">{t("mining.no_txns") || "No transactions yet"}</p>}
-                  {txns.map((tx, i) => {
-                    const isPos = (tx.amount_blz || 0) > 0;
-                    return (
-                      <div key={tx.txn_id || i} className={`flex items-center gap-3 px-3.5 py-2.5 ${i < txns.length - 1 ? "border-b border-white/[0.025]" : ""}`}>
-                        <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: isPos ? "rgba(0,232,157,0.08)" : "rgba(255,71,87,0.08)" }}>
-                          {isPos ? <ArrowDownLeft size={11} className="text-[#00E89D]" /> : <ArrowUpRight size={11} className="text-[#FF4757]" />}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-[11px] text-white/60 truncate">{tx.description}</p>
-                          <p className="text-[8px] text-white/15">{tx.type} · {tx.created_at?.slice(0, 16)}</p>
-                        </div>
-                        <span className={`text-[12px] font-bold font-mono ${isPos ? "text-[#00E89D]" : "text-white/40"}`}>
-                          {tx.amount_blz ? `${tx.amount_blz > 0 ? "+" : ""}${tx.amount_blz.toFixed(4)}` : `€${Math.abs(tx.amount_eur || 0).toFixed(2)}`}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
+
+                {(() => {
+                  const today = new Date().toISOString().slice(0, 10);
+                  const filtered = historyFilter === "today"
+                    ? txns.filter(tx => tx.created_at?.startsWith(today))
+                    : txns;
+                  const typeColors = {
+                    mining_reward: "#00E89D", referral_bonus: "#A855F7",
+                    purchase: "#FF6B6B", upgrade: "#FFB800",
+                    withdraw: "#00C2FF", send: "#FF4757", receive: "#00E89D",
+                  };
+                  const typeLabels = {
+                    mining_reward: "Claim", referral_bonus: "Referral",
+                    purchase: "Purchase", upgrade: "Upgrade",
+                    withdraw: "Withdraw", send: "Send", receive: "Receive",
+                  };
+
+                  return (
+                    <div className="rounded-2xl overflow-hidden" style={{ background: "rgba(255,255,255,0.012)", border: "1px solid rgba(255,255,255,0.03)" }}>
+                      {filtered.length === 0 && (
+                        <p className="text-center py-8 text-[11px] text-white/15">
+                          {historyFilter === "today" ? (t("mining.no_txns_today") || "No transactions today") : (t("mining.no_txns") || "No transactions yet")}
+                        </p>
+                      )}
+                      {filtered.map((tx, i) => {
+                        const isPos = (tx.amount_blz || 0) > 0;
+                        const tc = typeColors[tx.type] || "#666";
+                        const tl = typeLabels[tx.type] || tx.type;
+                        return (
+                          <div key={tx.txn_id || i} data-testid={`txn-row-${tx.txn_id || i}`}
+                            className={`flex items-center gap-3 px-3.5 py-2.5 ${i < filtered.length - 1 ? "border-b border-white/[0.025]" : ""}`}>
+                            <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: isPos ? "rgba(0,232,157,0.08)" : "rgba(255,71,87,0.08)" }}>
+                              {isPos ? <ArrowDownLeft size={11} className="text-[#00E89D]" /> : <ArrowUpRight size={11} className="text-[#FF4757]" />}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-[11px] text-white/60 truncate">{tx.description}</p>
+                              <div className="flex items-center gap-1.5 mt-0.5">
+                                <span className="inline-flex px-1.5 py-0.5 rounded text-[7px] font-bold uppercase tracking-wider"
+                                  style={{ background: `${tc}12`, color: tc, border: `1px solid ${tc}18` }}>{tl}</span>
+                                <span className="text-[8px] text-white/15">{tx.created_at?.slice(0, 10)} {tx.created_at?.slice(11, 16)}</span>
+                              </div>
+                            </div>
+                            <span className={`text-[12px] font-bold font-mono ${isPos ? "text-[#00E89D]" : "text-white/40"}`}>
+                              {tx.amount_blz ? `${tx.amount_blz > 0 ? "+" : ""}${tx.amount_blz.toFixed(4)}` : `€${Math.abs(tx.amount_eur || 0).toFixed(2)}`}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
               </div>
             </motion.div>
           )}
@@ -506,20 +554,78 @@ export default function MiningPage({ onBack }) {
           {/* ════ SHOP ════ */}
           {tab === "shop" && (
             <motion.div key="shop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
-              <p className="text-[10px] text-white/25 uppercase tracking-[0.12em] font-semibold mb-1">{t("mining.shop_title") || "Miner Packages"}</p>
+
+              {/* Package Comparison Table */}
+              <motion.div className="rounded-2xl overflow-hidden" style={{ background: "rgba(255,255,255,0.012)", border: "1px solid rgba(255,255,255,0.04)" }}
+                initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+                <div className="px-3 py-2 flex items-center gap-2" style={{ borderBottom: "1px solid rgba(255,255,255,0.03)" }}>
+                  <BarChart3 size={11} className="text-[#00C2FF]" />
+                  <p className="text-[10px] text-white/30 font-semibold uppercase tracking-[0.1em]">{t("mining.compare") || "Compare Packages"}</p>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-[10px]" data-testid="package-compare-table">
+                    <thead>
+                      <tr className="border-b border-white/[0.03]">
+                        <th className="text-left px-3 py-2 text-white/20 font-medium">{t("mining.compare_pkg") || "Package"}</th>
+                        <th className="text-right px-2 py-2 text-white/20 font-medium">{t("mining.compare_price") || "Price"}</th>
+                        <th className="text-right px-2 py-2 text-white/20 font-medium">TH/s</th>
+                        <th className="text-right px-2 py-2 text-white/20 font-medium">{t("mining.compare_daily") || "Daily"}</th>
+                        <th className="text-right px-2 py-2 text-white/20 font-medium">ROI</th>
+                        <th className="text-right px-3 py-2 text-white/20 font-medium">{t("mining.compare_yearly") || "Yearly"}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {packages.map((pkg) => {
+                        const color = TIER_COLORS[pkg.id] || "#00E89D";
+                        const dailyBlz = pkg.hashrate * 0.5 * pkg.base_efficiency;
+                        const dailyEur = dailyBlz * 0.10;
+                        const roi = Math.ceil(pkg.price_eur / dailyEur);
+                        const yearly = dailyEur * 365;
+                        const isBest = pkg.id === "elite";
+                        return (
+                          <tr key={pkg.id} className={`border-b border-white/[0.015] ${isBest ? "relative" : ""}`}
+                            style={isBest ? { background: "rgba(168,85,247,0.04)" } : {}}>
+                            <td className="px-3 py-2">
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-semibold text-white/70" style={{ color }}>{pkg.name}</span>
+                                {isBest && <span className="px-1 py-0.5 rounded text-[7px] font-bold bg-[#A855F7]/15 text-[#A855F7] border border-[#A855F7]/20">BEST</span>}
+                              </div>
+                            </td>
+                            <td className="text-right px-2 py-2 font-mono font-bold text-white/50">{"\u20AC"}{pkg.price_eur.toLocaleString()}</td>
+                            <td className="text-right px-2 py-2 font-mono text-white/40">{pkg.hashrate}</td>
+                            <td className="text-right px-2 py-2 font-mono text-[#00E89D]">{"\u20AC"}{dailyEur.toFixed(3)}</td>
+                            <td className="text-right px-2 py-2 font-mono text-[#FFD700]">{roi}d</td>
+                            <td className="text-right px-3 py-2 font-mono font-bold text-[#00C2FF]">{"\u20AC"}{yearly.toFixed(1)}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </motion.div>
+
+              <p className="text-[10px] text-white/25 uppercase tracking-[0.12em] font-semibold">{t("mining.shop_title") || "Miner Packages"}</p>
 
               {packages.map((pkg, idx) => {
                 const Icon = TIER_ICONS[pkg.icon] || Cpu;
                 const color = TIER_COLORS[pkg.id] || "#00E89D";
-                const dailyEarn = (pkg.hashrate * 0.00001 * pkg.base_efficiency).toFixed(4);
-                const roi = Math.ceil(pkg.price_eur / (pkg.hashrate * 0.00001 * pkg.base_efficiency * 0.10));
+                const dailyBlz = pkg.hashrate * 0.5 * pkg.base_efficiency;
+                const dailyEur = dailyBlz * 0.10;
+                const roi = Math.ceil(pkg.price_eur / dailyEur);
+                const isBest = pkg.id === "elite";
 
                 return (
                   <motion.div key={pkg.id} data-testid={`miner-pkg-${pkg.id}`}
                     className="rounded-2xl p-4 relative overflow-hidden"
-                    style={{ background: "rgba(255,255,255,0.015)", border: `1px solid ${color}15` }}
+                    style={{ background: isBest ? "rgba(168,85,247,0.03)" : "rgba(255,255,255,0.015)", border: `1px solid ${isBest ? "rgba(168,85,247,0.15)" : `${color}15`}` }}
                     initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.05 }}>
                     <div className="absolute -top-8 -right-8 w-24 h-24 rounded-full pointer-events-none" style={{ background: color, filter: "blur(50px)", opacity: 0.05 }} />
+                    {isBest && (
+                      <div className="absolute top-2 right-2 px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-wider"
+                        style={{ background: "rgba(168,85,247,0.12)", color: "#A855F7", border: "1px solid rgba(168,85,247,0.2)" }}>
+                        {t("mining.best_value") || "Best Value"}
+                      </div>
+                    )}
                     <div className="flex items-center gap-3 mb-3">
                       <div className="w-11 h-11 rounded-xl flex items-center justify-center" style={{ background: `${color}10`, border: `1px solid ${color}20` }}>
                         <Icon size={20} style={{ color }} />
@@ -535,21 +641,20 @@ export default function MiningPage({ onBack }) {
                     <div className="flex items-center gap-4 mb-3">
                       <div className="flex items-center gap-1">
                         <TrendingUp size={10} className="text-[#00E89D]" />
-                        <span className="text-[10px] text-white/30">{dailyEarn} BLZ/day</span>
+                        <span className="text-[10px] text-white/30">{dailyBlz.toFixed(4)} BLZ/day ({"\u20AC"}{dailyEur.toFixed(3)})</span>
                       </div>
                       <div className="flex items-center gap-1">
                         <Clock size={10} className="text-[#FFD700]" />
-                        <span className="text-[10px] text-white/30">ROI ~{roi} days</span>
+                        <span className="text-[10px] text-white/30">ROI ~{roi} {t("mining.days") || "days"}</span>
                       </div>
                     </div>
                     <motion.button
                       data-testid={`buy-miner-${pkg.id}`}
-                      onClick={() => buyMiner(pkg.id)}
-                      disabled={buying === pkg.id}
+                      onClick={() => setConfirmPkg(pkg)}
                       className="w-full py-2.5 rounded-xl text-[12px] font-bold flex items-center justify-center gap-1.5"
                       style={{ background: `${color}12`, color, border: `1px solid ${color}20` }}
                       whileTap={{ scale: 0.96 }}>
-                      {buying === pkg.id ? <Loader2 size={14} className="animate-spin" /> : <>{t("mining.buy") || "Purchase"} <ChevronRight size={14} /></>}
+                      {t("mining.select") || "Select Package"} <ChevronRight size={14} />
                     </motion.button>
                   </motion.div>
                 );
@@ -622,6 +727,105 @@ export default function MiningPage({ onBack }) {
 
         </AnimatePresence>
       </div>
+
+      {/* ════ Purchase Confirmation Modal ════ */}
+      <AnimatePresence>
+        {confirmPkg && (
+          <motion.div data-testid="purchase-confirm-modal" className="fixed inset-0 z-50 flex items-end justify-center"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setConfirmPkg(null)} />
+            <motion.div className="relative w-full max-w-md mx-auto rounded-t-3xl overflow-hidden"
+              style={{ background: "#0A0A0A", border: "1px solid rgba(255,255,255,0.06)", borderBottom: "none" }}
+              initial={{ y: 300 }} animate={{ y: 0 }} exit={{ y: 300 }} transition={{ type: "spring", damping: 25, stiffness: 300 }}>
+              <div className="p-6 space-y-4">
+                {(() => {
+                  const Icon = TIER_ICONS[confirmPkg.icon] || Cpu;
+                  const color = TIER_COLORS[confirmPkg.id] || "#00E89D";
+                  const dailyBlz = confirmPkg.hashrate * 0.5 * confirmPkg.base_efficiency;
+                  const dailyEur = dailyBlz * 0.10;
+                  const yearlyEur = dailyEur * 365;
+                  return (
+                    <>
+                      <div className="text-center">
+                        <div className="w-16 h-16 rounded-2xl mx-auto mb-3 flex items-center justify-center" style={{ background: `${color}10`, border: `1px solid ${color}20` }}>
+                          <Icon size={28} style={{ color }} />
+                        </div>
+                        <h3 className="text-[18px] font-bold font-outfit text-white">{t("mining.confirm_purchase") || "Confirm Purchase"}</h3>
+                        <p className="text-[11px] text-white/30 mt-1">{confirmPkg.name}</p>
+                      </div>
+
+                      <div className="rounded-xl p-3 space-y-2" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)" }}>
+                        {[
+                          { l: t("mining.confirm_hash") || "Hashrate", v: `${confirmPkg.hashrate} TH/s`, c: color },
+                          { l: t("mining.confirm_eff") || "Efficiency", v: `${(confirmPkg.base_efficiency * 100).toFixed(0)}%`, c: "#00C2FF" },
+                          { l: t("mining.confirm_daily_earn") || "Daily Earnings", v: `${dailyBlz.toFixed(4)} BLZ (€${dailyEur.toFixed(3)})`, c: "#00E89D" },
+                          { l: t("mining.confirm_yearly") || "Yearly Earnings", v: `€${yearlyEur.toFixed(1)}`, c: "#FFD700" },
+                        ].map(r => (
+                          <div key={r.l} className="flex items-center justify-between">
+                            <span className="text-[11px] text-white/30">{r.l}</span>
+                            <span className="text-[12px] font-bold font-mono" style={{ color: r.c }}>{r.v}</span>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="rounded-xl p-3 flex items-center justify-between"
+                        style={{ background: `${color}06`, border: `1px solid ${color}12` }}>
+                        <span className="text-[12px] text-white/50 font-medium">{t("mining.confirm_total") || "Total"}</span>
+                        <span className="text-[20px] font-bold font-outfit" style={{ color }}>{"\u20AC"}{confirmPkg.price_eur.toLocaleString()}</span>
+                      </div>
+
+                      <div className="flex gap-2">
+                        <motion.button onClick={() => setConfirmPkg(null)} whileTap={{ scale: 0.96 }}
+                          className="flex-1 py-3 rounded-xl text-[12px] font-semibold bg-white/[0.04] text-white/40 border border-white/[0.06]">
+                          {t("mining.cancel") || "Cancel"}
+                        </motion.button>
+                        <motion.button data-testid="confirm-buy-btn" onClick={() => buyMiner(confirmPkg.id)} disabled={buying}
+                          whileTap={{ scale: 0.96 }}
+                          className="flex-1 py-3 rounded-xl text-[12px] font-bold flex items-center justify-center gap-1.5"
+                          style={{ background: `${color}15`, color, border: `1px solid ${color}25` }}>
+                          {buying ? <Loader2 size={14} className="animate-spin" /> : <>{t("mining.confirm_buy") || "Buy Now"} <ChevronRight size={14} /></>}
+                        </motion.button>
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ════ Purchase Success Overlay ════ */}
+      <AnimatePresence>
+        {purchaseSuccess && (
+          <motion.div data-testid="purchase-success-overlay" className="fixed inset-0 z-50 flex items-center justify-center"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <div className="absolute inset-0 bg-black/70 backdrop-blur-md" />
+            <motion.div className="relative text-center p-8"
+              initial={{ scale: 0.7, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.7, opacity: 0 }}
+              transition={{ type: "spring", damping: 18, stiffness: 250 }}>
+              <motion.div className="w-20 h-20 rounded-full mx-auto mb-4 flex items-center justify-center"
+                style={{ background: "rgba(0,232,157,0.1)", border: "1px solid rgba(0,232,157,0.2)" }}
+                initial={{ scale: 0 }} animate={{ scale: [0, 1.2, 1] }} transition={{ delay: 0.1, duration: 0.5 }}>
+                <Check size={36} className="text-[#00E89D]" />
+              </motion.div>
+              <motion.h3 className="text-[22px] font-bold font-outfit text-white mb-1"
+                initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }}>
+                {t("mining.success_title") || "Miner Activated!"}
+              </motion.h3>
+              <motion.p className="text-[13px] text-white/40 mb-2"
+                initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.3 }}>
+                {purchaseSuccess.name} · {purchaseSuccess.hashrate} TH/s
+              </motion.p>
+              <motion.p className="text-[11px] text-[#00E89D]/60"
+                initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.4 }}>
+                {t("mining.success_desc") || "Your miner is now earning BLZ tokens!"}
+              </motion.p>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
     </motion.div>
   );
 }

@@ -10,58 +10,44 @@ Ultra-premium fintech web app (year 2040 design) for payments, penny auctions, c
 - Design: Dark glassmorphism, cyan/gold glow accents
 
 ## Core Features (COMPLETED)
-- JWT Auth with email/password (admin seeding)
-- Wallet system with Stripe top-up (checkout redirect)
-- Live dual-timer penny auction system
-- 13-language support (I18nContext) with language switcher
-- Influencer/Commission payout system (wallet credits)
-- Gamified Rewards (daily login, streaks, milestones, comeback bonus)
-- Role request system + admin approval
-- Identity verification (ID front/back/selfie)
-- Complete Merchant Hierarchy: branches, staff, cash registers, API keys, live revenue
-- Barcode/QR payment flow, NFC payment strategy
+- JWT Auth, Wallet with Stripe, Live penny auction system
+- 13-language support, Influencer payouts, Gamified Rewards
+- Role requests, Identity verification
+- Complete Merchant Hierarchy, Barcode/QR/NFC payment flows
 
 ## POS & Payment System (COMPLETED)
-- POS Terminal, NFC Payments, Admin Fee Config
-- Reports, Merchant Landing Page, Pricing
+- POS Terminal, NFC Payments, Admin Fee Config, Reports
+- Merchant Landing Page, Pricing, Shift mgmt, Refunds
 
-## Auction Bot Admin System (COMPLETED)
+## Auction Bot Admin (COMPLETED)
 - Admin bot control, auto-bidding loop, target price, 30 bot names
 
 ## Crypto Mining Module (COMPLETED - Enhanced 2026-04-05)
-- **Mining Dashboard**: BLZ balance, EUR value, hashrate, daily/total earnings, active rigs
-- **Daily Rewards**: Claim system with abuse prevention (1 claim/day), streak tracking
-- **Claim History**: Full history endpoint with streak count and total claimed
-- **Wallet**: BLZ→EUR conversion, send BLZ to users, transaction history
-- **Miner Shop**: 5 tiers (Starter→Quantum), ROI calculation
+- **Dashboard**: BLZ balance, hashrate, daily/total earnings, claim streak, referral boost indicator
+- **Daily Rewards**: Claim system with abuse prevention (1/day), streak tracking
+- **Claim History API**: Full history with streak count
+- **Wallet Tab**: BLZ→EUR conversion, send BLZ, transaction history with **Today/All filter** and **colored type badges** (Claim, Referral, Purchase, Upgrade, Withdraw, Send, Receive)
+- **Package Comparison Table**: Side-by-side comparison of all 5 packages (Price, TH/s, Daily EUR, ROI days, Yearly EUR) with "BEST" badge on Elite Station
+- **Purchase Flow**: Select Package → Confirmation Modal (shows Hashrate, Efficiency, Daily/Yearly Earnings, Total Price) → Confirm → Success Animation ("Miner Activated!") → Auto-dismiss
+- **Miner Shop**: 5 tiers (Starter €49 → Quantum €9,999) with realistic ROI (41-116 days)
 - **Upgrade System**: Power & Efficiency (10 levels each)
 - **VIP Levels**: Bronze→Diamond with mining bonuses (0-15%)
-- **Referral System**: Unique codes, 5% bonus, referral boost indicator in dashboard
-- **Referral Boost Display**: Shows active boost with daily bonus amount
-- **Reward Logging**: All claims logged in mining_claims + mining_transactions collections
+- **Referral System**: Unique codes, 5% bonus, boost indicator
 - **Admin Reward Logs**: GET /api/mining/admin/reward-logs
 
-## Home Screen (ENHANCED 2026-04-05)
-- **"Available Now" Section**: Wallet (large card), Auctions, Mining, Merchant - all clickable
-- **"Coming Soon" Section**: NFC Pay, VIP, Referrals, Apple/Google Pay, Marketplace, More Rewards
-- **Coming Soon Badge**: Yellow "BALD/UPCOMING" label
-- **Feature Preview**: Tap any coming-soon card → expands to show description + "We're building this"
-- **All cards use premium dark glassmorphism design**
+## Home Screen (COMPLETED 2026-04-05)
+- "Available Now" (Wallet, Auctions, Mining, Merchant) + "Coming Soon" sections
+- Feature preview: tap → description + "Coming Soon" message
 
 ### Mining API Endpoints
-- GET /api/mining/dashboard — Full dashboard with streak + referral boost
-- GET /api/mining/packages, /upgrade-costs, /vip-levels
-- GET /api/mining/claim-history — Full claim history with streak
-- GET /api/mining/transactions
-- GET /api/mining/admin/reward-logs — Admin: all reward logs
-- POST /api/mining/buy-miner, /upgrade, /claim-daily
-- POST /api/mining/withdraw, /send, /apply-referral
+- GET /api/mining/dashboard, /packages, /upgrade-costs, /vip-levels, /claim-history, /transactions
+- GET /api/mining/admin/reward-logs
+- POST /api/mining/buy-miner, /upgrade, /claim-daily, /withdraw, /send, /apply-referral
 
 ## Upcoming Tasks
 - Mining Phase 2: Marketplace, Card, Launchpad (P1)
 - Receipt PDF-Export (P1)
-- 2FA Integration (P1)
-- Kids Wallet (P1)
+- 2FA Integration (P1), Kids Wallet (P1)
 
 ## Backlog (P2)
 - Apple/Google Pay, Developer SDK, Chat/Support
