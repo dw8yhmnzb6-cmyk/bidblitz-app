@@ -5,7 +5,7 @@ import {
   Download, Search, ChevronRight, Loader2, Check, X,
   Clock, AlertCircle, CircleDollarSign, Activity, Settings,
   Flag, FileText, TrendingUp, Eye, ToggleLeft, ToggleRight,
-  ChevronDown, ChevronUp, Gift, Plus, Pencil, Save
+  ChevronDown, ChevronUp, Gift, Plus, Pencil, Save, Gavel, Bot, Target, DollarSign, Zap
 } from "lucide-react";
 import { useUser, useI18n } from "../store";
 import ExportSection from "../components/ExportSection";
@@ -116,6 +116,7 @@ const tabs = [
   { id: "promos", key: "admin.promos", icon: Gift },
   { id: "settings", key: "admin.config", icon: Settings },
   { id: "merchant-fees", key: "admin.merchant_fees", icon: CircleDollarSign },
+  { id: "auctions", key: "admin.auctions_tab", icon: Gavel },
 ];
 
 export const AdminPage = ({ onNavigate }) => {
@@ -153,6 +154,8 @@ export const AdminPage = ({ onNavigate }) => {
   const [editingMerchantFees, setEditingMerchantFees] = useState(false);
   const [merchantFeeValues, setMerchantFeeValues] = useState({});
   const [savingMerchantFees, setSavingMerchantFees] = useState(false);
+  const [adminAuctions, setAdminAuctions] = useState([]);
+  const [botSaving, setBotSaving] = useState(null);
 
   const adminExports = [
     { key: "transactions", label: t("export.transactions"), action: (f) => apiService.exportAdminTransactions(f) },
@@ -228,6 +231,15 @@ export const AdminPage = ({ onNavigate }) => {
         const d = await api("/api/payments/admin/fees");
         setMerchantFees(d.fees || {});
         setMerchantFeeValues(d.fees || {});
+      }
+      if (t === "auctions") {
+        const d = await api("/api/auctions/admin/list");
+        setAdminAuctions((d.auctions || []).map(a => ({
+          ...a,
+          _bot_enabled: a.bot_enabled || false,
+          _bot_target_price: a.bot_target_price || 0,
+          _bot_min_seconds: a.bot_min_seconds || 300,
+        })));
       }
     } catch (e) { setError(e); }
     setLoading(false);
@@ -1074,6 +1086,201 @@ export const AdminPage = ({ onNavigate }) => {
                       <p className="text-[8px] text-[#222] mt-1">{v.created_at?.slice(0, 16)}</p>
                     </div>
                   ))}
+                </div>
+              )}
+            </motion.div>
+          )}
+
+          {/* ── Auctions Bot Admin Tab ── */}
+          {tab === "auctions" && (
+            <motion.div key="auctions-admin" data-testid="admin-auctions-tab" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              {loading ? <div className="space-y-2">{[1,2,3].map(i => <Skeleton key={i} className="h-[120px]" />)}</div> : (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-2">
+                      <Bot size={14} className="text-[#00E89D]" />
+                      <p className="text-[10px] text-[#444] uppercase tracking-[0.12em] font-semibold">{t("admin.auctions_title") || "Auction Bot Control"} ({adminAuctions.filter(a => a.status === "active").length} {t("admin.auctions_active") || "active"})</p>
+                    </div>
+                    <motion.button onClick={() => load("auctions")} whileTap={{ scale: 0.95 }}
+                      className="px-2.5 py-1 rounded-lg text-[10px] font-medium bg-white/[0.03] text-[#555] border border-white/[0.05]">
+                      {t("admin.auctions_refresh") || "Refresh"}
+                    </motion.button>
+                  </div>
+
+                  {adminAuctions.filter(a => a.status === "active").length === 0 && (
+                    <p className="text-center py-10 text-[12px] text-[#333]">{t("admin.auctions_none") || "No active auctions"}</p>
+                  )}
+
+                  {adminAuctions.filter(a => a.status === "active").map((auc) => {
+                    const targetPrice = auc._bot_target_price || 0;
+                    const bidsNeeded = targetPrice > 0 ? Math.round(targetPrice / 0.01) : 0;
+                    const estimatedRevenue = bidsNeeded * 0.50;
+                    const progress = targetPrice > 0 ? Math.min(100, ((auc.current_price || 0) / targetPrice) * 100) : 0;
+
+                    return (
+                      <motion.div key={auc.auction_id} data-testid={`auction-bot-${auc.auction_id}`}
+                        className="rounded-2xl overflow-hidden"
+                        style={{ background: "rgba(255,255,255,0.015)", border: `1px solid ${auc._bot_enabled ? "rgba(0,232,157,0.12)" : "rgba(255,255,255,0.035)"}` }}
+                        initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+
+                        {/* Header */}
+                        <div className="px-4 py-3 flex items-center gap-3">
+                          {auc.image_url && (
+                            <img src={auc.image_url} alt="" className="w-10 h-10 rounded-lg object-cover flex-shrink-0 bg-white/[0.02]" />
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[12px] font-semibold text-white/90 truncate">{auc.title}</p>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <span className="text-[10px] text-[#00E89D] font-bold font-mono">{"\u20AC"}{(auc.current_price || 0).toFixed(2)}</span>
+                              <span className="text-[8px] text-[#333]">{auc.total_bids || 0} {t("admin.auctions_bids") || "bids"}</span>
+                              {auc.bot_bids_placed > 0 && (
+                                <span className="text-[8px] text-[#A855F7] font-medium">{auc.bot_bids_placed} bot</span>
+                              )}
+                              <span className="text-[8px] text-[#444]">{Math.floor((auc.remaining_seconds || 0) / 60)}m {Math.floor((auc.remaining_seconds || 0) % 60)}s</span>
+                            </div>
+                          </div>
+                          {/* Bot Toggle */}
+                          <motion.button
+                            data-testid={`bot-toggle-${auc.auction_id}`}
+                            whileTap={{ scale: 0.9 }}
+                            onClick={() => {
+                              setAdminAuctions(prev => prev.map(a =>
+                                a.auction_id === auc.auction_id ? { ...a, _bot_enabled: !a._bot_enabled } : a
+                              ));
+                            }}>
+                            {auc._bot_enabled ? <ToggleRight size={28} className="text-[#00E89D]" /> : <ToggleLeft size={28} className="text-[#333]" />}
+                          </motion.button>
+                        </div>
+
+                        {/* Bot Config Panel */}
+                        <AnimatePresence>
+                          {auc._bot_enabled && (
+                            <motion.div
+                              initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
+                              className="overflow-hidden">
+                              <div className="px-4 pb-3 space-y-2.5 border-t border-white/[0.03] pt-3">
+
+                                {/* Target Price Input */}
+                                <div className="flex items-center gap-3">
+                                  <div className="flex-1">
+                                    <label className="text-[9px] text-[#444] font-medium block mb-1">
+                                      <Target size={9} className="inline mr-1 text-[#FFB800]" />{t("admin.auctions_target") || "Target Price"} ({"\u20AC"})
+                                    </label>
+                                    <input
+                                      data-testid={`bot-target-${auc.auction_id}`}
+                                      type="number" step="0.5" min="0" max="10000"
+                                      value={auc._bot_target_price}
+                                      onChange={e => {
+                                        const val = parseFloat(e.target.value) || 0;
+                                        setAdminAuctions(prev => prev.map(a =>
+                                          a.auction_id === auc.auction_id ? { ...a, _bot_target_price: val } : a
+                                        ));
+                                      }}
+                                      className="w-full px-3 py-2 rounded-xl text-[13px] text-white/90 font-bold font-mono outline-none bg-white/[0.03] border border-white/[0.06]"
+                                    />
+                                  </div>
+                                  <div className="flex-1">
+                                    <label className="text-[9px] text-[#444] font-medium block mb-1">
+                                      <Clock size={9} className="inline mr-1 text-[#00C2FF]" />{t("admin.auctions_window") || "Start (Sek. vor Ende)"}
+                                    </label>
+                                    <input
+                                      data-testid={`bot-window-${auc.auction_id}`}
+                                      type="number" step="60" min="0" max="86400"
+                                      value={auc._bot_min_seconds}
+                                      onChange={e => {
+                                        const val = parseInt(e.target.value) || 0;
+                                        setAdminAuctions(prev => prev.map(a =>
+                                          a.auction_id === auc.auction_id ? { ...a, _bot_min_seconds: val } : a
+                                        ));
+                                      }}
+                                      className="w-full px-3 py-2 rounded-xl text-[13px] text-white/90 font-bold font-mono outline-none bg-white/[0.03] border border-white/[0.06]"
+                                    />
+                                  </div>
+                                </div>
+
+                                {/* Revenue Calculation */}
+                                {targetPrice > 0 && (
+                                  <div className="rounded-xl p-2.5 flex items-center justify-between" style={{ background: "rgba(0,232,157,0.03)", border: "1px solid rgba(0,232,157,0.08)" }}>
+                                    <div className="flex items-center gap-2">
+                                      <DollarSign size={12} className="text-[#00E89D]" />
+                                      <div>
+                                        <p className="text-[9px] text-[#444]">{t("admin.auctions_math") || "Revenue Calculation"}</p>
+                                        <p className="text-[8px] text-white/20 font-mono">{targetPrice.toFixed(2)} / 0.01 × 0.50</p>
+                                      </div>
+                                    </div>
+                                    <div className="text-right">
+                                      <p className="text-[15px] font-bold font-outfit text-[#00E89D]">{"\u20AC"}{estimatedRevenue.toLocaleString("de-DE", { minimumFractionDigits: 2 })}</p>
+                                      <p className="text-[8px] text-[#444]">{bidsNeeded.toLocaleString()} {t("admin.auctions_bids_needed") || "bids needed"}</p>
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Progress bar */}
+                                {targetPrice > 0 && (
+                                  <div>
+                                    <div className="flex items-center justify-between mb-1">
+                                      <span className="text-[9px] text-[#444]">{t("admin.auctions_progress") || "Progress"}</span>
+                                      <span className="text-[9px] text-white/40 font-mono">{(auc.current_price || 0).toFixed(2)} / {targetPrice.toFixed(2)} ({progress.toFixed(1)}%)</span>
+                                    </div>
+                                    <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.04)" }}>
+                                      <motion.div className="h-full rounded-full" style={{ background: progress >= 100 ? "#00D26A" : "#00E89D" }}
+                                        initial={{ width: 0 }} animate={{ width: `${progress}%` }} transition={{ duration: 0.5 }} />
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Save Button */}
+                                <motion.button
+                                  data-testid={`bot-save-${auc.auction_id}`}
+                                  whileTap={{ scale: 0.96 }}
+                                  disabled={botSaving === auc.auction_id}
+                                  onClick={async () => {
+                                    setBotSaving(auc.auction_id);
+                                    try {
+                                      await api("/api/auctions/admin/bot-config", {
+                                        method: "POST",
+                                        body: JSON.stringify({
+                                          auction_id: auc.auction_id,
+                                          bot_enabled: auc._bot_enabled,
+                                          bot_target_price: auc._bot_target_price,
+                                          bot_min_seconds: auc._bot_min_seconds,
+                                        }),
+                                      });
+                                    } catch {}
+                                    setBotSaving(null);
+                                  }}
+                                  className="w-full py-2 rounded-xl text-[11px] font-semibold flex items-center justify-center gap-1.5"
+                                  style={{ background: "rgba(0,232,157,0.1)", color: "#00E89D", border: "1px solid rgba(0,232,157,0.15)" }}>
+                                  {botSaving === auc.auction_id ? <Loader2 size={12} className="animate-spin" /> : <><Zap size={11} /> {t("admin.auctions_save_bot") || "Bot speichern"}</>}
+                                </motion.button>
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </motion.div>
+                    );
+                  })}
+
+                  {/* Ended auctions (collapsed) */}
+                  {adminAuctions.filter(a => a.status === "ended").length > 0 && (
+                    <div className="mt-4">
+                      <p className="text-[9px] text-[#333] uppercase tracking-[0.12em] font-semibold mb-2">{t("admin.auctions_ended") || "Ended"} ({adminAuctions.filter(a => a.status === "ended").length})</p>
+                      <div className="space-y-1.5">
+                        {adminAuctions.filter(a => a.status === "ended").slice(0, 10).map(auc => (
+                          <div key={auc.auction_id} className="flex items-center justify-between px-3 py-2 rounded-xl" style={{ background: "rgba(255,255,255,0.01)", border: "1px solid rgba(255,255,255,0.025)" }}>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-[11px] text-white/40 truncate">{auc.title}</p>
+                            </div>
+                            <div className="flex items-center gap-3 flex-shrink-0">
+                              <span className="text-[11px] font-mono text-white/30">{"\u20AC"}{(auc.current_price || 0).toFixed(2)}</span>
+                              <span className="text-[9px] text-[#333]">{auc.total_bids || 0} bids</span>
+                              {auc.bot_bids_placed > 0 && <span className="text-[8px] text-[#A855F7]/50">{auc.bot_bids_placed} bot</span>}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </motion.div>

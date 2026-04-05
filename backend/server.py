@@ -232,7 +232,10 @@ async def startup():
     # Seed demo auctions
     from routes.auctions import seed_demo_auctions
     await seed_demo_auctions()
-    logger.info(f"BidBlitz V2 API started [env={APP_ENV}]")
+    # Start bot bidding background loop
+    from routes.auctions import start_bot_loop
+    start_bot_loop()
+    logger.info(f"BidBlitz V2 API started [env={APP_ENV}] — Bot loop active")
 
 
 @app.on_event("shutdown")

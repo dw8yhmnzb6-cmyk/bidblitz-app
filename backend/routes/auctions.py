@@ -1006,3 +1006,187 @@ async def toggle_watchlist(auction_id: str, request: Request):
         "created_at": datetime.now(timezone.utc).isoformat(),
     })
     return {"watched": True}
+
+
+# ══════════════════════════════════════════════════════
+# BOT ADMIN — Target Price & Auto-Bidding System
+# ══════════════════════════════════════════════════════
+
+BOT_NAMES = [
+    "Max_B", "Lukas99", "AnnaMaria", "Sophie_K", "Leon2040",
+    "EmmaW", "Felix_H", "Laura88", "Tim_S", "Julia_M",
+    "Nico_R", "Lena_X", "Paul_T", "Clara92", "Ben_F",
+    "Mia_Z", "David_W", "Hannah_G", "Simon_P", "Lisa_V",
+    "Jan_K", "Marie_D", "Tom_A", "Sarah_N", "Alex_C",
+    "Nina_E", "Moritz_L", "Elena_O", "Finn_J", "Lea_U",
+]
+
+import random
+
+
+class BotConfigRequest(BaseModel):
+    auction_id: str
+    bot_enabled: bool = True
+    bot_target_price: float = Field(0, ge=0, le=100000)
+    bot_min_seconds: int = Field(300, ge=0, le=86400)  # Bot starts bidding when remaining <= this
+
+
+@router.get("/admin/list")
+async def admin_list_auctions(request: Request):
+    """Admin: list all auctions with bot config."""
+    user = await get_current_user(request)
+    if user.get("role") not in ("admin",):
+        raise HTTPException(status_code=403, detail="Admin only")
+
+    auctions = await db.auctions.find(
+        {}, {"_id": 0}
+    ).sort("created_at", -1).to_list(200)
+
+    now_dt = datetime.now(timezone.utc)
+    for a in auctions:
+        if a.get("status") == "active" and a.get("ends_at"):
+            try:
+                ends = datetime.fromisoformat(a["ends_at"])
+                a["remaining_seconds"] = max(0, (ends - now_dt).total_seconds())
+            except Exception:
+                a["remaining_seconds"] = 0
+        else:
+            a["remaining_seconds"] = 0
+
+        # Revenue calculation
+        tp = a.get("bot_target_price", 0)
+        if tp > 0:
+            bids_needed = int(tp / PRICE_INCREMENT)
+            a["bot_estimated_revenue"] = round(bids_needed * 0.50, 2)
+        else:
+            a["bot_estimated_revenue"] = 0
+
+        # Bot bid count
+        bot_bids = await db.auction_bids.count_documents({
+            "auction_id": a["auction_id"], "is_bot": True
+        })
+        a["bot_bids_placed"] = bot_bids
+
+    return {"auctions": auctions}
+
+
+@router.post("/admin/bot-config")
+async def set_bot_config(req: BotConfigRequest, request: Request):
+    """Admin: configure bot for an auction."""
+    user = await get_current_user(request)
+    if user.get("role") not in ("admin",):
+        raise HTTPException(status_code=403, detail="Admin only")
+
+    auction = await db.auctions.find_one({"auction_id": req.auction_id})
+    if not auction:
+        raise HTTPException(status_code=404, detail="Auction not found")
+
+    await db.auctions.update_one(
+        {"auction_id": req.auction_id},
+        {"$set": {
+            "bot_enabled": req.bot_enabled,
+            "bot_target_price": req.bot_target_price,
+            "bot_min_seconds": req.bot_min_seconds,
+        }},
+    )
+
+    # Calculate estimated revenue
+    bids_needed = int(req.bot_target_price / PRICE_INCREMENT) if req.bot_target_price > 0 else 0
+    estimated_revenue = round(bids_needed * 0.50, 2)
+
+    return {
+        "ok": True,
+        "auction_id": req.auction_id,
+        "bot_enabled": req.bot_enabled,
+        "bot_target_price": req.bot_target_price,
+        "estimated_revenue": estimated_revenue,
+    }
+
+
+async def execute_bot_bid(auction):
+    """Place a single bot bid on an auction."""
+    now = datetime.now(timezone.utc)
+    now_iso = now.isoformat()
+
+    bot_name = random.choice(BOT_NAMES)
+    new_price = round(auction["current_price"] + PRICE_INCREMENT, 2)
+
+    # Extend timer like a normal bid
+    current_ends = datetime.fromisoformat(auction["ends_at"])
+    remaining = (current_ends - now).total_seconds()
+    if remaining <= FINAL_BATTLE_THRESHOLD:
+        new_ends = now + timedelta(seconds=TIMER_EXTENSION_SECONDS)
+    elif remaining < TIMER_EXTENSION_SECONDS:
+        new_ends = now + timedelta(seconds=TIMER_EXTENSION_SECONDS)
+    else:
+        new_ends = current_ends
+
+    await db.auctions.update_one(
+        {"auction_id": auction["auction_id"]},
+        {"$set": {
+            "current_price": new_price,
+            "ends_at": new_ends.isoformat(),
+            "last_bidder_id": f"bot_{bot_name}",
+            "last_bidder_name": bot_name,
+        },
+        "$inc": {"total_bids": 1}},
+    )
+
+    bid_record = {
+        "bid_id": secrets.token_hex(6),
+        "auction_id": auction["auction_id"],
+        "user_id": f"bot_{bot_name}",
+        "user_name": bot_name,
+        "bid_price": new_price,
+        "created_at": now_iso,
+        "is_bot": True,
+    }
+    await db.auction_bids.insert_one(bid_record)
+
+
+async def bot_bidding_loop():
+    """Background loop: check bot-enabled auctions and place bids."""
+    while True:
+        try:
+            now = datetime.now(timezone.utc)
+            now_iso = now.isoformat()
+
+            bot_auctions = await db.auctions.find({
+                "status": "active",
+                "bot_enabled": True,
+                "bot_target_price": {"$gt": 0},
+                "ends_at": {"$gt": now_iso},
+            }).to_list(100)
+
+            for auction in bot_auctions:
+                target = auction.get("bot_target_price", 0)
+                current = auction.get("current_price", 0)
+
+                if current >= target:
+                    continue
+
+                try:
+                    ends = datetime.fromisoformat(auction["ends_at"])
+                    remaining = (ends - now).total_seconds()
+                except Exception:
+                    continue
+
+                bot_min_secs = auction.get("bot_min_seconds", 300)
+                if bot_min_secs > 0 and remaining > bot_min_secs:
+                    continue
+
+                if random.random() > 0.5:
+                    continue
+
+                await execute_bot_bid(auction)
+
+        except Exception as e:
+            import logging
+            logging.getLogger("bidblitz").error(f"Bot loop error: {e}")
+
+        await asyncio.sleep(random.uniform(2, 5))
+
+
+def start_bot_loop():
+    """Start the bot bidding background task."""
+    asyncio.create_task(bot_bidding_loop())
