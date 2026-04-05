@@ -123,6 +123,7 @@ export default function MiningPage({ onBack }) {
   const [confirmPkg, setConfirmPkg] = useState(null);
   const [purchaseSuccess, setPurchaseSuccess] = useState(null);
   const [purchaseError, setPurchaseError] = useState(null);
+  const [billingType, setBillingType] = useState("onetime");
   const [marketplace, setMarketplace] = useState([]);
   const [listMiner, setListMiner] = useState(null);
   const [listPrice, setListPrice] = useState("");
@@ -161,7 +162,7 @@ export default function MiningPage({ onBack }) {
     setPurchaseError(null);
     setBuying(pkgId);
     try {
-      const r = await api("/api/mining/buy-miner", { method: "POST", body: JSON.stringify({ package_id: pkgId }) });
+      const r = await api("/api/mining/buy-miner", { method: "POST", body: JSON.stringify({ package_id: pkgId, billing: billingType }) });
       setConfirmPkg(null);
       const pkg = packages.find(p => p.id === pkgId);
       setPurchaseSuccess({ ...pkg, new_balance: r.new_balance });
@@ -436,6 +437,77 @@ export default function MiningPage({ onBack }) {
                 ))}
               </div>
 
+              {/* Earnings Overview */}
+              <motion.div className="rounded-2xl overflow-hidden"
+                style={{ background: "rgba(255,255,255,0.012)", border: "1px solid rgba(255,255,255,0.04)" }}
+                initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}>
+                <div className="px-3.5 py-2.5 flex items-center gap-2" style={{ borderBottom: "1px solid rgba(255,255,255,0.03)" }}>
+                  <TrendingUp size={11} className="text-[#00C2FF]" />
+                  <p className="text-[10px] text-white/30 font-semibold uppercase tracking-[0.1em]">{t("mining.earnings_overview") || "Ertragsübersicht"}</p>
+                </div>
+                <div className="grid grid-cols-3 divide-x divide-white/[0.04]">
+                  {[
+                    { label: t("mining.earn_daily") || "Täglich", blz: m.daily_earnings_blz?.toFixed(4) || "0", eur: m.daily_earnings_eur?.toFixed(4) || "0", color: "#00E89D" },
+                    { label: t("mining.earn_monthly") || "Monatlich", blz: m.monthly_earnings_blz?.toFixed(2) || "0", eur: m.monthly_earnings_eur?.toFixed(2) || "0", color: "#00C2FF" },
+                    { label: t("mining.earn_yearly") || "Jährlich", blz: m.yearly_earnings_blz?.toFixed(0) || "0", eur: m.yearly_earnings_eur?.toFixed(0) || "0", color: "#FFD700" },
+                  ].map(s => (
+                    <div key={s.label} className="py-3 px-2.5 text-center">
+                      <p className="text-[13px] font-bold font-mono" style={{ color: s.color }}>{s.blz}</p>
+                      <p className="text-[9px] font-mono text-white/25">BLZ</p>
+                      <p className="text-[10px] font-mono text-white/40 mt-0.5">{"\u20AC"}{s.eur}</p>
+                      <p className="text-[7px] text-white/15 uppercase mt-1 tracking-wider">{s.label}</p>
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+
+              {/* Meine Miner — per-miner earnings */}
+              {miners.length > 0 && (
+                <motion.div className="space-y-2"
+                  initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.14 }}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Server size={11} className="text-[#A855F7]" />
+                      <p className="text-[10px] text-white/25 uppercase tracking-[0.1em] font-semibold">{t("mining.my_miners") || "Meine Miner"} ({miners.length})</p>
+                    </div>
+                    <motion.button onClick={() => setTab("shop")} className="text-[9px] text-[#00E89D] font-medium flex items-center gap-0.5" whileTap={{ scale: 0.95 }}>
+                      + {t("mining.buy_more") || "Kaufen"} <ChevronRight size={10} />
+                    </motion.button>
+                  </div>
+                  {miners.map((mn, idx) => {
+                    const Icon = TIER_ICONS[mn.icon] || Cpu;
+                    const color = TIER_COLORS[mn.package_id] || "#00E89D";
+                    const billing = mn.billing || {};
+                    const billingLabel = billing.type === "monthly" ? "/Mo" : billing.type === "yearly" ? "/J" : "";
+                    return (
+                      <motion.div key={mn.miner_id} className="rounded-xl p-3 flex items-center gap-3"
+                        style={{ background: "rgba(255,255,255,0.015)", border: `1px solid ${color}12` }}
+                        initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.16 + idx * 0.03 }}>
+                        <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: `${color}10` }}>
+                          <Icon size={14} style={{ color }} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <p className="text-[11px] font-semibold text-white/80 truncate">{mn.name}</p>
+                            {billing.type && billing.type !== "onetime" && (
+                              <span className="text-[7px] px-1 py-0.5 rounded bg-[#00C2FF]/10 text-[#00C2FF] font-bold border border-[#00C2FF]/15">
+                                {billing.type === "monthly" ? "ABO" : "JAHR"}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[9px] font-mono text-white/30">{mn.effective_hashrate || mn.hashrate} TH/s · {((mn.effective_efficiency || mn.efficiency) * 100).toFixed(0)}%</p>
+                        </div>
+                        <div className="text-right flex-shrink-0">
+                          <p className="text-[11px] font-bold font-mono text-[#00E89D]">+{mn.daily_blz?.toFixed(4) || "0"}</p>
+                          <p className="text-[8px] text-white/20 font-mono">BLZ/{t("mining.day") || "Tag"}</p>
+                          <p className="text-[8px] text-white/25 font-mono">{"\u20AC"}{mn.daily_eur?.toFixed(3) || "0"}</p>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </motion.div>
+              )}
+
               {/* Auto Daily Reward Status */}
               <AutoRewardCard reward={reward} data={data} t={t} />
 
@@ -676,114 +748,190 @@ export default function MiningPage({ onBack }) {
             </motion.div>
           )}
 
-          {/* ════ SHOP ════ */}
+          {/* ════ SHOP (GoMining-Style) ════ */}
           {tab === "shop" && (
-            <motion.div key="shop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
+            <motion.div key="shop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
 
-              {/* Package Comparison Table */}
-              <motion.div className="rounded-2xl overflow-hidden" style={{ background: "rgba(255,255,255,0.012)", border: "1px solid rgba(255,255,255,0.04)" }}
-                initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
-                <div className="px-3 py-2 flex items-center gap-2" style={{ borderBottom: "1px solid rgba(255,255,255,0.03)" }}>
-                  <BarChart3 size={11} className="text-[#00C2FF]" />
-                  <p className="text-[10px] text-white/30 font-semibold uppercase tracking-[0.1em]">{t("mining.compare") || "Compare Packages"}</p>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-[10px]" data-testid="package-compare-table">
-                    <thead>
-                      <tr className="border-b border-white/[0.03]">
-                        <th className="text-left px-3 py-2 text-white/20 font-medium">{t("mining.compare_pkg") || "Package"}</th>
-                        <th className="text-right px-2 py-2 text-white/20 font-medium">{t("mining.compare_price") || "Price"}</th>
-                        <th className="text-right px-2 py-2 text-white/20 font-medium">TH/s</th>
-                        <th className="text-right px-2 py-2 text-white/20 font-medium">{t("mining.compare_daily") || "Daily"}</th>
-                        <th className="text-right px-2 py-2 text-white/20 font-medium">ROI</th>
-                        <th className="text-right px-3 py-2 text-white/20 font-medium">{t("mining.compare_yearly") || "Yearly"}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {packages.map((pkg) => {
-                        const color = TIER_COLORS[pkg.id] || "#00E89D";
-                        const dailyBlz = pkg.hashrate * 0.5 * pkg.base_efficiency;
-                        const dailyEur = dailyBlz * 0.10;
-                        const roi = Math.ceil(pkg.price_eur / dailyEur);
-                        const yearly = dailyEur * 365;
-                        const isBest = pkg.id === "elite";
-                        return (
-                          <tr key={pkg.id} className={`border-b border-white/[0.015] ${isBest ? "relative" : ""}`}
-                            style={isBest ? { background: "rgba(168,85,247,0.04)" } : {}}>
-                            <td className="px-3 py-2">
-                              <div className="flex items-center gap-1.5">
-                                <span className="font-semibold text-white/70" style={{ color }}>{pkg.name}</span>
-                                {isBest && <span className="px-1 py-0.5 rounded text-[7px] font-bold bg-[#A855F7]/15 text-[#A855F7] border border-[#A855F7]/20">BEST</span>}
-                              </div>
-                            </td>
-                            <td className="text-right px-2 py-2 font-mono font-bold text-white/50">{"\u20AC"}{pkg.price_eur.toLocaleString()}</td>
-                            <td className="text-right px-2 py-2 font-mono text-white/40">{pkg.hashrate}</td>
-                            <td className="text-right px-2 py-2 font-mono text-[#00E89D]">{"\u20AC"}{dailyEur.toFixed(3)}</td>
-                            <td className="text-right px-2 py-2 font-mono text-[#FFD700]">{roi}d</td>
-                            <td className="text-right px-3 py-2 font-mono font-bold text-[#00C2FF]">{"\u20AC"}{yearly.toFixed(1)}</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </motion.div>
+              {/* Title */}
+              <div className="text-center mb-2">
+                <h2 className="text-[18px] font-bold font-outfit text-white">{t("mining.shop_create") || "Miner erstellen"}</h2>
+                <p className="text-[11px] text-white/30 mt-0.5">{t("mining.shop_desc") || "Dein Miner fürs Leben — täglich BLZ verdienen"}</p>
+              </div>
 
-              <p className="text-[10px] text-white/25 uppercase tracking-[0.12em] font-semibold">{t("mining.shop_title") || "Miner Packages"}</p>
+              {/* Billing Toggle: Einmalig / Monatlich / Jährlich */}
+              <div className="flex rounded-xl overflow-hidden" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                {[
+                  { key: "onetime", label: t("mining.bill_once") || "Einmalig" },
+                  { key: "monthly", label: t("mining.bill_month") || "Monatlich" },
+                  { key: "yearly", label: t("mining.bill_year") || "Jährlich" },
+                ].map(b => (
+                  <motion.button key={b.key} data-testid={`billing-${b.key}`}
+                    onClick={() => setBillingType(b.key)}
+                    className={`flex-1 py-2.5 text-[11px] font-semibold transition-all relative ${
+                      billingType === b.key
+                        ? "bg-white/[0.08] text-white"
+                        : "text-white/30 hover:text-white/50"
+                    }`}
+                    whileTap={{ scale: 0.97 }}>
+                    {b.label}
+                    {b.key !== "onetime" && billingType === b.key && (
+                      <span className="absolute -top-1 -right-1 px-1 py-0.5 rounded text-[7px] font-bold bg-[#FF4757] text-white">
+                        -{b.key === "monthly" ? "30" : "40"}%
+                      </span>
+                    )}
+                  </motion.button>
+                ))}
+              </div>
 
+              {/* Package Cards */}
               {packages.map((pkg, idx) => {
                 const Icon = TIER_ICONS[pkg.icon] || Cpu;
                 const color = TIER_COLORS[pkg.id] || "#00E89D";
-                const dailyBlz = pkg.hashrate * 0.5 * pkg.base_efficiency;
-                const dailyEur = dailyBlz * 0.10;
-                const roi = Math.ceil(pkg.price_eur / dailyEur);
+                const pricing = pkg.pricing?.[billingType] || pkg.pricing?.onetime || {};
+                const currentPrice = pricing.price || pkg.price_eur;
+                const originalPrice = pricing.original || pkg.price_eur;
+                const discount = pricing.discount || 0;
                 const isBest = pkg.id === "elite";
+                const isSelected = confirmPkg?.id === pkg.id;
+                const billingLabel = billingType === "monthly" ? "/Mo" : billingType === "yearly" ? "/Jahr" : "";
 
                 return (
                   <motion.div key={pkg.id} data-testid={`miner-pkg-${pkg.id}`}
-                    className="rounded-2xl p-4 relative overflow-hidden"
-                    style={{ background: isBest ? "rgba(168,85,247,0.03)" : "rgba(255,255,255,0.015)", border: `1px solid ${isBest ? "rgba(168,85,247,0.15)" : `${color}15`}` }}
-                    initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.05 }}>
-                    <div className="absolute -top-8 -right-8 w-24 h-24 rounded-full pointer-events-none" style={{ background: color, filter: "blur(50px)", opacity: 0.05 }} />
-                    {isBest && (
-                      <div className="absolute top-2 right-2 px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-wider"
-                        style={{ background: "rgba(168,85,247,0.12)", color: "#A855F7", border: "1px solid rgba(168,85,247,0.2)" }}>
-                        {t("mining.best_value") || "Best Value"}
+                    onClick={() => { setConfirmPkg(pkg); setPurchaseError(null); }}
+                    className={`rounded-2xl p-4 relative overflow-hidden cursor-pointer transition-all ${isSelected ? "ring-1" : ""}`}
+                    style={{
+                      background: isSelected ? `${color}08` : isBest ? "rgba(168,85,247,0.03)" : "rgba(255,255,255,0.015)",
+                      border: `1px solid ${isSelected ? `${color}40` : isBest ? "rgba(168,85,247,0.15)" : "rgba(255,255,255,0.04)"}`,
+                      ringColor: isSelected ? color : "transparent",
+                    }}
+                    initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.04 }}
+                    whileTap={{ scale: 0.98 }}>
+
+                    {/* Discount Badge */}
+                    {discount > 0 && (
+                      <div className="absolute top-2.5 right-2.5 px-2 py-0.5 rounded text-[8px] font-bold bg-[#FF4757] text-white">
+                        MINUS {Math.round(discount * 100)}%
                       </div>
                     )}
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="w-11 h-11 rounded-xl flex items-center justify-center" style={{ background: `${color}10`, border: `1px solid ${color}20` }}>
-                        <Icon size={20} style={{ color }} />
+
+                    {/* Best Value Badge */}
+                    {isBest && !discount && (
+                      <div className="absolute top-2.5 right-2.5 px-2 py-0.5 rounded text-[8px] font-bold bg-[#A855F7]/15 text-[#A855F7] border border-[#A855F7]/20">
+                        BEST
                       </div>
-                      <div className="flex-1">
-                        <p className="text-[14px] font-bold text-white/90">{pkg.name}</p>
-                        <p className="text-[11px] font-mono text-white/30">{pkg.hashrate} TH/s · {(pkg.base_efficiency * 100).toFixed(0)}% eff.</p>
+                    )}
+
+                    <div className="flex items-start gap-3">
+                      {/* Icon */}
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: `${color}10`, border: `1px solid ${color}20` }}>
+                        <Icon size={18} style={{ color }} />
                       </div>
-                      <div className="text-right">
-                        <p className="text-[18px] font-bold font-outfit" style={{ color }}>{"\u20AC"}{pkg.price_eur.toLocaleString()}</p>
+
+                      {/* Info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <TrendingUp size={11} className="text-[#00E89D]" />
+                          <span className="text-[14px] font-bold font-outfit text-white">{pkg.hashrate} TH/s</span>
+                        </div>
+                        <p className="text-[10px] font-mono text-white/30 mb-1.5">{pkg.daily_blz} BLZ / {t("mining.day") || "Tag"}</p>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[8px] px-1.5 py-0.5 rounded bg-[#FFD700]/10 text-[#FFD700] font-bold border border-[#FFD700]/15">ROI {pkg.roi_pct}%</span>
+                          <span className="text-[8px] text-white/15">{pkg.name}</span>
+                        </div>
+                      </div>
+
+                      {/* Price */}
+                      <div className="text-right flex-shrink-0">
+                        {discount > 0 && (
+                          <p className="text-[10px] text-white/20 line-through font-mono">{"\u20AC"}{originalPrice.toFixed(2)}</p>
+                        )}
+                        <p className="text-[16px] font-bold font-outfit" style={{ color }}>
+                          {"\u20AC"}{currentPrice.toFixed(2)}
+                        </p>
+                        {billingLabel && (
+                          <p className="text-[9px] text-white/25 font-medium">{billingLabel}</p>
+                        )}
                       </div>
                     </div>
-                    <div className="flex items-center gap-4 mb-3">
-                      <div className="flex items-center gap-1">
-                        <TrendingUp size={10} className="text-[#00E89D]" />
-                        <span className="text-[10px] text-white/30">{dailyBlz.toFixed(4)} BLZ/day ({"\u20AC"}{dailyEur.toFixed(3)})</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Clock size={10} className="text-[#FFD700]" />
-                        <span className="text-[10px] text-white/30">ROI ~{roi} {t("mining.days") || "days"}</span>
-                      </div>
-                    </div>
-                    <motion.button
-                      data-testid={`buy-miner-${pkg.id}`}
-                      onClick={() => setConfirmPkg(pkg)}
-                      className="w-full py-2.5 rounded-xl text-[12px] font-bold flex items-center justify-center gap-1.5"
-                      style={{ background: `${color}12`, color, border: `1px solid ${color}20` }}
-                      whileTap={{ scale: 0.96 }}>
-                      {t("mining.select") || "Select Package"} <ChevronRight size={14} />
-                    </motion.button>
                   </motion.div>
                 );
               })}
+
+              {/* Summary + Buy Section */}
+              {confirmPkg && (() => {
+                const pricing = confirmPkg.pricing?.[billingType] || {};
+                const price = pricing.price || confirmPkg.price_eur;
+                const mainBalance = w.main_balance_eur ?? 0;
+                const canAfford = mainBalance >= price;
+                const color = TIER_COLORS[confirmPkg.id] || "#00E89D";
+
+                return (
+                  <motion.div className="rounded-2xl p-4 space-y-3"
+                    style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}
+                    initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+
+                    {/* Earnings Summary */}
+                    <div className="grid grid-cols-3 gap-2">
+                      {[
+                        { label: t("mining.earn_daily") || "Täglich", value: `${confirmPkg.daily_blz} BLZ`, sub: `€${confirmPkg.daily_eur}`, color: "#00E89D" },
+                        { label: t("mining.earn_monthly") || "Monatlich", value: `${(confirmPkg.daily_blz * 30).toFixed(1)} BLZ`, sub: `€${confirmPkg.monthly_eur}`, color: "#00C2FF" },
+                        { label: t("mining.earn_yearly") || "Jährlich", value: `${(confirmPkg.daily_blz * 365).toFixed(0)} BLZ`, sub: `€${confirmPkg.yearly_eur}`, color: "#FFD700" },
+                      ].map(s => (
+                        <div key={s.label} className="rounded-xl p-2 text-center" style={{ background: `${s.color}06`, border: `1px solid ${s.color}10` }}>
+                          <p className="text-[11px] font-bold font-mono" style={{ color: s.color }}>{s.value}</p>
+                          <p className="text-[9px] font-mono text-white/25">{s.sub}</p>
+                          <p className="text-[7px] text-white/15 uppercase mt-0.5">{s.label}</p>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Price + Balance */}
+                    <div className="flex items-center justify-between px-1">
+                      <span className="text-[11px] text-white/40">{t("mining.today_due") || "Heute fällig"}</span>
+                      <span className="text-[16px] font-bold font-outfit" style={{ color }}>{"\u20AC"}{price.toFixed(2)}</span>
+                    </div>
+
+                    <div className="flex items-center justify-between px-1 pt-1 border-t border-white/[0.04]">
+                      <span className="text-[10px] text-white/25">{t("mining.your_balance") || "Dein Guthaben"}</span>
+                      <span className={`text-[12px] font-bold font-mono ${canAfford ? "text-[#00E89D]" : "text-[#FF4757]"}`}>{"\u20AC"}{mainBalance.toFixed(2)}</span>
+                    </div>
+
+                    {!canAfford && (
+                      <p data-testid="balance-warning" className="text-[10px] text-[#FF4757] font-medium px-1">
+                        {t("mining.err_need_more") || `Du brauchst noch €${(price - mainBalance).toFixed(2)}. Lade dein Wallet auf.`}
+                      </p>
+                    )}
+
+                    {purchaseError && (
+                      <div className="rounded-xl px-3 py-2 flex items-center gap-2" style={{ background: "rgba(255,71,87,0.06)", border: "1px solid rgba(255,71,87,0.12)" }}>
+                        <Shield size={11} className="text-[#FF4757]" />
+                        <p className="text-[10px] text-[#FF4757]">{purchaseError}</p>
+                      </div>
+                    )}
+
+                    {billingType !== "onetime" && (
+                      <p className="text-[8px] text-white/15 text-center">
+                        {billingType === "monthly"
+                          ? (t("mining.renew_monthly") || `Verlängert sich automatisch für €${price.toFixed(2)} / Monat`)
+                          : (t("mining.renew_yearly") || `Verlängert sich automatisch für €${price.toFixed(2)} / Jahr`)}
+                      </p>
+                    )}
+
+                    {/* Buy Button */}
+                    <motion.button
+                      data-testid="confirm-buy-btn"
+                      onClick={() => buyMiner(confirmPkg.id)}
+                      disabled={buying || !canAfford}
+                      className={`w-full py-3 rounded-xl text-[13px] font-bold flex items-center justify-center gap-2 ${!canAfford ? "opacity-40 cursor-not-allowed" : ""}`}
+                      style={{ background: canAfford ? `${color}15` : "rgba(255,255,255,0.02)", color: canAfford ? color : "rgba(255,255,255,0.2)", border: `1px solid ${canAfford ? `${color}25` : "rgba(255,255,255,0.04)"}` }}
+                      whileTap={canAfford ? { scale: 0.96 } : {}}>
+                      {buying ? <Loader2 size={14} className="animate-spin" /> : (
+                        <>{billingType !== "onetime" ? (t("mining.subscribe") || "Abonnieren") : (t("mining.buy_now") || "Jetzt kaufen")} <ChevronRight size={14} /></>
+                      )}
+                    </motion.button>
+                  </motion.div>
+                );
+              })()}
             </motion.div>
           )}
 
@@ -1157,99 +1305,6 @@ export default function MiningPage({ onBack }) {
 
         </AnimatePresence>
       </div>
-
-      {/* ════ Purchase Confirmation Modal ════ */}
-      <AnimatePresence>
-        {confirmPkg && (
-          <motion.div data-testid="purchase-confirm-modal" className="fixed inset-0 z-50 flex items-end justify-center"
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => { setConfirmPkg(null); setPurchaseError(null); }} />
-            <motion.div className="relative w-full max-w-md mx-auto rounded-t-3xl overflow-hidden"
-              style={{ background: "#0A0A0A", border: "1px solid rgba(255,255,255,0.06)", borderBottom: "none" }}
-              initial={{ y: 300 }} animate={{ y: 0 }} exit={{ y: 300 }} transition={{ type: "spring", damping: 25, stiffness: 300 }}>
-              <div className="p-6 space-y-4">
-                {(() => {
-                  const Icon = TIER_ICONS[confirmPkg.icon] || Cpu;
-                  const color = TIER_COLORS[confirmPkg.id] || "#00E89D";
-                  const dailyBlz = confirmPkg.hashrate * 0.5 * confirmPkg.base_efficiency;
-                  const dailyEur = dailyBlz * 0.10;
-                  const yearlyEur = dailyEur * 365;
-                  const walletBalance = data?.wallet?.eur_value != null ? (w.blz_balance * 0.10) : 0;
-                  const mainBalance = w.main_balance_eur ?? user?.balance ?? 0;
-                  const canAfford = mainBalance >= confirmPkg.price_eur;
-                  return (
-                    <>
-                      <div className="text-center">
-                        <div className="w-16 h-16 rounded-2xl mx-auto mb-3 flex items-center justify-center" style={{ background: `${color}10`, border: `1px solid ${color}20` }}>
-                          <Icon size={28} style={{ color }} />
-                        </div>
-                        <h3 className="text-[18px] font-bold font-outfit text-white">{t("mining.confirm_purchase") || "Confirm Purchase"}</h3>
-                        <p className="text-[11px] text-white/30 mt-1">{confirmPkg.name}</p>
-                      </div>
-
-                      <div className="rounded-xl p-3 space-y-2" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)" }}>
-                        {[
-                          { l: t("mining.confirm_hash") || "Hashrate", v: `${confirmPkg.hashrate} TH/s`, c: color },
-                          { l: t("mining.confirm_eff") || "Efficiency", v: `${(confirmPkg.base_efficiency * 100).toFixed(0)}%`, c: "#00C2FF" },
-                          { l: t("mining.confirm_daily_earn") || "Daily Earnings", v: `${dailyBlz.toFixed(4)} BLZ (€${dailyEur.toFixed(3)})`, c: "#00E89D" },
-                          { l: t("mining.confirm_yearly") || "Yearly Earnings", v: `€${yearlyEur.toFixed(1)}`, c: "#FFD700" },
-                        ].map(r => (
-                          <div key={r.l} className="flex items-center justify-between">
-                            <span className="text-[11px] text-white/30">{r.l}</span>
-                            <span className="text-[12px] font-bold font-mono" style={{ color: r.c }}>{r.v}</span>
-                          </div>
-                        ))}
-                      </div>
-
-                      {/* Price + Balance */}
-                      <div className="rounded-xl p-3 space-y-2" style={{ background: `${color}06`, border: `1px solid ${canAfford ? `${color}12` : "rgba(255,71,87,0.15)"}` }}>
-                        <div className="flex items-center justify-between">
-                          <span className="text-[12px] text-white/50 font-medium">{t("mining.confirm_total") || "Total"}</span>
-                          <span className="text-[20px] font-bold font-outfit" style={{ color }}>{"\u20AC"}{confirmPkg.price_eur.toLocaleString()}</span>
-                        </div>
-                        <div className="flex items-center justify-between pt-1 border-t border-white/[0.04]">
-                          <span className="text-[10px] text-white/25">{t("mining.your_balance") || "Your balance"}</span>
-                          <span className={`text-[12px] font-bold font-mono ${canAfford ? "text-[#00E89D]" : "text-[#FF4757]"}`}>{"\u20AC"}{mainBalance.toFixed(2)}</span>
-                        </div>
-                        {!canAfford && (
-                          <p data-testid="balance-warning" className="text-[10px] text-[#FF4757] font-medium pt-1">
-                            {t("mining.err_need_more") || `You need €${(confirmPkg.price_eur - mainBalance).toFixed(2)} more. Top up your wallet first.`}
-                          </p>
-                        )}
-                      </div>
-
-                      {/* Error message */}
-                      <AnimatePresence>
-                        {purchaseError && (
-                          <motion.div data-testid="purchase-error" className="rounded-xl px-3 py-2.5 flex items-start gap-2"
-                            style={{ background: "rgba(255,71,87,0.06)", border: "1px solid rgba(255,71,87,0.12)" }}
-                            initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}>
-                            <Shield size={13} className="text-[#FF4757] mt-0.5 flex-shrink-0" />
-                            <p className="text-[11px] text-[#FF4757] font-medium">{purchaseError}</p>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-
-                      <div className="flex gap-2">
-                        <motion.button onClick={() => { setConfirmPkg(null); setPurchaseError(null); }} whileTap={{ scale: 0.96 }}
-                          className="flex-1 py-3 rounded-xl text-[12px] font-semibold bg-white/[0.04] text-white/40 border border-white/[0.06]">
-                          {t("mining.cancel") || "Cancel"}
-                        </motion.button>
-                        <motion.button data-testid="confirm-buy-btn" onClick={() => buyMiner(confirmPkg.id)} disabled={buying || !canAfford}
-                          whileTap={canAfford ? { scale: 0.96 } : {}}
-                          className={`flex-1 py-3 rounded-xl text-[12px] font-bold flex items-center justify-center gap-1.5 ${!canAfford ? "opacity-40 cursor-not-allowed" : ""}`}
-                          style={{ background: canAfford ? `${color}15` : "rgba(255,255,255,0.02)", color: canAfford ? color : "rgba(255,255,255,0.2)", border: `1px solid ${canAfford ? `${color}25` : "rgba(255,255,255,0.04)"}` }}>
-                          {buying ? <Loader2 size={14} className="animate-spin" /> : canAfford ? <>{t("mining.confirm_buy") || "Buy Now"} <ChevronRight size={14} /></> : (t("mining.insufficient") || "Insufficient Balance")}
-                        </motion.button>
-                      </div>
-                    </>
-                  );
-                })()}
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* ════ Purchase Success Overlay ════ */}
       <AnimatePresence>

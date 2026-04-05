@@ -43,6 +43,15 @@ Ultra-premium fintech web app (year 2040 design) for payments, penny auctions, c
 - **Dashboard UI**: Shows countdown timer to next reward (midnight UTC), auto-collected amount, streak
 - **i18n**: German + English translation keys for auto-reward UI
 
+### GoMining-Style Shop Redesign (DONE - 2026-04-05)
+- **Billing Toggle**: Einmalig / Monatlich (-30%) / Jährlich (-40%) subscription options
+- **Package Cards**: TH/s, daily BLZ earnings, ROI%, discount badges (MINUS 30%/40%), original vs discounted price
+- **Inline Buy Flow**: Package selection → Earnings summary (daily/monthly/yearly) → "Heute fällig" price → Balance check → Buy/Subscribe button (replaces old modal)
+- **Subscription Billing**: Monthly/yearly contracts with `next_payment` date stored on miner; auto-renewal labels
+- **Enhanced Dashboard**: New "Ertragsübersicht" section (daily/monthly/yearly earnings in BLZ + EUR), "Meine Miner" section showing per-miner earnings with subscription badges
+- **Backend**: Updated packages API with pricing tiers, ROI calc, enriched miner data with per-miner earnings
+- **i18n**: Full German + English translations for all new labels
+
 ### Mining API Endpoints
 Phase 1: /api/mining/dashboard (inkl. next_reward_at), /packages, /upgrade-costs, /vip-levels, /claim-history, /transactions, /admin/reward-logs
 Phase 1 POST: /buy-miner, /upgrade, /claim-daily, /withdraw, /send, /apply-referral

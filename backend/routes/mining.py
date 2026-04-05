@@ -21,12 +21,18 @@ DAILY_BASE_RATE = 0.5  # BLZ per TH/s per day
 REFERRAL_BONUS_RATE = 0.05  # 5% of referral's mining earnings
 
 MINER_PACKAGES = [
-    {"id": "starter", "name": "Starter Rig", "hashrate": 10, "base_efficiency": 0.85, "price_eur": 49, "icon": "cpu"},
-    {"id": "pro", "name": "Pro Miner", "hashrate": 50, "base_efficiency": 0.90, "price_eur": 199, "icon": "server"},
-    {"id": "elite", "name": "Elite Station", "hashrate": 200, "base_efficiency": 0.93, "price_eur": 699, "icon": "zap"},
-    {"id": "titan", "name": "Titan Cluster", "hashrate": 1000, "base_efficiency": 0.96, "price_eur": 2999, "icon": "flame"},
-    {"id": "quantum", "name": "Quantum Array", "hashrate": 5000, "base_efficiency": 0.98, "price_eur": 9999, "icon": "atom"},
+    {"id": "starter", "name": "Starter Rig", "hashrate": 10, "base_efficiency": 0.85, "price_eur": 49, "price_monthly": 4.99, "price_yearly": 44.99, "icon": "cpu"},
+    {"id": "pro", "name": "Pro Miner", "hashrate": 50, "base_efficiency": 0.90, "price_eur": 199, "price_monthly": 19.99, "price_yearly": 179.99, "icon": "server"},
+    {"id": "elite", "name": "Elite Station", "hashrate": 200, "base_efficiency": 0.93, "price_eur": 699, "price_monthly": 69.99, "price_yearly": 629.99, "icon": "zap"},
+    {"id": "titan", "name": "Titan Cluster", "hashrate": 1000, "base_efficiency": 0.96, "price_eur": 2999, "price_monthly": 249.99, "price_yearly": 2399.99, "icon": "flame"},
+    {"id": "quantum", "name": "Quantum Array", "hashrate": 5000, "base_efficiency": 0.98, "price_eur": 9999, "price_monthly": 799.99, "price_yearly": 7999.99, "icon": "atom"},
 ]
+
+DISCOUNT_RATES = {
+    "onetime": 0,
+    "monthly": 0.30,  # 30% off original
+    "yearly": 0.40,   # 40% off original
+}
 
 UPGRADE_COSTS = {
     "power": [0, 10, 25, 50, 100, 200, 400, 800, 1500, 3000],
@@ -196,6 +202,26 @@ async def mining_dashboard(request: Request):
     vip = get_vip_level(total_hashrate)
     daily_earnings = calc_daily_earnings(total_hashrate, avg_efficiency, vip["bonus"])
 
+    # Calculate per-miner earnings for dashboard detail
+    miners_enriched = []
+    for mn in miners:
+        eff_hash = mn.get("hashrate", 0) * (1 + mn.get("power_level", 0) * 0.1)
+        eff_eff = mn.get("efficiency", 0.85) + mn.get("efficiency_level", 0) * 0.01
+        mn_daily = calc_daily_earnings(eff_hash, eff_eff, vip["bonus"])
+        mn_monthly = round(mn_daily * 30, 4)
+        mn_yearly = round(mn_daily * 365, 4)
+        miners_enriched.append({
+            **mn,
+            "effective_hashrate": round(eff_hash, 1),
+            "effective_efficiency": round(eff_eff, 4),
+            "daily_blz": mn_daily,
+            "daily_eur": round(mn_daily * BLZ_TO_EUR, 4),
+            "monthly_blz": mn_monthly,
+            "monthly_eur": round(mn_monthly * BLZ_TO_EUR, 2),
+            "yearly_blz": mn_yearly,
+            "yearly_eur": round(mn_yearly * BLZ_TO_EUR, 2),
+        })
+
     # Check if daily reward claimed (auto or manual)
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     claimed_today = await db.mining_claims.find_one({"user_id": user_id, "date": today})
@@ -258,6 +284,10 @@ async def mining_dashboard(request: Request):
             "avg_efficiency": round(avg_efficiency, 4),
             "daily_earnings_blz": daily_earnings,
             "daily_earnings_eur": round(daily_earnings * BLZ_TO_EUR, 4),
+            "monthly_earnings_blz": round(daily_earnings * 30, 4),
+            "monthly_earnings_eur": round(daily_earnings * 30 * BLZ_TO_EUR, 2),
+            "yearly_earnings_blz": round(daily_earnings * 365, 4),
+            "yearly_earnings_eur": round(daily_earnings * 365 * BLZ_TO_EUR, 2),
             "active_miners": len(miners),
         },
         "vip": {
@@ -284,7 +314,7 @@ async def mining_dashboard(request: Request):
             "boost_bonus_blz": referral_earnings_bonus,
         },
         "streak": streak,
-        "miners": miners,
+        "miners": miners_enriched,
         "recent_transactions": recent_txns,
     }
 
@@ -292,13 +322,39 @@ async def mining_dashboard(request: Request):
 # ── Packages ──
 @router.get("/packages")
 async def get_packages(request: Request):
-    """Get available miner packages."""
-    return {"packages": MINER_PACKAGES, "blz_rate": BLZ_TO_EUR}
+    """Get available miner packages with pricing tiers."""
+    enriched = []
+    for pkg in MINER_PACKAGES:
+        daily_blz = pkg["hashrate"] * DAILY_BASE_RATE * pkg["base_efficiency"]
+        daily_eur = daily_blz * BLZ_TO_EUR
+        monthly_eur = daily_eur * 30
+        yearly_eur = daily_eur * 365
+        roi_days = round(pkg["price_eur"] / daily_eur) if daily_eur > 0 else 0
+        roi_pct = round((yearly_eur / pkg["price_eur"]) * 100, 2) if pkg["price_eur"] > 0 else 0
+        # Original prices (before discount) for monthly/yearly
+        orig_monthly = round(pkg["price_monthly"] / (1 - DISCOUNT_RATES["monthly"]), 2)
+        orig_yearly = round(pkg["price_yearly"] / (1 - DISCOUNT_RATES["yearly"]), 2)
+        enriched.append({
+            **pkg,
+            "daily_blz": round(daily_blz, 4),
+            "daily_eur": round(daily_eur, 4),
+            "monthly_eur": round(monthly_eur, 2),
+            "yearly_eur": round(yearly_eur, 2),
+            "roi_days": roi_days,
+            "roi_pct": roi_pct,
+            "pricing": {
+                "onetime": {"price": pkg["price_eur"], "original": pkg["price_eur"], "discount": 0},
+                "monthly": {"price": pkg["price_monthly"], "original": orig_monthly, "discount": DISCOUNT_RATES["monthly"]},
+                "yearly": {"price": pkg["price_yearly"], "original": orig_yearly, "discount": DISCOUNT_RATES["yearly"]},
+            },
+        })
+    return {"packages": enriched, "blz_rate": BLZ_TO_EUR, "discounts": DISCOUNT_RATES}
 
 
 # ── Buy Miner ──
 class BuyMinerRequest(BaseModel):
     package_id: str
+    billing: str = "onetime"  # "onetime", "monthly", "yearly"
 
 
 @router.post("/buy-miner")
@@ -311,16 +367,36 @@ async def buy_miner(req: BuyMinerRequest, request: Request):
     if not pkg:
         raise HTTPException(status_code=400, detail="Invalid package")
 
+    billing = req.billing if req.billing in ("onetime", "monthly", "yearly") else "onetime"
+
+    # Get the price based on billing type
+    if billing == "monthly":
+        price = pkg["price_monthly"]
+    elif billing == "yearly":
+        price = pkg["price_yearly"]
+    else:
+        price = pkg["price_eur"]
+
     balance = user.get("balance", 0)
-    if balance < pkg["price_eur"]:
+    if balance < price:
         raise HTTPException(status_code=400, detail="Insufficient wallet balance")
 
     # Deduct balance
-    await db.users.update_one({"_id": user["_id"]}, {"$inc": {"balance": -pkg["price_eur"]}})
+    await db.users.update_one({"_id": user["_id"]}, {"$inc": {"balance": -price}})
 
     # Create miner
     miner_id = secrets.token_hex(6)
     now = datetime.now(timezone.utc).isoformat()
+
+    # Calculate billing dates
+    billing_info = {"type": billing, "price": price}
+    if billing == "monthly":
+        billing_info["next_payment"] = (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()
+        billing_info["started_at"] = now
+    elif billing == "yearly":
+        billing_info["next_payment"] = (datetime.now(timezone.utc) + timedelta(days=365)).isoformat()
+        billing_info["started_at"] = now
+
     miner = {
         "miner_id": miner_id,
         "user_id": user_id,
@@ -333,17 +409,19 @@ async def buy_miner(req: BuyMinerRequest, request: Request):
         "status": "active",
         "purchased_at": now,
         "icon": pkg["icon"],
+        "billing": billing_info,
     }
     await db.mining_miners.insert_one(miner)
     miner.pop("_id", None)
 
     # Record transaction
+    billing_label = {"onetime": "", "monthly": " (Monatlich)", "yearly": " (Jährlich)"}
     txn = {
         "txn_id": secrets.token_hex(6),
         "user_id": user_id,
         "type": "purchase",
-        "amount_eur": -pkg["price_eur"],
-        "description": f"Purchased {pkg['name']}",
+        "amount_eur": -price,
+        "description": f"Purchased {pkg['name']}{billing_label.get(billing, '')}",
         "created_at": now,
     }
     await db.mining_transactions.insert_one(txn)
@@ -354,8 +432,8 @@ async def buy_miner(req: BuyMinerRequest, request: Request):
         "id": secrets.token_hex(8),
         "user_id": user_id,
         "type": "purchase",
-        "amount": -pkg["price_eur"],
-        "description": f"Mining: {pkg['name']}",
+        "amount": -price,
+        "description": f"Mining: {pkg['name']}{billing_label.get(billing, '')}",
         "status": "completed",
         "reference": f"MINE-{miner_id.upper()[:8]}",
         "category": "mining",
