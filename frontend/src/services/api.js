@@ -280,6 +280,18 @@ export const api = {
   createConnectAccount: (body) => request("/api/merchant-connect/create-account", { method: "POST", body: JSON.stringify(body) }),
   getConnectStatus: () => request("/api/merchant-connect/status"),
   getMerchantEarnings: () => request("/api/merchant-connect/earnings"),
+  // Influencer
+  getInfluencerProfile: () => request("/api/influencer/me"),
+  getInfluencerReferrals: () => request("/api/influencer/me/referrals"),
+  adminGetInfluencerConfig: () => request("/api/influencer/admin/config"),
+  adminUpdateInfluencerConfig: (body) => request("/api/influencer/admin/config", { method: "POST", body: JSON.stringify(body) }),
+  adminCreateInfluencer: (body) => request("/api/influencer/admin/create", { method: "POST", body: JSON.stringify(body) }),
+  adminUpdateInfluencer: (body) => request("/api/influencer/admin/update", { method: "POST", body: JSON.stringify(body) }),
+  adminListInfluencers: () => request("/api/influencer/admin/list"),
+  adminAssignManager: (body) => request("/api/influencer/admin/assign-manager", { method: "POST", body: JSON.stringify(body) }),
+  adminCreateCampaign: (body) => request("/api/influencer/admin/campaign", { method: "POST", body: JSON.stringify(body) }),
+  // Investor
+  submitInvestorContact: (body) => request("/api/investor/contact", { method: "POST", body: JSON.stringify(body) }),
   getMyTickets: () => request("/api/support/tickets"),
   getAdminTickets: (params = {}) => {
     const q = new URLSearchParams();

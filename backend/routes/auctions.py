@@ -637,6 +637,13 @@ async def buy_credits(req: BuyCreditsRequest, request: Request):
 
     updated_user = await db.users.find_one({"_id": user["_id"]})
 
+    # Process influencer commission
+    try:
+        from routes.influencer import process_commission
+        asyncio.create_task(process_commission(user_id, price, txn["reference"]))
+    except Exception:
+        pass
+
     return {
         "credits_added": credits,
         "bonus_credits": bonus,

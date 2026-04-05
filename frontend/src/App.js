@@ -13,6 +13,8 @@ import AdminPage from "./pages/AdminPage";
 import MorePage from "./pages/MorePage";
 import AuctionsPage from "./pages/AuctionsPage";
 import MerchantConnectPage from "./pages/MerchantConnectPage";
+import InfluencerPage from "./pages/InfluencerPage";
+import InvestorPage from "./pages/InvestorPage";
 import AuthPage from "./pages/AuthPage";
 import NotificationsPage from "./pages/NotificationsPage";
 
@@ -136,6 +138,10 @@ function AppContent() {
         return <MerchantPage {...pageProps} />;
       case "/merchant-connect":
         return <MerchantConnectPage onBack={() => handleNavigate("/merchant")} />;
+      case "/influencer":
+        return <InfluencerPage onBack={() => handleNavigate("/more")} />;
+      case "/investor":
+        return <InvestorPage onBack={() => handleNavigate("/more")} />;
       case "/admin":
         return user.role === "admin"
           ? <AdminPage onNavigate={handleNavigate} />
