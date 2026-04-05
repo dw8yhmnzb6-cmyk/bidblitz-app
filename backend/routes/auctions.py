@@ -8,6 +8,7 @@ from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 from typing import Optional
+from bson import ObjectId
 from core.database import db
 from core.security import get_current_user
 from core.audit import log_audit, AuditEvent, get_client_info
@@ -62,6 +63,51 @@ async def list_auctions(request: Request):
     return {"auctions": auctions}
 
 
+# ── Get user's credit balance ──
+@router.get("/credits/balance")
+async def get_credits(request: Request):
+    """Get user's current bid credit balance."""
+    user = await get_current_user(request)
+    return {"bid_credits": user.get("bid_credits", 0)}
+
+
+# ── Daily Reward ──
+DAILY_REWARD_CREDITS = 3
+
+@router.post("/daily-reward")
+async def claim_daily_reward(request: Request):
+    """Claim daily free bid credits."""
+    user = await get_current_user(request)
+    now = datetime.now(timezone.utc)
+    last_claim = user.get("last_daily_claim")
+    if last_claim:
+        last_dt = datetime.fromisoformat(last_claim)
+        if (now - last_dt).total_seconds() < 86400:
+            remaining_secs = int(86400 - (now - last_dt).total_seconds())
+            raise HTTPException(status_code=400, detail=f"Already claimed. Next in {remaining_secs}s")
+    await db.users.update_one(
+        {"_id": user["_id"]},
+        {"$inc": {"bid_credits": DAILY_REWARD_CREDITS}, "$set": {"last_daily_claim": now.isoformat()}},
+    )
+    updated = await db.users.find_one({"_id": user["_id"]})
+    return {"credits_awarded": DAILY_REWARD_CREDITS, "total_credits": updated.get("bid_credits", 0)}
+
+
+@router.get("/daily-reward")
+async def check_daily_reward(request: Request):
+    """Check if daily reward is available."""
+    user = await get_current_user(request)
+    now = datetime.now(timezone.utc)
+    last_claim = user.get("last_daily_claim")
+    if not last_claim:
+        return {"available": True, "remaining_seconds": 0}
+    last_dt = datetime.fromisoformat(last_claim)
+    elapsed = (now - last_dt).total_seconds()
+    if elapsed >= 86400:
+        return {"available": True, "remaining_seconds": 0}
+    return {"available": False, "remaining_seconds": int(86400 - elapsed)}
+
+
 # ── Get single auction with bids ──
 @router.get("/{auction_id}")
 async def get_auction(auction_id: str, request: Request):
@@ -100,7 +146,10 @@ async def get_auction(auction_id: str, request: Request):
         {"auction_id": auction_id}, {"_id": 0}
     ).sort("created_at", -1).to_list(30)
 
-    return {"auction": auction, "bids": bids}
+    # Count unique bidders
+    unique_bidders = await db.auction_bids.distinct("user_id", {"auction_id": auction_id})
+
+    return {"auction": auction, "bids": bids, "unique_bidders": len(unique_bidders)}
 
 
 # ── Place a bid ──
@@ -176,6 +225,12 @@ async def place_bid(req: BidRequest, request: Request):
 
     updated_user = await db.users.find_one({"_id": user["_id"]})
 
+    # Trigger auto-bids from other users
+    try:
+        await process_auto_bids(req.auction_id, user_id)
+    except Exception:
+        pass
+
     return {
         "bid": bid_record,
         "new_price": new_price,
@@ -183,6 +238,112 @@ async def place_bid(req: BidRequest, request: Request):
         "total_bids": auction["total_bids"] + 1,
         "remaining_credits": updated_user.get("bid_credits", 0),
     }
+
+
+# ── Process auto-bids after a manual bid ──
+async def process_auto_bids(auction_id: str, last_bidder_id: str):
+    """Check if any auto-bidders should respond to this bid."""
+    auto_bids = await db.auto_bids.find(
+        {"auction_id": auction_id, "active": True, "user_id": {"$ne": last_bidder_id}}
+    ).to_list(50)
+
+    for ab in auto_bids:
+        if ab["bids_placed"] >= ab["max_bids"]:
+            await db.auto_bids.update_one({"_id": ab["_id"]}, {"$set": {"active": False}})
+            continue
+
+        user = await db.users.find_one({"_id": ObjectId(ab["user_id"])})
+        if not user or user.get("bid_credits", 0) < 1:
+            await db.auto_bids.update_one({"_id": ab["_id"]}, {"$set": {"active": False}})
+            continue
+
+        auction = await db.auctions.find_one({"auction_id": auction_id})
+        if not auction or auction["status"] != "active":
+            break
+
+        now = datetime.now(timezone.utc)
+        now_iso = now.isoformat()
+        if auction["ends_at"] < now_iso:
+            break
+
+        # Deduct credit
+        await db.users.update_one({"_id": user["_id"]}, {"$inc": {"bid_credits": -1}})
+
+        new_price = round(auction["current_price"] + PRICE_INCREMENT, 2)
+        current_ends = datetime.fromisoformat(auction["ends_at"])
+        remaining = (current_ends - now).total_seconds()
+        new_ends = (now + timedelta(seconds=TIMER_EXTENSION_SECONDS)) if remaining < TIMER_EXTENSION_SECONDS else current_ends
+
+        await db.auctions.update_one(
+            {"auction_id": auction_id},
+            {"$set": {"current_price": new_price, "ends_at": new_ends.isoformat(),
+                      "last_bidder_id": ab["user_id"], "last_bidder_name": user.get("name", "Anonymous")},
+             "$inc": {"total_bids": 1}},
+        )
+
+        bid_record = {
+            "bid_id": secrets.token_hex(6), "auction_id": auction_id,
+            "user_id": ab["user_id"], "user_name": user.get("name", "Anonymous"),
+            "bid_price": new_price, "created_at": now_iso, "is_auto": True,
+        }
+        await db.auction_bids.insert_one(bid_record)
+
+        await db.auto_bids.update_one({"_id": ab["_id"]}, {"$inc": {"bids_placed": 1}})
+        break  # Only one auto-bid per trigger
+
+
+# ── Set Auto-Bid ──
+class AutoBidRequest(BaseModel):
+    auction_id: str
+    max_bids: int = Field(..., ge=1, le=500)
+
+
+@router.post("/auto-bid")
+async def set_auto_bid(req: AutoBidRequest, request: Request):
+    """Set auto-bid for an auction."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+
+    auction = await db.auctions.find_one({"auction_id": req.auction_id})
+    if not auction or auction["status"] != "active":
+        raise HTTPException(status_code=400, detail="Auction not active")
+
+    credits = user.get("bid_credits", 0)
+    if credits < 1:
+        raise HTTPException(status_code=400, detail="Not enough bid credits")
+
+    # Upsert auto-bid
+    await db.auto_bids.update_one(
+        {"user_id": user_id, "auction_id": req.auction_id},
+        {"$set": {"active": True, "max_bids": req.max_bids, "updated_at": datetime.now(timezone.utc).isoformat()},
+         "$setOnInsert": {"bids_placed": 0, "created_at": datetime.now(timezone.utc).isoformat()}},
+        upsert=True,
+    )
+    return {"ok": True, "max_bids": req.max_bids}
+
+
+@router.delete("/auto-bid/{auction_id}")
+async def cancel_auto_bid(auction_id: str, request: Request):
+    """Cancel auto-bid for an auction."""
+    user = await get_current_user(request)
+    await db.auto_bids.update_one(
+        {"user_id": str(user["_id"]), "auction_id": auction_id},
+        {"$set": {"active": False}},
+    )
+    return {"ok": True}
+
+
+@router.get("/auto-bid/{auction_id}")
+async def get_auto_bid(auction_id: str, request: Request):
+    """Get auto-bid status for an auction."""
+    user = await get_current_user(request)
+    ab = await db.auto_bids.find_one(
+        {"user_id": str(user["_id"]), "auction_id": auction_id},
+        {"_id": 0},
+    )
+    if not ab or not ab.get("active"):
+        return {"active": False}
+    return {"active": True, "max_bids": ab.get("max_bids", 0), "bids_placed": ab.get("bids_placed", 0)}
 
 
 # ── Buy bid credits ──
@@ -240,13 +401,6 @@ async def buy_credits(req: BuyCreditsRequest, request: Request):
         "new_balance": updated_user.get("balance", 0),
     }
 
-
-# ── Get user's credit balance ──
-@router.get("/credits/balance")
-async def get_credits(request: Request):
-    """Get user's current bid credit balance."""
-    user = await get_current_user(request)
-    return {"bid_credits": user.get("bid_credits", 0)}
 
 
 # ── Admin: Create auction ──

@@ -65,12 +65,30 @@ Create a modern, professional fintech web app called BidBlitz V2. Build Revolut-
 ### Penny Auction System (Complete — April 5, 2026)
 **Backend (routes/auctions.py):**
 - `GET /api/auctions` — list all auctions (auto-ends expired ones)
-- `GET /api/auctions/{auction_id}` — auction detail + last 30 bids
-- `POST /api/auctions/bid` — place bid (costs 1 credit, +€0.01, extends timer +10s)
-- `POST /api/auctions/buy-credits` — buy bid credits with wallet balance (4 packages: 10/25/50/100)
+- `GET /api/auctions/{auction_id}` — auction detail + last 30 bids + unique bidder count
+- `POST /api/auctions/bid` — place bid (costs 1 credit, +0.01, extends timer +10s, triggers auto-bids)
+- `POST /api/auctions/buy-credits` — buy bid credits with wallet balance (4 packages)
 - `GET /api/auctions/credits/balance` — user's credit balance
+- `POST /api/auctions/auto-bid` — set auto-bid (max bids limit)
+- `GET /api/auctions/auto-bid/{id}` — check auto-bid status
+- `DELETE /api/auctions/auto-bid/{id}` — cancel auto-bid
+- `POST /api/auctions/daily-reward` — claim 3 free credits per day
+- `GET /api/auctions/daily-reward` — check daily reward availability
 - `POST /api/auctions/admin/create` — admin creates auctions
-- Auto-seeds 4 demo auctions (iPhone, PS5, AirPods, Galaxy Watch)
+- `POST /api/auctions/admin/refresh` — admin refreshes all auctions from catalog
+- Auto-seeds 6 demo auctions, 13 products in catalog with images
+
+**Frontend (pages/AuctionsPage.jsx) — Futuristic Premium Design:**
+- Ultra-premium dark glassmorphism design (#040610 base, backdrop-blur-xl panels)
+- Responsive grid: 2 cols mobile, 3 md, 4 xl
+- Grid cards: product image, countdown overlay with urgency glow, "FREE SHIPPING" badge, cyan price with text-shadow, "Bieten" button
+- Auction detail: hero image, "FREE WORLDWIDE SHIPPING" + "Brand New" badges, glassmorphism price panel with cyan glow, countdown with pulse on last seconds
+- Trust bar: Secure Payments | Real-Time Bids | Free Shipping + recent winners ticker
+- Daily Reward: claim 3 free credits/day with countdown timer
+- Auto-Bid: set max bids modal, active indicator, cancel button
+- Engagement: "You are leading" (green) / "You are outbid" (red) status, unique bidder count, bid count
+- Category filters, "How it works" section
+- i18n: all `auction.*` keys in EN + DE
 
 **Frontend (pages/AuctionsPage.jsx):**
 - Responsive grid layout: 2 cols mobile, 3 cols md, 4 cols xl

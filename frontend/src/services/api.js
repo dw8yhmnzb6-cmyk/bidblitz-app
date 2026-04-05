@@ -260,6 +260,11 @@ export const api = {
   createAuction: (body) => request("/api/auctions/admin/create", { method: "POST", body: JSON.stringify(body) }),
   refreshAuctions: () => request("/api/auctions/admin/refresh", { method: "POST" }),
   getAuctionCatalog: () => request("/api/auctions/admin/catalog"),
+  setAutoBid: (body) => request("/api/auctions/auto-bid", { method: "POST", body: JSON.stringify(body) }),
+  cancelAutoBid: (auctionId) => request(`/api/auctions/auto-bid/${auctionId}`, { method: "DELETE" }),
+  getAutoBid: (auctionId) => request(`/api/auctions/auto-bid/${auctionId}`),
+  claimDailyReward: () => request("/api/auctions/daily-reward", { method: "POST" }),
+  checkDailyReward: () => request("/api/auctions/daily-reward"),
   getMyTickets: () => request("/api/support/tickets"),
   getAdminTickets: (params = {}) => {
     const q = new URLSearchParams();

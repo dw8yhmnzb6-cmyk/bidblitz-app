@@ -4,199 +4,297 @@ import {
   ArrowLeft, Zap, Clock, TrendingUp, ChevronRight,
   Coins, Loader2, X, User,
   Gavel, Trophy, ShieldCheck, Timer, Package, Truck, Globe, Check, Shield,
-  Lock, Activity, Flame
+  Lock, Activity, Flame, Gift, Bot, AlertTriangle, Users
 } from "lucide-react";
 import { useUser, useI18n } from "../store";
 import { api } from "../services/api";
 import GuestCTABar from "../components/GuestCTABar";
 
-const POLL_INTERVAL = 2500;
+const POLL_MS = 2500;
 
-// ── Countdown Timer ──
-const CountdownTimer = ({ endsAt, status, size = "md" }) => {
-  const [remaining, setRemaining] = useState(0);
+/* ════════════════════════════════════════════
+   SHARED ATOMS
+   ════════════════════════════════════════════ */
+
+const glass = "backdrop-blur-xl";
+const panelBg = "rgba(8,12,20,0.65)";
+const panelBorder = "1px solid rgba(255,255,255,0.04)";
+const accentCyan = "#00E0FF";
+const accentGold = "#FFD166";
+const accentGreen = "#00E89D";
+const accentRed = "#FF4060";
+const accentPurple = "#B068FF";
+
+// ── Countdown ──
+const Countdown = ({ endsAt, status, size = "md" }) => {
+  const [rem, setRem] = useState(0);
   useEffect(() => {
-    const calc = () => setRemaining(Math.max(0, Math.floor((new Date(endsAt) - Date.now()) / 1000)));
-    calc();
-    const iv = setInterval(calc, 1000);
-    return () => clearInterval(iv);
+    const c = () => setRem(Math.max(0, Math.floor((new Date(endsAt) - Date.now()) / 1000)));
+    c(); const iv = setInterval(c, 1000); return () => clearInterval(iv);
   }, [endsAt]);
   if (status === "ended") return null;
-  const mins = Math.floor(remaining / 60);
-  const secs = remaining % 60;
-  const isUrgent = remaining <= 15;
-  const isCritical = remaining <= 5;
-  const textSize = size === "lg" ? "text-2xl" : size === "sm" ? "text-[13px]" : "text-lg";
-  const sepSize = size === "lg" ? "text-lg" : size === "sm" ? "text-[11px]" : "text-sm";
+  const m = Math.floor(rem / 60), s = rem % 60;
+  const urgent = rem <= 15, crit = rem <= 5;
+  const ts = size === "lg" ? "text-3xl" : size === "sm" ? "text-sm" : "text-xl";
   return (
-    <motion.div className="flex items-baseline gap-0.5 font-mono font-bold tabular-nums"
-      animate={isCritical ? { scale: [1, 1.06, 1] } : {}}
-      transition={{ duration: 0.5, repeat: isCritical ? Infinity : 0 }}>
-      <span className={`${textSize} ${isCritical ? "text-[#FF4757]" : isUrgent ? "text-[#FFB800]" : "text-white"}`}>
-        {String(mins).padStart(2, "0")}
+    <motion.div className="flex items-baseline gap-0.5 font-mono font-black tabular-nums select-none"
+      animate={crit ? { scale: [1, 1.06, 1] } : {}} transition={{ duration: 0.45, repeat: crit ? Infinity : 0 }}>
+      <span className={`${ts} ${crit ? "text-[#FF4060]" : urgent ? "text-[#FFD166]" : "text-white/90"}`} style={crit ? { textShadow: "0 0 12px rgba(255,64,96,0.5)" } : urgent ? { textShadow: "0 0 8px rgba(255,209,102,0.3)" } : {}}>
+        {String(m).padStart(2, "0")}
       </span>
-      <span className={`${sepSize} ${isCritical ? "text-[#FF4757]/60" : "text-white/20"}`}>:</span>
-      <span className={`${textSize} ${isCritical ? "text-[#FF4757]" : isUrgent ? "text-[#FFB800]" : "text-white"}`}>
-        {String(secs).padStart(2, "0")}
+      <span className={`text-base ${crit ? "text-[#FF4060]/50" : "text-white/15"}`}>:</span>
+      <span className={`${ts} ${crit ? "text-[#FF4060]" : urgent ? "text-[#FFD166]" : "text-white/90"}`} style={crit ? { textShadow: "0 0 12px rgba(255,64,96,0.5)" } : urgent ? { textShadow: "0 0 8px rgba(255,209,102,0.3)" } : {}}>
+        {String(s).padStart(2, "0")}
       </span>
-      {isUrgent && (
-        <motion.div className="w-1.5 h-1.5 rounded-full ml-1"
-          style={{ background: isCritical ? "#FF4757" : "#FFB800" }}
-          animate={{ opacity: [1, 0.2, 1] }} transition={{ duration: 0.5, repeat: Infinity }} />
-      )}
+      {urgent && <motion.div className="w-1.5 h-1.5 rounded-full ml-1.5" style={{ background: crit ? accentRed : accentGold, boxShadow: `0 0 6px ${crit ? accentRed : accentGold}` }} animate={{ opacity: [1, 0.2, 1] }} transition={{ duration: 0.4, repeat: Infinity }} />}
     </motion.div>
   );
 };
 
-// ── Credit Packages Modal ──
-const PACKAGES = [
+/* ════════════════════════════════════════════
+   DAILY REWARD
+   ════════════════════════════════════════════ */
+const DailyReward = ({ onClaimed }) => {
+  const { t } = useI18n();
+  const [available, setAvailable] = useState(false);
+  const [secs, setSecs] = useState(0);
+  const [claiming, setClaiming] = useState(false);
+  const [showDone, setShowDone] = useState(false);
+
+  useEffect(() => {
+    api.checkDailyReward().then(d => { setAvailable(d.available); setSecs(d.remaining_seconds || 0); }).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (secs <= 0 || available) return;
+    const iv = setInterval(() => setSecs(p => { if (p <= 1) { setAvailable(true); return 0; } return p - 1; }), 1000);
+    return () => clearInterval(iv);
+  }, [secs, available]);
+
+  const claim = async () => {
+    setClaiming(true);
+    try {
+      const r = await api.claimDailyReward();
+      onClaimed(r.total_credits);
+      setShowDone(true); setAvailable(false);
+      setSecs(86400);
+      setTimeout(() => setShowDone(false), 2500);
+    } catch {}
+    setClaiming(false);
+  };
+
+  const hh = Math.floor(secs / 3600), mm = Math.floor((secs % 3600) / 60);
+
+  return (
+    <motion.div className={`rounded-2xl p-3 ${glass}`}
+      style={{ background: panelBg, border: panelBorder, boxShadow: available ? `0 0 20px rgba(0,232,157,0.06)` : "none" }}
+      initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.02 }}>
+      <div className="flex items-center gap-3">
+        <motion.div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+          style={{ background: available ? "rgba(0,232,157,0.08)" : "rgba(255,255,255,0.02)", border: `1px solid ${available ? "rgba(0,232,157,0.15)" : "rgba(255,255,255,0.04)"}` }}
+          animate={available ? { boxShadow: ["0 0 0px rgba(0,232,157,0)", "0 0 16px rgba(0,232,157,0.15)", "0 0 0px rgba(0,232,157,0)"] } : {}}
+          transition={{ duration: 2, repeat: Infinity }}>
+          <Gift size={16} className={available ? "text-[#00E89D]" : "text-white/20"} />
+        </motion.div>
+        <div className="flex-1 min-w-0">
+          <p className="text-[11px] font-semibold text-white/80">{t("auction.daily_reward")}</p>
+          {available ? (
+            <p className="text-[9px] text-[#00E89D] font-medium">{t("auction.daily_available")}</p>
+          ) : (
+            <p className="text-[9px] text-[#444] font-medium">{hh}h {mm}m</p>
+          )}
+        </div>
+        <AnimatePresence mode="wait">
+          {showDone ? (
+            <motion.div key="done" initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.8, opacity: 0 }}
+              className="px-3 py-1.5 rounded-lg bg-[#00E89D]/10 border border-[#00E89D]/20">
+              <span className="text-[10px] font-bold text-[#00E89D]">+3</span>
+            </motion.div>
+          ) : (
+            <motion.button key="btn" data-testid="daily-reward-btn" onClick={claim} disabled={!available || claiming}
+              className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all ${available ? "bg-[#00E89D]/10 border border-[#00E89D]/20 text-[#00E89D]" : "bg-white/[0.02] border border-white/[0.04] text-[#333]"}`}
+              whileTap={available ? { scale: 0.95 } : {}}>
+              {claiming ? <Loader2 size={12} className="animate-spin" /> : t("auction.claim")}
+            </motion.button>
+          )}
+        </AnimatePresence>
+      </div>
+    </motion.div>
+  );
+};
+
+/* ════════════════════════════════════════════
+   BUY CREDITS MODAL
+   ════════════════════════════════════════════ */
+const PKGS = [
   { id: "10", credits: 10, price: 5 },
   { id: "25", credits: 25, price: 10 },
-  { id: "50", credits: 50, price: 18 },
-  { id: "100", credits: 100, price: 30 },
+  { id: "50", credits: 50, price: 18, deal: true },
+  { id: "100", credits: 100, price: 30, deal: true },
 ];
 
 const BuyCreditsModal = ({ open, onClose, onPurchased, balance }) => {
   const { t } = useI18n();
   const [buying, setBuying] = useState(null);
   const [msg, setMsg] = useState(null);
-  const handleBuy = async (pkg) => {
-    if (balance < pkg.price) { setMsg({ ok: false, text: t("auction.insufficient_balance") }); return; }
-    setBuying(pkg.id); setMsg(null);
-    try {
-      const res = await api.buyBidCredits({ package_id: pkg.id });
-      setMsg({ ok: true, text: `+${res.credits_added} Credits` });
-      setTimeout(() => { onPurchased(res); onClose(); setMsg(null); }, 1000);
-    } catch (e) { setMsg({ ok: false, text: e.message }); }
+  const buy = async (p) => {
+    if (balance < p.price) { setMsg({ ok: false, text: t("auction.insufficient_balance") }); return; }
+    setBuying(p.id); setMsg(null);
+    try { const r = await api.buyBidCredits({ package_id: p.id }); setMsg({ ok: true, text: `+${r.credits_added}` }); setTimeout(() => { onPurchased(r); onClose(); setMsg(null); }, 900); }
+    catch (e) { setMsg({ ok: false, text: e.message }); }
     setBuying(null);
   };
   if (!open) return null;
   return (
-    <AnimatePresence>
-      <motion.div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
-        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-        <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
-        <motion.div className="relative w-full max-w-md mx-4 mb-4 sm:mb-0 rounded-2xl overflow-hidden"
-          style={{ background: "#0A0A0A", border: "1px solid rgba(255,255,255,0.06)" }}
-          initial={{ y: 40, opacity: 0 }} animate={{ y: 0, opacity: 1 }}>
-          <div className="flex items-center justify-between px-5 pt-5 pb-3">
-            <h3 className="text-[15px] font-bold text-white font-outfit">{t("auction.buy_credits")}</h3>
-            <motion.button onClick={onClose} whileTap={{ scale: 0.9 }} className="w-8 h-8 rounded-full bg-white/[0.04] flex items-center justify-center"><X size={14} className="text-white/50" /></motion.button>
-          </div>
-          <p className="px-5 text-[11px] text-[#555] mb-3">{t("auction.wallet_balance")}: <span className="text-white/70 font-semibold">{balance.toFixed(2)}</span></p>
-          <div className="grid grid-cols-2 gap-2 px-5 pb-3">
-            {PACKAGES.map(pkg => (
-              <motion.button key={pkg.id} data-testid={`credit-pkg-${pkg.id}`} onClick={() => handleBuy(pkg)} disabled={buying === pkg.id}
-                className="relative rounded-xl p-3 text-left transition-all" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}
-                whileTap={{ scale: 0.97 }} whileHover={{ borderColor: "rgba(0,194,255,0.2)" }}>
-                <div className="flex items-center gap-1.5 mb-1"><Coins size={12} className="text-[#FFB800]" /><span className="text-[15px] font-bold text-white">{pkg.credits}</span></div>
-                <span className="text-[11px] text-[#555] font-medium">{pkg.price.toFixed(2)}</span>
-                {pkg.credits >= 50 && <span className="absolute top-1.5 right-1.5 text-[8px] font-bold px-1.5 py-0.5 rounded-full bg-[#00D26A]/10 text-[#00D26A] border border-[#00D26A]/20">DEAL</span>}
-                {buying === pkg.id && <Loader2 size={14} className="absolute top-3 right-3 animate-spin text-[#00C2FF]" />}
-              </motion.button>
-            ))}
-          </div>
-          <AnimatePresence>
-            {msg && <motion.div className={`mx-5 mb-4 px-3 py-2 rounded-xl text-[11px] font-medium ${msg.ok ? "bg-[#00D26A]/8 text-[#00D26A]" : "bg-[#FF4757]/8 text-[#FF4757]"}`}
-              initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>{msg.text}</motion.div>}
-          </AnimatePresence>
-          <div className="h-1" />
-        </motion.div>
+    <motion.div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} />
+      <motion.div className={`relative w-full max-w-md mx-4 mb-4 sm:mb-0 rounded-2xl overflow-hidden ${glass}`}
+        style={{ background: "rgba(8,12,20,0.9)", border: panelBorder }} initial={{ y: 40, opacity: 0 }} animate={{ y: 0, opacity: 1 }}>
+        <div className="flex items-center justify-between px-5 pt-5 pb-2">
+          <h3 className="text-[14px] font-bold text-white/90 font-outfit">{t("auction.buy_credits")}</h3>
+          <motion.button onClick={onClose} whileTap={{ scale: 0.9 }} className="w-8 h-8 rounded-full bg-white/[0.03] flex items-center justify-center"><X size={13} className="text-white/40" /></motion.button>
+        </div>
+        <p className="px-5 text-[10px] text-[#444] mb-3">{t("auction.wallet_balance")}: <span className="text-white/60 font-semibold">{balance.toFixed(2)}</span></p>
+        <div className="grid grid-cols-2 gap-2 px-5 pb-4">
+          {PKGS.map(p => (
+            <motion.button key={p.id} data-testid={`credit-pkg-${p.id}`} onClick={() => buy(p)} disabled={buying === p.id}
+              className={`relative rounded-xl p-3 text-left ${glass}`} style={{ background: "rgba(255,255,255,0.015)", border: panelBorder }}
+              whileTap={{ scale: 0.97 }} whileHover={{ borderColor: "rgba(0,224,255,0.12)" }}>
+              <div className="flex items-center gap-1.5 mb-1"><Coins size={11} className="text-[#FFD166]" /><span className="text-[15px] font-bold text-white/90">{p.credits}</span></div>
+              <span className="text-[10px] text-[#555] font-medium">{p.price.toFixed(2)}</span>
+              {p.deal && <span className="absolute top-1.5 right-1.5 text-[7px] font-bold px-1.5 py-0.5 rounded-full bg-[#00E89D]/8 text-[#00E89D] border border-[#00E89D]/15">DEAL</span>}
+              {buying === p.id && <Loader2 size={12} className="absolute top-3 right-3 animate-spin text-[#00E0FF]" />}
+            </motion.button>
+          ))}
+        </div>
+        <AnimatePresence>{msg && <motion.div className={`mx-5 mb-4 px-3 py-2 rounded-xl text-[10px] font-medium ${msg.ok ? "bg-[#00E89D]/6 text-[#00E89D]" : "bg-[#FF4060]/6 text-[#FF4060]"}`} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>{msg.text}</motion.div>}</AnimatePresence>
       </motion.div>
-    </AnimatePresence>
+    </motion.div>
   );
 };
 
-// ── Grid Auction Card (NEW) ──
-const AuctionGridCard = ({ auction, onClick, t }) => {
+/* ════════════════════════════════════════════
+   AUTO-BID MODAL
+   ════════════════════════════════════════════ */
+const AutoBidModal = ({ open, onClose, auctionId, onSet }) => {
+  const { t } = useI18n();
+  const [maxBids, setMaxBids] = useState(10);
+  const [saving, setSaving] = useState(false);
+  const submit = async () => {
+    setSaving(true);
+    try { await api.setAutoBid({ auction_id: auctionId, max_bids: maxBids }); onSet(maxBids); onClose(); } catch {}
+    setSaving(false);
+  };
+  if (!open) return null;
+  return (
+    <motion.div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} />
+      <motion.div className={`relative w-full max-w-sm mx-4 mb-4 sm:mb-0 rounded-2xl overflow-hidden ${glass}`}
+        style={{ background: "rgba(8,12,20,0.92)", border: panelBorder }} initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }}>
+        <div className="px-5 pt-5 pb-3">
+          <div className="flex items-center gap-2 mb-1"><Bot size={14} className="text-[#B068FF]" /><h3 className="text-[14px] font-bold text-white/90 font-outfit">{t("auction.auto_bid")}</h3></div>
+          <p className="text-[10px] text-[#444]">{t("auction.auto_bid_desc")}</p>
+        </div>
+        <div className="px-5 pb-4">
+          <label className="text-[9px] text-[#444] uppercase tracking-wider font-semibold mb-2 block">{t("auction.max_bids")}</label>
+          <div className="flex items-center gap-3 mb-4">
+            {[5, 10, 25, 50].map(v => (
+              <motion.button key={v} onClick={() => setMaxBids(v)}
+                className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all ${maxBids === v ? "bg-[#B068FF]/12 border border-[#B068FF]/25 text-[#B068FF]" : "bg-white/[0.02] border border-white/[0.04] text-[#555]"}`}
+                whileTap={{ scale: 0.95 }}>{v}</motion.button>
+            ))}
+          </div>
+          <motion.button data-testid="auto-bid-confirm" onClick={submit} disabled={saving}
+            className="w-full py-3 rounded-xl text-[12px] font-bold flex items-center justify-center gap-2"
+            style={{ background: "rgba(176,104,255,0.1)", border: "1px solid rgba(176,104,255,0.2)", color: accentPurple }}
+            whileTap={{ scale: 0.97 }}>
+            {saving ? <Loader2 size={13} className="animate-spin" /> : <><Bot size={13} />{t("auction.activate_auto_bid")}</>}
+          </motion.button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+};
+
+/* ════════════════════════════════════════════
+   GRID CARD
+   ════════════════════════════════════════════ */
+const AuctionGridCard = ({ auction, onClick, t, idx }) => {
   const isEnded = auction.status === "ended";
-  const [remaining, setRemaining] = useState(0);
+  const [rem, setRem] = useState(0);
   useEffect(() => {
-    const calc = () => setRemaining(Math.max(0, Math.floor((new Date(auction.ends_at) - Date.now()) / 1000)));
-    calc();
-    const iv = setInterval(calc, 1000);
-    return () => clearInterval(iv);
+    const c = () => setRem(Math.max(0, Math.floor((new Date(auction.ends_at) - Date.now()) / 1000)));
+    c(); const iv = setInterval(c, 1000); return () => clearInterval(iv);
   }, [auction.ends_at]);
-  const m = Math.floor(remaining / 60);
-  const s = remaining % 60;
-  const urgent = remaining <= 30 && !isEnded;
+  const m = Math.floor(rem / 60), s = rem % 60;
+  const urgent = rem <= 30 && !isEnded;
+  const crit = rem <= 10 && !isEnded;
 
   return (
-    <motion.button data-testid={`auction-card-${auction.auction_id}`}
-      onClick={onClick}
-      className="w-full rounded-2xl overflow-hidden text-left relative group"
-      style={{ background: "rgba(255,255,255,0.02)", border: `1px solid ${isEnded ? "rgba(255,255,255,0.03)" : "rgba(0,194,255,0.06)"}` }}
+    <motion.button data-testid={`auction-card-${auction.auction_id}`} onClick={onClick}
+      className={`w-full rounded-2xl overflow-hidden text-left relative group ${glass}`}
+      style={{ background: panelBg, border: panelBorder, boxShadow: crit ? "0 0 20px rgba(255,64,96,0.06)" : "0 2px 16px rgba(0,0,0,0.2)" }}
       whileTap={{ scale: 0.97 }}
-      whileHover={{ borderColor: isEnded ? "rgba(255,255,255,0.06)" : "rgba(0,194,255,0.15)" }}
-      initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
+      initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.04, duration: 0.35 }}>
+      {/* Glow line on active */}
+      {!isEnded && (
+        <motion.div className="absolute top-0 left-0 right-0 h-px z-10"
+          style={{ background: crit ? `linear-gradient(90deg, transparent, ${accentRed}, transparent)` : `linear-gradient(90deg, transparent, ${accentCyan}40, transparent)` }}
+          animate={{ opacity: [0.4, 1, 0.4] }} transition={{ duration: crit ? 0.6 : 2.5, repeat: Infinity }} />
+      )}
       {/* Image */}
-      <div className="relative w-full aspect-[4/3] overflow-hidden bg-[#0A0A0A]">
+      <div className="relative w-full aspect-[4/3] overflow-hidden">
         {auction.image_url ? (
-          <img src={auction.image_url} alt={auction.title}
-            className={`w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 ${isEnded ? "opacity-40 grayscale" : ""}`}
-            loading="lazy" />
+          <img src={auction.image_url} alt={auction.title} className={`w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.04] ${isEnded ? "opacity-30 grayscale" : ""}`} loading="lazy" />
         ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <Gavel size={28} className="text-[#1a1a1a]" />
+          <div className="w-full h-full bg-[#060810] flex items-center justify-center"><Gavel size={24} className="text-white/5" /></div>
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-[#060810] via-transparent to-transparent opacity-70" />
+        {/* Timer badge */}
+        <div className="absolute top-2 left-2 flex items-center gap-1 px-2 py-1 rounded-lg backdrop-blur-xl"
+          style={{ background: crit ? "rgba(255,64,96,0.75)" : "rgba(6,8,16,0.7)", border: `1px solid ${crit ? "rgba(255,64,96,0.3)" : "rgba(255,255,255,0.06)"}` }}>
+          <Timer size={8} className="text-white/70" />
+          <span className={`text-[10px] font-mono font-bold tabular-nums text-white`}>
+            {isEnded ? "ENDED" : `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`}
+          </span>
+        </div>
+        {/* Activity */}
+        {auction.total_bids > 0 && !isEnded && (
+          <div className="absolute top-2 right-2 flex items-center gap-1 px-1.5 py-0.5 rounded-md backdrop-blur-xl bg-[#060810]/60 border border-white/[0.06]">
+            <Flame size={8} className="text-[#FF8C42]" /><span className="text-[8px] font-bold text-white/70">{auction.total_bids}</span>
           </div>
         )}
-        {/* Overlay badges */}
-        <div className="absolute top-2 left-2 right-2 flex justify-between items-start">
-          {!isEnded && (
-            <div className="flex items-center gap-1 px-2 py-1 rounded-lg backdrop-blur-md"
-              style={{ background: urgent ? "rgba(255,71,87,0.85)" : "rgba(0,0,0,0.7)", border: "1px solid rgba(255,255,255,0.08)" }}>
-              <Timer size={9} className="text-white/80" />
-              <span className={`text-[10px] font-mono font-bold tabular-nums text-white`}>
-                {String(m).padStart(2, "0")}:{String(s).padStart(2, "0")}
-              </span>
-            </div>
-          )}
-          {isEnded && (
-            <div className="flex items-center gap-1 px-2 py-1 rounded-lg backdrop-blur-md bg-black/70 border border-white/10">
-              <Trophy size={9} className="text-[#FFB800]" />
-              <span className="text-[9px] font-bold text-[#FFB800]">ENDED</span>
-            </div>
-          )}
-          {auction.total_bids > 0 && (
-            <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-md backdrop-blur-md bg-black/60 border border-white/8">
-              <Flame size={8} className="text-[#FF6B6B]" />
-              <span className="text-[9px] font-bold text-white/80">{auction.total_bids}</span>
-            </div>
-          )}
-        </div>
-        {/* Free shipping badge */}
+        {/* Free shipping */}
         {!isEnded && (
-          <div className="absolute bottom-2 left-2 flex items-center gap-1 px-1.5 py-0.5 rounded-md backdrop-blur-md bg-[#00D26A]/80 border border-[#00D26A]/30">
-            <Truck size={8} className="text-white" />
-            <span className="text-[8px] font-bold text-white tracking-wide">FREE SHIPPING</span>
+          <div className="absolute bottom-2 left-2 flex items-center gap-1 px-1.5 py-0.5 rounded-md backdrop-blur-xl"
+            style={{ background: "rgba(0,232,157,0.7)", border: "1px solid rgba(0,232,157,0.25)" }}>
+            <Truck size={7} className="text-white" /><span className="text-[7px] font-bold text-white tracking-wider">FREE SHIPPING</span>
+          </div>
+        )}
+        {isEnded && auction.winner_name && (
+          <div className="absolute bottom-2 left-2 flex items-center gap-1 px-1.5 py-0.5 rounded-md backdrop-blur-xl bg-[#FFD166]/80 border border-[#FFD166]/30">
+            <Trophy size={7} className="text-black/70" /><span className="text-[7px] font-bold text-black/70 truncate max-w-[70px]">{auction.winner_name}</span>
           </div>
         )}
       </div>
       {/* Info */}
       <div className="p-3">
-        <h3 className={`text-[12px] font-semibold leading-tight mb-1.5 line-clamp-2 ${isEnded ? "text-white/40" : "text-white/90"}`}>
-          {auction.title}
-        </h3>
-        <div className="flex items-end justify-between gap-2">
+        <h3 className={`text-[11px] font-semibold leading-tight mb-2 line-clamp-2 ${isEnded ? "text-white/30" : "text-white/85"}`}>{auction.title}</h3>
+        <div className="flex items-end justify-between">
           <div>
-            <p className="text-[8px] text-[#333] uppercase tracking-wider font-semibold">{t("auction.current_price")}</p>
-            <motion.p className={`text-[18px] font-black font-mono tabular-nums leading-none ${isEnded ? "text-[#FFB800]" : "text-[#00C2FF]"}`}
-              key={auction.current_price}>
+            <p className="text-[7px] text-[#333] uppercase tracking-widest font-semibold mb-0.5">{t("auction.current_price")}</p>
+            <p className={`text-[17px] font-black font-mono tabular-nums leading-none ${isEnded ? "text-[#FFD166]/60" : "text-[#00E0FF]"}`}
+              style={!isEnded ? { textShadow: "0 0 10px rgba(0,224,255,0.15)" } : {}}>
               {auction.current_price.toFixed(2)}
-            </motion.p>
-            <p className="text-[9px] text-[#333] mt-0.5 line-through">{auction.retail_price.toFixed(2)}</p>
+            </p>
+            <p className="text-[8px] text-[#333] mt-0.5 line-through">{auction.retail_price.toFixed(2)}</p>
           </div>
           {!isEnded && (
-            <div className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-[#00C2FF]/10 border border-[#00C2FF]/20">
-              <Zap size={10} className="text-[#00C2FF]" />
-              <span className="text-[10px] font-bold text-[#00C2FF]">{t("auction.bid_now")}</span>
-            </div>
-          )}
-          {isEnded && auction.winner_name && (
-            <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-[#FFB800]/6 border border-[#FFB800]/10">
-              <Trophy size={9} className="text-[#FFB800]" />
-              <span className="text-[8px] text-[#FFB800] font-semibold truncate max-w-[60px]">{auction.winner_name}</span>
-            </div>
+            <motion.div className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg"
+              style={{ background: "rgba(0,224,255,0.06)", border: "1px solid rgba(0,224,255,0.12)" }}
+              whileHover={{ borderColor: "rgba(0,224,255,0.25)", background: "rgba(0,224,255,0.1)" }}>
+              <Zap size={9} className="text-[#00E0FF]" /><span className="text-[9px] font-bold text-[#00E0FF]">{t("auction.bid_now")}</span>
+            </motion.div>
           )}
         </div>
       </div>
@@ -204,221 +302,250 @@ const AuctionGridCard = ({ auction, onClick, t }) => {
   );
 };
 
-// ── Trust Bar ──
+/* ════════════════════════════════════════════
+   TRUST BAR
+   ════════════════════════════════════════════ */
 const TrustBar = ({ t, recentWinners }) => (
-  <motion.div className="rounded-2xl p-3 mb-4"
-    style={{ background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.04)" }}
-    initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.04 }}>
-    <div className="grid grid-cols-3 gap-2">
-      <div className="flex items-center gap-2 justify-center">
-        <Lock size={11} className="text-[#00D26A] flex-shrink-0" />
-        <span className="text-[9px] text-white/50 font-medium leading-tight">{t("auction.trust_secure")}</span>
-      </div>
-      <div className="flex items-center gap-2 justify-center border-x border-white/[0.04]">
-        <Activity size={11} className="text-[#00C2FF] flex-shrink-0" />
-        <span className="text-[9px] text-white/50 font-medium leading-tight">{t("auction.trust_realtime")}</span>
-      </div>
-      <div className="flex items-center gap-2 justify-center">
-        <Truck size={11} className="text-[#A855F7] flex-shrink-0" />
-        <span className="text-[9px] text-white/50 font-medium leading-tight">{t("auction.trust_free_ship")}</span>
-      </div>
+  <motion.div className={`rounded-2xl p-3 mb-3 ${glass}`} style={{ background: panelBg, border: panelBorder }}
+    initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.03 }}>
+    <div className="grid grid-cols-3 gap-1">
+      {[
+        { icon: Lock, color: accentGreen, text: t("auction.trust_secure") },
+        { icon: Activity, color: accentCyan, text: t("auction.trust_realtime") },
+        { icon: Truck, color: accentPurple, text: t("auction.trust_free_ship") },
+      ].map((item, i) => (
+        <div key={i} className={`flex items-center gap-1.5 justify-center ${i === 1 ? "border-x border-white/[0.03]" : ""}`}>
+          <item.icon size={10} style={{ color: item.color }} /><span className="text-[8px] text-white/40 font-medium">{item.text}</span>
+        </div>
+      ))}
     </div>
-    {/* Recent Winners ticker */}
     {recentWinners.length > 0 && (
-      <div className="mt-2.5 pt-2.5 border-t border-white/[0.03]">
-        <div className="flex items-center gap-2 overflow-hidden">
-          <Trophy size={10} className="text-[#FFB800] flex-shrink-0" />
-          <div className="flex gap-3 overflow-x-auto scrollbar-hide">
-            {recentWinners.slice(0, 4).map((w, i) => (
-              <div key={i} className="flex items-center gap-1.5 flex-shrink-0">
-                <span className="text-[9px] text-[#FFB800] font-semibold">{w.winner_name}</span>
-                <span className="text-[8px] text-[#333]">{t("auction.won_item")}</span>
-                <span className="text-[9px] text-white/40 font-medium truncate max-w-[80px]">{w.title}</span>
-              </div>
-            ))}
-          </div>
+      <div className="mt-2 pt-2 border-t border-white/[0.03] flex items-center gap-2 overflow-hidden">
+        <Trophy size={9} className="text-[#FFD166] flex-shrink-0" />
+        <div className="flex gap-3 overflow-x-auto scrollbar-hide">
+          {recentWinners.slice(0, 3).map((w, i) => (
+            <div key={i} className="flex items-center gap-1 flex-shrink-0">
+              <span className="text-[8px] text-[#FFD166] font-semibold">{w.winner_name}</span>
+              <span className="text-[7px] text-[#333]">{t("auction.won_item")}</span>
+              <span className="text-[8px] text-white/30 truncate max-w-[70px]">{w.title}</span>
+            </div>
+          ))}
         </div>
       </div>
     )}
   </motion.div>
 );
 
-// ── Bid History Item ──
-const BidHistoryItem = ({ bid, isLatest }) => (
-  <motion.div className={`flex items-center justify-between py-2 px-3 rounded-lg ${isLatest ? "bg-[#00C2FF]/[0.03]" : ""}`}
-    initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.2 }}>
-    <div className="flex items-center gap-2.5 min-w-0">
-      <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0"
-        style={{ background: isLatest ? "rgba(0,194,255,0.1)" : "rgba(255,255,255,0.03)", border: `1px solid ${isLatest ? "rgba(0,194,255,0.15)" : "rgba(255,255,255,0.04)"}` }}>
-        <User size={10} className={isLatest ? "text-[#00C2FF]" : "text-white/30"} />
+/* ════════════════════════════════════════════
+   BID HISTORY ITEM
+   ════════════════════════════════════════════ */
+const BidRow = ({ bid, isLatest }) => (
+  <motion.div className={`flex items-center justify-between py-2 px-3 ${isLatest ? "bg-[#00E0FF]/[0.02]" : ""}`}
+    initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.2 }}>
+    <div className="flex items-center gap-2 min-w-0">
+      <div className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0"
+        style={{ background: isLatest ? "rgba(0,224,255,0.08)" : "rgba(255,255,255,0.02)", border: `1px solid ${isLatest ? "rgba(0,224,255,0.12)" : "rgba(255,255,255,0.03)"}` }}>
+        {bid.is_auto ? <Bot size={8} className={isLatest ? "text-[#B068FF]" : "text-white/20"} /> : <User size={8} className={isLatest ? "text-[#00E0FF]" : "text-white/20"} />}
       </div>
-      <span className={`text-[11px] font-medium truncate ${isLatest ? "text-white/90" : "text-white/50"}`}>{bid.user_name}</span>
+      <span className={`text-[10px] font-medium truncate ${isLatest ? "text-white/85" : "text-white/40"}`}>{bid.user_name}</span>
+      {bid.is_auto && <Bot size={8} className="text-[#B068FF]/50 flex-shrink-0" />}
     </div>
-    <div className="flex items-center gap-3 flex-shrink-0">
-      <span className={`text-[12px] font-mono font-bold tabular-nums ${isLatest ? "text-[#00C2FF]" : "text-white/40"}`}>{bid.bid_price.toFixed(2)}</span>
-      <span className="text-[9px] text-[#333]">{new Date(bid.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span>
+    <div className="flex items-center gap-2.5 flex-shrink-0">
+      <span className={`text-[11px] font-mono font-bold tabular-nums ${isLatest ? "text-[#00E0FF]" : "text-white/30"}`}>{bid.bid_price.toFixed(2)}</span>
+      <span className="text-[8px] text-[#333]">{new Date(bid.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span>
     </div>
   </motion.div>
 );
 
-// ── Auction Detail View ──
+/* ════════════════════════════════════════════
+   AUCTION DETAIL
+   ════════════════════════════════════════════ */
 const AuctionDetail = ({ auctionId, onBack, isGuest, onAuthRequired, userCredits, onCreditsChanged }) => {
   const { t } = useI18n();
   const user = useUser();
   const [auction, setAuction] = useState(null);
   const [bids, setBids] = useState([]);
+  const [uniqueBidders, setUniqueBidders] = useState(0);
   const [loading, setLoading] = useState(true);
   const [bidding, setBidding] = useState(false);
   const [bidMsg, setBidMsg] = useState(null);
+  const [autoBid, setAutoBid] = useState(null);
+  const [showAutoBidModal, setShowAutoBidModal] = useState(false);
   const pollRef = useRef(null);
-  const [bidFlash, setBidFlash] = useState(false);
 
-  const fetchAuction = useCallback(async () => {
-    try { const res = await api.getAuction(auctionId); setAuction(res.auction); setBids(res.bids || []); } catch {}
+  const fetch = useCallback(async () => {
+    try {
+      const r = await api.getAuction(auctionId);
+      setAuction(r.auction); setBids(r.bids || []); setUniqueBidders(r.unique_bidders || 0);
+    } catch {}
   }, [auctionId]);
 
+  const fetchAutoBid = useCallback(async () => {
+    if (isGuest) return;
+    try { const r = await api.getAutoBid(auctionId); setAutoBid(r); } catch {}
+  }, [auctionId, isGuest]);
+
   useEffect(() => {
-    fetchAuction().then(() => setLoading(false));
-    pollRef.current = setInterval(fetchAuction, POLL_INTERVAL);
+    Promise.all([fetch(), fetchAutoBid()]).then(() => setLoading(false));
+    pollRef.current = setInterval(fetch, POLL_MS);
     return () => clearInterval(pollRef.current);
-  }, [fetchAuction]);
+  }, [fetch, fetchAutoBid]);
 
   const handleBid = async () => {
     if (isGuest) { onAuthRequired(); return; }
     if (userCredits < 1) { setBidMsg({ ok: false, text: t("auction.no_credits") }); return; }
     setBidding(true); setBidMsg(null);
     try {
-      const res = await api.placeBid({ auction_id: auctionId });
-      setAuction(prev => ({ ...prev, current_price: res.new_price, ends_at: res.ends_at, total_bids: res.total_bids, last_bidder_name: user.name }));
-      setBids(prev => [{ bid_id: Date.now().toString(), user_name: user.name, bid_price: res.new_price, created_at: new Date().toISOString() }, ...prev].slice(0, 30));
-      onCreditsChanged(res.remaining_credits);
-      setBidFlash(true);
-      setTimeout(() => setBidFlash(false), 600);
+      const r = await api.placeBid({ auction_id: auctionId });
+      setAuction(p => ({ ...p, current_price: r.new_price, ends_at: r.ends_at, total_bids: r.total_bids, last_bidder_id: user.id, last_bidder_name: user.name }));
+      setBids(p => [{ bid_id: Date.now().toString(), user_name: user.name, bid_price: r.new_price, created_at: new Date().toISOString() }, ...p].slice(0, 30));
+      onCreditsChanged(r.remaining_credits);
     } catch (e) { setBidMsg({ ok: false, text: e.message }); }
     setBidding(false);
   };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center" style={{ background: "#030303" }}><Loader2 size={24} className="animate-spin text-[#00C2FF]" /></div>;
+  const cancelAuto = async () => {
+    try { await api.cancelAutoBid(auctionId); setAutoBid({ active: false }); } catch {}
+  };
+
+  if (loading) return <div className="min-h-screen flex items-center justify-center" style={{ background: "#040610" }}><Loader2 size={20} className="animate-spin text-[#00E0FF]" /></div>;
   if (!auction) return null;
   const isActive = auction.status === "active";
   const isEnded = auction.status === "ended";
-  const isWinner = isEnded && auction.winner_id === user?.id;
-  const savingsPercent = auction.retail_price > 0 ? Math.round(((auction.retail_price - auction.current_price) / auction.retail_price) * 100) : 0;
+  const isLeading = isActive && auction.last_bidder_id === user?.id;
+  const isOutbid = isActive && auction.last_bidder_id && auction.last_bidder_id !== user?.id && bids.some(b => b.user_id === user?.id || b.user_name === user?.name);
+  const savePct = auction.retail_price > 0 ? Math.round(((auction.retail_price - auction.current_price) / auction.retail_price) * 100) : 0;
 
   return (
-    <motion.div className="min-h-screen relative" style={{ background: "#030303" }} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+    <motion.div className="min-h-screen" style={{ background: "#040610" }} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
       {/* Hero Image */}
-      <div className="relative w-full aspect-[16/10] max-h-[320px] overflow-hidden bg-[#080808]">
-        {auction.image_url ? (
-          <img src={auction.image_url} alt={auction.title} className={`w-full h-full object-cover ${isEnded ? "opacity-40 grayscale" : ""}`} />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center"><Gavel size={48} className="text-[#111]" /></div>
-        )}
-        <div className="absolute inset-0" style={{ background: "linear-gradient(to top, #030303 0%, transparent 60%)" }} />
-        {/* Back button overlay */}
+      <div className="relative w-full aspect-[16/10] max-h-[300px] overflow-hidden">
+        {auction.image_url ? <img src={auction.image_url} alt="" className={`w-full h-full object-cover ${isEnded ? "opacity-30 grayscale" : ""}`} /> : <div className="w-full h-full bg-[#060810]" />}
+        <div className="absolute inset-0" style={{ background: "linear-gradient(to top, #040610 0%, #04061080 40%, transparent 100%)" }} />
         <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-4 pt-[max(env(safe-area-inset-top,0px),16px)]">
-          <motion.button data-testid="auction-back-btn" className="w-10 h-10 rounded-full flex items-center justify-center backdrop-blur-md"
-            style={{ background: "rgba(0,0,0,0.5)", border: "1px solid rgba(255,255,255,0.08)" }}
-            whileTap={{ scale: 0.88 }} onClick={onBack}>
-            <ArrowLeft size={16} className="text-white/80" />
+          <motion.button data-testid="auction-back-btn" className={`w-9 h-9 rounded-full flex items-center justify-center ${glass}`}
+            style={{ background: "rgba(6,8,16,0.6)", border: "1px solid rgba(255,255,255,0.06)" }} whileTap={{ scale: 0.88 }} onClick={onBack}>
+            <ArrowLeft size={15} className="text-white/70" />
           </motion.button>
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full backdrop-blur-md"
-            style={{ background: "rgba(0,0,0,0.5)", border: "1px solid rgba(255,184,0,0.2)" }}>
-            <Coins size={11} className="text-[#FFB800]" />
-            <span className="text-[11px] font-bold text-[#FFB800] tabular-nums">{userCredits}</span>
+          <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full ${glass}`} style={{ background: "rgba(6,8,16,0.6)", border: "1px solid rgba(255,209,102,0.15)" }}>
+            <Coins size={10} className="text-[#FFD166]" /><span className="text-[10px] font-bold text-[#FFD166] tabular-nums">{userCredits}</span>
           </div>
         </div>
-        {/* Free shipping badge on hero */}
-        <div className="absolute bottom-14 left-4 flex items-center gap-1.5 px-2 py-1 rounded-lg backdrop-blur-md bg-[#00D26A]/80 border border-[#00D26A]/30">
-          <Truck size={10} className="text-white" />
-          <span className="text-[9px] font-bold text-white tracking-wide">FREE WORLDWIDE SHIPPING</span>
+        {/* Badges on hero */}
+        <div className="absolute bottom-12 left-4 flex items-center gap-1.5 px-2 py-1 rounded-lg backdrop-blur-xl bg-[#00E89D]/70 border border-[#00E89D]/25">
+          <Truck size={9} className="text-white" /><span className="text-[8px] font-bold text-white tracking-wider">FREE WORLDWIDE SHIPPING</span>
         </div>
-        {/* Condition badge */}
-        <div className="absolute bottom-14 right-4 flex items-center gap-1 px-2 py-1 rounded-lg backdrop-blur-md bg-black/60 border border-[#00D26A]/20">
-          <ShieldCheck size={9} className="text-[#00D26A]" />
-          <span className="text-[9px] font-semibold text-[#00D26A]">{auction.condition || "Brand New"}</span>
+        <div className="absolute bottom-12 right-4 flex items-center gap-1 px-2 py-1 rounded-lg backdrop-blur-xl bg-[#060810]/60 border border-[#00E89D]/15">
+          <ShieldCheck size={8} className="text-[#00E89D]" /><span className="text-[8px] font-semibold text-[#00E89D]">{auction.condition || "Brand New"}</span>
         </div>
       </div>
 
-      <div className="px-5 -mt-6 pb-32 relative z-10 space-y-4">
-        {/* Title */}
-        <div>
-          <h1 className="text-[18px] font-bold text-white font-outfit leading-tight">{auction.title}</h1>
-          <p className="text-[11px] text-[#444] mt-1 leading-relaxed">{auction.description}</p>
-        </div>
+      <div className="px-5 -mt-5 pb-32 relative z-10 space-y-3">
+        <h1 className="text-[17px] font-bold text-white/90 font-outfit leading-tight">{auction.title}</h1>
+        <p className="text-[10px] text-white/30 leading-relaxed">{auction.description}</p>
 
-        {/* Price + Timer */}
-        <motion.div className="rounded-2xl p-4 relative overflow-hidden"
-          style={{ background: "rgba(255,255,255,0.015)", border: `1px solid ${isEnded ? "rgba(255,184,0,0.1)" : "rgba(0,194,255,0.08)"}` }}>
-          {isActive && <motion.div className="absolute top-0 left-0 right-0 h-[2px]" style={{ background: "linear-gradient(90deg, transparent, rgba(0,194,255,0.5), transparent)" }} animate={{ opacity: [0.3, 1, 0.3] }} transition={{ duration: 2, repeat: Infinity }} />}
+        {/* Engagement: Leading / Outbid */}
+        <AnimatePresence>
+          {isLeading && (
+            <motion.div className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{ background: "rgba(0,232,157,0.05)", border: "1px solid rgba(0,232,157,0.1)" }}
+              initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+              <ShieldCheck size={12} className="text-[#00E89D]" /><span className="text-[10px] font-semibold text-[#00E89D]">{t("auction.you_leading")}</span>
+            </motion.div>
+          )}
+          {isOutbid && (
+            <motion.div className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{ background: "rgba(255,64,96,0.05)", border: "1px solid rgba(255,64,96,0.1)" }}
+              initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+              <AlertTriangle size={12} className="text-[#FF4060]" /><span className="text-[10px] font-semibold text-[#FF4060]">{t("auction.you_outbid")}</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Price + Timer Panel */}
+        <motion.div className={`rounded-2xl p-4 relative overflow-hidden ${glass}`} style={{ background: panelBg, border: panelBorder }}
+          initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+          {isActive && <motion.div className="absolute top-0 left-0 right-0 h-px" style={{ background: `linear-gradient(90deg, transparent, ${accentCyan}50, transparent)` }} animate={{ opacity: [0.3, 1, 0.3] }} transition={{ duration: 2, repeat: Infinity }} />}
           <div className="flex items-start justify-between mb-3">
             <div>
-              <p className="text-[8px] text-[#444] uppercase tracking-wider font-semibold mb-1">{t("auction.current_price")}</p>
-              <motion.p className="text-[32px] font-black font-mono tabular-nums leading-none" style={{ color: isEnded ? "#FFB800" : "#00C2FF" }}
-                key={auction.current_price} initial={{ scale: 1.08, color: "#00FF88" }} animate={{ scale: 1, color: isEnded ? "#FFB800" : "#00C2FF" }} transition={{ duration: 0.3 }}>
+              <p className="text-[7px] text-[#444] uppercase tracking-widest font-semibold mb-1">{t("auction.current_price")}</p>
+              <motion.p className="text-[30px] font-black font-mono tabular-nums leading-none" style={{ color: isEnded ? accentGold : accentCyan, textShadow: isEnded ? "none" : "0 0 16px rgba(0,224,255,0.2)" }}
+                key={auction.current_price} initial={{ scale: 1.06 }} animate={{ scale: 1 }} transition={{ duration: 0.25 }}>
                 {auction.current_price.toFixed(2)}
               </motion.p>
-              <p className="text-[10px] text-[#333] mt-0.5"><span className="line-through">{auction.retail_price.toFixed(2)}</span>{savingsPercent > 0 && <span className="text-[#00D26A] ml-1.5 font-semibold">-{savingsPercent}%</span>}</p>
+              <p className="text-[9px] text-[#333] mt-0.5"><span className="line-through">{auction.retail_price.toFixed(2)}</span>{savePct > 0 && <span className="text-[#00E89D] ml-1 font-semibold">-{savePct}%</span>}</p>
             </div>
             <div className="text-right">
-              <p className="text-[8px] text-[#444] uppercase tracking-wider font-semibold mb-1">{isEnded ? t("auction.ended") : t("auction.time_left")}</p>
-              {isActive && <CountdownTimer endsAt={auction.ends_at} status={auction.status} size="lg" />}
-              {isEnded && <div className="flex items-center gap-1.5"><Trophy size={14} className="text-[#FFB800]" /><span className="text-[13px] font-bold text-[#FFB800]">{auction.winner_name || "—"}</span></div>}
+              <p className="text-[7px] text-[#444] uppercase tracking-widest font-semibold mb-1">{isEnded ? t("auction.ended") : t("auction.time_left")}</p>
+              {isActive && <Countdown endsAt={auction.ends_at} status={auction.status} size="lg" />}
+              {isEnded && <div className="flex items-center gap-1"><Trophy size={14} className="text-[#FFD166]" /><span className="text-[12px] font-bold text-[#FFD166]">{auction.winner_name || "—"}</span></div>}
             </div>
           </div>
-          <div className="flex items-center gap-4 pt-3 border-t border-white/[0.04]">
-            <div className="flex items-center gap-1.5"><Gavel size={10} className="text-[#A855F7]" /><span className="text-[10px] text-white/50">{auction.total_bids} bids</span></div>
-            <div className="flex items-center gap-1.5"><TrendingUp size={10} className="text-[#00D26A]" /><span className="text-[10px] text-white/50">+0.01/bid</span></div>
-            <div className="flex items-center gap-1.5"><Clock size={10} className="text-[#FFB800]" /><span className="text-[10px] text-white/50">+10s/bid</span></div>
+          <div className="flex items-center gap-4 pt-3 border-t border-white/[0.03]">
+            <div className="flex items-center gap-1"><Gavel size={9} className="text-[#B068FF]" /><span className="text-[9px] text-white/40">{auction.total_bids} bids</span></div>
+            <div className="flex items-center gap-1"><Users size={9} className="text-[#FFD166]" /><span className="text-[9px] text-white/40">{uniqueBidders} bidders</span></div>
+            <div className="flex items-center gap-1"><TrendingUp size={9} className="text-[#00E89D]" /><span className="text-[9px] text-white/40">+0.01</span></div>
+            <div className="flex items-center gap-1"><Clock size={9} className="text-[#FFD166]" /><span className="text-[9px] text-white/40">+10s</span></div>
           </div>
         </motion.div>
 
-        {isWinner && (
-          <motion.div className="rounded-2xl p-4 flex items-center gap-3" style={{ background: "rgba(255,184,0,0.06)", border: "1px solid rgba(255,184,0,0.15)" }}
-            initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}>
-            <Trophy size={20} className="text-[#FFB800]" /><div><p className="text-[13px] font-bold text-[#FFB800]">{t("auction.you_won")}</p><p className="text-[10px] text-[#FFB800]/60">{t("auction.won_desc")}</p></div>
-          </motion.div>
-        )}
-
-        {/* Bid Button */}
+        {/* Bid + Auto-Bid Buttons */}
         {isActive && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}>
-            <AnimatePresence>{bidMsg && <motion.div className="mb-2 px-3 py-2 rounded-xl text-[11px] font-medium bg-[#FF4757]/8 text-[#FF4757] border border-[#FF4757]/15" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>{bidMsg.text}</motion.div>}</AnimatePresence>
+          <motion.div className="space-y-2" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
+            <AnimatePresence>{bidMsg && <motion.div className="px-3 py-2 rounded-xl text-[10px] font-medium bg-[#FF4060]/6 text-[#FF4060] border border-[#FF4060]/10" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>{bidMsg.text}</motion.div>}</AnimatePresence>
             <motion.button data-testid="place-bid-btn" onClick={handleBid} disabled={bidding}
-              className="w-full py-4 rounded-2xl text-[15px] font-bold flex items-center justify-center gap-2.5 relative overflow-hidden"
-              style={{ background: "linear-gradient(135deg, #00C2FF, #0088CC)", boxShadow: "0 4px 24px rgba(0,194,255,0.25), inset 0 1px 0 rgba(255,255,255,0.1)" }}
+              className="w-full py-3.5 rounded-2xl text-[14px] font-bold flex items-center justify-center gap-2 relative overflow-hidden"
+              style={{ background: `linear-gradient(135deg, ${accentCyan}, #0090BB)`, boxShadow: `0 4px 24px rgba(0,224,255,0.2), inset 0 1px 0 rgba(255,255,255,0.08)` }}
               whileTap={{ scale: 0.97 }}>
-              <motion.div className="absolute inset-0" style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent)" }} animate={{ x: ["-100%", "100%"] }} transition={{ duration: 2, repeat: Infinity, ease: "linear" }} />
-              {bidding ? <Loader2 size={18} className="animate-spin text-white" /> : <><Zap size={18} className="text-white" /><span className="text-white relative z-10">{t("auction.place_bid")} (1 Credit)</span></>}
+              <motion.div className="absolute inset-0" style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent)" }} animate={{ x: ["-100%", "100%"] }} transition={{ duration: 2.5, repeat: Infinity, ease: "linear" }} />
+              {bidding ? <Loader2 size={16} className="animate-spin text-white" /> : <><Zap size={16} className="text-white" /><span className="text-white relative z-10">{t("auction.place_bid")} (1 Credit)</span></>}
             </motion.button>
+            <div className="flex gap-2">
+              {autoBid?.active ? (
+                <motion.button data-testid="cancel-auto-bid" onClick={cancelAuto}
+                  className={`flex-1 py-2.5 rounded-xl text-[11px] font-semibold flex items-center justify-center gap-1.5 ${glass}`}
+                  style={{ background: "rgba(176,104,255,0.06)", border: "1px solid rgba(176,104,255,0.12)", color: accentPurple }}
+                  whileTap={{ scale: 0.97 }}>
+                  <Bot size={12} />{t("auction.auto_bid_active")} ({autoBid.bids_placed}/{autoBid.max_bids}) — {t("auction.cancel")}
+                </motion.button>
+              ) : (
+                <motion.button data-testid="auto-bid-btn" onClick={() => isGuest ? onAuthRequired() : setShowAutoBidModal(true)}
+                  className={`flex-1 py-2.5 rounded-xl text-[11px] font-semibold flex items-center justify-center gap-1.5 ${glass}`}
+                  style={{ background: "rgba(176,104,255,0.04)", border: "1px solid rgba(176,104,255,0.08)", color: "#888" }}
+                  whileTap={{ scale: 0.97 }} whileHover={{ borderColor: "rgba(176,104,255,0.2)", color: accentPurple }}>
+                  <Bot size={12} />{t("auction.auto_bid")}
+                </motion.button>
+              )}
+            </div>
           </motion.div>
         )}
 
         {/* Live Bid History */}
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}>
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
           <div className="flex items-center justify-between mb-2">
-            <p className="text-[9px] text-[#333] uppercase tracking-wider font-semibold">{t("auction.bid_history")}</p>
-            <span className="text-[9px] text-[#333]">{bids.length} bids</span>
+            <div className="flex items-center gap-2">
+              <motion.div className="w-1.5 h-1.5 rounded-full bg-[#00E0FF]" animate={{ opacity: [1, 0.3, 1] }} transition={{ duration: 1, repeat: Infinity }} />
+              <p className="text-[8px] text-[#444] uppercase tracking-widest font-semibold">{t("auction.bid_history")}</p>
+            </div>
+            <span className="text-[8px] text-[#333]">{bids.length}</span>
           </div>
-          <div className="rounded-2xl overflow-hidden divide-y divide-white/[0.02]" style={{ background: "rgba(255,255,255,0.01)", border: "1px solid rgba(255,255,255,0.03)" }}>
+          <div className={`rounded-2xl overflow-hidden divide-y divide-white/[0.02] ${glass}`} style={{ background: panelBg, border: panelBorder }}>
             {bids.length === 0 ? (
-              <div className="py-8 text-center"><Gavel size={20} className="text-[#222] mx-auto mb-2" /><p className="text-[11px] text-[#333]">{t("auction.no_bids_yet")}</p></div>
-            ) : bids.slice(0, 15).map((bid, i) => <BidHistoryItem key={bid.bid_id || i} bid={bid} isLatest={i === 0} />)}
+              <div className="py-8 text-center"><Gavel size={16} className="text-white/5 mx-auto mb-2" /><p className="text-[10px] text-[#333]">{t("auction.no_bids_yet")}</p></div>
+            ) : bids.slice(0, 12).map((b, i) => <BidRow key={b.bid_id || i} bid={b} isLatest={i === 0} />)}
           </div>
         </motion.div>
 
-        {/* Key Features */}
-        {auction.features && auction.features.length > 0 && (
-          <motion.div className="rounded-2xl p-4" style={{ background: "rgba(255,255,255,0.01)", border: "1px solid rgba(255,255,255,0.03)" }}
-            initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.16 }}>
-            <p className="text-[9px] text-[#333] uppercase tracking-wider font-semibold mb-3">{t("auction.key_features")}</p>
+        {/* Features */}
+        {auction.features?.length > 0 && (
+          <motion.div className={`rounded-2xl p-4 ${glass}`} style={{ background: panelBg, border: panelBorder }}
+            initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.14 }}>
+            <p className="text-[8px] text-[#444] uppercase tracking-widest font-semibold mb-3">{t("auction.key_features")}</p>
             <div className="space-y-2">
-              {auction.features.map((feat, i) => (
-                <div key={i} className="flex items-start gap-2.5">
-                  <div className="w-4 h-4 rounded flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: "rgba(0,194,255,0.06)", border: "1px solid rgba(0,194,255,0.1)" }}>
-                    <Check size={8} className="text-[#00C2FF]" />
+              {auction.features.map((f, i) => (
+                <div key={i} className="flex items-start gap-2">
+                  <div className="w-3.5 h-3.5 rounded flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: "rgba(0,224,255,0.04)", border: "1px solid rgba(0,224,255,0.08)" }}>
+                    <Check size={7} className="text-[#00E0FF]" />
                   </div>
-                  <span className="text-[11px] text-white/55 leading-relaxed">{feat}</span>
+                  <span className="text-[10px] text-white/45 leading-relaxed">{f}</span>
                 </div>
               ))}
             </div>
@@ -426,57 +553,64 @@ const AuctionDetail = ({ auctionId, onBack, isGuest, onAuthRequired, userCredits
         )}
 
         {/* Shipping */}
-        <motion.div className="rounded-2xl p-4" style={{ background: "rgba(255,255,255,0.01)", border: "1px solid rgba(255,255,255,0.03)" }}
-          initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-          <p className="text-[9px] text-[#333] uppercase tracking-wider font-semibold mb-3">{t("auction.shipping_info")}</p>
+        <motion.div className={`rounded-2xl p-4 ${glass}`} style={{ background: panelBg, border: panelBorder }}
+          initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }}>
+          <p className="text-[8px] text-[#444] uppercase tracking-widest font-semibold mb-3">{t("auction.shipping_info")}</p>
           <div className="space-y-2.5">
             {[
-              { icon: Globe, color: "#00C2FF", label: t("auction.shipping_worldwide"), desc: t("auction.shipping_worldwide_desc") },
-              { icon: Truck, color: "#A855F7", label: t("auction.shipping_delivery"), desc: t("auction.shipping_delivery_desc") },
-              { icon: Package, color: "#FFB800", label: t("auction.shipping_packaging"), desc: t("auction.shipping_packaging_desc") },
-              { icon: Shield, color: "#00D26A", label: t("auction.shipping_guarantee"), desc: t("auction.shipping_guarantee_desc") },
-            ].map((item, i) => (
+              { icon: Globe, color: accentCyan, label: t("auction.shipping_worldwide"), desc: t("auction.shipping_worldwide_desc") },
+              { icon: Truck, color: accentPurple, label: t("auction.shipping_delivery"), desc: t("auction.shipping_delivery_desc") },
+              { icon: Package, color: accentGold, label: t("auction.shipping_packaging"), desc: t("auction.shipping_packaging_desc") },
+              { icon: Shield, color: accentGreen, label: t("auction.shipping_guarantee"), desc: t("auction.shipping_guarantee_desc") },
+            ].map((it, i) => (
               <div key={i} className="flex items-start gap-2.5">
-                <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${item.color}08`, border: `1px solid ${item.color}12` }}>
-                  <item.icon size={12} style={{ color: item.color }} />
+                <div className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${it.color}06`, border: `1px solid ${it.color}10` }}>
+                  <it.icon size={11} style={{ color: it.color }} />
                 </div>
-                <div className="flex-1 min-w-0"><p className="text-[11px] text-white/70 font-medium">{item.label}</p><p className="text-[10px] text-[#444] leading-relaxed">{item.desc}</p></div>
+                <div className="flex-1 min-w-0"><p className="text-[10px] text-white/60 font-medium">{it.label}</p><p className="text-[9px] text-[#444] leading-relaxed">{it.desc}</p></div>
               </div>
             ))}
           </div>
         </motion.div>
       </div>
+
+      <AutoBidModal open={showAutoBidModal} onClose={() => setShowAutoBidModal(false)} auctionId={auctionId}
+        onSet={(max) => setAutoBid({ active: true, max_bids: max, bids_placed: 0 })} />
     </motion.div>
   );
 };
 
-// Category config
-const CATEGORIES = [
-  { id: "all", label: "All", color: "#00C2FF" },
-  { id: "phones", label: "Phones", color: "#A855F7" },
+/* ════════════════════════════════════════════
+   CATEGORIES
+   ════════════════════════════════════════════ */
+const CATS = [
+  { id: "all", label: "All", color: accentCyan },
+  { id: "phones", label: "Phones", color: accentPurple },
   { id: "gaming", label: "Gaming", color: "#FF6B6B" },
-  { id: "audio", label: "Audio", color: "#00D26A" },
-  { id: "wearables", label: "Wearables", color: "#FFB800" },
-  { id: "laptops", label: "Laptops", color: "#00C2FF" },
+  { id: "audio", label: "Audio", color: accentGreen },
+  { id: "wearables", label: "Wearables", color: accentGold },
+  { id: "laptops", label: "Laptops", color: accentCyan },
   { id: "tablets", label: "Tablets", color: "#FF8C42" },
   { id: "xr", label: "XR", color: "#E040FB" },
   { id: "home", label: "Home", color: "#26C6DA" },
 ];
 
-// ── Main Auctions Page ──
+/* ════════════════════════════════════════════
+   MAIN AUCTIONS PAGE
+   ════════════════════════════════════════════ */
 const AuctionsPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onLogin, onRegister, onStartDemo }) => {
   const { t } = useI18n();
   const user = useUser();
   const [auctions, setAuctions] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selectedAuction, setSelectedAuction] = useState(null);
-  const [showCreditsModal, setShowCreditsModal] = useState(false);
+  const [selected, setSelected] = useState(null);
+  const [showCredits, setShowCredits] = useState(false);
   const [credits, setCredits] = useState(0);
-  const [activeFilter, setActiveFilter] = useState("all");
+  const [filter, setFilter] = useState("all");
   const pollRef = useRef(null);
 
-  const fetchAuctions = useCallback(async () => { try { const res = await api.getAuctions(); setAuctions(res.auctions || []); } catch {} }, []);
-  const fetchCredits = useCallback(async () => { if (isGuest) return; try { const res = await api.getBidCredits(); setCredits(res.bid_credits || 0); } catch {} }, [isGuest]);
+  const fetchAuctions = useCallback(async () => { try { const r = await api.getAuctions(); setAuctions(r.auctions || []); } catch {} }, []);
+  const fetchCredits = useCallback(async () => { if (isGuest) return; try { const r = await api.getBidCredits(); setCredits(r.bid_credits || 0); } catch {} }, [isGuest]);
 
   useEffect(() => {
     Promise.all([fetchAuctions(), fetchCredits()]).then(() => setLoading(false));
@@ -484,116 +618,109 @@ const AuctionsPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onLogin
     return () => clearInterval(pollRef.current);
   }, [fetchAuctions, fetchCredits]);
 
-  if (selectedAuction) {
-    return <AuctionDetail auctionId={selectedAuction} onBack={() => { setSelectedAuction(null); fetchAuctions(); }} isGuest={isGuest} onAuthRequired={onAuthRequired} userCredits={credits} onCreditsChanged={setCredits} />;
-  }
+  if (selected) return <AuctionDetail auctionId={selected} onBack={() => { setSelected(null); fetchAuctions(); fetchCredits(); }} isGuest={isGuest} onAuthRequired={onAuthRequired} userCredits={credits} onCreditsChanged={setCredits} />;
 
-  const active = auctions.filter(a => a.status === "active" && (activeFilter === "all" || a.category === activeFilter));
-  const ended = auctions.filter(a => a.status === "ended" && (activeFilter === "all" || a.category === activeFilter));
-  const activeCategories = [...new Set(auctions.filter(a => a.status === "active").map(a => a.category).filter(Boolean))];
-  const recentWinners = auctions.filter(a => a.status === "ended" && a.winner_name);
+  const active = auctions.filter(a => a.status === "active" && (filter === "all" || a.category === filter));
+  const ended = auctions.filter(a => a.status === "ended" && (filter === "all" || a.category === filter));
+  const activeCats = [...new Set(auctions.filter(a => a.status === "active").map(a => a.category).filter(Boolean))];
+  const winners = auctions.filter(a => a.status === "ended" && a.winner_name);
 
   return (
-    <motion.div data-testid="auctions-page" className="min-h-screen relative" style={{ background: "#030303" }} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-      <motion.div className="absolute top-[-10%] left-1/2 -translate-x-1/2 w-[500px] h-[400px] rounded-full pointer-events-none" style={{ filter: "blur(140px)", background: "rgba(168,85,247,0.04)" }} />
+    <motion.div data-testid="auctions-page" className="min-h-screen" style={{ background: "#040610" }} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+      {/* Ambient */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] rounded-full pointer-events-none" style={{ filter: "blur(160px)", background: "rgba(0,224,255,0.02)" }} />
 
       {/* Header */}
-      <div className="flex items-center gap-3 px-5 pt-[max(env(safe-area-inset-top,0px),24px)] pb-2 relative z-10">
-        <motion.button data-testid="auctions-back-btn" className="w-10 h-10 rounded-full bg-white/[0.04] border border-white/[0.05] flex items-center justify-center" whileTap={{ scale: 0.88 }} onClick={() => onNavigate("/")}>
-          <ArrowLeft size={15} strokeWidth={1.5} className="text-white/50" />
+      <div className="flex items-center gap-3 px-5 pt-[max(env(safe-area-inset-top,0px),20px)] pb-2 relative z-10">
+        <motion.button data-testid="auctions-back-btn" className="w-9 h-9 rounded-full bg-white/[0.03] border border-white/[0.04] flex items-center justify-center"
+          whileTap={{ scale: 0.88 }} onClick={() => onNavigate("/")}>
+          <ArrowLeft size={14} className="text-white/40" />
         </motion.button>
         <div className="flex-1">
-          <h1 className="text-[15px] font-semibold font-outfit text-white tracking-tight">{t("auction.title")}</h1>
-          <p className="text-[10px] text-[#444]">{t("auction.subtitle")}</p>
+          <h1 className="text-[14px] font-semibold font-outfit text-white/90 tracking-tight">{t("auction.title")}</h1>
+          <p className="text-[9px] text-white/20">{t("auction.subtitle")}</p>
         </div>
         {!isGuest && (
-          <motion.button data-testid="buy-credits-btn" onClick={() => setShowCreditsModal(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full" style={{ background: "rgba(255,184,0,0.08)", border: "1px solid rgba(255,184,0,0.15)" }} whileTap={{ scale: 0.95 }}>
-            <Coins size={12} className="text-[#FFB800]" /><span className="text-[12px] font-bold text-[#FFB800] tabular-nums">{credits}</span>
+          <motion.button data-testid="buy-credits-btn" onClick={() => setShowCredits(true)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full ${glass}`}
+            style={{ background: "rgba(255,209,102,0.05)", border: "1px solid rgba(255,209,102,0.1)" }} whileTap={{ scale: 0.95 }}>
+            <Coins size={11} className="text-[#FFD166]" /><span className="text-[11px] font-bold text-[#FFD166] tabular-nums">{credits}</span>
           </motion.button>
         )}
       </div>
 
       {isGuest && !isDemoMode && <GuestCTABar onLogin={onLogin} onRegister={onRegister} onStartDemo={onStartDemo} isDemoMode={isDemoMode} />}
 
-      <div className="px-4 pb-8 relative z-10">
-        {/* Trust Bar */}
-        <TrustBar t={t} recentWinners={recentWinners} />
+      <div className="px-4 pb-8 relative z-10 space-y-3">
+        {/* Daily Reward */}
+        {!isGuest && <DailyReward onClaimed={setCredits} />}
+
+        {/* Trust */}
+        <TrustBar t={t} recentWinners={winners} />
 
         {/* How it works */}
-        <motion.div className="rounded-2xl p-3 mb-4"
-          style={{ background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.04)" }}
-          initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.06 }}>
-          <p className="text-[8px] text-[#444] uppercase tracking-wider font-semibold mb-2">{t("auction.how_it_works")}</p>
+        <motion.div className={`rounded-2xl p-3 ${glass}`} style={{ background: panelBg, border: panelBorder }}
+          initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.06 }}>
+          <p className="text-[7px] text-[#444] uppercase tracking-widest font-semibold mb-2">{t("auction.how_it_works")}</p>
           <div className="grid grid-cols-3 gap-2">
             {[
-              { icon: Coins, text: t("auction.step_buy"), color: "#FFB800" },
-              { icon: Zap, text: t("auction.step_bid"), color: "#00C2FF" },
-              { icon: Trophy, text: t("auction.step_win"), color: "#00D26A" },
-            ].map((step, i) => (
+              { icon: Coins, text: t("auction.step_buy"), color: accentGold },
+              { icon: Zap, text: t("auction.step_bid"), color: accentCyan },
+              { icon: Trophy, text: t("auction.step_win"), color: accentGreen },
+            ].map((s, i) => (
               <div key={i} className="text-center">
-                <div className="w-7 h-7 rounded-lg mx-auto mb-1 flex items-center justify-center" style={{ background: `${step.color}0A`, border: `1px solid ${step.color}18` }}>
-                  <step.icon size={13} style={{ color: step.color }} />
+                <div className="w-7 h-7 rounded-lg mx-auto mb-1 flex items-center justify-center" style={{ background: `${s.color}06`, border: `1px solid ${s.color}12` }}>
+                  <s.icon size={12} style={{ color: s.color }} />
                 </div>
-                <p className="text-[9px] text-white/50 font-medium leading-tight">{step.text}</p>
+                <p className="text-[8px] text-white/40 font-medium">{s.text}</p>
               </div>
             ))}
           </div>
         </motion.div>
 
-        {/* Category Filters */}
-        <motion.div className="flex gap-1.5 overflow-x-auto pb-3 mb-3 scrollbar-hide" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}>
-          {CATEGORIES.filter(c => c.id === "all" || activeCategories.includes(c.id)).map(cat => {
-            const sel = activeFilter === cat.id;
+        {/* Filters */}
+        <div className="flex gap-1.5 overflow-x-auto scrollbar-hide">
+          {CATS.filter(c => c.id === "all" || activeCats.includes(c.id)).map(c => {
+            const on = filter === c.id;
             return (
-              <motion.button key={cat.id} data-testid={`filter-${cat.id}`} onClick={() => setActiveFilter(cat.id)}
-                className="px-3 py-1.5 rounded-full text-[10px] font-semibold whitespace-nowrap flex-shrink-0 transition-all"
-                style={{ background: sel ? `${cat.color}15` : "rgba(255,255,255,0.02)", border: `1px solid ${sel ? `${cat.color}30` : "rgba(255,255,255,0.04)"}`, color: sel ? cat.color : "#555" }}
-                whileTap={{ scale: 0.95 }}>{cat.label}</motion.button>
+              <motion.button key={c.id} data-testid={`filter-${c.id}`} onClick={() => setFilter(c.id)}
+                className={`px-3 py-1.5 rounded-full text-[9px] font-semibold whitespace-nowrap flex-shrink-0 transition-all ${glass}`}
+                style={{ background: on ? `${c.color}10` : "rgba(255,255,255,0.015)", border: `1px solid ${on ? `${c.color}25` : "rgba(255,255,255,0.03)"}`, color: on ? c.color : "#444" }}
+                whileTap={{ scale: 0.95 }}>{c.label}</motion.button>
             );
           })}
-        </motion.div>
+        </div>
 
         {loading ? (
-          <div className="flex items-center justify-center py-16"><Loader2 size={20} className="animate-spin text-[#00C2FF]" /></div>
+          <div className="flex items-center justify-center py-16"><Loader2 size={18} className="animate-spin text-[#00E0FF]" /></div>
         ) : (
           <>
-            {/* Active Auctions Grid */}
             {active.length > 0 && (
-              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-                <div className="flex items-center gap-2 mb-3">
-                  <motion.div className="w-2 h-2 rounded-full bg-[#00D26A]" animate={{ opacity: [1, 0.3, 1] }} transition={{ duration: 1.2, repeat: Infinity }} />
-                  <p className="text-[9px] text-[#444] uppercase tracking-wider font-semibold">{t("auction.live_auctions")}</p>
-                  <span className="text-[9px] text-[#00D26A] font-bold">{active.length}</span>
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.08 }}>
+                <div className="flex items-center gap-2 mb-2.5">
+                  <motion.div className="w-1.5 h-1.5 rounded-full bg-[#00E89D]" animate={{ opacity: [1, 0.2, 1] }} transition={{ duration: 1, repeat: Infinity }} />
+                  <p className="text-[8px] text-[#444] uppercase tracking-widest font-semibold">{t("auction.live_auctions")}</p>
+                  <span className="text-[8px] text-[#00E89D] font-bold">{active.length}</span>
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
-                  {active.map((auc, i) => (
-                    <motion.div key={auc.auction_id} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 * i }}>
-                      <AuctionGridCard auction={auc} onClick={() => setSelectedAuction(auc.auction_id)} t={t} />
-                    </motion.div>
-                  ))}
+                <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2.5">
+                  {active.map((a, i) => <AuctionGridCard key={a.auction_id} auction={a} onClick={() => setSelected(a.auction_id)} t={t} idx={i} />)}
                 </div>
               </motion.div>
             )}
-
-            {/* Ended Auctions Grid */}
             {ended.length > 0 && (
-              <motion.div className="mt-6" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
-                <p className="text-[9px] text-[#333] uppercase tracking-wider font-semibold mb-3">{t("auction.ended_auctions")}</p>
-                <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
-                  {ended.map(auc => <AuctionGridCard key={auc.auction_id} auction={auc} onClick={() => setSelectedAuction(auc.auction_id)} t={t} />)}
+              <motion.div className="mt-5" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.12 }}>
+                <p className="text-[8px] text-[#333] uppercase tracking-widest font-semibold mb-2.5">{t("auction.ended_auctions")}</p>
+                <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2.5">
+                  {ended.map((a, i) => <AuctionGridCard key={a.auction_id} auction={a} onClick={() => setSelected(a.auction_id)} t={t} idx={i} />)}
                 </div>
               </motion.div>
             )}
-
-            {active.length === 0 && ended.length === 0 && (
-              <div className="py-16 text-center"><Gavel size={28} className="text-[#222] mx-auto mb-3" /><p className="text-[13px] text-[#444] font-medium">{t("auction.no_auctions")}</p></div>
-            )}
+            {active.length === 0 && ended.length === 0 && <div className="py-16 text-center"><Gavel size={24} className="text-white/5 mx-auto mb-2" /><p className="text-[11px] text-[#333]">{t("auction.no_auctions")}</p></div>}
           </>
         )}
       </div>
 
-      <BuyCreditsModal open={showCreditsModal} onClose={() => setShowCreditsModal(false)} onPurchased={(res) => setCredits(res.total_credits)} balance={isGuest ? 0 : (user?.balance || 0)} />
+      <BuyCreditsModal open={showCredits} onClose={() => setShowCredits(false)} onPurchased={r => setCredits(r.total_credits)} balance={isGuest ? 0 : (user?.balance || 0)} />
     </motion.div>
   );
 };
