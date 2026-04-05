@@ -17,14 +17,16 @@ from core.audit import log_audit, AuditEvent, get_client_info
 router = APIRouter(prefix="/api/auctions", tags=["auctions"])
 
 PRICE_INCREMENT = 0.01
-TIMER_EXTENSION_SECONDS = 10
-DEFAULT_DURATION_SECONDS = 300  # 5 minutes
+TIMER_EXTENSION_SECONDS = 20   # Bid resets live countdown to 20s max
+FINAL_BATTLE_THRESHOLD = 60    # Final battle activates in last 60 seconds
+DEFAULT_DURATION_SECONDS = 300  # Fallback 5 minutes
 
 CREDIT_PACKAGES = {
-    "10": {"credits": 10, "price": 5.00},
-    "25": {"credits": 25, "price": 10.00},
-    "50": {"credits": 50, "price": 18.00},
-    "100": {"credits": 100, "price": 30.00},
+    "10": {"credits": 10, "price": 5.00},      # 0.50/bid (base)
+    "25": {"credits": 25, "price": 10.00},      # 0.40/bid (20% off)
+    "50": {"credits": 50, "price": 17.50},      # 0.35/bid (30% off)
+    "100": {"credits": 100, "price": 29.00},    # 0.29/bid (42% off)
+    "250": {"credits": 250, "price": 62.50},    # 0.25/bid (50% off)
 }
 
 
@@ -81,6 +83,22 @@ async def list_auctions(request: Request):
         {"status": {"$in": ["active", "upcoming", "ended"]}},
         {"_id": 0},
     ).sort("created_at", -1).to_list(50)
+
+    # Enrich with final_battle info
+    now_dt = datetime.now(timezone.utc)
+    for a in auctions:
+        if a.get("status") == "active" and a.get("ends_at"):
+            try:
+                ends = datetime.fromisoformat(a["ends_at"])
+                remaining = (ends - now_dt).total_seconds()
+                a["remaining_seconds"] = max(0, remaining)
+                a["final_battle"] = 0 < remaining <= FINAL_BATTLE_THRESHOLD
+            except Exception:
+                a["remaining_seconds"] = 0
+                a["final_battle"] = False
+        else:
+            a["remaining_seconds"] = 0
+            a["final_battle"] = False
 
     return {"auctions": auctions}
 
@@ -377,10 +395,15 @@ async def place_bid(req: BidRequest, request: Request):
     # Calculate new price
     new_price = round(auction["current_price"] + PRICE_INCREMENT, 2)
 
-    # Extend timer
+    # Extend timer — FINAL BATTLE logic
     current_ends = datetime.fromisoformat(auction["ends_at"])
     remaining = (current_ends - now).total_seconds()
-    if remaining < TIMER_EXTENSION_SECONDS:
+
+    if remaining <= FINAL_BATTLE_THRESHOLD:
+        # Final battle: always reset to 20 seconds from now
+        new_ends = now + timedelta(seconds=TIMER_EXTENSION_SECONDS)
+    elif remaining < TIMER_EXTENSION_SECONDS:
+        # Normal mode but close: extend to minimum
         new_ends = now + timedelta(seconds=TIMER_EXTENSION_SECONDS)
     else:
         new_ends = current_ends
@@ -481,7 +504,12 @@ async def process_auto_bids(auction_id: str, last_bidder_id: str):
         new_price = round(auction["current_price"] + PRICE_INCREMENT, 2)
         current_ends = datetime.fromisoformat(auction["ends_at"])
         remaining = (current_ends - now).total_seconds()
-        new_ends = (now + timedelta(seconds=TIMER_EXTENSION_SECONDS)) if remaining < TIMER_EXTENSION_SECONDS else current_ends
+        if remaining <= FINAL_BATTLE_THRESHOLD:
+            new_ends = now + timedelta(seconds=TIMER_EXTENSION_SECONDS)
+        elif remaining < TIMER_EXTENSION_SECONDS:
+            new_ends = now + timedelta(seconds=TIMER_EXTENSION_SECONDS)
+        else:
+            new_ends = current_ends
 
         await db.auctions.update_one(
             {"auction_id": auction_id},
@@ -790,63 +818,63 @@ PRODUCT_IMAGES = {
 
 PRODUCT_CATALOG = [
     # Smartphones
-    {"title": "Samsung Galaxy S26 Ultra", "description": "Samsung Galaxy S26 Ultra 512GB Titanium — AMOLED 6.9\", Snapdragon 8 Elite 2, 200MP Camera", "retail_price": 1499.00, "duration": 600, "category": "phones",
+    {"title": "Samsung Galaxy S26 Ultra", "description": "Samsung Galaxy S26 Ultra 512GB Titanium — AMOLED 6.9\", Snapdragon 8 Elite 2, 200MP Camera", "retail_price": 1499.00, "duration": 172800, "category": "phones",
      "features": ["6.9\" Dynamic AMOLED 2X, 3120x1440", "Snapdragon 8 Elite 2 Processor", "200MP Main + 50MP Ultra-Wide + 10MP Telephoto", "5000mAh Battery, 65W Fast Charge", "512GB Storage, 16GB RAM", "S Pen Built-in, IP68 Water Resistant"],
      "condition": "Brand New — Factory Sealed"},
-    {"title": "iPhone 17 Pro Max", "description": "Apple iPhone 17 Pro Max 256GB — A19 Pro Chip, 48MP Triple Camera, Titanium Design", "retail_price": 1449.00, "duration": 600, "category": "phones",
+    {"title": "iPhone 17 Pro Max", "description": "Apple iPhone 17 Pro Max 256GB — A19 Pro Chip, 48MP Triple Camera, Titanium Design", "retail_price": 1449.00, "duration": 216000, "category": "phones",
      "features": ["6.9\" Super Retina XDR, ProMotion 120Hz", "A19 Pro Chip, 6-Core GPU", "48MP Fusion + 48MP Ultra-Wide + 12MP Telephoto 5x", "Titanium Frame, Ceramic Shield Front", "USB-C, Wi-Fi 7, 5G", "Action Button, Camera Control"],
      "condition": "Brand New — Factory Sealed"},
-    {"title": "Google Pixel 10 Pro", "description": "Google Pixel 10 Pro 256GB — Tensor G5, AI-First Camera, 7 Years Updates", "retail_price": 1099.00, "duration": 480, "category": "phones",
+    {"title": "Google Pixel 10 Pro", "description": "Google Pixel 10 Pro 256GB — Tensor G5, AI-First Camera, 7 Years Updates", "retail_price": 1099.00, "duration": 194400, "category": "phones",
      "features": ["6.7\" LTPO OLED, 1-120Hz, 2400 nits", "Google Tensor G5 Processor", "50MP Main + 48MP Ultra-Wide + 48MP Telephoto 5x", "AI Magic Eraser, Best Take, Night Sight", "7 Years OS & Security Updates", "5000mAh Battery, 45W Charging"],
      "condition": "Brand New — Factory Sealed"},
     # Gaming
-    {"title": "Nintendo Switch 2", "description": "Nintendo Switch 2 Console — 8\" LCD, Magnetic Joy-Cons, Backwards Compatible", "retail_price": 449.00, "duration": 480, "category": "gaming",
+    {"title": "Nintendo Switch 2", "description": "Nintendo Switch 2 Console — 8\" LCD, Magnetic Joy-Cons, Backwards Compatible", "retail_price": 449.00, "duration": 172800, "category": "gaming",
      "features": ["8\" 1080p LCD Display", "NVIDIA Custom Processor", "Magnetic Joy-Con 2 Controllers", "Backwards Compatible with Switch Games", "64GB Internal Storage, microSD Slot", "USB-C Dock for 4K TV Output"],
      "condition": "Brand New — Factory Sealed"},
-    {"title": "PlayStation 5 Pro", "description": "Sony PS5 Pro 2TB — Enhanced GPU, 8K Output, DualSense Edge Controller", "retail_price": 799.00, "duration": 540, "category": "gaming",
+    {"title": "PlayStation 5 Pro", "description": "Sony PS5 Pro 2TB — Enhanced GPU, 8K Output, DualSense Edge Controller", "retail_price": 799.00, "duration": 216000, "category": "gaming",
      "features": ["Enhanced GPU with Ray Tracing", "2TB SSD Ultra-Fast Storage", "8K Video Output Support", "DualSense Edge Wireless Controller", "Tempest 3D Audio Engine", "4K Gaming at 120fps"],
      "condition": "Brand New — Factory Sealed"},
     # Audio
-    {"title": "AirPods Pro 3", "description": "Apple AirPods Pro 3 — H3 Chip, Adaptive Audio, USB-C MagSafe Case", "retail_price": 299.00, "duration": 300, "category": "audio",
+    {"title": "AirPods Pro 3", "description": "Apple AirPods Pro 3 — H3 Chip, Adaptive Audio, USB-C MagSafe Case", "retail_price": 299.00, "duration": 172800, "category": "audio",
      "features": ["Apple H3 Chip for Intelligent Audio", "Adaptive Noise Cancellation", "Personalized Spatial Audio with Head Tracking", "USB-C MagSafe Charging Case", "Up to 6h Listening, 30h with Case", "IP54 Dust & Water Resistant"],
      "condition": "Brand New — Factory Sealed"},
-    {"title": "Sony WH-1000XM6", "description": "Sony WH-1000XM6 Wireless — Best-in-class ANC, 40h Battery, LDAC Hi-Res", "retail_price": 399.00, "duration": 360, "category": "audio",
+    {"title": "Sony WH-1000XM6", "description": "Sony WH-1000XM6 Wireless — Best-in-class ANC, 40h Battery, LDAC Hi-Res", "retail_price": 399.00, "duration": 194400, "category": "audio",
      "features": ["Industry-Leading Noise Cancellation", "40h Battery Life, 3min Quick Charge = 3h", "LDAC Hi-Res Audio, DSEE Extreme", "Multipoint Connection (2 Devices)", "Speak-to-Chat & Adaptive Sound Control", "Ultra Lightweight 250g, Premium Comfort"],
      "condition": "Brand New — Factory Sealed"},
     # Wearables
     {"title": "Apple Watch Ultra 3", "description": "Apple Watch Ultra 3 — Titanium, Satellite SOS, 72h Battery, S10 Chip", "retail_price": 899.00, "duration": 420, "category": "wearables",
      "features": ["49mm Titanium Case, Sapphire Crystal", "Apple S10 Chip, Double Tap Gesture", "72h Battery, 36h Normal Use", "Satellite Emergency SOS", "100m Water Resistant, EN13319 Dive", "Precision Dual-Frequency GPS"],
      "condition": "Brand New — Factory Sealed"},
-    {"title": "Samsung Galaxy Ring 2", "description": "Samsung Galaxy Ring 2 — Health Tracking, Sleep Analysis, Titanium, 7-Day Battery", "retail_price": 449.00, "duration": 300, "category": "wearables",
+    {"title": "Samsung Galaxy Ring 2", "description": "Samsung Galaxy Ring 2 — Health Tracking, Sleep Analysis, Titanium, 7-Day Battery", "retail_price": 449.00, "duration": 172800, "category": "wearables",
      "features": ["Titanium Build, 2.6g Ultra-Light", "Heart Rate & SpO2 Monitoring 24/7", "Advanced Sleep & Stress Tracking", "Cycle Tracking & Skin Temperature", "7-Day Battery, Wireless Charging Case", "IP68 + 10ATM Water Resistant"],
      "condition": "Brand New — Factory Sealed"},
     # Laptops & Tablets
-    {"title": "MacBook Pro 16\" M5 Pro", "description": "Apple MacBook Pro 16\" M5 Pro — 18GB RAM, 512GB SSD, Liquid Retina XDR", "retail_price": 2899.00, "duration": 720, "category": "laptops",
+    {"title": "MacBook Pro 16\" M5 Pro", "description": "Apple MacBook Pro 16\" M5 Pro — 18GB RAM, 512GB SSD, Liquid Retina XDR", "retail_price": 2899.00, "duration": 259200, "category": "laptops",
      "features": ["16.2\" Liquid Retina XDR, 3456x2234", "Apple M5 Pro, 12-Core CPU, 18-Core GPU", "18GB Unified Memory, 512GB SSD", "Up to 22h Battery Life", "Thunderbolt 5, HDMI 2.1, SD Card Slot", "6-Speaker Sound System, Spatial Audio"],
      "condition": "Brand New — Factory Sealed"},
-    {"title": "iPad Pro 13\" M5", "description": "Apple iPad Pro 13\" M5 — Tandem OLED, Apple Pencil 3, Thunderbolt 5", "retail_price": 1399.00, "duration": 540, "category": "tablets",
+    {"title": "iPad Pro 13\" M5", "description": "Apple iPad Pro 13\" M5 — Tandem OLED, Apple Pencil 3, Thunderbolt 5", "retail_price": 1399.00, "duration": 216000, "category": "tablets",
      "features": ["13\" Tandem OLED, 2752x2064, ProMotion", "Apple M5 Chip, Hardware Ray Tracing", "Apple Pencil 3 & Magic Keyboard Support", "Thunderbolt 5 / USB 4", "12MP Ultra-Wide Front, LiDAR Scanner", "Face ID, Wi-Fi 7, 5G Optional"],
      "condition": "Brand New — Factory Sealed"},
     # XR / Smart Home
-    {"title": "Meta Quest 4", "description": "Meta Quest 4 — Mixed Reality, Snapdragon XR3, 4K per Eye, 256GB", "retail_price": 549.00, "duration": 420, "category": "xr",
+    {"title": "Meta Quest 4", "description": "Meta Quest 4 — Mixed Reality, Snapdragon XR3, 4K per Eye, 256GB", "retail_price": 549.00, "duration": 194400, "category": "xr",
      "features": ["Snapdragon XR3 Gen 1 Processor", "4K per Eye, Pancake Lens 2.0", "Full-Color Mixed Reality Passthrough", "256GB Storage, Wi-Fi 7", "Hand Tracking 3.0, Eye Tracking", "Meta Horizon OS, 1000+ Apps & Games"],
      "condition": "Brand New — Factory Sealed"},
-    {"title": "Dyson Airstrait Pro", "description": "Dyson Airstrait Pro — Wet-to-Dry Straightener, Intelligent Heat Control", "retail_price": 549.00, "duration": 360, "category": "home",
+    {"title": "Dyson Airstrait Pro", "description": "Dyson Airstrait Pro — Wet-to-Dry Straightener, Intelligent Heat Control", "retail_price": 549.00, "duration": 172800, "category": "home",
      "features": ["Wet-to-Dry Straightening Technology", "Intelligent Heat Control Every 100x/sec", "Flexing Plates for Root-to-Tip Styling", "3 Heat Settings + Cool Mode", "Dual Airflow Jets for Fast Drying", "360° Swivel Cable, Heat-Resistant Case"],
      "condition": "Brand New — Factory Sealed"},
     # TVs
-    {"title": "LG OLED G5 77\"", "description": "LG OLED evo G5 77\" 4K — MLA+ Panel, a11 AI Processor, Dolby Vision & Atmos", "retail_price": 3299.00, "duration": 720, "category": "tvs",
+    {"title": "LG OLED G5 77\"", "description": "LG OLED evo G5 77\" 4K — MLA+ Panel, a11 AI Processor, Dolby Vision & Atmos", "retail_price": 3299.00, "duration": 259200, "category": "tvs",
      "features": ["77\" 4K OLED evo MLA+ Panel, 4000 nits", "a11 AI Processor 4K, AI Upscaling", "Dolby Vision IQ, Dolby Atmos, DTS:X", "4x HDMI 2.1, 144Hz VRR Gaming", "Gallery Design, Flush Wall Mount", "webOS 26, Apple AirPlay 2"],
      "condition": "Brand New — Factory Sealed"},
-    {"title": "Samsung Neo QLED 8K 75\"", "description": "Samsung QN900F 75\" 8K — Neural Quantum Processor, Infinity Screen, 8K AI Upscaling", "retail_price": 4999.00, "duration": 720, "category": "tvs",
+    {"title": "Samsung Neo QLED 8K 75\"", "description": "Samsung QN900F 75\" 8K — Neural Quantum Processor, Infinity Screen, 8K AI Upscaling", "retail_price": 4999.00, "duration": 259200, "category": "tvs",
      "features": ["75\" 8K Neo QLED, Mini LED Backlight", "Neural Quantum Processor 8K", "Anti-Reflection Infinity Screen", "8K AI Upscaling, Real Depth Enhancer", "Dolby Atmos, Object Tracking Sound Pro", "4x HDMI 2.1, SmartThings Hub Built-in"],
      "condition": "Brand New — Factory Sealed"},
     # Robot Vacuums
-    {"title": "Roborock S9 MaxV Ultra", "description": "Roborock S9 MaxV Ultra — 10,000Pa Suction, AI Object Avoidance, Self-Wash Mop", "retail_price": 1599.00, "duration": 480, "category": "robots",
+    {"title": "Roborock S9 MaxV Ultra", "description": "Roborock S9 MaxV Ultra — 10,000Pa Suction, AI Object Avoidance, Self-Wash Mop", "retail_price": 1599.00, "duration": 216000, "category": "robots",
      "features": ["10,000Pa HyperForce Suction", "AI 3D Object Avoidance, ReactiveAI 3.0", "Self-Washing & Self-Drying Mop", "Auto-Empty Dock, 7-Week Dustbin", "Multi-Floor Mapping, No-Go Zones", "Matter & Google/Alexa Compatible"],
      "condition": "Brand New — Factory Sealed"},
     # Smart Home
-    {"title": "Apple HomePod 3", "description": "Apple HomePod 3 — Spatial Audio, Siri Intelligence, Matter Hub, Room Sensing", "retail_price": 349.00, "duration": 300, "category": "smarthome",
+    {"title": "Apple HomePod 3", "description": "Apple HomePod 3 — Spatial Audio, Siri Intelligence, Matter Hub, Room Sensing", "retail_price": 349.00, "duration": 172800, "category": "smarthome",
      "features": ["High-Excursion Woofer, 5 Tweeters", "Spatial Audio with Room Sensing", "Siri with On-Device Intelligence", "Thread & Matter Smart Home Hub", "Ultra Wideband, Intercom, Find My", "Temperature & Humidity Sensor"],
      "condition": "Brand New — Factory Sealed"},
 ]

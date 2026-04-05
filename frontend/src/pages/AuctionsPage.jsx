@@ -29,27 +29,51 @@ const accentPurple = "#B068FF";
 
 // ── Countdown ──
 const Countdown = ({ endsAt, status, size = "md" }) => {
+  const { t } = useI18n();
   const [rem, setRem] = useState(0);
   useEffect(() => {
     const c = () => setRem(Math.max(0, Math.floor((new Date(endsAt) - Date.now()) / 1000)));
     c(); const iv = setInterval(c, 1000); return () => clearInterval(iv);
   }, [endsAt]);
   if (status === "ended") return null;
-  const m = Math.floor(rem / 60), s = rem % 60;
-  const urgent = rem <= 15, crit = rem <= 5;
+  const d = Math.floor(rem / 86400), h = Math.floor((rem % 86400) / 3600), m = Math.floor((rem % 3600) / 60), s = rem % 60;
+  const isFinalBattle = rem > 0 && rem <= 60;
+  const crit = rem <= 20 && rem > 0;
   const ts = size === "lg" ? "text-3xl" : size === "sm" ? "text-sm" : "text-xl";
+
+  // Long timer (days/hours)
+  if (d > 0 || h > 0) {
+    return (
+      <div className="flex items-baseline gap-1 font-mono font-black tabular-nums select-none">
+        {d > 0 && <><span className={`${ts} text-white/90`}>{d}</span><span className="text-xs text-white/30 mr-1">{t("auction.days")}</span></>}
+        <span className={`${ts} text-white/90`}>{h}</span><span className="text-xs text-white/30 mr-1">{t("auction.hours")}</span>
+        <span className={`${ts} text-white/60`}>{String(m).padStart(2, "0")}</span><span className="text-xs text-white/15">m</span>
+      </div>
+    );
+  }
+
+  // Short timer (minutes:seconds) — with final battle
   return (
-    <motion.div className="flex items-baseline gap-0.5 font-mono font-black tabular-nums select-none"
-      animate={crit ? { scale: [1, 1.06, 1] } : {}} transition={{ duration: 0.45, repeat: crit ? Infinity : 0 }}>
-      <span className={`${ts} ${crit ? "text-[#FF4060]" : urgent ? "text-[#FFD166]" : "text-white/90"}`} style={crit ? { textShadow: "0 0 12px rgba(255,64,96,0.5)" } : urgent ? { textShadow: "0 0 8px rgba(255,209,102,0.3)" } : {}}>
-        {String(m).padStart(2, "0")}
-      </span>
-      <span className={`text-base ${crit ? "text-[#FF4060]/50" : "text-white/15"}`}>:</span>
-      <span className={`${ts} ${crit ? "text-[#FF4060]" : urgent ? "text-[#FFD166]" : "text-white/90"}`} style={crit ? { textShadow: "0 0 12px rgba(255,64,96,0.5)" } : urgent ? { textShadow: "0 0 8px rgba(255,209,102,0.3)" } : {}}>
-        {String(s).padStart(2, "0")}
-      </span>
-      {urgent && <motion.div className="w-1.5 h-1.5 rounded-full ml-1.5" style={{ background: crit ? accentRed : accentGold, boxShadow: `0 0 6px ${crit ? accentRed : accentGold}` }} animate={{ opacity: [1, 0.2, 1] }} transition={{ duration: 0.4, repeat: Infinity }} />}
-    </motion.div>
+    <div className="flex flex-col items-center gap-1">
+      {isFinalBattle && (
+        <motion.div className="px-2 py-0.5 rounded-md mb-0.5"
+          style={{ background: "rgba(255,64,96,0.15)", border: "1px solid rgba(255,64,96,0.25)" }}
+          animate={{ opacity: [0.7, 1, 0.7] }} transition={{ duration: 0.5, repeat: Infinity }}>
+          <span className="text-[8px] font-black text-[#FF4060] tracking-widest">{crit ? t("auction.ending_now") : t("auction.final_battle")}</span>
+        </motion.div>
+      )}
+      <motion.div className="flex items-baseline gap-0.5 font-mono font-black tabular-nums select-none"
+        animate={crit ? { scale: [1, 1.06, 1] } : {}} transition={{ duration: 0.45, repeat: crit ? Infinity : 0 }}>
+        <span className={`${ts} ${crit ? "text-[#FF4060]" : isFinalBattle ? "text-[#FF4060]" : "text-white/90"}`} style={crit ? { textShadow: "0 0 12px rgba(255,64,96,0.5)" } : isFinalBattle ? { textShadow: "0 0 8px rgba(255,64,96,0.3)" } : {}}>
+          {String(m).padStart(2, "0")}
+        </span>
+        <span className={`text-base ${crit ? "text-[#FF4060]/50" : "text-white/15"}`}>:</span>
+        <span className={`${ts} ${crit ? "text-[#FF4060]" : isFinalBattle ? "text-[#FF4060]" : "text-white/90"}`} style={crit ? { textShadow: "0 0 12px rgba(255,64,96,0.5)" } : isFinalBattle ? { textShadow: "0 0 8px rgba(255,64,96,0.3)" } : {}}>
+          {String(s).padStart(2, "0")}
+        </span>
+        {(isFinalBattle || crit) && <motion.div className="w-1.5 h-1.5 rounded-full ml-1.5" style={{ background: accentRed, boxShadow: `0 0 6px ${accentRed}` }} animate={{ opacity: [1, 0.2, 1] }} transition={{ duration: 0.3, repeat: Infinity }} />}
+      </motion.div>
+    </div>
   );
 };
 
@@ -194,8 +218,9 @@ const LowCreditsPopup = ({ credits, onBuy, t }) => {
 const PKGS = [
   { id: "10", credits: 10, price: 5, ppc: 0.50 },
   { id: "25", credits: 25, price: 10, ppc: 0.40, discount: 20 },
-  { id: "50", credits: 50, price: 18, ppc: 0.36, discount: 28, deal: true },
-  { id: "100", credits: 100, price: 30, ppc: 0.30, discount: 40, deal: true, best: true },
+  { id: "50", credits: 50, price: 17.50, ppc: 0.35, discount: 30, deal: true },
+  { id: "100", credits: 100, price: 29, ppc: 0.29, discount: 42, deal: true },
+  { id: "250", credits: 250, price: 62.50, ppc: 0.25, discount: 50, deal: true, best: true },
 ];
 
 const BuyCreditsModal = ({ open, onClose, onPurchased, balance }) => {
@@ -485,20 +510,22 @@ const AuctionGridCard = ({ auction, onClick, t, idx, isWatched, onToggleWatch })
     const c = () => setRem(Math.max(0, Math.floor((new Date(auction.ends_at) - Date.now()) / 1000)));
     c(); const iv = setInterval(c, 1000); return () => clearInterval(iv);
   }, [auction.ends_at]);
-  const m = Math.floor(rem / 60), s = rem % 60;
-  const urgent = rem <= 30 && !isEnded;
-  const crit = rem <= 10 && !isEnded;
+
+  const isFinalBattle = rem > 0 && rem <= 60;
+  const isEndingNow = rem > 0 && rem <= 20;
+  const d = Math.floor(rem / 86400), h = Math.floor((rem % 86400) / 3600), m = Math.floor((rem % 3600) / 60), s = rem % 60;
+  const timerText = isEnded ? "ENDED" : d > 0 ? `${d}${t("auction.days")} ${h}${t("auction.hours")} ${String(m).padStart(2,"0")}m` : h > 0 ? `${h}${t("auction.hours")} ${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}` : `${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
 
   return (
     <motion.button data-testid={`auction-card-${auction.auction_id}`} onClick={onClick}
       className={`w-full rounded-2xl overflow-hidden text-left relative group ${glass}`}
-      style={{ background: panelBg, border: panelBorder, boxShadow: crit ? "0 0 20px rgba(255,64,96,0.06)" : "0 2px 16px rgba(0,0,0,0.2)" }}
+      style={{ background: panelBg, border: isFinalBattle ? "1px solid rgba(255,64,96,0.12)" : panelBorder, boxShadow: isFinalBattle ? "0 0 25px rgba(255,64,96,0.08)" : "0 2px 16px rgba(0,0,0,0.2)" }}
       whileTap={{ scale: 0.97 }}
       initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.04, duration: 0.35 }}>
       {!isEnded && (
         <motion.div className="absolute top-0 left-0 right-0 h-px z-10"
-          style={{ background: crit ? `linear-gradient(90deg, transparent, ${accentRed}, transparent)` : `linear-gradient(90deg, transparent, ${accentCyan}40, transparent)` }}
-          animate={{ opacity: [0.4, 1, 0.4] }} transition={{ duration: crit ? 0.6 : 2.5, repeat: Infinity }} />
+          style={{ background: isFinalBattle ? `linear-gradient(90deg, transparent, ${accentRed}, transparent)` : `linear-gradient(90deg, transparent, ${accentCyan}40, transparent)` }}
+          animate={{ opacity: isFinalBattle ? [0.6, 1, 0.6] : [0.4, 1, 0.4] }} transition={{ duration: isFinalBattle ? 0.4 : 2.5, repeat: Infinity }} />
       )}
       <div className="relative w-full aspect-[4/3] overflow-hidden">
         {auction.image_url ? (
@@ -507,13 +534,26 @@ const AuctionGridCard = ({ auction, onClick, t, idx, isWatched, onToggleWatch })
           <div className="w-full h-full bg-[#060810] flex items-center justify-center"><Gavel size={24} className="text-white/5" /></div>
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-[#060810] via-transparent to-transparent opacity-70" />
-        <div className="absolute top-2 left-2 flex items-center gap-1 px-2 py-1 rounded-lg backdrop-blur-xl"
-          style={{ background: crit ? "rgba(255,64,96,0.75)" : "rgba(6,8,16,0.7)", border: `1px solid ${crit ? "rgba(255,64,96,0.3)" : "rgba(255,255,255,0.06)"}` }}>
+
+        {/* Timer badge — dual mode */}
+        <div className={`absolute top-2 left-2 flex items-center gap-1 px-2 py-1 rounded-lg backdrop-blur-xl ${isFinalBattle ? "animate-pulse" : ""}`}
+          style={{ background: isFinalBattle ? "rgba(255,64,96,0.85)" : "rgba(6,8,16,0.7)", border: `1px solid ${isFinalBattle ? "rgba(255,64,96,0.4)" : "rgba(255,255,255,0.06)"}` }}>
           <Timer size={8} className="text-white/70" />
-          <span className={`text-[10px] font-mono font-bold tabular-nums text-white`}>
-            {isEnded ? "ENDED" : `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`}
-          </span>
+          <span className="text-[10px] font-mono font-bold tabular-nums text-white">{timerText}</span>
         </div>
+
+        {/* Final battle badge */}
+        {isFinalBattle && !isEnded && (
+          <motion.div className="absolute top-2 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-md backdrop-blur-xl z-20"
+            style={{ background: "rgba(255,64,96,0.9)", border: "1px solid rgba(255,64,96,0.5)" }}
+            animate={{ scale: [1, 1.04, 1], opacity: isEndingNow ? [0.8, 1, 0.8] : 1 }}
+            transition={{ duration: isEndingNow ? 0.3 : 0.8, repeat: Infinity }}>
+            <span className="text-[7px] font-black text-white tracking-widest">
+              {isEndingNow ? t("auction.ending_now") : t("auction.final_battle")}
+            </span>
+          </motion.div>
+        )}
+
         {/* Watchlist heart */}
         {onToggleWatch && !isEnded && (
           <motion.div data-testid={`watchlist-btn-${auction.auction_id}`}
@@ -551,17 +591,18 @@ const AuctionGridCard = ({ auction, onClick, t, idx, isWatched, onToggleWatch })
         <div className="flex items-end justify-between">
           <div>
             <p className="text-[7px] text-[#333] uppercase tracking-widest font-semibold mb-0.5">{t("auction.current_price")}</p>
-            <p className={`text-[17px] font-black font-mono tabular-nums leading-none ${isEnded ? "text-[#FFD166]/60" : "text-[#00E0FF]"}`}
-              style={!isEnded ? { textShadow: "0 0 10px rgba(0,224,255,0.15)" } : {}}>
+            <p className={`text-[17px] font-black font-mono tabular-nums leading-none ${isEnded ? "text-[#FFD166]/60" : isFinalBattle ? "text-[#FF4060]" : "text-[#00E0FF]"}`}
+              style={!isEnded ? { textShadow: isFinalBattle ? "0 0 12px rgba(255,64,96,0.2)" : "0 0 10px rgba(0,224,255,0.15)" } : {}}>
               {auction.current_price.toFixed(2)}
             </p>
             <p className="text-[8px] text-[#333] mt-0.5 line-through">{auction.retail_price.toFixed(2)}</p>
           </div>
           {!isEnded && (
             <motion.div className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg"
-              style={{ background: "rgba(0,224,255,0.06)", border: "1px solid rgba(0,224,255,0.12)" }}
-              whileHover={{ borderColor: "rgba(0,224,255,0.25)", background: "rgba(0,224,255,0.1)" }}>
-              <Zap size={9} className="text-[#00E0FF]" /><span className="text-[9px] font-bold text-[#00E0FF]">{t("auction.bid_now")}</span>
+              style={{ background: isFinalBattle ? "rgba(255,64,96,0.08)" : "rgba(0,224,255,0.06)", border: `1px solid ${isFinalBattle ? "rgba(255,64,96,0.15)" : "rgba(0,224,255,0.12)"}` }}
+              whileHover={{ borderColor: isFinalBattle ? "rgba(255,64,96,0.3)" : "rgba(0,224,255,0.25)" }}>
+              <Zap size={9} className={isFinalBattle ? "text-[#FF4060]" : "text-[#00E0FF]"} />
+              <span className={`text-[9px] font-bold ${isFinalBattle ? "text-[#FF4060]" : "text-[#00E0FF]"}`}>{t("auction.bid_now")}</span>
             </motion.div>
           )}
         </div>

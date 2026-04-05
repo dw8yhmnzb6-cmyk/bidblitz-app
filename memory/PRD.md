@@ -167,6 +167,15 @@ Create a modern, professional fintech web app called BidBlitz V2. Build Revolut-
 - Low Credits Popup: "Du bist nah am Gewinn!" prompt when credits ≤ 3
 - Discount badges on credit packages: -20%, -28%, BESTER WERT
 
+### Dual Timer + Final Battle System (Complete — April 5, 2026)
+- Auction duration: 2-3 days (172800-259200 seconds)
+- Final Battle activates in last 60 seconds
+- Each bid resets live countdown to 20 seconds (never stacks beyond max)
+- "ENDING NOW" mode when <= 20 seconds remain
+- Dual timer display: days/hours for long timers, MM:SS for short
+- Red pulsing border + "FINAL BATTLE" / "ENDET JETZT" badges on cards
+- Updated bid packages: 10/25/50/100/250 credits with 0.50 base, up to 50% discount
+
 ## Backlog (P0/P1 — Phase 1)
 - Saved Cards Management Seite (P0 — UI to view/delete saved cards)
 - ~~Stripe Connect for Merchant Payouts~~ (DONE — Express accounts, onboarding, earnings)
