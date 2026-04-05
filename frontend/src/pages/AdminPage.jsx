@@ -104,6 +104,7 @@ const CreatePromoForm = ({ t, onCreated, onCancel }) => {
 const tabs = [
   { id: "overview", key: "admin.overview", icon: BarChart3 },
   { id: "users", key: "admin.users", icon: Users },
+  { id: "roles", key: "admin.roles", icon: Shield },
   { id: "merchants", key: "admin.merchants", icon: Store },
   { id: "payouts", key: "admin.payouts", icon: Download },
   { id: "transactions", key: "admin.txns", icon: CreditCard },
@@ -142,6 +143,8 @@ export const AdminPage = ({ onNavigate }) => {
   const [editingFees, setEditingFees] = useState(false);
   const [feeValues, setFeeValues] = useState(null);
   const [savingFees, setSavingFees] = useState(false);
+  const [roleRequests, setRoleRequests] = useState([]);
+  const [roleFilter, setRoleFilter] = useState("pending");
 
   const adminExports = [
     { key: "transactions", label: t("export.transactions"), action: (f) => apiService.exportAdminTransactions(f) },
@@ -205,9 +208,13 @@ export const AdminPage = ({ onNavigate }) => {
         const d = await api("/api/promotions/admin/all");
         setPromos(d.promotions || []);
       }
+      if (t === "roles") {
+        const d = await apiService.adminListRoleRequests(roleFilter);
+        setRoleRequests(d.requests || []);
+      }
     } catch (e) { setError(e); }
     setLoading(false);
-  }, [search, payoutFilter]);
+  }, [search, payoutFilter, roleFilter]);
 
   useEffect(() => { load(tab); }, [tab, load]);
 
@@ -216,6 +223,15 @@ export const AdminPage = ({ onNavigate }) => {
     try {
       await api(`/api/admin/payouts/${ref}/action`, { method: "POST", body: JSON.stringify({ action }) });
       load("payouts");
+    } catch (e) { setError(e); }
+    setActionLoading(null);
+  };
+
+  const handleRoleDecision = async (userId, decision) => {
+    setActionLoading(userId);
+    try {
+      await apiService.adminDecideRole({ user_id: userId, decision });
+      load("roles");
     } catch (e) { setError(e); }
     setActionLoading(null);
   };
@@ -828,6 +844,60 @@ export const AdminPage = ({ onNavigate }) => {
           )}
 
         </AnimatePresence>
+
+          {/* Role Requests Tab */}
+          {tab === "roles" && (
+            <motion.div key="roles" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} transition={slide}>
+              <div className="flex gap-2 mb-4">
+                {["pending", "approved", "rejected", "all"].map(f => (
+                  <motion.button key={f} onClick={() => { setRoleFilter(f); }} whileTap={{ scale: 0.95 }}
+                    className={`px-3 py-1.5 rounded-lg text-[10px] font-semibold ${roleFilter === f ? "bg-[#00C2FF]/10 text-[#00C2FF] border border-[#00C2FF]/20" : "bg-white/[0.02] text-[#444] border border-white/[0.04]"}`}>
+                    {f.charAt(0).toUpperCase() + f.slice(1)}
+                  </motion.button>
+                ))}
+              </div>
+              {roleRequests.length === 0 ? (
+                <div className="text-center py-8"><p className="text-[12px] text-[#333]">{t("admin.no_role_requests") || "No role requests"}</p></div>
+              ) : (
+                <div className="space-y-2">
+                  {roleRequests.map((rr, i) => (
+                    <div key={i} data-testid={`role-request-${rr.user_id}`} className="rounded-2xl px-4 py-3" style={{ background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.035)" }}>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <div>
+                          <p className="text-[12px] font-semibold text-white/80">{rr.user_name}</p>
+                          <p className="text-[10px] text-[#444]">{rr.user_email}</p>
+                        </div>
+                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${rr.status === "approved" ? "bg-[#00D26A]/10 text-[#00D26A]" : rr.status === "rejected" ? "bg-[#FF4757]/10 text-[#FF4757]" : "bg-[#FFB800]/10 text-[#FFB800]"}`}>
+                          {rr.status}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[9px] text-[#555]">{rr.current_role}</span>
+                          <ChevronRight size={10} className="text-[#333]" />
+                          <span className="text-[10px] text-[#00E0FF] font-bold">{rr.requested_role}</span>
+                        </div>
+                        {rr.status === "pending" && (
+                          <div className="flex gap-1.5">
+                            <motion.button data-testid={`approve-role-${rr.user_id}`} onClick={() => handleRoleDecision(rr.user_id, "approve")} disabled={actionLoading === rr.user_id} whileTap={{ scale: 0.9 }}
+                              className="px-2.5 py-1 rounded-lg text-[9px] font-bold bg-[#00D26A]/10 text-[#00D26A] border border-[#00D26A]/15">
+                              {actionLoading === rr.user_id ? <Loader2 size={10} className="animate-spin" /> : <Check size={10} />}
+                            </motion.button>
+                            <motion.button data-testid={`reject-role-${rr.user_id}`} onClick={() => handleRoleDecision(rr.user_id, "reject")} disabled={actionLoading === rr.user_id} whileTap={{ scale: 0.9 }}
+                              className="px-2.5 py-1 rounded-lg text-[9px] font-bold bg-[#FF4757]/10 text-[#FF4757] border border-[#FF4757]/15">
+                              <X size={10} />
+                            </motion.button>
+                          </div>
+                        )}
+                      </div>
+                      <p className="text-[8px] text-[#222] mt-1">{rr.created_at?.slice(0, 16)}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </motion.div>
+          )}
+
       </div>
     </motion.div>
   );

@@ -50,7 +50,7 @@ async def get_influencer_profile(request: Request):
         total_earned += c.get("amount", 0)
         if c.get("status") == "pending":
             pending += c.get("amount", 0)
-        elif c.get("status") == "paid":
+        elif c.get("status") in ("paid", "credited"):
             paid += c.get("amount", 0)
     # If manager, get linked influencers
     linked = []
@@ -247,7 +247,10 @@ async def create_campaign(req: BonusCampaignReq, request: Request):
 # ══════════════════════════════════════
 
 async def process_commission(buyer_id: str, purchase_amount: float, purchase_ref: str):
-    """Process influencer + manager commission on a purchase."""
+    """Process influencer + manager commission on a purchase.
+    Commissions are paid as bid_credits (Reward Balance) — no real money payouts.
+    Credits are added to the influencer/manager wallet automatically.
+    """
     buyer = await db.users.find_one({"_id": ObjectId(buyer_id)})
     if not buyer:
         return
@@ -258,42 +261,48 @@ async def process_commission(buyer_id: str, purchase_amount: float, purchase_ref
     if not inf:
         return
     cfg = await get_config()
-    # Check active bonus campaigns
     now = datetime.now(timezone.utc).isoformat()
     bonus = 0
     campaigns = await db.bonus_campaigns.find({"status": "active", "start_date": {"$lte": now}, "end_date": {"$gte": now}}).to_list(5)
     for c in campaigns:
         bonus += c.get("bonus_rate", 0)
-    # Influencer commission
+    # Influencer commission — paid as credits
     rate = inf.get("commission_rate") or cfg.get("influencer_rate", 10.0)
     rate += bonus
-    commission_amt = round(purchase_amount * (rate / 100), 2)
-    if commission_amt > 0:
-        await db.commissions.insert_one({
-            "influencer_id": inf_id,
-            "buyer_id": buyer_id,
-            "purchase_ref": purchase_ref,
-            "amount": commission_amt,
-            "rate": rate,
-            "type": "direct",
-            "status": "pending",
-            "created_at": now,
-        })
-    # Manager override commission
+    commission_credits = max(1, round(purchase_amount * (rate / 100)))
+    await db.commissions.insert_one({
+        "influencer_id": inf_id,
+        "buyer_id": buyer_id,
+        "purchase_ref": purchase_ref,
+        "amount": commission_credits,
+        "rate": rate,
+        "type": "direct",
+        "status": "credited",
+        "created_at": now,
+    })
+    # Auto-add credits to influencer wallet
+    await db.users.update_one(
+        {"_id": ObjectId(inf_id)},
+        {"$inc": {"bid_credits": commission_credits, "total_reward_credits": commission_credits}},
+    )
+    # Manager override commission — paid as credits
     mgr_id = inf.get("manager_id")
     if mgr_id:
         mgr = await db.influencers.find_one({"user_id": mgr_id, "type": "manager", "status": "active"})
         if mgr:
             mgr_rate = mgr.get("commission_rate") or cfg.get("manager_rate", 3.0)
-            mgr_amt = round(purchase_amount * (mgr_rate / 100), 2)
-            if mgr_amt > 0:
-                await db.commissions.insert_one({
-                    "influencer_id": mgr_id,
-                    "buyer_id": buyer_id,
-                    "purchase_ref": purchase_ref,
-                    "amount": mgr_amt,
-                    "rate": mgr_rate,
-                    "type": "override",
-                    "status": "pending",
-                    "created_at": now,
-                })
+            mgr_credits = max(1, round(purchase_amount * (mgr_rate / 100)))
+            await db.commissions.insert_one({
+                "influencer_id": mgr_id,
+                "buyer_id": buyer_id,
+                "purchase_ref": purchase_ref,
+                "amount": mgr_credits,
+                "rate": mgr_rate,
+                "type": "override",
+                "status": "credited",
+                "created_at": now,
+            })
+            await db.users.update_one(
+                {"_id": ObjectId(mgr_id)},
+                {"$inc": {"bid_credits": mgr_credits, "total_reward_credits": mgr_credits}},
+            )

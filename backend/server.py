@@ -137,6 +137,8 @@ from routes.auctions import router as auctions_router
 from routes.merchant_connect import router as merchant_connect_router
 from routes.influencer import router as influencer_router
 from routes.investor import router as investor_router
+from routes.rewards import router as rewards_router
+from routes.role_requests import router as role_requests_router
 
 app.include_router(auth_router)
 app.include_router(wallet_router)
@@ -160,6 +162,8 @@ app.include_router(auctions_router)
 app.include_router(merchant_connect_router)
 app.include_router(influencer_router)
 app.include_router(investor_router)
+app.include_router(rewards_router)
+app.include_router(role_requests_router)
 
 # Stripe webhook at /api/webhook/stripe
 from routes.stripe import stripe_webhook as _stripe_wh

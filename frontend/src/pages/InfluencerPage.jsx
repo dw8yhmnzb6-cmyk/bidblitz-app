@@ -71,18 +71,19 @@ const InfluencerPage = ({ onBack }) => {
       <div className="max-w-2xl mx-auto px-4 py-4 space-y-3">
         {/* Earnings Summary */}
         <motion.div className={`rounded-2xl p-4 ${glass}`} style={{ background: panelBg, border: panelBorder }} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+          <p className="text-[10px] text-[#555] uppercase tracking-widest font-semibold mb-3">{t("influencer.reward_balance") || "Reward Balance"}</p>
           <div className="grid grid-cols-3 gap-3">
             <div className="text-center">
-              <p className="text-[20px] font-black text-[#00E0FF] font-mono">{data.total_earned.toFixed(2)}</p>
-              <p className="text-[8px] text-white/20 mt-0.5">Total Earned</p>
+              <p className="text-[20px] font-black text-[#00E0FF] font-mono">{Math.round(data.total_earned)}</p>
+              <p className="text-[8px] text-white/20 mt-0.5">{t("influencer.total_credits") || "Total Credits"}</p>
             </div>
             <div className="text-center">
-              <p className="text-[20px] font-black text-[#FFD166] font-mono">{data.pending_payout.toFixed(2)}</p>
-              <p className="text-[8px] text-white/20 mt-0.5">Pending</p>
+              <p className="text-[20px] font-black text-[#FFD166] font-mono">{Math.round(data.pending_payout)}</p>
+              <p className="text-[8px] text-white/20 mt-0.5">{t("influencer.pending") || "Pending"}</p>
             </div>
             <div className="text-center">
-              <p className="text-[20px] font-black text-[#00E89D] font-mono">{data.total_paid.toFixed(2)}</p>
-              <p className="text-[8px] text-white/20 mt-0.5">Paid Out</p>
+              <p className="text-[20px] font-black text-[#00E89D] font-mono">{Math.round(data.total_paid)}</p>
+              <p className="text-[8px] text-white/20 mt-0.5">{t("influencer.credited") || "Credited"}</p>
             </div>
           </div>
         </motion.div>
@@ -148,14 +149,14 @@ const InfluencerPage = ({ onBack }) => {
         {/* Recent Commissions */}
         {data.recent_commissions?.length > 0 && (
           <motion.div className={`rounded-2xl p-4 ${glass}`} style={{ background: panelBg, border: panelBorder }} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-            <p className="text-[10px] text-[#555] uppercase tracking-widest font-semibold mb-3">Recent Commissions</p>
+            <p className="text-[10px] text-[#555] uppercase tracking-widest font-semibold mb-3">{t("influencer.recent_commissions") || "Recent Commissions"}</p>
             <div className="space-y-1.5">
               {data.recent_commissions.slice(0, 8).map((c, i) => (
                 <div key={i} className="flex items-center gap-2 py-1.5">
-                  <div className={`w-1.5 h-1.5 rounded-full ${c.status === "paid" ? "bg-[#00E89D]" : "bg-[#FFD166]"}`} />
+                  <div className={`w-1.5 h-1.5 rounded-full ${c.status === "credited" ? "bg-[#00E89D]" : "bg-[#FFD166]"}`} />
                   <span className="text-[10px] text-white/40 flex-1">{c.type === "override" ? "Override" : "Direct"}</span>
                   <span className="text-[10px] text-white/20">{c.rate}%</span>
-                  <span className="text-[11px] font-bold text-[#00E0FF] font-mono">+{c.amount.toFixed(2)}</span>
+                  <span className="text-[11px] font-bold text-[#00E0FF] font-mono">+{Math.round(c.amount)} Cr</span>
                 </div>
               ))}
             </div>

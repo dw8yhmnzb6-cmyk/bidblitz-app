@@ -4,7 +4,8 @@ import {
   ArrowLeft, User, CreditCard, Bell, Shield, Moon, Settings,
   HelpCircle, LogOut, ChevronRight, ChevronLeft, Sparkles,
   Globe, Lock, Eye, Fingerprint, Smartphone, Mail, Calendar, Gift, LayoutDashboard, Activity, Users,
-  Pencil, Loader2, Check, X, ShieldCheck, Clock, AlertCircle, MapPin
+  Pencil, Loader2, Check, X, ShieldCheck, Clock, AlertCircle, MapPin,
+  Trophy, TrendingUp, Star
 } from "lucide-react";
 import { useUser, useI18n } from "../store";
 import { api } from "../services/api";
@@ -776,12 +777,15 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
   ];
 
   const growthMenu = [
+    { id: "rewards", icon: Trophy, label: t("rewards.title") || "Rewards", desc: t("rewards.menu_desc") || "Daily rewards & milestones", color: "#00E89D", action: gatedAction(() => onNavigate("/rewards")) },
     { id: "referral", icon: Gift, label: t("referral.title"), desc: t("referral.menu_desc"), color: "#FFD700", action: gatedAction(() => setSubPage("referral")) },
     {
       id: "notifications", icon: Bell, label: t("notif.title"), desc: unreadCount > 0 ? `${unreadCount} ${t("notif.unread")}` : t("notif.menu_desc"), color: "#FFB800",
       action: gatedAction(() => setSubPage("notifications")),
       badge: unreadCount > 0 ? unreadCount : null,
     },
+    { id: "influencer", icon: TrendingUp, label: t("influencer.title") || "Influencer", desc: t("influencer.menu_desc") || "Earn reward credits", color: "#00E0FF", action: gatedAction(() => onNavigate("/influencer")) },
+    { id: "investor", icon: Star, label: t("investor.title") || "Investor", desc: t("investor.menu_desc") || "Invest in BidBlitz", color: "#FFD166", action: () => onNavigate("/investor") },
     { id: "activity", icon: Activity, label: t("activity.title"), desc: t("activity.menu_desc"), color: "#00C2FF", action: gatedAction(() => setSubPage("activity")) },
     { id: "kids", icon: Users, label: t("kids.title"), desc: t("kids.menu_desc"), color: "#A855F7", action: gatedAction(() => setSubPage("kids")) },
   ];

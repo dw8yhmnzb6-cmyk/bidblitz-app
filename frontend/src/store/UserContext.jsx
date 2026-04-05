@@ -108,7 +108,7 @@ export function UserProvider({ children }) {
     }
   }, []);
 
-  const register = useCallback(async (name, email, password, confirmPassword) => {
+  const register = useCallback(async (name, email, password, confirmPassword, requestedRole) => {
     if (!name || !email || !password) {
       dispatch({ type: AUTH_ACTIONS.SET_ERROR, payload: 'Please fill in all fields' });
       return false;
@@ -123,7 +123,9 @@ export function UserProvider({ children }) {
     }
     dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: true });
     try {
-      const user = await api.register({ name, email, password });
+      const body = { name, email, password };
+      if (requestedRole && requestedRole !== "customer") body.requested_role = requestedRole;
+      const user = await api.register(body);
       dispatch({ type: AUTH_ACTIONS.SET_USER, payload: user });
       return true;
     } catch (err) {

@@ -62,6 +62,7 @@ export const AuthPage = ({ onBack, initialMode }) => {
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [confirm, setConfirm] = useState("");
+  const [requestedRole, setRequestedRole] = useState("customer");
   const { t } = useI18n();
 
   const user = useUser();
@@ -73,7 +74,7 @@ export const AuthPage = ({ onBack, initialMode }) => {
 
   const handleRegister = async (e) => {
     e.preventDefault();
-    const ok = await user.register(name, email, password, confirm);
+    const ok = await user.register(name, email, password, confirm, requestedRole);
     if (ok) {
       // auto-logged in
     }
@@ -85,6 +86,7 @@ export const AuthPage = ({ onBack, initialMode }) => {
     setPassword("");
     setName("");
     setConfirm("");
+    setRequestedRole("customer");
   };
 
   return (
@@ -285,6 +287,29 @@ export const AuthPage = ({ onBack, initialMode }) => {
                 placeholder="Confirm password"
                 testId="register-confirm-input"
               />
+
+              {/* Role Selector */}
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={slide}>
+                <div className="flex items-center gap-3 px-4 py-[14px] rounded-[14px] bg-white/[0.02] border border-white/[0.05]">
+                  <Shield size={16} strokeWidth={1.5} className="text-[#333]" />
+                  <select
+                    data-testid="register-role-select"
+                    value={requestedRole}
+                    onChange={e => setRequestedRole(e.target.value)}
+                    className="flex-1 bg-transparent text-[13px] text-white/90 font-medium outline-none appearance-none cursor-pointer"
+                    style={{ WebkitAppearance: "none" }}
+                  >
+                    <option value="customer" style={{ background: "#111", color: "#fff" }}>{t("role.customer") || "Customer"}</option>
+                    <option value="merchant" style={{ background: "#111", color: "#fff" }}>{t("role.merchant") || "Merchant"}</option>
+                    <option value="influencer" style={{ background: "#111", color: "#fff" }}>{t("role.influencer") || "Influencer"}</option>
+                    <option value="manager" style={{ background: "#111", color: "#fff" }}>{t("role.manager") || "Manager"}</option>
+                    <option value="investor" style={{ background: "#111", color: "#fff" }}>{t("role.investor") || "Investor"}</option>
+                  </select>
+                </div>
+                {requestedRole !== "customer" && (
+                  <p className="text-[9px] text-[#FFB800] mt-1 pl-1">{t("role.pending_hint") || "Role requires admin approval"}</p>
+                )}
+              </motion.div>
 
               {/* Error */}
               <AnimatePresence>

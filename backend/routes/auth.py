@@ -64,6 +64,10 @@ async def register(req: RegisterRequest, request: Request, response: Response):
         "payment_barcode": f"BLZ-{secrets.token_hex(6).upper()}",
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
+    # Save requested role if provided (admin approval required)
+    if req.requested_role and req.requested_role in ("merchant", "influencer", "manager", "investor"):
+        user_doc["requested_role"] = req.requested_role
+        user_doc["approval_status"] = "pending"
     result = await db.users.insert_one(user_doc)
     user_doc["_id"] = result.inserted_id
     user_id = str(result.inserted_id)

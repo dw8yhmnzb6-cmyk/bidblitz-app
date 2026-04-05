@@ -397,6 +397,28 @@ const translations = {
     "kids.feat_reports": "Weekly Reports", "kids.feat_reports_desc": "Spending breakdowns",
     "kids.feat_time": "Time Limits", "kids.feat_time_desc": "Transaction schedules",
     "kids.expired_notice": "Your subscription has expired. Renew to continue using BidBlitz Kids.",
+    // Rewards
+    "rewards.title": "Rewards", "rewards.subtitle": "Earn credits daily", "rewards.menu_desc": "Daily rewards & milestones",
+    "rewards.total_earned": "Total Earned", "rewards.reward_credits": "Reward Credits", "rewards.balance": "Balance", "rewards.bid_credits": "Bid Credits",
+    "rewards.daily_reward": "Daily Reward", "rewards.claim_now": "Claim", "rewards.already_claimed": "Already claimed today",
+    "rewards.claim": "Claim", "rewards.claimed": "Claimed", "rewards.locked": "Locked",
+    "rewards.day": "Day", "rewards.days": "Days", "rewards.streak": "Streak", "rewards.streak_progress": "Streak Progress",
+    "rewards.streak_hint": "Claim daily to build your streak!", "rewards.comeback_bonus": "Comeback Bonus",
+    "rewards.welcome_back": "Welcome back!", "rewards.bonus_credits": "Bonus Credits",
+    "rewards.milestones": "Milestones", "rewards.milestone_unlocked": "Milestone unlocked",
+    "rewards.ms_first_topup": "First Top-Up", "rewards.ms_first_bid": "First Bid", "rewards.ms_first_win": "First Win", "rewards.ms_first_invite": "First Invite",
+    "rewards.notifications": "Reward Notifications",
+    // Influencer
+    "influencer.title": "Influencer", "influencer.menu_desc": "Earn reward credits",
+    "influencer.reward_balance": "Reward Balance", "influencer.total_credits": "Total Credits",
+    "influencer.pending": "Pending", "influencer.credited": "Credited", "influencer.recent_commissions": "Recent Commissions",
+    // Investor
+    "investor.title": "Investor", "investor.menu_desc": "Invest in BidBlitz",
+    // Role
+    "role.customer": "Customer", "role.merchant": "Merchant", "role.influencer": "Influencer", "role.manager": "Manager", "role.investor": "Investor",
+    "role.pending_hint": "Role requires admin approval",
+    // Admin roles
+    "admin.roles": "Roles", "admin.no_role_requests": "No role requests",
   },
   de: {
     "nav.home": "START", "nav.wallet": "WALLET", "nav.scan": "SCAN", "nav.merchant": "HÄNDLER", "nav.more": "MEHR",
@@ -725,6 +747,28 @@ const translations = {
     "kids.feat_reports": "Wochenberichte", "kids.feat_reports_desc": "Ausgabenübersichten",
     "kids.feat_time": "Zeitlimits", "kids.feat_time_desc": "Transaktionszeitpläne",
     "kids.expired_notice": "Dein Abo ist abgelaufen. Verlängere es, um BidBlitz Kids weiter zu nutzen.",
+    // Rewards
+    "rewards.title": "Belohnungen", "rewards.subtitle": "Täglich Credits verdienen", "rewards.menu_desc": "Tägliche Belohnungen & Meilensteine",
+    "rewards.total_earned": "Gesamt verdient", "rewards.reward_credits": "Belohnungs-Credits", "rewards.balance": "Guthaben", "rewards.bid_credits": "Gebot-Credits",
+    "rewards.daily_reward": "Tägliche Belohnung", "rewards.claim_now": "Abholen", "rewards.already_claimed": "Bereits abgeholt heute",
+    "rewards.claim": "Abholen", "rewards.claimed": "Abgeholt", "rewards.locked": "Gesperrt",
+    "rewards.day": "Tag", "rewards.days": "Tage", "rewards.streak": "Serie", "rewards.streak_progress": "Serien-Fortschritt",
+    "rewards.streak_hint": "Täglich abholen um deine Serie aufzubauen!", "rewards.comeback_bonus": "Comeback Bonus",
+    "rewards.welcome_back": "Willkommen zurück!", "rewards.bonus_credits": "Bonus Credits",
+    "rewards.milestones": "Meilensteine", "rewards.milestone_unlocked": "Meilenstein freigeschaltet",
+    "rewards.ms_first_topup": "Erste Aufladung", "rewards.ms_first_bid": "Erstes Gebot", "rewards.ms_first_win": "Erster Gewinn", "rewards.ms_first_invite": "Erste Einladung",
+    "rewards.notifications": "Belohnungs-Benachrichtigungen",
+    // Influencer
+    "influencer.title": "Influencer", "influencer.menu_desc": "Belohnungs-Credits verdienen",
+    "influencer.reward_balance": "Belohnungsguthaben", "influencer.total_credits": "Credits gesamt",
+    "influencer.pending": "Ausstehend", "influencer.credited": "Gutgeschrieben", "influencer.recent_commissions": "Letzte Provisionen",
+    // Investor
+    "investor.title": "Investor", "investor.menu_desc": "In BidBlitz investieren",
+    // Role
+    "role.customer": "Kunde", "role.merchant": "Händler", "role.influencer": "Influencer", "role.manager": "Manager", "role.investor": "Investor",
+    "role.pending_hint": "Rolle erfordert Admin-Genehmigung",
+    // Admin roles
+    "admin.roles": "Rollen", "admin.no_role_requests": "Keine Rollenanfragen",
   },
   sq: {
     "nav.home": "BALLINA", "nav.wallet": "PORTOFOLI", "nav.scan": "SKANIM", "nav.merchant": "TREGTARI", "nav.more": "MË SHUMË",

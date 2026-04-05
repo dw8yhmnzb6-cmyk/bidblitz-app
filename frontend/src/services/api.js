@@ -292,6 +292,18 @@ export const api = {
   adminCreateCampaign: (body) => request("/api/influencer/admin/campaign", { method: "POST", body: JSON.stringify(body) }),
   // Investor
   submitInvestorContact: (body) => request("/api/investor/contact", { method: "POST", body: JSON.stringify(body) }),
+  // Rewards
+  getRewardStatus: () => request("/api/rewards/status"),
+  claimDailyReward: () => request("/api/rewards/daily-claim", { method: "POST" }),
+  claimMilestone: (id) => request(`/api/rewards/milestone/${id}`, { method: "POST" }),
+  getRewardNotifications: () => request("/api/rewards/notifications"),
+  markRewardNotificationsRead: () => request("/api/rewards/notifications/read", { method: "POST" }),
+  // Role Requests
+  requestRole: (body) => request("/api/role-requests/request", { method: "POST", body: JSON.stringify(body) }),
+  getMyRoleStatus: () => request("/api/role-requests/my-status"),
+  adminListRoleRequests: (status = "pending") => request(`/api/role-requests/admin/list?status=${status}`),
+  adminDecideRole: (body) => request("/api/role-requests/admin/decide", { method: "POST", body: JSON.stringify(body) }),
+  adminChangeRole: (body) => request("/api/role-requests/admin/change-role", { method: "POST", body: JSON.stringify(body) }),
   getMyTickets: () => request("/api/support/tickets"),
   getAdminTickets: (params = {}) => {
     const q = new URLSearchParams();
