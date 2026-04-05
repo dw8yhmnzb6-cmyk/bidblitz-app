@@ -115,6 +115,7 @@ const tabs = [
   { id: "analytics", key: "admin.analytics", icon: TrendingUp },
   { id: "promos", key: "admin.promos", icon: Gift },
   { id: "settings", key: "admin.config", icon: Settings },
+  { id: "merchant-fees", key: "admin.merchant_fees", icon: CircleDollarSign },
 ];
 
 export const AdminPage = ({ onNavigate }) => {
@@ -148,6 +149,10 @@ export const AdminPage = ({ onNavigate }) => {
   const [roleFilter, setRoleFilter] = useState("pending");
   const [verifications, setVerifications] = useState([]);
   const [verFilter, setVerFilter] = useState("pending");
+  const [merchantFees, setMerchantFees] = useState(null);
+  const [editingMerchantFees, setEditingMerchantFees] = useState(false);
+  const [merchantFeeValues, setMerchantFeeValues] = useState({});
+  const [savingMerchantFees, setSavingMerchantFees] = useState(false);
 
   const adminExports = [
     { key: "transactions", label: t("export.transactions"), action: (f) => apiService.exportAdminTransactions(f) },
@@ -218,6 +223,11 @@ export const AdminPage = ({ onNavigate }) => {
       if (t === "verification") {
         const d = await apiService.adminListVerifications(verFilter);
         setVerifications(d.verifications || []);
+      }
+      if (t === "merchant-fees") {
+        const d = await api("/api/payments/admin/fees");
+        setMerchantFees(d.fees || {});
+        setMerchantFeeValues(d.fees || {});
       }
     } catch (e) { setError(e); }
     setLoading(false);
@@ -557,6 +567,94 @@ export const AdminPage = ({ onNavigate }) => {
                       </div>
                     ))}
                   </motion.div>
+                </div>
+              )}
+            </motion.div>
+          )}
+
+          {/* ── Merchant Fee Editor Tab ── */}
+          {tab === "merchant-fees" && (
+            <motion.div key="merchant-fees" data-testid="admin-merchant-fees-tab" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              {loading || !merchantFees ? <Skeleton className="h-[300px]" /> : (
+                <div className="space-y-4">
+                  <motion.div className="rounded-2xl p-4" style={{ background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.035)" }}
+                    initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <h3 className="text-[11px] font-semibold text-[#444] uppercase tracking-[0.1em]">{t("admin.pos_fee_config") || "POS Payment Fees"}</h3>
+                        <p className="text-[8px] text-white/15 mt-0.5">{t("admin.pos_fee_desc") || "Configure merchant transaction fees by payment method"}</p>
+                      </div>
+                      <motion.button
+                        data-testid="edit-merchant-fees-btn"
+                        whileTap={{ scale: 0.93 }}
+                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-medium"
+                        style={{
+                          background: editingMerchantFees ? "rgba(0,210,106,0.1)" : "rgba(255,255,255,0.04)",
+                          color: editingMerchantFees ? "#00D26A" : "#555",
+                          border: `1px solid ${editingMerchantFees ? "rgba(0,210,106,0.15)" : "rgba(255,255,255,0.05)"}`,
+                        }}
+                        onClick={() => {
+                          if (editingMerchantFees) {
+                            setSavingMerchantFees(true);
+                            api("/api/payments/admin/fees", { method: "POST", body: JSON.stringify({ fees: merchantFeeValues }) })
+                              .then(d => { setMerchantFees(d.fees || merchantFeeValues); setEditingMerchantFees(false); })
+                              .catch(() => {})
+                              .finally(() => setSavingMerchantFees(false));
+                          } else {
+                            setMerchantFeeValues({ ...merchantFees });
+                            setEditingMerchantFees(true);
+                          }
+                        }}
+                      >
+                        {savingMerchantFees ? <Loader2 size={10} className="animate-spin" /> : editingMerchantFees ? <><Save size={10} /> {t("admin.save_fees") || "Save"}</> : <><Pencil size={10} /> {t("admin.edit_fees") || "Edit"}</>}
+                      </motion.button>
+                    </div>
+
+                    {[
+                      { key: "nfc_wallet", label: "NFC Wallet (BidBlitz)", color: "#00E89D", desc: t("admin.fee_nfc_wallet_desc") || "Lowest fee — incentivizes app wallet usage" },
+                      { key: "wallet", label: "BidBlitz Wallet", color: "#00C2FF", desc: t("admin.fee_wallet_desc") || "Standard wallet payment" },
+                      { key: "barcode", label: "Barcode / QR", color: "#A855F7", desc: t("admin.fee_barcode_desc") || "Customer scans barcode or QR code" },
+                      { key: "nfc_card", label: "Contactless Card", color: "#FFB800", desc: t("admin.fee_nfc_card_desc") || "Card tap / contactless" },
+                      { key: "apple_pay", label: "Apple Pay", color: "#FF6B6B", desc: t("admin.fee_apple_desc") || "Apple Pay contactless" },
+                      { key: "google_pay", label: "Google Pay", color: "#4285F4", desc: t("admin.fee_google_desc") || "Google Pay contactless" },
+                      { key: "card", label: "Card Payment", color: "#888", desc: t("admin.fee_card_desc") || "Standard card payment" },
+                    ].map((row, i, arr) => (
+                      <div key={row.key} className={`flex items-center justify-between py-3 ${i < arr.length - 1 ? "border-b border-white/[0.03]" : ""}`}>
+                        <div className="flex items-center gap-3 flex-1">
+                          <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: row.color }} />
+                          <div>
+                            <span className="text-[12px] text-white/60 font-medium">{row.label}</span>
+                            <p className="text-[8px] text-white/15">{row.desc}</p>
+                          </div>
+                        </div>
+                        {editingMerchantFees ? (
+                          <div className="flex items-center gap-1">
+                            <input
+                              data-testid={`merchant-fee-input-${row.key}`}
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              max="50"
+                              value={merchantFeeValues[row.key] ?? ""}
+                              onChange={e => setMerchantFeeValues(prev => ({ ...prev, [row.key]: parseFloat(e.target.value) || 0 }))}
+                              className="w-16 text-right text-[14px] font-bold font-mono bg-transparent outline-none border-b border-white/10 text-white px-1"
+                            />
+                            <span className="text-[11px] text-white/30">%</span>
+                          </div>
+                        ) : (
+                          <span className="text-[14px] font-bold font-mono" style={{ color: row.color }}>
+                            {typeof merchantFees[row.key] === "number" ? merchantFees[row.key].toFixed(2) : "—"}%
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </motion.div>
+
+                  {/* Info note */}
+                  <div className="rounded-xl p-3 flex items-start gap-2" style={{ background: "rgba(0,194,255,0.03)", border: "1px solid rgba(0,194,255,0.06)" }}>
+                    <AlertCircle size={12} className="text-[#00C2FF]/40 mt-0.5 flex-shrink-0" />
+                    <p className="text-[9px] text-white/25">{t("admin.fee_note") || "Changes apply immediately to all new transactions. Existing transactions are not affected. Values are in percentage (e.g., 0.30 = 0.30%)."}</p>
+                  </div>
                 </div>
               )}
             </motion.div>
