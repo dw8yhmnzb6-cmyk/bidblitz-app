@@ -105,6 +105,7 @@ const tabs = [
   { id: "overview", key: "admin.overview", icon: BarChart3 },
   { id: "users", key: "admin.users", icon: Users },
   { id: "roles", key: "admin.roles", icon: Shield },
+  { id: "verification", key: "admin.verification", icon: Shield },
   { id: "merchants", key: "admin.merchants", icon: Store },
   { id: "payouts", key: "admin.payouts", icon: Download },
   { id: "transactions", key: "admin.txns", icon: CreditCard },
@@ -145,6 +146,8 @@ export const AdminPage = ({ onNavigate }) => {
   const [savingFees, setSavingFees] = useState(false);
   const [roleRequests, setRoleRequests] = useState([]);
   const [roleFilter, setRoleFilter] = useState("pending");
+  const [verifications, setVerifications] = useState([]);
+  const [verFilter, setVerFilter] = useState("pending");
 
   const adminExports = [
     { key: "transactions", label: t("export.transactions"), action: (f) => apiService.exportAdminTransactions(f) },
@@ -212,9 +215,13 @@ export const AdminPage = ({ onNavigate }) => {
         const d = await apiService.adminListRoleRequests(roleFilter);
         setRoleRequests(d.requests || []);
       }
+      if (t === "verification") {
+        const d = await apiService.adminListVerifications(verFilter);
+        setVerifications(d.verifications || []);
+      }
     } catch (e) { setError(e); }
     setLoading(false);
-  }, [search, payoutFilter, roleFilter]);
+  }, [search, payoutFilter, roleFilter, verFilter]);
 
   useEffect(() => { load(tab); }, [tab, load]);
 
@@ -232,6 +239,15 @@ export const AdminPage = ({ onNavigate }) => {
     try {
       await apiService.adminDecideRole({ user_id: userId, decision });
       load("roles");
+    } catch (e) { setError(e); }
+    setActionLoading(null);
+  };
+
+  const handleVerDecision = async (userId, decision, reason = "") => {
+    setActionLoading(userId);
+    try {
+      await apiService.adminDecideVerification({ user_id: userId, decision, reason });
+      load("verification");
     } catch (e) { setError(e); }
     setActionLoading(null);
   };
@@ -891,6 +907,73 @@ export const AdminPage = ({ onNavigate }) => {
                         )}
                       </div>
                       <p className="text-[8px] text-[#222] mt-1">{rr.created_at?.slice(0, 16)}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </motion.div>
+          )}
+
+          {/* Verification Review Tab */}
+          {tab === "verification" && (
+            <motion.div key="verification" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} transition={slide}>
+              <div className="flex gap-2 mb-4">
+                {["pending", "approved", "rejected", "all"].map(f => (
+                  <motion.button key={f} onClick={() => { setVerFilter(f); }} whileTap={{ scale: 0.95 }}
+                    className={`px-3 py-1.5 rounded-lg text-[10px] font-semibold ${verFilter === f ? "bg-[#A855F7]/10 text-[#A855F7] border border-[#A855F7]/20" : "bg-white/[0.02] text-[#444] border border-white/[0.04]"}`}>
+                    {f.charAt(0).toUpperCase() + f.slice(1)}
+                  </motion.button>
+                ))}
+              </div>
+              {verifications.length === 0 ? (
+                <div className="text-center py-8"><p className="text-[12px] text-[#333]">{t("admin.no_verifications") || "No verifications"}</p></div>
+              ) : (
+                <div className="space-y-3">
+                  {verifications.map((v, i) => (
+                    <div key={i} data-testid={`verification-${v.user_id}`} className="rounded-2xl px-4 py-3" style={{ background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.035)" }}>
+                      <div className="flex items-center justify-between mb-2">
+                        <div>
+                          <p className="text-[12px] font-semibold text-white/80">{v.user_name}</p>
+                          <p className="text-[10px] text-[#444]">{v.user_email}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] text-[#00E0FF] font-bold">{v.requested_role}</span>
+                          <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${v.status === "approved" ? "bg-[#00D26A]/10 text-[#00D26A]" : v.status === "rejected" ? "bg-[#FF4757]/10 text-[#FF4757]" : "bg-[#FFB800]/10 text-[#FFB800]"}`}>
+                            {v.status}
+                          </span>
+                        </div>
+                      </div>
+                      {/* Document Images */}
+                      <div className="grid grid-cols-3 gap-2 mb-2">
+                        {[
+                          { key: "id_front", label: t("verify.id_front") || "ID Front" },
+                          { key: "id_back", label: t("verify.id_back") || "ID Back" },
+                          { key: "selfie", label: t("verify.selfie") || "Selfie" },
+                        ].map(doc => (
+                          <div key={doc.key} className="text-center">
+                            <a href={apiService.getVerificationFileUrl(v[doc.key])} target="_blank" rel="noreferrer"
+                              className="block rounded-lg overflow-hidden border border-white/[0.05] hover:border-[#00E0FF]/20 transition-colors">
+                              <img src={apiService.getVerificationFileUrl(v[doc.key])} alt={doc.label}
+                                className="w-full h-20 object-cover bg-white/[0.02]"
+                                onError={(e) => { e.target.style.display = "none"; }} />
+                            </a>
+                            <p className="text-[8px] text-white/20 mt-0.5">{doc.label}</p>
+                          </div>
+                        ))}
+                      </div>
+                      {v.status === "pending" && (
+                        <div className="flex gap-1.5 mt-2">
+                          <motion.button data-testid={`approve-ver-${v.user_id}`} onClick={() => handleVerDecision(v.user_id, "approve")} disabled={actionLoading === v.user_id} whileTap={{ scale: 0.9 }}
+                            className="flex-1 py-1.5 rounded-lg text-[10px] font-bold bg-[#00D26A]/10 text-[#00D26A] border border-[#00D26A]/15 flex items-center justify-center gap-1">
+                            {actionLoading === v.user_id ? <Loader2 size={10} className="animate-spin" /> : <><Check size={10} /> {t("admin.approve") || "Approve"}</>}
+                          </motion.button>
+                          <motion.button data-testid={`reject-ver-${v.user_id}`} onClick={() => handleVerDecision(v.user_id, "reject")} disabled={actionLoading === v.user_id} whileTap={{ scale: 0.9 }}
+                            className="flex-1 py-1.5 rounded-lg text-[10px] font-bold bg-[#FF4757]/10 text-[#FF4757] border border-[#FF4757]/15 flex items-center justify-center gap-1">
+                            <X size={10} /> {t("admin.reject") || "Reject"}
+                          </motion.button>
+                        </div>
+                      )}
+                      <p className="text-[8px] text-[#222] mt-1">{v.created_at?.slice(0, 16)}</p>
                     </div>
                   ))}
                 </div>

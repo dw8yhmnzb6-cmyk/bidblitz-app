@@ -5,7 +5,7 @@ import {
   HelpCircle, LogOut, ChevronRight, ChevronLeft, Sparkles,
   Globe, Lock, Eye, Fingerprint, Smartphone, Mail, Calendar, Gift, LayoutDashboard, Activity, Users,
   Pencil, Loader2, Check, X, ShieldCheck, Clock, AlertCircle, MapPin,
-  Trophy, TrendingUp, Star
+  Trophy, TrendingUp, Star, Store, Monitor
 } from "lucide-react";
 import { useUser, useI18n } from "../store";
 import { api } from "../services/api";
@@ -786,6 +786,8 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
     },
     { id: "influencer", icon: TrendingUp, label: t("influencer.title") || "Influencer", desc: t("influencer.menu_desc") || "Earn reward credits", color: "#00E0FF", action: gatedAction(() => onNavigate("/influencer")) },
     { id: "investor", icon: Star, label: t("investor.title") || "Investor", desc: t("investor.menu_desc") || "Invest in BidBlitz", color: "#FFD166", action: () => onNavigate("/investor") },
+    { id: "verification", icon: ShieldCheck, label: t("verify.title") || "Identity Verification", desc: t("verify.menu_desc") || "Verify your role", color: "#A855F7", action: gatedAction(() => onNavigate("/verification")) },
+    { id: "merchant-dashboard", icon: Store, label: t("merch.title") || "Merchant Dashboard", desc: t("merch.menu_desc") || "Branches & Registers", color: "#FF8C42", action: gatedAction(() => onNavigate("/merchant-dashboard")) },
     { id: "activity", icon: Activity, label: t("activity.title"), desc: t("activity.menu_desc"), color: "#00C2FF", action: gatedAction(() => setSubPage("activity")) },
     { id: "kids", icon: Users, label: t("kids.title"), desc: t("kids.menu_desc"), color: "#A855F7", action: gatedAction(() => setSubPage("kids")) },
   ];

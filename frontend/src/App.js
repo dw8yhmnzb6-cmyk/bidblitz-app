@@ -16,6 +16,8 @@ import MerchantConnectPage from "./pages/MerchantConnectPage";
 import InfluencerPage from "./pages/InfluencerPage";
 import InvestorPage from "./pages/InvestorPage";
 import RewardsPage from "./pages/RewardsPage";
+import VerificationPage from "./pages/VerificationPage";
+import MerchantDashboardPage from "./pages/MerchantDashboardPage";
 import AuthPage from "./pages/AuthPage";
 import NotificationsPage from "./pages/NotificationsPage";
 
@@ -145,6 +147,10 @@ function AppContent() {
         return <InvestorPage onBack={() => handleNavigate("/more")} />;
       case "/rewards":
         return <RewardsPage onBack={() => handleNavigate("/more")} />;
+      case "/verification":
+        return <VerificationPage onBack={() => handleNavigate("/more")} />;
+      case "/merchant-dashboard":
+        return <MerchantDashboardPage onBack={() => handleNavigate("/more")} />;
       case "/admin":
         return user.role === "admin"
           ? <AdminPage onNavigate={handleNavigate} />

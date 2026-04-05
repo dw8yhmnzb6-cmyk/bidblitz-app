@@ -304,6 +304,40 @@ export const api = {
   adminListRoleRequests: (status = "pending") => request(`/api/role-requests/admin/list?status=${status}`),
   adminDecideRole: (body) => request("/api/role-requests/admin/decide", { method: "POST", body: JSON.stringify(body) }),
   adminChangeRole: (body) => request("/api/role-requests/admin/change-role", { method: "POST", body: JSON.stringify(body) }),
+  // Verification
+  uploadVerification: (formData) => {
+    const token = document.cookie.split(";").find(c => c.trim().startsWith("access_token="));
+    return fetch(`${API}/api/verification/upload`, {
+      method: "POST",
+      body: formData,
+      credentials: "include",
+      headers: token ? {} : {},
+    }).then(r => r.ok ? r.json() : r.json().then(d => { throw new Error(d.detail || "Upload failed"); }));
+  },
+  getVerificationStatus: () => request("/api/verification/my-status"),
+  getVerificationFileUrl: (filename) => `${API}/api/verification/file/${filename}`,
+  adminListVerifications: (status = "pending") => request(`/api/verification/admin/list?status=${status}`),
+  adminDecideVerification: (body) => request("/api/verification/admin/decide", { method: "POST", body: JSON.stringify(body) }),
+  // Merchant Hierarchy
+  adminCreateMerchant: (body) => request("/api/merchant-hierarchy/admin/create-merchant", { method: "POST", body: JSON.stringify(body) }),
+  adminListMerchants: () => request("/api/merchant-hierarchy/admin/merchants"),
+  adminSetCommission: (body) => request("/api/merchant-hierarchy/admin/set-commission", { method: "POST", body: JSON.stringify(body) }),
+  getMerchantBranches: () => request("/api/merchant-hierarchy/branches"),
+  createBranch: (body) => request("/api/merchant-hierarchy/branches", { method: "POST", body: JSON.stringify(body) }),
+  getBranch: (id) => request(`/api/merchant-hierarchy/branches/${id}`),
+  getMerchantRegisters: (branchId = "") => request(`/api/merchant-hierarchy/registers${branchId ? `?branch_id=${branchId}` : ""}`),
+  createRegister: (body) => request("/api/merchant-hierarchy/registers", { method: "POST", body: JSON.stringify(body) }),
+  toggleRegister: (deviceId) => request(`/api/merchant-hierarchy/registers/${deviceId}/toggle`, { method: "POST" }),
+  regenerateApiKey: (deviceId) => request(`/api/merchant-hierarchy/registers/${deviceId}/regenerate-key`, { method: "POST" }),
+  getMerchantStaff: (branchId = "") => request(`/api/merchant-hierarchy/staff${branchId ? `?branch_id=${branchId}` : ""}`),
+  addStaff: (body) => request("/api/merchant-hierarchy/staff", { method: "POST", body: JSON.stringify(body) }),
+  removeStaff: (userId) => request(`/api/merchant-hierarchy/staff/${userId}/remove`, { method: "POST" }),
+  getMerchantRevenue: (branchId = "", deviceId = "") => {
+    let q = [];
+    if (branchId) q.push(`branch_id=${branchId}`);
+    if (deviceId) q.push(`device_id=${deviceId}`);
+    return request(`/api/merchant-hierarchy/revenue${q.length ? "?" + q.join("&") : ""}`);
+  },
   getMyTickets: () => request("/api/support/tickets"),
   getAdminTickets: (params = {}) => {
     const q = new URLSearchParams();
