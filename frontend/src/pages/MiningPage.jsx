@@ -15,8 +15,10 @@ const sl = { duration: 0.3, ease: [0.32, 0.72, 0, 1] };
 
 async function api(path, opts = {}) {
   const r = await fetch(`${API}${path}`, { credentials: "include", headers: { "Content-Type": "application/json" }, ...opts });
-  const d = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(d.detail || "Request failed");
+  const text = await r.text();
+  let d = {};
+  try { d = JSON.parse(text); } catch { /* non-json */ }
+  if (!r.ok) throw new Error(d.detail || d.message || (text && text.length < 200 ? text : "") || "Request failed");
   return d;
 }
 
@@ -263,9 +265,20 @@ export default function MiningPage({ onBack }) {
     setBuyingLaunch(projectId);
     try {
       const r = await api("/api/mining/launchpad/buy", { method: "POST", body: JSON.stringify({ project_id: projectId }) });
-      toast.success(`${r.miner_name} activated! (${r.hashrate} TH/s)`);
+      toast.success(`${r.miner_name} ${t("mining.activated") || "activated"}! (${r.hashrate} TH/s)`);
       load();
-    } catch (e) { toast.error(e.message); }
+    } catch (e) {
+      const msg = e.message || "";
+      if (msg.includes("Insufficient")) {
+        toast.error(t("mining.err_need_more") || "Guthaben reicht nicht. Lade dein Wallet auf.");
+      } else if (msg.includes("VIP")) {
+        toast.error(t("mining.err_vip") || "VIP-Level zu niedrig für diesen Miner.");
+      } else if (msg.includes("already")) {
+        toast.error(t("mining.err_already") || "Du hast diesen Miner bereits.");
+      } else {
+        toast.error(msg || "Request failed");
+      }
+    }
     setBuyingLaunch(null);
   };
 

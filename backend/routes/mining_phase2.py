@@ -5,6 +5,7 @@ BidBlitz V2 — Mining Phase 2: Marketplace, Card, Launchpad
 import secrets
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, HTTPException, Request
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from core.database import db
 from core.security import get_current_user
@@ -414,21 +415,21 @@ async def buy_launchpad(req: LaunchpadBuyRequest, request: Request):
 
     project = await db.mining_launchpad.find_one({"project_id": req.project_id})
     if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
+        return JSONResponse(status_code=404, content={"detail": "Project not found"})
     if project.get("launch_status") != "active":
-        raise HTTPException(status_code=400, detail="Launch not active")
+        return JSONResponse(status_code=400, content={"detail": "Launch not active"})
     if project.get("sold", 0) >= project.get("total_supply", 0):
-        raise HTTPException(status_code=400, detail="Sold out")
+        return JSONResponse(status_code=400, content={"detail": "Sold out"})
 
     # Check existing purchase
     existing = await db.mining_launchpad_buys.find_one({"user_id": user_id, "project_id": req.project_id})
     if existing:
-        raise HTTPException(status_code=400, detail="Already purchased this launch")
+        return JSONResponse(status_code=400, content={"detail": "Already purchased this launch"})
 
     # Check balance (use EUR wallet)
     balance = user.get("balance", 0)
     if balance < project["price_eur"]:
-        raise HTTPException(status_code=400, detail="Insufficient wallet balance")
+        return JSONResponse(status_code=400, content={"detail": "Insufficient wallet balance"})
 
     now = datetime.now(timezone.utc).isoformat()
 
