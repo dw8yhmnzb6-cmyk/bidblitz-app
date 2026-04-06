@@ -4,24 +4,29 @@ const STORAGE_KEY = "bidblitz_lang";
 const DEFAULT_LANG = "de";
 
 export const LANGUAGES = [
-  { code: "de", label: "Deutsch", flag: "DE" },
-  { code: "en", label: "English", flag: "GB" },
-  { code: "sq", label: "Shqip", flag: "AL" },
-  { code: "sq-XK", label: "Shqip (Kosovë)", flag: "XK" },
-  { code: "tr", label: "Türkçe", flag: "TR" },
-  { code: "fr", label: "Français", flag: "FR" },
-  { code: "es", label: "Español", flag: "ES" },
-  { code: "it", label: "Italiano", flag: "IT" },
-  { code: "pt", label: "Português", flag: "PT" },
-  { code: "nl", label: "Nederlands", flag: "NL" },
-  { code: "pl", label: "Polski", flag: "PL" },
-  { code: "ru", label: "Русский", flag: "RU" },
-  { code: "ar", label: "العربية", flag: "SA", rtl: true },
+  { code: "de", label: "Deutsch", flag: "\ud83c\udde9\ud83c\uddea" },
+  { code: "en", label: "English (UK)", flag: "\ud83c\uddec\ud83c\udde7" },
+  { code: "en-US", label: "English (US)", flag: "\ud83c\uddfa\ud83c\uddf8" },
+  { code: "sq", label: "Shqip", flag: "\ud83c\udde6\ud83c\uddf1" },
+  { code: "sq-XK", label: "Kosov\u00eb", flag: "\ud83c\uddfd\ud83c\uddf0" },
+  { code: "tr", label: "T\u00fcrk\u00e7e", flag: "\ud83c\uddf9\ud83c\uddf7" },
+  { code: "fr", label: "Fran\u00e7ais", flag: "\ud83c\uddeb\ud83c\uddf7" },
+  { code: "es", label: "Espa\u00f1ol", flag: "\ud83c\uddea\ud83c\uddf8" },
+  { code: "it", label: "Italiano", flag: "\ud83c\uddee\ud83c\uddf9" },
+  { code: "pt", label: "Portugu\u00eas", flag: "\ud83c\uddf5\ud83c\uddf9" },
+  { code: "nl", label: "Nederlands", flag: "\ud83c\uddf3\ud83c\uddf1" },
+  { code: "pl", label: "Polski", flag: "\ud83c\uddf5\ud83c\uddf1" },
+  { code: "ru", label: "\u0420\u0443\u0441\u0441\u043a\u0438\u0439", flag: "\ud83c\uddf7\ud83c\uddfa" },
+  { code: "ar", label: "\u0627\u0644\u0639\u0631\u0628\u064a\u0629", flag: "\ud83c\uddf8\ud83c\udde6", rtl: true },
+  { code: "ar-AE", label: "\u0627\u0644\u0625\u0645\u0627\u0631\u0627\u062a", flag: "\ud83c\udde6\ud83c\uddea", rtl: true },
 ];
 
-// sq-XK maps to sq translations internally
+// Resolve language codes: sq-XK → sq, en-US → en, ar-AE → ar
 function resolveCode(code) {
-  return code === "sq-XK" ? "sq" : code;
+  if (code === "sq-XK") return "sq";
+  if (code === "en-US") return "en";
+  if (code === "ar-AE") return "ar";
+  return code;
 }
 
 const I18nContext = createContext(null);

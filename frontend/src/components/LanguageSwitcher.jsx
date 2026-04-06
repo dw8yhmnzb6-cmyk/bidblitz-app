@@ -5,8 +5,8 @@ import { useI18n, LANGUAGES } from "../store";
 
 const slide = { duration: 0.2, ease: [0.32, 0.72, 0, 1] };
 
-// Filter out sq-XK (handled internally as sq)
-const displayLangs = LANGUAGES.filter(l => l.code !== "sq-XK");
+// Show all languages
+const displayLangs = LANGUAGES;
 
 export const LanguageSwitcher = () => {
   const { lang, setLang } = useI18n();
@@ -41,16 +41,14 @@ export const LanguageSwitcher = () => {
         onClick={() => setOpen(!open)}
       >
         <Globe size={13} strokeWidth={1.5} className={open ? "text-[#00C2FF]" : "text-white/40"} />
-        <span className="text-[11px] font-semibold tracking-wide" style={{ color: open ? "#00C2FF" : "rgba(255,255,255,0.6)" }}>
-          {current.flag}
-        </span>
+        <span className="text-[14px]">{current.flag}</span>
       </motion.button>
 
       <AnimatePresence>
         {open && (
           <motion.div
             data-testid="language-dropdown"
-            className="absolute top-full right-0 mt-2 w-[200px] max-h-[320px] overflow-y-auto rounded-2xl z-50 scrollbar-hide"
+            className="absolute top-full right-0 mt-2 w-[240px] max-h-[380px] overflow-y-auto rounded-2xl z-50 scrollbar-hide"
             style={{
               background: "rgba(12,12,12,0.98)",
               border: "1px solid rgba(255,255,255,0.06)",
@@ -77,9 +75,9 @@ export const LanguageSwitcher = () => {
                     whileTap={{ scale: 0.98 }}
                     onClick={() => handleSelect(l.code)}
                   >
-                    <span className="text-[13px] w-6 text-center flex-shrink-0">{l.flag}</span>
+                    <span className="text-[16px] w-7 text-center flex-shrink-0">{l.flag}</span>
                     <span
-                      className="text-[12px] font-medium flex-1"
+                      className="text-[12px] font-medium flex-1 truncate"
                       style={{ color: active ? "#00C2FF" : "rgba(255,255,255,0.65)" }}
                     >
                       {l.label}
