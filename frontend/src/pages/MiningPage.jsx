@@ -5,7 +5,7 @@ import {
   ArrowUpRight, ArrowDownLeft, Send, Gift, Copy, Check,
   Loader2, TrendingUp, Clock, Shield, Star, Wallet, RefreshCw,
   ChevronUp, DollarSign, BarChart3, Users, ShoppingBag,
-  CreditCard, Rocket, Lock, Snowflake, Tag, X, Percent
+  CreditCard, Rocket, Lock, Snowflake, Tag, X, Percent, Share2
 } from "lucide-react";
 import { useUser, useI18n } from "../store";
 import { toast } from "sonner";
@@ -226,6 +226,21 @@ export default function MiningPage({ onBack }) {
       navigator.clipboard.writeText(data.referral.code).catch(() => {});
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const shareRef = async () => {
+    const code = data?.referral?.code;
+    if (!code) return;
+    const url = `${window.location.origin}?ref=${code}`;
+    const text = `Verdiene BLZ mit BidBlitz Mining! Nutze meinen Code: ${code}`;
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: "BidBlitz Mining", text, url });
+      } catch { /* user cancelled */ }
+    } else {
+      navigator.clipboard.writeText(`${text}\n${url}`).catch(() => {});
+      toast.success(t("mining.link_copied") || "Link kopiert!");
     }
   };
 
@@ -555,6 +570,11 @@ export default function MiningPage({ onBack }) {
                     className="w-10 h-10 rounded-xl bg-[#FFD700]/10 flex items-center justify-center border border-[#FFD700]/15"
                     whileTap={{ scale: 0.9 }}>
                     {copied ? <Check size={14} className="text-[#00E89D]" /> : <Copy size={14} className="text-[#FFD700]" />}
+                  </motion.button>
+                  <motion.button data-testid="mining-share-ref" onClick={shareRef}
+                    className="w-10 h-10 rounded-xl bg-[#00C2FF]/10 flex items-center justify-center border border-[#00C2FF]/15"
+                    whileTap={{ scale: 0.9 }}>
+                    <Share2 size={14} className="text-[#00C2FF]" />
                   </motion.button>
                 </div>
                 <p className="text-[9px] text-white/15 mt-1.5">{t("mining.referral_desc") || "Share & earn 5% of your referrals' mining rewards"}</p>
