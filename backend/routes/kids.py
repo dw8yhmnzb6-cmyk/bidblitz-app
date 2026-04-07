@@ -295,3 +295,61 @@ async def delete_child(child_id: str, request: Request):
         raise HTTPException(status_code=404, detail="Child not found")
 
     return {"ok": True}
+
+
+
+# ═══════════════════════════════════════════════════
+# Cancel Subscription
+# ═══════════════════════════════════════════════════
+
+@router.post("/cancel")
+async def cancel_kids_subscription(request: Request):
+    """Cancel the Kids subscription."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    ip, ua = get_client_info(request)
+
+    sub = await db.kids_subscriptions.find_one({"user_id": user_id})
+    if not sub:
+        raise HTTPException(status_code=404, detail="No subscription found")
+    
+    if sub.get("status") not in ("active", "trial"):
+        raise HTTPException(status_code=400, detail="Subscription not active")
+
+    now = datetime.now(timezone.utc)
+    await db.kids_subscriptions.update_one(
+        {"user_id": user_id},
+        {"$set": {
+            "status": "canceled",
+            "canceled_at": now.isoformat(),
+        }}
+    )
+
+    await log_audit(AuditEvent.ADMIN_ACTION, user_id, user.get("email", ""), ip, ua,
+                    "success", "Kids subscription canceled")
+
+    return {"ok": True, "status": "canceled"}
+
+
+# ═══════════════════════════════════════════════════
+# Admin: Manage Kids Subscriptions
+# ═══════════════════════════════════════════════════
+
+@router.get("/admin/subscriptions")
+async def admin_list_kids_subscriptions(request: Request):
+    """Admin: List all Kids subscriptions."""
+    user = await get_current_user(request)
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+
+    subs = await db.kids_subscriptions.find({}, {"_id": 0}).sort("created_at", -1).to_list(500)
+    
+    stats = {
+        "total": len(subs),
+        "active": sum(1 for s in subs if s.get("status") == "active"),
+        "trial": sum(1 for s in subs if s.get("status") == "trial"),
+        "expired": sum(1 for s in subs if s.get("status") == "expired"),
+        "canceled": sum(1 for s in subs if s.get("status") == "canceled"),
+    }
+
+    return {"subscriptions": subs, "stats": stats}

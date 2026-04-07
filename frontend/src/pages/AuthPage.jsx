@@ -63,6 +63,9 @@ export const AuthPage = ({ onBack, initialMode }) => {
   const [name, setName] = useState("");
   const [confirm, setConfirm] = useState("");
   const [requestedRole, setRequestedRole] = useState("customer");
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotSent, setForgotSent] = useState(false);
   const { t } = useI18n();
 
   const user = useUser();
@@ -80,6 +83,12 @@ export const AuthPage = ({ onBack, initialMode }) => {
     }
   };
 
+  const handleForgotPassword = async (e) => {
+    e.preventDefault();
+    // TODO: Backend integration
+    setForgotSent(true);
+  };
+
   const switchMode = (m) => {
     setMode(m);
     setEmail("");
@@ -87,6 +96,8 @@ export const AuthPage = ({ onBack, initialMode }) => {
     setName("");
     setConfirm("");
     setRequestedRole("customer");
+    setShowForgotPassword(false);
+    setForgotSent(false);
   };
 
   return (
@@ -153,7 +164,7 @@ export const AuthPage = ({ onBack, initialMode }) => {
             animate={{ opacity: 1 }}
             transition={{ delay: 0.22 }}
           >
-            {mode === "login" ? "Welcome back" : "Create your account"}
+            {mode === "login" ? t("auth.welcome") || "Willkommen zurück" : t("auth.create") || "Konto erstellen"}
           </motion.p>
         </motion.div>
 
@@ -174,7 +185,7 @@ export const AuthPage = ({ onBack, initialMode }) => {
                 type="email"
                 value={email}
                 onChange={setEmail}
-                placeholder="Email address"
+                placeholder={t("auth.email") || "E-Mail-Adresse"}
                 testId="login-email-input"
                 autoFocus
               />
@@ -183,9 +194,19 @@ export const AuthPage = ({ onBack, initialMode }) => {
                 type="password"
                 value={password}
                 onChange={setPassword}
-                placeholder="Password"
+                placeholder={t("auth.password") || "Passwort"}
                 testId="login-password-input"
               />
+
+              {/* Forgot Password Link */}
+              <motion.button
+                type="button"
+                onClick={() => setShowForgotPassword(true)}
+                className="text-[11px] text-[#00C2FF] font-medium text-right w-full -mt-1"
+                whileTap={{ scale: 0.98 }}
+              >
+                {t("auth.forgot") || "Passwort vergessen?"}
+              </motion.button>
 
               {/* Error */}
               <AnimatePresence>
@@ -217,11 +238,11 @@ export const AuthPage = ({ onBack, initialMode }) => {
                     <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }}>
                       <Loader2 size={15} />
                     </motion.div>
-                    Signing in...
+                    {t("auth.signing") || "Anmeldung..."}
                   </>
                 ) : (
                   <>
-                    Sign In <ArrowRight size={15} strokeWidth={2.5} />
+                    {t("auth.signin") || "Anmelden"} <ArrowRight size={15} strokeWidth={2.5} />
                   </>
                 )}
               </motion.button>
@@ -233,14 +254,14 @@ export const AuthPage = ({ onBack, initialMode }) => {
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.3 }}
               >
-                Don't have an account?{" "}
+                {t("auth.no_account") || "Noch kein Konto?"}{" "}
                 <button
                   type="button"
                   data-testid="switch-to-register-btn"
                   className="text-[#00C2FF] font-semibold hover:underline"
                   onClick={() => switchMode("register")}
                 >
-                  Create account
+                  {t("auth.create_link") || "Registrieren"}
                 </button>
               </motion.p>
             </motion.form>
@@ -259,7 +280,7 @@ export const AuthPage = ({ onBack, initialMode }) => {
                 type="text"
                 value={name}
                 onChange={setName}
-                placeholder="Full name"
+                placeholder={t("auth.name") || "Vollständiger Name"}
                 testId="register-name-input"
                 autoFocus
               />
@@ -268,7 +289,7 @@ export const AuthPage = ({ onBack, initialMode }) => {
                 type="email"
                 value={email}
                 onChange={setEmail}
-                placeholder="Email address"
+                placeholder={t("auth.email") || "E-Mail-Adresse"}
                 testId="register-email-input"
               />
               <Field
@@ -276,7 +297,7 @@ export const AuthPage = ({ onBack, initialMode }) => {
                 type="password"
                 value={password}
                 onChange={setPassword}
-                placeholder="Password"
+                placeholder={t("auth.password") || "Passwort"}
                 testId="register-password-input"
               />
               <Field
@@ -284,7 +305,7 @@ export const AuthPage = ({ onBack, initialMode }) => {
                 type="password"
                 value={confirm}
                 onChange={setConfirm}
-                placeholder="Confirm password"
+                placeholder={t("auth.confirm") || "Passwort bestätigen"}
                 testId="register-confirm-input"
               />
 
@@ -341,11 +362,11 @@ export const AuthPage = ({ onBack, initialMode }) => {
                     <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }}>
                       <Loader2 size={15} />
                     </motion.div>
-                    Creating account...
+                    {t("auth.registering") || "Konto wird erstellt..."}
                   </>
                 ) : (
                   <>
-                    Create Account <ArrowRight size={15} strokeWidth={2.5} />
+                    {t("auth.register") || "Konto erstellen"} <ArrowRight size={15} strokeWidth={2.5} />
                   </>
                 )}
               </motion.button>
@@ -357,14 +378,14 @@ export const AuthPage = ({ onBack, initialMode }) => {
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.3 }}
               >
-                Already have an account?{" "}
+                {t("auth.has_account") || "Bereits ein Konto?"}{" "}
                 <button
                   type="button"
                   data-testid="switch-to-login-btn"
                   className="text-[#00C2FF] font-semibold hover:underline"
                   onClick={() => switchMode("login")}
                 >
-                  Sign in
+                  {t("auth.signin_link") || "Anmelden"}
                 </button>
               </motion.p>
             </motion.form>

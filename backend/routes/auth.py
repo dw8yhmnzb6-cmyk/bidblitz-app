@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Request, Response
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from bson import ObjectId
 from core.database import db
 from core.security import (
@@ -13,7 +13,10 @@ from core.soft_launch import is_email_whitelisted, is_registration_open, validat
 from schemas.models import RegisterRequest, LoginRequest
 import secrets
 import random
+import bcrypt
+import logging
 
+logger = logging.getLogger("bidblitz.auth")
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 
@@ -223,3 +226,87 @@ async def refresh_token(request: Request, response: Response):
         raise HTTPException(status_code=401, detail="Refresh token expired")
     except pyjwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Invalid refresh token")
+
+
+
+# ═══════════════════════════════════════════════════
+# PASSWORD RESET
+# ═══════════════════════════════════════════════════
+
+@router.post("/forgot-password")
+async def forgot_password(request: Request):
+    """Request password reset link."""
+    body = await request.json()
+    email = body.get("email", "").strip().lower()
+    
+    if not email:
+        raise HTTPException(status_code=400, detail="Email required")
+    
+    user = await db.users.find_one({"email": email})
+    if not user:
+        # Don't reveal if email exists
+        return {"ok": True, "message": "If account exists, reset link sent"}
+    
+    # Generate reset token
+    reset_token = secrets.token_urlsafe(32)
+    expires = datetime.now(timezone.utc) + timedelta(hours=1)
+    
+    await db.password_resets.update_one(
+        {"email": email},
+        {"$set": {
+            "token": reset_token,
+            "expires_at": expires.isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }},
+        upsert=True
+    )
+    
+    # TODO: Send email with reset link
+    # For now, log it (in production, integrate email service)
+    logger.info(f"Password reset requested for {email}, token: {reset_token[:8]}...")
+    
+    return {"ok": True, "message": "If account exists, reset link sent"}
+
+
+@router.post("/reset-password")
+async def reset_password(request: Request):
+    """Reset password using token."""
+    body = await request.json()
+    token = body.get("token", "").strip()
+    new_password = body.get("password", "")
+    
+    if not token or not new_password:
+        raise HTTPException(status_code=400, detail="Token and password required")
+    
+    if len(new_password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+    
+    reset_entry = await db.password_resets.find_one({"token": token})
+    if not reset_entry:
+        raise HTTPException(status_code=400, detail="Invalid or expired token")
+    
+    # Check expiry
+    expires = datetime.fromisoformat(reset_entry["expires_at"])
+    if datetime.now(timezone.utc) > expires:
+        await db.password_resets.delete_one({"token": token})
+        raise HTTPException(status_code=400, detail="Token expired")
+    
+    email = reset_entry["email"]
+    user = await db.users.find_one({"email": email})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Hash new password
+    hashed = bcrypt.hashpw(new_password.encode(), bcrypt.gensalt()).decode()
+    
+    await db.users.update_one(
+        {"_id": user["_id"]},
+        {"$set": {"password": hashed}}
+    )
+    
+    # Delete reset token
+    await db.password_resets.delete_one({"token": token})
+    
+    logger.info(f"Password reset completed for {email}")
+    
+    return {"ok": True, "message": "Password updated successfully"}

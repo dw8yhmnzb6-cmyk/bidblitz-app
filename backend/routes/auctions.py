@@ -111,6 +111,71 @@ async def get_credits(request: Request):
     return {"bid_credits": user.get("bid_credits", 0)}
 
 
+# ── Credit Packages ──
+@router.get("/credits/packages")
+async def get_credit_packages(request: Request):
+    """Get available credit packages for purchase."""
+    packages = []
+    for pkg_id, data in CREDIT_PACKAGES.items():
+        packages.append({
+            "id": pkg_id,
+            "credits": data["credits"],
+            "price": data["price"],
+            "price_per_credit": round(data["price"] / data["credits"], 2),
+        })
+    packages.sort(key=lambda x: x["credits"])
+    return {"packages": packages}
+
+
+# ── Buy Credits ──
+@router.post("/credits/buy")
+async def buy_credits(request: Request):
+    """Buy bid credits using wallet balance."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    body = await request.json()
+    package_id = body.get("package_id")
+    
+    if package_id not in CREDIT_PACKAGES:
+        raise HTTPException(status_code=400, detail="Invalid package")
+    
+    pkg = CREDIT_PACKAGES[package_id]
+    price = pkg["price"]
+    credits = pkg["credits"]
+    
+    balance = user.get("balance", 0)
+    if balance < price:
+        raise HTTPException(status_code=400, detail=f"Insufficient balance. Need €{price:.2f}, have €{balance:.2f}")
+    
+    # Deduct balance and add credits
+    new_balance = round(balance - price, 2)
+    new_credits = user.get("bid_credits", 0) + credits
+    
+    await db.users.update_one(
+        {"_id": user["_id"]},
+        {"$set": {"balance": new_balance, "bid_credits": new_credits}}
+    )
+    
+    # Log transaction
+    await db.transactions.insert_one({
+        "id": secrets.token_hex(8),
+        "user_id": user_id,
+        "type": "purchase",
+        "category": "auction",
+        "amount": -price,
+        "description": f"{credits} Bid Credits",
+        "status": "completed",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    })
+    
+    return {
+        "ok": True,
+        "credits_added": credits,
+        "total_credits": new_credits,
+        "new_balance": new_balance,
+    }
+
+
 # ── Daily Reward ──
 DAILY_REWARD_CREDITS = 3
 

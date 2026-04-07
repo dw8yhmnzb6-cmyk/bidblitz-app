@@ -11,6 +11,29 @@ Ultra-premium fintech web app (year 2040 design) for payments, penny auctions, c
 
 ## Production Status: LAUNCH READY ✅ (2026-04-07)
 
+### Core Flows Status
+
+| Flow | Status | Notes |
+|------|--------|-------|
+| Auth (Login) | ✅ DONE | Works |
+| Auth (Register) | ✅ DONE | Invite code required |
+| Password Reset | ✅ DONE | Token-based flow |
+| Wallet Balance | ✅ DONE | Real-time |
+| Wallet Top-Up (Stripe) | ✅ DONE | Checkout + webhook |
+| Receipt PDF | ✅ DONE | JSON + PDF download |
+| KYC Status | ✅ DONE | Verification endpoint |
+| KYC Upload | ✅ DONE | Multipart form |
+| Mining Dashboard | ✅ DONE | Stats + miners |
+| Mining Buy | ✅ DONE | Balance check |
+| Auction List | ✅ DONE | 7 active |
+| Auction Credits | ✅ DONE | 5 packages |
+| Auction Buy Credits | ✅ DONE | Wallet deduction |
+| Referral Code | ✅ DONE | Auto-generated |
+| Merchant QR | ✅ DONE | Creates payment |
+| Barcode Payment | ✅ DONE | Dynamic codes |
+| Kids Subscription | ✅ DONE | Trial + plans |
+| Influencer Dashboard | ✅ DONE | Stats + share |
+
 ### 1. Stripe Wallet Top-Up ✅
 - Checkout session creation working
 - Quick top-up with saved cards

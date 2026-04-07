@@ -26,6 +26,8 @@ import MerchantLandingPage from "./pages/MerchantLandingPage";
 import MiningPage from "./pages/MiningPage";
 import AuthPage from "./pages/AuthPage";
 import NotificationsPage from "./pages/NotificationsPage";
+import InfluencerDashboard from "./pages/InfluencerDashboard";
+import ManagerDashboard from "./pages/ManagerDashboard";
 
 import BottomNav from "./components/BottomNav";
 import BarcodeModal from "./components/BarcodeModal";
@@ -148,7 +150,13 @@ function AppContent() {
       case "/merchant-connect":
         return <MerchantConnectPage onBack={() => handleNavigate("/merchant")} />;
       case "/influencer":
-        return <InfluencerPage onBack={() => handleNavigate("/more")} />;
+        return user.role === "influencer" || user.role === "admin"
+          ? <InfluencerDashboard onBack={() => handleNavigate("/more")} />
+          : <InfluencerPage onBack={() => handleNavigate("/more")} />;
+      case "/manager-dashboard":
+        return user.role === "manager" || user.role === "admin"
+          ? <ManagerDashboard onBack={() => handleNavigate("/more")} />
+          : <HomePage {...homeProps} />;
       case "/investor":
         return <InvestorPage onBack={() => handleNavigate("/more")} />;
       case "/rewards":
