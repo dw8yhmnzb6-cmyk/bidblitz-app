@@ -94,6 +94,7 @@ const translations = {
     // Wallet
     "wallet.title": "Wallet", "wallet.available": "Available Balance", "wallet.spent": "Spent", "wallet.income": "Income",
     "wallet.add": "Add Money", "wallet.send": "Send", "wallet.history": "History", "wallet.transactions": "Transactions",
+    "wallet.topup_now": "Top Up Now", "wallet.pay": "Pay",
     "wallet.see_all": "See All", "wallet.no_txns": "No transactions yet", "wallet.txn_hint": "Your payment history will appear here",
     // Scanner
     "scan.enter_amount": "Enter Amount", "scan.confirm": "Confirm Payment", "scan.start_pay": "Start Payment", "scan.cancel": "Cancel",
@@ -692,6 +693,7 @@ const translations = {
     "home.coming_soon": "Demnächst verfügbar", "home.coming_soon_hint": "Diese Funktion kommt bald!",
     "wallet.title": "Wallet", "wallet.available": "Verfügbares Guthaben", "wallet.spent": "Ausgegeben", "wallet.income": "Einnahmen",
     "wallet.add": "Aufladen", "wallet.send": "Senden", "wallet.history": "Verlauf", "wallet.transactions": "Transaktionen",
+    "wallet.topup_now": "Guthaben aufladen", "wallet.pay": "Bezahlen",
     "wallet.see_all": "Alle", "wallet.no_txns": "Noch keine Transaktionen", "wallet.txn_hint": "Dein Zahlungsverlauf erscheint hier",
     "scan.enter_amount": "Betrag eingeben", "scan.confirm": "Zahlung bestätigen", "scan.start_pay": "Zahlung starten",
     "scan.cancel": "Abbrechen", "scan.scanning": "Kundencode scannen", "scan.processing": "Zahlung wird sicher verarbeitet...",

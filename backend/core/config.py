@@ -8,6 +8,7 @@ load_dotenv(ROOT_DIR / '.env')
 # ── Environment ──
 APP_ENV = os.environ.get("APP_ENV", "development")
 IS_PRODUCTION = APP_ENV == "production"
+DEBUG = os.environ.get("DEBUG", "true").lower() == "true" and not IS_PRODUCTION
 
 # ── Database ──
 MONGO_URL = os.environ["MONGO_URL"]
@@ -16,19 +17,28 @@ DB_NAME = os.environ["DB_NAME"]
 # ── Auth ──
 JWT_SECRET = os.environ["JWT_SECRET"]
 JWT_ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 15
+ACCESS_TOKEN_EXPIRE_MINUTES = 15 if IS_PRODUCTION else 60
 REFRESH_TOKEN_EXPIRE_DAYS = 7
 ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "admin@bidblitz.com")
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "BidBlitz2026!")
 MAX_LOGIN_ATTEMPTS = 5
-LOCKOUT_MINUTES = 15
+LOCKOUT_MINUTES = 15 if IS_PRODUCTION else 5
 
-# ── Cookie Security (environment-aware) ──
-COOKIE_SECURE = not (APP_ENV == "development" and "localhost" in os.environ.get("FRONTEND_URL", "localhost"))
-COOKIE_SAMESITE = "none" if COOKIE_SECURE else "lax"
+# ── Cookie Security (production-ready) ──
+COOKIE_SECURE = os.environ.get("COOKIE_SECURE", "true").lower() == "true" if IS_PRODUCTION else False
+COOKIE_SAMESITE = os.environ.get("COOKIE_SAMESITE", "strict" if IS_PRODUCTION else "lax")
+COOKIE_HTTPONLY = True
+
+# ── CORS ──
+CORS_ORIGINS = os.environ.get("CORS_ORIGINS", "*").split(",") if IS_PRODUCTION else ["*"]
 
 # ── Stripe ──
 STRIPE_API_KEY = os.environ.get("STRIPE_API_KEY", "")
+STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
+
+# ── URLs ──
+FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:3000")
+BACKEND_URL = os.environ.get("BACKEND_URL", "http://localhost:8001")
 
 # ── Rewards & Growth ──
 REWARDS = {
