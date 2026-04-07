@@ -10,7 +10,8 @@ Ultra-premium fintech web app (year 2040 design) for payments, penny auctions, c
 - Design: Dark glassmorphism, cyan/gold glow accents
 
 ## Completed Features
-- JWT Auth, Wallet with Stripe, Penny auctions, 13-language i18n
+- JWT Auth, Wallet with Stripe, Penny auctions, 15-language i18n (flag emojis)
+- Stripe Top-Up FIXED: Checkout → Redirect → Status Poll → Wallet Credit → Saved Card (2026-04-07)
 - Influencer payouts, Gamified Rewards, Role requests, Identity verification
 - Merchant Hierarchy, Barcode/QR/NFC payment flows
 - POS Terminal, Admin Fee Config, Reports, Merchant Landing Page

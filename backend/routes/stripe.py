@@ -25,7 +25,9 @@ from routes.promotions import check_applicable_promotion, apply_promotion
 
 router = APIRouter(prefix="/api/stripe", tags=["stripe"])
 
-stripe.api_key = STRIPE_API_KEY
+# Initialize Stripe via emergentintegrations proxy
+_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url="")
+# This sets stripe.api_base correctly for sk_test_emergent
 
 # Fixed top-up packages — amounts defined server-side only
 TOPUP_PACKAGES = {
@@ -82,6 +84,16 @@ async def create_checkout(req: CheckoutRequest, request: Request):
 
     # Get or create Stripe customer for payment method saving
     stripe_customer_id = user.get("stripe_customer_id")
+    if stripe_customer_id:
+        # Verify the customer exists at Stripe
+        try:
+            stripe.Customer.retrieve(stripe_customer_id)
+        except Exception:
+            stripe_customer_id = None
+            await db.users.update_one(
+                {"_id": user["_id"]},
+                {"$unset": {"stripe_customer_id": "", "stripe_pm_id": "", "stripe_card_brand": "", "stripe_card_last4": "", "stripe_card_exp_month": "", "stripe_card_exp_year": "", "stripe_pm_saved_at": ""}},
+            )
     if not stripe_customer_id:
         try:
             customer = stripe.Customer.create(
