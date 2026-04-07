@@ -9,7 +9,7 @@ import time
 import random
 import string
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://swift-bid.preview.emergentagent.com')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://merchant-pos-10.preview.emergentagent.com')
 
 # Test credentials from test_credentials.md
 ADMIN_EMAIL = "admin@bidblitz.com"

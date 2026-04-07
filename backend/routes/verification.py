@@ -102,12 +102,27 @@ async def get_my_verification(request: Request):
     role_req = await db.role_requests.find_one(
         {"user_id": uid}, {"_id": 0}
     )
+    
+    # Determine if user needs verification for high-value actions
+    is_verified = ver and ver.get("status") == "approved"
+    verification_required = user.get("balance", 0) > 1000 or user.get("role") in ROLES_REQUIRING_VERIFICATION
+    
     return {
         "verification": ver,
         "role_request": role_req,
         "current_role": user.get("role", "user"),
         "requested_role": user.get("requested_role", ""),
+        "is_verified": is_verified,
+        "verification_required": verification_required,
+        "can_high_value_txn": is_verified or not verification_required,
     }
+
+
+# Alias for backwards compatibility
+@router.get("/status")
+async def get_verification_status_alias(request: Request):
+    """Alias for /my-status endpoint."""
+    return await get_my_verification(request)
 
 
 # ══════════════════════════════════════

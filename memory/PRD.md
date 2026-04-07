@@ -18,6 +18,40 @@ Ultra-premium fintech web app (year 2040 design) for payments, penny auctions, c
 - Auction Bot Admin (auto-bidding, target price, 30 bot names)
 - Home Screen: "Available Now" + "Coming Soon" feature sections
 
+## Launch-Critical Updates (2026-04-07)
+
+### Receipt PDF System (DONE)
+- PDF receipt generation using FPDF2
+- `/api/payments/receipt/{id}` - JSON receipt data
+- `/api/payments/receipt/{id}/pdf` - Downloadable PDF
+- Transaction detail modal with Download PDF + Print buttons
+- Includes: amount, fee, date, transaction ID, merchant, reference
+
+### KYC Verification Flow (ENHANCED)
+- `/api/verification/my-status` returns: is_verified, verification_required, can_high_value_txn
+- `/api/verification/status` alias for backwards compatibility
+- High-value transaction restrictions for unverified users (>€1000 or merchant roles)
+
+### Wallet UI Improvements (DONE)
+- Prominent balance display (EUR 89,36)
+- Primary "Guthaben aufladen" top-up button
+- Quick stats: Ausgaben (spent) + Einnahmen (income) with trend
+- 4-grid quick actions: Aufladen, Bezahlen, Senden, Verlauf
+- Premium card display with holder name + expiry
+- Transaction filter tabs: All, Payments, Top-ups, Transfers
+
+### Mining Purchase Flow (VERIFIED)
+- Shop with Einmalig/Monatlich/Jährlich billing toggle
+- ROI% badges per package (316%-894%)
+- Price tiers: €49 - €9,999
+- Dashboard shows active miners, BLZ balance, hashrate, auto-rewards
+
+### Auction System (VERIFIED)
+- 7+ live auctions with countdown timers
+- Credit purchase system
+- Referral sharing (WhatsApp, E-Mail, Link)
+- Category filters (Phones, Gaming, Laptops, Tablets, TVs, Robots)
+
 ## Crypto Mining Module — COMPLETE
 
 ### Phase 1 (DONE)
@@ -63,14 +97,15 @@ Background: Auto-reward loop (60s interval in server.py)
 ### Backend Files
 - `/app/backend/routes/mining.py` — Phase 1
 - `/app/backend/routes/mining_phase2.py` — Marketplace, Card, Launchpad
+- `/app/backend/routes/pos_payments.py` — Receipt PDF system
 
 ## Upcoming Tasks
-- Receipt PDF-Export (P1)
 - 2FA Integration (P1)
-- Kids Wallet (P1)
+- Kids Wallet with real UI (P1)
+- Email Notifications (P1)
 
 ## Backlog (P2)
-- Apple/Google Pay, Developer SDK, Chat/Support
+- Apple/Google Pay, Developer SDK, Chat/Support, NFC Tap-to-Pay
 
 ## Credentials
 - See /app/memory/test_credentials.md

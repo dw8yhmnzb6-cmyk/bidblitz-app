@@ -233,12 +233,12 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
 
         {/* ── Balance Hero ── */}
         <motion.div
-          className="text-center pt-4 pb-6 relative"
+          className="text-center pt-4 pb-4 relative"
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.06, ...slide }}
         >
-          <div className="flex items-center justify-center gap-1.5 mb-3">
+          <div className="flex items-center justify-center gap-1.5 mb-2">
             <Shield size={11} className="text-[#00C2FF]/60" />
             <p className="text-[10px] text-[#3A3A3A] font-semibold tracking-[0.14em] uppercase">{t("wallet.available")}</p>
           </div>
@@ -268,9 +268,9 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
               >
                 {showBalance ? (
                   <div className="flex items-baseline justify-center gap-1">
-                    <span className="text-[28px] text-[#2A2A2A] font-outfit font-light">{currency}</span>
+                    <span className="text-[24px] text-[#2A2A2A] font-outfit font-light">{currency}</span>
                     <motion.span
-                      className="text-[52px] font-bold font-outfit text-white tracking-[-0.03em] leading-none"
+                      className="text-[48px] font-bold font-outfit text-white tracking-[-0.03em] leading-none"
                       key={balance}
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
@@ -280,7 +280,7 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
                     </motion.span>
                   </div>
                 ) : (
-                  <p className="text-[52px] font-bold font-outfit text-[#1A1A1A] tracking-[-0.03em] leading-none">
+                  <p className="text-[48px] font-bold font-outfit text-[#1A1A1A] tracking-[-0.03em] leading-none">
                     {currency}
                     <span className="text-[#1A1A1A]">{"••••••"}</span>
                   </p>
@@ -292,7 +292,7 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
           {/* Monthly change */}
           {showBalance && !isLoading && (
             <motion.div
-              className="flex items-center justify-center gap-1.5 mt-2"
+              className="flex items-center justify-center gap-1.5 mt-1.5"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.3 }}
@@ -315,16 +315,36 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
           />
         </motion.div>
 
+        {/* ── Primary Top-Up Button ── */}
+        {!isLoading && !isGuest && (
+          <motion.button
+            data-testid="primary-topup-btn"
+            onClick={() => setShowTopUp(true)}
+            className="w-full py-4 mb-5 rounded-2xl text-[14px] font-bold flex items-center justify-center gap-2.5"
+            style={{
+              background: "linear-gradient(135deg, #00C2FF 0%, #0090FF 100%)",
+              boxShadow: "0 8px 32px rgba(0,194,255,0.25), inset 0 1px 0 rgba(255,255,255,0.2)",
+            }}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.12, ...slide }}
+            whileTap={{ scale: 0.98 }}
+          >
+            <Plus size={18} strokeWidth={2.5} className="text-white" />
+            <span className="text-white">{t("wallet.topup_now") || "Guthaben aufladen"}</span>
+          </motion.button>
+        )}
+
         {/* ── Quick Stats ── */}
         {showBalance && !isLoading && (
-          <div className="flex gap-2.5 mb-6">
+          <div className="flex gap-2.5 mb-5">
             <StatPill
-              label="Spent"
+              label={t("wallet.spent") || "Ausgaben"}
               value={`${currency}${stats.totalSpent.toLocaleString("de-DE", { minimumFractionDigits: 2 })}`}
               delay={0.12}
             />
             <StatPill
-              label="Income"
+              label={t("wallet.income") || "Einnahmen"}
               value={`${currency}${stats.totalIncome.toLocaleString("de-DE", { minimumFractionDigits: 2 })}`}
               trend={parseFloat(stats.percentageChange)}
               delay={0.16}
@@ -334,7 +354,7 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
 
         {/* ── Premium Card ── */}
         <motion.div
-          className="mb-6"
+          className="mb-5"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.14, ...slide }}
@@ -348,7 +368,7 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
 
         {/* ── Quick Actions ── */}
         <motion.div
-          className="flex justify-center gap-10 mb-7"
+          className="grid grid-cols-4 gap-3 mb-5"
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2, ...slide }}
@@ -356,7 +376,7 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
           <WalletAction
             testId="quick-action-add"
             icon={Plus}
-            label={t("wallet.add") || "Add Money"}
+            label={t("wallet.add") || "Aufladen"}
             color="#00C2FF"
             onClick={() => (isGuest && !isDemoMode) ? onAuthRequired("Top up your wallet") : isDemoMode ? toast(t("wallet.add") || "Add Money", { description: "Demo: Top-up simulated" }) : setShowTopUp(true)}
             delay={0.22}
@@ -364,7 +384,7 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
           <WalletAction
             testId="quick-action-barcode"
             icon={QrCode}
-            label={t("wallet.my_barcode") || "My Barcode"}
+            label={t("wallet.pay") || "Bezahlen"}
             color="#FFB800"
             onClick={() => (isGuest && !isDemoMode) ? onAuthRequired("View your barcode") : isDemoMode ? toast(t("wallet.my_barcode") || "Barcode", { description: "Demo: Barcode simulated" }) : setShowBarcode(true)}
             delay={0.24}
@@ -372,7 +392,7 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
           <WalletAction
             testId="quick-action-send"
             icon={ArrowUpRight}
-            label={t("wallet.send") || "Send"}
+            label={t("wallet.send") || "Senden"}
             color="#A855F7"
             onClick={() => (isGuest && !isDemoMode) ? onAuthRequired("Send money") : isDemoMode ? toast(t("wallet.send") || "Send", { description: "Demo: Send simulated" }) : null}
             delay={0.26}
@@ -380,7 +400,7 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
           <WalletAction
             testId="quick-action-history"
             icon={Clock}
-            label={t("wallet.history") || "History"}
+            label={t("wallet.history") || "Verlauf"}
             color="#00D26A"
             delay={0.30}
           />

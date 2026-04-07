@@ -4,7 +4,7 @@ BidBlitz V2 — POS Payment System
 - Merchant scans customer barcode to process instant wallet payment
 - NFC payment with tiered fees (wallet lowest, card highest)
 - Payment type detection (wallet / card / contactless)
-- Receipt generation
+- Receipt generation + PDF export
 - Daily revenue summary for terminal
 - Ultra-fast mode for small amounts
 - Merchant onboarding (free trial)
@@ -13,11 +13,14 @@ BidBlitz V2 — POS Payment System
 import secrets
 import hashlib
 import logging
+import io
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, HTTPException, Request
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from typing import Optional
 from bson import ObjectId
+from fpdf import FPDF
 from core.database import db
 
 router = APIRouter(prefix="/api/payments", tags=["Payments"])
@@ -493,30 +496,6 @@ async def get_terminal_summary(request: Request):
 
 
 # ══════════════════════════════════════
-# RECEIPT: Get receipt by transaction ID
-# ══════════════════════════════════════
-
-@router.get("/receipt/{txn_id}")
-async def get_receipt(txn_id: str, request: Request):
-    txn = await db.merchant_transactions.find_one({"_id": ObjectId(txn_id)}, {"_id": 0})
-    if not txn:
-        txn = await db.merchant_transactions.find_one({"transaction_id": txn_id}, {"_id": 0})
-    if not txn:
-        raise HTTPException(status_code=404, detail="Transaction not found")
-
-    pt = await detect_payment_type(txn.get("payment_method", "card"))
-    mp = None
-    if txn.get("merchant_id"):
-        mp = await db.merchant_profiles.find_one({"_id": ObjectId(txn["merchant_id"])})
-
-    return generate_receipt(
-        txn_id, txn.get("amount", 0), txn.get("fee", 0), txn.get("net", 0), pt,
-        txn.get("customer_name", ""), mp.get("business_name", "") if mp else "",
-        txn.get("description", "Payment"),
-    )
-
-
-# ══════════════════════════════════════
 # MERCHANT ONBOARDING (Free Trial)
 # ══════════════════════════════════════
 
@@ -628,4 +607,207 @@ async def get_pricing():
             "apple_pay": {"rate": 2.5, "label": "Apple Pay"},
             "google_pay": {"rate": 2.5, "label": "Google Pay"},
         },
+    }
+
+
+
+# ══════════════════════════════════════
+# PDF Receipt Generation
+# ══════════════════════════════════════
+
+class ReceiptPDF(FPDF):
+    def header(self):
+        self.set_font("Helvetica", "B", 16)
+        self.set_text_color(0, 194, 255)
+        self.cell(0, 10, "BidBlitz", align="C", new_x="LMARGIN", new_y="NEXT")
+        self.set_font("Helvetica", "", 8)
+        self.set_text_color(100, 100, 100)
+        self.cell(0, 5, "Payment Receipt", align="C", new_x="LMARGIN", new_y="NEXT")
+        self.ln(5)
+
+    def footer(self):
+        self.set_y(-20)
+        self.set_font("Helvetica", "I", 7)
+        self.set_text_color(150, 150, 150)
+        self.cell(0, 5, "Thank you for using BidBlitz!", align="C", new_x="LMARGIN", new_y="NEXT")
+        self.cell(0, 5, "support@bidblitz.com | www.bidblitz.com", align="C")
+
+
+def create_receipt_pdf(txn: dict) -> bytes:
+    """Generate PDF receipt from transaction data."""
+    pdf = ReceiptPDF()
+    pdf.add_page()
+    pdf.set_auto_page_break(auto=True, margin=25)
+
+    # Receipt ID & Date
+    pdf.set_font("Helvetica", "B", 10)
+    pdf.set_text_color(40, 40, 40)
+    pdf.cell(95, 8, f"Receipt: {txn.get('reference', txn.get('id', 'N/A'))}")
+    pdf.set_font("Helvetica", "", 10)
+    created = txn.get("created_at", "")
+    if created:
+        try:
+            dt = datetime.fromisoformat(created.replace("Z", "+00:00"))
+            date_str = dt.strftime("%d.%m.%Y %H:%M")
+        except:
+            date_str = created[:16]
+    else:
+        date_str = datetime.now().strftime("%d.%m.%Y %H:%M")
+    pdf.cell(95, 8, date_str, align="R", new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(3)
+
+    # Divider
+    pdf.set_draw_color(220, 220, 220)
+    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+    pdf.ln(5)
+
+    # Transaction Details
+    pdf.set_font("Helvetica", "B", 9)
+    pdf.set_text_color(100, 100, 100)
+    pdf.cell(0, 6, "TRANSACTION DETAILS", new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(2)
+
+    details = [
+        ("Type", txn.get("type", "payment").replace("_", " ").title()),
+        ("Status", txn.get("status", "completed").title()),
+        ("Payment Method", txn.get("payment_method", "Wallet").replace("_", " ").title()),
+        ("Merchant", txn.get("merchant_name", "-")),
+        ("Description", txn.get("description", "-")),
+    ]
+
+    pdf.set_font("Helvetica", "", 10)
+    pdf.set_text_color(60, 60, 60)
+    for label, value in details:
+        pdf.cell(50, 7, label + ":")
+        pdf.set_font("Helvetica", "B", 10)
+        pdf.cell(0, 7, str(value)[:50], new_x="LMARGIN", new_y="NEXT")
+        pdf.set_font("Helvetica", "", 10)
+
+    pdf.ln(5)
+    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+    pdf.ln(5)
+
+    # Amount Section
+    pdf.set_font("Helvetica", "B", 9)
+    pdf.set_text_color(100, 100, 100)
+    pdf.cell(0, 6, "AMOUNT", new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(2)
+
+    amount = abs(txn.get("amount", 0))
+    fee = abs(txn.get("fee", 0))
+    net = abs(txn.get("net_amount", amount - fee))
+
+    pdf.set_font("Helvetica", "", 11)
+    pdf.set_text_color(60, 60, 60)
+    pdf.cell(120, 8, "Subtotal:")
+    pdf.cell(0, 8, f"EUR {amount:.2f}", align="R", new_x="LMARGIN", new_y="NEXT")
+
+    if fee > 0:
+        pdf.cell(120, 8, "Fee:")
+        pdf.cell(0, 8, f"EUR {fee:.2f}", align="R", new_x="LMARGIN", new_y="NEXT")
+
+    pdf.ln(2)
+    pdf.set_draw_color(0, 194, 255)
+    pdf.set_line_width(0.5)
+    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+    pdf.ln(3)
+
+    pdf.set_font("Helvetica", "B", 14)
+    pdf.set_text_color(0, 150, 50)
+    pdf.cell(120, 10, "Total:")
+    pdf.cell(0, 10, f"EUR {net:.2f}", align="R", new_x="LMARGIN", new_y="NEXT")
+
+    pdf.ln(8)
+
+    # Reference box
+    pdf.set_fill_color(245, 245, 245)
+    pdf.set_font("Helvetica", "", 8)
+    pdf.set_text_color(100, 100, 100)
+    ref = txn.get("reference", txn.get("id", ""))
+    if ref:
+        pdf.cell(0, 8, f"Reference: {ref}", align="C", fill=True, new_x="LMARGIN", new_y="NEXT")
+
+    return pdf.output()
+
+
+@router.get("/receipt/{transaction_id}/pdf")
+async def get_receipt_pdf(transaction_id: str, request: Request):
+    """Download PDF receipt for a transaction."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    is_admin = user.get("role") == "admin"
+
+    # Find transaction by id field (not _id)
+    txn = await db.transactions.find_one({"id": transaction_id}, {"_id": 0})
+    if not txn:
+        txn = await db.transactions.find_one({"reference": transaction_id}, {"_id": 0})
+    if not txn:
+        # Try by user_id + partial match
+        txn = await db.transactions.find_one(
+            {"user_id": user_id, "id": {"$regex": f"^{transaction_id[:8]}"}},
+            {"_id": 0}
+        )
+    if not txn:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+
+    # Authorization check
+    if not is_admin and txn.get("user_id") != user_id and txn.get("merchant_id") != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    pdf_bytes = create_receipt_pdf(txn)
+    ref = txn.get("reference", transaction_id)[:20]
+
+    return StreamingResponse(
+        io.BytesIO(pdf_bytes),
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="BidBlitz_Receipt_{ref}.pdf"'}
+    )
+
+
+@router.get("/receipt/{transaction_id}")
+async def get_receipt_data(transaction_id: str, request: Request):
+    """Get receipt data for a transaction (JSON for frontend display/print)."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    is_admin = user.get("role") == "admin"
+
+    txn = await db.transactions.find_one({"id": transaction_id}, {"_id": 0})
+    if not txn:
+        txn = await db.transactions.find_one({"reference": transaction_id}, {"_id": 0})
+    if not txn:
+        txn = await db.transactions.find_one(
+            {"user_id": user_id, "id": {"$regex": f"^{transaction_id[:8]}"}},
+            {"_id": 0}
+        )
+    if not txn:
+        return {"error": "Transaction not found", "transaction_id": transaction_id}
+
+    if not is_admin and txn.get("user_id") != user_id and txn.get("merchant_id") != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    created = txn.get("created_at", "")
+    try:
+        dt = datetime.fromisoformat(created.replace("Z", "+00:00"))
+        date_str = dt.strftime("%d.%m.%Y")
+        time_str = dt.strftime("%H:%M:%S")
+    except:
+        date_str = created[:10] if created else ""
+        time_str = created[11:19] if len(created) > 18 else ""
+
+    return {
+        "receipt_id": txn.get("reference", txn.get("id", "")),
+        "transaction_id": txn.get("id", transaction_id),
+        "date": date_str,
+        "time": time_str,
+        "timestamp": created,
+        "type": txn.get("type", "payment"),
+        "amount": abs(txn.get("amount", 0)),
+        "fee": abs(txn.get("fee", 0)),
+        "net": abs(txn.get("net_amount", txn.get("amount", 0))),
+        "currency": "EUR",
+        "status": txn.get("status", "completed"),
+        "payment_method": txn.get("payment_method", "wallet"),
+        "merchant_name": txn.get("merchant_name", ""),
+        "description": txn.get("description", ""),
+        "reference": txn.get("reference", ""),
     }
