@@ -331,7 +331,7 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
                 <ProductCard icon={Wallet} title={gt("gp.wallet_title")} desc={gt("gp.wallet_desc")} color="#00C2FF" delay={0.32} cta={gt("gp.use_now")} onClick={() => { tracker.featureClick("wallet"); onRegister(); }} />
                 <ProductCard icon={QrCode} title={gt("gp.qr_title")} desc={gt("gp.qr_desc")} color="#00D26A" delay={0.36} cta={gt("gp.use_now")} onClick={() => { tracker.featureClick("qr"); onRegister(); }} />
                 <ProductCard icon={Store} title={gt("gp.merchant_title")} desc={gt("gp.merchant_desc")} color="#FFB800" delay={0.4} cta={gt("gp.use_now")} onClick={() => { tracker.featureClick("merchant"); onRegister(); }} />
-                <ProductCard icon={Car} title={gt("gp.rides_title")} desc={gt("gp.rides_desc")} color="#A855F7" delay={0.44} cta={gt("gp.use_now")} onClick={() => { tracker.featureClick("rides"); onRegister(); }} />
+                <ProductCard icon={TrendingUp} title={gt("gp.mining_title")} desc={gt("gp.mining_desc")} color="#A855F7" delay={0.44} cta={gt("gp.use_now")} onClick={() => { tracker.featureClick("mining"); onRegister(); }} />
               </div>
             </motion.section>
 
