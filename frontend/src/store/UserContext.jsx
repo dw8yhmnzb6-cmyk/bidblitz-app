@@ -92,14 +92,14 @@ export function UserProvider({ children }) {
     return () => { cancelled = true; };
   }, []);
 
-  const login = useCallback(async (email, password) => {
+  const login = useCallback(async (email, password, rememberMe = true) => {
     if (!email || !password) {
       dispatch({ type: AUTH_ACTIONS.SET_ERROR, payload: 'Please fill in all fields' });
       return false;
     }
     dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: true });
     try {
-      const user = await api.login({ email, password });
+      const user = await api.login({ email, password, remember_me: rememberMe });
       dispatch({ type: AUTH_ACTIONS.SET_USER, payload: user });
       return true;
     } catch (err) {

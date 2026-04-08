@@ -14,6 +14,7 @@ class RegisterRequest(BaseModel):
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
+    remember_me: Optional[bool] = True  # Default to true for persistent sessions
 
 
 class TopUpRequest(BaseModel):

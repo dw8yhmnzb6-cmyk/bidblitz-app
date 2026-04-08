@@ -66,13 +66,14 @@ export const AuthPage = ({ onBack, initialMode }) => {
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
   const [forgotSent, setForgotSent] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true); // Default to true for better UX
   const { t } = useI18n();
 
   const user = useUser();
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    await user.login(email, password);
+    await user.login(email, password, rememberMe);
   };
 
   const handleRegister = async (e) => {
@@ -198,15 +199,44 @@ export const AuthPage = ({ onBack, initialMode }) => {
                 testId="login-password-input"
               />
 
-              {/* Forgot Password Link */}
-              <motion.button
-                type="button"
-                onClick={() => setShowForgotPassword(true)}
-                className="text-[11px] text-[#00C2FF] font-medium text-right w-full -mt-1"
-                whileTap={{ scale: 0.98 }}
-              >
-                {t("auth.forgot") || "Passwort vergessen?"}
-              </motion.button>
+              {/* Remember Me + Forgot Password Row */}
+              <div className="flex items-center justify-between pt-1">
+                {/* Remember Me Toggle */}
+                <motion.button
+                  type="button"
+                  data-testid="remember-me-toggle"
+                  className="flex items-center gap-2.5"
+                  onClick={() => setRememberMe(!rememberMe)}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <div 
+                    className={`w-10 h-5 rounded-full relative transition-all duration-200 ${
+                      rememberMe 
+                        ? "bg-[#00C2FF]" 
+                        : "bg-white/[0.08] border border-white/[0.1]"
+                    }`}
+                  >
+                    <motion.div
+                      className="absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm"
+                      animate={{ left: rememberMe ? "calc(100% - 18px)" : "2px" }}
+                      transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                    />
+                  </div>
+                  <span className={`text-[11px] font-medium ${rememberMe ? "text-white/70" : "text-white/40"}`}>
+                    {t("auth.remember_me") || "Angemeldet bleiben"}
+                  </span>
+                </motion.button>
+
+                {/* Forgot Password Link */}
+                <motion.button
+                  type="button"
+                  onClick={() => setShowForgotPassword(true)}
+                  className="text-[11px] text-[#00C2FF] font-medium"
+                  whileTap={{ scale: 0.98 }}
+                >
+                  {t("auth.forgot") || "Passwort vergessen?"}
+                </motion.button>
+              </div>
 
               {/* Error */}
               <AnimatePresence>

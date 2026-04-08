@@ -697,11 +697,13 @@ const translations = {
   },
   de: {
     "nav.home": "START", "nav.wallet": "WALLET", "nav.scan": "SCAN", "nav.merchant": "HÄNDLER", "nav.more": "MEHR", "nav.pay": "ZAHLEN", "nav.auctions": "AUKTIONEN",
+    // Auth
     "auth.welcome": "Willkommen zurück", "auth.create": "Konto erstellen", "auth.email": "E-Mail-Adresse", "auth.password": "Passwort",
     "auth.name": "Vollständiger Name", "auth.confirm": "Passwort bestätigen", "auth.signin": "Anmelden", "auth.signing": "Anmeldung...",
-    "auth.register": "Konto erstellen", "auth.registering": "Konto wird erstellt...", "auth.no_account": "Noch kein Konto?",
+    "auth.register": "Konto erstellen", "auth.registering": "Wird erstellt...", "auth.no_account": "Noch kein Konto?",
     "auth.has_account": "Bereits ein Konto?", "auth.create_link": "Registrieren", "auth.signin_link": "Anmelden",
-    "auth.secure": "End-to-End verschlüsselt", "auth.fill_all": "Bitte alle Felder ausfüllen",
+    "auth.secure": "Gesichert mit Ende-zu-Ende-Verschlüsselung", "auth.fill_all": "Bitte alle Felder ausfüllen",
+    "auth.remember_me": "Angemeldet bleiben",
     "auth.pw_mismatch": "Passwörter stimmen nicht überein", "auth.pw_short": "Passwort muss mindestens 6 Zeichen haben",
     "auth.forgot": "Passwort vergessen?", "auth.forgot_title": "Passwort zurücksetzen", "auth.forgot_desc": "Gib deine E-Mail ein, um einen Link zu erhalten",
     "auth.send_reset": "Link senden", "auth.reset_sent": "Link gesendet!", "auth.check_email": "Prüfe deinen Posteingang",

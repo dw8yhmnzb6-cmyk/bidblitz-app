@@ -183,7 +183,7 @@ async def login(req: LoginRequest, request: Request, response: Response):
     user_id = str(user["_id"])
     access_token = create_access_token(user_id, email)
     refresh_token = create_refresh_token(user_id)
-    set_auth_cookies(response, access_token, refresh_token)
+    set_auth_cookies(response, access_token, refresh_token, req.remember_me)
 
     await log_audit(AuditEvent.LOGIN_SUCCESS, user_id=user_id, email=email,
                     ip=ip, user_agent=ua, details={"role": user.get("role", "user")})
