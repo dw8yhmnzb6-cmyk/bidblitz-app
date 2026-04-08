@@ -114,7 +114,7 @@ class RideRequest(BaseModel):
     pickup: LocationPoint
     dropoff: LocationPoint
     vehicle_type: str = "standard"
-    payment_method: str = "wallet"
+    payment_method: str = "wallet"  # ONLY wallet allowed in BidBlitz ecosystem
     notes: Optional[str] = ""
 
 
@@ -216,10 +216,13 @@ async def book_ride(req: RideRequest, request: Request):
     surge = get_surge_multiplier()
     fare = calculate_fare(distance_km, duration_min, req.vehicle_type, surge)
     
-    # Check wallet balance
-    if req.payment_method == "wallet":
-        if user.get("balance", 0) < fare["total"]:
-            raise HTTPException(status_code=400, detail=f"Nicht genug Guthaben. Benötigt: €{fare['total']:.2f}")
+    # WALLET-ONLY: Check wallet balance (BidBlitz closed ecosystem)
+    current_balance = user.get("balance", 0)
+    if current_balance < fare["total"]:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Nicht genug Guthaben. Benötigt: €{fare['total']:.2f}, Verfügbar: €{current_balance:.2f}. Bitte lade dein Wallet auf."
+        )
     
     now = datetime.now(timezone.utc)
     ride_id = secrets.token_hex(8)

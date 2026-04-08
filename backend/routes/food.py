@@ -328,10 +328,13 @@ async def place_order(req: OrderRequest, request: Request):
     
     total = subtotal + delivery_fee + service_fee + small_order_fee + tip
     
-    # Check balance
-    if req.payment_method == "wallet":
-        if user.get("balance", 0) < total:
-            raise HTTPException(status_code=400, detail=f"Nicht genug Guthaben. Benötigt: €{total:.2f}")
+    # WALLET-ONLY: Check balance (BidBlitz closed ecosystem)
+    current_balance = user.get("balance", 0)
+    if current_balance < total:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Nicht genug Guthaben. Benötigt: €{total:.2f}, Verfügbar: €{current_balance:.2f}. Bitte lade dein Wallet auf."
+        )
     
     now = datetime.now(timezone.utc)
     order_id = secrets.token_hex(8)
@@ -366,25 +369,24 @@ async def place_order(req: OrderRequest, request: Request):
         "updated_at": now.isoformat(),
     }
     
-    # Charge wallet
-    if req.payment_method == "wallet":
-        await db.users.update_one(
-            {"_id": user["_id"]},
-            {"$inc": {"balance": -total}}
-        )
-        
-        await db.transactions.insert_one({
-            "id": secrets.token_hex(8),
-            "user_id": user_id,
-            "type": "payment",
-            "amount": -total,
-            "description": f"Bestellung: {restaurant['name']}",
-            "status": "completed",
-            "reference": f"FOOD-{order_id[:8].upper()}",
-            "category": "food",
-            "merchant_name": restaurant["name"],
-            "created_at": now.isoformat(),
-        })
+    # WALLET-ONLY: Charge wallet (BidBlitz closed ecosystem)
+    await db.users.update_one(
+        {"_id": user["_id"]},
+        {"$inc": {"balance": -total}}
+    )
+    
+    await db.transactions.insert_one({
+        "id": secrets.token_hex(8),
+        "user_id": user_id,
+        "type": "payment",
+        "amount": -total,
+        "description": f"Bestellung: {restaurant['name']}",
+        "status": "completed",
+        "reference": f"FOOD-{order_id[:8].upper()}",
+        "category": "food",
+        "merchant_name": restaurant["name"],
+        "created_at": now.isoformat(),
+    })
     
     await db.food_orders.insert_one(order)
     order.pop("_id", None)

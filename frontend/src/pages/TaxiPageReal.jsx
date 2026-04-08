@@ -166,6 +166,11 @@ export default function TaxiPage() {
     }
   }, [pickup, dropoff, vehicleType, calculateFare]);
 
+  // Navigate to wallet for top-up
+  const goToWallet = () => {
+    window.location.href = '/wallet';
+  };
+
   // Book ride
   const bookRide = async () => {
     if (!pickup || !dropoff) {
@@ -173,8 +178,11 @@ export default function TaxiPage() {
       return;
     }
     
-    if ((user.balance || 0) < (fareEstimate?.fare || 0)) {
-      setError('Nicht genug Guthaben');
+    const requiredAmount = fareEstimate?.fare || 0;
+    const currentBalance = user.balance || 0;
+    
+    if (currentBalance < requiredAmount) {
+      setError(`Nicht genug Guthaben. Du brauchst €${requiredAmount.toFixed(2)}, hast aber nur €${currentBalance.toFixed(2)}. Bitte lade dein Wallet auf.`);
       return;
     }
     
@@ -425,10 +433,41 @@ export default function TaxiPage() {
               </div>
             )}
 
+            {/* Wallet Balance Card */}
+            <div className={`p-4 rounded-xl border mb-4 ${
+              (user.balance || 0) >= (fareEstimate?.fare || 0)
+                ? 'bg-green-500/10 border-green-500/20'
+                : 'bg-red-500/10 border-red-500/20'
+            }`}>
+              <div className="flex justify-between items-center">
+                <div>
+                  <p className="text-xs text-gray-400">Dein Wallet-Guthaben</p>
+                  <p className={`text-xl font-bold ${
+                    (user.balance || 0) >= (fareEstimate?.fare || 0) ? 'text-green-400' : 'text-red-400'
+                  }`}>
+                    €{(user.balance || 0).toFixed(2)}
+                  </p>
+                </div>
+                {(user.balance || 0) < (fareEstimate?.fare || 0) && (
+                  <button
+                    onClick={goToWallet}
+                    className="px-4 py-2 bg-[#00C2FF] text-black text-sm font-semibold rounded-lg"
+                  >
+                    Aufladen
+                  </button>
+                )}
+              </div>
+              {fareEstimate && (user.balance || 0) < (fareEstimate?.fare || 0) && (
+                <p className="text-xs text-red-400 mt-2">
+                  Du brauchst noch €{((fareEstimate?.fare || 0) - (user.balance || 0)).toFixed(2)} mehr
+                </p>
+              )}
+            </div>
+
             {/* Book Button */}
             <motion.button
               onClick={bookRide}
-              disabled={loading || !pickup || !dropoff}
+              disabled={loading || !pickup || !dropoff || (user.balance || 0) < (fareEstimate?.fare || 0)}
               className="w-full py-4 bg-[#00C2FF] text-black font-semibold rounded-xl disabled:opacity-50 flex items-center justify-center gap-2"
               whileTap={{ scale: 0.98 }}
             >
@@ -437,15 +476,10 @@ export default function TaxiPage() {
               ) : (
                 <>
                   <Car size={20} />
-                  Taxi buchen
+                  {(user.balance || 0) < (fareEstimate?.fare || 0) ? 'Guthaben aufladen' : 'Taxi buchen'}
                 </>
               )}
             </motion.button>
-
-            {/* Balance Info */}
-            <p className="text-center text-xs text-gray-500 mt-3">
-              Dein Guthaben: €{(user.balance || 0).toFixed(2)}
-            </p>
           </motion.div>
         )}
 

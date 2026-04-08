@@ -146,7 +146,7 @@ export default function ScooterPage() {
   // Unlock scooter
   const unlockScooter = async (scooter) => {
     if (userBalance < pricing.unlock_fee) {
-      setError(`Mindestguthaben €${pricing.unlock_fee.toFixed(2)} erforderlich`);
+      setError(`Nicht genug Guthaben. Mindestens €${pricing.unlock_fee.toFixed(2)} erforderlich, du hast €${userBalance.toFixed(2)}. Bitte lade dein Wallet auf.`);
       return;
     }
     

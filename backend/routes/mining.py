@@ -377,9 +377,13 @@ async def buy_miner(req: BuyMinerRequest, request: Request):
     else:
         price = pkg["price_eur"]
 
+    # WALLET-ONLY: Check balance (BidBlitz closed ecosystem)
     balance = user.get("balance", 0)
     if balance < price:
-        raise HTTPException(status_code=400, detail="Insufficient wallet balance")
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Nicht genug Guthaben. Benötigt: €{price:.2f}, Verfügbar: €{balance:.2f}. Bitte lade dein Wallet auf."
+        )
 
     # Deduct balance
     await db.users.update_one({"_id": user["_id"]}, {"$inc": {"balance": -price}})
@@ -475,9 +479,13 @@ async def upgrade_miner(req: UpgradeRequest, request: Request):
         raise HTTPException(status_code=400, detail="Max level reached")
 
     cost = costs[current_level + 1]
+    # WALLET-ONLY: Check balance (BidBlitz closed ecosystem)
     balance = user.get("balance", 0)
     if balance < cost:
-        raise HTTPException(status_code=400, detail=f"Need €{cost}. Current balance: €{balance:.2f}")
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Nicht genug Guthaben. Benötigt: €{cost:.2f}, Verfügbar: €{balance:.2f}. Bitte lade dein Wallet auf."
+        )
 
     await db.users.update_one({"_id": user["_id"]}, {"$inc": {"balance": -cost}})
     await db.mining_miners.update_one(

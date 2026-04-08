@@ -149,9 +149,13 @@ async def reserve_scooter(req: ScooterAction, request: Request):
     if not scooter:
         raise HTTPException(status_code=404, detail="Scooter nicht verfügbar")
     
-    # Check balance
-    if user.get("balance", 0) < UNLOCK_FEE:
-        raise HTTPException(status_code=400, detail=f"Mindestguthaben €{UNLOCK_FEE:.2f} erforderlich")
+    # WALLET-ONLY: Check balance (BidBlitz closed ecosystem)
+    current_balance = user.get("balance", 0)
+    if current_balance < UNLOCK_FEE:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Nicht genug Guthaben. Mindestens €{UNLOCK_FEE:.2f} erforderlich, du hast €{current_balance:.2f}. Bitte lade dein Wallet auf."
+        )
     
     now = datetime.now(timezone.utc)
     expires = now + timedelta(minutes=RESERVATION_MINUTES)
@@ -195,9 +199,13 @@ async def unlock_scooter(req: ScooterAction, request: Request):
     user = await get_current_user(request)
     user_id = str(user["_id"])
     
-    # Check balance
-    if user.get("balance", 0) < UNLOCK_FEE:
-        raise HTTPException(status_code=400, detail=f"Mindestguthaben €{UNLOCK_FEE:.2f} erforderlich")
+    # WALLET-ONLY: Check balance (BidBlitz closed ecosystem)
+    current_balance = user.get("balance", 0)
+    if current_balance < UNLOCK_FEE:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Nicht genug Guthaben. Mindestens €{UNLOCK_FEE:.2f} erforderlich, du hast €{current_balance:.2f}. Bitte lade dein Wallet auf."
+        )
     
     # Check for reservation or direct unlock
     rental = await db.scooter_rentals.find_one({

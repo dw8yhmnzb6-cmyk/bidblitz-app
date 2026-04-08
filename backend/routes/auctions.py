@@ -143,9 +143,13 @@ async def buy_credits(request: Request):
     price = pkg["price"]
     credits = pkg["credits"]
     
+    # WALLET-ONLY: Check balance (BidBlitz closed ecosystem)
     balance = user.get("balance", 0)
     if balance < price:
-        raise HTTPException(status_code=400, detail=f"Insufficient balance. Need €{price:.2f}, have €{balance:.2f}")
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Nicht genug Guthaben. Benötigt: €{price:.2f}, Verfügbar: €{balance:.2f}. Bitte lade dein Wallet auf."
+        )
     
     # Deduct balance and add credits
     new_balance = round(balance - price, 2)
@@ -667,10 +671,13 @@ async def buy_credits(req: BuyCreditsRequest, request: Request):
     price = pkg["price"]
     credits = pkg["credits"]
 
-    # Check balance
+    # WALLET-ONLY: Check balance (BidBlitz closed ecosystem)
     balance = user.get("balance", 0)
     if balance < price:
-        raise HTTPException(status_code=400, detail="Insufficient wallet balance")
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Nicht genug Guthaben. Benötigt: €{price:.2f}, Verfügbar: €{balance:.2f}. Bitte lade dein Wallet auf."
+        )
 
     # Deduct balance and add credits
     # Check first purchase bonus

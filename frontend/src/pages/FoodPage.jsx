@@ -192,7 +192,7 @@ export default function FoodPage() {
     }
     
     if (userBalance < orderTotal) {
-      setError(`Nicht genug Guthaben. Benötigt: €${orderTotal.toFixed(2)}`);
+      setError(`Nicht genug Guthaben. Benötigt: €${orderTotal.toFixed(2)}, Verfügbar: €${userBalance.toFixed(2)}. Bitte lade dein Wallet auf.`);
       return;
     }
     
