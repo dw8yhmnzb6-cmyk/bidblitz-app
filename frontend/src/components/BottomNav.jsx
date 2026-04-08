@@ -1,8 +1,27 @@
 import { motion } from "framer-motion";
-import { Home, Wallet, QrCode, Store, MoreHorizontal } from "lucide-react";
-import { useI18n } from "../store";
+import { Home, Wallet, QrCode, Store, MoreHorizontal, Gavel } from "lucide-react";
+import { useI18n, useUser } from "../store";
 
-const navItems = [
+// Customer navigation - no merchant access, center button shows their payment barcode
+const customerNavItems = [
+  { id: "home", tKey: "nav.home", icon: Home, path: "/" },
+  { id: "wallet", tKey: "nav.wallet", icon: Wallet, path: "/wallet" },
+  { id: "pay", tKey: "nav.pay", icon: QrCode, path: "/my-barcode", center: true }, // Shows customer's barcode
+  { id: "auctions", tKey: "nav.auctions", icon: Gavel, path: "/auctions" },
+  { id: "more", tKey: "nav.more", icon: MoreHorizontal, path: "/more" },
+];
+
+// Merchant navigation - can access terminal to scan customers
+const merchantNavItems = [
+  { id: "home", tKey: "nav.home", icon: Home, path: "/" },
+  { id: "wallet", tKey: "nav.wallet", icon: Wallet, path: "/wallet" },
+  { id: "scan", tKey: "nav.scan", icon: QrCode, path: "/scan", center: true }, // Scans customer barcodes
+  { id: "merchant", tKey: "nav.merchant", icon: Store, path: "/merchant" },
+  { id: "more", tKey: "nav.more", icon: MoreHorizontal, path: "/more" },
+];
+
+// Admin navigation - full access
+const adminNavItems = [
   { id: "home", tKey: "nav.home", icon: Home, path: "/" },
   { id: "wallet", tKey: "nav.wallet", icon: Wallet, path: "/wallet" },
   { id: "scan", tKey: "nav.scan", icon: QrCode, path: "/scan", center: true },
@@ -10,8 +29,17 @@ const navItems = [
   { id: "more", tKey: "nav.more", icon: MoreHorizontal, path: "/more" },
 ];
 
-export const BottomNav = ({ currentPath, onNavigate }) => {
+export const BottomNav = ({ currentPath, onNavigate, onShowBarcode }) => {
   const { t } = useI18n();
+  const user = useUser();
+  
+  // Select navigation based on user role
+  const navItems = user.role === "admin" 
+    ? adminNavItems 
+    : user.role === "merchant" 
+      ? merchantNavItems 
+      : customerNavItems;
+
   return (
   <motion.nav
     className="bottom-nav"
@@ -30,9 +58,16 @@ export const BottomNav = ({ currentPath, onNavigate }) => {
             key={item.id}
             data-testid={`nav-${item.id}-btn`}
             className="nav-center"
-            onClick={() => onNavigate(item.path)}
+            onClick={() => {
+              // For customers, show their payment barcode modal
+              if (item.path === "/my-barcode" && onShowBarcode) {
+                onShowBarcode();
+              } else {
+                onNavigate(item.path);
+              }
+            }}
             whileTap={{ scale: 0.9 }}
-            aria-label="Scan"
+            aria-label={item.path === "/my-barcode" ? "Pay" : "Scan"}
           >
             <Icon size={21} strokeWidth={2.5} />
             <motion.div

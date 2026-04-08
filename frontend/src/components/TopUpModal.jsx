@@ -242,7 +242,8 @@ export const TopUpModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
         />
 
         <motion.div
-          className="relative w-full max-w-md bg-[#0A0A0A] rounded-t-3xl sm:rounded-3xl border border-white/10 overflow-hidden"
+          className="relative w-full max-w-md bg-[#0A0A0A] rounded-t-3xl sm:rounded-3xl border border-white/10 overflow-hidden max-h-[85vh] overflow-y-auto pb-safe"
+          style={{ paddingBottom: "env(safe-area-inset-bottom, 24px)" }}
           initial={{ y: "100%", opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: "100%", opacity: 0 }}
@@ -403,7 +404,7 @@ export const TopUpModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
                     data-testid="topup-checkout-btn"
                     onClick={handleCheckout}
                     disabled={!selectedId || isCreating}
-                    className="w-full py-3.5 bg-[#00C2FF] text-[#0A0A0A] font-semibold rounded-full disabled:opacity-40 flex items-center justify-center gap-2"
+                    className="w-full py-3.5 bg-[#00C2FF] text-[#0A0A0A] font-semibold rounded-full disabled:opacity-40 flex items-center justify-center gap-2 mb-6"
                     whileTap={selectedId && !isCreating ? { scale: 0.98 } : {}}
                   >
                     {isCreating ? (

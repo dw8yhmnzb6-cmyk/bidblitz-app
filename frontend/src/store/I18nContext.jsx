@@ -76,7 +76,7 @@ export function useI18n() {
 const translations = {
   en: {
     // Nav
-    "nav.home": "HOME", "nav.wallet": "WALLET", "nav.scan": "SCAN", "nav.merchant": "MERCHANT", "nav.more": "MORE",
+    "nav.home": "HOME", "nav.wallet": "WALLET", "nav.scan": "SCAN", "nav.merchant": "MERCHANT", "nav.more": "MORE", "nav.pay": "PAY", "nav.auctions": "AUCTIONS",
     // Auth
     "auth.welcome": "Welcome back", "auth.create": "Create your account", "auth.email": "Email address", "auth.password": "Password",
     "auth.name": "Full name", "auth.confirm": "Confirm password", "auth.signin": "Sign In", "auth.signing": "Signing in...",
@@ -696,7 +696,7 @@ const translations = {
     "ml.success": "Success!", "ml.footer": "Secure payment solutions for modern businesses",
   },
   de: {
-    "nav.home": "START", "nav.wallet": "WALLET", "nav.scan": "SCAN", "nav.merchant": "HÄNDLER", "nav.more": "MEHR",
+    "nav.home": "START", "nav.wallet": "WALLET", "nav.scan": "SCAN", "nav.merchant": "HÄNDLER", "nav.more": "MEHR", "nav.pay": "ZAHLEN", "nav.auctions": "AUKTIONEN",
     "auth.welcome": "Willkommen zurück", "auth.create": "Konto erstellen", "auth.email": "E-Mail-Adresse", "auth.password": "Passwort",
     "auth.name": "Vollständiger Name", "auth.confirm": "Passwort bestätigen", "auth.signin": "Anmelden", "auth.signing": "Anmeldung...",
     "auth.register": "Konto erstellen", "auth.registering": "Konto wird erstellt...", "auth.no_account": "Noch kein Konto?",

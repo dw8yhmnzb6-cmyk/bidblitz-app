@@ -478,42 +478,43 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
               <div className="flex items-center justify-between mb-3.5">
                 <div className="flex items-center gap-2">
                   <div className="w-1.5 h-4 rounded-full bg-[#FFB800]" />
-                  <h3 className="text-[13px] font-semibold font-outfit text-white">{t("home.coming_soon_title") || "Coming Soon"}</h3>
+                  <h3 className="text-[13px] font-semibold font-outfit text-white">{t("home.coming_soon_title") || "Demnächst"}</h3>
                 </div>
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-semibold uppercase tracking-wider"
-                  style={{ background: "rgba(255,184,0,0.08)", color: "#FFB800", border: "1px solid rgba(255,184,0,0.12)" }}>
-                  <Rocket size={9} /> {t("home.coming_soon_badge") || "Upcoming"}
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider"
+                  style={{ background: "rgba(255,184,0,0.08)", color: "#FFB800", border: "1px solid rgba(255,184,0,0.2)" }}>
+                  <Rocket size={10} /> {t("home.coming_soon_badge") || "BALD"}
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-2.5">
                 {comingSoonFeatures.map((f, i) => (
                   <motion.div key={f.id} data-testid={`coming-${f.id}-card`}
                     className="rounded-2xl relative overflow-hidden cursor-pointer group"
-                    style={{ background: "rgba(255,255,255,0.01)", border: "1px solid rgba(255,255,255,0.03)" }}
+                    style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}
                     initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.55 + i * 0.04, ...slide }}
                     whileTap={{ scale: 0.97 }}
                     onClick={() => setPreviewFeature(previewFeature?.id === f.id ? null : f)}>
-                    <div className="relative z-10 p-3.5">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="w-8 h-8 rounded-lg flex items-center justify-center relative"
-                          style={{ background: `${f.color}08`, border: `1px solid ${f.color}08` }}>
-                          <f.icon size={14} strokeWidth={1.6} style={{ color: f.color, opacity: 0.5 }} />
+                    <div className="relative z-10 p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="w-11 h-11 rounded-xl flex items-center justify-center relative"
+                          style={{ background: `${f.color}12`, border: `1px solid ${f.color}15` }}>
+                          <f.icon size={18} strokeWidth={1.5} style={{ color: f.color, opacity: 0.7 }} />
+                          <div className="absolute inset-0 rounded-xl opacity-20 pointer-events-none" style={{ background: f.color, filter: "blur(12px)" }} />
                         </div>
-                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[7px] font-bold uppercase tracking-wider"
-                          style={{ background: "rgba(255,184,0,0.06)", color: "#FFB800", border: "1px solid rgba(255,184,0,0.1)" }}>
-                          <Clock size={7} /> Soon
+                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[8px] font-bold uppercase tracking-wider"
+                          style={{ background: "rgba(255,184,0,0.08)", color: "#D4A00A", border: "1px solid rgba(255,184,0,0.15)" }}>
+                          <Clock size={8} /> SOON
                         </span>
                       </div>
-                      <h3 className="text-[12px] font-semibold font-outfit text-white/40 mb-0.5">{f.title}</h3>
+                      <h3 className="text-[13px] font-semibold font-outfit text-white/70 mb-1">{f.title}</h3>
                       <AnimatePresence>
                         {previewFeature?.id === f.id ? (
                           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}>
-                            <p className="text-[10px] text-white/25 leading-[1.4] mb-2">{f.desc}</p>
-                            <p className="text-[9px] text-[#FFB800]/60 font-medium">{t("home.coming_soon_msg") || "We're building this. Stay tuned!"}</p>
+                            <p className="text-[11px] text-white/40 leading-[1.5] mb-2">{f.desc}</p>
+                            <p className="text-[10px] text-[#FFB800]/70 font-medium">{t("home.coming_soon_msg") || "Wir arbeiten daran. Bald verfügbar!"}</p>
                           </motion.div>
                         ) : (
-                          <p className="text-[10px] text-white/15">{t("home.tap_preview") || "Tap for details"}</p>
+                          <p className="text-[11px] text-white/30">{t("home.tap_preview") || "Tippen für Details"}</p>
                         )}
                       </AnimatePresence>
                     </div>

@@ -228,8 +228,8 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
         </div>
       )}
 
-      {/* Content */}
-      <div className="px-5 pb-8 relative z-10">
+      {/* Content - extra padding bottom for mobile nav */}
+      <div className="px-5 pb-28 sm:pb-8 relative z-10">
 
         {/* ── Balance Hero ── */}
         <motion.div

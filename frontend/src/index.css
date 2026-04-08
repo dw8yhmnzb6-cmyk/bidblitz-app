@@ -36,6 +36,8 @@ html {
   font-size: 16px;
   -webkit-tap-highlight-color: transparent;
   background: #050505;
+  /* iOS safe area support */
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
 
 body {
@@ -50,6 +52,14 @@ body {
   letter-spacing: -0.01em;
   overscroll-behavior: none;
   -webkit-overflow-scrolling: touch;
+}
+
+/* Safe area utility classes for mobile */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.mb-safe {
+  margin-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 h1, h2, h3, h4, h5, h6 {

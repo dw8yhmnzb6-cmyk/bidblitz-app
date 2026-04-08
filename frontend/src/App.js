@@ -227,7 +227,13 @@ function AppContent() {
           {renderPage()}
         </motion.div>
       </AnimatePresence>
-      {showBottomNav && <BottomNav currentPath={currentPath} onNavigate={handleNavigate} />}
+      {showBottomNav && (
+        <BottomNav 
+          currentPath={currentPath} 
+          onNavigate={handleNavigate} 
+          onShowBarcode={() => setShowBarcode(true)}
+        />
+      )}
       <BarcodeModal isOpen={showBarcode} onClose={() => setShowBarcode(false)} />
       <AuthGateOverlay
         isOpen={showAuthGate}

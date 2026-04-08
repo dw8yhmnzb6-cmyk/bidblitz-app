@@ -5,7 +5,12 @@ import {
   Download, Search, ChevronRight, Loader2, Check, X,
   Clock, AlertCircle, CircleDollarSign, Activity, Settings,
   Flag, FileText, TrendingUp, Eye, ToggleLeft, ToggleRight,
-  ChevronDown, ChevronUp, Gift, Plus, Pencil, Save, Gavel, Bot, Target, DollarSign, Zap
+  ChevronDown, ChevronUp, Gift, Plus, Pencil, Save, Gavel, Bot, Target, DollarSign, Zap,
+  LayoutGrid, Menu,
+  // Grid Menu Icons
+  Wallet, Building2, Key, Banknote, Mail, Trophy, Crown, Ticket, CheckCircle2, Euro, Tag, Percent,
+  UserCheck, Briefcase, UserPlus, Building, Star, Car, BadgePercent, Handshake, Wrench, FileCode,
+  Cog, Leaf, Lock, ScrollText, Mic, Bug, Database, Package
 } from "lucide-react";
 import { useUser, useI18n } from "../store";
 import ExportSection from "../components/ExportSection";
@@ -101,6 +106,189 @@ const CreatePromoForm = ({ t, onCreated, onCancel }) => {
   );
 };
 
+// ═══════════════════════════════════════════════════
+// ADMIN GRID MENU CONFIGURATION (Light Theme)
+// ═══════════════════════════════════════════════════
+const ADMIN_SECTIONS = [
+  {
+    id: "overview",
+    label: "",
+    color: "#666",
+    items: [
+      { id: "dashboard", icon: LayoutGrid, label: "Übersicht", tab: "overview" },
+      { id: "analytics", icon: BarChart3, label: "Analytics", tab: "analytics" },
+    ]
+  },
+  {
+    id: "customers",
+    label: "Kunden & Personal",
+    color: "#00C2FF",
+    items: [
+      { id: "customers", icon: Users, label: "Kunden", tab: "users" },
+      { id: "kyc", icon: Shield, label: "KYC-Freischaltung", tab: "verification" },
+      { id: "managers", icon: Briefcase, label: "Manager", tab: "roles" },
+      { id: "employees", icon: UserPlus, label: "Mitarbeiter", tab: "roles" },
+      { id: "enterprise", icon: Building, label: "Großkunden", tab: "users" },
+      { id: "influencer", icon: Star, label: "Influencer", tab: "roles" },
+      { id: "auto-ads", icon: Car, label: "Auto-Werbung", tab: "promos" },
+      { id: "partner-credit", icon: BadgePercent, label: "Partner-Freibetrag", tab: "merchant-fees", highlight: true },
+    ]
+  },
+  {
+    id: "partners",
+    label: "Partner & Händler",
+    color: "#A855F7",
+    items: [
+      { id: "partner-portal", icon: Handshake, label: "Partner Portal", tab: "merchants" },
+      { id: "applications", icon: FileText, label: "Alte Bewerbungen", tab: "merchants" },
+    ]
+  },
+  {
+    id: "auctions",
+    label: "Auktionen",
+    color: "#00C2FF",
+    items: [
+      { id: "products", icon: Package, label: "Produkte", tab: "auctions" },
+      { id: "standard-auctions", icon: Gavel, label: "Standard-Auktionen", tab: "auctions" },
+      { id: "vip-auctions", icon: Crown, label: "VIP-Auktionen", tab: "auctions" },
+      { id: "voucher-auctions", icon: Ticket, label: "Gutschein-Auktionen", tab: "auctions" },
+      { id: "bot-system", icon: Bot, label: "Bot-System", tab: "auctions" },
+      { id: "winner-control", icon: CheckCircle2, label: "Gewinner-Kontrolle", tab: "auctions" },
+      { id: "product-analysis", icon: TrendingUp, label: "Produkt-Analyse", tab: "analytics" },
+      { id: "user-analysis", icon: Users, label: "Benutzer-Analyse", tab: "analytics" },
+      { id: "revenue-analysis", icon: Euro, label: "Umsatz-Analyse", tab: "analytics" },
+    ]
+  },
+  {
+    id: "coupons",
+    label: "Gutscheine & Codes",
+    color: "#FFB800",
+    items: [
+      { id: "merchant-coupons", icon: Tag, label: "Händler-Gutscheine", tab: "promos" },
+      { id: "bidder-coupons", icon: Tag, label: "Bieter-Gutscheine", tab: "promos" },
+      { id: "partner-coupons", icon: Tag, label: "Partner-Gutscheine", tab: "promos" },
+      { id: "discount-codes", icon: Percent, label: "Rabatt-Coupons", tab: "promos" },
+      { id: "referral-codes", icon: Users, label: "Empfehlungs-Codes", tab: "promos" },
+    ]
+  },
+  {
+    id: "finance",
+    label: "Finanzen",
+    color: "#00D26A",
+    items: [
+      { id: "payments", icon: DollarSign, label: "Zahlungen", tab: "transactions" },
+      { id: "topup", icon: Wallet, label: "Wallet Aufladen", tab: "transactions" },
+      { id: "wise-payouts", icon: CreditCard, label: "Wise Auszahlungen", tab: "payouts" },
+      { id: "credit-mgmt", icon: Building2, label: "Kredit-Verwaltung", tab: "transactions" },
+      { id: "digital-api", icon: Key, label: "Digital API", tab: "settings" },
+      { id: "wholesalers", icon: Store, label: "Großhändler", tab: "merchants" },
+      { id: "sepa-payouts", icon: Banknote, label: "SEPA-Auszahlungen", tab: "payouts" },
+    ]
+  },
+  {
+    id: "marketing",
+    label: "Marketing",
+    color: "#00D26A",
+    items: [
+      { id: "flash-sales", icon: Zap, label: "Flash Sales", tab: "promos" },
+      { id: "banners", icon: Eye, label: "Werbebanner", tab: "promos" },
+      { id: "email-marketing", icon: Mail, label: "E-Mail Marketing", tab: "promos" },
+      { id: "jackpot", icon: Trophy, label: "Jackpot", tab: "auctions" },
+      { id: "challenges", icon: Target, label: "Challenges", tab: "promos" },
+      { id: "mystery-box", icon: Gift, label: "Mystery Box", tab: "promos" },
+    ]
+  },
+  {
+    id: "system",
+    label: "System",
+    color: "#666",
+    items: [
+      { id: "maintenance", icon: Wrench, label: "Wartung", tab: "settings" },
+      { id: "cms", icon: FileCode, label: "Seiten (CMS)", tab: "settings" },
+      { id: "game-settings", icon: Cog, label: "Spiel-Einstellungen", tab: "settings" },
+      { id: "sustainability", icon: Leaf, label: "Nachhaltigkeit", tab: "flags" },
+      { id: "passwords", icon: Lock, label: "Passwörter", tab: "settings" },
+      { id: "logs", icon: ScrollText, label: "Systemlogs", tab: "audit" },
+      { id: "debug", icon: Bug, label: "Debug Reports", tab: "audit" },
+      { id: "system-health", icon: Activity, label: "System", tab: "flags" },
+      { id: "database", icon: Database, label: "Daten-Manager", tab: "settings" },
+    ]
+  },
+];
+
+// Grid Menu Item Component (Light Theme)
+const AdminGridMenuItem = ({ item, onClick, delay }) => {
+  const Icon = item.icon;
+  return (
+    <motion.button
+      data-testid={`admin-grid-${item.id}`}
+      className={`flex flex-col items-center justify-center p-3 rounded-2xl transition-all ${
+        item.highlight 
+          ? "bg-[#00C2FF]/10 border-2 border-[#00C2FF]/30" 
+          : "bg-white border border-gray-200 hover:border-gray-300 shadow-sm"
+      }`}
+      onClick={onClick}
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ delay: delay * 0.02, duration: 0.15 }}
+      whileTap={{ scale: 0.95 }}
+    >
+      <Icon 
+        size={22} 
+        strokeWidth={1.5} 
+        className={item.highlight ? "text-[#00C2FF]" : "text-gray-500"} 
+      />
+      <span className={`text-[10px] mt-2 text-center font-medium leading-tight ${
+        item.highlight ? "text-[#00C2FF]" : "text-gray-600"
+      }`}>
+        {item.label}
+      </span>
+    </motion.button>
+  );
+};
+
+// Grid Section Component (Light Theme)
+const AdminGridSection = ({ section, onItemClick, startIndex }) => {
+  if (!section.label) {
+    return (
+      <div className="grid grid-cols-2 gap-2 mb-4">
+        {section.items.map((item, idx) => (
+          <AdminGridMenuItem 
+            key={item.id} 
+            item={item} 
+            onClick={() => onItemClick(item.tab)}
+            delay={startIndex + idx}
+          />
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <motion.div className="mb-4" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+      <div 
+        className="px-3 py-2 rounded-xl mb-2"
+        style={{ background: `${section.color}15` }}
+      >
+        <span className="text-xs font-semibold" style={{ color: section.color }}>
+          {section.label}
+        </span>
+        <span className="text-[10px] text-gray-400 ml-2">({section.items.length})</span>
+      </div>
+      <div className="grid grid-cols-4 gap-2">
+        {section.items.map((item, idx) => (
+          <AdminGridMenuItem 
+            key={item.id} 
+            item={item} 
+            onClick={() => onItemClick(item.tab)}
+            delay={startIndex + idx}
+          />
+        ))}
+      </div>
+    </motion.div>
+  );
+};
+
 const tabs = [
   { id: "overview", key: "admin.overview", icon: BarChart3 },
   { id: "users", key: "admin.users", icon: Users },
@@ -123,6 +311,7 @@ export const AdminPage = ({ onNavigate }) => {
   const user = useUser();
   const { t } = useI18n();
   const [tab, setTab] = useState("overview");
+  const [showGridMenu, setShowGridMenu] = useState(false);
   const [loading, setLoading] = useState(true);
   const [overview, setOverview] = useState(null);
   const [users, setUsers] = useState([]);
