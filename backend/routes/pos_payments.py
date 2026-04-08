@@ -888,3 +888,302 @@ async def get_receipt_data(transaction_id: str, request: Request):
         "description": txn.get("description", ""),
         "reference": txn.get("reference", ""),
     }
+
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# GUTSCHEIN / VOUCHER SYSTEM
+# ══════════════════════════════════════════════════════════════════════════════
+
+class CreateVoucherRequest(BaseModel):
+    amount: float = Field(..., gt=0, le=1000, description="Gutscheinwert in EUR")
+    description: Optional[str] = "BidBlitz Gutschein"
+    valid_days: int = Field(365, ge=1, le=730, description="Gültigkeit in Tagen")
+    single_use: bool = True
+    recipient_email: Optional[str] = None  # Optional: direkt an Kunde senden
+
+
+class RedeemVoucherRequest(BaseModel):
+    voucher_code: str
+
+
+# ── MERCHANT: Create Voucher ──
+@router.post("/voucher/create")
+async def create_voucher(req: CreateVoucherRequest, request: Request):
+    """Händler erstellt einen Gutschein (wird vom Händler-Wallet abgezogen)."""
+    merchant_user = await get_current_user(request)
+    merchant_uid = str(merchant_user["_id"])
+    
+    # Check merchant role
+    if merchant_user.get("role") not in ("merchant", "admin"):
+        mp = await db.merchant_profiles.find_one({"user_id": merchant_uid})
+        if not mp:
+            raise HTTPException(status_code=403, detail="Nur Händler können Gutscheine erstellen")
+    
+    # WALLET-ONLY: Check merchant balance
+    merchant_balance = merchant_user.get("balance", 0)
+    if merchant_balance < req.amount:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Nicht genug Guthaben. Verfügbar: €{merchant_balance:.2f}, Benötigt: €{req.amount:.2f}"
+        )
+    
+    now = datetime.now(timezone.utc)
+    expires_at = now + timedelta(days=req.valid_days)
+    
+    # Generate unique voucher code
+    voucher_code = f"BLZ-{secrets.token_hex(4).upper()}-{secrets.token_hex(2).upper()}"
+    
+    # Deduct from merchant wallet
+    await db.users.update_one(
+        {"_id": merchant_user["_id"]},
+        {"$inc": {"balance": -req.amount}}
+    )
+    
+    # Record transaction
+    await db.transactions.insert_one({
+        "id": secrets.token_hex(8),
+        "user_id": merchant_uid,
+        "type": "voucher_created",
+        "amount": -req.amount,
+        "description": f"Gutschein erstellt: {voucher_code}",
+        "status": "completed",
+        "reference": voucher_code,
+        "category": "voucher",
+        "created_at": now.isoformat(),
+    })
+    
+    # Create voucher record
+    voucher = {
+        "voucher_code": voucher_code,
+        "merchant_id": merchant_uid,
+        "merchant_name": merchant_user.get("name", ""),
+        "amount": req.amount,
+        "original_amount": req.amount,
+        "description": req.description,
+        "single_use": req.single_use,
+        "status": "active",  # active, redeemed, expired, cancelled
+        "created_at": now.isoformat(),
+        "expires_at": expires_at.isoformat(),
+        "redeemed_by": None,
+        "redeemed_at": None,
+    }
+    await db.vouchers.insert_one(voucher)
+    voucher.pop("_id", None)
+    
+    # Optional: Send to recipient
+    if req.recipient_email:
+        voucher["sent_to"] = req.recipient_email
+        # TODO: Send email with voucher code
+    
+    return {
+        "ok": True,
+        "voucher": voucher,
+        "message": f"Gutschein {voucher_code} über €{req.amount:.2f} erstellt",
+    }
+
+
+# ── MERCHANT: List Vouchers ──
+@router.get("/voucher/list")
+async def list_merchant_vouchers(request: Request, status: str = ""):
+    """Liste aller Gutscheine des Händlers."""
+    merchant_user = await get_current_user(request)
+    merchant_uid = str(merchant_user["_id"])
+    
+    query = {"merchant_id": merchant_uid}
+    if status:
+        query["status"] = status
+    
+    vouchers = await db.vouchers.find(query, {"_id": 0}).sort("created_at", -1).limit(100).to_list(100)
+    
+    stats = {
+        "total": len(vouchers),
+        "active": len([v for v in vouchers if v["status"] == "active"]),
+        "redeemed": len([v for v in vouchers if v["status"] == "redeemed"]),
+        "total_value": sum(v["original_amount"] for v in vouchers),
+        "redeemed_value": sum(v["original_amount"] for v in vouchers if v["status"] == "redeemed"),
+    }
+    
+    return {"vouchers": vouchers, "stats": stats}
+
+
+# ── CUSTOMER: Check Voucher ──
+@router.get("/voucher/check/{voucher_code}")
+async def check_voucher(voucher_code: str, request: Request):
+    """Kunde prüft Gutschein-Gültigkeit."""
+    await get_current_user(request)
+    
+    voucher = await db.vouchers.find_one({"voucher_code": voucher_code.upper()}, {"_id": 0})
+    if not voucher:
+        raise HTTPException(status_code=404, detail="Gutschein nicht gefunden")
+    
+    now = datetime.now(timezone.utc)
+    expires = datetime.fromisoformat(voucher["expires_at"])
+    
+    if voucher["status"] == "redeemed":
+        return {"valid": False, "reason": "Gutschein bereits eingelöst", "voucher": voucher}
+    if voucher["status"] == "cancelled":
+        return {"valid": False, "reason": "Gutschein storniert", "voucher": voucher}
+    if expires < now:
+        return {"valid": False, "reason": "Gutschein abgelaufen", "voucher": voucher}
+    
+    return {
+        "valid": True,
+        "voucher": voucher,
+        "message": f"Gutschein gültig: €{voucher['amount']:.2f}",
+    }
+
+
+# ── CUSTOMER: Redeem Voucher ──
+@router.post("/voucher/redeem")
+async def redeem_voucher(req: RedeemVoucherRequest, request: Request):
+    """Kunde löst Gutschein ein - Betrag wird auf Wallet gutgeschrieben."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    
+    voucher = await db.vouchers.find_one({"voucher_code": req.voucher_code.upper()})
+    if not voucher:
+        raise HTTPException(status_code=404, detail="Gutschein nicht gefunden")
+    
+    now = datetime.now(timezone.utc)
+    expires = datetime.fromisoformat(voucher["expires_at"])
+    
+    if voucher["status"] == "redeemed":
+        raise HTTPException(status_code=400, detail="Gutschein bereits eingelöst")
+    if voucher["status"] == "cancelled":
+        raise HTTPException(status_code=400, detail="Gutschein storniert")
+    if expires < now:
+        await db.vouchers.update_one({"_id": voucher["_id"]}, {"$set": {"status": "expired"}})
+        raise HTTPException(status_code=400, detail="Gutschein abgelaufen")
+    
+    amount = voucher["amount"]
+    
+    # Credit to customer wallet
+    await db.users.update_one(
+        {"_id": user["_id"]},
+        {"$inc": {"balance": amount}}
+    )
+    
+    # Record transaction
+    await db.transactions.insert_one({
+        "id": secrets.token_hex(8),
+        "user_id": user_id,
+        "type": "voucher_redeemed",
+        "amount": amount,
+        "description": f"Gutschein eingelöst: {req.voucher_code.upper()}",
+        "status": "completed",
+        "reference": req.voucher_code.upper(),
+        "category": "voucher",
+        "merchant_name": voucher.get("merchant_name", ""),
+        "created_at": now.isoformat(),
+    })
+    
+    # Update voucher status
+    await db.vouchers.update_one(
+        {"_id": voucher["_id"]},
+        {"$set": {
+            "status": "redeemed",
+            "redeemed_by": user_id,
+            "redeemed_by_name": user.get("name", ""),
+            "redeemed_at": now.isoformat(),
+        }}
+    )
+    
+    updated_user = await db.users.find_one({"_id": user["_id"]})
+    
+    return {
+        "ok": True,
+        "amount": amount,
+        "new_balance": round(updated_user.get("balance", 0), 2),
+        "message": f"€{amount:.2f} auf dein Wallet gutgeschrieben!",
+    }
+
+
+# ── MERCHANT: Cancel Voucher ──
+@router.post("/voucher/cancel/{voucher_code}")
+async def cancel_voucher(voucher_code: str, request: Request):
+    """Händler storniert einen nicht eingelösten Gutschein - Betrag zurück auf Wallet."""
+    merchant_user = await get_current_user(request)
+    merchant_uid = str(merchant_user["_id"])
+    
+    voucher = await db.vouchers.find_one({
+        "voucher_code": voucher_code.upper(),
+        "merchant_id": merchant_uid
+    })
+    
+    if not voucher:
+        raise HTTPException(status_code=404, detail="Gutschein nicht gefunden")
+    
+    if voucher["status"] == "redeemed":
+        raise HTTPException(status_code=400, detail="Eingelöster Gutschein kann nicht storniert werden")
+    if voucher["status"] == "cancelled":
+        raise HTTPException(status_code=400, detail="Gutschein bereits storniert")
+    
+    now = datetime.now(timezone.utc)
+    amount = voucher["amount"]
+    
+    # Refund to merchant wallet
+    await db.users.update_one(
+        {"_id": merchant_user["_id"]},
+        {"$inc": {"balance": amount}}
+    )
+    
+    # Record refund transaction
+    await db.transactions.insert_one({
+        "id": secrets.token_hex(8),
+        "user_id": merchant_uid,
+        "type": "voucher_cancelled",
+        "amount": amount,
+        "description": f"Gutschein storniert: {voucher_code.upper()}",
+        "status": "completed",
+        "reference": voucher_code.upper(),
+        "category": "voucher",
+        "created_at": now.isoformat(),
+    })
+    
+    # Update voucher status
+    await db.vouchers.update_one(
+        {"_id": voucher["_id"]},
+        {"$set": {"status": "cancelled", "cancelled_at": now.isoformat()}}
+    )
+    
+    return {
+        "ok": True,
+        "refunded": amount,
+        "message": f"Gutschein storniert. €{amount:.2f} zurück auf dein Wallet.",
+    }
+
+
+# ── MERCHANT: Voucher Stats ──
+@router.get("/voucher/stats")
+async def get_voucher_stats(request: Request):
+    """Gutschein-Statistiken für Händler."""
+    merchant_user = await get_current_user(request)
+    merchant_uid = str(merchant_user["_id"])
+    
+    all_vouchers = await db.vouchers.find({"merchant_id": merchant_uid}).to_list(1000)
+    
+    now = datetime.now(timezone.utc)
+    
+    stats = {
+        "total_created": len(all_vouchers),
+        "total_value_created": sum(v["original_amount"] for v in all_vouchers),
+        "active": {
+            "count": len([v for v in all_vouchers if v["status"] == "active"]),
+            "value": sum(v["amount"] for v in all_vouchers if v["status"] == "active"),
+        },
+        "redeemed": {
+            "count": len([v for v in all_vouchers if v["status"] == "redeemed"]),
+            "value": sum(v["original_amount"] for v in all_vouchers if v["status"] == "redeemed"),
+        },
+        "cancelled": {
+            "count": len([v for v in all_vouchers if v["status"] == "cancelled"]),
+            "value": sum(v["original_amount"] for v in all_vouchers if v["status"] == "cancelled"),
+        },
+        "expired": {
+            "count": len([v for v in all_vouchers if v["status"] == "expired"]),
+            "value": sum(v["original_amount"] for v in all_vouchers if v["status"] == "expired"),
+        },
+    }
+    
+    return {"stats": stats}

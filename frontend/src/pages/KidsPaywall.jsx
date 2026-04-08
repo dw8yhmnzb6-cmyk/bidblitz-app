@@ -22,9 +22,16 @@ const KidsDashboard = ({ onBack, t, subStatus }) => {
   const [children, setChildren] = useState([]);
   const [showAddChild, setShowAddChild] = useState(false);
   const [newChildName, setNewChildName] = useState("");
+  const [newChildLimit, setNewChildLimit] = useState(15);
+  const [newChildYear, setNewChildYear] = useState("");
+  const [newChildEmoji, setNewChildEmoji] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [selectedChild, setSelectedChild] = useState(null);
+  const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(null);
+
+  const CHILD_EMOJIS = ["👦", "👧", "🧒", "👶", "🐻", "🦊", "🐰", "🐱", "🦁", "🐶"];
 
   // Load children from backend
   useEffect(() => {
@@ -34,17 +41,41 @@ const KidsDashboard = ({ onBack, t, subStatus }) => {
       .finally(() => setLoading(false));
   }, []);
 
+  const resetForm = () => {
+    setNewChildName("");
+    setNewChildLimit(15);
+    setNewChildYear("");
+    setNewChildEmoji("");
+    setError(null);
+  };
+
   const addChild = async () => {
     const name = newChildName.trim();
-    if (!name || saving) return;
+    if (!name) {
+      setError(t("kids.error_name_required") || "Name ist erforderlich");
+      return;
+    }
+    if (saving) return;
+    
     setSaving(true);
+    setError(null);
+    
     try {
-      const child = await api.createChild({ name, weekly_limit: 15 });
+      const payload = { 
+        name, 
+        weekly_limit: newChildLimit,
+      };
+      if (newChildYear) payload.birth_year = parseInt(newChildYear);
+      if (newChildEmoji) payload.avatar_emoji = newChildEmoji;
+      
+      const child = await api.createChild(payload);
       setChildren(prev => [...prev, child]);
-      setNewChildName("");
+      resetForm();
       setShowAddChild(false);
-    } catch {
-      // silent
+      setSuccess(t("kids.child_created") || `${name} wurde hinzugefügt!`);
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      setError(err.message || t("kids.error_create") || "Fehler beim Erstellen");
     } finally {
       setSaving(false);
     }
@@ -90,12 +121,51 @@ const KidsDashboard = ({ onBack, t, subStatus }) => {
       </div>
 
       <div className="px-5 pb-28 space-y-4">
+        {/* Success message */}
+        <AnimatePresence>
+          {success && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="px-4 py-3 rounded-xl bg-green-500/10 border border-green-500/20 flex items-center gap-2"
+            >
+              <Check size={16} className="text-green-400" />
+              <span className="text-green-400 text-[12px] font-medium">{success}</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Loading state */}
         {loading ? (
           <div className="flex items-center justify-center py-16">
             <Loader2 size={22} className="text-[#00C2FF] animate-spin" />
           </div>
         ) : (<>
+        {/* Family Wallet Header */}
+        <motion.div 
+          className="rounded-2xl p-4 relative overflow-hidden"
+          style={{ background: "linear-gradient(135deg, rgba(0,194,255,0.08), rgba(168,85,247,0.08))", border: "1px solid rgba(0,194,255,0.15)" }}
+          initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.04 }}
+        >
+          <div className="absolute -top-10 -right-10 w-24 h-24 rounded-full" style={{ background: "rgba(0,194,255,0.1)", filter: "blur(30px)" }} />
+          <div className="flex items-center justify-between relative z-10">
+            <div>
+              <p className="text-[10px] text-[#666] font-medium uppercase tracking-wider mb-1">{t("kids.family_wallet") || "Familien-Wallet"}</p>
+              <p className="text-[24px] font-bold text-white">€{children.reduce((s, c) => s + (c.balance || 0), 0).toFixed(2)}</p>
+              <p className="text-[11px] text-[#444] mt-0.5">{children.length} {children.length === 1 ? 'Kind' : 'Kinder'}</p>
+            </div>
+            <div className="flex gap-2">
+              <motion.button className="w-10 h-10 rounded-xl bg-white/[0.05] border border-white/[0.08] flex items-center justify-center" whileTap={{ scale: 0.95 }}>
+                <Wallet size={18} className="text-[#00C2FF]" />
+              </motion.button>
+              <motion.button className="w-10 h-10 rounded-xl bg-white/[0.05] border border-white/[0.08] flex items-center justify-center" whileTap={{ scale: 0.95 }}>
+                <Eye size={18} className="text-[#A855F7]" />
+              </motion.button>
+            </div>
+          </div>
+        </motion.div>
+
         {/* Overview stats */}
         <motion.div className="grid grid-cols-3 gap-2.5" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.06 }}>
           {[
@@ -196,29 +266,96 @@ const KidsDashboard = ({ onBack, t, subStatus }) => {
             {showAddChild ? (
               <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
                 className="overflow-hidden mt-2.5 rounded-2xl p-4 space-y-3"
-                style={{ background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.035)" }}>
-                <input data-testid="add-child-name" value={newChildName} onChange={e => setNewChildName(e.target.value)}
-                  placeholder={t("kids.child_name_placeholder")} autoFocus
-                  className="w-full px-3 py-2.5 rounded-xl text-[13px] text-white/90 placeholder-[#333] font-medium outline-none"
-                  style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}
-                  onKeyDown={e => e.key === "Enter" && addChild()} />
-                <div className="flex gap-2">
-                  <motion.button data-testid="add-child-confirm" onClick={addChild} disabled={saving}
-                    className="flex-1 py-2 rounded-xl text-[12px] font-semibold bg-[#00C2FF]/10 text-[#00C2FF] border border-[#00C2FF]/15 flex items-center justify-center gap-1.5"
+                style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(0,194,255,0.15)" }}>
+                
+                {/* Header */}
+                <div className="flex items-center gap-2 mb-1">
+                  <PlusCircle size={16} className="text-[#00C2FF]" />
+                  <span className="text-[13px] font-semibold text-white">{t("kids.add_new_child") || "Neues Kind hinzufügen"}</span>
+                </div>
+                
+                {/* Error message */}
+                {error && (
+                  <div className="px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-[11px]">
+                    {error}
+                  </div>
+                )}
+                
+                {/* Name input */}
+                <div>
+                  <label className="text-[10px] text-[#444] font-medium mb-1 block">{t("kids.child_name") || "Name"}</label>
+                  <input data-testid="add-child-name" value={newChildName} onChange={e => setNewChildName(e.target.value)}
+                    placeholder={t("kids.child_name_placeholder") || "Name des Kindes"}
+                    className="w-full px-3 py-2.5 rounded-xl text-[13px] text-white/90 placeholder-[#333] font-medium outline-none"
+                    style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)" }}
+                    onKeyDown={e => e.key === "Enter" && addChild()} />
+                </div>
+                
+                {/* Avatar emoji selector */}
+                <div>
+                  <label className="text-[10px] text-[#444] font-medium mb-1.5 block">{t("kids.avatar") || "Avatar"}</label>
+                  <div className="flex flex-wrap gap-2">
+                    {CHILD_EMOJIS.map((emoji) => (
+                      <button key={emoji} type="button"
+                        className={`w-9 h-9 rounded-lg flex items-center justify-center text-lg transition-all ${
+                          newChildEmoji === emoji 
+                            ? 'bg-[#00C2FF]/20 border-[#00C2FF]/40 scale-110' 
+                            : 'bg-white/[0.02] border-white/[0.05] hover:bg-white/[0.04]'
+                        } border`}
+                        onClick={() => setNewChildEmoji(newChildEmoji === emoji ? "" : emoji)}>
+                        {emoji}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                
+                {/* Birth year */}
+                <div>
+                  <label className="text-[10px] text-[#444] font-medium mb-1 block">{t("kids.birth_year") || "Geburtsjahr (optional)"}</label>
+                  <select value={newChildYear} onChange={e => setNewChildYear(e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-xl text-[13px] text-white/90 font-medium outline-none appearance-none cursor-pointer"
+                    style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                    <option value="">{t("kids.select_year") || "Jahr auswählen"}</option>
+                    {Array.from({ length: 18 }, (_, i) => 2024 - i).map(year => (
+                      <option key={year} value={year}>{year} ({2024 - year} Jahre)</option>
+                    ))}
+                  </select>
+                </div>
+                
+                {/* Weekly limit slider */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-[10px] text-[#444] font-medium">{t("kids.weekly_limit") || "Wochenlimit"}</label>
+                    <span className="text-[12px] font-bold text-[#00C2FF]">€{newChildLimit}</span>
+                  </div>
+                  <input type="range" min={5} max={100} step={5} value={newChildLimit}
+                    onChange={e => setNewChildLimit(Number(e.target.value))}
+                    className="w-full h-1.5 rounded-full appearance-none cursor-pointer accent-[#00C2FF]"
+                    style={{ background: "rgba(255,255,255,0.06)" }} />
+                  <div className="flex justify-between text-[9px] text-[#333] mt-1">
+                    <span>€5</span>
+                    <span>€100</span>
+                  </div>
+                </div>
+                
+                {/* Action buttons */}
+                <div className="flex gap-2 pt-1">
+                  <motion.button data-testid="add-child-confirm" onClick={addChild} disabled={saving || !newChildName.trim()}
+                    className="flex-1 py-2.5 rounded-xl text-[12px] font-semibold bg-[#00C2FF] text-black flex items-center justify-center gap-1.5 disabled:opacity-40"
                     whileTap={{ scale: 0.97 }}>
-                    {saving ? <Loader2 size={12} className="animate-spin" /> : null}
-                    {t("kids.add_child")}
+                    {saving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+                    {t("kids.save_child") || "Kind speichern"}
                   </motion.button>
-                  <motion.button onClick={() => setShowAddChild(false)}
-                    className="px-4 py-2 rounded-xl text-[12px] font-medium text-[#444] bg-white/[0.02] border border-white/[0.04]"
-                    whileTap={{ scale: 0.97 }}>{t("kids.cancel")}</motion.button>
+                  <motion.button onClick={() => { setShowAddChild(false); resetForm(); }}
+                    className="px-4 py-2.5 rounded-xl text-[12px] font-medium text-[#666] bg-white/[0.03] border border-white/[0.06]"
+                    whileTap={{ scale: 0.97 }}>{t("kids.cancel") || "Abbrechen"}</motion.button>
                 </div>
               </motion.div>
             ) : (
               <motion.button data-testid="add-child-btn" onClick={() => setShowAddChild(true)}
-                className="w-full mt-2.5 py-3 rounded-2xl flex items-center justify-center gap-2 text-[12px] font-medium text-[#00C2FF]/60 border border-dashed border-[#00C2FF]/15"
+                className="w-full mt-2.5 py-3.5 rounded-2xl flex items-center justify-center gap-2 text-[12px] font-semibold text-[#00C2FF] bg-[#00C2FF]/5 border border-[#00C2FF]/15"
                 whileTap={{ scale: 0.98 }}>
-                <PlusCircle size={14} /> {t("kids.add_child_profile")}
+                <PlusCircle size={16} /> {t("kids.add_child_profile") || "Kind hinzufügen"}
               </motion.button>
             )}
           </AnimatePresence>

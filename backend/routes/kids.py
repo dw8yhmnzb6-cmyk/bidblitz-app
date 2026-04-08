@@ -215,11 +215,15 @@ async def verify_kids_checkout(session_id: str, request: Request):
 class CreateChildRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=50)
     weekly_limit: float = Field(default=15.0, ge=0, le=500)
+    birth_year: int = Field(default=None, ge=2005, le=2025)
+    avatar_emoji: str = Field(default=None, max_length=4)
 
 
 class UpdateChildRequest(BaseModel):
     name: str = Field(default=None, min_length=1, max_length=50)
     weekly_limit: float = Field(default=None, ge=0, le=500)
+    birth_year: int = Field(default=None, ge=2005, le=2025)
+    avatar_emoji: str = Field(default=None, max_length=4)
 
 
 @router.get("/children")
@@ -250,14 +254,25 @@ async def create_child(req: CreateChildRequest, request: Request):
     colors = ["#00C2FF", "#A855F7", "#00D26A", "#FFB800", "#FF6B6B", "#E91E63"]
     import uuid
     child_id = f"child_{uuid.uuid4().hex[:12]}"
+    
+    # Calculate age if birth_year provided
+    current_year = now.year
+    age = current_year - req.birth_year if req.birth_year else None
+    
+    # Default avatar emoji or first letter
+    avatar = req.avatar_emoji if req.avatar_emoji else name[0].upper() if name else "👶"
 
     doc = {
         "child_id": child_id,
         "parent_id": user_id,
         "name": name,
-        "avatar": name[0].upper() if name else "?",
+        "avatar": avatar,
+        "birth_year": req.birth_year,
+        "age": age,
         "weekly_limit": req.weekly_limit,
+        "balance": 0.0,
         "spent": 0.0,
+        "status": "active",
         "color": colors[count % len(colors)],
         "created_at": now.isoformat(),
     }
