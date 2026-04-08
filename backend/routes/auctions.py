@@ -1210,7 +1210,11 @@ async def execute_bot_bid(auction):
 
 
 async def bot_bidding_loop():
-    """Background loop: check bot-enabled auctions and place bids."""
+    """Background loop: check bot-enabled auctions and place bids.
+    
+    Bots only bid on auctions where admin has explicitly enabled bot_enabled=True.
+    This simulates market activity in the early phase of the platform.
+    """
     while True:
         try:
             now = datetime.now(timezone.utc)
@@ -1227,6 +1231,7 @@ async def bot_bidding_loop():
                 target = auction.get("bot_target_price", 0)
                 current = auction.get("current_price", 0)
 
+                # Don't bid if target reached
                 if current >= target:
                     continue
 
@@ -1236,20 +1241,28 @@ async def bot_bidding_loop():
                 except Exception:
                     continue
 
+                # Only bid in final seconds (configurable per auction)
                 bot_min_secs = auction.get("bot_min_seconds", 300)
                 if bot_min_secs > 0 and remaining > bot_min_secs:
                     continue
 
-                if random.random() > 0.5:
+                # Randomize bid probability to look natural
+                # Lower probability = more realistic
+                bid_probability = auction.get("bot_probability", 0.3)
+                if random.random() > bid_probability:
                     continue
 
+                # Add random delay to avoid predictable timing
+                await asyncio.sleep(random.uniform(0.5, 2.0))
+                
                 await execute_bot_bid(auction)
 
         except Exception as e:
             import logging
             logging.getLogger("bidblitz").error(f"Bot loop error: {e}")
 
-        await asyncio.sleep(random.uniform(2, 5))
+        # Random sleep interval to avoid patterns
+        await asyncio.sleep(random.uniform(3, 8))
 
 
 def start_bot_loop():

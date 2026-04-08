@@ -179,6 +179,7 @@ app.include_router(mining_phase2_router)
 from routes.taxi import router as taxi_router
 from routes.scooter import router as scooter_router
 from routes.food import router as food_router
+from routes.drivers import router as drivers_router
 from routes.mobility_notifications import router as mobility_notif_router
 from routes.mobility_payments import router as mobility_payments_router
 from routes.mobility_admin import router as mobility_admin_router
@@ -188,6 +189,7 @@ from routes.readiness import router as readiness_router
 app.include_router(taxi_router)
 app.include_router(scooter_router)
 app.include_router(food_router)
+app.include_router(drivers_router)
 app.include_router(mobility_notif_router)
 app.include_router(mobility_payments_router)
 app.include_router(mobility_admin_router)

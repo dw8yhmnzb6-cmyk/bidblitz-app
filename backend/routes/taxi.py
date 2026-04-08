@@ -273,26 +273,48 @@ async def book_ride(req: RideRequest, request: Request):
     await db.taxi_rides.insert_one(ride)
     ride.pop("_id", None)
     
-    # Simulate driver acceptance after short delay (in production, this is async via push notification)
-    ride["driver"] = driver
-    ride["status"] = "accepted"
-    ride["status_history"].append({"status": "accepted", "at": now.isoformat()})
+    # Find nearest available real driver
+    from math import radians, cos, sin, sqrt, atan2
     
-    await db.taxi_rides.update_one(
-        {"ride_id": ride_id},
-        {"$set": {
-            "driver": driver,
-            "status": "accepted",
-            "accepted_at": now.isoformat(),
-            "status_history": ride["status_history"],
-            "updated_at": now.isoformat(),
-        }}
-    )
+    def haversine(lat1, lon1, lat2, lon2):
+        R = 6371
+        dlat = radians(lat2 - lat1)
+        dlon = radians(lon2 - lon1)
+        a = sin(dlat/2)**2 + cos(radians(lat1)) * cos(radians(lat2)) * sin(dlon/2)**2
+        return R * 2 * atan2(sqrt(a), sqrt(1-a))
+    
+    # Find online, verified drivers with matching vehicle type
+    available_drivers = await db.drivers.find({
+        "is_online": True,
+        "is_verified": True,
+        "status": "active",
+        "current_ride_id": None,
+        "vehicle.type": req.vehicle_type,
+        "current_location": {"$ne": None},
+    }, {"_id": 0, "password_hash": 0, "documents": 0}).to_list(20)
+    
+    # Sort by distance to pickup
+    for d in available_drivers:
+        loc = d.get("current_location", {})
+        if loc:
+            d["distance_km"] = haversine(req.pickup.lat, req.pickup.lng, loc.get("lat", 0), loc.get("lng", 0))
+    
+    available_drivers.sort(key=lambda x: x.get("distance_km", 999))
+    
+    # Return ride - driver assignment happens asynchronously via driver app
+    # If no drivers available, ride stays in "requested" status
+    if available_drivers:
+        ride["nearby_drivers"] = len(available_drivers)
+        ride["estimated_wait"] = max(2, int(available_drivers[0].get("distance_km", 5) * 2))
+    else:
+        ride["nearby_drivers"] = 0
+        ride["estimated_wait"] = None
+        ride["no_drivers_available"] = True
     
     return {
         "ok": True,
         "ride": ride,
-        "message": f"Fahrer {driver['name']} kommt in ca. {driver['eta_minutes']} Min.",
+        "message": "Fahrt angefragt. Wir suchen einen Fahrer für dich." if not ride.get("no_drivers_available") else "Keine Fahrer verfügbar. Bitte später erneut versuchen.",
     }
 
 
@@ -390,6 +412,79 @@ async def cancel_ride(req: RideAction, request: Request):
         "ok": True,
         "cancel_fee": cancel_fee,
         "message": "Fahrt storniert" + (f" (Gebühr: €{cancel_fee:.2f})" if cancel_fee else ""),
+    }
+
+
+# ══════════════════════════════════════
+# RIDER: COMPLETE RIDE (Simulation/Demo)
+# ══════════════════════════════════════
+
+@router.post("/complete")
+async def complete_ride(request: Request):
+    """Complete an active ride (for demo/simulation purposes)."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    body = await request.json()
+    
+    ride_id = body.get("ride_id")
+    if not ride_id:
+        raise HTTPException(status_code=400, detail="ride_id erforderlich")
+    
+    ride = await db.taxi_rides.find_one({"ride_id": ride_id, "user_id": user_id})
+    if not ride:
+        raise HTTPException(status_code=404, detail="Fahrt nicht gefunden")
+    
+    if ride["status"] in ("completed", "cancelled"):
+        raise HTTPException(status_code=400, detail="Fahrt bereits beendet")
+    
+    now = datetime.now(timezone.utc)
+    fare = ride.get("fare_estimate", 10.0)
+    
+    # Deduct fare from wallet
+    current_balance = user.get("balance", 0)
+    if current_balance < fare:
+        raise HTTPException(status_code=400, detail=f"Nicht genug Guthaben. Benötigt: €{fare:.2f}")
+    
+    await db.users.update_one(
+        {"_id": user["_id"]},
+        {"$inc": {"balance": -fare}}
+    )
+    
+    # Create transaction
+    await db.transactions.insert_one({
+        "id": secrets.token_hex(8),
+        "user_id": user_id,
+        "type": "payment",
+        "amount": -fare,
+        "description": f"Taxi: {ride.get('pickup', {}).get('address', '?')} → {ride.get('dropoff', {}).get('address', '?')}",
+        "status": "completed",
+        "reference": f"TAXI-{ride_id[:8].upper()}",
+        "category": "taxi",
+        "created_at": now.isoformat(),
+    })
+    
+    # Update ride status
+    status_history = ride.get("status_history", [])
+    status_history.append({"status": "completed", "at": now.isoformat()})
+    
+    await db.taxi_rides.update_one(
+        {"ride_id": ride_id},
+        {"$set": {
+            "status": "completed",
+            "final_fare": fare,
+            "completed_at": now.isoformat(),
+            "status_history": status_history,
+            "updated_at": now.isoformat(),
+        }}
+    )
+    
+    new_balance = current_balance - fare
+    
+    return {
+        "ok": True,
+        "final_fare": fare,
+        "new_balance": round(new_balance, 2),
+        "message": f"Fahrt abgeschlossen. €{fare:.2f} abgebucht.",
     }
 
 

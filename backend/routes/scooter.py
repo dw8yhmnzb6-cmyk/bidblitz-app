@@ -97,22 +97,15 @@ async def get_nearby_scooters(request: Request, lat: float = 52.52, lng: float =
             min_dist = dist
             city = city_id
     
-    # Get existing scooters from DB or generate new ones
-    existing = await db.scooters.find(
+    # Get scooters from DB only - no auto-generation
+    scooters = await db.scooters.find(
         {"city": city, "status": "available"},
         {"_id": 0}
     ).to_list(50)
     
-    if len(existing) < 10:
-        # Generate more scooters
-        new_scooters = [generate_scooter(city) for _ in range(15 - len(existing))]
-        if new_scooters:
-            await db.scooters.insert_many(new_scooters)
-            existing.extend(new_scooters)
-    
     # Filter by radius
     nearby = []
-    for s in existing:
+    for s in scooters:
         loc = s.get("location", {})
         dist = math.sqrt((loc.get("lat", 0) - lat)**2 + (loc.get("lng", 0) - lng)**2) * 111
         if dist <= radius:
@@ -530,3 +523,118 @@ async def get_pricing():
         "reservation_fee": RESERVATION_FEE,
         "reservation_minutes": RESERVATION_MINUTES,
     }
+
+
+
+# ══════════════════════════════════════
+# ADMIN: MANAGE SCOOTERS
+# ══════════════════════════════════════
+
+@router.post("/admin/add")
+async def admin_add_scooter(request: Request):
+    """Admin adds a new scooter to the fleet."""
+    user = await get_current_user(request)
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Nur Admin")
+    
+    body = await request.json()
+    
+    scooter = {
+        "scooter_id": f"SC-{secrets.token_hex(4).upper()}",
+        "model": body.get("model", "BidBlitz E1"),
+        "max_speed": body.get("max_speed", 20),
+        "range_km": body.get("range_km", 45),
+        "battery_percent": body.get("battery_percent", 100),
+        "location": body.get("location", {"lat": 52.52, "lng": 13.405}),
+        "status": "available",
+        "city": body.get("city", "berlin"),
+        "last_maintained": datetime.now(timezone.utc).isoformat(),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    
+    await db.scooters.insert_one(scooter)
+    scooter.pop("_id", None)
+    
+    return {"ok": True, "scooter": scooter}
+
+
+@router.post("/admin/bulk-add")
+async def admin_bulk_add_scooters(request: Request):
+    """Admin adds multiple scooters."""
+    user = await get_current_user(request)
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Nur Admin")
+    
+    body = await request.json()
+    count = body.get("count", 10)
+    city = body.get("city", "berlin")
+    
+    zone = CITY_ZONES.get(city, CITY_ZONES["berlin"])
+    scooters = []
+    
+    for _ in range(min(count, 100)):
+        model = random.choice(SCOOTER_MODELS)
+        scooter = {
+            "scooter_id": f"SC-{secrets.token_hex(4).upper()}",
+            "model": model["model"],
+            "max_speed": model["max_speed"],
+            "range_km": model["range_km"],
+            "battery_percent": random.randint(60, 100),
+            "location": {
+                "lat": zone["lat"] + random.uniform(-0.03, 0.03),
+                "lng": zone["lng"] + random.uniform(-0.03, 0.03),
+            },
+            "status": "available",
+            "city": city,
+            "last_maintained": datetime.now(timezone.utc).isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }
+        scooters.append(scooter)
+    
+    if scooters:
+        await db.scooters.insert_many(scooters)
+    
+    return {"ok": True, "added": len(scooters)}
+
+
+@router.get("/admin/list")
+async def admin_list_scooters(request: Request, city: str = None, status: str = None):
+    """Admin lists all scooters."""
+    user = await get_current_user(request)
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Nur Admin")
+    
+    query = {}
+    if city:
+        query["city"] = city
+    if status:
+        query["status"] = status
+    
+    scooters = await db.scooters.find(query, {"_id": 0}).to_list(500)
+    
+    return {"scooters": scooters, "total": len(scooters)}
+
+
+@router.post("/admin/update-status")
+async def admin_update_scooter_status(request: Request):
+    """Admin updates scooter status."""
+    user = await get_current_user(request)
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Nur Admin")
+    
+    body = await request.json()
+    scooter_id = body.get("scooter_id")
+    new_status = body.get("status")
+    
+    if new_status not in ["available", "maintenance", "reserved", "in_use", "disabled"]:
+        raise HTTPException(status_code=400, detail="Ungültiger Status")
+    
+    result = await db.scooters.update_one(
+        {"scooter_id": scooter_id},
+        {"$set": {"status": new_status, "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Scooter nicht gefunden")
+    
+    return {"ok": True}

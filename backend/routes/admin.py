@@ -32,13 +32,44 @@ async def overview(request: Request):
     total_users = await db.users.count_documents({})
     total_merchants = await db.merchants.count_documents({})
 
-    # Aggregate payment volume + fees
+    # Aggregate payment volume from all transactions
     pipeline = [
-        {"$match": {"type": {"$in": ["payment", "merchant_credit"]}}},
-        {"$group": {"_id": None, "volume": {"$sum": {"$abs": "$gross_amount"}}, "fees": {"$sum": "$fee_amount"}}},
+        {"$match": {"status": "completed"}},
+        {"$group": {
+            "_id": None, 
+            "volume": {"$sum": {"$abs": {"$ifNull": ["$amount", 0]}}},
+            "fees": {"$sum": {"$ifNull": ["$fee_amount", 0]}}
+        }},
     ]
     agg = await db.transactions.aggregate(pipeline).to_list(1)
     stats = agg[0] if agg else {"volume": 0, "fees": 0}
+
+    # Calculate total revenue from different sources
+    total_revenue = 0
+    
+    # Stripe top-ups (platform keeps processing fee)
+    stripe_txns = await db.transactions.count_documents({"type": "top_up", "status": "completed"})
+    
+    # Auction credits purchases
+    auction_revenue = await db.transactions.aggregate([
+        {"$match": {"type": "credit_purchase", "status": "completed"}},
+        {"$group": {"_id": None, "total": {"$sum": {"$abs": "$amount"}}}}
+    ]).to_list(1)
+    total_revenue += auction_revenue[0]["total"] if auction_revenue else 0
+    
+    # Mining packages
+    mining_revenue = await db.transactions.aggregate([
+        {"$match": {"type": "mining_purchase", "status": "completed"}},
+        {"$group": {"_id": None, "total": {"$sum": {"$abs": "$amount"}}}}
+    ]).to_list(1)
+    total_revenue += mining_revenue[0]["total"] if mining_revenue else 0
+    
+    # Kids subscriptions
+    kids_revenue = await db.transactions.aggregate([
+        {"$match": {"type": "kids_subscription", "status": "completed"}},
+        {"$group": {"_id": None, "total": {"$sum": {"$abs": "$amount"}}}}
+    ]).to_list(1)
+    total_revenue += kids_revenue[0]["total"] if kids_revenue else 0
 
     # Payout stats
     pending_payouts = await db.payouts.count_documents({"status": {"$in": ["pending", "approved"]}})
@@ -55,6 +86,23 @@ async def overview(request: Request):
     processed = processed_agg[0] if processed_agg else {"total": 0, "count": 0}
 
     total_txns = await db.transactions.count_documents({})
+    
+    # Auction stats
+    active_auctions = await db.auctions.count_documents({"status": "active"})
+    
+    # Mining stats
+    active_miners = await db.mining_miners.count_documents({"status": "active"})
+    
+    # Driver stats
+    active_drivers = await db.drivers.count_documents({"status": "active", "is_verified": True})
+    online_drivers = await db.drivers.count_documents({"is_online": True})
+    
+    # Restaurant stats
+    active_restaurants = await db.food_restaurants.count_documents({"status": "approved"})
+    
+    # Scooter stats
+    total_scooters = await db.scooters.count_documents({})
+    available_scooters = await db.scooters.count_documents({"status": "available"})
 
     # Today stats
     today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
@@ -67,12 +115,20 @@ async def overview(request: Request):
         "total_transactions": total_txns,
         "payment_volume": round(stats["volume"], 2),
         "platform_fee_revenue": round(stats["fees"], 2),
+        "total_revenue": round(total_revenue, 2),
         "pending_payouts_count": pending_payouts,
         "pending_payouts_amount": round(pending_amount, 2),
         "processed_payouts_count": processed["count"],
         "processed_payouts_amount": round(processed["total"], 2),
         "today_transactions": today_txns,
         "today_new_users": today_users,
+        "active_auctions": active_auctions,
+        "active_miners": active_miners,
+        "active_drivers": active_drivers,
+        "online_drivers": online_drivers,
+        "active_restaurants": active_restaurants,
+        "total_scooters": total_scooters,
+        "available_scooters": available_scooters,
         "fee_config": FEES,
     }
 

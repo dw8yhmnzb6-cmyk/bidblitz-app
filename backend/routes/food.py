@@ -246,10 +246,10 @@ async def get_categories():
 
 @router.get("/restaurants")
 async def get_restaurants(request: Request, category: str = "", search: str = "", limit: int = 20):
-    """Get restaurants with optional filtering."""
-    await ensure_restaurants()
+    """Get restaurants with optional filtering. Only shows approved or legacy restaurants."""
     
-    query = {"is_open": True}
+    # Include restaurants that are either approved or don't have a status field (legacy data)
+    query = {"is_open": True, "$or": [{"status": "approved"}, {"status": {"$exists": False}}]}
     if category:
         query["category"] = category
     if search:
@@ -267,9 +267,11 @@ async def get_restaurants(request: Request, category: str = "", search: str = ""
 @router.get("/restaurant/{restaurant_id}")
 async def get_restaurant(restaurant_id: str):
     """Get restaurant details with menu."""
-    await ensure_restaurants()
     
-    restaurant = await db.food_restaurants.find_one({"restaurant_id": restaurant_id}, {"_id": 0})
+    restaurant = await db.food_restaurants.find_one(
+        {"restaurant_id": restaurant_id, "$or": [{"status": "approved"}, {"status": {"$exists": False}}]}, 
+        {"_id": 0}
+    )
     if not restaurant:
         raise HTTPException(status_code=404, detail="Restaurant nicht gefunden")
     
@@ -663,3 +665,275 @@ async def reorder(req: OrderAction, request: Request):
         "subtotal": round(subtotal, 2),
         "message": "Warenkorb aus vorheriger Bestellung geladen",
     }
+
+
+
+# ══════════════════════════════════════
+# RESTAURANT REGISTRATION
+# ══════════════════════════════════════
+
+@router.post("/restaurant/register")
+async def register_restaurant(request: Request):
+    """Register a new restaurant (requires admin approval)."""
+    body = await request.json()
+    
+    required = ["name", "category", "address", "phone", "email"]
+    for field in required:
+        if not body.get(field):
+            raise HTTPException(status_code=400, detail=f"{field} erforderlich")
+    
+    existing = await db.food_restaurants.find_one({"email": body["email"].lower()})
+    if existing:
+        raise HTTPException(status_code=400, detail="Restaurant bereits registriert")
+    
+    now = datetime.now(timezone.utc).isoformat()
+    
+    restaurant = {
+        "restaurant_id": generate_restaurant_id(body["name"]),
+        "name": body["name"],
+        "category": body["category"],
+        "address": body["address"],
+        "phone": body["phone"],
+        "email": body["email"].lower(),
+        "description": body.get("description", ""),
+        "rating": 0,
+        "review_count": 0,
+        "delivery_time": body.get("delivery_time", "30-45"),
+        "price_level": body.get("price_level", 2),
+        "image": body.get("image", ""),
+        "menu": [],  # Restaurant adds menu items after approval
+        "is_open": False,
+        "status": "pending",  # pending, approved, rejected, suspended
+        "min_order": body.get("min_order", MIN_ORDER_AMOUNT),
+        "delivery_fee": body.get("delivery_fee", DELIVERY_FEE_BASE),
+        "location": body.get("location", {"lat": 52.52, "lng": 13.405}),
+        "owner_name": body.get("owner_name", ""),
+        "tax_id": body.get("tax_id", ""),
+        "bank_details": body.get("bank_details", {}),
+        "documents": {
+            "license": None,
+            "hygiene_cert": None,
+        },
+        "created_at": now,
+        "updated_at": now,
+    }
+    
+    await db.food_restaurants.insert_one(restaurant)
+    restaurant.pop("_id", None)
+    
+    return {
+        "ok": True,
+        "restaurant_id": restaurant["restaurant_id"],
+        "status": "pending",
+        "message": "Registrierung erfolgreich. Bitte warte auf die Genehmigung.",
+    }
+
+
+# ══════════════════════════════════════
+# RESTAURANT: MANAGE MENU
+# ══════════════════════════════════════
+
+@router.post("/restaurant/{restaurant_id}/menu/add")
+async def add_menu_item(restaurant_id: str, request: Request):
+    """Restaurant owner adds menu item."""
+    body = await request.json()
+    
+    restaurant = await db.food_restaurants.find_one({"restaurant_id": restaurant_id})
+    if not restaurant:
+        raise HTTPException(status_code=404, detail="Restaurant nicht gefunden")
+    
+    # TODO: Verify owner authentication
+    
+    menu_item = {
+        "id": f"m{secrets.token_hex(4)}",
+        "name": body.get("name"),
+        "price": body.get("price"),
+        "description": body.get("description", ""),
+        "category": body.get("category", "main"),
+        "image": body.get("image", ""),
+        "available": True,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    
+    await db.food_restaurants.update_one(
+        {"restaurant_id": restaurant_id},
+        {"$push": {"menu": menu_item}}
+    )
+    
+    return {"ok": True, "item": menu_item}
+
+
+@router.post("/restaurant/{restaurant_id}/menu/update")
+async def update_menu_item(restaurant_id: str, request: Request):
+    """Restaurant owner updates menu item."""
+    body = await request.json()
+    item_id = body.get("item_id")
+    
+    restaurant = await db.food_restaurants.find_one({"restaurant_id": restaurant_id})
+    if not restaurant:
+        raise HTTPException(status_code=404, detail="Restaurant nicht gefunden")
+    
+    updates = {}
+    if "name" in body:
+        updates["menu.$.name"] = body["name"]
+    if "price" in body:
+        updates["menu.$.price"] = body["price"]
+    if "description" in body:
+        updates["menu.$.description"] = body["description"]
+    if "available" in body:
+        updates["menu.$.available"] = body["available"]
+    
+    if updates:
+        await db.food_restaurants.update_one(
+            {"restaurant_id": restaurant_id, "menu.id": item_id},
+            {"$set": updates}
+        )
+    
+    return {"ok": True}
+
+
+@router.delete("/restaurant/{restaurant_id}/menu/{item_id}")
+async def delete_menu_item(restaurant_id: str, item_id: str, request: Request):
+    """Restaurant owner deletes menu item."""
+    
+    result = await db.food_restaurants.update_one(
+        {"restaurant_id": restaurant_id},
+        {"$pull": {"menu": {"id": item_id}}}
+    )
+    
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Artikel nicht gefunden")
+    
+    return {"ok": True}
+
+
+# ══════════════════════════════════════
+# RESTAURANT: TOGGLE OPEN STATUS
+# ══════════════════════════════════════
+
+@router.post("/restaurant/{restaurant_id}/toggle-open")
+async def toggle_restaurant_open(restaurant_id: str, request: Request):
+    """Restaurant toggles open/closed status."""
+    body = await request.json()
+    is_open = body.get("is_open", False)
+    
+    restaurant = await db.food_restaurants.find_one({"restaurant_id": restaurant_id})
+    if not restaurant:
+        raise HTTPException(status_code=404, detail="Restaurant nicht gefunden")
+    
+    if restaurant.get("status") != "approved":
+        raise HTTPException(status_code=403, detail="Restaurant nicht genehmigt")
+    
+    await db.food_restaurants.update_one(
+        {"restaurant_id": restaurant_id},
+        {"$set": {"is_open": is_open, "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    return {"ok": True, "is_open": is_open}
+
+
+# ══════════════════════════════════════
+# ADMIN: MANAGE RESTAURANTS
+# ══════════════════════════════════════
+
+@router.get("/admin/restaurants")
+async def admin_list_restaurants(request: Request, status: str = None):
+    """Admin lists all restaurants."""
+    user = await get_current_user(request)
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Nur Admin")
+    
+    query = {}
+    if status:
+        query["status"] = status
+    
+    restaurants = await db.food_restaurants.find(query, {"_id": 0}).to_list(200)
+    
+    return {"restaurants": restaurants, "total": len(restaurants)}
+
+
+@router.get("/admin/restaurants/pending")
+async def admin_pending_restaurants(request: Request):
+    """Admin gets pending restaurant applications."""
+    user = await get_current_user(request)
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Nur Admin")
+    
+    restaurants = await db.food_restaurants.find({"status": "pending"}, {"_id": 0}).to_list(50)
+    
+    return {"restaurants": restaurants, "total": len(restaurants)}
+
+
+@router.post("/admin/restaurants/approve")
+async def admin_approve_restaurant(request: Request):
+    """Admin approves or rejects restaurant."""
+    user = await get_current_user(request)
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Nur Admin")
+    
+    body = await request.json()
+    restaurant_id = body.get("restaurant_id")
+    approved = body.get("approved", False)
+    reason = body.get("reason", "")
+    
+    restaurant = await db.food_restaurants.find_one({"restaurant_id": restaurant_id})
+    if not restaurant:
+        raise HTTPException(status_code=404, detail="Restaurant nicht gefunden")
+    
+    now = datetime.now(timezone.utc).isoformat()
+    
+    if approved:
+        await db.food_restaurants.update_one(
+            {"restaurant_id": restaurant_id},
+            {"$set": {
+                "status": "approved",
+                "approved_at": now,
+                "approved_by": str(user["_id"]),
+                "updated_at": now,
+            }}
+        )
+    else:
+        await db.food_restaurants.update_one(
+            {"restaurant_id": restaurant_id},
+            {"$set": {
+                "status": "rejected",
+                "rejection_reason": reason,
+                "updated_at": now,
+            }}
+        )
+    
+    return {"ok": True, "status": "approved" if approved else "rejected"}
+
+
+@router.post("/admin/restaurants/seed")
+async def admin_seed_restaurants(request: Request):
+    """Admin seeds demo restaurants (for development only)."""
+    user = await get_current_user(request)
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Nur Admin")
+    
+    count = 0
+    for r in RESTAURANTS:
+        existing = await db.food_restaurants.find_one({"name": r["name"]})
+        if not existing:
+            doc = {
+                "restaurant_id": generate_restaurant_id(r["name"]),
+                "name": r["name"],
+                "category": r["category"],
+                "rating": r["rating"],
+                "review_count": random.randint(50, 500),
+                "delivery_time": r["delivery_time"],
+                "price_level": r["price_level"],
+                "image": r["image"],
+                "menu": r["menu"],
+                "is_open": True,
+                "status": "approved",  # Pre-approved for demo
+                "min_order": MIN_ORDER_AMOUNT,
+                "delivery_fee": DELIVERY_FEE_BASE,
+                "location": {"lat": 52.52 + random.uniform(-0.05, 0.05), "lng": 13.405 + random.uniform(-0.05, 0.05)},
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            }
+            await db.food_restaurants.insert_one(doc)
+            count += 1
+    
+    return {"ok": True, "seeded": count}
