@@ -494,15 +494,16 @@ export const AdminPage = ({ onNavigate }) => {
         </div>
       </div>
 
-      {/* Tab Bar */}
+      {/* Tab Bar - Grid Layout for better overview */}
       <div className="px-5 mb-4 relative z-10">
-        <div className="flex gap-1 overflow-x-auto no-scrollbar">
+        <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-1.5">
           {tabs.map((tb) => (
             <motion.button key={tb.id} onClick={() => setTab(tb.id)} whileTap={{ scale: 0.95 }}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-medium whitespace-nowrap transition-all ${
-                tab === tb.id ? "bg-[#00C2FF]/10 text-[#00C2FF] border border-[#00C2FF]/20" : "bg-white/[0.02] text-[#444] border border-white/[0.04]"
+              className={`flex flex-col items-center gap-1 px-2 py-2.5 rounded-xl text-[10px] font-medium transition-all ${
+                tab === tb.id ? "bg-[#00C2FF]/10 text-[#00C2FF] border border-[#00C2FF]/20" : "bg-white/[0.02] text-[#555] border border-white/[0.04] hover:bg-white/[0.04]"
               }`}>
-              <tb.icon size={12} /> {t(tb.key) || tb.key}
+              <tb.icon size={16} />
+              <span className="truncate w-full text-center">{t(tb.key)?.split(" ")[0] || tb.key.split(" ")[0]}</span>
             </motion.button>
           ))}
         </div>

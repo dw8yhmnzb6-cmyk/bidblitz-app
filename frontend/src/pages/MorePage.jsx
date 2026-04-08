@@ -5,7 +5,7 @@ import {
   HelpCircle, LogOut, ChevronRight, ChevronLeft, Sparkles,
   Globe, Lock, Eye, Fingerprint, Smartphone, Mail, Calendar, Gift, LayoutDashboard, Activity, Users,
   Pencil, Loader2, Check, X, ShieldCheck, Clock, AlertCircle, MapPin,
-  Trophy, TrendingUp, Star, Store, Monitor, Scan, Wallet, Cpu
+  Trophy, TrendingUp, Star, Store, Monitor, Scan, Wallet, Cpu, Car, Zap, ShoppingBag
 } from "lucide-react";
 import { useUser, useI18n } from "../store";
 import { api } from "../services/api";
@@ -797,6 +797,12 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
     { id: "kids", icon: Users, label: t("kids.title"), desc: t("kids.menu_desc"), color: "#A855F7", action: gatedAction(() => setSubPage("kids")) },
   ];
 
+  const mobilityMenu = [
+    { id: "taxi", icon: Car, label: t("taxi.title") || "Taxi", desc: t("taxi.menu_desc") || "Taxi buchen", color: "#FFB800", action: gatedAction(() => onNavigate("/taxi")) },
+    { id: "scooter", icon: Zap, label: t("scooter.title") || "E-Scooter", desc: t("scooter.menu_desc") || "Scooter mieten", color: "#00D26A", action: gatedAction(() => onNavigate("/scooter")) },
+    { id: "food", icon: ShoppingBag, label: t("food.title") || "Food Delivery", desc: t("food.menu_desc") || "Essen bestellen", color: "#FF6B6B", action: gatedAction(() => onNavigate("/food")) },
+  ];
+
   const appMenu = [
     { id: "settings", icon: Settings, label: t("more.settings"), desc: t("more.settings_desc"), color: "#888", action: gatedAction(() => setSubPage("settings")) },
     { id: "appearance", icon: Moon, label: t("more.appearance"), desc: t("more.appearance_desc"), color: "#6366F1" },
@@ -931,6 +937,7 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
         </motion.div>
 
         {/* ── Menu Groups ── */}
+        {renderGroup(t("more.mobility") || "Mobilität", mobilityMenu, 0.12)}
         {renderGroup(t("more.account"), accountMenu, 0.14)}
         {renderGroup(t("more.growth"), growthMenu, 0.2)}
         {renderGroup(t("more.app"), appMenu, 0.26)}

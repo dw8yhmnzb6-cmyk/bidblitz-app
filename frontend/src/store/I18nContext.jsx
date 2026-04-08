@@ -495,6 +495,10 @@ const translations = {
     "activity.empty": "No activity yet", "activity.empty_hint": "Your transactions will appear here",
     // Feature Gate
     "feature_gate.title": "Coming Soon", "feature_gate.desc": "This feature is being prepared for launch. Stay tuned for updates.", "feature_gate.badge": "In Development",
+    // Mobility
+    "more.mobility": "Mobility", "taxi.title": "Taxi", "taxi.menu_desc": "Book a ride",
+    "scooter.title": "E-Scooter", "scooter.menu_desc": "Rent a scooter",
+    "food.title": "Food Delivery", "food.menu_desc": "Order food",
     // Kids
     "kids.title": "BidBlitz Kids", "kids.menu_desc": "Safe payments for children",
     "kids.hero_title": "BidBlitz Kids", "kids.hero_desc": "Give your children financial freedom with full parental control",
