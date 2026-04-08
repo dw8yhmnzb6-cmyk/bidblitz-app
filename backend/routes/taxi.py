@@ -649,24 +649,56 @@ async def driver_update_status(req: DriverStatusUpdate, request: Request):
         update["final_fare"] = fare["total"]
         update["actual_duration_min"] = round(actual_duration)
         
-        # Charge rider
-        if ride["payment_method"] == "wallet":
-            rider = await db.users.find_one({"_id": ObjectId(ride["user_id"])})
-            if rider:
+        # Charge rider and credit driver (WALLET-ONLY ECOSYSTEM)
+        rider = await db.users.find_one({"_id": ObjectId(ride["user_id"])})
+        if rider:
+            # Deduct from rider
+            await db.users.update_one(
+                {"_id": ObjectId(ride["user_id"])},
+                {"$inc": {"balance": -fare["total"]}}
+            )
+            await db.transactions.insert_one({
+                "id": secrets.token_hex(8),
+                "user_id": ride["user_id"],
+                "type": "payment",
+                "amount": -fare["total"],
+                "description": f"Taxi: {ride['pickup'].get('address', '')[:20]} → {ride['dropoff'].get('address', '')[:20]}",
+                "status": "completed",
+                "reference": f"TAXI-{req.ride_id[:8].upper()}",
+                "category": "taxi",
+                "merchant_name": f"Taxi ({ride['driver']['name']})",
+                "created_at": now.isoformat(),
+            })
+            
+            # Credit driver (85% of fare, 15% platform fee)
+            driver_id = ride.get("driver_id")
+            if driver_id:
+                driver_share = round(fare["total"] * 0.85, 2)
+                platform_fee = round(fare["total"] * 0.15, 2)
+                
                 await db.users.update_one(
-                    {"_id": ObjectId(ride["user_id"])},
-                    {"$inc": {"balance": -fare["total"]}}
+                    {"_id": ObjectId(driver_id)},
+                    {"$inc": {"balance": driver_share}}
                 )
                 await db.transactions.insert_one({
                     "id": secrets.token_hex(8),
-                    "user_id": ride["user_id"],
-                    "type": "payment",
-                    "amount": -fare["total"],
-                    "description": f"Taxi: {ride['pickup'].get('address', '')[:20]} → {ride['dropoff'].get('address', '')[:20]}",
+                    "user_id": driver_id,
+                    "type": "earning",
+                    "amount": driver_share,
+                    "description": f"Fahrt-Verdienst: {ride['pickup'].get('address', '')[:15]} → {ride['dropoff'].get('address', '')[:15]}",
                     "status": "completed",
                     "reference": f"TAXI-{req.ride_id[:8].upper()}",
-                    "category": "taxi",
-                    "merchant_name": f"Taxi ({ride['driver']['name']})",
+                    "category": "taxi_earning",
+                    "created_at": now.isoformat(),
+                })
+                
+                # Record platform fee
+                await db.platform_fees.insert_one({
+                    "type": "taxi",
+                    "ride_id": req.ride_id,
+                    "total_fare": fare["total"],
+                    "driver_share": driver_share,
+                    "platform_fee": platform_fee,
                     "created_at": now.isoformat(),
                 })
     elif req.status == "cancelled":

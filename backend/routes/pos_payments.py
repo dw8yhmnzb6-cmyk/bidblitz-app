@@ -242,11 +242,32 @@ async def process_barcode_payment(req: BarcodePaymentRequest, request: Request):
 
     mid = str(mp["_id"]) if mp else ""
     merchant_name = mp.get("business_name", "") if mp else ""
+    merchant_owner_id = mp.get("user_id", "") if mp else ""
 
     if mp:
         await db.merchant_profiles.update_one(
             {"_id": mp["_id"]}, {"$inc": {"total_revenue": req.amount, "total_fees": fee}},
         )
+        
+        # WALLET-ONLY ECOSYSTEM: Credit merchant wallet directly
+        if merchant_owner_id:
+            await db.users.update_one(
+                {"_id": ObjectId(merchant_owner_id)},
+                {"$inc": {"balance": net}}
+            )
+            await db.transactions.insert_one({
+                "id": secrets.token_hex(8),
+                "user_id": merchant_owner_id,
+                "type": "merchant_earning",
+                "amount": net,
+                "description": f"POS Zahlung: {req.description or 'Payment'}",
+                "status": "completed",
+                "reference": f"MERCH-{txn_id[:8].upper()}",
+                "category": "merchant_earning",
+                "fee_deducted": fee,
+                "gross_amount": req.amount,
+                "created_at": now_iso,
+            })
 
     await db.payment_barcodes.update_one({"_id": bc["_id"]}, {"$set": {"active": False}})
 
@@ -368,6 +389,7 @@ async def process_nfc_payment(req: NfcPaymentRequest, request: Request):
         })
 
     txn_id = secrets.token_hex(8)
+    merchant_owner_id = mp.get("user_id", "") if mp else ""
 
     if mid:
         await db.merchant_profiles.update_one(
@@ -384,6 +406,26 @@ async def process_nfc_payment(req: NfcPaymentRequest, request: Request):
             "payment_type_label": pt["label"],
             "status": "completed", "created_at": now_iso,
         })
+        
+        # WALLET-ONLY ECOSYSTEM: Credit merchant wallet directly
+        if merchant_owner_id:
+            await db.users.update_one(
+                {"_id": ObjectId(merchant_owner_id)},
+                {"$inc": {"balance": net}}
+            )
+            await db.transactions.insert_one({
+                "id": secrets.token_hex(8),
+                "user_id": merchant_owner_id,
+                "type": "merchant_earning",
+                "amount": net,
+                "description": f"NFC Zahlung: {req.description or 'Payment'}",
+                "status": "completed",
+                "reference": f"MERCH-{txn_id[:8].upper()}",
+                "category": "merchant_earning",
+                "fee_deducted": fee,
+                "gross_amount": req.amount,
+                "created_at": now_iso,
+            })
 
     receipt = generate_receipt(
         txn_id, req.amount, fee, net, pt,

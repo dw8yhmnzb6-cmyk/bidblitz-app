@@ -520,14 +520,86 @@ async def confirm_delivery(req: OrderAction, request: Request):
     if order["status"] == "delivered":
         return {"ok": True, "message": "Bereits als geliefert markiert"}
     
+    now = datetime.now(timezone.utc)
+    
     await db.food_orders.update_one(
         {"order_id": req.order_id},
         {"$set": {
             "status": "delivered",
-            "delivered_at": datetime.now(timezone.utc).isoformat(),
-            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "delivered_at": now.isoformat(),
+            "updated_at": now.isoformat(),
         }}
     )
+    
+    # ══════════════════════════════════════════════════════════════════════════
+    # WALLET-ONLY ECOSYSTEM: Credit restaurant and delivery driver internally
+    # ══════════════════════════════════════════════════════════════════════════
+    subtotal = order.get("subtotal", 0)
+    delivery_fee = order.get("delivery_fee", 0)
+    service_fee = order.get("service_fee", 0)
+    total = order.get("total", 0)
+    
+    # Restaurant gets subtotal minus 15% platform commission
+    restaurant_share = round(subtotal * 0.85, 2)
+    restaurant_id = order.get("restaurant_id")
+    
+    if restaurant_id:
+        # Find restaurant owner
+        restaurant = await db.food_restaurants.find_one({"restaurant_id": restaurant_id})
+        if restaurant and restaurant.get("owner_id"):
+            owner_id = restaurant["owner_id"]
+            await db.users.update_one(
+                {"_id": ObjectId(owner_id)},
+                {"$inc": {"balance": restaurant_share}}
+            )
+            await db.transactions.insert_one({
+                "id": secrets.token_hex(8),
+                "user_id": owner_id,
+                "type": "earning",
+                "amount": restaurant_share,
+                "description": f"Bestellung #{req.order_id[:8].upper()}",
+                "status": "completed",
+                "reference": f"FOOD-{req.order_id[:8].upper()}",
+                "category": "restaurant_earning",
+                "created_at": now.isoformat(),
+            })
+    
+    # Courier gets delivery fee minus 10% platform commission
+    courier_share = round(delivery_fee * 0.90, 2)
+    courier = order.get("courier", {})
+    courier_id = courier.get("user_id")  # If we track couriers
+    
+    if courier_id:
+        await db.users.update_one(
+            {"_id": ObjectId(courier_id)},
+            {"$inc": {"balance": courier_share}}
+        )
+        await db.transactions.insert_one({
+            "id": secrets.token_hex(8),
+            "user_id": courier_id,
+            "type": "earning",
+            "amount": courier_share,
+            "description": f"Lieferung #{req.order_id[:8].upper()}",
+            "status": "completed",
+            "reference": f"FOOD-{req.order_id[:8].upper()}",
+            "category": "delivery_earning",
+            "created_at": now.isoformat(),
+        })
+    
+    # Record platform fees
+    platform_fee = round(subtotal * 0.15 + delivery_fee * 0.10 + service_fee, 2)
+    await db.platform_fees.insert_one({
+        "type": "food",
+        "order_id": req.order_id,
+        "total": total,
+        "subtotal": subtotal,
+        "delivery_fee": delivery_fee,
+        "service_fee": service_fee,
+        "restaurant_share": restaurant_share,
+        "courier_share": courier_share,
+        "platform_fee": platform_fee,
+        "created_at": now.isoformat(),
+    })
     
     # Update user stats
     await db.users.update_one(

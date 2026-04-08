@@ -420,6 +420,7 @@ async def end_ride(req: EndRideRequest, request: Request):
     
     # Update rental
     end_location = req.end_location or rental.get("start_location", {})
+    final_total = UNLOCK_FEE + total_cost
     
     await db.scooter_rentals.update_one(
         {"rental_id": rental["rental_id"]},
@@ -431,9 +432,20 @@ async def end_ride(req: EndRideRequest, request: Request):
             "active_minutes": round(active_minutes),
             "ride_cost": ride_cost,
             "pause_cost": pause_cost,
-            "total_cost": UNLOCK_FEE + total_cost,
+            "total_cost": final_total,
         }}
     )
+    
+    # Record platform revenue (100% platform-owned scooters)
+    await db.platform_fees.insert_one({
+        "type": "scooter",
+        "rental_id": rental["rental_id"],
+        "unlock_fee": UNLOCK_FEE,
+        "ride_cost": ride_cost,
+        "pause_cost": pause_cost,
+        "total_revenue": final_total,
+        "created_at": now.isoformat(),
+    })
     
     # Make scooter available again
     await db.scooters.update_one(

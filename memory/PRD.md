@@ -9,121 +9,112 @@ Create a modern, professional fintech web app called BidBlitz V2 with Revolut-le
 - Integrations: Stripe (via Emergent Proxy)
 - Design: Dark glassmorphism, futuristic 2040 aesthetic
 
-## Core Modules
+## WALLET-ONLY CLOSED ECOSYSTEM (ENFORCED)
 
-### 1. Wallet System
+All payments within BidBlitz MUST use wallet balance only:
+- ❌ NO Apple Pay / Google Pay
+- ❌ NO external card payments inside app flows
+- ✅ ALL payments deduct from wallet
+- ✅ ALL earnings credit to wallet internally
+- ✅ Show balance before action, block if insufficient
+
+### Payment Flow by Module:
+
+| Module | Customer Pays | Receiver Gets | Platform Fee |
+|--------|--------------|---------------|--------------|
+| Taxi | Wallet deduction | Driver wallet +85% | 15% |
+| Scooter | Wallet deduction | Platform revenue | 100% |
+| Food | Wallet deduction | Restaurant +85%, Courier +90% of delivery | 15% / 10% |
+| Auctions | Wallet for credits | N/A | 100% |
+| Mining | Wallet for packages | N/A | 100% |
+| Merchant POS | Customer wallet | Merchant wallet (net after fee) | 0.5-2.5% |
+| P2P Transfer | Sender wallet | Recipient wallet | 0% |
+
+## Core Modules Status
+
+### 1. Wallet System ✅
 - [x] Balance display and management
 - [x] Stripe top-up flow (checkout, quick-topup, webhooks)
-- [x] P2P transfers (Send money to other users)
+- [x] P2P transfers (Send money - SendMoneyModal)
 - [x] Transaction history with filters
 - [x] Barcode/QR code display
 - [x] Export functionality
 
-### 2. Auctions (Penny Auction)
+### 2. Auctions (Penny Auction) ✅
 - [x] Live auction bidding
-- [x] Credit purchase system (wallet-only)
+- [x] Credit purchase (wallet-only)
 - [x] Bot bidding simulation
-- [x] Watchlist functionality
+- [x] Watchlist
 
-### 3. Mining Module
+### 3. Mining Module ✅
 - [x] Dashboard with stats
-- [x] Miner shop (monthly/yearly billing)
+- [x] Miner shop (monthly/yearly)
 - [x] Auto-rewards loop
 - [x] P2P Marketplace
 - [x] Launchpad
-- [x] Referral system with share button
+- [x] Referral with share button
 
-### 4. Merchant POS
-- [x] Payment processing
-- [x] Transaction history
+### 4. Merchant POS ✅
+- [x] Barcode payment processing
+- [x] NFC payment processing
+- [x] Merchant wallet crediting (net amount)
 - [x] Revenue dashboard
 
 ### 5. Mobility Services (IN PROGRESS)
-- [ ] Taxi (Real driver system with Leaflet maps)
-- [ ] Scooter (Real unlock/rental flow)
-- [ ] Food Delivery (Restaurant dashboard)
+- [ ] Taxi (Real Leaflet maps, driver system)
+- [ ] Scooter (Real unlock/rental)
+- [ ] Food (Restaurant dashboard)
 
-### 6. Kids Wallet
+### 6. Kids Wallet ✅
 - [x] Child account creation
 - [x] Spending limits
 - [ ] Full management UI (pending)
 
-## Wallet-Only Payment Rules (ENFORCED)
-All payments within the BidBlitz ecosystem must use wallet balance only:
-- ❌ No Apple Pay / Google Pay
-- ❌ No external card payments inside app flows
-- ✅ All payments deduct from wallet
-- ✅ All earnings credit to wallet internally
-- ✅ Show balance before action, block if insufficient
-
-Applied to:
-- Taxi bookings
-- Scooter rentals
-- Food orders
-- Auction credit purchases
-- Mining package purchases
-- Merchant payments
-
 ## Recent Implementations (April 8, 2025)
 
-### Wallet-Only Payment Enforcement
-- Updated all backend routes (taxi.py, scooter.py, food.py, auctions.py, mining.py)
-- Added prominent wallet balance cards in frontend before checkout
-- Block actions when balance too low with "Wallet aufladen" button
-- Removed "Apple / Google Pay" from Coming Soon features
+### Wallet-Only Ecosystem Complete
+- Backend: All routes enforce wallet balance check with German error messages
+- Frontend: Wallet cards with top-up CTAs when balance insufficient
+- Removed Apple/Google Pay from Coming Soon
 
-### P2P Wallet Transfer (Senden)
-- New `/api/wallet/send` endpoint
-- SendMoneyModal component with:
-  - Balance display (green/red based on sufficiency)
-  - Recipient email input
-  - Amount input with validation
-  - Optional note
-  - Success/Error states
-- Transactions recorded for both sender and recipient
+### Internal Crediting System
+- **Taxi**: Driver gets 85% credited to wallet on ride completion
+- **Food**: Restaurant gets 85% of subtotal, Courier gets 90% of delivery fee
+- **Scooter**: Platform revenue recorded (owned fleet)
+- **Merchant POS**: Net amount (after fee) credited directly to merchant wallet
 
-### UI Improvements
-- TopUp Modal: Larger buttons (py-4), better mobile safe-area padding
-- Amount buttons: Larger text (text-base font-bold)
-- Food checkout: Wallet card with top-up CTA when insufficient balance
-- Scooter page: Wallet balance card before unlock section
+### P2P Wallet Transfer
+- `/api/wallet/send` endpoint
+- SendMoneyModal component
+- Instant transfer between BidBlitz users
 
 ## Pending Issues
 
 ### P1 (High Priority)
 - [ ] KYC Verification UI endpoint mismatch
-- [ ] Admin Panel Grid UI (JSX errors when editing)
-- [ ] RESEND_API_KEY for emails missing
+- [ ] Admin Panel Grid UI (JSX errors)
+- [ ] RESEND_API_KEY for emails
 
 ### P2 (Medium Priority)
 - [ ] Main app Referral `my-code` not auto-generating
-- [ ] Merchant Dashboard `today_revenue` returning null
+- [ ] Merchant Dashboard `today_revenue` calculation
 
 ## Upcoming Tasks
 
-### P0 (Critical - 1 Week Goal)
-1. Complete REAL Taxi System
-   - Integrate RealMap.jsx with driver coordinates
-   - Driver acceptance flow (online, accept/reject, arrive, complete)
-   - Wallet deduction on completion
-   
-2. Complete REAL Scooter System
-   - Map-based unlock with QR
-   - Live timer and end-ride logic
-   
-3. Complete REAL Food System
-   - Restaurant Dashboard (menu, orders)
-   - Delivery driver flow
+### P0 (Critical)
+1. Complete REAL Taxi System (Leaflet maps, driver flow)
+2. Complete REAL Scooter System (QR unlock, timer)
+3. Complete REAL Food System (Restaurant dashboard)
 
 ### P1 (Important)
 - Receipt PDF Export
 - 2FA Integration
-- Email Notifications (Resend)
+- Email Notifications
 
 ### P2 (Backlog)
 - Developer SDK Docs
 - Chat/Support System
-- NFC Tap-to-Pay
+- NFC Tap-to-Pay hardware integration
 
 ## Test Credentials
 - Admin: admin@bidblitz.com | BidBlitz2026!
@@ -133,7 +124,8 @@ Applied to:
 - User interface: German (DEUTSCH)
 - 15+ languages supported via I18nContext
 
-## Critical Notes
-- DO NOT use testing_agent_v3_fork (user disabled)
-- Large files (I18nContext.jsx, MiningPage.jsx, AdminPage.jsx) - use precise edits
+## Critical Development Notes
+- DO NOT use testing_agent_v3_fork (disabled by user)
+- Large files need precise edits (I18nContext.jsx, MiningPage.jsx, AdminPage.jsx)
 - Stripe uses emergent proxy with sk_test_emergent
+- All ObjectIds must be excluded from MongoDB responses
