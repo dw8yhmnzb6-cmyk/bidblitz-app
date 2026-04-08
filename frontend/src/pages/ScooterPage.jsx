@@ -338,6 +338,35 @@ export default function ScooterPage() {
                 </button>
               </div>
 
+              {/* Wallet Balance Card */}
+              <div className={`p-4 rounded-xl border mb-4 ${
+                userBalance >= pricing.unlock_fee
+                  ? 'bg-green-500/10 border-green-500/30'
+                  : 'bg-red-500/10 border-red-500/30'
+              }`}>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-gray-400">Dein Wallet</p>
+                    <p className={`text-xl font-bold ${userBalance >= pricing.unlock_fee ? 'text-green-400' : 'text-red-400'}`}>
+                      €{userBalance.toFixed(2)}
+                    </p>
+                  </div>
+                  {userBalance < pricing.unlock_fee && (
+                    <button
+                      onClick={() => navigate('/wallet')}
+                      className="px-4 py-2 bg-green-500 text-black text-sm font-semibold rounded-lg"
+                    >
+                      Aufladen
+                    </button>
+                  )}
+                </div>
+                {userBalance < pricing.unlock_fee && (
+                  <p className="text-xs text-red-400 mt-2">
+                    Mindestens €{pricing.unlock_fee?.toFixed(2)} für Entsperren benötigt
+                  </p>
+                )}
+              </div>
+
               {/* Pricing Info */}
               <div className="p-4 bg-[#111] rounded-xl border border-white/10">
                 <div className="flex justify-between items-center">

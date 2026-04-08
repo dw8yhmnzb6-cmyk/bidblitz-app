@@ -15,6 +15,7 @@ import { TransactionFilters, filterTransactions } from "../components/Transactio
 import ExportSection from "../components/ExportSection";
 import ErrorState from "../components/ErrorState";
 import BarcodeModal from "../components/BarcodeModal";
+import SendMoneyModal from "../components/SendMoneyModal";
 import { api } from "../services/api";
 import { useI18n } from "../store";
 import { DEMO_BALANCE, DEMO_CURRENCY, DEMO_CARD_NUMBER, DEMO_CARD_EXPIRY, DEMO_CARD_HOLDER, DEMO_TRANSACTIONS } from "../models/demoData";
@@ -110,6 +111,7 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
   const [showBalance, setShowBalance] = useState(true);
   const [showTopUp, setShowTopUp] = useState(hasStripeParam);
   const [showBarcode, setShowBarcode] = useState(false);
+  const [showSendMoney, setShowSendMoney] = useState(false);
   const [selectedTx, setSelectedTx] = useState(null);
   const [typeFilter, setTypeFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -394,7 +396,7 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
             icon={ArrowUpRight}
             label={t("wallet.send") || "Senden"}
             color="#A855F7"
-            onClick={() => (isGuest && !isDemoMode) ? onAuthRequired("Send money") : isDemoMode ? toast(t("wallet.send") || "Send", { description: "Demo: Send simulated" }) : null}
+            onClick={() => (isGuest && !isDemoMode) ? onAuthRequired("Send money") : isDemoMode ? toast(t("wallet.send") || "Send", { description: "Demo: Send simulated" }) : setShowSendMoney(true)}
             delay={0.26}
           />
           <WalletAction
@@ -511,6 +513,15 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
       <TopUpModal isOpen={showTopUp} onClose={() => setShowTopUp(false)} onSuccess={handleTopUpSuccess} currentBalance={balance} />
       <TransactionDetailModal isOpen={!!selectedTx} onClose={() => setSelectedTx(null)} transaction={selectedTx} />
       <BarcodeModal isOpen={showBarcode} onClose={() => setShowBarcode(false)} />
+      <SendMoneyModal 
+        isOpen={showSendMoney} 
+        onClose={() => setShowSendMoney(false)} 
+        currentBalance={balance}
+        onSuccess={(data) => {
+          toast.success(`€${data.amount.toFixed(2)} gesendet!`);
+          refreshWallet();
+        }}
+      />
     </motion.div>
   );
 };

@@ -1,217 +1,139 @@
-# BidBlitz V2 — Product Requirements Document
+# BidBlitz V2 - Product Requirements Document
 
-## Vision
-Ultra-premium fintech web app (year 2040 design) for payments, penny auctions, crypto mining, wallet management, and merchant POS.
+## Original Problem Statement
+Create a modern, professional fintech web app called BidBlitz V2 with Revolut-level payment flows, real backend integration, Stripe top-ups, QR/NFC payments, Admin/Merchant dashboards, and full 15+ language support. Features include a Penny Auction System, GoMining-style Mining/Rewards Module, Merchant POS, Kids Subscriptions, and Mobility services (Taxi, Scooter, Food Delivery). Ultra-premium futuristic dark glassmorphism design.
 
 ## Tech Stack
-- Frontend: React, TailwindCSS, Framer Motion, ShadCN/UI
-- Backend: FastAPI, MongoDB (Motor), JWT Auth
-- Payments: Stripe / Stripe Connect
-- Design: Dark glassmorphism, cyan/gold glow accents
+- Frontend: React, TailwindCSS, Framer Motion, Leaflet (react-leaflet)
+- Backend: FastAPI, MongoDB (Motor)
+- Integrations: Stripe (via Emergent Proxy)
+- Design: Dark glassmorphism, futuristic 2040 aesthetic
 
-## Production Status: LAUNCH READY ✅ (2026-04-07)
+## Core Modules
 
-### End-to-End Simulation Results (2026-04-07)
-| Flow | Status |
-|------|--------|
-| Login | ✅ PASS |
-| Stripe Top-Up | ✅ PASS |
-| Mining Dashboard | ✅ PASS |
-| Buy Auction Credits | ✅ PASS |
-| Place Bid | ✅ PASS |
-| Merchant QR Payment | ✅ PASS |
-| Download Receipt (PDF) | ✅ PASS |
-| KYC Status | ✅ PASS |
-| Kids Subscription | ✅ PASS |
+### 1. Wallet System
+- [x] Balance display and management
+- [x] Stripe top-up flow (checkout, quick-topup, webhooks)
+- [x] P2P transfers (Send money to other users)
+- [x] Transaction history with filters
+- [x] Barcode/QR code display
+- [x] Export functionality
 
-### Core Flows Status
+### 2. Auctions (Penny Auction)
+- [x] Live auction bidding
+- [x] Credit purchase system (wallet-only)
+- [x] Bot bidding simulation
+- [x] Watchlist functionality
 
-| Flow | Status | Notes |
-|------|--------|-------|
-| Auth (Login) | ✅ DONE | Works |
-| Auth (Register) | ✅ DONE | Invite code required |
-| Password Reset | ✅ DONE | Token-based flow |
-| Wallet Balance | ✅ DONE | Real-time |
-| Wallet Top-Up (Stripe) | ✅ DONE | Checkout + webhook |
-| Receipt PDF | ✅ DONE | JSON + PDF download |
-| KYC Status | ✅ DONE | Verification endpoint |
-| KYC Upload | ✅ DONE | Multipart form |
-| Mining Dashboard | ✅ DONE | Stats + miners |
-| Mining Buy | ✅ DONE | Balance check |
-| Auction List | ✅ DONE | 7 active |
-| Auction Credits | ✅ DONE | 5 packages |
-| Auction Buy Credits | ✅ DONE | Wallet deduction |
-| Referral Code | ✅ DONE | Auto-generated |
-| Merchant QR | ✅ DONE | Creates payment |
-| Barcode Payment | ✅ DONE | Dynamic codes |
-| Kids Subscription | ✅ DONE | Trial + plans |
-| Influencer Dashboard | ✅ DONE | Stats + share |
+### 3. Mining Module
+- [x] Dashboard with stats
+- [x] Miner shop (monthly/yearly billing)
+- [x] Auto-rewards loop
+- [x] P2P Marketplace
+- [x] Launchpad
+- [x] Referral system with share button
 
-### 1. Stripe Wallet Top-Up ✅
-- Checkout session creation working
-- Quick top-up with saved cards
-- Webhook integration for balance credit
-- Return URL polling for instant updates
+### 4. Merchant POS
+- [x] Payment processing
+- [x] Transaction history
+- [x] Revenue dashboard
 
-### 2. Receipt PDF System ✅
-- JSON receipt endpoint: `/api/payments/receipt/{id}`
-- PDF download: `/api/payments/receipt/{id}/pdf`
-- Print button in transaction detail modal
-- Includes: amount, fee, date, reference, merchant
+### 5. Mobility Services (IN PROGRESS)
+- [ ] Taxi (Real driver system with Leaflet maps)
+- [ ] Scooter (Real unlock/rental flow)
+- [ ] Food Delivery (Restaurant dashboard)
 
-### 3. KYC Verification Flow ✅
-- Status endpoint with `is_verified`, `can_high_value_txn`
-- Upload support for ID documents
-- Admin approve/reject workflow
-- High-value transaction restrictions
+### 6. Kids Wallet
+- [x] Child account creation
+- [x] Spending limits
+- [ ] Full management UI (pending)
 
-### 4. Mining Purchase Flow ✅
-- 5 packages: Starter (€49) to Titan (€9,999)
-- Billing: Onetime / Monthly (-30%) / Yearly (-40%)
-- ROI badges (316%-894%)
-- Auto-rewards system (daily BLZ distribution)
+## Wallet-Only Payment Rules (ENFORCED)
+All payments within the BidBlitz ecosystem must use wallet balance only:
+- ❌ No Apple Pay / Google Pay
+- ❌ No external card payments inside app flows
+- ✅ All payments deduct from wallet
+- ✅ All earnings credit to wallet internally
+- ✅ Show balance before action, block if insufficient
 
-### 5. Wallet UI ✅
-- Prominent balance display
-- Primary "Guthaben aufladen" button
-- Quick stats: Ausgegeben / Einnahmen
-- 4 quick actions: Aufladen, Bezahlen, Senden, Verlauf
-- Premium card display
-- Transaction filters
+Applied to:
+- Taxi bookings
+- Scooter rentals
+- Food orders
+- Auction credit purchases
+- Mining package purchases
+- Merchant payments
 
-### 6. Security Hardening ✅
-- Rate limiting: auth (10/min), payments (20/min)
-- Fraud detection: duplicates, rapid requests, card testing
-- HTTPS-only cookies in production
-- Input validation via Pydantic
-- JWT rotation (15min access, 7d refresh)
+## Recent Implementations (April 8, 2025)
 
-### 7. Production Deployment ✅
-- Database indexes created (54 collections)
-- Migration scripts ready
-- Environment template configured
-- Pre-launch checklist script
+### Wallet-Only Payment Enforcement
+- Updated all backend routes (taxi.py, scooter.py, food.py, auctions.py, mining.py)
+- Added prominent wallet balance cards in frontend before checkout
+- Block actions when balance too low with "Wallet aufladen" button
+- Removed "Apple / Google Pay" from Coming Soon features
 
-### All Systems Verified:
-- ✅ Auth (login/register)
-- ✅ Wallet balance + top-up
-- ✅ Stripe checkout
-- ✅ Mining dashboard + purchase
-- ✅ Auctions + bidding
-- ✅ Receipt PDF
-- ✅ KYC status
-- ✅ Barcode/QR payments
-- ✅ Referral system
-- ✅ 15-language i18n
+### P2P Wallet Transfer (Senden)
+- New `/api/wallet/send` endpoint
+- SendMoneyModal component with:
+  - Balance display (green/red based on sufficiency)
+  - Recipient email input
+  - Amount input with validation
+  - Optional note
+  - Success/Error states
+- Transactions recorded for both sender and recipient
 
-## Completed Features
-- JWT Auth, Wallet with Stripe, Penny auctions, 15-language i18n (flag emojis)
-- Stripe Top-Up FIXED: Checkout → Redirect → Status Poll → Wallet Credit → Saved Card (2026-04-07)
-- Influencer payouts, Gamified Rewards, Role requests, Identity verification
-- Merchant Hierarchy, Barcode/QR/NFC payment flows
-- POS Terminal, Admin Fee Config, Reports, Merchant Landing Page
-- Auction Bot Admin (auto-bidding, target price, 30 bot names)
-- Home Screen: "Available Now" + "Coming Soon" feature sections
+### UI Improvements
+- TopUp Modal: Larger buttons (py-4), better mobile safe-area padding
+- Amount buttons: Larger text (text-base font-bold)
+- Food checkout: Wallet card with top-up CTA when insufficient balance
+- Scooter page: Wallet balance card before unlock section
 
-## Launch-Critical Updates (2026-04-07)
+## Pending Issues
 
-### Receipt PDF System (DONE)
-- PDF receipt generation using FPDF2
-- `/api/payments/receipt/{id}` - JSON receipt data
-- `/api/payments/receipt/{id}/pdf` - Downloadable PDF
-- Transaction detail modal with Download PDF + Print buttons
-- Includes: amount, fee, date, transaction ID, merchant, reference
+### P1 (High Priority)
+- [ ] KYC Verification UI endpoint mismatch
+- [ ] Admin Panel Grid UI (JSX errors when editing)
+- [ ] RESEND_API_KEY for emails missing
 
-### KYC Verification Flow (ENHANCED)
-- `/api/verification/my-status` returns: is_verified, verification_required, can_high_value_txn
-- `/api/verification/status` alias for backwards compatibility
-- High-value transaction restrictions for unverified users (>€1000 or merchant roles)
-
-### Wallet UI Improvements (DONE)
-- Prominent balance display (EUR 89,36)
-- Primary "Guthaben aufladen" top-up button
-- Quick stats: Ausgaben (spent) + Einnahmen (income) with trend
-- 4-grid quick actions: Aufladen, Bezahlen, Senden, Verlauf
-- Premium card display with holder name + expiry
-- Transaction filter tabs: All, Payments, Top-ups, Transfers
-
-### Mining Purchase Flow (VERIFIED)
-- Shop with Einmalig/Monatlich/Jährlich billing toggle
-- ROI% badges per package (316%-894%)
-- Price tiers: €49 - €9,999
-- Dashboard shows active miners, BLZ balance, hashrate, auto-rewards
-
-### Auction System (VERIFIED)
-- 7+ live auctions with countdown timers
-- Credit purchase system
-- Referral sharing (WhatsApp, E-Mail, Link)
-- Category filters (Phones, Gaming, Laptops, Tablets, TVs, Robots)
-
-## Crypto Mining Module — COMPLETE
-
-### Phase 1 (DONE)
-- Mining Dashboard: BLZ balance, hashrate, earnings, streak, referral boost
-- Daily Rewards: Claim with abuse prevention, streak tracking
-- Wallet Tab: BLZ→EUR, send, history with Today/All filter + type badges
-- Package Comparison Table: 5 packages with BEST badge
-- Purchase Flow: Select → Confirm (balance check) → Buy → Success animation
-- Upgrade System: Power & Efficiency (10 levels each)
-- VIP Levels: Bronze→Diamond with mining bonuses (0-15%)
-- Referral System: Unique codes, 5% bonus
-
-### Phase 2 (DONE - 2026-04-05)
-- **Marketplace**: List miners for sale (BLZ price), browse listings, buy from other users, cancel own listings. Transfers miner ownership + BLZ between wallets.
-- **Card**: Virtual BLZ spending card with 4 tiers (Standard/Gold/Platinum/Black). Features: daily spending limits (€100-€10,000), cashback (1-5%), freeze/unfreeze, upgrade with BLZ, card transaction history.
-- **Launchpad**: 3 exclusive limited-edition miner launches (Fusion X1/Neural V2/Solar MK3) with bonus hashrate, supply tracking, progress bars, VIP requirements, and "Mint Now" purchase flow. One purchase per user per project.
-
-### Auto-Rewards System (DONE - 2026-04-05)
-- **Background Loop**: Runs every 60s in `server.py`, processes all users with active miners
-- **Automatic Distribution**: Calculates daily BLZ rewards (hashrate × base_rate × efficiency × VIP bonus) and credits wallets automatically
-- **Duplicate Prevention**: Checks `mining_claims` for today's date before distributing; stores `type: "auto"` on claims
-- **Transaction Logging**: Each auto-reward logged in `mining_transactions` with type `mining_reward`
-- **Referral Bonus**: Auto-distributes 5% referral bonus to referrers
-- **Dashboard UI**: Shows countdown timer to next reward (midnight UTC), auto-collected amount, streak
-- **i18n**: German + English translation keys for auto-reward UI
-
-### GoMining-Style Shop Redesign (DONE - 2026-04-05)
-- **Billing Toggle**: Einmalig / Monatlich (-30%) / Jährlich (-40%) subscription options
-- **Package Cards**: TH/s, daily BLZ earnings, ROI%, discount badges (MINUS 30%/40%), original vs discounted price
-- **Inline Buy Flow**: Package selection → Earnings summary (daily/monthly/yearly) → "Heute fällig" price → Balance check → Buy/Subscribe button (replaces old modal)
-- **Subscription Billing**: Monthly/yearly contracts with `next_payment` date stored on miner; auto-renewal labels
-- **Enhanced Dashboard**: New "Ertragsübersicht" section (daily/monthly/yearly earnings in BLZ + EUR), "Meine Miner" section showing per-miner earnings with subscription badges
-- **Backend**: Updated packages API with pricing tiers, ROI calc, enriched miner data with per-miner earnings
-- **i18n**: Full German + English translations for all new labels
-
-### Mining API Endpoints
-Phase 1: /api/mining/dashboard (inkl. next_reward_at), /packages, /upgrade-costs, /vip-levels, /claim-history, /transactions, /admin/reward-logs
-Phase 1 POST: /buy-miner, /upgrade, /claim-daily, /withdraw, /send, /apply-referral
-Phase 2: GET /marketplace, /card, /launchpad
-Phase 2 POST: /marketplace/list, /marketplace/buy, /marketplace/cancel, /card/spend, /card/upgrade, /card/freeze, /launchpad/buy
-Background: Auto-reward loop (60s interval in server.py)
-
-### Backend Files
-- `/app/backend/routes/mining.py` — Phase 1
-- `/app/backend/routes/mining_phase2.py` — Marketplace, Card, Launchpad
-- `/app/backend/routes/pos_payments.py` — Receipt PDF system
+### P2 (Medium Priority)
+- [ ] Main app Referral `my-code` not auto-generating
+- [ ] Merchant Dashboard `today_revenue` returning null
 
 ## Upcoming Tasks
-- 2FA Integration (P1)
 
-## Backlog (P2)
-- Apple/Google Pay, Developer SDK, Chat/Support, NFC Tap-to-Pay
+### P0 (Critical - 1 Week Goal)
+1. Complete REAL Taxi System
+   - Integrate RealMap.jsx with driver coordinates
+   - Driver acceptance flow (online, accept/reject, arrive, complete)
+   - Wallet deduction on completion
+   
+2. Complete REAL Scooter System
+   - Map-based unlock with QR
+   - Live timer and end-ride logic
+   
+3. Complete REAL Food System
+   - Restaurant Dashboard (menu, orders)
+   - Delivery driver flow
 
-## Completed Features (2026-04-07)
-### Email Notifications System ✅
-- **Password Reset Email**: Triggered on `/api/auth/forgot-password`
-- **Welcome Email**: Triggered on successful registration
-- **Payment Confirmation Email**: Triggered on Stripe top-up success
-- **Receipt Email**: Triggered on POS barcode/NFC payments
-- **KYC Status Email**: Triggered on document upload (pending) and admin decision (approved/rejected)
-- **Templates**: German language, BidBlitz branding, mobile-responsive HTML
-- **Fallback**: Emails logged to console when `RESEND_API_KEY` not set
-- **Files**: `/app/backend/core/email.py` (utility), integrated into `auth.py`, `stripe.py`, `pos_payments.py`, `verification.py`
+### P1 (Important)
+- Receipt PDF Export
+- 2FA Integration
+- Email Notifications (Resend)
 
-## Previously Completed Features
+### P2 (Backlog)
+- Developer SDK Docs
+- Chat/Support System
+- NFC Tap-to-Pay
 
-## Credentials
-- See /app/memory/test_credentials.md
+## Test Credentials
+- Admin: admin@bidblitz.com | BidBlitz2026!
+- Customer: kunde@bidblitz.com | Kunde2026!
+
+## Language
+- User interface: German (DEUTSCH)
+- 15+ languages supported via I18nContext
+
+## Critical Notes
+- DO NOT use testing_agent_v3_fork (user disabled)
+- Large files (I18nContext.jsx, MiningPage.jsx, AdminPage.jsx) - use precise edits
+- Stripe uses emergent proxy with sk_test_emergent

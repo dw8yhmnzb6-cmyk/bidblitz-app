@@ -199,7 +199,6 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
     { id: "nfc", icon: Smartphone, title: t("home.f_nfc") || "NFC Pay", desc: t("home.f_nfc_d") || "Tap to pay contactless", color: "#00C2FF" },
     { id: "vip", icon: Star, title: t("home.f_vip") || "VIP", desc: t("home.f_vip_d") || "Exclusive VIP rewards & perks", color: "#FFD700" },
     { id: "referral", icon: Gift, title: t("home.f_referral") || "Referrals", desc: t("home.f_referral_d") || "Invite friends, earn rewards", color: "#00E89D" },
-    { id: "apple-pay", icon: CreditCard, title: t("home.f_apple_pay") || "Apple / Google Pay", desc: t("home.f_apple_pay_d") || "Pay with your phone", color: "#E5E4E2" },
     { id: "marketplace", icon: ShoppingBag, title: t("home.f_marketplace") || "Marketplace", desc: t("home.f_marketplace_d") || "Buy & sell digital assets", color: "#FF6B6B" },
     { id: "rewards", icon: Sparkles, title: t("home.f_rewards_more") || "More Rewards", desc: t("home.f_rewards_more_d") || "Enhanced reward system", color: "#A855F7" },
   ];

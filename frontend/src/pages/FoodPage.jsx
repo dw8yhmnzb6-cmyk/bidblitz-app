@@ -666,16 +666,38 @@ export default function FoodPage() {
                 />
               </div>
 
-              {/* Payment */}
-              <div className="p-4 bg-[#111] rounded-xl border border-white/10">
+              {/* Payment - Wallet Only */}
+              <div className={`p-4 rounded-xl border ${
+                userBalance >= orderTotal 
+                  ? 'bg-green-500/10 border-green-500/30' 
+                  : 'bg-red-500/10 border-red-500/30'
+              }`}>
                 <p className="text-gray-400 text-sm mb-2">Zahlungsmethode</p>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <span className="text-2xl">💳</span>
-                    <span className="font-medium">BidBlitz Wallet</span>
+                    <div>
+                      <span className="font-medium">BidBlitz Wallet</span>
+                      <p className="text-xs text-gray-500">Nur Wallet-Zahlung möglich</p>
+                    </div>
                   </div>
-                  <span className="text-orange-400 font-bold">€{userBalance.toFixed(2)}</span>
+                  <span className={`font-bold ${userBalance >= orderTotal ? 'text-green-400' : 'text-red-400'}`}>
+                    €{userBalance.toFixed(2)}
+                  </span>
                 </div>
+                {userBalance < orderTotal && (
+                  <div className="mt-3 pt-3 border-t border-white/10">
+                    <p className="text-red-400 text-sm mb-2">
+                      Du brauchst noch €{(orderTotal - userBalance).toFixed(2)} mehr
+                    </p>
+                    <button
+                      onClick={() => navigate('/wallet')}
+                      className="w-full py-2 bg-orange-500 text-black font-semibold rounded-lg"
+                    >
+                      Wallet aufladen
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Order Summary */}

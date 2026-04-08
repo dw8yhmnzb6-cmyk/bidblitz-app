@@ -242,8 +242,8 @@ export const TopUpModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
         />
 
         <motion.div
-          className="relative w-full max-w-md bg-[#0A0A0A] rounded-t-3xl sm:rounded-3xl border border-white/10 overflow-hidden max-h-[85vh] overflow-y-auto pb-safe"
-          style={{ paddingBottom: "env(safe-area-inset-bottom, 24px)" }}
+          className="relative w-full max-w-md bg-[#0A0A0A] rounded-t-3xl sm:rounded-3xl border border-white/10 overflow-hidden max-h-[90vh] overflow-y-auto"
+          style={{ paddingBottom: "max(env(safe-area-inset-bottom, 24px), 32px)" }}
           initial={{ y: "100%", opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: "100%", opacity: 0 }}
@@ -286,20 +286,20 @@ export const TopUpModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
                   </p>
 
                   {/* Package grid */}
-                  <div className="grid grid-cols-3 gap-2 mb-5">
+                  <div className="grid grid-cols-3 gap-3 mb-5">
                     {PRESETS.map((preset) => (
                       <motion.button
                         key={preset.id}
                         data-testid={`topup-preset-${preset.id}`}
                         onClick={() => { setSelectedId(preset.id); setError(null); }}
-                        className={`py-3 rounded-xl text-sm font-semibold transition-all ${
+                        className={`py-4 rounded-xl text-base font-bold transition-all ${
                           selectedId === preset.id
-                            ? "bg-[#00C2FF] text-[#0A0A0A]"
-                            : "bg-[#141414] text-white border border-white/5 hover:border-[#00C2FF]/30"
+                            ? "bg-[#00C2FF] text-[#0A0A0A] scale-105"
+                            : "bg-[#1A1A1A] text-white border border-white/10 hover:border-[#00C2FF]/40"
                         }`}
                         whileTap={{ scale: 0.95 }}
                       >
-                        &euro;{preset.amount}
+                        €{preset.amount}
                       </motion.button>
                     ))}
                   </div>
@@ -404,20 +404,20 @@ export const TopUpModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
                     data-testid="topup-checkout-btn"
                     onClick={handleCheckout}
                     disabled={!selectedId || isCreating}
-                    className="w-full py-3.5 bg-[#00C2FF] text-[#0A0A0A] font-semibold rounded-full disabled:opacity-40 flex items-center justify-center gap-2 mb-6"
+                    className="w-full py-4 bg-[#00C2FF] text-[#0A0A0A] font-bold text-base rounded-xl disabled:opacity-40 flex items-center justify-center gap-2 mb-4"
                     whileTap={selectedId && !isCreating ? { scale: 0.98 } : {}}
                   >
                     {isCreating ? (
                       <>
                         <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }}>
-                          <Loader2 size={15} />
+                          <Loader2 size={18} />
                         </motion.div>
-                        {t("topup.creating") || "Creating checkout..."}
+                        {t("topup.creating") || "Wird erstellt..."}
                       </>
                     ) : (
                       <>
-                        <ExternalLink size={15} />
-                        {t("topup.pay_stripe") || "Pay with Stripe"}
+                        <CreditCard size={18} />
+                        {t("topup.pay_stripe") || "Mit Stripe bezahlen"}
                       </>
                     )}
                   </motion.button>
