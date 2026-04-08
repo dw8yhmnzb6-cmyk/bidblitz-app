@@ -247,6 +247,15 @@ export const api = {
   createChild: (body) => request("/api/kids/children", { method: "POST", body: JSON.stringify(body) }),
   updateChild: (childId, body) => request(`/api/kids/children/${childId}`, { method: "PUT", body: JSON.stringify(body) }),
   deleteChild: (childId) => request(`/api/kids/children/${childId}`, { method: "DELETE" }),
+  
+  // Kids Wallet System
+  transferToChild: (childId, body) => request(`/api/kids/children/${childId}/transfer`, { method: "POST", body: JSON.stringify(body) }),
+  getChildWallet: (childId) => request(`/api/kids/children/${childId}/wallet`),
+  setChildLimits: (childId, body) => request(`/api/kids/children/${childId}/limits`, { method: "POST", body: JSON.stringify(body) }),
+  freezeChild: (childId) => request(`/api/kids/children/${childId}/freeze`, { method: "POST" }),
+  childPayment: (body) => request("/api/kids/children/pay", { method: "POST", body: JSON.stringify(body) }),
+  getChildActivity: (childId, days = 30) => request(`/api/kids/children/${childId}/activity?days=${days}`),
+  getChildBarcode: (childId) => request(`/api/kids/children/${childId}/barcode`),
 
   // Support Tickets
   createSupportTicket: (body) => request("/api/support/tickets", { method: "POST", body: JSON.stringify(body) }),

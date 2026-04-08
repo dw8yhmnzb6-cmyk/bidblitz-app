@@ -3,10 +3,11 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronLeft, Shield, Eye, CreditCard, Zap,
   Check, Star, Crown, Loader2, Users, PlusCircle,
-  TrendingDown, Wallet, Clock, BarChart3
+  TrendingDown, Wallet, Clock, BarChart3, Lock
 } from "lucide-react";
 import { useI18n, useUser } from "../store";
 import { api } from "../services/api";
+import ChildWalletModal from "../components/ChildWalletModal";
 
 const slide = { duration: 0.3, ease: [0.32, 0.72, 0, 1] };
 
@@ -28,17 +29,22 @@ const KidsDashboard = ({ onBack, t, subStatus }) => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [selectedChild, setSelectedChild] = useState(null);
+  const [walletChild, setWalletChild] = useState(null);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
 
   const CHILD_EMOJIS = ["👦", "👧", "🧒", "👶", "🐻", "🦊", "🐰", "🐱", "🦁", "🐶"];
 
   // Load children from backend
-  useEffect(() => {
+  const loadChildren = () => {
     api.listChildren()
       .then(d => setChildren(d.children || []))
       .catch(() => {})
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    loadChildren();
   }, []);
 
   const resetForm = () => {
@@ -198,15 +204,17 @@ const KidsDashboard = ({ onBack, t, subStatus }) => {
             {children.map((child) => {
               const limit = child.weekly_limit || 0;
               const spent = child.spent || 0;
+              const balance = child.balance || 0;
               const pct = limit > 0 ? Math.min(100, (spent / limit) * 100) : 0;
               const danger = pct > 80;
+              const isFrozen = child.is_frozen || false;
               const isSelected = selectedChild === child.child_id;
               return (
                 <motion.div key={child.child_id} data-testid={`child-card-${child.child_id}`}
-                  className="rounded-2xl p-4 cursor-pointer transition-colors"
+                  className={`rounded-2xl p-4 cursor-pointer transition-colors ${isFrozen ? 'opacity-60' : ''}`}
                   style={{
                     background: isSelected ? "rgba(0,194,255,0.04)" : "rgba(255,255,255,0.015)",
-                    border: `1px solid ${isSelected ? "rgba(0,194,255,0.15)" : "rgba(255,255,255,0.035)"}`,
+                    border: `1px solid ${isSelected ? "rgba(0,194,255,0.15)" : isFrozen ? "rgba(255,71,87,0.2)" : "rgba(255,255,255,0.035)"}`,
                   }}
                   whileTap={{ scale: 0.99 }}
                   onClick={() => setSelectedChild(isSelected ? null : child.child_id)}>
@@ -214,18 +222,24 @@ const KidsDashboard = ({ onBack, t, subStatus }) => {
                     <div className="w-10 h-10 rounded-full flex items-center justify-center text-[14px] font-bold text-white relative"
                       style={{ background: `${child.color}20`, border: `2px solid ${child.color}40` }}>
                       {child.avatar}
-                      {isSelected && <motion.div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-[#00C2FF] flex items-center justify-center"
+                      {isFrozen && <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 flex items-center justify-center">
+                        <Lock size={8} className="text-white" />
+                      </div>}
+                      {isSelected && !isFrozen && <motion.div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-[#00C2FF] flex items-center justify-center"
                         initial={{ scale: 0 }} animate={{ scale: 1 }}>
                         <Check size={8} className="text-white" strokeWidth={3} />
                       </motion.div>}
                     </div>
                     <div className="flex-1">
-                      <p className="text-[13px] font-semibold text-white">{child.name}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-[13px] font-semibold text-white">{child.name}</p>
+                        {isFrozen && <span className="text-[8px] px-1.5 py-0.5 rounded bg-red-500/20 text-red-400 font-medium">GESPERRT</span>}
+                      </div>
                       <p className="text-[10px] text-[#444] font-medium">€{spent.toFixed(2)} / €{limit.toFixed(2)} {t("kids.weekly")}</p>
                     </div>
                     <div className="text-right">
-                      <p className={`text-[14px] font-bold ${danger ? "text-[#FF4757]" : "text-[#00D26A]"}`}>{pct.toFixed(0)}%</p>
-                      <p className="text-[9px] text-[#333] font-medium">{t("kids.used")}</p>
+                      <p className="text-[14px] font-bold text-[#00C2FF]">€{balance.toFixed(2)}</p>
+                      <p className="text-[9px] text-[#333] font-medium">Guthaben</p>
                     </div>
                   </div>
                   {/* Progress bar */}
@@ -238,6 +252,20 @@ const KidsDashboard = ({ onBack, t, subStatus }) => {
                     {isSelected && (
                       <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
                         className="overflow-hidden">
+                        <div className="grid grid-cols-2 gap-2 mt-3">
+                          <motion.button
+                            className="py-2.5 rounded-xl text-[11px] font-semibold bg-[#00C2FF]/10 text-[#00C2FF] border border-[#00C2FF]/20 flex items-center justify-center gap-1.5"
+                            whileTap={{ scale: 0.97 }}
+                            onClick={(e) => { e.stopPropagation(); setWalletChild(child); }}>
+                            <Wallet size={12} /> Wallet öffnen
+                          </motion.button>
+                          <motion.button
+                            className="py-2.5 rounded-xl text-[11px] font-semibold bg-[#A855F7]/10 text-[#A855F7] border border-[#A855F7]/20 flex items-center justify-center gap-1.5"
+                            whileTap={{ scale: 0.97 }}
+                            onClick={(e) => { e.stopPropagation(); /* TODO: Activity view */ }}>
+                            <Clock size={12} /> Aktivität
+                          </motion.button>
+                        </div>
                         <div className="flex items-center gap-3 mt-3">
                           <span className="text-[10px] text-[#444] font-medium whitespace-nowrap">{t("kids.weekly_limit")}:</span>
                           <input data-testid={`child-limit-${child.child_id}`} type="range" min={5} max={100} step={5} value={limit}
@@ -381,6 +409,17 @@ const KidsDashboard = ({ onBack, t, subStatus }) => {
         </motion.div>
         </>)}
       </div>
+
+      {/* Child Wallet Modal */}
+      <AnimatePresence>
+        {walletChild && (
+          <ChildWalletModal
+            child={walletChild}
+            onClose={() => setWalletChild(null)}
+            onUpdate={loadChildren}
+          />
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 };
