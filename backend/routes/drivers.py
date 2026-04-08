@@ -470,3 +470,105 @@ async def admin_pending_kyc(request: Request):
     ).to_list(50)
     
     return {"drivers": drivers, "total": len(drivers)}
+
+
+
+# ══════════════════════════════════════
+# DRIVER: GET OWN PROFILE
+# ══════════════════════════════════════
+
+@router.get("/me")
+async def get_driver_profile(request: Request):
+    """Get current driver's profile."""
+    user = await get_current_user(request)
+    email = user.get("email", "").lower()
+    
+    driver = await db.drivers.find_one({"email": email}, {"_id": 0, "password_hash": 0})
+    if not driver:
+        raise HTTPException(status_code=404, detail="Fahrerprofil nicht gefunden")
+    
+    # Get current ride if any
+    current_ride = None
+    if driver.get("current_ride_id"):
+        current_ride = await db.taxi_rides.find_one(
+            {"ride_id": driver["current_ride_id"]},
+            {"_id": 0}
+        )
+    
+    # Calculate today's earnings
+    today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+    today_rides = await db.taxi_rides.find({
+        "driver.driver_id": driver["driver_id"],
+        "status": "completed",
+        "completed_at": {"$gte": today_start}
+    }).to_list(100)
+    
+    today_earnings = sum(r.get("driver_earnings", 0) for r in today_rides)
+    driver["today_earnings"] = today_earnings
+    
+    return {
+        "driver": driver,
+        "current_ride": current_ride,
+    }
+
+
+# ══════════════════════════════════════
+# DRIVER: GET NEARBY RIDE REQUESTS
+# ══════════════════════════════════════
+
+@router.get("/requests")
+async def get_ride_requests(driver_id: str, request: Request):
+    """Get pending ride requests near driver's location."""
+    driver = await db.drivers.find_one({"driver_id": driver_id})
+    if not driver:
+        raise HTTPException(status_code=404, detail="Fahrer nicht gefunden")
+    
+    if not driver.get("is_online") or not driver.get("is_verified"):
+        return {"requests": [], "current_ride": None}
+    
+    # Check for current ride
+    current_ride = None
+    if driver.get("current_ride_id"):
+        current_ride = await db.taxi_rides.find_one(
+            {"ride_id": driver["current_ride_id"]},
+            {"_id": 0}
+        )
+    
+    if current_ride:
+        return {"requests": [], "current_ride": current_ride}
+    
+    # Get pending rides matching driver's vehicle type
+    pending_rides = await db.taxi_rides.find({
+        "status": "requested",
+        "vehicle_type": driver.get("vehicle", {}).get("type", "standard"),
+        "city": driver.get("city", "berlin"),
+    }, {"_id": 0}).sort("created_at", 1).limit(10).to_list(10)
+    
+    # Filter by distance if driver has location
+    driver_loc = driver.get("current_location")
+    if driver_loc and pending_rides:
+        from math import radians, cos, sin, sqrt, atan2
+        
+        def haversine(lat1, lon1, lat2, lon2):
+            R = 6371
+            dlat = radians(lat2 - lat1)
+            dlon = radians(lon2 - lon1)
+            a = sin(dlat/2)**2 + cos(radians(lat1)) * cos(radians(lat2)) * sin(dlon/2)**2
+            return R * 2 * atan2(sqrt(a), sqrt(1-a))
+        
+        for ride in pending_rides:
+            pickup = ride.get("pickup", {})
+            if pickup:
+                dist = haversine(
+                    driver_loc.get("lat", 0), driver_loc.get("lng", 0),
+                    pickup.get("lat", 0), pickup.get("lng", 0)
+                )
+                ride["distance_to_pickup"] = round(dist, 2)
+        
+        # Sort by distance
+        pending_rides.sort(key=lambda x: x.get("distance_to_pickup", 999))
+        
+        # Only show rides within 10km
+        pending_rides = [r for r in pending_rides if r.get("distance_to_pickup", 0) <= 10]
+    
+    return {"requests": pending_rides, "current_ride": None}
