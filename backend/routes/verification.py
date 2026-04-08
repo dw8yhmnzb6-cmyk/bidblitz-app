@@ -88,6 +88,18 @@ async def upload_verification(
     }
     await db.verifications.insert_one(doc)
     doc.pop("_id", None)
+    
+    # Send KYC pending status email
+    try:
+        from core.email import send_kyc_status_email
+        send_kyc_status_email(
+            to=user.get("email", ""),
+            status="pending",
+            user_name=user.get("name", "")
+        )
+    except Exception as e:
+        logger.warning(f"Failed to send KYC pending email: {e}")
+    
     return {"ok": True, "status": "pending", "verification": doc}
 
 
@@ -194,6 +206,11 @@ async def admin_decide_verification(request: Request):
         }},
     )
 
+    # Get target user's email for notification
+    target_user = await db.users.find_one({"_id": ObjectId(user_id)})
+    target_email = target_user.get("email", "") if target_user else ""
+    target_name = target_user.get("name", "") if target_user else ""
+
     if decision == "approve":
         role = ver.get("requested_role", "user")
         await db.users.update_one(
@@ -213,5 +230,18 @@ async def admin_decide_verification(request: Request):
             {"user_id": user_id, "status": "pending"},
             {"$set": {"status": "rejected", "decided_at": now, "reason": reason}},
         )
+
+    # Send KYC status email notification
+    try:
+        from core.email import send_kyc_status_email
+        send_kyc_status_email(
+            to=target_email,
+            status="approved" if decision == "approve" else "rejected",
+            user_name=target_name,
+            rejection_reason=reason if decision == "reject" else ""
+        )
+        logger.info(f"KYC status email sent to {target_email}: {new_status}")
+    except Exception as e:
+        logger.error(f"Failed to send KYC status email: {e}")
 
     return {"ok": True, "decision": new_status, "user_id": user_id}

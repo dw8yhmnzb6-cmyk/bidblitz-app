@@ -28,6 +28,9 @@ import AuthPage from "./pages/AuthPage";
 import NotificationsPage from "./pages/NotificationsPage";
 import InfluencerDashboard from "./pages/InfluencerDashboard";
 import ManagerDashboard from "./pages/ManagerDashboard";
+import TaxiPage from "./pages/TaxiPage";
+import ScooterPage from "./pages/ScooterPage";
+import FoodPage from "./pages/FoodPage";
 
 import BottomNav from "./components/BottomNav";
 import BarcodeModal from "./components/BarcodeModal";
@@ -189,6 +192,12 @@ function AppContent() {
         return <MorePage {...pageProps} />;
       case "/auctions":
         return <AuctionsPage {...pageProps} />;
+      case "/taxi":
+        return isGuest ? <HomePage {...homeProps} /> : <TaxiPage />;
+      case "/scooter":
+        return isGuest ? <HomePage {...homeProps} /> : <ScooterPage />;
+      case "/food":
+        return isGuest ? <HomePage {...homeProps} /> : <FoodPage />;
       default:
         return <HomePage {...homeProps} />;
     }

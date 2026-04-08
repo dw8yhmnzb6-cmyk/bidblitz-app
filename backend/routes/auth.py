@@ -106,6 +106,13 @@ async def register(req: RegisterRequest, request: Request, response: Response):
         await create_onboarding_notifications(user_id, req.name.strip())
     except Exception:
         pass
+    
+    # Send welcome email
+    try:
+        from core.email import send_welcome_email
+        send_welcome_email(email, req.name.strip())
+    except Exception as e:
+        logger.warning(f"Failed to send welcome email: {e}")
 
     # Track registration conversion
     try:
@@ -261,9 +268,14 @@ async def forgot_password(request: Request):
         upsert=True
     )
     
-    # TODO: Send email with reset link
-    # For now, log it (in production, integrate email service)
-    logger.info(f"Password reset requested for {email}, token: {reset_token[:8]}...")
+    # Send password reset email
+    try:
+        from core.email import send_password_reset_email
+        user_name = user.get("name", "")
+        send_password_reset_email(email, reset_token, user_name)
+        logger.info(f"Password reset email sent to {email}")
+    except Exception as e:
+        logger.error(f"Failed to send password reset email to {email}: {e}")
     
     return {"ok": True, "message": "If account exists, reset link sent"}
 

@@ -31,6 +31,22 @@ class KidsCheckoutRequest(BaseModel):
     origin_url: str = Field(default="", description="Frontend origin for redirect")
 
 
+# ── Get Available Plans ──
+@router.get("/plans")
+async def get_kids_plans():
+    """Get available Kids subscription plans."""
+    plans = []
+    for plan_id, data in KIDS_PLANS.items():
+        plans.append({
+            "id": plan_id,
+            "name": data["label"],
+            "price": data["amount"],
+            "interval": data["interval"],
+            "description": f"BidBlitz Kids {data['label']} - €{data['amount']:.2f}/{data['interval']}"
+        })
+    return {"plans": plans, "trial_days": TRIAL_DAYS}
+
+
 # ── Get Kids Subscription Status ──
 @router.get("/subscription")
 async def get_kids_subscription(request: Request):

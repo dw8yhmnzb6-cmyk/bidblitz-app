@@ -280,6 +280,22 @@ async def process_barcode_payment(req: BarcodePaymentRequest, request: Request):
         customer.get("name", ""), merchant_name, req.description or "Payment",
     )
 
+    # Send receipt email to customer
+    try:
+        from core.email import send_receipt_email
+        send_receipt_email(
+            to=customer.get("email", ""),
+            transaction_id=txn_id,
+            amount=req.amount,
+            fee=fee,
+            net_amount=net,
+            description=req.description or "Payment",
+            merchant_name=merchant_name,
+            user_name=customer.get("name", "")
+        )
+    except Exception:
+        pass  # Non-critical
+
     return {
         "ok": True, "transaction_id": txn_id,
         "amount": req.amount, "fee": fee, "net": net,
@@ -373,6 +389,25 @@ async def process_nfc_payment(req: NfcPaymentRequest, request: Request):
         txn_id, req.amount, fee, net, pt,
         customer_name, merchant_name, req.description or "NFC Payment",
     )
+
+    # Send receipt email to customer (if wallet payment with customer_id)
+    if customer_name and req.customer_id:
+        try:
+            from core.email import send_receipt_email
+            customer_doc = await db.users.find_one({"_id": ObjectId(req.customer_id)})
+            if customer_doc:
+                send_receipt_email(
+                    to=customer_doc.get("email", ""),
+                    transaction_id=txn_id,
+                    amount=req.amount,
+                    fee=fee,
+                    net_amount=net,
+                    description=req.description or "NFC Payment",
+                    merchant_name=merchant_name,
+                    user_name=customer_name
+                )
+        except Exception:
+            pass  # Non-critical
 
     return {
         "ok": True, "transaction_id": txn_id,

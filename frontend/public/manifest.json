@@ -1,0 +1,109 @@
+{
+  "name": "BidBlitz",
+  "short_name": "BidBlitz",
+  "description": "Die Super-App für Taxi, Scooter, Food Delivery, Auktionen und mehr",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#050505",
+  "theme_color": "#00D4FF",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "de",
+  "categories": ["finance", "lifestyle", "shopping", "transportation", "food"],
+  "icons": [
+    {
+      "src": "/icons/icon-72x72.png",
+      "sizes": "72x72",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icons/icon-96x96.png",
+      "sizes": "96x96",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icons/icon-128x128.png",
+      "sizes": "128x128",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icons/icon-144x144.png",
+      "sizes": "144x144",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icons/icon-152x152.png",
+      "sizes": "152x152",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icons/icon-384x384.png",
+      "sizes": "384x384",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Taxi buchen",
+      "short_name": "Taxi",
+      "description": "Schnell eine Fahrt buchen",
+      "url": "/taxi",
+      "icons": [{ "src": "/icons/taxi-96x96.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Essen bestellen",
+      "short_name": "Food",
+      "description": "Essen liefern lassen",
+      "url": "/food",
+      "icons": [{ "src": "/icons/food-96x96.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Scooter",
+      "short_name": "Scooter",
+      "description": "E-Scooter in der Nähe finden",
+      "url": "/scooter",
+      "icons": [{ "src": "/icons/scooter-96x96.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Wallet",
+      "short_name": "Wallet",
+      "description": "Guthaben & Transaktionen",
+      "url": "/wallet",
+      "icons": [{ "src": "/icons/wallet-96x96.png", "sizes": "96x96" }]
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshots/home.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "label": "BidBlitz Homepage"
+    },
+    {
+      "src": "/screenshots/taxi.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "label": "Taxi buchen"
+    }
+  ],
+  "related_applications": [],
+  "prefer_related_applications": false
+}

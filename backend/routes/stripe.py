@@ -252,6 +252,19 @@ async def checkout_status(session_id: str, request: Request):
                             ip=ip, user_agent=ua,
                             details={"session_id": session_id, "amount": payment["amount"],
                                      "reference": txn["reference"]})
+            
+            # Send payment confirmation email
+            try:
+                from core.email import send_payment_confirmation_email
+                send_payment_confirmation_email(
+                    to=user.get("email", ""),
+                    amount=payment["amount"],
+                    payment_type="topup",
+                    reference=txn["reference"],
+                    user_name=user.get("name", "")
+                )
+            except Exception:
+                pass  # Non-critical — don't break the top-up flow
 
             # ── Save payment method for 1-click top-up ──
             try:

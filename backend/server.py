@@ -175,6 +175,25 @@ app.include_router(pos_payments_router)
 app.include_router(mining_router)
 app.include_router(mining_phase2_router)
 
+# Mobility & Delivery Modules
+from routes.taxi import router as taxi_router
+from routes.scooter import router as scooter_router
+from routes.food import router as food_router
+from routes.mobility_notifications import router as mobility_notif_router
+from routes.mobility_payments import router as mobility_payments_router
+from routes.mobility_admin import router as mobility_admin_router
+from routes.launch_control import router as launch_router
+from routes.readiness import router as readiness_router
+
+app.include_router(taxi_router)
+app.include_router(scooter_router)
+app.include_router(food_router)
+app.include_router(mobility_notif_router)
+app.include_router(mobility_payments_router)
+app.include_router(mobility_admin_router)
+app.include_router(launch_router)
+app.include_router(readiness_router)
+
 # Stripe webhook at /api/webhook/stripe
 from routes.stripe import stripe_webhook as _stripe_wh
 app.post("/api/webhook/stripe")(_stripe_wh)
