@@ -308,12 +308,12 @@ async def reset_password(request: Request):
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
-    # Hash new password
-    hashed = bcrypt.hashpw(new_password.encode(), bcrypt.gensalt()).decode()
+    # Hash new password - MUST use password_hash (same field as registration)
+    hashed = hash_password(new_password)
     
     await db.users.update_one(
         {"_id": user["_id"]},
-        {"$set": {"password": hashed}}
+        {"$set": {"password_hash": hashed}}
     )
     
     # Delete reset token
