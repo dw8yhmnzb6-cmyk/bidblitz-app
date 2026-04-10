@@ -32,6 +32,7 @@ import TaxiPage from "./pages/TaxiPageReal";
 import ScooterPage from "./pages/ScooterPage";
 import FoodPage from "./pages/FoodPage";
 import DriverDashboardPage from "./pages/DriverDashboardPage";
+import ChildModePage from "./pages/ChildModePage";
 
 import BottomNav from "./components/BottomNav";
 import BarcodeModal from "./components/BarcodeModal";
@@ -45,8 +46,17 @@ function AppContent() {
   const hasStripeReturn = typeof window !== "undefined" &&
     (window.location.search.includes("stripe_session_id") || window.location.search.includes("stripe_cancelled"));
   const hasKidsReturn = typeof window !== "undefined" && window.location.search.includes("kids_sub=success");
+  
+  // Get initial path from URL
+  const getInitialPath = () => {
+    if (typeof window === "undefined") return "/";
+    if (hasKidsReturn) return "/more";
+    if (hasStripeReturn) return "/wallet";
+    const path = window.location.pathname;
+    return path || "/";
+  };
 
-  const [currentPath, setCurrentPath] = useState(hasKidsReturn ? "/more" : hasStripeReturn ? "/wallet" : "/");
+  const [currentPath, setCurrentPath] = useState(getInitialPath);
   const [showBarcode, setShowBarcode] = useState(false);
   const [showAuthGate, setShowAuthGate] = useState(false);
   const [authGateMessage, setAuthGateMessage] = useState("");
@@ -201,6 +211,8 @@ function AppContent() {
         return isGuest ? <HomePage {...homeProps} /> : <FoodPage />;
       case "/driver-dashboard":
         return isGuest ? <HomePage {...homeProps} /> : <DriverDashboardPage />;
+      case "/child-mode":
+        return <ChildModePage />;
       default:
         return <HomePage {...homeProps} />;
     }

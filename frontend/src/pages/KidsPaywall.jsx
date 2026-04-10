@@ -5,11 +5,12 @@ import {
   Check, Star, Crown, Loader2, Users, PlusCircle,
   TrendingDown, Wallet, Clock, BarChart3, Lock,
   Send, Settings, ChevronRight, RefreshCw, Unlock,
-  Filter, ShoppingBag, ArrowUpRight, ArrowDownLeft
+  Filter, ShoppingBag, ArrowUpRight, ArrowDownLeft, Bell, Key
 } from "lucide-react";
 import { useI18n, useUser } from "../store";
 import { api } from "../services/api";
 import ChildWalletModal from "../components/ChildWalletModal";
+import KidsNotifications from "../components/KidsNotifications";
 
 const slide = { duration: 0.3, ease: [0.32, 0.72, 0, 1] };
 
@@ -30,6 +31,10 @@ const KidsDashboard = ({ onBack, t, subStatus }) => {
   const [showAddChild, setShowAddChild] = useState(false);
   const [showActivity, setShowActivity] = useState(false);
   const [showLimits, setShowLimits] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [showSetPin, setShowSetPin] = useState(null);
+  const [pinValue, setPinValue] = useState('');
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [newChildName, setNewChildName] = useState("");
   const [newChildLimit, setNewChildLimit] = useState(15);
   const [newChildYear, setNewChildYear] = useState("");
@@ -101,7 +106,18 @@ const KidsDashboard = ({ onBack, t, subStatus }) => {
 
   useEffect(() => {
     loadChildren();
+    // Load notification count
+    loadNotificationCount();
   }, [loadChildren]);
+
+  const loadNotificationCount = async () => {
+    try {
+      const data = await api.getKidsNotifications(1, true);
+      setUnreadNotifications(data.unread_count || 0);
+    } catch {
+      // silent
+    }
+  };
 
   useEffect(() => {
     if (children.length > 0 && showActivity) {
@@ -112,6 +128,23 @@ const KidsDashboard = ({ onBack, t, subStatus }) => {
   const handleRefresh = () => {
     setRefreshing(true);
     loadChildren();
+    loadNotificationCount();
+  };
+
+  const handleSetPin = async (childId) => {
+    if (pinValue.length < 4) {
+      setError('PIN muss mindestens 4 Ziffern haben');
+      return;
+    }
+    try {
+      await api.setChildPin(childId, pinValue);
+      setSuccess('PIN gesetzt! Teile deinem Kind die Kind-ID und den PIN mit.');
+      setPinValue('');
+      setShowSetPin(null);
+      setTimeout(() => setSuccess(null), 5000);
+    } catch (err) {
+      setError(err.message);
+    }
   };
 
   const resetForm = () => {
@@ -202,6 +235,19 @@ const KidsDashboard = ({ onBack, t, subStatus }) => {
         </motion.button>
         <h1 className="text-[15px] font-semibold font-outfit text-white tracking-tight">BidBlitz Kids</h1>
         <div className="ml-auto flex items-center gap-2">
+          {/* Notifications Button */}
+          <motion.button 
+            onClick={() => setShowNotifications(true)}
+            className="w-8 h-8 rounded-full bg-white/[0.04] flex items-center justify-center relative"
+            whileTap={{ scale: 0.9 }}
+          >
+            <Bell size={14} className="text-white/40" />
+            {unreadNotifications > 0 && (
+              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[#00C2FF] text-black text-[9px] font-bold flex items-center justify-center">
+                {unreadNotifications > 9 ? '9+' : unreadNotifications}
+              </span>
+            )}
+          </motion.button>
           <motion.button 
             onClick={handleRefresh}
             disabled={refreshing}
@@ -502,23 +548,30 @@ const KidsDashboard = ({ onBack, t, subStatus }) => {
                   </div>
                   
                   {/* Quick Action Buttons */}
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-4 gap-2">
                     <motion.button
-                      className="py-2.5 rounded-xl text-[11px] font-semibold bg-[#00C2FF]/10 text-[#00C2FF] border border-[#00C2FF]/20 flex items-center justify-center gap-1.5"
+                      className="py-2.5 rounded-xl text-[10px] font-semibold bg-[#00C2FF]/10 text-[#00C2FF] border border-[#00C2FF]/20 flex items-center justify-center gap-1"
                       whileTap={{ scale: 0.95 }}
                       onClick={(e) => { e.stopPropagation(); setWalletChild(child); }}
                     >
-                      <Send size={12} /> Senden
+                      <Send size={11} /> Senden
                     </motion.button>
                     <motion.button
-                      className="py-2.5 rounded-xl text-[11px] font-semibold bg-[#A855F7]/10 text-[#A855F7] border border-[#A855F7]/20 flex items-center justify-center gap-1.5"
+                      className="py-2.5 rounded-xl text-[10px] font-semibold bg-[#A855F7]/10 text-[#A855F7] border border-[#A855F7]/20 flex items-center justify-center gap-1"
                       whileTap={{ scale: 0.95 }}
                       onClick={(e) => { e.stopPropagation(); setWalletChild(child); }}
                     >
-                      <Eye size={12} /> Details
+                      <Eye size={11} /> Details
                     </motion.button>
                     <motion.button
-                      className={`py-2.5 rounded-xl text-[11px] font-semibold flex items-center justify-center gap-1.5 ${
+                      className="py-2.5 rounded-xl text-[10px] font-semibold bg-[#FFB800]/10 text-[#FFB800] border border-[#FFB800]/20 flex items-center justify-center gap-1"
+                      whileTap={{ scale: 0.95 }}
+                      onClick={(e) => { e.stopPropagation(); setShowSetPin(child); }}
+                    >
+                      <Key size={11} /> PIN
+                    </motion.button>
+                    <motion.button
+                      className={`py-2.5 rounded-xl text-[10px] font-semibold flex items-center justify-center gap-1 ${
                         isFrozen 
                           ? 'bg-green-500/10 text-green-400 border border-green-500/20' 
                           : 'bg-red-500/10 text-red-400 border border-red-500/20'
@@ -526,8 +579,8 @@ const KidsDashboard = ({ onBack, t, subStatus }) => {
                       whileTap={{ scale: 0.95 }}
                       onClick={(e) => handleFreezeToggle(child.child_id, e)}
                     >
-                      {isFrozen ? <Unlock size={12} /> : <Lock size={12} />}
-                      {isFrozen ? 'Aktivieren' : 'Sperren'}
+                      {isFrozen ? <Unlock size={11} /> : <Lock size={11} />}
+                      {isFrozen ? 'Aktiv' : 'Sperren'}
                     </motion.button>
                   </div>
                 </motion.div>
@@ -636,6 +689,81 @@ const KidsDashboard = ({ onBack, t, subStatus }) => {
             onClose={() => setWalletChild(null)}
             onUpdate={loadChildren}
           />
+        )}
+      </AnimatePresence>
+
+      {/* Notifications Modal */}
+      <AnimatePresence>
+        {showNotifications && (
+          <KidsNotifications 
+            onClose={() => { setShowNotifications(false); loadNotificationCount(); }} 
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Set PIN Modal */}
+      <AnimatePresence>
+        {showSetPin && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          >
+            <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => { setShowSetPin(null); setPinValue(''); }} />
+            <motion.div
+              initial={{ scale: 0.95, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 20 }}
+              className="relative w-full max-w-sm bg-[#0A0A0A] rounded-2xl border border-white/10 p-5"
+            >
+              <h3 className="text-lg font-bold text-white mb-2">Kind-PIN setzen</h3>
+              <p className="text-xs text-gray-400 mb-4">
+                Setze einen 4-6 stelligen PIN für <strong className="text-white">{showSetPin.name}</strong>, 
+                damit dein Kind sich in der Kids-App anmelden kann.
+              </p>
+              
+              <div className="mb-4">
+                <label className="text-xs text-gray-400 mb-2 block">PIN (4-6 Ziffern)</label>
+                <input
+                  type="password"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={6}
+                  value={pinValue}
+                  onChange={(e) => setPinValue(e.target.value.replace(/\D/g, ''))}
+                  placeholder="****"
+                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white text-center text-2xl tracking-[0.5em] placeholder-gray-600 outline-none focus:border-[#00C2FF]/50"
+                />
+              </div>
+              
+              <div className="p-3 rounded-xl bg-[#00C2FF]/5 border border-[#00C2FF]/10 mb-4">
+                <p className="text-[11px] text-gray-400">
+                  <strong className="text-white">Kind-ID:</strong> 
+                  <span className="font-mono ml-1 text-[#00C2FF]">{showSetPin.child_id}</span>
+                </p>
+                <p className="text-[10px] text-gray-500 mt-1">
+                  Teile diese ID und den PIN mit deinem Kind für die Kids-App.
+                </p>
+              </div>
+              
+              <div className="flex gap-2">
+                <button
+                  onClick={() => { setShowSetPin(null); setPinValue(''); }}
+                  className="flex-1 py-3 bg-white/5 rounded-xl text-sm text-gray-400 font-medium"
+                >
+                  Abbrechen
+                </button>
+                <button
+                  onClick={() => handleSetPin(showSetPin.child_id)}
+                  disabled={pinValue.length < 4}
+                  className="flex-1 py-3 bg-[#00C2FF] rounded-xl text-sm font-bold text-black disabled:opacity-40 flex items-center justify-center gap-2"
+                >
+                  <Key size={14} /> PIN setzen
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
     </motion.div>

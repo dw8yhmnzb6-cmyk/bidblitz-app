@@ -63,6 +63,66 @@ async def create_parent_notification(
     return notification
 
 
+# ── GET Parent Notifications ──
+@router.get("/notifications")
+async def get_parent_notifications(request: Request, limit: int = 50, unread_only: bool = False):
+    """Get parent notifications about children."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    
+    query = {"parent_id": user_id}
+    if unread_only:
+        query["is_read"] = False
+    
+    notifications = await db.kids_notifications.find(
+        query, {"_id": 0}
+    ).sort("created_at", -1).limit(limit).to_list(limit)
+    
+    unread_count = await db.kids_notifications.count_documents({
+        "parent_id": user_id,
+        "is_read": False
+    })
+    
+    return {
+        "notifications": notifications,
+        "unread_count": unread_count,
+        "total": len(notifications)
+    }
+
+
+# ── Mark Notification as Read ──
+@router.post("/notifications/{notification_id}/read")
+async def mark_notification_read(notification_id: str, request: Request):
+    """Mark a notification as read."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    
+    result = await db.kids_notifications.update_one(
+        {"id": notification_id, "parent_id": user_id},
+        {"$set": {"is_read": True, "read_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Notification nicht gefunden")
+    
+    return {"ok": True}
+
+
+# ── Mark All Notifications as Read ──
+@router.post("/notifications/read-all")
+async def mark_all_notifications_read(request: Request):
+    """Mark all notifications as read."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    
+    result = await db.kids_notifications.update_many(
+        {"parent_id": user_id, "is_read": False},
+        {"$set": {"is_read": True, "read_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    return {"ok": True, "marked_count": result.modified_count}
+
+
 class KidsCheckoutRequest(BaseModel):
     plan: str = Field(..., description="Plan: monthly or yearly")
     origin_url: str = Field(default="", description="Frontend origin for redirect")
@@ -641,6 +701,17 @@ async def freeze_child_wallet(child_id: str, request: Request):
         }}
     )
     
+    # Create parent notification
+    await create_parent_notification(
+        parent_id=user_id,
+        child_id=child_id,
+        child_name=child.get("name"),
+        event_type="wallet_locked" if new_status else "wallet_unlocked",
+        title=f"{child.get('name')} Wallet {'gesperrt' if new_status else 'entsperrt'}",
+        message=f"Wallet wurde {'gesperrt - keine Zahlungen möglich' if new_status else 'entsperrt - Zahlungen wieder möglich'}",
+        severity="alert" if new_status else "info"
+    )
+    
     return {
         "ok": True,
         "is_frozen": new_status,
@@ -1100,10 +1171,37 @@ async def child_mode_pay(req: ChildPaymentFromChildRequest, request: Request):
                     {"_id": ObjectId(merchant["user_id"])},
                     {"$inc": {"balance": net}}
                 )
-        except:
+        except Exception:
             pass
     
     updated_child = await db.kids_children.find_one({"child_id": child_id}, {"_id": 0})
+    
+    # Create parent notification for payment
+    await create_parent_notification(
+        parent_id=child.get("parent_id"),
+        child_id=child_id,
+        child_name=child.get("name"),
+        event_type="child_payment",
+        title=f"{child.get('name')} hat bezahlt",
+        message=f"€{req.amount:.2f} bei {req.merchant_name or 'Shop'}",
+        amount=req.amount,
+        merchant_name=req.merchant_name,
+        severity="info"
+    )
+    
+    # Check if near limit - send warning
+    new_today_spent = today_spent + req.amount
+    if new_today_spent >= daily_limit * 0.8:
+        await create_parent_notification(
+            parent_id=child.get("parent_id"),
+            child_id=child_id,
+            child_name=child.get("name"),
+            event_type="limit_warning",
+            title=f"{child.get('name')} nähert sich dem Tageslimit",
+            message=f"€{new_today_spent:.2f} von €{daily_limit:.2f} heute ausgegeben",
+            amount=new_today_spent,
+            severity="warning"
+        )
     
     return {
         "ok": True,

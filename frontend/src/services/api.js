@@ -389,4 +389,14 @@ export const api = {
     return request(`/api/support/admin/tickets${qs ? `?${qs}` : ""}`);
   },
   resolveTicket: (ticketId, body) => request(`/api/support/admin/tickets/${ticketId}/resolve`, { method: "POST", body: JSON.stringify(body) }),
+  
+  // Kids Notifications
+  getKidsNotifications: (limit = 50, unreadOnly = false) => 
+    request(`/api/kids/notifications?limit=${limit}&unread_only=${unreadOnly}`),
+  markKidsNotificationRead: (notificationId) => 
+    request(`/api/kids/notifications/${notificationId}/read`, { method: "POST" }),
+  markAllKidsNotificationsRead: () => 
+    request("/api/kids/notifications/read-all", { method: "POST" }),
+  setChildPin: (childId, pin) => 
+    request(`/api/kids/children/${childId}/set-pin`, { method: "POST", body: JSON.stringify({ pin }) }),
 };
