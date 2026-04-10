@@ -4,7 +4,7 @@ Handles BidBlitz Kids paywall: trial, subscription checkout, status.
 """
 
 from datetime import datetime, timezone, timedelta
-from typing import Optional
+from typing import Optional, List
 import secrets
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -27,6 +27,40 @@ KIDS_PLANS = {
 }
 
 TRIAL_DAYS = 7
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# PARENT NOTIFICATION SYSTEM
+# ═══════════════════════════════════════════════════════════════════════════════
+
+async def create_parent_notification(
+    parent_id: str,
+    child_id: str,
+    child_name: str,
+    event_type: str,
+    title: str,
+    message: str,
+    amount: Optional[float] = None,
+    merchant_name: Optional[str] = None,
+    severity: str = "info"  # info, warning, alert
+):
+    """Create a notification for parent about child activity."""
+    notification = {
+        "id": secrets.token_hex(8),
+        "parent_id": parent_id,
+        "child_id": child_id,
+        "child_name": child_name,
+        "event_type": event_type,
+        "title": title,
+        "message": message,
+        "amount": amount,
+        "merchant_name": merchant_name,
+        "severity": severity,
+        "is_read": False,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.kids_notifications.insert_one(notification)
+    return notification
 
 
 class KidsCheckoutRequest(BaseModel):
@@ -482,6 +516,18 @@ async def transfer_to_child(child_id: str, req: TransferToChildRequest, request:
         "created_at": now.isoformat(),
     })
     
+    # Create notification for parent (money received by child)
+    await create_parent_notification(
+        parent_id=user_id,
+        child_id=child_id,
+        child_name=child["name"],
+        event_type="money_received",
+        title=f"{child['name']} hat Geld erhalten",
+        message=f"€{req.amount:.2f} Taschengeld gesendet",
+        amount=req.amount,
+        severity="info"
+    )
+    
     # Get updated balances
     updated_parent = await db.users.find_one({"_id": user["_id"]})
     updated_child = await db.kids_children.find_one({"child_id": child_id}, {"_id": 0})
@@ -792,3 +838,308 @@ async def get_child_barcode(child_id: str, request: Request):
         "balance": round(child.get("balance", 0), 2),
         "is_frozen": child.get("is_frozen", False),
     }
+
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# CHILD ACCESS / LOGIN SYSTEM
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class SetChildPinRequest(BaseModel):
+    pin: str = Field(..., min_length=4, max_length=6, pattern=r'^\d{4,6}$')
+
+
+class ChildLoginRequest(BaseModel):
+    child_id: str
+    pin: str
+
+
+class ChildPaymentFromChildRequest(BaseModel):
+    amount: float = Field(..., gt=0, le=100)
+    merchant_id: Optional[str] = None
+    merchant_name: Optional[str] = "BidBlitz"
+    description: Optional[str] = "Payment"
+
+
+# ── Parent sets child PIN ──
+@router.post("/children/{child_id}/set-pin")
+async def set_child_pin(child_id: str, req: SetChildPinRequest, request: Request):
+    """Parent sets PIN for child access."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    
+    child = await db.kids_children.find_one({"child_id": child_id, "parent_id": user_id})
+    if not child:
+        raise HTTPException(status_code=404, detail="Kind nicht gefunden")
+    
+    # Hash the PIN (simple for kids, not full bcrypt)
+    import hashlib
+    pin_hash = hashlib.sha256(req.pin.encode()).hexdigest()
+    
+    await db.kids_children.update_one(
+        {"child_id": child_id},
+        {"$set": {
+            "pin_hash": pin_hash,
+            "pin_set_at": datetime.now(timezone.utc).isoformat(),
+        }}
+    )
+    
+    return {"ok": True, "message": "PIN gesetzt"}
+
+
+# ── Child Login ──
+@router.post("/child-login")
+async def child_login(req: ChildLoginRequest):
+    """Child logs in with their PIN to access child mode."""
+    child = await db.kids_children.find_one({"child_id": req.child_id})
+    if not child:
+        raise HTTPException(status_code=404, detail="Kind nicht gefunden")
+    
+    if not child.get("pin_hash"):
+        raise HTTPException(status_code=400, detail="Kein PIN gesetzt. Frage deine Eltern.")
+    
+    import hashlib
+    pin_hash = hashlib.sha256(req.pin.encode()).hexdigest()
+    
+    if pin_hash != child.get("pin_hash"):
+        raise HTTPException(status_code=401, detail="Falscher PIN")
+    
+    # Check if frozen
+    if child.get("is_frozen", False):
+        raise HTTPException(status_code=403, detail="Wallet ist gesperrt. Frage deine Eltern.")
+    
+    # Generate session token for child
+    child_token = secrets.token_urlsafe(32)
+    
+    await db.kids_sessions.update_one(
+        {"child_id": req.child_id},
+        {"$set": {
+            "child_id": req.child_id,
+            "token": child_token,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "expires_at": (datetime.now(timezone.utc) + timedelta(hours=24)).isoformat(),
+        }},
+        upsert=True
+    )
+    
+    return {
+        "ok": True,
+        "child_token": child_token,
+        "child_id": req.child_id,
+        "child_name": child.get("name"),
+        "balance": round(child.get("balance", 0), 2),
+    }
+
+
+# ── Helper: Get child from token ──
+async def get_child_from_token(request: Request):
+    """Validate child session token and return child data."""
+    auth = request.headers.get("X-Child-Token")
+    if not auth:
+        raise HTTPException(status_code=401, detail="Kein Child-Token")
+    
+    session = await db.kids_sessions.find_one({"token": auth})
+    if not session:
+        raise HTTPException(status_code=401, detail="Ungültige Session")
+    
+    # Check expiry
+    expires = datetime.fromisoformat(session["expires_at"].replace("Z", "+00:00"))
+    if datetime.now(timezone.utc) > expires:
+        await db.kids_sessions.delete_one({"token": auth})
+        raise HTTPException(status_code=401, detail="Session abgelaufen")
+    
+    child = await db.kids_children.find_one({"child_id": session["child_id"]}, {"_id": 0})
+    if not child:
+        raise HTTPException(status_code=404, detail="Kind nicht gefunden")
+    
+    return child
+
+
+# ── Child Mode: Get own data ──
+@router.get("/child-mode/me")
+async def child_mode_get_self(request: Request):
+    """Child gets their own wallet data in child mode."""
+    child = await get_child_from_token(request)
+    
+    if child.get("is_frozen", False):
+        raise HTTPException(status_code=403, detail="Wallet ist gesperrt")
+    
+    # Calculate spending
+    now = datetime.now(timezone.utc)
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    week_start = today_start - timedelta(days=today_start.weekday())
+    
+    transactions = await db.kids_transactions.find({
+        "child_id": child["child_id"]
+    }).sort("created_at", -1).limit(20).to_list(20)
+    
+    for tx in transactions:
+        tx.pop("_id", None)
+    
+    today_spent = 0
+    week_spent = 0
+    
+    for tx in transactions:
+        if tx.get("type") == "payment" and tx.get("amount", 0) < 0:
+            tx_time = datetime.fromisoformat(tx["created_at"].replace("Z", "+00:00"))
+            if tx_time >= today_start:
+                today_spent += abs(tx["amount"])
+            if tx_time >= week_start:
+                week_spent += abs(tx["amount"])
+    
+    daily_limit = child.get("daily_limit", 20)
+    weekly_limit = child.get("weekly_limit", 50)
+    
+    return {
+        "child_id": child["child_id"],
+        "name": child.get("name"),
+        "avatar": child.get("avatar"),
+        "color": child.get("color"),
+        "balance": round(child.get("balance", 0), 2),
+        "today_spent": round(today_spent, 2),
+        "week_spent": round(week_spent, 2),
+        "daily_limit": daily_limit,
+        "weekly_limit": weekly_limit,
+        "remaining_today": round(max(0, daily_limit - today_spent), 2),
+        "remaining_week": round(max(0, weekly_limit - week_spent), 2),
+        "is_frozen": child.get("is_frozen", False),
+        "recent_transactions": transactions,
+    }
+
+
+# ── Child Mode: Make payment ──
+@router.post("/child-mode/pay")
+async def child_mode_pay(req: ChildPaymentFromChildRequest, request: Request):
+    """Child makes a payment from their own wallet."""
+    child = await get_child_from_token(request)
+    child_id = child["child_id"]
+    
+    # Check if frozen
+    if child.get("is_frozen", False):
+        raise HTTPException(status_code=403, detail="Wallet ist gesperrt. Frage deine Eltern.")
+    
+    # Check balance
+    balance = child.get("balance", 0)
+    if balance < req.amount:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Nicht genug Guthaben. Du hast €{balance:.2f}"
+        )
+    
+    # Check daily limit
+    now = datetime.now(timezone.utc)
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    
+    today_txns = await db.kids_transactions.find({
+        "child_id": child_id,
+        "type": "payment",
+        "created_at": {"$gte": today_start.isoformat()}
+    }).to_list(100)
+    
+    today_spent = sum(abs(tx.get("amount", 0)) for tx in today_txns if tx.get("amount", 0) < 0)
+    daily_limit = child.get("daily_limit", 20)
+    
+    if today_spent + req.amount > daily_limit:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Tageslimit erreicht! Heute bereits €{today_spent:.2f} von €{daily_limit:.2f} ausgegeben."
+        )
+    
+    # Check weekly limit
+    week_start = today_start - timedelta(days=today_start.weekday())
+    
+    week_txns = await db.kids_transactions.find({
+        "child_id": child_id,
+        "type": "payment",
+        "created_at": {"$gte": week_start.isoformat()}
+    }).to_list(100)
+    
+    week_spent = sum(abs(tx.get("amount", 0)) for tx in week_txns if tx.get("amount", 0) < 0)
+    weekly_limit = child.get("weekly_limit", 50)
+    
+    if week_spent + req.amount > weekly_limit:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Wochenlimit erreicht! Diese Woche bereits €{week_spent:.2f} von €{weekly_limit:.2f} ausgegeben."
+        )
+    
+    # Process payment
+    ref = f"CHILD-{secrets.token_hex(4).upper()}"
+    
+    await db.kids_children.update_one(
+        {"child_id": child_id},
+        {"$inc": {"balance": -req.amount, "total_spent": req.amount}}
+    )
+    
+    # Record transaction
+    tx = {
+        "id": secrets.token_hex(8),
+        "child_id": child_id,
+        "parent_id": child.get("parent_id"),
+        "type": "payment",
+        "amount": -req.amount,
+        "description": req.description,
+        "merchant_id": req.merchant_id,
+        "merchant_name": req.merchant_name,
+        "status": "completed",
+        "reference": ref,
+        "from_child_mode": True,
+        "created_at": now.isoformat(),
+    }
+    await db.kids_transactions.insert_one(tx)
+    tx.pop("_id", None)
+    
+    # Credit merchant if provided
+    if req.merchant_id:
+        try:
+            merchant = await db.merchant_profiles.find_one({"_id": ObjectId(req.merchant_id)})
+            if merchant and merchant.get("user_id"):
+                fee = round(req.amount * 0.02, 2)
+                net = req.amount - fee
+                await db.users.update_one(
+                    {"_id": ObjectId(merchant["user_id"])},
+                    {"$inc": {"balance": net}}
+                )
+        except:
+            pass
+    
+    updated_child = await db.kids_children.find_one({"child_id": child_id}, {"_id": 0})
+    
+    return {
+        "ok": True,
+        "transaction": tx,
+        "new_balance": round(updated_child.get("balance", 0), 2),
+        "today_spent": round(today_spent + req.amount, 2),
+        "remaining_today": round(max(0, daily_limit - today_spent - req.amount), 2),
+        "message": f"€{req.amount:.2f} bezahlt!",
+    }
+
+
+# ── Child Mode: Get payment QR/barcode ──
+@router.get("/child-mode/payment-code")
+async def child_mode_get_payment_code(request: Request):
+    """Child gets their payment code for QR/barcode."""
+    child = await get_child_from_token(request)
+    
+    if child.get("is_frozen", False):
+        raise HTTPException(status_code=403, detail="Wallet ist gesperrt")
+    
+    payment_code = f"BLZKID{child['child_id'][-8:].upper()}"
+    
+    return {
+        "child_id": child["child_id"],
+        "name": child.get("name"),
+        "payment_code": payment_code,
+        "balance": round(child.get("balance", 0), 2),
+        "can_pay": not child.get("is_frozen", False),
+    }
+
+
+# ── Child Mode: Logout ──
+@router.post("/child-mode/logout")
+async def child_mode_logout(request: Request):
+    """Child logs out of child mode."""
+    auth = request.headers.get("X-Child-Token")
+    if auth:
+        await db.kids_sessions.delete_one({"token": auth})
+    return {"ok": True}
