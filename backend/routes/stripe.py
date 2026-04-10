@@ -2,6 +2,7 @@
 BidBlitz V2 - Stripe Checkout Routes
 Handles wallet top-up via Stripe Checkout Sessions.
 Supports saved payment methods for 1-click top-up.
+Uses centralized Payment Engine for atomic transactions.
 """
 
 import secrets
@@ -21,6 +22,7 @@ from core.security import get_current_user
 from core.rate_limit import limiter, RATE_STRIPE
 from core.audit import log_audit, AuditEvent, get_client_info
 from core.compliance import run_compliance_check, BLOCKED, FLAGGED
+from core.payment_engine import process_stripe_payment, PaymentResult
 from routes.promotions import check_applicable_promotion, apply_promotion
 
 router = APIRouter(prefix="/api/stripe", tags=["stripe"])

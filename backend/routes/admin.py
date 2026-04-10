@@ -24,6 +24,13 @@ async def require_admin(request: Request):
     return user
 
 
+# ── Admin Stats (alias for overview) ──
+@router.get("/stats")
+async def admin_stats(request: Request):
+    """Alias for /overview - returns platform statistics."""
+    return await overview(request)
+
+
 # ── Platform Overview ──
 @router.get("/overview")
 async def overview(request: Request):

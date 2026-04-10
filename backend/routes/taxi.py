@@ -39,6 +39,30 @@ VEHICLE_TYPES = {
 # Status flow
 RIDE_STATUSES = ["requested", "accepted", "arriving", "started", "completed", "cancelled"]
 
+
+# ── Get Active Ride ──
+@router.get("/rides/active")
+async def get_active_ride(request: Request):
+    """Get user's currently active ride if any."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    
+    active = await db.taxi_rides.find_one(
+        {"user_id": user_id, "status": {"$in": ["requested", "accepted", "arriving", "started"]}},
+        {"_id": 0}
+    )
+    
+    if not active:
+        return {"active_ride": None, "has_active": False}
+    
+    return {
+        "active_ride": active,
+        "has_active": True,
+        "ride_id": active.get("ride_id"),
+        "status": active.get("status"),
+    }
+
+
 # Simulated driver pool for demo
 DEMO_DRIVERS = [
     {"name": "Stefan M.", "rating": 4.9, "rides": 2847, "vehicle": "VW Passat", "color": "Schwarz", "plate": "B-SM 4721"},

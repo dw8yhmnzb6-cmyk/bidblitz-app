@@ -37,7 +37,9 @@ async def get_dashboard(request: Request):
         }
 
     merchant_id = merchant.get("user_id", user_id)
-    today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+    now = datetime.now(timezone.utc)
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    today_start_str = today_start.isoformat()
 
     # Get recent merchant transactions from merchant_transactions collection
     recent = await db.merchant_transactions.find(
@@ -52,40 +54,54 @@ async def get_dashboard(request: Request):
             {"_id": 0}
         ).sort("created_at", -1).limit(10).to_list(10)
 
-    # Calculate today's revenue from merchant_transactions
-    today_txns = await db.merchant_transactions.find(
-        {"merchant_id": merchant_id, "created_at": {"$gte": today_start}},
+    # Calculate today's revenue - check both string and datetime comparisons
+    all_merchant_txns = await db.merchant_transactions.find(
+        {"merchant_id": merchant_id},
         {"_id": 0}
-    ).to_list(100)
+    ).to_list(1000)
+    
+    today_earnings = 0
+    today_count = 0
+    for t in all_merchant_txns:
+        if t.get("status") != "completed":
+            continue
+        created = t.get("created_at", "")
+        if isinstance(created, str) and created >= today_start_str:
+            today_earnings += abs(t.get("net", t.get("amount", 0)))
+            today_count += 1
+        elif isinstance(created, datetime) and created >= today_start:
+            today_earnings += abs(t.get("net", t.get("amount", 0)))
+            today_count += 1
 
-    # Fallback to transactions collection
-    if not today_txns:
-        today_txns = await db.transactions.find(
-            {"user_id": user_id, "type": {"$in": ["merchant_credit", "payment"]}, "created_at": {"$gte": today_start}},
+    # Fallback to transactions collection if no merchant_transactions
+    if not all_merchant_txns:
+        all_txns = await db.transactions.find(
+            {"user_id": user_id, "type": {"$in": ["merchant_credit", "payment"]}},
             {"_id": 0}
-        ).to_list(100)
-
-    today_earnings = sum(t.get("net", t.get("amount", 0)) for t in today_txns if t.get("status") == "completed")
-    today_earnings = abs(today_earnings)
+        ).to_list(1000)
+        for t in all_txns:
+            if t.get("status") != "completed":
+                continue
+            created = t.get("created_at", "")
+            if isinstance(created, str) and created >= today_start_str:
+                today_earnings += abs(t.get("amount", 0))
+                today_count += 1
 
     # Get total from merchant profile or calculate from transactions
     total_earnings = merchant.get("total_earnings", 0.0)
-    if total_earnings == 0:
-        all_txns = await db.merchant_transactions.find(
-            {"merchant_id": merchant_id, "status": "completed"}
-        ).to_list(1000)
-        total_earnings = sum(t.get("net", 0) for t in all_txns)
+    if total_earnings == 0 and all_merchant_txns:
+        total_earnings = sum(abs(t.get("net", 0)) for t in all_merchant_txns if t.get("status") == "completed")
 
     return {
         "merchant_id": merchant_id,
         "business_name": merchant.get("business_name", ""),
         "gross_earnings": merchant.get("gross_earnings", total_earnings),
-        "total_earnings": total_earnings,
+        "total_earnings": round(total_earnings, 2),
         "total_fees": merchant.get("total_fees", 0.0),
-        "total_transactions": merchant.get("total_transactions", len(recent)),
+        "total_transactions": merchant.get("total_transactions", len(all_merchant_txns) if all_merchant_txns else len(recent)),
         "available_payout": merchant.get("available_payout", 0.0),
         "today_earnings": round(today_earnings, 2),
-        "today_transactions": len(today_txns),
+        "today_transactions": today_count,
         "fee_percent": FEES["payment"] * 100,
         "recent_payments": recent,
     }
