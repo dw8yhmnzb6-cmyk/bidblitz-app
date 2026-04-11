@@ -50,6 +50,7 @@ import MobilityMapPage from "./pages/MobilityMapPage";
 import OrderTrackingPage from "./pages/OrderTrackingPage";
 import CreditScorePage from "./pages/CreditScorePage";
 import BillsPage from "./pages/BillsPage";
+import GamingPage from "./pages/GamingPage";
 
 import BottomNav from "./components/BottomNav";
 import BarcodeModal from "./components/BarcodeModal";
@@ -264,6 +265,8 @@ function AppContent() {
         return isGuest ? <HomePage {...homeProps} /> : <CreditScorePage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
       case "/bills":
         return isGuest ? <HomePage {...homeProps} /> : <BillsPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
+      case "/gaming":
+        return isGuest ? <HomePage {...homeProps} /> : <GamingPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
       default:
         return <HomePage {...homeProps} />;
     }

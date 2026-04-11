@@ -244,6 +244,10 @@ app.include_router(restaurant_dashboard_router)
 from routes.kids_gps import router as kids_gps_router
 app.include_router(kids_gps_router)
 
+# Gaming Platform
+from routes.gaming import router as gaming_router
+app.include_router(gaming_router)
+
 # Stripe webhook at /api/webhook/stripe
 from routes.stripe import stripe_webhook as _stripe_wh
 app.post("/api/webhook/stripe")(_stripe_wh)

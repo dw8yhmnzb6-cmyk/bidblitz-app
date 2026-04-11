@@ -30,6 +30,7 @@ class TransactionType(str, Enum):
     PAYMENT = "payment"
     TRANSFER = "transfer"
     REFUND = "refund"
+    REWARD = "reward"  # Gaming rewards
     AUCTION_BID = "auction_bid"
     AUCTION_WIN = "auction_win"
     MINING_PURCHASE = "mining_purchase"
