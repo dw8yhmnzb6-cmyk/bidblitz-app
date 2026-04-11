@@ -147,7 +147,8 @@ from routes.mining_phase2 import router as mining_phase2_router
 from routes.marketplace import router as marketplace_router
 from routes.chat import router as chat_router
 from routes.applications import router as applications_router
-from routes.referral_system import router as referral_router
+from routes.referral_system import router as referral_system_router
+from routes.kids_system import router as kids_system_router
 
 app.include_router(auth_router)
 app.include_router(wallet_router)
@@ -181,7 +182,8 @@ app.include_router(mining_phase2_router)
 app.include_router(marketplace_router)
 app.include_router(chat_router)
 app.include_router(applications_router)
-app.include_router(referral_router)
+app.include_router(referral_system_router)
+app.include_router(kids_system_router)
 
 # Mobility & Delivery Modules
 from routes.taxi import router as taxi_router
