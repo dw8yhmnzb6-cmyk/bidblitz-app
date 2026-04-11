@@ -253,6 +253,35 @@ async def health_check():
     }
 
 
+# ── Performance Monitoring (Admin) ──
+@app.get("/api/admin/performance")
+async def admin_performance_stats(request: Request):
+    """Admin: Get system performance statistics."""
+    from core.security import get_current_user
+    from core.performance import get_performance_stats
+    
+    user = await get_current_user(request)
+    if user.get("role") != "admin":
+        return {"error": "Admin only"}
+    
+    stats = get_performance_stats()
+    
+    # Add database stats
+    try:
+        db_stats = await db.command("dbStats")
+        stats["database"] = {
+            "collections": db_stats.get("collections", 0),
+            "objects": db_stats.get("objects", 0),
+            "avgObjSize": db_stats.get("avgObjSize", 0),
+            "dataSize": db_stats.get("dataSize", 0),
+            "indexSize": db_stats.get("indexSize", 0),
+        }
+    except Exception:
+        stats["database"] = {"error": "Could not fetch db stats"}
+    
+    return stats
+
+
 # ── Public Feature Flags (for frontend) ──
 @app.get("/api/feature-flags")
 async def public_feature_flags():

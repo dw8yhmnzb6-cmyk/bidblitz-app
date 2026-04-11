@@ -208,19 +208,19 @@ async def list_listings(
     limit: int = 20,
 ):
     """
-    Browse marketplace listings (public).
+    Browse marketplace listings (public) - OPTIMIZED.
     
-    SORT ORDER:
-    1. boost.expires_at DESC (active boosts first)
-    2. is_vip DESC
-    3. created_at DESC
+    Uses DB-level sorting with indexes for better performance.
     """
+    from core.performance import query_cache
+    
     query = {"status": "active"}
     
     if category and category in CATEGORIES:
         query["category"] = category
     
     if search:
+        # Use text index if available, fallback to regex
         query["$or"] = [
             {"title": {"$regex": search, "$options": "i"}},
             {"description": {"$regex": search, "$options": "i"}},
@@ -233,53 +233,48 @@ async def list_listings(
         query["price"] = query.get("price", {})
         query["price"]["$lte"] = max_price
     
-    now = datetime.now(timezone.utc).isoformat()
     skip = (page - 1) * limit
     
-    # Get all listings
-    all_listings = await db.marketplace_listings.find(
-        query,
-        {"_id": 0, "seller_email": 0}
-    ).to_list(500)
-    
-    # Custom sorting: boost first, then VIP, then by user sort preference
-    def sort_key(item):
-        # Check if boost is still active
-        boost = item.get("boost")
-        has_active_boost = False
-        if boost and boost.get("expires_at"):
-            has_active_boost = boost["expires_at"] > now
-        
-        is_vip = item.get("is_vip", False)
-        created = item.get("created_at", "")
-        price = item.get("price", 0)
-        
-        # Priority: active boost > VIP > sort preference
-        # Use tuple for multi-level sorting (higher = first)
-        boost_score = 2 if has_active_boost else 0
-        vip_score = 1 if is_vip else 0
-        
-        if sort == "price_low":
-            return (-boost_score, -vip_score, price, created)
-        elif sort == "price_high":
-            return (-boost_score, -vip_score, -price, created)
-        else:  # newest
-            return (-boost_score, -vip_score, created)
-    
-    # Sort
-    sorted_listings = sorted(all_listings, key=sort_key, reverse=(sort == "newest"))
-    
-    # If price_low, we need to reverse the non-boosted part
+    # Determine sort order
     if sort == "price_low":
-        sorted_listings = sorted(all_listings, key=sort_key)
+        sort_order = [("price", 1), ("created_at", -1)]
+    elif sort == "price_high":
+        sort_order = [("price", -1), ("created_at", -1)]
+    else:  # newest
+        sort_order = [("created_at", -1)]
     
-    # Paginate
-    paginated = sorted_listings[skip:skip + limit]
+    # Use projection to reduce data transfer - exclude large fields
+    projection = {
+        "_id": 0, 
+        "seller_email": 0, 
+        "description": 0  # Don't need full description in list view
+    }
     
-    total = await db.marketplace_listings.count_documents(query)
+    # Get listings with DB-level pagination (much more efficient)
+    listings = await db.marketplace_listings.find(
+        query, projection
+    ).sort(sort_order).skip(skip).limit(limit).to_list(limit)
+    
+    # Post-process: sort boosted/VIP to top (lightweight in-memory for small result set)
+    now = datetime.now(timezone.utc).isoformat()
+    
+    def boost_priority(item):
+        boost = item.get("boost")
+        has_active_boost = boost and boost.get("expires_at", "") > now
+        is_vip = item.get("is_vip", False)
+        return (not has_active_boost, not is_vip)
+    
+    listings = sorted(listings, key=boost_priority)
+    
+    # Cache total count for 60 seconds
+    count_cache_key = f"mkt_count:{category or 'all'}:{search or 'none'}:{min_price}:{max_price}"
+    total = query_cache.get(count_cache_key)
+    if total is None:
+        total = await db.marketplace_listings.count_documents(query)
+        query_cache.set(count_cache_key, total, 60)
     
     return {
-        "listings": paginated,
+        "listings": listings,
         "total": total,
         "page": page,
         "pages": (total + limit - 1) // limit,

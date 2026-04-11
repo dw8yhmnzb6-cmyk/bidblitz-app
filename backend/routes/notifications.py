@@ -1,6 +1,7 @@
 """
 BidBlitz V2 - Notifications System
 In-app notifications for onboarding, campaigns, rewards, and system events.
+OPTIMIZED with caching and efficient queries.
 """
 
 from datetime import datetime, timezone
@@ -9,6 +10,7 @@ from pydantic import BaseModel, Field
 from typing import Optional
 from core.database import db
 from core.security import get_current_user
+from core.performance import query_cache
 
 router = APIRouter(prefix="/api/notifications", tags=["notifications"])
 
@@ -19,6 +21,7 @@ async def get_notifications(
     unread_only: bool = Query(False),
     limit: int = Query(30, le=100),
 ):
+    """Get user notifications - optimized with projection and cached count."""
     user = await get_current_user(request)
     user_id = str(user["_id"])
 
@@ -26,16 +29,39 @@ async def get_notifications(
     if unread_only:
         query["read"] = False
 
+    # Use projection to reduce data transfer
     notifications = await db.notifications.find(
-        query, {"_id": 0}
-    ).sort("created_at", -1).to_list(limit)
+        query,
+        {"_id": 0, "id": 1, "type": 1, "title": 1, "message": 1, "read": 1, "created_at": 1, "data": 1}
+    ).sort("created_at", -1).limit(limit).to_list(limit)
 
-    unread_count = await db.notifications.count_documents({"user_id": user_id, "read": False})
+    # Cache unread count for 10 seconds (changes frequently)
+    cache_key = f"notif_unread:{user_id}"
+    unread_count = query_cache.get(cache_key)
+    if unread_count is None:
+        unread_count = await db.notifications.count_documents({"user_id": user_id, "read": False})
+        query_cache.set(cache_key, unread_count, 10)
 
     return {
         "notifications": notifications,
         "unread_count": unread_count,
     }
+
+
+@router.get("/count")
+async def get_unread_count(request: Request):
+    """Get only unread count - lightweight endpoint for polling."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    
+    # Cache for 5 seconds
+    cache_key = f"notif_unread:{user_id}"
+    unread_count = query_cache.get(cache_key)
+    if unread_count is None:
+        unread_count = await db.notifications.count_documents({"user_id": user_id, "read": False})
+        query_cache.set(cache_key, unread_count, 5)
+    
+    return {"unread_count": unread_count}
 
 
 @router.post("/read-all")
@@ -47,6 +73,9 @@ async def mark_all_read(request: Request):
         {"user_id": user_id, "read": False},
         {"$set": {"read": True, "read_at": datetime.now(timezone.utc).isoformat()}},
     )
+    
+    # Invalidate cache
+    query_cache.delete(f"notif_unread:{user_id}")
 
     return {"success": True, "marked": result.modified_count}
 

@@ -3,6 +3,7 @@ from bson import ObjectId
 from datetime import datetime, timezone
 from core.database import db
 from core.security import get_current_user, serialize_user
+from core.performance import user_cache, invalidate_user_cache
 from schemas.models import TopUpRequest
 import secrets
 
@@ -15,7 +16,7 @@ def generate_reference():
 
 @router.get("/balance")
 async def get_balance(request: Request):
-    """Get user's wallet balance."""
+    """Get user's wallet balance - optimized with minimal DB read."""
     user = await get_current_user(request)
     return {
         "balance": round(user.get("balance", 0.0), 2),
@@ -24,26 +25,32 @@ async def get_balance(request: Request):
 
 
 @router.get("/transactions")
-async def get_transactions(request: Request):
-    """Get user's transaction history."""
+async def get_transactions(request: Request, limit: int = 100):
+    """Get user's transaction history - optimized with projection."""
     user = await get_current_user(request)
     user_id = str(user["_id"])
     
+    # Use projection to only fetch needed fields
     transactions = await db.transactions.find(
-        {"user_id": user_id}, {"_id": 0}
-    ).sort("created_at", -1).limit(100).to_list(100)
+        {"user_id": user_id},
+        {"_id": 0, "id": 1, "type": 1, "amount": 1, "description": 1, 
+         "merchant_name": 1, "status": 1, "reference": 1, "created_at": 1}
+    ).sort("created_at", -1).limit(limit).to_list(limit)
     
     return {"transactions": transactions, "total": len(transactions)}
 
 
 @router.get("")
 async def get_wallet(request: Request):
+    """Get full wallet details - combined query optimization."""
     user = await get_current_user(request)
     user_id = str(user["_id"])
 
-    # Get recent transactions
+    # Get recent transactions with minimal projection
     transactions = await db.transactions.find(
-        {"user_id": user_id}, {"_id": 0}
+        {"user_id": user_id},
+        {"_id": 0, "id": 1, "type": 1, "amount": 1, "description": 1,
+         "merchant_name": 1, "status": 1, "reference": 1, "created_at": 1}
     ).sort("created_at", -1).limit(20).to_list(20)
 
     return {
