@@ -154,6 +154,7 @@ from routes.growth_engine import router as growth_engine_router
 from routes.boost_system import router as boost_system_router
 from routes.loyalty_system import router as loyalty_system_router
 from routes.rewards_store import router as rewards_store_router
+from routes.p2p_transfer import router as p2p_transfer_router
 
 app.include_router(auth_router)
 app.include_router(wallet_router)
@@ -194,6 +195,7 @@ app.include_router(growth_engine_router)
 app.include_router(boost_system_router)
 app.include_router(loyalty_system_router)
 app.include_router(rewards_store_router)
+app.include_router(p2p_transfer_router)
 
 # Mobility & Delivery Modules
 from routes.taxi import router as taxi_router
