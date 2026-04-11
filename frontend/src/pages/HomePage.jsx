@@ -193,14 +193,17 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
     { id: "auctions", icon: Gavel, title: t("home.f_auctions") || "Auctions", desc: t("home.f_auctions_d") || "Bid & win deals", color: "#A855F7", route: "/auctions" },
     { id: "mining", icon: Cpu, title: t("home.f_mining") || "Mining", desc: t("home.f_mining_d") || "Mine BLZ tokens", color: "#00E89D", route: "/mining" },
     { id: "merchant", icon: Store, title: t("home.f_merchant") || "Merchant", desc: t("home.f_merchant_d") || "POS & payments", color: "#FFB800", route: "/merchant-landing" },
+    { id: "taxi", icon: Car, title: t("home.f_taxi") || "Taxi", desc: t("home.f_taxi_d") || "Book a ride", color: "#FFB800", route: "/taxi" },
+    { id: "food", icon: UtensilsCrossed, title: t("home.f_food") || "Food", desc: t("home.f_food_d") || "Order delivery", color: "#FF6B6B", route: "/food" },
   ];
 
-  const comingSoonFeatures = [
-    { id: "nfc", icon: Smartphone, title: t("home.f_nfc") || "NFC Pay", desc: t("home.f_nfc_d") || "Tap to pay contactless", color: "#00C2FF" },
-    { id: "vip", icon: Star, title: t("home.f_vip") || "VIP", desc: t("home.f_vip_d") || "Exclusive VIP rewards & perks", color: "#FFD700" },
-    { id: "referral", icon: Gift, title: t("home.f_referral") || "Referrals", desc: t("home.f_referral_d") || "Invite friends, earn rewards", color: "#00E89D" },
-    { id: "marketplace", icon: ShoppingBag, title: t("home.f_marketplace") || "Marketplace", desc: t("home.f_marketplace_d") || "Buy & sell digital assets", color: "#FF6B6B" },
-    { id: "rewards", icon: Sparkles, title: t("home.f_rewards_more") || "More Rewards", desc: t("home.f_rewards_more_d") || "Enhanced reward system", color: "#A855F7" },
+  // ALL ACTIVE - No more "Coming Soon"
+  const extraFeatures = [
+    { id: "nfc", icon: Smartphone, title: t("home.f_nfc") || "NFC Pay", desc: t("home.f_nfc_d") || "Tap to pay contactless", color: "#00C2FF", route: "/nfc" },
+    { id: "vip", icon: Star, title: t("home.f_vip") || "VIP", desc: t("home.f_vip_d") || "Premium subscriptions", color: "#FFD700", route: "/vip" },
+    { id: "referral", icon: Gift, title: t("home.f_referral") || "Referrals", desc: t("home.f_referral_d") || "Invite friends, earn rewards", color: "#00E89D", route: "/referral" },
+    { id: "marketplace", icon: ShoppingBag, title: t("home.f_marketplace") || "Marketplace", desc: t("home.f_marketplace_d") || "Buy & sell items", color: "#FF6B6B", route: "/marketplace" },
+    { id: "rewards", icon: Sparkles, title: t("home.f_rewards_more") || "Rewards", desc: t("home.f_rewards_more_d") || "Daily rewards & streaks", color: "#A855F7", route: "/rewards" },
   ];
 
   return (
@@ -472,50 +475,40 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
               </div>
             </motion.section>
 
-            {/* ═══ Coming Soon ═══ */}
-            <motion.section data-testid="coming-soon-section" className="mt-6" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}>
+            {/* ═══ Extra Features - ALL ACTIVE ═══ */}
+            <motion.section data-testid="extra-features-section" className="mt-6" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}>
               <div className="flex items-center justify-between mb-3.5">
                 <div className="flex items-center gap-2">
-                  <div className="w-1.5 h-4 rounded-full bg-[#FFB800]" />
-                  <h3 className="text-[13px] font-semibold font-outfit text-white">{t("home.coming_soon_title") || "Demnächst"}</h3>
+                  <div className="w-1.5 h-4 rounded-full bg-[#A855F7]" />
+                  <h3 className="text-[13px] font-semibold font-outfit text-white">{t("home.extra_features") || "Weitere Features"}</h3>
                 </div>
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider"
-                  style={{ background: "rgba(255,184,0,0.08)", color: "#FFB800", border: "1px solid rgba(255,184,0,0.2)" }}>
-                  <Rocket size={10} /> {t("home.coming_soon_badge") || "BALD"}
+                  style={{ background: "rgba(0,226,157,0.08)", color: "#00E89D", border: "1px solid rgba(0,226,157,0.2)" }}>
+                  <Sparkles size={10} /> AKTIV
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-2.5">
-                {comingSoonFeatures.map((f, i) => (
-                  <motion.div key={f.id} data-testid={`coming-${f.id}-card`}
+                {extraFeatures.map((f, i) => (
+                  <motion.div key={f.id} data-testid={`extra-${f.id}-card`}
                     className="rounded-2xl relative overflow-hidden cursor-pointer group"
                     style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}
                     initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.55 + i * 0.04, ...slide }}
                     whileTap={{ scale: 0.97 }}
-                    onClick={() => setPreviewFeature(previewFeature?.id === f.id ? null : f)}>
+                    whileHover={{ borderColor: `${f.color}25` }}
+                    onClick={() => onNavigate(f.route)}>
+                    <motion.div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-400 pointer-events-none"
+                      style={{ background: `radial-gradient(circle at 30% 30%, ${f.color}10, transparent 70%)` }} />
                     <div className="relative z-10 p-4">
                       <div className="flex items-center justify-between mb-3">
                         <div className="w-11 h-11 rounded-xl flex items-center justify-center relative"
                           style={{ background: `${f.color}12`, border: `1px solid ${f.color}15` }}>
-                          <f.icon size={18} strokeWidth={1.5} style={{ color: f.color, opacity: 0.7 }} />
-                          <div className="absolute inset-0 rounded-xl opacity-20 pointer-events-none" style={{ background: f.color, filter: "blur(12px)" }} />
+                          <f.icon size={18} strokeWidth={1.5} style={{ color: f.color }} />
+                          <div className="absolute inset-0 rounded-xl opacity-30 pointer-events-none" style={{ background: f.color, filter: "blur(12px)" }} />
                         </div>
-                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[8px] font-bold uppercase tracking-wider"
-                          style={{ background: "rgba(255,184,0,0.08)", color: "#D4A00A", border: "1px solid rgba(255,184,0,0.15)" }}>
-                          <Clock size={8} /> SOON
-                        </span>
                       </div>
-                      <h3 className="text-[13px] font-semibold font-outfit text-white/70 mb-1">{f.title}</h3>
-                      <AnimatePresence>
-                        {previewFeature?.id === f.id ? (
-                          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}>
-                            <p className="text-[11px] text-white/40 leading-[1.5] mb-2">{f.desc}</p>
-                            <p className="text-[10px] text-[#FFB800]/70 font-medium">{t("home.coming_soon_msg") || "Wir arbeiten daran. Bald verfügbar!"}</p>
-                          </motion.div>
-                        ) : (
-                          <p className="text-[11px] text-white/30">{t("home.tap_preview") || "Tippen für Details"}</p>
-                        )}
-                      </AnimatePresence>
+                      <h3 className="text-[13px] font-semibold font-outfit text-white mb-1">{f.title}</h3>
+                      <p className="text-[11px] text-[#444]">{f.desc}</p>
                     </div>
                   </motion.div>
                 ))}

@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
 import { useI18n } from '../store/I18nContext';
 
 const API = process.env.REACT_APP_BACKEND_URL;
@@ -32,9 +31,13 @@ const ORDER_STATUS_ICONS = {
   cancelled: '❌',
 };
 
-export default function FoodPage() {
+export default function FoodPage({ onNavigate }) {
   const { t } = useI18n();
-  const navigate = useNavigate();
+  
+  // Navigation helper (replaces useNavigate)
+  const navigate = (path) => {
+    if (onNavigate) onNavigate(path);
+  };
   
   // State
   const [view, setView] = useState('restaurants'); // restaurants, restaurant, cart, checkout, tracking, orders

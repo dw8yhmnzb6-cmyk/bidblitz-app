@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
 import { useI18n } from '../store/I18nContext';
 
 const API = process.env.REACT_APP_BACKEND_URL;
@@ -18,9 +17,15 @@ const getBatteryBg = (percent) => {
   return 'bg-red-500';
 };
 
-export default function ScooterPage() {
+export default function ScooterPage({ onNavigate }) {
   const { t } = useI18n();
-  const navigate = useNavigate();
+  
+  // Navigation helper
+  const navigate = (path) => {
+    if (onNavigate) {
+      onNavigate(path);
+    }
+  };
   
   // State
   const [view, setView] = useState('map'); // map, riding, history

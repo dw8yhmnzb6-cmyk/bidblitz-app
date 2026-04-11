@@ -44,12 +44,14 @@ CATEGORY_LABELS = {
     "other": "Sonstiges",
 }
 
-# Boost pricing
+# Boost pricing - Updated per user request
 BOOST_PRICES = {
-    "highlight": {"price": 2.99, "duration_days": 7, "label": "Hervorhebung"},
-    "top": {"price": 4.99, "duration_days": 7, "label": "Top-Platzierung"},
-    "premium": {"price": 9.99, "duration_days": 14, "label": "Premium"},
+    "24h": {"price": 2.99, "duration_days": 1, "label": "24 Stunden Boost"},
+    "7d": {"price": 9.99, "duration_days": 7, "label": "7 Tage Boost"},
 }
+
+# VIP pricing
+VIP_PRICE = 4.99
 
 # Platform commission on sales
 PLATFORM_COMMISSION = 0.05  # 5%
@@ -100,6 +102,33 @@ class ContactSellerRequest(BaseModel):
 class BoostListingRequest(BaseModel):
     listing_id: str
     boost_type: str = Field(..., description="highlight, top, or premium")
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# STATIC ROUTES (MUST BE BEFORE DYNAMIC /{listing_id})
+# ══════════════════════════════════════════════════════════════════════════════
+
+@router.get("/boost-options")
+async def get_boost_options():
+    """Get available boost options."""
+    return {
+        "options": [
+            {"id": k, **v}
+            for k, v in BOOST_PRICES.items()
+        ],
+        "vip_price": VIP_PRICE
+    }
+
+
+@router.get("/categories")
+async def get_categories():
+    """Get all categories (public)."""
+    return {
+        "categories": [
+            {"id": k, "label": v}
+            for k, v in CATEGORY_LABELS.items()
+        ]
+    }
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -178,7 +207,14 @@ async def list_listings(
     page: int = 1,
     limit: int = 20,
 ):
-    """Browse marketplace listings (public)."""
+    """
+    Browse marketplace listings (public).
+    
+    SORT ORDER:
+    1. boost.expires_at DESC (active boosts first)
+    2. is_vip DESC
+    3. created_at DESC
+    """
     query = {"status": "active"}
     
     if category and category in CATEGORIES:
@@ -197,35 +233,48 @@ async def list_listings(
         query["price"] = query.get("price", {})
         query["price"]["$lte"] = max_price
     
-    # Sort options
-    sort_field = [("created_at", -1)]
-    if sort == "price_low":
-        sort_field = [("price", 1)]
-    elif sort == "price_high":
-        sort_field = [("price", -1)]
-    
-    # Get all results for boosted sorting
+    now = datetime.now(timezone.utc).isoformat()
     skip = (page - 1) * limit
     
-    # First get boosted listings
-    boosted_query = {**query, "boost": {"$ne": None}}
-    boosted = await db.marketplace_listings.find(
-        boosted_query,
+    # Get all listings
+    all_listings = await db.marketplace_listings.find(
+        query,
         {"_id": 0, "seller_email": 0}
-    ).sort([("boost.type", -1), *sort_field]).to_list(100)
+    ).to_list(500)
     
-    # Then regular listings
-    regular_query = {**query, "boost": None}
-    regular = await db.marketplace_listings.find(
-        regular_query,
-        {"_id": 0, "seller_email": 0}
-    ).sort(sort_field).to_list(500)
+    # Custom sorting: boost first, then VIP, then by user sort preference
+    def sort_key(item):
+        # Check if boost is still active
+        boost = item.get("boost")
+        has_active_boost = False
+        if boost and boost.get("expires_at"):
+            has_active_boost = boost["expires_at"] > now
+        
+        is_vip = item.get("is_vip", False)
+        created = item.get("created_at", "")
+        price = item.get("price", 0)
+        
+        # Priority: active boost > VIP > sort preference
+        # Use tuple for multi-level sorting (higher = first)
+        boost_score = 2 if has_active_boost else 0
+        vip_score = 1 if is_vip else 0
+        
+        if sort == "price_low":
+            return (-boost_score, -vip_score, price, created)
+        elif sort == "price_high":
+            return (-boost_score, -vip_score, -price, created)
+        else:  # newest
+            return (-boost_score, -vip_score, created)
     
-    # Combine: boosted first, then regular
-    all_listings = boosted + regular
+    # Sort
+    sorted_listings = sorted(all_listings, key=sort_key, reverse=(sort == "newest"))
+    
+    # If price_low, we need to reverse the non-boosted part
+    if sort == "price_low":
+        sorted_listings = sorted(all_listings, key=sort_key)
     
     # Paginate
-    paginated = all_listings[skip:skip + limit]
+    paginated = sorted_listings[skip:skip + limit]
     
     total = await db.marketplace_listings.count_documents(query)
     
@@ -649,14 +698,76 @@ async def boost_listing(req: BoostListingRequest, request: Request):
     }
 
 
-@router.get("/boost-options")
-async def get_boost_options():
-    """Get available boost options."""
+# ══════════════════════════════════════════════════════════════════════════════
+# VIP UPGRADE
+# ══════════════════════════════════════════════════════════════════════════════
+
+@router.post("/vip")
+async def upgrade_to_vip(request: Request):
+    """
+    Pay to upgrade listing to VIP status.
+    VIP listings get a gold badge and priority in search.
+    Cost: €4.99
+    """
+    body = await request.json()
+    listing_id = body.get("listing_id")
+    
+    if not listing_id:
+        raise HTTPException(status_code=400, detail="listing_id erforderlich")
+    
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    
+    listing = await db.marketplace_listings.find_one({"listing_id": listing_id})
+    if not listing:
+        raise HTTPException(status_code=404, detail="Anzeige nicht gefunden")
+    
+    if listing["seller_id"] != user_id:
+        raise HTTPException(status_code=403, detail="Nicht autorisiert")
+    
+    if listing["status"] != "active":
+        raise HTTPException(status_code=400, detail="Nur aktive Anzeigen können VIP werden")
+    
+    if listing.get("is_vip"):
+        raise HTTPException(status_code=400, detail="Anzeige ist bereits VIP")
+    
+    # Deduct payment
+    payment_result = await debit_wallet(
+        user_id=user_id,
+        amount=VIP_PRICE,
+        tx_type=TransactionType.FEE,
+        description=f"VIP Upgrade: '{listing['title'][:30]}'",
+        reference=f"VIP-{secrets.token_hex(4).upper()}",
+        metadata={"listing_id": listing_id, "type": "vip_upgrade"}
+    )
+    
+    if not payment_result.success:
+        raise HTTPException(status_code=400, detail=payment_result.error)
+    
+    now = datetime.now(timezone.utc)
+    
+    # Apply VIP status
+    await db.marketplace_listings.update_one(
+        {"listing_id": listing_id},
+        {"$set": {
+            "is_vip": True,
+            "vip_since": now.isoformat(),
+            "updated_at": now.isoformat(),
+        }}
+    )
+    
+    # Record platform revenue
+    await db.platform_revenue.update_one(
+        {"date": now.strftime("%Y-%m-%d")},
+        {"$inc": {"total": VIP_PRICE, "by_source.marketplace_vip": VIP_PRICE}},
+        upsert=True
+    )
+    
     return {
-        "options": [
-            {"id": k, **v}
-            for k, v in BOOST_PRICES.items()
-        ]
+        "ok": True,
+        "is_vip": True,
+        "new_balance": payment_result.new_balance,
+        "message": "VIP Status aktiviert!",
     }
 
 
@@ -820,12 +931,199 @@ async def admin_delete_listing(listing_id: str, request: Request):
     return {"ok": True, "deleted": listing_id}
 
 
-@router.get("/categories")
-async def get_categories():
-    """Get all categories (public)."""
-    return {
-        "categories": [
-            {"id": k, "label": v}
-            for k, v in CATEGORY_LABELS.items()
+# ══════════════════════════════════════════════════════════════════════════════
+# MERCHANT DASHBOARD - STATS
+# ══════════════════════════════════════════════════════════════════════════════
+
+@router.get("/my")
+async def get_my_dashboard(request: Request):
+    """Get user's marketplace dashboard with listings and stats."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    
+    # Get all user listings
+    listings = await db.marketplace_listings.find(
+        {"seller_id": user_id},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(100)
+    
+    now = datetime.now(timezone.utc).isoformat()
+    
+    # Calculate stats
+    active_listings = [l for l in listings if l.get("status") == "active"]
+    boosted_listings = [l for l in active_listings if l.get("boost") and l["boost"].get("expires_at", "") > now]
+    vip_listings = [l for l in active_listings if l.get("is_vip")]
+    
+    # Get boost/VIP transactions to calculate spent
+    boost_txns = await db.transactions.find({
+        "user_id": user_id,
+        "$or": [
+            {"reference": {"$regex": "^BOOST-"}},
+            {"reference": {"$regex": "^VIP-"}}
         ]
+    }).to_list(200)
+    
+    total_spent = sum(abs(t.get("amount", 0)) for t in boost_txns)
+    
+    return {
+        "listings": listings,
+        "stats": {
+            "total_listings": len(listings),
+            "active_listings": len(active_listings),
+            "boosted_listings": len(boosted_listings),
+            "vip_listings": len(vip_listings),
+            "sold_listings": len([l for l in listings if l.get("status") == "sold"]),
+            "total_views": sum(l.get("views", 0) for l in listings),
+            "total_favorites": sum(l.get("favorites", 0) for l in listings),
+            "total_spent_on_boost": round(total_spent, 2),
+        }
+    }
+
+
+@router.get("/stats")
+async def get_my_stats(request: Request):
+    """Get user's marketplace statistics."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    
+    now = datetime.now(timezone.utc).isoformat()
+    
+    # Count listings
+    total = await db.marketplace_listings.count_documents({"seller_id": user_id})
+    active = await db.marketplace_listings.count_documents({"seller_id": user_id, "status": "active"})
+    sold = await db.marketplace_listings.count_documents({"seller_id": user_id, "status": "sold"})
+    
+    # Get active boosted listings
+    active_listings = await db.marketplace_listings.find(
+        {"seller_id": user_id, "status": "active"},
+        {"boost": 1, "is_vip": 1, "views": 1, "favorites": 1}
+    ).to_list(100)
+    
+    boosted = sum(1 for l in active_listings if l.get("boost") and l["boost"].get("expires_at", "") > now)
+    vip = sum(1 for l in active_listings if l.get("is_vip"))
+    total_views = sum(l.get("views", 0) for l in active_listings)
+    
+    # Get total spent on promotions
+    boost_txns = await db.transactions.find({
+        "user_id": user_id,
+        "$or": [
+            {"reference": {"$regex": "^BOOST-"}},
+            {"reference": {"$regex": "^VIP-"}}
+        ]
+    }).to_list(200)
+    
+    total_spent = sum(abs(t.get("amount", 0)) for t in boost_txns)
+    
+    # Get sales revenue
+    sales = await db.marketplace_orders.find(
+        {"seller_id": user_id},
+        {"seller_amount": 1}
+    ).to_list(500)
+    total_revenue = sum(s.get("seller_amount", 0) for s in sales)
+    
+    return {
+        "total_listings": total,
+        "active_listings": active,
+        "boosted_listings": boosted,
+        "vip_listings": vip,
+        "sold_listings": sold,
+        "total_views": total_views,
+        "total_spent_on_boost": round(total_spent, 2),
+        "total_sales_revenue": round(total_revenue, 2),
+    }
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# ADMIN REVENUE TRACKING
+# ══════════════════════════════════════════════════════════════════════════════
+
+@router.get("/admin/revenue")
+async def admin_marketplace_revenue(request: Request, days: int = 30):
+    """Admin: Get marketplace revenue statistics."""
+    user = await get_current_user(request)
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    
+    now = datetime.now(timezone.utc)
+    today = now.strftime("%Y-%m-%d")
+    start_date = (now - timedelta(days=days)).isoformat()
+    
+    # Get all boost transactions
+    boost_txns = await db.transactions.find({
+        "reference": {"$regex": "^BOOST-"},
+        "created_at": {"$gte": start_date}
+    }, {"_id": 0}).sort("created_at", -1).to_list(500)
+    
+    # Get all VIP transactions
+    vip_txns = await db.transactions.find({
+        "reference": {"$regex": "^VIP-"},
+        "created_at": {"$gte": start_date}
+    }, {"_id": 0}).sort("created_at", -1).to_list(500)
+    
+    # Get marketplace sales commissions
+    commission_txns = await db.marketplace_orders.find({
+        "created_at": {"$gte": start_date}
+    }, {"_id": 0, "commission": 1, "created_at": 1}).to_list(500)
+    
+    total_boost_revenue = sum(abs(t.get("amount", 0)) for t in boost_txns)
+    total_vip_revenue = sum(abs(t.get("amount", 0)) for t in vip_txns)
+    total_commission = sum(o.get("commission", 0) for o in commission_txns)
+    
+    # Today's revenue from platform_revenue collection
+    today_revenue_doc = await db.platform_revenue.find_one({"date": today})
+    today_revenue = today_revenue_doc.get("total", 0) if today_revenue_doc else 0
+    today_boost = today_revenue_doc.get("by_source", {}).get("marketplace_boosts", 0) if today_revenue_doc else 0
+    today_vip = today_revenue_doc.get("by_source", {}).get("marketplace_vip", 0) if today_revenue_doc else 0
+    
+    # Daily breakdown
+    daily_revenue = {}
+    for i in range(min(days, 14)):
+        date = (now - timedelta(days=i)).strftime("%Y-%m-%d")
+        rev_doc = await db.platform_revenue.find_one({"date": date})
+        if rev_doc:
+            daily_revenue[date] = {
+                "total": rev_doc.get("total", 0),
+                "boost": rev_doc.get("by_source", {}).get("marketplace_boosts", 0),
+                "vip": rev_doc.get("by_source", {}).get("marketplace_vip", 0),
+                "commission": rev_doc.get("by_source", {}).get("marketplace_commission", 0),
+            }
+    
+    # All transactions combined
+    all_txns = []
+    for t in boost_txns:
+        all_txns.append({
+            "type": "boost",
+            "amount": abs(t.get("amount", 0)),
+            "description": t.get("description", ""),
+            "created_at": t.get("created_at", ""),
+        })
+    for t in vip_txns:
+        all_txns.append({
+            "type": "vip",
+            "amount": abs(t.get("amount", 0)),
+            "description": t.get("description", ""),
+            "created_at": t.get("created_at", ""),
+        })
+    
+    # Sort by date
+    all_txns.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+    
+    return {
+        "period_days": days,
+        "total_boost_revenue": round(total_boost_revenue, 2),
+        "total_vip_revenue": round(total_vip_revenue, 2),
+        "total_commission_revenue": round(total_commission, 2),
+        "total_marketplace_revenue": round(total_boost_revenue + total_vip_revenue + total_commission, 2),
+        "today": {
+            "date": today,
+            "total": round(today_revenue, 2),
+            "boost": round(today_boost, 2),
+            "vip": round(today_vip, 2),
+        },
+        "daily_breakdown": daily_revenue,
+        "transactions": all_txns[:50],  # Last 50 transactions
+        "transaction_counts": {
+            "boosts": len(boost_txns),
+            "vip_upgrades": len(vip_txns),
+        }
     }

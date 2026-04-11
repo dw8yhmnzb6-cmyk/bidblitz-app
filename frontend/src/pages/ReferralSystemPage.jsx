@@ -106,9 +106,14 @@ const TEXTS = {
   },
 };
 
-export default function ReferralSystemPage() {
+export default function ReferralSystemPage({ onNavigate }) {
   const { lang } = useI18n();
-  const navigate = useNavigate();
+  
+  // Navigation helper (replaces useNavigate)
+  const navigate = (path) => {
+    if (onNavigate) onNavigate(path);
+  };
+  
   const t = TEXTS[lang] || TEXTS.de;
   
   const [loading, setLoading] = useState(true);

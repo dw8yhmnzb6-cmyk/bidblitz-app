@@ -33,12 +33,28 @@ export const BottomNav = ({ currentPath, onNavigate, onShowBarcode }) => {
   const { t } = useI18n();
   const user = useUser();
   
+  // Determine user type
+  const isMerchantOrAdmin = user.role === "admin" || user.role === "merchant";
+  
   // Select navigation based on user role
   const navItems = user.role === "admin" 
     ? adminNavItems 
     : user.role === "merchant" 
       ? merchantNavItems 
       : customerNavItems;
+
+  // Handle center button click - role-based behavior
+  const handleCenterButtonClick = () => {
+    if (isMerchantOrAdmin) {
+      // Merchant/Admin: Open scanner to scan customer barcodes
+      onNavigate("/scan");
+    } else {
+      // Customer: Show their own barcode for merchants to scan
+      if (onShowBarcode) {
+        onShowBarcode();
+      }
+    }
+  };
 
   return (
   <motion.nav
@@ -58,16 +74,9 @@ export const BottomNav = ({ currentPath, onNavigate, onShowBarcode }) => {
             key={item.id}
             data-testid={`nav-${item.id}-btn`}
             className="nav-center"
-            onClick={() => {
-              // For customers, show their payment barcode modal
-              if (item.path === "/my-barcode" && onShowBarcode) {
-                onShowBarcode();
-              } else {
-                onNavigate(item.path);
-              }
-            }}
+            onClick={handleCenterButtonClick}
             whileTap={{ scale: 0.9 }}
-            aria-label={item.path === "/my-barcode" ? "Pay" : "Scan"}
+            aria-label={isMerchantOrAdmin ? "Scan" : "Mein QR"}
           >
             <Icon size={21} strokeWidth={2.5} />
             <motion.div

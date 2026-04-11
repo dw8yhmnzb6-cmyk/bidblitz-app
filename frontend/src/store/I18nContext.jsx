@@ -1225,7 +1225,7 @@ const translations = {
     // Terminal
     "terminal.title": "Zahlungsterminal", "terminal.subtitle": "Zahlungen annehmen",
     "terminal.menu_desc": "Zahlungen annehmen",
-    "terminal.enter_amount": "Betrag eingeben", "terminal.scan_code": "Kundencode scannen",
+    "terminal.enter_amount": "Betrag eingeben", "terminal.no_txns": "Noch keine Transaktionen", "terminal.scan_code": "Kundencode scannen",
     "terminal.scan_barcode": "Kunden-Barcode scannen", "terminal.lookup": "Suchen",
     "terminal.amount": "Betrag", "terminal.wallet_payment": "Wallet Zahlung",
     "terminal.fee": "Gebühr", "terminal.net": "Netto",

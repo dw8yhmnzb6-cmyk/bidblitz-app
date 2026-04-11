@@ -6,14 +6,18 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ChevronLeft, Send, MessageCircle, Search, MoreVertical, Trash2 } from 'lucide-react';
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
-export default function ChatPage() {
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+export default function ChatPage({ onNavigate }) {
+  // Navigation helper (replaces useNavigate)
+  const navigate = (path) => {
+    if (onNavigate) onNavigate(path);
+  };
+  
+  // Handle search params manually
+  const searchParams = new URLSearchParams(window.location.search);
   const initialChatId = searchParams.get('chat');
   const initialUserId = searchParams.get('user');
   

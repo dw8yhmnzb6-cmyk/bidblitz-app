@@ -38,6 +38,8 @@ import MarketplacePage from "./pages/MarketplacePage";
 import ChatPage from "./pages/ChatPage";
 import PartnersPage from "./pages/PartnersPage";
 import ReferralSystemPage from "./pages/ReferralSystemPage";
+import NfcPayPage from "./pages/NfcPayPage";
+import VipPage from "./pages/VipPage";
 
 import BottomNav from "./components/BottomNav";
 import BarcodeModal from "./components/BarcodeModal";
@@ -213,23 +215,23 @@ function AppContent() {
           ? <AuctionAdminPage onBack={() => handleNavigate("/admin")} />
           : <HomePage {...homeProps} />;
       case "/taxi":
-        return isGuest ? <HomePage {...homeProps} /> : <TaxiPage />;
+        return isGuest ? <HomePage {...homeProps} /> : <TaxiPage onNavigate={handleNavigate} />;
       case "/scooter":
-        return isGuest ? <HomePage {...homeProps} /> : <ScooterPage />;
+        return isGuest ? <HomePage {...homeProps} /> : <ScooterPage onNavigate={handleNavigate} />;
       case "/food":
-        return isGuest ? <HomePage {...homeProps} /> : <FoodPage />;
+        return isGuest ? <HomePage {...homeProps} /> : <FoodPage onNavigate={handleNavigate} />;
       case "/driver-dashboard":
-        return isGuest ? <HomePage {...homeProps} /> : <DriverDashboardPage />;
+        return isGuest ? <HomePage {...homeProps} /> : <DriverDashboardPage onNavigate={handleNavigate} />;
       case "/child-mode":
         return <ChildModePage />;
       case "/marketplace":
-        return <MarketplacePage />;
+        return <MarketplacePage onNavigate={handleNavigate} />;
       case "/chat":
-        return isGuest ? <HomePage {...homeProps} /> : <ChatPage />;
+        return isGuest ? <HomePage {...homeProps} /> : <ChatPage onNavigate={handleNavigate} />;
       case "/partners":
         return <PartnersPage />;
       case "/referral":
-        return isGuest ? <HomePage {...homeProps} /> : <ReferralSystemPage />;
+        return isGuest ? <HomePage {...homeProps} /> : <ReferralSystemPage onNavigate={handleNavigate} />;
       default:
         return <HomePage {...homeProps} />;
     }

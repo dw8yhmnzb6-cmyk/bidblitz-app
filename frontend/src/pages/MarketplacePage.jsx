@@ -5,7 +5,6 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
 import { useI18n } from '../store/I18nContext';
 import { Search, Plus, Heart, MapPin, ChevronLeft, X, Send, Sparkles, Filter, Grid, List } from 'lucide-react';
 
@@ -26,9 +25,13 @@ const CATEGORY_ICONS = {
   other: '📦',
 };
 
-export default function MarketplacePage() {
+export default function MarketplacePage({ onNavigate }) {
   const { t } = useI18n();
-  const navigate = useNavigate();
+  
+  // Navigation helper (replaces useNavigate)
+  const navigate = (path) => {
+    if (onNavigate) onNavigate(path);
+  };
   
   // State
   const [view, setView] = useState('browse'); // browse, detail, create, messages, my-listings
@@ -361,44 +364,68 @@ export default function MarketplacePage() {
                 </div>
               ) : viewMode === 'grid' ? (
                 <div className="grid grid-cols-2 gap-3">
-                  {listings.map((listing) => (
-                    <motion.div
-                      key={listing.listing_id}
-                      onClick={() => viewListing(listing)}
-                      className="bg-[#111] rounded-xl overflow-hidden border border-white/5 cursor-pointer hover:border-cyan-500/30 transition-all"
-                      whileTap={{ scale: 0.98 }}
-                    >
-                      <div className="aspect-square bg-[#1a1a1a] relative">
-                        {listing.images?.[0] ? (
-                          <img src={listing.images[0]} alt={listing.title} className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-4xl">
-                            {CATEGORY_ICONS[listing.category] || '📦'}
-                          </div>
-                        )}
-                        {listing.boost && (
-                          <div className="absolute top-2 left-2 px-2 py-0.5 bg-yellow-500/90 rounded text-xs font-bold text-black flex items-center gap-1">
-                            <Sparkles className="w-3 h-3" /> {listing.boost.label}
-                          </div>
-                        )}
-                        <button
-                          onClick={(e) => toggleFavorite(listing.listing_id, e)}
-                          className="absolute top-2 right-2 p-1.5 bg-black/50 rounded-full"
-                        >
-                          <Heart className={`w-4 h-4 ${favorites.includes(listing.listing_id) ? 'fill-red-500 text-red-500' : 'text-white'}`} />
-                        </button>
-                      </div>
-                      <div className="p-3">
-                        <p className="font-semibold text-sm truncate">{listing.title}</p>
-                        <p className="text-cyan-400 font-bold">€{listing.price.toFixed(2)}</p>
-                        {listing.location && (
-                          <p className="text-xs text-gray-500 flex items-center gap-1 mt-1">
-                            <MapPin className="w-3 h-3" /> {listing.location}
-                          </p>
-                        )}
-                      </div>
-                    </motion.div>
-                  ))}
+                  {listings.map((listing) => {
+                    const hasBoost = listing.boost && listing.boost.expires_at > new Date().toISOString();
+                    const isVip = listing.is_vip;
+                    
+                    return (
+                      <motion.div
+                        key={listing.listing_id}
+                        onClick={() => viewListing(listing)}
+                        className={`bg-[#111] rounded-xl overflow-hidden cursor-pointer transition-all ${
+                          hasBoost 
+                            ? 'border-2 border-yellow-500/50 shadow-[0_0_20px_rgba(255,200,0,0.15)]' 
+                            : isVip 
+                              ? 'border-2 border-[#FFD700]/40 shadow-[0_0_15px_rgba(255,215,0,0.1)]'
+                              : 'border border-white/5 hover:border-cyan-500/30'
+                        }`}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        <div className="aspect-square bg-[#1a1a1a] relative">
+                          {listing.images?.[0] ? (
+                            <img src={listing.images[0]} alt={listing.title} className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-4xl">
+                              {CATEGORY_ICONS[listing.category] || '📦'}
+                            </div>
+                          )}
+                          {/* Boost Badge */}
+                          {hasBoost && (
+                            <div className="absolute top-2 left-2 px-2 py-0.5 bg-gradient-to-r from-yellow-500 to-orange-500 rounded text-xs font-bold text-black flex items-center gap-1">
+                              <Sparkles className="w-3 h-3" /> BOOST
+                            </div>
+                          )}
+                          {/* VIP Badge */}
+                          {isVip && !hasBoost && (
+                            <div className="absolute top-2 left-2 px-2 py-0.5 bg-gradient-to-r from-[#FFD700] to-[#FFA500] rounded text-xs font-bold text-black flex items-center gap-1">
+                              ⭐ VIP
+                            </div>
+                          )}
+                          {/* Both badges */}
+                          {hasBoost && isVip && (
+                            <div className="absolute top-8 left-2 px-2 py-0.5 bg-gradient-to-r from-[#FFD700] to-[#FFA500] rounded text-xs font-bold text-black flex items-center gap-1">
+                              ⭐ VIP
+                            </div>
+                          )}
+                          <button
+                            onClick={(e) => toggleFavorite(listing.listing_id, e)}
+                            className="absolute top-2 right-2 p-1.5 bg-black/50 rounded-full"
+                          >
+                            <Heart className={`w-4 h-4 ${favorites.includes(listing.listing_id) ? 'fill-red-500 text-red-500' : 'text-white'}`} />
+                          </button>
+                        </div>
+                        <div className="p-3">
+                          <p className="font-semibold text-sm truncate">{listing.title}</p>
+                          <p className="text-cyan-400 font-bold">€{listing.price.toFixed(2)}</p>
+                          {listing.location && (
+                            <p className="text-xs text-gray-500 flex items-center gap-1 mt-1">
+                              <MapPin className="w-3 h-3" /> {listing.location}
+                            </p>
+                          )}
+                        </div>
+                      </motion.div>
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="space-y-3">

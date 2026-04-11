@@ -201,33 +201,9 @@ class OrderAction(BaseModel):
 
 
 # ══════════════════════════════════════
-# INITIALIZE RESTAURANTS
+# NO AUTO-SEEDING - REAL DATA ONLY
+# Restaurants must be registered via /api/food/restaurant/register
 # ══════════════════════════════════════
-
-async def ensure_restaurants():
-    """Ensure restaurants exist in database."""
-    count = await db.food_restaurants.count_documents({})
-    if count < 5:
-        for r in RESTAURANTS:
-            existing = await db.food_restaurants.find_one({"name": r["name"]})
-            if not existing:
-                doc = {
-                    "restaurant_id": generate_restaurant_id(r["name"]),
-                    "name": r["name"],
-                    "category": r["category"],
-                    "rating": r["rating"],
-                    "review_count": random.randint(50, 500),
-                    "delivery_time": r["delivery_time"],
-                    "price_level": r["price_level"],
-                    "image": r["image"],
-                    "menu": r["menu"],
-                    "is_open": True,
-                    "min_order": MIN_ORDER_AMOUNT,
-                    "delivery_fee": DELIVERY_FEE_BASE,
-                    "location": {"lat": 52.52 + random.uniform(-0.05, 0.05), "lng": 13.405 + random.uniform(-0.05, 0.05)},
-                    "created_at": datetime.now(timezone.utc).isoformat(),
-                }
-                await db.food_restaurants.insert_one(doc)
 
 
 # ══════════════════════════════════════

@@ -244,6 +244,10 @@ async def process_barcode_payment(req: BarcodePaymentRequest, request: Request):
     merchant_name = mp.get("business_name", "") if mp else ""
     merchant_owner_id = mp.get("user_id", "") if mp else ""
 
+    # Generate transaction ID early
+    txn_id = secrets.token_hex(8)
+    now_iso = now.isoformat()
+
     if mp:
         await db.merchant_profiles.update_one(
             {"_id": mp["_id"]}, {"$inc": {"total_revenue": req.amount, "total_fees": fee}},
@@ -270,9 +274,6 @@ async def process_barcode_payment(req: BarcodePaymentRequest, request: Request):
             })
 
     await db.payment_barcodes.update_one({"_id": bc["_id"]}, {"$set": {"active": False}})
-
-    txn_id = secrets.token_hex(8)
-    now_iso = now.isoformat()
 
     await db.transactions.insert_one({
         "id": txn_id, "user_id": customer_uid, "type": "payment",

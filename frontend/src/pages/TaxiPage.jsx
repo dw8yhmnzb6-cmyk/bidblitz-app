@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
 import { useI18n } from '../store/I18nContext';
 
 const API = process.env.REACT_APP_BACKEND_URL;
@@ -31,9 +30,13 @@ const VEHICLE_ICONS = {
   van: '🚐',
 };
 
-export default function TaxiPage() {
+export default function TaxiPage({ onNavigate }) {
   const { t } = useI18n();
-  const navigate = useNavigate();
+  
+  // Navigation helper (replaces useNavigate)
+  const navigate = (path) => {
+    if (onNavigate) onNavigate(path);
+  };
   
   // State
   const [view, setView] = useState('book'); // book, tracking, history

@@ -5,7 +5,6 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, MapPin, Navigation, Car, Clock, Euro, Star, 
   Phone, MessageSquare, X, Check, Loader2, History, AlertCircle
@@ -31,10 +30,14 @@ const VEHICLE_TYPES = [
   { id: 'xl', label: 'XL', icon: '🚐', multiplier: 1.5 },
 ];
 
-export default function TaxiPage() {
+export default function TaxiPage({ onNavigate }) {
   const { t } = useI18n();
   const user = useUser();
-  const navigate = useNavigate();
+  
+  // Navigation helper (replaces useNavigate)
+  const navigate = (path) => {
+    if (onNavigate) onNavigate(path);
+  };
   
   // State
   const [view, setView] = useState('book'); // book, tracking, history

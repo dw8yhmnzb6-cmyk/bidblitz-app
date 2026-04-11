@@ -51,6 +51,22 @@ class CheckoutStatusRequest(BaseModel):
     session_id: str
 
 
+# ── Top-Up Plans ──
+TOPUP_PLANS = [
+    {"id": "topup_10", "amount": 10.00, "label": "€10", "popular": False},
+    {"id": "topup_25", "amount": 25.00, "label": "€25", "popular": False},
+    {"id": "topup_50", "amount": 50.00, "label": "€50", "popular": True},
+    {"id": "topup_100", "amount": 100.00, "label": "€100", "popular": False},
+    {"id": "topup_200", "amount": 200.00, "label": "€200", "popular": False},
+]
+
+
+@router.get("/plans")
+async def get_topup_plans():
+    """Get available top-up plans."""
+    return {"plans": TOPUP_PLANS}
+
+
 # ── Create Checkout Session ──
 @router.post("/checkout")
 @limiter.limit(RATE_STRIPE)

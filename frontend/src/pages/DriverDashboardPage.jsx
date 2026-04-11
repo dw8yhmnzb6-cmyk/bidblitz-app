@@ -5,7 +5,6 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Power, MapPin, Navigation, Phone, Euro, Star,
   CheckCircle, XCircle, Clock, Car, Loader2, AlertCircle
@@ -14,8 +13,11 @@ import { DriverMap } from '../components/RealMap';
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
-export default function DriverDashboardPage() {
-  const navigate = useNavigate();
+export default function DriverDashboardPage({ onNavigate }) {
+  // Navigation helper (replaces useNavigate)
+  const navigate = (path) => {
+    if (onNavigate) onNavigate(path);
+  };
   
   // State
   const [driver, setDriver] = useState(null);
