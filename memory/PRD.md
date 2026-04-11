@@ -1,71 +1,48 @@
 # BidBlitz V2 - Product Requirements Document
 
-## Original Problem Statement
-Build a modern, professional fintech Super App called BidBlitz V2. 100% REAL system with NO fake/demo/seed data.
-
 ## Core Stack
-- **Frontend**: React, TailwindCSS, Framer Motion, Shadcn/UI
-- **Backend**: FastAPI, Motor (async MongoDB)
-- **Database**: MongoDB
-- **Payments**: Stripe (via proxy, `sk_test_emergent`)
-- **Auth**: JWT (cookie-based)
-
----
+- Frontend: React, TailwindCSS, Framer Motion
+- Backend: FastAPI, Motor (MongoDB)
+- Payments: Stripe (proxy), JWT Auth (cookies)
 
 ## Completed Features
 
-### Core Platform (DONE)
-- Unified Wallet (EUR), Kids GPS, Merchant POS, Auctions, Mobility Map, Loyalty
+### Core Platform - Wallet, Kids GPS, POS, Auctions, Mobility, Loyalty
+### Gaming Hub - 6 games, Coin-based economy (Cashback→Coins→Play→Win→EUR)
+### Scooter Live - Map + Admin management
+### Car Rental - Full module (13+ pages, vendor/customer/admin)
+### Credit Score - Term selection + repayment schedule
+### Support Chat - Threaded ticket system (customer↔admin)
 
-### Gaming Hub (DONE)
-- 6 games with real EUR wallet integration
+### Phase 7 - Gaming Coin Economy (DONE - 2026-04-11)
+- Replaced Points system with **Coins**
+- Cashback from transactions → Coins
+- Buy Coins with Wallet (€1 = 1000 Coins)
+- Bet Coins to play (min 5, max 500 per game)
+- Win Coins from games
+- Redeem Coins → EUR (min 500 Coins)
+- Gewinntabelle: "P" → "Coins"
+- Coin purchase modal + Auszahlen button
 
-### Scooter Live (DONE)
-- Live scooter map + Admin management
+### Phase 8 - Car Rental Gaps (DONE - 2026-04-11)
+- **Contract PDF**: `/contracts/{id}/pdf` endpoint + generate_contract_pdf
+- **Handover/Return Photos**: `/vendor/bookings/{id}/upload-photo` with phase param
+- **Vendor Staff Page**: VendorStaffPage with add/edit/remove + role selection
+- **Admin Disputes**: Full dispute system (create/message/resolve) + AdminDisputesPage
+- **Vendor Reports Page**: VendorReportsPage with period selection, charts, top cars
+- **Admin Commission UI**: Per-vendor commission in AdminCarRentalPage
 
-### Car Rental Module (DONE)
-- Full backend + 13 frontend pages
-- Image upload, Customer reviews (1-5 stars), PDF export (invoices + receipts)
-
-### Credit Score Enhancement (DONE)
-- Extended loan application with term selection (2, 6, 12, 18 months)
-- Detailed cost breakdown + repayment schedule
-
-### Chat/Support System (DONE - 2026-04-11)
-- **Threaded Support Chat**: Ticket-based messaging between Customer ↔ Admin
-- **Customer View** (`/support-chat`): Create tickets (category, subject, message), chat thread, search
-- **Admin View** (`/admin/support`): See all tickets with user info, reply to any ticket, close tickets
-- **Real-time Polling**: Auto-refreshes messages every 5 seconds while in chat
-- **Categories**: Allgemein, Zahlung, Autovermietung, Konto, Technisch
-- **Ticket Status**: Open / Resolved (auto-reopens if customer sends new message)
-- **Backend**: Extended `/api/support/` with threaded messages in `support_messages` collection
-- **Navigation**: Support Chat in MorePage (Support section) + Admin Support in Admin section
-
----
-
-## Architecture
-
-### Key Pages
-```
-/app/frontend/src/pages/SupportChatPage.jsx (NEW - ticket list + chat + new ticket)
-/app/frontend/src/modules/car-rental/ (13 pages)
-/app/frontend/src/pages/CreditScorePage.jsx (enhanced)
-```
-
-### Key API Endpoints (Support)
-- POST /api/support/tickets - Create ticket
-- GET /api/support/tickets - User's tickets
-- GET /api/support/tickets/{id} - Ticket detail + messages
-- POST /api/support/tickets/{id}/messages - Send message
-- POST /api/support/tickets/{id}/close - Close ticket
-- GET /api/support/admin/tickets - Admin: all tickets
-
----
-
-## Upcoming Tasks (P2)
-- Push Notifications
-- Apple Pay / Google Pay
-- Car rental insurance management
+### New Routes Added
+- `/car-rental/vendor/staff` - Staff management
+- `/car-rental/vendor/reports` - Analytics page
+- `/car-rental/admin/disputes` - Dispute management
+- `/car-rental/contracts/{id}/pdf` - Contract PDF
+- `/car-rental/vendor/bookings/{id}/upload-photo` - Photo upload
+- `/car-rental/disputes` - Create/view disputes
+- `/gaming/buy-coins` - Buy coins with wallet
+- `/gaming/earn-cashback` - Cashback → coins
+- `/gaming/coin-history` - Coin transaction log
+- `/gaming/redeem` - Coins → EUR
 
 ## Test Credentials
 - Admin: admin@bidblitz.com / BidBlitz2026!

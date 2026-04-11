@@ -1490,3 +1490,279 @@ async def download_booking_receipt(booking_id: str, request: Request):
             "Content-Disposition": f'attachment; filename="Beleg_{booking_id}.pdf"'
         }
     )
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# CONTRACT PDF
+# ══════════════════════════════════════════════════════════════════════════════
+
+@router.get("/contracts/{contract_id}/pdf")
+async def download_contract_pdf(contract_id: str, request: Request):
+    """Download contract as PDF."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+
+    contract = await ContractRepository.get_by_id(contract_id)
+    if not contract:
+        raise HTTPException(status_code=404, detail="Vertrag nicht gefunden")
+
+    booking = await BookingRepository.get_by_id(contract.get("booking_id", ""))
+    is_customer = booking and booking.get("customer_id") == user_id
+    is_vendor = False
+    if not is_customer:
+        vendor = await VendorRepository.get_by_user_id(user_id)
+        if vendor and vendor["vendor_id"] == contract.get("vendor_id"):
+            is_vendor = True
+    is_admin = user.get("role") in ["admin", "super_admin"]
+
+    if not (is_customer or is_vendor or is_admin):
+        raise HTTPException(status_code=403, detail="Keine Berechtigung")
+
+    vendor_doc = await VendorRepository.get_by_id(contract.get("vendor_id", ""))
+
+    from .pdf_generator import generate_contract_pdf
+    pdf_bytes = generate_contract_pdf(contract, booking, vendor_doc)
+
+    from fastapi.responses import Response
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="Vertrag_{contract_id}.pdf"'}
+    )
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# HANDOVER / RETURN PHOTO UPLOAD
+# ══════════════════════════════════════════════════════════════════════════════
+
+@router.post("/vendor/bookings/{booking_id}/upload-photo")
+async def upload_booking_photo(booking_id: str, request: Request, file: UploadFile = File(...), phase: str = Query("handover")):
+    """Upload photo for handover or return."""
+    user, vendor_id, role = await require_vendor_access(request)
+
+    booking = await BookingRepository.get_by_id(booking_id)
+    if not booking or booking["vendor_id"] != vendor_id:
+        raise HTTPException(status_code=404, detail="Buchung nicht gefunden")
+
+    allowed = {"image/jpeg", "image/png", "image/webp"}
+    if file.content_type not in allowed:
+        raise HTTPException(status_code=400, detail="Nur JPG, PNG, WebP")
+
+    from pathlib import Path
+    import uuid
+    ext = file.filename.rsplit(".", 1)[-1] if "." in file.filename else "jpg"
+    filename = f"{booking_id}_{phase}_{uuid.uuid4().hex[:8]}.{ext}"
+    upload_dir = Path(__file__).parent.parent.parent / "uploads" / "car_rental"
+    upload_dir.mkdir(parents=True, exist_ok=True)
+
+    content = await file.read()
+    with open(upload_dir / filename, "wb") as f:
+        f.write(content)
+
+    image_url = f"/api/uploads/car_rental/{filename}"
+
+    # Store in booking record
+    field = "handover.photos" if phase == "handover" else "return_record.photos"
+    await db.car_rental_bookings.update_one(
+        {"booking_id": booking_id},
+        {"$push": {field: image_url}}
+    )
+
+    return {"ok": True, "image_url": image_url, "phase": phase}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# DISPUTES
+# ══════════════════════════════════════════════════════════════════════════════
+
+@router.post("/disputes")
+async def create_dispute(request: Request):
+    """Create a dispute for a booking."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    body = await request.json()
+
+    booking_id = body.get("booking_id")
+    reason = body.get("reason", "")
+    description = body.get("description", "")
+
+    if not booking_id or not reason:
+        raise HTTPException(status_code=400, detail="booking_id und reason erforderlich")
+
+    booking = await BookingRepository.get_by_id(booking_id)
+    if not booking:
+        raise HTTPException(status_code=404, detail="Buchung nicht gefunden")
+
+    is_customer = booking["customer_id"] == user_id
+    is_vendor = False
+    vendor = await VendorRepository.get_by_user_id(user_id)
+    if vendor and vendor["vendor_id"] == booking["vendor_id"]:
+        is_vendor = True
+
+    if not (is_customer or is_vendor):
+        raise HTTPException(status_code=403, detail="Keine Berechtigung")
+
+    dispute_id = f"DSP-{secrets.token_hex(6).upper()}"
+    now = datetime.now(timezone.utc).isoformat()
+
+    dispute = {
+        "dispute_id": dispute_id,
+        "booking_id": booking_id,
+        "car_id": booking.get("car_id"),
+        "vendor_id": booking["vendor_id"],
+        "customer_id": booking["customer_id"],
+        "filed_by": user_id,
+        "filed_by_role": "vendor" if is_vendor else "customer",
+        "filed_by_name": user.get("name", ""),
+        "reason": reason,
+        "description": description,
+        "status": "open",
+        "resolution": None,
+        "admin_notes": None,
+        "messages": [{
+            "sender_id": user_id,
+            "sender_name": user.get("name", ""),
+            "sender_role": "vendor" if is_vendor else "customer",
+            "message": description,
+            "created_at": now,
+        }],
+        "created_at": now,
+        "updated_at": now,
+    }
+
+    await db.car_rental_disputes.insert_one(dispute)
+    dispute.pop("_id", None)
+    return {"ok": True, "dispute": sanitize_doc(dispute)}
+
+
+@router.get("/my-disputes")
+async def get_my_disputes(request: Request, limit: int = Query(50, ge=1, le=200)):
+    """Get disputes filed by or involving this user."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+
+    disputes = await db.car_rental_disputes.find(
+        {"$or": [{"customer_id": user_id}, {"filed_by": user_id}]},
+        {"_id": 0}
+    ).sort("created_at", -1).limit(limit).to_list(limit)
+
+    return {"disputes": sanitize_doc(disputes)}
+
+
+@router.get("/vendor/disputes")
+async def get_vendor_disputes(request: Request, limit: int = Query(50, ge=1, le=200)):
+    """Get disputes involving this vendor."""
+    user, vendor_id, role = await require_vendor_access(request)
+
+    disputes = await db.car_rental_disputes.find(
+        {"vendor_id": vendor_id}, {"_id": 0}
+    ).sort("created_at", -1).limit(limit).to_list(limit)
+
+    return {"disputes": sanitize_doc(disputes)}
+
+
+@router.post("/disputes/{dispute_id}/message")
+async def add_dispute_message(dispute_id: str, request: Request):
+    """Add a message to a dispute."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    body = await request.json()
+    message = body.get("message", "")
+    if not message:
+        raise HTTPException(status_code=400, detail="message erforderlich")
+
+    dispute = await db.car_rental_disputes.find_one({"dispute_id": dispute_id})
+    if not dispute:
+        raise HTTPException(status_code=404, detail="Streitfall nicht gefunden")
+
+    is_admin = user.get("role") in ["admin", "super_admin"]
+    is_party = user_id in [dispute["customer_id"], dispute["filed_by"]]
+    if not is_party:
+        v = await VendorRepository.get_by_user_id(user_id)
+        if v and v["vendor_id"] == dispute["vendor_id"]:
+            is_party = True
+
+    if not (is_party or is_admin):
+        raise HTTPException(status_code=403, detail="Kein Zugriff")
+
+    role_label = "admin" if is_admin else ("vendor" if (await VendorRepository.get_by_user_id(user_id)) else "customer")
+
+    msg = {
+        "sender_id": user_id,
+        "sender_name": user.get("name", ""),
+        "sender_role": role_label,
+        "message": message,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+    await db.car_rental_disputes.update_one(
+        {"dispute_id": dispute_id},
+        {"$push": {"messages": msg}, "$set": {"updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+
+    return {"ok": True, "message": sanitize_doc(msg)}
+
+
+@router.get("/admin/disputes")
+async def admin_list_disputes(
+    request: Request, status: str = Query(None), limit: int = Query(50, ge=1, le=200)
+):
+    """Admin: List all disputes."""
+    await require_admin(request)
+    query = {}
+    if status:
+        query["status"] = status
+
+    disputes = await db.car_rental_disputes.find(query, {"_id": 0}).sort("created_at", -1).limit(limit).to_list(limit)
+    total = await db.car_rental_disputes.count_documents(query)
+    return {"disputes": sanitize_doc(disputes), "total": total}
+
+
+@router.get("/admin/disputes/{dispute_id}")
+async def admin_get_dispute(dispute_id: str, request: Request):
+    """Admin: Get dispute detail."""
+    await require_admin(request)
+    dispute = await db.car_rental_disputes.find_one({"dispute_id": dispute_id}, {"_id": 0})
+    if not dispute:
+        raise HTTPException(status_code=404, detail="Not found")
+    return {"dispute": sanitize_doc(dispute)}
+
+
+@router.post("/admin/disputes/{dispute_id}/resolve")
+async def admin_resolve_dispute(dispute_id: str, request: Request):
+    """Admin: Resolve a dispute."""
+    user = await require_admin(request)
+    body = await request.json()
+    resolution = body.get("resolution", "")
+    admin_notes = body.get("admin_notes", "")
+    status = body.get("status", "resolved")
+
+    if status not in ["resolved", "rejected", "escalated"]:
+        raise HTTPException(status_code=400, detail="Invalid status")
+
+    now = datetime.now(timezone.utc).isoformat()
+    update = {
+        "status": status,
+        "resolution": resolution,
+        "admin_notes": admin_notes,
+        "resolved_by": str(user["_id"]),
+        "resolved_at": now,
+        "updated_at": now,
+    }
+
+    if resolution:
+        msg = {
+            "sender_id": str(user["_id"]),
+            "sender_name": user.get("name", "Admin"),
+            "sender_role": "admin",
+            "message": f"[{status.upper()}] {resolution}",
+            "created_at": now,
+        }
+        await db.car_rental_disputes.update_one(
+            {"dispute_id": dispute_id},
+            {"$set": update, "$push": {"messages": msg}}
+        )
+    else:
+        await db.car_rental_disputes.update_one({"dispute_id": dispute_id}, {"$set": update})
+
+    return {"ok": True}

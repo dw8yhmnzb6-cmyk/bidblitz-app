@@ -275,3 +275,114 @@ def generate_receipt_pdf(booking: dict, vendor: dict = None) -> bytes:
     
     doc.build(elements)
     return buf.getvalue()
+
+
+def generate_contract_pdf(contract: dict, booking: dict = None, vendor: dict = None) -> bytes:
+    """Generate contract PDF from contract data."""
+    buf = BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=20*mm, rightMargin=20*mm,
+                            topMargin=20*mm, bottomMargin=20*mm)
+    styles = _styles()
+    elements = []
+
+    elements.append(Paragraph("MIETVERTRAG", styles["InvTitle"]))
+    elements.append(Spacer(1, 3*mm))
+    elements.append(Paragraph(f"Vertrag-Nr.: {contract.get('contract_id', 'N/A')}", styles["InvBody"]))
+    elements.append(Paragraph(f"Datum: {_fmt_date(contract.get('created_at'))}", styles["InvSubtitle"]))
+    elements.append(Spacer(1, 8*mm))
+
+    # Parties
+    elements.append(Paragraph("1. Vertragsparteien", styles["InvHeader"]))
+    elements.append(Spacer(1, 2*mm))
+    if vendor:
+        company = vendor.get("company", {})
+        elements.append(Paragraph(f"Vermieter: {company.get('company_name', '')}", styles["InvBody"]))
+        elements.append(Paragraph(f"{company.get('address', '')}, {company.get('postal_code', '')} {company.get('city', '')}", styles["InvSmall"]))
+    if booking:
+        elements.append(Spacer(1, 2*mm))
+        elements.append(Paragraph(f"Mieter: {booking.get('customer_name', '')}", styles["InvBody"]))
+        elements.append(Paragraph(f"E-Mail: {booking.get('customer_email', '')}", styles["InvSmall"]))
+    elements.append(Spacer(1, 5*mm))
+
+    # Vehicle
+    elements.append(Paragraph("2. Mietgegenstand", styles["InvHeader"]))
+    elements.append(Spacer(1, 2*mm))
+    if booking:
+        v_info = [
+            ["Fahrzeug:", f"{booking.get('car_title', '')} ({booking.get('car_brand', '')} {booking.get('car_model', '')})"],
+            ["Kennzeichen:", contract.get("vehicle", {}).get("registration_number", booking.get("registration_number", ""))],
+        ]
+        t = Table(v_info, colWidths=[40*mm, 120*mm])
+        t.setStyle(TableStyle([
+            ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
+            ("FONTSIZE", (0, 0), (-1, -1), 10),
+            ("TEXTCOLOR", (0, 0), (0, -1), colors.HexColor("#666666")),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+        ]))
+        elements.append(t)
+    elements.append(Spacer(1, 5*mm))
+
+    # Rental period
+    elements.append(Paragraph("3. Mietdauer & Kosten", styles["InvHeader"]))
+    elements.append(Spacer(1, 2*mm))
+    if booking:
+        details = [
+            ["Zeitraum:", f"{_fmt_date(booking.get('start_date'))} - {_fmt_date(booking.get('end_date'))}"],
+            ["Miettage:", str(booking.get("rental_days", ""))],
+            ["Mietpreis:", _fmt_eur(booking.get("rental_amount", 0))],
+            ["MwSt.:", _fmt_eur(booking.get("tax_amount", 0))],
+            ["Kaution:", _fmt_eur(booking.get("deposit_amount", 0))],
+            ["Gesamtbetrag:", _fmt_eur(booking.get("total_amount", 0))],
+        ]
+        t = Table(details, colWidths=[40*mm, 120*mm])
+        t.setStyle(TableStyle([
+            ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
+            ("FONTSIZE", (0, 0), (-1, -1), 10),
+            ("TEXTCOLOR", (0, 0), (0, -1), colors.HexColor("#666666")),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+            ("FONTNAME", (0, -1), (-1, -1), "Helvetica-Bold"),
+            ("TEXTCOLOR", (1, -1), (1, -1), colors.HexColor("#00C2FF")),
+        ]))
+        elements.append(t)
+    elements.append(Spacer(1, 5*mm))
+
+    # Terms
+    terms = contract.get("terms", "")
+    if terms:
+        elements.append(Paragraph("4. Allgemeine Bedingungen", styles["InvHeader"]))
+        elements.append(Spacer(1, 2*mm))
+        for line in terms.split("\n")[:20]:
+            if line.strip():
+                elements.append(Paragraph(line.strip(), styles["InvSmall"]))
+        elements.append(Spacer(1, 5*mm))
+
+    # Signatures
+    elements.append(Paragraph("Unterschriften", styles["InvHeader"]))
+    elements.append(Spacer(1, 3*mm))
+    sig_data = [
+        ["Vermieter", "Mieter"],
+        [
+            contract.get("vendor_signature", "___________________") if contract.get("signed_vendor") else "___________________",
+            contract.get("customer_signature", "___________________") if contract.get("signed_customer") else "___________________",
+        ],
+        [
+            _fmt_date(contract.get("vendor_signed_at", "")) if contract.get("signed_vendor") else "Datum: ___________",
+            _fmt_date(contract.get("customer_signed_at", "")) if contract.get("signed_customer") else "Datum: ___________",
+        ],
+    ]
+    t = Table(sig_data, colWidths=[80*mm, 80*mm])
+    t.setStyle(TableStyle([
+        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("FONTSIZE", (0, 0), (-1, -1), 10),
+        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+        ("TOPPADDING", (0, 0), (-1, -1), 8),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+        ("LINEBELOW", (0, 1), (-1, 1), 0.5, colors.HexColor("#333333")),
+    ]))
+    elements.append(t)
+    elements.append(Spacer(1, 10*mm))
+
+    elements.append(Paragraph("Erstellt via BidBlitz V2 Car Rental Platform", styles["InvSmall"]))
+
+    doc.build(elements)
+    return buf.getvalue()

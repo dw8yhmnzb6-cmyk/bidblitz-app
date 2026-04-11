@@ -19,10 +19,13 @@ const API_URL = process.env.REACT_APP_BACKEND_URL;
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const GamingPage = ({ onNavigate, onBack }) => {
-  const [userPoints, setUserPoints] = useState(0);
-  const [dailySpins, setDailySpins] = useState(3);
+  const [userCoins, setUserCoins] = useState(0);
+  const [dailySpins, setDailySpins] = useState(50);
   const [activeGame, setActiveGame] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showBuyCoins, setShowBuyCoins] = useState(false);
+  const [buyAmount, setBuyAmount] = useState("5");
+  const [buying, setBuying] = useState(false);
 
   useEffect(() => {
     loadUserData();
@@ -33,14 +36,50 @@ const GamingPage = ({ onNavigate, onBack }) => {
       const res = await fetch(`${API_URL}/api/gaming/profile`, { credentials: "include" });
       if (res.ok) {
         const data = await res.json();
-        setUserPoints(data.points || 0);
-        setDailySpins(data.daily_spins_remaining || 3);
+        setUserCoins(data.coins || 0);
       }
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleBuyCoins = async () => {
+    setBuying(true);
+    try {
+      const res = await fetch(`${API_URL}/api/gaming/buy-coins`, {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: parseFloat(buyAmount) }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setUserCoins(data.new_balance);
+        setShowBuyCoins(false);
+      } else {
+        const err = await res.json();
+        alert(err.detail || "Fehler beim Kauf");
+      }
+    } catch (err) { alert("Fehler"); }
+    setBuying(false);
+  };
+
+  const handleRedeemCoins = async () => {
+    const amount = prompt("Wie viele Coins einlösen? (Min. 500)");
+    if (!amount || parseInt(amount) < 500) return;
+    try {
+      const res = await fetch(`${API_URL}/api/gaming/redeem`, {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ coins: parseInt(amount) }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setUserCoins(data.remaining_coins);
+        alert(data.message);
+      } else { alert(data.detail || "Fehler"); }
+    } catch (err) { alert("Fehler"); }
   };
 
   const GAMES = [
@@ -67,9 +106,8 @@ const GamingPage = ({ onNavigate, onBack }) => {
       return (
         <GameComponent
           onBack={() => { setActiveGame(null); loadUserData(); }}
-          userPoints={userPoints}
-          dailySpins={dailySpins}
-          onPointsUpdate={loadUserData}
+          userCoins={userCoins}
+          onCoinsUpdate={loadUserData}
         />
       );
     }
@@ -97,33 +135,59 @@ const GamingPage = ({ onNavigate, onBack }) => {
             </div>
           </div>
           
-          {/* Points Display */}
-          <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-yellow-500/20 to-orange-500/20 border border-yellow-500/30">
-            <Star size={16} className="text-yellow-400" fill="currentColor" />
-            <span className="text-yellow-400 font-bold">{userPoints.toLocaleString()}</span>
-          </div>
+          {/* Coins Display */}
+          <motion.div whileTap={{ scale: 0.95 }} onClick={() => setShowBuyCoins(true)}
+            className="flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-yellow-500/20 to-orange-500/20 border border-yellow-500/30 cursor-pointer">
+            <Coins size={16} className="text-yellow-400" />
+            <span className="text-yellow-400 font-bold">{userCoins.toLocaleString()}</span>
+          </motion.div>
         </div>
 
-        {/* Daily Spins */}
-        <div className="flex items-center justify-between p-3 rounded-xl bg-purple-500/10 border border-purple-500/20">
-          <div className="flex items-center gap-2">
-            <Zap size={16} className="text-purple-400" />
-            <span className="text-[12px] text-purple-400">Tägliche Drehungen</span>
-          </div>
-          <div className="flex items-center gap-1">
-            {[1, 2, 3].map((i) => (
-              <div
-                key={i}
-                className={`w-6 h-6 rounded-full flex items-center justify-center ${
-                  i <= dailySpins ? "bg-purple-500" : "bg-white/10"
-                }`}
-              >
-                <Sparkles size={12} className={i <= dailySpins ? "text-white" : "text-gray-600"} />
-              </div>
-            ))}
-          </div>
+        {/* Coin Actions */}
+        <div className="flex gap-2 mb-3">
+          <motion.button whileTap={{ scale: 0.95 }} onClick={() => setShowBuyCoins(true)}
+            className="flex-1 py-2.5 rounded-xl text-xs font-semibold bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 flex items-center justify-center gap-1.5"
+            data-testid="buy-coins-btn">
+            <Coins size={14} /> Coins kaufen
+          </motion.button>
+          <motion.button whileTap={{ scale: 0.95 }} onClick={handleRedeemCoins}
+            disabled={userCoins < 500}
+            className="flex-1 py-2.5 rounded-xl text-xs font-semibold bg-green-500/10 text-green-400 border border-green-500/20 flex items-center justify-center gap-1.5 disabled:opacity-30"
+            data-testid="redeem-coins-btn">
+            <TrendingUp size={14} /> Auszahlen
+          </motion.button>
         </div>
       </div>
+
+      {/* Buy Coins Modal */}
+      <AnimatePresence>
+        {showBuyCoins && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end justify-center"
+            onClick={() => setShowBuyCoins(false)}>
+            <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
+              onClick={e => e.stopPropagation()} className="w-full max-w-lg bg-[#111118] rounded-t-3xl p-6">
+              <h3 className="text-lg font-bold mb-1 text-white">Coins kaufen</h3>
+              <p className="text-xs text-gray-500 mb-4">1.000 Coins = €1,00</p>
+              <div className="grid grid-cols-3 gap-2 mb-4">
+                {[{e:"1",c:"1.000"},{e:"5",c:"5.000"},{e:"10",c:"10.000"},{e:"20",c:"20.000"},{e:"50",c:"50.000"},{e:"100",c:"100.000"}].map(p => (
+                  <motion.button key={p.e} whileTap={{ scale: 0.95 }}
+                    onClick={() => setBuyAmount(p.e)}
+                    className={`py-3 rounded-xl text-center ${buyAmount===p.e ? "bg-yellow-500/20 border-2 border-yellow-500/50" : "bg-white/5 border border-white/10"}`}>
+                    <p className="text-sm font-bold text-yellow-400">{p.c}</p>
+                    <p className="text-[10px] text-gray-500">€{p.e}</p>
+                  </motion.button>
+                ))}
+              </div>
+              <motion.button whileTap={{ scale: 0.97 }} onClick={handleBuyCoins} disabled={buying}
+                className="w-full py-4 rounded-xl bg-yellow-500 text-black font-bold flex items-center justify-center gap-2 disabled:opacity-50"
+                data-testid="confirm-buy-coins">
+                {buying ? <Loader2 size={20} className="animate-spin" /> : <><Coins size={20} /> Für €{buyAmount} kaufen</>}
+              </motion.button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Games Grid */}
       <div className="px-4 pt-4">
@@ -188,10 +252,10 @@ const GamingPage = ({ onNavigate, onBack }) => {
         <div className="p-4 rounded-2xl bg-gradient-to-br from-green-500/10 to-emerald-500/5 border border-green-500/20">
           <div className="flex items-center gap-2 mb-2">
             <Gift size={18} className="text-green-400" />
-            <p className="text-[13px] font-bold text-green-400">Punkte einlösen</p>
+            <p className="text-[13px] font-bold text-green-400">Coins einlösen</p>
           </div>
           <p className="text-[11px] text-gray-400 mb-3">
-            Tausche deine Punkte gegen echte Belohnungen ein!
+            Tausche deine Coins gegen echte EUR ein!
           </p>
           <div className="flex gap-2">
             <div className="flex-1 p-2 rounded-lg bg-white/5 text-center">
@@ -262,7 +326,7 @@ const WheelGame = ({ onBack, userPoints, dailySpins, onPointsUpdate }) => {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
-          body: JSON.stringify({ points_won: prize.points }),
+          body: JSON.stringify({ bet: 10, points_won: prize.points }),
         });
         onPointsUpdate?.();
       } catch (err) {
@@ -330,7 +394,7 @@ const WheelGame = ({ onBack, userPoints, dailySpins, onPointsUpdate }) => {
               className="mb-6 p-4 rounded-2xl bg-green-500/20 border border-green-500/30 text-center"
             >
               <p className="text-2xl mb-1">🎉</p>
-              <p className="text-green-400 font-bold text-lg">+{result.points} Punkte!</p>
+              <p className="text-green-400 font-bold text-lg">+{result.coins_won} Coins!</p>
             </motion.div>
           )}
         </AnimatePresence>
@@ -442,7 +506,7 @@ const ScratchGame = ({ onBack, userPoints, onPointsUpdate }) => {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
-          body: JSON.stringify({ points_won: prize }),
+          body: JSON.stringify({ bet: 10, points_won: prize }),
         }).then(() => onPointsUpdate?.());
       }
     }
@@ -456,7 +520,7 @@ const ScratchGame = ({ onBack, userPoints, onPointsUpdate }) => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ points_won: prize }),
+        body: JSON.stringify({ bet: 10, points_won: prize }),
       }).then(() => onPointsUpdate?.());
     }
   };
@@ -502,7 +566,7 @@ const ScratchGame = ({ onBack, userPoints, onPointsUpdate }) => {
             {prize > 0 ? (
               <>
                 <p className="text-2xl mb-1">🎉</p>
-                <p className="text-green-400 font-bold text-lg">+{prize} Punkte!</p>
+                <p className="text-green-400 font-bold text-lg">+{prize} Coins!</p>
               </>
             ) : (
               <>
@@ -581,7 +645,7 @@ const SlotsGame = ({ onBack, userPoints, onPointsUpdate }) => {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             credentials: "include",
-            body: JSON.stringify({ points_won: multiplier * 10 }),
+            body: JSON.stringify({ bet: 10, points_won: multiplier * 10 }),
           }).then(() => onPointsUpdate?.());
         } else if (finalReels[0] === finalReels[1] || finalReels[1] === finalReels[2]) {
           setWin(10);
@@ -589,7 +653,7 @@ const SlotsGame = ({ onBack, userPoints, onPointsUpdate }) => {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             credentials: "include",
-            body: JSON.stringify({ points_won: 10 }),
+            body: JSON.stringify({ bet: 10, points_won: 10 }),
           }).then(() => onPointsUpdate?.());
         }
         
@@ -631,7 +695,7 @@ const SlotsGame = ({ onBack, userPoints, onPointsUpdate }) => {
             >
               <p className="text-3xl mb-1">🎉</p>
               <p className="text-green-400 font-bold text-xl">JACKPOT!</p>
-              <p className="text-green-400 font-bold text-lg">+{win} Punkte!</p>
+              <p className="text-green-400 font-bold text-lg">+{win} Coins!</p>
             </motion.div>
           )}
         </AnimatePresence>
@@ -654,10 +718,10 @@ const SlotsGame = ({ onBack, userPoints, onPointsUpdate }) => {
         <div className="mt-6 p-4 rounded-xl bg-white/5 w-full max-w-xs">
           <p className="text-[11px] text-gray-500 uppercase mb-2">Gewinntabelle</p>
           <div className="space-y-1 text-[12px]">
-            <div className="flex justify-between"><span>7️⃣ 7️⃣ 7️⃣</span><span className="text-yellow-400">1000 P</span></div>
-            <div className="flex justify-between"><span>💎 💎 💎</span><span className="text-yellow-400">500 P</span></div>
-            <div className="flex justify-between"><span>3 Gleiche</span><span className="text-yellow-400">250 P</span></div>
-            <div className="flex justify-between"><span>2 Gleiche</span><span className="text-yellow-400">10 P</span></div>
+            <div className="flex justify-between"><span>7️⃣ 7️⃣ 7️⃣</span><span className="text-yellow-400">1000 Coins</span></div>
+            <div className="flex justify-between"><span>💎 💎 💎</span><span className="text-yellow-400">500 Coins</span></div>
+            <div className="flex justify-between"><span>3 Gleiche</span><span className="text-yellow-400">250 Coins</span></div>
+            <div className="flex justify-between"><span>2 Gleiche</span><span className="text-yellow-400">10 Coins</span></div>
           </div>
         </div>
       </div>
@@ -703,7 +767,7 @@ const QuizGame = ({ onBack, userPoints, onPointsUpdate }) => {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
-          body: JSON.stringify({ points_won: finalScore }),
+          body: JSON.stringify({ bet: 10, points_won: finalScore }),
         }).then(() => onPointsUpdate?.());
       }
     }, 1000);
@@ -729,7 +793,7 @@ const QuizGame = ({ onBack, userPoints, onPointsUpdate }) => {
           >
             <p className="text-5xl mb-4">🏆</p>
             <p className="text-2xl font-bold text-white mb-2">Quiz beendet!</p>
-            <p className="text-yellow-400 font-bold text-3xl mb-6">+{score} Punkte</p>
+            <p className="text-yellow-400 font-bold text-3xl mb-6">+{score} Coins</p>
             <motion.button
               onClick={restart}
               className="px-8 py-3 rounded-xl bg-blue-500 text-white font-bold"
@@ -791,7 +855,7 @@ const QuizGame = ({ onBack, userPoints, onPointsUpdate }) => {
 
             {/* Score */}
             <div className="mt-6 text-center">
-              <p className="text-gray-400 text-[13px]">Aktuelle Punkte: <span className="text-yellow-400 font-bold">{score}</span></p>
+              <p className="text-gray-400 text-[13px]">Aktuelle Coins: <span className="text-yellow-400 font-bold">{score}</span></p>
             </div>
           </>
         )}
@@ -848,7 +912,7 @@ const MemoryGame = ({ onBack, userPoints, onPointsUpdate }) => {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             credentials: "include",
-            body: JSON.stringify({ points_won: points, moves }),
+            body: JSON.stringify({ bet: 10, points_won: points, moves }),
           }).then(() => onPointsUpdate?.());
         }
       } else {
@@ -876,7 +940,7 @@ const MemoryGame = ({ onBack, userPoints, onPointsUpdate }) => {
             <p className="text-5xl mb-4">🎉</p>
             <p className="text-2xl font-bold text-white mb-2">Geschafft!</p>
             <p className="text-gray-400 mb-2">In {moves} Zügen</p>
-            <p className="text-yellow-400 font-bold text-2xl mb-6">+{Math.max(10, 100 - moves * 2)} Punkte</p>
+            <p className="text-yellow-400 font-bold text-2xl mb-6">+{Math.max(10, 100 - moves * 2)} Coins</p>
             <motion.button
               onClick={initGame}
               className="px-8 py-3 rounded-xl bg-green-500 text-white font-bold"
@@ -976,7 +1040,7 @@ const DiceGame = ({ onBack, userPoints, onPointsUpdate }) => {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             credentials: "include",
-            body: JSON.stringify({ points_won: winAmount }),
+            body: JSON.stringify({ bet: 10, points_won: winAmount }),
           }).then(() => onPointsUpdate?.());
         }
       }
@@ -1045,7 +1109,7 @@ const DiceGame = ({ onBack, userPoints, onPointsUpdate }) => {
               {result.won ? (
                 <>
                   <p className="text-2xl mb-1">🎉</p>
-                  <p className="text-green-400 font-bold">+{result.amount} Punkte!</p>
+                  <p className="text-green-400 font-bold">+{result.amount} Coins!</p>
                 </>
               ) : (
                 <>

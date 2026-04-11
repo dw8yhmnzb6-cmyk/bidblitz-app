@@ -58,7 +58,8 @@ import {
   CarListPage, CarDetailPage, MyCarBookingsPage, MyBookingDetailPage,
   VendorCarRentalDashboardPage, VendorCarsPage, VendorBookingsPage,
   VendorBookingDetailPage, VendorInvoicesPage, VendorPayoutsPage,
-  VendorDamagesPage, VendorSettingsPage, AdminCarRentalPage
+  VendorDamagesPage, VendorSettingsPage, VendorStaffPage, VendorReportsPage,
+  AdminCarRentalPage, AdminDisputesPage
 } from "./modules/car-rental/pages";
 
 import BottomNav from "./components/BottomNav";
@@ -302,12 +303,16 @@ function AppContent() {
         return isGuest ? <HomePage {...homeProps} /> : <VendorDamagesPage onBack={() => handleNavigate("/car-rental/vendor")} />;
       case "/car-rental/vendor/settings":
         return isGuest ? <HomePage {...homeProps} /> : <VendorSettingsPage onBack={() => handleNavigate("/car-rental/vendor")} />;
+      case "/car-rental/vendor/staff":
+        return isGuest ? <HomePage {...homeProps} /> : <VendorStaffPage onBack={() => handleNavigate("/car-rental/vendor")} />;
       case "/car-rental/vendor/customers":
         return isGuest ? <HomePage {...homeProps} /> : <VendorBookingsPage onBack={() => handleNavigate("/car-rental/vendor")} onNavigate={handleNavigate} />;
       case "/car-rental/vendor/reports":
-        return isGuest ? <HomePage {...homeProps} /> : <VendorCarRentalDashboardPage onBack={() => handleNavigate("/car-rental/vendor")} onNavigate={handleNavigate} />;
+        return isGuest ? <HomePage {...homeProps} /> : <VendorReportsPage onBack={() => handleNavigate("/car-rental/vendor")} />;
       case "/car-rental/admin":
         return isGuest ? <HomePage {...homeProps} /> : <AdminCarRentalPage onBack={() => handleNavigate("/admin")} />;
+      case "/car-rental/admin/disputes":
+        return isGuest ? <HomePage {...homeProps} /> : <AdminDisputesPage onBack={() => handleNavigate("/car-rental/admin")} />;
       
       default:
         // Handle dynamic routes

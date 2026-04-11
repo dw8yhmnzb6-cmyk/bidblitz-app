@@ -1,7 +1,3 @@
-/**
- * BidBlitz V2 - Car Rental Pages Index
- */
-
 export { default as CarListPage } from "./CarListPage";
 export { default as CarDetailPage } from "./CarDetailPage";
 export { default as MyCarBookingsPage } from "./MyCarBookingsPage";
@@ -14,4 +10,7 @@ export { default as VendorInvoicesPage } from "./VendorInvoicesPage";
 export { default as VendorPayoutsPage } from "./VendorPayoutsPage";
 export { default as VendorDamagesPage } from "./VendorDamagesPage";
 export { default as VendorSettingsPage } from "./VendorSettingsPage";
+export { default as VendorStaffPage } from "./VendorStaffPage";
+export { default as VendorReportsPage } from "./VendorReportsPage";
 export { default as AdminCarRentalPage } from "./AdminCarRentalPage";
+export { default as AdminDisputesPage } from "./AdminDisputesPage";

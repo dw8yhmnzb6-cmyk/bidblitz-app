@@ -519,3 +519,77 @@ export const downloadBookingReceipt = async (bookingId) => {
   URL.revokeObjectURL(link.href);
 };
 
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+// CONTRACT PDF
+// ══════════════════════════════════════════════════════════════════════════════
+
+export const downloadContractPdf = async (contractId) => {
+  const url = `${API_URL}/api/car-rental/contracts/${contractId}/pdf`;
+  const res = await fetch(url, { credentials: "include" });
+  if (!res.ok) throw new Error("PDF Download fehlgeschlagen");
+  const blob = await res.blob();
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = `Vertrag_${contractId}.pdf`;
+  link.click();
+  URL.revokeObjectURL(link.href);
+};
+
+// ══════════════════════════════════════════════════════════════════════════════
+// HANDOVER / RETURN PHOTO UPLOAD
+// ══════════════════════════════════════════════════════════════════════════════
+
+export const uploadBookingPhoto = async (bookingId, file, phase = "handover") => {
+  const formData = new FormData();
+  formData.append("file", file);
+  const url = `${API_URL}/api/car-rental/vendor/bookings/${bookingId}/upload-photo?phase=${phase}`;
+  const res = await fetch(url, { method: "POST", credentials: "include", body: formData });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.detail || "Upload fehlgeschlagen");
+  return data;
+};
+
+// ══════════════════════════════════════════════════════════════════════════════
+// DISPUTES
+// ══════════════════════════════════════════════════════════════════════════════
+
+export const createDispute = async (bookingId, reason, description) => {
+  return api("/api/car-rental/disputes", {
+    method: "POST",
+    body: JSON.stringify({ booking_id: bookingId, reason, description }),
+  });
+};
+
+export const getMyDisputes = async (limit = 50) => {
+  return api(`/api/car-rental/my-disputes?limit=${limit}`);
+};
+
+export const getVendorDisputes = async (limit = 50) => {
+  return api(`/api/car-rental/vendor/disputes?limit=${limit}`);
+};
+
+export const addDisputeMessage = async (disputeId, message) => {
+  return api(`/api/car-rental/disputes/${disputeId}/message`, {
+    method: "POST",
+    body: JSON.stringify({ message }),
+  });
+};
+
+export const getAdminDisputes = async (status = null, limit = 50) => {
+  let url = `/api/car-rental/admin/disputes?limit=${limit}`;
+  if (status) url += `&status=${status}`;
+  return api(url);
+};
+
+export const getAdminDispute = async (disputeId) => {
+  return api(`/api/car-rental/admin/disputes/${disputeId}`);
+};
+
+export const adminResolveDispute = async (disputeId, resolution, status = "resolved", adminNotes = "") => {
+  return api(`/api/car-rental/admin/disputes/${disputeId}/resolve`, {
+    method: "POST",
+    body: JSON.stringify({ resolution, status, admin_notes: adminNotes }),
+  });
+};

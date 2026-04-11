@@ -1,6 +1,7 @@
 """
 BidBlitz V2 - Gaming Platform Backend
-Handles game logic, scoring, and direct EUR wallet rewards
+Coin-based gaming: Cashback earns Coins, Coins used to play, Winnings in Coins.
+Coins can be converted to EUR.
 """
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
@@ -21,499 +22,413 @@ router = APIRouter(prefix="/api/gaming", tags=["gaming"])
 # SCHEMAS
 # ══════════════════════════════════════════════════════════════════════════════
 
-class GameWinRequest(BaseModel):
-    points_won: int
-    moves: Optional[int] = None  # For memory game
+class GamePlayRequest(BaseModel):
+    bet: int = 10  # Coins to bet
+    points_won: int = 0
+    moves: Optional[int] = None
+
+
+class RedeemRequest(BaseModel):
+    coins: int
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# CONSTANTS - Points to EUR conversion
+# CONSTANTS
 # ══════════════════════════════════════════════════════════════════════════════
 
-# 1000 points = 1 EUR
-POINTS_TO_EUR_RATE = 0.001
+COINS_TO_EUR_RATE = 0.001  # 1000 Coins = €1.00
+CASHBACK_COIN_RATE = 10  # 1 EUR transaction = 10 Coins cashback
+MIN_BET = 5
+MAX_BET = 500
+MAX_DAILY_WINS_COINS = 10000
+MAX_DAILY_SPINS = 50  # Per game type
+MIN_REDEEM = 500  # Minimum coins to convert to EUR
 
-# Daily limits
-MAX_DAILY_WINS_EUR = 10.0  # Max EUR a user can win per day
-MAX_DAILY_SPINS = 3  # Free spins per day for wheel
+# Game-specific max win multipliers
+GAME_CONFIG = {
+    "slots":   {"max_win": 1000, "name": "Lucky Slots"},
+    "wheel":   {"max_win": 2500, "name": "Glücksrad"},
+    "scratch": {"max_win": 500,  "name": "Rubbellos"},
+    "quiz":    {"max_win": 100,  "name": "Quiz"},
+    "memory":  {"max_win": 100,  "name": "Memory"},
+    "dice":    {"max_win": 60,   "name": "Würfelglück"},
+}
 
 
-def points_to_eur(points: int) -> float:
-    """Convert gaming points to EUR"""
-    return round(points * POINTS_TO_EUR_RATE, 2)
+def coins_to_eur(coins: int) -> float:
+    return round(coins * COINS_TO_EUR_RATE, 2)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# HELPERS
+# ══════════════════════════════════════════════════════════════════════════════
+
+async def get_user_coins(user_id: str) -> int:
+    """Get user's current coin balance from users collection."""
+    user = await db.users.find_one({"_id": ObjectId(user_id)}, {"gaming_coins": 1})
+    return user.get("gaming_coins", 0) if user else 0
+
+
+async def add_coins(user_id: str, amount: int, reason: str, game: str = None):
+    """Add coins to user balance."""
+    await db.users.update_one(
+        {"_id": ObjectId(user_id)},
+        {"$inc": {"gaming_coins": amount}}
+    )
+    await db.gaming_coin_log.insert_one({
+        "user_id": user_id,
+        "amount": amount,
+        "reason": reason,
+        "game": game,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    })
+
+
+async def deduct_coins(user_id: str, amount: int, reason: str, game: str = None):
+    """Deduct coins from user balance. Returns False if insufficient."""
+    user = await db.users.find_one({"_id": ObjectId(user_id)}, {"gaming_coins": 1})
+    current = user.get("gaming_coins", 0) if user else 0
+    if current < amount:
+        return False
+    await db.users.update_one(
+        {"_id": ObjectId(user_id)},
+        {"$inc": {"gaming_coins": -amount}}
+    )
+    await db.gaming_coin_log.insert_one({
+        "user_id": user_id,
+        "amount": -amount,
+        "reason": reason,
+        "game": game,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    })
+    return True
 
 
 async def get_user_daily_stats(user_id: str) -> dict:
-    """Get user's gaming stats for today"""
-    today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
-    
-    stats = await db.gaming_daily_stats.find_one({
-        "user_id": user_id,
-        "date": today_start.isoformat()[:10]
-    })
-    
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    stats = await db.gaming_daily_stats.find_one(
+        {"user_id": user_id, "date": today}, {"_id": 0}
+    )
     if not stats:
-        return {
-            "user_id": user_id,
-            "date": today_start.isoformat()[:10],
-            "total_points_won": 0,
-            "total_eur_won": 0.0,
-            "wheel_spins_used": 0,
-            "games_played": 0
-        }
-    
+        stats = {"user_id": user_id, "date": today, "total_coins_won": 0, "total_coins_bet": 0, "games_played": 0}
     return stats
 
 
-async def update_daily_stats(user_id: str, points_won: int, eur_won: float, game_type: str) -> dict:
-    """Update user's daily gaming stats"""
-    today = datetime.now(timezone.utc).isoformat()[:10]
-    
-    result = await db.gaming_daily_stats.find_one_and_update(
+async def update_daily_stats(user_id: str, coins_won: int, coins_bet: int, game_type: str):
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    await db.gaming_daily_stats.update_one(
         {"user_id": user_id, "date": today},
         {
             "$inc": {
-                "total_points_won": points_won,
-                "total_eur_won": eur_won,
+                "total_coins_won": coins_won,
+                "total_coins_bet": coins_bet,
                 "games_played": 1,
-                "wheel_spins_used": 1 if game_type == "wheel" else 0
+                f"{game_type}_played": 1,
             },
-            "$setOnInsert": {"user_id": user_id, "date": today}
+            "$setOnInsert": {"user_id": user_id, "date": today},
         },
         upsert=True,
-        return_document=True
     )
-    
-    return result
 
 
-async def record_game_result(user_id: str, game_type: str, points: int, eur: float, metadata: dict = None):
-    """Record a game result for history and leaderboard"""
-    await db.gaming_history.insert_one({
-        "id": secrets.token_hex(8),
+async def record_game_result(user_id: str, game_type: str, coins_won: int, coins_bet: int, metadata: dict = None):
+    record = {
         "user_id": user_id,
         "game_type": game_type,
-        "points_won": points,
-        "eur_won": eur,
-        "metadata": metadata or {},
-        "created_at": datetime.now(timezone.utc).isoformat()
-    })
+        "coins_won": coins_won,
+        "coins_bet": coins_bet,
+        "net": coins_won - coins_bet,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    if metadata:
+        record["metadata"] = metadata
+    await db.gaming_history.insert_one(record)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# PROFILE & STATS
+# PROFILE & COINS BALANCE
 # ══════════════════════════════════════════════════════════════════════════════
 
 @router.get("/profile")
 async def get_gaming_profile(request: Request):
-    """Get user's gaming profile with points, daily stats, and spins remaining"""
+    """Get user's gaming profile with coin balance and stats."""
     user = await get_current_user(request)
     user_id = str(user["_id"])
-    
-    # Get total lifetime points
-    total_points_result = await db.gaming_history.aggregate([
-        {"$match": {"user_id": user_id}},
-        {"$group": {"_id": None, "total": {"$sum": "$points_won"}}}
-    ]).to_list(1)
-    
-    total_points = total_points_result[0]["total"] if total_points_result else 0
-    
-    # Get daily stats
+
+    coins = await get_user_coins(user_id)
     daily_stats = await get_user_daily_stats(user_id)
-    
-    # Calculate remaining spins
-    spins_remaining = max(0, MAX_DAILY_SPINS - daily_stats.get("wheel_spins_used", 0))
-    
+
+    # Lifetime stats
+    lifetime = await db.gaming_history.aggregate([
+        {"$match": {"user_id": user_id}},
+        {"$group": {
+            "_id": None,
+            "total_won": {"$sum": "$coins_won"},
+            "total_bet": {"$sum": "$coins_bet"},
+            "games": {"$sum": 1},
+        }}
+    ]).to_list(1)
+
+    lt = lifetime[0] if lifetime else {"total_won": 0, "total_bet": 0, "games": 0}
+
     return {
-        "points": total_points,
-        "total_eur_won": round(total_points * POINTS_TO_EUR_RATE, 2),
-        "daily_spins_remaining": spins_remaining,
-        "daily_limit_remaining": round(MAX_DAILY_WINS_EUR - daily_stats.get("total_eur_won", 0), 2),
-        "games_played_today": daily_stats.get("games_played", 0),
+        "coins": coins,
+        "coins_eur_value": coins_to_eur(coins),
+        "total_coins_won": lt["total_won"],
+        "total_coins_bet": lt["total_bet"],
+        "net_profit": lt["total_won"] - lt["total_bet"],
+        "games_played": lt["games"],
+        "daily_coins_won": daily_stats.get("total_coins_won", 0),
+        "daily_games_played": daily_stats.get("games_played", 0),
+        "daily_limit": MAX_DAILY_WINS_COINS,
+        "min_bet": MIN_BET,
+        "max_bet": MAX_BET,
+        "coins_to_eur_rate": COINS_TO_EUR_RATE,
     }
 
+
+# ══════════════════════════════════════════════════════════════════════════════
+# CASHBACK → COINS
+# ══════════════════════════════════════════════════════════════════════════════
+
+@router.post("/earn-cashback")
+async def earn_cashback_coins(request: Request):
+    """Award coins from cashback (called after transactions)."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    body = await request.json()
+    amount_eur = body.get("amount", 0)
+
+    if amount_eur <= 0:
+        raise HTTPException(status_code=400, detail="Invalid amount")
+
+    coins = int(amount_eur * CASHBACK_COIN_RATE)
+    if coins < 1:
+        coins = 1
+
+    await add_coins(user_id, coins, f"Cashback: €{amount_eur:.2f} → {coins} Coins")
+
+    new_balance = await get_user_coins(user_id)
+    return {"ok": True, "coins_earned": coins, "new_balance": new_balance}
+
+
+@router.post("/buy-coins")
+async def buy_coins_with_wallet(request: Request):
+    """Buy coins using wallet balance. 1 EUR = 1000 Coins."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    body = await request.json()
+    eur_amount = body.get("amount", 0)
+
+    if eur_amount < 1 or eur_amount > 100:
+        raise HTTPException(status_code=400, detail="Betrag: €1-€100")
+
+    eur_amount = round(eur_amount, 2)
+    coins = int(eur_amount / COINS_TO_EUR_RATE)
+
+    # Deduct from wallet
+    from core.payment_engine import debit_wallet
+    result = await debit_wallet(
+        user_id=user_id,
+        amount=eur_amount,
+        tx_type=TransactionType.REWARD,
+        description=f"Gaming Coins gekauft: {coins} Coins",
+        metadata={"type": "buy_coins", "coins": coins},
+    )
+
+    if not result.success:
+        raise HTTPException(status_code=400, detail="Nicht genug Guthaben")
+
+    await add_coins(user_id, coins, f"Coins gekauft: €{eur_amount:.2f} → {coins} Coins")
+
+    new_balance = await get_user_coins(user_id)
+    return {"ok": True, "coins_added": coins, "eur_spent": eur_amount, "new_balance": new_balance}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# LEADERBOARD
+# ══════════════════════════════════════════════════════════════════════════════
 
 @router.get("/leaderboard")
 async def get_leaderboard(request: Request, period: str = "all"):
-    """Get gaming leaderboard - top players by points"""
-    
-    match_stage = {}
+    match_stage = {"$match": {}}
     if period == "today":
-        today = datetime.now(timezone.utc).isoformat()[:10]
-        match_stage = {"created_at": {"$regex": f"^{today}"}}
+        start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0).isoformat()
+        match_stage = {"$match": {"created_at": {"$gte": start}}}
     elif period == "week":
-        week_ago = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
-        match_stage = {"created_at": {"$gte": week_ago}}
-    
+        start = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
+        match_stage = {"$match": {"created_at": {"$gte": start}}}
+
     pipeline = [
-        {"$match": match_stage} if match_stage else {"$match": {}},
+        match_stage,
         {"$group": {
             "_id": "$user_id",
-            "total_points": {"$sum": "$points_won"},
-            "games_played": {"$sum": 1}
+            "total_coins": {"$sum": "$coins_won"},
+            "games": {"$sum": 1},
         }},
-        {"$sort": {"total_points": -1}},
-        {"$limit": 20}
+        {"$sort": {"total_coins": -1}},
+        {"$limit": 20},
     ]
-    
+
     results = await db.gaming_history.aggregate(pipeline).to_list(20)
-    
-    # Enrich with user names
-    leaderboard = []
+    entries = []
     for i, entry in enumerate(results):
-        user = await db.users.find_one({"_id": ObjectId(entry["_id"])}, {"name": 1, "email": 1})
-        if user:
-            leaderboard.append({
-                "rank": i + 1,
-                "name": user.get("name", user.get("email", "Unknown")[:15]),
-                "points": entry["total_points"],
-                "games": entry["games_played"],
-                "emoji": ["👑", "🥈", "🥉"][i] if i < 3 else "🎮"
-            })
-    
-    return {"leaderboard": leaderboard, "period": period}
+        user = await db.users.find_one({"_id": ObjectId(entry["_id"])}, {"name": 1})
+        entries.append({
+            "rank": i + 1,
+            "name": user.get("name", "Anonym") if user else "Anonym",
+            "coins": entry["total_coins"],
+            "games": entry["games"],
+        })
+
+    return {"leaderboard": entries, "period": period}
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# WHEEL OF FORTUNE (Glücksrad)
+# UNIVERSAL GAME PLAY HANDLER
+# ══════════════════════════════════════════════════════════════════════════════
+
+async def play_game(user_id: str, game_type: str, bet: int, coins_won: int, metadata: dict = None):
+    """Universal game logic: deduct bet, validate win, credit winnings, record."""
+    config = GAME_CONFIG.get(game_type)
+    if not config:
+        raise HTTPException(status_code=400, detail="Unbekanntes Spiel")
+
+    # Validate bet
+    bet = max(MIN_BET, min(bet, MAX_BET))
+
+    # Deduct bet
+    success = await deduct_coins(user_id, bet, f"Einsatz: {config['name']}", game_type)
+    if not success:
+        raise HTTPException(status_code=400, detail="Nicht genug Coins! Kaufe Coins oder verdiene Cashback.")
+
+    # Validate win (cap at max)
+    coins_won = max(0, min(coins_won, config["max_win"]))
+
+    # Check daily limit
+    daily = await get_user_daily_stats(user_id)
+    if daily.get("total_coins_won", 0) + coins_won > MAX_DAILY_WINS_COINS:
+        coins_won = max(0, MAX_DAILY_WINS_COINS - daily.get("total_coins_won", 0))
+
+    # Credit winnings
+    if coins_won > 0:
+        await add_coins(user_id, coins_won, f"Gewinn: {config['name']} ({coins_won} Coins)", game_type)
+
+    # Stats
+    await update_daily_stats(user_id, coins_won, bet, game_type)
+    await record_game_result(user_id, game_type, coins_won, bet, metadata)
+
+    new_balance = await get_user_coins(user_id)
+    net = coins_won - bet
+
+    return {
+        "success": True,
+        "coins_bet": bet,
+        "coins_won": coins_won,
+        "net": net,
+        "new_balance": new_balance,
+        "message": f"+{coins_won} Coins!" if coins_won > 0 else "Kein Gewinn",
+    }
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# GAME ENDPOINTS
 # ══════════════════════════════════════════════════════════════════════════════
 
 @router.post("/wheel/spin")
-async def wheel_spin(req: GameWinRequest, request: Request):
-    """Process wheel spin - validates and credits wallet"""
+async def wheel_spin(req: GamePlayRequest, request: Request):
     user = await get_current_user(request)
-    user_id = str(user["_id"])
-    
-    # Check daily spin limit
-    daily_stats = await get_user_daily_stats(user_id)
-    if daily_stats.get("wheel_spins_used", 0) >= MAX_DAILY_SPINS:
-        raise HTTPException(status_code=400, detail="Tägliches Drehungen-Limit erreicht. Komm morgen wieder!")
-    
-    # Validate points (max wheel win is 2500)
-    points = min(req.points_won, 2500)
-    if points < 0:
-        points = 0
-    
-    # Check daily EUR limit
-    eur_amount = points_to_eur(points)
-    if daily_stats.get("total_eur_won", 0) + eur_amount > MAX_DAILY_WINS_EUR:
-        eur_amount = max(0, MAX_DAILY_WINS_EUR - daily_stats.get("total_eur_won", 0))
-        points = int(eur_amount / POINTS_TO_EUR_RATE)
-    
-    # Credit wallet if there's a win
-    if eur_amount > 0:
-        result = await credit_wallet(
-            user_id=user_id,
-            amount=eur_amount,
-            tx_type=TransactionType.REWARD,
-            description=f"Glücksrad Gewinn: {points} Punkte",
-            metadata={"game": "wheel", "points": points}
-        )
-        
-        if not result.success:
-            raise HTTPException(status_code=500, detail="Wallet-Gutschrift fehlgeschlagen")
-    
-    # Update stats
-    await update_daily_stats(user_id, points, eur_amount, "wheel")
-    await record_game_result(user_id, "wheel", points, eur_amount)
-    
-    return {
-        "success": True,
-        "points_won": points,
-        "eur_won": eur_amount,
-        "message": f"+{points} Punkte = €{eur_amount:.2f} auf dein Wallet!"
-    }
+    return await play_game(str(user["_id"]), "wheel", req.bet, req.points_won)
 
-
-# ══════════════════════════════════════════════════════════════════════════════
-# SCRATCH CARDS (Rubbellose)
-# ══════════════════════════════════════════════════════════════════════════════
 
 @router.post("/scratch/win")
-async def scratch_win(req: GameWinRequest, request: Request):
-    """Process scratch card win"""
+async def scratch_win(req: GamePlayRequest, request: Request):
     user = await get_current_user(request)
-    user_id = str(user["_id"])
-    
-    # Validate points (max scratch win is 500)
-    points = min(req.points_won, 500)
-    if points <= 0:
-        return {"success": True, "points_won": 0, "eur_won": 0, "message": "Leider kein Gewinn"}
-    
-    # Check daily EUR limit
-    daily_stats = await get_user_daily_stats(user_id)
-    eur_amount = points_to_eur(points)
-    
-    if daily_stats.get("total_eur_won", 0) + eur_amount > MAX_DAILY_WINS_EUR:
-        eur_amount = max(0, MAX_DAILY_WINS_EUR - daily_stats.get("total_eur_won", 0))
-        points = int(eur_amount / POINTS_TO_EUR_RATE)
-    
-    if eur_amount > 0:
-        result = await credit_wallet(
-            user_id=user_id,
-            amount=eur_amount,
-            tx_type=TransactionType.REWARD,
-            description=f"Rubbellos Gewinn: {points} Punkte",
-            metadata={"game": "scratch", "points": points}
-        )
-        
-        if not result.success:
-            raise HTTPException(status_code=500, detail="Wallet-Gutschrift fehlgeschlagen")
-    
-    await update_daily_stats(user_id, points, eur_amount, "scratch")
-    await record_game_result(user_id, "scratch", points, eur_amount)
-    
-    return {
-        "success": True,
-        "points_won": points,
-        "eur_won": eur_amount,
-        "message": f"+{points} Punkte = €{eur_amount:.2f}!"
-    }
+    return await play_game(str(user["_id"]), "scratch", req.bet, req.points_won)
 
-
-# ══════════════════════════════════════════════════════════════════════════════
-# SLOTS (Spielautomat)
-# ══════════════════════════════════════════════════════════════════════════════
 
 @router.post("/slots/win")
-async def slots_win(req: GameWinRequest, request: Request):
-    """Process slots win"""
+async def slots_win(req: GamePlayRequest, request: Request):
     user = await get_current_user(request)
-    user_id = str(user["_id"])
-    
-    # Validate points (max slots win is 1000)
-    points = min(req.points_won, 1000)
-    if points <= 0:
-        return {"success": True, "points_won": 0, "eur_won": 0, "message": "Kein Gewinn"}
-    
-    daily_stats = await get_user_daily_stats(user_id)
-    eur_amount = points_to_eur(points)
-    
-    if daily_stats.get("total_eur_won", 0) + eur_amount > MAX_DAILY_WINS_EUR:
-        eur_amount = max(0, MAX_DAILY_WINS_EUR - daily_stats.get("total_eur_won", 0))
-        points = int(eur_amount / POINTS_TO_EUR_RATE)
-    
-    if eur_amount > 0:
-        result = await credit_wallet(
-            user_id=user_id,
-            amount=eur_amount,
-            tx_type=TransactionType.REWARD,
-            description=f"Slots Jackpot: {points} Punkte",
-            metadata={"game": "slots", "points": points}
-        )
-        
-        if not result.success:
-            raise HTTPException(status_code=500, detail="Wallet-Gutschrift fehlgeschlagen")
-    
-    await update_daily_stats(user_id, points, eur_amount, "slots")
-    await record_game_result(user_id, "slots", points, eur_amount)
-    
-    return {
-        "success": True,
-        "points_won": points,
-        "eur_won": eur_amount,
-        "message": f"JACKPOT! +{points} Punkte = €{eur_amount:.2f}!"
-    }
+    return await play_game(str(user["_id"]), "slots", req.bet, req.points_won)
 
-
-# ══════════════════════════════════════════════════════════════════════════════
-# QUIZ
-# ══════════════════════════════════════════════════════════════════════════════
 
 @router.post("/quiz/complete")
-async def quiz_complete(req: GameWinRequest, request: Request):
-    """Process quiz completion"""
+async def quiz_complete(req: GamePlayRequest, request: Request):
     user = await get_current_user(request)
-    user_id = str(user["_id"])
-    
-    # Validate points (max quiz win is 100 - 5 questions x 20 points)
-    points = min(req.points_won, 100)
-    if points <= 0:
-        return {"success": True, "points_won": 0, "eur_won": 0, "message": "Quiz beendet ohne Punkte"}
-    
-    daily_stats = await get_user_daily_stats(user_id)
-    eur_amount = points_to_eur(points)
-    
-    if daily_stats.get("total_eur_won", 0) + eur_amount > MAX_DAILY_WINS_EUR:
-        eur_amount = max(0, MAX_DAILY_WINS_EUR - daily_stats.get("total_eur_won", 0))
-        points = int(eur_amount / POINTS_TO_EUR_RATE)
-    
-    if eur_amount > 0:
-        result = await credit_wallet(
-            user_id=user_id,
-            amount=eur_amount,
-            tx_type=TransactionType.REWARD,
-            description=f"Quiz Gewinn: {points} Punkte",
-            metadata={"game": "quiz", "points": points}
-        )
-        
-        if not result.success:
-            raise HTTPException(status_code=500, detail="Wallet-Gutschrift fehlgeschlagen")
-    
-    await update_daily_stats(user_id, points, eur_amount, "quiz")
-    await record_game_result(user_id, "quiz", points, eur_amount)
-    
-    return {
-        "success": True,
-        "points_won": points,
-        "eur_won": eur_amount,
-        "message": f"Quiz abgeschlossen! +{points} Punkte = €{eur_amount:.2f}!"
-    }
+    return await play_game(str(user["_id"]), "quiz", req.bet, req.points_won)
 
-
-# ══════════════════════════════════════════════════════════════════════════════
-# MEMORY
-# ══════════════════════════════════════════════════════════════════════════════
 
 @router.post("/memory/complete")
-async def memory_complete(req: GameWinRequest, request: Request):
-    """Process memory game completion - points based on moves"""
+async def memory_complete(req: GamePlayRequest, request: Request):
     user = await get_current_user(request)
-    user_id = str(user["_id"])
-    
-    # Validate points (formula: max(10, 100 - moves*2))
-    points = min(req.points_won, 100)
-    if points <= 0:
-        points = 10  # Minimum reward for completing
-    
-    daily_stats = await get_user_daily_stats(user_id)
-    eur_amount = points_to_eur(points)
-    
-    if daily_stats.get("total_eur_won", 0) + eur_amount > MAX_DAILY_WINS_EUR:
-        eur_amount = max(0, MAX_DAILY_WINS_EUR - daily_stats.get("total_eur_won", 0))
-        points = int(eur_amount / POINTS_TO_EUR_RATE)
-    
-    if eur_amount > 0:
-        result = await credit_wallet(
-            user_id=user_id,
-            amount=eur_amount,
-            tx_type=TransactionType.REWARD,
-            description=f"Memory Gewinn: {points} Punkte",
-            metadata={"game": "memory", "points": points, "moves": req.moves}
-        )
-        
-        if not result.success:
-            raise HTTPException(status_code=500, detail="Wallet-Gutschrift fehlgeschlagen")
-    
-    await update_daily_stats(user_id, points, eur_amount, "memory")
-    await record_game_result(user_id, "memory", points, eur_amount, {"moves": req.moves})
-    
-    return {
-        "success": True,
-        "points_won": points,
-        "eur_won": eur_amount,
-        "message": f"Memory geschafft! +{points} Punkte = €{eur_amount:.2f}!"
-    }
+    return await play_game(str(user["_id"]), "memory", req.bet, req.points_won, {"moves": req.moves})
 
-
-# ══════════════════════════════════════════════════════════════════════════════
-# DICE (Würfelglück)
-# ══════════════════════════════════════════════════════════════════════════════
 
 @router.post("/dice/win")
-async def dice_win(req: GameWinRequest, request: Request):
-    """Process dice game win"""
+async def dice_win(req: GamePlayRequest, request: Request):
     user = await get_current_user(request)
-    user_id = str(user["_id"])
-    
-    # Validate points (max dice win is 60 = 10 base * 6x multiplier for doubles)
-    points = min(req.points_won, 60)
-    if points <= 0:
-        return {"success": True, "points_won": 0, "eur_won": 0, "message": "Leider verloren"}
-    
-    daily_stats = await get_user_daily_stats(user_id)
-    eur_amount = points_to_eur(points)
-    
-    if daily_stats.get("total_eur_won", 0) + eur_amount > MAX_DAILY_WINS_EUR:
-        eur_amount = max(0, MAX_DAILY_WINS_EUR - daily_stats.get("total_eur_won", 0))
-        points = int(eur_amount / POINTS_TO_EUR_RATE)
-    
-    if eur_amount > 0:
-        result = await credit_wallet(
-            user_id=user_id,
-            amount=eur_amount,
-            tx_type=TransactionType.REWARD,
-            description=f"Würfelglück Gewinn: {points} Punkte",
-            metadata={"game": "dice", "points": points}
-        )
-        
-        if not result.success:
-            raise HTTPException(status_code=500, detail="Wallet-Gutschrift fehlgeschlagen")
-    
-    await update_daily_stats(user_id, points, eur_amount, "dice")
-    await record_game_result(user_id, "dice", points, eur_amount)
-    
-    return {
-        "success": True,
-        "points_won": points,
-        "eur_won": eur_amount,
-        "message": f"Gewonnen! +{points} Punkte = €{eur_amount:.2f}!"
-    }
+    return await play_game(str(user["_id"]), "dice", req.bet, req.points_won)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# REDEEM POINTS TO EUR
+# REDEEM COINS → EUR
 # ══════════════════════════════════════════════════════════════════════════════
-
-class RedeemRequest(BaseModel):
-    points: int
-
 
 @router.post("/redeem")
-async def redeem_points(req: RedeemRequest, request: Request):
-    """Redeem accumulated points for EUR wallet credit"""
+async def redeem_coins(req: RedeemRequest, request: Request):
+    """Convert coins to EUR wallet balance."""
     user = await get_current_user(request)
     user_id = str(user["_id"])
-    
-    if req.points < 500:
-        raise HTTPException(status_code=400, detail="Mindestens 500 Punkte zum Einlösen erforderlich")
-    
-    # Get user's total points
-    total_result = await db.gaming_history.aggregate([
-        {"$match": {"user_id": user_id}},
-        {"$group": {"_id": None, "total": {"$sum": "$points_won"}}}
-    ]).to_list(1)
-    
-    total_points = total_result[0]["total"] if total_result else 0
-    
-    # Get already redeemed points
-    redeemed_result = await db.gaming_redemptions.aggregate([
-        {"$match": {"user_id": user_id}},
-        {"$group": {"_id": None, "total": {"$sum": "$points_redeemed"}}}
-    ]).to_list(1)
-    
-    redeemed_points = redeemed_result[0]["total"] if redeemed_result else 0
-    available_points = total_points - redeemed_points
-    
-    if req.points > available_points:
-        raise HTTPException(status_code=400, detail=f"Nicht genug Punkte. Verfügbar: {available_points}")
-    
-    eur_amount = points_to_eur(req.points)
-    
+
+    if req.coins < MIN_REDEEM:
+        raise HTTPException(status_code=400, detail=f"Mindestens {MIN_REDEEM} Coins zum Einlösen")
+
+    current = await get_user_coins(user_id)
+    if req.coins > current:
+        raise HTTPException(status_code=400, detail=f"Nicht genug Coins. Verfügbar: {current}")
+
+    eur_amount = coins_to_eur(req.coins)
+
+    # Deduct coins
+    await deduct_coins(user_id, req.coins, f"Eingelöst: {req.coins} Coins → €{eur_amount:.2f}")
+
     # Credit wallet
     result = await credit_wallet(
         user_id=user_id,
         amount=eur_amount,
         tx_type=TransactionType.REWARD,
-        description=f"Punkte eingelöst: {req.points} Punkte",
-        metadata={"type": "redemption", "points": req.points}
+        description=f"Gaming Coins eingelöst: {req.coins} Coins",
+        metadata={"type": "coin_redemption", "coins": req.coins},
     )
-    
+
     if not result.success:
+        # Refund coins if wallet credit fails
+        await add_coins(user_id, req.coins, "Rückerstattung: Einlösung fehlgeschlagen")
         raise HTTPException(status_code=500, detail="Einlösung fehlgeschlagen")
-    
-    # Record redemption
-    await db.gaming_redemptions.insert_one({
-        "user_id": user_id,
-        "points_redeemed": req.points,
-        "eur_credited": eur_amount,
-        "created_at": datetime.now(timezone.utc).isoformat()
-    })
-    
+
+    new_balance = await get_user_coins(user_id)
     return {
         "success": True,
-        "points_redeemed": req.points,
+        "coins_redeemed": req.coins,
         "eur_credited": eur_amount,
-        "remaining_points": available_points - req.points,
-        "message": f"{req.points} Punkte für €{eur_amount:.2f} eingelöst!"
+        "remaining_coins": new_balance,
+        "message": f"{req.coins} Coins → €{eur_amount:.2f} auf dein Wallet!",
     }
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# COIN HISTORY
+# ══════════════════════════════════════════════════════════════════════════════
+
+@router.get("/coin-history")
+async def get_coin_history(request: Request, limit: int = 50):
+    """Get user's coin transaction history."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+
+    history = await db.gaming_coin_log.find(
+        {"user_id": user_id}, {"_id": 0}
+    ).sort("created_at", -1).limit(limit).to_list(limit)
+
+    return {"history": history}
