@@ -41,23 +41,27 @@ const SendMoneyModal = ({ onClose, onSuccess }) => {
 
   const loadData = async () => {
     try {
-      // Try to get P2P profile, but fallback to user balance from store
-      const [profileRes, recentRes] = await Promise.all([
-        api("/api/p2p/profile").catch(() => null),
-        api("/api/p2p/recipients/recent").catch(() => ({ recipients: [] })),
+      // Load wallet balance using correct API call
+      const [balanceRes, recentRes] = await Promise.all([
+        fetch(`${process.env.REACT_APP_BACKEND_URL}/api/wallet/balance`, { credentials: 'include' })
+          .then(r => r.ok ? r.json() : null)
+          .catch(() => null),
+        fetch(`${process.env.REACT_APP_BACKEND_URL}/api/p2p/recipients/recent`, { credentials: 'include' })
+          .then(r => r.ok ? r.json() : { recipients: [] })
+          .catch(() => ({ recipients: [] })),
       ]);
       
-      // Prefer P2P profile balance, but fallback to user store balance
-      if (profileRes?.balance !== undefined) {
-        setBalance(profileRes.balance);
+      // Set balance from API response or fallback to user store
+      if (balanceRes?.balance !== undefined) {
+        setBalance(balanceRes.balance);
       } else if (user?.balance !== undefined) {
         setBalance(user.balance);
       }
       
       setRecentContacts(recentRes?.recipients || []);
     } catch (err) {
-      console.error(err);
-      // Still use user balance from store as fallback
+      console.error('LoadData error:', err);
+      // Fallback to user store balance
       if (user?.balance !== undefined) {
         setBalance(user.balance);
       }

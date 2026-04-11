@@ -9,7 +9,8 @@ import {
   ArrowLeft, Power, Clock, DollarSign, CheckCircle, XCircle,
   Phone, Loader2, Star, TrendingUp, AlertCircle, ChevronRight,
   UtensilsCrossed, Package, Bell, RefreshCw, Wallet, Plus,
-  Edit2, Trash2, Check, X, ShoppingBag, Timer, MapPin, User
+  Edit2, Trash2, Check, X, ShoppingBag, Timer, MapPin, User,
+  Car, Truck
 } from "lucide-react";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
@@ -33,6 +34,11 @@ const RestaurantDashboardPage = ({ onNavigate }) => {
 
   // Order History
   const [orderHistory, setOrderHistory] = useState([]);
+
+  // Driver Assignment
+  const [availableDrivers, setAvailableDrivers] = useState([]);
+  const [showDriverModal, setShowDriverModal] = useState(null); // order_id to assign driver
+  const [loadingDrivers, setLoadingDrivers] = useState(false);
 
   useEffect(() => {
     loadStatus();
@@ -122,6 +128,61 @@ const RestaurantDashboardPage = ({ onNavigate }) => {
       setActionLoading(false);
       setTimeout(() => setSuccess(null), 2000);
     }
+  };
+
+  // Load available drivers
+  const loadAvailableDrivers = async () => {
+    setLoadingDrivers(true);
+    try {
+      const data = await fetchAPI("/api/restaurant-dashboard/available-drivers");
+      setAvailableDrivers(data.drivers || []);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoadingDrivers(false);
+    }
+  };
+
+  // Assign driver to order
+  const assignDriver = async (orderId, driverId) => {
+    setActionLoading(true);
+    try {
+      const res = await fetchAPI(`/api/restaurant-dashboard/orders/${orderId}/assign-driver`, {
+        method: "POST",
+        body: JSON.stringify({ driver_id: driverId }),
+      });
+      setSuccess(res.message);
+      setShowDriverModal(null);
+      await loadStatus();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setActionLoading(false);
+      setTimeout(() => { setSuccess(null); setError(null); }, 2000);
+    }
+  };
+
+  // Remove driver from order
+  const removeDriver = async (orderId) => {
+    setActionLoading(true);
+    try {
+      const res = await fetchAPI(`/api/restaurant-dashboard/orders/${orderId}/remove-driver`, {
+        method: "POST",
+      });
+      setSuccess(res.message);
+      await loadStatus();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setActionLoading(false);
+      setTimeout(() => setSuccess(null), 2000);
+    }
+  };
+
+  // Open driver assignment modal
+  const openDriverAssignment = (orderId) => {
+    setShowDriverModal(orderId);
+    loadAvailableDrivers();
   };
 
   const addMenuItem = async () => {
@@ -367,6 +428,8 @@ const RestaurantDashboardPage = ({ onNavigate }) => {
                       key={order.order_id}
                       order={order}
                       onStatusUpdate={(newStatus) => updateOrderStatus(order.order_id, newStatus)}
+                      onAssignDriver={openDriverAssignment}
+                      onRemoveDriver={removeDriver}
                       loading={actionLoading}
                     />
                   ))}
@@ -573,6 +636,95 @@ const RestaurantDashboardPage = ({ onNavigate }) => {
           </motion.div>
         )}
       </div>
+
+      {/* ════════════════════════════════════════════════════════════════════════
+          DRIVER SELECTION MODAL
+      ════════════════════════════════════════════════════════════════════════ */}
+      <AnimatePresence>
+        {showDriverModal && (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowDriverModal(null)} />
+            <motion.div
+              className="relative w-full max-w-md bg-[#0A0A0A] rounded-2xl border border-white/10 p-5 max-h-[80vh] overflow-y-auto"
+              initial={{ scale: 0.95, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 20 }}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-[16px] font-bold text-white">Fahrer zuweisen</h3>
+                <motion.button
+                  onClick={() => setShowDriverModal(null)}
+                  className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center"
+                  whileTap={{ scale: 0.9 }}
+                >
+                  <X size={16} className="text-gray-400" />
+                </motion.button>
+              </div>
+
+              <p className="text-[12px] text-gray-500 mb-4">
+                Wähle einen verfügbaren Fahrer für Bestellung #{showDriverModal?.slice(-6)}
+              </p>
+
+              {loadingDrivers ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 size={24} className="text-blue-400 animate-spin" />
+                </div>
+              ) : availableDrivers.length === 0 ? (
+                <div className="py-8 text-center">
+                  <Car size={32} className="text-gray-700 mx-auto mb-2" />
+                  <p className="text-gray-500 text-[13px]">Keine Fahrer verfügbar</p>
+                  <p className="text-gray-600 text-[11px] mt-1">Versuche es später erneut</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {availableDrivers.map((driver) => (
+                    <motion.button
+                      key={driver.driver_id}
+                      onClick={() => assignDriver(showDriverModal, driver.driver_id)}
+                      disabled={actionLoading}
+                      className="w-full p-4 rounded-xl bg-white/[0.02] border border-white/5 hover:border-blue-500/30 hover:bg-blue-500/5 transition-all flex items-center gap-3"
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      <div className="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center">
+                        <Car size={20} className="text-blue-400" />
+                      </div>
+                      <div className="flex-1 text-left">
+                        <p className="text-[14px] font-semibold text-white">{driver.name}</p>
+                        <div className="flex items-center gap-3 text-[11px] text-gray-500">
+                          <span className="flex items-center gap-1">
+                            <Star size={10} className="text-yellow-400" />
+                            {driver.rating?.toFixed(1)}
+                          </span>
+                          <span>{driver.completed_deliveries || 0} Lieferungen</span>
+                          <span className="capitalize">{driver.vehicle_type}</span>
+                        </div>
+                      </div>
+                      {actionLoading ? (
+                        <Loader2 size={16} className="text-blue-400 animate-spin" />
+                      ) : (
+                        <ChevronRight size={16} className="text-gray-500" />
+                      )}
+                    </motion.button>
+                  ))}
+                </div>
+              )}
+
+              <motion.button
+                onClick={() => { setShowDriverModal(null); loadAvailableDrivers(); }}
+                className="w-full mt-4 py-2.5 bg-white/5 rounded-xl text-[12px] text-gray-400 font-medium flex items-center justify-center gap-2"
+                whileTap={{ scale: 0.98 }}
+              >
+                <RefreshCw size={14} /> Aktualisieren
+              </motion.button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
@@ -580,7 +732,8 @@ const RestaurantDashboardPage = ({ onNavigate }) => {
 // ═══════════════════════════════════════════════════════════════════════════════
 // ORDER CARD COMPONENT
 // ═══════════════════════════════════════════════════════════════════════════════
-const OrderCard = ({ order, isPending, onAccept, onReject, onStatusUpdate, loading }) => {
+
+const OrderCard = ({ order, isPending, onAccept, onReject, onStatusUpdate, onAssignDriver, onRemoveDriver, loading }) => {
   const statusColors = {
     pending: "bg-yellow-500/20 text-yellow-400",
     accepted: "bg-blue-500/20 text-blue-400",
@@ -600,6 +753,8 @@ const OrderCard = ({ order, isPending, onAccept, onReject, onStatusUpdate, loadi
     preparing: "ready",
     ready: "picked_up",
   };
+
+  const hasDriver = !!order.driver_id;
 
   return (
     <motion.div
@@ -626,6 +781,28 @@ const OrderCard = ({ order, isPending, onAccept, onReject, onStatusUpdate, loadi
         <Clock size={12} />
         <span>{new Date(order.created_at).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}</span>
       </div>
+
+      {/* Driver Info (if assigned) */}
+      {hasDriver && (
+        <div className="flex items-center justify-between p-2.5 mb-3 rounded-xl bg-green-500/10 border border-green-500/20">
+          <div className="flex items-center gap-2">
+            <Car size={14} className="text-green-400" />
+            <span className="text-[12px] text-green-400 font-medium">{order.driver_name}</span>
+            {order.driver_phone && (
+              <a href={`tel:${order.driver_phone}`} className="text-[10px] text-green-400/70">
+                📞 {order.driver_phone}
+              </a>
+            )}
+          </div>
+          <motion.button
+            onClick={() => onRemoveDriver?.(order.order_id)}
+            className="text-[10px] text-red-400 px-2 py-1 rounded bg-red-500/10"
+            whileTap={{ scale: 0.95 }}
+          >
+            Entfernen
+          </motion.button>
+        </div>
+      )}
 
       {/* Items */}
       <div className="space-y-1 mb-3">
@@ -662,18 +839,35 @@ const OrderCard = ({ order, isPending, onAccept, onReject, onStatusUpdate, loadi
             Ablehnen
           </motion.button>
         </div>
-      ) : nextStatus[order.status] && (
-        <motion.button
-          onClick={() => onStatusUpdate(nextStatus[order.status])}
-          disabled={loading}
-          className="w-full py-3 bg-orange-500/20 text-orange-400 border border-orange-500/30 rounded-xl text-[12px] font-bold flex items-center justify-center gap-2"
-          whileTap={{ scale: 0.98 }}
-        >
-          {loading ? <Loader2 size={14} className="animate-spin" /> : <ChevronRight size={14} />}
-          {order.status === "accepted" && "Zubereitung starten"}
-          {order.status === "preparing" && "Fertig melden"}
-          {order.status === "ready" && "Abgeholt"}
-        </motion.button>
+      ) : (
+        <div className="space-y-2">
+          {/* Assign Driver Button (if no driver yet) */}
+          {!hasDriver && order.status !== "pending" && (
+            <motion.button
+              onClick={() => onAssignDriver?.(order.order_id)}
+              className="w-full py-2.5 bg-blue-500/20 text-blue-400 border border-blue-500/30 rounded-xl text-[12px] font-bold flex items-center justify-center gap-2"
+              whileTap={{ scale: 0.98 }}
+            >
+              <Truck size={14} />
+              Fahrer zuweisen
+            </motion.button>
+          )}
+          
+          {/* Status Update Button */}
+          {nextStatus[order.status] && (
+            <motion.button
+              onClick={() => onStatusUpdate(nextStatus[order.status])}
+              disabled={loading}
+              className="w-full py-3 bg-orange-500/20 text-orange-400 border border-orange-500/30 rounded-xl text-[12px] font-bold flex items-center justify-center gap-2"
+              whileTap={{ scale: 0.98 }}
+            >
+              {loading ? <Loader2 size={14} className="animate-spin" /> : <ChevronRight size={14} />}
+              {order.status === "accepted" && "Zubereitung starten"}
+              {order.status === "preparing" && "Fertig melden"}
+              {order.status === "ready" && "Abgeholt"}
+            </motion.button>
+          )}
+        </div>
       )}
     </motion.div>
   );

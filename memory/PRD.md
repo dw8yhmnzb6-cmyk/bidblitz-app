@@ -94,3 +94,34 @@ Create a modern, professional fintech Super App called BidBlitz V2. Full-stack a
 - Fixed translation keys for new features
 - Added Kids Tasks/Aufgaben system with rewards
 - Fixed SendMoneyModal balance display bug
+
+## Session Updates (April 11, 2026 - Part 2)
+### Bug Fixes
+- ✅ **Wallet Balance €0.00 Bug** - Fixed SendMoneyModal to use direct fetch() calls instead of broken api() function
+- ✅ **Aufgaben Button** - Added dedicated "Aufgaben" button per child card in Kids Wallet with proper z-index
+
+### New Features
+- ✅ **Restaurant Dashboard** (`/restaurant-dashboard`) - Full operational dashboard for restaurants
+  - Order management (pending, active, history)
+  - Menu management (add, edit, toggle availability, delete items)
+  - Statistics tab (today/week revenue)
+  - **Driver Assignment** - Restaurants can assign delivery drivers to orders
+- ✅ **Driver Assignment System** - Backend endpoints for driver allocation
+  - `GET /api/restaurant-dashboard/available-drivers`
+  - `POST /api/restaurant-dashboard/orders/{id}/assign-driver`
+  - `POST /api/restaurant-dashboard/orders/{id}/remove-driver`
+  - `GET /api/restaurant-dashboard/orders/{id}/tracking`
+
+### Bug Fixes Applied
+- Fixed `DriverDashboardPage.jsx` API calls (was using broken api() function)
+- Fixed `SendMoneyModal.jsx` balance loading
+- Enhanced `KidsPaywall.jsx` with dedicated Aufgaben button per child
+
+## Backlog (Updated)
+- [ ] KYC Verification UI endpoint mismatch
+- [ ] Main app Referral `my-code` auto-generation
+- [ ] Merchant Dashboard `today_revenue` null issue
+- [ ] Premium Finance UI (Credit Score, eSIM, NFT Generator)
+- [ ] Connect Map Markers to Actions
+- [ ] Receipt PDF export
+- [ ] Apple Pay / Google Pay

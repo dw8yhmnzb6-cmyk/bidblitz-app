@@ -5,13 +5,13 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  ArrowLeft, Power, MapPin, Navigation, Clock, DollarSign,
+import { ArrowLeft, Power, MapPin, Navigation, Clock, DollarSign,
   CheckCircle, XCircle, Phone, MessageSquare, Loader2,
   Car, User, Star, TrendingUp, AlertCircle, ChevronRight,
   Play, Square, Map, Bell, RefreshCw, Wallet
 } from "lucide-react";
-import { api } from "../services/api";
+
+const API_URL = process.env.REACT_APP_BACKEND_URL;
 
 const panelBg = "rgba(12, 14, 26, 0.95)";
 const panelBorder = "1px solid rgba(255,255,255,0.04)";
@@ -45,9 +45,23 @@ const DriverDashboardPage = ({ onNavigate }) => {
     }
   };
 
+  // Helper function for API calls
+  const fetchAPI = async (path, options = {}) => {
+    const res = await fetch(`${API_URL}${path}`, {
+      ...options,
+      credentials: "include",
+      headers: { "Content-Type": "application/json", ...options.headers },
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.detail || "Anfrage fehlgeschlagen");
+    }
+    return res.json();
+  };
+
   const loadStatus = async () => {
     try {
-      const data = await api("/api/driver-dashboard/status");
+      const data = await fetchAPI("/api/driver-dashboard/status");
       setStatus(data);
       setError(null);
     } catch (err) {
@@ -70,10 +84,10 @@ const DriverDashboardPage = ({ onNavigate }) => {
     setActionLoading(true);
     try {
       if (status?.is_online) {
-        await api("/api/driver-dashboard/go-offline", { method: "POST" });
+        await fetchAPI("/api/driver-dashboard/go-offline", { method: "POST" });
         setSuccess("Du bist jetzt offline");
       } else {
-        await api("/api/driver-dashboard/go-online", {
+        await fetchAPI("/api/driver-dashboard/go-online", {
           method: "POST",
           body: JSON.stringify(userLocation)
         });
@@ -91,7 +105,7 @@ const DriverDashboardPage = ({ onNavigate }) => {
   const acceptRide = async (requestId) => {
     setActionLoading(true);
     try {
-      const res = await api(`/api/driver-dashboard/ride-requests/${requestId}/accept`, { method: "POST" });
+      const res = await fetchAPI(`/api/driver-dashboard/ride-requests/${requestId}/accept`, { method: "POST" });
       setSuccess(res.message);
       await loadStatus();
     } catch (err) {
@@ -104,7 +118,7 @@ const DriverDashboardPage = ({ onNavigate }) => {
   const rejectRide = async (requestId) => {
     setActionLoading(true);
     try {
-      await api(`/api/driver-dashboard/ride-requests/${requestId}/reject`, { method: "POST" });
+      await fetchAPI(`/api/driver-dashboard/ride-requests/${requestId}/reject`, { method: "POST" });
       setSuccess("Anfrage abgelehnt");
       await loadStatus();
     } catch (err) {
@@ -117,7 +131,7 @@ const DriverDashboardPage = ({ onNavigate }) => {
   const updateRideStatus = async (rideId, newStatus) => {
     setActionLoading(true);
     try {
-      await api(`/api/driver-dashboard/rides/${rideId}/status`, {
+      await fetchAPI(`/api/driver-dashboard/rides/${rideId}/status`, {
         method: "POST",
         body: JSON.stringify({ status: newStatus })
       });
