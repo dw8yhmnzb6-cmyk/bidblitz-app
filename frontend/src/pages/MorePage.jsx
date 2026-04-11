@@ -6,7 +6,8 @@ import {
   Globe, Lock, Eye, Fingerprint, Smartphone, Mail, Calendar, Gift, LayoutDashboard, Activity, Users,
   Pencil, Loader2, Check, X, ShieldCheck, Clock, AlertCircle, MapPin,
   Trophy, TrendingUp, Star, Store, Monitor, Scan, Wallet, Cpu, Car, Zap, ShoppingBag, Coins,
-  Split, CreditCardIcon, PiggyBank, BadgePercent, Banknote, Bitcoin, GiftIcon, Gamepad2
+  Split, CreditCardIcon, PiggyBank, BadgePercent, Banknote, Bitcoin, GiftIcon, Gamepad2,
+  MessageCircle
 } from "lucide-react";
 import { useUser, useI18n } from "../store";
 import { api } from "../services/api";
@@ -827,11 +828,13 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
 
   const supportMenu = [
     { id: "help", icon: HelpCircle, label: t("more.help"), desc: t("more.help_desc"), color: "#FF6B6B", action: gatedAction(() => setSubPage("support")) },
+    { id: "support-chat", icon: MessageCircle, label: "Support Chat", desc: "Direkter Chat mit Support", color: "#00C2FF", action: gatedAction(() => onNavigate("/support-chat")) },
   ];
 
   const adminMenu = user.role === "admin" ? [
     { id: "admin-dashboard", icon: LayoutDashboard, label: "Admin Dashboard", desc: "Platform Management", color: "#FF6B6B", action: () => onNavigate("/admin") },
     { id: "admin-car-rental", icon: Car, label: "Autovermietung Admin", desc: "Vermieter & Buchungen", color: "#00C2FF", action: () => onNavigate("/car-rental/admin") },
+    { id: "admin-support", icon: MessageCircle, label: "Support Tickets", desc: "Kundenanfragen bearbeiten", color: "#A855F7", action: () => onNavigate("/admin/support") },
   ] : [];
 
   const renderGroup = (title, items, delay) => (

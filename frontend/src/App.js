@@ -51,6 +51,7 @@ import OrderTrackingPage from "./pages/OrderTrackingPage";
 import CreditScorePage from "./pages/CreditScorePage";
 import BillsPage from "./pages/BillsPage";
 import GamingPage from "./pages/GamingPage";
+import SupportChatPage from "./pages/SupportChatPage";
 
 // Car Rental Module
 import {
@@ -255,6 +256,10 @@ function AppContent() {
         return <MarketplacePage onNavigate={handleNavigate} />;
       case "/chat":
         return isGuest ? <HomePage {...homeProps} /> : <ChatPage onNavigate={handleNavigate} />;
+      case "/support-chat":
+        return isGuest ? <HomePage {...homeProps} /> : <SupportChatPage onBack={() => handleNavigate("/more")} />;
+      case "/admin/support":
+        return isGuest ? <HomePage {...homeProps} /> : <SupportChatPage onBack={() => handleNavigate("/admin")} isAdmin={true} />;
       case "/partners":
         return <PartnersPage />;
       case "/referral":

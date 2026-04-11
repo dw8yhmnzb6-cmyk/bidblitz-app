@@ -1,7 +1,7 @@
 # BidBlitz V2 - Product Requirements Document
 
 ## Original Problem Statement
-Build a modern, professional fintech Super App called BidBlitz V2. 100% REAL system with NO fake/demo/seed data. Multi-vendor car rental module, gaming hub, scooter map, and full fintech ecosystem.
+Build a modern, professional fintech Super App called BidBlitz V2. 100% REAL system with NO fake/demo/seed data.
 
 ## Core Stack
 - **Frontend**: React, TailwindCSS, Framer Motion, Shadcn/UI
@@ -15,7 +15,7 @@ Build a modern, professional fintech Super App called BidBlitz V2. 100% REAL sys
 ## Completed Features
 
 ### Core Platform (DONE)
-- Unified Wallet, Kids GPS, Merchant POS, Auctions, Mobility Map, Loyalty
+- Unified Wallet (EUR), Kids GPS, Merchant POS, Auctions, Mobility Map, Loyalty
 
 ### Gaming Hub (DONE)
 - 6 games with real EUR wallet integration
@@ -24,43 +24,46 @@ Build a modern, professional fintech Super App called BidBlitz V2. 100% REAL sys
 - Live scooter map + Admin management
 
 ### Car Rental Module (DONE)
-- Full backend (vendors, cars, bookings, contracts, invoices, handover/return, damage, payouts)
-- 13 frontend pages (public, customer, vendor, admin)
-- Image upload for vendor cars (JPG/PNG/WebP, max 10MB)
-- Customer reviews (1-5 stars + comment, auto-updates car/vendor rating)
-- PDF export (invoices + booking receipts via reportlab)
+- Full backend + 13 frontend pages
+- Image upload, Customer reviews (1-5 stars), PDF export (invoices + receipts)
 
-### Credit Score Enhancement (DONE - 2026-04-11)
+### Credit Score Enhancement (DONE)
 - Extended loan application with term selection (2, 6, 12, 18 months)
-- Detailed cost breakdown: monthly rate, interest rate, total interest, total repayment
-- Visual repayment schedule with monthly dates and remaining balance
-- Proper annuity calculation with compound interest
+- Detailed cost breakdown + repayment schedule
+
+### Chat/Support System (DONE - 2026-04-11)
+- **Threaded Support Chat**: Ticket-based messaging between Customer ↔ Admin
+- **Customer View** (`/support-chat`): Create tickets (category, subject, message), chat thread, search
+- **Admin View** (`/admin/support`): See all tickets with user info, reply to any ticket, close tickets
+- **Real-time Polling**: Auto-refreshes messages every 5 seconds while in chat
+- **Categories**: Allgemein, Zahlung, Autovermietung, Konto, Technisch
+- **Ticket Status**: Open / Resolved (auto-reopens if customer sends new message)
+- **Backend**: Extended `/api/support/` with threaded messages in `support_messages` collection
+- **Navigation**: Support Chat in MorePage (Support section) + Admin Support in Admin section
 
 ---
 
 ## Architecture
 
-### Backend Modules
+### Key Pages
 ```
-/app/backend/modules/car_rental/ (models, schemas, repository, routes, services, contracts, invoices, pdf_generator, utils)
-```
-
-### Frontend Modules
-```
-/app/frontend/src/modules/car-rental/ (api/index.js, 13 pages)
+/app/frontend/src/pages/SupportChatPage.jsx (NEW - ticket list + chat + new ticket)
+/app/frontend/src/modules/car-rental/ (13 pages)
 /app/frontend/src/pages/CreditScorePage.jsx (enhanced)
 ```
 
-### Key DB Collections
-- car_rental_vendors, car_rental_cars, car_rental_bookings
-- car_rental_invoices, car_rental_contracts, car_rental_damage_reports
-- car_rental_payouts, car_rental_reviews
+### Key API Endpoints (Support)
+- POST /api/support/tickets - Create ticket
+- GET /api/support/tickets - User's tickets
+- GET /api/support/tickets/{id} - Ticket detail + messages
+- POST /api/support/tickets/{id}/messages - Send message
+- POST /api/support/tickets/{id}/close - Close ticket
+- GET /api/support/admin/tickets - Admin: all tickets
 
 ---
 
 ## Upcoming Tasks (P2)
-- Push Notifications (Geofence alerts)
-- Chat/Support System (Kunde ↔ Vendor, Kunde ↔ Admin)
+- Push Notifications
 - Apple Pay / Google Pay
 - Car rental insurance management
 
