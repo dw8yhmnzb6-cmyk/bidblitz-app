@@ -387,7 +387,9 @@ async def get_ride_status(ride_id: str, request: Request):
 
 @router.post("/cancel")
 async def cancel_ride(req: RideAction, request: Request):
-    """Cancel an active ride."""
+    """Cancel an active ride - Uses Payment Engine for safe cancellation fee deduction."""
+    from core.payment_engine import debit_wallet, TransactionType
+    
     user = await get_current_user(request)
     user_id = str(user["_id"])
     
@@ -400,24 +402,21 @@ async def cancel_ride(req: RideAction, request: Request):
     
     # Cancellation fee if driver already en route
     cancel_fee = 0
+    payment_result = None
     if ride["status"] in ("accepted", "arriving"):
         cancel_fee = CANCELLATION_FEE
-        if user.get("balance", 0) >= cancel_fee:
-            await db.users.update_one(
-                {"_id": user["_id"]},
-                {"$inc": {"balance": -cancel_fee}}
-            )
-            await db.transactions.insert_one({
-                "id": secrets.token_hex(8),
-                "user_id": user_id,
-                "type": "payment",
-                "amount": -cancel_fee,
-                "description": "Taxi Stornierungsgebühr",
-                "status": "completed",
-                "reference": f"TAXI-CANCEL-{req.ride_id[:8].upper()}",
-                "category": "taxi",
-                "created_at": datetime.now(timezone.utc).isoformat(),
-            })
+        # Use Payment Engine for atomic deduction
+        payment_result = await debit_wallet(
+            user_id=user_id,
+            amount=cancel_fee,
+            tx_type=TransactionType.TAXI_PAYMENT,
+            description="Taxi Stornierungsgebühr",
+            reference=f"TAXI-CANCEL-{req.ride_id[:8].upper()}",
+            metadata={"ride_id": req.ride_id, "type": "cancellation_fee"}
+        )
+        if not payment_result.success:
+            # Allow cancellation without fee if balance insufficient
+            cancel_fee = 0
     
     now = datetime.now(timezone.utc)
     status_history = ride.get("status_history", [])
@@ -448,7 +447,9 @@ async def cancel_ride(req: RideAction, request: Request):
 
 @router.post("/complete")
 async def complete_ride(request: Request):
-    """Complete an active ride (for demo/simulation purposes)."""
+    """Complete an active ride - Uses Payment Engine for safe wallet deduction."""
+    from core.payment_engine import debit_wallet, TransactionType
+    
     user = await get_current_user(request)
     user_id = str(user["_id"])
     body = await request.json()
@@ -467,28 +468,18 @@ async def complete_ride(request: Request):
     now = datetime.now(timezone.utc)
     fare = ride.get("fare_estimate", 10.0)
     
-    # Deduct fare from wallet
-    current_balance = user.get("balance", 0)
-    if current_balance < fare:
-        raise HTTPException(status_code=400, detail=f"Nicht genug Guthaben. Benötigt: €{fare:.2f}")
-    
-    await db.users.update_one(
-        {"_id": user["_id"]},
-        {"$inc": {"balance": -fare}}
+    # Use Payment Engine for atomic wallet deduction
+    result = await debit_wallet(
+        user_id=user_id,
+        amount=fare,
+        tx_type=TransactionType.TAXI_PAYMENT,
+        description=f"Taxi: {ride.get('pickup', {}).get('address', '?')} → {ride.get('dropoff', {}).get('address', '?')}",
+        reference=f"TAXI-{ride_id[:8].upper()}",
+        metadata={"ride_id": ride_id, "distance_km": ride.get("distance_km", 0)}
     )
     
-    # Create transaction
-    await db.transactions.insert_one({
-        "id": secrets.token_hex(8),
-        "user_id": user_id,
-        "type": "payment",
-        "amount": -fare,
-        "description": f"Taxi: {ride.get('pickup', {}).get('address', '?')} → {ride.get('dropoff', {}).get('address', '?')}",
-        "status": "completed",
-        "reference": f"TAXI-{ride_id[:8].upper()}",
-        "category": "taxi",
-        "created_at": now.isoformat(),
-    })
+    if not result.success:
+        raise HTTPException(status_code=400, detail=result.error)
     
     # Update ride status
     status_history = ride.get("status_history", [])
@@ -502,15 +493,14 @@ async def complete_ride(request: Request):
             "completed_at": now.isoformat(),
             "status_history": status_history,
             "updated_at": now.isoformat(),
+            "payment_transaction_id": result.transaction_id,
         }}
     )
-    
-    new_balance = current_balance - fare
     
     return {
         "ok": True,
         "final_fare": fare,
-        "new_balance": round(new_balance, 2),
+        "new_balance": result.new_balance,
         "message": f"Fahrt abgeschlossen. €{fare:.2f} abgebucht.",
     }
 

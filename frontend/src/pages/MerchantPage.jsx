@@ -469,7 +469,42 @@ export const MerchantPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, 
                     <p className="text-[13px] font-medium text-white/90 truncate">{payment.customerId}</p>
                     <p className="text-[10px] text-[#333] font-medium mt-0.5">{payment.time}</p>
                   </div>
-                  <span className="text-[14px] font-bold font-outfit text-[#00D26A] tracking-tight flex-shrink-0">+&euro;{payment.amount.toFixed(2)}</span>
+                  <div className="flex items-center gap-2">
+                    <motion.button
+                      data-testid={`download-receipt-${payment.id}`}
+                      className="w-8 h-8 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                      style={{ background: "rgba(0,194,255,0.1)", border: "1px solid rgba(0,194,255,0.2)" }}
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        if (isDemoMode) {
+                          toast("PDF Download", { description: "Demo: Receipt download simulated" });
+                          return;
+                        }
+                        try {
+                          const response = await fetch(`${API}/api/payments/receipt/${payment.id}/pdf`, { credentials: "include" });
+                          if (!response.ok) throw new Error("Download failed");
+                          const blob = await response.blob();
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement("a");
+                          a.href = url;
+                          a.download = `BidBlitz_Receipt_${payment.id}.pdf`;
+                          document.body.appendChild(a);
+                          a.click();
+                          document.body.removeChild(a);
+                          URL.revokeObjectURL(url);
+                          toast.success("Receipt downloaded");
+                        } catch (err) {
+                          toast.error("Download failed: " + err.message);
+                        }
+                      }}
+                      title="Download PDF Receipt"
+                    >
+                      <Download size={14} className="text-[#00C2FF]" />
+                    </motion.button>
+                    <span className="text-[14px] font-bold font-outfit text-[#00D26A] tracking-tight flex-shrink-0">+&euro;{payment.amount.toFixed(2)}</span>
+                  </div>
                 </motion.div>
               ))}
             </div>

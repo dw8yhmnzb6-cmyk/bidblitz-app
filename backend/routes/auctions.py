@@ -659,7 +659,9 @@ class BuyCreditsRequest(BaseModel):
 
 @router.post("/buy-credits")
 async def buy_credits(req: BuyCreditsRequest, request: Request):
-    """Buy bid credits using wallet balance."""
+    """Buy bid credits using wallet balance - Uses Payment Engine for safety."""
+    from core.payment_engine import debit_wallet, TransactionType
+    
     user = await get_current_user(request)
     user_id = str(user["_id"])
     ip, ua = get_client_info(request)
@@ -671,25 +673,27 @@ async def buy_credits(req: BuyCreditsRequest, request: Request):
     price = pkg["price"]
     credits = pkg["credits"]
 
-    # WALLET-ONLY: Check balance (BidBlitz closed ecosystem)
-    balance = user.get("balance", 0)
-    if balance < price:
-        raise HTTPException(
-            status_code=400, 
-            detail=f"Nicht genug Guthaben. Benötigt: €{price:.2f}, Verfügbar: €{balance:.2f}. Bitte lade dein Wallet auf."
-        )
-
-    # Deduct balance and add credits
     # Check first purchase bonus
     has_prev = await db.transactions.find_one({"user_id": user_id, "category": "auction", "type": "purchase"})
     bonus = 5 if not has_prev else 0
     total_credits_add = credits + bonus
 
+    # Use Payment Engine for atomic wallet deduction
+    result = await debit_wallet(
+        user_id=user_id,
+        amount=price,
+        tx_type=TransactionType.AUCTION_BID,
+        description=f"Auction Credits: {credits} credits" + (f" (+{bonus} bonus)" if bonus else ""),
+        metadata={"package_id": req.package_id, "credits": credits, "bonus": bonus}
+    )
+    
+    if not result.success:
+        raise HTTPException(status_code=400, detail=result.error)
+    
+    # Add credits after successful payment
     await db.users.update_one(
         {"_id": user["_id"]},
-        {
-            "$inc": {"balance": -price, "bid_credits": total_credits_add},
-        },
+        {"$inc": {"bid_credits": total_credits_add}}
     )
 
     # Create transaction

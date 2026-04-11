@@ -195,17 +195,11 @@ async def reserve_scooter(req: ScooterAction, request: Request):
 
 @router.post("/unlock")
 async def unlock_scooter(req: ScooterAction, request: Request):
-    """Unlock and start riding a scooter."""
+    """Unlock and start riding a scooter - Uses Payment Engine for safe unlock fee deduction."""
+    from core.payment_engine import debit_wallet, TransactionType
+    
     user = await get_current_user(request)
     user_id = str(user["_id"])
-    
-    # WALLET-ONLY: Check balance (BidBlitz closed ecosystem)
-    current_balance = user.get("balance", 0)
-    if current_balance < UNLOCK_FEE:
-        raise HTTPException(
-            status_code=400, 
-            detail=f"Nicht genug Guthaben. Mindestens €{UNLOCK_FEE:.2f} erforderlich, du hast €{current_balance:.2f}. Bitte lade dein Wallet auf."
-        )
     
     # Check for reservation or direct unlock
     rental = await db.scooter_rentals.find_one({
@@ -215,6 +209,7 @@ async def unlock_scooter(req: ScooterAction, request: Request):
     })
     
     now = datetime.now(timezone.utc)
+    scooter = None
     
     if not rental:
         # Direct unlock - check if available
@@ -233,6 +228,24 @@ async def unlock_scooter(req: ScooterAction, request: Request):
             "started_at": now.isoformat(),
             "created_at": now.isoformat(),
         }
+    else:
+        scooter = await db.scooters.find_one({"scooter_id": req.scooter_id})
+    
+    # Use Payment Engine for atomic unlock fee deduction
+    result = await debit_wallet(
+        user_id=user_id,
+        amount=UNLOCK_FEE,
+        tx_type=TransactionType.SCOOTER_PAYMENT,
+        description=f"Scooter Entsperrgebühr ({req.scooter_id})",
+        reference=f"SCOOTER-UNLOCK-{rental.get('rental_id', '')[:8].upper()}",
+        metadata={"scooter_id": req.scooter_id, "type": "unlock_fee"}
+    )
+    
+    if not result.success:
+        raise HTTPException(status_code=400, detail=result.error)
+    
+    # Now save rental if new
+    if "rental_id" in rental and rental.get("status") == "active":
         await db.scooter_rentals.insert_one(rental)
     else:
         # Upgrade reservation to active
@@ -243,38 +256,21 @@ async def unlock_scooter(req: ScooterAction, request: Request):
         rental["status"] = "active"
         rental["started_at"] = now.isoformat()
     
-    # Charge unlock fee
-    await db.users.update_one(
-        {"_id": user["_id"]},
-        {"$inc": {"balance": -UNLOCK_FEE}}
-    )
-    
-    await db.transactions.insert_one({
-        "id": secrets.token_hex(8),
-        "user_id": user_id,
-        "type": "payment",
-        "amount": -UNLOCK_FEE,
-        "description": f"Scooter Entsperrgebühr ({req.scooter_id})",
-        "status": "completed",
-        "reference": f"SCOOTER-UNLOCK-{rental.get('rental_id', '')[:8].upper()}",
-        "category": "scooter",
-        "created_at": now.isoformat(),
-    })
-    
     await db.scooters.update_one(
         {"scooter_id": req.scooter_id},
         {"$set": {"status": "in_use", "current_user": user_id}}
     )
     
     rental.pop("_id", None)
-    scooter = await db.scooters.find_one({"scooter_id": req.scooter_id}, {"_id": 0})
+    scooter_data = await db.scooters.find_one({"scooter_id": req.scooter_id}, {"_id": 0})
     
     return {
         "ok": True,
         "rental": rental,
-        "scooter": scooter,
+        "scooter": scooter_data,
         "unlock_fee": UNLOCK_FEE,
         "per_minute_rate": PER_MINUTE_RATE,
+        "new_balance": result.new_balance,
         "message": "Scooter entsperrt! Gute Fahrt!",
     }
 
@@ -359,7 +355,9 @@ async def resume_ride(req: ScooterAction, request: Request):
 
 @router.post("/end")
 async def end_ride(req: EndRideRequest, request: Request):
-    """End the ride and process final payment."""
+    """End the ride and process final payment - Uses Payment Engine for safe deduction."""
+    from core.payment_engine import debit_wallet, TransactionType
+    
     user = await get_current_user(request)
     user_id = str(user["_id"])
     
@@ -395,28 +393,18 @@ async def end_ride(req: EndRideRequest, request: Request):
     total_cost = min(total_cost, MAX_DAILY_CAP - UNLOCK_FEE)  # Apply daily cap
     total_cost = max(0, total_cost)
     
-    # Charge remaining
+    # Charge remaining using Payment Engine
+    payment_result = None
     if total_cost > 0:
-        if user.get("balance", 0) < total_cost:
-            # Allow negative balance for rides (will need top-up)
-            pass
-        
-        await db.users.update_one(
-            {"_id": user["_id"]},
-            {"$inc": {"balance": -total_cost}}
+        payment_result = await debit_wallet(
+            user_id=user_id,
+            amount=total_cost,
+            tx_type=TransactionType.SCOOTER_PAYMENT,
+            description=f"Scooter Fahrt ({round(total_minutes)} Min)",
+            reference=f"SCOOTER-{rental['rental_id'][:8].upper()}",
+            metadata={"rental_id": rental["rental_id"], "scooter_id": req.scooter_id, "minutes": round(total_minutes)}
         )
-        
-        await db.transactions.insert_one({
-            "id": secrets.token_hex(8),
-            "user_id": user_id,
-            "type": "payment",
-            "amount": -total_cost,
-            "description": f"Scooter Fahrt ({round(total_minutes)} Min)",
-            "status": "completed",
-            "reference": f"SCOOTER-{rental['rental_id'][:8].upper()}",
-            "category": "scooter",
-            "created_at": now.isoformat(),
-        })
+        # Note: Allow ride to end even if payment fails (will have negative balance)
     
     # Update rental
     end_location = req.end_location or rental.get("start_location", {})
@@ -433,6 +421,7 @@ async def end_ride(req: EndRideRequest, request: Request):
             "ride_cost": ride_cost,
             "pause_cost": pause_cost,
             "total_cost": final_total,
+            "payment_transaction_id": payment_result.transaction_id if payment_result and payment_result.success else None,
         }}
     )
     
@@ -464,7 +453,7 @@ async def end_ride(req: EndRideRequest, request: Request):
         {"$inc": {"scooter_rides_count": 1, "scooter_total_spent": UNLOCK_FEE + total_cost}}
     )
     
-    updated_user = await db.users.find_one({"_id": user["_id"]})
+    new_balance = payment_result.new_balance if payment_result and payment_result.success else user.get("balance", 0) - total_cost
     
     return {
         "ok": True,
@@ -476,7 +465,7 @@ async def end_ride(req: EndRideRequest, request: Request):
             "pause_cost": pause_cost,
             "total_cost": round(UNLOCK_FEE + total_cost, 2),
         },
-        "new_balance": updated_user.get("balance", 0),
+        "new_balance": round(new_balance, 2),
         "message": f"Fahrt beendet. Gesamt: €{UNLOCK_FEE + total_cost:.2f}",
     }
 

@@ -510,7 +510,9 @@ class ChildPaymentRequest(BaseModel):
 # ── Parent sends money to child ──
 @router.post("/children/{child_id}/transfer")
 async def transfer_to_child(child_id: str, req: TransferToChildRequest, request: Request):
-    """Parent transfers money from their wallet to child's wallet."""
+    """Parent transfers money from their wallet to child's wallet - Uses Payment Engine."""
+    from core.payment_engine import debit_wallet, TransactionType
+    
     user = await get_current_user(request)
     user_id = str(user["_id"])
     
@@ -523,44 +525,27 @@ async def transfer_to_child(child_id: str, req: TransferToChildRequest, request:
     if child.get("is_frozen", False):
         raise HTTPException(status_code=400, detail="Kind-Wallet ist gesperrt")
     
-    # Check parent balance
-    parent_balance = user.get("balance", 0)
-    if parent_balance < req.amount:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Nicht genug Guthaben. Verfügbar: €{parent_balance:.2f}"
-        )
-    
     now = datetime.now(timezone.utc)
     ref = f"KIDS-{secrets.token_hex(4).upper()}"
     
-    # Deduct from parent
-    await db.users.update_one(
-        {"_id": user["_id"]},
-        {"$inc": {"balance": -req.amount}}
+    # Use Payment Engine for atomic parent wallet deduction
+    result = await debit_wallet(
+        user_id=user_id,
+        amount=req.amount,
+        tx_type=TransactionType.KIDS_TRANSFER,
+        description=f"Taschengeld an {child['name']}",
+        reference=ref,
+        metadata={"child_id": child_id, "child_name": child["name"], "note": req.note}
     )
     
-    # Add to child
+    if not result.success:
+        raise HTTPException(status_code=400, detail=result.error)
+    
+    # Add to child balance
     await db.kids_children.update_one(
         {"child_id": child_id},
         {"$inc": {"balance": req.amount}}
     )
-    
-    # Record parent transaction (outgoing)
-    await db.transactions.insert_one({
-        "id": secrets.token_hex(8),
-        "user_id": user_id,
-        "type": "kids_transfer_out",
-        "amount": -req.amount,
-        "description": f"Taschengeld an {child['name']}",
-        "status": "completed",
-        "reference": ref,
-        "category": "kids",
-        "child_id": child_id,
-        "child_name": child["name"],
-        "note": req.note,
-        "created_at": now.isoformat(),
-    })
     
     # Record child transaction (incoming)
     await db.kids_transactions.insert_one({
@@ -588,15 +573,15 @@ async def transfer_to_child(child_id: str, req: TransferToChildRequest, request:
         severity="info"
     )
     
-    # Get updated balances
-    updated_parent = await db.users.find_one({"_id": user["_id"]})
+    # Get updated child balance
     updated_child = await db.kids_children.find_one({"child_id": child_id}, {"_id": 0})
     
     return {
         "ok": True,
-        "parent_balance": round(updated_parent.get("balance", 0), 2),
+        "parent_balance": result.new_balance,
         "child_balance": round(updated_child.get("balance", 0), 2),
         "message": f"€{req.amount:.2f} an {child['name']} gesendet",
+        "transaction_id": result.transaction_id,
     }
 
 

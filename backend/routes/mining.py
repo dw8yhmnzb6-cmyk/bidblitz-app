@@ -359,7 +359,9 @@ class BuyMinerRequest(BaseModel):
 
 @router.post("/buy-miner")
 async def buy_miner(req: BuyMinerRequest, request: Request):
-    """Buy a miner package using wallet balance."""
+    """Buy a miner package using wallet balance - Uses Payment Engine for safety."""
+    from core.payment_engine import debit_wallet, TransactionType
+    
     user = await get_current_user(request)
     user_id = str(user["_id"])
 
@@ -377,16 +379,18 @@ async def buy_miner(req: BuyMinerRequest, request: Request):
     else:
         price = pkg["price_eur"]
 
-    # WALLET-ONLY: Check balance (BidBlitz closed ecosystem)
-    balance = user.get("balance", 0)
-    if balance < price:
-        raise HTTPException(
-            status_code=400, 
-            detail=f"Nicht genug Guthaben. Benötigt: €{price:.2f}, Verfügbar: €{balance:.2f}. Bitte lade dein Wallet auf."
-        )
-
-    # Deduct balance
-    await db.users.update_one({"_id": user["_id"]}, {"$inc": {"balance": -price}})
+    # Use Payment Engine for atomic wallet deduction
+    billing_label = {"onetime": "", "monthly": " (Monatlich)", "yearly": " (Jährlich)"}
+    result = await debit_wallet(
+        user_id=user_id,
+        amount=price,
+        tx_type=TransactionType.MINING_PURCHASE,
+        description=f"Mining: {pkg['name']}{billing_label.get(billing, '')}",
+        metadata={"package_id": req.package_id, "billing": billing}
+    )
+    
+    if not result.success:
+        raise HTTPException(status_code=400, detail=result.error)
 
     # Create miner
     miner_id = secrets.token_hex(6)
@@ -418,8 +422,7 @@ async def buy_miner(req: BuyMinerRequest, request: Request):
     await db.mining_miners.insert_one(miner)
     miner.pop("_id", None)
 
-    # Record transaction
-    billing_label = {"onetime": "", "monthly": " (Monatlich)", "yearly": " (Jährlich)"}
+    # Record mining transaction
     txn = {
         "txn_id": secrets.token_hex(6),
         "user_id": user_id,
@@ -431,24 +434,10 @@ async def buy_miner(req: BuyMinerRequest, request: Request):
     await db.mining_transactions.insert_one(txn)
     txn.pop("_id", None)
 
-    # Also record in main transactions
-    await db.transactions.insert_one({
-        "id": secrets.token_hex(8),
-        "user_id": user_id,
-        "type": "purchase",
-        "amount": -price,
-        "description": f"Mining: {pkg['name']}{billing_label.get(billing, '')}",
-        "status": "completed",
-        "reference": f"MINE-{miner_id.upper()[:8]}",
-        "category": "mining",
-        "created_at": now,
-    })
-
-    updated_user = await db.users.find_one({"_id": user["_id"]})
-
     return {
         "miner": miner,
-        "new_balance": updated_user.get("balance", 0),
+        "new_balance": result.new_balance,
+        "transaction_id": result.transaction_id,
     }
 
 
@@ -460,7 +449,9 @@ class UpgradeRequest(BaseModel):
 
 @router.post("/upgrade")
 async def upgrade_miner(req: UpgradeRequest, request: Request):
-    """Upgrade a miner's power or efficiency."""
+    """Upgrade a miner's power or efficiency - Uses Payment Engine for safety."""
+    from core.payment_engine import debit_wallet, TransactionType
+    
     user = await get_current_user(request)
     user_id = str(user["_id"])
 
@@ -479,15 +470,19 @@ async def upgrade_miner(req: UpgradeRequest, request: Request):
         raise HTTPException(status_code=400, detail="Max level reached")
 
     cost = costs[current_level + 1]
-    # WALLET-ONLY: Check balance (BidBlitz closed ecosystem)
-    balance = user.get("balance", 0)
-    if balance < cost:
-        raise HTTPException(
-            status_code=400, 
-            detail=f"Nicht genug Guthaben. Benötigt: €{cost:.2f}, Verfügbar: €{balance:.2f}. Bitte lade dein Wallet auf."
-        )
+    
+    # Use Payment Engine for atomic wallet deduction
+    result = await debit_wallet(
+        user_id=user_id,
+        amount=cost,
+        tx_type=TransactionType.MINING_PURCHASE,
+        description=f"Mining Upgrade: {miner['name']} {req.upgrade_type} to Lv.{current_level + 1}",
+        metadata={"miner_id": req.miner_id, "upgrade_type": req.upgrade_type, "new_level": current_level + 1}
+    )
+    
+    if not result.success:
+        raise HTTPException(status_code=400, detail=result.error)
 
-    await db.users.update_one({"_id": user["_id"]}, {"$inc": {"balance": -cost}})
     await db.mining_miners.update_one(
         {"miner_id": req.miner_id},
         {"$inc": {level_key: 1}},
@@ -503,12 +498,11 @@ async def upgrade_miner(req: UpgradeRequest, request: Request):
         "created_at": now,
     })
 
-    updated_user = await db.users.find_one({"_id": user["_id"]})
     return {
         "ok": True,
         "new_level": current_level + 1,
         "cost": cost,
-        "new_balance": updated_user.get("balance", 0),
+        "new_balance": result.new_balance,
     }
 
 

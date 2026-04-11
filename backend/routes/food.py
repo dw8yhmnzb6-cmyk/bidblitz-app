@@ -284,7 +284,9 @@ async def get_restaurant(restaurant_id: str):
 
 @router.post("/order")
 async def place_order(req: OrderRequest, request: Request):
-    """Place a food delivery order."""
+    """Place a food delivery order - Uses Payment Engine for safe wallet deduction."""
+    from core.payment_engine import debit_wallet, TransactionType
+    
     user = await get_current_user(request)
     user_id = str(user["_id"])
     
@@ -328,16 +330,22 @@ async def place_order(req: OrderRequest, request: Request):
     
     total = subtotal + delivery_fee + service_fee + small_order_fee + tip
     
-    # WALLET-ONLY: Check balance (BidBlitz closed ecosystem)
-    current_balance = user.get("balance", 0)
-    if current_balance < total:
-        raise HTTPException(
-            status_code=400, 
-            detail=f"Nicht genug Guthaben. Benötigt: €{total:.2f}, Verfügbar: €{current_balance:.2f}. Bitte lade dein Wallet auf."
-        )
-    
     now = datetime.now(timezone.utc)
     order_id = secrets.token_hex(8)
+    
+    # Use Payment Engine for atomic wallet deduction
+    payment_result = await debit_wallet(
+        user_id=user_id,
+        amount=total,
+        tx_type=TransactionType.FOOD_PAYMENT,
+        description=f"Bestellung: {restaurant['name']}",
+        reference=f"FOOD-{order_id[:8].upper()}",
+        merchant_name=restaurant["name"],
+        metadata={"order_id": order_id, "restaurant_id": req.restaurant_id}
+    )
+    
+    if not payment_result.success:
+        raise HTTPException(status_code=400, detail=payment_result.error)
     
     # Estimated delivery time
     delivery_time_parts = restaurant.get("delivery_time", "30-45").split("-")
@@ -367,26 +375,8 @@ async def place_order(req: OrderRequest, request: Request):
         "notes": req.notes,
         "created_at": now.isoformat(),
         "updated_at": now.isoformat(),
+        "payment_transaction_id": payment_result.transaction_id,
     }
-    
-    # WALLET-ONLY: Charge wallet (BidBlitz closed ecosystem)
-    await db.users.update_one(
-        {"_id": user["_id"]},
-        {"$inc": {"balance": -total}}
-    )
-    
-    await db.transactions.insert_one({
-        "id": secrets.token_hex(8),
-        "user_id": user_id,
-        "type": "payment",
-        "amount": -total,
-        "description": f"Bestellung: {restaurant['name']}",
-        "status": "completed",
-        "reference": f"FOOD-{order_id[:8].upper()}",
-        "category": "food",
-        "merchant_name": restaurant["name"],
-        "created_at": now.isoformat(),
-    })
     
     await db.food_orders.insert_one(order)
     order.pop("_id", None)
@@ -401,6 +391,7 @@ async def place_order(req: OrderRequest, request: Request):
     return {
         "ok": True,
         "order": order,
+        "new_balance": payment_result.new_balance,
         "message": f"Bestellung aufgegeben! Lieferung ca. {eta_minutes} Min.",
     }
 
@@ -451,7 +442,9 @@ async def get_order_status(order_id: str, request: Request):
 
 @router.post("/cancel")
 async def cancel_order(req: OrderAction, request: Request):
-    """Cancel an order (if not yet preparing)."""
+    """Cancel an order (if not yet preparing) - Uses Payment Engine for safe refund."""
+    from core.payment_engine import credit_wallet, TransactionType
+    
     user = await get_current_user(request)
     user_id = str(user["_id"])
     
@@ -465,24 +458,16 @@ async def cancel_order(req: OrderAction, request: Request):
     if order["status"] == "cancelled":
         raise HTTPException(status_code=400, detail="Bestellung bereits storniert")
     
-    # Refund
-    if order["payment_method"] == "wallet":
-        await db.users.update_one(
-            {"_id": user["_id"]},
-            {"$inc": {"balance": order["total"]}}
-        )
-        
-        await db.transactions.insert_one({
-            "id": secrets.token_hex(8),
-            "user_id": user_id,
-            "type": "refund",
-            "amount": order["total"],
-            "description": f"Stornierung: {order['restaurant_name']}",
-            "status": "completed",
-            "reference": f"FOOD-REFUND-{req.order_id[:8].upper()}",
-            "category": "food",
-            "created_at": datetime.now(timezone.utc).isoformat(),
-        })
+    # Refund using Payment Engine
+    refund_result = await credit_wallet(
+        user_id=user_id,
+        amount=order["total"],
+        tx_type=TransactionType.REFUND,
+        description=f"Stornierung: {order['restaurant_name']}",
+        reference=f"FOOD-REFUND-{req.order_id[:8].upper()}",
+        source="food_cancellation",
+        metadata={"order_id": req.order_id, "original_transaction": order.get("payment_transaction_id")}
+    )
     
     await db.food_orders.update_one(
         {"order_id": req.order_id},
@@ -490,15 +475,14 @@ async def cancel_order(req: OrderAction, request: Request):
             "status": "cancelled",
             "cancelled_at": datetime.now(timezone.utc).isoformat(),
             "updated_at": datetime.now(timezone.utc).isoformat(),
+            "refund_transaction_id": refund_result.transaction_id if refund_result.success else None,
         }}
     )
-    
-    updated_user = await db.users.find_one({"_id": user["_id"]})
     
     return {
         "ok": True,
         "refund_amount": order["total"],
-        "new_balance": updated_user.get("balance", 0),
+        "new_balance": refund_result.new_balance if refund_result.success else user.get("balance", 0) + order["total"],
         "message": f"Bestellung storniert. €{order['total']:.2f} zurückerstattet.",
     }
 
