@@ -149,6 +149,7 @@ from routes.chat import router as chat_router
 from routes.applications import router as applications_router
 from routes.referral_system import router as referral_system_router
 from routes.kids_system import router as kids_system_router
+from routes.subscription_system import router as subscription_system_router
 
 app.include_router(auth_router)
 app.include_router(wallet_router)
@@ -184,6 +185,7 @@ app.include_router(chat_router)
 app.include_router(applications_router)
 app.include_router(referral_system_router)
 app.include_router(kids_system_router)
+app.include_router(subscription_system_router)
 
 # Mobility & Delivery Modules
 from routes.taxi import router as taxi_router
@@ -280,6 +282,25 @@ def start_auto_reward_loop():
     _asyncio_loop.get_event_loop().create_task(_auto_reward_loop())
 
 
+def start_subscription_renewal_loop():
+    """Start background loop that processes subscription renewals every hour."""
+    from routes.subscription_system import process_subscription_renewals, expire_subscriptions
+
+    async def _subscription_loop():
+        while True:
+            try:
+                await _asyncio_loop.sleep(3600)  # Every hour
+                renewals = await process_subscription_renewals()
+                expired = await expire_subscriptions()
+                if renewals.get("renewed", 0) > 0 or expired > 0:
+                    logger.info(f"Subscriptions processed: {renewals.get('renewed', 0)} renewed, {expired} expired")
+            except Exception as e:
+                logger.error(f"Subscription loop error: {e}")
+                await _asyncio_loop.sleep(60)
+
+    _asyncio_loop.get_event_loop().create_task(_subscription_loop())
+
+
 # ── Startup ──
 @app.on_event("startup")
 async def startup():
@@ -291,7 +312,9 @@ async def startup():
     start_bot_loop()
     # Start mining auto-reward background loop
     start_auto_reward_loop()
-    logger.info(f"BidBlitz V2 API started [env={APP_ENV}] — Bot loop + Auto-rewards active (NO DEMO DATA)")
+    # Start subscription renewal background loop
+    start_subscription_renewal_loop()
+    logger.info(f"BidBlitz V2 API started [env={APP_ENV}] — Bot loop + Auto-rewards + Subscriptions active (NO DEMO DATA)")
 
 
 @app.on_event("shutdown")

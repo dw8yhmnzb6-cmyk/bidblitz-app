@@ -386,7 +386,7 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
           <WalletAction
             testId="quick-action-barcode"
             icon={QrCode}
-            label={t("wallet.pay") || "Bezahlen"}
+            label={t("wallet.my_qr") || "Mein QR"}
             color="#FFB800"
             onClick={() => (isGuest && !isDemoMode) ? onAuthRequired("View your barcode") : isDemoMode ? toast(t("wallet.my_barcode") || "Barcode", { description: "Demo: Barcode simulated" }) : setShowBarcode(true)}
             delay={0.24}

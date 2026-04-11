@@ -43,6 +43,8 @@ class TransactionType(str, Enum):
     PAYOUT = "payout"
     FEE = "fee"
     STRIPE_TOPUP = "stripe_topup"
+    SUBSCRIPTION = "subscription"
+    SUBSCRIPTION_RENEWAL = "subscription_renewal"
 
 
 # Idempotency cache (in-memory for this session, should be Redis in production)

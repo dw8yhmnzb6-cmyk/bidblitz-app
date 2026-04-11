@@ -1,7 +1,7 @@
 # BidBlitz V2 - Product Requirements Document
 
 ## Project Overview
-BidBlitz V2 is a comprehensive fintech Super App combining Revolut-level payment flows, a Penny Auction System, GoMining-style Mining Module, Mobility (Taxi, Scooter, Food Delivery), Marketplace, and Kids Wallet. The app strictly uses REAL data - no fake/demo data generation.
+BidBlitz V2 is a comprehensive fintech Super App combining Revolut-level payment flows, a Penny Auction System, GoMining-style Mining Module, Mobility (Taxi, Scooter, Food Delivery), Marketplace, Kids Wallet, and Subscription System. The app strictly uses REAL data - no fake/demo data generation.
 
 ## Tech Stack
 - **Frontend**: React, TailwindCSS, Framer Motion, React-Leaflet
@@ -98,8 +98,25 @@ BidBlitz V2 is a comprehensive fintech Super App combining Revolut-level payment
 - Parental controls
 - Spending limits
 - Activity monitoring
+- Task/Reward system
+- Location tracking with safe zones
+- Parent-child chat
 
-### 14. Internationalization ✅
+### 14. Boost System ✅
+- Paid visibility boosts for listings/restaurants
+- 3 tiers: Top (€5), Featured (€10), Premium (€20)
+- Analytics tracking (views, clicks, CTR)
+- Admin management
+
+### 15. Subscription System ✅ (NEW - 2026-04-11)
+- 3 Plans: Basic (€9.99), Premium (€19.99), Pro (€49.99)
+- Monthly and yearly billing (17% discount for yearly)
+- Auto-renew with wallet deduction
+- Benefits: Fee reduction, cashback bonus, free boosts, priority support
+- Admin grant/revoke capabilities
+- Background loop for renewals
+
+### 16. Internationalization ✅
 - 15+ languages supported
 - Flag emojis for language selector
 - Dynamic translation switching
@@ -120,7 +137,19 @@ BidBlitz V2 is a comprehensive fintech Super App combining Revolut-level payment
 ### Stripe
 - `POST /api/stripe/checkout`
 - `GET /api/stripe/checkout/status/{session_id}`
-- `POST /api/stripe/webhook` ✅ NEW
+- `POST /api/webhook/stripe`
+
+### Subscription (NEW)
+- `GET /api/subscription/plans`
+- `POST /api/subscription/buy`
+- `GET /api/subscription/my`
+- `POST /api/subscription/cancel`
+- `POST /api/subscription/toggle-auto-renew`
+- `GET /api/subscription/history`
+- `POST /api/subscription/use-free-boost`
+- `GET /api/subscription/admin/stats`
+- `POST /api/subscription/admin/grant`
+- `POST /api/subscription/admin/revoke/{id}`
 
 ### Taxi
 - `GET /api/taxi/drivers/nearby`
@@ -171,6 +200,22 @@ BidBlitz V2 is a comprehensive fintech Super App combining Revolut-level payment
 - `GET /api/applications/admin/pending`
 - `POST /api/applications/admin/approve`
 
+### Kids System
+- `POST /api/kids/create`
+- `GET /api/kids/list`
+- `POST /api/kids/transfer`
+- `POST /api/kids/pay`
+- `POST /api/kids/task/create`
+- `POST /api/kids/task/approve/{id}`
+- `GET /api/kids/location/{child_id}`
+- `POST /api/kids/zones/create`
+
+### Boost System
+- `GET /api/boost/prices`
+- `POST /api/boost/buy`
+- `GET /api/boost/my-boosts`
+- `GET /api/boost/analytics/{id}`
+
 ## Test Credentials
 - **Admin**: `admin@bidblitz.com` | `BidBlitz2026!`
 - **Customer**: `kunde@bidblitz.com` | `Kunde2026!`
@@ -178,14 +223,18 @@ BidBlitz V2 is a comprehensive fintech Super App combining Revolut-level payment
 ## Known Issues
 1. KYC endpoint mismatch (`/status` vs `/my-status`) - P2
 2. Merchant dashboard `today_revenue` calculation - P2
+3. Frontend UIs missing for: Kids Dashboard, Boost UI, Subscription Page
 
 ## Upcoming Features (Backlog)
-1. 2FA Integration (Email OTP / Google Authenticator)
-2. Email Notifications (Resend API)
-3. Apple Pay / Google Pay
-4. PWA / Installability
-5. NFC Tap-to-Pay
-6. Developer SDK Documentation
+1. Frontend: Subscription Management Page
+2. Frontend: Kids Dashboard with full controls
+3. Frontend: Boost UI for marketplace/restaurants
+4. 2FA Integration (Email OTP / Google Authenticator)
+5. Email Notifications (Resend API)
+6. Apple Pay / Google Pay
+7. PWA / Installability
+8. NFC Tap-to-Pay
+9. Developer SDK Documentation
 
 ## Architecture Notes
 - All payments go through `payment_engine.py` for atomicity
@@ -193,54 +242,20 @@ BidBlitz V2 is a comprehensive fintech Super App combining Revolut-level payment
 - Admin approval required for drivers and restaurants
 - Stripe webhook handles wallet credits on payment completion
 - Real GPS integration with Leaflet maps
+- Background loops: Mining auto-rewards (60s), Subscription renewals (1h)
 
-## Updated: 2026-04-11
+## Session Updates
 
-## Latest System Health Check
-```
-Status: healthy
-Message: Alle Systeme laufen einwandfrei!
+### 2026-04-11
+- ✅ Subscription System Backend fully implemented
+- ✅ QR Button label fixed from "Bezahlen" to "Mein QR"
+- ✅ All subscription endpoints tested and working
+- ✅ Auto-renew background loop added to server.py
 
-MODULES:
-  database: ✓ OK
-  wallet: ✓ OK
-  drivers: ✓ OK
-  scooters: ✓ OK
-  restaurants: ✓ OK
-
-COUNTS:
-  users: 57
-  admins: 1
-  drivers: 2
-  restaurants: 8
-  scooters: 45
-  active_auctions: 7
-```
-
-## Session Summary (2026-04-11)
-
-### Implemented This Session:
-1. ✅ Marketplace System (eBay-style listings)
-2. ✅ Chat System (real-time messaging)
-3. ✅ Referral & Rewards System (multi-level, daily bonus, streaks)
-4. ✅ Partner Registration (driver/restaurant applications)
-5. ✅ Food Delivery Restaurant Dashboard
-6. ✅ Delivery Driver Flow
-7. ✅ Stripe Webhook for wallet credit
-8. ✅ Real Map GPS fixes
-9. ✅ System Health Check endpoint
-10. ✅ Admin Cleanup endpoint
-
-### All APIs Tested and Working:
-- `/api/auth/*` - Authentication
-- `/api/wallet/*` - Wallet operations
-- `/api/stripe/*` - Stripe payments + webhook
-- `/api/taxi/*` - Taxi booking
-- `/api/scooter/*` - Scooter rental
-- `/api/food/*` - Food delivery
-- `/api/marketplace/*` - Marketplace
-- `/api/chat/*` - Messaging
-- `/api/referral/*` - Referral system
-- `/api/applications/*` - Partner registration
-- `/api/admin/*` - Admin panel
-
+## File References
+- `/app/backend/routes/subscription_system.py` - Subscription logic
+- `/app/backend/routes/kids_system.py` - Kids wallet
+- `/app/backend/routes/boost_system.py` - Boost system
+- `/app/backend/core/payment_engine.py` - Central payments
+- `/app/frontend/src/pages/WalletPage.jsx` - Wallet UI
+- `/app/frontend/src/components/BarcodeModal.jsx` - QR code display
