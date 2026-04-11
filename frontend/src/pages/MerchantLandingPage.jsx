@@ -65,22 +65,31 @@ const MerchantLandingPage = ({ onNavigate }) => {
   };
 
   const handleRegister = async () => {
-    if (!authForm.name || !authForm.email || !authForm.password) { setAuthError(t("auth.fill_all") || "Fill all fields"); return; }
-    if (authForm.password !== authForm.confirm) { setAuthError(t("auth.pw_mismatch") || "Passwords don't match"); return; }
+    if (!authForm.name || !authForm.email || !authForm.password || !authForm.business_name) { 
+      setAuthError(t("auth.fill_all") || "Bitte alle Pflichtfelder ausfüllen"); 
+      return; 
+    }
+    if (authForm.password !== authForm.confirm) { setAuthError(t("auth.pw_mismatch") || "Passwörter stimmen nicht überein"); return; }
     setAuthLoading(true); setAuthError("");
     try {
       const res = await fetch(`${API}/api/auth/register`, {
         method: "POST", credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: authForm.name, email: authForm.email,
-          password: authForm.password, requested_role: "merchant",
+          name: authForm.name, 
+          email: authForm.email,
+          password: authForm.password, 
+          requested_role: "merchant",
+          business_name: authForm.business_name,
+          phone: authForm.phone || "",
+          business_type: authForm.business_type || "other",
         }),
       });
       const d = await res.json();
-      if (!res.ok) throw new Error(d.detail || "Registration failed");
-      setAuthSuccess(t("ml.register_success") || "Registration submitted! Admin will approve your merchant account.");
+      if (!res.ok) throw new Error(d.detail || "Registrierung fehlgeschlagen");
+      setAuthSuccess(t("ml.register_success") || "Registrierung eingereicht! Admin wird Ihren Händler-Account freischalten.");
       setAuthMode(null);
+      setAuthForm({});
     } catch (e) { setAuthError(e.message); }
     setAuthLoading(false);
   };
@@ -612,18 +621,49 @@ const MerchantLandingPage = ({ onNavigate }) => {
 
               <div className="space-y-3">
                 {authMode === "register" && (
-                  <input
-                    data-testid="ml-name"
-                    placeholder={t("auth.name") || "Full name"}
-                    value={authForm.name || ""}
-                    onChange={e => setAuthForm(p => ({ ...p, name: e.target.value }))}
-                    className="w-full px-3 py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.05] text-[12px] text-white/80 placeholder:text-white/10 outline-none focus:border-[#00E0FF]/15"
-                  />
+                  <>
+                    <input
+                      data-testid="ml-name"
+                      placeholder={t("auth.name") || "Vollständiger Name"}
+                      value={authForm.name || ""}
+                      onChange={e => setAuthForm(p => ({ ...p, name: e.target.value }))}
+                      className="w-full px-3 py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.05] text-[12px] text-white/80 placeholder:text-white/10 outline-none focus:border-[#00E0FF]/15"
+                    />
+                    <input
+                      data-testid="ml-business"
+                      placeholder={t("auth.business_name") || "Firmenname / Geschäftsname"}
+                      value={authForm.business_name || ""}
+                      onChange={e => setAuthForm(p => ({ ...p, business_name: e.target.value }))}
+                      className="w-full px-3 py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.05] text-[12px] text-white/80 placeholder:text-white/10 outline-none focus:border-[#00E0FF]/15"
+                    />
+                    <input
+                      data-testid="ml-phone"
+                      placeholder={t("auth.phone") || "Telefonnummer"}
+                      value={authForm.phone || ""}
+                      onChange={e => setAuthForm(p => ({ ...p, phone: e.target.value }))}
+                      className="w-full px-3 py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.05] text-[12px] text-white/80 placeholder:text-white/10 outline-none focus:border-[#00E0FF]/15"
+                    />
+                    <select
+                      data-testid="ml-business-type"
+                      value={authForm.business_type || ""}
+                      onChange={e => setAuthForm(p => ({ ...p, business_type: e.target.value }))}
+                      className="w-full px-3 py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.05] text-[12px] text-white/80 outline-none focus:border-[#00E0FF]/15"
+                      style={{ color: authForm.business_type ? "rgba(255,255,255,0.8)" : "rgba(255,255,255,0.1)" }}
+                    >
+                      <option value="" disabled>{t("auth.business_type") || "Geschäftsart auswählen"}</option>
+                      <option value="restaurant">Restaurant / Gastronomie</option>
+                      <option value="retail">Einzelhandel</option>
+                      <option value="service">Dienstleistung</option>
+                      <option value="wholesale">Großhandel</option>
+                      <option value="franchise">Franchise</option>
+                      <option value="other">Sonstige</option>
+                    </select>
+                  </>
                 )}
                 <input
                   data-testid="ml-email"
                   type="email"
-                  placeholder={t("auth.email") || "Email address"}
+                  placeholder={t("auth.email") || "E-Mail-Adresse"}
                   value={authForm.email || ""}
                   onChange={e => setAuthForm(p => ({ ...p, email: e.target.value }))}
                   className="w-full px-3 py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.05] text-[12px] text-white/80 placeholder:text-white/10 outline-none focus:border-[#00E0FF]/15"
@@ -631,7 +671,7 @@ const MerchantLandingPage = ({ onNavigate }) => {
                 <input
                   data-testid="ml-password"
                   type="password"
-                  placeholder={t("auth.password") || "Password"}
+                  placeholder={t("auth.password") || "Passwort"}
                   value={authForm.password || ""}
                   onChange={e => setAuthForm(p => ({ ...p, password: e.target.value }))}
                   className="w-full px-3 py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.05] text-[12px] text-white/80 placeholder:text-white/10 outline-none focus:border-[#00E0FF]/15"
@@ -640,7 +680,7 @@ const MerchantLandingPage = ({ onNavigate }) => {
                   <input
                     data-testid="ml-confirm"
                     type="password"
-                    placeholder={t("auth.confirm") || "Confirm password"}
+                    placeholder={t("auth.confirm") || "Passwort bestätigen"}
                     value={authForm.confirm || ""}
                     onChange={e => setAuthForm(p => ({ ...p, confirm: e.target.value }))}
                     className="w-full px-3 py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.05] text-[12px] text-white/80 placeholder:text-white/10 outline-none focus:border-[#00E0FF]/15"

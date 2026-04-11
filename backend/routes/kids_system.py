@@ -617,7 +617,7 @@ async def submit_task(task_id: str, request: Request):
 
 @router.post("/task/approve/{task_id}")
 async def approve_task(task_id: str, request: Request):
-    """Parent approves task and releases reward."""
+    """Parent approves task and releases reward FROM PARENT WALLET."""
     user = await get_current_user(request)
     parent_id = str(user["_id"])
     
@@ -632,13 +632,40 @@ async def approve_task(task_id: str, request: Request):
     child_id = task["child_id"]
     reward = task["reward_amount"]
     
-    # Credit child
+    # ═══════════════════════════════════════════════════════════════════════════
+    # CRITICAL: Check parent balance BEFORE approving
+    # ═══════════════════════════════════════════════════════════════════════════
+    parent_balance = user.get("balance", 0)
+    if parent_balance < reward:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Nicht genug Guthaben im Wallet (€{parent_balance:.2f}). Benötigt: €{reward:.2f}"
+        )
+    
+    # ═══════════════════════════════════════════════════════════════════════════
+    # DEBIT PARENT WALLET (Real money flow)
+    # ═══════════════════════════════════════════════════════════════════════════
+    debit_result = await debit_wallet(
+        user_id=parent_id,
+        amount=reward,
+        tx_type=TransactionType.TRANSFER,
+        description=f"Aufgaben-Belohnung an {task.get('child_name', 'Kind')}",
+        reference=f"TASK-{task_id[:8].upper()}",
+        metadata={"child_id": child_id, "task_id": task_id}
+    )
+    
+    if not debit_result.success:
+        raise HTTPException(status_code=400, detail=debit_result.error or "Zahlung fehlgeschlagen")
+    
+    # ═══════════════════════════════════════════════════════════════════════════
+    # CREDIT CHILD BALANCE
+    # ═══════════════════════════════════════════════════════════════════════════
     await db.children.update_one(
         {"child_id": child_id},
         {"$inc": {"balance": reward, "total_received": reward, "tasks_completed": 1}}
     )
     
-    # Record transaction
+    # Record child transaction
     await db.child_transactions.insert_one({
         "tx_id": secrets.token_hex(8),
         "child_id": child_id,
@@ -674,6 +701,7 @@ async def approve_task(task_id: str, request: Request):
         "ok": True,
         "reward": reward,
         "child_balance": child.get("balance", 0),
+        "parent_balance": debit_result.new_balance,
         "message": f"€{reward:.2f} an {child.get('name')} ausgezahlt!",
     }
 

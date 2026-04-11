@@ -5,7 +5,7 @@ import {
   Download, Search, ChevronRight, Loader2, Check, X,
   Clock, AlertCircle, CircleDollarSign, Activity, Settings,
   Flag, FileText, TrendingUp, Eye, ToggleLeft, ToggleRight,
-  ChevronDown, ChevronUp, Gift, Plus, Pencil, Save, Gavel, Bot, Target, DollarSign, Zap,
+  ChevronDown, ChevronUp, Gift, Plus, Pencil, Save, Gavel, Bot, Target, DollarSign, Zap, Cpu,
   LayoutGrid, Menu,
   // Grid Menu Icons
   Wallet, Building2, Key, Banknote, Mail, Trophy, Crown, Ticket, CheckCircle2, Euro, Tag, Percent,
@@ -443,6 +443,9 @@ export const AdminPage = ({ onNavigate }) => {
           _bot_enabled: a.bot_enabled || false,
           _bot_target_price: a.bot_target_price || 0,
           _bot_min_seconds: a.bot_min_seconds || 300,
+          _bot_strategy: a.bot_strategy || "standard",
+          _bot_aggression: a.bot_aggression || "medium",
+          _bot_final_battle: a.bot_final_battle_mode || "normal",
         })));
       }
     } catch (e) { setError(e); }
@@ -1434,6 +1437,106 @@ export const AdminPage = ({ onNavigate }) => {
                                   </div>
                                 )}
 
+                                {/* Bot Strategy Selector */}
+                                <div className="pt-2 border-t border-white/[0.03]">
+                                  <label className="text-[9px] text-[#444] font-medium block mb-1.5">
+                                    <Cpu size={9} className="inline mr-1 text-[#A855F7]" />Bot-Strategie
+                                  </label>
+                                  <div className="grid grid-cols-3 gap-1.5">
+                                    {[
+                                      { id: "standard", name: "Standard", color: "#00E89D" },
+                                      { id: "sniper", name: "Sniper", color: "#FF6B6B" },
+                                      { id: "pressure", name: "Pressure", color: "#FFB800" },
+                                      { id: "marathon", name: "Marathon", color: "#00C2FF" },
+                                      { id: "whale", name: "Whale", color: "#A855F7" },
+                                    ].map(strat => (
+                                      <motion.button
+                                        key={strat.id}
+                                        whileTap={{ scale: 0.95 }}
+                                        onClick={() => {
+                                          setAdminAuctions(prev => prev.map(a =>
+                                            a.auction_id === auc.auction_id ? { ...a, _bot_strategy: strat.id } : a
+                                          ));
+                                        }}
+                                        className="px-2 py-1.5 rounded-lg text-[9px] font-medium"
+                                        style={{
+                                          background: auc._bot_strategy === strat.id ? `${strat.color}15` : "rgba(255,255,255,0.02)",
+                                          border: `1px solid ${auc._bot_strategy === strat.id ? `${strat.color}40` : "rgba(255,255,255,0.04)"}`,
+                                          color: auc._bot_strategy === strat.id ? strat.color : "#555",
+                                        }}
+                                      >
+                                        {strat.name}
+                                      </motion.button>
+                                    ))}
+                                  </div>
+                                </div>
+
+                                {/* Aggression Level */}
+                                <div>
+                                  <label className="text-[9px] text-[#444] font-medium block mb-1.5">
+                                    <Zap size={9} className="inline mr-1 text-[#FFB800]" />Aggressivität
+                                  </label>
+                                  <div className="grid grid-cols-4 gap-1">
+                                    {[
+                                      { id: "low", name: "Niedrig", color: "#00E89D" },
+                                      { id: "medium", name: "Mittel", color: "#FFB800" },
+                                      { id: "high", name: "Hoch", color: "#FF6B6B" },
+                                      { id: "extreme", name: "Extrem", color: "#A855F7" },
+                                    ].map(agg => (
+                                      <motion.button
+                                        key={agg.id}
+                                        whileTap={{ scale: 0.95 }}
+                                        onClick={() => {
+                                          setAdminAuctions(prev => prev.map(a =>
+                                            a.auction_id === auc.auction_id ? { ...a, _bot_aggression: agg.id } : a
+                                          ));
+                                        }}
+                                        className="px-1.5 py-1 rounded-lg text-[8px] font-medium"
+                                        style={{
+                                          background: auc._bot_aggression === agg.id ? `${agg.color}15` : "rgba(255,255,255,0.02)",
+                                          border: `1px solid ${auc._bot_aggression === agg.id ? `${agg.color}40` : "rgba(255,255,255,0.04)"}`,
+                                          color: auc._bot_aggression === agg.id ? agg.color : "#555",
+                                        }}
+                                      >
+                                        {agg.name}
+                                      </motion.button>
+                                    ))}
+                                  </div>
+                                </div>
+
+                                {/* Final Battle Mode */}
+                                <div>
+                                  <label className="text-[9px] text-[#444] font-medium block mb-1.5">
+                                    <Target size={9} className="inline mr-1 text-[#FF6B6B]" />Final Battle Modus
+                                  </label>
+                                  <div className="grid grid-cols-4 gap-1">
+                                    {[
+                                      { id: "passive", name: "Passiv" },
+                                      { id: "normal", name: "Normal" },
+                                      { id: "aggressive", name: "Aggro" },
+                                      { id: "berserker", name: "Berserker" },
+                                    ].map(fb => (
+                                      <motion.button
+                                        key={fb.id}
+                                        whileTap={{ scale: 0.95 }}
+                                        onClick={() => {
+                                          setAdminAuctions(prev => prev.map(a =>
+                                            a.auction_id === auc.auction_id ? { ...a, _bot_final_battle: fb.id } : a
+                                          ));
+                                        }}
+                                        className="px-1.5 py-1 rounded-lg text-[8px] font-medium"
+                                        style={{
+                                          background: auc._bot_final_battle === fb.id ? "rgba(255,107,107,0.15)" : "rgba(255,255,255,0.02)",
+                                          border: `1px solid ${auc._bot_final_battle === fb.id ? "rgba(255,107,107,0.4)" : "rgba(255,255,255,0.04)"}`,
+                                          color: auc._bot_final_battle === fb.id ? "#FF6B6B" : "#555",
+                                        }}
+                                      >
+                                        {fb.name}
+                                      </motion.button>
+                                    ))}
+                                  </div>
+                                </div>
+
                                 {/* Save Button */}
                                 <motion.button
                                   data-testid={`bot-save-${auc.auction_id}`}
@@ -1449,12 +1552,18 @@ export const AdminPage = ({ onNavigate }) => {
                                           bot_enabled: auc._bot_enabled,
                                           bot_target_price: auc._bot_target_price,
                                           bot_min_seconds: auc._bot_min_seconds,
+                                          bot_aggression: auc._bot_aggression || "medium",
+                                          bot_final_battle_mode: auc._bot_final_battle || "normal",
+                                          bot_react_to_users: true,
+                                          bot_max_bids_per_minute: auc._bot_aggression === "extreme" ? 20 : auc._bot_aggression === "high" ? 12 : auc._bot_aggression === "low" ? 3 : 6,
+                                          bot_min_delay_seconds: auc._bot_aggression === "extreme" ? 1 : auc._bot_aggression === "high" ? 2 : auc._bot_aggression === "low" ? 10 : 5,
+                                          bot_max_delay_seconds: auc._bot_aggression === "extreme" ? 4 : auc._bot_aggression === "high" ? 8 : auc._bot_aggression === "low" ? 30 : 15,
                                         }),
                                       });
                                     } catch {}
                                     setBotSaving(null);
                                   }}
-                                  className="w-full py-2 rounded-xl text-[11px] font-semibold flex items-center justify-center gap-1.5"
+                                  className="w-full py-2.5 rounded-xl text-[11px] font-semibold flex items-center justify-center gap-1.5"
                                   style={{ background: "rgba(0,232,157,0.1)", color: "#00E89D", border: "1px solid rgba(0,232,157,0.15)" }}>
                                   {botSaving === auc.auction_id ? <Loader2 size={12} className="animate-spin" /> : <><Zap size={11} /> {t("admin.auctions_save_bot") || "Bot speichern"}</>}
                                 </motion.button>

@@ -41,6 +41,7 @@ import ReferralSystemPage from "./pages/ReferralSystemPage";
 import NfcPayPage from "./pages/NfcPayPage";
 import VipPage from "./pages/VipPage";
 import LoyaltyPage from "./pages/LoyaltyPage";
+import KidsPaywall from "./pages/KidsPaywall";
 
 import BottomNav from "./components/BottomNav";
 import BarcodeModal from "./components/BarcodeModal";
@@ -235,6 +236,12 @@ function AppContent() {
         return isGuest ? <HomePage {...homeProps} /> : <ReferralSystemPage onNavigate={handleNavigate} />;
       case "/loyalty":
         return isGuest ? <HomePage {...homeProps} /> : <LoyaltyPage onBack={() => handleNavigate("/")} onNavigate={handleNavigate} />;
+      case "/kids":
+        return isGuest ? <HomePage {...homeProps} /> : <KidsPaywall onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
+      case "/nfc":
+        return isGuest ? <HomePage {...homeProps} /> : <NfcPayPage onBack={() => handleNavigate("/more")} />;
+      case "/vip":
+        return isGuest ? <HomePage {...homeProps} /> : <VipPage onBack={() => handleNavigate("/more")} />;
       default:
         return <HomePage {...homeProps} />;
     }

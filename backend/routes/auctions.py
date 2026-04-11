@@ -1112,6 +1112,61 @@ class BotConfigRequest(BaseModel):
     bot_enabled: bool = True
     bot_target_price: float = Field(0, ge=0, le=100000)
     bot_min_seconds: int = Field(300, ge=0, le=86400)  # Bot starts bidding when remaining <= this
+    # NEW: Extended bot options
+    bot_aggression: str = Field("medium", pattern="^(low|medium|high|extreme)$")  # How fast bot bids
+    bot_max_bids_per_minute: int = Field(5, ge=1, le=30)  # Max bids per minute
+    bot_min_delay_seconds: int = Field(3, ge=1, le=60)  # Min delay between bids
+    bot_max_delay_seconds: int = Field(15, ge=3, le=300)  # Max delay between bids
+    bot_react_to_users: bool = Field(True)  # Bot reacts faster when real users bid
+    bot_final_battle_mode: str = Field("aggressive", pattern="^(passive|normal|aggressive|berserker)$")
+
+
+class BotStrategyRequest(BaseModel):
+    auction_id: str
+    strategy: str = Field("standard", pattern="^(standard|sniper|pressure|marathon|whale)$")
+
+
+# Bot Aggression Settings
+BOT_AGGRESSION_SETTINGS = {
+    "low": {"min_delay": 10, "max_delay": 30, "bids_per_min": 3},
+    "medium": {"min_delay": 5, "max_delay": 15, "bids_per_min": 6},
+    "high": {"min_delay": 2, "max_delay": 8, "bids_per_min": 12},
+    "extreme": {"min_delay": 1, "max_delay": 4, "bids_per_min": 20},
+}
+
+# Bot Strategies
+BOT_STRATEGIES = {
+    "standard": {
+        "name": "Standard",
+        "description": "Gleichmäßiges Bieten bis zum Zielpreis",
+        "aggression": "medium",
+        "final_battle": "normal",
+    },
+    "sniper": {
+        "name": "Sniper",
+        "description": "Wartet bis letzte Sekunden, dann aggressiv",
+        "aggression": "low",
+        "final_battle": "aggressive",
+    },
+    "pressure": {
+        "name": "Pressure",
+        "description": "Konstanter Druck, schnelle Gebote",
+        "aggression": "high",
+        "final_battle": "aggressive",
+    },
+    "marathon": {
+        "name": "Marathon",
+        "description": "Langsam und stetig über lange Zeit",
+        "aggression": "low",
+        "final_battle": "passive",
+    },
+    "whale": {
+        "name": "Whale",
+        "description": "Dominiert die Auktion komplett",
+        "aggression": "extreme",
+        "final_battle": "berserker",
+    },
+}
 
 
 @router.get("/admin/list")
@@ -1149,13 +1204,36 @@ async def admin_list_auctions(request: Request):
             "auction_id": a["auction_id"], "is_bot": True
         })
         a["bot_bids_placed"] = bot_bids
+        
+        # Add strategy info
+        strategy = a.get("bot_strategy", "standard")
+        a["bot_strategy_info"] = BOT_STRATEGIES.get(strategy, BOT_STRATEGIES["standard"])
 
-    return {"auctions": auctions}
+    return {"auctions": auctions, "strategies": BOT_STRATEGIES, "aggression_settings": BOT_AGGRESSION_SETTINGS}
+
+
+@router.get("/admin/bot-strategies")
+async def get_bot_strategies(request: Request):
+    """Admin: Get available bot strategies."""
+    user = await get_current_user(request)
+    if user.get("role") not in ("admin",):
+        raise HTTPException(status_code=403, detail="Admin only")
+    
+    return {
+        "strategies": BOT_STRATEGIES,
+        "aggression_settings": BOT_AGGRESSION_SETTINGS,
+        "final_battle_modes": {
+            "passive": "Wenig Aktivität in letzten Sekunden",
+            "normal": "Normale Reaktion auf User-Gebote",
+            "aggressive": "Schnelle Gegengebote",
+            "berserker": "Sofortige Reaktion, maximale Intensität",
+        }
+    }
 
 
 @router.post("/admin/bot-config")
 async def set_bot_config(req: BotConfigRequest, request: Request):
-    """Admin: configure bot for an auction."""
+    """Admin: configure bot for an auction with extended options."""
     user = await get_current_user(request)
     if user.get("role") not in ("admin",):
         raise HTTPException(status_code=403, detail="Admin only")
@@ -1170,6 +1248,12 @@ async def set_bot_config(req: BotConfigRequest, request: Request):
             "bot_enabled": req.bot_enabled,
             "bot_target_price": req.bot_target_price,
             "bot_min_seconds": req.bot_min_seconds,
+            "bot_aggression": req.bot_aggression,
+            "bot_max_bids_per_minute": req.bot_max_bids_per_minute,
+            "bot_min_delay_seconds": req.bot_min_delay_seconds,
+            "bot_max_delay_seconds": req.bot_max_delay_seconds,
+            "bot_react_to_users": req.bot_react_to_users,
+            "bot_final_battle_mode": req.bot_final_battle_mode,
         }},
     )
 
@@ -1182,7 +1266,44 @@ async def set_bot_config(req: BotConfigRequest, request: Request):
         "auction_id": req.auction_id,
         "bot_enabled": req.bot_enabled,
         "bot_target_price": req.bot_target_price,
+        "bot_aggression": req.bot_aggression,
         "estimated_revenue": estimated_revenue,
+    }
+
+
+@router.post("/admin/bot-strategy")
+async def set_bot_strategy(req: BotStrategyRequest, request: Request):
+    """Admin: set bot strategy for an auction."""
+    user = await get_current_user(request)
+    if user.get("role") not in ("admin",):
+        raise HTTPException(status_code=403, detail="Admin only")
+    
+    if req.strategy not in BOT_STRATEGIES:
+        raise HTTPException(status_code=400, detail="Invalid strategy")
+    
+    auction = await db.auctions.find_one({"auction_id": req.auction_id})
+    if not auction:
+        raise HTTPException(status_code=404, detail="Auction not found")
+    
+    strategy = BOT_STRATEGIES[req.strategy]
+    aggression = BOT_AGGRESSION_SETTINGS[strategy["aggression"]]
+    
+    await db.auctions.update_one(
+        {"auction_id": req.auction_id},
+        {"$set": {
+            "bot_strategy": req.strategy,
+            "bot_aggression": strategy["aggression"],
+            "bot_final_battle_mode": strategy["final_battle"],
+            "bot_min_delay_seconds": aggression["min_delay"],
+            "bot_max_delay_seconds": aggression["max_delay"],
+            "bot_max_bids_per_minute": aggression["bids_per_min"],
+        }},
+    )
+    
+    return {
+        "ok": True,
+        "strategy": req.strategy,
+        "strategy_info": strategy,
     }
 
 
