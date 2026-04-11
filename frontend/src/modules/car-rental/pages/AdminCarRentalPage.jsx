@@ -70,6 +70,18 @@ export default function AdminCarRentalPage({ onBack }) {
     setActionLoading(null);
   };
 
+  const handleCommission = async (vendorId) => {
+    const current = vendors.find(v => v.vendor_id === vendorId)?.commission_percent || 15;
+    const val = window.prompt(`Neue Provision (%) für diesen Vermieter?\nAktuell: ${current}%`, current);
+    if (!val) return;
+    setActionLoading(vendorId);
+    try {
+      await adminSetVendorCommission(vendorId, parseFloat(val));
+      loadTab();
+    } catch (err) { alert(err.message); }
+    setActionLoading(null);
+  };
+
   const handleProcessPayout = async (payoutId, status) => {
     setActionLoading(payoutId);
     try {
@@ -166,8 +178,13 @@ export default function AdminCarRentalPage({ onBack }) {
                     <span className="px-2.5 py-1 rounded-lg text-xs font-medium"
                       style={{ background: `${vst.color}15`, color: vst.color }}>{vst.label}</span>
                   </div>
-                  <div className="text-xs text-[#888] mb-3">
-                    Provision: {v.commission_percent || 15}% · Erstellt: {fmtDate(v.created_at)}
+                  <div className="text-xs text-[#888] mb-3 flex items-center justify-between">
+                    <span>Provision: {v.commission_percent || 15}% · Erstellt: {fmtDate(v.created_at)}</span>
+                    <motion.button whileTap={{ scale: 0.9 }} onClick={() => handleCommission(v.vendor_id)}
+                      className="px-2 py-1 rounded-lg bg-[#00C2FF]/10 text-[#00C2FF] text-[10px] font-medium"
+                      data-testid={`commission-vendor-${v.vendor_id}`}>
+                      Provision ändern
+                    </motion.button>
                   </div>
                   {isPending && (
                     <div className="flex gap-2 pt-3 border-t border-white/5">

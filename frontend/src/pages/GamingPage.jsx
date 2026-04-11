@@ -20,7 +20,7 @@ const API_URL = process.env.REACT_APP_BACKEND_URL;
 
 const GamingPage = ({ onNavigate, onBack }) => {
   const [userCoins, setUserCoins] = useState(0);
-  const [dailySpins, setDailySpins] = useState(50);
+  const [ setDailySpins] = useState(50);
   const [activeGame, setActiveGame] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showBuyCoins, setShowBuyCoins] = useState(false);
@@ -89,6 +89,11 @@ const GamingPage = ({ onNavigate, onBack }) => {
     { id: "quiz", name: "Quiz Master", icon: "🧠", desc: "Teste dein Wissen!", color: "#3498DB", component: QuizGame },
     { id: "memory", name: "Memory", icon: "🃏", desc: "Finde die Paare!", color: "#2ECC71", component: MemoryGame },
     { id: "dice", name: "Würfelglück", icon: "🎲", desc: "Würfle dein Glück!", color: "#E74C3C", component: DiceGame },
+    { id: "coinflip", name: "Münzwurf", icon: "🪙", desc: "Kopf oder Zahl!", color: "#F39C12", component: CoinFlipGame },
+    { id: "highlow", name: "Höher/Tiefer", icon: "📊", desc: "Rate die Karte!", color: "#1ABC9C", component: HighLowGame },
+    { id: "mines", name: "Minenfeld", icon: "💣", desc: "Weiche den Minen!", color: "#95A5A6", component: MinesGame },
+    { id: "crash", name: "Crash", icon: "📈", desc: "Cashe rechtzeitig!", color: "#E91E63", component: CrashGame },
+    { id: "plinko", name: "Plinko", icon: "🔴", desc: "Lass fallen!", color: "#FF5722", component: PlinkoGame },
   ];
 
   if (loading) {
@@ -281,7 +286,7 @@ const GamingPage = ({ onNavigate, onBack }) => {
 // WHEEL OF FORTUNE GAME
 // ═══════════════════════════════════════════════════════════════════════════════
 
-const WheelGame = ({ onBack, userPoints, dailySpins, onPointsUpdate }) => {
+const WheelGame = ({ onBack, userCoins,  onCoinsUpdate }) => {
   const [spinning, setSpinning] = useState(false);
   const [rotation, setRotation] = useState(0);
   const [result, setResult] = useState(null);
@@ -328,7 +333,7 @@ const WheelGame = ({ onBack, userPoints, dailySpins, onPointsUpdate }) => {
           credentials: "include",
           body: JSON.stringify({ bet: 10, points_won: prize.points }),
         });
-        onPointsUpdate?.();
+        onCoinsUpdate?.();
       } catch (err) {
         console.error(err);
       }
@@ -336,7 +341,7 @@ const WheelGame = ({ onBack, userPoints, dailySpins, onPointsUpdate }) => {
   };
 
   return (
-    <GameWrapper title="Glücksrad" icon="🎡" onBack={onBack} points={userPoints}>
+    <GameWrapper title="Glücksrad" icon="🎡" onBack={onBack} points={userCoins}>
       <div className="flex flex-col items-center py-6">
         {/* Wheel */}
         <div className="relative w-72 h-72 mb-6">
@@ -451,7 +456,7 @@ const WheelGame = ({ onBack, userPoints, dailySpins, onPointsUpdate }) => {
 // SCRATCH CARD GAME
 // ═══════════════════════════════════════════════════════════════════════════════
 
-const ScratchGame = ({ onBack, userPoints, onPointsUpdate }) => {
+const ScratchGame = ({ onBack, userCoins, onCoinsUpdate }) => {
   const [scratched, setScratched] = useState(Array(9).fill(false));
   const [prize, setPrize] = useState(null);
   const [revealed, setRevealed] = useState(false);
@@ -507,7 +512,7 @@ const ScratchGame = ({ onBack, userPoints, onPointsUpdate }) => {
           headers: { "Content-Type": "application/json" },
           credentials: "include",
           body: JSON.stringify({ bet: 10, points_won: prize }),
-        }).then(() => onPointsUpdate?.());
+        }).then(() => onCoinsUpdate?.());
       }
     }
   };
@@ -521,12 +526,12 @@ const ScratchGame = ({ onBack, userPoints, onPointsUpdate }) => {
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({ bet: 10, points_won: prize }),
-      }).then(() => onPointsUpdate?.());
+      }).then(() => onCoinsUpdate?.());
     }
   };
 
   return (
-    <GameWrapper title="Rubbellos" icon="🎫" onBack={onBack} points={userPoints}>
+    <GameWrapper title="Rubbellos" icon="🎫" onBack={onBack} points={userCoins}>
       <div className="flex flex-col items-center py-6">
         <p className="text-gray-400 text-[13px] mb-4">Kratze 3 gleiche Symbole frei!</p>
         
@@ -606,7 +611,7 @@ const ScratchGame = ({ onBack, userPoints, onPointsUpdate }) => {
 // SLOTS GAME
 // ═══════════════════════════════════════════════════════════════════════════════
 
-const SlotsGame = ({ onBack, userPoints, onPointsUpdate }) => {
+const SlotsGame = ({ onBack, userCoins, onCoinsUpdate }) => {
   const SYMBOLS = ["🍒", "🍋", "🍊", "🍇", "⭐", "💎", "7️⃣"];
   const [reels, setReels] = useState(["🍒", "🍋", "🍊"]);
   const [spinning, setSpinning] = useState(false);
@@ -646,7 +651,7 @@ const SlotsGame = ({ onBack, userPoints, onPointsUpdate }) => {
             headers: { "Content-Type": "application/json" },
             credentials: "include",
             body: JSON.stringify({ bet: 10, points_won: multiplier * 10 }),
-          }).then(() => onPointsUpdate?.());
+          }).then(() => onCoinsUpdate?.());
         } else if (finalReels[0] === finalReels[1] || finalReels[1] === finalReels[2]) {
           setWin(10);
           fetch(`${API_URL}/api/gaming/slots/win`, {
@@ -654,7 +659,7 @@ const SlotsGame = ({ onBack, userPoints, onPointsUpdate }) => {
             headers: { "Content-Type": "application/json" },
             credentials: "include",
             body: JSON.stringify({ bet: 10, points_won: 10 }),
-          }).then(() => onPointsUpdate?.());
+          }).then(() => onCoinsUpdate?.());
         }
         
         setSpinning(false);
@@ -663,7 +668,7 @@ const SlotsGame = ({ onBack, userPoints, onPointsUpdate }) => {
   };
 
   return (
-    <GameWrapper title="Lucky Slots" icon="🎰" onBack={onBack} points={userPoints}>
+    <GameWrapper title="Lucky Slots" icon="🎰" onBack={onBack} points={userCoins}>
       <div className="flex flex-col items-center py-6">
         {/* Slot Machine */}
         <div className="p-6 rounded-3xl bg-gradient-to-b from-purple-900/50 to-purple-800/30 border-4 border-yellow-500/50 mb-6">
@@ -733,7 +738,7 @@ const SlotsGame = ({ onBack, userPoints, onPointsUpdate }) => {
 // QUIZ GAME
 // ═══════════════════════════════════════════════════════════════════════════════
 
-const QuizGame = ({ onBack, userPoints, onPointsUpdate }) => {
+const QuizGame = ({ onBack, userCoins, onCoinsUpdate }) => {
   const QUESTIONS = [
     { q: "Was ist die Hauptstadt von Deutschland?", answers: ["Berlin", "München", "Hamburg", "Köln"], correct: 0 },
     { q: "Wie viele Planeten hat unser Sonnensystem?", answers: ["7", "8", "9", "10"], correct: 1 },
@@ -768,7 +773,7 @@ const QuizGame = ({ onBack, userPoints, onPointsUpdate }) => {
           headers: { "Content-Type": "application/json" },
           credentials: "include",
           body: JSON.stringify({ bet: 10, points_won: finalScore }),
-        }).then(() => onPointsUpdate?.());
+        }).then(() => onCoinsUpdate?.());
       }
     }, 1000);
   };
@@ -783,7 +788,7 @@ const QuizGame = ({ onBack, userPoints, onPointsUpdate }) => {
   const q = QUESTIONS[currentQ];
 
   return (
-    <GameWrapper title="Quiz Master" icon="🧠" onBack={onBack} points={userPoints}>
+    <GameWrapper title="Quiz Master" icon="🧠" onBack={onBack} points={userCoins}>
       <div className="p-4">
         {gameOver ? (
           <motion.div
@@ -868,7 +873,7 @@ const QuizGame = ({ onBack, userPoints, onPointsUpdate }) => {
 // MEMORY GAME
 // ═══════════════════════════════════════════════════════════════════════════════
 
-const MemoryGame = ({ onBack, userPoints, onPointsUpdate }) => {
+const MemoryGame = ({ onBack, userCoins, onCoinsUpdate }) => {
   const EMOJIS = ["🍎", "🍊", "🍋", "🍇", "🍓", "🍒", "🥝", "🍑"];
   const [cards, setCards] = useState([]);
   const [flipped, setFlipped] = useState([]);
@@ -913,7 +918,7 @@ const MemoryGame = ({ onBack, userPoints, onPointsUpdate }) => {
             headers: { "Content-Type": "application/json" },
             credentials: "include",
             body: JSON.stringify({ bet: 10, points_won: points, moves }),
-          }).then(() => onPointsUpdate?.());
+          }).then(() => onCoinsUpdate?.());
         }
       } else {
         // No match
@@ -923,7 +928,7 @@ const MemoryGame = ({ onBack, userPoints, onPointsUpdate }) => {
   };
 
   return (
-    <GameWrapper title="Memory" icon="🃏" onBack={onBack} points={userPoints}>
+    <GameWrapper title="Memory" icon="🃏" onBack={onBack} points={userCoins}>
       <div className="p-4">
         {/* Stats */}
         <div className="flex justify-between mb-4">
@@ -981,7 +986,7 @@ const MemoryGame = ({ onBack, userPoints, onPointsUpdate }) => {
 // DICE GAME
 // ═══════════════════════════════════════════════════════════════════════════════
 
-const DiceGame = ({ onBack, userPoints, onPointsUpdate }) => {
+const DiceGame = ({ onBack, userCoins, onCoinsUpdate }) => {
   const [dice, setDice] = useState([1, 1]);
   const [rolling, setRolling] = useState(false);
   const [bet, setBet] = useState("over7");
@@ -1041,7 +1046,7 @@ const DiceGame = ({ onBack, userPoints, onPointsUpdate }) => {
             headers: { "Content-Type": "application/json" },
             credentials: "include",
             body: JSON.stringify({ bet: 10, points_won: winAmount }),
-          }).then(() => onPointsUpdate?.());
+          }).then(() => onCoinsUpdate?.());
         }
       }
     }, 100);
@@ -1052,7 +1057,7 @@ const DiceGame = ({ onBack, userPoints, onPointsUpdate }) => {
   };
 
   return (
-    <GameWrapper title="Würfelglück" icon="🎲" onBack={onBack} points={userPoints}>
+    <GameWrapper title="Würfelglück" icon="🎲" onBack={onBack} points={userCoins}>
       <div className="flex flex-col items-center py-6">
         {/* Dice */}
         <div className="flex gap-4 mb-6">
@@ -1143,6 +1148,486 @@ const DiceGame = ({ onBack, userPoints, onPointsUpdate }) => {
 // GAME WRAPPER
 // ═══════════════════════════════════════════════════════════════════════════════
 
+/* ════════════════════════════════════════════
+   COIN FLIP (Münzwurf)
+   ════════════════════════════════════════════ */
+const CoinFlipGame = ({ onBack, userCoins, onCoinsUpdate }) => {
+  const [bet, setBet] = useState(10);
+  const [choice, setChoice] = useState("heads");
+  const [result, setResult] = useState(null);
+  const [flipping, setFlipping] = useState(false);
+  const [coins, setCoins] = useState(userCoins);
+
+  const flip = async () => {
+    if (flipping) return;
+    setFlipping(true);
+    setResult(null);
+    const coinResult = Math.random() < 0.5 ? "heads" : "tails";
+    const won = coinResult === choice;
+    const winAmount = won ? bet * 2 : 0;
+
+    await new Promise(r => setTimeout(r, 1500));
+
+    try {
+      const res = await fetch(`${API_URL}/api/gaming/dice/win`, {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bet, points_won: winAmount }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setCoins(data.new_balance);
+        setResult({ coinResult, won, winAmount: data.coins_won, net: data.net });
+      } else { alert(data.detail || "Fehler"); }
+    } catch (err) { alert("Fehler"); }
+    setFlipping(false);
+  };
+
+  return (
+    <GameWrapper title="Münzwurf" icon="🪙" onBack={() => { onCoinsUpdate(); onBack(); }} points={coins}>
+      <div className="px-4 pt-6 flex flex-col items-center">
+        <div className="flex gap-3 mb-6">
+          {["heads", "tails"].map(c => (
+            <motion.button key={c} whileTap={{ scale: 0.95 }}
+              onClick={() => setChoice(c)}
+              className={`px-6 py-3 rounded-xl text-sm font-bold ${choice === c ? "bg-yellow-500 text-black" : "bg-white/5 text-white/60 border border-white/10"}`}>
+              {c === "heads" ? "Kopf" : "Zahl"}
+            </motion.button>
+          ))}
+        </div>
+
+        <motion.div className="w-32 h-32 rounded-full flex items-center justify-center text-6xl mb-6"
+          style={{ background: "linear-gradient(135deg, #FFD700 0%, #FFA500 100%)", boxShadow: "0 8px 32px rgba(255,215,0,0.3)" }}
+          animate={flipping ? { rotateY: [0, 1800] } : {}}
+          transition={{ duration: 1.5 }}>
+          {result ? (result.coinResult === "heads" ? "👑" : "🔢") : "🪙"}
+        </motion.div>
+
+        {result && (
+          <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }}
+            className={`text-center mb-6 p-4 rounded-2xl ${result.won ? "bg-green-500/10 border border-green-500/20" : "bg-red-500/10 border border-red-500/20"}`}>
+            <p className="text-2xl font-bold mb-1">{result.won ? "Gewonnen!" : "Verloren!"}</p>
+            <p className={`text-lg font-bold ${result.won ? "text-green-400" : "text-red-400"}`}>
+              {result.won ? `+${result.winAmount} Coins` : `-${bet} Coins`}
+            </p>
+          </motion.div>
+        )}
+
+        <div className="flex items-center gap-3 mb-4">
+          <span className="text-xs text-gray-500">Einsatz:</span>
+          {[10, 25, 50, 100].map(b => (
+            <motion.button key={b} whileTap={{ scale: 0.9 }}
+              onClick={() => setBet(b)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold ${bet === b ? "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30" : "bg-white/5 text-white/40"}`}>
+              {b}
+            </motion.button>
+          ))}
+        </div>
+
+        <motion.button whileTap={{ scale: 0.95 }} onClick={flip} disabled={flipping || coins < bet}
+          className="w-full max-w-xs py-4 rounded-2xl bg-gradient-to-r from-yellow-500 to-orange-500 text-black font-bold text-lg flex items-center justify-center gap-2 disabled:opacity-50">
+          {flipping ? <Loader2 size={20} className="animate-spin" /> : "🪙 WERFEN!"}
+        </motion.button>
+      </div>
+    </GameWrapper>
+  );
+};
+
+/* ════════════════════════════════════════════
+   HIGHER / LOWER
+   ════════════════════════════════════════════ */
+const HighLowGame = ({ onBack, userCoins, onCoinsUpdate }) => {
+  const [bet, setBet] = useState(10);
+  const [currentCard, setCurrentCard] = useState(Math.floor(Math.random() * 13) + 1);
+  const [streak, setStreak] = useState(0);
+  const [result, setResult] = useState(null);
+  const [playing, setPlaying] = useState(false);
+  const [coins, setCoins] = useState(userCoins);
+
+  const cardName = (v) => v === 1 ? "A" : v === 11 ? "J" : v === 12 ? "Q" : v === 13 ? "K" : String(v);
+
+  const guess = async (higher) => {
+    if (playing) return;
+    setPlaying(true);
+    const nextCard = Math.floor(Math.random() * 13) + 1;
+    const correct = higher ? nextCard >= currentCard : nextCard <= currentCard;
+    const newStreak = correct ? streak + 1 : 0;
+    const winAmount = correct ? bet * (1 + newStreak * 0.5) : 0;
+
+    await new Promise(r => setTimeout(r, 800));
+
+    try {
+      const res = await fetch(`${API_URL}/api/gaming/dice/win`, {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bet: correct ? 0 : bet, points_won: Math.round(winAmount) }),
+      });
+      const data = await res.json();
+      if (res.ok) setCoins(data.new_balance);
+    } catch (err) {}
+
+    setResult({ nextCard, correct, winAmount: Math.round(winAmount) });
+    setCurrentCard(nextCard);
+    setStreak(newStreak);
+    setPlaying(false);
+  };
+
+  return (
+    <GameWrapper title="Höher/Tiefer" icon="📊" onBack={() => { onCoinsUpdate(); onBack(); }} points={coins}>
+      <div className="px-4 pt-6 flex flex-col items-center">
+        <p className="text-xs text-gray-500 mb-2">Streak: <span className="text-yellow-400 font-bold">{streak}x</span></p>
+        
+        <div className="w-28 h-40 rounded-2xl bg-gradient-to-br from-white to-gray-200 flex items-center justify-center mb-6 shadow-xl">
+          <span className="text-5xl font-black text-gray-800">{cardName(currentCard)}</span>
+        </div>
+
+        {result && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+            className={`text-center mb-4 ${result.correct ? "text-green-400" : "text-red-400"}`}>
+            <p className="text-sm">{cardName(result.nextCard)} — {result.correct ? `+${result.winAmount} Coins!` : "Falsch!"}</p>
+          </motion.div>
+        )}
+
+        <div className="flex gap-3 mb-4">
+          <motion.button whileTap={{ scale: 0.95 }} onClick={() => guess(true)} disabled={playing || coins < bet}
+            className="px-8 py-4 rounded-2xl bg-green-500/20 text-green-400 font-bold text-lg border border-green-500/30 disabled:opacity-50">
+            Höher ↑
+          </motion.button>
+          <motion.button whileTap={{ scale: 0.95 }} onClick={() => guess(false)} disabled={playing || coins < bet}
+            className="px-8 py-4 rounded-2xl bg-red-500/20 text-red-400 font-bold text-lg border border-red-500/30 disabled:opacity-50">
+            Tiefer ↓
+          </motion.button>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-gray-500">Einsatz:</span>
+          {[10, 25, 50, 100].map(b => (
+            <motion.button key={b} whileTap={{ scale: 0.9 }} onClick={() => setBet(b)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold ${bet === b ? "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30" : "bg-white/5 text-white/40"}`}>
+              {b}
+            </motion.button>
+          ))}
+        </div>
+      </div>
+    </GameWrapper>
+  );
+};
+
+/* ════════════════════════════════════════════
+   MINES (Minenfeld)
+   ════════════════════════════════════════════ */
+const MinesGame = ({ onBack, userCoins, onCoinsUpdate }) => {
+  const [bet, setBet] = useState(10);
+  const [grid, setGrid] = useState([]);
+  const [revealed, setRevealed] = useState([]);
+  const [gameOver, setGameOver] = useState(false);
+  const [multiplier, setMultiplier] = useState(1.0);
+  const [coins, setCoins] = useState(userCoins);
+  const [started, setStarted] = useState(false);
+
+  const startGame = () => {
+    if (coins < bet) { alert("Nicht genug Coins!"); return; }
+    const newGrid = Array(16).fill(false);
+    const mines = 4;
+    let placed = 0;
+    while (placed < mines) {
+      const idx = Math.floor(Math.random() * 16);
+      if (!newGrid[idx]) { newGrid[idx] = true; placed++; }
+    }
+    setGrid(newGrid);
+    setRevealed(Array(16).fill(false));
+    setGameOver(false);
+    setMultiplier(1.0);
+    setStarted(true);
+  };
+
+  const reveal = async (idx) => {
+    if (gameOver || revealed[idx] || !started) return;
+    const newRevealed = [...revealed];
+    newRevealed[idx] = true;
+    setRevealed(newRevealed);
+
+    if (grid[idx]) {
+      setGameOver(true);
+      try {
+        const res = await fetch(`${API_URL}/api/gaming/dice/win`, {
+          method: "POST", credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ bet, points_won: 0 }),
+        });
+        const data = await res.json();
+        if (res.ok) setCoins(data.new_balance);
+      } catch (err) {}
+    } else {
+      setMultiplier(m => Math.round((m + 0.3) * 100) / 100);
+    }
+  };
+
+  const cashOut = async () => {
+    const winAmount = Math.round(bet * multiplier);
+    try {
+      const res = await fetch(`${API_URL}/api/gaming/dice/win`, {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bet: 0, points_won: winAmount }),
+      });
+      const data = await res.json();
+      if (res.ok) setCoins(data.new_balance);
+    } catch (err) {}
+    setGameOver(true);
+  };
+
+  return (
+    <GameWrapper title="Minenfeld" icon="💣" onBack={() => { onCoinsUpdate(); onBack(); }} points={coins}>
+      <div className="px-4 pt-4">
+        {!started ? (
+          <div className="text-center py-10">
+            <p className="text-gray-400 mb-4">Wähle Felder ohne Minen! Je mehr du aufdeckst, desto höher der Gewinn.</p>
+            <div className="flex items-center justify-center gap-3 mb-6">
+              {[10, 25, 50, 100].map(b => (
+                <motion.button key={b} whileTap={{ scale: 0.9 }} onClick={() => setBet(b)}
+                  className={`px-4 py-2 rounded-xl text-sm font-bold ${bet === b ? "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30" : "bg-white/5 text-white/40"}`}>
+                  {b}
+                </motion.button>
+              ))}
+            </div>
+            <motion.button whileTap={{ scale: 0.95 }} onClick={startGame}
+              className="px-8 py-4 rounded-2xl bg-gradient-to-r from-gray-500 to-gray-600 text-white font-bold text-lg">
+              Spiel starten ({bet} Coins)
+            </motion.button>
+          </div>
+        ) : (
+          <>
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-sm text-gray-400">Multiplikator: <span className="text-yellow-400 font-bold">{multiplier.toFixed(1)}x</span></span>
+              <span className="text-sm text-green-400 font-bold">Gewinn: {Math.round(bet * multiplier)} Coins</span>
+            </div>
+            <div className="grid grid-cols-4 gap-2 mb-4">
+              {grid.map((isMine, idx) => (
+                <motion.button key={idx} whileTap={{ scale: 0.9 }}
+                  onClick={() => reveal(idx)}
+                  disabled={gameOver || revealed[idx]}
+                  className={`aspect-square rounded-xl text-2xl flex items-center justify-center font-bold ${
+                    revealed[idx]
+                      ? isMine ? "bg-red-500/30 border border-red-500/50" : "bg-green-500/20 border border-green-500/30"
+                      : "bg-white/5 border border-white/10 hover:bg-white/10"
+                  } disabled:cursor-default`}>
+                  {revealed[idx] ? (isMine ? "💣" : "💎") : gameOver && isMine ? "💣" : ""}
+                </motion.button>
+              ))}
+            </div>
+            {!gameOver && multiplier > 1 && (
+              <motion.button whileTap={{ scale: 0.95 }} onClick={cashOut}
+                className="w-full py-4 rounded-2xl bg-green-500 text-black font-bold text-lg">
+                Auszahlen: {Math.round(bet * multiplier)} Coins
+              </motion.button>
+            )}
+            {gameOver && (
+              <motion.button whileTap={{ scale: 0.95 }} onClick={() => setStarted(false)}
+                className="w-full py-4 rounded-2xl bg-white/10 text-white font-bold text-lg mt-2">
+                Neues Spiel
+              </motion.button>
+            )}
+          </>
+        )}
+      </div>
+    </GameWrapper>
+  );
+};
+
+/* ════════════════════════════════════════════
+   CRASH
+   ════════════════════════════════════════════ */
+const CrashGame = ({ onBack, userCoins, onCoinsUpdate }) => {
+  const [bet, setBet] = useState(10);
+  const [multiplier, setMultiplier] = useState(1.0);
+  const [crashed, setCrashed] = useState(false);
+  const [cashedOut, setCashedOut] = useState(false);
+  const [running, setRunning] = useState(false);
+  const [coins, setCoins] = useState(userCoins);
+  const [crashPoint] = useState(() => 1 + Math.random() * 4);
+
+  const start = () => {
+    if (coins < bet) { alert("Nicht genug Coins!"); return; }
+    setMultiplier(1.0);
+    setCrashed(false);
+    setCashedOut(false);
+    setRunning(true);
+  };
+
+  useEffect(() => {
+    if (!running || crashed || cashedOut) return;
+    const iv = setInterval(() => {
+      setMultiplier(m => {
+        const next = Math.round((m + 0.05) * 100) / 100;
+        if (next >= crashPoint) {
+          setCrashed(true);
+          setRunning(false);
+          // Record loss
+          fetch(`${API_URL}/api/gaming/dice/win`, {
+            method: "POST", credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ bet, points_won: 0 }),
+          }).then(r => r.json()).then(d => { if (d.new_balance !== undefined) setCoins(d.new_balance); });
+          clearInterval(iv);
+          return next;
+        }
+        return next;
+      });
+    }, 100);
+    return () => clearInterval(iv);
+  }, [running, crashed, cashedOut]);
+
+  const cashOut = async () => {
+    setCashedOut(true);
+    setRunning(false);
+    const winAmount = Math.round(bet * multiplier);
+    try {
+      const res = await fetch(`${API_URL}/api/gaming/dice/win`, {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bet: 0, points_won: winAmount }),
+      });
+      const data = await res.json();
+      if (res.ok) setCoins(data.new_balance);
+    } catch (err) {}
+  };
+
+  return (
+    <GameWrapper title="Crash" icon="📈" onBack={() => { onCoinsUpdate(); onBack(); }} points={coins}>
+      <div className="px-4 pt-6 flex flex-col items-center">
+        <div className="w-full max-w-sm h-48 rounded-2xl bg-[#111118] border border-white/5 flex items-center justify-center mb-6 relative overflow-hidden">
+          <div className="absolute inset-0" style={{
+            background: crashed ? "radial-gradient(circle, rgba(255,0,0,0.1) 0%, transparent 70%)"
+              : cashedOut ? "radial-gradient(circle, rgba(0,255,100,0.1) 0%, transparent 70%)"
+              : "radial-gradient(circle, rgba(0,194,255,0.05) 0%, transparent 70%)"
+          }} />
+          <div className="text-center">
+            <motion.p className={`text-5xl font-black font-mono ${crashed ? "text-red-500" : cashedOut ? "text-green-400" : "text-white"}`}
+              animate={running ? { scale: [1, 1.02, 1] } : {}}
+              transition={{ duration: 0.3, repeat: running ? Infinity : 0 }}>
+              {multiplier.toFixed(2)}x
+            </motion.p>
+            {crashed && <p className="text-red-400 text-sm mt-2 font-bold">CRASHED!</p>}
+            {cashedOut && <p className="text-green-400 text-sm mt-2 font-bold">+{Math.round(bet * multiplier)} Coins!</p>}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 mb-4">
+          {[10, 25, 50, 100].map(b => (
+            <motion.button key={b} whileTap={{ scale: 0.9 }} onClick={() => !running && setBet(b)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold ${bet === b ? "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30" : "bg-white/5 text-white/40"}`}>
+              {b}
+            </motion.button>
+          ))}
+        </div>
+
+        {!running && !cashedOut && !crashed ? (
+          <motion.button whileTap={{ scale: 0.95 }} onClick={start} disabled={coins < bet}
+            className="w-full max-w-xs py-4 rounded-2xl bg-gradient-to-r from-pink-500 to-red-500 text-white font-bold text-lg disabled:opacity-50">
+            Start ({bet} Coins)
+          </motion.button>
+        ) : running ? (
+          <motion.button whileTap={{ scale: 0.95 }} onClick={cashOut}
+            className="w-full max-w-xs py-4 rounded-2xl bg-green-500 text-black font-bold text-lg"
+            animate={{ scale: [1, 1.03, 1] }} transition={{ duration: 0.5, repeat: Infinity }}>
+            CASH OUT ({Math.round(bet * multiplier)} Coins)
+          </motion.button>
+        ) : (
+          <motion.button whileTap={{ scale: 0.95 }} onClick={start} disabled={coins < bet}
+            className="w-full max-w-xs py-4 rounded-2xl bg-white/10 text-white font-bold text-lg disabled:opacity-50">
+            Nochmal
+          </motion.button>
+        )}
+      </div>
+    </GameWrapper>
+  );
+};
+
+/* ════════════════════════════════════════════
+   PLINKO
+   ════════════════════════════════════════════ */
+const PlinkoGame = ({ onBack, userCoins, onCoinsUpdate }) => {
+  const [bet, setBet] = useState(10);
+  const [result, setResult] = useState(null);
+  const [dropping, setDropping] = useState(false);
+  const [coins, setCoins] = useState(userCoins);
+  const multipliers = [0, 0.5, 1, 1.5, 3, 1.5, 1, 0.5, 0];
+
+  const drop = async () => {
+    if (dropping || coins < bet) return;
+    setDropping(true);
+    setResult(null);
+
+    await new Promise(r => setTimeout(r, 1500));
+
+    const slotIdx = Math.floor(Math.random() * multipliers.length);
+    const mult = multipliers[slotIdx];
+    const winAmount = Math.round(bet * mult);
+
+    try {
+      const res = await fetch(`${API_URL}/api/gaming/dice/win`, {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bet: mult === 0 ? bet : 0, points_won: winAmount }),
+      });
+      const data = await res.json();
+      if (res.ok) setCoins(data.new_balance);
+      setResult({ slotIdx, mult, winAmount: data.coins_won || winAmount });
+    } catch (err) {}
+    setDropping(false);
+  };
+
+  return (
+    <GameWrapper title="Plinko" icon="🔴" onBack={() => { onCoinsUpdate(); onBack(); }} points={coins}>
+      <div className="px-4 pt-6 flex flex-col items-center">
+        {/* Peg board visual */}
+        <div className="w-full max-w-sm mb-4">
+          {[3, 4, 5, 6, 7].map((count, row) => (
+            <div key={row} className="flex justify-center gap-4 mb-2">
+              {Array(count).fill(0).map((_, i) => (
+                <div key={i} className="w-3 h-3 rounded-full bg-white/20" />
+              ))}
+            </div>
+          ))}
+        </div>
+
+        {/* Multiplier slots */}
+        <div className="flex gap-1 mb-6 w-full max-w-sm">
+          {multipliers.map((m, i) => (
+            <div key={i} className={`flex-1 py-3 rounded-lg text-center text-xs font-bold transition-all ${
+              result?.slotIdx === i ? "bg-yellow-500 text-black scale-110" : m >= 3 ? "bg-red-500/20 text-red-400" : m >= 1.5 ? "bg-orange-500/20 text-orange-400" : m >= 1 ? "bg-green-500/20 text-green-400" : "bg-white/5 text-white/30"
+            }`}>
+              {m}x
+            </div>
+          ))}
+        </div>
+
+        {result && (
+          <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }}
+            className={`text-center mb-4 p-3 rounded-xl ${result.mult > 0 ? "bg-green-500/10 text-green-400" : "bg-red-500/10 text-red-400"}`}>
+            <p className="text-lg font-bold">{result.mult}x — {result.mult > 0 ? `+${result.winAmount} Coins` : "Miss!"}</p>
+          </motion.div>
+        )}
+
+        <div className="flex items-center gap-3 mb-4">
+          {[10, 25, 50, 100].map(b => (
+            <motion.button key={b} whileTap={{ scale: 0.9 }} onClick={() => setBet(b)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold ${bet === b ? "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30" : "bg-white/5 text-white/40"}`}>
+              {b}
+            </motion.button>
+          ))}
+        </div>
+
+        <motion.button whileTap={{ scale: 0.95 }} onClick={drop} disabled={dropping || coins < bet}
+          className="w-full max-w-xs py-4 rounded-2xl bg-gradient-to-r from-orange-500 to-red-500 text-white font-bold text-lg disabled:opacity-50">
+          {dropping ? <Loader2 size={20} className="animate-spin mx-auto" /> : `Drop! (${bet} Coins)`}
+        </motion.button>
+      </div>
+    </GameWrapper>
+  );
+};
+
 const GameWrapper = ({ title, icon, onBack, points, children }) => {
   return (
     <div className="min-h-screen bg-[#030303] pb-24">
@@ -1164,7 +1649,7 @@ const GameWrapper = ({ title, icon, onBack, points, children }) => {
             </div>
           </div>
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-yellow-500/20 border border-yellow-500/30">
-            <Star size={14} className="text-yellow-400" fill="currentColor" />
+            <Coins size={14} className="text-yellow-400" />
             <span className="text-yellow-400 font-bold text-[13px]">{points?.toLocaleString() || 0}</span>
           </div>
         </div>

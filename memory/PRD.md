@@ -8,41 +8,29 @@
 ## Completed Features
 
 ### Core Platform - Wallet, Kids GPS, POS, Auctions, Mobility, Loyalty
-### Gaming Hub - 6 games, Coin-based economy (Cashback→Coins→Play→Win→EUR)
 ### Scooter Live - Map + Admin management
-### Car Rental - Full module (13+ pages, vendor/customer/admin)
 ### Credit Score - Term selection + repayment schedule
 ### Support Chat - Threaded ticket system (customer↔admin)
 
-### Phase 7 - Gaming Coin Economy (DONE - 2026-04-11)
-- Replaced Points system with **Coins**
-- Cashback from transactions → Coins
-- Buy Coins with Wallet (€1 = 1000 Coins)
-- Bet Coins to play (min 5, max 500 per game)
-- Win Coins from games
-- Redeem Coins → EUR (min 500 Coins)
-- Gewinntabelle: "P" → "Coins"
-- Coin purchase modal + Auszahlen button
+### Car Rental Module (COMPLETE)
+- Full backend (vendors, cars, bookings, contracts, invoices, handover/return, damage, payouts, disputes)
+- 16 frontend pages (public, customer, vendor, admin)
+- Image upload, reviews, PDF export (invoices + receipts + contracts)
+- Vendor Staff Management, Reports/Analytics
+- Admin Disputes, Commission per-Vendor
 
-### Phase 8 - Car Rental Gaps (DONE - 2026-04-11)
-- **Contract PDF**: `/contracts/{id}/pdf` endpoint + generate_contract_pdf
-- **Handover/Return Photos**: `/vendor/bookings/{id}/upload-photo` with phase param
-- **Vendor Staff Page**: VendorStaffPage with add/edit/remove + role selection
-- **Admin Disputes**: Full dispute system (create/message/resolve) + AdminDisputesPage
-- **Vendor Reports Page**: VendorReportsPage with period selection, charts, top cars
-- **Admin Commission UI**: Per-vendor commission in AdminCarRentalPage
+### Gaming Platform (11 Games, Coin Economy)
+**6 Original**: Glücksrad, Rubbellos, Lucky Slots, Quiz Master, Memory, Würfelglück
+**5 New**: Münzwurf, Höher/Tiefer, Minenfeld, Crash, Plinko
+- Coin-based economy: Buy Coins (€1=1000), Play with Coins (bet 5-500), Win Coins, Redeem to EUR
+- Cashback → Coins integration
+- Coins kaufen Modal (6 Pakete: €1-€100)
+- Auszahlen/Redeem (min 500 Coins → EUR)
 
-### New Routes Added
-- `/car-rental/vendor/staff` - Staff management
-- `/car-rental/vendor/reports` - Analytics page
-- `/car-rental/admin/disputes` - Dispute management
-- `/car-rental/contracts/{id}/pdf` - Contract PDF
-- `/car-rental/vendor/bookings/{id}/upload-photo` - Photo upload
-- `/car-rental/disputes` - Create/view disputes
-- `/gaming/buy-coins` - Buy coins with wallet
-- `/gaming/earn-cashback` - Cashback → coins
-- `/gaming/coin-history` - Coin transaction log
-- `/gaming/redeem` - Coins → EUR
+### Auctions (20 Products 2026)
+- 20 fresh 2026 products with varied prices
+- Bot targets randomized per auction (€3-€6)
+- Stripe Checkout option added in payment modal
 
 ## Test Credentials
 - Admin: admin@bidblitz.com / BidBlitz2026!

@@ -46,12 +46,17 @@ MIN_REDEEM = 500  # Minimum coins to convert to EUR
 
 # Game-specific max win multipliers
 GAME_CONFIG = {
-    "slots":   {"max_win": 1000, "name": "Lucky Slots"},
-    "wheel":   {"max_win": 2500, "name": "Glücksrad"},
-    "scratch": {"max_win": 500,  "name": "Rubbellos"},
-    "quiz":    {"max_win": 100,  "name": "Quiz"},
-    "memory":  {"max_win": 100,  "name": "Memory"},
-    "dice":    {"max_win": 60,   "name": "Würfelglück"},
+    "slots":    {"max_win": 1000, "name": "Lucky Slots"},
+    "wheel":    {"max_win": 2500, "name": "Glücksrad"},
+    "scratch":  {"max_win": 500,  "name": "Rubbellos"},
+    "quiz":     {"max_win": 100,  "name": "Quiz"},
+    "memory":   {"max_win": 100,  "name": "Memory"},
+    "dice":     {"max_win": 500,  "name": "Würfelglück"},
+    "coinflip": {"max_win": 1000, "name": "Münzwurf"},
+    "highlow":  {"max_win": 500,  "name": "Höher/Tiefer"},
+    "mines":    {"max_win": 2000, "name": "Minenfeld"},
+    "crash":    {"max_win": 5000, "name": "Crash"},
+    "plinko":   {"max_win": 1500, "name": "Plinko"},
 }
 
 

@@ -576,7 +576,7 @@ const AuctionGridCard = ({ auction, onClick, t, idx, isWatched, onToggleWatch })
       )}
 
       {/* Image Section with Premium Overlay */}
-      <div className="relative w-full aspect-square overflow-hidden bg-gradient-to-b from-[#0a0e1a] to-[#060810]">
+      <div className="relative w-full aspect-[4/3] overflow-hidden bg-gradient-to-b from-[#0a0e1a] to-[#060810]">
         {auction.image_url ? (
           <img 
             src={auction.image_url} 
