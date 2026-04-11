@@ -44,6 +44,7 @@ const CreditScorePage = ({ onBack, onNavigate }) => {
   const [showApply, setShowApply] = useState(false);
   const [applyAmount, setApplyAmount] = useState("");
   const [applyLoading, setApplyLoading] = useState(false);
+  const [selectedTerm, setSelectedTerm] = useState(6);
 
   useEffect(() => {
     loadCreditData();
@@ -244,52 +245,162 @@ const CreditScorePage = ({ onBack, onNavigate }) => {
           </motion.button>
         ) : (
           <motion.div
-            className="p-4 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 space-y-4"
+            className="rounded-2xl bg-cyan-500/10 border border-cyan-500/20 overflow-hidden"
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
+            data-testid="credit-apply-form"
           >
-            <p className="text-sm font-semibold text-cyan-400">Kreditbetrag wählen</p>
-            <div className="flex gap-2">
-              {[100, 250, 500].filter(a => a <= availableCredit).map((amount) => (
+            <div className="p-4 space-y-4">
+              <p className="text-sm font-semibold text-cyan-400">Kreditbetrag wählen</p>
+              <div className="flex gap-2">
+                {[100, 250, 500].filter(a => a <= availableCredit).map((amount) => (
+                  <motion.button
+                    key={amount}
+                    onClick={() => setApplyAmount(amount.toString())}
+                    className={`flex-1 py-3 rounded-xl text-sm font-semibold ${
+                      applyAmount === amount.toString()
+                        ? "bg-cyan-500 text-white"
+                        : "bg-white/5 text-white/70"
+                    }`}
+                    whileTap={{ scale: 0.95 }}
+                    data-testid={`credit-amount-${amount}`}
+                  >
+                    €{amount}
+                  </motion.button>
+                ))}
+              </div>
+              <input
+                type="number"
+                value={applyAmount}
+                onChange={(e) => setApplyAmount(e.target.value)}
+                placeholder="Oder Betrag eingeben..."
+                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white text-sm placeholder-gray-600 outline-none"
+                max={availableCredit}
+                data-testid="credit-amount-input"
+              />
+
+              {/* Term Selection */}
+              <div>
+                <p className="text-sm font-semibold text-cyan-400 mb-2">Laufzeit wählen</p>
+                <div className="grid grid-cols-4 gap-2">
+                  {[2, 6, 12, 18].map((months) => (
+                    <motion.button
+                      key={months}
+                      onClick={() => setSelectedTerm(months)}
+                      className={`py-3 rounded-xl text-center transition-all ${
+                        selectedTerm === months
+                          ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/20"
+                          : "bg-white/5 text-white/60 border border-white/10"
+                      }`}
+                      whileTap={{ scale: 0.95 }}
+                      data-testid={`credit-term-${months}`}
+                    >
+                      <span className="text-sm font-bold">{months}</span>
+                      <span className="text-[10px] block opacity-70">Mon.</span>
+                    </motion.button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Loan Details Breakdown */}
+              {applyAmount && parseFloat(applyAmount) > 0 && (() => {
+                const principal = parseFloat(applyAmount);
+                const annualRate = config.interestRate / 100;
+                const monthlyRate = annualRate / 12;
+                const n = selectedTerm;
+                const monthlyPayment = monthlyRate > 0
+                  ? (principal * monthlyRate * Math.pow(1 + monthlyRate, n)) / (Math.pow(1 + monthlyRate, n) - 1)
+                  : principal / n;
+                const totalPayment = monthlyPayment * n;
+                const totalInterest = totalPayment - principal;
+
+                return (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="bg-black/30 rounded-2xl p-4 border border-white/5"
+                    data-testid="credit-breakdown"
+                  >
+                    <div className="flex items-center gap-2 mb-3">
+                      <Euro size={16} className="text-cyan-400" />
+                      <p className="text-sm font-semibold text-white">Kreditübersicht</p>
+                    </div>
+
+                    {/* Monthly Payment - Big */}
+                    <div className="text-center py-3 mb-3 bg-cyan-500/10 rounded-xl border border-cyan-500/20">
+                      <p className="text-[10px] text-gray-400 uppercase tracking-wider">Monatliche Rate</p>
+                      <p className="text-3xl font-black text-cyan-400">€{monthlyPayment.toFixed(2)}</p>
+                      <p className="text-[10px] text-gray-500">pro Monat für {n} Monate</p>
+                    </div>
+
+                    <div className="space-y-2.5">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-400 flex items-center gap-1.5"><CreditCard size={13} /> Kreditbetrag</span>
+                        <span className="text-white font-medium">€{principal.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-400 flex items-center gap-1.5"><Percent size={13} /> Zinssatz (p.a.)</span>
+                        <span className="text-white font-medium">{config.interestRate}%</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-400 flex items-center gap-1.5"><Calendar size={13} /> Laufzeit</span>
+                        <span className="text-white font-medium">{n} Monate</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-400 flex items-center gap-1.5"><TrendingUp size={13} /> Zinskosten gesamt</span>
+                        <span className="text-yellow-400 font-medium">€{totalInterest.toFixed(2)}</span>
+                      </div>
+                      <div className="h-px bg-white/10 my-1" />
+                      <div className="flex justify-between text-sm">
+                        <span className="text-white font-semibold">Gesamtrückzahlung</span>
+                        <span className="text-cyan-400 font-bold text-base">€{totalPayment.toFixed(2)}</span>
+                      </div>
+                    </div>
+
+                    {/* Payment Schedule Preview */}
+                    <div className="mt-3 pt-3 border-t border-white/5">
+                      <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-2">Rückzahlungsplan</p>
+                      <div className="space-y-1.5 max-h-32 overflow-y-auto">
+                        {Array.from({ length: Math.min(n, 6) }, (_, i) => {
+                          const date = new Date();
+                          date.setMonth(date.getMonth() + i + 1);
+                          const remainingAfter = principal - ((principal / n) * (i + 1));
+                          return (
+                            <div key={i} className="flex items-center justify-between text-xs">
+                              <span className="text-gray-500">{date.toLocaleDateString("de-DE", { month: "short", year: "numeric" })}</span>
+                              <span className="text-white/70">€{monthlyPayment.toFixed(2)}</span>
+                              <span className="text-gray-500 text-[10px]">Rest: €{Math.max(0, remainingAfter).toFixed(0)}</span>
+                            </div>
+                          );
+                        })}
+                        {n > 6 && (
+                          <p className="text-[10px] text-gray-600 text-center">... und {n - 6} weitere Raten</p>
+                        )}
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })()}
+
+              <div className="flex gap-2">
                 <motion.button
-                  key={amount}
-                  onClick={() => setApplyAmount(amount.toString())}
-                  className={`flex-1 py-3 rounded-xl text-sm font-semibold ${
-                    applyAmount === amount.toString()
-                      ? "bg-cyan-500 text-white"
-                      : "bg-white/5 text-white/70"
-                  }`}
-                  whileTap={{ scale: 0.95 }}
+                  onClick={applyForCredit}
+                  disabled={applyLoading || !applyAmount}
+                  className="flex-1 py-3 bg-cyan-500 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2 disabled:opacity-50"
+                  whileTap={{ scale: 0.98 }}
+                  data-testid="credit-submit-btn"
                 >
-                  €{amount}
+                  {applyLoading ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle size={16} />}
+                  Beantragen
                 </motion.button>
-              ))}
-            </div>
-            <input
-              type="number"
-              value={applyAmount}
-              onChange={(e) => setApplyAmount(e.target.value)}
-              placeholder="Oder Betrag eingeben..."
-              className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white text-sm placeholder-gray-600 outline-none"
-              max={availableCredit}
-            />
-            <div className="flex gap-2">
-              <motion.button
-                onClick={applyForCredit}
-                disabled={applyLoading || !applyAmount}
-                className="flex-1 py-3 bg-cyan-500 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2"
-                whileTap={{ scale: 0.98 }}
-              >
-                {applyLoading ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle size={16} />}
-                Beantragen
-              </motion.button>
-              <motion.button
-                onClick={() => setShowApply(false)}
-                className="px-4 py-3 bg-white/5 text-gray-400 rounded-xl text-sm"
-                whileTap={{ scale: 0.98 }}
-              >
-                Abbrechen
-              </motion.button>
+                <motion.button
+                  onClick={() => setShowApply(false)}
+                  className="px-4 py-3 bg-white/5 text-gray-400 rounded-xl text-sm"
+                  whileTap={{ scale: 0.98 }}
+                >
+                  Abbrechen
+                </motion.button>
+              </div>
             </div>
           </motion.div>
         )}
