@@ -1,275 +1,123 @@
 # BidBlitz V2 - Product Requirements Document
 
 ## Original Problem Statement
-Create a modern, professional fintech Super App called BidBlitz V2. Full-stack application with FastAPI backend, MongoDB database, and React/TailwindCSS frontend. Features include:
-- Unified Wallet payment system
-- Penny Auction platform with bot bidding
-- Kids Wallet with parental controls
-- Merchant POS system
-- P2P transfers
-- Premium Finance features
-- Real Map System (Leaflet)
-- Driver/Restaurant Dashboards
+Build a modern, professional fintech Super App called BidBlitz V2. 100% REAL system with NO fake/demo/seed data. Latest major feature: Complete multi-vendor car rental module (`car_rental`) inside BidBlitz.
 
-## What's Been Implemented
+## Core Stack
+- **Frontend**: React, TailwindCSS, Framer Motion, Shadcn/UI
+- **Backend**: FastAPI, Motor (async MongoDB)
+- **Database**: MongoDB
+- **Payments**: Stripe (via proxy, `sk_test_emergent`)
+- **Auth**: JWT (cookie-based `access_token` / `refresh_token`)
 
-### Core Features (DONE)
-- **Authentication**: JWT-based auth with bcrypt password hashing
-- **Wallet System**: EUR balance, top-ups, transfers
-- **P2P Transfers**: Email, Username, QR, NFC methods
-- **Stripe Integration**: Top-ups via Emergent proxy
+## User Personas
+- **Customer**: Browse cars, book, pay via wallet, manage bookings, sign contracts
+- **Vendor**: Register as car rental company, manage fleet, handle bookings lifecycle (approve/handover/return), invoices, payouts
+- **Admin**: Approve vendors, oversee all bookings, process payouts, platform settings
 
-### Penny Auction System (DONE)
-- 20 unique premium products (no duplicates)
-- 3-phase bot bidding strategy
-- Premium DealDash-style UI redesign (April 2026)
-- Live timer, bid counter, category filters
-- "How it Works" tutorial section
+---
 
-### Kids Wallet System (DONE)
-- Parent dashboard with child management
-- Freeze/unfreeze child wallets
-- PIN system for child authentication
-- 16-button quick actions grid
-- **NEW (April 2026)**: Tasks/Aufgaben system with rewards
-- **FIXED (April 11)**: Aufgaben button now works with dedicated button per child
+## Completed Features
 
-### Merchant POS (DONE)
-- Barcode scanning payments
-- Fee structure configuration
-- Daily/weekly reporting
+### Phase 1 - Core Platform (DONE)
+- Unified Wallet (EUR) with top-up, send, receive
+- Kids GPS & Safety module
+- Merchant POS with terminal
+- Premium Auctions system
+- Mobility Map
+- Loyalty & Rewards
 
-### Premium Finance Features (April 2026)
-- Split Bill (UI ready, backend stub)
-- Virtual Cards (UI ready, backend stub)
-- Savings Goals (UI ready)
-- BNPL / Pay Later (UI ready)
-- Gift Cards (UI ready)
-- **NEW**: Bills & eSIM Page - Pay utilities, buy eSIM data packages
-- **NEW**: Credit Score Page - View A/B/C score, apply for credit
+### Phase 2 - Gaming Hub (DONE - 2026-04-11)
+- 6 games: Slot Machine, Dice, Coin Flip, Number Guess, Color Predict, Crash
+- Real EUR wallet integration (`REWARD` transaction type)
+- Game Center navigation from MorePage
 
-### Real Map & Mobility System (NEW - April 11, 2026)
-- **UnifiedRealMap**: Leaflet-based map showing Scooters, Drivers, Restaurants
-- **MapActionSheet**: Click markers for details and actions (unlock scooter, book taxi, order food)
-- **MobilityMapPage**: Unified mobility view at `/mobility-map`
-- **OrderTrackingPage**: Real-time delivery tracking with driver location
+### Phase 3 - Scooter Live (DONE - 2026-04-11)
+- Live scooter map (no demo filters)
+- Admin scooter management (Mobility > Scooter-Flotte in AdminPage)
 
-### Driver & Restaurant Dashboards (NEW - April 11, 2026)
-- **DriverDashboardPage** (`/driver-dashboard`): Accept rides, go online/offline, view earnings
-- **RestaurantDashboardPage** (`/restaurant-dashboard`): 
-  - Order management (pending/active/history)
-  - Menu management (add, edit, delete items)
-  - **Driver Assignment**: Assign delivery drivers to orders
-  - Statistics (today/week revenue)
+### Phase 4 - Car Rental Backend Core (DONE - 2026-04-11)
+- Full modular backend in `/app/backend/modules/car_rental/`
+- Models, Schemas, Repository, Services, Routes, Contracts, Invoices, Utils
+- 33 end-to-end bash test cases passed
+- Collections: `car_rental_vendors`, `car_rental_cars`, `car_rental_bookings`, `car_rental_invoices`, `car_rental_contracts`, `car_rental_damage_reports`, `car_rental_payouts`
 
-### Receipt System (NEW - April 11, 2026)
-- `GET /api/receipts/{transaction_id}` - HTML receipt for printing/PDF
-- `GET /api/receipts/{transaction_id}/json` - JSON receipt data
+### Phase 5 - Car Rental Frontend Complete (DONE - 2026-04-11)
+**Public Pages:**
+- `CarListPage.jsx` - Browse/filter cars with search, pagination
+- `CarDetailPage.jsx` - Car details, booking flow with date selection, extras, pricing, wallet payment
 
-### Translations (DONE)
-- 15 languages with flag emojis
-- German as primary language
-- All Premium Finance features translated
+**Customer Pages:**
+- `MyCarBookingsPage.jsx` - Booking list with tabs (Alle/Aktiv/Vergangen), cancel
+- `MyBookingDetailPage.jsx` - Full booking detail, contract signing, invoice view
+
+**Vendor Pages:**
+- `VendorCarRentalDashboardPage.jsx` - Dashboard with revenue, stats, fleet status, quick actions
+- `VendorCarsPage.jsx` - Fleet CRUD (create/edit/archive cars with full form)
+- `VendorBookingsPage.jsx` - Booking list with status tabs, quick approve/reject/ready actions
+- `VendorBookingDetailPage.jsx` - Full booking lifecycle (approve, reject, handover, return, contract/invoice generation)
+- `VendorInvoicesPage.jsx` - Invoice list with status filter, mark-as-paid
+- `VendorPayoutsPage.jsx` - Payout list with request payout modal
+- `VendorDamagesPage.jsx` - Damage reports with resolve action
+- `VendorSettingsPage.jsx` - Company info, bank details, booking settings (auto-approve, fees, etc.)
+
+**Admin Pages:**
+- `AdminCarRentalPage.jsx` - 4 tabs: Übersicht (stats), Vermieter (approve/suspend), Buchungen (all), Auszahlungen (process/reject)
+
+**Navigation:**
+- MorePage: Mietwagen, Meine Buchungen, Vermieter Dashboard links in Mobility section
+- MorePage: Admin Car Rental link for admin users
+- App.js: Full routing for all 15+ car rental routes including dynamic routes
+
+---
 
 ## Architecture
 
-### Backend
-- FastAPI with Motor (async MongoDB)
-- Routes: `/app/backend/routes/`
-- Core: `/app/backend/core/`
+### Backend Modules
+```
+/app/backend/modules/car_rental/
+  __init__.py, models.py, schemas.py, repository.py, 
+  routes.py, services.py, contracts.py, invoices.py, utils.py
+```
 
-### Frontend
-- React 18 with TailwindCSS
-- Framer Motion animations
-- Shadcn/UI components
-- State: Zustand stores
+### Frontend Modules
+```
+/app/frontend/src/modules/car-rental/
+  api/index.js          (442 lines - full API client)
+  pages/
+    CarListPage.jsx, CarDetailPage.jsx,
+    MyCarBookingsPage.jsx, MyBookingDetailPage.jsx,
+    VendorCarRentalDashboardPage.jsx, VendorCarsPage.jsx,
+    VendorBookingsPage.jsx, VendorBookingDetailPage.jsx,
+    VendorInvoicesPage.jsx, VendorPayoutsPage.jsx,
+    VendorDamagesPage.jsx, VendorSettingsPage.jsx,
+    AdminCarRentalPage.jsx, index.js
+```
 
-### Key Files
-- `/app/backend/routes/auctions.py` - Auction system + bot logic
-- `/app/backend/routes/kids.py` - Kids wallet + tasks
-- `/app/frontend/src/pages/AuctionsPage.jsx` - Premium auction UI
-- `/app/frontend/src/pages/KidsPaywall.jsx` - Parent dashboard
-- `/app/frontend/src/store/I18nContext.jsx` - Translations
+### Key API Endpoints
+- `GET /api/car-rental/cars/search` - Public car search
+- `GET /api/car-rental/cars/{id}` - Car detail
+- `POST /api/car-rental/bookings` - Create booking
+- `POST /api/car-rental/bookings/{id}/pay` - Pay booking
+- `GET /api/car-rental/my-bookings` - Customer bookings
+- `POST /api/car-rental/vendor/register` - Vendor registration
+- `GET /api/car-rental/vendor/dashboard` - Vendor dashboard
+- `POST/GET /api/car-rental/vendor/cars` - Car CRUD
+- `GET /api/car-rental/vendor/bookings` - Vendor bookings
+- `POST /api/car-rental/vendor/bookings/{id}/approve|reject|ready|handover|return`
+- `GET /api/car-rental/admin/overview` - Admin overview
+- `POST /api/car-rental/admin/vendors/{id}/action` - Approve/suspend vendor
 
-## Credentials
+---
+
+## Upcoming Tasks (P1/P2)
+- Receipt PDF Export
+- Push Notifications (Geofence alerts)
+- Apple Pay / Google Pay integration
+- Chat/Support System
+- Car rental image upload for vehicles
+- Customer reviews/ratings for cars and vendors
+
+## Test Credentials
 - Admin: `admin@bidblitz.com` / `BidBlitz2026!`
 - Customer: `kunde@bidblitz.com` / `Kunde2026!`
-
-## Known Issues
-1. ~~SendMoney Modal balance fallback~~ (FIXED)
-2. Some Premium Finance pages need full implementation
-
-## Backlog (P1-P2)
-- [x] Complete Bills & eSIM implementation ✅
-- [x] Credit Score system UI ✅
-- [x] Receipt PDF export ✅
-- [x] Real map tracking ✅
-- [x] Restaurant Dashboard with Driver Assignment ✅
-- [ ] Complete Split Bill implementation
-- [ ] Complete Virtual Cards implementation
-- [ ] NFT Generator UI
-- [ ] Apple Pay / Google Pay
-- [ ] Chat/Support system
-
-## Session Updates (April 11, 2026)
-- Fixed Auction UI - Premium DealDash-style redesign
-- Created 20 unique auction products (no duplicates)
-- Tested bot bidding - working correctly
-- Added Premium Finance menu to MorePage
-- Fixed translation keys for new features
-- Added Kids Tasks/Aufgaben system with rewards
-- Fixed SendMoneyModal balance display bug
-
-## Session Updates (April 11, 2026 - Part 2)
-### Bug Fixes
-- ✅ **Wallet Balance €0.00 Bug** - Fixed SendMoneyModal to use direct fetch() calls
-- ✅ **Aufgaben Button** - Added dedicated "Aufgaben" button per child card with z-index 9999
-- ✅ **DriverDashboardPage API Bug** - Fixed api() function calls to use fetch()
-- ✅ **Credit Score API Alias** - Added `/my-score` and `/apply` aliases for frontend compatibility
-
-### New Features Implemented
-- ✅ **Restaurant Dashboard** (`/restaurant-dashboard`)
-  - Order management (pending, active, history)
-  - Menu management (add, edit, toggle, delete)
-  - Statistics tab (today/week revenue)
-  - **Driver Assignment** - Assign/remove drivers for deliveries
-
-- ✅ **Driver Assignment System**
-  - `GET /api/restaurant-dashboard/available-drivers`
-  - `POST /api/restaurant-dashboard/orders/{id}/assign-driver`
-  - `POST /api/restaurant-dashboard/orders/{id}/remove-driver`
-  - `GET /api/restaurant-dashboard/orders/{id}/tracking`
-
-- ✅ **Map Action Sheet** (`/app/frontend/src/components/MapActionSheet.jsx`)
-  - Click Scooter → Unlock/Reserve
-  - Click Driver → Book ride
-  - Click Restaurant → View menu
-
-- ✅ **Mobility Map Page** (`/mobility-map`)
-  - Filter: Scooters, Drivers, Restaurants
-  - Live counts and quick stats
-  - Real-time 30-second refresh
-
-- ✅ **Order Tracking Page** (`OrderTrackingPage.jsx`)
-  - Status timeline (Ordered → Preparing → Ready → Delivered)
-  - Driver location on map
-  - Restaurant info with navigation
-
-- ✅ **Bills & eSIM Page** (`/bills`)
-  - eSIM packages (EU 1GB, 3GB, 10GB, World 5GB)
-  - Mobile top-up (€10, €20, €50)
-  - Utility bills (Strom, Gas, Internet)
-
-- ✅ **Credit Score Page** (`/credit-score`)
-  - Score display (A/B/C)
-  - Max credit limit and interest rate
-  - Apply for credit button
-
-- ✅ **Receipt System**
-  - `GET /api/receipts/{transaction_id}` - HTML receipt
-  - Printable format with transaction details
-
-## Session Updates (April 11, 2026 - Part 3)
-### Kids GPS & Safety System (COMPLETE)
-
-**Backend Endpoints** (`/api/kids/gps/`):
-- `POST /location` - Update child's GPS position
-- `GET /location/{child_id}` - Get current location
-- `GET /location/{child_id}/history?days=N` - Get location history (up to 30 days)
-- `GET /zones/{child_id}` - List all zones
-- `POST /zones` - Create new zone (safe/danger)
-- `PUT /zones/{zone_id}` - Update zone
-- `DELETE /zones/{zone_id}` - Delete zone
-- `GET /all-locations` - Get all children's locations
-- `POST /simulate/{child_id}` - Simulate location (for testing)
-
-**Frontend Components**:
-- `KidsGPSModal.jsx` - Full GPS tracking modal with 3 tabs:
-  - **Live Tab**: Real-time location, battery, speed
-  - **History Tab**: 24h/7days/30days location history
-  - **Zones Tab**: Create/manage safe zones & danger zones
-
-- `KidsQuickModals.jsx` - All 16 Quick Action modals:
-  - ScreenTimeModal - Set daily limits, bedtime
-  - BatteryModal - Check child's device battery
-  - PointsModal - Reward points system
-  - ReportsModal - Weekly activity reports
-  - SpendingModal - Spending analytics
-  - BadgesModal - Achievement badges
-  - ChallengesModal - Parent-set challenges
-  - CoParentsModal - Invite co-parents
-  - BoardModal - Family notes/reminders
-  - AnalyticsModal - Usage statistics
-
-**Zone Features**:
-- Safe Zones (green) - Notifications when child enters/exits
-- Danger Zones (red) - Alerts when child enters
-- Configurable radius: 50m, 100m, 200m, 500m, 1000m
-- Custom coordinates (lat/lng)
-- Real-time zone checking with haversine distance calculation
-  - Statistics tab (today/week revenue)
-  - **Driver Assignment** - Restaurants can assign delivery drivers to orders
-- ✅ **Driver Assignment System** - Backend endpoints for driver allocation
-  - `GET /api/restaurant-dashboard/available-drivers`
-  - `POST /api/restaurant-dashboard/orders/{id}/assign-driver`
-  - `POST /api/restaurant-dashboard/orders/{id}/remove-driver`
-  - `GET /api/restaurant-dashboard/orders/{id}/tracking`
-
-### Bug Fixes Applied
-- Fixed `DriverDashboardPage.jsx` API calls (was using broken api() function)
-- Fixed `SendMoneyModal.jsx` balance loading
-- Enhanced `KidsPaywall.jsx` with dedicated Aufgaben button per child
-
-## Session Updates (April 11, 2026 - Part 4)
-### Gaming Platform / Game Center (COMPLETE)
-
-**Backend Routes** (`/api/gaming/`):
-- `GET /profile` - User gaming profile (points, daily stats, spins remaining)
-- `GET /leaderboard?period=all|today|week` - Top players leaderboard
-- `POST /wheel/spin` - Wheel of Fortune (3 free spins/day)
-- `POST /scratch/win` - Scratch card wins
-- `POST /slots/win` - Slot machine wins
-- `POST /quiz/complete` - Quiz completion rewards
-- `POST /memory/complete` - Memory game rewards
-- `POST /dice/win` - Dice game wins
-- `POST /redeem` - Redeem points for EUR
-
-**Points-to-EUR Conversion**:
-- 1000 points = €1.00
-- Daily win limit: €10.00
-- Minimum redemption: 500 points (€0.50)
-
-**Games Implemented**:
-1. 🎡 **Glücksrad (Wheel of Fortune)** - Animated wheel with 8 prize segments (10, 25, 50, 100, 200, 500, 1000, 2500 points)
-2. 🎫 **Rubbellos (Scratch Cards)** - 3x3 grid, match 3 symbols to win
-3. 🎰 **Lucky Slots** - 3-reel slot machine with 7 symbols, jackpots up to 1000 points
-4. 🧠 **Quiz Master** - 5 German trivia questions, 20 points each
-5. 🃏 **Memory** - 8 pairs of cards, points based on moves (fewer = more)
-6. 🎲 **Würfelglück (Dice)** - Bet on sum (over 7, under 7, exact 7, doubles)
-
-**Frontend Components**:
-- `GamingPage.jsx` - Full gaming hub with:
-  - Game selection grid (6 games)
-  - Daily spins tracker
-  - Points display
-  - Top Spieler leaderboard
-  - Points redemption section
-
-**Database Collections**:
-- `gaming_history` - All game results
-- `gaming_daily_stats` - Daily limits tracking
-- `gaming_redemptions` - Points-to-EUR conversions
-
-**Key Features**:
-- ✅ Direct EUR wallet credits (no fake points)
-- ✅ Daily win limits to prevent abuse
-- ✅ Framer Motion animations
-- ✅ Leaderboard with top players
-- ✅ All German UI text
-
-## Backlog (Updated)
-- [ ] NFT Generator UI (backend exists, frontend missing)
-- [ ] Push Notifications (Geofence alerts for Kids GPS)
-- [ ] Apple Pay / Google Pay
-- [ ] Chat/Support System
-- [ ] NFC Tap-to-Pay

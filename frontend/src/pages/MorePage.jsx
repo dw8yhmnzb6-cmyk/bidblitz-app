@@ -812,6 +812,9 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
   ];
 
   const mobilityMenu = [
+    { id: "car-rental", icon: Car, label: "Mietwagen", desc: "Auto mieten", color: "#00C2FF", action: () => onNavigate("/car-rental") },
+    { id: "car-rental-bookings", icon: Calendar, label: "Meine Buchungen", desc: "Autobuchungen verwalten", color: "#00C2FF", action: gatedAction(() => onNavigate("/car-rental/my-bookings")) },
+    { id: "car-rental-vendor", icon: Car, label: "Vermieter Dashboard", desc: "Fahrzeuge & Buchungen", color: "#00D26A", action: gatedAction(() => onNavigate("/car-rental/vendor")) },
     { id: "taxi", icon: Car, label: t("taxi.title") || "Taxi", desc: t("taxi.menu_desc") || "Taxi buchen", color: "#FFB800", action: gatedAction(() => onNavigate("/taxi")) },
     { id: "scooter", icon: Zap, label: t("scooter.title") || "E-Scooter", desc: t("scooter.menu_desc") || "Scooter mieten", color: "#00D26A", action: gatedAction(() => onNavigate("/scooter")) },
     { id: "food", icon: ShoppingBag, label: t("food.title") || "Food Delivery", desc: t("food.menu_desc") || "Essen bestellen", color: "#FF6B6B", action: gatedAction(() => onNavigate("/food")) },
@@ -828,6 +831,7 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
 
   const adminMenu = user.role === "admin" ? [
     { id: "admin-dashboard", icon: LayoutDashboard, label: "Admin Dashboard", desc: "Platform Management", color: "#FF6B6B", action: () => onNavigate("/admin") },
+    { id: "admin-car-rental", icon: Car, label: "Autovermietung Admin", desc: "Vermieter & Buchungen", color: "#00C2FF", action: () => onNavigate("/car-rental/admin") },
   ] : [];
 
   const renderGroup = (title, items, delay) => (

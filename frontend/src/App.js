@@ -52,6 +52,14 @@ import CreditScorePage from "./pages/CreditScorePage";
 import BillsPage from "./pages/BillsPage";
 import GamingPage from "./pages/GamingPage";
 
+// Car Rental Module
+import {
+  CarListPage, CarDetailPage, MyCarBookingsPage, MyBookingDetailPage,
+  VendorCarRentalDashboardPage, VendorCarsPage, VendorBookingsPage,
+  VendorBookingDetailPage, VendorInvoicesPage, VendorPayoutsPage,
+  VendorDamagesPage, VendorSettingsPage, AdminCarRentalPage
+} from "./modules/car-rental/pages";
+
 import BottomNav from "./components/BottomNav";
 import BarcodeModal from "./components/BarcodeModal";
 import AuthGateOverlay from "./components/AuthGateOverlay";
@@ -267,7 +275,49 @@ function AppContent() {
         return isGuest ? <HomePage {...homeProps} /> : <BillsPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
       case "/gaming":
         return isGuest ? <HomePage {...homeProps} /> : <GamingPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
+      
+      // Car Rental Module
+      case "/car-rental":
+        return <CarListPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
+      case "/car-rental/my-bookings":
+        return isGuest ? <HomePage {...homeProps} /> : <MyCarBookingsPage onBack={() => handleNavigate("/car-rental")} onNavigate={handleNavigate} />;
+      case "/car-rental/vendor":
+        return isGuest ? <HomePage {...homeProps} /> : <VendorCarRentalDashboardPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
+      case "/car-rental/vendor/cars":
+        return isGuest ? <HomePage {...homeProps} /> : <VendorCarsPage onBack={() => handleNavigate("/car-rental/vendor")} onNavigate={handleNavigate} />;
+      case "/car-rental/vendor/cars/new":
+        return isGuest ? <HomePage {...homeProps} /> : <VendorCarsPage onBack={() => handleNavigate("/car-rental/vendor")} onNavigate={handleNavigate} />;
+      case "/car-rental/vendor/bookings":
+        return isGuest ? <HomePage {...homeProps} /> : <VendorBookingsPage onBack={() => handleNavigate("/car-rental/vendor")} onNavigate={handleNavigate} />;
+      case "/car-rental/vendor/invoices":
+        return isGuest ? <HomePage {...homeProps} /> : <VendorInvoicesPage onBack={() => handleNavigate("/car-rental/vendor")} />;
+      case "/car-rental/vendor/payouts":
+        return isGuest ? <HomePage {...homeProps} /> : <VendorPayoutsPage onBack={() => handleNavigate("/car-rental/vendor")} />;
+      case "/car-rental/vendor/damages":
+        return isGuest ? <HomePage {...homeProps} /> : <VendorDamagesPage onBack={() => handleNavigate("/car-rental/vendor")} />;
+      case "/car-rental/vendor/settings":
+        return isGuest ? <HomePage {...homeProps} /> : <VendorSettingsPage onBack={() => handleNavigate("/car-rental/vendor")} />;
+      case "/car-rental/vendor/customers":
+        return isGuest ? <HomePage {...homeProps} /> : <VendorBookingsPage onBack={() => handleNavigate("/car-rental/vendor")} onNavigate={handleNavigate} />;
+      case "/car-rental/vendor/reports":
+        return isGuest ? <HomePage {...homeProps} /> : <VendorCarRentalDashboardPage onBack={() => handleNavigate("/car-rental/vendor")} onNavigate={handleNavigate} />;
+      case "/car-rental/admin":
+        return isGuest ? <HomePage {...homeProps} /> : <AdminCarRentalPage onBack={() => handleNavigate("/admin")} />;
+      
       default:
+        // Handle dynamic routes
+        if (currentPath.startsWith("/car-rental/vendor/bookings/")) {
+          const bId = currentPath.split("/car-rental/vendor/bookings/")[1];
+          return isGuest ? <HomePage {...homeProps} /> : <VendorBookingDetailPage bookingId={bId} onBack={() => handleNavigate("/car-rental/vendor/bookings")} onNavigate={handleNavigate} />;
+        }
+        if (currentPath.startsWith("/car-rental/my-bookings/")) {
+          const bId = currentPath.split("/car-rental/my-bookings/")[1];
+          return isGuest ? <HomePage {...homeProps} /> : <MyBookingDetailPage bookingId={bId} onBack={() => handleNavigate("/car-rental/my-bookings")} onNavigate={handleNavigate} />;
+        }
+        if (currentPath.startsWith("/car-rental/car/")) {
+          const carId = currentPath.split("/car-rental/car/")[1];
+          return <CarDetailPage carId={carId} onBack={() => handleNavigate("/car-rental")} onNavigate={handleNavigate} />;
+        }
         return <HomePage {...homeProps} />;
     }
   };

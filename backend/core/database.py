@@ -209,6 +209,47 @@ async def create_indexes():
     await safe_create_index(db.payment_transactions, "session_id", unique=True)
     await safe_create_index(db.payment_transactions, [("user_id", 1), ("created_at", -1)])
     
+    # ═══════════════════════════════════════════════════════════════════════════
+    # CAR RENTAL MODULE
+    # ═══════════════════════════════════════════════════════════════════════════
+    
+    await safe_create_index(db.car_rental_vendors, "vendor_id", unique=True)
+    await safe_create_index(db.car_rental_vendors, "user_id", unique=True)
+    await safe_create_index(db.car_rental_vendors, "status")
+    
+    await safe_create_index(db.car_rental_cars, "car_id", unique=True)
+    await safe_create_index(db.car_rental_cars, "vendor_id")
+    await safe_create_index(db.car_rental_cars, [("status", 1), ("city", 1)])
+    await safe_create_index(db.car_rental_cars, [("status", 1), ("price_per_day", 1)])
+    
+    await safe_create_index(db.car_rental_bookings, "booking_id", unique=True)
+    await safe_create_index(db.car_rental_bookings, [("vendor_id", 1), ("created_at", -1)])
+    await safe_create_index(db.car_rental_bookings, [("customer_id", 1), ("created_at", -1)])
+    await safe_create_index(db.car_rental_bookings, [("car_id", 1), ("status", 1)])
+    await safe_create_index(db.car_rental_bookings, [("status", 1), ("start_date", 1)])
+    
+    await safe_create_index(db.car_rental_invoices, "invoice_id", unique=True)
+    await safe_create_index(db.car_rental_invoices, "invoice_number", unique=True)
+    await safe_create_index(db.car_rental_invoices, [("vendor_id", 1), ("created_at", -1)])
+    await safe_create_index(db.car_rental_invoices, "booking_id")
+    
+    await safe_create_index(db.car_rental_contracts, "contract_id", unique=True)
+    await safe_create_index(db.car_rental_contracts, "booking_id")
+    await safe_create_index(db.car_rental_contracts, [("vendor_id", 1), ("created_at", -1)])
+    
+    await safe_create_index(db.car_rental_damage_reports, "damage_id", unique=True)
+    await safe_create_index(db.car_rental_damage_reports, [("vendor_id", 1), ("resolved", 1)])
+    await safe_create_index(db.car_rental_damage_reports, "car_id")
+    
+    await safe_create_index(db.car_rental_payouts, "payout_id", unique=True)
+    await safe_create_index(db.car_rental_payouts, [("vendor_id", 1), ("status", 1)])
+    
+    await safe_create_index(db.car_rental_vendor_staff, [("vendor_id", 1), ("user_id", 1)], unique=True)
+    
+    await safe_create_index(db.car_rental_customer_documents, [("customer_id", 1), ("doc_type", 1)])
+    
+    await safe_create_index(db.car_rental_activity_logs, [("vendor_id", 1), ("created_at", -1)])
+    
     logger.info("Database indexes created/verified")
 
 async def close_connection():

@@ -248,6 +248,10 @@ app.include_router(kids_gps_router)
 from routes.gaming import router as gaming_router
 app.include_router(gaming_router)
 
+# Car Rental Module
+from modules.car_rental import car_rental_router
+app.include_router(car_rental_router)
+
 # Stripe webhook at /api/webhook/stripe
 from routes.stripe import stripe_webhook as _stripe_wh
 app.post("/api/webhook/stripe")(_stripe_wh)
