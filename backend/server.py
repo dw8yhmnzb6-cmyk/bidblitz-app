@@ -240,6 +240,10 @@ app.include_router(readiness_router)
 app.include_router(driver_dashboard_router)
 app.include_router(restaurant_dashboard_router)
 
+# Kids GPS & Safety System
+from routes.kids_gps import router as kids_gps_router
+app.include_router(kids_gps_router)
+
 # Stripe webhook at /api/webhook/stripe
 from routes.stripe import stripe_webhook as _stripe_wh
 app.post("/api/webhook/stripe")(_stripe_wh)

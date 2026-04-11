@@ -14,6 +14,12 @@ import { useI18n, useUser } from "../store";
 import { api } from "../services/api";
 import ChildWalletModal from "../components/ChildWalletModal";
 import KidsNotifications from "../components/KidsNotifications";
+import KidsGPSModal from "../components/KidsGPSModal";
+import {
+  ScreenTimeModal, BatteryModal, PointsModal, ReportsModal,
+  SpendingModal, BadgesModal, ChallengesModal, CoParentsModal,
+  BoardModal, AnalyticsModal
+} from "../components/KidsQuickModals";
 
 const slide = { duration: 0.3, ease: [0.32, 0.72, 0, 1] };
 
@@ -75,6 +81,20 @@ const KidsDashboard = ({ onBack, t, subStatus }) => {
   const [childTasks, setChildTasks] = useState([]); // Aufgaben für das aktuell ausgewählte Kind
   const [newTaskName, setNewTaskName] = useState('');
   const [newTaskReward, setNewTaskReward] = useState(0.50);
+
+  // Feature Modals State
+  const [gpsChild, setGpsChild] = useState(null);
+  const [screenTimeChild, setScreenTimeChild] = useState(null);
+  const [batteryChild, setBatteryChild] = useState(null);
+  const [pointsChild, setPointsChild] = useState(null);
+  const [reportsChild, setReportsChild] = useState(null);
+  const [spendingChild, setSpendingChild] = useState(null);
+  const [badgesChild, setBadgesChild] = useState(null);
+  const [challengesChild, setChallengesChild] = useState(null);
+  const [coParentsChild, setCoParentsChild] = useState(null);
+  const [boardChild, setBoardChild] = useState(null);
+  const [analyticsChild, setAnalyticsChild] = useState(null);
+  const [zonesChild, setZonesChild] = useState(null);
 
   // Load tasks when tasksChild changes
   useEffect(() => {
@@ -388,21 +408,67 @@ const KidsDashboard = ({ onBack, t, subStatus }) => {
             {QUICK_ACTIONS.map((action, idx) => (
               <motion.button
                 key={action.key}
+                data-testid={`quick-action-${action.key}`}
                 onClick={() => {
-                  if (action.key === 'allowance' && children.length > 0) {
-                    setWalletChild(children[0]);
-                  } else if (action.key === 'spending') {
-                    setShowActivity(true);
-                  } else if (action.key === 'tasks' && children.length > 0) {
-                    // Öffne Aufgaben-Modal für erstes Kind
-                    setTasksChild(children[0]);
-                  } else if (children.length === 0) {
+                  if (children.length === 0) {
                     setError('Bitte zuerst ein Kind hinzufügen');
                     setTimeout(() => setError(null), 2000);
-                  } else {
-                    setActiveFeature(action.key);
-                    setSuccess(`${action.label} - Funktion kommt bald!`);
-                    setTimeout(() => setSuccess(null), 2000);
+                    return;
+                  }
+                  const firstChild = children[0];
+                  switch (action.key) {
+                    case 'gps':
+                      setGpsChild(firstChild);
+                      break;
+                    case 'zones':
+                      setGpsChild(firstChild); // Opens GPS modal with zones tab
+                      break;
+                    case 'tasks':
+                      setTasksChild(firstChild);
+                      break;
+                    case 'screen':
+                      setScreenTimeChild(firstChild);
+                      break;
+                    case 'battery':
+                      setBatteryChild(firstChild);
+                      break;
+                    case 'points':
+                      setPointsChild(firstChild);
+                      break;
+                    case 'report':
+                      setReportsChild(firstChild);
+                      break;
+                    case 'spending':
+                      setSpendingChild(firstChild);
+                      break;
+                    case 'allowance':
+                      setWalletChild(firstChild);
+                      break;
+                    case 'shop':
+                      setSuccess('Kids Shop - Demnächst verfügbar!');
+                      setTimeout(() => setSuccess(null), 2000);
+                      break;
+                    case 'ranking':
+                      setSuccess('Rangliste - Demnächst verfügbar!');
+                      setTimeout(() => setSuccess(null), 2000);
+                      break;
+                    case 'coparents':
+                      setCoParentsChild(firstChild);
+                      break;
+                    case 'analytics':
+                      setAnalyticsChild(firstChild);
+                      break;
+                    case 'board':
+                      setBoardChild(firstChild);
+                      break;
+                    case 'badges':
+                      setBadgesChild(firstChild);
+                      break;
+                    case 'challenges':
+                      setChallengesChild(firstChild);
+                      break;
+                    default:
+                      setActiveFeature(action.key);
                   }
                 }}
                 className="flex flex-col items-center gap-1.5 p-2.5 rounded-2xl transition-all active:scale-95"
@@ -909,6 +975,132 @@ const KidsDashboard = ({ onBack, t, subStatus }) => {
           </motion.div>
         )}
       </AnimatePresence>
+      {/* ══════════════════════════════════════════════════════════════════════════
+          FEATURE MODALS - GPS, Screen Time, Battery, Points, etc.
+      ══════════════════════════════════════════════════════════════════════════ */}
+      
+      {/* GPS Modal */}
+      <AnimatePresence>
+        {gpsChild && (
+          <KidsGPSModal
+            isOpen={!!gpsChild}
+            onClose={() => setGpsChild(null)}
+            child={gpsChild}
+            allChildren={children}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Screen Time Modal */}
+      <AnimatePresence>
+        {screenTimeChild && (
+          <ScreenTimeModal
+            isOpen={!!screenTimeChild}
+            onClose={() => setScreenTimeChild(null)}
+            child={screenTimeChild}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Battery Modal */}
+      <AnimatePresence>
+        {batteryChild && (
+          <BatteryModal
+            isOpen={!!batteryChild}
+            onClose={() => setBatteryChild(null)}
+            child={batteryChild}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Points Modal */}
+      <AnimatePresence>
+        {pointsChild && (
+          <PointsModal
+            isOpen={!!pointsChild}
+            onClose={() => setPointsChild(null)}
+            child={pointsChild}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Reports Modal */}
+      <AnimatePresence>
+        {reportsChild && (
+          <ReportsModal
+            isOpen={!!reportsChild}
+            onClose={() => setReportsChild(null)}
+            child={reportsChild}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Spending Modal */}
+      <AnimatePresence>
+        {spendingChild && (
+          <SpendingModal
+            isOpen={!!spendingChild}
+            onClose={() => setSpendingChild(null)}
+            child={spendingChild}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Badges Modal */}
+      <AnimatePresence>
+        {badgesChild && (
+          <BadgesModal
+            isOpen={!!badgesChild}
+            onClose={() => setBadgesChild(null)}
+            child={badgesChild}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Challenges Modal */}
+      <AnimatePresence>
+        {challengesChild && (
+          <ChallengesModal
+            isOpen={!!challengesChild}
+            onClose={() => setChallengesChild(null)}
+            child={challengesChild}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Co-Parents Modal */}
+      <AnimatePresence>
+        {coParentsChild && (
+          <CoParentsModal
+            isOpen={!!coParentsChild}
+            onClose={() => setCoParentsChild(null)}
+            child={coParentsChild}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Board Modal */}
+      <AnimatePresence>
+        {boardChild && (
+          <BoardModal
+            isOpen={!!boardChild}
+            onClose={() => setBoardChild(null)}
+            child={boardChild}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Analytics Modal */}
+      <AnimatePresence>
+        {analyticsChild && (
+          <AnalyticsModal
+            isOpen={!!analyticsChild}
+            onClose={() => setAnalyticsChild(null)}
+            child={analyticsChild}
+          />
+        )}
+      </AnimatePresence>
+
     </motion.div>
   );
 };
