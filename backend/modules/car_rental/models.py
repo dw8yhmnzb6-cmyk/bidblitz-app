@@ -116,6 +116,10 @@ def generate_payout_id() -> str:
     return f"PO-{secrets.token_hex(6).upper()}"
 
 
+def generate_review_id() -> str:
+    return f"REV-{secrets.token_hex(6).upper()}"
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # DOCUMENT MODELS
 # ══════════════════════════════════════════════════════════════════════════════

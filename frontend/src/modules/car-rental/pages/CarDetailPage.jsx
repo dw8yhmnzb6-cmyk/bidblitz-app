@@ -10,7 +10,7 @@ import {
   Check, ChevronRight, Loader2, Shield, Clock, FileText, Plus, Minus,
   CreditCard, AlertCircle, X, DoorOpen, Gauge
 } from "lucide-react";
-import { getCarDetail, calculateCarPrice, checkCarAvailability, createBooking, payBooking } from "../api";
+import { getCarDetail, calculateCarPrice, checkCarAvailability, createBooking, payBooking, getCarReviews } from "../api";
 
 const FUEL_LABELS = {
   petrol: "Benzin",
@@ -44,9 +44,11 @@ export default function CarDetailPage({ carId, onBack, onNavigate }) {
   const [bookingSuccess, setBookingSuccess] = useState(null);
   
   const [activeImage, setActiveImage] = useState(0);
+  const [reviews, setReviews] = useState([]);
 
   useEffect(() => {
     loadCar();
+    loadReviews();
   }, [carId]);
 
   useEffect(() => {
@@ -65,6 +67,13 @@ export default function CarDetailPage({ carId, onBack, onNavigate }) {
       setError("Fahrzeug nicht gefunden");
     }
     setLoading(false);
+  };
+
+  const loadReviews = async () => {
+    try {
+      const data = await getCarReviews(carId);
+      setReviews(data.reviews || []);
+    } catch (err) { console.error(err); }
   };
 
   const loadPricing = async () => {
@@ -334,6 +343,32 @@ export default function CarDetailPage({ carId, onBack, onNavigate }) {
             </div>
           </div>
         </div>
+
+        {/* Reviews Section */}
+        {reviews.length > 0 && (
+          <div className="bg-white/5 rounded-xl p-4">
+            <h3 className="font-semibold mb-3 text-sm flex items-center gap-2">
+              <Star size={14} className="text-yellow-400 fill-yellow-400" />
+              Bewertungen ({reviews.length})
+            </h3>
+            <div className="space-y-3">
+              {reviews.slice(0, 5).map(r => (
+                <div key={r.review_id} className="border-b border-white/5 pb-3 last:border-0">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-sm font-medium">{r.customer_name}</span>
+                    <div className="flex gap-0.5">
+                      {[1,2,3,4,5].map(s => (
+                        <Star key={s} size={12} className={s <= r.rating ? "text-yellow-400 fill-yellow-400" : "text-[#333]"} />
+                      ))}
+                    </div>
+                  </div>
+                  {r.comment && <p className="text-xs text-[#888] leading-relaxed">{r.comment}</p>}
+                  <p className="text-[10px] text-[#555] mt-1">{new Date(r.created_at).toLocaleDateString("de-DE")}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Booking Section */}
         <div className="bg-gradient-to-br from-[#00C2FF]/10 to-[#00C2FF]/5 rounded-2xl p-4 border border-[#00C2FF]/20">

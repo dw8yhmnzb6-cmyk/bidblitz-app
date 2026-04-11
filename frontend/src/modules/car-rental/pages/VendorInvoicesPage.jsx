@@ -4,8 +4,8 @@
 
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { ArrowLeft, FileText, Loader2, Euro, Check, Clock, AlertCircle } from "lucide-react";
-import { getVendorInvoices, markInvoicePaid } from "../api";
+import { ArrowLeft, FileText, Loader2, Euro, Check, Clock, AlertCircle, Download } from "lucide-react";
+import { getVendorInvoices, markInvoicePaid, downloadInvoicePdf } from "../api";
 
 const STATUS_CFG = {
   draft: { label: "Entwurf", color: "#888" },
@@ -89,13 +89,20 @@ export default function VendorInvoicesPage({ onBack }) {
               </div>
               <div className="flex items-center justify-between pt-3 border-t border-white/5">
                 <span className="text-xl font-bold text-[#00C2FF]">€{inv.total?.toFixed(2)}</span>
-                {inv.status === "sent" && (
-                  <motion.button whileTap={{ scale: 0.95 }} onClick={() => handleMarkPaid(inv.invoice_id)}
-                    className="px-3 py-1.5 rounded-lg bg-green-500/10 text-green-400 text-xs font-medium flex items-center gap-1"
-                    data-testid={`mark-paid-${inv.invoice_id}`}>
-                    <Check size={12} /> Bezahlt
+                <div className="flex gap-2">
+                  <motion.button whileTap={{ scale: 0.95 }} onClick={() => downloadInvoicePdf(inv.invoice_id)}
+                    className="px-3 py-1.5 rounded-lg bg-white/5 text-white text-xs font-medium flex items-center gap-1 border border-white/10"
+                    data-testid={`download-pdf-${inv.invoice_id}`}>
+                    <Download size={12} /> PDF
                   </motion.button>
-                )}
+                  {inv.status === "sent" && (
+                    <motion.button whileTap={{ scale: 0.95 }} onClick={() => handleMarkPaid(inv.invoice_id)}
+                      className="px-3 py-1.5 rounded-lg bg-green-500/10 text-green-400 text-xs font-medium flex items-center gap-1"
+                      data-testid={`mark-paid-${inv.invoice_id}`}>
+                      <Check size={12} /> Bezahlt
+                    </motion.button>
+                  )}
+                </div>
               </div>
             </motion.div>
           );

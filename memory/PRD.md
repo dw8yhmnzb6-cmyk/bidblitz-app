@@ -11,63 +11,54 @@ Build a modern, professional fintech Super App called BidBlitz V2. 100% REAL sys
 - **Auth**: JWT (cookie-based `access_token` / `refresh_token`)
 
 ## User Personas
-- **Customer**: Browse cars, book, pay via wallet, manage bookings, sign contracts
-- **Vendor**: Register as car rental company, manage fleet, handle bookings lifecycle (approve/handover/return), invoices, payouts
-- **Admin**: Approve vendors, oversee all bookings, process payouts, platform settings
+- **Customer**: Browse cars, book, pay via wallet, manage bookings, sign contracts, write reviews
+- **Vendor**: Register, manage fleet (CRUD + image upload), handle bookings lifecycle, invoices/PDF, payouts
+- **Admin**: Approve vendors, oversee bookings, process payouts, platform settings
 
 ---
 
 ## Completed Features
 
 ### Phase 1 - Core Platform (DONE)
-- Unified Wallet (EUR) with top-up, send, receive
-- Kids GPS & Safety module
-- Merchant POS with terminal
-- Premium Auctions system
-- Mobility Map
-- Loyalty & Rewards
+- Unified Wallet (EUR), Kids GPS, Merchant POS, Auctions, Mobility Map, Loyalty
 
 ### Phase 2 - Gaming Hub (DONE - 2026-04-11)
-- 6 games: Slot Machine, Dice, Coin Flip, Number Guess, Color Predict, Crash
-- Real EUR wallet integration (`REWARD` transaction type)
-- Game Center navigation from MorePage
+- 6 games with real EUR wallet integration
 
 ### Phase 3 - Scooter Live (DONE - 2026-04-11)
-- Live scooter map (no demo filters)
-- Admin scooter management (Mobility > Scooter-Flotte in AdminPage)
+- Live scooter map + Admin management
 
 ### Phase 4 - Car Rental Backend Core (DONE - 2026-04-11)
 - Full modular backend in `/app/backend/modules/car_rental/`
-- Models, Schemas, Repository, Services, Routes, Contracts, Invoices, Utils
-- 33 end-to-end bash test cases passed
-- Collections: `car_rental_vendors`, `car_rental_cars`, `car_rental_bookings`, `car_rental_invoices`, `car_rental_contracts`, `car_rental_damage_reports`, `car_rental_payouts`
+- 33 end-to-end test cases passed
 
 ### Phase 5 - Car Rental Frontend Complete (DONE - 2026-04-11)
-**Public Pages:**
-- `CarListPage.jsx` - Browse/filter cars with search, pagination
-- `CarDetailPage.jsx` - Car details, booking flow with date selection, extras, pricing, wallet payment
+- 13 pages: CarList, CarDetail, MyBookings, MyBookingDetail, VendorDashboard, VendorCars, VendorBookings, VendorBookingDetail, VendorInvoices, VendorPayouts, VendorDamages, VendorSettings, AdminCarRental
 
-**Customer Pages:**
-- `MyCarBookingsPage.jsx` - Booking list with tabs (Alle/Aktiv/Vergangen), cancel
-- `MyBookingDetailPage.jsx` - Full booking detail, contract signing, invoice view
+### Phase 6 - P1 Features (DONE - 2026-04-11)
 
-**Vendor Pages:**
-- `VendorCarRentalDashboardPage.jsx` - Dashboard with revenue, stats, fleet status, quick actions
-- `VendorCarsPage.jsx` - Fleet CRUD (create/edit/archive cars with full form)
-- `VendorBookingsPage.jsx` - Booking list with status tabs, quick approve/reject/ready actions
-- `VendorBookingDetailPage.jsx` - Full booking lifecycle (approve, reject, handover, return, contract/invoice generation)
-- `VendorInvoicesPage.jsx` - Invoice list with status filter, mark-as-paid
-- `VendorPayoutsPage.jsx` - Payout list with request payout modal
-- `VendorDamagesPage.jsx` - Damage reports with resolve action
-- `VendorSettingsPage.jsx` - Company info, bank details, booking settings (auto-approve, fees, etc.)
+**6a. Fahrzeug-Bildupload:**
+- Chunked file upload to `/api/car-rental/vendor/cars/{id}/upload-image`
+- JPG/PNG/WebP support, max 10MB
+- Auto-set first image as main, set main image, delete image
+- Images stored in `/app/backend/uploads/car_rental/` served via `/api/uploads/`
+- Gallery display in VendorCarsPage edit mode + CarListPage + CarDetailPage
 
-**Admin Pages:**
-- `AdminCarRentalPage.jsx` - 4 tabs: Übersicht (stats), Vermieter (approve/suspend), Buchungen (all), Auszahlungen (process/reject)
+**6b. Kunden-Bewertungen:**
+- `POST /api/car-rental/reviews` - Create review (1-5 stars + comment)
+- `GET /api/car-rental/cars/{id}/reviews` - Public car reviews
+- `GET /api/car-rental/vendors/{id}/reviews` - Vendor reviews
+- Auto-updates car and vendor average ratings
+- Only completed bookings can be reviewed (one per booking)
+- Review display on CarDetailPage with star ratings
+- Review creation modal on MyBookingDetailPage
 
-**Navigation:**
-- MorePage: Mietwagen, Meine Buchungen, Vermieter Dashboard links in Mobility section
-- MorePage: Admin Car Rental link for admin users
-- App.js: Full routing for all 15+ car rental routes including dynamic routes
+**6c. Receipt PDF Export:**
+- `GET /api/car-rental/invoices/{id}/pdf` - Invoice PDF download
+- `GET /api/car-rental/bookings/{id}/receipt-pdf` - Booking receipt PDF
+- Professional German-language PDFs with reportlab
+- Includes: vendor info, customer info, booking details, line items, totals, MwSt.
+- Download buttons in VendorInvoicesPage and MyBookingDetailPage
 
 ---
 
@@ -76,47 +67,30 @@ Build a modern, professional fintech Super App called BidBlitz V2. 100% REAL sys
 ### Backend Modules
 ```
 /app/backend/modules/car_rental/
-  __init__.py, models.py, schemas.py, repository.py, 
-  routes.py, services.py, contracts.py, invoices.py, utils.py
+  __init__.py, models.py, schemas.py, repository.py, routes.py,
+  services.py, contracts.py, invoices.py, utils.py, pdf_generator.py
 ```
 
 ### Frontend Modules
 ```
 /app/frontend/src/modules/car-rental/
-  api/index.js          (442 lines - full API client)
-  pages/
-    CarListPage.jsx, CarDetailPage.jsx,
-    MyCarBookingsPage.jsx, MyBookingDetailPage.jsx,
-    VendorCarRentalDashboardPage.jsx, VendorCarsPage.jsx,
-    VendorBookingsPage.jsx, VendorBookingDetailPage.jsx,
-    VendorInvoicesPage.jsx, VendorPayoutsPage.jsx,
-    VendorDamagesPage.jsx, VendorSettingsPage.jsx,
-    AdminCarRentalPage.jsx, index.js
+  api/index.js (530+ lines)
+  pages/ (13 page components + index.js)
 ```
 
-### Key API Endpoints
-- `GET /api/car-rental/cars/search` - Public car search
-- `GET /api/car-rental/cars/{id}` - Car detail
-- `POST /api/car-rental/bookings` - Create booking
-- `POST /api/car-rental/bookings/{id}/pay` - Pay booking
-- `GET /api/car-rental/my-bookings` - Customer bookings
-- `POST /api/car-rental/vendor/register` - Vendor registration
-- `GET /api/car-rental/vendor/dashboard` - Vendor dashboard
-- `POST/GET /api/car-rental/vendor/cars` - Car CRUD
-- `GET /api/car-rental/vendor/bookings` - Vendor bookings
-- `POST /api/car-rental/vendor/bookings/{id}/approve|reject|ready|handover|return`
-- `GET /api/car-rental/admin/overview` - Admin overview
-- `POST /api/car-rental/admin/vendors/{id}/action` - Approve/suspend vendor
+### Key DB Collections
+- `car_rental_vendors`, `car_rental_cars`, `car_rental_bookings`
+- `car_rental_invoices`, `car_rental_contracts`, `car_rental_damage_reports`
+- `car_rental_payouts`, `car_rental_reviews` (NEW)
 
 ---
 
-## Upcoming Tasks (P1/P2)
-- Receipt PDF Export
+## Upcoming Tasks (P2)
 - Push Notifications (Geofence alerts)
 - Apple Pay / Google Pay integration
 - Chat/Support System
-- Car rental image upload for vehicles
-- Customer reviews/ratings for cars and vendors
+- Car rental insurance management
+- Multi-language support for PDF exports
 
 ## Test Credentials
 - Admin: `admin@bidblitz.com` / `BidBlitz2026!`

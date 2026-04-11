@@ -439,3 +439,83 @@ export const updateAdminSettings = async (data) => {
     body: JSON.stringify(data),
   });
 };
+
+// ══════════════════════════════════════════════════════════════════════════════
+// IMAGE UPLOAD
+// ══════════════════════════════════════════════════════════════════════════════
+
+export const uploadCarImage = async (carId, file) => {
+  const formData = new FormData();
+  formData.append("file", file);
+  const url = `${API_URL}/api/car-rental/vendor/cars/${carId}/upload-image`;
+  const res = await fetch(url, {
+    method: "POST",
+    credentials: "include",
+    body: formData,
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.detail || "Upload fehlgeschlagen");
+  return data;
+};
+
+export const setCarMainImage = async (carId, imageUrl) => {
+  return api(`/api/car-rental/vendor/cars/${carId}/set-main-image`, {
+    method: "POST",
+    body: JSON.stringify({ image_url: imageUrl }),
+  });
+};
+
+export const deleteCarImage = async (carId, imageUrl) => {
+  return api(`/api/car-rental/vendor/cars/${carId}/images`, {
+    method: "DELETE",
+    body: JSON.stringify({ image_url: imageUrl }),
+  });
+};
+
+// ══════════════════════════════════════════════════════════════════════════════
+// REVIEWS
+// ══════════════════════════════════════════════════════════════════════════════
+
+export const createReview = async (bookingId, rating, comment = "") => {
+  return api("/api/car-rental/reviews", {
+    method: "POST",
+    body: JSON.stringify({ booking_id: bookingId, rating, comment }),
+  });
+};
+
+export const getCarReviews = async (carId, limit = 20) => {
+  return api(`/api/car-rental/cars/${carId}/reviews?limit=${limit}`);
+};
+
+export const getVendorReviews = async (vendorId, limit = 20) => {
+  return api(`/api/car-rental/vendors/${vendorId}/reviews?limit=${limit}`);
+};
+
+// ══════════════════════════════════════════════════════════════════════════════
+// PDF EXPORT
+// ══════════════════════════════════════════════════════════════════════════════
+
+export const downloadInvoicePdf = async (invoiceId) => {
+  const url = `${API_URL}/api/car-rental/invoices/${invoiceId}/pdf`;
+  const res = await fetch(url, { credentials: "include" });
+  if (!res.ok) throw new Error("PDF Download fehlgeschlagen");
+  const blob = await res.blob();
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = `Rechnung_${invoiceId}.pdf`;
+  link.click();
+  URL.revokeObjectURL(link.href);
+};
+
+export const downloadBookingReceipt = async (bookingId) => {
+  const url = `${API_URL}/api/car-rental/bookings/${bookingId}/receipt-pdf`;
+  const res = await fetch(url, { credentials: "include" });
+  if (!res.ok) throw new Error("PDF Download fehlgeschlagen");
+  const blob = await res.blob();
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = `Beleg_${bookingId}.pdf`;
+  link.click();
+  URL.revokeObjectURL(link.href);
+};
+

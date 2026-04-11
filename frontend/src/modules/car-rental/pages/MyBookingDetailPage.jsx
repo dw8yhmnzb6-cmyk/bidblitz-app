@@ -7,9 +7,10 @@ import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   ArrowLeft, Car, Calendar, Clock, Euro, Loader2, Check, X,
-  FileText, CreditCard, Pen, AlertCircle, MapPin, User
+  FileText, CreditCard, Pen, AlertCircle, MapPin, User,
+  Star, Download
 } from "lucide-react";
-import { getMyBookingDetail, cancelMyBooking, signMyContract } from "../api";
+import { getMyBookingDetail, cancelMyBooking, signMyContract, createReview, downloadBookingReceipt } from "../api";
 
 const STATUS_CFG = {
   pending: { label: "Ausstehend", color: "#FFB800" },
@@ -27,6 +28,10 @@ export default function MyBookingDetailPage({ bookingId, onBack, onNavigate }) {
   const [actionLoading, setActionLoading] = useState(null);
   const [showSign, setShowSign] = useState(false);
   const [signature, setSignature] = useState("");
+  const [showReview, setShowReview] = useState(false);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewComment, setReviewComment] = useState("");
+  const [reviewSubmitted, setReviewSubmitted] = useState(false);
 
   useEffect(() => { load(); }, [bookingId]);
 
@@ -57,6 +62,24 @@ export default function MyBookingDetailPage({ bookingId, onBack, onNavigate }) {
       setShowSign(false);
       setSignature("");
       load();
+    } catch (err) { alert(err.message); }
+    setActionLoading(null);
+  };
+
+  const handleReview = async () => {
+    setActionLoading("review");
+    try {
+      await createReview(bookingId, reviewRating, reviewComment);
+      setShowReview(false);
+      setReviewSubmitted(true);
+    } catch (err) { alert(err.message); }
+    setActionLoading(null);
+  };
+
+  const handleDownloadReceipt = async () => {
+    setActionLoading("pdf");
+    try {
+      await downloadBookingReceipt(bookingId);
     } catch (err) { alert(err.message); }
     setActionLoading(null);
   };
@@ -215,6 +238,24 @@ export default function MyBookingDetailPage({ bookingId, onBack, onNavigate }) {
             <Pen size={16} /> Vertrag unterschreiben
           </motion.button>
         )}
+        {b.status === "completed" && !reviewSubmitted && (
+          <motion.button whileTap={{ scale: 0.95 }} onClick={() => setShowReview(true)}
+            className="w-full py-3 rounded-xl bg-yellow-500/10 text-yellow-400 font-semibold text-sm flex items-center justify-center gap-2 border border-yellow-500/20"
+            data-testid="write-review-btn">
+            <Star size={16} /> Bewertung schreiben
+          </motion.button>
+        )}
+        {reviewSubmitted && (
+          <div className="text-center text-green-400 text-sm py-2 flex items-center justify-center gap-2">
+            <Check size={16} /> Bewertung abgegeben
+          </div>
+        )}
+        <motion.button whileTap={{ scale: 0.95 }} onClick={handleDownloadReceipt}
+          disabled={actionLoading === "pdf"}
+          className="w-full py-3 rounded-xl bg-white/5 text-white font-semibold text-sm flex items-center justify-center gap-2 border border-white/10"
+          data-testid="download-receipt-btn">
+          {actionLoading === "pdf" ? <Loader2 size={16} className="animate-spin" /> : <><Download size={16} /> Beleg als PDF</>}
+        </motion.button>
         {canCancel && (
           <motion.button whileTap={{ scale: 0.95 }} onClick={handleCancel}
             disabled={actionLoading === "cancel"}
@@ -246,6 +287,40 @@ export default function MyBookingDetailPage({ bookingId, onBack, onNavigate }) {
               className="w-full py-4 rounded-xl bg-[#00C2FF] text-black font-bold flex items-center justify-center gap-2 disabled:opacity-50"
               data-testid="confirm-sign-btn">
               {actionLoading === "sign" ? <Loader2 size={20} className="animate-spin" /> : <><Pen size={20} /> Unterschreiben</>}
+            </motion.button>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Review Modal */}
+      {showReview && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end justify-center" onClick={() => setShowReview(false)}>
+          <motion.div initial={{ y: "100%" }} animate={{ y: 0 }}
+            onClick={e => e.stopPropagation()} className="w-full max-w-lg bg-[#111118] rounded-t-3xl p-6">
+            <h3 className="text-lg font-bold mb-4">Bewertung schreiben</h3>
+            <p className="text-sm text-[#888] mb-4">Wie war dein Mietwagen-Erlebnis?</p>
+            
+            <div className="flex justify-center gap-2 mb-6">
+              {[1,2,3,4,5].map(s => (
+                <button key={s} onClick={() => setReviewRating(s)} className="p-1" data-testid={`review-star-${s}`}>
+                  <Star size={32} className={s <= reviewRating ? "text-yellow-400 fill-yellow-400" : "text-[#333]"} />
+                </button>
+              ))}
+            </div>
+
+            <div className="mb-6">
+              <label className="text-xs text-[#666] mb-1 block">Kommentar (optional)</label>
+              <textarea value={reviewComment} onChange={e => setReviewComment(e.target.value)}
+                rows={3} placeholder="Dein Feedback..."
+                className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-sm outline-none resize-none"
+                data-testid="review-comment" />
+            </div>
+
+            <motion.button whileTap={{ scale: 0.97 }} onClick={handleReview}
+              disabled={actionLoading === "review"}
+              className="w-full py-4 rounded-xl bg-yellow-500 text-black font-bold flex items-center justify-center gap-2 disabled:opacity-50"
+              data-testid="submit-review-btn">
+              {actionLoading === "review" ? <Loader2 size={20} className="animate-spin" /> : <><Star size={20} /> Bewertung absenden</>}
             </motion.button>
           </motion.div>
         </div>

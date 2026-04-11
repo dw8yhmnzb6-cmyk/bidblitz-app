@@ -252,6 +252,13 @@ app.include_router(gaming_router)
 from modules.car_rental import car_rental_router
 app.include_router(car_rental_router)
 
+# Static file serving for uploads
+from fastapi.staticfiles import StaticFiles
+UPLOAD_DIR = Path(__file__).parent / "uploads"
+UPLOAD_DIR.mkdir(exist_ok=True)
+(UPLOAD_DIR / "car_rental").mkdir(exist_ok=True)
+app.mount("/api/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
+
 # Stripe webhook at /api/webhook/stripe
 from routes.stripe import stripe_webhook as _stripe_wh
 app.post("/api/webhook/stripe")(_stripe_wh)

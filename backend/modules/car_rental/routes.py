@@ -1205,3 +1205,288 @@ async def admin_update_settings(req: AdminSettingsUpdate, request: Request):
     )
     
     return {"ok": True}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# FILE UPLOAD - CAR IMAGES
+# ══════════════════════════════════════════════════════════════════════════════
+
+@router.post("/vendor/cars/{car_id}/upload-image")
+async def upload_car_image(car_id: str, request: Request, file: UploadFile = File(...)):
+    """Upload image for a car (vendor)."""
+    user, vendor_id, role = await require_vendor_access(request)
+    
+    car = await CarRepository.get_by_id(car_id)
+    if not car or car["vendor_id"] != vendor_id:
+        raise HTTPException(status_code=404, detail="Fahrzeug nicht gefunden")
+    
+    # Validate file
+    allowed = {"image/jpeg", "image/png", "image/webp"}
+    if file.content_type not in allowed:
+        raise HTTPException(status_code=400, detail="Nur JPG, PNG und WebP erlaubt")
+    
+    if file.size and file.size > 10 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Max. 10 MB pro Bild")
+    
+    from pathlib import Path
+    import uuid
+    
+    ext = file.filename.rsplit(".", 1)[-1] if "." in file.filename else "jpg"
+    filename = f"{car_id}_{uuid.uuid4().hex[:8]}.{ext}"
+    upload_dir = Path(__file__).parent.parent.parent / "uploads" / "car_rental"
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    filepath = upload_dir / filename
+    
+    content = await file.read()
+    with open(filepath, "wb") as f:
+        f.write(content)
+    
+    image_url = f"/api/uploads/car_rental/{filename}"
+    
+    # Check if this is the first image (make it main)
+    is_main = not car.get("main_image")
+    await CarRepository.add_image(car_id, image_url, is_main)
+    
+    return {"ok": True, "image_url": image_url, "is_main": is_main}
+
+
+@router.post("/vendor/cars/{car_id}/set-main-image")
+async def set_main_image(car_id: str, request: Request):
+    """Set main image for car."""
+    user, vendor_id, role = await require_vendor_access(request)
+    
+    car = await CarRepository.get_by_id(car_id)
+    if not car or car["vendor_id"] != vendor_id:
+        raise HTTPException(status_code=404, detail="Fahrzeug nicht gefunden")
+    
+    body = await request.json()
+    image_url = body.get("image_url")
+    if not image_url:
+        raise HTTPException(status_code=400, detail="image_url erforderlich")
+    
+    await db.car_rental_cars.update_one(
+        {"car_id": car_id},
+        {"$set": {"main_image": image_url}}
+    )
+    return {"ok": True}
+
+
+@router.delete("/vendor/cars/{car_id}/images")
+async def delete_car_image(car_id: str, request: Request):
+    """Delete image from car."""
+    user, vendor_id, role = await require_vendor_access(request)
+    
+    car = await CarRepository.get_by_id(car_id)
+    if not car or car["vendor_id"] != vendor_id:
+        raise HTTPException(status_code=404, detail="Fahrzeug nicht gefunden")
+    
+    body = await request.json()
+    image_url = body.get("image_url")
+    if not image_url:
+        raise HTTPException(status_code=400, detail="image_url erforderlich")
+    
+    # Remove from gallery
+    await db.car_rental_cars.update_one(
+        {"car_id": car_id},
+        {"$pull": {"gallery_images": image_url}}
+    )
+    
+    # If it was main image, clear it
+    if car.get("main_image") == image_url:
+        gallery = car.get("gallery_images", [])
+        remaining = [g for g in gallery if g != image_url]
+        new_main = remaining[0] if remaining else None
+        await db.car_rental_cars.update_one(
+            {"car_id": car_id},
+            {"$set": {"main_image": new_main}}
+        )
+    
+    # Delete file from disk
+    from pathlib import Path
+    if image_url.startswith("/api/uploads/"):
+        filename = image_url.split("/")[-1]
+        filepath = Path(__file__).parent.parent.parent / "uploads" / "car_rental" / filename
+        if filepath.exists():
+            filepath.unlink()
+    
+    return {"ok": True}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# REVIEWS & RATINGS
+# ══════════════════════════════════════════════════════════════════════════════
+
+@router.post("/reviews")
+async def create_review(request: Request):
+    """Create a review for a completed booking."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    
+    body = await request.json()
+    booking_id = body.get("booking_id")
+    rating = body.get("rating")
+    comment = body.get("comment", "")
+    
+    if not booking_id or not rating:
+        raise HTTPException(status_code=400, detail="booking_id und rating erforderlich")
+    
+    if not (1 <= int(rating) <= 5):
+        raise HTTPException(status_code=400, detail="Bewertung muss 1-5 sein")
+    
+    # Verify booking
+    booking = await BookingRepository.get_by_id(booking_id)
+    if not booking or booking["customer_id"] != user_id:
+        raise HTTPException(status_code=404, detail="Buchung nicht gefunden")
+    
+    if booking["status"] != "completed":
+        raise HTTPException(status_code=400, detail="Nur abgeschlossene Buchungen können bewertet werden")
+    
+    # Check if already reviewed
+    existing = await db.car_rental_reviews.find_one({"booking_id": booking_id})
+    if existing:
+        raise HTTPException(status_code=400, detail="Bereits bewertet")
+    
+    from .models import generate_review_id
+    review_id = generate_review_id()
+    now = datetime.now(timezone.utc).isoformat()
+    
+    review = {
+        "review_id": review_id,
+        "booking_id": booking_id,
+        "car_id": booking["car_id"],
+        "vendor_id": booking["vendor_id"],
+        "customer_id": user_id,
+        "customer_name": user.get("name", ""),
+        "rating": int(rating),
+        "comment": comment,
+        "created_at": now,
+    }
+    
+    await db.car_rental_reviews.insert_one(review)
+    
+    # Update car rating
+    pipeline = [
+        {"$match": {"car_id": booking["car_id"]}},
+        {"$group": {"_id": None, "avg": {"$avg": "$rating"}, "count": {"$sum": 1}}}
+    ]
+    stats = await db.car_rental_reviews.aggregate(pipeline).to_list(1)
+    if stats:
+        await db.car_rental_cars.update_one(
+            {"car_id": booking["car_id"]},
+            {"$set": {"rating": round(stats[0]["avg"], 1), "review_count": stats[0]["count"]}}
+        )
+    
+    # Update vendor rating
+    pipeline2 = [
+        {"$match": {"vendor_id": booking["vendor_id"]}},
+        {"$group": {"_id": None, "avg": {"$avg": "$rating"}, "count": {"$sum": 1}}}
+    ]
+    vstats = await db.car_rental_reviews.aggregate(pipeline2).to_list(1)
+    if vstats:
+        await db.car_rental_vendors.update_one(
+            {"vendor_id": booking["vendor_id"]},
+            {"$set": {"rating": round(vstats[0]["avg"], 1), "review_count": vstats[0]["count"]}}
+        )
+    
+    return {"ok": True, "review": sanitize_doc(review)}
+
+
+@router.get("/cars/{car_id}/reviews")
+async def get_car_reviews(car_id: str, limit: int = Query(20, ge=1, le=100)):
+    """Get reviews for a car (public)."""
+    reviews = await db.car_rental_reviews.find(
+        {"car_id": car_id}, {"_id": 0}
+    ).sort("created_at", -1).limit(limit).to_list(limit)
+    
+    return {"reviews": sanitize_doc(reviews)}
+
+
+@router.get("/vendors/{vendor_id}/reviews")
+async def get_vendor_reviews(vendor_id: str, limit: int = Query(20, ge=1, le=100)):
+    """Get reviews for a vendor (public)."""
+    reviews = await db.car_rental_reviews.find(
+        {"vendor_id": vendor_id}, {"_id": 0}
+    ).sort("created_at", -1).limit(limit).to_list(limit)
+    
+    return {"reviews": sanitize_doc(reviews)}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# RECEIPT / INVOICE PDF EXPORT
+# ══════════════════════════════════════════════════════════════════════════════
+
+@router.get("/invoices/{invoice_id}/pdf")
+async def download_invoice_pdf(invoice_id: str, request: Request):
+    """Download invoice as PDF."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    
+    invoice = await InvoiceRepository.get_by_id(invoice_id)
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Rechnung nicht gefunden")
+    
+    # Check access (customer or vendor)
+    is_customer = invoice.get("customer_id") == user_id
+    is_vendor = False
+    if not is_customer:
+        vendor = await VendorRepository.get_by_user_id(user_id)
+        if vendor and vendor["vendor_id"] == invoice.get("vendor_id"):
+            is_vendor = True
+    is_admin = user.get("role") in ["admin", "super_admin"]
+    
+    if not (is_customer or is_vendor or is_admin):
+        raise HTTPException(status_code=403, detail="Keine Berechtigung")
+    
+    # Get booking info
+    booking = await BookingRepository.get_by_id(invoice.get("booking_id", ""))
+    vendor_doc = await VendorRepository.get_by_id(invoice.get("vendor_id", ""))
+    
+    # Generate PDF
+    from .pdf_generator import generate_invoice_pdf
+    pdf_bytes = generate_invoice_pdf(invoice, booking, vendor_doc)
+    
+    from fastapi.responses import Response
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="Rechnung_{invoice.get("invoice_number", invoice_id)}.pdf"'
+        }
+    )
+
+
+@router.get("/bookings/{booking_id}/receipt-pdf")
+async def download_booking_receipt(booking_id: str, request: Request):
+    """Download booking receipt as PDF."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    
+    booking = await BookingRepository.get_by_id(booking_id)
+    if not booking:
+        raise HTTPException(status_code=404, detail="Buchung nicht gefunden")
+    
+    # Check access
+    is_customer = booking.get("customer_id") == user_id
+    is_vendor = False
+    if not is_customer:
+        vendor = await VendorRepository.get_by_user_id(user_id)
+        if vendor and vendor["vendor_id"] == booking.get("vendor_id"):
+            is_vendor = True
+    is_admin = user.get("role") in ["admin", "super_admin"]
+    
+    if not (is_customer or is_vendor or is_admin):
+        raise HTTPException(status_code=403, detail="Keine Berechtigung")
+    
+    vendor_doc = await VendorRepository.get_by_id(booking.get("vendor_id", ""))
+    
+    from .pdf_generator import generate_receipt_pdf
+    pdf_bytes = generate_receipt_pdf(booking, vendor_doc)
+    
+    from fastapi.responses import Response
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="Beleg_{booking_id}.pdf"'
+        }
+    )

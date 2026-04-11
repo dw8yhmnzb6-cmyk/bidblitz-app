@@ -7,10 +7,12 @@ import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Car, Plus, Search, Loader2, Edit3, Trash2, Eye, X,
-  Fuel, Settings2, Users, MapPin, Euro, Check, AlertCircle, ChevronDown
+  Fuel, Settings2, Users, MapPin, Euro, Check, AlertCircle, ChevronDown,
+  Star, Image as ImageIcon
 } from "lucide-react";
 import {
-  getVendorCars, createCar, updateCar, archiveCar
+  getVendorCars, createCar, updateCar, archiveCar,
+  uploadCarImage, deleteCarImage, setCarMainImage
 } from "../api";
 
 const STATUS_CFG = {
@@ -51,6 +53,7 @@ export default function VendorCarsPage({ onBack, onNavigate }) {
   const [error, setError] = useState(null);
   const [filterStatus, setFilterStatus] = useState(null);
   const [search, setSearch] = useState("");
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => { loadCars(); }, [filterStatus]);
 
@@ -123,6 +126,47 @@ export default function VendorCarsPage({ onBack, onNavigate }) {
       await archiveCar(carId);
       loadCars();
     } catch (err) { console.error(err); }
+  };
+
+  const handleImageUpload = async (carId, e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      await uploadCarImage(carId, file);
+      loadCars();
+      if (editingCar?.car_id === carId) {
+        const data = await getVendorCars(filterStatus);
+        const updated = (data.cars || []).find(c => c.car_id === carId);
+        if (updated) setEditingCar(updated);
+      }
+    } catch (err) { alert(err.message); }
+    setUploading(false);
+    e.target.value = "";
+  };
+
+  const handleDeleteImage = async (carId, imageUrl) => {
+    try {
+      await deleteCarImage(carId, imageUrl);
+      loadCars();
+      if (editingCar?.car_id === carId) {
+        const data = await getVendorCars(filterStatus);
+        const updated = (data.cars || []).find(c => c.car_id === carId);
+        if (updated) setEditingCar(updated);
+      }
+    } catch (err) { alert(err.message); }
+  };
+
+  const handleSetMain = async (carId, imageUrl) => {
+    try {
+      await setCarMainImage(carId, imageUrl);
+      loadCars();
+      if (editingCar?.car_id === carId) {
+        const data = await getVendorCars(filterStatus);
+        const updated = (data.cars || []).find(c => c.car_id === carId);
+        if (updated) setEditingCar(updated);
+      }
+    } catch (err) { alert(err.message); }
   };
 
   const filtered = cars.filter(c =>
@@ -339,6 +383,53 @@ export default function VendorCarsPage({ onBack, onNavigate }) {
                     className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm outline-none resize-none focus:border-[#00C2FF]/50" />
                 </div>
                 <InputField label="Features (kommagetrennt)" field="features" placeholder="Navi, Klimaanlage, PDC" />
+
+                {/* Image Upload Section - only show when editing */}
+                {editingCar && (
+                  <div>
+                    <p className="text-xs text-[#00C2FF] font-medium uppercase tracking-wide pt-2 mb-3">Fahrzeugbilder</p>
+                    
+                    {/* Current Images */}
+                    {(() => {
+                      const allImgs = [editingCar.main_image, ...(editingCar.gallery_images || [])].filter(Boolean);
+                      return allImgs.length > 0 ? (
+                        <div className="grid grid-cols-3 gap-2 mb-3">
+                          {allImgs.map((img, i) => (
+                            <div key={i} className="relative group rounded-xl overflow-hidden border border-white/10 aspect-video bg-white/5">
+                              <img src={img.startsWith("http") ? img : `${process.env.REACT_APP_BACKEND_URL}${img}`}
+                                alt="" className="w-full h-full object-cover" />
+                              {editingCar.main_image === img && (
+                                <span className="absolute top-1 left-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-[#00C2FF] text-black">Haupt</span>
+                              )}
+                              <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                {editingCar.main_image !== img && (
+                                  <button onClick={() => handleSetMain(editingCar.car_id, img)}
+                                    className="p-1.5 rounded-lg bg-[#00C2FF]/30 text-[#00C2FF]" title="Als Hauptbild">
+                                    <Star size={14} />
+                                  </button>
+                                )}
+                                <button onClick={() => handleDeleteImage(editingCar.car_id, img)}
+                                  className="p-1.5 rounded-lg bg-red-500/30 text-red-400" title="Löschen">
+                                  <Trash2 size={14} />
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-[#666] mb-3">Noch keine Bilder hochgeladen</p>
+                      );
+                    })()}
+
+                    <label className="flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed border-white/20 cursor-pointer hover:border-[#00C2FF]/50 transition-colors"
+                      data-testid="upload-car-image-btn">
+                      {uploading ? <Loader2 size={16} className="animate-spin" /> : <><ImageIcon size={16} /> Bild hochladen</>}
+                      <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden"
+                        onChange={(e) => handleImageUpload(editingCar.car_id, e)} disabled={uploading} />
+                    </label>
+                    <p className="text-[10px] text-[#555] mt-1">JPG, PNG oder WebP. Max. 10 MB.</p>
+                  </div>
+                )}
 
                 <motion.button whileTap={{ scale: 0.97 }} onClick={handleSave}
                   disabled={saving || !form.title || !form.brand || !form.model || !form.price_per_day || !form.city || !form.registration_number || !form.color}
