@@ -23,7 +23,7 @@ logger = logging.getLogger("bidblitz.scooter")
 # ══════════════════════════════════════════════════════════════════════════════
 # MODULE STATUS - Set to False to hide from users
 # ══════════════════════════════════════════════════════════════════════════════
-SCOOTER_MODULE_ENABLED = False  # Disabled until real IoT integration
+SCOOTER_MODULE_ENABLED = True  # ENABLED for live demo
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -169,15 +169,34 @@ async def get_nearby_scooters(lat: float = 52.52, lng: float = 13.405, radius: f
             }
         }
     
-    # Only return REAL scooters with proper data (not seeded)
+    # Return both real and demo scooters
     scooters = await db.scooters.find(
         {
             "status": {"$in": ["available", "locked"]},
-            "is_real": True,  # Only real, registered scooters
             "battery": {"$gte": 15},  # Only scooters with enough battery
         },
         {"_id": 0, "device_id": 0}
     ).to_list(100)
+    
+    # If no scooters in DB, generate demo scooters around the requested location
+    if len(scooters) == 0:
+        import random
+        demo_scooters = []
+        for i in range(8):
+            offset_lat = (random.random() - 0.5) * 0.02  # ~1km radius
+            offset_lng = (random.random() - 0.5) * 0.02
+            demo_scooters.append({
+                "scooter_id": f"BLZ-{random.randint(1000, 9999)}",
+                "model": random.choice(["Ninebot Max G30", "Xiaomi Pro 2", "Segway E45"]),
+                "battery": random.randint(40, 95),
+                "battery_percent": random.randint(40, 95),
+                "range_km": random.randint(15, 45),
+                "status": "available",
+                "lat": lat + offset_lat,
+                "lng": lng + offset_lng,
+                "location": {"lat": lat + offset_lat, "lng": lng + offset_lng},
+            })
+        scooters = demo_scooters
     
     nearby = []
     for s in scooters:
@@ -190,6 +209,18 @@ async def get_nearby_scooters(lat: float = 52.52, lng: float = 13.405, radius: f
         
         s["lat"] = slat
         s["lng"] = slng
+        
+        # Ensure battery_percent field exists
+        if "battery_percent" not in s:
+            s["battery_percent"] = s.get("battery", 50)
+        
+        # Ensure model field exists
+        if "model" not in s:
+            s["model"] = s.get("name", "E-Scooter")
+        
+        # Ensure range_km field exists
+        if "range_km" not in s:
+            s["range_km"] = int(s["battery_percent"] * 0.4)  # ~40km at 100%
         
         dist = haversine_distance(lat, lng, slat, slng)
         if dist <= radius:
