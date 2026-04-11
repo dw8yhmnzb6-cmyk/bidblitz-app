@@ -1,11 +1,11 @@
 """
 BidBlitz V2 - Food Delivery Module (Wolt/Lieferando Style)
 Restaurant discovery, ordering, real-time tracking, and delivery.
+ONLY REAL APPROVED RESTAURANTS - No seeded/demo data shown to users.
 """
 
 import secrets
 import math
-import random
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -16,6 +16,12 @@ from core.database import db
 from core.security import get_current_user
 
 router = APIRouter(prefix="/api/food", tags=["Food Delivery"])
+
+# ══════════════════════════════════════
+# MODULE STATUS
+# ══════════════════════════════════════
+FOOD_MODULE_ENABLED = True  # Enabled but only shows approved restaurants
+
 
 # ══════════════════════════════════════
 # CONFIGURATION
@@ -222,10 +228,10 @@ async def get_categories():
 
 @router.get("/restaurants")
 async def get_restaurants(request: Request, category: str = "", search: str = "", limit: int = 20):
-    """Get restaurants with optional filtering. Only shows approved or legacy restaurants."""
+    """Get restaurants with optional filtering. ONLY shows approved real restaurants."""
     
-    # Include restaurants that are either approved or don't have a status field (legacy data)
-    query = {"is_open": True, "$or": [{"status": "approved"}, {"status": {"$exists": False}}]}
+    # ONLY approved restaurants - NO seeded/demo data
+    query = {"is_open": True, "status": "approved", "is_real": True}
     if category:
         query["category"] = category
     if search:
@@ -233,12 +239,22 @@ async def get_restaurants(request: Request, category: str = "", search: str = ""
     
     restaurants = await db.food_restaurants.find(query, {"_id": 0}).limit(limit).to_list(limit)
     
-    return {"restaurants": restaurants, "total": len(restaurants)}
+    # Clean empty state if no real restaurants
+    if len(restaurants) == 0:
+        return {
+            "restaurants": [],
+            "total": 0,
+            "module_ready": False,
+            "message": "Derzeit sind keine Restaurants verfügbar. Wir erweitern unser Angebot bald!",
+            "categories": CATEGORIES,
+        }
+    
+    return {"restaurants": restaurants, "total": len(restaurants), "module_ready": True, "categories": CATEGORIES}
 
 
 @router.get("/nearby")
 async def get_nearby_restaurants(lat: float = 52.52, lng: float = 13.405, radius: float = 10.0, limit: int = 20):
-    """Get restaurants near a location for map display."""
+    """Get restaurants near a location for map display. ONLY real approved restaurants."""
     from math import radians, cos, sin, sqrt, atan2
     
     def haversine(lat1, lon1, lat2, lon2):
@@ -248,8 +264,8 @@ async def get_nearby_restaurants(lat: float = 52.52, lng: float = 13.405, radius
         a = sin(dlat/2)**2 + cos(radians(lat1)) * cos(radians(lat2)) * sin(dlon/2)**2
         return R * 2 * atan2(sqrt(a), sqrt(1-a))
     
-    # Get open, approved restaurants
-    query = {"is_open": True, "$or": [{"status": "approved"}, {"status": {"$exists": False}}]}
+    # ONLY approved real restaurants
+    query = {"is_open": True, "status": "approved", "is_real": True}
     restaurants = await db.food_restaurants.find(query, {"_id": 0}).limit(100).to_list(100)
     
     nearby = []
@@ -258,13 +274,10 @@ async def get_nearby_restaurants(lat: float = 52.52, lng: float = 13.405, radius
         rlat = loc.get("lat") or r.get("lat", 0)
         rlng = loc.get("lng") or r.get("lng", 0)
         
-        # Ensure coordinates exist
-        if not rlat or not rlng:
-            # Generate pseudo-random coordinates near user for display
-            rlat = lat + (hash(r.get("restaurant_id", r.get("name", ""))) % 100) / 1000 - 0.05
-            rlng = lng + (hash(r.get("name", "")[::-1]) % 100) / 1000 - 0.05
+        # Skip restaurants without real coordinates
+        if not rlat or not rlng or rlat == 0 or rlng == 0:
+            continue
         
-        # Ensure lat/lng at top level for frontend map
         r["lat"] = rlat
         r["lng"] = rlng
         
@@ -273,10 +286,17 @@ async def get_nearby_restaurants(lat: float = 52.52, lng: float = 13.405, radius
             r["distance_km"] = round(dist, 2)
             nearby.append(r)
     
-    # Sort by distance
     nearby.sort(key=lambda x: x.get("distance_km", 999))
     
-    return {"restaurants": nearby[:limit], "total": len(nearby)}
+    if len(nearby) == 0:
+        return {
+            "restaurants": [],
+            "total": 0,
+            "module_ready": False,
+            "message": "Derzeit sind keine Restaurants in deiner Nähe verfügbar.",
+        }
+    
+    return {"restaurants": nearby[:limit], "total": len(nearby), "module_ready": True}
 
 
 # ══════════════════════════════════════

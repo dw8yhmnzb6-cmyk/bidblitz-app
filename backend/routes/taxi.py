@@ -20,6 +20,12 @@ router = APIRouter(prefix="/api/taxi", tags=["Taxi"])
 logger = logging.getLogger("bidblitz.taxi")
 
 # ══════════════════════════════════════════════════════════════════════════════
+# MODULE STATUS - Set to False to hide from users
+# ══════════════════════════════════════════════════════════════════════════════
+TAXI_MODULE_ENABLED = False  # Disabled until real drivers are onboarded
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 # PRICING CONFIGURATION
 # ══════════════════════════════════════════════════════════════════════════════
 
@@ -321,6 +327,16 @@ class BookRideRequest(BaseModel):
 async def get_ride_estimate(req: BookRideRequest):
     """Get price estimate for a ride (no auth required)."""
     
+    # Module disabled check
+    if not TAXI_MODULE_ENABLED:
+        return {
+            "module_enabled": False,
+            "message": "Taxi-Modul wird derzeit vorbereitet. Fahrer-Onboarding läuft.",
+            "distance_km": 0,
+            "estimated_duration_minutes": 0,
+            "fare_estimate": 0,
+        }
+    
     distance_km = haversine_distance(req.pickup_lat, req.pickup_lng, req.dropoff_lat, req.dropoff_lng)
     
     # Estimate duration (rough: 30 km/h average in city)
@@ -330,6 +346,7 @@ async def get_ride_estimate(req: BookRideRequest):
     fare = calculate_fare(distance_km, duration_minutes, req.car_type)
     
     return {
+        "module_enabled": True,
         "distance_km": round(distance_km, 2),
         "estimated_duration_minutes": round(duration_minutes),
         "fare_estimate": fare["total"],
@@ -341,6 +358,11 @@ async def get_ride_estimate(req: BookRideRequest):
 @router.post("/book")
 async def book_ride(req: BookRideRequest, request: Request):
     """Customer books a ride."""
+    
+    # Module disabled check
+    if not TAXI_MODULE_ENABLED:
+        raise HTTPException(status_code=503, detail="Taxi-Modul ist derzeit nicht verfügbar")
+    
     from core.payment_engine import TransactionType
     
     user = await get_current_user(request)

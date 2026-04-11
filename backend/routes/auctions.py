@@ -103,6 +103,58 @@ async def list_auctions(request: Request):
     return {"auctions": auctions}
 
 
+@router.get("/active")
+async def get_active_auctions():
+    """Get only active auctions."""
+    now = datetime.now(timezone.utc)
+    now_iso = now.isoformat()
+    
+    auctions = await db.auctions.find(
+        {"status": "active"},
+        {"_id": 0},
+    ).sort("ends_at", 1).to_list(50)
+    
+    for a in auctions:
+        if a.get("ends_at"):
+            try:
+                ends = datetime.fromisoformat(a["ends_at"])
+                remaining = (ends - now).total_seconds()
+                a["remaining_seconds"] = max(0, remaining)
+                a["final_battle"] = 0 < remaining <= FINAL_BATTLE_THRESHOLD
+            except Exception:
+                a["remaining_seconds"] = 0
+                a["final_battle"] = False
+    
+    return {"auctions": auctions, "count": len(auctions)}
+
+
+@router.get("/list")
+async def list_all_auctions(status: str = None, limit: int = 50):
+    """List auctions with optional status filter."""
+    query = {}
+    if status and status in ["active", "upcoming", "ended"]:
+        query["status"] = status
+    
+    auctions = await db.auctions.find(
+        query,
+        {"_id": 0},
+    ).sort("created_at", -1).limit(limit).to_list(limit)
+    
+    now = datetime.now(timezone.utc)
+    for a in auctions:
+        if a.get("status") == "active" and a.get("ends_at"):
+            try:
+                ends = datetime.fromisoformat(a["ends_at"])
+                remaining = (ends - now).total_seconds()
+                a["remaining_seconds"] = max(0, remaining)
+                a["final_battle"] = 0 < remaining <= FINAL_BATTLE_THRESHOLD
+            except Exception:
+                a["remaining_seconds"] = 0
+                a["final_battle"] = False
+    
+    return {"auctions": auctions, "total": len(auctions)}
+
+
 # ── Get user's credit balance ──
 @router.get("/credits/balance")
 async def get_credits(request: Request):

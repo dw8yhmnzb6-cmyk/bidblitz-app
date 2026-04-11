@@ -21,6 +21,12 @@ router = APIRouter(prefix="/api/scooter", tags=["Scooter IoT"])
 logger = logging.getLogger("bidblitz.scooter")
 
 # ══════════════════════════════════════════════════════════════════════════════
+# MODULE STATUS - Set to False to hide from users
+# ══════════════════════════════════════════════════════════════════════════════
+SCOOTER_MODULE_ENABLED = False  # Disabled until real IoT integration
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 # CONFIGURATION
 # ══════════════════════════════════════════════════════════════════════════════
 
@@ -148,10 +154,30 @@ def haversine_distance(lat1: float, lng1: float, lat2: float, lng2: float) -> fl
 @router.get("/nearby")
 async def get_nearby_scooters(lat: float = 52.52, lng: float = 13.405, radius: float = 5.0):
     """Get available scooters near location (public endpoint)."""
+    # Module disabled - return empty state
+    if not SCOOTER_MODULE_ENABLED:
+        return {
+            "scooters": [],
+            "total": 0,
+            "module_enabled": False,
+            "message": "Scooter-Modul wird derzeit vorbereitet",
+            "pricing": {
+                "unlock_fee": UNLOCK_FEE,
+                "per_minute": PER_MINUTE_RATE,
+                "daily_cap": MAX_DAILY_CAP,
+                "min_balance": MIN_WALLET_BALANCE,
+            }
+        }
+    
+    # Only return REAL scooters with proper data (not seeded)
     scooters = await db.scooters.find(
-        {"status": {"$in": ["available", "locked"]}},
-        {"_id": 0, "device_id": 0}  # Hide device_id from public
-    ).to_list(500)
+        {
+            "status": {"$in": ["available", "locked"]},
+            "is_real": True,  # Only real, registered scooters
+            "battery": {"$gte": 15},  # Only scooters with enough battery
+        },
+        {"_id": 0, "device_id": 0}
+    ).to_list(100)
     
     nearby = []
     for s in scooters:
@@ -159,11 +185,9 @@ async def get_nearby_scooters(lat: float = 52.52, lng: float = 13.405, radius: f
         slat = loc.get("lat") or s.get("lat", 0)
         slng = loc.get("lng") or s.get("lng", 0)
         
-        # Ensure coordinates exist
         if slat == 0 and slng == 0:
             continue
         
-        # Ensure lat/lng are at top level for frontend
         s["lat"] = slat
         s["lng"] = slng
         
@@ -173,23 +197,12 @@ async def get_nearby_scooters(lat: float = 52.52, lng: float = 13.405, radius: f
             s["walk_minutes"] = max(1, round(dist * 12))
             nearby.append(s)
     
-    # FALLBACK: If no nearby scooters, return all available scooters
-    if len(nearby) == 0 and len(scooters) > 0:
-        for s in scooters[:20]:
-            loc = s.get("location", {})
-            slat = loc.get("lat") or s.get("lat") or (lat + (hash(s.get("scooter_id", "")) % 100) / 1000 - 0.05)
-            slng = loc.get("lng") or s.get("lng") or (lng + (hash(s.get("scooter_id", "")[::-1]) % 100) / 1000 - 0.05)
-            s["lat"] = slat
-            s["lng"] = slng
-            s["distance_km"] = round(haversine_distance(lat, lng, slat, slng), 2)
-            s["walk_minutes"] = max(1, round(s["distance_km"] * 12))
-            nearby.append(s)
-    
     nearby.sort(key=lambda x: x.get("distance_km", 999))
     
     return {
         "scooters": nearby[:30],
         "total": len(nearby),
+        "module_enabled": True,
         "pricing": {
             "unlock_fee": UNLOCK_FEE,
             "per_minute": PER_MINUTE_RATE,
