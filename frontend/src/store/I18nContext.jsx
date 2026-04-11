@@ -154,6 +154,14 @@ const translations = {
     "more.manage_alerts": "Manage alerts", "more.appearance": "Appearance", "more.dark_enabled": "Dark mode enabled",
     "more.help": "Help & Support", "more.faq": "FAQ & contact us", "more.logout": "Log Out", "more.version": "Version",
     "more.premium": "Premium Member", "more.premium_badge": "Premium",
+    "more.finance": "Premium Finance", "more.mobility": "Mobility",
+    // Premium Finance Features - EN
+    "split.title": "Split Bill", "split.menu_desc": "Split with friends",
+    "cards.title": "Virtual Cards", "cards.menu_desc": "One-time cards for online shopping",
+    "savings.title": "Savings Goals", "savings.menu_desc": "Save automatically",
+    "bnpl.title": "Pay Later", "bnpl.menu_desc": "Buy now, pay later",
+    "giftcards.title": "Gift Cards", "giftcards.menu_desc": "Buy & send gift cards",
+    "bills.title": "Bills", "bills.menu_desc": "Pay electricity, gas, eSIM",
     // Profile
     "profile.title": "Profile", "profile.full_name": "Full Name", "profile.email_label": "Email",
     "profile.status": "Account Status", "profile.verified": "Verified", "profile.member_since": "Member Since",
@@ -856,13 +864,21 @@ const translations = {
     "notif.empty": "Noch keine Benachrichtigungen", "notif.empty_hint": "Wir informieren dich über Zahlungen, Belohnungen und mehr",
     // More Page
     "more.title": "Konto", "more.account": "Konto", "more.growth": "Belohnungen & Wachstum",
-    "more.app": "App", "more.support": "Hilfe",
+    "more.app": "App", "more.support": "Hilfe", "more.finance": "Premium Finance",
+    "more.mobility": "Mobilität",
     "more.profile": "Profil", "more.profile_desc": "Dein Konto ansehen",
     "more.payment_methods": "Zahlungsmethoden", "more.cards_desc": "Karten & Bankkonten",
     "more.security": "Sicherheit", "more.security_desc": "Passwort & 2FA",
     "more.settings": "Einstellungen", "more.settings_desc": "Präferenzen & Datenschutz",
     "more.appearance": "Darstellung", "more.appearance_desc": "Dunkler Modus aktiviert",
     "more.help": "Hilfe & Support", "more.help_desc": "FAQ & Kontakt",
+    // Premium Finance Features - DE
+    "split.title": "Rechnung teilen", "split.menu_desc": "Mit Freunden aufteilen",
+    "cards.title": "Virtuelle Karten", "cards.menu_desc": "Einmal-Karten für Online-Shopping",
+    "savings.title": "Sparziele", "savings.menu_desc": "Automatisch sparen",
+    "bnpl.title": "Später zahlen", "bnpl.menu_desc": "Buy now, pay later",
+    "giftcards.title": "Geschenkkarten", "giftcards.menu_desc": "Gift Cards kaufen & verschenken",
+    "bills.title": "Rechnungen", "bills.menu_desc": "Strom, Gas, eSIM bezahlen",
     // Profile Sub-Page
     "profile.title": "Profil", "profile.full_name": "Vollständiger Name", "profile.email": "E-Mail",
     "profile.account_status": "Kontostatus", "profile.verified": "Verifiziert",

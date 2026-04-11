@@ -400,4 +400,11 @@ export const api = {
     request("/api/kids/notifications/read-all", { method: "POST" }),
   setChildPin: (childId, pin) => 
     request(`/api/kids/children/${childId}/set-pin`, { method: "POST", body: JSON.stringify({ pin }) }),
+  
+  // Kids Tasks
+  getChildTasks: (childId) => request(`/api/kids/children/${childId}/tasks`),
+  createChildTask: (childId, name, reward) => 
+    request(`/api/kids/children/${childId}/tasks`, { method: "POST", body: JSON.stringify({ name, reward }) }),
+  completeChildTask: (childId, taskId) => 
+    request(`/api/kids/children/${childId}/tasks/${taskId}/complete`, { method: "POST" }),
 };

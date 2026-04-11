@@ -71,6 +71,19 @@ const KidsDashboard = ({ onBack, t, subStatus }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState('wallet'); // wallet | tracking
   const [activeFeature, setActiveFeature] = useState(null);
+  const [tasksChild, setTasksChild] = useState(null); // Für Aufgaben-Modal
+  const [childTasks, setChildTasks] = useState([]); // Aufgaben für das aktuell ausgewählte Kind
+  const [newTaskName, setNewTaskName] = useState('');
+  const [newTaskReward, setNewTaskReward] = useState(0.50);
+
+  // Load tasks when tasksChild changes
+  useEffect(() => {
+    if (tasksChild) {
+      api.getChildTasks(tasksChild.child_id)
+        .then(data => setChildTasks(data.tasks || []))
+        .catch(() => setChildTasks([]));
+    }
+  }, [tasksChild]);
 
   const CHILD_EMOJIS = ["👦", "👧", "🧒", "👶", "🐻", "🦊", "🐰", "🐱", "🦁", "🐶"];
 
@@ -380,9 +393,15 @@ const KidsDashboard = ({ onBack, t, subStatus }) => {
                     setWalletChild(children[0]);
                   } else if (action.key === 'spending') {
                     setShowActivity(true);
+                  } else if (action.key === 'tasks' && children.length > 0) {
+                    // Öffne Aufgaben-Modal für erstes Kind
+                    setTasksChild(children[0]);
+                  } else if (children.length === 0) {
+                    setError('Bitte zuerst ein Kind hinzufügen');
+                    setTimeout(() => setError(null), 2000);
                   } else {
                     setActiveFeature(action.key);
-                    setSuccess(`${action.label} - Funktion wird geladen...`);
+                    setSuccess(`${action.label} - Funktion kommt bald!`);
                     setTimeout(() => setSuccess(null), 2000);
                   }
                 }}
@@ -722,6 +741,156 @@ const KidsDashboard = ({ onBack, t, subStatus }) => {
                 >
                   <Key size={14} /> PIN setzen
                 </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ══════════════════════════════════════════════════════════════════════════
+          AUFGABEN MODAL
+      ══════════════════════════════════════════════════════════════════════════ */}
+      <AnimatePresence>
+        {tasksChild && (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-end justify-center"
+            style={{ background: "rgba(0,0,0,0.8)" }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setTasksChild(null)}
+          >
+            <motion.div
+              className="w-full max-w-md max-h-[85vh] overflow-y-auto rounded-t-3xl p-5"
+              style={{ background: "#0A0A12" }}
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div 
+                    className="w-10 h-10 rounded-full flex items-center justify-center text-lg"
+                    style={{ background: `${tasksChild.color}20`, border: `2px solid ${tasksChild.color}60` }}
+                  >
+                    {tasksChild.avatar || tasksChild.name?.[0]}
+                  </div>
+                  <div>
+                    <h2 className="text-[16px] font-bold text-white">Aufgaben für {tasksChild.name}</h2>
+                    <p className="text-[11px] text-gray-400">Erstelle Aufgaben mit Belohnungen</p>
+                  </div>
+                </div>
+                <button onClick={() => setTasksChild(null)} className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center">
+                  <X size={16} className="text-gray-400" />
+                </button>
+              </div>
+
+              {/* Neue Aufgabe erstellen */}
+              <div className="p-4 rounded-2xl mb-4" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                <p className="text-[11px] text-gray-400 uppercase tracking-wider mb-3">Neue Aufgabe</p>
+                <input
+                  type="text"
+                  value={newTaskName}
+                  onChange={(e) => setNewTaskName(e.target.value)}
+                  placeholder="z.B. Zimmer aufräumen"
+                  className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-[13px] placeholder-gray-600 outline-none focus:border-[#F59E0B]/50 mb-3"
+                />
+                <div className="flex items-center gap-3 mb-3">
+                  <span className="text-[12px] text-gray-400">Belohnung:</span>
+                  <div className="flex gap-2">
+                    {[0.50, 1.00, 2.00, 5.00].map(amt => (
+                      <button
+                        key={amt}
+                        onClick={() => setNewTaskReward(amt)}
+                        className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all ${
+                          newTaskReward === amt 
+                            ? 'bg-[#F59E0B] text-black' 
+                            : 'bg-white/5 text-gray-400 border border-white/10'
+                        }`}
+                      >
+                        €{amt.toFixed(2)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <button
+                  onClick={async () => {
+                    if (!newTaskName.trim()) return;
+                    try {
+                      // Speichere Aufgabe in DB
+                      await api.createChildTask(tasksChild.child_id, newTaskName, newTaskReward);
+                      setSuccess(`Aufgabe "${newTaskName}" erstellt!`);
+                      setNewTaskName('');
+                      setNewTaskReward(0.50);
+                      // Lade Aufgaben neu
+                      const tasks = await api.getChildTasks(tasksChild.child_id);
+                      setChildTasks(tasks.tasks || []);
+                    } catch (err) {
+                      setError(err.message || 'Fehler beim Erstellen');
+                    }
+                    setTimeout(() => { setSuccess(null); setError(null); }, 2000);
+                  }}
+                  disabled={!newTaskName.trim()}
+                  className="w-full py-3 bg-[#F59E0B] rounded-xl text-sm font-bold text-black disabled:opacity-40 flex items-center justify-center gap-2"
+                >
+                  <PlusCircle size={16} /> Aufgabe hinzufügen
+                </button>
+              </div>
+
+              {/* Aktive Aufgaben */}
+              <div className="space-y-2">
+                <p className="text-[11px] text-gray-400 uppercase tracking-wider mb-2">Aktive Aufgaben</p>
+                {childTasks.length === 0 ? (
+                  <div className="p-6 text-center rounded-2xl" style={{ background: "rgba(255,255,255,0.02)", border: "1px dashed rgba(255,255,255,0.08)" }}>
+                    <CheckSquare size={28} className="text-gray-700 mx-auto mb-2" />
+                    <p className="text-[12px] text-gray-500">Noch keine Aufgaben</p>
+                  </div>
+                ) : (
+                  childTasks.map(task => (
+                    <div 
+                      key={task.task_id}
+                      className="p-3 rounded-xl flex items-center justify-between"
+                      style={{ 
+                        background: task.completed ? "rgba(34,197,94,0.1)" : "rgba(255,255,255,0.03)", 
+                        border: task.completed ? "1px solid rgba(34,197,94,0.2)" : "1px solid rgba(255,255,255,0.06)" 
+                      }}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
+                          task.completed ? 'bg-green-500' : 'bg-white/10'
+                        }`}>
+                          {task.completed ? <Check size={14} className="text-white" /> : <CheckSquare size={14} className="text-gray-500" />}
+                        </div>
+                        <div>
+                          <p className={`text-[13px] font-medium ${task.completed ? 'text-green-400 line-through' : 'text-white'}`}>{task.name}</p>
+                          <p className="text-[10px] text-gray-500">Belohnung: €{(task.reward || 0).toFixed(2)}</p>
+                        </div>
+                      </div>
+                      {!task.completed && (
+                        <button
+                          onClick={async () => {
+                            try {
+                              await api.completeChildTask(tasksChild.child_id, task.task_id);
+                              setSuccess(`${task.name} erledigt! +€${task.reward.toFixed(2)}`);
+                              const tasks = await api.getChildTasks(tasksChild.child_id);
+                              setChildTasks(tasks.tasks || []);
+                              // Refresh child wallets
+                              loadChildren();
+                            } catch (err) {
+                              setError(err.message);
+                            }
+                            setTimeout(() => { setSuccess(null); setError(null); }, 2000);
+                          }}
+                          className="px-3 py-1.5 bg-green-500/20 text-green-400 rounded-lg text-[10px] font-semibold"
+                        >
+                          Erledigt ✓
+                        </button>
+                      )}
+                    </div>
+                  ))
+                )}
               </div>
             </motion.div>
           </motion.div>

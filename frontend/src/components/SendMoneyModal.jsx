@@ -6,16 +6,18 @@ import {
   CheckCircle2, AlertCircle, Clock, Heart, Plus
 } from "lucide-react";
 import { api } from "../services/api";
+import { useUser } from "../store";
 
 const spring = { type: "spring", damping: 25, stiffness: 300 };
 
 const SendMoneyModal = ({ onClose, onSuccess }) => {
+  const user = useUser();
   const [step, setStep] = useState(1); // 1: recipient, 2: amount, 3: success
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   
-  // Data
-  const [balance, setBalance] = useState(0);
+  // Data - Use user balance from store as primary source
+  const [balance, setBalance] = useState(user?.balance || 0);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [recentContacts, setRecentContacts] = useState([]);
@@ -39,14 +41,26 @@ const SendMoneyModal = ({ onClose, onSuccess }) => {
 
   const loadData = async () => {
     try {
+      // Try to get P2P profile, but fallback to user balance from store
       const [profileRes, recentRes] = await Promise.all([
-        api("/api/p2p/profile"),
-        api("/api/p2p/recipients/recent"),
+        api("/api/p2p/profile").catch(() => null),
+        api("/api/p2p/recipients/recent").catch(() => ({ recipients: [] })),
       ]);
-      setBalance(profileRes.balance || 0);
-      setRecentContacts(recentRes.recipients || []);
+      
+      // Prefer P2P profile balance, but fallback to user store balance
+      if (profileRes?.balance !== undefined) {
+        setBalance(profileRes.balance);
+      } else if (user?.balance !== undefined) {
+        setBalance(user.balance);
+      }
+      
+      setRecentContacts(recentRes?.recipients || []);
     } catch (err) {
       console.error(err);
+      // Still use user balance from store as fallback
+      if (user?.balance !== undefined) {
+        setBalance(user.balance);
+      }
     }
   };
 

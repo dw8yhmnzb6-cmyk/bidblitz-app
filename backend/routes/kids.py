@@ -1237,3 +1237,178 @@ async def child_mode_logout(request: Request):
     if auth:
         await db.kids_sessions.delete_one({"token": auth})
     return {"ok": True}
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# PARENT: CHILD TASKS SYSTEM
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class TaskCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100)
+    reward: float = Field(default=0.50, ge=0.0, le=100.0)
+
+
+@router.get("/children/{child_id}/tasks")
+async def get_child_tasks(child_id: str, request: Request):
+    """Parent gets list of tasks for a child."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    
+    # Verify child belongs to parent
+    child = await db.kids_children.find_one({
+        "child_id": child_id,
+        "parent_id": user_id
+    })
+    if not child:
+        raise HTTPException(status_code=404, detail="Kind nicht gefunden")
+    
+    # Get tasks
+    tasks = await db.kids_tasks.find({
+        "child_id": child_id,
+        "parent_id": user_id
+    }).sort("created_at", -1).to_list(100)
+    
+    # Clean for JSON
+    for t in tasks:
+        t.pop("_id", None)
+    
+    return {
+        "child_id": child_id,
+        "child_name": child.get("name"),
+        "tasks": tasks,
+        "total": len(tasks),
+        "pending": sum(1 for t in tasks if not t.get("completed", False)),
+        "completed": sum(1 for t in tasks if t.get("completed", False)),
+    }
+
+
+@router.post("/children/{child_id}/tasks")
+async def create_child_task(child_id: str, req: TaskCreate, request: Request):
+    """Parent creates a task for a child."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    
+    # Verify child belongs to parent
+    child = await db.kids_children.find_one({
+        "child_id": child_id,
+        "parent_id": user_id
+    })
+    if not child:
+        raise HTTPException(status_code=404, detail="Kind nicht gefunden")
+    
+    now = datetime.now(timezone.utc)
+    task = {
+        "task_id": secrets.token_hex(8),
+        "child_id": child_id,
+        "parent_id": user_id,
+        "name": req.name,
+        "reward": round(req.reward, 2),
+        "completed": False,
+        "completed_at": None,
+        "created_at": now.isoformat(),
+    }
+    
+    await db.kids_tasks.insert_one(task)
+    task.pop("_id", None)
+    
+    # Create notification for child (if they have app)
+    await create_parent_notification(
+        parent_id=user_id,
+        child_id=child_id,
+        child_name=child.get("name", "Kind"),
+        event_type="task_created",
+        title="Neue Aufgabe",
+        message=f"Neue Aufgabe: {req.name} (Belohnung: €{req.reward:.2f})",
+        amount=req.reward,
+        severity="info"
+    )
+    
+    return {
+        "ok": True,
+        "task": task,
+        "message": f"Aufgabe '{req.name}' erstellt",
+    }
+
+
+@router.post("/children/{child_id}/tasks/{task_id}/complete")
+async def complete_child_task(child_id: str, task_id: str, request: Request):
+    """Parent marks a task as complete and rewards the child."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    
+    # Verify child belongs to parent
+    child = await db.kids_children.find_one({
+        "child_id": child_id,
+        "parent_id": user_id
+    })
+    if not child:
+        raise HTTPException(status_code=404, detail="Kind nicht gefunden")
+    
+    # Find the task
+    task = await db.kids_tasks.find_one({
+        "task_id": task_id,
+        "child_id": child_id,
+        "parent_id": user_id
+    })
+    if not task:
+        raise HTTPException(status_code=404, detail="Aufgabe nicht gefunden")
+    
+    if task.get("completed", False):
+        raise HTTPException(status_code=400, detail="Aufgabe bereits erledigt")
+    
+    now = datetime.now(timezone.utc)
+    reward = task.get("reward", 0.0)
+    
+    # Mark task as completed
+    await db.kids_tasks.update_one(
+        {"task_id": task_id},
+        {"$set": {
+            "completed": True,
+            "completed_at": now.isoformat()
+        }}
+    )
+    
+    # Add reward to child's balance
+    if reward > 0:
+        await db.kids_children.update_one(
+            {"child_id": child_id},
+            {"$inc": {"balance": reward}}
+        )
+        
+        # Create transaction record
+        tx = {
+            "tx_id": secrets.token_hex(8),
+            "child_id": child_id,
+            "parent_id": user_id,
+            "type": "task_reward",
+            "amount": reward,
+            "description": f"Belohnung: {task.get('name')}",
+            "created_at": now.isoformat(),
+        }
+        await db.kids_transactions.insert_one(tx)
+    
+    # Get updated child data
+    updated_child = await db.kids_children.find_one({"child_id": child_id})
+    new_balance = round(updated_child.get("balance", 0), 2)
+    
+    # Create notification
+    await create_parent_notification(
+        parent_id=user_id,
+        child_id=child_id,
+        child_name=child.get("name", "Kind"),
+        event_type="task_completed",
+        title="Aufgabe erledigt!",
+        message=f"{child.get('name')} hat '{task.get('name')}' erledigt und €{reward:.2f} verdient!",
+        amount=reward,
+        severity="info"
+    )
+    
+    return {
+        "ok": True,
+        "task_id": task_id,
+        "task_name": task.get("name"),
+        "reward": reward,
+        "new_balance": new_balance,
+        "message": f"€{reward:.2f} gutgeschrieben!",
+    }
+
