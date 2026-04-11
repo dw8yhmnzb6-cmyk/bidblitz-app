@@ -784,7 +784,8 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
     { id: "savings", icon: PiggyBank, label: t("savings.title") || "Sparziele", desc: t("savings.menu_desc") || "Automatisch sparen", color: "#00E89D", action: gatedAction(() => onNavigate("/savings")) },
     { id: "bnpl", icon: BadgePercent, label: t("bnpl.title") || "Später zahlen", desc: t("bnpl.menu_desc") || "Buy now, pay later", color: "#00D4FF", action: gatedAction(() => onNavigate("/bnpl")) },
     { id: "gift-cards", icon: Gift, label: t("giftcards.title") || "Geschenkkarten", desc: t("giftcards.menu_desc") || "Gift cards kaufen & verschenken", color: "#FFD166", action: gatedAction(() => onNavigate("/gift-cards")) },
-    { id: "bills", icon: Banknote, label: t("bills.title") || "Rechnungen", desc: t("bills.menu_desc") || "Strom, Gas, eSIM bezahlen", color: "#00C2FF", action: gatedAction(() => onNavigate("/bills")) },
+    { id: "bills", icon: Banknote, label: t("bills.title") || "Rechnungen & eSIM", desc: t("bills.menu_desc") || "Strom, Gas, eSIM bezahlen", color: "#00C2FF", action: gatedAction(() => onNavigate("/bills")) },
+    { id: "credit-score", icon: Shield, label: "Kredit Score", desc: "Dein Score & Kreditrahmen", color: "#10B981", action: gatedAction(() => onNavigate("/credit-score")) },
   ];
 
   const growthMenu = [

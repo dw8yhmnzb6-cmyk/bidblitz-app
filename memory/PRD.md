@@ -8,6 +8,8 @@ Create a modern, professional fintech Super App called BidBlitz V2. Full-stack a
 - Merchant POS system
 - P2P transfers
 - Premium Finance features
+- Real Map System (Leaflet)
+- Driver/Restaurant Dashboards
 
 ## What's Been Implemented
 
@@ -30,6 +32,7 @@ Create a modern, professional fintech Super App called BidBlitz V2. Full-stack a
 - PIN system for child authentication
 - 16-button quick actions grid
 - **NEW (April 2026)**: Tasks/Aufgaben system with rewards
+- **FIXED (April 11)**: Aufgaben button now works with dedicated button per child
 
 ### Merchant POS (DONE)
 - Barcode scanning payments
@@ -42,7 +45,26 @@ Create a modern, professional fintech Super App called BidBlitz V2. Full-stack a
 - Savings Goals (UI ready)
 - BNPL / Pay Later (UI ready)
 - Gift Cards (UI ready)
-- Bills / Utility Payments (UI ready)
+- **NEW**: Bills & eSIM Page - Pay utilities, buy eSIM data packages
+- **NEW**: Credit Score Page - View A/B/C score, apply for credit
+
+### Real Map & Mobility System (NEW - April 11, 2026)
+- **UnifiedRealMap**: Leaflet-based map showing Scooters, Drivers, Restaurants
+- **MapActionSheet**: Click markers for details and actions (unlock scooter, book taxi, order food)
+- **MobilityMapPage**: Unified mobility view at `/mobility-map`
+- **OrderTrackingPage**: Real-time delivery tracking with driver location
+
+### Driver & Restaurant Dashboards (NEW - April 11, 2026)
+- **DriverDashboardPage** (`/driver-dashboard`): Accept rides, go online/offline, view earnings
+- **RestaurantDashboardPage** (`/restaurant-dashboard`): 
+  - Order management (pending/active/history)
+  - Menu management (add, edit, delete items)
+  - **Driver Assignment**: Assign delivery drivers to orders
+  - Statistics (today/week revenue)
+
+### Receipt System (NEW - April 11, 2026)
+- `GET /api/receipts/{transaction_id}` - HTML receipt for printing/PDF
+- `GET /api/receipts/{transaction_id}/json` - JSON receipt data
 
 ### Translations (DONE)
 - 15 languages with flag emojis
@@ -74,16 +96,19 @@ Create a modern, professional fintech Super App called BidBlitz V2. Full-stack a
 - Customer: `kunde@bidblitz.com` / `Kunde2026!`
 
 ## Known Issues
-1. SendMoney Modal balance fallback (fixed with user store)
+1. ~~SendMoney Modal balance fallback~~ (FIXED)
 2. Some Premium Finance pages need full implementation
 
 ## Backlog (P1-P2)
+- [x] Complete Bills & eSIM implementation ✅
+- [x] Credit Score system UI ✅
+- [x] Receipt PDF export ✅
+- [x] Real map tracking ✅
+- [x] Restaurant Dashboard with Driver Assignment ✅
 - [ ] Complete Split Bill implementation
 - [ ] Complete Virtual Cards implementation
-- [ ] eSIM / Utility bill payments
+- [ ] NFT Generator UI
 - [ ] Apple Pay / Google Pay
-- [ ] Receipt PDF export
-- [ ] Real map tracking
 - [ ] Chat/Support system
 
 ## Session Updates (April 11, 2026)
@@ -97,13 +122,52 @@ Create a modern, professional fintech Super App called BidBlitz V2. Full-stack a
 
 ## Session Updates (April 11, 2026 - Part 2)
 ### Bug Fixes
-- ✅ **Wallet Balance €0.00 Bug** - Fixed SendMoneyModal to use direct fetch() calls instead of broken api() function
-- ✅ **Aufgaben Button** - Added dedicated "Aufgaben" button per child card in Kids Wallet with proper z-index
+- ✅ **Wallet Balance €0.00 Bug** - Fixed SendMoneyModal to use direct fetch() calls
+- ✅ **Aufgaben Button** - Added dedicated "Aufgaben" button per child card with z-index 9999
+- ✅ **DriverDashboardPage API Bug** - Fixed api() function calls to use fetch()
+- ✅ **Credit Score API Alias** - Added `/my-score` and `/apply` aliases for frontend compatibility
 
-### New Features
-- ✅ **Restaurant Dashboard** (`/restaurant-dashboard`) - Full operational dashboard for restaurants
+### New Features Implemented
+- ✅ **Restaurant Dashboard** (`/restaurant-dashboard`)
   - Order management (pending, active, history)
-  - Menu management (add, edit, toggle availability, delete items)
+  - Menu management (add, edit, toggle, delete)
+  - Statistics tab (today/week revenue)
+  - **Driver Assignment** - Assign/remove drivers for deliveries
+
+- ✅ **Driver Assignment System**
+  - `GET /api/restaurant-dashboard/available-drivers`
+  - `POST /api/restaurant-dashboard/orders/{id}/assign-driver`
+  - `POST /api/restaurant-dashboard/orders/{id}/remove-driver`
+  - `GET /api/restaurant-dashboard/orders/{id}/tracking`
+
+- ✅ **Map Action Sheet** (`/app/frontend/src/components/MapActionSheet.jsx`)
+  - Click Scooter → Unlock/Reserve
+  - Click Driver → Book ride
+  - Click Restaurant → View menu
+
+- ✅ **Mobility Map Page** (`/mobility-map`)
+  - Filter: Scooters, Drivers, Restaurants
+  - Live counts and quick stats
+  - Real-time 30-second refresh
+
+- ✅ **Order Tracking Page** (`OrderTrackingPage.jsx`)
+  - Status timeline (Ordered → Preparing → Ready → Delivered)
+  - Driver location on map
+  - Restaurant info with navigation
+
+- ✅ **Bills & eSIM Page** (`/bills`)
+  - eSIM packages (EU 1GB, 3GB, 10GB, World 5GB)
+  - Mobile top-up (€10, €20, €50)
+  - Utility bills (Strom, Gas, Internet)
+
+- ✅ **Credit Score Page** (`/credit-score`)
+  - Score display (A/B/C)
+  - Max credit limit and interest rate
+  - Apply for credit button
+
+- ✅ **Receipt System**
+  - `GET /api/receipts/{transaction_id}` - HTML receipt
+  - Printable format with transaction details
   - Statistics tab (today/week revenue)
   - **Driver Assignment** - Restaurants can assign delivery drivers to orders
 - ✅ **Driver Assignment System** - Backend endpoints for driver allocation

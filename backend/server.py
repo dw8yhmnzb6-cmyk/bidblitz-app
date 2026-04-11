@@ -160,6 +160,7 @@ from routes.virtual_cards import router as virtual_cards_router
 from routes.credit_system import router as credit_system_router
 from routes.bills import router as bills_router
 from routes.nft_generator import router as nft_router
+from routes.receipts import router as receipts_router
 
 app.include_router(auth_router)
 app.include_router(wallet_router)
@@ -206,6 +207,7 @@ app.include_router(virtual_cards_router)
 app.include_router(credit_system_router)
 app.include_router(bills_router)
 app.include_router(nft_router)
+app.include_router(receipts_router)
 
 # Real Map & Nearby System
 from routes.nearby import router as nearby_router

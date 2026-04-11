@@ -154,6 +154,7 @@ async def check_and_update_overdue_credits():
 # ═══════════════════════════════════════════════════════════════════════════════
 
 @router.get("/status")
+@router.get("/my-score")  # Alias for frontend
 async def get_credit_status(request: Request):
     """Get user's credit status and score."""
     user = await get_current_user(request)
@@ -194,7 +195,9 @@ async def get_credit_status(request: Request):
         "max_credit": score_info["max_amount"],
         "available_credit": round(available_credit, 2),
         "current_debt": round(total_debt, 2),
+        "active_credit": round(total_debt, 2),  # Alias for frontend
         "active_credits": active_credits,
+        "due_date": active_credits[0].get("due_date") if active_credits else None,
         "stats": {
             "total_credits": profile.get("total_credits_taken", 0),
             "on_time_payments": profile.get("on_time_payments", 0),
@@ -205,6 +208,7 @@ async def get_credit_status(request: Request):
 
 
 @router.post("/request")
+@router.post("/apply")  # Alias for frontend
 async def request_credit(req: CreditRequest, request: Request):
     """Request a new credit (BNPL)."""
     user = await get_current_user(request)
