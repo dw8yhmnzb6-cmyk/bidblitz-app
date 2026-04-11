@@ -63,6 +63,16 @@ async def get_wallet(request: Request):
     }
 
 
+@router.get("/balance")
+async def get_wallet_balance(request: Request):
+    """Get just the wallet balance - fast endpoint."""
+    user = await get_current_user(request)
+    return {
+        "balance": round(user.get("balance", 0.0), 2),
+        "currency": user.get("currency", "EUR"),
+    }
+
+
 @router.post("/topup")
 async def topup(req: TopUpRequest, request: Request):
     user = await get_current_user(request)

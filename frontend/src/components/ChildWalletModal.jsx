@@ -25,6 +25,9 @@ const ChildWalletModal = ({ child, onClose, onUpdate }) => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   
+  // Parent balance - loaded from API
+  const [parentBalance, setParentBalance] = useState(user?.balance || 0);
+  
   // Transfer state
   const [transferAmount, setTransferAmount] = useState('');
   const [transferNote, setTransferNote] = useState('');
@@ -41,8 +44,16 @@ const ChildWalletModal = ({ child, onClose, onUpdate }) => {
   // Current child state (for real-time updates)
   const [currentChild, setCurrentChild] = useState(child);
 
-  // Get parent balance
-  const parentBalance = user?.balance || 0;
+  // Load parent balance from API
+  const loadParentBalance = useCallback(async () => {
+    try {
+      const data = await api.getWalletBalance();
+      setParentBalance(data.balance || 0);
+    } catch (err) {
+      // Fallback to user store
+      setParentBalance(user?.balance || 0);
+    }
+  }, [user?.balance]);
 
   // Load wallet data
   const loadWalletData = useCallback(async () => {
@@ -75,7 +86,8 @@ const ChildWalletModal = ({ child, onClose, onUpdate }) => {
 
   useEffect(() => {
     loadWalletData();
-  }, [loadWalletData]);
+    loadParentBalance();
+  }, [loadWalletData, loadParentBalance]);
 
   // Clear messages after delay
   useEffect(() => {

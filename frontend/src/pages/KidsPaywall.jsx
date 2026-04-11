@@ -8,7 +8,7 @@ import {
   Filter, ShoppingBag, ArrowUpRight, ArrowDownLeft, Bell, Key,
   MapPin, Map, CheckSquare, Smartphone, Battery, Award,
   FileText, TrendingUp, Gift, Trophy, UserPlus, PieChart,
-  Bookmark, Target, Gamepad2
+  Bookmark, Target, Gamepad2, X
 } from "lucide-react";
 import { useI18n, useUser } from "../store";
 import { api } from "../services/api";

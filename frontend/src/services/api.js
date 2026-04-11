@@ -120,6 +120,7 @@ export const api = {
 
   // Wallet
   getWallet: () => request("/api/wallet"),
+  getWalletBalance: () => request("/api/wallet/balance"),
   topUp: (body) => request("/api/wallet/topup", { method: "POST", body: JSON.stringify(body) }),
 
   // Saved Payment Method & 1-Click
