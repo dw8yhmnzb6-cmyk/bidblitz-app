@@ -36,6 +36,7 @@ import TaxiOperatorDashboard from "./pages/TaxiOperatorDashboard";
 import ScooterPage from "./pages/ScooterPage";
 import FoodPage from "./pages/FoodPage";
 import DriverDashboardPage from "./pages/DriverDashboardPage";
+import RestaurantDashboardPage from "./pages/RestaurantDashboardPage";
 import ChildModePage from "./pages/ChildModePage";
 import MarketplacePage from "./pages/MarketplacePage";
 import ChatPage from "./pages/ChatPage";
@@ -233,6 +234,8 @@ function AppContent() {
         return isGuest ? <HomePage {...homeProps} /> : <FoodPage onNavigate={handleNavigate} />;
       case "/driver-dashboard":
         return isGuest ? <HomePage {...homeProps} /> : <DriverDashboardPage onNavigate={handleNavigate} />;
+      case "/restaurant-dashboard":
+        return isGuest ? <HomePage {...homeProps} /> : <RestaurantDashboardPage onNavigate={handleNavigate} />;
       case "/child-mode":
         return <ChildModePage />;
       case "/marketplace":

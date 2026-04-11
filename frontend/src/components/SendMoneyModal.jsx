@@ -77,12 +77,17 @@ const SendMoneyModal = ({ onClose, onSuccess }) => {
     
     searchTimeout.current = setTimeout(async () => {
       try {
-        const res = await api("/api/p2p/lookup", {
+        const res = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/p2p/lookup`, {
           method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
           body: JSON.stringify({ query, type: "auto" }),
         });
-        if (res.recipient) {
-          setSearchResults([res.recipient]);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.recipient) {
+            setSearchResults([data.recipient]);
+          }
         }
       } catch {
         setSearchResults([]);
@@ -132,8 +137,10 @@ const SendMoneyModal = ({ onClose, onSuccess }) => {
     setError(null);
     
     try {
-      const res = await api("/api/p2p/transfer", {
+      const res = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/p2p/transfer`, {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({
           recipient_id: recipient.user_id,
           amount: numAmount,
@@ -141,9 +148,14 @@ const SendMoneyModal = ({ onClose, onSuccess }) => {
           transfer_method: "direct",
         }),
       });
-      setResult(res);
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.detail || "Überweisung fehlgeschlagen");
+      }
+      const data = await res.json();
+      setResult(data);
       setStep(3);
-      if (onSuccess) onSuccess(res);
+      if (onSuccess) onSuccess(data);
     } catch (err) {
       setError(err.message || "Überweisung fehlgeschlagen");
     } finally {

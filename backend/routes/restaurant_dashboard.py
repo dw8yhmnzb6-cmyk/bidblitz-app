@@ -706,3 +706,210 @@ async def complete_delivery(order_id: str, request: Request):
     )
     
     return {"ok": True, "earnings": driver_earnings, "message": "Lieferung abgeschlossen"}
+
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# DRIVER ASSIGNMENT - Restaurant assigns drivers for delivery
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@router.get("/available-drivers")
+async def get_available_drivers(request: Request):
+    """Get list of available (online & verified) drivers for delivery."""
+    restaurant, _ = await get_approved_restaurant(request)
+    
+    # Find drivers that are online and verified
+    drivers = await db.drivers.find({
+        "is_online": True,
+        "is_verified": True,
+        "current_ride_id": None  # Not currently on a ride
+    }).to_list(50)
+    
+    result = []
+    for d in drivers:
+        result.append({
+            "driver_id": d.get("driver_id"),
+            "name": d.get("name", "Fahrer"),
+            "rating": d.get("rating", 4.5),
+            "completed_deliveries": d.get("completed_deliveries", 0),
+            "vehicle_type": d.get("vehicle_type", "car"),
+            "phone": d.get("phone"),
+            "current_lat": d.get("current_lat"),
+            "current_lng": d.get("current_lng"),
+        })
+    
+    return {"drivers": result, "count": len(result)}
+
+
+class AssignDriverRequest(BaseModel):
+    driver_id: str
+
+
+@router.post("/orders/{order_id}/assign-driver")
+async def assign_driver_to_order(order_id: str, req: AssignDriverRequest, request: Request):
+    """Assign a driver to deliver an order."""
+    restaurant, _ = await get_approved_restaurant(request)
+    
+    # Get the order
+    order = await db.food_orders.find_one({
+        "order_id": order_id,
+        "restaurant_id": restaurant["restaurant_id"]
+    })
+    
+    if not order:
+        raise HTTPException(status_code=404, detail="Bestellung nicht gefunden")
+    
+    if order.get("status") not in ["accepted", "preparing", "ready"]:
+        raise HTTPException(status_code=400, detail="Bestellung kann keinen Fahrer zugewiesen bekommen")
+    
+    # Get the driver
+    driver = await db.drivers.find_one({
+        "driver_id": req.driver_id,
+        "is_online": True,
+        "is_verified": True
+    })
+    
+    if not driver:
+        raise HTTPException(status_code=404, detail="Fahrer nicht verfügbar")
+    
+    now = datetime.now(timezone.utc)
+    
+    # Assign driver to order
+    await db.food_orders.update_one(
+        {"order_id": order_id},
+        {"$set": {
+            "driver_id": req.driver_id,
+            "driver_name": driver.get("name", "Fahrer"),
+            "driver_phone": driver.get("phone"),
+            "driver_assigned_at": now.isoformat(),
+            "updated_at": now.isoformat()
+        }}
+    )
+    
+    # Mark driver as busy
+    await db.drivers.update_one(
+        {"driver_id": req.driver_id},
+        {"$set": {
+            "current_delivery_id": order_id,
+            "updated_at": now.isoformat()
+        }}
+    )
+    
+    # Notify driver
+    driver_user_id = driver.get("user_id")
+    if driver_user_id:
+        await create_notification(
+            driver_user_id,
+            "Neue Lieferung!",
+            f"Du wurdest für eine Lieferung von {restaurant['name']} zugewiesen.",
+            "delivery_assigned"
+        )
+    
+    # Notify customer
+    await create_notification(
+        order["customer_id"],
+        "Fahrer zugewiesen!",
+        f"{driver.get('name', 'Ein Fahrer')} wird deine Bestellung liefern.",
+        "driver_assigned"
+    )
+    
+    return {
+        "ok": True,
+        "message": f"Fahrer {driver.get('name')} zugewiesen",
+        "driver": {
+            "driver_id": req.driver_id,
+            "name": driver.get("name"),
+            "phone": driver.get("phone")
+        }
+    }
+
+
+@router.post("/orders/{order_id}/remove-driver")
+async def remove_driver_from_order(order_id: str, request: Request):
+    """Remove assigned driver from an order."""
+    restaurant, _ = await get_approved_restaurant(request)
+    
+    order = await db.food_orders.find_one({
+        "order_id": order_id,
+        "restaurant_id": restaurant["restaurant_id"]
+    })
+    
+    if not order:
+        raise HTTPException(status_code=404, detail="Bestellung nicht gefunden")
+    
+    driver_id = order.get("driver_id")
+    
+    if not driver_id:
+        raise HTTPException(status_code=400, detail="Kein Fahrer zugewiesen")
+    
+    now = datetime.now(timezone.utc)
+    
+    # Remove driver from order
+    await db.food_orders.update_one(
+        {"order_id": order_id},
+        {"$unset": {
+            "driver_id": "",
+            "driver_name": "",
+            "driver_phone": "",
+            "driver_assigned_at": ""
+        }, "$set": {"updated_at": now.isoformat()}}
+    )
+    
+    # Free up the driver
+    await db.drivers.update_one(
+        {"driver_id": driver_id},
+        {"$unset": {"current_delivery_id": ""}, "$set": {"updated_at": now.isoformat()}}
+    )
+    
+    return {"ok": True, "message": "Fahrer entfernt"}
+
+
+@router.get("/orders/{order_id}/tracking")
+async def get_order_tracking(order_id: str, request: Request):
+    """Get real-time tracking info for an order (for customers)."""
+    # This endpoint can be called by customers too
+    order = await db.food_orders.find_one({"order_id": order_id})
+    
+    if not order:
+        raise HTTPException(status_code=404, detail="Bestellung nicht gefunden")
+    
+    order.pop("_id", None)
+    
+    # Get driver location if assigned
+    driver_location = None
+    if order.get("driver_id"):
+        driver = await db.drivers.find_one({"driver_id": order["driver_id"]})
+        if driver:
+            driver_location = {
+                "lat": driver.get("current_lat"),
+                "lng": driver.get("current_lng"),
+                "name": driver.get("name"),
+                "phone": driver.get("phone"),
+                "vehicle_type": driver.get("vehicle_type"),
+            }
+    
+    # Get restaurant location
+    restaurant = await db.restaurants.find_one({"restaurant_id": order.get("restaurant_id")})
+    restaurant_location = None
+    if restaurant:
+        restaurant_location = {
+            "lat": restaurant.get("lat"),
+            "lng": restaurant.get("lng"),
+            "name": restaurant.get("name"),
+            "address": restaurant.get("address"),
+        }
+    
+    return {
+        "order_id": order_id,
+        "status": order.get("status"),
+        "driver": driver_location,
+        "restaurant": restaurant_location,
+        "delivery_address": order.get("delivery_address"),
+        "estimated_delivery": order.get("estimated_delivery"),
+        "created_at": order.get("created_at"),
+        "accepted_at": order.get("accepted_at"),
+        "preparing_at": order.get("preparing_at"),
+        "ready_at": order.get("ready_at"),
+        "picked_up_at": order.get("picked_up_at"),
+        "delivered_at": order.get("delivered_at"),
+    }

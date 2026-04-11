@@ -528,7 +528,7 @@ const KidsDashboard = ({ onBack, t, subStatus }) => {
                   </div>
                   
                   {/* Quick Action Buttons for Child */}
-                  <div className="grid grid-cols-4 gap-2">
+                  <div className="grid grid-cols-5 gap-2">
                     <motion.button
                       className="py-2 rounded-xl text-[10px] font-semibold flex items-center justify-center gap-1"
                       style={{ background: "rgba(0,194,255,0.1)", color: "#00C2FF", border: "1px solid rgba(0,194,255,0.2)" }}
@@ -538,20 +538,32 @@ const KidsDashboard = ({ onBack, t, subStatus }) => {
                       <Send size={11} /> Senden
                     </motion.button>
                     <motion.button
+                      data-testid={`tasks-btn-${child.child_id}`}
                       className="py-2 rounded-xl text-[10px] font-semibold flex items-center justify-center gap-1"
-                      style={{ background: "rgba(168,85,247,0.1)", color: "#A855F7", border: "1px solid rgba(168,85,247,0.2)" }}
+                      style={{ background: "rgba(245,158,11,0.1)", color: "#F59E0B", border: "1px solid rgba(245,158,11,0.2)" }}
                       whileTap={{ scale: 0.95 }}
-                      onClick={() => setWalletChild(child)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setTasksChild(child);
+                      }}
                     >
-                      <Eye size={11} /> Details
+                      <CheckSquare size={11} /> Aufgaben
                     </motion.button>
                     <motion.button
                       className="py-2 rounded-xl text-[10px] font-semibold flex items-center justify-center gap-1"
-                      style={{ background: "rgba(245,158,11,0.1)", color: "#F59E0B", border: "1px solid rgba(245,158,11,0.2)" }}
+                      style={{ background: "rgba(168,85,247,0.1)", color: "#A855F7", border: "1px solid rgba(168,85,247,0.2)" }}
                       whileTap={{ scale: 0.95 }}
                       onClick={() => setShowSetPin(child)}
                     >
                       <Key size={11} /> PIN
+                    </motion.button>
+                    <motion.button
+                      className="py-2 rounded-xl text-[10px] font-semibold flex items-center justify-center gap-1"
+                      style={{ background: "rgba(99,102,241,0.1)", color: "#6366F1", border: "1px solid rgba(99,102,241,0.2)" }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => setWalletChild(child)}
+                    >
+                      <Eye size={11} /> Details
                     </motion.button>
                     <motion.button
                       className={`py-2 rounded-xl text-[10px] font-semibold flex items-center justify-center gap-1`}
@@ -753,8 +765,9 @@ const KidsDashboard = ({ onBack, t, subStatus }) => {
       <AnimatePresence>
         {tasksChild && (
           <motion.div
-            className="fixed inset-0 z-50 flex items-end justify-center"
-            style={{ background: "rgba(0,0,0,0.8)" }}
+            data-testid="tasks-modal"
+            className="fixed inset-0 flex items-end justify-center"
+            style={{ background: "rgba(0,0,0,0.9)", zIndex: 9999 }}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
