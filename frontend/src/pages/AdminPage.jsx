@@ -210,6 +210,17 @@ const ADMIN_SECTIONS = [
     ]
   },
   {
+    id: "mobility",
+    label: "Mobilität & Scooter",
+    color: "#00D26A",
+    items: [
+      { id: "scooter-fleet", icon: Zap, label: "Scooter-Flotte", tab: "scooters", highlight: true },
+      { id: "scooter-add", icon: Plus, label: "Scooter hinzufügen", tab: "scooters" },
+      { id: "taxi-drivers", icon: Car, label: "Taxi-Fahrer", tab: "drivers" },
+      { id: "restaurants", icon: Store, label: "Restaurants", tab: "restaurants" },
+    ]
+  },
+  {
     id: "system",
     label: "System",
     color: "#666",
@@ -317,6 +328,7 @@ const tabs = [
   { id: "merchant-fees", key: "admin.merchant_fees", icon: CircleDollarSign },
   { id: "auctions", key: "admin.auctions_tab", icon: Gavel },
   { id: "loyalty", key: "admin.loyalty", icon: Trophy },
+  { id: "scooters", key: "Scooter-Flotte", icon: Zap },
 ];
 
 export const AdminPage = ({ onNavigate }) => {
@@ -360,6 +372,12 @@ export const AdminPage = ({ onNavigate }) => {
   const [loyaltyConfig, setLoyaltyConfig] = useState(null);
   const [loyaltyAnalytics, setLoyaltyAnalytics] = useState(null);
   const [savingLoyalty, setSavingLoyalty] = useState(false);
+  // Scooter Fleet Management
+  const [scooterFleet, setScooterFleet] = useState([]);
+  const [scooterStats, setScooterStats] = useState(null);
+  const [showAddScooter, setShowAddScooter] = useState(false);
+  const [savingScooter, setSavingScooter] = useState(false);
+  const [newScooter, setNewScooter] = useState({ device_id: "", qr_code: "", model: "Ninebot Max G30", lat: 52.52, lng: 13.405, battery: 100 });
 
   const adminExports = [
     { key: "transactions", label: t("export.transactions"), action: (f) => apiService.exportAdminTransactions(f) },
@@ -447,6 +465,11 @@ export const AdminPage = ({ onNavigate }) => {
           _bot_aggression: a.bot_aggression || "medium",
           _bot_final_battle: a.bot_final_battle_mode || "normal",
         })));
+      }
+      if (t === "scooters") {
+        const d = await api("/api/scooter/admin/fleet");
+        setScooterFleet(d.scooters || []);
+        setScooterStats(d.stats || {});
       }
     } catch (e) { setError(e); }
     setLoading(false);
@@ -1595,6 +1618,260 @@ export const AdminPage = ({ onNavigate }) => {
                       </div>
                     </div>
                   )}
+                </div>
+              )}
+            </motion.div>
+          )}
+
+          {/* ═══════════════════════════════════════════════════════════════════════ */}
+          {/* SCOOTER FLEET MANAGEMENT TAB */}
+          {/* ═══════════════════════════════════════════════════════════════════════ */}
+          {tab === "scooters" && (
+            <motion.div key="scooters" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+              {/* Stats Cards */}
+              <div className="grid grid-cols-4 gap-2">
+                <StatCard icon={Zap} label="Gesamt" value={scooterStats?.total || 0} color="#00C2FF" delay={0} />
+                <StatCard icon={Check} label="Verfügbar" value={scooterStats?.available || 0} color="#00D26A" delay={0.05} />
+                <StatCard icon={Activity} label="In Benutzung" value={scooterStats?.in_use || 0} color="#FFB800" delay={0.1} />
+                <StatCard icon={AlertCircle} label="Wartung" value={scooterStats?.maintenance || 0} color="#FF4757" delay={0.15} />
+              </div>
+
+              {/* Add Scooter Button */}
+              <motion.button
+                data-testid="add-scooter-btn"
+                whileTap={{ scale: 0.97 }}
+                onClick={() => setShowAddScooter(!showAddScooter)}
+                className="w-full py-3 rounded-xl text-[13px] font-semibold flex items-center justify-center gap-2"
+                style={{ background: "rgba(0,194,255,0.08)", color: "#00C2FF", border: "1px solid rgba(0,194,255,0.15)" }}
+              >
+                <Plus size={16} /> Neuen Scooter hinzufügen
+              </motion.button>
+
+              {/* Add Scooter Form */}
+              <AnimatePresence>
+                {showAddScooter && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="overflow-hidden rounded-2xl p-4 space-y-3"
+                    style={{ background: "rgba(0,194,255,0.02)", border: "1px solid rgba(0,194,255,0.08)" }}
+                  >
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-[10px] text-[#444] font-medium block mb-1">Geräte-ID *</label>
+                        <input
+                          data-testid="scooter-device-id"
+                          value={newScooter.device_id}
+                          onChange={e => setNewScooter({ ...newScooter, device_id: e.target.value })}
+                          placeholder="z.B. DEV-12345"
+                          className="w-full px-3 py-2 rounded-xl text-[12px] text-white/90 placeholder-[#333] font-medium outline-none bg-white/[0.03] border border-white/[0.05]"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-[#444] font-medium block mb-1">QR-Code</label>
+                        <input
+                          data-testid="scooter-qr-code"
+                          value={newScooter.qr_code}
+                          onChange={e => setNewScooter({ ...newScooter, qr_code: e.target.value })}
+                          placeholder="QR-Code ID"
+                          className="w-full px-3 py-2 rounded-xl text-[12px] text-white/90 placeholder-[#333] font-medium outline-none bg-white/[0.03] border border-white/[0.05]"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-[10px] text-[#444] font-medium block mb-1">Modell</label>
+                        <select
+                          data-testid="scooter-model"
+                          value={newScooter.model}
+                          onChange={e => setNewScooter({ ...newScooter, model: e.target.value })}
+                          className="w-full px-3 py-2 rounded-xl text-[12px] text-white/90 font-medium outline-none bg-white/[0.03] border border-white/[0.05] cursor-pointer"
+                        >
+                          <option value="Ninebot Max G30">Ninebot Max G30</option>
+                          <option value="Xiaomi Pro 2">Xiaomi Pro 2</option>
+                          <option value="Segway E45">Segway E45</option>
+                          <option value="Bird One">Bird One</option>
+                          <option value="Lime S">Lime S</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-[#444] font-medium block mb-1">Batterie %</label>
+                        <input
+                          data-testid="scooter-battery"
+                          type="number"
+                          min="0"
+                          max="100"
+                          value={newScooter.battery}
+                          onChange={e => setNewScooter({ ...newScooter, battery: parseInt(e.target.value) || 100 })}
+                          className="w-full px-3 py-2 rounded-xl text-[12px] text-white/90 font-medium outline-none bg-white/[0.03] border border-white/[0.05]"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-[10px] text-[#444] font-medium block mb-1">Breitengrad (Lat)</label>
+                        <input
+                          data-testid="scooter-lat"
+                          type="number"
+                          step="0.0001"
+                          value={newScooter.lat}
+                          onChange={e => setNewScooter({ ...newScooter, lat: parseFloat(e.target.value) || 52.52 })}
+                          className="w-full px-3 py-2 rounded-xl text-[12px] text-white/90 font-mono font-medium outline-none bg-white/[0.03] border border-white/[0.05]"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-[#444] font-medium block mb-1">Längengrad (Lng)</label>
+                        <input
+                          data-testid="scooter-lng"
+                          type="number"
+                          step="0.0001"
+                          value={newScooter.lng}
+                          onChange={e => setNewScooter({ ...newScooter, lng: parseFloat(e.target.value) || 13.405 })}
+                          className="w-full px-3 py-2 rounded-xl text-[12px] text-white/90 font-mono font-medium outline-none bg-white/[0.03] border border-white/[0.05]"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex gap-2 pt-2">
+                      <motion.button
+                        data-testid="scooter-submit"
+                        whileTap={{ scale: 0.97 }}
+                        disabled={savingScooter || !newScooter.device_id}
+                        onClick={async () => {
+                          setSavingScooter(true);
+                          try {
+                            await api("/api/scooter/admin/add", {
+                              method: "POST",
+                              body: JSON.stringify(newScooter),
+                            });
+                            setNewScooter({ device_id: "", qr_code: "", model: "Ninebot Max G30", lat: 52.52, lng: 13.405, battery: 100 });
+                            setShowAddScooter(false);
+                            load("scooters");
+                          } catch (e) {
+                            setError(e);
+                          }
+                          setSavingScooter(false);
+                        }}
+                        className="flex-1 py-2.5 rounded-xl text-[12px] font-semibold bg-[#00D26A]/10 text-[#00D26A] border border-[#00D26A]/15 disabled:opacity-50 flex items-center justify-center gap-2"
+                      >
+                        {savingScooter ? <Loader2 size={14} className="animate-spin" /> : <><Check size={14} /> Scooter hinzufügen</>}
+                      </motion.button>
+                      <motion.button
+                        whileTap={{ scale: 0.97 }}
+                        onClick={() => setShowAddScooter(false)}
+                        className="px-4 py-2.5 rounded-xl text-[12px] font-medium text-[#444] bg-white/[0.02] border border-white/[0.04]"
+                      >
+                        Abbrechen
+                      </motion.button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Fleet List */}
+              {loading ? (
+                <div className="space-y-2">
+                  {[1, 2, 3].map(i => <Skeleton key={i} className="h-20" />)}
+                </div>
+              ) : scooterFleet.length === 0 ? (
+                <div className="text-center py-10">
+                  <Zap size={40} className="mx-auto text-[#333] mb-3" />
+                  <p className="text-[#444] text-[13px]">Keine Scooter in der Flotte</p>
+                  <p className="text-[#333] text-[11px] mt-1">Füge deinen ersten Scooter hinzu</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {scooterFleet.map((scooter, idx) => {
+                    const statusColor = scooter.status === "available" ? "#00D26A" : scooter.status === "in_use" ? "#FFB800" : scooter.status === "offline" ? "#FF4757" : "#666";
+                    const batteryColor = scooter.battery >= 50 ? "#00D26A" : scooter.battery >= 20 ? "#FFB800" : "#FF4757";
+                    
+                    return (
+                      <motion.div
+                        key={scooter.scooter_id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: idx * 0.03 }}
+                        className="rounded-2xl p-4 relative overflow-hidden"
+                        style={{ background: "rgba(255,255,255,0.018)", border: "1px solid rgba(255,255,255,0.04)" }}
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <Zap size={14} className="text-[#00C2FF]" />
+                              <span className="text-[13px] font-bold text-white/90">{scooter.scooter_id}</span>
+                              <span
+                                className="px-2 py-0.5 rounded-full text-[9px] font-semibold uppercase"
+                                style={{ background: `${statusColor}15`, color: statusColor }}
+                              >
+                                {scooter.status === "available" ? "Verfügbar" : scooter.status === "in_use" ? "In Benutzung" : scooter.status === "offline" ? "Offline" : scooter.status}
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-[#444]">{scooter.model || scooter.name || "E-Scooter"}</p>
+                            <div className="flex items-center gap-4 mt-2 text-[10px] text-[#555]">
+                              <span className="flex items-center gap-1">
+                                <div className="w-2 h-2 rounded-full" style={{ background: batteryColor }} />
+                                {scooter.battery}% Batterie
+                              </span>
+                              {scooter.total_rides > 0 && (
+                                <span>{scooter.total_rides} Fahrten</span>
+                              )}
+                              {scooter.total_revenue > 0 && (
+                                <span className="text-[#00D26A]">€{scooter.total_revenue.toFixed(2)}</span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex gap-1.5">
+                            <motion.button
+                              data-testid={`scooter-edit-${scooter.scooter_id}`}
+                              whileTap={{ scale: 0.9 }}
+                              onClick={async () => {
+                                const newStatus = scooter.status === "available" ? "maintenance" : "available";
+                                try {
+                                  await api(`/api/scooter/admin/${scooter.scooter_id}`, {
+                                    method: "PUT",
+                                    body: JSON.stringify({ status: newStatus }),
+                                  });
+                                  load("scooters");
+                                } catch {}
+                              }}
+                              className="p-2 rounded-xl bg-white/[0.02] border border-white/[0.04] text-[#666] hover:text-[#00C2FF]"
+                            >
+                              <Settings size={14} />
+                            </motion.button>
+                            <motion.button
+                              data-testid={`scooter-delete-${scooter.scooter_id}`}
+                              whileTap={{ scale: 0.9 }}
+                              onClick={async () => {
+                                if (window.confirm(`Scooter ${scooter.scooter_id} wirklich löschen?`)) {
+                                  try {
+                                    await api(`/api/scooter/admin/${scooter.scooter_id}`, { method: "DELETE" });
+                                    load("scooters");
+                                  } catch {}
+                                }
+                              }}
+                              className="p-2 rounded-xl bg-white/[0.02] border border-white/[0.04] text-[#666] hover:text-[#FF4757]"
+                            >
+                              <X size={14} />
+                            </motion.button>
+                          </div>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Revenue Summary */}
+              {scooterStats && scooterStats.total_revenue > 0 && (
+                <div className="rounded-2xl p-4" style={{ background: "rgba(0,210,106,0.02)", border: "1px solid rgba(0,210,106,0.08)" }}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Euro size={16} className="text-[#00D26A]" />
+                      <span className="text-[12px] text-[#444]">Gesamtumsatz Scooter</span>
+                    </div>
+                    <span className="text-[18px] font-bold font-outfit text-[#00D26A]">€{scooterStats.total_revenue.toFixed(2)}</span>
+                  </div>
+                  <p className="text-[10px] text-[#555] mt-1">{scooterStats.total_rides || 0} Fahrten insgesamt</p>
                 </div>
               )}
             </motion.div>
