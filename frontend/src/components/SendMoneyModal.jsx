@@ -1,302 +1,542 @@
-/**
- * BidBlitz V2 - Send Money Modal
- * P2P transfer within the BidBlitz wallet ecosystem
- */
-
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Send, Loader2, CheckCircle, AlertCircle, AtSign } from "lucide-react";
-import { toast } from "sonner";
+import {
+  X, User, QrCode, Mail, Users, Send, Check, Loader2,
+  ChevronRight, Search, ArrowLeft, Sparkles,
+  CheckCircle2, AlertCircle, Clock, Heart, Plus
+} from "lucide-react";
+import { api } from "../services/api";
 
-const API_BASE = process.env.REACT_APP_BACKEND_URL;
+const spring = { type: "spring", damping: 25, stiffness: 300 };
 
-async function apiCall(path, opts = {}) {
-  const res = await fetch(`${API_BASE}${path}`, {
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
-    ...opts,
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.detail || "Request failed");
-  return data;
-}
-
-const SendMoneyModal = ({ isOpen, onClose, currentBalance, onSuccess }) => {
-  const [step, setStep] = useState("form"); // form | sending | success | error
-  const [recipient, setRecipient] = useState("");
-  const [amount, setAmount] = useState("");
-  const [note, setNote] = useState("");
+const SendMoneyModal = ({ onClose, onSuccess }) => {
+  const [step, setStep] = useState(1); // 1: recipient, 2: amount, 3: success
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [sentData, setSentData] = useState(null);
+  
+  // Data
+  const [balance, setBalance] = useState(0);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState([]);
+  const [recentContacts, setRecentContacts] = useState([]);
+  const [recipient, setRecipient] = useState(null);
+  const [amount, setAmount] = useState("");
+  const [message, setMessage] = useState("");
+  const [result, setResult] = useState(null);
+  
+  const searchTimeout = useRef(null);
+  const inputRef = useRef(null);
 
-  const parsedAmount = parseFloat(amount) || 0;
-  const insufficientBalance = parsedAmount > currentBalance;
-  const isValidAmount = parsedAmount >= 0.01 && parsedAmount <= 10000;
-  const isValidRecipient = recipient.includes("@") && recipient.length >= 5;
+  useEffect(() => {
+    loadData();
+  }, []);
 
-  const handleSend = async () => {
-    if (!isValidRecipient || !isValidAmount || insufficientBalance) return;
+  useEffect(() => {
+    if (step === 2 && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [step]);
 
-    setStep("sending");
-    setError(null);
-
+  const loadData = async () => {
     try {
-      const data = await apiCall("/api/wallet/send", {
-        method: "POST",
-        body: JSON.stringify({
-          recipient_email: recipient.trim().toLowerCase(),
-          amount: parsedAmount,
-          note: note.trim() || undefined,
-        }),
-      });
-
-      setSentData({
-        recipient: data.recipient_name || recipient,
-        amount: parsedAmount,
-        transaction_id: data.transaction_id,
-      });
-      setStep("success");
-      
-      if (onSuccess) {
-        onSuccess({ amount: parsedAmount, recipient });
-      }
+      const [profileRes, recentRes] = await Promise.all([
+        api("/api/p2p/profile"),
+        api("/api/p2p/recipients/recent"),
+      ]);
+      setBalance(profileRes.balance || 0);
+      setRecentContacts(recentRes.recipients || []);
     } catch (err) {
-      setError(err.message || "Transfer fehlgeschlagen");
-      setStep("error");
+      console.error(err);
     }
   };
 
-  const handleClose = () => {
-    setStep("form");
-    setRecipient("");
-    setAmount("");
-    setNote("");
+  const handleSearch = async (query) => {
+    setSearchQuery(query);
     setError(null);
-    setSentData(null);
-    onClose();
+    
+    if (searchTimeout.current) clearTimeout(searchTimeout.current);
+    
+    if (!query.trim() || query.length < 2) {
+      setSearchResults([]);
+      return;
+    }
+    
+    searchTimeout.current = setTimeout(async () => {
+      try {
+        const res = await api("/api/p2p/lookup", {
+          method: "POST",
+          body: JSON.stringify({ query, type: "auto" }),
+        });
+        if (res.recipient) {
+          setSearchResults([res.recipient]);
+        }
+      } catch {
+        setSearchResults([]);
+      }
+    }, 300);
   };
 
-  if (!isOpen) return null;
+  const selectRecipient = (r) => {
+    setRecipient(r);
+    setStep(2);
+    setError(null);
+  };
+
+  const handleAmountChange = (val) => {
+    // Only allow numbers and one decimal point
+    const cleaned = val.replace(/[^0-9.]/g, '');
+    const parts = cleaned.split('.');
+    if (parts.length > 2) return;
+    if (parts[1]?.length > 2) return;
+    setAmount(cleaned);
+  };
+
+  const addAmount = (val) => {
+    const current = parseFloat(amount) || 0;
+    const newAmount = Math.min(current + val, balance);
+    setAmount(newAmount.toFixed(2));
+  };
+
+  const setMax = () => {
+    setAmount(balance.toFixed(2));
+  };
+
+  const handleSend = async () => {
+    const numAmount = parseFloat(amount);
+    
+    if (!numAmount || numAmount < 0.01) {
+      setError("Mindestbetrag: €0.01");
+      return;
+    }
+    
+    if (numAmount > balance) {
+      setError("Nicht genügend Guthaben");
+      return;
+    }
+    
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const res = await api("/api/p2p/transfer", {
+        method: "POST",
+        body: JSON.stringify({
+          recipient_id: recipient.user_id,
+          amount: numAmount,
+          message: message || null,
+          transfer_method: "direct",
+        }),
+      });
+      setResult(res);
+      setStep(3);
+      if (onSuccess) onSuccess(res);
+    } catch (err) {
+      setError(err.message || "Überweisung fehlgeschlagen");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const quickAmounts = [5, 10, 20, 50];
 
   return (
-    <AnimatePresence>
-      <motion.div
-        className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center"
+    <motion.div
+      className="fixed inset-0 z-50"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+    >
+      {/* Backdrop */}
+      <motion.div 
+        className="absolute inset-0 bg-black/80 backdrop-blur-xl"
+        onClick={onClose}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
+      />
+      
+      {/* Modal */}
+      <motion.div
+        className="absolute inset-x-0 bottom-0 sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 w-full sm:max-w-[420px]"
+        initial={{ y: "100%" }}
+        animate={{ y: 0 }}
+        exit={{ y: "100%" }}
+        transition={spring}
       >
-        <motion.div
-          className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-          onClick={step === "sending" ? undefined : handleClose}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-        />
-
-        <motion.div
-          className="relative w-full max-w-md bg-[#0A0A0A] rounded-t-3xl sm:rounded-3xl border border-white/10 overflow-hidden max-h-[90vh] overflow-y-auto"
-          style={{ paddingBottom: "max(env(safe-area-inset-bottom, 24px), 32px)" }}
-          initial={{ y: "100%", opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          exit={{ y: "100%", opacity: 0 }}
-          transition={{ type: "spring", damping: 25, stiffness: 300 }}
-        >
-          {/* Header */}
-          <div className="flex items-center justify-between p-5 border-b border-white/5">
-            <h2 className="text-lg font-semibold text-white">
-              {step === "form" && "Geld senden"}
-              {step === "sending" && "Wird gesendet..."}
-              {step === "success" && "Gesendet!"}
-              {step === "error" && "Fehlgeschlagen"}
-            </h2>
-            {step !== "sending" && (
-              <motion.button
-                onClick={handleClose}
-                className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center"
-                whileTap={{ scale: 0.9 }}
+        <div className="bg-[#0A0A0A] rounded-t-[32px] sm:rounded-[32px] min-h-[85vh] sm:min-h-0 sm:max-h-[90vh] overflow-hidden border border-white/[0.08]">
+          
+          {/* ═══════════════════════════════════════════════════════════════
+              STEP 1: SELECT RECIPIENT
+          ═══════════════════════════════════════════════════════════════ */}
+          <AnimatePresence mode="wait">
+            {step === 1 && (
+              <motion.div
+                key="step1"
+                initial={{ opacity: 0, x: 50 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -50 }}
+                transition={{ duration: 0.2 }}
               >
-                <X size={16} className="text-white/60" />
-              </motion.button>
-            )}
-          </div>
-
-          <div className="p-5">
-            <AnimatePresence mode="wait">
-              {/* Form Step */}
-              {step === "form" && (
-                <motion.div
-                  key="form"
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                  className="space-y-4"
-                >
-                  {/* Balance Info */}
-                  <div className={`p-4 rounded-xl border ${
-                    insufficientBalance ? 'bg-red-500/10 border-red-500/30' : 'bg-green-500/10 border-green-500/30'
-                  }`}>
-                    <p className="text-xs text-gray-400">Verfügbares Guthaben</p>
-                    <p className={`text-2xl font-bold ${insufficientBalance ? 'text-red-400' : 'text-green-400'}`}>
-                      €{currentBalance.toFixed(2)}
-                    </p>
+                {/* Header */}
+                <div className="px-6 pt-6 pb-4">
+                  <div className="flex items-center justify-between mb-6">
+                    <h1 className="text-[22px] font-bold text-white">Geld senden</h1>
+                    <motion.button
+                      onClick={onClose}
+                      className="w-10 h-10 rounded-full bg-white/[0.06] flex items-center justify-center"
+                      whileTap={{ scale: 0.9 }}
+                    >
+                      <X size={18} className="text-white/60" />
+                    </motion.button>
                   </div>
-
-                  {/* Recipient Email */}
-                  <div>
-                    <label className="text-sm text-gray-400 mb-2 block">
-                      Empfänger E-Mail
-                    </label>
-                    <div className="relative">
-                      <AtSign size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" />
-                      <input
-                        type="email"
-                        placeholder="empfaenger@email.com"
-                        value={recipient}
-                        onChange={(e) => setRecipient(e.target.value)}
-                        className="w-full pl-12 pr-4 py-4 bg-[#141414] border border-white/10 rounded-xl text-white placeholder-gray-500 focus:border-[#A855F7]/50 focus:outline-none"
-                      />
-                    </div>
+                  
+                  {/* Balance Card */}
+                  <div className="p-5 rounded-2xl bg-gradient-to-br from-[#00C2FF]/20 to-[#00C2FF]/5 border border-[#00C2FF]/20 mb-6">
+                    <p className="text-[12px] text-[#00C2FF]/70 font-medium mb-1">Verfügbar</p>
+                    <p className="text-[36px] font-bold text-white tracking-tight">€{balance.toFixed(2)}</p>
                   </div>
-
-                  {/* Amount */}
-                  <div>
-                    <label className="text-sm text-gray-400 mb-2 block">
-                      Betrag
-                    </label>
-                    <div className="relative">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white font-bold text-lg">€</span>
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0.01"
-                        max="10000"
-                        placeholder="0.00"
-                        value={amount}
-                        onChange={(e) => setAmount(e.target.value)}
-                        className="w-full pl-10 pr-4 py-4 bg-[#141414] border border-white/10 rounded-xl text-white text-lg font-bold placeholder-gray-500 focus:border-[#A855F7]/50 focus:outline-none"
-                      />
-                    </div>
-                    {insufficientBalance && parsedAmount > 0 && (
-                      <p className="text-xs text-red-400 mt-2">
-                        Nicht genug Guthaben
-                      </p>
-                    )}
+                  
+                  {/* Quick Actions */}
+                  <div className="grid grid-cols-4 gap-3 mb-6">
+                    {[
+                      { icon: User, label: "Username", color: "#8B5CF6" },
+                      { icon: QrCode, label: "Scannen", color: "#00C2FF" },
+                      { icon: Users, label: "Kontakte", color: "#10B981" },
+                      { icon: Mail, label: "E-Mail", color: "#F59E0B" },
+                    ].map((item, i) => (
+                      <motion.button
+                        key={i}
+                        className="flex flex-col items-center gap-2 py-4 rounded-2xl"
+                        style={{ background: `${item.color}10` }}
+                        whileTap={{ scale: 0.95 }}
+                      >
+                        <item.icon size={22} style={{ color: item.color }} />
+                        <span className="text-[10px] font-semibold text-white/70">{item.label}</span>
+                      </motion.button>
+                    ))}
                   </div>
-
-                  {/* Note (optional) */}
-                  <div>
-                    <label className="text-sm text-gray-400 mb-2 block">
-                      Nachricht (optional)
-                    </label>
+                  
+                  {/* Search */}
+                  <div className="relative">
+                    <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" />
                     <input
                       type="text"
-                      placeholder="Wofür ist das Geld?"
-                      value={note}
-                      onChange={(e) => setNote(e.target.value)}
-                      maxLength={100}
-                      className="w-full px-4 py-4 bg-[#141414] border border-white/10 rounded-xl text-white placeholder-gray-500 focus:border-[#A855F7]/50 focus:outline-none"
+                      value={searchQuery}
+                      onChange={(e) => handleSearch(e.target.value)}
+                      placeholder="Username, E-Mail oder BidBlitz ID..."
+                      className="w-full pl-12 pr-4 py-4 rounded-2xl bg-white/[0.04] border border-white/[0.08] text-white text-[15px] placeholder-white/30 outline-none focus:border-[#00C2FF]/40 transition-colors"
+                      autoFocus
                     />
                   </div>
+                </div>
+                
+                {/* Search Results */}
+                <AnimatePresence>
+                  {searchResults.length > 0 && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      className="px-6 pb-4"
+                    >
+                      <p className="text-[11px] text-white/40 font-semibold uppercase tracking-wider mb-3">Gefunden</p>
+                      {searchResults.map((r) => (
+                        <motion.button
+                          key={r.user_id}
+                          onClick={() => selectRecipient(r)}
+                          className="w-full flex items-center gap-4 p-4 rounded-2xl bg-[#00C2FF]/5 border border-[#00C2FF]/20 mb-2"
+                          whileTap={{ scale: 0.98 }}
+                        >
+                          <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#00C2FF] to-[#0066FF] flex items-center justify-center text-[20px] font-bold text-white shadow-lg shadow-[#00C2FF]/20">
+                            {r.name?.[0]?.toUpperCase() || "?"}
+                          </div>
+                          <div className="flex-1 text-left">
+                            <p className="text-[16px] font-semibold text-white">{r.name}</p>
+                            <p className="text-[12px] text-[#00C2FF]">
+                              {r.username ? `@${r.username}` : r.bidblitz_id}
+                            </p>
+                          </div>
+                          <ChevronRight size={20} className="text-white/30" />
+                        </motion.button>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+                
+                {/* Recent Contacts */}
+                <div className="px-6 pb-8">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Clock size={14} className="text-white/30" />
+                    <p className="text-[11px] text-white/40 font-semibold uppercase tracking-wider">Zuletzt gesendet</p>
+                  </div>
+                  
+                  {recentContacts.length === 0 ? (
+                    <div className="text-center py-8">
+                      <Users size={32} className="text-white/10 mx-auto mb-2" />
+                      <p className="text-[13px] text-white/30">Noch keine Kontakte</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {recentContacts.slice(0, 5).map((c, i) => (
+                        <motion.button
+                          key={c.user_id || i}
+                          onClick={() => selectRecipient(c)}
+                          className="w-full flex items-center gap-4 p-3 rounded-xl bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.04] transition-colors"
+                          whileTap={{ scale: 0.98 }}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: i * 0.05 }}
+                        >
+                          <div className="w-11 h-11 rounded-full bg-white/[0.06] flex items-center justify-center text-[14px] font-bold text-white/60">
+                            {c.name?.[0]?.toUpperCase() || "?"}
+                          </div>
+                          <div className="flex-1 text-left">
+                            <p className="text-[14px] font-medium text-white">{c.name}</p>
+                            <p className="text-[11px] text-white/40">€{c.last_amount?.toFixed(2)}</p>
+                          </div>
+                          <Send size={16} className="text-white/20" />
+                        </motion.button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            )}
 
-                  {/* Send Button */}
+            {/* ═══════════════════════════════════════════════════════════════
+                STEP 2: ENTER AMOUNT
+            ═══════════════════════════════════════════════════════════════ */}
+            {step === 2 && recipient && (
+              <motion.div
+                key="step2"
+                initial={{ opacity: 0, x: 50 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -50 }}
+                transition={{ duration: 0.2 }}
+                className="flex flex-col min-h-[85vh] sm:min-h-[500px]"
+              >
+                {/* Header */}
+                <div className="px-6 pt-6 pb-4">
+                  <div className="flex items-center gap-4 mb-6">
+                    <motion.button
+                      onClick={() => setStep(1)}
+                      className="w-10 h-10 rounded-full bg-white/[0.06] flex items-center justify-center"
+                      whileTap={{ scale: 0.9 }}
+                    >
+                      <ArrowLeft size={18} className="text-white/60" />
+                    </motion.button>
+                    <h1 className="text-[18px] font-bold text-white">Betrag eingeben</h1>
+                  </div>
+                  
+                  {/* Recipient */}
+                  <div className="flex items-center gap-4 p-4 rounded-2xl bg-white/[0.03] border border-white/[0.06]">
+                    <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#00C2FF] to-[#0066FF] flex items-center justify-center text-[20px] font-bold text-white">
+                      {recipient.name?.[0]?.toUpperCase() || "?"}
+                    </div>
+                    <div>
+                      <p className="text-[16px] font-semibold text-white">{recipient.name}</p>
+                      <p className="text-[12px] text-[#00C2FF]">
+                        {recipient.username ? `@${recipient.username}` : recipient.bidblitz_id}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Amount Input */}
+                <div className="flex-1 flex flex-col items-center justify-center px-6 py-8">
+                  <div className="flex items-baseline justify-center gap-1 mb-2">
+                    <span className="text-[48px] font-bold text-white/30">€</span>
+                    <input
+                      ref={inputRef}
+                      type="text"
+                      inputMode="decimal"
+                      value={amount}
+                      onChange={(e) => handleAmountChange(e.target.value)}
+                      placeholder="0"
+                      className="text-[64px] font-bold text-white bg-transparent outline-none text-center w-48 placeholder-white/20"
+                    />
+                  </div>
+                  <p className="text-[13px] text-white/40">
+                    Verfügbar: <span className="text-[#00C2FF] font-semibold">€{balance.toFixed(2)}</span>
+                  </p>
+                  
+                  {/* Quick Amount Buttons */}
+                  <div className="flex items-center gap-2 mt-6">
+                    {quickAmounts.map((q) => (
+                      <motion.button
+                        key={q}
+                        onClick={() => addAmount(q)}
+                        className="px-5 py-2.5 rounded-full bg-white/[0.06] border border-white/[0.08] text-[14px] font-semibold text-white/70 hover:bg-white/[0.1] transition-colors"
+                        whileTap={{ scale: 0.95 }}
+                      >
+                        <Plus size={12} className="inline mr-1" />€{q}
+                      </motion.button>
+                    ))}
+                    <motion.button
+                      onClick={setMax}
+                      className="px-5 py-2.5 rounded-full bg-[#00C2FF]/10 border border-[#00C2FF]/20 text-[14px] font-semibold text-[#00C2FF]"
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      MAX
+                    </motion.button>
+                  </div>
+                  
+                  {/* Message */}
+                  <input
+                    type="text"
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    placeholder="Nachricht hinzufügen..."
+                    className="w-full mt-6 px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.06] text-white text-[14px] placeholder-white/30 outline-none text-center"
+                  />
+                </div>
+                
+                {/* Error */}
+                <AnimatePresence>
+                  {error && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 10 }}
+                      className="mx-6 mb-4 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center gap-2"
+                    >
+                      <AlertCircle size={16} className="text-red-400" />
+                      <span className="text-[13px] text-red-400">{error}</span>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+                
+                {/* Send Button */}
+                <div className="px-6 pb-8">
                   <motion.button
                     onClick={handleSend}
-                    disabled={!isValidRecipient || !isValidAmount || insufficientBalance}
-                    className="w-full py-4 bg-[#A855F7] text-white font-bold text-base rounded-xl disabled:opacity-40 flex items-center justify-center gap-2"
+                    disabled={loading || !amount || parseFloat(amount) <= 0}
+                    className="w-full py-5 rounded-2xl bg-gradient-to-r from-[#00C2FF] to-[#0066FF] text-white font-bold text-[17px] flex items-center justify-center gap-3 disabled:opacity-40 shadow-lg shadow-[#00C2FF]/20"
                     whileTap={{ scale: 0.98 }}
                   >
-                    <Send size={18} />
-                    Senden {parsedAmount > 0 && `€${parsedAmount.toFixed(2)}`}
+                    {loading ? (
+                      <Loader2 size={22} className="animate-spin" />
+                    ) : (
+                      <>
+                        <Send size={20} />
+                        €{parseFloat(amount || 0).toFixed(2)} senden
+                      </>
+                    )}
                   </motion.button>
+                  
+                  <p className="text-center text-[11px] text-white/30 mt-3">
+                    Kostenlos & sofort • Keine Gebühren
+                  </p>
+                </div>
+              </motion.div>
+            )}
 
-                  <p className="text-xs text-center text-gray-500">
-                    Geld wird sofort vom Wallet abgezogen
+            {/* ═══════════════════════════════════════════════════════════════
+                STEP 3: SUCCESS
+            ═══════════════════════════════════════════════════════════════ */}
+            {step === 3 && result && (
+              <motion.div
+                key="step3"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ type: "spring", damping: 20 }}
+                className="flex flex-col items-center justify-center min-h-[85vh] sm:min-h-[500px] px-6 py-12"
+              >
+                {/* Success Animation */}
+                <motion.div
+                  initial={{ scale: 0, rotate: -180 }}
+                  animate={{ scale: 1, rotate: 0 }}
+                  transition={{ type: "spring", damping: 12, delay: 0.1 }}
+                  className="relative mb-8"
+                >
+                  <div className="w-28 h-28 rounded-full bg-gradient-to-br from-[#00D26A] to-[#00A855] flex items-center justify-center shadow-2xl shadow-[#00D26A]/30">
+                    <CheckCircle2 size={56} className="text-white" />
+                  </div>
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ delay: 0.3 }}
+                    className="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-[#FFD700] flex items-center justify-center"
+                  >
+                    <Sparkles size={16} className="text-black" />
+                  </motion.div>
+                </motion.div>
+                
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 }}
+                  className="text-center"
+                >
+                  <h2 className="text-[28px] font-bold text-white mb-2">Gesendet!</h2>
+                  <p className="text-[15px] text-white/50">Geld erfolgreich überwiesen</p>
+                </motion.div>
+                
+                {/* Amount */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 }}
+                  className="my-8"
+                >
+                  <p className="text-[56px] font-bold text-white tracking-tight">
+                    €{parseFloat(amount).toFixed(2)}
                   </p>
                 </motion.div>
-              )}
-
-              {/* Sending Step */}
-              {step === "sending" && (
+                
+                {/* Recipient */}
                 <motion.div
-                  key="sending"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.4 }}
+                  className="flex items-center gap-3 px-6 py-4 rounded-2xl bg-white/[0.03] border border-white/[0.06]"
+                >
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#00C2FF] to-[#0066FF] flex items-center justify-center text-[16px] font-bold text-white">
+                    {recipient?.name?.[0]?.toUpperCase() || "?"}
+                  </div>
+                  <div>
+                    <p className="text-[14px] font-semibold text-white">{recipient?.name}</p>
+                    <p className="text-[11px] text-white/40">Empfänger</p>
+                  </div>
+                </motion.div>
+                
+                {/* Reference */}
+                <motion.p
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="py-12 text-center"
+                  transition={{ delay: 0.5 }}
+                  className="text-[12px] text-white/30 mt-6 font-mono"
                 >
-                  <Loader2 size={48} className="mx-auto text-[#A855F7] animate-spin mb-4" />
-                  <p className="text-white font-medium">Transfer wird durchgeführt...</p>
-                  <p className="text-sm text-gray-500 mt-2">€{parsedAmount.toFixed(2)} an {recipient}</p>
-                </motion.div>
-              )}
-
-              {/* Success Step */}
-              {step === "success" && sentData && (
+                  Ref: {result.reference}
+                </motion.p>
+                
+                {/* New Balance */}
                 <motion.div
-                  key="success"
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="py-8 text-center"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.6 }}
+                  className="mt-8 text-center"
                 >
-                  <div className="w-20 h-20 mx-auto rounded-full bg-green-500/20 flex items-center justify-center mb-4">
-                    <CheckCircle size={40} className="text-green-400" />
-                  </div>
-                  <h3 className="text-xl font-bold text-white mb-2">
-                    €{sentData.amount.toFixed(2)} gesendet!
-                  </h3>
-                  <p className="text-gray-400 mb-6">
-                    An {sentData.recipient}
-                  </p>
-                  <motion.button
-                    onClick={handleClose}
-                    className="w-full py-4 bg-white/10 text-white font-semibold rounded-xl"
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    Fertig
-                  </motion.button>
+                  <p className="text-[11px] text-white/40 mb-1">Neues Guthaben</p>
+                  <p className="text-[24px] font-bold text-[#00C2FF]">€{result.sender_new_balance?.toFixed(2)}</p>
                 </motion.div>
-              )}
-
-              {/* Error Step */}
-              {step === "error" && (
-                <motion.div
-                  key="error"
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="py-8 text-center"
+                
+                {/* Done Button */}
+                <motion.button
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.7 }}
+                  onClick={onClose}
+                  className="mt-8 w-full py-4 rounded-2xl bg-white/[0.06] border border-white/[0.08] text-white font-semibold text-[15px]"
+                  whileTap={{ scale: 0.98 }}
                 >
-                  <div className="w-20 h-20 mx-auto rounded-full bg-red-500/20 flex items-center justify-center mb-4">
-                    <AlertCircle size={40} className="text-red-400" />
-                  </div>
-                  <h3 className="text-xl font-bold text-white mb-2">
-                    Transfer fehlgeschlagen
-                  </h3>
-                  <p className="text-red-400 mb-6">{error}</p>
-                  <div className="space-y-3">
-                    <motion.button
-                      onClick={() => setStep("form")}
-                      className="w-full py-4 bg-[#A855F7] text-white font-semibold rounded-xl"
-                      whileTap={{ scale: 0.98 }}
-                    >
-                      Erneut versuchen
-                    </motion.button>
-                    <motion.button
-                      onClick={handleClose}
-                      className="w-full py-3 text-gray-400 font-medium"
-                      whileTap={{ scale: 0.98 }}
-                    >
-                      Abbrechen
-                    </motion.button>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-        </motion.div>
+                  Fertig
+                </motion.button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </motion.div>
-    </AnimatePresence>
+    </motion.div>
   );
 };
 
