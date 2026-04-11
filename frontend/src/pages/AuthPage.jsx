@@ -67,13 +67,26 @@ export const AuthPage = ({ onBack, initialMode }) => {
   const [forgotEmail, setForgotEmail] = useState("");
   const [forgotSent, setForgotSent] = useState(false);
   const [rememberMe, setRememberMe] = useState(true); // Default to true for better UX
+  const [otpCode, setOtpCode] = useState("");
   const { t } = useI18n();
 
   const user = useUser();
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    await user.login(email, password, rememberMe);
+    const result = await user.login(email, password, rememberMe);
+    // If result is '2fa_required', the UserContext will set requires2FA=true
+    // which triggers the 2FA UI automatically
+  };
+
+  const handleVerify2FA = async (e) => {
+    e.preventDefault();
+    await user.verify2FA(otpCode);
+  };
+
+  const handleCancel2FA = () => {
+    setOtpCode("");
+    user.cancel2FA();
   };
 
   const handleRegister = async (e) => {
@@ -171,7 +184,81 @@ export const AuthPage = ({ onBack, initialMode }) => {
 
         {/* ── Form ── */}
         <AnimatePresence mode="wait">
-          {mode === "login" ? (
+          {/* ── 2FA Verification Form ── */}
+          {user.requires2FA ? (
+            <motion.form
+              key="2fa"
+              onSubmit={handleVerify2FA}
+              className="space-y-4"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              transition={slide}
+            >
+              <div className="text-center mb-6">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-[#00C2FF]/10 flex items-center justify-center">
+                  <Shield size={28} className="text-[#00C2FF]" />
+                </div>
+                <h2 className="text-[16px] font-semibold text-white mb-1">Bestätigungscode eingeben</h2>
+                <p className="text-[12px] text-[#555]">
+                  Code an {user.twoFAEmailHint || "deine E-Mail"} gesendet
+                </p>
+              </div>
+
+              <div className="relative">
+                <input
+                  data-testid="otp-code-input"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={6}
+                  value={otpCode}
+                  onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  placeholder="000000"
+                  autoFocus
+                  className="w-full text-center text-[28px] font-mono font-bold tracking-[0.5em] py-4 px-4 bg-white/[0.02] border border-white/[0.05] rounded-[14px] text-white placeholder:text-[#1a1a1a] outline-none focus:border-[#00C2FF]/25"
+                />
+              </div>
+
+              {user.error && (
+                <motion.div
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg bg-red-500/10 text-red-400 text-[12px]"
+                >
+                  <AlertCircle size={14} />
+                  {user.error}
+                </motion.div>
+              )}
+
+              <motion.button
+                data-testid="verify-2fa-btn"
+                type="submit"
+                disabled={user.isLoading || otpCode.length !== 6}
+                className="w-full flex items-center justify-center gap-2 py-[14px] rounded-[14px] text-[13px] font-semibold transition-all disabled:opacity-40"
+                style={{
+                  background: "linear-gradient(135deg, #00C2FF 0%, #0088CC 100%)",
+                  color: "#000",
+                }}
+                whileTap={{ scale: 0.98 }}
+              >
+                {user.isLoading ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <>Bestätigen <ArrowRight size={14} /></>
+                )}
+              </motion.button>
+
+              <motion.button
+                type="button"
+                onClick={handleCancel2FA}
+                className="w-full py-3 text-[12px] text-[#555] hover:text-white/60 transition-colors"
+                whileTap={{ scale: 0.98 }}
+              >
+                Abbrechen
+              </motion.button>
+            </motion.form>
+          ) : mode === "login" ? (
             <motion.form
               key="login"
               onSubmit={handleLogin}

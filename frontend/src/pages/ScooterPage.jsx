@@ -40,6 +40,8 @@ export default function ScooterPage({ onNavigate }) {
   const [rideTimer, setRideTimer] = useState(0);
   const [rideCost, setRideCost] = useState(0);
   const [userLocation, setUserLocation] = useState({ lat: 52.52, lng: 13.405 });
+  const [moduleEnabled, setModuleEnabled] = useState(true);
+  const [moduleMessage, setModuleMessage] = useState('');
   
   // Refs
   const timerRef = useRef(null);
@@ -101,7 +103,15 @@ export default function ScooterPage({ onNavigate }) {
       });
       if (res.ok) {
         const data = await res.json();
-        setScooters(data.scooters || []);
+        // Check if module is enabled
+        if (data.module_enabled === false) {
+          setModuleEnabled(false);
+          setModuleMessage(data.message || 'Scooter-Modul wird derzeit vorbereitet');
+          setScooters([]);
+        } else {
+          setModuleEnabled(true);
+          setScooters(data.scooters || []);
+        }
       }
     } catch (err) {
       setError('Fehler beim Laden der Scooter');
@@ -315,6 +325,32 @@ export default function ScooterPage({ onNavigate }) {
       </div>
 
       <div className="max-w-lg mx-auto px-4 py-6">
+        {/* MODULE DISABLED NOTICE */}
+        {!moduleEnabled && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex flex-col items-center justify-center py-16 text-center"
+          >
+            <div className="w-24 h-24 mb-6 rounded-full bg-orange-500/10 flex items-center justify-center">
+              <svg className="w-12 h-12 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+            <h2 className="text-xl font-bold text-white mb-2">Scooter Demnächst</h2>
+            <p className="text-gray-400 mb-6 max-w-sm">
+              {moduleMessage || 'Das Scooter-Modul wird derzeit für echte IoT-Integration vorbereitet. Bald verfügbar!'}
+            </p>
+            <button
+              onClick={() => navigate('/')}
+              className="px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 rounded-xl font-semibold text-black"
+            >
+              Zur Startseite
+            </button>
+          </motion.div>
+        )}
+
+        {moduleEnabled && (
         <AnimatePresence mode="wait">
           {/* MAP VIEW */}
           {view === 'map' && (
@@ -640,6 +676,7 @@ export default function ScooterPage({ onNavigate }) {
             </motion.div>
           )}
         </AnimatePresence>
+        )}
       </div>
     </div>
   );

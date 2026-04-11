@@ -35,32 +35,14 @@ def generate_otp() -> str:
     return ''.join([str(secrets.randbelow(10)) for _ in range(OTP_LENGTH)])
 
 
-async def send_otp_email(email: str, otp: str, purpose: str = "verification"):
+async def send_otp_email(email: str, otp: str, purpose: str = "verification", user_name: str = ""):
     """
-    Send OTP via email.
-    Uses the email system if available, otherwise stores for manual retrieval.
+    Send OTP via email using core email service.
     """
-    # Try to use email service
     try:
-        from routes.email_system import send_email
-        
-        subject = "BidBlitz - Dein Bestätigungscode"
-        html = f"""
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2 style="color: #00C2FF;">BidBlitz Bestätigungscode</h2>
-            <p>Dein Einmal-Code für die {purpose}:</p>
-            <div style="background: #111; padding: 20px; text-align: center; border-radius: 10px; margin: 20px 0;">
-                <span style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #00C2FF;">{otp}</span>
-            </div>
-            <p style="color: #666; font-size: 12px;">
-                Dieser Code ist {OTP_EXPIRY_MINUTES} Minuten gültig.<br>
-                Falls du diese Anfrage nicht gestellt hast, ignoriere diese E-Mail.
-            </p>
-        </div>
-        """
-        
-        await send_email(to=email, subject=subject, html=html)
-        return True
+        from core.email import send_otp_email as core_send_otp
+        result = core_send_otp(email, otp, purpose, user_name)
+        return result
     except Exception as e:
         logger.warning(f"Email sending failed: {e}")
         return False

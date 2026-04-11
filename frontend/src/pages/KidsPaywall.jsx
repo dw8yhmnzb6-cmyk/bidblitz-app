@@ -15,10 +15,10 @@ import KidsNotifications from "../components/KidsNotifications";
 const slide = { duration: 0.3, ease: [0.32, 0.72, 0, 1] };
 
 const BENEFITS = [
-  { icon: Shield, key: "parental_control" },
-  { icon: Eye, key: "spending_limits" },
-  { icon: CreditCard, key: "txn_tracking" },
-  { icon: Zap, key: "safe_payments" },
+  { icon: Shield, key: "parental_control", descKey: "parental_control_desc" },
+  { icon: Eye, key: "spending_limits", descKey: "spending_limits_desc" },
+  { icon: CreditCard, key: "txn_tracking", descKey: "txn_tracking_desc" },
+  { icon: Zap, key: "safe_payments", descKey: "safe_payments_desc" },
 ];
 
 // ── Kids Dashboard (post-subscription) ──
@@ -908,19 +908,20 @@ const KidsPaywall = ({ onBack, onSubscribed }) => {
           {BENEFITS.map((b, i) => (
             <motion.div
               key={b.key}
-              className="flex items-center gap-3 px-4 py-3 rounded-xl"
+              className="flex items-center gap-3 px-4 py-3.5 rounded-xl"
               style={{ background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.035)" }}
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.14 + i * 0.04, ...slide }}
             >
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "rgba(168,85,247,0.08)", border: "1px solid rgba(168,85,247,0.12)" }}>
-                <b.icon size={14} strokeWidth={1.5} className="text-purple-400" />
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "rgba(168,85,247,0.08)", border: "1px solid rgba(168,85,247,0.12)" }}>
+                <b.icon size={16} strokeWidth={1.5} className="text-purple-400" />
               </div>
-              <div>
-                <p className="text-[12px] font-medium text-white/85">{t(`kids.benefit_${b.key}`)}</p>
+              <div className="flex-1 min-w-0">
+                <p className="text-[12px] font-semibold text-white/90 mb-0.5">{t(`kids.benefit_${b.key}`)}</p>
+                <p className="text-[10px] text-white/40 leading-relaxed">{t(`kids.benefit_${b.descKey}`)}</p>
               </div>
-              <Check size={14} className="text-[#00D26A] ml-auto flex-shrink-0" />
+              <Check size={16} className="text-[#00D26A] flex-shrink-0" />
             </motion.div>
           ))}
         </motion.div>

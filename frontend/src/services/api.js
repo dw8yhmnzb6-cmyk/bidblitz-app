@@ -113,6 +113,7 @@ export const api = {
   // Auth
   register: (body) => request("/api/auth/register", { method: "POST", body: JSON.stringify(body) }),
   login: (body) => request("/api/auth/login", { method: "POST", body: JSON.stringify(body) }),
+  verify2FA: (body) => request("/api/auth/verify-2fa", { method: "POST", body: JSON.stringify(body) }),
   logout: () => request("/api/auth/logout", { method: "POST" }),
   getMe: () => request("/api/auth/me"),
   refresh: () => request("/api/auth/refresh", { method: "POST" }),

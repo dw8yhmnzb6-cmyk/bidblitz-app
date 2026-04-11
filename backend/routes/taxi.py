@@ -12,6 +12,7 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 from typing import Optional, List
 from enum import Enum
+from bson import ObjectId
 
 from core.database import db
 from core.security import get_current_user
@@ -22,7 +23,941 @@ logger = logging.getLogger("bidblitz.taxi")
 # ══════════════════════════════════════════════════════════════════════════════
 # MODULE STATUS - Set to False to hide from users
 # ══════════════════════════════════════════════════════════════════════════════
-TAXI_MODULE_ENABLED = False  # Disabled until real drivers are onboarded
+TAXI_MODULE_ENABLED = True  # Now enabled - taxi partners can register
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# TAXI PARTNER CONFIGURATION
+# ══════════════════════════════════════════════════════════════════════════════
+
+TRIAL_MONTHS = 6  # 6 months free trial for taxi operators
+COMMISSION_RATE_MIN = 0.05  # 5% minimum commission after trial
+COMMISSION_RATE_MAX = 0.10  # 10% maximum commission after trial
+COMMISSION_TIERS = [
+    {"min_revenue": 0, "max_revenue": 5000, "rate": 0.05},      # €0-5000: 5%
+    {"min_revenue": 5000, "max_revenue": 15000, "rate": 0.07},  # €5000-15000: 7%
+    {"min_revenue": 15000, "max_revenue": float('inf'), "rate": 0.10},  # €15000+: 10%
+]
+
+
+def get_commission_rate(total_revenue: float) -> float:
+    """Get commission rate based on total revenue."""
+    for tier in COMMISSION_TIERS:
+        if tier["min_revenue"] <= total_revenue < tier["max_revenue"]:
+            return tier["rate"]
+    return COMMISSION_RATE_MAX
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# MODULE STATUS ENDPOINT
+# ══════════════════════════════════════════════════════════════════════════════
+
+@router.get("/status")
+async def get_module_status():
+    """Check if taxi module is enabled."""
+    # Count approved taxi operators and their online drivers
+    operators = await db.taxi_operators.find({"status": "approved"}).to_list(100)
+    
+    business_drivers = 0
+    for op in operators:
+        for driver in op.get("drivers", []):
+            if driver.get("is_online") and driver.get("status") == "active":
+                business_drivers += 1
+    
+    # Count private drivers (users with is_private_driver flag)
+    private_drivers = await db.users.count_documents({
+        "is_private_driver": True,
+        "driver_online": True
+    })
+    
+    return {
+        "module_enabled": TAXI_MODULE_ENABLED,
+        "operators_active": len(operators),
+        "business_drivers": business_drivers,
+        "private_drivers": private_drivers,
+        "message": "Taxi-Modul aktiv" if TAXI_MODULE_ENABLED else "Taxi-Modul wird vorbereitet",
+    }
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# TAXI OPERATOR REGISTRATION & MANAGEMENT
+# ══════════════════════════════════════════════════════════════════════════════
+
+class OperatorRegistration(BaseModel):
+    company_name: str = Field(..., min_length=2, max_length=100)
+    contact_name: str = Field(..., min_length=2, max_length=100)
+    email: str = Field(..., pattern=r'^[^@]+@[^@]+\.[^@]+$')
+    phone: str = Field(..., min_length=8, max_length=20)
+    city: str = Field(..., min_length=2, max_length=50)
+    country: str = Field(default="Deutschland")
+    fleet_size: int = Field(..., ge=1, le=500)
+    license_number: str = Field(..., min_length=5, max_length=50)
+    tax_id: Optional[str] = None
+
+
+@router.post("/operator/register")
+async def register_taxi_operator(req: OperatorRegistration, request: Request):
+    """Register as a taxi operator/company."""
+    
+    # Check if already registered
+    existing = await db.taxi_operators.find_one({"email": req.email.lower()})
+    if existing:
+        raise HTTPException(status_code=400, detail="Diese E-Mail ist bereits registriert")
+    
+    now = datetime.now(timezone.utc)
+    trial_end = now + timedelta(days=TRIAL_MONTHS * 30)
+    operator_id = secrets.token_hex(8)
+    
+    operator = {
+        "operator_id": operator_id,
+        "company_name": req.company_name,
+        "contact_name": req.contact_name,
+        "email": req.email.lower(),
+        "phone": req.phone,
+        "city": req.city,
+        "country": req.country,
+        "fleet_size": req.fleet_size,
+        "license_number": req.license_number,
+        "tax_id": req.tax_id,
+        "status": "pending",  # pending, approved, rejected, suspended
+        "trial_start": now.isoformat(),
+        "trial_end": trial_end.isoformat(),
+        "is_trial": True,
+        "commission_rate": 0.0,  # 0% during trial
+        "total_revenue": 0.0,
+        "total_rides": 0,
+        "total_commission_paid": 0.0,
+        "balance_due": 0.0,
+        "drivers": [],
+        "created_at": now.isoformat(),
+        "updated_at": now.isoformat(),
+    }
+    
+    await db.taxi_operators.insert_one(operator)
+    operator.pop("_id", None)
+    
+    logger.info(f"New taxi operator registered: {req.company_name} ({operator_id})")
+    
+    return {
+        "ok": True,
+        "operator_id": operator_id,
+        "message": f"Registrierung erfolgreich! Dein Antrag wird geprüft. Testphase: {TRIAL_MONTHS} Monate kostenlos.",
+        "trial_months": TRIAL_MONTHS,
+        "trial_end": trial_end.isoformat(),
+    }
+
+
+@router.get("/operator/status")
+async def get_operator_status(request: Request):
+    """Get current operator status and earnings."""
+    user = await get_current_user(request)
+    email = user.get("email", "").lower()
+    
+    operator = await db.taxi_operators.find_one({"email": email}, {"_id": 0})
+    if not operator:
+        return {"is_operator": False}
+    
+    now = datetime.now(timezone.utc)
+    trial_end = datetime.fromisoformat(operator["trial_end"])
+    days_left = (trial_end - now).days
+    
+    # Check if trial has ended
+    if operator["is_trial"] and now > trial_end:
+        # Trial ended, calculate commission rate
+        commission_rate = get_commission_rate(operator["total_revenue"])
+        await db.taxi_operators.update_one(
+            {"operator_id": operator["operator_id"]},
+            {"$set": {"is_trial": False, "commission_rate": commission_rate}}
+        )
+        operator["is_trial"] = False
+        operator["commission_rate"] = commission_rate
+    
+    return {
+        "is_operator": True,
+        "operator_id": operator["operator_id"],
+        "company_name": operator["company_name"],
+        "status": operator["status"],
+        "is_trial": operator["is_trial"],
+        "trial_days_left": max(0, days_left) if operator["is_trial"] else 0,
+        "trial_end": operator["trial_end"],
+        "commission_rate": operator["commission_rate"],
+        "total_revenue": operator["total_revenue"],
+        "total_rides": operator["total_rides"],
+        "total_commission_paid": operator["total_commission_paid"],
+        "balance_due": operator["balance_due"],
+        "fleet_size": operator["fleet_size"],
+        "drivers_count": len(operator.get("drivers", [])),
+    }
+
+
+@router.get("/operator/earnings")
+async def get_operator_earnings(request: Request, period: str = "month"):
+    """Get operator earnings breakdown."""
+    user = await get_current_user(request)
+    email = user.get("email", "").lower()
+    
+    operator = await db.taxi_operators.find_one({"email": email})
+    if not operator:
+        raise HTTPException(status_code=404, detail="Kein Operator-Konto gefunden")
+    
+    if operator["status"] != "approved":
+        raise HTTPException(status_code=403, detail="Operator nicht freigeschaltet")
+    
+    operator_id = operator["operator_id"]
+    now = datetime.now(timezone.utc)
+    
+    # Calculate date range
+    if period == "week":
+        start_date = now - timedelta(days=7)
+    elif period == "month":
+        start_date = now - timedelta(days=30)
+    elif period == "year":
+        start_date = now - timedelta(days=365)
+    else:
+        start_date = now - timedelta(days=30)
+    
+    # Get rides in period
+    rides = await db.taxi_rides.find({
+        "operator_id": operator_id,
+        "status": "completed",
+        "completed_at": {"$gte": start_date.isoformat()}
+    }).to_list(1000)
+    
+    total_revenue = sum(r.get("final_fare", 0) for r in rides)
+    total_rides = len(rides)
+    
+    # Calculate commission
+    if operator["is_trial"]:
+        commission = 0
+        commission_rate = 0
+    else:
+        commission_rate = operator["commission_rate"]
+        commission = round(total_revenue * commission_rate, 2)
+    
+    net_earnings = round(total_revenue - commission, 2)
+    
+    return {
+        "period": period,
+        "total_revenue": round(total_revenue, 2),
+        "total_rides": total_rides,
+        "commission_rate": commission_rate,
+        "commission_amount": commission,
+        "net_earnings": net_earnings,
+        "is_trial": operator["is_trial"],
+        "trial_savings": round(total_revenue * get_commission_rate(operator["total_revenue"]), 2) if operator["is_trial"] else 0,
+    }
+
+
+class AddDriverRequest(BaseModel):
+    driver_user_id: str
+    vehicle_plate: str
+    vehicle_model: str
+    car_type: str = "standard"
+
+
+@router.post("/operator/add-driver")
+async def add_driver_to_fleet(req: AddDriverRequest, request: Request):
+    """Add a driver to the taxi operator's fleet."""
+    user = await get_current_user(request)
+    email = user.get("email", "").lower()
+    
+    operator = await db.taxi_operators.find_one({"email": email})
+    if not operator:
+        raise HTTPException(status_code=404, detail="Kein Operator-Konto gefunden")
+    
+    if operator["status"] != "approved":
+        raise HTTPException(status_code=403, detail="Operator noch nicht freigeschaltet")
+    
+    # Check driver exists
+    from bson import ObjectId
+    driver_user = await db.users.find_one({"_id": ObjectId(req.driver_user_id)})
+    if not driver_user:
+        raise HTTPException(status_code=404, detail="Fahrer-Benutzer nicht gefunden")
+    
+    # Check fleet size limit
+    if len(operator.get("drivers", [])) >= operator["fleet_size"]:
+        raise HTTPException(status_code=400, detail=f"Flottengröße ({operator['fleet_size']}) erreicht")
+    
+    now = datetime.now(timezone.utc)
+    driver_id = secrets.token_hex(8)
+    
+    driver = {
+        "driver_id": driver_id,
+        "user_id": req.driver_user_id,
+        "name": driver_user.get("name", ""),
+        "email": driver_user.get("email", ""),
+        "phone": driver_user.get("phone", ""),
+        "vehicle_plate": req.vehicle_plate.upper(),
+        "vehicle_model": req.vehicle_model,
+        "car_type": req.car_type,
+        "status": "active",
+        "is_online": False,
+        "total_rides": 0,
+        "rating": 5.0,
+        "added_at": now.isoformat(),
+    }
+    
+    await db.taxi_operators.update_one(
+        {"operator_id": operator["operator_id"]},
+        {"$push": {"drivers": driver}}
+    )
+    
+    # Mark user as taxi driver
+    await db.users.update_one(
+        {"_id": ObjectId(req.driver_user_id)},
+        {"$set": {
+            "is_taxi_driver": True,
+            "taxi_operator_id": operator["operator_id"],
+            "taxi_driver_id": driver_id,
+        }}
+    )
+    
+    logger.info(f"Driver {driver_id} added to operator {operator['operator_id']}")
+    
+    return {
+        "ok": True,
+        "driver_id": driver_id,
+        "message": f"Fahrer {driver_user.get('name', '')} wurde hinzugefügt",
+    }
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# OPERATOR DASHBOARD - Full Fleet Management
+# ══════════════════════════════════════════════════════════════════════════════
+
+@router.get("/operator/dashboard")
+async def get_operator_dashboard(request: Request):
+    """Get full dashboard data for taxi operator."""
+    user = await get_current_user(request)
+    email = user.get("email", "").lower()
+    
+    operator = await db.taxi_operators.find_one({"email": email})
+    if not operator:
+        raise HTTPException(status_code=404, detail="Kein Operator-Konto gefunden")
+    
+    if operator["status"] != "approved":
+        raise HTTPException(status_code=403, detail="Operator noch nicht freigeschaltet")
+    
+    operator_id = operator["operator_id"]
+    now = datetime.now(timezone.utc)
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    week_start = today_start - timedelta(days=7)
+    month_start = today_start - timedelta(days=30)
+    
+    # Get all drivers with their current status
+    drivers = operator.get("drivers", [])
+    driver_ids = [d["driver_id"] for d in drivers]
+    
+    # Get driver locations
+    driver_locations = await db.driver_locations.find(
+        {"driver_id": {"$in": driver_ids}},
+        {"_id": 0}
+    ).to_list(100)
+    location_map = {loc["driver_id"]: loc for loc in driver_locations}
+    
+    # Get active rides
+    active_rides = await db.taxi_rides.find({
+        "operator_id": operator_id,
+        "status": {"$in": ["requested", "accepted", "arriving", "started"]}
+    }, {"_id": 0}).to_list(100)
+    active_ride_map = {r.get("driver_id"): r for r in active_rides if r.get("driver_id")}
+    
+    # Enrich driver data
+    enriched_drivers = []
+    online_count = 0
+    busy_count = 0
+    
+    for d in drivers:
+        loc = location_map.get(d["driver_id"], {})
+        ride = active_ride_map.get(d["driver_id"])
+        
+        status = "offline"
+        if d.get("is_online"):
+            online_count += 1
+            if ride:
+                status = ride["status"]
+                busy_count += 1
+            else:
+                status = "available"
+        
+        enriched_drivers.append({
+            **d,
+            "current_status": status,
+            "location": {
+                "lat": loc.get("lat", 0),
+                "lng": loc.get("lng", 0),
+                "updated_at": loc.get("updated_at", ""),
+            } if loc else None,
+            "current_ride": {
+                "ride_id": ride["ride_id"],
+                "status": ride["status"],
+                "pickup_address": ride.get("pickup_address", ""),
+                "dropoff_address": ride.get("dropoff_address", ""),
+                "customer_name": ride.get("customer_name", ""),
+            } if ride else None,
+        })
+    
+    # Get rides statistics
+    today_rides = await db.taxi_rides.find({
+        "operator_id": operator_id,
+        "created_at": {"$gte": today_start.isoformat()}
+    }, {"_id": 0}).to_list(500)
+    
+    week_rides = await db.taxi_rides.find({
+        "operator_id": operator_id,
+        "status": "completed",
+        "completed_at": {"$gte": week_start.isoformat()}
+    }, {"_id": 0}).to_list(1000)
+    
+    month_rides = await db.taxi_rides.find({
+        "operator_id": operator_id,
+        "status": "completed",
+        "completed_at": {"$gte": month_start.isoformat()}
+    }, {"_id": 0}).to_list(2000)
+    
+    # Calculate stats
+    today_completed = [r for r in today_rides if r["status"] == "completed"]
+    today_revenue = sum(r.get("final_fare", 0) for r in today_completed)
+    
+    week_revenue = sum(r.get("final_fare", 0) for r in week_rides)
+    month_revenue = sum(r.get("final_fare", 0) for r in month_rides)
+    
+    # Commission calculation
+    if operator["is_trial"]:
+        commission_rate = 0
+        trial_end = datetime.fromisoformat(operator["trial_end"])
+        days_left = (trial_end - now).days
+    else:
+        commission_rate = operator["commission_rate"]
+        days_left = 0
+    
+    today_commission = round(today_revenue * commission_rate, 2)
+    week_commission = round(week_revenue * commission_rate, 2)
+    month_commission = round(month_revenue * commission_rate, 2)
+    
+    return {
+        "operator": {
+            "operator_id": operator_id,
+            "company_name": operator["company_name"],
+            "is_trial": operator["is_trial"],
+            "trial_days_left": max(0, days_left),
+            "commission_rate": commission_rate,
+            "fleet_size": operator["fleet_size"],
+        },
+        "fleet": {
+            "total_drivers": len(drivers),
+            "online": online_count,
+            "busy": busy_count,
+            "available": online_count - busy_count,
+            "offline": len(drivers) - online_count,
+            "drivers": enriched_drivers,
+        },
+        "active_rides": active_rides,
+        "stats": {
+            "today": {
+                "rides": len(today_completed),
+                "revenue": round(today_revenue, 2),
+                "commission": today_commission,
+                "net": round(today_revenue - today_commission, 2),
+            },
+            "week": {
+                "rides": len(week_rides),
+                "revenue": round(week_revenue, 2),
+                "commission": week_commission,
+                "net": round(week_revenue - week_commission, 2),
+            },
+            "month": {
+                "rides": len(month_rides),
+                "revenue": round(month_revenue, 2),
+                "commission": month_commission,
+                "net": round(month_revenue - month_commission, 2),
+            },
+        },
+    }
+
+
+@router.get("/operator/rides")
+async def get_operator_rides(request: Request, status: Optional[str] = None, limit: int = 50, skip: int = 0):
+    """Get all rides for the operator."""
+    user = await get_current_user(request)
+    email = user.get("email", "").lower()
+    
+    operator = await db.taxi_operators.find_one({"email": email})
+    if not operator or operator["status"] != "approved":
+        raise HTTPException(status_code=403, detail="Nicht autorisiert")
+    
+    query = {"operator_id": operator["operator_id"]}
+    if status:
+        query["status"] = status
+    
+    rides = await db.taxi_rides.find(query, {"_id": 0}).sort("created_at", -1).skip(skip).limit(limit).to_list(limit)
+    total = await db.taxi_rides.count_documents(query)
+    
+    return {"rides": rides, "total": total}
+
+
+@router.get("/operator/payments")
+async def get_operator_payments(request: Request, period: str = "month"):
+    """Get payment history for operator."""
+    user = await get_current_user(request)
+    email = user.get("email", "").lower()
+    
+    operator = await db.taxi_operators.find_one({"email": email})
+    if not operator or operator["status"] != "approved":
+        raise HTTPException(status_code=403, detail="Nicht autorisiert")
+    
+    now = datetime.now(timezone.utc)
+    if period == "week":
+        start_date = now - timedelta(days=7)
+    elif period == "month":
+        start_date = now - timedelta(days=30)
+    elif period == "year":
+        start_date = now - timedelta(days=365)
+    else:
+        start_date = now - timedelta(days=30)
+    
+    # Get completed rides as payments
+    rides = await db.taxi_rides.find({
+        "operator_id": operator["operator_id"],
+        "status": "completed",
+        "completed_at": {"$gte": start_date.isoformat()}
+    }, {"_id": 0}).sort("completed_at", -1).to_list(500)
+    
+    payments = []
+    for r in rides:
+        driver = next((d for d in operator.get("drivers", []) if d["driver_id"] == r.get("driver_id")), {})
+        commission = round(r.get("final_fare", 0) * operator["commission_rate"], 2) if not operator["is_trial"] else 0
+        
+        payments.append({
+            "ride_id": r["ride_id"],
+            "driver_name": driver.get("name", "Unbekannt"),
+            "driver_id": r.get("driver_id", ""),
+            "customer_name": r.get("customer_name", ""),
+            "pickup": r.get("pickup_address", ""),
+            "dropoff": r.get("dropoff_address", ""),
+            "fare": r.get("final_fare", 0),
+            "commission": commission,
+            "net": round(r.get("final_fare", 0) - commission, 2),
+            "payment_method": "wallet",
+            "completed_at": r.get("completed_at", ""),
+        })
+    
+    total_revenue = sum(p["fare"] for p in payments)
+    total_commission = sum(p["commission"] for p in payments)
+    
+    return {
+        "payments": payments,
+        "summary": {
+            "total_rides": len(payments),
+            "total_revenue": round(total_revenue, 2),
+            "total_commission": round(total_commission, 2),
+            "total_net": round(total_revenue - total_commission, 2),
+        }
+    }
+
+
+@router.post("/operator/driver/{driver_id}/toggle")
+async def toggle_driver_status(driver_id: str, request: Request):
+    """Enable/disable a driver."""
+    user = await get_current_user(request)
+    email = user.get("email", "").lower()
+    
+    operator = await db.taxi_operators.find_one({"email": email})
+    if not operator or operator["status"] != "approved":
+        raise HTTPException(status_code=403, detail="Nicht autorisiert")
+    
+    # Find driver
+    driver = next((d for d in operator.get("drivers", []) if d["driver_id"] == driver_id), None)
+    if not driver:
+        raise HTTPException(status_code=404, detail="Fahrer nicht gefunden")
+    
+    new_status = "inactive" if driver.get("status") == "active" else "active"
+    
+    await db.taxi_operators.update_one(
+        {"operator_id": operator["operator_id"], "drivers.driver_id": driver_id},
+        {"$set": {"drivers.$.status": new_status}}
+    )
+    
+    return {"ok": True, "new_status": new_status}
+
+
+@router.delete("/operator/driver/{driver_id}")
+async def remove_driver(driver_id: str, request: Request):
+    """Remove a driver from fleet."""
+    user = await get_current_user(request)
+    email = user.get("email", "").lower()
+    
+    operator = await db.taxi_operators.find_one({"email": email})
+    if not operator or operator["status"] != "approved":
+        raise HTTPException(status_code=403, detail="Nicht autorisiert")
+    
+    # Check if driver has active ride
+    active_ride = await db.taxi_rides.find_one({
+        "driver_id": driver_id,
+        "status": {"$in": ["accepted", "arriving", "started"]}
+    })
+    if active_ride:
+        raise HTTPException(status_code=400, detail="Fahrer hat aktive Fahrt")
+    
+    # Find driver user_id
+    driver = next((d for d in operator.get("drivers", []) if d["driver_id"] == driver_id), None)
+    if driver:
+        # Remove taxi driver flag from user
+        from bson import ObjectId
+        await db.users.update_one(
+            {"_id": ObjectId(driver["user_id"])},
+            {"$unset": {"is_taxi_driver": "", "taxi_operator_id": "", "taxi_driver_id": ""}}
+        )
+    
+    await db.taxi_operators.update_one(
+        {"operator_id": operator["operator_id"]},
+        {"$pull": {"drivers": {"driver_id": driver_id}}}
+    )
+    
+    return {"ok": True, "message": "Fahrer entfernt"}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# PRIVATE DRIVER REGISTRATION
+# ══════════════════════════════════════════════════════════════════════════════
+
+class PrivateDriverRegistration(BaseModel):
+    vehicle_plate: str = Field(..., min_length=3, max_length=15)
+    vehicle_model: str = Field(..., min_length=2, max_length=50)
+    vehicle_year: int = Field(..., ge=2000, le=2030)
+    car_type: str = Field(default="standard")
+    license_number: str = Field(..., min_length=5, max_length=30)
+    city: str = Field(..., min_length=2, max_length=50)
+
+
+@router.post("/private/register")
+async def register_private_driver(req: PrivateDriverRegistration, request: Request):
+    """Register as a private taxi driver."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    email = user.get("email", "").lower()
+    
+    # Check if already registered
+    if user.get("is_private_driver") or user.get("is_taxi_driver"):
+        raise HTTPException(status_code=400, detail="Du bist bereits als Fahrer registriert")
+    
+    now = datetime.now(timezone.utc)
+    trial_end = now + timedelta(days=TRIAL_MONTHS * 30)
+    driver_id = secrets.token_hex(8)
+    
+    # Create private driver profile
+    private_driver = {
+        "driver_id": driver_id,
+        "user_id": user_id,
+        "name": user.get("name", ""),
+        "email": email,
+        "phone": user.get("phone", ""),
+        "vehicle_plate": req.vehicle_plate.upper(),
+        "vehicle_model": req.vehicle_model,
+        "vehicle_year": req.vehicle_year,
+        "car_type": req.car_type,
+        "license_number": req.license_number,
+        "city": req.city,
+        "status": "pending",  # pending, approved, rejected, suspended
+        "is_trial": True,
+        "trial_end": trial_end.isoformat(),
+        "commission_rate": 0.0,  # 0% during trial, then 8% for private
+        "total_rides": 0,
+        "total_revenue": 0.0,
+        "rating": 5.0,
+        "ratings_count": 0,
+        "created_at": now.isoformat(),
+    }
+    
+    await db.private_drivers.insert_one(private_driver)
+    
+    # Update user
+    await db.users.update_one(
+        {"_id": user["_id"]},
+        {"$set": {
+            "is_private_driver": True,
+            "private_driver_id": driver_id,
+            "driver_status": "pending",
+        }}
+    )
+    
+    logger.info(f"New private driver registered: {email} ({driver_id})")
+    
+    return {
+        "ok": True,
+        "driver_id": driver_id,
+        "message": f"Registrierung erfolgreich! Dein Antrag wird geprüft. Testphase: {TRIAL_MONTHS} Monate kostenlos mit 0% Provision.",
+    }
+
+
+@router.get("/private/status")
+async def get_private_driver_status(request: Request):
+    """Get private driver status."""
+    user = await get_current_user(request)
+    
+    if not user.get("is_private_driver"):
+        return {"is_driver": False}
+    
+    driver_id = user.get("private_driver_id")
+    driver = await db.private_drivers.find_one({"driver_id": driver_id}, {"_id": 0})
+    
+    if not driver:
+        return {"is_driver": False}
+    
+    now = datetime.now(timezone.utc)
+    if driver.get("is_trial") and driver.get("trial_end"):
+        trial_end = datetime.fromisoformat(driver["trial_end"])
+        days_left = (trial_end - now).days
+        
+        if now > trial_end:
+            # Trial ended
+            await db.private_drivers.update_one(
+                {"driver_id": driver_id},
+                {"$set": {"is_trial": False, "commission_rate": 0.08}}  # 8% for private
+            )
+            driver["is_trial"] = False
+            driver["commission_rate"] = 0.08
+            days_left = 0
+    else:
+        days_left = 0
+    
+    return {
+        "is_driver": True,
+        "driver_id": driver_id,
+        "status": driver["status"],
+        "is_online": user.get("driver_online", False),
+        "is_trial": driver.get("is_trial", False),
+        "trial_days_left": max(0, days_left),
+        "commission_rate": driver.get("commission_rate", 0.08),
+        "total_rides": driver.get("total_rides", 0),
+        "total_revenue": driver.get("total_revenue", 0),
+        "rating": driver.get("rating", 5.0),
+        "vehicle": f"{driver['vehicle_model']} ({driver['vehicle_plate']})",
+    }
+
+
+@router.post("/private/online")
+async def toggle_private_driver_online(request: Request):
+    """Toggle private driver online status."""
+    user = await get_current_user(request)
+    
+    if not user.get("is_private_driver"):
+        raise HTTPException(status_code=403, detail="Nicht als Privatfahrer registriert")
+    
+    driver_id = user.get("private_driver_id")
+    driver = await db.private_drivers.find_one({"driver_id": driver_id})
+    
+    if not driver or driver["status"] != "approved":
+        raise HTTPException(status_code=403, detail="Fahrer nicht freigeschaltet")
+    
+    body = await request.json()
+    is_online = body.get("online", False)
+    
+    await db.users.update_one(
+        {"_id": user["_id"]},
+        {"$set": {"driver_online": is_online}}
+    )
+    
+    return {"ok": True, "is_online": is_online}
+
+
+# Admin: Approve private driver
+@router.post("/admin/private/{driver_id}/approve")
+async def approve_private_driver(driver_id: str, request: Request):
+    """Admin: Approve a private driver."""
+    user = await get_current_user(request)
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    
+    result = await db.private_drivers.update_one(
+        {"driver_id": driver_id},
+        {"$set": {"status": "approved"}}
+    )
+    
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Fahrer nicht gefunden")
+    
+    # Update user status
+    driver = await db.private_drivers.find_one({"driver_id": driver_id})
+    if driver:
+        from bson import ObjectId
+        await db.users.update_one(
+            {"_id": ObjectId(driver["user_id"])},
+            {"$set": {"driver_status": "approved"}}
+        )
+    
+    return {"ok": True, "message": "Privatfahrer freigeschaltet"}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# DRIVER LOCATION UPDATES
+# ══════════════════════════════════════════════════════════════════════════════
+
+class LocationUpdate(BaseModel):
+    lat: float
+    lng: float
+
+
+@router.post("/driver/location")
+async def update_driver_location(req: LocationUpdate, request: Request):
+    """Driver updates their location."""
+    user = await get_current_user(request)
+    
+    if not user.get("is_taxi_driver"):
+        raise HTTPException(status_code=403, detail="Nicht als Fahrer registriert")
+    
+    driver_id = user.get("taxi_driver_id")
+    if not driver_id:
+        raise HTTPException(status_code=400, detail="Fahrer-ID fehlt")
+    
+    now = datetime.now(timezone.utc)
+    
+    await db.driver_locations.update_one(
+        {"driver_id": driver_id},
+        {"$set": {
+            "driver_id": driver_id,
+            "user_id": str(user["_id"]),
+            "lat": req.lat,
+            "lng": req.lng,
+            "updated_at": now.isoformat(),
+        }},
+        upsert=True
+    )
+    
+    return {"ok": True}
+
+
+@router.post("/driver/online")
+async def toggle_driver_online(request: Request):
+    """Driver goes online/offline."""
+    user = await get_current_user(request)
+    
+    if not user.get("is_taxi_driver"):
+        raise HTTPException(status_code=403, detail="Nicht als Fahrer registriert")
+    
+    driver_id = user.get("taxi_driver_id")
+    operator_id = user.get("taxi_operator_id")
+    
+    if not driver_id or not operator_id:
+        raise HTTPException(status_code=400, detail="Fahrer-Daten fehlen")
+    
+    body = await request.json()
+    is_online = body.get("online", False)
+    
+    await db.taxi_operators.update_one(
+        {"operator_id": operator_id, "drivers.driver_id": driver_id},
+        {"$set": {"drivers.$.is_online": is_online}}
+    )
+    
+    return {"ok": True, "is_online": is_online}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# ADMIN: OPERATOR MANAGEMENT
+# ══════════════════════════════════════════════════════════════════════════════
+
+@router.get("/admin/operators")
+async def list_taxi_operators(request: Request, status: Optional[str] = None):
+    """Admin: List all taxi operators."""
+    user = await get_current_user(request)
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    
+    query = {}
+    if status:
+        query["status"] = status
+    
+    operators = await db.taxi_operators.find(query, {"_id": 0}).sort("created_at", -1).to_list(100)
+    
+    return {"operators": operators, "total": len(operators)}
+
+
+@router.post("/admin/operator/{operator_id}/approve")
+async def approve_taxi_operator(operator_id: str, request: Request):
+    """Admin: Approve a taxi operator."""
+    user = await get_current_user(request)
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    
+    result = await db.taxi_operators.update_one(
+        {"operator_id": operator_id},
+        {"$set": {"status": "approved", "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Operator nicht gefunden")
+    
+    # Send approval email
+    operator = await db.taxi_operators.find_one({"operator_id": operator_id})
+    if operator:
+        try:
+            from core.email import send_email
+            send_email(
+                operator["email"],
+                "BidBlitz Taxi - Freischaltung bestätigt!",
+                f"""<div style="font-family:system-ui;background:#0a0a0a;color:#fff;padding:40px;">
+                <h1 style="color:#00C2FF;">Willkommen bei BidBlitz Taxi!</h1>
+                <p>Hallo {operator['contact_name']},</p>
+                <p>Dein Taxiunternehmen <strong>{operator['company_name']}</strong> wurde freigeschaltet!</p>
+                <div style="background:#111;padding:20px;border-radius:12px;margin:20px 0;">
+                    <p><strong>Testphase:</strong> {TRIAL_MONTHS} Monate kostenlos</p>
+                    <p><strong>Danach:</strong> 5-10% Provision basierend auf Umsatz</p>
+                </div>
+                <p>Du kannst jetzt Fahrer hinzufügen und Fahrten annehmen.</p>
+                </div>"""
+            )
+        except Exception as e:
+            logger.warning(f"Email failed: {e}")
+    
+    logger.info(f"Taxi operator {operator_id} approved by admin {user.get('email')}")
+    
+    return {"ok": True, "message": "Operator freigeschaltet"}
+
+
+@router.post("/admin/operator/{operator_id}/reject")
+async def reject_taxi_operator(operator_id: str, request: Request, reason: str = ""):
+    """Admin: Reject a taxi operator."""
+    user = await get_current_user(request)
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    
+    result = await db.taxi_operators.update_one(
+        {"operator_id": operator_id},
+        {"$set": {
+            "status": "rejected",
+            "rejection_reason": reason,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Operator nicht gefunden")
+    
+    return {"ok": True, "message": "Operator abgelehnt"}
+
+
+@router.post("/admin/operator/{operator_id}/commission")
+async def set_operator_commission(operator_id: str, request: Request):
+    """Admin: Manually set commission rate for an operator."""
+    user = await get_current_user(request)
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    
+    body = await request.json()
+    rate = body.get("rate", 0.05)
+    
+    if not (0 <= rate <= 0.20):
+        raise HTTPException(status_code=400, detail="Rate must be between 0 and 20%")
+    
+    result = await db.taxi_operators.update_one(
+        {"operator_id": operator_id},
+        {"$set": {"commission_rate": rate, "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Operator nicht gefunden")
+    
+    return {"ok": True, "message": f"Provision auf {rate*100:.0f}% gesetzt"}
 
 
 # ══════════════════════════════════════════════════════════════════════════════

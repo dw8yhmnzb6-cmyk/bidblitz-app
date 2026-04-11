@@ -353,3 +353,82 @@ def send_welcome_email(to: str, user_name: str = "") -> bool:
     
     html = get_base_template(content, "Willkommen bei BidBlitz!")
     return send_email(to, "Willkommen bei BidBlitz! 🎉", html)
+
+
+# ═══════════════════════════════════════════════════
+# OTP EMAIL (for 2FA)
+# ═══════════════════════════════════════════════════
+
+def send_otp_email(to: str, otp_code: str, purpose: str = "Verifizierung", user_name: str = "") -> bool:
+    """Send OTP code for 2FA or verification."""
+    
+    purpose_labels = {
+        "login": "Login-Bestätigung",
+        "enable_2fa": "2FA-Aktivierung",
+        "disable_2fa": "2FA-Deaktivierung",
+        "verification": "Verifizierung",
+    }
+    purpose_label = purpose_labels.get(purpose, purpose)
+    
+    content = f"""
+        <h2 style="color:#fff;font-size:18px;margin:0 0 15px;">Dein Bestätigungscode</h2>
+        <p style="color:#AAA;font-size:14px;line-height:1.6;margin:0 0 20px;">
+            {"Hallo " + user_name + "," if user_name else "Hallo,"}
+        </p>
+        <p style="color:#AAA;font-size:14px;line-height:1.6;margin:0 0 25px;">
+            Dein Einmal-Code für die {purpose_label}:
+        </p>
+        <div style="background:#111;border-radius:16px;padding:30px;margin:0 0 25px;text-align:center;">
+            <span style="font-size:36px;font-weight:900;color:#00C2FF;font-family:monospace;letter-spacing:8px;">{otp_code}</span>
+        </div>
+        <p style="color:#666;font-size:12px;text-align:center;margin:0;">
+            Dieser Code ist <strong>10 Minuten</strong> gültig.<br>
+            Teile diesen Code mit niemandem.
+        </p>
+    """
+    
+    html = get_base_template(content, f"{purpose_label} - BidBlitz")
+    return send_email(to, f"BidBlitz Code: {otp_code}", html)
+
+
+# ═══════════════════════════════════════════════════
+# TOP-UP CONFIRMATION EMAIL
+# ═══════════════════════════════════════════════════
+
+def send_topup_confirmation_email(to: str, amount: float, new_balance: float, user_name: str = "") -> bool:
+    """Send confirmation after wallet top-up."""
+    
+    content = f"""
+        <div style="text-align:center;margin:0 0 25px;">
+            <div style="width:60px;height:60px;background:#00D26A20;border-radius:50%;display:inline-block;line-height:60px;font-size:28px;">
+                ✓
+            </div>
+        </div>
+        <h2 style="color:#00D26A;font-size:18px;margin:0 0 15px;text-align:center;">Wallet aufgeladen!</h2>
+        <p style="color:#AAA;font-size:14px;line-height:1.6;margin:0 0 20px;">
+            {"Hallo " + user_name + "," if user_name else "Hallo,"}
+        </p>
+        <p style="color:#AAA;font-size:14px;line-height:1.6;margin:0 0 25px;">
+            Dein Guthaben wurde erfolgreich aufgeladen.
+        </p>
+        <div style="background:#111;border-radius:12px;padding:20px;margin:0 0 25px;">
+            <table width="100%" style="border-collapse:collapse;">
+                <tr>
+                    <td style="color:#666;font-size:13px;padding:8px 0;">Aufgeladen</td>
+                    <td style="color:#00D26A;font-size:18px;font-weight:bold;text-align:right;">+€{amount:.2f}</td>
+                </tr>
+                <tr>
+                    <td style="color:#666;font-size:13px;padding:8px 0;">Neues Guthaben</td>
+                    <td style="color:#00C2FF;font-size:18px;font-weight:bold;text-align:right;">€{new_balance:.2f}</td>
+                </tr>
+            </table>
+        </div>
+        <div style="text-align:center;">
+            <a href="{FRONTEND_URL}/wallet" style="display:inline-block;padding:14px 32px;background:linear-gradient(135deg,#00C2FF,#0090FF);color:#000;text-decoration:none;border-radius:12px;font-weight:600;font-size:14px;">
+                Zum Wallet
+            </a>
+        </div>
+    """
+    
+    html = get_base_template(content, "Wallet aufgeladen - BidBlitz")
+    return send_email(to, f"Wallet aufgeladen: +€{amount:.2f}", html)

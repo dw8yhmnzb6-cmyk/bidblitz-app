@@ -149,6 +149,17 @@ async def get_kids_plans():
 async def get_kids_subscription(request: Request):
     user = await get_current_user(request)
     user_id = str(user["_id"])
+    
+    # ADMIN BYPASS: Admins get free access without subscription
+    if user.get("role") == "admin":
+        return {
+            "status": "active",
+            "plan": "admin_unlimited",
+            "trial_available": False,
+            "expires_at": None,
+            "is_admin": True,
+            "message": "Admin-Freischaltung - unbegrenzter Zugang"
+        }
 
     sub = await db.kids_subscriptions.find_one({"user_id": user_id}, {"_id": 0})
     if not sub:

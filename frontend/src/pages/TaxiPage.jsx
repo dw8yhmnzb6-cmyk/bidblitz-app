@@ -40,6 +40,7 @@ export default function TaxiPage({ onNavigate }) {
   
   // State
   const [view, setView] = useState('book'); // book, tracking, history
+  const [taxiType, setTaxiType] = useState(''); // '' = not selected, 'business' = Unternehmer, 'private' = Privat
   const [pickup, setPickup] = useState({ lat: 52.52, lng: 13.405, address: '' });
   const [dropoff, setDropoff] = useState({ lat: 0, lng: 0, address: '' });
   const [estimates, setEstimates] = useState([]);
@@ -50,6 +51,10 @@ export default function TaxiPage({ onNavigate }) {
   const [error, setError] = useState('');
   const [surge, setSurge] = useState({ active: false, multiplier: 1.0 });
   const [userBalance, setUserBalance] = useState(0);
+  const [moduleEnabled, setModuleEnabled] = useState(true);
+  const [moduleMessage, setModuleMessage] = useState('');
+  const [businessDrivers, setBusinessDrivers] = useState(0);
+  const [privateDrivers, setPrivateDrivers] = useState(0);
   
   // Refs
   const mapRef = useRef(null);
@@ -59,10 +64,28 @@ export default function TaxiPage({ onNavigate }) {
   useEffect(() => {
     fetchUserData();
     checkActiveRide();
+    checkModuleStatus();
     return () => {
       if (pollingRef.current) clearInterval(pollingRef.current);
     };
   }, []);
+
+  const checkModuleStatus = async () => {
+    try {
+      const res = await fetch(`${API}/api/taxi/status`, { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.module_enabled === false) {
+          setModuleEnabled(false);
+          setModuleMessage(data.message || 'Taxi-Modul wird derzeit vorbereitet');
+        } else {
+          // Get driver counts by type
+          setBusinessDrivers(data.business_drivers || 0);
+          setPrivateDrivers(data.private_drivers || 0);
+        }
+      }
+    } catch (err) {}
+  };
 
   const fetchUserData = async () => {
     try {
@@ -305,6 +328,7 @@ export default function TaxiPage({ onNavigate }) {
           </div>
           
           {/* Tab Navigation */}
+          {moduleEnabled && (
           <div className="flex gap-2 mt-4">
             {['book', 'tracking', 'history'].map((tab) => (
               <button
@@ -320,10 +344,37 @@ export default function TaxiPage({ onNavigate }) {
               </button>
             ))}
           </div>
+          )}
         </div>
       </div>
 
       <div className="max-w-lg mx-auto px-4 py-6">
+        {/* MODULE DISABLED NOTICE */}
+        {!moduleEnabled && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex flex-col items-center justify-center py-16 text-center"
+          >
+            <div className="w-24 h-24 mb-6 rounded-full bg-cyan-500/10 flex items-center justify-center">
+              <svg className="w-12 h-12 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+            <h2 className="text-xl font-bold text-white mb-2">Taxi Demnächst</h2>
+            <p className="text-gray-400 mb-6 max-w-sm">
+              {moduleMessage || 'Das Taxi-Modul wartet auf echte Fahrer-Onboarding. Bald verfügbar!'}
+            </p>
+            <button
+              onClick={() => navigate('/')}
+              className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-cyan-600 rounded-xl font-semibold text-black"
+            >
+              Zur Startseite
+            </button>
+          </motion.div>
+        )}
+
+        {moduleEnabled && (
         <AnimatePresence mode="wait">
           {/* BOOKING VIEW */}
           {view === 'book' && (
@@ -334,6 +385,114 @@ export default function TaxiPage({ onNavigate }) {
               exit={{ opacity: 0, y: -20 }}
               className="space-y-6"
             >
+              {/* TAXI TYPE SELECTION */}
+              {!taxiType && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="space-y-4"
+                >
+                  <h2 className="text-lg font-semibold text-center">Wähle deinen Taxi-Typ</h2>
+                  <div className="grid grid-cols-2 gap-4">
+                    {/* Business/Company Taxi */}
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => setTaxiType('business')}
+                      className="relative bg-gradient-to-br from-cyan-500/10 to-blue-500/10 border-2 border-cyan-500/30 rounded-2xl p-5 text-left hover:border-cyan-400/60 transition-all"
+                    >
+                      <div className="w-14 h-14 mb-4 rounded-xl bg-cyan-500/20 flex items-center justify-center">
+                        <svg className="w-8 h-8 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                        </svg>
+                      </div>
+                      <h3 className="text-base font-bold text-white mb-1">Unternehmer</h3>
+                      <p className="text-xs text-gray-400 mb-3">Professionelle Taxiunternehmen mit Lizenz</p>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-cyan-400 font-medium">
+                          {businessDrivers > 0 ? `${businessDrivers} verfügbar` : 'Bald verfügbar'}
+                        </span>
+                      </div>
+                      {businessDrivers > 0 && (
+                        <div className="absolute top-3 right-3 w-3 h-3 rounded-full bg-green-500 animate-pulse" />
+                      )}
+                    </motion.button>
+
+                    {/* Private Taxi */}
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => setTaxiType('private')}
+                      className="relative bg-gradient-to-br from-purple-500/10 to-pink-500/10 border-2 border-purple-500/30 rounded-2xl p-5 text-left hover:border-purple-400/60 transition-all"
+                    >
+                      <div className="w-14 h-14 mb-4 rounded-xl bg-purple-500/20 flex items-center justify-center">
+                        <svg className="w-8 h-8 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                      </div>
+                      <h3 className="text-base font-bold text-white mb-1">Privat</h3>
+                      <p className="text-xs text-gray-400 mb-3">Private Fahrer in deiner Nähe</p>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-purple-400 font-medium">
+                          {privateDrivers > 0 ? `${privateDrivers} verfügbar` : 'Bald verfügbar'}
+                        </span>
+                      </div>
+                      {privateDrivers > 0 && (
+                        <div className="absolute top-3 right-3 w-3 h-3 rounded-full bg-green-500 animate-pulse" />
+                      )}
+                    </motion.button>
+                  </div>
+
+                  {/* Info Box */}
+                  <div className="bg-[#111] rounded-xl p-4 border border-white/5">
+                    <h4 className="text-sm font-semibold mb-2">Was ist der Unterschied?</h4>
+                    <div className="space-y-2 text-xs text-gray-400">
+                      <div className="flex items-start gap-2">
+                        <span className="text-cyan-400">•</span>
+                        <span><strong className="text-white">Unternehmer:</strong> Lizenzierte Taxiunternehmen, feste Preise, Quittung möglich</span>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="text-purple-400">•</span>
+                        <span><strong className="text-white">Privat:</strong> Flexible Preise, schneller verfügbar, Community-Fahrer</span>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* BOOKING FORM - Only show after taxi type is selected */}
+              {taxiType && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="space-y-6"
+                >
+                  {/* Selected Type Badge & Change Button */}
+                  <div className="flex items-center justify-between">
+                    <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${
+                      taxiType === 'business' ? 'bg-cyan-500/10 text-cyan-400' : 'bg-purple-500/10 text-purple-400'
+                    }`}>
+                      {taxiType === 'business' ? (
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                        </svg>
+                      ) : (
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                      )}
+                      <span className="text-sm font-medium">
+                        {taxiType === 'business' ? 'Unternehmer-Taxi' : 'Privat-Taxi'}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => setTaxiType('')}
+                      className="text-xs text-gray-400 hover:text-white underline"
+                    >
+                      Ändern
+                    </button>
+                  </div>
+
               {/* Map with Leaflet */}
               <div className="relative h-52 bg-[#111] rounded-2xl overflow-hidden border border-white/10">
                 <iframe
@@ -487,6 +646,8 @@ export default function TaxiPage({ onNavigate }) {
                 <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-center">
                   {error}
                 </div>
+              )}
+                </motion.div>
               )}
             </motion.div>
           )}
@@ -722,6 +883,7 @@ export default function TaxiPage({ onNavigate }) {
             </motion.div>
           )}
         </AnimatePresence>
+        )}
       </div>
     </div>
   );

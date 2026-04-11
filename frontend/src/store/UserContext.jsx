@@ -7,6 +7,7 @@ const AUTH_ACTIONS = {
   SET_LOADING: 'SET_LOADING',
   SET_ERROR: 'SET_ERROR',
   SESSION_CHECKED: 'SESSION_CHECKED',
+  SET_2FA_PENDING: 'SET_2FA_PENDING',
 };
 
 const guestState = {
@@ -30,6 +31,8 @@ const guestState = {
   email_notifications: true,
   biometric_enabled: false,
   dark_mode: true,
+  requires2FA: false,
+  twoFAEmailHint: '',
 };
 
 function mapUser(u) {
@@ -62,8 +65,10 @@ function authReducer(state, action) {
       return { ...state, error: action.payload, isLoading: false };
     case AUTH_ACTIONS.SET_USER: {
       const u = action.payload;
-      return { ...state, ...mapUser(u), isLoading: false, error: null, sessionReady: true };
+      return { ...state, ...mapUser(u), isLoading: false, error: null, sessionReady: true, requires2FA: false };
     }
+    case AUTH_ACTIONS.SET_2FA_PENDING:
+      return { ...state, requires2FA: true, twoFAEmailHint: action.payload || '', isLoading: false, error: null };
     case AUTH_ACTIONS.LOGOUT:
       return { ...guestState, sessionReady: true };
     case AUTH_ACTIONS.SESSION_CHECKED:
@@ -99,13 +104,40 @@ export function UserProvider({ children }) {
     }
     dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: true });
     try {
-      const user = await api.login({ email, password, remember_me: rememberMe });
+      const response = await api.login({ email, password, remember_me: rememberMe });
+      
+      // Check if 2FA is required
+      if (response.requires_2fa) {
+        dispatch({ type: AUTH_ACTIONS.SET_2FA_PENDING, payload: response.email_hint || '' });
+        return '2fa_required';
+      }
+      
+      dispatch({ type: AUTH_ACTIONS.SET_USER, payload: response });
+      return true;
+    } catch (err) {
+      dispatch({ type: AUTH_ACTIONS.SET_ERROR, payload: err.message });
+      return false;
+    }
+  }, []);
+
+  const verify2FA = useCallback(async (code) => {
+    if (!code || code.length !== 6) {
+      dispatch({ type: AUTH_ACTIONS.SET_ERROR, payload: '6-stelliger Code erforderlich' });
+      return false;
+    }
+    dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: true });
+    try {
+      const user = await api.verify2FA({ code });
       dispatch({ type: AUTH_ACTIONS.SET_USER, payload: user });
       return true;
     } catch (err) {
       dispatch({ type: AUTH_ACTIONS.SET_ERROR, payload: err.message });
       return false;
     }
+  }, []);
+
+  const cancel2FA = useCallback(() => {
+    dispatch({ type: AUTH_ACTIONS.LOGOUT });
   }, []);
 
   const register = useCallback(async (name, email, password, confirmPassword, requestedRole) => {
@@ -163,7 +195,11 @@ export function UserProvider({ children }) {
     email_notifications: state.email_notifications,
     biometric_enabled: state.biometric_enabled,
     dark_mode: state.dark_mode,
+    requires2FA: state.requires2FA,
+    twoFAEmailHint: state.twoFAEmailHint,
     login,
+    verify2FA,
+    cancel2FA,
     register,
     logout,
     refreshUser,

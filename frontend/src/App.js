@@ -29,7 +29,9 @@ import AuthPage from "./pages/AuthPage";
 import NotificationsPage from "./pages/NotificationsPage";
 import InfluencerDashboard from "./pages/InfluencerDashboard";
 import ManagerDashboard from "./pages/ManagerDashboard";
-import TaxiPage from "./pages/TaxiPageReal";
+import TaxiPage from "./pages/TaxiPage";
+import TaxiOperatorPage from "./pages/TaxiOperatorPage";
+import TaxiOperatorDashboard from "./pages/TaxiOperatorDashboard";
 import ScooterPage from "./pages/ScooterPage";
 import FoodPage from "./pages/FoodPage";
 import DriverDashboardPage from "./pages/DriverDashboardPage";
@@ -218,6 +220,10 @@ function AppContent() {
           : <HomePage {...homeProps} />;
       case "/taxi":
         return isGuest ? <HomePage {...homeProps} /> : <TaxiPage onNavigate={handleNavigate} />;
+      case "/taxi-partner":
+        return isGuest ? <HomePage {...homeProps} /> : <TaxiOperatorPage onNavigate={handleNavigate} />;
+      case "/taxi-dashboard":
+        return isGuest ? <HomePage {...homeProps} /> : <TaxiOperatorDashboard onNavigate={handleNavigate} />;
       case "/scooter":
         return isGuest ? <HomePage {...homeProps} /> : <ScooterPage onNavigate={handleNavigate} />;
       case "/food":

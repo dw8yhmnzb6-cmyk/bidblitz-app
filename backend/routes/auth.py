@@ -181,6 +181,59 @@ async def login(req: LoginRequest, request: Request, response: Response):
     await db.login_attempts.delete_many({"identifier": identifier})
 
     user_id = str(user["_id"])
+    
+    # Check if 2FA is enabled
+    if user.get("two_factor_enabled"):
+        # Generate and send OTP
+        otp = ''.join([str(random.randint(0, 9)) for _ in range(6)])
+        now = datetime.now(timezone.utc)
+        expires = now + timedelta(minutes=10)
+        
+        # Store OTP
+        await db.otp_codes.delete_many({"user_id": user_id, "purpose": "login"})
+        await db.otp_codes.insert_one({
+            "user_id": user_id,
+            "code": otp,
+            "purpose": "login",
+            "attempts": 0,
+            "created_at": now.isoformat(),
+            "expires_at": expires.isoformat(),
+        })
+        
+        # Create pending 2FA session
+        pending_token = secrets.token_urlsafe(32)
+        await db.pending_2fa.delete_many({"user_id": user_id})
+        await db.pending_2fa.insert_one({
+            "token": pending_token,
+            "user_id": user_id,
+            "created_at": now.isoformat(),
+            "expires_at": expires.isoformat(),
+        })
+        
+        # Send OTP email
+        try:
+            from core.email import send_otp_email
+            send_otp_email(email, otp, "login", user.get("name", ""))
+        except Exception as e:
+            logger.warning(f"Failed to send OTP email: {e}")
+        
+        # Set pending session cookie
+        response.set_cookie(
+            key="pending_2fa_session",
+            value=pending_token,
+            httponly=True,
+            secure=True,
+            samesite="lax",
+            max_age=600,
+            path="/"
+        )
+        
+        return {
+            "requires_2fa": True,
+            "message": "2FA-Code an deine E-Mail gesendet",
+            "email_hint": f"{email[:3]}***{email[-10:]}",
+        }
+    
     access_token = create_access_token(user_id, email)
     refresh_token = create_refresh_token(user_id)
     set_auth_cookies(response, access_token, refresh_token, req.remember_me)
@@ -322,3 +375,82 @@ async def reset_password(request: Request):
     logger.info(f"Password reset completed for {email}")
     
     return {"ok": True, "message": "Password updated successfully"}
+
+
+# ═══════════════════════════════════════════════════
+# 2FA VERIFY LOGIN
+# ═══════════════════════════════════════════════════
+
+@router.post("/verify-2fa")
+async def verify_2fa_login(request: Request, response: Response):
+    """Complete login after 2FA OTP verification."""
+    body = await request.json()
+    code = body.get("code", "").strip()
+    
+    if not code or len(code) != 6:
+        raise HTTPException(status_code=400, detail="6-stelliger Code erforderlich")
+    
+    # Get pending session
+    pending_token = request.cookies.get("pending_2fa_session")
+    if not pending_token:
+        raise HTTPException(status_code=400, detail="Keine ausstehende Anmeldung")
+    
+    pending = await db.pending_2fa.find_one({"token": pending_token})
+    if not pending:
+        raise HTTPException(status_code=400, detail="Session abgelaufen. Bitte erneut einloggen.")
+    
+    user_id = pending["user_id"]
+    now = datetime.now(timezone.utc)
+    
+    # Check expiry
+    if pending.get("expires_at") and now > datetime.fromisoformat(pending["expires_at"]):
+        await db.pending_2fa.delete_one({"token": pending_token})
+        raise HTTPException(status_code=400, detail="Session abgelaufen")
+    
+    # Find OTP
+    otp_doc = await db.otp_codes.find_one({
+        "user_id": user_id,
+        "purpose": "login",
+        "expires_at": {"$gt": now.isoformat()}
+    })
+    
+    if not otp_doc:
+        raise HTTPException(status_code=400, detail="Code abgelaufen. Bitte erneut einloggen.")
+    
+    if otp_doc.get("attempts", 0) >= 3:
+        await db.otp_codes.delete_one({"_id": otp_doc["_id"]})
+        await db.pending_2fa.delete_one({"token": pending_token})
+        raise HTTPException(status_code=400, detail="Zu viele Versuche. Bitte erneut einloggen.")
+    
+    # Verify code
+    if otp_doc["code"] != code:
+        await db.otp_codes.update_one(
+            {"_id": otp_doc["_id"]},
+            {"$inc": {"attempts": 1}}
+        )
+        remaining = 3 - otp_doc.get("attempts", 0) - 1
+        raise HTTPException(status_code=400, detail=f"Falscher Code. {remaining} Versuche übrig.")
+    
+    # Clean up
+    await db.otp_codes.delete_one({"_id": otp_doc["_id"]})
+    await db.pending_2fa.delete_one({"token": pending_token})
+    response.delete_cookie("pending_2fa_session")
+    
+    # Get user and complete login
+    user = await db.users.find_one({"_id": ObjectId(user_id)})
+    if not user:
+        raise HTTPException(status_code=404, detail="Benutzer nicht gefunden")
+    
+    email = user["email"]
+    ip, ua = get_client_info(request)
+    
+    access_token = create_access_token(user_id, email)
+    refresh_token = create_refresh_token(user_id)
+    set_auth_cookies(response, access_token, refresh_token, remember=True)
+    
+    await log_audit(AuditEvent.LOGIN_SUCCESS, user_id=user_id, email=email,
+                    ip=ip, user_agent=ua, details={"role": user.get("role", "user"), "2fa": True})
+    
+    logger.info(f"2FA login completed for {email}")
+    
+    return serialize_user(user)

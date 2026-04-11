@@ -390,7 +390,25 @@ export default function FoodPage({ onNavigate }) {
                 {loading ? (
                   <div className="text-center py-12 text-gray-500">Lädt Restaurants...</div>
                 ) : restaurants.length === 0 ? (
-                  <div className="text-center py-12 text-gray-500">Keine Restaurants gefunden</div>
+                  <div className="flex flex-col items-center justify-center py-16 text-center">
+                    <div className="w-20 h-20 mb-6 rounded-full bg-orange-500/10 flex items-center justify-center">
+                      <span className="text-4xl">🍽️</span>
+                    </div>
+                    <h3 className="text-lg font-semibold text-white mb-2">Keine Restaurants</h3>
+                    <p className="text-gray-400 text-sm max-w-xs mb-4">
+                      {searchQuery || selectedCategory 
+                        ? 'Keine Restaurants für diese Suche gefunden. Versuche andere Filter.'
+                        : 'Derzeit sind keine Restaurants in deiner Nähe verfügbar. Schau später nochmal vorbei!'}
+                    </p>
+                    {(searchQuery || selectedCategory) && (
+                      <button
+                        onClick={() => { setSearchQuery(''); setSelectedCategory(''); fetchRestaurants(); }}
+                        className="px-4 py-2 bg-orange-500/20 text-orange-400 rounded-lg text-sm font-medium"
+                      >
+                        Filter zurücksetzen
+                      </button>
+                    )}
+                  </div>
                 ) : (
                   restaurants.map((restaurant) => (
                     <motion.button
