@@ -680,23 +680,23 @@ const AuctionGridCard = ({ auction, onClick, t, idx, isWatched, onToggleWatch })
         )}
       </div>
 
-      {/* Content Section — Premium Layout */}
-      <div className="p-4 space-y-3">
+      {/* Content Section — Compact Mobile Layout */}
+      <div className="px-3 py-2.5 space-y-2">
         {/* Product Title */}
-        <h3 className={`text-[13px] font-semibold leading-snug line-clamp-2 min-h-[36px] ${isEnded ? "text-white/30" : "text-white/90"}`}>
+        <h3 className={`text-[12px] font-semibold leading-tight line-clamp-2 min-h-[32px] ${isEnded ? "text-white/30" : "text-white/90"}`}>
           {auction.title}
         </h3>
         
-        {/* Price Section — DealDash Style */}
-        <div className="space-y-2">
-          <div className="flex items-baseline justify-between">
+        {/* Price + UVP */}
+        <div>
+          <div className="flex items-end justify-between">
             <div>
-              <p className="text-[8px] text-white/30 uppercase tracking-widest font-medium mb-1">AKTUELLER PREIS</p>
-              <div className="flex items-baseline gap-1">
-                <span className="text-[8px] text-white/40">€</span>
+              <p className="text-[7px] text-white/25 uppercase tracking-widest font-bold mb-0.5">PREIS</p>
+              <div className="flex items-baseline gap-0.5">
+                <span className="text-[7px] text-white/40">€</span>
                 <motion.span 
                   key={auction.current_price}
-                  className={`text-[26px] font-black font-mono tabular-nums leading-none ${isEnded ? "text-white/30" : isFinalBattle ? "text-[#FF4060]" : "text-[#00E0FF]"}`}
+                  className={`text-[22px] font-black font-mono tabular-nums leading-none ${isEnded ? "text-white/30" : isFinalBattle ? "text-[#FF4060]" : "text-[#00E0FF]"}`}
                   style={!isEnded ? { textShadow: isFinalBattle ? "0 0 20px rgba(255,64,96,0.3)" : "0 0 20px rgba(0,224,255,0.2)" } : {}}
                   initial={{ scale: 1.1 }}
                   animate={{ scale: 1 }}
@@ -705,34 +705,28 @@ const AuctionGridCard = ({ auction, onClick, t, idx, isWatched, onToggleWatch })
                 </motion.span>
               </div>
             </div>
-            {savePct > 0 && !isEnded && (
-              <div className="text-right">
-                <span className="text-[9px] text-white/25 line-through block">€{auction.retail_price.toFixed(2)}</span>
-                <span className="text-[11px] font-bold text-[#00E89D]">-{savePct}%</span>
+            {auction.retail_price > 0 && !isEnded && (
+              <div className="text-right pb-0.5">
+                <p className="text-[9px] text-white/20 line-through">UVP €{auction.retail_price.toFixed(0)}</p>
+                <p className="text-[11px] font-black text-[#00E89D]">-{savePct}%</p>
               </div>
             )}
           </div>
         </div>
 
-        {/* Bid Button — Premium Style */}
+        {/* Bid Button */}
         {!isEnded && (
           <motion.div 
-            className="flex items-center justify-center gap-2 py-3 rounded-xl cursor-pointer"
+            className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl cursor-pointer"
             style={{ 
               background: isFinalBattle 
                 ? "linear-gradient(135deg, rgba(255,64,96,0.15) 0%, rgba(255,64,96,0.08) 100%)" 
                 : "linear-gradient(135deg, rgba(0,224,255,0.12) 0%, rgba(0,224,255,0.06) 100%)",
               border: `1px solid ${isFinalBattle ? "rgba(255,64,96,0.25)" : "rgba(0,224,255,0.2)"}`,
             }}
-            whileHover={{ 
-              background: isFinalBattle 
-                ? "linear-gradient(135deg, rgba(255,64,96,0.25) 0%, rgba(255,64,96,0.15) 100%)" 
-                : "linear-gradient(135deg, rgba(0,224,255,0.2) 0%, rgba(0,224,255,0.1) 100%)",
-              borderColor: isFinalBattle ? "rgba(255,64,96,0.4)" : "rgba(0,224,255,0.35)"
-            }}
             whileTap={{ scale: 0.97 }}>
-            <Zap size={14} className={isFinalBattle ? "text-[#FF4060]" : "text-[#00E0FF]"} />
-            <span className={`text-[12px] font-bold ${isFinalBattle ? "text-[#FF4060]" : "text-[#00E0FF]"}`}>
+            <Zap size={13} className={isFinalBattle ? "text-[#FF4060]" : "text-[#00E0FF]"} />
+            <span className={`text-[11px] font-bold ${isFinalBattle ? "text-[#FF4060]" : "text-[#00E0FF]"}`}>
               {t("auction.bid_now")} +0,01
             </span>
           </motion.div>
@@ -1645,7 +1639,7 @@ const AuctionsPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onLogin
                   </div>
                 </div>
                 {/* Premium Grid */}
-                <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2.5">
                   {active.map((a, i) => <AuctionGridCard key={a.auction_id} auction={a} onClick={() => setSelected(a.auction_id)} t={t} idx={i} isWatched={watchlist.includes(a.auction_id)} onToggleWatch={!isGuest ? toggleWatch : null} />)}
                 </div>
               </motion.div>

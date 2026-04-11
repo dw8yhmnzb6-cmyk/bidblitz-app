@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import {
   ArrowLeft, Eye, EyeOff, Shield, Plus, ArrowUpRight,
-  Clock, TrendingUp, TrendingDown, ChevronRight, QrCode
+  Clock, TrendingUp, TrendingDown, ChevronRight, QrCode,
+  CreditCard, Loader2, X
 } from "lucide-react";
 import { useWallet } from "../store";
 import { useGroupedTransactions, useWalletStats } from "../hooks";
