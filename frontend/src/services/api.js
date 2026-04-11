@@ -127,6 +127,8 @@ export const api = {
   getSavedMethod: () => request("/api/stripe/saved-method"),
   quickTopUp: (body) => request("/api/stripe/quick-topup", { method: "POST", body: JSON.stringify(body) }),
   removeSavedMethod: () => request("/api/stripe/saved-method", { method: "DELETE" }),
+  saveCard: () => request("/api/stripe/save-card", { method: "POST" }),
+  saveCardConfirm: () => request("/api/stripe/save-card-confirm", { method: "POST" }),
 
   // Payment
   pay: (body) => request("/api/payment/pay", { method: "POST", body: JSON.stringify(body) }),
