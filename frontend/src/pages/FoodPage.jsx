@@ -496,24 +496,53 @@ export default function FoodPage({ onNavigate }) {
               <div className="space-y-4">
                 <h3 className="font-semibold text-gray-300">Speisekarte</h3>
                 
-                {(selectedRestaurant.menu || []).map((item) => (
-                  <div
-                    key={item.id}
-                    className="p-4 bg-[#111] rounded-xl border border-white/10 flex justify-between items-center"
-                  >
-                    <div className="flex-1">
-                      <p className="font-semibold">{item.name}</p>
-                      <p className="text-sm text-gray-500 mt-1">{item.description}</p>
-                      <p className="text-orange-400 font-bold mt-2">€{item.price.toFixed(2)}</p>
-                    </div>
-                    <button
-                      onClick={() => addToCart(item)}
-                      className="ml-4 w-10 h-10 bg-orange-500 rounded-full flex items-center justify-center text-black font-bold text-xl"
+                {(selectedRestaurant.menu || []).map((item) => {
+                  // Generate food image based on item name
+                  const getFoodImage = (name) => {
+                    const n = name.toLowerCase();
+                    if (n.includes('döner') || n.includes('doner')) return 'https://images.unsplash.com/photo-1633321702518-7feccafb94d5?w=200&h=200&fit=crop';
+                    if (n.includes('pizza')) return 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=200&h=200&fit=crop';
+                    if (n.includes('burger')) return 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=200&h=200&fit=crop';
+                    if (n.includes('pasta') || n.includes('spaghetti')) return 'https://images.unsplash.com/photo-1621996346565-e3dbc646d9a9?w=200&h=200&fit=crop';
+                    if (n.includes('salat') || n.includes('salad')) return 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=200&h=200&fit=crop';
+                    if (n.includes('lahmacun')) return 'https://images.unsplash.com/photo-1628840042765-356cda07504e?w=200&h=200&fit=crop';
+                    if (n.includes('pommes') || n.includes('fries')) return 'https://images.unsplash.com/photo-1573080496219-bb080dd4f877?w=200&h=200&fit=crop';
+                    if (n.includes('kebab') || n.includes('grill')) return 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=200&h=200&fit=crop';
+                    if (n.includes('wrap')) return 'https://images.unsplash.com/photo-1626700051175-6818013e1d4f?w=200&h=200&fit=crop';
+                    if (n.includes('box') || n.includes('teller')) return 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=200&h=200&fit=crop';
+                    if (n.includes('suppe') || n.includes('soup')) return 'https://images.unsplash.com/photo-1547592166-23ac45744acd?w=200&h=200&fit=crop';
+                    if (n.includes('falafel')) return 'https://images.unsplash.com/photo-1593001874117-c99c800e3eb5?w=200&h=200&fit=crop';
+                    return 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=200&h=200&fit=crop';
+                  };
+                  
+                  return (
+                    <div
+                      key={item.id}
+                      className="p-4 bg-[#111] rounded-xl border border-white/10 flex items-center gap-4"
                     >
-                      +
-                    </button>
-                  </div>
-                ))}
+                      {/* Food Image */}
+                      <div className="w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 bg-gray-800">
+                        <img
+                          src={item.image || getFoodImage(item.name)}
+                          alt={item.name}
+                          className="w-full h-full object-cover"
+                          onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=200&h=200&fit=crop'; }}
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-white">{item.name}</p>
+                        <p className="text-sm text-gray-500 mt-1 line-clamp-2">{item.description}</p>
+                        <p className="text-orange-400 font-bold mt-2">€{item.price.toFixed(2)}</p>
+                      </div>
+                      <button
+                        onClick={() => addToCart(item)}
+                        className="ml-2 w-10 h-10 bg-orange-500 rounded-full flex items-center justify-center text-black font-bold text-xl flex-shrink-0 hover:bg-orange-400 transition-colors"
+                      >
+                        +
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
 
               {/* Cart Preview */}

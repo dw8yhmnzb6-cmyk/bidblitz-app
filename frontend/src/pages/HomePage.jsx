@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import {
@@ -161,12 +161,12 @@ const LoyaltyCard = ({ onNavigate, t }) => {
   const [loyalty, setLoyalty] = useState(null);
   const API = process.env.REACT_APP_BACKEND_URL || "";
 
-  useState(() => {
+  useEffect(() => {
     fetch(`${API}/api/loyalty/status`, { credentials: "include" })
       .then(r => r.json())
       .then(data => { if (data.coins_balance !== undefined) setLoyalty(data); })
       .catch(() => {});
-  });
+  }, [API]);
 
   if (!loyalty) return null;
 

@@ -334,13 +334,16 @@ export default function TaxiPage({ onNavigate }) {
               exit={{ opacity: 0, y: -20 }}
               className="space-y-6"
             >
-              {/* Map Placeholder */}
-              <div className="relative h-48 bg-[#111] rounded-2xl overflow-hidden border border-white/10">
-                <div className="absolute inset-0 flex items-center justify-center text-gray-500">
-                  <div className="text-center">
-                    <div className="text-4xl mb-2">🗺️</div>
-                    <p className="text-sm">Kartenansicht</p>
-                  </div>
+              {/* Map with Leaflet */}
+              <div className="relative h-52 bg-[#111] rounded-2xl overflow-hidden border border-white/10">
+                <iframe
+                  title="Map"
+                  src={`https://www.openstreetmap.org/export/embed.html?bbox=${pickup.lng - 0.02}%2C${pickup.lat - 0.015}%2C${pickup.lng + 0.02}%2C${pickup.lat + 0.015}&layer=mapnik&marker=${pickup.lat}%2C${pickup.lng}`}
+                  className="w-full h-full border-0 opacity-80"
+                  style={{ filter: 'invert(0.9) hue-rotate(180deg)' }}
+                />
+                <div className="absolute top-3 left-3 bg-black/70 px-3 py-1.5 rounded-lg text-xs text-cyan-400 font-medium">
+                  📍 {pickup.address || 'Berlin Mitte'}
                 </div>
                 <button
                   onClick={getCurrentLocation}
@@ -356,20 +359,26 @@ export default function TaxiPage({ onNavigate }) {
               {/* Location Inputs */}
               <div className="space-y-3">
                 <div className="relative">
-                  <div className="absolute left-4 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-green-500" />
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 flex flex-col items-center">
+                    <div className="w-3 h-3 rounded-full bg-cyan-500 ring-4 ring-cyan-500/20" />
+                  </div>
+                  <div className="absolute left-4 top-[58px] -translate-y-1/2 text-[8px] text-gray-500 uppercase tracking-wider">ABHOLUNG</div>
                   <input
                     type="text"
-                    placeholder="Startpunkt"
+                    placeholder="Aktueller Standort"
                     value={pickup.address}
                     onChange={(e) => setPickup({ ...pickup, address: e.target.value })}
-                    className="w-full pl-10 pr-4 py-4 bg-[#111] border border-white/10 rounded-xl text-white placeholder-gray-500 focus:border-cyan-500/50 focus:outline-none"
+                    className="w-full pl-10 pr-4 pt-6 pb-3 bg-[#111] border border-white/10 rounded-xl text-white placeholder-gray-500 focus:border-cyan-500/50 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 transition-all"
                   />
                 </div>
                 <div className="relative">
-                  <div className="absolute left-4 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-red-500" />
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 flex flex-col items-center">
+                    <div className="w-3 h-3 rounded-full bg-red-500 ring-4 ring-red-500/20" />
+                  </div>
+                  <div className="absolute left-4 top-[58px] -translate-y-1/2 text-[8px] text-gray-500 uppercase tracking-wider">ZIEL</div>
                   <input
                     type="text"
-                    placeholder="Wohin?"
+                    placeholder="Wohin möchtest du?"
                     value={dropoff.address}
                     onChange={(e) => {
                       // Simulate geocoding for demo
@@ -379,16 +388,37 @@ export default function TaxiPage({ onNavigate }) {
                         address: e.target.value,
                       });
                     }}
-                    className="w-full pl-10 pr-4 py-4 bg-[#111] border border-white/10 rounded-xl text-white placeholder-gray-500 focus:border-cyan-500/50 focus:outline-none"
+                    className="w-full pl-10 pr-4 pt-6 pb-3 bg-[#111] border border-white/10 rounded-xl text-white placeholder-gray-500 focus:border-red-500/50 focus:outline-none focus:ring-2 focus:ring-red-500/20 transition-all cursor-text"
                   />
+                </div>
+                
+                {/* Quick Destinations */}
+                <div className="flex gap-2 flex-wrap">
+                  {['Flughafen BER', 'Hauptbahnhof', 'Alexanderplatz', 'Brandenburger Tor'].map((dest) => (
+                    <button
+                      key={dest}
+                      onClick={() => setDropoff({ lat: 52.52 + Math.random() * 0.05, lng: 13.405 + Math.random() * 0.05, address: dest })}
+                      className="px-3 py-1.5 bg-white/5 rounded-lg text-xs text-gray-400 hover:bg-cyan-500/10 hover:text-cyan-400 transition-colors border border-white/5"
+                    >
+                      {dest}
+                    </button>
+                  ))}
                 </div>
                 
                 <button
                   onClick={getEstimates}
                   disabled={loading || !dropoff.address}
-                  className="w-full py-4 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-xl font-semibold text-black disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full py-4 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-xl font-semibold text-black disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg hover:shadow-cyan-500/25 transition-all"
                 >
-                  {loading ? 'Lädt...' : 'Preise anzeigen'}
+                  {loading ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                      </svg>
+                      Lädt...
+                    </span>
+                  ) : '🚕 Preise anzeigen'}
                 </button>
               </div>
 
