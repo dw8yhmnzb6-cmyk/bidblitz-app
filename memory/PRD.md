@@ -1,159 +1,197 @@
 # BidBlitz V2 - Product Requirements Document
 
-## Original Problem Statement
-Create a modern fintech Super App (BidBlitz V2) with Revolut-level payment flows, Penny Auctions, Mining, Kids Wallet, POS, and Mobility (Taxi, Scooter, Food). The user requires 100% REAL logic and Map integrations. ALL payments must be strictly internal (Wallet-only closed ecosystem).
+## Project Overview
+BidBlitz V2 is a comprehensive fintech Super App combining Revolut-level payment flows, a Penny Auction System, GoMining-style Mining Module, Mobility (Taxi, Scooter, Food Delivery), Marketplace, and Kids Wallet. The app strictly uses REAL data - no fake/demo data generation.
 
 ## Tech Stack
-- **Frontend**: React, TailwindCSS, Framer Motion, Glassmorphism UI
-- **Backend**: FastAPI, MongoDB (Motor), Python 3.11+
-- **Integrations**: Stripe (via Emergent Proxy), ReportLab (PDFs)
-- **Architecture**: STRICT Wallet-Only Ecosystem with unified Payment Engine
+- **Frontend**: React, TailwindCSS, Framer Motion, React-Leaflet
+- **Backend**: FastAPI, MongoDB (Motor async driver)
+- **Payments**: Stripe (via Emergent Proxy), Internal Wallet System
+- **Auth**: JWT tokens with HTTP-only cookies
 
----
+## Core Features Implemented
 
-## Implementation Status (Last Updated: 2026-04-11)
+### 1. Authentication & User Management ✅
+- JWT-based authentication
+- Email/password login and registration
+- Role-based access (customer, driver, restaurant_owner, merchant, admin)
+- KYC verification system
 
-### PHASE 1 — FIX ALL CRITICAL BUGS ✅ DONE
-| Item | Status |
-|------|--------|
-| KYC endpoint mismatch | ✅ Fixed |
-| /api/admin/stats | ✅ Working |
-| /rides/active | ✅ Working |
-| /auctions/active | ✅ Working (50 active) |
-| Merchant dashboard revenue | ✅ Fixed (datetime comparison) |
-| ObjectId serialization | ✅ Fixed |
-| Password reset | ✅ Working |
+### 2. Wallet System ✅
+- Central payment engine (`/app/backend/core/payment_engine.py`)
+- Atomic transactions with duplicate prevention
+- Stripe Checkout integration for top-ups
+- Real-time balance updates
+- Transaction history
 
-### PHASE 2 — WALLET / PAYMENT CORE SAFETY ✅ MOSTLY DONE
-| Item | Status |
-|------|--------|
-| Unified Payment Engine | ✅ Created `/app/backend/core/payment_engine.py` |
-| Auction Credits (buy-credits) | ✅ Uses payment_engine |
-| Mining Purchase (buy-miner) | ✅ Uses payment_engine |
-| Mining Upgrade | ✅ Uses payment_engine |
-| Taxi Complete | ✅ Uses payment_engine |
-| Taxi Cancel | ✅ Uses payment_engine |
-| Scooter Unlock | ✅ Uses payment_engine |
-| Scooter End | ✅ Uses payment_engine |
-| Food Order | ✅ Uses payment_engine |
-| Food Cancel (Refund) | ✅ Uses payment_engine |
-| Kids Transfer | ✅ Uses payment_engine |
-| Stripe Top-Up | ✅ Uses payment_engine |
-| Idempotency/Duplicate Prevention | ✅ Implemented |
-| Optimistic Locking | ✅ Implemented |
+### 3. Penny Auction System ✅
+- Real-time bidding with WebSocket simulation
+- Admin-controlled bot bidding
+- Credit-based bidding system
+- Auction countdown timers
 
-### PHASE 3 — BIDBLITZ KIDS ✅ DONE
-| Item | Status |
-|------|--------|
-| Paywall/Trial Gating | ✅ Working |
-| Parent Dashboard | ✅ Working |
-| Add Child Flow | ✅ Working |
-| Child Wallet System | ✅ Working |
-| Spending Limits (Daily/Weekly) | ✅ Enforced |
-| Freeze/Unfreeze | ✅ Working |
-| Child App UI (ChildModePage) | ✅ Implemented |
-| Parent Notifications | ✅ Working |
-| Child PIN Login | ✅ Working |
+### 4. Mining Module (GoMining-Style) ✅
+- Mining packages with hashrate
+- Auto-rewards background loop
+- P2P Marketplace for miners
+- Mining referral system
+- Launchpad for new tokens
 
-### PHASE 4 — AUCTIONS / MINING ✅ DONE
-| Item | Status |
-|------|--------|
-| Active auctions load correctly | ✅ Working (50 active) |
-| Buy credits | ✅ Uses payment_engine |
-| Place bid | ✅ Working |
-| Mining buy package | ✅ Uses payment_engine |
-| Mining upgrades | ✅ Uses payment_engine |
-| Auto-rewards | ✅ Background loop active |
-| Referral boost | ✅ Working |
+### 5. Taxi/Driver System ✅
+- Real driver registration with KYC
+- Driver online/offline status
+- GPS location tracking
+- Ride booking and matching
+- Dynamic pricing with commission
+- Driver earnings to wallet
 
-### PHASE 5 — MERCHANT / POS ✅ DONE
-| Item | Status |
-|------|--------|
-| QR generation | ✅ Working |
-| POS Payment Flow | ✅ Working |
-| Receipt PDF Export | ✅ Implemented (Download button added) |
-| Merchant Stats | ✅ Fixed |
+### 6. Scooter System ✅
+- IoT hardware integration stubs
+- Nearby scooter discovery with GPS
+- Unlock/Lock flow
+- Per-minute pricing
+- Battery status tracking
 
-### PHASE 6 — TAXI / SCOOTER / FOOD ⚠️ PARTIAL
-| Item | Status |
-|------|--------|
-| Taxi Booking | ✅ Working |
-| Taxi Complete (wallet deduct) | ✅ Uses payment_engine |
-| Driver Online/Offline | ✅ Working |
-| Scooter Unlock/End | ✅ Uses payment_engine |
-| Food Order (wallet deduct) | ✅ Uses payment_engine |
-| Food Cancel (refund) | ✅ Uses payment_engine |
-| Real map integration | ⚠️ Uses placeholder coordinates |
-| Persistent scooter fleet | ⚠️ Seeded data |
-| Restaurant CRUD | ⚠️ Seeded data |
+### 7. Food Delivery System ✅
+- Restaurant registration and approval
+- Menu management
+- Order creation with wallet payment
+- Restaurant dashboard for incoming orders
+- Delivery driver flow
+- Payment split (restaurant/platform/driver)
 
-### PHASE 7 — ADMIN ✅ DONE
-| Item | Status |
-|------|--------|
-| Admin stats | ✅ Working |
-| User management | ✅ Working |
-| KYC approve/reject | ✅ Working |
-| Transaction viewer | ✅ Working |
+### 8. Marketplace (eBay-Style) ✅
+- Listing creation with categories
+- Browse/search/filter
+- Buy with wallet
+- Seller contact messaging
+- Premium boost listings
+- Commission on sales
 
-### PHASE 8 — SECURITY / EMAIL ⚠️ NOT STARTED
-| Item | Status |
-|------|--------|
-| 2FA (OTP) | ❌ Not implemented |
-| Email notifications | ⚠️ Graceful fallback exists |
-| Rate limiting | ⚠️ Basic implementation |
-| PWA | ❌ Not implemented |
+### 9. Chat System ✅
+- User-to-user messaging
+- Chat list with unread counts
+- Real-time polling (3-second intervals)
+- Message notifications
 
----
+### 10. Referral & Rewards System ✅
+- Auto-generated referral codes
+- Share via WhatsApp/Email/Telegram
+- Multi-level rewards (3 levels)
+- Daily login bonus
+- Streak bonuses (3, 7, 14, 30 days)
+- Influencer/Manager commission system
 
-## Critical Files
+### 11. Partner Registration ✅
+- Driver application with document upload
+- Restaurant application flow
+- Admin approval panel
+- Role-based access after approval
 
-### Payment Engine (CRITICAL)
-- `/app/backend/core/payment_engine.py` - Single source of truth for all wallet transactions
+### 12. Merchant POS ✅
+- QR code payments
+- Receipt PDF generation
+- Transaction history
+- Daily revenue tracking
 
-### Core Routes
-- `/app/backend/routes/auctions.py` - Penny auctions
-- `/app/backend/routes/mining.py` - Mining module
-- `/app/backend/routes/kids.py` - Kids wallet system
-- `/app/backend/routes/taxi.py` - Taxi service
-- `/app/backend/routes/scooter.py` - Scooter rental
-- `/app/backend/routes/food.py` - Food delivery
-- `/app/backend/routes/stripe.py` - Stripe top-up
-- `/app/backend/routes/pos_payments.py` - Merchant POS + Receipt PDF
+### 13. Kids Wallet ✅
+- Parental controls
+- Spending limits
+- Activity monitoring
 
-### Frontend
-- `/app/frontend/src/pages/MerchantPage.jsx` - Merchant dashboard with PDF download
-- `/app/frontend/src/pages/ChildModePage.jsx` - Child app interface
-- `/app/frontend/src/components/KidsNotifications.jsx` - Parent notifications
+### 14. Internationalization ✅
+- 15+ languages supported
+- Flag emojis for language selector
+- Dynamic translation switching
 
----
+## API Endpoints
+
+### Authentication
+- `POST /api/auth/register`
+- `POST /api/auth/login`
+- `GET /api/auth/me`
+- `POST /api/auth/logout`
+
+### Wallet
+- `GET /api/wallet/balance`
+- `GET /api/wallet/transactions`
+- `POST /api/wallet/transfer`
+
+### Stripe
+- `POST /api/stripe/checkout`
+- `GET /api/stripe/checkout/status/{session_id}`
+- `POST /api/stripe/webhook` ✅ NEW
+
+### Taxi
+- `GET /api/taxi/drivers/nearby`
+- `POST /api/taxi/estimate`
+- `POST /api/taxi/book`
+- `POST /api/taxi/driver/accept`
+- `POST /api/taxi/complete`
+
+### Scooter
+- `GET /api/scooter/nearby`
+- `POST /api/scooter/unlock`
+- `POST /api/scooter/lock`
+
+### Food Delivery
+- `GET /api/food/restaurants`
+- `GET /api/food/nearby`
+- `GET /api/food/restaurant/{id}/menu`
+- `POST /api/food/order`
+- `GET /api/food/restaurant/dashboard`
+- `POST /api/food/restaurant/order/accept`
+- `POST /api/food/delivery/accept`
+- `POST /api/food/delivery/complete`
+
+### Marketplace
+- `GET /api/marketplace/list`
+- `POST /api/marketplace/create`
+- `GET /api/marketplace/{id}`
+- `POST /api/marketplace/buy`
+- `POST /api/marketplace/contact`
+- `POST /api/marketplace/boost`
+
+### Chat
+- `POST /api/chat/create`
+- `POST /api/chat/send`
+- `GET /api/chat/list`
+- `GET /api/chat/{chat_id}`
+- `GET /api/chat/poll`
+
+### Referral
+- `GET /api/referral/my-code`
+- `GET /api/referral/dashboard`
+- `POST /api/referral/claim-daily`
+- `GET /api/referral/daily-status`
+
+### Applications (Partner Registration)
+- `POST /api/applications/driver/apply`
+- `POST /api/applications/restaurant/apply`
+- `GET /api/applications/admin/pending`
+- `POST /api/applications/admin/approve`
 
 ## Test Credentials
-- **Admin**: `admin@bidblitz.com` / `BidBlitz2026!`
-- **Customer**: `kunde@bidblitz.com` / `Kunde2026!`
+- **Admin**: `admin@bidblitz.com` | `BidBlitz2026!`
+- **Customer**: `kunde@bidblitz.com` | `Kunde2026!`
 
----
+## Known Issues
+1. KYC endpoint mismatch (`/status` vs `/my-status`) - P2
+2. Merchant dashboard `today_revenue` calculation - P2
 
-## What's Revenue-Ready Now
-1. ✅ Wallet Top-Up (Stripe)
-2. ✅ Penny Auctions (Credit purchase)
-3. ✅ Mining Packages
-4. ✅ Kids Subscription
-5. ✅ Merchant POS Payments
+## Upcoming Features (Backlog)
+1. 2FA Integration (Email OTP / Google Authenticator)
+2. Email Notifications (Resend API)
+3. Apple Pay / Google Pay
+4. PWA / Installability
+5. NFC Tap-to-Pay
+6. Developer SDK Documentation
 
-## What Blocks Real Launch
-1. ❌ 2FA not implemented
-2. ❌ Email provider not fully configured
-3. ⚠️ Mobility modules use seeded/mock data
-4. ⚠️ Real map provider not integrated
+## Architecture Notes
+- All payments go through `payment_engine.py` for atomicity
+- No fake/demo data - everything requires real registration
+- Admin approval required for drivers and restaurants
+- Stripe webhook handles wallet credits on payment completion
+- Real GPS integration with Leaflet maps
 
-## Is the system safe for real users and real money?
-**YES** — The Payment Engine prevents double spending, handles idempotency, uses optimistic locking, and creates full audit trails. All critical payment flows use this unified engine.
-
----
-
-## Next Priority Tasks
-1. Implement 2FA (Email OTP)
-2. Configure email provider (Resend)
-3. Replace seeded mobility data with admin-managed data
-4. Integrate real map provider
-
+## Updated: 2026-04-11

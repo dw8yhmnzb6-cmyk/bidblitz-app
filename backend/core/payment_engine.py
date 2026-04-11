@@ -732,3 +732,677 @@ async def process_child_payment(
         new_balance=updated_child.get("balance", 0),
         status=TransactionStatus.COMPLETED
     )
+
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# CENTRAL PAYMENT SYSTEM - All modules use this
+# ══════════════════════════════════════════════════════════════════════════════
+
+# Default Commission Rates (can be overridden by admin config)
+DEFAULT_COMMISSIONS = {
+    "taxi": 0.20,        # 20%
+    "scooter": 0.15,     # 15%
+    "food": 0.10,        # 10%
+    "marketplace": 0.05, # 5%
+    "auction": 0.10,     # 10%
+    "mining": 0.05,      # 5%
+    "subscription": 0.0, # 0%
+    "merchant": 0.025,   # 2.5%
+}
+
+# Cashback rates
+DEFAULT_CASHBACK = {
+    "standard": 0.01,    # 1%
+    "premium": 0.03,     # 3%
+    "vip": 0.05,         # 5%
+}
+
+# Referral reward rates
+REFERRAL_REWARD_RATE = 0.02  # 2% of transaction
+
+
+class PaymentType(str, Enum):
+    TAXI = "taxi"
+    SCOOTER = "scooter"
+    FOOD = "food"
+    MARKETPLACE = "marketplace"
+    AUCTION = "auction"
+    MINING = "mining"
+    SUBSCRIPTION = "subscription"
+    MERCHANT = "merchant"
+
+
+class CentralPaymentRequest(BaseModel):
+    """Central payment request model."""
+    user_id: str
+    amount: float
+    payment_type: PaymentType
+    reference_id: str
+    description: Optional[str] = None
+    recipient_id: Optional[str] = None  # For payments to sellers/drivers
+    metadata: Optional[Dict] = None
+
+
+class CentralPaymentResult(BaseModel):
+    """Central payment result model."""
+    success: bool
+    transaction_id: Optional[str] = None
+    reference: Optional[str] = None
+    user_new_balance: Optional[float] = None
+    recipient_earnings: Optional[float] = None
+    platform_fee: Optional[float] = None
+    cashback_earned: Optional[float] = None
+    referral_reward: Optional[float] = None
+    error: Optional[str] = None
+
+
+async def get_commission_rate(payment_type: str) -> float:
+    """Get commission rate from admin config or use default."""
+    config = await db.platform_config.find_one({"key": "commissions"})
+    if config and config.get("rates", {}).get(payment_type) is not None:
+        return config["rates"][payment_type]
+    return DEFAULT_COMMISSIONS.get(payment_type, 0.05)
+
+
+async def get_cashback_rate(user_id: str) -> float:
+    """Get user's cashback rate based on their tier."""
+    if ObjectId.is_valid(user_id):
+        user = await db.users.find_one({"_id": ObjectId(user_id)})
+    else:
+        user = await db.users.find_one({"_id": user_id})
+    
+    if not user:
+        return 0
+    
+    tier = user.get("tier", "standard")
+    is_premium = user.get("is_premium", False)
+    
+    if is_premium or tier == "vip":
+        return DEFAULT_CASHBACK["vip"]
+    elif tier == "premium":
+        return DEFAULT_CASHBACK["premium"]
+    return DEFAULT_CASHBACK["standard"]
+
+
+async def get_referrer(user_id: str) -> Optional[str]:
+    """Get user's referrer ID if exists."""
+    if ObjectId.is_valid(user_id):
+        user = await db.users.find_one({"_id": ObjectId(user_id)})
+    else:
+        user = await db.users.find_one({"_id": user_id})
+    
+    if user:
+        return user.get("referred_by")
+    return None
+
+
+async def process_central_payment(req: CentralPaymentRequest) -> CentralPaymentResult:
+    """
+    CENTRAL PAYMENT PROCESSOR
+    
+    Handles ALL payment types with:
+    1. Balance validation
+    2. Atomic deduction
+    3. Commission calculation
+    4. Auto-distribution to recipient
+    5. Referral rewards
+    6. Cashback
+    7. Activity tracking
+    8. Notifications
+    """
+    
+    user_id = req.user_id
+    amount = round(req.amount, 2)
+    payment_type = req.payment_type.value
+    
+    if amount <= 0:
+        return CentralPaymentResult(success=False, error="Amount must be positive")
+    
+    # 1. Get user and validate balance
+    try:
+        current_balance = await get_user_balance(user_id)
+    except ValueError as e:
+        return CentralPaymentResult(success=False, error=str(e))
+    
+    if current_balance < amount:
+        return CentralPaymentResult(
+            success=False,
+            error=f"Insufficient balance. Available: €{current_balance:.2f}, Required: €{amount:.2f}"
+        )
+    
+    now = datetime.now(timezone.utc)
+    tx_id = generate_transaction_id()
+    ref = generate_reference(payment_type.upper()[:3])
+    
+    # 2. Calculate commission
+    commission_rate = await get_commission_rate(payment_type)
+    platform_fee = round(amount * commission_rate, 2)
+    recipient_amount = round(amount - platform_fee, 2)
+    
+    # 3. Debit user wallet (atomic)
+    debit_result = await db.users.update_one(
+        {
+            "_id": ObjectId(user_id) if ObjectId.is_valid(user_id) else user_id,
+            "balance": {"$gte": amount}
+        },
+        {"$inc": {"balance": -amount}}
+    )
+    
+    if debit_result.modified_count == 0:
+        return CentralPaymentResult(success=False, error="Balance changed during transaction")
+    
+    # 4. Create transaction record
+    transaction = {
+        "id": tx_id,
+        "user_id": user_id,
+        "type": payment_type,
+        "amount": -amount,
+        "description": req.description or f"{payment_type.title()} Payment",
+        "reference": ref,
+        "reference_id": req.reference_id,
+        "status": "completed",
+        "platform_fee": platform_fee,
+        "recipient_id": req.recipient_id,
+        "recipient_amount": recipient_amount if req.recipient_id else None,
+        "metadata": req.metadata or {},
+        "created_at": now.isoformat(),
+    }
+    await db.transactions.insert_one(transaction)
+    
+    # 5. Credit recipient if exists (driver, seller, merchant)
+    if req.recipient_id:
+        await db.users.update_one(
+            {"_id": ObjectId(req.recipient_id) if ObjectId.is_valid(req.recipient_id) else req.recipient_id},
+            {"$inc": {"balance": recipient_amount}}
+        )
+        
+        # Recipient transaction record
+        await db.transactions.insert_one({
+            "id": generate_transaction_id(),
+            "user_id": req.recipient_id,
+            "type": f"{payment_type}_income",
+            "amount": recipient_amount,
+            "description": f"Einnahme: {req.description or payment_type}",
+            "reference": f"INC-{ref}",
+            "source_user_id": user_id,
+            "status": "completed",
+            "created_at": now.isoformat(),
+        })
+    
+    # 6. Record platform revenue
+    await db.platform_revenue.update_one(
+        {"date": now.strftime("%Y-%m-%d")},
+        {"$inc": {
+            "total": platform_fee,
+            f"by_source.{payment_type}": platform_fee,
+            "transaction_count": 1,
+        }},
+        upsert=True
+    )
+    
+    # 7. Process cashback
+    cashback = 0
+    cashback_rate = await get_cashback_rate(user_id)
+    if cashback_rate > 0:
+        cashback = round(amount * cashback_rate, 2)
+        if cashback >= 0.01:
+            await db.users.update_one(
+                {"_id": ObjectId(user_id) if ObjectId.is_valid(user_id) else user_id},
+                {"$inc": {"balance": cashback}}
+            )
+            await db.transactions.insert_one({
+                "id": generate_transaction_id(),
+                "user_id": user_id,
+                "type": "cashback",
+                "amount": cashback,
+                "description": f"Cashback ({cashback_rate*100:.0f}%)",
+                "reference": f"CB-{ref}",
+                "source_tx": tx_id,
+                "status": "completed",
+                "created_at": now.isoformat(),
+            })
+    
+    # 8. Process referral reward
+    referral_reward = 0
+    referrer_id = await get_referrer(user_id)
+    if referrer_id:
+        referral_reward = round(amount * REFERRAL_REWARD_RATE, 2)
+        if referral_reward >= 0.01:
+            await db.users.update_one(
+                {"_id": ObjectId(referrer_id) if ObjectId.is_valid(referrer_id) else referrer_id},
+                {"$inc": {"balance": referral_reward}}
+            )
+            await db.transactions.insert_one({
+                "id": generate_transaction_id(),
+                "user_id": referrer_id,
+                "type": "referral_reward",
+                "amount": referral_reward,
+                "description": f"Empfehlungsbonus ({REFERRAL_REWARD_RATE*100:.0f}%)",
+                "reference": f"REF-{ref}",
+                "referred_user_id": user_id,
+                "status": "completed",
+                "created_at": now.isoformat(),
+            })
+    
+    # 9. Track activity
+    await track_user_activity(user_id, payment_type, amount)
+    
+    # 10. Check and apply streaks
+    await process_streaks(user_id, payment_type)
+    
+    # Get new balance
+    new_balance = await get_user_balance(user_id)
+    
+    # Log audit
+    await log_audit(
+        action=f"central_payment_{payment_type}",
+        user_id=user_id,
+        details={
+            "tx_id": tx_id,
+            "amount": amount,
+            "platform_fee": platform_fee,
+            "recipient_id": req.recipient_id,
+            "cashback": cashback,
+            "referral_reward": referral_reward,
+        },
+        status="success"
+    )
+    
+    return CentralPaymentResult(
+        success=True,
+        transaction_id=tx_id,
+        reference=ref,
+        user_new_balance=new_balance,
+        recipient_earnings=recipient_amount if req.recipient_id else None,
+        platform_fee=platform_fee,
+        cashback_earned=cashback if cashback > 0 else None,
+        referral_reward=referral_reward if referral_reward > 0 else None,
+    )
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# ACTIVITY TRACKING
+# ══════════════════════════════════════════════════════════════════════════════
+
+async def track_user_activity(user_id: str, activity_type: str, amount: float):
+    """Track user spending and engagement."""
+    now = datetime.now(timezone.utc)
+    today = now.strftime("%Y-%m-%d")
+    
+    # Update daily activity
+    await db.user_activity.update_one(
+        {"user_id": user_id, "date": today},
+        {
+            "$inc": {
+                "total_spent": amount,
+                f"by_type.{activity_type}": amount,
+                "transaction_count": 1,
+            },
+            "$set": {"last_activity": now.isoformat()},
+            "$setOnInsert": {"created_at": now.isoformat()},
+        },
+        upsert=True
+    )
+    
+    # Update user lifetime stats
+    await db.users.update_one(
+        {"_id": ObjectId(user_id) if ObjectId.is_valid(user_id) else user_id},
+        {
+            "$inc": {
+                "lifetime_spent": amount,
+                "total_transactions": 1,
+            },
+            "$set": {"last_transaction_at": now.isoformat()},
+        }
+    )
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# STREAK SYSTEM
+# ══════════════════════════════════════════════════════════════════════════════
+
+STREAK_REWARDS = {
+    3: 0.50,   # 3 days: €0.50
+    7: 2.00,   # 7 days: €2.00
+    14: 5.00,  # 14 days: €5.00
+    30: 15.00, # 30 days: €15.00
+}
+
+PURCHASE_STREAK_REWARDS = {
+    5: 1.00,   # 5 purchases: €1.00
+    10: 3.00,  # 10 purchases: €3.00
+    25: 10.00, # 25 purchases: €10.00
+    50: 25.00, # 50 purchases: €25.00
+}
+
+
+async def process_streaks(user_id: str, activity_type: str):
+    """Check and reward user streaks."""
+    now = datetime.now(timezone.utc)
+    today = now.strftime("%Y-%m-%d")
+    
+    # Get or create streak record
+    streak = await db.user_streaks.find_one({"user_id": user_id})
+    
+    if not streak:
+        streak = {
+            "user_id": user_id,
+            "login_streak": 0,
+            "purchase_streak": 0,
+            "last_login_date": None,
+            "last_purchase_date": None,
+            "total_purchases": 0,
+            "rewarded_milestones": [],
+            "created_at": now.isoformat(),
+        }
+        await db.user_streaks.insert_one(streak)
+    
+    updates = {}
+    rewards_to_give = []
+    
+    # Purchase streak
+    last_purchase = streak.get("last_purchase_date")
+    if last_purchase != today:
+        updates["last_purchase_date"] = today
+        updates["total_purchases"] = streak.get("total_purchases", 0) + 1
+        
+        # Check consecutive days
+        if last_purchase:
+            from datetime import timedelta
+            last_date = datetime.strptime(last_purchase, "%Y-%m-%d")
+            today_date = datetime.strptime(today, "%Y-%m-%d")
+            diff = (today_date - last_date).days
+            
+            if diff == 1:
+                updates["purchase_streak"] = streak.get("purchase_streak", 0) + 1
+            elif diff > 1:
+                updates["purchase_streak"] = 1
+        else:
+            updates["purchase_streak"] = 1
+    
+    # Check milestones
+    total_purchases = updates.get("total_purchases", streak.get("total_purchases", 0))
+    rewarded = streak.get("rewarded_milestones", [])
+    
+    for milestone, reward in PURCHASE_STREAK_REWARDS.items():
+        milestone_key = f"purchases_{milestone}"
+        if total_purchases >= milestone and milestone_key not in rewarded:
+            rewards_to_give.append({
+                "type": "purchase_milestone",
+                "milestone": milestone,
+                "amount": reward,
+                "key": milestone_key,
+            })
+    
+    # Apply updates
+    if updates:
+        await db.user_streaks.update_one(
+            {"user_id": user_id},
+            {"$set": updates}
+        )
+    
+    # Give rewards
+    for reward in rewards_to_give:
+        await db.users.update_one(
+            {"_id": ObjectId(user_id) if ObjectId.is_valid(user_id) else user_id},
+            {"$inc": {"balance": reward["amount"]}}
+        )
+        await db.transactions.insert_one({
+            "id": generate_transaction_id(),
+            "user_id": user_id,
+            "type": "streak_reward",
+            "amount": reward["amount"],
+            "description": f"Streak Bonus: {reward['milestone']} Käufe!",
+            "reference": generate_reference("STREAK"),
+            "status": "completed",
+            "created_at": now.isoformat(),
+        })
+        await db.user_streaks.update_one(
+            {"user_id": user_id},
+            {"$push": {"rewarded_milestones": reward["key"]}}
+        )
+        
+        # Notification
+        await db.notifications.insert_one({
+            "id": secrets.token_hex(8),
+            "user_id": user_id,
+            "type": "streak_reward",
+            "title": "Streak Bonus!",
+            "message": f"Du hast {reward['milestone']} Käufe erreicht! €{reward['amount']:.2f} Bonus!",
+            "read": False,
+            "created_at": now.isoformat(),
+        })
+
+
+async def process_login_streak(user_id: str):
+    """Process daily login streak."""
+    now = datetime.now(timezone.utc)
+    today = now.strftime("%Y-%m-%d")
+    
+    streak = await db.user_streaks.find_one({"user_id": user_id})
+    
+    if not streak:
+        await db.user_streaks.insert_one({
+            "user_id": user_id,
+            "login_streak": 1,
+            "last_login_date": today,
+            "rewarded_milestones": [],
+            "created_at": now.isoformat(),
+        })
+        return
+    
+    last_login = streak.get("last_login_date")
+    if last_login == today:
+        return  # Already logged in today
+    
+    new_streak = 1
+    if last_login:
+        from datetime import timedelta
+        last_date = datetime.strptime(last_login, "%Y-%m-%d")
+        today_date = datetime.strptime(today, "%Y-%m-%d")
+        diff = (today_date - last_date).days
+        
+        if diff == 1:
+            new_streak = streak.get("login_streak", 0) + 1
+    
+    await db.user_streaks.update_one(
+        {"user_id": user_id},
+        {"$set": {
+            "login_streak": new_streak,
+            "last_login_date": today,
+        }}
+    )
+    
+    # Check for rewards
+    rewarded = streak.get("rewarded_milestones", [])
+    for days, reward in STREAK_REWARDS.items():
+        key = f"login_{days}"
+        if new_streak >= days and key not in rewarded:
+            await db.users.update_one(
+                {"_id": ObjectId(user_id) if ObjectId.is_valid(user_id) else user_id},
+                {"$inc": {"balance": reward}}
+            )
+            await db.transactions.insert_one({
+                "id": generate_transaction_id(),
+                "user_id": user_id,
+                "type": "login_streak_reward",
+                "amount": reward,
+                "description": f"Login Streak: {days} Tage!",
+                "reference": generate_reference("LOGIN"),
+                "status": "completed",
+                "created_at": now.isoformat(),
+            })
+            await db.user_streaks.update_one(
+                {"user_id": user_id},
+                {"$push": {"rewarded_milestones": key}}
+            )
+            await db.notifications.insert_one({
+                "id": secrets.token_hex(8),
+                "user_id": user_id,
+                "type": "login_streak",
+                "title": f"{days}-Tage Streak!",
+                "message": f"Du hast {days} Tage in Folge eingeloggt! €{reward:.2f} Bonus!",
+                "read": False,
+                "created_at": now.isoformat(),
+            })
+            break  # Only one reward per login
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# ADMIN CONFIGURATION
+# ══════════════════════════════════════════════════════════════════════════════
+
+async def admin_set_commission_rates(rates: Dict[str, float]):
+    """Admin: Set commission rates for all payment types."""
+    await db.platform_config.update_one(
+        {"key": "commissions"},
+        {"$set": {
+            "rates": rates,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }},
+        upsert=True
+    )
+
+
+async def admin_get_commission_rates() -> Dict[str, float]:
+    """Admin: Get current commission rates."""
+    config = await db.platform_config.find_one({"key": "commissions"})
+    if config:
+        return config.get("rates", DEFAULT_COMMISSIONS)
+    return DEFAULT_COMMISSIONS
+
+
+async def admin_get_revenue_stats(days: int = 30) -> Dict:
+    """Admin: Get platform revenue statistics."""
+    from datetime import timedelta
+    
+    now = datetime.now(timezone.utc)
+    start_date = (now - timedelta(days=days)).strftime("%Y-%m-%d")
+    
+    revenues = await db.platform_revenue.find(
+        {"date": {"$gte": start_date}},
+        {"_id": 0}
+    ).to_list(days + 1)
+    
+    total = sum(r.get("total", 0) for r in revenues)
+    by_source = {}
+    for r in revenues:
+        for source, amount in r.get("by_source", {}).items():
+            by_source[source] = by_source.get(source, 0) + amount
+    
+    return {
+        "total_revenue": round(total, 2),
+        "by_source": {k: round(v, 2) for k, v in by_source.items()},
+        "period_days": days,
+        "daily_average": round(total / max(len(revenues), 1), 2),
+        "daily_breakdown": revenues,
+    }
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# CONVENIENCE WRAPPERS FOR EACH MODULE
+# ══════════════════════════════════════════════════════════════════════════════
+
+async def process_taxi_payment(
+    user_id: str,
+    amount: float,
+    ride_id: str,
+    driver_id: str,
+    description: str = None
+) -> CentralPaymentResult:
+    """Process taxi ride payment."""
+    return await process_central_payment(CentralPaymentRequest(
+        user_id=user_id,
+        amount=amount,
+        payment_type=PaymentType.TAXI,
+        reference_id=ride_id,
+        recipient_id=driver_id,
+        description=description or f"Taxi Ride {ride_id[:8]}",
+    ))
+
+
+async def process_scooter_payment(
+    user_id: str,
+    amount: float,
+    ride_id: str,
+    description: str = None
+) -> CentralPaymentResult:
+    """Process scooter ride payment."""
+    return await process_central_payment(CentralPaymentRequest(
+        user_id=user_id,
+        amount=amount,
+        payment_type=PaymentType.SCOOTER,
+        reference_id=ride_id,
+        description=description or f"Scooter Ride {ride_id[:8]}",
+    ))
+
+
+async def process_food_payment(
+    user_id: str,
+    amount: float,
+    order_id: str,
+    restaurant_id: str,
+    description: str = None
+) -> CentralPaymentResult:
+    """Process food order payment."""
+    return await process_central_payment(CentralPaymentRequest(
+        user_id=user_id,
+        amount=amount,
+        payment_type=PaymentType.FOOD,
+        reference_id=order_id,
+        recipient_id=restaurant_id,
+        description=description or f"Food Order {order_id[:8]}",
+    ))
+
+
+async def process_marketplace_payment(
+    user_id: str,
+    amount: float,
+    listing_id: str,
+    seller_id: str,
+    description: str = None
+) -> CentralPaymentResult:
+    """Process marketplace purchase."""
+    return await process_central_payment(CentralPaymentRequest(
+        user_id=user_id,
+        amount=amount,
+        payment_type=PaymentType.MARKETPLACE,
+        reference_id=listing_id,
+        recipient_id=seller_id,
+        description=description or f"Marketplace Purchase",
+    ))
+
+
+async def process_auction_payment(
+    user_id: str,
+    amount: float,
+    auction_id: str,
+    description: str = None
+) -> CentralPaymentResult:
+    """Process auction bid/win payment."""
+    return await process_central_payment(CentralPaymentRequest(
+        user_id=user_id,
+        amount=amount,
+        payment_type=PaymentType.AUCTION,
+        reference_id=auction_id,
+        description=description or f"Auction {auction_id[:8]}",
+    ))
+
+
+async def process_merchant_payment(
+    user_id: str,
+    amount: float,
+    merchant_id: str,
+    reference: str,
+    description: str = None
+) -> CentralPaymentResult:
+    """Process merchant POS payment."""
+    return await process_central_payment(CentralPaymentRequest(
+        user_id=user_id,
+        amount=amount,
+        payment_type=PaymentType.MERCHANT,
+        reference_id=reference,
+        recipient_id=merchant_id,
+        description=description or f"Merchant Payment",
+    ))

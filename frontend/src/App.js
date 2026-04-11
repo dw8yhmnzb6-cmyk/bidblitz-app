@@ -34,6 +34,10 @@ import ScooterPage from "./pages/ScooterPage";
 import FoodPage from "./pages/FoodPage";
 import DriverDashboardPage from "./pages/DriverDashboardPage";
 import ChildModePage from "./pages/ChildModePage";
+import MarketplacePage from "./pages/MarketplacePage";
+import ChatPage from "./pages/ChatPage";
+import PartnersPage from "./pages/PartnersPage";
+import ReferralSystemPage from "./pages/ReferralSystemPage";
 
 import BottomNav from "./components/BottomNav";
 import BarcodeModal from "./components/BarcodeModal";
@@ -218,6 +222,14 @@ function AppContent() {
         return isGuest ? <HomePage {...homeProps} /> : <DriverDashboardPage />;
       case "/child-mode":
         return <ChildModePage />;
+      case "/marketplace":
+        return <MarketplacePage />;
+      case "/chat":
+        return isGuest ? <HomePage {...homeProps} /> : <ChatPage />;
+      case "/partners":
+        return <PartnersPage />;
+      case "/referral":
+        return isGuest ? <HomePage {...homeProps} /> : <ReferralSystemPage />;
       default:
         return <HomePage {...homeProps} />;
     }

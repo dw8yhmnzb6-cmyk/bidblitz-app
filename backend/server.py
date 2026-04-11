@@ -144,6 +144,10 @@ from routes.merchant_hierarchy import router as merchant_hierarchy_router
 from routes.pos_payments import router as pos_payments_router
 from routes.mining import router as mining_router
 from routes.mining_phase2 import router as mining_phase2_router
+from routes.marketplace import router as marketplace_router
+from routes.chat import router as chat_router
+from routes.applications import router as applications_router
+from routes.referral_system import router as referral_router
 
 app.include_router(auth_router)
 app.include_router(wallet_router)
@@ -174,6 +178,10 @@ app.include_router(merchant_hierarchy_router)
 app.include_router(pos_payments_router)
 app.include_router(mining_router)
 app.include_router(mining_phase2_router)
+app.include_router(marketplace_router)
+app.include_router(chat_router)
+app.include_router(applications_router)
+app.include_router(referral_router)
 
 # Mobility & Delivery Modules
 from routes.taxi import router as taxi_router
@@ -275,15 +283,13 @@ def start_auto_reward_loop():
 async def startup():
     await create_indexes()
     await seed_admin()
-    # Seed demo auctions
-    from routes.auctions import seed_demo_auctions
-    await seed_demo_auctions()
-    # Start bot bidding background loop
+    # NO DEMO SEEDING - Only real auctions created by admin
+    # Start bot bidding background loop (Admin-controlled bots)
     from routes.auctions import start_bot_loop
     start_bot_loop()
     # Start mining auto-reward background loop
     start_auto_reward_loop()
-    logger.info(f"BidBlitz V2 API started [env={APP_ENV}] — Bot loop + Auto-rewards active")
+    logger.info(f"BidBlitz V2 API started [env={APP_ENV}] — Bot loop + Auto-rewards active (NO DEMO DATA)")
 
 
 @app.on_event("shutdown")

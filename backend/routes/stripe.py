@@ -527,3 +527,199 @@ async def remove_saved_method(request: Request):
         }},
     )
     return {"ok": True}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# STRIPE WEBHOOK - CRITICAL FOR WALLET CREDIT
+# ══════════════════════════════════════════════════════════════════════════════
+
+import logging
+from bson import ObjectId
+
+logger = logging.getLogger("bidblitz.stripe")
+
+# Webhook secret from Stripe Dashboard (or env)
+import os
+STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
+
+
+@router.post("/webhook")
+async def stripe_webhook(request: Request):
+    """
+    Stripe Webhook Handler for checkout.session.completed events.
+    
+    CRITICAL: This endpoint credits user wallets when Stripe payments complete.
+    Uses raw body and signature verification for security.
+    """
+    # Get raw body for signature verification
+    try:
+        payload = await request.body()
+        payload_str = payload.decode("utf-8")
+    except Exception as e:
+        logger.error(f"Webhook: Failed to read body: {e}")
+        raise HTTPException(status_code=400, detail="Invalid payload")
+    
+    sig_header = request.headers.get("stripe-signature", "")
+    
+    # Verify signature if webhook secret is configured
+    event = None
+    if STRIPE_WEBHOOK_SECRET:
+        try:
+            event = stripe.Webhook.construct_event(
+                payload_str, sig_header, STRIPE_WEBHOOK_SECRET
+            )
+        except stripe.error.SignatureVerificationError as e:
+            logger.warning(f"Webhook: Signature verification failed: {e}")
+            raise HTTPException(status_code=400, detail="Invalid signature")
+        except Exception as e:
+            logger.error(f"Webhook: Event construction failed: {e}")
+            raise HTTPException(status_code=400, detail="Invalid event")
+    else:
+        # No secret configured - parse event directly (development mode)
+        import json
+        try:
+            event = json.loads(payload_str)
+        except json.JSONDecodeError:
+            raise HTTPException(status_code=400, detail="Invalid JSON")
+    
+    event_type = event.get("type") if isinstance(event, dict) else event.type
+    event_id = event.get("id") if isinstance(event, dict) else event.id
+    
+    logger.info(f"Webhook received: {event_type} ({event_id})")
+    
+    # ── Handle checkout.session.completed ──
+    if event_type == "checkout.session.completed":
+        session = event.get("data", {}).get("object", {}) if isinstance(event, dict) else event.data.object
+        
+        session_id = session.get("id")
+        payment_status = session.get("payment_status")
+        metadata = session.get("metadata", {})
+        amount_total = session.get("amount_total", 0)  # In cents
+        
+        user_id = metadata.get("user_id")
+        amount = amount_total / 100  # Convert to EUR
+        
+        logger.info(f"Webhook: Checkout completed - session={session_id}, user={user_id}, amount={amount}, status={payment_status}")
+        
+        if not user_id:
+            logger.warning(f"Webhook: No user_id in metadata for session {session_id}")
+            return {"received": True, "processed": False, "reason": "no_user_id"}
+        
+        if payment_status != "paid":
+            logger.info(f"Webhook: Payment not paid yet for session {session_id}")
+            return {"received": True, "processed": False, "reason": "not_paid"}
+        
+        # ── Idempotency Check - Prevent duplicate credits ──
+        existing = await db.webhook_events.find_one({"event_id": event_id})
+        if existing:
+            logger.info(f"Webhook: Event {event_id} already processed")
+            return {"received": True, "processed": False, "reason": "duplicate"}
+        
+        # Also check payment_transactions
+        payment = await db.payment_transactions.find_one({"session_id": session_id})
+        if payment and payment.get("status") in ("completed", "credited"):
+            logger.info(f"Webhook: Session {session_id} already credited via polling")
+            return {"received": True, "processed": False, "reason": "already_credited"}
+        
+        # ── Record webhook event for idempotency ──
+        now = datetime.now(timezone.utc)
+        await db.webhook_events.insert_one({
+            "event_id": event_id,
+            "event_type": event_type,
+            "session_id": session_id,
+            "user_id": user_id,
+            "amount": amount,
+            "processed": True,
+            "created_at": now.isoformat(),
+        })
+        
+        # ── Credit User Wallet ──
+        try:
+            # Atomic update - only credit if not already credited
+            result = await db.users.update_one(
+                {"_id": ObjectId(user_id)},
+                {"$inc": {"balance": amount}}
+            )
+            
+            if result.modified_count == 0:
+                logger.error(f"Webhook: Failed to credit user {user_id}")
+                return {"received": True, "processed": False, "reason": "credit_failed"}
+            
+            logger.info(f"Webhook: Credited €{amount:.2f} to user {user_id}")
+            
+            # ── Create Transaction Record ──
+            ref = f"STRIPE-WH-{secrets.token_hex(4).upper()}"
+            txn = {
+                "id": secrets.token_hex(8),
+                "user_id": user_id,
+                "type": "topup",
+                "amount": amount,
+                "description": f"Stripe Top-Up (EUR {amount:.2f})",
+                "merchant_name": "Stripe",
+                "status": "completed",
+                "reference": ref,
+                "payment_method": "stripe",
+                "category": "topup",
+                "stripe_session_id": session_id,
+                "webhook_event_id": event_id,
+                "created_at": now.isoformat(),
+            }
+            await db.transactions.insert_one(txn)
+            
+            # ── Update payment_transactions record if exists ──
+            await db.payment_transactions.update_one(
+                {"session_id": session_id},
+                {"$set": {
+                    "status": "credited",
+                    "payment_status": "paid",
+                    "webhook_credited": True,
+                    "webhook_event_id": event_id,
+                    "updated_at": now.isoformat(),
+                }}
+            )
+            
+            # ── Send Notification ──
+            await db.notifications.insert_one({
+                "id": secrets.token_hex(8),
+                "user_id": user_id,
+                "type": "topup_success",
+                "title": f"€{amount:.2f} aufgeladen!",
+                "message": "Dein Wallet wurde erfolgreich aufgeladen.",
+                "data": {"amount": amount, "reference": ref},
+                "read": False,
+                "created_at": now.isoformat(),
+            })
+            
+            logger.info(f"Webhook: Successfully processed - user={user_id}, amount={amount}, ref={ref}")
+            
+            return {
+                "received": True,
+                "processed": True,
+                "user_id": user_id,
+                "amount": amount,
+                "reference": ref,
+            }
+            
+        except Exception as e:
+            logger.error(f"Webhook: Error crediting wallet: {e}")
+            # Mark webhook as failed for retry
+            await db.webhook_events.update_one(
+                {"event_id": event_id},
+                {"$set": {"processed": False, "error": str(e)}}
+            )
+            raise HTTPException(status_code=500, detail="Credit failed")
+    
+    # ── Handle payment_intent.succeeded (for quick top-up) ──
+    elif event_type == "payment_intent.succeeded":
+        intent = event.get("data", {}).get("object", {}) if isinstance(event, dict) else event.data.object
+        metadata = intent.get("metadata", {})
+        
+        if metadata.get("type") == "quick_topup":
+            logger.info(f"Webhook: Quick top-up payment succeeded: {intent.get('id')}")
+            # Already handled synchronously in quick-topup endpoint
+            return {"received": True, "processed": False, "reason": "handled_sync"}
+    
+    # ── Other events - just acknowledge ──
+    logger.info(f"Webhook: Ignoring event type {event_type}")
+    return {"received": True, "processed": False, "reason": "unhandled_type"}
+

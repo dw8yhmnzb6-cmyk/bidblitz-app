@@ -212,18 +212,26 @@ async def update_driver_location(request: Request):
 # ══════════════════════════════════════
 
 @router.get("/available")
-async def get_available_drivers(lat: float = 52.52, lng: float = 13.405, vehicle_type: str = "standard", radius_km: float = 10.0):
+@router.get("/nearby")
+async def get_available_drivers(lat: float = 52.52, lng: float = 13.405, vehicle_type: str = None, radius_km: float = 10.0):
     """Get available drivers near a location."""
     
-    # Find online, verified, active drivers with matching vehicle type
-    drivers = await db.drivers.find({
+    # Base query for online, verified drivers
+    query = {
         "is_online": True,
         "is_verified": True,
         "status": "active",
         "current_ride_id": None,
-        "vehicle.type": vehicle_type,
-        "current_location": {"$ne": None},
-    }, {"_id": 0, "password_hash": 0, "documents": 0}).to_list(50)
+    }
+    
+    # Optional vehicle type filter
+    if vehicle_type and vehicle_type != "all":
+        query["vehicle.type"] = vehicle_type
+    
+    drivers = await db.drivers.find(
+        query, 
+        {"_id": 0, "password_hash": 0, "documents": 0}
+    ).to_list(50)
     
     # Calculate distance and filter by radius
     from math import radians, cos, sin, sqrt, atan2
@@ -238,9 +246,15 @@ async def get_available_drivers(lat: float = 52.52, lng: float = 13.405, vehicle
     available = []
     for d in drivers:
         loc = d.get("current_location", {})
-        if loc:
-            dist = haversine(lat, lng, loc.get("lat", 0), loc.get("lng", 0))
+        dlat = loc.get("lat") or d.get("lat", 0)
+        dlng = loc.get("lng") or d.get("lng", 0)
+        
+        if dlat and dlng:
+            dist = haversine(lat, lng, dlat, dlng)
             if dist <= radius_km:
+                # Ensure lat/lng at top level for frontend map
+                d["lat"] = dlat
+                d["lng"] = dlng
                 d["distance_km"] = round(dist, 2)
                 d["eta_minutes"] = max(2, int(dist * 2))  # Rough ETA estimate
                 available.append(d)
