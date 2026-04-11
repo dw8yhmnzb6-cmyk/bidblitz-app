@@ -1063,7 +1063,7 @@ async def get_catalog(request: Request):
     user = await get_current_user(request)
     if user.get("role") not in ("admin",):
         raise HTTPException(status_code=403, detail="Admin only")
-    return {"products": PRODUCT_CATALOG, "total": len(PRODUCT_CATALOG)}
+    return {"catalog": PRODUCT_CATALOG, "total": len(PRODUCT_CATALOG)}
 
 
 # ── Watchlist Toggle ──
@@ -1279,3 +1279,453 @@ async def bot_bidding_loop():
 def start_bot_loop():
     """Start the bot bidding background task."""
     asyncio.create_task(bot_bidding_loop())
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# ADMIN AUCTION AUTOMATION SYSTEM
+# Full admin control over auction lifecycle, scheduling, and auto-rotation
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class AutomationConfigRequest(BaseModel):
+    enabled: bool = True
+    auto_create_enabled: bool = True
+    min_active_auctions: int = Field(default=5, ge=1, le=50)
+    max_active_auctions: int = Field(default=20, ge=1, le=100)
+    default_duration_hours: int = Field(default=48, ge=1, le=168)
+    auto_end_expired: bool = True
+    auto_restart_ended: bool = False
+    bot_default_enabled: bool = True
+    bot_default_target_percent: float = Field(default=15.0, ge=0, le=50)  # % of retail price
+    categories_enabled: list = Field(default=["phones", "gaming", "audio", "wearables", "laptops", "tablets"])
+
+
+class ScheduleAuctionRequest(BaseModel):
+    product_index: int = Field(..., ge=0)  # Index in PRODUCT_CATALOG
+    start_at: Optional[str] = None  # ISO datetime, None = start immediately
+    duration_hours: int = Field(default=48, ge=1, le=168)
+    bot_enabled: bool = True
+    bot_target_price: Optional[float] = None  # None = auto-calculate
+    featured: bool = False
+
+
+class BulkScheduleRequest(BaseModel):
+    product_indices: list  # List of indices
+    stagger_minutes: int = Field(default=30, ge=0, le=1440)
+    duration_hours: int = Field(default=48, ge=1, le=168)
+    bot_enabled: bool = True
+
+
+@router.get("/admin/automation/config")
+async def get_automation_config(request: Request):
+    """Admin: Get current automation configuration."""
+    user = await get_current_user(request)
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    
+    config = await db.auction_automation_config.find_one({"_id": "global"})
+    if not config:
+        config = {
+            "enabled": True,
+            "auto_create_enabled": True,
+            "min_active_auctions": 5,
+            "max_active_auctions": 20,
+            "default_duration_hours": 48,
+            "auto_end_expired": True,
+            "auto_restart_ended": False,
+            "bot_default_enabled": True,
+            "bot_default_target_percent": 15.0,
+            "categories_enabled": ["phones", "gaming", "audio", "wearables", "laptops", "tablets"],
+        }
+    
+    config.pop("_id", None)
+    
+    # Add stats
+    active_count = await db.auctions.count_documents({"status": "active"})
+    scheduled_count = await db.auctions.count_documents({"status": "scheduled"})
+    ended_today = await db.auctions.count_documents({
+        "status": "ended",
+        "ended_at": {"$gte": datetime.now(timezone.utc).replace(hour=0, minute=0, second=0).isoformat()}
+    })
+    
+    config["stats"] = {
+        "active_auctions": active_count,
+        "scheduled_auctions": scheduled_count,
+        "ended_today": ended_today,
+        "catalog_size": len(PRODUCT_CATALOG),
+    }
+    
+    return config
+
+
+@router.post("/admin/automation/config")
+async def set_automation_config(req: AutomationConfigRequest, request: Request):
+    """Admin: Update automation configuration."""
+    user = await get_current_user(request)
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    
+    config_dict = req.dict()
+    config_dict["updated_at"] = datetime.now(timezone.utc).isoformat()
+    config_dict["updated_by"] = str(user["_id"])
+    
+    await db.auction_automation_config.update_one(
+        {"_id": "global"},
+        {"$set": config_dict},
+        upsert=True
+    )
+    
+    return {"ok": True, "config": config_dict}
+
+
+@router.post("/admin/auction/schedule")
+async def schedule_single_auction(req: ScheduleAuctionRequest, request: Request):
+    """Admin: Schedule a single auction from catalog."""
+    user = await get_current_user(request)
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    
+    if req.product_index >= len(PRODUCT_CATALOG):
+        raise HTTPException(status_code=400, detail=f"Invalid product index. Max: {len(PRODUCT_CATALOG)-1}")
+    
+    product = PRODUCT_CATALOG[req.product_index]
+    now = datetime.now(timezone.utc)
+    
+    if req.start_at:
+        try:
+            start_time = datetime.fromisoformat(req.start_at.replace("Z", "+00:00"))
+        except:
+            raise HTTPException(status_code=400, detail="Invalid start_at format")
+        status = "scheduled" if start_time > now else "active"
+    else:
+        start_time = now
+        status = "active"
+    
+    duration_seconds = req.duration_hours * 3600
+    ends_at = start_time + timedelta(seconds=duration_seconds)
+    
+    # Auto-calculate bot target if not provided (15% of retail by default)
+    if req.bot_target_price is None:
+        bot_target = round(product["retail_price"] * 0.15, 2)
+    else:
+        bot_target = req.bot_target_price
+    
+    auction_id = secrets.token_hex(8)
+    auction = {
+        "auction_id": auction_id,
+        "title": product["title"],
+        "description": product["description"],
+        "image_url": PRODUCT_IMAGES.get(product["title"], ""),
+        "retail_price": product["retail_price"],
+        "starting_price": 0.00,
+        "current_price": 0.00,
+        "price_increment": PRICE_INCREMENT,
+        "timer_extension": TIMER_EXTENSION_SECONDS,
+        "duration_seconds": duration_seconds,
+        "starts_at": start_time.isoformat(),
+        "ends_at": ends_at.isoformat(),
+        "status": status,
+        "winner_id": None,
+        "winner_name": None,
+        "last_bidder_id": None,
+        "last_bidder_name": None,
+        "total_bids": 0,
+        "created_by": str(user["_id"]),
+        "created_at": now.isoformat(),
+        "category": product.get("category", ""),
+        "features": product.get("features", []),
+        "condition": product.get("condition", "Brand New — Factory Sealed"),
+        "bot_enabled": req.bot_enabled,
+        "bot_target_price": bot_target,
+        "bot_min_seconds": 60,
+        "bot_probability": 0.4,
+        "featured": req.featured,
+        "admin_scheduled": True,
+    }
+    
+    await db.auctions.insert_one(auction)
+    auction.pop("_id", None)
+    
+    return {
+        "ok": True,
+        "auction": auction,
+        "message": f"Auction '{product['title']}' {'scheduled for ' + start_time.isoformat() if status == 'scheduled' else 'started immediately'}",
+    }
+
+
+@router.post("/admin/auction/bulk-schedule")
+async def bulk_schedule_auctions(req: BulkScheduleRequest, request: Request):
+    """Admin: Schedule multiple auctions with staggered start times."""
+    user = await get_current_user(request)
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    
+    now = datetime.now(timezone.utc)
+    created = []
+    
+    for i, idx in enumerate(req.product_indices):
+        if idx >= len(PRODUCT_CATALOG):
+            continue
+        
+        product = PRODUCT_CATALOG[idx]
+        start_time = now + timedelta(minutes=i * req.stagger_minutes)
+        duration_seconds = req.duration_hours * 3600
+        ends_at = start_time + timedelta(seconds=duration_seconds)
+        
+        status = "scheduled" if start_time > now else "active"
+        bot_target = round(product["retail_price"] * 0.15, 2)
+        
+        auction_id = secrets.token_hex(8)
+        auction = {
+            "auction_id": auction_id,
+            "title": product["title"],
+            "description": product["description"],
+            "image_url": PRODUCT_IMAGES.get(product["title"], ""),
+            "retail_price": product["retail_price"],
+            "starting_price": 0.00,
+            "current_price": 0.00,
+            "price_increment": PRICE_INCREMENT,
+            "timer_extension": TIMER_EXTENSION_SECONDS,
+            "duration_seconds": duration_seconds,
+            "starts_at": start_time.isoformat(),
+            "ends_at": ends_at.isoformat(),
+            "status": status,
+            "winner_id": None,
+            "winner_name": None,
+            "last_bidder_id": None,
+            "last_bidder_name": None,
+            "total_bids": 0,
+            "created_by": str(user["_id"]),
+            "created_at": now.isoformat(),
+            "category": product.get("category", ""),
+            "features": product.get("features", []),
+            "condition": product.get("condition", "Brand New — Factory Sealed"),
+            "bot_enabled": req.bot_enabled,
+            "bot_target_price": bot_target,
+            "bot_min_seconds": 60,
+            "bot_probability": 0.4,
+            "admin_scheduled": True,
+        }
+        
+        await db.auctions.insert_one(auction)
+        created.append({"auction_id": auction_id, "title": product["title"], "starts_at": start_time.isoformat()})
+    
+    return {
+        "ok": True,
+        "created_count": len(created),
+        "auctions": created,
+    }
+
+
+@router.post("/admin/auction/{auction_id}/pause")
+async def pause_auction(auction_id: str, request: Request):
+    """Admin: Pause an active auction."""
+    user = await get_current_user(request)
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    
+    auction = await db.auctions.find_one({"auction_id": auction_id})
+    if not auction:
+        raise HTTPException(status_code=404, detail="Auction not found")
+    
+    if auction["status"] != "active":
+        raise HTTPException(status_code=400, detail="Only active auctions can be paused")
+    
+    now = datetime.now(timezone.utc)
+    ends_at = datetime.fromisoformat(auction["ends_at"])
+    remaining = (ends_at - now).total_seconds()
+    
+    await db.auctions.update_one(
+        {"auction_id": auction_id},
+        {"$set": {
+            "status": "paused",
+            "paused_at": now.isoformat(),
+            "remaining_when_paused": max(0, remaining),
+        }}
+    )
+    
+    return {"ok": True, "status": "paused", "remaining_seconds": remaining}
+
+
+@router.post("/admin/auction/{auction_id}/resume")
+async def resume_auction(auction_id: str, request: Request):
+    """Admin: Resume a paused auction."""
+    user = await get_current_user(request)
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    
+    auction = await db.auctions.find_one({"auction_id": auction_id})
+    if not auction:
+        raise HTTPException(status_code=404, detail="Auction not found")
+    
+    if auction["status"] != "paused":
+        raise HTTPException(status_code=400, detail="Only paused auctions can be resumed")
+    
+    now = datetime.now(timezone.utc)
+    remaining = auction.get("remaining_when_paused", 300)
+    new_ends_at = now + timedelta(seconds=remaining)
+    
+    await db.auctions.update_one(
+        {"auction_id": auction_id},
+        {"$set": {
+            "status": "active",
+            "ends_at": new_ends_at.isoformat(),
+            "resumed_at": now.isoformat(),
+        },
+        "$unset": {"paused_at": "", "remaining_when_paused": ""}}
+    )
+    
+    return {"ok": True, "status": "active", "ends_at": new_ends_at.isoformat()}
+
+
+@router.post("/admin/auction/{auction_id}/end")
+async def force_end_auction(auction_id: str, request: Request):
+    """Admin: Force end an auction immediately."""
+    user = await get_current_user(request)
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    
+    auction = await db.auctions.find_one({"auction_id": auction_id})
+    if not auction:
+        raise HTTPException(status_code=404, detail="Auction not found")
+    
+    if auction["status"] == "ended":
+        raise HTTPException(status_code=400, detail="Auction already ended")
+    
+    now = datetime.now(timezone.utc)
+    
+    # Find winner
+    last_bid = await db.auction_bids.find_one(
+        {"auction_id": auction_id},
+        sort=[("created_at", -1)]
+    )
+    winner_id = last_bid["user_id"] if last_bid and not last_bid.get("is_bot") else None
+    winner_name = last_bid["user_name"] if last_bid and not last_bid.get("is_bot") else None
+    
+    await db.auctions.update_one(
+        {"auction_id": auction_id},
+        {"$set": {
+            "status": "ended",
+            "ended_at": now.isoformat(),
+            "winner_id": winner_id,
+            "winner_name": winner_name,
+            "force_ended_by": str(user["_id"]),
+        }}
+    )
+    
+    return {
+        "ok": True,
+        "status": "ended",
+        "winner_id": winner_id,
+        "winner_name": winner_name,
+        "final_price": auction.get("current_price", 0),
+    }
+
+
+@router.post("/admin/auction/{auction_id}/extend")
+async def extend_auction(auction_id: str, request: Request):
+    """Admin: Extend auction time."""
+    user = await get_current_user(request)
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    
+    body = await request.json()
+    extend_minutes = body.get("minutes", 60)
+    
+    auction = await db.auctions.find_one({"auction_id": auction_id})
+    if not auction:
+        raise HTTPException(status_code=404, detail="Auction not found")
+    
+    if auction["status"] not in ("active", "paused"):
+        raise HTTPException(status_code=400, detail="Cannot extend ended auction")
+    
+    current_ends = datetime.fromisoformat(auction["ends_at"])
+    new_ends = current_ends + timedelta(minutes=extend_minutes)
+    
+    await db.auctions.update_one(
+        {"auction_id": auction_id},
+        {"$set": {"ends_at": new_ends.isoformat()}}
+    )
+    
+    return {"ok": True, "new_ends_at": new_ends.isoformat(), "extended_minutes": extend_minutes}
+
+
+@router.delete("/admin/auction/{auction_id}")
+async def delete_auction(auction_id: str, request: Request):
+    """Admin: Delete an auction (only if no bids)."""
+    user = await get_current_user(request)
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    
+    auction = await db.auctions.find_one({"auction_id": auction_id})
+    if not auction:
+        raise HTTPException(status_code=404, detail="Auction not found")
+    
+    bid_count = await db.auction_bids.count_documents({"auction_id": auction_id, "is_bot": {"$ne": True}})
+    if bid_count > 0:
+        raise HTTPException(status_code=400, detail=f"Cannot delete: {bid_count} real user bids exist")
+    
+    # Delete auction and bot bids
+    await db.auction_bids.delete_many({"auction_id": auction_id})
+    await db.auctions.delete_one({"auction_id": auction_id})
+    
+    return {"ok": True, "deleted": auction_id}
+
+
+@router.get("/admin/stats/overview")
+async def get_auction_stats(request: Request):
+    """Admin: Get comprehensive auction statistics."""
+    user = await get_current_user(request)
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    
+    now = datetime.now(timezone.utc)
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+    week_start = (now - timedelta(days=7)).isoformat()
+    
+    # Counts
+    total_auctions = await db.auctions.count_documents({})
+    active_auctions = await db.auctions.count_documents({"status": "active"})
+    scheduled_auctions = await db.auctions.count_documents({"status": "scheduled"})
+    paused_auctions = await db.auctions.count_documents({"status": "paused"})
+    ended_auctions = await db.auctions.count_documents({"status": "ended"})
+    
+    # Bids
+    total_bids = await db.auction_bids.count_documents({})
+    real_bids = await db.auction_bids.count_documents({"is_bot": {"$ne": True}})
+    bot_bids = await db.auction_bids.count_documents({"is_bot": True})
+    bids_today = await db.auction_bids.count_documents({"created_at": {"$gte": today_start}})
+    
+    # Revenue (each bid = €0.50 revenue from credit purchase)
+    revenue_estimate = round(real_bids * 0.50, 2)
+    
+    # Winners
+    auctions_with_winner = await db.auctions.count_documents({"winner_id": {"$ne": None}})
+    
+    # Credit purchases
+    credit_txns = await db.transactions.find({
+        "type": "auction_bid",
+        "status": "completed"
+    }).to_list(1000)
+    total_credit_revenue = sum(abs(t.get("amount", 0)) for t in credit_txns)
+    
+    return {
+        "auctions": {
+            "total": total_auctions,
+            "active": active_auctions,
+            "scheduled": scheduled_auctions,
+            "paused": paused_auctions,
+            "ended": ended_auctions,
+            "with_winner": auctions_with_winner,
+        },
+        "bids": {
+            "total": total_bids,
+            "real_users": real_bids,
+            "bots": bot_bids,
+            "today": bids_today,
+        },
+        "revenue": {
+            "estimated_from_bids": revenue_estimate,
+            "total_credit_purchases": round(total_credit_revenue, 2),
+        },
+        "catalog_size": len(PRODUCT_CATALOG),
+    }
