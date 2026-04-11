@@ -157,6 +157,9 @@ from routes.rewards_store import router as rewards_store_router
 from routes.p2p_transfer import router as p2p_transfer_router
 from routes.split_bill import router as split_bill_router
 from routes.virtual_cards import router as virtual_cards_router
+from routes.credit_system import router as credit_system_router
+from routes.bills import router as bills_router
+from routes.nft_generator import router as nft_router
 
 app.include_router(auth_router)
 app.include_router(wallet_router)
@@ -200,6 +203,15 @@ app.include_router(rewards_store_router)
 app.include_router(p2p_transfer_router)
 app.include_router(split_bill_router)
 app.include_router(virtual_cards_router)
+app.include_router(credit_system_router)
+app.include_router(bills_router)
+app.include_router(nft_router)
+
+# Real Map & Nearby System
+from routes.nearby import router as nearby_router
+from routes.admin_map import router as admin_map_router
+app.include_router(nearby_router)
+app.include_router(admin_map_router)
 
 # Mobility & Delivery Modules
 from routes.taxi import router as taxi_router

@@ -25,6 +25,7 @@ import MerchantOnboardingPage from "./pages/MerchantOnboardingPage";
 import MerchantPricingPage from "./pages/MerchantPricingPage";
 import MerchantLandingPage from "./pages/MerchantLandingPage";
 import MiningPage from "./pages/MiningPage";
+import NFTGeneratorPage from "./pages/NFTGeneratorPage";
 import AuthPage from "./pages/AuthPage";
 import NotificationsPage from "./pages/NotificationsPage";
 import InfluencerDashboard from "./pages/InfluencerDashboard";
@@ -202,6 +203,8 @@ function AppContent() {
         return <MerchantLandingPage onNavigate={handleNavigate} />;
       case "/mining":
         return <MiningPage onBack={() => handleNavigate("/more")} />;
+      case "/nft":
+        return <NFTGeneratorPage onNavigate={handleNavigate} />;
       case "/admin":
         return user.role === "admin"
           ? <AdminPage onNavigate={handleNavigate} />
