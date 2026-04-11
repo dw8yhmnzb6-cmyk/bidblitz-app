@@ -882,6 +882,134 @@ async def buy_credits_direct(req: BuyCreditsDirectRequest, request: Request):
     }
 
 
+# ── Buy bid credits via Stripe Checkout (new card) ──
+class BuyCreditsStripeRequest(BaseModel):
+    package_id: str
+
+
+@router.post("/buy-credits-stripe")
+async def buy_credits_stripe(req: BuyCreditsStripeRequest, request: Request):
+    """Create Stripe Checkout Session for buying bid credits with a new card."""
+    import stripe as stripe_mod
+    from core.config import STRIPE_API_KEY
+    stripe_mod.api_key = STRIPE_API_KEY
+
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+
+    if req.package_id not in CREDIT_PACKAGES:
+        raise HTTPException(status_code=400, detail="Invalid package")
+
+    pkg = CREDIT_PACKAGES[req.package_id]
+    price = pkg["price"]
+    credits_amount = pkg["credits"]
+
+    # Get or create Stripe customer
+    cust_id = user.get("stripe_customer_id")
+    if not cust_id:
+        customer = stripe_mod.Customer.create(
+            email=user.get("email", ""),
+            name=user.get("name", ""),
+            metadata={"user_id": user_id},
+        )
+        cust_id = customer.id
+        await db.users.update_one({"_id": user["_id"]}, {"$set": {"stripe_customer_id": cust_id}})
+
+    # Store pending purchase info
+    pending_id = secrets.token_hex(8)
+    await db.pending_credit_purchases.insert_one({
+        "pending_id": pending_id,
+        "user_id": user_id,
+        "package_id": req.package_id,
+        "credits": credits_amount,
+        "price": price,
+        "status": "pending",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    })
+
+    # Create Checkout Session
+    origin = str(request.base_url).rstrip("/")
+    # Use the frontend URL from referrer or a sensible default
+    frontend_url = request.headers.get("origin", origin)
+
+    session = stripe_mod.checkout.Session.create(
+        customer=cust_id,
+        payment_method_types=["card"],
+        line_items=[{
+            "price_data": {
+                "currency": "eur",
+                "product_data": {
+                    "name": f"{credits_amount}x Gebot-Credits",
+                    "description": f"BidBlitz Auktions-Credits",
+                },
+                "unit_amount": int(price * 100),
+            },
+            "quantity": 1,
+        }],
+        mode="payment",
+        success_url=f"{frontend_url}?credit_purchase={pending_id}&status=success",
+        cancel_url=f"{frontend_url}?credit_purchase={pending_id}&status=cancel",
+        metadata={
+            "type": "bid_credits",
+            "user_id": user_id,
+            "pending_id": pending_id,
+            "package_id": req.package_id,
+            "credits": str(credits_amount),
+        },
+    )
+
+    return {"checkout_url": session.url, "session_id": session.id, "pending_id": pending_id}
+
+
+@router.post("/buy-credits-confirm/{pending_id}")
+async def confirm_credit_purchase(pending_id: str, request: Request):
+    """Confirm a pending Stripe credit purchase after successful checkout."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+
+    pending = await db.pending_credit_purchases.find_one({"pending_id": pending_id, "user_id": user_id})
+    if not pending:
+        raise HTTPException(status_code=404, detail="Purchase not found")
+    if pending["status"] == "completed":
+        # Already processed
+        updated_user = await db.users.find_one({"_id": user["_id"]})
+        return {"credits_added": pending["credits"], "total_credits": updated_user.get("bid_credits", 0)}
+
+    credits_amount = pending["credits"]
+    price = pending["price"]
+
+    # Mark as completed
+    await db.pending_credit_purchases.update_one(
+        {"pending_id": pending_id},
+        {"$set": {"status": "completed", "completed_at": datetime.now(timezone.utc).isoformat()}}
+    )
+
+    # Add credits
+    await db.users.update_one({"_id": user["_id"]}, {"$inc": {"bid_credits": credits_amount}})
+
+    # Create transaction
+    ref = f"BIDS-S-{secrets.token_hex(4).upper()}"
+    txn = {
+        "id": secrets.token_hex(8),
+        "user_id": user_id,
+        "type": "purchase",
+        "amount": -price,
+        "description": f"Bid Credits ({credits_amount}x) — Stripe",
+        "status": "completed",
+        "reference": ref,
+        "payment_method": "stripe_checkout",
+        "category": "auction",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.transactions.insert_one(txn)
+
+    updated_user = await db.users.find_one({"_id": user["_id"]})
+    return {
+        "credits_added": credits_amount,
+        "total_credits": updated_user.get("bid_credits", 0),
+        "new_balance": updated_user.get("balance", 0),
+    }
+
 
 # ── Admin: Create auction ──
 class CreateAuctionRequest(BaseModel):
@@ -1573,10 +1701,18 @@ async def bot_bidding_loop():
                     continue
 
                 # ═══════════════════════════════════════════════════════════
-                # PHASE 1: START PHASE (Preis < €5)
-                # Bots bieten bis €3-5 erreicht sind um Aktivität zu generieren
+                # PHASE 1: START PHASE (Preis < initial_target)
+                # Bots bieten bis €3-6 erreicht sind um Aktivität zu generieren
+                # Jede Auktion bekommt einen eigenen zufälligen Zielwert
                 # ═══════════════════════════════════════════════════════════
-                initial_target = auction.get("bot_initial_target", 5.0)  # €3-5 default
+                initial_target = auction.get("bot_initial_target")
+                if initial_target is None:
+                    # Generate unique random target for this auction and persist it
+                    initial_target = round(random.uniform(3.0, 6.0), 2)
+                    await db.auctions.update_one(
+                        {"auction_id": auction["auction_id"]},
+                        {"$set": {"bot_initial_target": initial_target}}
+                    )
                 
                 if current < initial_target:
                     # In Phase 1: Biete bis initial_target erreicht

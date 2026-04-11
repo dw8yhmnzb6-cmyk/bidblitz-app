@@ -545,6 +545,78 @@ async def remove_saved_method(request: Request):
     return {"ok": True}
 
 
+@router.post("/save-card")
+async def save_card_checkout(request: Request):
+    """Create a Stripe Checkout Session in setup mode to save a card for future payments."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    
+    # Get or create Stripe customer
+    cust_id = user.get("stripe_customer_id")
+    if not cust_id:
+        customer = stripe.Customer.create(
+            email=user.get("email", ""),
+            name=user.get("name", ""),
+            metadata={"user_id": user_id, "platform": "bidblitz"},
+        )
+        cust_id = customer.id
+        await db.users.update_one({"_id": user["_id"]}, {"$set": {"stripe_customer_id": cust_id}})
+    
+    frontend_url = request.headers.get("origin", str(request.base_url).rstrip("/"))
+    
+    session = stripe.checkout.Session.create(
+        customer=cust_id,
+        mode="setup",
+        payment_method_types=["card"],
+        success_url=f"{frontend_url}?card_saved=success",
+        cancel_url=f"{frontend_url}?card_saved=cancel",
+        metadata={"type": "save_card", "user_id": user_id},
+    )
+    
+    return {"checkout_url": session.url, "session_id": session.id}
+
+
+@router.post("/save-card-confirm")
+async def save_card_confirm(request: Request):
+    """After Stripe setup checkout success, retrieve and save the payment method."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    
+    cust_id = user.get("stripe_customer_id")
+    if not cust_id:
+        raise HTTPException(status_code=400, detail="Kein Stripe-Kunde gefunden")
+    
+    # Get the latest payment method for this customer
+    try:
+        pms = stripe.PaymentMethod.list(customer=cust_id, type="card", limit=1)
+        if not pms.data:
+            raise HTTPException(status_code=400, detail="Keine Karte gefunden")
+        
+        pm = pms.data[0]
+        card = pm.card or {}
+        
+        await db.users.update_one(
+            {"_id": user["_id"]},
+            {"$set": {
+                "stripe_customer_id": cust_id,
+                "stripe_pm_id": pm.id,
+                "stripe_card_brand": card.get("brand", ""),
+                "stripe_card_last4": card.get("last4", ""),
+                "stripe_card_exp_month": card.get("exp_month", 0),
+                "stripe_card_exp_year": card.get("exp_year", 0),
+                "stripe_pm_saved_at": datetime.now(timezone.utc).isoformat(),
+            }},
+        )
+        
+        return {
+            "ok": True,
+            "card_brand": card.get("brand", ""),
+            "card_last4": card.get("last4", ""),
+        }
+    except stripe.StripeError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # STRIPE WEBHOOK - CRITICAL FOR WALLET CREDIT
 # ══════════════════════════════════════════════════════════════════════════════

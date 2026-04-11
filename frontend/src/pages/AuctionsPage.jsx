@@ -223,26 +223,35 @@ const PKGS = [
   { id: "250", credits: 250, price: 62.50, ppc: 0.25, discount: 50, deal: true, best: true },
 ];
 
-const BuyCreditsModal = ({ open, onClose, onPurchased, balance }) => {
+const BuyCreditsModal = ({ open, onClose, onPurchased, balance: propBalance }) => {
   const { t } = useI18n();
   const [step, setStep] = useState("select"); // select | confirm | processing | success
   const [selectedPkg, setSelectedPkg] = useState(null);
-  const [payMethod, setPayMethod] = useState("wallet"); // wallet | card | new
+  const [payMethod, setPayMethod] = useState("wallet"); // wallet | card | stripe
   const [savedCard, setSavedCard] = useState(null);
   const [loadingCard, setLoadingCard] = useState(false);
   const [msg, setMsg] = useState(null);
   const [isFirstPurchase, setIsFirstPurchase] = useState(false);
+  const [liveBalance, setLiveBalance] = useState(propBalance);
 
-  // Fetch saved card on open
+  // Fetch saved card and fresh balance on open
   useEffect(() => {
     if (!open) { setStep("select"); setSelectedPkg(null); setMsg(null); return; }
     setLoadingCard(true);
+    setLiveBalance(propBalance);
+    // Fetch fresh balance
+    fetch(`${process.env.REACT_APP_BACKEND_URL}/api/wallet/balance`, { credentials: "include" })
+      .then(r => r.json())
+      .then(d => { if (d.balance !== undefined) setLiveBalance(d.balance); })
+      .catch(() => {});
     api.getAuctionSavedMethod()
       .then(d => { if (d.has_saved_method) { setSavedCard(d); setPayMethod("card"); } else { setSavedCard(null); setPayMethod("wallet"); } })
       .catch(() => setSavedCard(null))
       .finally(() => setLoadingCard(false));
     api.checkFirstPurchase().then(d => setIsFirstPurchase(d.is_first_purchase)).catch(() => {});
-  }, [open]);
+  }, [open, propBalance]);
+
+  const balance = liveBalance;
 
   const selectPkg = (p) => { setSelectedPkg(p); setMsg(null); setStep("confirm"); };
 
@@ -254,6 +263,13 @@ const BuyCreditsModal = ({ open, onClose, onPurchased, balance }) => {
       let r;
       if (payMethod === "card" && savedCard) {
         r = await api.buyBidCreditsDirect({ package_id: selectedPkg.id });
+      } else if (payMethod === "stripe") {
+        // Stripe Checkout - redirect to Stripe
+        r = await api.buyBidCreditsStripe({ package_id: selectedPkg.id });
+        if (r.checkout_url) {
+          window.location.href = r.checkout_url;
+          return;
+        }
       } else {
         if (balance < selectedPkg.price) { setMsg({ ok: false, text: t("checkout.insufficient_wallet") }); setStep("confirm"); return; }
         r = await api.buyBidCredits({ package_id: selectedPkg.id });
@@ -263,7 +279,6 @@ const BuyCreditsModal = ({ open, onClose, onPurchased, balance }) => {
     } catch (e) {
       setMsg({ ok: false, text: e.message });
       setStep("confirm");
-      // If card declined, reset to wallet
       if (e.message?.includes("declined") || e.message?.includes("No saved")) {
         setSavedCard(null); setPayMethod("wallet");
       }
@@ -380,10 +395,26 @@ const BuyCreditsModal = ({ open, onClose, onPurchased, balance }) => {
                     </div>
                     <div className="flex-1 text-left">
                       <p className={`text-[11px] font-semibold ${payMethod === "wallet" ? "text-white/85" : "text-white/40"}`}>{t("checkout.wallet")}</p>
-                      <p className="text-[9px] text-[#444]">{balance.toFixed(2)} — {balance >= selectedPkg.price ? t("checkout.wallet_deducted") : t("checkout.insufficient_wallet")}</p>
+                      <p className="text-[9px] text-[#444]">€{balance.toFixed(2)} — {balance >= selectedPkg.price ? t("checkout.wallet_deducted") : t("checkout.insufficient_wallet")}</p>
                     </div>
                     <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${payMethod === "wallet" ? "border-[#00E89D]" : "border-white/10"}`}>
                       {payMethod === "wallet" && <div className="w-2 h-2 rounded-full bg-[#00E89D]" />}
+                    </div>
+                  </motion.button>
+
+                  {/* Stripe Checkout Option (new card) */}
+                  <motion.button data-testid="pay-method-stripe" onClick={() => setPayMethod("stripe")}
+                    className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all ${payMethod === "stripe" ? "bg-[#635BFF]/[0.06] border border-[#635BFF]/20" : "bg-white/[0.01] border border-white/[0.04]"}`}
+                    whileTap={{ scale: 0.98 }}>
+                    <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${payMethod === "stripe" ? "bg-[#635BFF]/10 border border-[#635BFF]/15" : "bg-white/[0.02] border border-white/[0.04]"}`}>
+                      <CreditCard size={14} className={payMethod === "stripe" ? "text-[#635BFF]" : "text-white/20"} />
+                    </div>
+                    <div className="flex-1 text-left">
+                      <p className={`text-[11px] font-semibold ${payMethod === "stripe" ? "text-white/85" : "text-white/40"}`}>Kreditkarte / Debitkarte</p>
+                      <p className="text-[9px] text-[#444]">Sicher via Stripe bezahlen</p>
+                    </div>
+                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${payMethod === "stripe" ? "border-[#635BFF]" : "border-white/10"}`}>
+                      {payMethod === "stripe" && <div className="w-2 h-2 rounded-full bg-[#635BFF]" />}
                     </div>
                   </motion.button>
                 </div>
@@ -404,9 +435,9 @@ const BuyCreditsModal = ({ open, onClose, onPurchased, balance }) => {
                   disabled={payMethod === "wallet" && balance < selectedPkg.price}
                   className="w-full py-3.5 rounded-xl text-[13px] font-bold flex items-center justify-center gap-2 disabled:opacity-30"
                   style={{
-                    background: payMethod === "card" ? "rgba(0,224,255,0.1)" : "rgba(0,232,157,0.1)",
-                    border: `1px solid ${payMethod === "card" ? "rgba(0,224,255,0.2)" : "rgba(0,232,157,0.2)"}`,
-                    color: payMethod === "card" ? accentCyan : accentGreen,
+                    background: payMethod === "stripe" ? "rgba(99,91,255,0.1)" : payMethod === "card" ? "rgba(0,224,255,0.1)" : "rgba(0,232,157,0.1)",
+                    border: `1px solid ${payMethod === "stripe" ? "rgba(99,91,255,0.25)" : payMethod === "card" ? "rgba(0,224,255,0.2)" : "rgba(0,232,157,0.2)"}`,
+                    color: payMethod === "stripe" ? "#635BFF" : payMethod === "card" ? accentCyan : accentGreen,
                   }}
                   whileTap={{ scale: 0.97 }}>
                   <Zap size={14} />
