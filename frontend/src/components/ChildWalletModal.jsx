@@ -30,9 +30,9 @@ const ChildWalletModal = ({ child, onClose, onUpdate }) => {
   const [transferNote, setTransferNote] = useState('');
   const [showConfirm, setShowConfirm] = useState(false);
   
-  // Limits state
-  const [dailyLimit, setDailyLimit] = useState(20);
-  const [weeklyLimit, setWeeklyLimit] = useState(50);
+  // Limits state - ZEITLIMITS (Bildschirmzeit in Minuten)
+  const [dailyLimit, setDailyLimit] = useState(120); // 2 Stunden default
+  const [weeklyLimit, setWeeklyLimit] = useState(840); // 14 Stunden default
   
   // Edit state
   const [editName, setEditName] = useState('');
@@ -50,8 +50,9 @@ const ChildWalletModal = ({ child, onClose, onUpdate }) => {
       const data = await api.getChildWallet(child.child_id);
       setWalletData(data);
       setCurrentChild(prev => ({ ...prev, ...data.child, is_frozen: data.is_frozen }));
-      setDailyLimit(data.daily_limit || 20);
-      setWeeklyLimit(data.weekly_limit || 50);
+      // Zeitlimits in Minuten (default: 2h/Tag, 14h/Woche)
+      setDailyLimit(data.daily_screen_limit || 120);
+      setWeeklyLimit(data.weekly_screen_limit || 840);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -131,14 +132,14 @@ const ChildWalletModal = ({ child, onClose, onUpdate }) => {
     }
   };
 
-  // Save limits
+  // Save limits - ZEITLIMITS
   const handleSaveLimits = async () => {
-    if (dailyLimit < 1 || weeklyLimit < 1) {
-      setError('Limits müssen mindestens €1 sein');
+    if (dailyLimit < 15 || weeklyLimit < 60) {
+      setError('Minimum: 15 Min/Tag, 1 Std/Woche');
       return;
     }
-    if (dailyLimit > weeklyLimit) {
-      setError('Tageslimit darf nicht höher als Wochenlimit sein');
+    if (dailyLimit * 7 > weeklyLimit * 1.5) {
+      setError('Wochenlimit sollte zum Tageslimit passen');
       return;
     }
     
@@ -146,10 +147,10 @@ const ChildWalletModal = ({ child, onClose, onUpdate }) => {
     setError(null);
     try {
       await api.setChildLimits(child.child_id, {
-        daily_limit: dailyLimit,
-        weekly_limit: weeklyLimit
+        daily_screen_limit: dailyLimit,
+        weekly_screen_limit: weeklyLimit
       });
-      setSuccess('Limits gespeichert');
+      setSuccess('Zeitlimits gespeichert');
       await loadWalletData();
       if (onUpdate) onUpdate();
       setTimeout(() => setView('detail'), 1500);
@@ -284,7 +285,7 @@ const ChildWalletModal = ({ child, onClose, onUpdate }) => {
                 <span className="text-[11px] text-gray-500">
                   {view === 'detail' && 'Details'}
                   {view === 'transfer' && 'Geld senden'}
-                  {view === 'limits' && 'Limits bearbeiten'}
+                  {view === 'limits' && 'Zeitlimits bearbeiten'}
                   {view === 'history' && 'Transaktionen'}
                   {view === 'edit' && 'Bearbeiten'}
                 </span>
@@ -651,81 +652,85 @@ const ChildWalletModal = ({ child, onClose, onUpdate }) => {
                   exit={{ opacity: 0, x: -20 }}
                   className="space-y-5"
                 >
-                  {/* Daily Limit */}
+                  {/* Daily Screen Time Limit */}
                   <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5">
                     <div className="flex items-center justify-between mb-3">
                       <div>
-                        <label className="text-[13px] text-white font-medium">Tageslimit</label>
+                        <label className="text-[13px] text-white font-medium">Tägliche Bildschirmzeit</label>
                         <p className="text-[10px] text-gray-500">Maximum pro Tag</p>
                       </div>
-                      <span className="text-[22px] font-bold text-[#00C2FF]">€{dailyLimit}</span>
+                      <span className="text-[22px] font-bold text-[#00C2FF]">
+                        {Math.floor(dailyLimit / 60)}h {dailyLimit % 60}m
+                      </span>
                     </div>
                     <input
                       type="range"
-                      min={5}
-                      max={100}
-                      step={5}
+                      min={15}
+                      max={480}
+                      step={15}
                       value={dailyLimit}
                       onChange={(e) => setDailyLimit(Number(e.target.value))}
                       className="w-full h-2 rounded-full appearance-none cursor-pointer"
-                      style={{ background: `linear-gradient(to right, #00C2FF ${dailyLimit}%, #222 ${dailyLimit}%)` }}
+                      style={{ background: `linear-gradient(to right, #00C2FF ${(dailyLimit / 480) * 100}%, #222 ${(dailyLimit / 480) * 100}%)` }}
                     />
                     <div className="flex justify-between text-[10px] text-gray-500 mt-2">
-                      <span>€5</span>
-                      <span>€100</span>
+                      <span>15 Min</span>
+                      <span>8 Std</span>
                     </div>
                   </div>
 
-                  {/* Weekly Limit */}
+                  {/* Weekly Screen Time Limit */}
                   <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5">
                     <div className="flex items-center justify-between mb-3">
                       <div>
-                        <label className="text-[13px] text-white font-medium">Wochenlimit</label>
+                        <label className="text-[13px] text-white font-medium">Wöchentliche Bildschirmzeit</label>
                         <p className="text-[10px] text-gray-500">Maximum pro Woche</p>
                       </div>
-                      <span className="text-[22px] font-bold text-[#A855F7]">€{weeklyLimit}</span>
+                      <span className="text-[22px] font-bold text-[#A855F7]">
+                        {Math.floor(weeklyLimit / 60)}h
+                      </span>
                     </div>
                     <input
                       type="range"
-                      min={10}
-                      max={300}
-                      step={10}
+                      min={60}
+                      max={2520}
+                      step={60}
                       value={weeklyLimit}
                       onChange={(e) => setWeeklyLimit(Number(e.target.value))}
                       className="w-full h-2 rounded-full appearance-none cursor-pointer"
-                      style={{ background: `linear-gradient(to right, #A855F7 ${weeklyLimit / 3}%, #222 ${weeklyLimit / 3}%)` }}
+                      style={{ background: `linear-gradient(to right, #A855F7 ${(weeklyLimit / 2520) * 100}%, #222 ${(weeklyLimit / 2520) * 100}%)` }}
                     />
                     <div className="flex justify-between text-[10px] text-gray-500 mt-2">
-                      <span>€10</span>
-                      <span>€300</span>
+                      <span>1 Std</span>
+                      <span>42 Std</span>
                     </div>
                   </div>
 
                   {/* Info Box */}
                   <div className="p-4 rounded-xl bg-[#A855F7]/5 border border-[#A855F7]/10">
                     <p className="text-[12px] text-gray-400">
-                      <strong className="text-white">{currentChild.name}</strong> kann maximal <strong className="text-[#00C2FF]">€{dailyLimit}</strong> pro Tag 
-                      und <strong className="text-[#A855F7]">€{weeklyLimit}</strong> pro Woche ausgeben.
+                      <strong className="text-white">{currentChild.name}</strong> kann maximal <strong className="text-[#00C2FF]">{Math.floor(dailyLimit / 60)}h {dailyLimit % 60}m</strong> pro Tag 
+                      und <strong className="text-[#A855F7]">{Math.floor(weeklyLimit / 60)} Stunden</strong> pro Woche am Bildschirm sein.
                     </p>
                   </div>
 
                   {/* Validation Warning */}
-                  {dailyLimit > weeklyLimit && (
+                  {dailyLimit * 7 > weeklyLimit * 1.5 && (
                     <div className="p-3 rounded-xl bg-yellow-500/10 border border-yellow-500/20 flex items-center gap-2">
                       <AlertTriangle size={16} className="text-yellow-400 flex-shrink-0" />
-                      <span className="text-yellow-400 text-[12px]">Tageslimit sollte nicht höher als Wochenlimit sein</span>
+                      <span className="text-yellow-400 text-[12px]">Wochenlimit sollte zum Tageslimit passen</span>
                     </div>
                   )}
 
                   {/* Save Button */}
                   <motion.button
                     onClick={handleSaveLimits}
-                    disabled={actionLoading || dailyLimit > weeklyLimit}
+                    disabled={actionLoading || dailyLimit * 7 > weeklyLimit * 1.5}
                     className="w-full py-4 bg-[#A855F7] text-white font-bold text-[14px] rounded-xl disabled:opacity-40 flex items-center justify-center gap-2"
                     whileTap={{ scale: 0.98 }}
                   >
                     {actionLoading ? <Loader2 size={18} className="animate-spin" /> : <Check size={18} />}
-                    Limits speichern
+                    Zeitlimits speichern
                   </motion.button>
                 </motion.div>
               )}

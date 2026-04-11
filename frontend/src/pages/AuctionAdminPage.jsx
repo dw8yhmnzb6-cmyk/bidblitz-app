@@ -429,10 +429,10 @@ const AuctionAdminPage = ({ onBack }) => {
         )}
       </AnimatePresence>
 
-      {/* ═══ BOT CONFIG MODAL ═══ */}
+      {/* ═══ BOT CONFIG MODAL - 3-PHASE SYSTEM ═══ */}
       <AnimatePresence>
         {showBotModal && (
-          <Modal onClose={() => setShowBotModal(null)} title="Bot-Konfiguration">
+          <Modal onClose={() => setShowBotModal(null)} title="Bot-Konfiguration (3-Phasen)">
             <div className="space-y-4">
               <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5">
                 <p className="text-sm font-semibold">{showBotModal.title}</p>
@@ -459,55 +459,87 @@ const AuctionAdminPage = ({ onBack }) => {
                 </motion.button>
               </div>
 
-              {/* Target Price */}
-              <div className="p-3 rounded-xl bg-white/[0.02]">
+              {/* 3-Phase Explanation */}
+              <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20">
+                <p className="text-xs text-blue-300 font-semibold mb-2">3-PHASEN BOT-STRATEGIE:</p>
+                <div className="space-y-1 text-xs text-blue-200/70">
+                  <p>1. START: Bot bietet bis €{botConfig.initialTarget || 5} (Aktivität starten)</p>
+                  <p>2. PAUSE: Bot stoppt, echte Kunden bieten</p>
+                  <p>3. FINAL: Letzte 5 Min → Bot bis €{botConfig.target?.toFixed(2) || "?"}</p>
+                </div>
+              </div>
+
+              {/* Phase 1: Initial Target (€3-5) */}
+              <div className="p-3 rounded-xl bg-green-500/10 border border-green-500/20">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-white/60">Zielpreis</span>
-                  <span className="text-sm font-bold text-yellow-400">€{botConfig.target.toFixed(2)}</span>
+                  <span className="text-sm text-green-300">Phase 1: Start-Ziel</span>
+                  <span className="text-sm font-bold text-green-400">€{botConfig.initialTarget || 5}</span>
                 </div>
                 <input
                   type="range"
-                  min="0"
-                  max={showBotModal.retail_price * 0.5}
-                  step="1"
+                  min="1"
+                  max="10"
+                  step="0.5"
+                  value={botConfig.initialTarget || 5}
+                  onChange={(e) => setBotConfig(c => ({ ...c, initialTarget: parseFloat(e.target.value) }))}
+                  className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-green-400"
+                />
+                <p className="text-xs text-green-300/50 mt-1">Bot bietet bis dieser Preis erreicht ist</p>
+              </div>
+
+              {/* Phase 3: Final Target Price */}
+              <div className="p-3 rounded-xl bg-yellow-500/10 border border-yellow-500/20">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm text-yellow-300">Phase 3: End-Ziel</span>
+                  <span className="text-sm font-bold text-yellow-400">€{botConfig.target?.toFixed(2)}</span>
+                </div>
+                <input
+                  type="range"
+                  min="5"
+                  max={Math.min(showBotModal.retail_price * 0.5, 500)}
+                  step="0.5"
                   value={botConfig.target}
                   onChange={(e) => setBotConfig(c => ({ ...c, target: parseFloat(e.target.value) }))}
                   className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-yellow-400"
                 />
-                <div className="flex justify-between text-xs text-white/30 mt-1">
-                  <span>€0</span>
+                <div className="flex justify-between text-xs text-yellow-300/50 mt-1">
+                  <span>€5</span>
                   <span>~{((botConfig.target / showBotModal.retail_price) * 100).toFixed(0)}% vom UVP</span>
-                  <span>€{(showBotModal.retail_price * 0.5).toFixed(0)}</span>
+                  <span>€{Math.min(showBotModal.retail_price * 0.5, 500).toFixed(0)}</span>
                 </div>
               </div>
 
-              {/* Min Seconds */}
-              <div className="p-3 rounded-xl bg-white/[0.02]">
+              {/* Final Phase Duration */}
+              <div className="p-3 rounded-xl bg-purple-500/10 border border-purple-500/20">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-white/60">Bot startet bei</span>
-                  <span className="text-sm font-bold text-blue-400">{botConfig.minSeconds}s verbleibend</span>
+                  <span className="text-sm text-purple-300">Final-Phase startet bei</span>
+                  <span className="text-sm font-bold text-purple-400">{Math.floor((botConfig.minSeconds || 300) / 60)} Min verbleibend</span>
                 </div>
                 <input
                   type="range"
-                  min="10"
-                  max="300"
-                  step="10"
-                  value={botConfig.minSeconds}
+                  min="60"
+                  max="600"
+                  step="30"
+                  value={botConfig.minSeconds || 300}
                   onChange={(e) => setBotConfig(c => ({ ...c, minSeconds: parseInt(e.target.value) }))}
-                  className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-blue-400"
+                  className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-purple-400"
                 />
+                <div className="flex justify-between text-xs text-purple-300/50 mt-1">
+                  <span>1 Min</span>
+                  <span>10 Min</span>
+                </div>
               </div>
 
               {/* Estimated Revenue */}
-              <div className="p-3 rounded-xl bg-purple-500/10 border border-purple-500/20">
+              <div className="p-3 rounded-xl bg-cyan-500/10 border border-cyan-500/20">
                 <div className="flex items-center gap-2 mb-1">
-                  <DollarSign size={16} className="text-purple-400" />
-                  <span className="text-sm text-purple-300">Geschätzter Umsatz</span>
+                  <DollarSign size={16} className="text-cyan-400" />
+                  <span className="text-sm text-cyan-300">Geschätzter Umsatz</span>
                 </div>
-                <p className="text-xl font-bold text-purple-400">
+                <p className="text-xl font-bold text-cyan-400">
                   €{(Math.round(botConfig.target / 0.01) * 0.50).toFixed(2)}
                 </p>
-                <p className="text-xs text-purple-300/60">
+                <p className="text-xs text-cyan-300/60">
                   ~{Math.round(botConfig.target / 0.01)} Gebote × €0.50 pro Gebot
                 </p>
               </div>

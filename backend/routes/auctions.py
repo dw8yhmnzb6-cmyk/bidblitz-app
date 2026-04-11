@@ -956,6 +956,33 @@ PRODUCT_IMAGES = {
     "Samsung Neo QLED 8K 75\"": "https://images.unsplash.com/photo-1623902118614-01c68f0508c8?w=600&h=400&fit=crop&q=80",
     "Roborock S9 MaxV Ultra": "https://images.unsplash.com/photo-1762859731349-c9ff2808b672?w=600&h=400&fit=crop&q=80",
     "Apple HomePod 3": "https://images.unsplash.com/photo-1617722694908-9be1092d1bc2?w=600&h=400&fit=crop&q=80",
+    # NEW 20 PRODUCTS - April 2026
+    "Rolex Submariner Gold": "https://images.unsplash.com/photo-1760532467609-45ed8016f795?w=600&h=400&fit=crop&q=80",
+    "Omega Seamaster 300": "https://images.unsplash.com/photo-1704783549722-8dcd98e9cf5d?w=600&h=400&fit=crop&q=80",
+    "Razer Huntsman V3 Pro": "https://images.unsplash.com/photo-1645802106095-765b7e86f5bb?w=600&h=400&fit=crop&q=80",
+    "Corsair K100 RGB": "https://images.unsplash.com/photo-1628089700970-0012c5718efc?w=600&h=400&fit=crop&q=80",
+    "DJI Mavic 4 Pro": "https://images.unsplash.com/photo-1668836733970-9ed7e53cd2ca?w=600&h=400&fit=crop&q=80",
+    "DJI Mini 4 Pro": "https://images.unsplash.com/photo-1773750923584-5c684563e0d9?w=600&h=400&fit=crop&q=80",
+    "Segway Ninebot Max G3": "https://images.unsplash.com/photo-1737636255601-179dc7535116?w=600&h=400&fit=crop&q=80",
+    "Xiaomi Electric Scooter 5": "https://images.unsplash.com/photo-1583322319396-08178ea4f8b3?w=600&h=400&fit=crop&q=80",
+    "De'Longhi La Specialista": "https://images.unsplash.com/photo-1741113937337-1d0273bf941d?w=600&h=400&fit=crop&q=80",
+    "Breville Barista Touch": "https://images.unsplash.com/photo-1635749269192-489bdda05932?w=600&h=400&fit=crop&q=80",
+    "Sony A7 IV": "https://images.unsplash.com/photo-1637270871981-4b579f127c0c?w=600&h=400&fit=crop&q=80",
+    "Sony A7R V": "https://images.unsplash.com/photo-1576420379131-bfc2344aab31?w=600&h=400&fit=crop&q=80",
+    "VanMoof S5": "https://images.unsplash.com/photo-1753092604434-8c0e6c3b50f0?w=600&h=400&fit=crop&q=80",
+    "Cowboy 5": "https://images.unsplash.com/photo-1666360058702-a3aa07227c53?w=600&h=400&fit=crop&q=80",
+    "Secretlab Titan Evo 2024": "https://images.unsplash.com/photo-1770195555068-37103df33bf8?w=600&h=400&fit=crop&q=80",
+    "Herman Miller Embody Gaming": "https://images.unsplash.com/photo-1577239458058-b179bc7479bf?w=600&h=400&fit=crop&q=80",
+    "Google Nest Audio": "https://images.unsplash.com/photo-1655976796910-b239b1a1a41c?w=600&h=400&fit=crop&q=80",
+    "Sonos Era 300": "https://images.unsplash.com/photo-1655976797987-0fdbab9e7419?w=600&h=400&fit=crop&q=80",
+    "Evolve GTR 2": "https://images.unsplash.com/photo-1611172016558-17e0da981759?w=600&h=400&fit=crop&q=80",
+    "Boosted Board Mini X": "https://images.unsplash.com/photo-1659337162301-37d9e1289eac?w=600&h=400&fit=crop&q=80",
+    "Samsung Odyssey G9 49\"": "https://images.unsplash.com/photo-1632064824547-e77c36851495?w=600&h=400&fit=crop&q=80",
+    "LG UltraGear 45GR95QE": "https://images.unsplash.com/photo-1582736317407-371893d9e146?w=600&h=400&fit=crop&q=80",
+    "XGIMI Horizon Ultra": "https://images.unsplash.com/photo-1620764701841-b584378ee8fd?w=600&h=400&fit=crop&q=80",
+    "Samsung Freestyle 2": "https://images.unsplash.com/photo-1750994700257-133c7fdb0c7a?w=600&h=400&fit=crop&q=80",
+    "Theragun Pro Plus": "https://images.unsplash.com/photo-1746278925416-9d6c71f55c2d?w=600&h=400&fit=crop&q=80",
+    "Hyperice Hypervolt 2 Pro": "https://images.unsplash.com/photo-1611908200005-b898ddde09cf?w=600&h=400&fit=crop&q=80",
 }
 
 PRODUCT_CATALOG = [
@@ -1018,6 +1045,114 @@ PRODUCT_CATALOG = [
     # Smart Home
     {"title": "Apple HomePod 3", "description": "Apple HomePod 3 — Spatial Audio, Siri Intelligence, Matter Hub, Room Sensing", "retail_price": 349.00, "duration": 172800, "category": "smarthome",
      "features": ["High-Excursion Woofer, 5 Tweeters", "Spatial Audio with Room Sensing", "Siri with On-Device Intelligence", "Thread & Matter Smart Home Hub", "Ultra Wideband, Intercom, Find My", "Temperature & Humidity Sensor"],
+     "condition": "Brand New — Factory Sealed"},
+    
+    # ═══════════════════════════════════════════════════════════════════
+    # NEW 20 PRODUCTS - April 2026
+    # ═══════════════════════════════════════════════════════════════════
+    
+    # Luxury Watches
+    {"title": "Rolex Submariner Gold", "description": "Rolex Submariner Date 41mm — 18K Yellow Gold, Black Dial, Oysterflex Bracelet", "retail_price": 38900.00, "duration": 604800, "category": "watches",
+     "features": ["41mm 18K Yellow Gold Case", "Cerachrom Ceramic Bezel Insert", "Calibre 3235 Movement, 70h Reserve", "Waterproof to 300m / 1000ft", "Chromalight Display, Blue Glow", "Oysterflex Rubber Bracelet"],
+     "condition": "Brand New — Factory Sealed"},
+    {"title": "Omega Seamaster 300", "description": "Omega Seamaster 300M — Co-Axial Master Chronometer, Ceramic Bezel, 42mm", "retail_price": 5700.00, "duration": 432000, "category": "watches",
+     "features": ["42mm Stainless Steel Case", "Co-Axial Master Chronometer Movement", "Ceramic Bezel with Diving Scale", "300m Water Resistance", "Wave-Pattern Blue Dial", "5-Year Warranty"],
+     "condition": "Brand New — Factory Sealed"},
+    
+    # Gaming Keyboards
+    {"title": "Razer Huntsman V3 Pro", "description": "Razer Huntsman V3 Pro — Analog Optical Switches, Magnetic Wrist Rest, RGB Chroma", "retail_price": 299.00, "duration": 172800, "category": "gaming",
+     "features": ["Analog Optical Switches", "Adjustable Actuation 0.1-4.0mm", "Magnetic Leatherette Wrist Rest", "Razer Chroma RGB per Key", "Multi-Function Dial & Media Keys", "Onboard Memory, 8000Hz Polling"],
+     "condition": "Brand New — Factory Sealed"},
+    {"title": "Corsair K100 RGB", "description": "Corsair K100 RGB — OPX Optical Switches, iCUE Control Wheel, Aircraft Aluminum", "retail_price": 249.00, "duration": 172800, "category": "gaming",
+     "features": ["Corsair OPX Optical Switches", "4000Hz Hyper-Polling", "iCUE Control Wheel", "Aircraft-Grade Aluminum Frame", "Per-Key RGB Backlighting", "Detachable Palm Rest"],
+     "condition": "Brand New — Factory Sealed"},
+    
+    # Drones
+    {"title": "DJI Mavic 4 Pro", "description": "DJI Mavic 4 Pro — Hasselblad Camera, 8K Video, Omnidirectional Sensing, 48min Flight", "retail_price": 2199.00, "duration": 259200, "category": "drones",
+     "features": ["Hasselblad 4/3 CMOS Sensor", "8K/24fps & 4K/120fps Video", "Omnidirectional Obstacle Sensing", "48-Minute Max Flight Time", "O4 Transmission 20km Range", "ActiveTrack 6.0, MasterShots"],
+     "condition": "Brand New — Factory Sealed"},
+    {"title": "DJI Mini 4 Pro", "description": "DJI Mini 4 Pro — Under 250g, 4K HDR, Tri-Directional Sensing, Fly More Combo", "retail_price": 1099.00, "duration": 216000, "category": "drones",
+     "features": ["Under 249g, No Registration Needed", "1/1.3\" CMOS, 48MP Photos", "4K/60fps HDR Video", "Tri-Directional Obstacle Sensing", "34-Minute Flight Time", "10km O4 Video Transmission"],
+     "condition": "Brand New — Factory Sealed"},
+    
+    # Electric Scooters
+    {"title": "Segway Ninebot Max G3", "description": "Segway Ninebot KickScooter Max G3 — 40km Range, 30km/h Speed, 10\" Pneumatic Tires", "retail_price": 999.00, "duration": 216000, "category": "mobility",
+     "features": ["40km / 25mi Max Range", "30km/h / 18.6mph Top Speed", "10\" Pneumatic Tires", "Front & Rear Suspension", "Built-in Phone Charger", "IPX5 Water Resistant"],
+     "condition": "Brand New — Factory Sealed"},
+    {"title": "Xiaomi Electric Scooter 5", "description": "Xiaomi Electric Scooter 5 Pro — 600W Motor, 45km Range, 10\" Tubeless Tires", "retail_price": 799.00, "duration": 194400, "category": "mobility",
+     "features": ["600W Dual Motor Peak", "45km / 28mi Max Range", "10\" Tubeless Self-Sealing Tires", "Front & Rear Disc Brakes", "LED Dashboard Display", "Apple Find My Compatible"],
+     "condition": "Brand New — Factory Sealed"},
+    
+    # Coffee Machines
+    {"title": "De'Longhi La Specialista", "description": "De'Longhi La Specialista Arte Evo — Integrated Grinder, Smart Tamping, Steam Wand", "retail_price": 849.00, "duration": 194400, "category": "home",
+     "features": ["Sensor Grinding Technology", "Smart Tamping Station", "Active Temperature Control", "Professional Steam Wand", "3 Preset Recipes + Custom", "LatteCrema Hot System"],
+     "condition": "Brand New — Factory Sealed"},
+    {"title": "Breville Barista Touch", "description": "Breville Barista Touch Impress — Assisted Tamping, Touch Display, Grind Size Dial", "retail_price": 1499.00, "duration": 216000, "category": "home",
+     "features": ["Impress Puck System, Auto Tamping", "Intuitive Touch Screen Display", "ThermoJet Heating System", "Integrated Conical Burr Grinder", "Programmable Shot Volumes", "Auto Steam Wand"],
+     "condition": "Brand New — Factory Sealed"},
+    
+    # Cameras
+    {"title": "Sony A7 IV", "description": "Sony Alpha 7 IV — 33MP Full-Frame, 4K 60p, Real-Time Eye AF, 10fps Burst", "retail_price": 2499.00, "duration": 259200, "category": "cameras",
+     "features": ["33MP Exmor R Full-Frame Sensor", "BIONZ XR Processor", "4K 60p 10-Bit Video", "Real-Time Eye AF for Humans/Animals", "5-Axis In-Body Stabilization", "759-Point Phase Detection AF"],
+     "condition": "Brand New — Factory Sealed"},
+    {"title": "Sony A7R V", "description": "Sony Alpha 7R V — 61MP Full-Frame, AI AF Processor, 8K Oversampled 4K", "retail_price": 3899.00, "duration": 302400, "category": "cameras",
+     "features": ["61MP Full-Frame Exmor R Sensor", "AI Processing Unit for AF", "8-Stop In-Body Stabilization", "8K Oversampled 4K Video", "4K 60p, S-Log3, S-Cinetone", "Dual Card Slots, USB-C"],
+     "condition": "Brand New — Factory Sealed"},
+    
+    # E-Bikes
+    {"title": "VanMoof S5", "description": "VanMoof S5 — Integrated Anti-Theft, Turbo Boost, 150km Range, App Connected", "retail_price": 2998.00, "duration": 302400, "category": "mobility",
+     "features": ["Front & Rear Hub Motors", "Turbo Boost Button", "150km / 93mi Range", "Integrated Smart Lock", "Kick Lock Anti-Theft", "Find My Bike Tracking"],
+     "condition": "Brand New — Factory Sealed"},
+    {"title": "Cowboy 5", "description": "Cowboy 5 — Carbon Belt Drive, Removable Battery, 70km Range, Crash Detection", "retail_price": 2990.00, "duration": 302400, "category": "mobility",
+     "features": ["Carbon Belt Drive, No Chain", "Removable 360Wh Battery", "70km / 43mi Range", "Integrated Lights", "Crash Detection & SOS", "GPS Anti-Theft"],
+     "condition": "Brand New — Factory Sealed"},
+    
+    # Gaming Chairs
+    {"title": "Secretlab Titan Evo 2024", "description": "Secretlab Titan Evo 2024 — 4-Way L-Adapt Lumbar, Magnetic Armrests, Hybrid Leatherette", "retail_price": 584.00, "duration": 194400, "category": "gaming",
+     "features": ["4-Way L-Adapt Lumbar Support", "Magnetic CloudSwap Armrests", "Neo Hybrid Leatherette", "Multi-Tilt Mechanism", "XL Pebble Seat Base", "5-Year Extended Warranty"],
+     "condition": "Brand New — Factory Sealed"},
+    {"title": "Herman Miller Embody Gaming", "description": "Herman Miller x Logitech G Embody Gaming Chair — 12-Year Warranty, Sync Fabric", "retail_price": 1795.00, "duration": 259200, "category": "gaming",
+     "features": ["Logitech G x HM Collaboration", "Pixelated Support Technology", "Copper-Infused Cooling Foam", "Sync Fabric Gaming Material", "PostureFit Spinal Support", "12-Year Warranty"],
+     "condition": "Brand New — Factory Sealed"},
+    
+    # Smart Speakers
+    {"title": "Google Nest Audio", "description": "Google Nest Audio — 75mm Woofer, Google Assistant, Multi-Room Audio", "retail_price": 99.00, "duration": 172800, "category": "smarthome",
+     "features": ["75mm Woofer, 19mm Tweeter", "Google Assistant Built-In", "Multi-Room Audio Support", "Voice Match for Personalization", "Ambient IQ Auto-Adjust", "Chromecast Built-In"],
+     "condition": "Brand New — Factory Sealed"},
+    {"title": "Sonos Era 300", "description": "Sonos Era 300 — Dolby Atmos, Spatial Audio, WiFi 6, USB-C Line-In", "retail_price": 499.00, "duration": 194400, "category": "smarthome",
+     "features": ["Dolby Atmos Music Support", "6 Drivers for Spatial Sound", "Trueplay Tuning Technology", "WiFi 6, Bluetooth, USB-C", "Amazon Alexa Built-In", "AirPlay 2 Compatible"],
+     "condition": "Brand New — Factory Sealed"},
+    
+    # Electric Skateboards
+    {"title": "Evolve GTR 2", "description": "Evolve GTR 2 Bamboo — All-Terrain, Dual 3000W Motors, 50km Range, 50km/h", "retail_price": 2399.00, "duration": 259200, "category": "mobility",
+     "features": ["Dual 3000W Hub Motors", "50km / 31mi Range", "50km/h / 31mph Top Speed", "Bamboo Deck with Fiberglass", "175mm All-Terrain Wheels", "LED Lights, Regenerative Braking"],
+     "condition": "Brand New — Factory Sealed"},
+    {"title": "Boosted Board Mini X", "description": "Boosted Mini X — Compact Design, 23km Range, 30km/h Speed, Deep Concave Deck", "retail_price": 999.00, "duration": 194400, "category": "mobility",
+     "features": ["Compact 29.5\" Deck", "1000W Dual Motors", "23km / 14mi Range", "30km/h / 18.5mph Speed", "Regenerative Braking", "Hyper Mode Available"],
+     "condition": "Brand New — Factory Sealed"},
+    
+    # Gaming Monitors
+    {"title": "Samsung Odyssey G9 49\"", "description": "Samsung Odyssey OLED G9 49\" — QD-OLED, 240Hz, 0.03ms, 1000R Curve, HDR10+", "retail_price": 1799.00, "duration": 259200, "category": "monitors",
+     "features": ["49\" QD-OLED Curved Display", "5120x1440, 32:9 Aspect Ratio", "240Hz Refresh Rate", "0.03ms Response Time", "1000R Curvature", "HDR10+ Gaming, 99% DCI-P3"],
+     "condition": "Brand New — Factory Sealed"},
+    {"title": "LG UltraGear 45GR95QE", "description": "LG UltraGear 45\" OLED — 240Hz, 0.03ms, WQHD, G-Sync & FreeSync Premium", "retail_price": 1699.00, "duration": 259200, "category": "monitors",
+     "features": ["45\" Curved OLED Panel", "3440x1440 WQHD Resolution", "240Hz Refresh Rate", "0.03ms GtG Response Time", "G-Sync & FreeSync Premium", "Anti-Glare Low Reflection"],
+     "condition": "Brand New — Factory Sealed"},
+    
+    # Projectors
+    {"title": "XGIMI Horizon Ultra", "description": "XGIMI Horizon Ultra — 4K Dolby Vision, 2300 ISO Lumens, Harman Kardon Audio", "retail_price": 1699.00, "duration": 216000, "category": "home",
+     "features": ["Native 4K Resolution", "2300 ISO Lumens Brightness", "Dolby Vision & HDR10+", "Harman Kardon Speakers", "Intelligent Screen Adaptation", "Google TV Built-In"],
+     "condition": "Brand New — Factory Sealed"},
+    {"title": "Samsung Freestyle 2", "description": "Samsung The Freestyle 2nd Gen — Portable Projector, 360° Sound, Smart TV Built-In", "retail_price": 899.00, "duration": 194400, "category": "home",
+     "features": ["Full HD 1080p Resolution", "360° Sound Built-In", "Auto Focus & Auto Keystone", "Samsung Smart TV Built-In", "Gaming Hub Support", "Portable, 830g Weight"],
+     "condition": "Brand New — Factory Sealed"},
+    
+    # Massage Guns
+    {"title": "Theragun Pro Plus", "description": "Theragun Pro Plus — 60lb Force, Smart App, 6 Attachments, QuietForce Technology", "retail_price": 599.00, "duration": 172800, "category": "fitness",
+     "features": ["60lb No-Stall Force", "QuietForce Technology", "OLED Screen with Force Meter", "300-Minute Battery Life", "6 Attachment Heads", "Therabody App Integration"],
+     "condition": "Brand New — Factory Sealed"},
+    {"title": "Hyperice Hypervolt 2 Pro", "description": "Hyperice Hypervolt 2 Pro — Bluetooth Connected, 5 Speeds, Quiet Glide Technology", "retail_price": 399.00, "duration": 172800, "category": "fitness",
+     "features": ["Quiet Glide Technology", "Bluetooth App Control", "5 Speed Settings", "3-Hour Battery Life", "5 Attachment Heads", "TSA-Approved Carry Size"],
      "condition": "Brand New — Factory Sealed"},
 ]
 
@@ -1403,8 +1538,13 @@ async def execute_bot_bid(auction):
 async def bot_bidding_loop():
     """Background loop: check bot-enabled auctions and place bids.
     
-    Bots only bid on auctions where admin has explicitly enabled bot_enabled=True.
-    This simulates market activity in the early phase of the platform.
+    NEW 3-PHASE BOT BIDDING STRATEGY:
+    ═══════════════════════════════════════════════════════════════════
+    Phase 1 (START): Bots bid until price reaches €3-5 to generate initial activity
+    Phase 2 (PAUSE): Bots stop completely, let real customers bid
+    Phase 3 (FINAL 5 MIN): If remaining < 5min AND price < target, bots resume
+                          Bots bid until target price is reached, then STOP
+    ═══════════════════════════════════════════════════════════════════
     """
     while True:
         try:
@@ -1419,10 +1559,10 @@ async def bot_bidding_loop():
             }).to_list(100)
 
             for auction in bot_auctions:
-                target = auction.get("bot_target_price", 0)
+                target = auction.get("bot_target_price", 50)  # z.B. €50.01
                 current = auction.get("current_price", 0)
-
-                # Don't bid if target reached
+                
+                # ═══ PHASE CHECK: Target already reached? STOP completely ═══
                 if current >= target:
                     continue
 
@@ -1432,14 +1572,37 @@ async def bot_bidding_loop():
                 except Exception:
                     continue
 
-                # Only bid in final seconds (configurable per auction)
-                bot_min_secs = auction.get("bot_min_seconds", 300)
-                if bot_min_secs > 0 and remaining > bot_min_secs:
+                # ═══════════════════════════════════════════════════════════
+                # PHASE 1: START PHASE (Preis < €5)
+                # Bots bieten bis €3-5 erreicht sind um Aktivität zu generieren
+                # ═══════════════════════════════════════════════════════════
+                initial_target = auction.get("bot_initial_target", 5.0)  # €3-5 default
+                
+                if current < initial_target:
+                    # In Phase 1: Biete bis initial_target erreicht
+                    bid_probability = 0.4  # 40% Chance pro Loop
+                    if random.random() > bid_probability:
+                        continue
+                    await asyncio.sleep(random.uniform(0.5, 2.0))
+                    await execute_bot_bid(auction)
                     continue
 
-                # Randomize bid probability to look natural
-                # Lower probability = more realistic
-                bid_probability = auction.get("bot_probability", 0.3)
+                # ═══════════════════════════════════════════════════════════
+                # PHASE 2: PAUSE PHASE (€5 < Preis < Target, Zeit > 5 Min)
+                # Bots stoppen komplett, echte Kunden bieten
+                # ═══════════════════════════════════════════════════════════
+                final_phase_seconds = auction.get("bot_final_phase_seconds", 300)  # 5 Minuten
+                
+                if remaining > final_phase_seconds:
+                    # Noch mehr als 5 Minuten übrig → PAUSE (keine Bot-Bids)
+                    continue
+
+                # ═══════════════════════════════════════════════════════════
+                # PHASE 3: FINAL PHASE (Letzte 5 Minuten)
+                # Bots bieten wieder bis Zielpreis erreicht ist
+                # ═══════════════════════════════════════════════════════════
+                # Preis < Target UND weniger als 5 Minuten übrig
+                bid_probability = auction.get("bot_probability", 0.35)
                 if random.random() > bid_probability:
                     continue
 

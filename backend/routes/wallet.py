@@ -159,3 +159,66 @@ async def send_money(req: SendMoneyRequest, request: Request):
         "reference": result.reference,
         "transaction_id": result.transaction_id,
     }
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# ADMIN SEND MONEY - NO FEE/PROVISION (Admin schenkt Geld an Kunden)
+# ══════════════════════════════════════════════════════════════════════════════
+class AdminSendRequest(BaseModel):
+    recipient_email: str
+    amount: float
+    note: Optional[str] = "Geschenk vom Admin"
+
+@router.post("/admin/send")
+async def admin_send_money(req: AdminSendRequest, request: Request):
+    """Admin sends money to a user - NO FEES, direct credit to recipient wallet.
+    Admin's wallet is NOT debited - this is essentially 'creating' money for users."""
+    user = await get_current_user(request)
+    
+    # ONLY ADMIN CAN USE THIS ENDPOINT
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Nur Admin kann diese Funktion nutzen")
+    
+    # Validate amount
+    if req.amount < 0.01:
+        raise HTTPException(status_code=400, detail="Mindestbetrag: €0.01")
+    if req.amount > 100000:
+        raise HTTPException(status_code=400, detail="Maximalbetrag: €100.000")
+    
+    # Find recipient
+    recipient_email = req.recipient_email.lower().strip()
+    recipient = await db.users.find_one({"email": recipient_email})
+    if not recipient:
+        raise HTTPException(status_code=404, detail="Empfänger nicht gefunden. Bitte E-Mail überprüfen.")
+    
+    recipient_id = str(recipient["_id"])
+    
+    # Direct credit to recipient wallet (no debit from admin, no fees)
+    from core.payment_engine import credit_wallet, TransactionType
+    
+    result = await credit_wallet(
+        user_id=recipient_id,
+        amount=req.amount,
+        tx_type=TransactionType.ADMIN_CREDIT,
+        description=f"Admin-Geschenk: {req.note or 'Gutschrift'}",
+        metadata={
+            "admin_id": str(user["_id"]),
+            "admin_email": user.get("email"),
+            "note": req.note,
+            "type": "admin_gift",
+            "no_fee": True
+        }
+    )
+    
+    if not result.success:
+        raise HTTPException(status_code=400, detail=result.error)
+    
+    return {
+        "success": True,
+        "message": f"€{req.amount:.2f} an {recipient.get('name', recipient_email)} gesendet (ohne Provision)",
+        "recipient_name": recipient.get("name", recipient_email),
+        "recipient_new_balance": result.new_balance,
+        "reference": result.reference,
+        "transaction_id": result.transaction_id,
+    }
+

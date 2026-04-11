@@ -5,7 +5,10 @@ import {
   Check, Star, Crown, Loader2, Users, PlusCircle,
   TrendingDown, Wallet, Clock, BarChart3, Lock,
   Send, Settings, ChevronRight, RefreshCw, Unlock,
-  Filter, ShoppingBag, ArrowUpRight, ArrowDownLeft, Bell, Key
+  Filter, ShoppingBag, ArrowUpRight, ArrowDownLeft, Bell, Key,
+  MapPin, Map, CheckSquare, Smartphone, Battery, Award,
+  FileText, TrendingUp, Gift, Trophy, UserPlus, PieChart,
+  Bookmark, Target, Gamepad2
 } from "lucide-react";
 import { useI18n, useUser } from "../store";
 import { api } from "../services/api";
@@ -19,6 +22,26 @@ const BENEFITS = [
   { icon: Eye, key: "spending_limits", descKey: "spending_limits_desc" },
   { icon: CreditCard, key: "txn_tracking", descKey: "txn_tracking_desc" },
   { icon: Zap, key: "safe_payments", descKey: "safe_payments_desc" },
+];
+
+// Quick Actions für das Kids Dashboard
+const QUICK_ACTIONS = [
+  { icon: MapPin, key: "gps", label: "GPS", color: "#3B82F6", bgColor: "rgba(59,130,246,0.15)" },
+  { icon: Map, key: "zones", label: "Zonen", color: "#10B981", bgColor: "rgba(16,185,129,0.15)" },
+  { icon: CheckSquare, key: "tasks", label: "Aufgaben", color: "#F59E0B", bgColor: "rgba(245,158,11,0.15)" },
+  { icon: Smartphone, key: "screen", label: "Bildschirm", color: "#8B5CF6", bgColor: "rgba(139,92,246,0.15)" },
+  { icon: Battery, key: "battery", label: "Akku", color: "#EF4444", bgColor: "rgba(239,68,68,0.15)" },
+  { icon: Star, key: "points", label: "Punkte", color: "#F59E0B", bgColor: "rgba(245,158,11,0.15)" },
+  { icon: FileText, key: "report", label: "Bericht", color: "#6366F1", bgColor: "rgba(99,102,241,0.15)" },
+  { icon: TrendingUp, key: "spending", label: "Ausgaben", color: "#F97316", bgColor: "rgba(249,115,22,0.15)" },
+  { icon: Wallet, key: "allowance", label: "Taschengeld", color: "#14B8A6", bgColor: "rgba(20,184,166,0.15)" },
+  { icon: Gift, key: "shop", label: "Shop", color: "#EC4899", bgColor: "rgba(236,72,153,0.15)" },
+  { icon: Trophy, key: "ranking", label: "Rangliste", color: "#EAB308", bgColor: "rgba(234,179,8,0.15)" },
+  { icon: UserPlus, key: "coparents", label: "Co-Eltern", color: "#A855F7", bgColor: "rgba(168,85,247,0.15)" },
+  { icon: PieChart, key: "analytics", label: "Analytics", color: "#06B6D4", bgColor: "rgba(6,182,212,0.15)" },
+  { icon: Bookmark, key: "board", label: "Pinnwand", color: "#F472B6", bgColor: "rgba(244,114,182,0.15)" },
+  { icon: Award, key: "badges", label: "Abzeichen", color: "#8B5CF6", bgColor: "rgba(139,92,246,0.15)" },
+  { icon: Target, key: "challenges", label: "Challenges", color: "#22C55E", bgColor: "rgba(34,197,94,0.15)" },
 ];
 
 // ── Kids Dashboard (post-subscription) ──
@@ -46,6 +69,8 @@ const KidsDashboard = ({ onBack, t, subStatus }) => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [activeTab, setActiveTab] = useState('wallet'); // wallet | tracking
+  const [activeFeature, setActiveFeature] = useState(null);
 
   const CHILD_EMOJIS = ["👦", "👧", "🧒", "👶", "🐻", "🦊", "🐰", "🐱", "🦁", "🐶"];
 
@@ -227,285 +252,219 @@ const KidsDashboard = ({ onBack, t, subStatus }) => {
   return (
     <motion.div data-testid="kids-dashboard" className="min-h-screen relative" style={{ background: "#030303" }}
       initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={slide}>
-      {/* Header */}
-      <div className="flex items-center gap-3 px-5 pt-[max(env(safe-area-inset-top,0px),24px)] pb-3 relative z-10">
-        <motion.button data-testid="kids-dashboard-back" className="w-10 h-10 rounded-full bg-white/[0.04] border border-white/[0.05] flex items-center justify-center"
-          whileTap={{ scale: 0.88 }} onClick={onBack}>
-          <ChevronLeft size={15} strokeWidth={1.5} className="text-white/50" />
-        </motion.button>
-        <h1 className="text-[15px] font-semibold font-outfit text-white tracking-tight">BidBlitz Kids</h1>
-        <div className="ml-auto flex items-center gap-2">
-          {/* Notifications Button */}
-          <motion.button 
-            onClick={() => setShowNotifications(true)}
-            className="w-8 h-8 rounded-full bg-white/[0.04] flex items-center justify-center relative"
-            whileTap={{ scale: 0.9 }}
+      
+      {/* Success/Error Messages - Fixed at top */}
+      <AnimatePresence>
+        {(success || error) && (
+          <motion.div 
+            initial={{ opacity: 0, y: -20 }} 
+            animate={{ opacity: 1, y: 0 }} 
+            exit={{ opacity: 0, y: -20 }}
+            className="fixed top-4 left-4 right-4 z-50"
           >
-            <Bell size={14} className="text-white/40" />
-            {unreadNotifications > 0 && (
-              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[#00C2FF] text-black text-[9px] font-bold flex items-center justify-center">
-                {unreadNotifications > 9 ? '9+' : unreadNotifications}
-              </span>
+            {success && (
+              <div className="px-4 py-3 rounded-xl bg-green-500/20 border border-green-500/30 backdrop-blur-xl flex items-center gap-2">
+                <Check size={16} className="text-green-400" />
+                <span className="text-green-400 text-[12px] font-medium">{success}</span>
+              </div>
             )}
-          </motion.button>
-          <motion.button 
-            onClick={handleRefresh}
-            disabled={refreshing}
-            className="w-8 h-8 rounded-full bg-white/[0.04] flex items-center justify-center"
-            whileTap={{ scale: 0.9 }}
-          >
-            <RefreshCw size={14} className={`text-white/40 ${refreshing ? 'animate-spin' : ''}`} />
-          </motion.button>
-          <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-[#FFD700]/10">
-            <Crown size={12} className="text-[#FFD700]" />
-            <span data-testid="kids-sub-status" className="text-[10px] text-[#FFD700] font-semibold uppercase tracking-wider">
-              {subStatus?.status === "trial" ? `Trial (${trialDaysLeft}d)` : "Aktiv"}
-            </span>
-          </div>
-        </div>
-      </div>
+            {error && (
+              <div className="px-4 py-3 rounded-xl bg-red-500/20 border border-red-500/30 backdrop-blur-xl flex items-center gap-2">
+                <span className="text-red-400 text-[12px] font-medium">{error}</span>
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      <div className="px-5 pb-28 space-y-4">
-        {/* Success/Error messages */}
-        <AnimatePresence>
-          {success && (
-            <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
-              className="px-4 py-3 rounded-xl bg-green-500/10 border border-green-500/20 flex items-center gap-2">
-              <Check size={16} className="text-green-400" />
-              <span className="text-green-400 text-[12px] font-medium">{success}</span>
-            </motion.div>
-          )}
-          {error && (
-            <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
-              className="px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center gap-2">
-              <span className="text-red-400 text-[12px] font-medium">{error}</span>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
+      <div className="px-4 pb-28 pt-[max(env(safe-area-inset-top,0px),16px)]">
         {/* Loading state */}
         {loading ? (
-          <div className="flex items-center justify-center py-16">
-            <Loader2 size={22} className="text-[#00C2FF] animate-spin" />
+          <div className="flex items-center justify-center py-32">
+            <Loader2 size={28} className="text-[#00C2FF] animate-spin" />
           </div>
         ) : (<>
         
-        {/* 1. FAMILY OVERVIEW */}
+        {/* ═══════════════════════════════════════════════════════════════
+            1. FAMILY WALLET HEADER - Blue Gradient Card
+        ═══════════════════════════════════════════════════════════════ */}
         <motion.div 
-          className="rounded-2xl p-5 relative overflow-hidden"
-          style={{ background: "linear-gradient(135deg, rgba(0,194,255,0.08), rgba(168,85,247,0.08))", border: "1px solid rgba(0,194,255,0.15)" }}
-          initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.04 }}
+          className="rounded-3xl p-5 relative overflow-hidden mb-4"
+          style={{ 
+            background: "linear-gradient(135deg, #1e40af 0%, #3b82f6 50%, #60a5fa 100%)",
+          }}
+          initial={{ opacity: 0, y: 12 }} 
+          animate={{ opacity: 1, y: 0 }} 
+          transition={{ delay: 0.04 }}
         >
-          <div className="absolute -top-10 -right-10 w-32 h-32 rounded-full" style={{ background: "rgba(0,194,255,0.1)", filter: "blur(40px)" }} />
+          {/* Decorative circles */}
+          <div className="absolute top-0 right-0 w-32 h-32 rounded-full opacity-20" style={{ background: "white", filter: "blur(40px)" }} />
+          <div className="absolute -bottom-10 -left-10 w-40 h-40 rounded-full opacity-10" style={{ background: "white", filter: "blur(50px)" }} />
+          
           <div className="relative z-10">
-            <p className="text-[10px] text-[#666] font-medium uppercase tracking-wider mb-1">Familien-Guthaben</p>
-            <p className="text-[32px] font-bold text-white font-outfit">€{totalBalance.toFixed(2)}</p>
+            {/* Header row */}
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Users size={18} className="text-white/80" />
+                <span className="text-white/90 text-[13px] font-medium">Familien-Geldbörse</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="px-3 py-1 rounded-full bg-white/20 text-white text-[11px] font-semibold">
+                  {totalChildren} Kind{totalChildren !== 1 ? 'er' : ''}
+                </span>
+                <motion.button 
+                  onClick={handleRefresh}
+                  disabled={refreshing}
+                  className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center"
+                  whileTap={{ scale: 0.9 }}
+                >
+                  <RefreshCw size={14} className={`text-white ${refreshing ? 'animate-spin' : ''}`} />
+                </motion.button>
+              </div>
+            </div>
             
-            {/* Stats row */}
-            <div className="flex items-center gap-4 mt-3 pt-3 border-t border-white/5">
-              <div className="flex items-center gap-1.5">
-                <Users size={14} className="text-[#00C2FF]" />
-                <span className="text-[12px] text-white/70">{totalChildren} Kinder</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <div className="w-2 h-2 rounded-full bg-green-400" />
-                <span className="text-[12px] text-white/70">{activeChildren} aktiv</span>
-              </div>
-              {blockedChildren > 0 && (
-                <div className="flex items-center gap-1.5">
-                  <div className="w-2 h-2 rounded-full bg-red-400" />
-                  <span className="text-[12px] text-white/70">{blockedChildren} gesperrt</span>
-                </div>
-              )}
+            {/* Balance */}
+            <p className="text-[42px] font-bold text-white font-outfit leading-none">€{totalBalance.toFixed(2)}</p>
+            <p className="text-white/60 text-[12px] mt-1">Gesamtguthaben der Kinder</p>
+            
+            {/* Tab Buttons */}
+            <div className="flex gap-2 mt-4">
+              <motion.button
+                onClick={() => setActiveTab('wallet')}
+                className={`flex-1 py-2.5 rounded-xl flex items-center justify-center gap-2 text-[13px] font-semibold transition-all ${
+                  activeTab === 'wallet' 
+                    ? 'bg-white/30 text-white' 
+                    : 'bg-white/10 text-white/70'
+                }`}
+                whileTap={{ scale: 0.97 }}
+              >
+                <Wallet size={16} />
+                Geldbörse
+              </motion.button>
+              <motion.button
+                onClick={() => setActiveTab('tracking')}
+                className={`flex-1 py-2.5 rounded-xl flex items-center justify-center gap-2 text-[13px] font-semibold transition-all ${
+                  activeTab === 'tracking' 
+                    ? 'bg-white/30 text-white' 
+                    : 'bg-white/10 text-white/70'
+                }`}
+                whileTap={{ scale: 0.97 }}
+              >
+                <MapPin size={16} />
+                Tracking
+              </motion.button>
             </div>
           </div>
         </motion.div>
 
-        {/* 2. QUICK ACTIONS */}
+        {/* ═══════════════════════════════════════════════════════════════
+            2. SCHNELLAKTIONEN - 16 Feature Grid
+        ═══════════════════════════════════════════════════════════════ */}
         <motion.div 
-          className="grid grid-cols-4 gap-2"
-          initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.06 }}
+          className="mb-4"
+          initial={{ opacity: 0, y: 12 }} 
+          animate={{ opacity: 1, y: 0 }} 
+          transition={{ delay: 0.08 }}
         >
-          <motion.button
-            onClick={() => children.length > 0 ? setSendMoneyChild(children[0]) : setShowAddChild(true)}
-            className="flex flex-col items-center gap-1.5 p-3 rounded-2xl bg-[#00C2FF]/10 border border-[#00C2FF]/20"
-            whileTap={{ scale: 0.95 }}
-          >
-            <Send size={18} className="text-[#00C2FF]" />
-            <span className="text-[9px] text-[#00C2FF] font-semibold">Senden</span>
-          </motion.button>
-          <motion.button
-            onClick={() => setShowAddChild(true)}
-            className="flex flex-col items-center gap-1.5 p-3 rounded-2xl bg-[#A855F7]/10 border border-[#A855F7]/20"
-            whileTap={{ scale: 0.95 }}
-          >
-            <PlusCircle size={18} className="text-[#A855F7]" />
-            <span className="text-[9px] text-[#A855F7] font-semibold">Kind +</span>
-          </motion.button>
-          <motion.button
-            onClick={() => setShowActivity(!showActivity)}
-            className={`flex flex-col items-center gap-1.5 p-3 rounded-2xl border ${showActivity ? 'bg-[#FFB800]/20 border-[#FFB800]/30' : 'bg-[#FFB800]/10 border-[#FFB800]/20'}`}
-            whileTap={{ scale: 0.95 }}
-          >
-            <Clock size={18} className="text-[#FFB800]" />
-            <span className="text-[9px] text-[#FFB800] font-semibold">Aktivität</span>
-          </motion.button>
-          <motion.button
-            onClick={() => setShowLimits(!showLimits)}
-            className={`flex flex-col items-center gap-1.5 p-3 rounded-2xl border ${showLimits ? 'bg-[#00D26A]/20 border-[#00D26A]/30' : 'bg-[#00D26A]/10 border-[#00D26A]/20'}`}
-            whileTap={{ scale: 0.95 }}
-          >
-            <Settings size={18} className="text-[#00D26A]" />
-            <span className="text-[9px] text-[#00D26A] font-semibold">Limits</span>
-          </motion.button>
+          <div className="flex items-center gap-2 mb-3">
+            <TrendingUp size={14} className="text-white/40" />
+            <p className="text-[11px] text-white/50 font-semibold uppercase tracking-wider">Schnellaktionen</p>
+          </div>
+          
+          <div className="grid grid-cols-5 gap-2">
+            {QUICK_ACTIONS.map((action, idx) => (
+              <motion.button
+                key={action.key}
+                onClick={() => {
+                  if (action.key === 'allowance' && children.length > 0) {
+                    setWalletChild(children[0]);
+                  } else if (action.key === 'spending') {
+                    setShowActivity(true);
+                  } else {
+                    setActiveFeature(action.key);
+                    setSuccess(`${action.label} - Funktion wird geladen...`);
+                    setTimeout(() => setSuccess(null), 2000);
+                  }
+                }}
+                className="flex flex-col items-center gap-1.5 p-2.5 rounded-2xl transition-all active:scale-95"
+                style={{ 
+                  background: action.bgColor,
+                  border: `1px solid ${action.color}30`
+                }}
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.1 + idx * 0.02 }}
+                whileTap={{ scale: 0.92 }}
+              >
+                <action.icon size={20} style={{ color: action.color }} />
+                <span className="text-[9px] font-semibold text-white/80 text-center leading-tight">{action.label}</span>
+              </motion.button>
+            ))}
+          </div>
         </motion.div>
 
-        {/* 5. LIMIT SUMMARY (Collapsible) */}
-        <AnimatePresence>
-          {showLimits && children.length > 0 && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              className="overflow-hidden"
+        {/* ═══════════════════════════════════════════════════════════════
+            3. MEINE KINDER - Child List
+        ═══════════════════════════════════════════════════════════════ */}
+        <motion.div 
+          initial={{ opacity: 0, y: 12 }} 
+          animate={{ opacity: 1, y: 0 }} 
+          transition={{ delay: 0.12 }}
+        >
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-[13px] text-white font-semibold">Meine Kinder</p>
+            <motion.button 
+              onClick={() => setShowAddChild(true)}
+              className="flex items-center gap-1 text-[#00C2FF] text-[11px] font-semibold"
+              whileTap={{ scale: 0.95 }}
             >
-              <div className="rounded-2xl p-4" style={{ background: "rgba(0,210,106,0.04)", border: "1px solid rgba(0,210,106,0.12)" }}>
-                <div className="flex items-center justify-between mb-3">
-                  <p className="text-[11px] text-[#00D26A] font-semibold uppercase tracking-wider">Limit-Übersicht</p>
-                  <p className="text-[10px] text-[#444]">Gesamt: €{totalWeekSpent.toFixed(2)} / €{totalWeeklyLimit.toFixed(2)}</p>
-                </div>
-                <div className="space-y-2">
-                  {children.map(child => {
-                    const wallet = childWallets[child.child_id];
-                    const dailyLimit = wallet?.daily_limit || 20;
-                    const todaySpent = wallet?.today_spent || 0;
-                    const remainingToday = Math.max(0, dailyLimit - todaySpent);
-                    const pctToday = dailyLimit > 0 ? Math.min(100, (todaySpent / dailyLimit) * 100) : 0;
-                    
-                    return (
-                      <div key={child.child_id} className="flex items-center gap-3 p-2 rounded-xl bg-white/[0.02]">
-                        <div className="w-7 h-7 rounded-full flex items-center justify-center text-[11px]"
-                          style={{ background: `${child.color}20`, border: `1px solid ${child.color}40` }}>
-                          {child.avatar || child.name?.[0]}
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="text-[11px] text-white font-medium">{child.name}</span>
-                            <span className="text-[10px] text-[#00D26A]">€{remainingToday.toFixed(2)} übrig</span>
-                          </div>
-                          <div className="w-full h-1 rounded-full bg-white/10 overflow-hidden">
-                            <div className="h-full rounded-full bg-[#00D26A]" style={{ width: `${pctToday}%` }} />
-                          </div>
-                          <p className="text-[9px] text-[#444] mt-0.5">Heute: €{todaySpent.toFixed(2)} / €{dailyLimit}</p>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* 4. GLOBAL ACTIVITY VIEW (Collapsible) */}
-        <AnimatePresence>
-          {showActivity && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              className="overflow-hidden"
-            >
-              <div className="rounded-2xl p-4" style={{ background: "rgba(255,184,0,0.04)", border: "1px solid rgba(255,184,0,0.12)" }}>
-                <div className="flex items-center justify-between mb-3">
-                  <p className="text-[11px] text-[#FFB800] font-semibold uppercase tracking-wider">Aktivitäten</p>
-                  {/* Filter */}
-                  <div className="flex items-center gap-1">
-                    <Filter size={12} className="text-[#444]" />
-                    <select
-                      value={activityFilter}
-                      onChange={(e) => setActivityFilter(e.target.value)}
-                      className="text-[10px] bg-transparent text-white/70 outline-none cursor-pointer"
-                    >
-                      <option value="all">Alle Kinder</option>
-                      {children.map(c => (
-                        <option key={c.child_id} value={c.child_id}>{c.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-                
-                {filteredActivity.length === 0 ? (
-                  <p className="text-[11px] text-[#444] text-center py-4">Keine Aktivitäten in den letzten 14 Tagen</p>
-                ) : (
-                  <div className="space-y-2 max-h-[250px] overflow-y-auto">
-                    {filteredActivity.slice(0, 20).map((tx, i) => (
-                      <div key={tx.id || i} className="flex items-center gap-3 p-2 rounded-xl bg-white/[0.02]">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${tx.amount > 0 ? 'bg-green-500/10' : 'bg-red-500/10'}`}>
-                          {tx.amount > 0 ? <ArrowDownLeft size={14} className="text-green-400" /> : <ArrowUpRight size={14} className="text-red-400" />}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-[11px] text-white font-medium truncate">{tx.merchant_name || tx.description}</span>
-                          </div>
-                          <div className="flex items-center gap-2 text-[9px] text-[#444]">
-                            <span style={{ color: tx.childColor }}>{tx.childName}</span>
-                            <span>•</span>
-                            <span>{new Date(tx.created_at).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
-                          </div>
-                        </div>
-                        <span className={`text-[12px] font-bold ${tx.amount > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                          {tx.amount > 0 ? '+' : ''}€{Math.abs(tx.amount).toFixed(2)}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* 3. CHILD LIST (Improved) */}
-        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}>
-          <p className="text-[9px] text-[#333] uppercase tracking-[0.14em] font-semibold mb-2.5 pl-1">Kinder</p>
+              <PlusCircle size={14} />
+              Kind hinzufügen
+            </motion.button>
+          </div>
 
           {children.length === 0 && !showAddChild && (
-            <motion.div className="rounded-2xl p-6 text-center" style={{ background: "rgba(255,255,255,0.01)", border: "1px dashed rgba(255,255,255,0.06)" }}
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-              <Users size={28} className="text-[#222] mx-auto mb-2" />
-              <p className="text-[12px] text-[#444] font-medium mb-1">Noch keine Kinder hinzugefügt</p>
-              <p className="text-[10px] text-[#333]">Füge dein erstes Kind hinzu</p>
+            <motion.div 
+              className="rounded-2xl p-8 text-center" 
+              style={{ background: "rgba(255,255,255,0.02)", border: "1px dashed rgba(255,255,255,0.08)" }}
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }}
+            >
+              <Users size={36} className="text-[#333] mx-auto mb-3" />
+              <p className="text-[13px] text-white/60 font-medium mb-1">Noch keine Kinder hinzugefügt</p>
+              <p className="text-[11px] text-white/30">Tippe oben auf "Kind hinzufügen"</p>
             </motion.div>
           )}
 
-          <div className="space-y-2.5">
-            {children.map((child) => {
+          <div className="space-y-3">
+            {children.map((child, idx) => {
               const wallet = childWallets[child.child_id];
               const balance = wallet?.balance || child.balance || 0;
               const todaySpent = wallet?.today_spent || 0;
               const weekSpent = wallet?.week_spent || child.spent || 0;
               const weeklyLimit = child.weekly_limit || 50;
               const pct = weeklyLimit > 0 ? Math.min(100, (weekSpent / weeklyLimit) * 100) : 0;
-              const danger = pct > 80;
               const isFrozen = child.is_frozen || false;
               
               return (
                 <motion.div 
                   key={child.child_id} 
                   data-testid={`child-card-${child.child_id}`}
-                  className={`rounded-2xl p-4 cursor-pointer active:scale-[0.98] transition-transform ${isFrozen ? 'opacity-70' : ''}`}
+                  className={`rounded-2xl p-4 ${isFrozen ? 'opacity-60' : ''}`}
                   style={{
-                    background: isFrozen ? "rgba(255,71,87,0.03)" : "rgba(255,255,255,0.015)",
-                    border: `1px solid ${isFrozen ? "rgba(255,71,87,0.15)" : "rgba(255,255,255,0.035)"}`,
+                    background: "rgba(255,255,255,0.02)",
+                    border: `1px solid ${isFrozen ? "rgba(255,71,87,0.2)" : "rgba(255,255,255,0.05)"}`,
                   }}
-                  onClick={() => setWalletChild(child)}
-                  whileTap={{ scale: 0.98 }}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.15 + idx * 0.05 }}
                 >
-                  {/* Header Row - Clickable to open details */}
+                  {/* Child Header */}
                   <div className="flex items-center gap-3 mb-3">
-                    <div className="w-11 h-11 rounded-full flex items-center justify-center text-[16px] font-bold text-white relative"
-                      style={{ background: `${child.color}20`, border: `2px solid ${child.color}50` }}>
+                    <div 
+                      className="w-12 h-12 rounded-full flex items-center justify-center text-[18px] font-bold relative"
+                      style={{ background: `${child.color}20`, border: `2px solid ${child.color}60` }}
+                    >
                       {child.avatar || child.name?.[0]}
                       {isFrozen && (
                         <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 flex items-center justify-center">
@@ -515,31 +474,33 @@ const KidsDashboard = ({ onBack, t, subStatus }) => {
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
-                        <p className="text-[14px] font-semibold text-white">{child.name}</p>
-                        {isFrozen ? (
-                          <span className="text-[8px] px-1.5 py-0.5 rounded bg-red-500/20 text-red-400 font-bold">GESPERRT</span>
-                        ) : (
-                          <span className="text-[8px] px-1.5 py-0.5 rounded bg-green-500/20 text-green-400 font-bold">AKTIV</span>
-                        )}
+                        <p className="text-[15px] font-semibold text-white">{child.name}</p>
+                        <span className={`text-[9px] px-2 py-0.5 rounded-full font-bold ${
+                          isFrozen 
+                            ? 'bg-red-500/20 text-red-400' 
+                            : 'bg-green-500/20 text-green-400'
+                        }`}>
+                          {isFrozen ? 'GESPERRT' : 'AKTIV'}
+                        </span>
                       </div>
-                      <p className="text-[10px] text-[#555]">Heute: €{todaySpent.toFixed(2)} ausgegeben</p>
+                      <p className="text-[11px] text-white/40">Heute: €{todaySpent.toFixed(2)} ausgegeben</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-[18px] font-bold text-[#00C2FF]">€{balance.toFixed(2)}</p>
-                      <p className="text-[9px] text-[#444]">Guthaben</p>
+                      <p className="text-[22px] font-bold text-[#00C2FF]">€{balance.toFixed(2)}</p>
+                      <p className="text-[9px] text-white/30">Guthaben</p>
                     </div>
                   </div>
                   
                   {/* Progress bar */}
                   <div className="mb-3">
                     <div className="flex items-center justify-between mb-1">
-                      <span className="text-[9px] text-[#444]">Wochenlimit</span>
-                      <span className="text-[9px] text-[#444]">€{weekSpent.toFixed(2)} / €{weeklyLimit}</span>
+                      <span className="text-[10px] text-white/40">Wochenlimit</span>
+                      <span className="text-[10px] text-white/40">€{weekSpent.toFixed(2)} / €{weeklyLimit}</span>
                     </div>
-                    <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.04)" }}>
+                    <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.05)" }}>
                       <motion.div 
                         className="h-full rounded-full" 
-                        style={{ background: danger ? "#FF4757" : child.color }}
+                        style={{ background: pct > 80 ? "#EF4444" : child.color }}
                         initial={{ width: 0 }} 
                         animate={{ width: `${pct}%` }} 
                         transition={{ duration: 0.8, ease: "easeOut" }} 
@@ -547,37 +508,41 @@ const KidsDashboard = ({ onBack, t, subStatus }) => {
                     </div>
                   </div>
                   
-                  {/* Quick Action Buttons */}
+                  {/* Quick Action Buttons for Child */}
                   <div className="grid grid-cols-4 gap-2">
                     <motion.button
-                      className="py-2.5 rounded-xl text-[10px] font-semibold bg-[#00C2FF]/10 text-[#00C2FF] border border-[#00C2FF]/20 flex items-center justify-center gap-1"
+                      className="py-2 rounded-xl text-[10px] font-semibold flex items-center justify-center gap-1"
+                      style={{ background: "rgba(0,194,255,0.1)", color: "#00C2FF", border: "1px solid rgba(0,194,255,0.2)" }}
                       whileTap={{ scale: 0.95 }}
-                      onClick={(e) => { e.stopPropagation(); setWalletChild(child); }}
+                      onClick={() => setWalletChild(child)}
                     >
                       <Send size={11} /> Senden
                     </motion.button>
                     <motion.button
-                      className="py-2.5 rounded-xl text-[10px] font-semibold bg-[#A855F7]/10 text-[#A855F7] border border-[#A855F7]/20 flex items-center justify-center gap-1"
+                      className="py-2 rounded-xl text-[10px] font-semibold flex items-center justify-center gap-1"
+                      style={{ background: "rgba(168,85,247,0.1)", color: "#A855F7", border: "1px solid rgba(168,85,247,0.2)" }}
                       whileTap={{ scale: 0.95 }}
-                      onClick={(e) => { e.stopPropagation(); setWalletChild(child); }}
+                      onClick={() => setWalletChild(child)}
                     >
                       <Eye size={11} /> Details
                     </motion.button>
                     <motion.button
-                      className="py-2.5 rounded-xl text-[10px] font-semibold bg-[#FFB800]/10 text-[#FFB800] border border-[#FFB800]/20 flex items-center justify-center gap-1"
+                      className="py-2 rounded-xl text-[10px] font-semibold flex items-center justify-center gap-1"
+                      style={{ background: "rgba(245,158,11,0.1)", color: "#F59E0B", border: "1px solid rgba(245,158,11,0.2)" }}
                       whileTap={{ scale: 0.95 }}
-                      onClick={(e) => { e.stopPropagation(); setShowSetPin(child); }}
+                      onClick={() => setShowSetPin(child)}
                     >
                       <Key size={11} /> PIN
                     </motion.button>
                     <motion.button
-                      className={`py-2.5 rounded-xl text-[10px] font-semibold flex items-center justify-center gap-1 ${
-                        isFrozen 
-                          ? 'bg-green-500/10 text-green-400 border border-green-500/20' 
-                          : 'bg-red-500/10 text-red-400 border border-red-500/20'
-                      }`}
+                      className={`py-2 rounded-xl text-[10px] font-semibold flex items-center justify-center gap-1`}
+                      style={{ 
+                        background: isFrozen ? "rgba(34,197,94,0.1)" : "rgba(239,68,68,0.1)", 
+                        color: isFrozen ? "#22C55E" : "#EF4444", 
+                        border: `1px solid ${isFrozen ? "rgba(34,197,94,0.2)" : "rgba(239,68,68,0.2)"}` 
+                      }}
                       whileTap={{ scale: 0.95 }}
-                      onClick={(e) => handleFreezeToggle(child.child_id, e)}
+                      onClick={() => handleFreezeToggle(child.child_id, { stopPropagation: () => {} })}
                     >
                       {isFrozen ? <Unlock size={11} /> : <Lock size={11} />}
                       {isFrozen ? 'Aktiv' : 'Sperren'}
@@ -590,40 +555,44 @@ const KidsDashboard = ({ onBack, t, subStatus }) => {
 
           {/* Add child form */}
           <AnimatePresence>
-            {showAddChild ? (
-              <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
-                className="overflow-hidden mt-2.5 rounded-2xl p-4 space-y-3"
-                style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(0,194,255,0.15)" }}>
-                
+            {showAddChild && (
+              <motion.div 
+                initial={{ height: 0, opacity: 0 }} 
+                animate={{ height: "auto", opacity: 1 }} 
+                exit={{ height: 0, opacity: 0 }}
+                className="overflow-hidden mt-3 rounded-2xl p-4 space-y-3"
+                style={{ background: "rgba(0,194,255,0.03)", border: "1px solid rgba(0,194,255,0.15)" }}
+              >
                 <div className="flex items-center gap-2 mb-1">
                   <PlusCircle size={16} className="text-[#00C2FF]" />
                   <span className="text-[13px] font-semibold text-white">Neues Kind hinzufügen</span>
                 </div>
                 
-                {error && (
-                  <div className="px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-[11px]">
-                    {error}
-                  </div>
-                )}
-                
                 <div>
-                  <label className="text-[10px] text-[#444] font-medium mb-1 block">Name</label>
-                  <input data-testid="add-child-name" value={newChildName} onChange={e => setNewChildName(e.target.value)}
+                  <label className="text-[10px] text-white/40 font-medium mb-1 block">Name</label>
+                  <input 
+                    data-testid="add-child-name" 
+                    value={newChildName} 
+                    onChange={e => setNewChildName(e.target.value)}
                     placeholder="Name des Kindes"
-                    className="w-full px-3 py-2.5 rounded-xl text-[13px] text-white/90 placeholder-[#333] font-medium outline-none"
-                    style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)" }}
-                    onKeyDown={e => e.key === "Enter" && addChild()} />
+                    className="w-full px-3 py-2.5 rounded-xl text-[13px] text-white/90 placeholder-white/20 font-medium outline-none"
+                    style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}
+                    onKeyDown={e => e.key === "Enter" && addChild()} 
+                  />
                 </div>
                 
                 <div>
-                  <label className="text-[10px] text-[#444] font-medium mb-1.5 block">Avatar</label>
+                  <label className="text-[10px] text-white/40 font-medium mb-1.5 block">Avatar</label>
                   <div className="flex flex-wrap gap-2">
                     {CHILD_EMOJIS.map((emoji) => (
-                      <button key={emoji} type="button"
+                      <button 
+                        key={emoji} 
+                        type="button"
                         className={`w-9 h-9 rounded-lg flex items-center justify-center text-lg transition-all ${
                           newChildEmoji === emoji ? 'bg-[#00C2FF]/20 border-[#00C2FF]/40 scale-110' : 'bg-white/[0.02] border-white/[0.05]'
                         } border`}
-                        onClick={() => setNewChildEmoji(newChildEmoji === emoji ? "" : emoji)}>
+                        onClick={() => setNewChildEmoji(newChildEmoji === emoji ? "" : emoji)}
+                      >
                         {emoji}
                       </button>
                     ))}
@@ -631,50 +600,42 @@ const KidsDashboard = ({ onBack, t, subStatus }) => {
                 </div>
                 
                 <div>
-                  <label className="text-[10px] text-[#444] font-medium mb-1 block">Geburtsjahr (optional)</label>
-                  <select value={newChildYear} onChange={e => setNewChildYear(e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-xl text-[13px] text-white/90 font-medium outline-none appearance-none cursor-pointer"
-                    style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)" }}>
-                    <option value="">Jahr auswählen</option>
-                    {Array.from({ length: 18 }, (_, i) => 2024 - i).map(year => (
-                      <option key={year} value={year}>{year} ({2024 - year} Jahre)</option>
-                    ))}
-                  </select>
-                </div>
-                
-                <div>
                   <div className="flex items-center justify-between mb-1.5">
-                    <label className="text-[10px] text-[#444] font-medium">Wochenlimit</label>
+                    <label className="text-[10px] text-white/40 font-medium">Wochenlimit</label>
                     <span className="text-[12px] font-bold text-[#00C2FF]">€{newChildLimit}</span>
                   </div>
-                  <input type="range" min={5} max={100} step={5} value={newChildLimit}
+                  <input 
+                    type="range" 
+                    min={5} 
+                    max={100} 
+                    step={5} 
+                    value={newChildLimit}
                     onChange={e => setNewChildLimit(Number(e.target.value))}
                     className="w-full h-1.5 rounded-full appearance-none cursor-pointer accent-[#00C2FF]"
-                    style={{ background: "rgba(255,255,255,0.06)" }} />
-                  <div className="flex justify-between text-[9px] text-[#333] mt-1">
-                    <span>€5</span>
-                    <span>€100</span>
-                  </div>
+                    style={{ background: "rgba(255,255,255,0.06)" }} 
+                  />
                 </div>
                 
                 <div className="flex gap-2 pt-1">
-                  <motion.button data-testid="add-child-confirm" onClick={addChild} disabled={saving || !newChildName.trim()}
+                  <motion.button 
+                    data-testid="add-child-confirm" 
+                    onClick={addChild} 
+                    disabled={saving || !newChildName.trim()}
                     className="flex-1 py-2.5 rounded-xl text-[12px] font-semibold bg-[#00C2FF] text-black flex items-center justify-center gap-1.5 disabled:opacity-40"
-                    whileTap={{ scale: 0.97 }}>
+                    whileTap={{ scale: 0.97 }}
+                  >
                     {saving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
                     Kind speichern
                   </motion.button>
-                  <motion.button onClick={() => { setShowAddChild(false); resetForm(); }}
-                    className="px-4 py-2.5 rounded-xl text-[12px] font-medium text-[#666] bg-white/[0.03] border border-white/[0.06]"
-                    whileTap={{ scale: 0.97 }}>Abbrechen</motion.button>
+                  <motion.button 
+                    onClick={() => { setShowAddChild(false); resetForm(); }}
+                    className="px-4 py-2.5 rounded-xl text-[12px] font-medium text-white/50 bg-white/[0.03] border border-white/[0.06]"
+                    whileTap={{ scale: 0.97 }}
+                  >
+                    Abbrechen
+                  </motion.button>
                 </div>
               </motion.div>
-            ) : (
-              <motion.button data-testid="add-child-btn" onClick={() => setShowAddChild(true)}
-                className="w-full mt-2.5 py-3.5 rounded-2xl flex items-center justify-center gap-2 text-[12px] font-semibold text-[#00C2FF] bg-[#00C2FF]/5 border border-[#00C2FF]/15"
-                whileTap={{ scale: 0.98 }}>
-                <PlusCircle size={16} /> Kind hinzufügen
-              </motion.button>
             )}
           </AnimatePresence>
         </motion.div>

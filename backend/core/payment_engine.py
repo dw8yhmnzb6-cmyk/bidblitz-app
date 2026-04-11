@@ -45,6 +45,7 @@ class TransactionType(str, Enum):
     STRIPE_TOPUP = "stripe_topup"
     SUBSCRIPTION = "subscription"
     SUBSCRIPTION_RENEWAL = "subscription_renewal"
+    ADMIN_CREDIT = "admin_credit"  # Admin sends money without fees
 
 
 # Idempotency cache (in-memory for this session, should be Redis in production)
