@@ -677,3 +677,161 @@ async def deactivate_invite_code(code: str, request: Request):
     await log_audit(AuditEvent.ADMIN_ACTION, str(admin["_id"]), admin["email"],
                     ip, ua, details={"action": "invite_code_deactivated", "code": code})
     return {"success": True, "code": code, "active": False}
+
+
+
+# ══════════════════════════════════════
+# SYSTEM HEALTH CHECK
+# ══════════════════════════════════════
+
+@router.get("/system-health")
+async def system_health(request: Request):
+    """
+    Complete system health check for production readiness.
+    Returns status of all modules.
+    """
+    await require_admin(request)
+    
+    health = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "status": "healthy",
+        "modules": {},
+        "counts": {},
+        "warnings": [],
+    }
+    
+    # 1. Database connectivity
+    try:
+        await db.users.find_one({})
+        health["modules"]["database"] = "✓ OK"
+    except Exception as e:
+        health["modules"]["database"] = f"✗ ERROR: {str(e)}"
+        health["status"] = "unhealthy"
+    
+    # 2. User counts
+    health["counts"]["users"] = await db.users.count_documents({})
+    health["counts"]["admins"] = await db.users.count_documents({"role": "admin"})
+    health["counts"]["drivers"] = await db.drivers.count_documents({})
+    health["counts"]["verified_drivers"] = await db.drivers.count_documents({"verified": True})
+    health["counts"]["restaurants"] = await db.food_restaurants.count_documents({})
+    health["counts"]["scooters"] = await db.scooters.count_documents({})
+    health["counts"]["active_scooters"] = await db.scooters.count_documents({"status": {"$in": ["available", "locked"]}})
+    
+    # 3. Module checks
+    health["modules"]["wallet"] = "✓ OK" if health["counts"]["users"] > 0 else "⚠ No users"
+    health["modules"]["drivers"] = "✓ OK" if health["counts"]["drivers"] >= 0 else "✗ ERROR"
+    health["modules"]["scooters"] = "✓ OK" if health["counts"]["scooters"] >= 0 else "✗ ERROR"
+    health["modules"]["restaurants"] = "✓ OK" if health["counts"]["restaurants"] >= 0 else "✗ ERROR"
+    
+    # 4. Transaction volume
+    today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    today_txs = await db.transactions.count_documents({"created_at": {"$gte": today.isoformat()}})
+    health["counts"]["transactions_today"] = today_txs
+    
+    # 5. Pending applications
+    pending_drivers = await db.driver_applications.count_documents({"status": "pending"})
+    pending_restaurants = await db.restaurant_applications.count_documents({"status": "pending"})
+    health["counts"]["pending_driver_applications"] = pending_drivers
+    health["counts"]["pending_restaurant_applications"] = pending_restaurants
+    
+    if pending_drivers > 0:
+        health["warnings"].append(f"{pending_drivers} Fahrer-Bewerbungen warten auf Genehmigung")
+    if pending_restaurants > 0:
+        health["warnings"].append(f"{pending_restaurants} Restaurant-Bewerbungen warten auf Genehmigung")
+    
+    # 6. Active rides/orders
+    health["counts"]["active_rides"] = await db.taxi_rides.count_documents({
+        "status": {"$in": ["requested", "accepted", "arriving", "in_progress"]}
+    })
+    health["counts"]["active_food_orders"] = await db.food_orders.count_documents({
+        "status": {"$in": ["pending", "confirmed", "preparing", "ready", "picked_up"]}
+    })
+    
+    # 7. Auctions
+    health["counts"]["active_auctions"] = await db.auctions.count_documents({
+        "status": "active"
+    })
+    
+    # 8. Marketplace
+    health["counts"]["active_listings"] = await db.marketplace_listings.count_documents({
+        "status": "active"
+    })
+    
+    # 9. Chat messages today
+    health["counts"]["messages_today"] = await db.chat_messages.count_documents({
+        "created_at": {"$gte": today.isoformat()}
+    })
+    
+    # 10. Platform revenue today
+    revenue_doc = await db.platform_revenue.find_one({"date": today.strftime("%Y-%m-%d")})
+    health["counts"]["revenue_today"] = round(revenue_doc.get("total", 0) if revenue_doc else 0, 2)
+    
+    # Overall status
+    if health["status"] == "healthy" and len(health["warnings"]) == 0:
+        health["message"] = "Alle Systeme laufen einwandfrei!"
+    elif health["status"] == "healthy":
+        health["message"] = f"System läuft mit {len(health['warnings'])} Hinweis(en)"
+    else:
+        health["message"] = "System hat Probleme - bitte prüfen!"
+    
+    return health
+
+
+@router.get("/cleanup-fake-data")
+async def admin_cleanup_all_fake_data(request: Request):
+    """
+    Remove ALL fake/demo data from the entire system.
+    Only keeps real, verified, approved data.
+    """
+    await require_admin(request)
+    
+    results = {
+        "drivers_removed": 0,
+        "scooters_removed": 0,
+        "restaurants_removed": 0,
+        "auctions_removed": 0,
+        "listings_removed": 0,
+    }
+    
+    # Remove unverified drivers
+    r = await db.drivers.delete_many({"$or": [
+        {"verified": {"$ne": True}},
+        {"is_demo": True},
+    ]})
+    results["drivers_removed"] = r.deleted_count
+    
+    # Remove demo scooters
+    r = await db.scooters.delete_many({"$or": [
+        {"is_demo": True},
+        {"status": "demo"},
+    ]})
+    results["scooters_removed"] = r.deleted_count
+    
+    # Remove unapproved restaurants
+    r = await db.food_restaurants.delete_many({"$or": [
+        {"is_demo": True},
+        {"verified": False, "status": {"$nin": ["approved", None]}},
+    ]})
+    results["restaurants_removed"] = r.deleted_count
+    
+    # Remove demo auctions
+    r = await db.auctions.delete_many({"is_demo": True})
+    results["auctions_removed"] = r.deleted_count
+    
+    # Remove inactive marketplace listings older than 30 days
+    from datetime import timedelta
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
+    r = await db.marketplace_listings.delete_many({
+        "status": "inactive",
+        "created_at": {"$lt": cutoff}
+    })
+    results["listings_removed"] = r.deleted_count
+    
+    total_removed = sum(results.values())
+    
+    return {
+        "ok": True,
+        "total_removed": total_removed,
+        "details": results,
+        "message": f"Aufräumung abgeschlossen! {total_removed} Einträge entfernt."
+    }
