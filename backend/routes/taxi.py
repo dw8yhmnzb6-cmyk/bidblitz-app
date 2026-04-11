@@ -1,936 +1,977 @@
 """
-BidBlitz V2 - Taxi Module (Bolt/Uber Style)
-Real-time ride booking, driver matching, fare calculation, trip tracking.
-Full driver system, live tracking, admin management.
+BidBlitz V2 - Real Taxi/Ride System
+Real drivers, real bookings, real payments.
+NO FAKE DRIVERS - Only registered verified users.
 """
 
 import secrets
 import math
-import random
+import logging
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 from typing import Optional, List
-from bson import ObjectId
+from enum import Enum
 
 from core.database import db
 from core.security import get_current_user
 
 router = APIRouter(prefix="/api/taxi", tags=["Taxi"])
+logger = logging.getLogger("bidblitz.taxi")
 
-# ══════════════════════════════════════
-# FARE CONFIGURATION
-# ══════════════════════════════════════
-BASE_FARE = 2.50
-PER_KM_RATE = 1.20
-PER_MIN_RATE = 0.25
-MIN_FARE = 5.00
-SURGE_MULTIPLIER_HIGH = 1.5
-SURGE_MULTIPLIER_PEAK = 2.0
-CANCELLATION_FEE = 3.00
-DRIVER_COMMISSION = 0.80  # Driver gets 80%
+# ══════════════════════════════════════════════════════════════════════════════
+# PRICING CONFIGURATION
+# ══════════════════════════════════════════════════════════════════════════════
 
-VEHICLE_TYPES = {
-    "standard": {"name": "Standard", "multiplier": 1.0, "icon": "car", "capacity": 4, "description": "Günstige Alltagsfahrten"},
-    "premium": {"name": "Premium", "multiplier": 1.5, "icon": "car-side", "capacity": 4, "description": "Komfort & Stil"},
-    "van": {"name": "Van", "multiplier": 1.8, "icon": "van-shuttle", "capacity": 6, "description": "Für Gruppen & Gepäck"},
+PRICING = {
+    "standard": {"base": 2.50, "per_km": 1.20, "per_minute": 0.25, "min_fare": 5.00},
+    "premium": {"base": 5.00, "per_km": 2.00, "per_minute": 0.40, "min_fare": 10.00},
+    "van": {"base": 4.00, "per_km": 1.50, "per_minute": 0.30, "min_fare": 8.00},
 }
 
-# Status flow
-RIDE_STATUSES = ["requested", "accepted", "arriving", "started", "completed", "cancelled"]
+DRIVER_COMMISSION = 0.85  # Driver gets 85%
+PLATFORM_COMMISSION = 0.15  # Platform gets 15%
+CANCELLATION_FEE = 3.00
+MIN_WALLET_BALANCE = 10.00
 
 
-# ── Get Active Ride ──
-@router.get("/rides/active")
-async def get_active_ride(request: Request):
-    """Get user's currently active ride if any."""
+class RideStatus(str, Enum):
+    REQUESTED = "requested"
+    ACCEPTED = "accepted"
+    ARRIVING = "arriving"
+    STARTED = "started"
+    COMPLETED = "completed"
+    CANCELLED = "cancelled"
+
+
+class CarType(str, Enum):
+    STANDARD = "standard"
+    PREMIUM = "premium"
+    VAN = "van"
+
+
+def haversine_distance(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
+    """Calculate distance in km using Haversine formula."""
+    R = 6371
+    lat1_rad, lat2_rad = math.radians(lat1), math.radians(lat2)
+    dlat, dlng = math.radians(lat2 - lat1), math.radians(lng2 - lng1)
+    a = math.sin(dlat/2)**2 + math.cos(lat1_rad) * math.cos(lat2_rad) * math.sin(dlng/2)**2
+    return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+
+
+def calculate_fare(distance_km: float, duration_minutes: float, car_type: str) -> dict:
+    """Calculate ride fare based on distance, time, and car type."""
+    pricing = PRICING.get(car_type, PRICING["standard"])
+    
+    distance_cost = distance_km * pricing["per_km"]
+    time_cost = duration_minutes * pricing["per_minute"]
+    total = pricing["base"] + distance_cost + time_cost
+    total = max(total, pricing["min_fare"])
+    
+    driver_earnings = round(total * DRIVER_COMMISSION, 2)
+    platform_fee = round(total * PLATFORM_COMMISSION, 2)
+    
+    return {
+        "base_fare": pricing["base"],
+        "distance_cost": round(distance_cost, 2),
+        "time_cost": round(time_cost, 2),
+        "total": round(total, 2),
+        "driver_earnings": driver_earnings,
+        "platform_fee": platform_fee,
+    }
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# DRIVER REGISTRATION & MANAGEMENT
+# ══════════════════════════════════════════════════════════════════════════════
+
+class DriverRegisterRequest(BaseModel):
+    car_brand: str
+    car_model: str
+    car_year: int = Field(..., ge=2010, le=2030)
+    car_color: str
+    license_plate: str
+    car_type: str = "standard"  # standard, premium, van
+    license_number: str
+
+
+@router.post("/driver/register")
+async def register_as_driver(req: DriverRegisterRequest, request: Request):
+    """User applies to become a driver."""
     user = await get_current_user(request)
     user_id = str(user["_id"])
     
-    active = await db.taxi_rides.find_one(
-        {"user_id": user_id, "status": {"$in": ["requested", "accepted", "arriving", "started"]}},
-        {"_id": 0}
+    # Check if already registered
+    existing = await db.drivers.find_one({"user_id": user_id})
+    if existing:
+        raise HTTPException(status_code=400, detail="Du bist bereits als Fahrer registriert")
+    
+    # Check car type valid
+    if req.car_type not in ["standard", "premium", "van"]:
+        req.car_type = "standard"
+    
+    now = datetime.now(timezone.utc)
+    driver_id = secrets.token_hex(8)
+    
+    driver = {
+        "driver_id": driver_id,
+        "user_id": user_id,
+        "user_email": user.get("email", ""),
+        "user_name": user.get("name", ""),
+        "phone": user.get("phone", ""),
+        "car": {
+            "brand": req.car_brand,
+            "model": req.car_model,
+            "year": req.car_year,
+            "color": req.car_color,
+            "license_plate": req.license_plate,
+            "type": req.car_type,
+        },
+        "license_number": req.license_number,
+        "verified": False,  # Requires admin approval
+        "status": "pending",  # pending, approved, rejected, suspended
+        "online": False,
+        "location": {"lat": 0, "lng": 0},
+        "rating": 5.0,
+        "total_rides": 0,
+        "total_earnings": 0,
+        "created_at": now.isoformat(),
+    }
+    
+    await db.drivers.insert_one(driver)
+    driver.pop("_id", None)
+    
+    # Update user role
+    await db.users.update_one(
+        {"_id": user["_id"]},
+        {"$set": {"is_driver": True, "driver_status": "pending"}}
     )
     
-    if not active:
-        return {"active_ride": None, "has_active": False}
-    
+    logger.info(f"New driver registration: {user.get('email')}")
     return {
-        "active_ride": active,
-        "has_active": True,
-        "ride_id": active.get("ride_id"),
-        "status": active.get("status"),
+        "ok": True,
+        "driver": driver,
+        "message": "Registrierung eingereicht. Warte auf Admin-Freigabe.",
     }
 
 
-# Simulated driver pool for demo
-DEMO_DRIVERS = [
-    {"name": "Stefan M.", "rating": 4.9, "rides": 2847, "vehicle": "VW Passat", "color": "Schwarz", "plate": "B-SM 4721"},
-    {"name": "Anna K.", "rating": 4.8, "rides": 1923, "vehicle": "BMW 3er", "color": "Weiß", "plate": "B-AK 8834"},
-    {"name": "Michael B.", "rating": 4.7, "rides": 3156, "vehicle": "Mercedes C-Klasse", "color": "Silber", "plate": "B-MB 2290"},
-    {"name": "Sarah L.", "rating": 4.9, "rides": 1547, "vehicle": "Audi A4", "color": "Grau", "plate": "B-SL 6612"},
-    {"name": "Thomas H.", "rating": 4.6, "rides": 4231, "vehicle": "Skoda Superb", "color": "Blau", "plate": "B-TH 1199"},
-    {"name": "Julia W.", "rating": 4.8, "rides": 987, "vehicle": "Tesla Model 3", "color": "Weiß", "plate": "B-JW 3377"},
-]
-
-
-def calculate_distance(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
-    """Calculate distance in km using Haversine formula."""
-    R = 6371  # Earth radius in km
-    dlat = math.radians(lat2 - lat1)
-    dlng = math.radians(lng2 - lng1)
-    a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlng/2)**2
-    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
-    return R * c
-
-
-def calculate_fare(distance_km: float, duration_min: float, vehicle_type: str, surge: float = 1.0) -> dict:
-    """Calculate fare based on distance, duration, and vehicle type."""
-    vtype = VEHICLE_TYPES.get(vehicle_type, VEHICLE_TYPES["standard"])
-    multiplier = vtype["multiplier"]
+@router.get("/driver/status")
+async def get_driver_status(request: Request):
+    """Get current user's driver status."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
     
-    base = BASE_FARE
-    distance_cost = distance_km * PER_KM_RATE
-    time_cost = duration_min * PER_MIN_RATE
-    
-    subtotal = (base + distance_cost + time_cost) * multiplier * surge
-    fare = max(subtotal, MIN_FARE)
+    driver = await db.drivers.find_one({"user_id": user_id}, {"_id": 0})
+    if not driver:
+        return {"is_driver": False, "driver": None}
     
     return {
-        "base_fare": round(base, 2),
-        "distance_cost": round(distance_cost * multiplier, 2),
-        "time_cost": round(time_cost * multiplier, 2),
-        "surge_multiplier": surge,
-        "vehicle_multiplier": multiplier,
-        "subtotal": round(subtotal, 2),
-        "total": round(fare, 2),
-        "driver_earnings": round(fare * DRIVER_COMMISSION, 2),
-        "platform_fee": round(fare * (1 - DRIVER_COMMISSION), 2),
+        "is_driver": True,
+        "driver": driver,
+        "can_go_online": driver.get("verified") and driver.get("status") == "approved",
     }
 
 
-def get_surge_multiplier() -> float:
-    """Get current surge multiplier based on time."""
-    hour = datetime.now().hour
-    if 7 <= hour <= 9 or 17 <= hour <= 19:
-        return SURGE_MULTIPLIER_HIGH
-    elif 22 <= hour or hour <= 2:
-        return SURGE_MULTIPLIER_PEAK
-    return 1.0
+@router.post("/driver/go-online")
+async def driver_go_online(request: Request):
+    """Driver goes online to receive ride requests."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    
+    driver = await db.drivers.find_one({"user_id": user_id})
+    if not driver:
+        raise HTTPException(status_code=404, detail="Du bist kein registrierter Fahrer")
+    
+    if not driver.get("verified") or driver.get("status") != "approved":
+        raise HTTPException(status_code=403, detail="Dein Fahrerkonto ist noch nicht freigegeben")
+    
+    await db.drivers.update_one(
+        {"user_id": user_id},
+        {"$set": {
+            "online": True,
+            "went_online_at": datetime.now(timezone.utc).isoformat(),
+        }}
+    )
+    
+    return {"ok": True, "online": True, "message": "Du bist jetzt online!"}
 
 
-# ══════════════════════════════════════
-# MODELS
-# ══════════════════════════════════════
-
-class LocationPoint(BaseModel):
-    lat: float
-    lng: float
-    address: str = ""
-
-
-class EstimateRequest(BaseModel):
-    pickup: LocationPoint
-    dropoff: LocationPoint
-
-
-class RideRequest(BaseModel):
-    pickup: LocationPoint
-    dropoff: LocationPoint
-    vehicle_type: str = "standard"
-    payment_method: str = "wallet"  # ONLY wallet allowed in BidBlitz ecosystem
-    notes: Optional[str] = ""
-
-
-class RideAction(BaseModel):
-    ride_id: str
-
-
-class DriverStatusUpdate(BaseModel):
-    ride_id: str
-    status: str
-    location: Optional[LocationPoint] = None
+@router.post("/driver/go-offline")
+async def driver_go_offline(request: Request):
+    """Driver goes offline."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    
+    driver = await db.drivers.find_one({"user_id": user_id})
+    if not driver:
+        raise HTTPException(status_code=404, detail="Du bist kein registrierter Fahrer")
+    
+    # Check no active ride
+    active_ride = await db.taxi_rides.find_one({
+        "driver_id": driver["driver_id"],
+        "status": {"$in": ["accepted", "arriving", "started"]}
+    })
+    if active_ride:
+        raise HTTPException(status_code=400, detail="Du hast noch eine aktive Fahrt")
+    
+    await db.drivers.update_one(
+        {"user_id": user_id},
+        {"$set": {"online": False}}
+    )
+    
+    return {"ok": True, "online": False, "message": "Du bist jetzt offline"}
 
 
-# ══════════════════════════════════════
-# RIDER: GET FARE ESTIMATES
-# ══════════════════════════════════════
+@router.post("/driver/update-location")
+async def driver_update_location(request: Request):
+    """Driver updates their current location."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    
+    body = await request.json()
+    lat = body.get("lat")
+    lng = body.get("lng")
+    
+    if lat is None or lng is None:
+        raise HTTPException(status_code=400, detail="lat and lng required")
+    
+    driver = await db.drivers.find_one({"user_id": user_id})
+    if not driver:
+        raise HTTPException(status_code=404, detail="Nicht als Fahrer registriert")
+    
+    now = datetime.now(timezone.utc)
+    
+    await db.drivers.update_one(
+        {"user_id": user_id},
+        {"$set": {
+            "location": {"lat": lat, "lng": lng},
+            "last_location_update": now.isoformat(),
+        }}
+    )
+    
+    # Also update active ride if any
+    active_ride = await db.taxi_rides.find_one({
+        "driver_id": driver["driver_id"],
+        "status": {"$in": ["accepted", "arriving", "started"]}
+    })
+    if active_ride:
+        await db.taxi_rides.update_one(
+            {"ride_id": active_ride["ride_id"]},
+            {"$set": {"driver_location": {"lat": lat, "lng": lng}}}
+        )
+    
+    return {"ok": True}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# CUSTOMER: GET NEARBY DRIVERS
+# ══════════════════════════════════════════════════════════════════════════════
+
+@router.get("/drivers/nearby")
+async def get_nearby_drivers(lat: float = 52.52, lng: float = 13.405, radius: float = 10.0, car_type: Optional[str] = None):
+    """Get online drivers near location (public)."""
+    
+    query = {"online": True, "verified": True, "status": "approved"}
+    if car_type:
+        query["car.type"] = car_type
+    
+    drivers = await db.drivers.find(
+        query,
+        {"_id": 0, "license_number": 0, "user_email": 0}  # Hide sensitive data
+    ).to_list(100)
+    
+    # Filter by distance
+    nearby = []
+    for d in drivers:
+        loc = d.get("location", {})
+        dlat, dlng = loc.get("lat", 0), loc.get("lng", 0)
+        if dlat == 0 and dlng == 0:
+            continue
+        
+        dist = haversine_distance(lat, lng, dlat, dlng)
+        if dist <= radius:
+            d["distance_km"] = round(dist, 2)
+            d["eta_minutes"] = max(2, round(dist * 2.5))  # Rough ETA
+            nearby.append(d)
+    
+    nearby.sort(key=lambda x: x["distance_km"])
+    
+    return {
+        "drivers": nearby[:20],
+        "total": len(nearby),
+        "pricing": PRICING,
+    }
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# CUSTOMER: BOOK RIDE
+# ══════════════════════════════════════════════════════════════════════════════
+
+class BookRideRequest(BaseModel):
+    pickup_lat: float
+    pickup_lng: float
+    pickup_address: str = ""
+    dropoff_lat: float
+    dropoff_lng: float
+    dropoff_address: str = ""
+    car_type: str = "standard"
+
 
 @router.post("/estimate")
-async def get_fare_estimate(req: EstimateRequest, request: Request):
-    """Get fare estimates for all vehicle types."""
-    user = await get_current_user(request)
+async def get_ride_estimate(req: BookRideRequest):
+    """Get price estimate for a ride (no auth required)."""
     
-    # Calculate distance
-    distance_km = calculate_distance(
-        req.pickup.lat, req.pickup.lng,
-        req.dropoff.lat, req.dropoff.lng
-    )
-    distance_km = max(1.0, min(distance_km, 100))
+    distance_km = haversine_distance(req.pickup_lat, req.pickup_lng, req.dropoff_lat, req.dropoff_lng)
     
-    # Estimate duration (avg 25 km/h in city)
-    duration_min = (distance_km / 25) * 60
-    duration_min = max(5, min(duration_min, 180))
+    # Estimate duration (rough: 30 km/h average in city)
+    duration_minutes = (distance_km / 30) * 60
+    duration_minutes = max(5, duration_minutes)
     
-    surge = get_surge_multiplier()
-    
-    estimates = []
-    for vtype, vdata in VEHICLE_TYPES.items():
-        fare = calculate_fare(distance_km, duration_min, vtype, surge)
-        eta = random.randint(3, 12)
-        estimates.append({
-            "vehicle_type": vtype,
-            "name": vdata["name"],
-            "description": vdata["description"],
-            "icon": vdata["icon"],
-            "capacity": vdata["capacity"],
-            "eta_minutes": eta,
-            "fare": fare["total"],
-            "fare_range": {
-                "min": round(fare["total"] * 0.9, 2),
-                "max": round(fare["total"] * 1.1, 2),
-            },
-            "fare_breakdown": fare,
-        })
+    fare = calculate_fare(distance_km, duration_minutes, req.car_type)
     
     return {
-        "estimates": sorted(estimates, key=lambda x: x["fare"]),
-        "route": {
-            "distance_km": round(distance_km, 1),
-            "duration_min": round(duration_min),
-            "pickup": req.pickup.dict(),
-            "dropoff": req.dropoff.dict(),
-        },
-        "surge": {
-            "active": surge > 1.0,
-            "multiplier": surge,
-            "reason": "Hohe Nachfrage" if surge > 1.0 else None,
-        },
+        "distance_km": round(distance_km, 2),
+        "estimated_duration_minutes": round(duration_minutes),
+        "fare_estimate": fare["total"],
+        "fare_breakdown": fare,
+        "car_type": req.car_type,
     }
 
 
-# ══════════════════════════════════════
-# RIDER: BOOK RIDE
-# ══════════════════════════════════════
-
 @router.post("/book")
-async def book_ride(req: RideRequest, request: Request):
-    """Book a new ride."""
+async def book_ride(req: BookRideRequest, request: Request):
+    """Customer books a ride."""
+    from core.payment_engine import TransactionType
+    
     user = await get_current_user(request)
     user_id = str(user["_id"])
     
-    if req.vehicle_type not in VEHICLE_TYPES:
-        raise HTTPException(status_code=400, detail="Ungültiger Fahrzeugtyp")
+    # Check wallet balance
+    balance = user.get("balance", 0)
+    if balance < MIN_WALLET_BALANCE:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Mindestguthaben €{MIN_WALLET_BALANCE:.2f} erforderlich. Aktuell: €{balance:.2f}"
+        )
     
-    # Check for active ride
+    # Check no active ride
     active = await db.taxi_rides.find_one({
-        "user_id": user_id,
+        "customer_id": user_id,
         "status": {"$in": ["requested", "accepted", "arriving", "started"]}
     })
     if active:
         raise HTTPException(status_code=400, detail="Du hast bereits eine aktive Fahrt")
     
-    # Calculate fare
-    distance_km = calculate_distance(
-        req.pickup.lat, req.pickup.lng,
-        req.dropoff.lat, req.dropoff.lng
-    )
-    distance_km = max(1.0, min(distance_km, 100))
-    duration_min = max(5, min((distance_km / 25) * 60, 180))
-    surge = get_surge_multiplier()
-    fare = calculate_fare(distance_km, duration_min, req.vehicle_type, surge)
-    
-    # WALLET-ONLY: Check wallet balance (BidBlitz closed ecosystem)
-    current_balance = user.get("balance", 0)
-    if current_balance < fare["total"]:
-        raise HTTPException(
-            status_code=400, 
-            detail=f"Nicht genug Guthaben. Benötigt: €{fare['total']:.2f}, Verfügbar: €{current_balance:.2f}. Bitte lade dein Wallet auf."
-        )
+    # Calculate estimate
+    distance_km = haversine_distance(req.pickup_lat, req.pickup_lng, req.dropoff_lat, req.dropoff_lng)
+    duration_minutes = max(5, (distance_km / 30) * 60)
+    fare_estimate = calculate_fare(distance_km, duration_minutes, req.car_type)
     
     now = datetime.now(timezone.utc)
     ride_id = secrets.token_hex(8)
     
-    # Select a demo driver
-    demo_driver = random.choice(DEMO_DRIVERS)
-    driver = {
-        "driver_id": secrets.token_hex(8),
-        "name": demo_driver["name"],
-        "rating": demo_driver["rating"],
-        "total_rides": demo_driver["rides"],
-        "vehicle": {
-            "model": demo_driver["vehicle"],
-            "color": demo_driver["color"],
-            "plate": demo_driver["plate"],
-            "type": req.vehicle_type,
-        },
-        "photo_url": f"https://randomuser.me/api/portraits/{'men' if random.random() > 0.4 else 'women'}/{random.randint(1, 99)}.jpg",
-        "phone": f"+49 170 {random.randint(1000000, 9999999)}",
-        "location": {
-            "lat": req.pickup.lat + random.uniform(-0.01, 0.01),
-            "lng": req.pickup.lng + random.uniform(-0.01, 0.01),
-        },
-        "eta_minutes": random.randint(3, 8),
-    }
-    
     ride = {
         "ride_id": ride_id,
-        "user_id": user_id,
-        "user_name": user.get("name", ""),
-        "user_email": user.get("email", ""),
-        "user_phone": user.get("phone", ""),
-        "pickup": req.pickup.dict(),
-        "dropoff": req.dropoff.dict(),
-        "vehicle_type": req.vehicle_type,
-        "vehicle_name": VEHICLE_TYPES[req.vehicle_type]["name"],
-        "payment_method": req.payment_method,
-        "status": "requested",
-        "driver": None,
-        "fare_estimate": fare["total"],
-        "fare_breakdown": fare,
-        "distance_km": round(distance_km, 1),
-        "duration_min": round(duration_min),
-        "surge_multiplier": surge,
-        "notes": req.notes,
+        "customer_id": user_id,
+        "customer_name": user.get("name", ""),
+        "customer_phone": user.get("phone", ""),
+        "driver_id": None,
+        "driver_name": None,
+        "pickup": {
+            "lat": req.pickup_lat,
+            "lng": req.pickup_lng,
+            "address": req.pickup_address,
+        },
+        "dropoff": {
+            "lat": req.dropoff_lat,
+            "lng": req.dropoff_lng,
+            "address": req.dropoff_address,
+        },
+        "car_type": req.car_type,
+        "distance_km_estimate": round(distance_km, 2),
+        "duration_estimate_minutes": round(duration_minutes),
+        "fare_estimate": fare_estimate["total"],
+        "status": RideStatus.REQUESTED.value,
         "created_at": now.isoformat(),
-        "updated_at": now.isoformat(),
         "status_history": [{"status": "requested", "at": now.isoformat()}],
     }
     
     await db.taxi_rides.insert_one(ride)
     ride.pop("_id", None)
     
-    # Find nearest available real driver
-    from math import radians, cos, sin, sqrt, atan2
+    # Find nearby drivers and notify them (in real app, use push notifications)
+    nearby_drivers = await db.drivers.find({
+        "online": True,
+        "verified": True,
+        "status": "approved",
+        "car.type": req.car_type,
+    }).to_list(20)
     
-    def haversine(lat1, lon1, lat2, lon2):
-        R = 6371
-        dlat = radians(lat2 - lat1)
-        dlon = radians(lon2 - lon1)
-        a = sin(dlat/2)**2 + cos(radians(lat1)) * cos(radians(lat2)) * sin(dlon/2)**2
-        return R * 2 * atan2(sqrt(a), sqrt(1-a))
-    
-    # Find online, verified drivers with matching vehicle type
-    available_drivers = await db.drivers.find({
-        "is_online": True,
-        "is_verified": True,
-        "status": "active",
-        "current_ride_id": None,
-        "vehicle.type": req.vehicle_type,
-        "current_location": {"$ne": None},
-    }, {"_id": 0, "password_hash": 0, "documents": 0}).to_list(20)
-    
-    # Sort by distance to pickup
-    for d in available_drivers:
-        loc = d.get("current_location", {})
-        if loc:
-            d["distance_km"] = haversine(req.pickup.lat, req.pickup.lng, loc.get("lat", 0), loc.get("lng", 0))
-    
-    available_drivers.sort(key=lambda x: x.get("distance_km", 999))
-    
-    # Return ride - driver assignment happens asynchronously via driver app
-    # If no drivers available, ride stays in "requested" status
-    if available_drivers:
-        ride["nearby_drivers"] = len(available_drivers)
-        ride["estimated_wait"] = max(2, int(available_drivers[0].get("distance_km", 5) * 2))
-    else:
-        ride["nearby_drivers"] = 0
-        ride["estimated_wait"] = None
-        ride["no_drivers_available"] = True
+    # Filter by distance from pickup
+    matching_drivers = []
+    for d in nearby_drivers:
+        loc = d.get("location", {})
+        if loc.get("lat"):
+            dist = haversine_distance(req.pickup_lat, req.pickup_lng, loc["lat"], loc["lng"])
+            if dist <= 10:  # Within 10km
+                matching_drivers.append({
+                    "driver_id": d["driver_id"],
+                    "distance_km": round(dist, 2),
+                })
     
     return {
         "ok": True,
         "ride": ride,
-        "message": "Fahrt angefragt. Wir suchen einen Fahrer für dich." if not ride.get("no_drivers_available") else "Keine Fahrer verfügbar. Bitte später erneut versuchen.",
+        "matching_drivers": len(matching_drivers),
+        "message": f"Fahrt angefragt. {len(matching_drivers)} Fahrer in der Nähe.",
     }
 
 
-# ══════════════════════════════════════
-# RIDER: GET RIDE STATUS
-# ══════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════════════
+# DRIVER: INCOMING REQUESTS
+# ══════════════════════════════════════════════════════════════════════════════
 
-@router.get("/ride/{ride_id}")
-async def get_ride_status(ride_id: str, request: Request):
-    """Get current ride status with live tracking."""
+@router.get("/driver/requests")
+async def get_driver_requests(request: Request):
+    """Driver gets available ride requests near them."""
     user = await get_current_user(request)
     user_id = str(user["_id"])
     
-    ride = await db.taxi_rides.find_one({"ride_id": ride_id}, {"_id": 0})
+    driver = await db.drivers.find_one({"user_id": user_id})
+    if not driver:
+        raise HTTPException(status_code=404, detail="Nicht als Fahrer registriert")
+    
+    if not driver.get("online"):
+        return {"requests": [], "message": "Du bist offline"}
+    
+    loc = driver.get("location", {})
+    if not loc.get("lat"):
+        return {"requests": [], "message": "Standort nicht verfügbar"}
+    
+    # Find requested rides for driver's car type
+    rides = await db.taxi_rides.find({
+        "status": RideStatus.REQUESTED.value,
+        "car_type": driver.get("car", {}).get("type", "standard"),
+    }, {"_id": 0}).sort("created_at", -1).to_list(20)
+    
+    # Filter by distance
+    nearby_requests = []
+    for ride in rides:
+        pickup = ride.get("pickup", {})
+        if pickup.get("lat"):
+            dist = haversine_distance(loc["lat"], loc["lng"], pickup["lat"], pickup["lng"])
+            if dist <= 10:
+                ride["distance_to_pickup_km"] = round(dist, 2)
+                ride["eta_to_pickup_minutes"] = max(2, round(dist * 2.5))
+                nearby_requests.append(ride)
+    
+    nearby_requests.sort(key=lambda x: x["distance_to_pickup_km"])
+    
+    return {"requests": nearby_requests[:10], "total": len(nearby_requests)}
+
+
+@router.get("/driver/active")
+async def get_driver_active_ride(request: Request):
+    """Driver gets their current active ride."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    
+    driver = await db.drivers.find_one({"user_id": user_id})
+    if not driver:
+        raise HTTPException(status_code=404, detail="Nicht als Fahrer registriert")
+    
+    ride = await db.taxi_rides.find_one({
+        "driver_id": driver["driver_id"],
+        "status": {"$in": ["accepted", "arriving", "started"]}
+    }, {"_id": 0})
+    
     if not ride:
-        raise HTTPException(status_code=404, detail="Fahrt nicht gefunden")
+        return {"has_active": False, "ride": None}
     
-    # Allow access for rider or driver
-    if ride["user_id"] != user_id and ride.get("driver", {}).get("driver_id") != user_id:
-        # Check if admin
-        if user.get("role") != "admin":
-            raise HTTPException(status_code=403, detail="Kein Zugriff")
-    
-    # Simulate driver movement for demo
-    if ride["status"] in ["accepted", "arriving"] and ride.get("driver"):
-        driver_loc = ride["driver"].get("location", {})
-        pickup = ride["pickup"]
-        
-        # Move driver towards pickup
-        progress = random.uniform(0.1, 0.3)
-        new_lat = driver_loc.get("lat", pickup["lat"]) + (pickup["lat"] - driver_loc.get("lat", pickup["lat"])) * progress
-        new_lng = driver_loc.get("lng", pickup["lng"]) + (pickup["lng"] - driver_loc.get("lng", pickup["lng"])) * progress
-        
-        ride["driver"]["location"] = {"lat": new_lat, "lng": new_lng}
-        ride["driver"]["eta_minutes"] = max(1, ride["driver"].get("eta_minutes", 5) - 1)
-    
-    return {"ride": ride}
+    return {"has_active": True, "ride": ride}
 
 
-# ══════════════════════════════════════
-# RIDER: CANCEL RIDE
-# ══════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════════════
+# DRIVER: ACCEPT / REJECT RIDE
+# ══════════════════════════════════════════════════════════════════════════════
 
-@router.post("/cancel")
-async def cancel_ride(req: RideAction, request: Request):
-    """Cancel an active ride - Uses Payment Engine for safe cancellation fee deduction."""
-    from core.payment_engine import debit_wallet, TransactionType
-    
-    user = await get_current_user(request)
-    user_id = str(user["_id"])
-    
-    ride = await db.taxi_rides.find_one({"ride_id": req.ride_id, "user_id": user_id})
-    if not ride:
-        raise HTTPException(status_code=404, detail="Fahrt nicht gefunden")
-    
-    if ride["status"] in ("completed", "cancelled"):
-        raise HTTPException(status_code=400, detail="Fahrt bereits beendet")
-    
-    # Cancellation fee if driver already en route
-    cancel_fee = 0
-    payment_result = None
-    if ride["status"] in ("accepted", "arriving"):
-        cancel_fee = CANCELLATION_FEE
-        # Use Payment Engine for atomic deduction
-        payment_result = await debit_wallet(
-            user_id=user_id,
-            amount=cancel_fee,
-            tx_type=TransactionType.TAXI_PAYMENT,
-            description="Taxi Stornierungsgebühr",
-            reference=f"TAXI-CANCEL-{req.ride_id[:8].upper()}",
-            metadata={"ride_id": req.ride_id, "type": "cancellation_fee"}
-        )
-        if not payment_result.success:
-            # Allow cancellation without fee if balance insufficient
-            cancel_fee = 0
-    
-    now = datetime.now(timezone.utc)
-    status_history = ride.get("status_history", [])
-    status_history.append({"status": "cancelled", "at": now.isoformat(), "by": "rider"})
-    
-    await db.taxi_rides.update_one(
-        {"ride_id": req.ride_id},
-        {"$set": {
-            "status": "cancelled",
-            "cancel_fee": cancel_fee,
-            "cancelled_at": now.isoformat(),
-            "cancelled_by": "rider",
-            "status_history": status_history,
-            "updated_at": now.isoformat(),
-        }}
-    )
-    
-    return {
-        "ok": True,
-        "cancel_fee": cancel_fee,
-        "message": "Fahrt storniert" + (f" (Gebühr: €{cancel_fee:.2f})" if cancel_fee else ""),
-    }
+class RideActionRequest(BaseModel):
+    ride_id: str
 
-
-# ══════════════════════════════════════
-# RIDER: COMPLETE RIDE (Simulation/Demo)
-# ══════════════════════════════════════
-
-@router.post("/complete")
-async def complete_ride(request: Request):
-    """Complete an active ride - Uses Payment Engine for safe wallet deduction."""
-    from core.payment_engine import debit_wallet, TransactionType
-    
-    user = await get_current_user(request)
-    user_id = str(user["_id"])
-    body = await request.json()
-    
-    ride_id = body.get("ride_id")
-    if not ride_id:
-        raise HTTPException(status_code=400, detail="ride_id erforderlich")
-    
-    ride = await db.taxi_rides.find_one({"ride_id": ride_id, "user_id": user_id})
-    if not ride:
-        raise HTTPException(status_code=404, detail="Fahrt nicht gefunden")
-    
-    if ride["status"] in ("completed", "cancelled"):
-        raise HTTPException(status_code=400, detail="Fahrt bereits beendet")
-    
-    now = datetime.now(timezone.utc)
-    fare = ride.get("fare_estimate", 10.0)
-    
-    # Use Payment Engine for atomic wallet deduction
-    result = await debit_wallet(
-        user_id=user_id,
-        amount=fare,
-        tx_type=TransactionType.TAXI_PAYMENT,
-        description=f"Taxi: {ride.get('pickup', {}).get('address', '?')} → {ride.get('dropoff', {}).get('address', '?')}",
-        reference=f"TAXI-{ride_id[:8].upper()}",
-        metadata={"ride_id": ride_id, "distance_km": ride.get("distance_km", 0)}
-    )
-    
-    if not result.success:
-        raise HTTPException(status_code=400, detail=result.error)
-    
-    # Update ride status
-    status_history = ride.get("status_history", [])
-    status_history.append({"status": "completed", "at": now.isoformat()})
-    
-    await db.taxi_rides.update_one(
-        {"ride_id": ride_id},
-        {"$set": {
-            "status": "completed",
-            "final_fare": fare,
-            "completed_at": now.isoformat(),
-            "status_history": status_history,
-            "updated_at": now.isoformat(),
-            "payment_transaction_id": result.transaction_id,
-        }}
-    )
-    
-    return {
-        "ok": True,
-        "final_fare": fare,
-        "new_balance": result.new_balance,
-        "message": f"Fahrt abgeschlossen. €{fare:.2f} abgebucht.",
-    }
-
-
-# ══════════════════════════════════════
-# RIDER: GET ACTIVE RIDE
-# ══════════════════════════════════════
-
-@router.get("/active")
-async def get_active_ride(request: Request):
-    """Get user's current active ride."""
-    user = await get_current_user(request)
-    user_id = str(user["_id"])
-    
-    ride = await db.taxi_rides.find_one(
-        {"user_id": user_id, "status": {"$in": ["requested", "accepted", "arriving", "started"]}},
-        {"_id": 0}
-    )
-    
-    return {"has_active_ride": ride is not None, "ride": ride}
-
-
-# ══════════════════════════════════════
-# RIDER: RIDE HISTORY
-# ══════════════════════════════════════
-
-@router.get("/history")
-async def get_ride_history(request: Request, limit: int = 20):
-    """Get user's ride history."""
-    user = await get_current_user(request)
-    user_id = str(user["_id"])
-    
-    rides = await db.taxi_rides.find(
-        {"user_id": user_id},
-        {"_id": 0}
-    ).sort("created_at", -1).limit(limit).to_list(limit)
-    
-    stats = {
-        "total_rides": len(rides),
-        "total_spent": sum(r.get("final_fare", r.get("fare_estimate", 0)) for r in rides if r["status"] == "completed"),
-        "total_distance": sum(r.get("distance_km", 0) for r in rides if r["status"] == "completed"),
-    }
-    
-    return {"rides": rides, "stats": stats}
-
-
-# ══════════════════════════════════════
-# RIDER: RATE RIDE
-# ══════════════════════════════════════
-
-@router.post("/rate")
-async def rate_ride(request: Request):
-    """Rate a completed ride."""
-    user = await get_current_user(request)
-    user_id = str(user["_id"])
-    body = await request.json()
-    
-    ride_id = body.get("ride_id")
-    rating = body.get("rating", 5)
-    comment = body.get("comment", "")
-    tip = body.get("tip", 0)
-    
-    if not 1 <= rating <= 5:
-        raise HTTPException(status_code=400, detail="Bewertung muss 1-5 sein")
-    
-    ride = await db.taxi_rides.find_one({"ride_id": ride_id, "user_id": user_id})
-    if not ride:
-        raise HTTPException(status_code=404, detail="Fahrt nicht gefunden")
-    
-    if ride["status"] != "completed":
-        raise HTTPException(status_code=400, detail="Nur abgeschlossene Fahrten bewerten")
-    
-    # Process tip
-    if tip > 0:
-        if user.get("balance", 0) >= tip:
-            await db.users.update_one(
-                {"_id": user["_id"]},
-                {"$inc": {"balance": -tip}}
-            )
-            await db.transactions.insert_one({
-                "id": secrets.token_hex(8),
-                "user_id": user_id,
-                "type": "payment",
-                "amount": -tip,
-                "description": f"Trinkgeld für {ride['driver']['name']}",
-                "status": "completed",
-                "reference": f"TAXI-TIP-{ride_id[:8].upper()}",
-                "category": "taxi",
-                "created_at": datetime.now(timezone.utc).isoformat(),
-            })
-    
-    await db.taxi_rides.update_one(
-        {"ride_id": ride_id},
-        {"$set": {
-            "user_rating": rating,
-            "user_comment": comment,
-            "tip": tip,
-            "rated_at": datetime.now(timezone.utc).isoformat(),
-        }}
-    )
-    
-    return {"ok": True, "message": "Bewertung gespeichert"}
-
-
-# ══════════════════════════════════════
-# DRIVER: UPDATE STATUS
-# ══════════════════════════════════════
-
-@router.post("/driver/status")
-async def driver_update_status(req: DriverStatusUpdate, request: Request):
-    """Driver updates ride status."""
-    user = await get_current_user(request)
-    user_id = str(user["_id"])
-    
-    ride = await db.taxi_rides.find_one({"ride_id": req.ride_id})
-    if not ride:
-        raise HTTPException(status_code=404, detail="Fahrt nicht gefunden")
-    
-    # Validate status transition
-    current = ride["status"]
-    valid_transitions = {
-        "accepted": ["arriving", "cancelled"],
-        "arriving": ["started", "cancelled"],
-        "started": ["completed"],
-    }
-    
-    if req.status not in valid_transitions.get(current, []):
-        raise HTTPException(status_code=400, detail=f"Ungültiger Statuswechsel: {current} → {req.status}")
-    
-    now = datetime.now(timezone.utc)
-    update = {
-        "status": req.status,
-        "updated_at": now.isoformat(),
-    }
-    
-    status_history = ride.get("status_history", [])
-    status_history.append({"status": req.status, "at": now.isoformat()})
-    update["status_history"] = status_history
-    
-    if req.location:
-        update["driver.location"] = req.location.dict()
-    
-    if req.status == "arriving":
-        update["arriving_at"] = now.isoformat()
-    elif req.status == "started":
-        update["started_at"] = now.isoformat()
-    elif req.status == "completed":
-        update["completed_at"] = now.isoformat()
-        
-        # Calculate final fare
-        started = datetime.fromisoformat(ride["started_at"]) if ride.get("started_at") else now
-        actual_duration = (now - started).total_seconds() / 60
-        
-        fare = calculate_fare(
-            ride["distance_km"],
-            actual_duration,
-            ride["vehicle_type"],
-            ride.get("surge_multiplier", 1.0)
-        )
-        update["final_fare"] = fare["total"]
-        update["actual_duration_min"] = round(actual_duration)
-        
-        # Charge rider and credit driver (WALLET-ONLY ECOSYSTEM)
-        rider = await db.users.find_one({"_id": ObjectId(ride["user_id"])})
-        if rider:
-            # Deduct from rider
-            await db.users.update_one(
-                {"_id": ObjectId(ride["user_id"])},
-                {"$inc": {"balance": -fare["total"]}}
-            )
-            await db.transactions.insert_one({
-                "id": secrets.token_hex(8),
-                "user_id": ride["user_id"],
-                "type": "payment",
-                "amount": -fare["total"],
-                "description": f"Taxi: {ride['pickup'].get('address', '')[:20]} → {ride['dropoff'].get('address', '')[:20]}",
-                "status": "completed",
-                "reference": f"TAXI-{req.ride_id[:8].upper()}",
-                "category": "taxi",
-                "merchant_name": f"Taxi ({ride['driver']['name']})",
-                "created_at": now.isoformat(),
-            })
-            
-            # Credit driver (85% of fare, 15% platform fee)
-            driver_id = ride.get("driver_id")
-            if driver_id:
-                driver_share = round(fare["total"] * 0.85, 2)
-                platform_fee = round(fare["total"] * 0.15, 2)
-                
-                await db.users.update_one(
-                    {"_id": ObjectId(driver_id)},
-                    {"$inc": {"balance": driver_share}}
-                )
-                await db.transactions.insert_one({
-                    "id": secrets.token_hex(8),
-                    "user_id": driver_id,
-                    "type": "earning",
-                    "amount": driver_share,
-                    "description": f"Fahrt-Verdienst: {ride['pickup'].get('address', '')[:15]} → {ride['dropoff'].get('address', '')[:15]}",
-                    "status": "completed",
-                    "reference": f"TAXI-{req.ride_id[:8].upper()}",
-                    "category": "taxi_earning",
-                    "created_at": now.isoformat(),
-                })
-                
-                # Record platform fee
-                await db.platform_fees.insert_one({
-                    "type": "taxi",
-                    "ride_id": req.ride_id,
-                    "total_fare": fare["total"],
-                    "driver_share": driver_share,
-                    "platform_fee": platform_fee,
-                    "created_at": now.isoformat(),
-                })
-    elif req.status == "cancelled":
-        update["cancelled_at"] = now.isoformat()
-        update["cancelled_by"] = "driver"
-    
-    await db.taxi_rides.update_one({"ride_id": req.ride_id}, {"$set": update})
-    
-    updated_ride = await db.taxi_rides.find_one({"ride_id": req.ride_id}, {"_id": 0})
-    
-    return {"ok": True, "ride": updated_ride}
-
-
-# ══════════════════════════════════════
-# DRIVER: GET ASSIGNED RIDES
-# ══════════════════════════════════════
-
-@router.get("/driver/rides")
-async def get_driver_rides(request: Request, status: str = ""):
-    """Get rides assigned to driver."""
-    user = await get_current_user(request)
-    
-    # For demo, show all non-completed rides
-    query = {"status": {"$in": ["requested", "accepted", "arriving", "started"]}}
-    if status:
-        query["status"] = status
-    
-    rides = await db.taxi_rides.find(query, {"_id": 0}).sort("created_at", -1).limit(20).to_list(20)
-    
-    return {"rides": rides}
-
-
-# ══════════════════════════════════════
-# DRIVER: ACCEPT RIDE
-# ══════════════════════════════════════
 
 @router.post("/driver/accept")
-async def driver_accept_ride(req: RideAction, request: Request):
+async def driver_accept_ride(req: RideActionRequest, request: Request):
     """Driver accepts a ride request."""
     user = await get_current_user(request)
     user_id = str(user["_id"])
     
-    ride = await db.taxi_rides.find_one({"ride_id": req.ride_id, "status": "requested"})
+    driver = await db.drivers.find_one({"user_id": user_id})
+    if not driver:
+        raise HTTPException(status_code=404, detail="Nicht als Fahrer registriert")
+    
+    if not driver.get("online"):
+        raise HTTPException(status_code=400, detail="Du musst online sein")
+    
+    # Check driver doesn't have active ride
+    active = await db.taxi_rides.find_one({
+        "driver_id": driver["driver_id"],
+        "status": {"$in": ["accepted", "arriving", "started"]}
+    })
+    if active:
+        raise HTTPException(status_code=400, detail="Du hast bereits eine aktive Fahrt")
+    
+    # Get ride
+    ride = await db.taxi_rides.find_one({"ride_id": req.ride_id})
     if not ride:
-        raise HTTPException(status_code=404, detail="Fahrt nicht verfügbar")
+        raise HTTPException(status_code=404, detail="Fahrt nicht gefunden")
+    
+    if ride["status"] != RideStatus.REQUESTED.value:
+        raise HTTPException(status_code=400, detail="Fahrt bereits vergeben oder abgesagt")
     
     now = datetime.now(timezone.utc)
     
-    driver = {
-        "driver_id": user_id,
-        "name": user.get("name", "Fahrer"),
-        "rating": user.get("driver_rating", 4.8),
-        "total_rides": user.get("driver_rides", 0),
-        "vehicle": user.get("driver_vehicle", {
-            "model": "Unbekannt",
-            "color": "Unbekannt",
-            "plate": "Unbekannt",
-            "type": ride["vehicle_type"],
-        }),
-        "photo_url": user.get("photo_url", ""),
-        "phone": user.get("phone", ""),
-        "location": {"lat": ride["pickup"]["lat"], "lng": ride["pickup"]["lng"]},
-        "eta_minutes": random.randint(3, 8),
-    }
-    
-    status_history = ride.get("status_history", [])
-    status_history.append({"status": "accepted", "at": now.isoformat()})
-    
+    # Update ride
     await db.taxi_rides.update_one(
         {"ride_id": req.ride_id},
         {"$set": {
-            "driver": driver,
-            "status": "accepted",
+            "driver_id": driver["driver_id"],
+            "driver_name": driver.get("user_name", ""),
+            "driver_phone": driver.get("phone", ""),
+            "driver_car": driver.get("car", {}),
+            "driver_rating": driver.get("rating", 5.0),
+            "driver_location": driver.get("location", {}),
+            "status": RideStatus.ACCEPTED.value,
             "accepted_at": now.isoformat(),
-            "status_history": status_history,
-            "updated_at": now.isoformat(),
-        }}
+        },
+        "$push": {"status_history": {"status": "accepted", "at": now.isoformat()}}}
     )
     
     updated_ride = await db.taxi_rides.find_one({"ride_id": req.ride_id}, {"_id": 0})
     
-    return {"ok": True, "ride": updated_ride}
-
-
-# ══════════════════════════════════════
-# VEHICLE TYPES
-# ══════════════════════════════════════
-
-@router.get("/vehicle-types")
-async def get_vehicle_types():
-    """Get available vehicle types."""
-    types = []
-    for vtype, data in VEHICLE_TYPES.items():
-        types.append({
-            "id": vtype,
-            "name": data["name"],
-            "description": data["description"],
-            "icon": data["icon"],
-            "capacity": data["capacity"],
-            "multiplier": data["multiplier"],
-        })
-    return {"vehicle_types": types}
-
-
-# ══════════════════════════════════════
-# ADMIN: LIST ALL RIDES
-# ══════════════════════════════════════
-
-@router.get("/admin/rides")
-async def admin_list_rides(request: Request, status: str = "", limit: int = 50):
-    """Admin: List all rides."""
-    user = await get_current_user(request)
-    if user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Admin only")
-    
-    query = {}
-    if status:
-        query["status"] = status
-    
-    rides = await db.taxi_rides.find(query, {"_id": 0}).sort("created_at", -1).limit(limit).to_list(limit)
-    
-    # Stats
-    total = await db.taxi_rides.count_documents({})
-    active = await db.taxi_rides.count_documents({"status": {"$in": ["requested", "accepted", "arriving", "started"]}})
-    completed = await db.taxi_rides.count_documents({"status": "completed"})
-    cancelled = await db.taxi_rides.count_documents({"status": "cancelled"})
-    
     return {
-        "rides": rides,
-        "stats": {
-            "total": total,
-            "active": active,
-            "completed": completed,
-            "cancelled": cancelled,
-        }
+        "ok": True,
+        "ride": updated_ride,
+        "message": "Fahrt angenommen!",
     }
 
 
-# ══════════════════════════════════════
-# ADMIN: CANCEL RIDE
-# ══════════════════════════════════════
-
-@router.post("/admin/cancel")
-async def admin_cancel_ride(req: RideAction, request: Request):
-    """Admin: Force cancel a ride."""
+@router.post("/driver/arriving")
+async def driver_arriving(req: RideActionRequest, request: Request):
+    """Driver signals they are arriving at pickup."""
     user = await get_current_user(request)
-    if user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Admin only")
+    user_id = str(user["_id"])
+    
+    driver = await db.drivers.find_one({"user_id": user_id})
+    if not driver:
+        raise HTTPException(status_code=404, detail="Nicht als Fahrer registriert")
+    
+    ride = await db.taxi_rides.find_one({"ride_id": req.ride_id, "driver_id": driver["driver_id"]})
+    if not ride:
+        raise HTTPException(status_code=404, detail="Fahrt nicht gefunden")
+    
+    if ride["status"] != RideStatus.ACCEPTED.value:
+        raise HTTPException(status_code=400, detail="Ungültiger Status")
+    
+    now = datetime.now(timezone.utc)
+    
+    await db.taxi_rides.update_one(
+        {"ride_id": req.ride_id},
+        {"$set": {
+            "status": RideStatus.ARRIVING.value,
+            "arriving_at": now.isoformat(),
+        },
+        "$push": {"status_history": {"status": "arriving", "at": now.isoformat()}}}
+    )
+    
+    return {"ok": True, "status": "arriving", "message": "Kunde wird benachrichtigt"}
+
+
+@router.post("/driver/start")
+async def driver_start_ride(req: RideActionRequest, request: Request):
+    """Driver starts the ride (customer is in the car)."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    
+    driver = await db.drivers.find_one({"user_id": user_id})
+    if not driver:
+        raise HTTPException(status_code=404, detail="Nicht als Fahrer registriert")
+    
+    ride = await db.taxi_rides.find_one({"ride_id": req.ride_id, "driver_id": driver["driver_id"]})
+    if not ride:
+        raise HTTPException(status_code=404, detail="Fahrt nicht gefunden")
+    
+    if ride["status"] not in [RideStatus.ACCEPTED.value, RideStatus.ARRIVING.value]:
+        raise HTTPException(status_code=400, detail="Ungültiger Status")
+    
+    now = datetime.now(timezone.utc)
+    
+    await db.taxi_rides.update_one(
+        {"ride_id": req.ride_id},
+        {"$set": {
+            "status": RideStatus.STARTED.value,
+            "started_at": now.isoformat(),
+            "start_location": driver.get("location", ride.get("pickup", {})),
+        },
+        "$push": {"status_history": {"status": "started", "at": now.isoformat()}}}
+    )
+    
+    return {"ok": True, "status": "started", "message": "Fahrt gestartet"}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# DRIVER: END RIDE & PAYMENT
+# ══════════════════════════════════════════════════════════════════════════════
+
+@router.post("/driver/end")
+async def driver_end_ride(req: RideActionRequest, request: Request):
+    """Driver ends the ride and triggers payment."""
+    from core.payment_engine import debit_wallet, credit_wallet, TransactionType
+    
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    
+    driver = await db.drivers.find_one({"user_id": user_id})
+    if not driver:
+        raise HTTPException(status_code=404, detail="Nicht als Fahrer registriert")
+    
+    ride = await db.taxi_rides.find_one({"ride_id": req.ride_id, "driver_id": driver["driver_id"]})
+    if not ride:
+        raise HTTPException(status_code=404, detail="Fahrt nicht gefunden")
+    
+    if ride["status"] != RideStatus.STARTED.value:
+        raise HTTPException(status_code=400, detail="Fahrt noch nicht gestartet")
+    
+    now = datetime.now(timezone.utc)
+    started_at = datetime.fromisoformat(ride["started_at"])
+    
+    # Calculate actual duration
+    duration_seconds = (now - started_at).total_seconds()
+    duration_minutes = max(1, duration_seconds / 60)
+    
+    # Calculate actual distance (from start to current driver location)
+    start_loc = ride.get("start_location", ride.get("pickup", {}))
+    end_loc = driver.get("location", ride.get("dropoff", {}))
+    
+    distance_km = ride.get("distance_km_estimate", 5)
+    if start_loc.get("lat") and end_loc.get("lat"):
+        distance_km = haversine_distance(
+            start_loc["lat"], start_loc["lng"],
+            end_loc["lat"], end_loc["lng"]
+        )
+        # Use at least the estimate if actual is much less (short route taken)
+        distance_km = max(distance_km, ride.get("distance_km_estimate", 0) * 0.8)
+    
+    # Calculate final fare
+    fare = calculate_fare(distance_km, duration_minutes, ride.get("car_type", "standard"))
+    
+    # Deduct from customer wallet
+    customer_payment = await debit_wallet(
+        user_id=ride["customer_id"],
+        amount=fare["total"],
+        tx_type=TransactionType.TAXI_PAYMENT,
+        description=f"Taxi: {ride.get('pickup', {}).get('address', 'Abholung')} → {ride.get('dropoff', {}).get('address', 'Ziel')}",
+        reference=f"TAXI-{req.ride_id[:8].upper()}",
+        metadata={"ride_id": req.ride_id, "driver_id": driver["driver_id"]}
+    )
+    
+    if not customer_payment.success:
+        raise HTTPException(status_code=400, detail=f"Zahlung fehlgeschlagen: {customer_payment.error}")
+    
+    # Credit driver wallet
+    driver_credit = await credit_wallet(
+        user_id=driver["user_id"],
+        amount=fare["driver_earnings"],
+        tx_type=TransactionType.DRIVER_EARNINGS,
+        description=f"Fahrt-Verdienst: {req.ride_id[:8].upper()}",
+        reference=f"TAXI-EARN-{req.ride_id[:8].upper()}",
+        source="taxi_ride",
+        metadata={"ride_id": req.ride_id, "total_fare": fare["total"]}
+    )
+    
+    # Update ride
+    await db.taxi_rides.update_one(
+        {"ride_id": req.ride_id},
+        {"$set": {
+            "status": RideStatus.COMPLETED.value,
+            "ended_at": now.isoformat(),
+            "end_location": end_loc,
+            "actual_distance_km": round(distance_km, 2),
+            "actual_duration_minutes": round(duration_minutes),
+            "final_fare": fare["total"],
+            "driver_earnings": fare["driver_earnings"],
+            "platform_fee": fare["platform_fee"],
+            "customer_payment_id": customer_payment.transaction_id,
+            "driver_payment_id": driver_credit.transaction_id if driver_credit.success else None,
+        },
+        "$push": {"status_history": {"status": "completed", "at": now.isoformat()}}}
+    )
+    
+    # Update driver stats
+    await db.drivers.update_one(
+        {"driver_id": driver["driver_id"]},
+        {"$inc": {
+            "total_rides": 1,
+            "total_earnings": fare["driver_earnings"],
+        }}
+    )
+    
+    # Record platform revenue
+    await db.platform_revenue.update_one(
+        {"date": now.strftime("%Y-%m-%d")},
+        {"$inc": {"total": fare["platform_fee"], "by_source.taxi_fees": fare["platform_fee"]}},
+        upsert=True
+    )
+    
+    return {
+        "ok": True,
+        "ride_summary": {
+            "ride_id": req.ride_id,
+            "distance_km": round(distance_km, 2),
+            "duration_minutes": round(duration_minutes),
+            "fare": fare,
+        },
+        "driver_earnings": fare["driver_earnings"],
+        "message": f"Fahrt abgeschlossen! Verdienst: €{fare['driver_earnings']:.2f}",
+    }
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# CUSTOMER: CANCEL RIDE
+# ══════════════════════════════════════════════════════════════════════════════
+
+@router.post("/cancel")
+async def cancel_ride(req: RideActionRequest, request: Request):
+    """Customer or driver cancels a ride."""
+    from core.payment_engine import debit_wallet, credit_wallet, TransactionType
+    
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
     
     ride = await db.taxi_rides.find_one({"ride_id": req.ride_id})
     if not ride:
         raise HTTPException(status_code=404, detail="Fahrt nicht gefunden")
     
-    if ride["status"] in ("completed", "cancelled"):
+    # Check if user is customer or driver
+    is_customer = ride["customer_id"] == user_id
+    driver = await db.drivers.find_one({"user_id": user_id})
+    is_driver = driver and ride.get("driver_id") == driver.get("driver_id")
+    
+    if not is_customer and not is_driver:
+        raise HTTPException(status_code=403, detail="Nicht autorisiert")
+    
+    if ride["status"] in [RideStatus.COMPLETED.value, RideStatus.CANCELLED.value]:
         raise HTTPException(status_code=400, detail="Fahrt bereits beendet")
     
     now = datetime.now(timezone.utc)
-    status_history = ride.get("status_history", [])
-    status_history.append({"status": "cancelled", "at": now.isoformat(), "by": "admin"})
+    cancelled_by = "customer" if is_customer else "driver"
+    
+    # Cancellation fee if ride was already accepted
+    cancel_fee = 0
+    if ride["status"] in [RideStatus.ACCEPTED.value, RideStatus.ARRIVING.value] and is_customer:
+        cancel_fee = CANCELLATION_FEE
+        # Charge customer
+        await debit_wallet(
+            user_id=ride["customer_id"],
+            amount=cancel_fee,
+            tx_type=TransactionType.TAXI_PAYMENT,
+            description="Stornierungsgebühr",
+            reference=f"TAXI-CANCEL-{req.ride_id[:8].upper()}",
+            metadata={"ride_id": req.ride_id}
+        )
+        # Pay driver compensation (half of cancel fee)
+        if ride.get("driver_id"):
+            driver_user_id = (await db.drivers.find_one({"driver_id": ride["driver_id"]}))["user_id"]
+            await credit_wallet(
+                user_id=driver_user_id,
+                amount=cancel_fee * 0.5,
+                tx_type=TransactionType.DRIVER_EARNINGS,
+                description="Stornierungsentschädigung",
+                reference=f"TAXI-COMP-{req.ride_id[:8].upper()}",
+                source="cancellation",
+            )
     
     await db.taxi_rides.update_one(
         {"ride_id": req.ride_id},
         {"$set": {
-            "status": "cancelled",
+            "status": RideStatus.CANCELLED.value,
             "cancelled_at": now.isoformat(),
-            "cancelled_by": "admin",
-            "status_history": status_history,
-            "updated_at": now.isoformat(),
-        }}
+            "cancelled_by": cancelled_by,
+            "cancellation_fee": cancel_fee,
+        },
+        "$push": {"status_history": {"status": "cancelled", "at": now.isoformat(), "by": cancelled_by}}}
     )
     
-    return {"ok": True, "message": "Fahrt storniert"}
+    return {
+        "ok": True,
+        "status": "cancelled",
+        "cancellation_fee": cancel_fee,
+        "message": "Fahrt storniert" + (f" (Gebühr: €{cancel_fee:.2f})" if cancel_fee else ""),
+    }
 
 
-# ══════════════════════════════════════
-# ADMIN: MANAGE DRIVERS (placeholder)
-# ══════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════════════
+# CUSTOMER: RIDE STATUS & HISTORY
+# ══════════════════════════════════════════════════════════════════════════════
+
+@router.get("/rides/active")
+async def get_customer_active_ride(request: Request):
+    """Customer gets their active ride."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    
+    ride = await db.taxi_rides.find_one({
+        "customer_id": user_id,
+        "status": {"$in": ["requested", "accepted", "arriving", "started"]}
+    }, {"_id": 0})
+    
+    if not ride:
+        return {"has_active": False, "rides": []}
+    
+    return {"has_active": True, "rides": [ride]}
+
+
+@router.get("/rides/history")
+async def get_ride_history(request: Request, limit: int = 20):
+    """Customer gets ride history."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    
+    rides = await db.taxi_rides.find(
+        {"customer_id": user_id, "status": {"$in": ["completed", "cancelled"]}},
+        {"_id": 0}
+    ).sort("created_at", -1).limit(limit).to_list(limit)
+    
+    total_spent = sum(r.get("final_fare", 0) for r in rides if r.get("status") == "completed")
+    
+    return {
+        "rides": rides,
+        "total": len(rides),
+        "stats": {"total_spent": round(total_spent, 2)},
+    }
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# DRIVER: EARNINGS & HISTORY
+# ══════════════════════════════════════════════════════════════════════════════
+
+@router.get("/driver/earnings")
+async def get_driver_earnings(request: Request):
+    """Driver gets their earnings summary."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    
+    driver = await db.drivers.find_one({"user_id": user_id})
+    if not driver:
+        raise HTTPException(status_code=404, detail="Nicht als Fahrer registriert")
+    
+    now = datetime.now(timezone.utc)
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    week_start = now - timedelta(days=7)
+    
+    # Get completed rides
+    rides = await db.taxi_rides.find({
+        "driver_id": driver["driver_id"],
+        "status": "completed"
+    }).to_list(500)
+    
+    today_earnings = sum(r.get("driver_earnings", 0) for r in rides 
+                         if r.get("ended_at") and r["ended_at"] >= today_start.isoformat())
+    week_earnings = sum(r.get("driver_earnings", 0) for r in rides 
+                        if r.get("ended_at") and r["ended_at"] >= week_start.isoformat())
+    
+    return {
+        "driver": {
+            "driver_id": driver["driver_id"],
+            "rating": driver.get("rating", 5.0),
+            "total_rides": driver.get("total_rides", 0),
+            "total_earnings": round(driver.get("total_earnings", 0), 2),
+        },
+        "earnings": {
+            "today": round(today_earnings, 2),
+            "this_week": round(week_earnings, 2),
+            "total": round(driver.get("total_earnings", 0), 2),
+        },
+        "commission_rate": f"{DRIVER_COMMISSION * 100:.0f}%",
+    }
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# ADMIN: DRIVER MANAGEMENT
+# ══════════════════════════════════════════════════════════════════════════════
 
 @router.get("/admin/drivers")
 async def admin_list_drivers(request: Request):
-    """Admin: List registered drivers."""
+    """Admin: List all drivers."""
     user = await get_current_user(request)
     if user.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
     
-    # In production, this would query actual driver records
-    drivers = await db.users.find(
-        {"is_driver": True},
-        {"_id": 0, "password_hash": 0}
-    ).limit(50).to_list(50)
+    drivers = await db.drivers.find({}, {"_id": 0}).to_list(200)
     
-    # For demo, return sample drivers
-    if not drivers:
-        drivers = [
-            {**d, "driver_id": secrets.token_hex(8), "status": "online", "current_ride": None}
-            for d in DEMO_DRIVERS
-        ]
+    stats = {
+        "total": len(drivers),
+        "pending": len([d for d in drivers if d.get("status") == "pending"]),
+        "approved": len([d for d in drivers if d.get("status") == "approved"]),
+        "online": len([d for d in drivers if d.get("online")]),
+    }
     
-    return {"drivers": drivers}
+    return {"drivers": drivers, "stats": stats}
 
 
-# ══════════════════════════════════════
-# PRICING INFO
-# ══════════════════════════════════════
+@router.post("/admin/drivers/{driver_id}/approve")
+async def admin_approve_driver(driver_id: str, request: Request):
+    """Admin: Approve a driver."""
+    user = await get_current_user(request)
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    
+    driver = await db.drivers.find_one({"driver_id": driver_id})
+    if not driver:
+        raise HTTPException(status_code=404, detail="Fahrer nicht gefunden")
+    
+    await db.drivers.update_one(
+        {"driver_id": driver_id},
+        {"$set": {
+            "status": "approved",
+            "verified": True,
+            "approved_at": datetime.now(timezone.utc).isoformat(),
+            "approved_by": str(user["_id"]),
+        }}
+    )
+    
+    # Update user
+    await db.users.update_one(
+        {"_id": ObjectId(driver["user_id"])},
+        {"$set": {"driver_status": "approved"}}
+    )
+    
+    return {"ok": True, "message": "Fahrer freigegeben"}
+
+
+@router.post("/admin/drivers/{driver_id}/suspend")
+async def admin_suspend_driver(driver_id: str, request: Request):
+    """Admin: Suspend a driver."""
+    user = await get_current_user(request)
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    
+    await db.drivers.update_one(
+        {"driver_id": driver_id},
+        {"$set": {"status": "suspended", "online": False}}
+    )
+    
+    return {"ok": True, "message": "Fahrer gesperrt"}
+
 
 @router.get("/pricing")
 async def get_pricing():
-    """Get taxi pricing information."""
+    """Get current pricing (public)."""
     return {
-        "base_fare": BASE_FARE,
-        "per_km": PER_KM_RATE,
-        "per_min": PER_MIN_RATE,
-        "min_fare": MIN_FARE,
-        "cancellation_fee": CANCELLATION_FEE,
-        "surge": {
-            "high": SURGE_MULTIPLIER_HIGH,
-            "peak": SURGE_MULTIPLIER_PEAK,
-            "current": get_surge_multiplier(),
+        "pricing": PRICING,
+        "commission": {
+            "driver_percent": DRIVER_COMMISSION * 100,
+            "platform_percent": PLATFORM_COMMISSION * 100,
         },
-        "vehicle_types": VEHICLE_TYPES,
+        "cancellation_fee": CANCELLATION_FEE,
+        "min_wallet_balance": MIN_WALLET_BALANCE,
     }

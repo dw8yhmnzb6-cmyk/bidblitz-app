@@ -945,6 +945,137 @@ const WinLoseModal = ({ type, auction, onClose, t }) => {
 };
 
 /* ════════════════════════════════════════════
+   WALLET TOP-UP PUSH BANNER
+   ════════════════════════════════════════════ */
+const WalletTopUpBanner = ({ balance, onTopUp, t }) => {
+  const [dismissed, setDismissed] = useState(false);
+  const [selectedAmount, setSelectedAmount] = useState(null);
+  const [processing, setProcessing] = useState(false);
+  
+  if (dismissed || balance >= 20) return null;
+  
+  const amounts = [
+    { value: 10, bonus: 0, label: "+€10" },
+    { value: 20, bonus: 0, label: "+€20" },
+    { value: 50, bonus: 10, label: "+€50", tag: "+10% Bonus" },
+    { value: 100, bonus: 20, label: "+€100", tag: "+20% Bonus", best: true },
+  ];
+  
+  const handleTopUp = async (amt) => {
+    setSelectedAmount(amt.value);
+    setProcessing(true);
+    try {
+      const res = await api.createStripeTopup({ amount: amt.value, origin_url: window.location.href });
+      if (res.checkout_url) window.location.href = res.checkout_url;
+    } catch (e) {
+      console.error(e);
+    }
+    setProcessing(false);
+  };
+  
+  return (
+    <motion.div className={`rounded-2xl overflow-hidden mb-3 ${glass}`}
+      style={{ background: "linear-gradient(135deg, rgba(255,64,96,0.08) 0%, rgba(255,209,102,0.04) 100%)", border: "1px solid rgba(255,64,96,0.15)" }}
+      initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
+      <div className="px-4 py-3">
+        <div className="flex items-center justify-between mb-2.5">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "rgba(255,64,96,0.1)", border: "1px solid rgba(255,64,96,0.2)" }}>
+              <AlertTriangle size={14} className="text-[#FF4060]" />
+            </div>
+            <div>
+              <p className="text-[11px] font-bold text-white/90">{t("wallet.low_balance") || "Guthaben niedrig"}</p>
+              <p className="text-[9px] text-white/40">{t("wallet.topup_continue") || "Jetzt aufladen um weiterzubieten"}</p>
+            </div>
+          </div>
+          <motion.button onClick={() => setDismissed(true)} whileTap={{ scale: 0.9 }} className="text-white/20">
+            <X size={14} />
+          </motion.button>
+        </div>
+        
+        <div className="grid grid-cols-4 gap-2">
+          {amounts.map((amt) => (
+            <motion.button
+              key={amt.value}
+              data-testid={`topup-${amt.value}`}
+              onClick={() => handleTopUp(amt)}
+              disabled={processing}
+              className={`relative py-2.5 rounded-xl text-center transition-all ${
+                amt.best 
+                  ? "bg-gradient-to-br from-[#FFD166]/20 to-[#FFD166]/5 border border-[#FFD166]/30" 
+                  : "bg-white/[0.03] border border-white/[0.06]"
+              }`}
+              whileTap={{ scale: 0.95 }}
+              whileHover={{ borderColor: amt.best ? "rgba(255,209,102,0.5)" : "rgba(255,255,255,0.15)" }}
+            >
+              {amt.tag && (
+                <span className="absolute -top-1.5 left-1/2 -translate-x-1/2 px-1.5 py-0.5 rounded text-[6px] font-bold whitespace-nowrap"
+                  style={{ background: amt.best ? "#FFD166" : "rgba(0,232,157,0.15)", color: amt.best ? "#000" : "#00E89D" }}>
+                  {amt.tag}
+                </span>
+              )}
+              <span className={`text-[12px] font-bold ${amt.best ? "text-[#FFD166]" : "text-white/70"}`}>
+                {selectedAmount === amt.value && processing ? "..." : amt.label}
+              </span>
+            </motion.button>
+          ))}
+        </div>
+      </div>
+    </motion.div>
+  );
+};
+
+/* ════════════════════════════════════════════
+   LIVE ACTIVITY INDICATOR
+   ════════════════════════════════════════════ */
+const LiveActivityBar = ({ auctions, t }) => {
+  const [activity, setActivity] = useState({ bids: 0, watching: 0, hot: false });
+  
+  useEffect(() => {
+    // Calculate activity from auctions
+    const totalBids = auctions.filter(a => a.status === "active").reduce((sum, a) => sum + (a.total_bids || 0), 0);
+    const activeCount = auctions.filter(a => a.status === "active").length;
+    const hotAuctions = auctions.filter(a => a.status === "active" && a.remaining_seconds && a.remaining_seconds < 120).length;
+    
+    setActivity({
+      bids: totalBids,
+      watching: Math.floor(activeCount * 3 + Math.random() * 10),
+      hot: hotAuctions > 0,
+    });
+  }, [auctions]);
+  
+  return (
+    <motion.div className={`rounded-xl px-3 py-2 flex items-center justify-between mb-3 ${glass}`}
+      style={{ background: activity.hot ? "rgba(255,64,96,0.04)" : "rgba(0,224,255,0.02)", border: `1px solid ${activity.hot ? "rgba(255,64,96,0.1)" : "rgba(0,224,255,0.06)"}` }}
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+      <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1.5">
+          <motion.div className="w-2 h-2 rounded-full" style={{ background: activity.hot ? accentRed : accentGreen }}
+            animate={{ opacity: [1, 0.3, 1], scale: [1, 1.2, 1] }} transition={{ duration: 1, repeat: Infinity }} />
+          <span className="text-[9px] font-bold" style={{ color: activity.hot ? accentRed : accentGreen }}>LIVE</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <Flame size={10} className="text-[#FF8C42]" />
+          <span className="text-[9px] text-white/50">{activity.bids} {t("auction.bids_total") || "Gebote"}</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <Users size={10} className="text-[#B068FF]" />
+          <span className="text-[9px] text-white/50">{activity.watching} {t("auction.watching") || "schauen zu"}</span>
+        </div>
+      </div>
+      {activity.hot && (
+        <motion.div className="flex items-center gap-1 px-2 py-0.5 rounded-full"
+          style={{ background: "rgba(255,64,96,0.1)", border: "1px solid rgba(255,64,96,0.2)" }}
+          animate={{ opacity: [0.7, 1, 0.7] }} transition={{ duration: 0.8, repeat: Infinity }}>
+          <Zap size={8} className="text-[#FF4060]" />
+          <span className="text-[8px] font-bold text-[#FF4060]">{t("auction.ending_soon") || "ENDET BALD"}</span>
+        </motion.div>
+      )}
+    </motion.div>
+  );
+};
+
+/* ════════════════════════════════════════════
    NOTIFICATION TOAST
    ════════════════════════════════════════════ */
 const NotifToast = ({ notifs, onDismiss }) => {

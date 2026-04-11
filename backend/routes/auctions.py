@@ -111,6 +111,13 @@ async def get_credits(request: Request):
     return {"bid_credits": user.get("bid_credits", 0)}
 
 
+@router.get("/credits")
+async def get_credits_alias(request: Request):
+    """Alias for /credits/balance."""
+    user = await get_current_user(request)
+    return {"credits": user.get("bid_credits", 0), "bid_credits": user.get("bid_credits", 0)}
+
+
 # ── Credit Packages ──
 @router.get("/credits/packages")
 async def get_credit_packages(request: Request):

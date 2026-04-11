@@ -13,6 +13,29 @@ def generate_reference():
     return f"BLZ-{secrets.token_hex(4).upper()}"
 
 
+@router.get("/balance")
+async def get_balance(request: Request):
+    """Get user's wallet balance."""
+    user = await get_current_user(request)
+    return {
+        "balance": round(user.get("balance", 0.0), 2),
+        "currency": user.get("currency", "EUR"),
+    }
+
+
+@router.get("/transactions")
+async def get_transactions(request: Request):
+    """Get user's transaction history."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    
+    transactions = await db.transactions.find(
+        {"user_id": user_id}, {"_id": 0}
+    ).sort("created_at", -1).limit(100).to_list(100)
+    
+    return {"transactions": transactions, "total": len(transactions)}
+
+
 @router.get("")
 async def get_wallet(request: Request):
     user = await get_current_user(request)
