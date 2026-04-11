@@ -993,7 +993,22 @@ async def process_central_payment(req: CentralPaymentRequest) -> CentralPaymentR
     # 10. Check and apply streaks
     await process_streaks(user_id, payment_type)
     
-    # Get new balance
+    # 11. Process loyalty rewards (coins + cashback)
+    loyalty_rewards = {"coins_earned": 0, "cashback_earned": 0}
+    try:
+        from routes.loyalty_system import process_loyalty_rewards
+        loyalty_rewards = await process_loyalty_rewards(
+            user_id=user_id,
+            source_type=payment_type,
+            source_id=req.reference_id,
+            amount=amount,
+            tx_id=tx_id,
+        )
+    except Exception as e:
+        import logging
+        logging.getLogger("bidblitz").warning(f"Loyalty reward error: {e}")
+    
+    # Get new balance (includes cashback if awarded)
     new_balance = await get_user_balance(user_id)
     
     # Log audit
@@ -1018,7 +1033,7 @@ async def process_central_payment(req: CentralPaymentRequest) -> CentralPaymentR
         user_new_balance=new_balance,
         recipient_earnings=recipient_amount if req.recipient_id else None,
         platform_fee=platform_fee,
-        cashback_earned=cashback if cashback > 0 else None,
+        cashback_earned=loyalty_rewards.get("cashback_earned") or (cashback if cashback > 0 else None),
         referral_reward=referral_reward if referral_reward > 0 else None,
     )
 

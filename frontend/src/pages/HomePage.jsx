@@ -6,7 +6,7 @@ import {
   Car, Zap, UtensilsCrossed, Gavel, ArrowUpRight, CreditCard,
   FlaskConical, LogIn, UserPlus, X, Sparkles,
   QrCode, Store, Lock, Globe, Users, BarChart3,
-  Cpu, Star, Smartphone, Gift, ShoppingBag, Rocket, Clock
+  Cpu, Star, Smartphone, Gift, ShoppingBag, Rocket, Clock, Coins, Medal
 } from "lucide-react";
 import { useUser, useWallet, useI18n } from "../store";
 import { useWalletStats } from "../hooks";
@@ -155,6 +155,103 @@ const TrustBadge = ({ icon: Icon, label, delay }) => (
     <span className="text-[10px] text-[#444] font-semibold text-center">{label}</span>
   </motion.div>
 );
+
+// ── Loyalty Card (for authenticated users on home) ──
+const LoyaltyCard = ({ onNavigate, t }) => {
+  const [loyalty, setLoyalty] = useState(null);
+  const API = process.env.REACT_APP_BACKEND_URL || "";
+
+  useState(() => {
+    fetch(`${API}/api/loyalty/status`, { credentials: "include" })
+      .then(r => r.json())
+      .then(data => { if (data.coins_balance !== undefined) setLoyalty(data); })
+      .catch(() => {});
+  });
+
+  if (!loyalty) return null;
+
+  const LEVEL_COLORS = {
+    bronze: "#CD7F32",
+    silver: "#C0C0C0",
+    gold: "#FFD700",
+    platinum: "#E5E4E2",
+    vip: "#8B00FF",
+  };
+
+  const levelColor = LEVEL_COLORS[loyalty.level] || "#CD7F32";
+  const progress = loyalty.progress || {};
+
+  return (
+    <motion.div
+      data-testid="loyalty-home-card"
+      className="rounded-[18px] p-4 mb-6 cursor-pointer group"
+      style={{
+        background: "linear-gradient(135deg, rgba(255,215,0,0.04) 0%, rgba(8,8,8,0.9) 100%)",
+        border: "1px solid rgba(255,215,0,0.1)",
+      }}
+      initial={{ opacity: 0, y: 14 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.15, ...slide }}
+      whileTap={{ scale: 0.98 }}
+      onClick={() => onNavigate("/loyalty")}
+    >
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center"
+            style={{ background: "rgba(255,215,0,0.1)", border: "1px solid rgba(255,215,0,0.15)" }}>
+            <Coins size={16} className="text-[#FFD700]" />
+          </div>
+          <div>
+            <p className="text-[9px] text-white/30 uppercase tracking-wider font-semibold">{t("loyalty.coins") || "Coins & Cashback"}</p>
+            <p className="text-[18px] font-bold text-[#FFD700] font-mono">{loyalty.coins_balance?.toLocaleString() || 0}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="px-2.5 py-1 rounded-full flex items-center gap-1.5"
+            style={{ background: `${levelColor}15`, border: `1px solid ${levelColor}30` }}>
+            <Medal size={10} style={{ color: levelColor }} />
+            <span className="text-[9px] font-bold" style={{ color: levelColor }}>{loyalty.level_name}</span>
+          </div>
+          <ChevronRight size={14} className="text-white/20 group-hover:text-[#FFD700] transition-colors" />
+        </div>
+      </div>
+
+      {/* Progress bar */}
+      {!progress.is_max_level && (
+        <div className="mb-2">
+          <div className="w-full h-1.5 rounded-full bg-white/5 overflow-hidden">
+            <motion.div
+              className="h-full rounded-full"
+              style={{ background: `linear-gradient(90deg, ${levelColor}, ${LEVEL_COLORS[progress.next_level] || "#FFD700"})` }}
+              initial={{ width: 0 }}
+              animate={{ width: `${progress.progress || 0}%` }}
+              transition={{ duration: 0.8, ease: "easeOut" }}
+            />
+          </div>
+          <div className="flex justify-between mt-1">
+            <span className="text-[8px] text-white/20">{progress.progress?.toFixed(0) || 0}%</span>
+            <span className="text-[8px]" style={{ color: LEVEL_COLORS[progress.next_level] }}>{progress.next_level}</span>
+          </div>
+        </div>
+      )}
+
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="text-center">
+            <p className="text-[8px] text-white/25">{t("loyalty.multiplier") || "Multiplier"}</p>
+            <p className="text-[11px] font-bold text-[#FFD700]">{loyalty.coin_multiplier}x</p>
+          </div>
+          <div className="w-px h-6 bg-white/5" />
+          <div className="text-center">
+            <p className="text-[8px] text-white/25">{t("loyalty.cashback") || "Cashback"}</p>
+            <p className="text-[11px] font-bold text-[#00E89D]">€{(loyalty.total_cashback_earned || 0).toFixed(2)}</p>
+          </div>
+        </div>
+        <span className="text-[9px] text-[#FFD700]/60">{t("loyalty.view_details") || "Details ansehen"}</span>
+      </div>
+    </motion.div>
+  );
+};
 
 // ── Main Page ──
 export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister, onStartDemo }) => {
@@ -427,6 +524,9 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
                 </motion.div>
               </div>
             </motion.div>
+
+            {/* ═══ Loyalty & Coins Card ═══ */}
+            <LoyaltyCard onNavigate={onNavigate} t={t} />
 
             {/* ═══ Available Now ═══ */}
             <motion.section data-testid="available-now-section" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.26 }}>

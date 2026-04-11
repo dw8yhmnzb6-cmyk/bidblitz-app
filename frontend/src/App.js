@@ -40,6 +40,7 @@ import PartnersPage from "./pages/PartnersPage";
 import ReferralSystemPage from "./pages/ReferralSystemPage";
 import NfcPayPage from "./pages/NfcPayPage";
 import VipPage from "./pages/VipPage";
+import LoyaltyPage from "./pages/LoyaltyPage";
 
 import BottomNav from "./components/BottomNav";
 import BarcodeModal from "./components/BarcodeModal";
@@ -232,6 +233,8 @@ function AppContent() {
         return <PartnersPage />;
       case "/referral":
         return isGuest ? <HomePage {...homeProps} /> : <ReferralSystemPage onNavigate={handleNavigate} />;
+      case "/loyalty":
+        return isGuest ? <HomePage {...homeProps} /> : <LoyaltyPage onBack={() => handleNavigate("/")} onNavigate={handleNavigate} />;
       default:
         return <HomePage {...homeProps} />;
     }

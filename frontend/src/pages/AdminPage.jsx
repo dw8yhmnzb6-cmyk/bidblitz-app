@@ -199,6 +199,17 @@ const ADMIN_SECTIONS = [
     ]
   },
   {
+    id: "loyalty",
+    label: "Loyalty & Cashback",
+    color: "#FFD700",
+    items: [
+      { id: "loyalty-config", icon: Settings, label: "Loyalty Einstellungen", tab: "loyalty" },
+      { id: "loyalty-analytics", icon: BarChart3, label: "Loyalty Analytics", tab: "loyalty" },
+      { id: "coin-rates", icon: CircleDollarSign, label: "Coin-Raten", tab: "loyalty" },
+      { id: "cashback-rates", icon: Percent, label: "Cashback-Raten", tab: "loyalty" },
+    ]
+  },
+  {
     id: "system",
     label: "System",
     color: "#666",
@@ -305,6 +316,7 @@ const tabs = [
   { id: "settings", key: "admin.config", icon: Settings },
   { id: "merchant-fees", key: "admin.merchant_fees", icon: CircleDollarSign },
   { id: "auctions", key: "admin.auctions_tab", icon: Gavel },
+  { id: "loyalty", key: "admin.loyalty", icon: Trophy },
 ];
 
 export const AdminPage = ({ onNavigate }) => {
@@ -345,6 +357,9 @@ export const AdminPage = ({ onNavigate }) => {
   const [savingMerchantFees, setSavingMerchantFees] = useState(false);
   const [adminAuctions, setAdminAuctions] = useState([]);
   const [botSaving, setBotSaving] = useState(null);
+  const [loyaltyConfig, setLoyaltyConfig] = useState(null);
+  const [loyaltyAnalytics, setLoyaltyAnalytics] = useState(null);
+  const [savingLoyalty, setSavingLoyalty] = useState(false);
 
   const adminExports = [
     { key: "transactions", label: t("export.transactions"), action: (f) => apiService.exportAdminTransactions(f) },
