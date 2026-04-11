@@ -52,6 +52,11 @@ import CreditScorePage from "./pages/CreditScorePage";
 import BillsPage from "./pages/BillsPage";
 import GamingPage from "./pages/GamingPage";
 import SupportChatPage from "./pages/SupportChatPage";
+import SplitBillPage from "./pages/SplitBillPage";
+import VirtualCardsPage from "./pages/VirtualCardsPage";
+import SavingsPage from "./pages/SavingsPage";
+import BNPLPage from "./pages/BNPLPage";
+import GiftCardsPage from "./pages/GiftCardsPage";
 
 // Car Rental Module
 import {
@@ -279,6 +284,16 @@ function AppContent() {
         return isGuest ? <HomePage {...homeProps} /> : <CreditScorePage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
       case "/bills":
         return isGuest ? <HomePage {...homeProps} /> : <BillsPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
+      case "/split-bill":
+        return isGuest ? <HomePage {...homeProps} /> : <SplitBillPage onBack={() => handleNavigate("/more")} />;
+      case "/virtual-cards":
+        return isGuest ? <HomePage {...homeProps} /> : <VirtualCardsPage onBack={() => handleNavigate("/more")} />;
+      case "/savings":
+        return isGuest ? <HomePage {...homeProps} /> : <SavingsPage onBack={() => handleNavigate("/more")} />;
+      case "/bnpl":
+        return isGuest ? <HomePage {...homeProps} /> : <BNPLPage onBack={() => handleNavigate("/more")} />;
+      case "/gift-cards":
+        return isGuest ? <HomePage {...homeProps} /> : <GiftCardsPage onBack={() => handleNavigate("/more")} />;
       case "/gaming":
         return isGuest ? <HomePage {...homeProps} /> : <GamingPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
       

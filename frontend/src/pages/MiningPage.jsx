@@ -335,37 +335,43 @@ export default function MiningPage({ onBack }) {
     <motion.div data-testid="mining-page" className="min-h-screen pb-24 relative" style={{ background: "#030303" }}
       initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
 
-      {/* Ambient glow */}
-      <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[500px] h-[300px] pointer-events-none" style={{ background: "radial-gradient(ellipse, rgba(0,232,157,0.04) 0%, transparent 70%)" }} />
+      {/* Ambient glow - more premium */}
+      <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] pointer-events-none" style={{ background: "radial-gradient(ellipse, rgba(0,232,157,0.06) 0%, rgba(0,194,255,0.02) 40%, transparent 70%)" }} />
+      <div className="fixed bottom-0 right-0 w-[300px] h-[300px] pointer-events-none" style={{ background: "radial-gradient(circle, rgba(168,85,247,0.03) 0%, transparent 60%)" }} />
 
       {/* Header */}
-      <div className="flex items-center gap-3 px-5 pt-[max(env(safe-area-inset-top,0px),24px)] pb-3 relative z-10">
-        <motion.button data-testid="mining-back-btn" className="w-10 h-10 rounded-full bg-white/[0.04] border border-white/[0.05] flex items-center justify-center"
+      <div className="flex items-center gap-3 px-5 pt-[max(env(safe-area-inset-top,0px),24px)] pb-4 relative z-10">
+        <motion.button data-testid="mining-back-btn" className="w-10 h-10 rounded-xl bg-white/[0.04] border border-white/[0.06] flex items-center justify-center backdrop-blur-sm"
           whileTap={{ scale: 0.88 }} onClick={onBack}>
-          <ArrowLeft size={15} strokeWidth={1.5} className="text-white/50" />
+          <ArrowLeft size={16} strokeWidth={1.5} className="text-white/60" />
         </motion.button>
         <div className="flex-1">
-          <h1 className="text-[16px] font-bold font-outfit text-white tracking-tight">{t("mining.title") || "Mining"}</h1>
-          <p className="text-[10px] text-white/20 font-medium">{t("mining.subtitle") || "Mine BLZ tokens with virtual rigs"}</p>
+          <h1 className="text-[17px] font-bold text-white tracking-tight">{t("mining.title") || "Mining"}</h1>
+          <p className="text-[10px] text-white/30 font-medium tracking-wide">{t("mining.subtitle") || "Mine BLZ tokens with virtual rigs"}</p>
         </div>
-        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full" style={{ background: `${VIP_COLORS[vip.name] || "#CD7F32"}10`, border: `1px solid ${VIP_COLORS[vip.name] || "#CD7F32"}20` }}>
-          <Star size={10} style={{ color: VIP_COLORS[vip.name] }} />
-          <span className="text-[9px] font-bold uppercase tracking-[0.08em]" style={{ color: VIP_COLORS[vip.name] }}>{vip.name || "Bronze"}</span>
+        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl backdrop-blur-sm" style={{ background: `${VIP_COLORS[vip.name] || "#CD7F32"}08`, border: `1px solid ${VIP_COLORS[vip.name] || "#CD7F32"}25` }}>
+          <Star size={11} style={{ color: VIP_COLORS[vip.name] }} />
+          <span className="text-[10px] font-bold uppercase tracking-[0.08em]" style={{ color: VIP_COLORS[vip.name] }}>{vip.name || "Bronze"}</span>
         </div>
       </div>
 
       {/* Tab Bar */}
       <div className="px-5 mb-4 relative z-10">
         <div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-1">
-          {tabs.map(tb => (
-            <motion.button key={tb} onClick={() => setTab(tb)} whileTap={{ scale: 0.95 }}
-              data-testid={`mining-tab-${tb}`}
-              className={`flex-shrink-0 px-3 py-2 rounded-xl text-[10px] font-semibold capitalize transition-all ${
-                tab === tb ? "bg-[#00E89D]/10 text-[#00E89D] border border-[#00E89D]/20" : "bg-white/[0.02] text-white/25 border border-white/[0.04]"
-              }`}>
-              {t(`mining.tab_${tb}`) || tb}
-            </motion.button>
-          ))}
+          {tabs.map(tb => {
+            const tabLabels = { dashboard: "Dashboard", miners: "Miner", wallet: "Wallet", shop: "Shop", marketplace: "Markt", card: "Karte", launchpad: "Launch", vip: "VIP" };
+            return (
+              <motion.button key={tb} onClick={() => setTab(tb)} whileTap={{ scale: 0.95 }}
+                data-testid={`mining-tab-${tb}`}
+                className={`flex-shrink-0 px-3.5 py-2.5 rounded-xl text-[11px] font-bold capitalize transition-all ${
+                  tab === tb 
+                    ? "bg-[#00E89D]/15 text-[#00E89D] border border-[#00E89D]/30 shadow-lg shadow-[#00E89D]/5" 
+                    : "bg-white/[0.03] text-white/30 border border-white/[0.06] hover:text-white/50"
+                }`}>
+                {t(`mining.tab_${tb}`) || tabLabels[tb] || tb}
+              </motion.button>
+            );
+          })}
         </div>
       </div>
 
@@ -376,35 +382,41 @@ export default function MiningPage({ onBack }) {
           {tab === "dashboard" && (
             <motion.div key="dash" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
 
-              {/* Balance Card */}
-              <motion.div className="rounded-2xl p-4 relative overflow-hidden"
-                style={{ background: "linear-gradient(135deg, rgba(0,232,157,0.06) 0%, rgba(0,194,255,0.03) 100%)", border: "1px solid rgba(0,232,157,0.1)" }}
+              {/* Balance Card — Premium Glassmorphism */}
+              <motion.div className="rounded-3xl p-5 relative overflow-hidden"
+                style={{ 
+                  background: "linear-gradient(160deg, rgba(0,232,157,0.10) 0%, rgba(0,194,255,0.05) 50%, rgba(168,85,247,0.03) 100%)", 
+                  border: "1px solid rgba(0,232,157,0.18)",
+                  boxShadow: "0 8px 32px rgba(0,232,157,0.06), inset 0 1px 0 rgba(255,255,255,0.04)"
+                }}
                 initial={{ y: 10 }} animate={{ y: 0 }}>
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-[#00E89D]/10 flex items-center justify-center">
-                      <Wallet size={14} className="text-[#00E89D]" />
-                    </div>
-                    <div>
-                      <p className="text-[9px] text-white/25 uppercase tracking-[0.1em] font-semibold">BLZ Balance</p>
-                      <p className="text-[22px] font-bold font-outfit text-white tracking-tight">{w.blz_balance?.toFixed(4) || "0.0000"}</p>
-                    </div>
+                {/* Decorative elements */}
+                <div className="absolute top-0 right-0 w-40 h-40 pointer-events-none" style={{ background: "radial-gradient(circle, rgba(0,232,157,0.12) 0%, transparent 70%)" }} />
+                <div className="absolute -bottom-6 -left-6 w-24 h-24 rounded-full pointer-events-none" style={{ background: "radial-gradient(circle, rgba(0,194,255,0.08) 0%, transparent 70%)" }} />
+                
+                <div className="flex items-start justify-between mb-5 relative z-10">
+                  <div>
+                    <p className="text-[11px] text-white/50 uppercase tracking-[0.15em] font-bold mb-2">BLZ Balance</p>
+                    <p className="text-[32px] font-black text-white tracking-tight leading-none">{w.blz_balance?.toFixed(4) || "0.0000"}</p>
+                    <p className="text-[15px] font-bold text-[#00E89D] mt-1.5">{"\u20AC"}{w.eur_value?.toFixed(2) || "0.00"}</p>
                   </div>
-                  <div className="text-right">
-                    <p className="text-[9px] text-white/20">EUR Value</p>
-                    <p className="text-[15px] font-bold font-outfit text-[#00E89D]">{"\u20AC"}{w.eur_value?.toFixed(2) || "0.00"}</p>
+                  <div className="w-14 h-14 rounded-2xl flex items-center justify-center" 
+                    style={{ background: "rgba(0,232,157,0.08)", border: "1px solid rgba(0,232,157,0.2)", boxShadow: "0 4px 16px rgba(0,232,157,0.1)" }}>
+                    <Wallet size={24} className="text-[#00E89D]" />
                   </div>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2.5 relative z-10">
                   <motion.button data-testid="mining-withdraw-btn" onClick={() => setShowWithdraw(!showWithdraw)}
-                    className="flex-1 py-2 rounded-xl text-[11px] font-semibold bg-white/[0.04] text-white/60 border border-white/[0.06] flex items-center justify-center gap-1"
+                    className="flex-1 py-3 rounded-xl text-[12px] font-bold flex items-center justify-center gap-2 transition-all"
+                    style={{ background: "rgba(0,232,157,0.12)", border: "1px solid rgba(0,232,157,0.25)", color: "#00E89D" }}
                     whileTap={{ scale: 0.96 }}>
-                    <ArrowUpRight size={12} /> {t("mining.withdraw") || "Withdraw"}
+                    <ArrowUpRight size={15} /> {t("mining.withdraw") || "Auszahlen"}
                   </motion.button>
                   <motion.button data-testid="mining-send-btn" onClick={() => setShowSend(!showSend)}
-                    className="flex-1 py-2 rounded-xl text-[11px] font-semibold bg-white/[0.04] text-white/60 border border-white/[0.06] flex items-center justify-center gap-1"
+                    className="flex-1 py-3 rounded-xl text-[12px] font-bold flex items-center justify-center gap-2 transition-all"
+                    style={{ background: "rgba(0,194,255,0.10)", border: "1px solid rgba(0,194,255,0.22)", color: "#00C2FF" }}
                     whileTap={{ scale: 0.96 }}>
-                    <Send size={12} /> {t("mining.send") || "Send"}
+                    <Send size={15} /> {t("mining.send") || "Senden"}
                   </motion.button>
                 </div>
               </motion.div>
@@ -413,16 +425,25 @@ export default function MiningPage({ onBack }) {
               <AnimatePresence>
                 {showWithdraw && (
                   <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
-                    className="overflow-hidden rounded-2xl p-3 space-y-2" style={{ background: "rgba(0,232,157,0.03)", border: "1px solid rgba(0,232,157,0.08)" }}>
-                    <p className="text-[10px] text-white/30">{t("mining.withdraw_desc") || "Convert BLZ to EUR (1 BLZ = €0.10)"}</p>
+                    className="overflow-hidden rounded-2xl p-4 space-y-3" style={{ background: "rgba(0,232,157,0.04)", border: "1px solid rgba(0,232,157,0.12)", boxShadow: "0 4px 20px rgba(0,232,157,0.05)" }}>
+                    <div className="flex items-center gap-2 mb-1">
+                      <ArrowUpRight size={14} className="text-[#00E89D]" />
+                      <p className="text-[12px] font-bold text-white">BLZ in EUR umwandeln</p>
+                    </div>
+                    <p className="text-[10px] text-white/40">1 BLZ = €0,10 · Direkt auf dein Wallet</p>
                     <input data-testid="withdraw-amount" type="number" step="0.01" min="0" value={withdrawAmt} onChange={e => setWithdrawAmt(e.target.value)}
-                      placeholder="Amount in BLZ" className={inputCls} />
+                      placeholder="Betrag in BLZ" className={inputCls} />
+                    {withdrawAmt > 0 && (
+                      <div className="text-center p-2 rounded-xl bg-[#00E89D]/5 border border-[#00E89D]/10">
+                        <p className="text-[13px] font-bold text-[#00E89D]">{parseFloat(withdrawAmt || 0).toFixed(2)} BLZ → €{(parseFloat(withdrawAmt || 0) * 0.10).toFixed(2)}</p>
+                      </div>
+                    )}
                     <div className="flex gap-2">
                       <motion.button data-testid="withdraw-confirm" onClick={withdraw} disabled={withdrawing}
-                        className="flex-1 py-2 rounded-xl text-[11px] font-semibold bg-[#00E89D]/10 text-[#00E89D] border border-[#00E89D]/15"
-                        whileTap={{ scale: 0.96 }}>{withdrawing ? <Loader2 size={12} className="animate-spin mx-auto" /> : `Convert → €${(parseFloat(withdrawAmt || 0) * 0.10).toFixed(2)}`}</motion.button>
-                      <motion.button onClick={() => setShowWithdraw(false)} className="px-4 py-2 rounded-xl text-[11px] text-white/30 bg-white/[0.02]"
-                        whileTap={{ scale: 0.96 }}>{t("mining.cancel") || "Cancel"}</motion.button>
+                        className="flex-1 py-3 rounded-xl text-[12px] font-bold bg-[#00E89D]/15 text-[#00E89D] border border-[#00E89D]/25 flex items-center justify-center"
+                        whileTap={{ scale: 0.96 }}>{withdrawing ? <Loader2 size={14} className="animate-spin" /> : "Auszahlen"}</motion.button>
+                      <motion.button onClick={() => setShowWithdraw(false)} className="px-5 py-3 rounded-xl text-[12px] font-bold text-white/40 bg-white/[0.03] border border-white/[0.06]"
+                        whileTap={{ scale: 0.96 }}>Abbrechen</motion.button>
                     </div>
                   </motion.div>
                 )}
@@ -432,58 +453,70 @@ export default function MiningPage({ onBack }) {
               <AnimatePresence>
                 {showSend && (
                   <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
-                    className="overflow-hidden rounded-2xl p-3 space-y-2" style={{ background: "rgba(0,194,255,0.03)", border: "1px solid rgba(0,194,255,0.08)" }}>
+                    className="overflow-hidden rounded-2xl p-4 space-y-3" style={{ background: "rgba(0,194,255,0.04)", border: "1px solid rgba(0,194,255,0.12)", boxShadow: "0 4px 20px rgba(0,194,255,0.05)" }}>
+                    <div className="flex items-center gap-2 mb-1">
+                      <Send size={14} className="text-[#00C2FF]" />
+                      <p className="text-[12px] font-bold text-white">BLZ an Nutzer senden</p>
+                    </div>
                     <input data-testid="send-email" type="email" value={sendEmail} onChange={e => setSendEmail(e.target.value)}
-                      placeholder="Recipient email" className={inputCls} />
+                      placeholder="E-Mail des Empfängers" className={inputCls} />
                     <input data-testid="send-amount" type="number" step="0.01" min="0" value={sendAmt} onChange={e => setSendAmt(e.target.value)}
-                      placeholder="Amount BLZ" className={inputCls} />
+                      placeholder="Betrag in BLZ" className={inputCls} />
                     <div className="flex gap-2">
                       <motion.button data-testid="send-confirm" onClick={sendBLZ} disabled={sending}
-                        className="flex-1 py-2 rounded-xl text-[11px] font-semibold bg-[#00C2FF]/10 text-[#00C2FF] border border-[#00C2FF]/15"
-                        whileTap={{ scale: 0.96 }}>{sending ? <Loader2 size={12} className="animate-spin mx-auto" /> : "Send BLZ"}</motion.button>
-                      <motion.button onClick={() => setShowSend(false)} className="px-4 py-2 rounded-xl text-[11px] text-white/30 bg-white/[0.02]"
-                        whileTap={{ scale: 0.96 }}>Cancel</motion.button>
+                        className="flex-1 py-3 rounded-xl text-[12px] font-bold bg-[#00C2FF]/15 text-[#00C2FF] border border-[#00C2FF]/25 flex items-center justify-center gap-1.5"
+                        whileTap={{ scale: 0.96 }}>{sending ? <Loader2 size={14} className="animate-spin" /> : <><Send size={14} /> Senden</>}</motion.button>
+                      <motion.button onClick={() => setShowSend(false)} className="px-5 py-3 rounded-xl text-[12px] font-bold text-white/40 bg-white/[0.03] border border-white/[0.06]"
+                        whileTap={{ scale: 0.96 }}>Abbrechen</motion.button>
                     </div>
                   </motion.div>
                 )}
               </AnimatePresence>
 
-              {/* Mining Stats */}
-              <div className="grid grid-cols-3 gap-2">
+              {/* Mining Stats — Glass Cards */}
+              <div className="grid grid-cols-3 gap-3">
                 {[
-                  { label: "Hashrate", value: `${m.total_hashrate?.toFixed(0) || 0} TH/s`, color: "#00E89D", icon: Zap },
-                  { label: t("mining.daily") || "Daily", value: `${m.daily_earnings_blz?.toFixed(4) || 0} BLZ`, color: "#00C2FF", icon: TrendingUp },
-                  { label: t("mining.rigs") || "Rigs", value: m.active_miners || 0, color: "#A855F7", icon: Server },
+                  { label: "Hashrate", value: `${m.total_hashrate?.toFixed(0) || 0}`, unit: "TH/s", color: "#00E89D", icon: Zap },
+                  { label: t("mining.daily") || "Täglich", value: `${m.daily_earnings_blz?.toFixed(4) || 0}`, unit: "BLZ", color: "#00C2FF", icon: TrendingUp },
+                  { label: t("mining.rigs") || "Rigs", value: m.active_miners || 0, unit: "aktiv", color: "#A855F7", icon: Server },
                 ].map((s, i) => (
-                  <motion.div key={s.label} className="rounded-xl p-2.5 text-center relative overflow-hidden"
-                    style={{ background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.035)" }}
-                    initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
-                    <s.icon size={14} className="mx-auto mb-1" style={{ color: s.color }} />
-                    <p className="text-[13px] font-bold font-outfit text-white/90">{s.value}</p>
-                    <p className="text-[8px] text-white/20 uppercase tracking-wider">{s.label}</p>
+                  <motion.div key={s.label} className="rounded-2xl p-4 text-center relative overflow-hidden"
+                    style={{ 
+                      background: `linear-gradient(180deg, ${s.color}08 0%, ${s.color}02 100%)`, 
+                      border: `1px solid ${s.color}18`,
+                      boxShadow: `0 4px 20px ${s.color}05, inset 0 1px 0 rgba(255,255,255,0.03)`
+                    }}
+                    initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
+                    <div className="w-10 h-10 rounded-xl mx-auto mb-3 flex items-center justify-center" 
+                      style={{ background: `${s.color}10`, border: `1px solid ${s.color}22`, boxShadow: `0 2px 8px ${s.color}10` }}>
+                      <s.icon size={18} style={{ color: s.color }} />
+                    </div>
+                    <p className="text-[18px] font-black text-white leading-none">{s.value}</p>
+                    <p className="text-[10px] font-bold mt-1" style={{ color: s.color }}>{s.unit}</p>
+                    <p className="text-[9px] text-white/30 uppercase tracking-[0.15em] mt-1.5 font-bold">{s.label}</p>
                   </motion.div>
                 ))}
               </div>
 
-              {/* Earnings Overview */}
+              {/* Earnings Overview — Premium Card */}
               <motion.div className="rounded-2xl overflow-hidden"
-                style={{ background: "rgba(255,255,255,0.012)", border: "1px solid rgba(255,255,255,0.04)" }}
+                style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)", boxShadow: "0 4px 20px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.03)" }}
                 initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}>
-                <div className="px-3.5 py-2.5 flex items-center gap-2" style={{ borderBottom: "1px solid rgba(255,255,255,0.03)" }}>
-                  <TrendingUp size={11} className="text-[#00C2FF]" />
-                  <p className="text-[10px] text-white/30 font-semibold uppercase tracking-[0.1em]">{t("mining.earnings_overview") || "Ertragsübersicht"}</p>
+                <div className="px-4 py-3.5 flex items-center gap-2" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+                  <TrendingUp size={15} className="text-[#00C2FF]" />
+                  <p className="text-[12px] text-white/60 font-bold uppercase tracking-[0.12em]">{t("mining.earnings_overview") || "Ertragsübersicht"}</p>
                 </div>
-                <div className="grid grid-cols-3 divide-x divide-white/[0.04]">
+                <div className="grid grid-cols-3 divide-x divide-white/[0.06]">
                   {[
                     { label: t("mining.earn_daily") || "Täglich", blz: m.daily_earnings_blz?.toFixed(4) || "0", eur: m.daily_earnings_eur?.toFixed(4) || "0", color: "#00E89D" },
                     { label: t("mining.earn_monthly") || "Monatlich", blz: m.monthly_earnings_blz?.toFixed(2) || "0", eur: m.monthly_earnings_eur?.toFixed(2) || "0", color: "#00C2FF" },
                     { label: t("mining.earn_yearly") || "Jährlich", blz: m.yearly_earnings_blz?.toFixed(0) || "0", eur: m.yearly_earnings_eur?.toFixed(0) || "0", color: "#FFD700" },
                   ].map(s => (
-                    <div key={s.label} className="py-3 px-2.5 text-center">
-                      <p className="text-[13px] font-bold font-mono" style={{ color: s.color }}>{s.blz}</p>
-                      <p className="text-[9px] font-mono text-white/25">BLZ</p>
-                      <p className="text-[10px] font-mono text-white/40 mt-0.5">{"\u20AC"}{s.eur}</p>
-                      <p className="text-[7px] text-white/15 uppercase mt-1 tracking-wider">{s.label}</p>
+                    <div key={s.label} className="py-5 px-3 text-center">
+                      <p className="text-[16px] font-black font-mono leading-none" style={{ color: s.color }}>{s.blz}</p>
+                      <p className="text-[10px] font-bold text-white/35 mt-1">BLZ</p>
+                      <p className="text-[13px] font-bold font-mono text-white/55 mt-1.5">{"\u20AC"}{s.eur}</p>
+                      <p className="text-[9px] text-white/25 uppercase mt-2 tracking-[0.15em] font-bold">{s.label}</p>
                     </div>
                   ))}
                 </div>
@@ -506,29 +539,28 @@ export default function MiningPage({ onBack }) {
                     const Icon = TIER_ICONS[mn.icon] || Cpu;
                     const color = TIER_COLORS[mn.package_id] || "#00E89D";
                     const billing = mn.billing || {};
-                    const billingLabel = billing.type === "monthly" ? "/Mo" : billing.type === "yearly" ? "/J" : "";
                     return (
-                      <motion.div key={mn.miner_id} className="rounded-xl p-3 flex items-center gap-3"
-                        style={{ background: "rgba(255,255,255,0.015)", border: `1px solid ${color}12` }}
+                      <motion.div key={mn.miner_id} className="rounded-2xl p-4 flex items-center gap-3.5"
+                        style={{ background: `${color}04`, border: `1px solid ${color}15` }}
                         initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.16 + idx * 0.03 }}>
-                        <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: `${color}10` }}>
-                          <Icon size={14} style={{ color }} />
+                        <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${color}12`, border: `1px solid ${color}25` }}>
+                          <Icon size={18} style={{ color }} />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-1.5">
-                            <p className="text-[11px] font-semibold text-white/80 truncate">{mn.name}</p>
+                          <div className="flex items-center gap-1.5 mb-0.5">
+                            <p className="text-[12px] font-bold text-white truncate">{mn.name}</p>
                             {billing.type && billing.type !== "onetime" && (
-                              <span className="text-[7px] px-1 py-0.5 rounded bg-[#00C2FF]/10 text-[#00C2FF] font-bold border border-[#00C2FF]/15">
+                              <span className="text-[7px] px-1.5 py-0.5 rounded-full bg-[#00C2FF]/10 text-[#00C2FF] font-bold border border-[#00C2FF]/15">
                                 {billing.type === "monthly" ? "ABO" : "JAHR"}
                               </span>
                             )}
                           </div>
-                          <p className="text-[9px] font-mono text-white/30">{mn.effective_hashrate || mn.hashrate} TH/s · {((mn.effective_efficiency || mn.efficiency) * 100).toFixed(0)}%</p>
+                          <p className="text-[10px] font-mono text-white/35">{mn.effective_hashrate || mn.hashrate} TH/s · Eff. {((mn.effective_efficiency || mn.efficiency) * 100).toFixed(0)}%</p>
                         </div>
                         <div className="text-right flex-shrink-0">
-                          <p className="text-[11px] font-bold font-mono text-[#00E89D]">+{mn.daily_blz?.toFixed(4) || "0"}</p>
-                          <p className="text-[8px] text-white/20 font-mono">BLZ/{t("mining.day") || "Tag"}</p>
-                          <p className="text-[8px] text-white/25 font-mono">{"\u20AC"}{mn.daily_eur?.toFixed(3) || "0"}</p>
+                          <p className="text-[13px] font-black font-mono text-[#00E89D]">+{mn.daily_blz?.toFixed(4) || "0"}</p>
+                          <p className="text-[9px] text-white/25 font-medium">BLZ/{t("mining.day") || "Tag"}</p>
+                          <p className="text-[9px] text-white/35 font-mono">{"\u20AC"}{mn.daily_eur?.toFixed(3) || "0"}</p>
                         </div>
                       </motion.div>
                     );

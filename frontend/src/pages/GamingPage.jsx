@@ -1318,27 +1318,42 @@ const HighLowGame = ({ onBack, userCoins, onCoinsUpdate }) => {
    ════════════════════════════════════════════ */
 const MinesGame = ({ onBack, userCoins, onCoinsUpdate }) => {
   const [bet, setBet] = useState(10);
+  const [mineCount, setMineCount] = useState(4);
   const [grid, setGrid] = useState([]);
   const [revealed, setRevealed] = useState([]);
   const [gameOver, setGameOver] = useState(false);
+  const [won, setWon] = useState(false);
   const [multiplier, setMultiplier] = useState(1.0);
   const [coins, setCoins] = useState(userCoins);
   const [started, setStarted] = useState(false);
+  const [safeCount, setSafeCount] = useState(0);
+  const GRID_SIZE = 25; // 5x5
 
   const startGame = () => {
     if (coins < bet) { alert("Nicht genug Coins!"); return; }
-    const newGrid = Array(16).fill(false);
-    const mines = 4;
+    const newGrid = Array(GRID_SIZE).fill(false);
     let placed = 0;
-    while (placed < mines) {
-      const idx = Math.floor(Math.random() * 16);
+    while (placed < mineCount) {
+      const idx = Math.floor(Math.random() * GRID_SIZE);
       if (!newGrid[idx]) { newGrid[idx] = true; placed++; }
     }
     setGrid(newGrid);
-    setRevealed(Array(16).fill(false));
+    setRevealed(Array(GRID_SIZE).fill(false));
     setGameOver(false);
+    setWon(false);
     setMultiplier(1.0);
+    setSafeCount(0);
     setStarted(true);
+  };
+
+  const getMultiplierForSafe = (safe) => {
+    const totalSafe = GRID_SIZE - mineCount;
+    if (safe === 0) return 1.0;
+    let m = 1.0;
+    for (let i = 0; i < safe; i++) {
+      m *= (totalSafe + mineCount - i) / (totalSafe - i);
+    }
+    return Math.round(m * 100) / 100;
   };
 
   const reveal = async (idx) => {
@@ -1348,7 +1363,9 @@ const MinesGame = ({ onBack, userCoins, onCoinsUpdate }) => {
     setRevealed(newRevealed);
 
     if (grid[idx]) {
+      // BOOM - hit a mine
       setGameOver(true);
+      setWon(false);
       try {
         const res = await fetch(`${API_URL}/api/gaming/dice/win`, {
           method: "POST", credentials: "include",
@@ -1357,14 +1374,19 @@ const MinesGame = ({ onBack, userCoins, onCoinsUpdate }) => {
         });
         const data = await res.json();
         if (res.ok) setCoins(data.new_balance);
-      } catch (err) {}
+      } catch {}
     } else {
-      setMultiplier(m => Math.round((m + 0.3) * 100) / 100);
+      const newSafe = safeCount + 1;
+      setSafeCount(newSafe);
+      const newMult = getMultiplierForSafe(newSafe);
+      setMultiplier(newMult);
     }
   };
 
   const cashOut = async () => {
     const winAmount = Math.round(bet * multiplier);
+    setWon(true);
+    setGameOver(true);
     try {
       const res = await fetch(`${API_URL}/api/gaming/dice/win`, {
         method: "POST", credentials: "include",
@@ -1373,62 +1395,145 @@ const MinesGame = ({ onBack, userCoins, onCoinsUpdate }) => {
       });
       const data = await res.json();
       if (res.ok) setCoins(data.new_balance);
-    } catch (err) {}
-    setGameOver(true);
+    } catch {}
   };
 
   return (
     <GameWrapper title="Minenfeld" icon="💣" onBack={() => { onCoinsUpdate(); onBack(); }} points={coins}>
       <div className="px-4 pt-4">
         {!started ? (
-          <div className="text-center py-10">
-            <p className="text-gray-400 mb-4">Wähle Felder ohne Minen! Je mehr du aufdeckst, desto höher der Gewinn.</p>
-            <div className="flex items-center justify-center gap-3 mb-6">
-              {[10, 25, 50, 100].map(b => (
-                <motion.button key={b} whileTap={{ scale: 0.9 }} onClick={() => setBet(b)}
-                  className={`px-4 py-2 rounded-xl text-sm font-bold ${bet === b ? "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30" : "bg-white/5 text-white/40"}`}>
-                  {b}
-                </motion.button>
-              ))}
+          <div className="space-y-6 py-4">
+            {/* Explanation */}
+            <div className="text-center">
+              <p className="text-lg font-bold text-white mb-1">5x5 Minenfeld</p>
+              <p className="text-xs text-gray-500">Decke Felder auf ohne eine Mine zu treffen. Je mehr Felder, desto höher der Multiplikator!</p>
             </div>
+
+            {/* Mine Count Selector */}
+            <div>
+              <p className="text-xs text-gray-500 mb-2 text-center">Anzahl Minen</p>
+              <div className="flex items-center justify-center gap-2">
+                {[3, 4, 5, 7, 10].map(m => (
+                  <motion.button key={m} whileTap={{ scale: 0.9 }} onClick={() => setMineCount(m)}
+                    className={`w-12 h-12 rounded-xl text-sm font-bold flex items-center justify-center ${
+                      mineCount === m
+                        ? "bg-red-500/20 text-red-400 border-2 border-red-500/40"
+                        : "bg-white/5 text-white/40 border border-white/10"
+                    }`} data-testid={`mines-count-${m}`}>
+                    {m}
+                  </motion.button>
+                ))}
+              </div>
+              <p className="text-[10px] text-gray-600 text-center mt-1">
+                {mineCount} Minen · {GRID_SIZE - mineCount} sichere Felder · Max {getMultiplierForSafe(GRID_SIZE - mineCount).toFixed(1)}x
+              </p>
+            </div>
+
+            {/* Bet Selector */}
+            <div>
+              <p className="text-xs text-gray-500 mb-2 text-center">Einsatz (Coins)</p>
+              <div className="flex items-center justify-center gap-2">
+                {[10, 25, 50, 100, 200].map(b => (
+                  <motion.button key={b} whileTap={{ scale: 0.9 }} onClick={() => setBet(b)}
+                    className={`px-3 py-2.5 rounded-xl text-xs font-bold ${
+                      bet === b
+                        ? "bg-yellow-500/20 text-yellow-400 border-2 border-yellow-500/40"
+                        : "bg-white/5 text-white/40 border border-white/10"
+                    }`}>
+                    {b}
+                  </motion.button>
+                ))}
+              </div>
+            </div>
+
+            {/* Start Button */}
             <motion.button whileTap={{ scale: 0.95 }} onClick={startGame}
-              className="px-8 py-4 rounded-2xl bg-gradient-to-r from-gray-500 to-gray-600 text-white font-bold text-lg">
-              Spiel starten ({bet} Coins)
+              disabled={coins < bet}
+              className="w-full py-4 rounded-2xl bg-gradient-to-r from-red-500 to-orange-500 text-white font-bold text-lg disabled:opacity-40"
+              data-testid="mines-start-btn">
+              {coins < bet ? "Nicht genug Coins" : `Spiel starten (${bet} Coins)`}
             </motion.button>
           </div>
         ) : (
-          <>
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-sm text-gray-400">Multiplikator: <span className="text-yellow-400 font-bold">{multiplier.toFixed(1)}x</span></span>
-              <span className="text-sm text-green-400 font-bold">Gewinn: {Math.round(bet * multiplier)} Coins</span>
+          <div className="space-y-4">
+            {/* Status Bar */}
+            <div className="flex items-center justify-between p-3 rounded-xl bg-[#111118] border border-white/5">
+              <div className="text-center">
+                <p className="text-[10px] text-gray-500">Einsatz</p>
+                <p className="text-sm font-bold text-yellow-400">{bet}</p>
+              </div>
+              <div className="text-center">
+                <p className="text-[10px] text-gray-500">Multiplikator</p>
+                <p className="text-sm font-bold text-cyan-400">{multiplier.toFixed(2)}x</p>
+              </div>
+              <div className="text-center">
+                <p className="text-[10px] text-gray-500">Gewinn</p>
+                <p className="text-sm font-bold text-green-400">{Math.round(bet * multiplier)}</p>
+              </div>
+              <div className="text-center">
+                <p className="text-[10px] text-gray-500">Aufgedeckt</p>
+                <p className="text-sm font-bold text-white">{safeCount}/{GRID_SIZE - mineCount}</p>
+              </div>
             </div>
-            <div className="grid grid-cols-4 gap-2 mb-4">
-              {grid.map((isMine, idx) => (
-                <motion.button key={idx} whileTap={{ scale: 0.9 }}
-                  onClick={() => reveal(idx)}
-                  disabled={gameOver || revealed[idx]}
-                  className={`aspect-square rounded-xl text-2xl flex items-center justify-center font-bold ${
-                    revealed[idx]
-                      ? isMine ? "bg-red-500/30 border border-red-500/50" : "bg-green-500/20 border border-green-500/30"
-                      : "bg-white/5 border border-white/10 hover:bg-white/10"
-                  } disabled:cursor-default`}>
-                  {revealed[idx] ? (isMine ? "💣" : "💎") : gameOver && isMine ? "💣" : ""}
-                </motion.button>
-              ))}
+
+            {/* 5x5 Grid */}
+            <div className="grid grid-cols-5 gap-1.5 max-w-sm mx-auto">
+              {grid.map((isMine, idx) => {
+                const isRevealed = revealed[idx];
+                const showMine = isRevealed && isMine;
+                const showSafe = isRevealed && !isMine;
+                const showHidden = gameOver && isMine && !isRevealed;
+
+                return (
+                  <motion.button key={idx}
+                    whileTap={!gameOver && !isRevealed ? { scale: 0.85 } : {}}
+                    onClick={() => reveal(idx)}
+                    disabled={gameOver || isRevealed}
+                    className={`aspect-square rounded-lg text-xl flex items-center justify-center font-bold transition-all duration-200 ${
+                      showMine
+                        ? "bg-red-500/30 border-2 border-red-500/60 scale-95"
+                        : showSafe
+                        ? "bg-emerald-500/20 border border-emerald-500/40"
+                        : showHidden
+                        ? "bg-red-500/10 border border-red-500/30"
+                        : "bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.08] hover:border-white/20 active:scale-90"
+                    } disabled:cursor-default`}
+                    data-testid={`mine-cell-${idx}`}
+                  >
+                    {showMine ? "💣" : showSafe ? "💎" : showHidden ? "💣" : ""}
+                  </motion.button>
+                );
+              })}
             </div>
-            {!gameOver && multiplier > 1 && (
+
+            {/* Result Banner */}
+            {gameOver && (
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+                className={`p-4 rounded-2xl text-center ${won ? "bg-green-500/10 border border-green-500/30" : "bg-red-500/10 border border-red-500/30"}`}>
+                <p className="text-2xl font-black mb-1">{won ? "GEWONNEN!" : "BOOM!"}</p>
+                <p className={`text-lg font-bold ${won ? "text-green-400" : "text-red-400"}`}>
+                  {won ? `+${Math.round(bet * multiplier)} Coins (${multiplier.toFixed(2)}x)` : `-${bet} Coins`}
+                </p>
+              </motion.div>
+            )}
+
+            {/* Action Buttons */}
+            {!gameOver && safeCount > 0 && (
               <motion.button whileTap={{ scale: 0.95 }} onClick={cashOut}
-                className="w-full py-4 rounded-2xl bg-green-500 text-black font-bold text-lg">
-                Auszahlen: {Math.round(bet * multiplier)} Coins
+                className="w-full py-4 rounded-2xl bg-gradient-to-r from-green-500 to-emerald-500 text-black font-bold text-lg"
+                animate={{ scale: [1, 1.02, 1] }} transition={{ duration: 1.5, repeat: Infinity }}
+                data-testid="mines-cashout-btn">
+                Auszahlen: {Math.round(bet * multiplier)} Coins ({multiplier.toFixed(2)}x)
               </motion.button>
             )}
             {gameOver && (
               <motion.button whileTap={{ scale: 0.95 }} onClick={() => setStarted(false)}
-                className="w-full py-4 rounded-2xl bg-white/10 text-white font-bold text-lg mt-2">
+                className="w-full py-4 rounded-2xl bg-white/10 text-white font-bold text-lg"
+                data-testid="mines-restart-btn">
                 Neues Spiel
               </motion.button>
             )}
-          </>
+          </div>
         )}
       </div>
     </GameWrapper>

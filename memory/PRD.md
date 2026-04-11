@@ -8,29 +8,28 @@
 ## Completed Features
 
 ### Core Platform - Wallet, Kids GPS, POS, Auctions, Mobility, Loyalty
-### Scooter Live - Map + Admin management
+### Scooter Live - Map + Admin
 ### Credit Score - Term selection + repayment schedule
-### Support Chat - Threaded ticket system (customer↔admin)
+### Support Chat - Threaded tickets
+### Car Rental - Full module (16+ pages, disputes, staff, reports, PDFs)
+### Gaming Platform - 11 Games, Coin Economy
+### Mining Page - BLZ Token Mining (improved UI)
+### Auctions - 20 Products 2026, varied bot prices
 
-### Car Rental Module (COMPLETE)
-- Full backend (vendors, cars, bookings, contracts, invoices, handover/return, damage, payouts, disputes)
-- 16 frontend pages (public, customer, vendor, admin)
-- Image upload, reviews, PDF export (invoices + receipts + contracts)
-- Vendor Staff Management, Reports/Analytics
-- Admin Disputes, Commission per-Vendor
+### Premium Finance (DONE - 2026-04-11)
+- **Rechnung teilen**: Erstellen, Teilnehmer, automatische Berechnung pro Person
+- **Virtuelle Karten**: Einmal-Karten erstellen (Limit, Label), Nummer anzeigen/kopieren
+- **Sparziele**: Ziel setzen (Name, Betrag, monatlich), Fortschrittsbalken
+- **Später zahlen (BNPL)**: Info-Seite, Ratenzahlungen anzeigen
+- **Geschenkkarten**: 8 Anbieter (Amazon, Netflix, Spotify, Apple, Google Play, Steam, PlayStation, Xbox), Kauf via Wallet, Code-Generierung
 
-### Gaming Platform (11 Games, Coin Economy)
-**6 Original**: Glücksrad, Rubbellos, Lucky Slots, Quiz Master, Memory, Würfelglück
-**5 New**: Münzwurf, Höher/Tiefer, Minenfeld, Crash, Plinko
-- Coin-based economy: Buy Coins (€1=1000), Play with Coins (bet 5-500), Win Coins, Redeem to EUR
-- Cashback → Coins integration
-- Coins kaufen Modal (6 Pakete: €1-€100)
-- Auszahlen/Redeem (min 500 Coins → EUR)
-
-### Auctions (20 Products 2026)
-- 20 fresh 2026 products with varied prices
-- Bot targets randomized per auction (€3-€6)
-- Stripe Checkout option added in payment modal
+### Mining Page Verbesserung (DONE - 2026-04-11)
+- Premium Glassmorphism Balance Card mit Gradient-Effekten
+- Größere Stats-Karten mit Icons und besseren Farben
+- Verbesserte Ertragsübersicht (Täglich/Monatlich/Jährlich)
+- Deutsche Texte (Auszahlen, Senden, Abbrechen)
+- Miner-Karten mit farbigen Borders und besserer Lesbarkeit
+- Ambient glow effects
 
 ## Test Credentials
 - Admin: admin@bidblitz.com / BidBlitz2026!

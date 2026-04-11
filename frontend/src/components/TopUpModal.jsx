@@ -423,6 +423,25 @@ export const TopUpModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
                   </motion.button>
                   )}
 
+                  {/* Save Card Button - when no card saved */}
+                  {!savedMethod && !loadingSaved && (
+                    <motion.button
+                      data-testid="save-card-btn"
+                      onClick={async () => {
+                        try {
+                          const res = await apiCall("/api/stripe/save-card", { method: "POST" });
+                          if (res.checkout_url) window.location.href = res.checkout_url;
+                        } catch (err) { console.error(err); }
+                      }}
+                      className="w-full py-3 rounded-xl text-[12px] font-semibold flex items-center justify-center gap-2 mb-2"
+                      style={{ background: "rgba(99,91,255,0.08)", border: "1px solid rgba(99,91,255,0.2)", color: "#635BFF" }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      <CreditCard size={15} />
+                      Karte speichern für 1-Click Zahlung
+                    </motion.button>
+                  )}
+
                   {/* Back to saved card link */}
                   {savedMethod && useNewMethod && (
                     <motion.button

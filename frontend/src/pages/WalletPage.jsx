@@ -108,6 +108,9 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
   const hasStripeParam = typeof window !== "undefined" &&
     (window.location.search.includes("stripe_session_id") || window.location.search.includes("stripe_cancelled"));
 
+  // Handle card_saved redirect from Stripe Setup
+  const hasCardSaved = typeof window !== "undefined" && window.location.search.includes("card_saved=success");
+
   const [showBalance, setShowBalance] = useState(true);
   const [showTopUp, setShowTopUp] = useState(hasStripeParam);
   const [showBarcode, setShowBarcode] = useState(false);
@@ -116,11 +119,60 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
   const [typeFilter, setTypeFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [isLoading, setIsLoading] = useState(true);
+  const [savedCard, setSavedCard] = useState(null);
+  const [cardSaving, setCardSaving] = useState(false);
 
   const wallet = useWallet();
   const realGrouped = useGroupedTransactions();
   const realStats = useWalletStats();
   const { t } = useI18n();
+
+  // Confirm card save after Stripe redirect
+  useEffect(() => {
+    if (hasCardSaved && !isGuest) {
+      const API = process.env.REACT_APP_BACKEND_URL;
+      fetch(`${API}/api/stripe/save-card-confirm`, { method: "POST", credentials: "include" })
+        .then(r => r.json())
+        .then(d => {
+          if (d.ok) {
+            setSavedCard({ brand: d.card_brand, last4: d.card_last4 });
+          }
+        })
+        .catch(() => {});
+      // Clean URL
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, [hasCardSaved, isGuest]);
+
+  // Load saved card
+  useEffect(() => {
+    if (isGuest) return;
+    const API = process.env.REACT_APP_BACKEND_URL;
+    fetch(`${API}/api/stripe/saved-method`, { credentials: "include" })
+      .then(r => r.json())
+      .then(d => { if (d.has_saved_method) setSavedCard({ brand: d.card_brand, last4: d.card_last4, exp: `${d.card_exp_month}/${d.card_exp_year}` }); })
+      .catch(() => {});
+  }, [isGuest]);
+
+  const handleSaveCard = async () => {
+    setCardSaving(true);
+    try {
+      const API = process.env.REACT_APP_BACKEND_URL;
+      const res = await fetch(`${API}/api/stripe/save-card`, { method: "POST", credentials: "include" });
+      const data = await res.json();
+      if (data.checkout_url) window.location.href = data.checkout_url;
+    } catch (err) { console.error(err); }
+    setCardSaving(false);
+  };
+
+  const handleRemoveCard = async () => {
+    if (!window.confirm("Gespeicherte Karte wirklich entfernen?")) return;
+    try {
+      const API = process.env.REACT_APP_BACKEND_URL;
+      await fetch(`${API}/api/stripe/saved-method`, { method: "DELETE", credentials: "include" });
+      setSavedCard(null);
+    } catch (err) { console.error(err); }
+  };
 
   // Demo mode: override data
   const balance = isDemoMode ? DEMO_BALANCE : wallet.balance;
@@ -407,6 +459,59 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
             delay={0.30}
           />
         </motion.div>
+
+        {/* ── Gespeicherte Zahlungsmethode ── */}
+        {!isGuest && (
+          <motion.div className="mb-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.31 }}>
+            {savedCard ? (
+              <div className="p-4 rounded-2xl border"
+                style={{ background: "rgba(0,194,255,0.03)", borderColor: "rgba(0,194,255,0.1)" }}
+                data-testid="saved-card-display">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center"
+                      style={{ background: "rgba(0,194,255,0.08)", border: "1px solid rgba(0,194,255,0.12)" }}>
+                      <CreditCard size={18} className="text-[#00C2FF]" />
+                    </div>
+                    <div>
+                      <p className="text-[12px] font-semibold text-white">
+                        {(savedCard.brand || "").charAt(0).toUpperCase() + (savedCard.brand || "").slice(1)} ****{savedCard.last4}
+                      </p>
+                      <p className="text-[10px] text-[#444]">{savedCard.exp ? `Gültig bis ${savedCard.exp}` : "Gespeichert"} · 1-Click Zahlung aktiv</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="px-2 py-0.5 rounded-full text-[9px] font-semibold"
+                      style={{ background: "rgba(0,210,106,0.08)", border: "1px solid rgba(0,210,106,0.12)", color: "#00D26A" }}>
+                      Aktiv
+                    </span>
+                    <motion.button whileTap={{ scale: 0.9 }} onClick={handleRemoveCard}
+                      className="p-1.5 rounded-lg" style={{ background: "rgba(255,71,87,0.08)" }}
+                      data-testid="remove-card-btn">
+                      <X size={12} className="text-[#FF4757]" />
+                    </motion.button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <motion.button whileTap={{ scale: 0.98 }} onClick={handleSaveCard}
+                disabled={cardSaving}
+                className="w-full p-4 rounded-2xl border flex items-center gap-3"
+                style={{ background: "rgba(99,91,255,0.03)", borderColor: "rgba(99,91,255,0.12)" }}
+                data-testid="save-card-wallet-btn">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center"
+                  style={{ background: "rgba(99,91,255,0.08)", border: "1px solid rgba(99,91,255,0.12)" }}>
+                  {cardSaving ? <Loader2 size={18} className="text-[#635BFF] animate-spin" /> : <CreditCard size={18} className="text-[#635BFF]" />}
+                </div>
+                <div className="flex-1 text-left">
+                  <p className="text-[12px] font-semibold text-white">Karte speichern</p>
+                  <p className="text-[10px] text-[#444]">Für schnelle 1-Click Zahlungen</p>
+                </div>
+                <ChevronRight size={16} className="text-[#635BFF]" />
+              </motion.button>
+            )}
+          </motion.div>
+        )}
 
         {/* ── Filters ── */}
         <motion.div
