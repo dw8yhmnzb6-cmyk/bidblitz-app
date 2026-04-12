@@ -35,6 +35,9 @@ const ALL_SHORTCUTS = [
   { id: "currency", icon: Globe, label: "Währung", route: "/currency", color: "#34D399" },
   { id: "credit", icon: CreditCard, label: "Kredit", route: "/credit-score", color: "#F87171" },
   { id: "tips", icon: Heart, label: "Trinkgeld", route: "/more", color: "#FB923C" },
+  { id: "insurance", icon: Heart, label: "Versicherung", route: "/insurance", color: "#EF4444" },
+  { id: "appointments", icon: Star, label: "Termine", route: "/appointments", color: "#3B82F6" },
+  { id: "social", icon: Heart, label: "Community", route: "/social", color: "#EC4899" },
 ];
 
 const DEFAULT_SHORTCUTS = ["taxi", "scooter", "hotels", "restaurants"];

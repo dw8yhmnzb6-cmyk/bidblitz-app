@@ -294,6 +294,15 @@ app.include_router(events_router)
 from routes.restaurants import router as restaurants_router
 app.include_router(restaurants_router)
 
+from routes.insurance import router as insurance_router
+app.include_router(insurance_router)
+
+from routes.appointments import router as appointments_router
+app.include_router(appointments_router)
+
+from routes.social import router as social_router
+app.include_router(social_router)
+
 
 # Static file serving for uploads
 from fastapi.staticfiles import StaticFiles

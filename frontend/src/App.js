@@ -69,6 +69,9 @@ import CurrencyConverterPage from "./pages/CurrencyConverterPage";
 import HotelBookingPage from "./pages/HotelBookingPage";
 import EventBookingPage from "./pages/EventBookingPage";
 import RestaurantReservationPage from "./pages/RestaurantReservationPage";
+import InsurancePage from "./pages/InsurancePage";
+import AppointmentPage from "./pages/AppointmentPage";
+import SocialFeedPage from "./pages/SocialFeedPage";
 
 // Car Rental Module
 import {
@@ -332,6 +335,12 @@ function AppContent() {
         return isGuest ? <HomePage {...homeProps} /> : <EventBookingPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
       case "/restaurants":
         return isGuest ? <HomePage {...homeProps} /> : <RestaurantReservationPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
+      case "/insurance":
+        return isGuest ? <HomePage {...homeProps} /> : <InsurancePage onBack={() => handleNavigate("/more")} />;
+      case "/appointments":
+        return isGuest ? <HomePage {...homeProps} /> : <AppointmentPage onBack={() => handleNavigate("/more")} />;
+      case "/social":
+        return isGuest ? <HomePage {...homeProps} /> : <SocialFeedPage onBack={() => handleNavigate("/more")} />;
       case "/gaming":
         return isGuest ? <HomePage {...homeProps} /> : <GamingPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
       
