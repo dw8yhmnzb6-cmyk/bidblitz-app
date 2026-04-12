@@ -256,6 +256,16 @@ app.include_router(car_rental_router)
 from routes.premium_finance import router as premium_finance_router
 app.include_router(premium_finance_router)
 
+from routes.ai_assistant import router as ai_assistant_router
+app.include_router(ai_assistant_router)
+
+from routes.crypto import router as crypto_router
+app.include_router(crypto_router)
+
+from routes.budget import router as budget_router
+app.include_router(budget_router)
+
+
 # Static file serving for uploads
 from fastapi.staticfiles import StaticFiles
 UPLOAD_DIR = Path(__file__).parent / "uploads"

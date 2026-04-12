@@ -57,6 +57,9 @@ import VirtualCardsPage from "./pages/VirtualCardsPage";
 import SavingsPage from "./pages/SavingsPage";
 import BNPLPage from "./pages/BNPLPage";
 import GiftCardsPage from "./pages/GiftCardsPage";
+import AIAssistantPage from "./pages/AIAssistantPage";
+import CryptoWalletPage from "./pages/CryptoWalletPage";
+import BudgetPlannerPage from "./pages/BudgetPlannerPage";
 
 // Car Rental Module
 import {
@@ -294,6 +297,12 @@ function AppContent() {
         return isGuest ? <HomePage {...homeProps} /> : <BNPLPage onBack={() => handleNavigate("/more")} />;
       case "/gift-cards":
         return isGuest ? <HomePage {...homeProps} /> : <GiftCardsPage onBack={() => handleNavigate("/more")} />;
+      case "/ai-assistant":
+        return isGuest ? <HomePage {...homeProps} /> : <AIAssistantPage onBack={() => handleNavigate("/more")} />;
+      case "/crypto":
+        return isGuest ? <HomePage {...homeProps} /> : <CryptoWalletPage onBack={() => handleNavigate("/more")} />;
+      case "/budget":
+        return isGuest ? <HomePage {...homeProps} /> : <BudgetPlannerPage onBack={() => handleNavigate("/more")} />;
       case "/gaming":
         return isGuest ? <HomePage {...homeProps} /> : <GamingPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
       

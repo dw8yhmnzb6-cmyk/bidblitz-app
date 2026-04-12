@@ -2,28 +2,49 @@
 
 ## Core Stack
 - Frontend: React, TailwindCSS, Framer Motion, Mapbox GL JS
-- Backend: FastAPI, Motor (MongoDB)
+- Backend: FastAPI, Motor (MongoDB), emergentintegrations (GPT-4o-mini)
 - Payments: Stripe (proxy), JWT Auth (cookies)
-- Maps: Mapbox GL JS (dark-v11 theme)
+- Maps: Mapbox GL JS (dark-v11)
+- AI: GPT-4o-mini via Emergent LLM Key
 - i18n: 15 Sprachen
 
 ## Production Status: LAUNCH-READY
 
-### Completed Features
-- Wallet, POS, Auctions (20 products), Loyalty, Marketplace, Mining, Gaming (11 games)
-- Car Rental (full module: 16+ pages, CRUD, PDFs, disputes, staff, reports)
-- Premium Finance (Split Bill, Virtual Cards, Savings, BNPL, Gift Cards, Bills)
-- Support Chat, Credit Score, Referral System, Kids GPS
-- Mapbox GL Integration (dark-theme, user location, car markers, action sheets)
-- Coins/Cashback globally connected (payments, transfers, topups, car rental, marketplace)
-- Production cleanup (no fake data, broken features hidden, Coming Soon removed)
+### All Features (Complete)
 
-## Mapbox Integration (2026-04-12)
-- MapboxMap component: `/app/frontend/src/components/MapboxMap.jsx`
-- MobilityMapPage: `/app/frontend/src/pages/MobilityMapPage.jsx`
-- Token: stored in frontend/.env as REACT_APP_MAPBOX_TOKEN
-- Features: Dark theme, user GPS tracking, car rental markers, radius circle, popups, action sheets
-- Route: `/mobility-map` accessible from MEHR > Live Map
+#### Finance Core
+- Wallet (EUR), POS, P2P Transfers, Stripe Integration
+- Credit Score, Premium Finance (Split Bill, Virtual Cards, Savings, BNPL, Gift Cards, Bills)
+- **NEW: AI Financial Assistant (BlitzBot)** — GPT-4o-mini powered, analyzes real transactions
+- **NEW: Crypto Wallet** — BTC/ETH/USDT/BNB/SOL/XRP, Buy/Sell via EUR wallet, Portfolio tracking
+- **NEW: Budget Planner** — 8 categories, limits, expense tracking, 6-month trend chart
+
+#### Commerce & Marketplace
+- Auctions (20 products), Merchant System, Marketplace, NFC Pay, VIP
+
+#### Mobility
+- Car Rental (full module), Mapbox Live Map
+- Taxi/Scooter/Food: Hidden (re-enable when vendors register)
+
+#### Gaming & Rewards
+- 11 Games, Coin Economy (100 coins = €1), Global Cashback Engine
+- Mining (BLZ tokens), Loyalty Levels, Referral System
+
+#### Platform
+- Admin Panel, Support Chat, Kids GPS, KYC/Verification
+- i18n: 15 Languages, Feature Gates, Audit Logs
+
+## New Backend Routes (2026-04-12)
+- `/api/ai-assistant/chat` — GPT-4o-mini chat with wallet context
+- `/api/ai-assistant/history` — Chat history
+- `/api/crypto/prices` — Live crypto prices
+- `/api/crypto/portfolio` — User holdings
+- `/api/crypto/trade` — Buy/sell crypto via wallet
+- `/api/crypto/transactions` — Trade history
+- `/api/budget/overview` — Monthly spending by category
+- `/api/budget/limits` — Set category limits
+- `/api/budget/expense` — Add manual expense
+- `/api/budget/trends` — 6-month spending trends
 
 ## Test Credentials
 - Admin: admin@bidblitz.com / BidBlitz2026!
@@ -31,5 +52,5 @@
 
 ## Pending
 - P1: i18n remaining pages (Car Rental 16, Premium Finance 6)
-- P2: AI Financial Assistant, Crypto Wallet, Budget Planner
-- Backlog: Insurance, Appointments, Social Feed, Taxi/Scooter/Food (when vendors register)
+- P2: Real-time crypto prices via WebSocket/CoinGecko API
+- Backlog: Insurance, Appointments, Social Feed
