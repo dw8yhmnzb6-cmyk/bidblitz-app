@@ -2,12 +2,13 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, ScanBarcode, CheckCircle2, XCircle, Loader2,
-  Euro, Smartphone, QrCode, Zap, ShieldCheck, Receipt
+  Euro, Smartphone, QrCode, Zap, ShieldCheck, Receipt, Heart
 } from "lucide-react";
 import { useUser, useI18n, useWallet } from "../store";
 import { useNetwork } from "../store/NetworkContext";
 import { api } from "../services/api";
 import ErrorState from "../components/ErrorState";
+import TipModal from "../components/TipModal";
 
 const Step = { AMOUNT: 0, SCANNING: 1, PROCESSING: 2, SUCCESS: 3, ERROR: 4 };
 
@@ -30,6 +31,7 @@ const ScannerPage = ({ onNavigate }) => {
   const [processing, setProcessing] = useState(false);
   const [idempotencyKey, setIdempotencyKey] = useState(null);
   const barcodeRef = useRef(null);
+  const [showTip, setShowTip] = useState(false);
 
   const numAmount = parseFloat(amount) || 0;
   const isValidAmount = numAmount >= 0.5 && numAmount <= 2500;
@@ -410,6 +412,14 @@ const ScannerPage = ({ onNavigate }) => {
                   {t("scan.done") || "Done"}
                 </motion.button>
                 <motion.button
+                  data-testid="scan-tip-btn"
+                  onClick={() => setShowTip(true)}
+                  className="py-3.5 px-4 bg-[#F59E0B]/15 border border-[#F59E0B]/25 rounded-xl text-[#F59E0B] font-medium text-sm flex items-center gap-1.5"
+                  whileTap={{ scale: 0.97 }}
+                >
+                  <Heart size={14} /> Trinkgeld
+                </motion.button>
+                <motion.button
                   data-testid="scan-new-payment-btn"
                   onClick={handleNewPayment}
                   className="flex-1 py-3.5 bg-[#00C2FF]/15 border border-[#00C2FF]/25 rounded-xl text-[#00C2FF] font-medium text-sm"
@@ -474,6 +484,21 @@ const ScannerPage = ({ onNavigate }) => {
             <span className="text-[10px]">{t("scan.secured") || "End-to-end encrypted"}</span>
           </div>
         </div>
+      )}
+
+      {/* POS Tip Modal */}
+      {result && (
+        <TipModal
+          isOpen={showTip}
+          onClose={() => setShowTip(false)}
+          billAmount={result.amount || 0}
+          staffEmail={user.email || ""}
+          staffName={user.name || ""}
+          transactionId={result.transaction_id || ""}
+          onTipSent={(tipData) => {
+            wallet.refreshWallet();
+          }}
+        />
       )}
     </div>
   );

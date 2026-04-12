@@ -282,6 +282,9 @@ app.include_router(user_stats_router)
 from routes.currency import router as currency_router
 app.include_router(currency_router)
 
+from routes.tips import router as tips_router
+app.include_router(tips_router)
+
 
 # Static file serving for uploads
 from fastapi.staticfiles import StaticFiles

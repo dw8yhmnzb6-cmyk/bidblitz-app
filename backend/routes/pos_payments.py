@@ -321,6 +321,7 @@ async def process_barcode_payment(req: BarcodePaymentRequest, request: Request):
     return {
         "ok": True, "transaction_id": txn_id,
         "amount": req.amount, "fee": fee, "net": net,
+        "customer_id": customer_uid,
         "customer_name": customer.get("name", ""),
         "customer_balance": updated_customer.get("balance", 0),
         "payment_method": pt["category"],
