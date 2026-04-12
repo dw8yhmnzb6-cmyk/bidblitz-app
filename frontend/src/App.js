@@ -72,6 +72,7 @@ import RestaurantReservationPage from "./pages/RestaurantReservationPage";
 import InsurancePage from "./pages/InsurancePage";
 import AppointmentPage from "./pages/AppointmentPage";
 import SocialFeedPage from "./pages/SocialFeedPage";
+import JobMarketplacePage from "./pages/JobMarketplacePage";
 
 // Car Rental Module
 import {
@@ -341,6 +342,8 @@ function AppContent() {
         return isGuest ? <HomePage {...homeProps} /> : <AppointmentPage onBack={() => handleNavigate("/more")} />;
       case "/social":
         return isGuest ? <HomePage {...homeProps} /> : <SocialFeedPage onBack={() => handleNavigate("/more")} />;
+      case "/jobs":
+        return isGuest ? <HomePage {...homeProps} /> : <JobMarketplacePage onBack={() => handleNavigate("/more")} />;
       case "/gaming":
         return isGuest ? <HomePage {...homeProps} /> : <GamingPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
       

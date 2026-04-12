@@ -303,6 +303,9 @@ app.include_router(appointments_router)
 from routes.social import router as social_router
 app.include_router(social_router)
 
+from routes.jobs import router as jobs_router
+app.include_router(jobs_router)
+
 
 # Static file serving for uploads
 from fastapi.staticfiles import StaticFiles

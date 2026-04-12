@@ -38,6 +38,7 @@ const ALL_SHORTCUTS = [
   { id: "insurance", icon: Heart, label: "Versicherung", route: "/insurance", color: "#EF4444" },
   { id: "appointments", icon: Star, label: "Termine", route: "/appointments", color: "#3B82F6" },
   { id: "social", icon: Heart, label: "Community", route: "/social", color: "#EC4899" },
+  { id: "jobs", icon: Star, label: "Jobs", route: "/jobs", color: "#6366F1" },
 ];
 
 const DEFAULT_SHORTCUTS = ["taxi", "scooter", "hotels", "restaurants"];
