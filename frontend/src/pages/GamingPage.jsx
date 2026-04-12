@@ -11,6 +11,7 @@ import {
   Play, Pause, Volume2, VolumeX, Award, TrendingUp,
   ChevronRight, Lock, Unlock, Heart, X, Check
 } from "lucide-react";
+import { useI18n } from "../store/I18nContext";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -19,6 +20,7 @@ const API_URL = process.env.REACT_APP_BACKEND_URL;
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const GamingPage = ({ onNavigate, onBack }) => {
+  const { t } = useI18n();
   const [userCoins, setUserCoins] = useState(0);
   const [ setDailySpins] = useState(50);
   const [activeGame, setActiveGame] = useState(null);
@@ -59,14 +61,14 @@ const GamingPage = ({ onNavigate, onBack }) => {
         setShowBuyCoins(false);
       } else {
         const err = await res.json();
-        alert(err.detail || "Fehler beim Kauf");
+        alert(err.detail || t("gaming.buy_error"));
       }
-    } catch (err) { alert("Fehler"); }
+    } catch (err) { alert(t("gaming.error")); }
     setBuying(false);
   };
 
   const handleRedeemCoins = async () => {
-    const amount = prompt("Wie viele Coins einlösen? (Min. 500)");
+    const amount = prompt(t("gaming.redeem_prompt"));
     if (!amount || parseInt(amount) < 500) return;
     try {
       const res = await fetch(`${API_URL}/api/gaming/redeem`, {
@@ -78,22 +80,22 @@ const GamingPage = ({ onNavigate, onBack }) => {
       if (res.ok) {
         setUserCoins(data.remaining_coins);
         alert(data.message);
-      } else { alert(data.detail || "Fehler"); }
-    } catch (err) { alert("Fehler"); }
+      } else { alert(data.detail || t("gaming.error")); }
+    } catch (err) { alert(t("gaming.error")); }
   };
 
   const GAMES = [
-    { id: "wheel", name: "Glücksrad", icon: "🎡", desc: "Drehe & Gewinne!", color: "#FFD700", component: WheelGame },
-    { id: "scratch", name: "Rubbellos", icon: "🎫", desc: "Kratze & Gewinne!", color: "#FF6B6B", component: ScratchGame },
-    { id: "slots", name: "Lucky Slots", icon: "🎰", desc: "777 Jackpot!", color: "#9B59B6", component: SlotsGame },
-    { id: "quiz", name: "Quiz Master", icon: "🧠", desc: "Teste dein Wissen!", color: "#3498DB", component: QuizGame },
-    { id: "memory", name: "Memory", icon: "🃏", desc: "Finde die Paare!", color: "#2ECC71", component: MemoryGame },
-    { id: "dice", name: "Würfelglück", icon: "🎲", desc: "Würfle dein Glück!", color: "#E74C3C", component: DiceGame },
-    { id: "coinflip", name: "Münzwurf", icon: "🪙", desc: "Kopf oder Zahl!", color: "#F39C12", component: CoinFlipGame },
-    { id: "highlow", name: "Höher/Tiefer", icon: "📊", desc: "Rate die Karte!", color: "#1ABC9C", component: HighLowGame },
-    { id: "mines", name: "Minenfeld", icon: "💣", desc: "Weiche den Minen!", color: "#95A5A6", component: MinesGame },
-    { id: "crash", name: "Crash", icon: "📈", desc: "Cashe rechtzeitig!", color: "#E91E63", component: CrashGame },
-    { id: "plinko", name: "Plinko", icon: "🔴", desc: "Lass fallen!", color: "#FF5722", component: PlinkoGame },
+    { id: "wheel", name: t("gaming.wheel"), icon: "🎡", desc: t("gaming.wheel_desc"), color: "#FFD700", component: WheelGame },
+    { id: "scratch", name: t("gaming.scratch"), icon: "🎫", desc: t("gaming.scratch_desc"), color: "#FF6B6B", component: ScratchGame },
+    { id: "slots", name: t("gaming.slots"), icon: "🎰", desc: t("gaming.slots_desc"), color: "#9B59B6", component: SlotsGame },
+    { id: "quiz", name: t("gaming.quiz"), icon: "🧠", desc: t("gaming.quiz_desc"), color: "#3498DB", component: QuizGame },
+    { id: "memory", name: t("gaming.memory"), icon: "🃏", desc: t("gaming.memory_desc"), color: "#2ECC71", component: MemoryGame },
+    { id: "dice", name: t("gaming.dice"), icon: "🎲", desc: t("gaming.dice_desc"), color: "#E74C3C", component: DiceGame },
+    { id: "coinflip", name: t("gaming.coinflip"), icon: "🪙", desc: t("gaming.coinflip_desc"), color: "#F39C12", component: CoinFlipGame },
+    { id: "highlow", name: t("gaming.highlow"), icon: "📊", desc: t("gaming.highlow_desc"), color: "#1ABC9C", component: HighLowGame },
+    { id: "mines", name: t("gaming.mines"), icon: "💣", desc: t("gaming.mines_desc"), color: "#95A5A6", component: MinesGame },
+    { id: "crash", name: t("gaming.crash"), icon: "📈", desc: t("gaming.crash_desc"), color: "#E91E63", component: CrashGame },
+    { id: "plinko", name: t("gaming.plinko"), icon: "🔴", desc: t("gaming.plinko_desc"), color: "#FF5722", component: PlinkoGame },
   ];
 
   if (loading) {
@@ -136,7 +138,7 @@ const GamingPage = ({ onNavigate, onBack }) => {
                 <Gamepad2 size={20} className="text-yellow-400" />
                 Game Center
               </h1>
-              <p className="text-[11px] text-gray-500">Spiele & Gewinne</p>
+              <p className="text-[11px] text-gray-500">{t("gaming.subtitle")}</p>
             </div>
           </div>
           
@@ -153,13 +155,13 @@ const GamingPage = ({ onNavigate, onBack }) => {
           <motion.button whileTap={{ scale: 0.95 }} onClick={() => setShowBuyCoins(true)}
             className="flex-1 py-2.5 rounded-xl text-xs font-semibold bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 flex items-center justify-center gap-1.5"
             data-testid="buy-coins-btn">
-            <Coins size={14} /> Coins kaufen
+            <Coins size={14} /> {t("gaming.buy_coins")}
           </motion.button>
           <motion.button whileTap={{ scale: 0.95 }} onClick={handleRedeemCoins}
             disabled={userCoins < 500}
             className="flex-1 py-2.5 rounded-xl text-xs font-semibold bg-green-500/10 text-green-400 border border-green-500/20 flex items-center justify-center gap-1.5 disabled:opacity-30"
             data-testid="redeem-coins-btn">
-            <TrendingUp size={14} /> Auszahlen
+            <TrendingUp size={14} /> {t("gaming.redeem")}
           </motion.button>
         </div>
       </div>
@@ -172,8 +174,8 @@ const GamingPage = ({ onNavigate, onBack }) => {
             onClick={() => setShowBuyCoins(false)}>
             <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
               onClick={e => e.stopPropagation()} className="w-full max-w-lg bg-[#111118] rounded-t-3xl p-6">
-              <h3 className="text-lg font-bold mb-1 text-white">Coins kaufen</h3>
-              <p className="text-xs text-gray-500 mb-4">1.000 Coins = €1,00</p>
+              <h3 className="text-lg font-bold mb-1 text-white">{t("gaming.coins_buy_title")}</h3>
+              <p className="text-xs text-gray-500 mb-4">{t("gaming.coins_rate")}</p>
               <div className="grid grid-cols-3 gap-2 mb-4">
                 {[{e:"1",c:"1.000"},{e:"5",c:"5.000"},{e:"10",c:"10.000"},{e:"20",c:"20.000"},{e:"50",c:"50.000"},{e:"100",c:"100.000"}].map(p => (
                   <motion.button key={p.e} whileTap={{ scale: 0.95 }}
@@ -187,7 +189,7 @@ const GamingPage = ({ onNavigate, onBack }) => {
               <motion.button whileTap={{ scale: 0.97 }} onClick={handleBuyCoins} disabled={buying}
                 className="w-full py-4 rounded-xl bg-yellow-500 text-black font-bold flex items-center justify-center gap-2 disabled:opacity-50"
                 data-testid="confirm-buy-coins">
-                {buying ? <Loader2 size={20} className="animate-spin" /> : <><Coins size={20} /> Für €{buyAmount} kaufen</>}
+                {buying ? <Loader2 size={20} className="animate-spin" /> : <><Coins size={20} /> {t("gaming.buy_for", { amount: buyAmount })}</>}
               </motion.button>
             </motion.div>
           </motion.div>
@@ -228,9 +230,9 @@ const GamingPage = ({ onNavigate, onBack }) => {
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-[14px] font-bold text-white flex items-center gap-2">
             <Trophy size={16} className="text-yellow-400" />
-            Top Spieler
+            {t("gaming.top_players")}
           </h2>
-          <button className="text-[11px] text-cyan-400">Alle anzeigen</button>
+          <button className="text-[11px] text-cyan-400">{t("gaming.show_all")}</button>
         </div>
         <div className="space-y-2">
           {[
@@ -257,10 +259,10 @@ const GamingPage = ({ onNavigate, onBack }) => {
         <div className="p-4 rounded-2xl bg-gradient-to-br from-green-500/10 to-emerald-500/5 border border-green-500/20">
           <div className="flex items-center gap-2 mb-2">
             <Gift size={18} className="text-green-400" />
-            <p className="text-[13px] font-bold text-green-400">Coins einlösen</p>
+            <p className="text-[13px] font-bold text-green-400">{t("gaming.redeem_coins")}</p>
           </div>
           <p className="text-[11px] text-gray-400 mb-3">
-            Tausche deine Coins gegen echte EUR ein!
+            {t("gaming.redeem_desc")}
           </p>
           <div className="flex gap-2">
             <div className="flex-1 p-2 rounded-lg bg-white/5 text-center">

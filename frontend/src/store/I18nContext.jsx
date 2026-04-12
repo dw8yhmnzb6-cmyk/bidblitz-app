@@ -72,8 +72,11 @@ export function useI18n() {
   return ctx;
 }
 
+// ── Merge extra translations ──
+import extraTranslations from "./translations_extra";
+
 // ── Translation Dictionaries ──
-const translations = {
+const _base = {
   en: {
     // Nav
     "nav.home": "HOME", "nav.wallet": "WALLET", "nav.scan": "SCAN", "nav.merchant": "MERCHANT", "nav.more": "MORE", "nav.pay": "PAY", "nav.auctions": "AUCTIONS",
@@ -3664,5 +3667,11 @@ const translations = {
     "kids.expired_notice": "انتهى اشتراكك. جدّد للاستمرار في استخدام BidBlitz Kids.",
   },
 };
+
+// Merge base + extra translations
+const translations = {};
+for (const lang of Object.keys(_base)) {
+  translations[lang] = { ..._base[lang], ...(extraTranslations[lang] || {}) };
+}
 
 export default translations;
