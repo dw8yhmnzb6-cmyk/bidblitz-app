@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Star, TrendingUp, CreditCard, Shield, Clock,
   CheckCircle, AlertCircle, Loader2, ChevronRight, Euro,
-  Calendar, Percent, Lock
+  Calendar, Percent, Lock, Check
 } from "lucide-react";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
@@ -140,6 +140,13 @@ const CreditScorePage = ({ onBack, onNavigate }) => {
           <span className="text-sm text-red-400">{error}</span>
         </div>
       )}
+      {/* Success */}
+      {success && (
+        <div className="mx-4 mt-4 p-3 rounded-xl bg-green-500/10 border border-green-500/20 flex items-center gap-2">
+          <Check size={16} className="text-green-400" />
+          <span className="text-sm text-green-400">{success}</span>
+        </div>
+      )}
 
       <div className="p-4 space-y-4">
         {/* Score Card */}
@@ -224,6 +231,25 @@ const CreditScorePage = ({ onBack, onNavigate }) => {
             </motion.button>
           </div>
         )}
+
+        {/* Pending Credit */}
+        {creditData?.has_pending && creditData.pending_credits?.map(pc => (
+          <div key={pc.credit_id} className="p-4 rounded-2xl bg-yellow-500/5 border border-yellow-500/20">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-sm font-semibold text-yellow-400">Kreditantrag in Prüfung</p>
+              <span className="px-2 py-0.5 rounded bg-yellow-500/20 text-yellow-400 text-[10px] font-bold animate-pulse">
+                WARTET AUF GENEHMIGUNG
+              </span>
+            </div>
+            <p className="text-2xl font-bold text-white mb-1">€{pc.amount?.toFixed(2)}</p>
+            <p className="text-xs text-gray-500">
+              {pc.term_months} Monate · Rate €{pc.monthly_rate?.toFixed(2)}/Monat · Zinsen €{pc.total_interest?.toFixed(2)}
+            </p>
+            <p className="text-[10px] text-gray-600 mt-2">
+              Beantragt am: {pc.created_at ? new Date(pc.created_at).toLocaleDateString("de-DE") : ""}
+            </p>
+          </div>
+        ))}
 
         {/* Available Credit */}
         {!showApply ? (

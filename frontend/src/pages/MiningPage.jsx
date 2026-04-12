@@ -15,10 +15,14 @@ const sl = { duration: 0.3, ease: [0.32, 0.72, 0, 1] };
 
 async function api(path, opts = {}) {
   const r = await fetch(`${API}${path}`, { credentials: "include", headers: { "Content-Type": "application/json" }, ...opts });
-  const text = await r.text();
   let d = {};
-  try { d = JSON.parse(text); } catch { /* non-json */ }
-  if (!r.ok) throw new Error(d.detail || d.message || (text && text.length < 200 ? text : "") || "Request failed");
+  try {
+    const cloned = r.clone();
+    d = await cloned.json();
+  } catch {
+    try { const text = await r.text(); d = { detail: text }; } catch { /* body consumed */ }
+  }
+  if (!r.ok) throw new Error(d.detail || d.message || "Request failed");
   return d;
 }
 

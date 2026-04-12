@@ -180,7 +180,15 @@ async def get_credit_status(request: Request):
         "status": "active"
     }).to_list(10)
     
+    # Get pending credits
+    pending_credits = await db.credits.find({
+        "user_id": user_id,
+        "status": "pending"
+    }).to_list(10)
+    
     for c in active_credits:
+        c.pop("_id", None)
+    for c in pending_credits:
         c.pop("_id", None)
     
     total_debt = sum(c.get("remaining_amount", 0) for c in active_credits)
@@ -192,12 +200,14 @@ async def get_credit_status(request: Request):
         "score": profile["score"],
         "score_label": score_info["label"],
         "score_color": score_info["color"],
-        "can_borrow": score_info["can_borrow"] and available_credit > 0,
+        "can_borrow": score_info["can_borrow"] and available_credit > 0 and len(pending_credits) == 0,
         "max_credit": score_info["max_amount"],
         "available_credit": round(available_credit, 2),
         "current_debt": round(total_debt, 2),
-        "active_credit": round(total_debt, 2),  # Alias for frontend
+        "active_credit": round(total_debt, 2),
         "active_credits": active_credits,
+        "pending_credits": pending_credits,
+        "has_pending": len(pending_credits) > 0,
         "due_date": active_credits[0].get("due_date") if active_credits else None,
         "stats": {
             "total_credits": profile.get("total_credits_taken", 0),
@@ -270,10 +280,12 @@ async def request_credit(req: CreditRequest, request: Request):
             "remaining": remaining,
         })
     
-    # Create credit
+    # Create credit — status "pending" (wartet auf Admin-Genehmigung)
     credit = {
         "credit_id": secrets.token_hex(8),
         "user_id": user_id,
+        "user_email": user.get("email", ""),
+        "user_name": user.get("name", user.get("email", "")),
         "amount": round(req.amount, 2),
         "remaining_amount": total_repayment,
         "total_interest": total_interest,
@@ -282,40 +294,37 @@ async def request_credit(req: CreditRequest, request: Request):
         "term_months": term,
         "interest_rate": interest_rate,
         "schedule": schedule,
-        "status": "active",
+        "status": "pending",  # pending → approved → active → paid  |  pending → rejected
+        "auto_pay": True,
         "created_at": now.isoformat(),
         "due_date": due_date.isoformat(),
+        "approved_at": None,
+        "rejected_at": None,
+        "rejection_reason": None,
         "paid_at": None,
         "payments": [],
+        "next_payment_date": schedule[0]["date"] if schedule else None,
+        "next_payment_month": 1,
     }
     
     await db.credits.insert_one(credit)
     
-    # Add amount to user's wallet
-    await db.users.update_one(
-        {"_id": user["_id"]},
-        {"$inc": {"balance": req.amount}}
-    )
+    # DO NOT add money yet — wait for admin approval
     
     # Update profile stats
     await db.credit_profiles.update_one(
         {"user_id": user_id},
-        {
-            "$inc": {
-                "total_credits_taken": 1,
-                "current_debt": req.amount
-            }
-        }
+        {"$inc": {"total_credits_taken": 1}}
     )
     
-    # Create transaction record
-    await db.transactions.insert_one({
-        "tx_id": secrets.token_hex(8),
+    # Notify user
+    await db.notifications.insert_one({
+        "id": secrets.token_hex(8),
         "user_id": user_id,
-        "type": "CREDIT_RECEIVED",
-        "amount": req.amount,
-        "description": f"Kredit erhalten (ID: {credit['credit_id'][:8]})",
-        "credit_id": credit["credit_id"],
+        "type": "credit",
+        "title": "Kreditantrag eingereicht",
+        "message": f"Dein Kreditantrag über €{req.amount:.2f} ({term} Monate) wird geprüft. Du erhältst eine Benachrichtigung sobald er bearbeitet wurde.",
+        "read": False,
         "created_at": now.isoformat(),
     })
     
@@ -324,10 +333,324 @@ async def request_credit(req: CreditRequest, request: Request):
     return {
         "ok": True,
         "credit": credit,
-        "message": f"€{req.amount:.2f} Kredit wurde deinem Wallet gutgeschrieben!",
-        "due_date": due_date.strftime("%d.%m.%Y"),
-        "new_balance": round(user.get("balance", 0) + req.amount, 2),
+        "message": f"Kreditantrag über €{req.amount:.2f} eingereicht! Wartet auf Admin-Genehmigung.",
+        "status": "pending",
     }
+
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# ADMIN: Kredit genehmigen / ablehnen
+# ══════════════════════════════════════════════════════════════════════════════
+
+@router.get("/admin/pending")
+async def get_pending_credits(request: Request):
+    """Admin: Get all pending credit applications."""
+    user = await get_current_user(request)
+    if user.get("role") != "admin":
+        raise HTTPException(403, "Nur für Admins")
+    
+    pending = await db.credits.find(
+        {"status": "pending"}, {"_id": 0}
+    ).sort("created_at", -1).to_list(100)
+    
+    active = await db.credits.find(
+        {"status": "active"}, {"_id": 0}
+    ).sort("created_at", -1).to_list(100)
+    
+    all_credits = await db.credits.find(
+        {}, {"_id": 0}
+    ).sort("created_at", -1).to_list(200)
+    
+    stats = {
+        "pending_count": len(pending),
+        "active_count": len(active),
+        "total_pending_amount": sum(c.get("amount", 0) for c in pending),
+        "total_active_debt": sum(c.get("remaining_amount", 0) for c in active),
+    }
+    
+    return {"pending": pending, "active": active, "all": all_credits, "stats": stats}
+
+
+class CreditDecision(BaseModel):
+    credit_id: str
+    action: str  # "approve" or "reject"
+    reason: str = ""
+
+
+@router.post("/admin/decide")
+async def admin_decide_credit(req: CreditDecision, request: Request):
+    """Admin: Approve or reject a credit application."""
+    user = await get_current_user(request)
+    if user.get("role") != "admin":
+        raise HTTPException(403, "Nur für Admins")
+    
+    credit = await db.credits.find_one({"credit_id": req.credit_id})
+    if not credit:
+        raise HTTPException(404, "Kredit nicht gefunden")
+    if credit["status"] != "pending":
+        raise HTTPException(400, f"Kredit ist nicht mehr 'pending', aktuell: {credit['status']}")
+    
+    now = datetime.now(timezone.utc)
+    applicant = await db.users.find_one({"id": credit["user_id"]})
+    if not applicant:
+        # Try by _id string
+        from bson import ObjectId
+        try:
+            applicant = await db.users.find_one({"_id": ObjectId(credit["user_id"])})
+        except Exception:
+            pass
+    
+    if req.action == "approve":
+        # Activate credit + pay out to wallet
+        # Recalculate schedule from TODAY (approval date)
+        term = credit["term_months"]
+        schedule = []
+        remaining = credit["total_repayment"]
+        rate = credit["monthly_rate"]
+        for i in range(term):
+            payment_date = now + timedelta(days=30 * (i + 1))
+            remaining = round(remaining - rate, 2)
+            if remaining < 0:
+                remaining = 0
+            schedule.append({
+                "month": i + 1,
+                "date": payment_date.strftime("%Y-%m-%d"),
+                "amount": rate,
+                "remaining": remaining,
+                "status": "pending",
+            })
+        
+        due_date = now + timedelta(days=30 * term)
+        
+        await db.credits.update_one(
+            {"credit_id": req.credit_id},
+            {"$set": {
+                "status": "active",
+                "approved_at": now.isoformat(),
+                "approved_by": str(user["_id"]),
+                "schedule": schedule,
+                "due_date": due_date.isoformat(),
+                "next_payment_date": schedule[0]["date"],
+                "next_payment_month": 1,
+            }}
+        )
+        
+        # Credit wallet
+        if applicant:
+            await db.users.update_one(
+                {"_id": applicant["_id"]},
+                {"$inc": {"balance": credit["amount"]}}
+            )
+            
+            # Update credit profile
+            await db.credit_profiles.update_one(
+                {"user_id": credit["user_id"]},
+                {"$inc": {"current_debt": credit["amount"]}}
+            )
+            
+            # Transaction record
+            await db.transactions.insert_one({
+                "tx_id": secrets.token_hex(8),
+                "user_id": credit["user_id"],
+                "type": "CREDIT_RECEIVED",
+                "amount": credit["amount"],
+                "description": f"Kredit genehmigt und ausgezahlt (ID: {credit['credit_id'][:8]})",
+                "credit_id": credit["credit_id"],
+                "created_at": now.isoformat(),
+            })
+        
+        # Notify user
+        await db.notifications.insert_one({
+            "id": secrets.token_hex(8),
+            "user_id": credit["user_id"],
+            "type": "credit_approved",
+            "title": "Kredit genehmigt!",
+            "message": f"Dein Kredit über €{credit['amount']:.2f} wurde genehmigt und deinem Wallet gutgeschrieben. Erste Rate: €{rate:.2f} am {schedule[0]['date']}.",
+            "read": False,
+            "created_at": now.isoformat(),
+        })
+        
+        return {
+            "ok": True,
+            "action": "approved",
+            "message": f"Kredit €{credit['amount']:.2f} genehmigt und an {credit.get('user_email','')} ausgezahlt.",
+        }
+    
+    elif req.action == "reject":
+        await db.credits.update_one(
+            {"credit_id": req.credit_id},
+            {"$set": {
+                "status": "rejected",
+                "rejected_at": now.isoformat(),
+                "rejected_by": str(user["_id"]),
+                "rejection_reason": req.reason or "Antrag abgelehnt",
+            }}
+        )
+        
+        # Notify user
+        await db.notifications.insert_one({
+            "id": secrets.token_hex(8),
+            "user_id": credit["user_id"],
+            "type": "credit_rejected",
+            "title": "Kreditantrag abgelehnt",
+            "message": f"Dein Kreditantrag über €{credit['amount']:.2f} wurde leider abgelehnt. Grund: {req.reason or 'Nicht angegeben'}",
+            "read": False,
+            "created_at": now.isoformat(),
+        })
+        
+        return {
+            "ok": True,
+            "action": "rejected",
+            "message": f"Kredit €{credit['amount']:.2f} abgelehnt.",
+        }
+    
+    raise HTTPException(400, "action muss 'approve' oder 'reject' sein")
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# AUTO-PAY: Automatische Kreditraten-Einzug (Background Task)
+# ══════════════════════════════════════════════════════════════════════════════
+
+async def process_auto_credit_payments():
+    """
+    Background task: Automatically deducts monthly credit payments from wallet.
+    Called periodically (every hour). Checks if any installment is due today.
+    """
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    
+    # Find all active credits with auto_pay enabled
+    active_credits = await db.credits.find({
+        "status": "active",
+        "auto_pay": True,
+    }).to_list(500)
+    
+    processed = 0
+    failed = 0
+    
+    for credit in active_credits:
+        schedule = credit.get("schedule", [])
+        next_month = credit.get("next_payment_month", 1)
+        
+        # Find the next unpaid installment
+        for inst in schedule:
+            if inst.get("status") == "paid":
+                continue
+            if inst["date"] <= today:
+                # This installment is due!
+                user_id = credit["user_id"]
+                rate = inst["amount"]
+                
+                # Check wallet balance
+                from bson import ObjectId
+                try:
+                    user = await db.users.find_one({"_id": ObjectId(user_id)})
+                except Exception:
+                    user = await db.users.find_one({"id": user_id})
+                
+                if not user:
+                    continue
+                
+                balance = user.get("balance", 0)
+                
+                if balance >= rate:
+                    # AUTO-PAY: Deduct from wallet
+                    await db.users.update_one(
+                        {"_id": user["_id"]},
+                        {"$inc": {"balance": -rate}}
+                    )
+                    
+                    # Mark installment as paid
+                    inst["status"] = "paid"
+                    inst["paid_at"] = datetime.now(timezone.utc).isoformat()
+                    
+                    # Update credit
+                    new_remaining = round(credit.get("remaining_amount", 0) - rate, 2)
+                    is_fully_paid = new_remaining <= 0.01
+                    
+                    update = {
+                        "remaining_amount": max(0, new_remaining),
+                        "schedule": schedule,
+                        "next_payment_month": inst["month"] + 1,
+                    }
+                    
+                    if is_fully_paid:
+                        update["status"] = "paid"
+                        update["paid_at"] = datetime.now(timezone.utc).isoformat()
+                    else:
+                        # Find next unpaid date
+                        next_unpaid = next((s for s in schedule if s.get("status") != "paid"), None)
+                        if next_unpaid:
+                            update["next_payment_date"] = next_unpaid["date"]
+                    
+                    await db.credits.update_one(
+                        {"credit_id": credit["credit_id"]},
+                        {"$set": update, "$push": {"payments": {
+                            "amount": rate,
+                            "date": datetime.now(timezone.utc).isoformat(),
+                            "remaining_after": max(0, new_remaining),
+                            "type": "auto_pay",
+                        }}}
+                    )
+                    
+                    # Transaction
+                    await db.transactions.insert_one({
+                        "tx_id": secrets.token_hex(8),
+                        "user_id": user_id,
+                        "type": "CREDIT_PAYMENT",
+                        "amount": rate,
+                        "description": f"Kreditrate Monat {inst['month']} (Auto-Pay) - ID: {credit['credit_id'][:8]}",
+                        "credit_id": credit["credit_id"],
+                        "created_at": datetime.now(timezone.utc).isoformat(),
+                    })
+                    
+                    # Notify: payment successful
+                    msg = f"Kreditrate €{rate:.2f} (Monat {inst['month']}/{credit['term_months']}) wurde automatisch abgebucht."
+                    if is_fully_paid:
+                        msg += " Dein Kredit ist vollständig bezahlt!"
+                    else:
+                        msg += f" Restschuld: €{max(0,new_remaining):.2f}"
+                    
+                    await db.notifications.insert_one({
+                        "id": secrets.token_hex(8),
+                        "user_id": user_id,
+                        "type": "credit_payment",
+                        "title": "Kreditrate abgebucht",
+                        "message": msg,
+                        "read": False,
+                        "created_at": datetime.now(timezone.utc).isoformat(),
+                    })
+                    
+                    # Update profile
+                    profile_update = {"$inc": {"total_repaid": rate}}
+                    if is_fully_paid:
+                        profile_update["$inc"]["current_debt"] = -credit["amount"]
+                    await db.credit_profiles.update_one(
+                        {"user_id": user_id}, profile_update
+                    )
+                    
+                    processed += 1
+                    
+                else:
+                    # NOT ENOUGH BALANCE — notify user to top up
+                    shortfall = round(rate - balance, 2)
+                    
+                    await db.notifications.insert_one({
+                        "id": secrets.token_hex(8),
+                        "user_id": user_id,
+                        "type": "credit_payment_failed",
+                        "title": "Kreditrate konnte nicht abgebucht werden!",
+                        "message": f"Deine Kreditrate über €{rate:.2f} konnte nicht abgebucht werden. Dir fehlen €{shortfall:.2f}. Bitte lade dein Wallet auf!",
+                        "read": False,
+                        "created_at": datetime.now(timezone.utc).isoformat(),
+                        "action_url": "/wallet",
+                    })
+                    
+                    failed += 1
+                
+                break  # Only process one installment per credit per cycle
+    
+    return {"processed": processed, "failed": failed}
 
 
 @router.post("/repay")

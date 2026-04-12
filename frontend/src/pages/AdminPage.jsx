@@ -23,6 +23,7 @@ const slide = { duration: 0.3, ease: [0.32, 0.72, 0, 1] };
 async function api(path, opts = {}) {
   const r = await fetch(`${API}${path}`, { credentials: "include", headers: { "Content-Type": "application/json" }, ...opts });
   const d = await r.json().catch(() => ({}));
+  if (r.status === 401) throw new Error("Sitzung abgelaufen. Bitte neu anmelden.");
   if (!r.ok) throw new Error(d.detail || "Request failed");
   return d;
 }
@@ -329,6 +330,8 @@ const tabs = [
   { id: "auctions", key: "admin.auctions_tab", icon: Gavel },
   { id: "loyalty", key: "admin.loyalty", icon: Trophy },
   { id: "scooters", key: "Scooter-Flotte", icon: Zap },
+  { id: "credits", key: "Kreditanträge", icon: CreditCard },
+  { id: "gutscheine", key: "Gutscheine", icon: Ticket },
 ];
 
 export const AdminPage = ({ onNavigate }) => {
@@ -471,11 +474,15 @@ export const AdminPage = ({ onNavigate }) => {
         setScooterFleet(d.scooters || []);
         setScooterStats(d.stats || {});
       }
+      if (t === "credits") {
+        onNavigate("/admin/credits");
+        return;
+      }
     } catch (e) { setError(e); }
     setLoading(false);
   }, [search, payoutFilter, roleFilter, verFilter]);
 
-  useEffect(() => { load(tab); }, [tab, load]);
+  useEffect(() => { setError(null); load(tab); }, [tab, load]);
 
   const handlePayoutAction = async (ref, action) => {
     setActionLoading(ref);

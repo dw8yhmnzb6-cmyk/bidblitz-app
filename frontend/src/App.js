@@ -60,6 +60,7 @@ import GiftCardsPage from "./pages/GiftCardsPage";
 import AIAssistantPage from "./pages/AIAssistantPage";
 import CryptoWalletPage from "./pages/CryptoWalletPage";
 import BudgetPlannerPage from "./pages/BudgetPlannerPage";
+import AdminCreditPage from "./pages/AdminCreditPage";
 
 // Car Rental Module
 import {
@@ -303,6 +304,8 @@ function AppContent() {
         return isGuest ? <HomePage {...homeProps} /> : <CryptoWalletPage onBack={() => handleNavigate("/more")} />;
       case "/budget":
         return isGuest ? <HomePage {...homeProps} /> : <BudgetPlannerPage onBack={() => handleNavigate("/more")} />;
+      case "/admin/credits":
+        return isGuest ? <HomePage {...homeProps} /> : <AdminCreditPage onBack={() => handleNavigate("/admin")} />;
       case "/gaming":
         return isGuest ? <HomePage {...homeProps} /> : <GamingPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
       

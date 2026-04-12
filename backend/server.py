@@ -266,6 +266,10 @@ from routes.budget import router as budget_router
 app.include_router(budget_router)
 
 
+from routes.admin_grants import router as admin_grants_router
+app.include_router(admin_grants_router)
+
+
 # Static file serving for uploads
 from fastapi.staticfiles import StaticFiles
 UPLOAD_DIR = Path(__file__).parent / "uploads"
@@ -395,6 +399,24 @@ def start_subscription_renewal_loop():
     _asyncio_loop.get_event_loop().create_task(_subscription_loop())
 
 
+def start_credit_autopay_loop():
+    """Start background loop that processes automatic credit payments every hour."""
+    from routes.credit_system import process_auto_credit_payments
+
+    async def _credit_loop():
+        while True:
+            try:
+                await _asyncio_loop.sleep(3600)  # Every hour
+                result = await process_auto_credit_payments()
+                if result.get("processed", 0) > 0 or result.get("failed", 0) > 0:
+                    logger.info(f"Credit auto-pay: {result['processed']} paid, {result['failed']} failed")
+            except Exception as e:
+                logger.error(f"Credit auto-pay error: {e}")
+                await _asyncio_loop.sleep(60)
+
+    _asyncio_loop.get_event_loop().create_task(_credit_loop())
+
+
 # ── Startup ──
 @app.on_event("startup")
 async def startup():
@@ -408,6 +430,7 @@ async def startup():
     start_auto_reward_loop()
     # Start subscription renewal background loop
     start_subscription_renewal_loop()
+    start_credit_autopay_loop()
     logger.info(f"BidBlitz V2 API started [env={APP_ENV}] — Bot loop + Auto-rewards + Subscriptions active (NO DEMO DATA)")
 
 
