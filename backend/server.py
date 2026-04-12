@@ -270,6 +270,19 @@ from routes.admin_grants import router as admin_grants_router
 app.include_router(admin_grants_router)
 
 
+from routes.notification_center import router as notification_center_router
+app.include_router(notification_center_router)
+
+from routes.contacts import router as contacts_router
+app.include_router(contacts_router)
+
+from routes.user_stats import router as user_stats_router
+app.include_router(user_stats_router)
+
+from routes.currency import router as currency_router
+app.include_router(currency_router)
+
+
 # Static file serving for uploads
 from fastapi.staticfiles import StaticFiles
 UPLOAD_DIR = Path(__file__).parent / "uploads"

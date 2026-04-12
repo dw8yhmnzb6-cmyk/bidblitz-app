@@ -61,6 +61,7 @@ import AIAssistantPage from "./pages/AIAssistantPage";
 import CryptoWalletPage from "./pages/CryptoWalletPage";
 import BudgetPlannerPage from "./pages/BudgetPlannerPage";
 import AdminCreditPage from "./pages/AdminCreditPage";
+import AdminPanelFullPage from "./pages/AdminPanelFullPage";
 
 // Car Rental Module
 import {
@@ -231,6 +232,10 @@ function AppContent() {
       case "/nft":
         return <NFTGeneratorPage onNavigate={handleNavigate} />;
       case "/admin":
+        return user.role === "admin"
+          ? <AdminPanelFullPage onNavigate={handleNavigate} onBack={() => handleNavigate("/more")} />
+          : <HomePage {...homeProps} />;
+      case "/admin/old":
         return user.role === "admin"
           ? <AdminPage onNavigate={handleNavigate} />
           : <HomePage {...homeProps} />;
