@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Car, Calendar, TrendingUp, Users, Euro, Clock,
   ChevronRight, Loader2, Plus, AlertCircle, Check, Settings,
-  FileText, CreditCard, BarChart3, Package, Wrench
+  FileText, CreditCard, BarChart3, Package, Wrench, Shield
 } from "lucide-react";
 import { getVendorDashboard, getVendorProfile, registerVendor } from "../api";
 
@@ -474,6 +474,7 @@ export default function VendorCarRentalDashboardPage({ onBack, onNavigate }) {
             { icon: Wrench, label: "Schadensberichte", path: "/car-rental/vendor/damages" },
             { icon: BarChart3, label: "Berichte & Analysen", path: "/car-rental/vendor/reports" },
             { icon: CreditCard, label: "Auszahlungen", path: "/car-rental/vendor/payouts" },
+            { icon: Shield, label: "Mitarbeiter", path: "/car-rental/vendor/staff" },
           ].map(item => (
             <motion.button
               key={item.path}

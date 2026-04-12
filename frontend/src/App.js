@@ -325,7 +325,7 @@ function AppContent() {
       case "/car-rental/vendor/reports":
         return isGuest ? <HomePage {...homeProps} /> : <VendorReportsPage onBack={() => handleNavigate("/car-rental/vendor")} />;
       case "/car-rental/admin":
-        return isGuest ? <HomePage {...homeProps} /> : <AdminCarRentalPage onBack={() => handleNavigate("/admin")} />;
+        return isGuest ? <HomePage {...homeProps} /> : <AdminCarRentalPage onBack={() => handleNavigate("/admin")} onNavigate={handleNavigate} />;
       case "/car-rental/admin/disputes":
         return isGuest ? <HomePage {...homeProps} /> : <AdminDisputesPage onBack={() => handleNavigate("/car-rental/admin")} />;
       

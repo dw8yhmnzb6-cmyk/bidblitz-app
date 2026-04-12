@@ -8,11 +8,12 @@ import { motion } from "framer-motion";
 import {
   ArrowLeft, Car, Users, Calendar, Euro, Loader2, Check, X,
   ChevronRight, AlertCircle, CreditCard, Shield, TrendingUp,
-  CheckCircle, XCircle, Clock
+  CheckCircle, XCircle, Clock, AlertTriangle, Settings
 } from "lucide-react";
 import {
   getAdminOverview, getAdminVendors, adminVendorAction, adminSetVendorCommission,
-  getAdminBookings, getAdminPayouts, adminProcessPayout
+  getAdminBookings, getAdminPayouts, adminProcessPayout,
+  getAdminSettings, updateAdminSettings
 } from "../api";
 
 const VENDOR_STATUS = {
@@ -27,9 +28,10 @@ const TABS = [
   { id: "vendors", label: "Vermieter" },
   { id: "bookings", label: "Buchungen" },
   { id: "payouts", label: "Auszahlungen" },
+  { id: "settings", label: "Einstellungen" },
 ];
 
-export default function AdminCarRentalPage({ onBack }) {
+export default function AdminCarRentalPage({ onBack, onNavigate }) {
   const [activeTab, setActiveTab] = useState("overview");
   const [overview, setOverview] = useState(null);
   const [vendors, setVendors] = useState([]);
@@ -37,6 +39,8 @@ export default function AdminCarRentalPage({ onBack }) {
   const [payouts, setPayouts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(null);
+  const [settings, setSettings] = useState(null);
+  const [settingsSaving, setSettingsSaving] = useState(false);
 
   useEffect(() => { loadTab(); }, [activeTab]);
 
@@ -55,6 +59,9 @@ export default function AdminCarRentalPage({ onBack }) {
       } else if (activeTab === "payouts") {
         const data = await getAdminPayouts();
         setPayouts(data.payouts || []);
+      } else if (activeTab === "settings") {
+        const data = await getAdminSettings();
+        setSettings(data.settings || {});
       }
     } catch (err) { console.error(err); }
     setLoading(false);
@@ -90,6 +97,15 @@ export default function AdminCarRentalPage({ onBack }) {
       loadTab();
     } catch (err) { alert(err.message); }
     setActionLoading(null);
+  };
+
+  const handleSaveSettings = async () => {
+    setSettingsSaving(true);
+    try {
+      await updateAdminSettings(settings);
+      alert("Einstellungen gespeichert!");
+    } catch (err) { alert(err.message); }
+    setSettingsSaving(false);
   };
 
   const fmtDate = (d) => d ? new Date(d).toLocaleDateString("de-DE") : "";
@@ -156,6 +172,30 @@ export default function AdminCarRentalPage({ onBack }) {
                 <span className="text-sm">Offene Auszahlungen</span>
               </div>
               <span className="text-lg font-bold text-[#FFB800]">{overview.pending_payouts || 0}</span>
+            </div>
+
+            {/* Quick navigation */}
+            <div className="space-y-2">
+              <motion.button whileTap={{ scale: 0.98 }}
+                onClick={() => onNavigate?.("/car-rental/admin/disputes")}
+                className="w-full flex items-center justify-between p-4 bg-white/[0.02] rounded-xl border border-white/5"
+                data-testid="admin-nav-disputes">
+                <div className="flex items-center gap-3">
+                  <AlertTriangle size={18} className="text-[#FFB800]" />
+                  <span className="text-sm">Streitfälle verwalten</span>
+                </div>
+                <ChevronRight size={18} className="text-[#666]" />
+              </motion.button>
+              <motion.button whileTap={{ scale: 0.98 }}
+                onClick={() => setActiveTab("settings")}
+                className="w-full flex items-center justify-between p-4 bg-white/[0.02] rounded-xl border border-white/5"
+                data-testid="admin-nav-settings">
+                <div className="flex items-center gap-3">
+                  <Settings size={18} className="text-[#A855F7]" />
+                  <span className="text-sm">Plattform-Einstellungen</span>
+                </div>
+                <ChevronRight size={18} className="text-[#666]" />
+              </motion.button>
             </div>
           </div>
         ) : activeTab === "vendors" ? (
@@ -283,6 +323,48 @@ export default function AdminCarRentalPage({ onBack }) {
                 )}
               </motion.div>
             ))}
+          </div>
+        ) : activeTab === "settings" && settings ? (
+          <div className="space-y-4">
+            <h2 className="text-lg font-bold">Plattform-Einstellungen</h2>
+            {[
+              { key: "default_commission", label: "Standard-Provision (%)", type: "number" },
+              { key: "min_payout_amount", label: "Min. Auszahlungsbetrag (€)", type: "number" },
+              { key: "max_booking_days", label: "Max. Buchungstage", type: "number" },
+              { key: "payout_schedule", label: "Auszahlungs-Rhythmus", type: "select", options: ["weekly", "biweekly", "monthly"] },
+            ].map(field => (
+              <div key={field.key} className="bg-[#111118] rounded-xl p-4 border border-white/5">
+                <label className="text-xs text-[#666] mb-2 block">{field.label}</label>
+                {field.type === "select" ? (
+                  <select value={settings[field.key] || ""}
+                    onChange={e => setSettings(s => ({ ...s, [field.key]: e.target.value }))}
+                    className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-sm text-white outline-none"
+                    data-testid={`settings-${field.key}`}>
+                    {field.options.map(o => <option key={o} value={o}>{o === "weekly" ? "Wöchentlich" : o === "biweekly" ? "Alle 2 Wochen" : "Monatlich"}</option>)}
+                  </select>
+                ) : (
+                  <input type={field.type} value={settings[field.key] ?? ""}
+                    onChange={e => setSettings(s => ({ ...s, [field.key]: parseFloat(e.target.value) || 0 }))}
+                    className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-sm outline-none"
+                    data-testid={`settings-${field.key}`} />
+                )}
+              </div>
+            ))}
+            <div className="bg-[#111118] rounded-xl p-4 border border-white/5 flex items-center justify-between">
+              <label className="text-sm">Vermieter-Verifizierung erforderlich</label>
+              <motion.button whileTap={{ scale: 0.9 }}
+                onClick={() => setSettings(s => ({ ...s, require_vendor_verification: !s.require_vendor_verification }))}
+                className={`w-12 h-6 rounded-full flex items-center transition-colors ${settings.require_vendor_verification ? "bg-[#00C2FF] justify-end" : "bg-white/10 justify-start"}`}
+                data-testid="settings-require_vendor_verification">
+                <div className="w-5 h-5 rounded-full bg-white mx-0.5" />
+              </motion.button>
+            </div>
+            <motion.button whileTap={{ scale: 0.97 }} onClick={handleSaveSettings}
+              disabled={settingsSaving}
+              className="w-full py-4 rounded-xl bg-[#00C2FF] text-black font-bold flex items-center justify-center gap-2 disabled:opacity-50"
+              data-testid="save-settings-btn">
+              {settingsSaving ? <Loader2 size={20} className="animate-spin" /> : <><Check size={20} /> Einstellungen speichern</>}
+            </motion.button>
           </div>
         ) : null}
       </div>
