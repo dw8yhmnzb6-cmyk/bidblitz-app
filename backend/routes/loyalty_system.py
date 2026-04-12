@@ -84,21 +84,31 @@ LEVEL_ORDER = ["bronze", "silver", "gold", "platinum", "vip"]
 # ══════════════════════════════════════════════════════════════════════════════
 
 DEFAULT_COIN_RATES = {
-    "taxi_payment": 2,      # 2 coins per €1
-    "scooter_payment": 2,   # 2 coins per €1
-    "food_payment": 3,      # 3 coins per €1
-    "merchant_payment": 1,  # 1 coin per €1
+    "payment": 2,           # 2 coins per €1 (POS/wallet payments)
+    "transfer": 1,          # 1 coin per €1 (P2P transfers)
+    "topup": 1,             # 1 coin per €1 (wallet top-ups)
+    "car_rental": 3,        # 3 coins per €1 (car bookings)
+    "marketplace": 2,       # 2 coins per €1 (marketplace purchases)
+    "taxi_payment": 2,
+    "scooter_payment": 2,
+    "food_payment": 3,
+    "merchant_payment": 1,
     "marketplace_payment": 2,
-    "auction_payment": 5,   # Higher for auctions
+    "auction_payment": 5,
     "mining_payment": 3,
     "subscription_payment": 5,
 }
 
 DEFAULT_CASHBACK_RATES = {
-    "taxi_payment": 0.02,       # 2%
-    "scooter_payment": 0.02,    # 2%
-    "food_payment": 0.03,       # 3%
-    "merchant_payment": 0.01,   # 1%
+    "payment": 0.01,            # 1%
+    "transfer": 0.0,            # 0%
+    "topup": 0.005,             # 0.5%
+    "car_rental": 0.02,         # 2%
+    "marketplace": 0.02,        # 2%
+    "taxi_payment": 0.02,
+    "scooter_payment": 0.02,
+    "food_payment": 0.03,
+    "merchant_payment": 0.01,
     "marketplace_payment": 0.02,
     "auction_payment": 0.01,
     "mining_payment": 0.01,

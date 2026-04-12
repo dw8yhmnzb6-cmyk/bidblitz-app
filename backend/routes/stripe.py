@@ -780,6 +780,16 @@ async def stripe_webhook(request: Request):
             
             logger.info(f"Webhook: Successfully processed - user={user_id}, amount={amount}, ref={ref}")
             
+            # ── Loyalty / Coins reward for topup ──
+            try:
+                from routes.loyalty_system import process_loyalty_rewards
+                await process_loyalty_rewards(
+                    user_id=user_id, source_type="topup", source_id=ref,
+                    amount=amount, tx_id=ref,
+                )
+            except Exception as le:
+                logger.warning(f"Loyalty reward failed for topup: {le}")
+            
             return {
                 "received": True,
                 "processed": True,

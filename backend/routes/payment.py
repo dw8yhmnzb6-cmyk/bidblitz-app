@@ -197,6 +197,17 @@ async def pay(req: PaymentRequest, request: Request):
     except Exception:
         pass
 
+    # ── Loyalty / Coins reward ──
+    loyalty_result = None
+    try:
+        from routes.loyalty_system import process_loyalty_rewards
+        loyalty_result = await process_loyalty_rewards(
+            user_id=user_id, source_type="payment", source_id=ref,
+            amount=req.amount, tx_id=txn["id"],
+        )
+    except Exception:
+        pass
+
     return {
         "success": True,
         "new_balance": round(updated_user["balance"], 2),
@@ -322,6 +333,16 @@ async def send_money(req: SendRequest, request: Request):
             await apply_promotion(user_id, promo_applied["name"], req.amount)
         except Exception:
             pass
+
+    # ── Loyalty / Coins reward for transfers ──
+    try:
+        from routes.loyalty_system import process_loyalty_rewards
+        await process_loyalty_rewards(
+            user_id=user_id, source_type="transfer", source_id=ref,
+            amount=req.amount, tx_id=sender_txn["id"],
+        )
+    except Exception:
+        pass
 
     return {
         "success": True,

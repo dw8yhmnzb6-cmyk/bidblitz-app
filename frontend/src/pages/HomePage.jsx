@@ -278,11 +278,12 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
   const handleServiceClick = (featureId) => {
     tracker.featureClick(featureId);
     if (isGuest) { onRegister(); return; }
-    if (featureId === "wallet") { onNavigate("/wallet"); }
-    else if (featureId === "auctions") { onNavigate("/auctions"); }
-    else if (featureId === "mining") { onNavigate("/mining"); }
-    else if (featureId === "merchant") { onNavigate("/merchant-landing"); }
-    else { toast(t("home.coming_soon") || "Coming Soon", { description: t("home.coming_soon_hint") || "This feature is coming soon!", duration: 2000 }); }
+    const routeMap = {
+      wallet: "/wallet", auctions: "/auctions", mining: "/mining",
+      merchant: "/merchant-landing", nfc: "/nfc", vip: "/vip",
+      referral: "/referral", marketplace: "/marketplace", rewards: "/rewards",
+    };
+    if (routeMap[featureId]) { onNavigate(routeMap[featureId]); }
   };
 
   const availableFeatures = [
@@ -290,8 +291,6 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
     { id: "auctions", icon: Gavel, title: t("home.f_auctions") || "Auctions", desc: t("home.f_auctions_d") || "Bid & win deals", color: "#A855F7", route: "/auctions" },
     { id: "mining", icon: Cpu, title: t("home.f_mining") || "Mining", desc: t("home.f_mining_d") || "Mine BLZ tokens", color: "#00E89D", route: "/mining" },
     { id: "merchant", icon: Store, title: t("home.f_merchant") || "Merchant", desc: t("home.f_merchant_d") || "POS & payments", color: "#FFB800", route: "/merchant-landing" },
-    { id: "taxi", icon: Car, title: t("home.f_taxi") || "Taxi", desc: t("home.f_taxi_d") || "Book a ride", color: "#FFB800", route: "/taxi" },
-    { id: "food", icon: UtensilsCrossed, title: t("home.f_food") || "Food", desc: t("home.f_food_d") || "Order delivery", color: "#FF6B6B", route: "/food" },
   ];
 
   // ALL ACTIVE - No more "Coming Soon"

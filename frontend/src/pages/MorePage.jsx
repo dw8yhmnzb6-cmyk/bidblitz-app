@@ -816,9 +816,6 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
     { id: "car-rental", icon: Car, label: t("more.car_rental"), desc: t("more.car_rental_desc"), color: "#00C2FF", action: () => onNavigate("/car-rental") },
     { id: "car-rental-bookings", icon: Calendar, label: t("more.my_car_bookings"), desc: t("more.my_car_bookings_desc"), color: "#00C2FF", action: gatedAction(() => onNavigate("/car-rental/my-bookings")) },
     { id: "car-rental-vendor", icon: Car, label: t("more.vendor_dashboard"), desc: t("more.vendor_dashboard_desc"), color: "#00D26A", action: gatedAction(() => onNavigate("/car-rental/vendor")) },
-    { id: "taxi", icon: Car, label: t("taxi.title") || "Taxi", desc: t("taxi.menu_desc") || "Taxi buchen", color: "#FFB800", action: gatedAction(() => onNavigate("/taxi")) },
-    { id: "scooter", icon: Zap, label: t("scooter.title") || "E-Scooter", desc: t("scooter.menu_desc") || "Scooter mieten", color: "#00D26A", action: gatedAction(() => onNavigate("/scooter")) },
-    { id: "food", icon: ShoppingBag, label: t("food.title") || "Food Delivery", desc: t("food.menu_desc") || "Essen bestellen", color: "#FF6B6B", action: gatedAction(() => onNavigate("/food")) },
   ];
 
   const appMenu = [
@@ -828,13 +825,13 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
 
   const supportMenu = [
     { id: "help", icon: HelpCircle, label: t("more.help"), desc: t("more.help_desc"), color: "#FF6B6B", action: gatedAction(() => setSubPage("support")) },
-    { id: "support-chat", icon: MessageCircle, label: "Support Chat", desc: "Direkter Chat mit Support", color: "#00C2FF", action: gatedAction(() => onNavigate("/support-chat")) },
+    { id: "support-chat", icon: MessageCircle, label: t("more.support_chat"), desc: t("more.support_chat_desc"), color: "#00C2FF", action: gatedAction(() => onNavigate("/support-chat")) },
   ];
 
   const adminMenu = user.role === "admin" ? [
-    { id: "admin-dashboard", icon: LayoutDashboard, label: "Admin Dashboard", desc: "Platform Management", color: "#FF6B6B", action: () => onNavigate("/admin") },
-    { id: "admin-car-rental", icon: Car, label: "Autovermietung Admin", desc: "Vermieter & Buchungen", color: "#00C2FF", action: () => onNavigate("/car-rental/admin") },
-    { id: "admin-support", icon: MessageCircle, label: "Support Tickets", desc: "Kundenanfragen bearbeiten", color: "#A855F7", action: () => onNavigate("/admin/support") },
+    { id: "admin-dashboard", icon: LayoutDashboard, label: t("more.admin_dashboard"), desc: t("more.admin_desc"), color: "#FF6B6B", action: () => onNavigate("/admin") },
+    { id: "admin-car-rental", icon: Car, label: t("more.admin_car_rental"), desc: t("more.admin_car_rental_desc"), color: "#00C2FF", action: () => onNavigate("/car-rental/admin") },
+    { id: "admin-support", icon: MessageCircle, label: t("more.admin_support"), desc: t("more.admin_support_desc"), color: "#A855F7", action: () => onNavigate("/admin/support") },
   ] : [];
 
   const renderGroup = (title, items, delay) => (
@@ -996,7 +993,7 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
             onClick={user.logout}
           >
             <LogOut size={15} strokeWidth={1.5} className="text-[#FF4757]" />
-            <span className="text-[#FF4757]">Log Out</span>
+            <span className="text-[#FF4757]">{t("more.logout")}</span>
           </motion.button>
         )}
 

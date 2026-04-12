@@ -526,6 +526,16 @@ async def buy_item(req: BuyRequest, request: Request):
     
     logger.info(f"Marketplace sale: {order_id} - {listing['title'][:30]} - €{total_price:.2f}")
     
+    # ── Loyalty / Coins reward for marketplace purchase ──
+    try:
+        from routes.loyalty_system import process_loyalty_rewards
+        await process_loyalty_rewards(
+            user_id=buyer_id, source_type="marketplace", source_id=order_id,
+            amount=total_price, tx_id=debit_result.transaction_id or order_id,
+        )
+    except Exception:
+        pass
+    
     return {
         "ok": True,
         "order": order,

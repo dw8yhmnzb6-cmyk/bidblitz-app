@@ -146,8 +146,7 @@ class WalletService {
         id: PaymentMethod.BANK_TRANSFER,
         label: 'Bank Transfer',
         icon: 'building',
-        enabled: false, // Coming soon
-        comingSoon: true,
+        enabled: false,
       },
     ];
   }

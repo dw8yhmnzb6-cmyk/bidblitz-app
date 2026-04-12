@@ -178,25 +178,9 @@ async def get_nearby_scooters(lat: float = 52.52, lng: float = 13.405, radius: f
         {"_id": 0, "device_id": 0}
     ).to_list(100)
     
-    # If no scooters in DB, generate demo scooters around the requested location
+    # Production: return only real scooters from DB
     if len(scooters) == 0:
-        import random
-        demo_scooters = []
-        for i in range(8):
-            offset_lat = (random.random() - 0.5) * 0.02  # ~1km radius
-            offset_lng = (random.random() - 0.5) * 0.02
-            demo_scooters.append({
-                "scooter_id": f"BLZ-{random.randint(1000, 9999)}",
-                "model": random.choice(["Ninebot Max G30", "Xiaomi Pro 2", "Segway E45"]),
-                "battery": random.randint(40, 95),
-                "battery_percent": random.randint(40, 95),
-                "range_km": random.randint(15, 45),
-                "status": "available",
-                "lat": lat + offset_lat,
-                "lng": lng + offset_lng,
-                "location": {"lat": lat + offset_lat, "lng": lng + offset_lng},
-            })
-        scooters = demo_scooters
+        return {"scooters": [], "total": 0, "message": "Keine E-Scooter in deiner Nähe verfügbar"}
     
     nearby = []
     for s in scooters:

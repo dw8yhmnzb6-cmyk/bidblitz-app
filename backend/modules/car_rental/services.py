@@ -388,6 +388,16 @@ class BookingService:
             booking["vendor_id"], "pending_payout", booking["vendor_share"]
         )
         
+        # ── Loyalty / Coins reward for car rental booking ──
+        try:
+            from routes.loyalty_system import process_loyalty_rewards
+            await process_loyalty_rewards(
+                user_id=customer_id, source_type="car_rental", source_id=booking_id,
+                amount=booking["total_amount"], tx_id=result.transaction_id or booking_id,
+            )
+        except Exception:
+            pass
+        
         return True, None
     
     @classmethod
