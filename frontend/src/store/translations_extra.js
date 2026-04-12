@@ -114,6 +114,18 @@ const extra = {
     "cr.dispute_msg": "Admin message...", "cr.filed_by": "Filed by",
     "cr.messages": "messages",
 
+    // MorePage Menu Items
+    "more.credit_score": "Credit Score", "more.credit_score_desc": "Your score & credit limit",
+    "more.gaming": "Game Center", "more.gaming_desc": "Play & win real EUR!",
+    "more.car_rental": "Car Rental", "more.car_rental_desc": "Rent a car",
+    "more.my_car_bookings": "My Bookings", "more.my_car_bookings_desc": "Manage car bookings",
+    "more.vendor_dashboard": "Vendor Dashboard", "more.vendor_dashboard_desc": "Cars & Bookings",
+    "more.support_chat": "Support Chat", "more.support_chat_desc": "Direct chat with support",
+    "more.admin_dashboard": "Admin Dashboard", "more.admin_desc": "Platform Management",
+    "more.admin_car_rental": "Car Rental Admin", "more.admin_car_rental_desc": "Vendors & Bookings",
+    "more.admin_support": "Support Tickets", "more.admin_support_desc": "Handle customer requests",
+    "more.logout": "Log Out",
+
     // Premium Finance
     "pf.split_title": "Split Bill", "pf.split_desc": "Split expenses with friends",
     "pf.create_split": "Create Split", "pf.amount": "Amount (€)",
@@ -268,6 +280,17 @@ const extra = {
     "pf.code": "Code", "pf.purchased": "Gekauft",
     "pf.bills_title": "Rechnungen", "pf.bills_desc": "Strom, Gas, eSIM bezahlen",
     "pf.credit_score": "Kredit Score",
+
+    "more.credit_score": "Kredit Score", "more.credit_score_desc": "Dein Score & Kreditrahmen",
+    "more.gaming": "Game Center", "more.gaming_desc": "Spiele & gewinne echte EUR!",
+    "more.car_rental": "Mietwagen", "more.car_rental_desc": "Auto mieten",
+    "more.my_car_bookings": "Meine Buchungen", "more.my_car_bookings_desc": "Autobuchungen verwalten",
+    "more.vendor_dashboard": "Vermieter Dashboard", "more.vendor_dashboard_desc": "Fahrzeuge & Buchungen",
+    "more.support_chat": "Support Chat", "more.support_chat_desc": "Direkter Chat mit Support",
+    "more.admin_dashboard": "Admin Dashboard", "more.admin_desc": "Plattform-Verwaltung",
+    "more.admin_car_rental": "Autovermietung Admin", "more.admin_car_rental_desc": "Vermieter & Buchungen",
+    "more.admin_support": "Support Tickets", "more.admin_support_desc": "Kundenanfragen bearbeiten",
+    "more.logout": "Abmelden",
   },
 
   tr: {
@@ -319,6 +342,17 @@ const extra = {
     "pf.split_title": "Fatura Böl", "pf.virtual_cards": "Sanal Kartlar",
     "pf.savings_title": "Tasarruf Hedefleri", "pf.bnpl_title": "Sonra Öde",
     "pf.gift_cards": "Hediye Kartları", "pf.bills_title": "Faturalar",
+
+    "more.credit_score": "Kredi Puanı", "more.credit_score_desc": "Puanınız & kredi limitiniz",
+    "more.gaming": "Oyun Merkezi", "more.gaming_desc": "Oyna ve gerçek EUR kazan!",
+    "more.car_rental": "Araç Kiralama", "more.car_rental_desc": "Araç kirala",
+    "more.my_car_bookings": "Rezervasyonlarım", "more.my_car_bookings_desc": "Araç rezervasyonlarını yönet",
+    "more.vendor_dashboard": "Kiralama Paneli", "more.vendor_dashboard_desc": "Araçlar & Rezervasyonlar",
+    "more.support_chat": "Destek Sohbet", "more.support_chat_desc": "Destekle doğrudan sohbet",
+    "more.admin_dashboard": "Admin Paneli", "more.admin_desc": "Platform Yönetimi",
+    "more.admin_car_rental": "Araç Kiralama Admin", "more.admin_car_rental_desc": "Kiracılar & Rezervasyonlar",
+    "more.admin_support": "Destek Talepleri", "more.admin_support_desc": "Müşteri taleplerini yönet",
+    "more.logout": "Çıkış Yap",
   },
 
   sq: {
@@ -335,6 +369,11 @@ const extra = {
     "cr.admin_title": "Admin Qiramarrjes", "cr.manage_disputes": "Menaxho Konfliktet",
     "pf.split_title": "Ndaj Faturën", "pf.virtual_cards": "Karta Virtuale",
     "pf.savings_title": "Synimet e Kursimit", "pf.gift_cards": "Karta Dhuratë",
+    "more.credit_score": "Pikët e Kredisë", "more.gaming": "Qendra e Lojërave", "more.gaming_desc": "Luaj dhe fito EUR!",
+    "more.car_rental": "Qira Makinash", "more.car_rental_desc": "Merr me qira makinë",
+    "more.my_car_bookings": "Rezervimet e Mia", "more.vendor_dashboard": "Paneli i Qiradhënësit",
+    "more.support_chat": "Chat Mbështetës", "more.admin_dashboard": "Paneli Admin",
+    "more.logout": "Dil",
   },
 
   fr: {
@@ -363,6 +402,11 @@ const extra = {
     "pf.split_title": "Partager la Note", "pf.virtual_cards": "Cartes Virtuelles",
     "pf.savings_title": "Objectifs d'Épargne", "pf.bnpl_title": "Payer Plus Tard",
     "pf.gift_cards": "Cartes Cadeaux", "pf.bills_title": "Factures",
+    "more.credit_score": "Score de Crédit", "more.gaming": "Centre de Jeux", "more.gaming_desc": "Jouez et gagnez des EUR !",
+    "more.car_rental": "Location de Voiture", "more.car_rental_desc": "Louez une voiture",
+    "more.my_car_bookings": "Mes Réservations", "more.vendor_dashboard": "Tableau de Bord Loueur",
+    "more.support_chat": "Chat Support", "more.admin_dashboard": "Admin",
+    "more.logout": "Déconnexion",
   },
 
   es: {
@@ -380,6 +424,11 @@ const extra = {
     "cr.admin_title": "Admin Alquiler", "cr.manage_disputes": "Gestionar Disputas",
     "pf.split_title": "Dividir Cuenta", "pf.virtual_cards": "Tarjetas Virtuales",
     "pf.savings_title": "Metas de Ahorro", "pf.gift_cards": "Tarjetas Regalo",
+    "more.credit_score": "Puntaje Crediticio", "more.gaming": "Centro de Juegos", "more.gaming_desc": "¡Juega y gana EUR reales!",
+    "more.car_rental": "Alquiler de Coches", "more.car_rental_desc": "Alquilar un coche",
+    "more.my_car_bookings": "Mis Reservas", "more.vendor_dashboard": "Panel de Arrendador",
+    "more.support_chat": "Chat de Soporte", "more.admin_dashboard": "Admin",
+    "more.logout": "Cerrar Sesión",
   },
 
   it: {
@@ -397,6 +446,11 @@ const extra = {
     "cr.admin_title": "Admin Noleggio", "cr.manage_disputes": "Gestisci Controversie",
     "pf.split_title": "Dividi il Conto", "pf.virtual_cards": "Carte Virtuali",
     "pf.savings_title": "Obiettivi Risparmio", "pf.gift_cards": "Carte Regalo",
+    "more.credit_score": "Punteggio Credito", "more.gaming": "Centro Giochi", "more.gaming_desc": "Gioca e vinci EUR!",
+    "more.car_rental": "Noleggio Auto", "more.car_rental_desc": "Noleggia un'auto",
+    "more.my_car_bookings": "Le Mie Prenotazioni", "more.vendor_dashboard": "Dashboard Noleggiatore",
+    "more.support_chat": "Chat Supporto", "more.admin_dashboard": "Admin",
+    "more.logout": "Esci",
   },
 
   pt: {
@@ -412,6 +466,10 @@ const extra = {
     "gaming.cashout": "Sacar", "gaming.game_over": "Fim de Jogo",
     "cr.search_title": "Alugar Carro", "cr.admin_title": "Admin Aluguel",
     "pf.split_title": "Dividir Conta", "pf.gift_cards": "Cartões Presente",
+    "more.credit_score": "Pontuação de Crédito", "more.gaming": "Centro de Jogos", "more.gaming_desc": "Jogue e ganhe EUR!",
+    "more.car_rental": "Aluguel de Carros", "more.car_rental_desc": "Alugar um carro",
+    "more.my_car_bookings": "Minhas Reservas", "more.support_chat": "Chat Suporte",
+    "more.logout": "Sair",
   },
 
   nl: {
@@ -427,6 +485,10 @@ const extra = {
     "gaming.cashout": "Uitbetalen", "gaming.game_over": "Spel Voorbij",
     "cr.search_title": "Auto Huren", "cr.admin_title": "Admin Verhuur",
     "pf.split_title": "Rekening Splitsen", "pf.gift_cards": "Cadeaukaarten",
+    "more.credit_score": "Kredietscore", "more.gaming": "Spelcentrum", "more.gaming_desc": "Speel en win EUR!",
+    "more.car_rental": "Auto Huren", "more.car_rental_desc": "Huur een auto",
+    "more.my_car_bookings": "Mijn Reserveringen", "more.support_chat": "Chat Support",
+    "more.logout": "Uitloggen",
   },
 
   pl: {
@@ -442,6 +504,10 @@ const extra = {
     "gaming.cashout": "Wypłać", "gaming.game_over": "Koniec Gry",
     "cr.search_title": "Wynajem Aut", "cr.admin_title": "Admin Wynajem",
     "pf.split_title": "Podziel Rachunek", "pf.gift_cards": "Karty Podarunkowe",
+    "more.credit_score": "Punktacja Kredytowa", "more.gaming": "Centrum Gier", "more.gaming_desc": "Graj i wygrywaj EUR!",
+    "more.car_rental": "Wynajem Aut", "more.car_rental_desc": "Wynajmij auto",
+    "more.my_car_bookings": "Moje Rezerwacje", "more.support_chat": "Czat Wsparcia",
+    "more.logout": "Wyloguj",
   },
 
   ru: {
@@ -457,6 +523,10 @@ const extra = {
     "gaming.cashout": "Забрать", "gaming.game_over": "Игра Окончена",
     "cr.search_title": "Аренда Авто", "cr.admin_title": "Админ Аренды",
     "pf.split_title": "Разделить Счёт", "pf.gift_cards": "Подарочные Карты",
+    "more.credit_score": "Кредитный Рейтинг", "more.gaming": "Игровой Центр", "more.gaming_desc": "Играй и выигрывай EUR!",
+    "more.car_rental": "Аренда Авто", "more.car_rental_desc": "Арендуй автомобиль",
+    "more.my_car_bookings": "Мои Бронирования", "more.support_chat": "Чат Поддержки",
+    "more.logout": "Выйти",
   },
 
   ar: {
@@ -472,6 +542,10 @@ const extra = {
     "gaming.cashout": "سحب", "gaming.game_over": "انتهت اللعبة",
     "cr.search_title": "تأجير سيارات", "cr.admin_title": "إدارة التأجير",
     "pf.split_title": "تقسيم الفاتورة", "pf.gift_cards": "بطاقات الهدايا",
+    "more.credit_score": "درجة الائتمان", "more.gaming": "مركز الألعاب", "more.gaming_desc": "!العب واربح يورو",
+    "more.car_rental": "تأجير سيارات", "more.car_rental_desc": "استأجر سيارة",
+    "more.my_car_bookings": "حجوزاتي", "more.support_chat": "دردشة الدعم",
+    "more.logout": "تسجيل الخروج",
   },
 };
 

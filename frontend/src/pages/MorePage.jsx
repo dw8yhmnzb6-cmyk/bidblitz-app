@@ -786,11 +786,11 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
     { id: "bnpl", icon: BadgePercent, label: t("bnpl.title") || "Später zahlen", desc: t("bnpl.menu_desc") || "Buy now, pay later", color: "#00D4FF", action: gatedAction(() => onNavigate("/bnpl")) },
     { id: "gift-cards", icon: Gift, label: t("giftcards.title") || "Geschenkkarten", desc: t("giftcards.menu_desc") || "Gift cards kaufen & verschenken", color: "#FFD166", action: gatedAction(() => onNavigate("/gift-cards")) },
     { id: "bills", icon: Banknote, label: t("bills.title") || "Rechnungen & eSIM", desc: t("bills.menu_desc") || "Strom, Gas, eSIM bezahlen", color: "#00C2FF", action: gatedAction(() => onNavigate("/bills")) },
-    { id: "credit-score", icon: Shield, label: "Kredit Score", desc: "Dein Score & Kreditrahmen", color: "#10B981", action: gatedAction(() => onNavigate("/credit-score")) },
+    { id: "credit-score", icon: Shield, label: t("more.credit_score"), desc: t("more.credit_score_desc"), color: "#10B981", action: gatedAction(() => onNavigate("/credit-score")) },
   ];
 
   const growthMenu = [
-    { id: "gaming", icon: Gamepad2, label: "Game Center", desc: "Spiele & gewinne echte EUR!", color: "#F59E0B", action: gatedAction(() => onNavigate("/gaming")) },
+    { id: "gaming", icon: Gamepad2, label: t("more.gaming"), desc: t("more.gaming_desc"), color: "#F59E0B", action: gatedAction(() => onNavigate("/gaming")) },
     { id: "loyalty", icon: Coins, label: t("loyalty.title") || "Coins & Cashback", desc: t("loyalty.menu_desc") || "Verdiene mit jeder Transaktion", color: "#FFD700", action: gatedAction(() => onNavigate("/loyalty")) },
     { id: "rewards", icon: Trophy, label: t("rewards.title") || "Rewards", desc: t("rewards.menu_desc") || "Daily rewards & milestones", color: "#00E89D", action: gatedAction(() => onNavigate("/rewards")) },
     { id: "mining", icon: Cpu, label: t("mining.title") || "Mining", desc: t("mining.menu_desc") || "Mine BLZ tokens", color: "#00E89D", action: gatedAction(() => onNavigate("/mining")) },
@@ -813,9 +813,9 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
   ];
 
   const mobilityMenu = [
-    { id: "car-rental", icon: Car, label: "Mietwagen", desc: "Auto mieten", color: "#00C2FF", action: () => onNavigate("/car-rental") },
-    { id: "car-rental-bookings", icon: Calendar, label: "Meine Buchungen", desc: "Autobuchungen verwalten", color: "#00C2FF", action: gatedAction(() => onNavigate("/car-rental/my-bookings")) },
-    { id: "car-rental-vendor", icon: Car, label: "Vermieter Dashboard", desc: "Fahrzeuge & Buchungen", color: "#00D26A", action: gatedAction(() => onNavigate("/car-rental/vendor")) },
+    { id: "car-rental", icon: Car, label: t("more.car_rental"), desc: t("more.car_rental_desc"), color: "#00C2FF", action: () => onNavigate("/car-rental") },
+    { id: "car-rental-bookings", icon: Calendar, label: t("more.my_car_bookings"), desc: t("more.my_car_bookings_desc"), color: "#00C2FF", action: gatedAction(() => onNavigate("/car-rental/my-bookings")) },
+    { id: "car-rental-vendor", icon: Car, label: t("more.vendor_dashboard"), desc: t("more.vendor_dashboard_desc"), color: "#00D26A", action: gatedAction(() => onNavigate("/car-rental/vendor")) },
     { id: "taxi", icon: Car, label: t("taxi.title") || "Taxi", desc: t("taxi.menu_desc") || "Taxi buchen", color: "#FFB800", action: gatedAction(() => onNavigate("/taxi")) },
     { id: "scooter", icon: Zap, label: t("scooter.title") || "E-Scooter", desc: t("scooter.menu_desc") || "Scooter mieten", color: "#00D26A", action: gatedAction(() => onNavigate("/scooter")) },
     { id: "food", icon: ShoppingBag, label: t("food.title") || "Food Delivery", desc: t("food.menu_desc") || "Essen bestellen", color: "#FF6B6B", action: gatedAction(() => onNavigate("/food")) },
