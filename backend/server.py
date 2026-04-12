@@ -321,6 +321,9 @@ app.include_router(cv_router)
 from routes.nearby_places import router as nearby_places_router
 app.include_router(nearby_places_router)
 
+from routes.merchant_portal import router as merchant_portal_router
+app.include_router(merchant_portal_router)
+
 
 # Static file serving for uploads
 from fastapi.staticfiles import StaticFiles
