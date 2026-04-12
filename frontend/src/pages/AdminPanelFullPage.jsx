@@ -357,67 +357,364 @@ const AdminPanelFullPage = ({ onNavigate, onBack }) => {
             </div>
           )}
 
-          {data?.type === "info" && (
-            <div className="p-4 rounded-xl bg-blue-50 border border-blue-200">
-              <p className="text-sm text-blue-800">{data.message}</p>
-            </div>
-          )}
-
-          {data?.type === "stats" && data.stats && (
-            <div className="grid grid-cols-2 gap-3">
-              {[
-                { label: "Benutzer", value: data.stats.total_users || 0, color: "#3B82F6" },
-                { label: "Aktive", value: data.stats.active_today || 0, color: "#10B981" },
-                { label: "Umsatz (30T)", value: `€${(data.stats.revenue_30d || 0).toFixed(0)}`, color: "#F59E0B" },
-                { label: "Transaktionen", value: data.stats.total_transactions || 0, color: "#A855F7" },
-              ].map(s => (
-                <div key={s.label} className="p-4 rounded-xl bg-white border border-gray-100 shadow-sm">
-                  <p className="text-2xl font-bold" style={{ color: s.color }}>{s.value}</p>
-                  <p className="text-[10px] text-gray-500">{s.label}</p>
+          {/* ══ USERS ══ */}
+          {data?.type === "users" && (
+            <div className="space-y-3" data-testid="admin-detail-users">
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { label: "Gesamt", value: data.stats?.total_users || 0, color: "#3B82F6" },
+                  { label: "Aktive Heute", value: data.stats?.active_today || 0, color: "#10B981" },
+                  { label: "Umsatz (30T)", value: `€${(data.stats?.revenue_30d || 0).toFixed(0)}`, color: "#F59E0B" },
+                  { label: "Transaktionen", value: data.stats?.total_transactions || 0, color: "#A855F7" },
+                ].map(s => (
+                  <div key={s.label} className="p-3 rounded-xl bg-white border border-gray-100 shadow-sm">
+                    <p className="text-xl font-bold" style={{ color: s.color }}>{s.value}</p>
+                    <p className="text-[10px] text-gray-500">{s.label}</p>
+                  </div>
+                ))}
+              </div>
+              <h3 className="text-xs font-semibold text-gray-500 mt-2">Letzte Kunden ({data.users?.length || 0})</h3>
+              {(data.users || []).slice(0, 20).map((u, i) => (
+                <div key={i} className="p-3 rounded-xl bg-white border border-gray-100 shadow-sm flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-full bg-[#3B82F6]/10 flex items-center justify-center text-[11px] font-bold text-[#3B82F6]">
+                      {(u.name || u.email || "?")[0].toUpperCase()}
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-semibold text-gray-800">{u.name || "–"}</p>
+                      <p className="text-[9px] text-gray-400">{u.email}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[11px] font-bold text-[#10B981]">€{(u.balance || 0).toFixed(2)}</p>
+                    <span className="text-[8px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">{u.role || "user"}</span>
+                  </div>
                 </div>
               ))}
             </div>
           )}
 
-          {data?.type === "finance" && data.stats && (
-            <div className="space-y-3">
-              {[
-                { label: "Gesamtumsatz", value: `€${(data.stats.total_revenue || 0).toFixed(2)}`, color: "#10B981" },
-                { label: "Wallet-Summe", value: `€${(data.stats.total_wallet_balance || 0).toFixed(2)}`, color: "#3B82F6" },
-                { label: "Aktive Kredite", value: data.stats.active_credits || "N/A", color: "#F59E0B" },
-              ].map(s => (
-                <div key={s.label} className="p-4 rounded-xl bg-white border border-gray-100 shadow-sm flex items-center justify-between">
-                  <span className="text-xs text-gray-600">{s.label}</span>
-                  <span className="text-lg font-bold" style={{ color: s.color }}>{s.value}</span>
+          {/* ══ KYC ══ */}
+          {data?.type === "kyc" && (
+            <div className="space-y-2" data-testid="admin-detail-kyc">
+              <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 mb-3">
+                <p className="text-xs text-amber-800 font-medium">{(data.requests || []).length} offene KYC-Anträge</p>
+              </div>
+              {(data.requests || []).length === 0 ? (
+                <div className="text-center py-10 text-gray-400 text-sm">Keine offenen KYC-Anträge</div>
+              ) : (data.requests || []).map((r, i) => (
+                <div key={i} className="p-3 rounded-xl bg-white border border-gray-100 shadow-sm flex items-center justify-between">
+                  <div>
+                    <p className="text-[11px] font-semibold text-gray-800">{r.user_email || r.email || "–"}</p>
+                    <p className="text-[9px] text-gray-400">Typ: {r.requested_role || r.type || "KYC"}</p>
+                  </div>
+                  <span className={`text-[9px] px-2 py-0.5 rounded font-medium ${r.status === "pending" ? "bg-amber-100 text-amber-700" : r.status === "approved" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+                    {r.status || "pending"}
+                  </span>
                 </div>
               ))}
             </div>
           )}
 
-          {data?.type === "list" && (
-            <div className="space-y-2">
-              <h3 className="text-sm font-semibold text-gray-500 mb-2">{data.title} ({data.items.length})</h3>
-              {data.items.length === 0 ? (
-                <div className="text-center py-8 text-gray-400 text-sm">Keine Einträge</div>
-              ) : data.items.slice(0, 20).map((item, i) => (
+          {/* ══ ROLES ══ */}
+          {data?.type === "roles" && (
+            <div className="space-y-2" data-testid="admin-detail-roles">
+              <div className="p-3 rounded-xl bg-blue-50 border border-blue-200 mb-3">
+                <p className="text-xs text-blue-800 font-medium">Rollen-Anfragen verwalten</p>
+              </div>
+              {(data.requests || []).length === 0 ? (
+                <div className="text-center py-10 text-gray-400 text-sm">Keine offenen Rollen-Anfragen</div>
+              ) : (data.requests || []).map((r, i) => (
                 <div key={i} className="p-3 rounded-xl bg-white border border-gray-100 shadow-sm">
-                  <p className="text-xs font-medium text-gray-800">
-                    {item.display || item.title || item.user_email || item.name || JSON.stringify(item).slice(0, 60)}
-                  </p>
-                  {item.status && <span className="text-[9px] text-gray-500">{item.status}</span>}
+                  <div className="flex items-center justify-between">
+                    <p className="text-[11px] font-semibold text-gray-800">{r.user_email || "–"}</p>
+                    <span className="text-[9px] px-2 py-0.5 rounded bg-blue-100 text-blue-700 font-medium">{r.requested_role}</span>
+                  </div>
+                  <p className="text-[9px] text-gray-400 mt-1">Status: {r.status}</p>
                 </div>
               ))}
             </div>
           )}
 
+          {/* ══ USER_FILTER (Staff, Enterprise, Influencer) ══ */}
+          {data?.type === "user_filter" && (
+            <div className="space-y-3" data-testid="admin-detail-user-filter">
+              <div className="p-4 rounded-xl bg-white border border-gray-100 shadow-sm text-center">
+                <p className="text-3xl font-bold text-[#3B82F6]">{data.total_users}</p>
+                <p className="text-xs text-gray-500 mt-1">Registrierte Benutzer</p>
+              </div>
+              <div className="p-4 rounded-xl bg-[#3B82F6]/5 border border-[#3B82F6]/20">
+                <p className="text-sm font-semibold text-[#3B82F6] capitalize">{data.role}</p>
+                <p className="text-[10px] text-gray-500 mt-1">Verwaltung für {data.role === "staff" ? "Mitarbeiter" : data.role === "enterprise" ? "Großkunden" : "Influencer"}</p>
+              </div>
+              <p className="text-[10px] text-gray-400 text-center">Detaillierte Verwaltung in Kürze verfügbar</p>
+            </div>
+          )}
+
+          {/* ══ FORM (Car-Ads, Partner-Credit) ══ */}
+          {data?.type === "form" && (
+            <div className="space-y-3" data-testid="admin-detail-form">
+              <div className="p-4 rounded-xl bg-white border border-gray-100 shadow-sm">
+                <p className="text-sm font-semibold text-gray-800">
+                  {data.formType === "car-ads" ? "Auto-Werbung verwalten" : "Partner-Freibetrag vergeben"}
+                </p>
+                <p className="text-[10px] text-gray-500 mt-1">
+                  {data.formType === "car-ads" ? "Werbebanner für Fahrzeuge konfigurieren" : "Freibeträge für Partner zuweisen"}
+                </p>
+              </div>
+              <p className="text-[10px] text-gray-400 text-center">Formular wird in nächstem Update bereitgestellt</p>
+            </div>
+          )}
+
+          {/* ══ PARTNERS ══ */}
+          {data?.type === "partners" && (
+            <div className="space-y-3" data-testid="admin-detail-partners">
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { label: "Gesamt Benutzer", value: data.stats?.total_users || 0, color: "#F59E0B" },
+                  { label: "Umsatz", value: `€${(data.stats?.total_revenue || 0).toFixed(0)}`, color: "#10B981" },
+                ].map(s => (
+                  <div key={s.label} className="p-3 rounded-xl bg-white border border-gray-100 shadow-sm">
+                    <p className="text-xl font-bold" style={{ color: s.color }}>{s.value}</p>
+                    <p className="text-[10px] text-gray-500">{s.label}</p>
+                  </div>
+                ))}
+              </div>
+              <p className="text-[10px] text-gray-400 text-center">Partner-Portal Verwaltung</p>
+            </div>
+          )}
+
+          {/* ══ APPLICATIONS ══ */}
+          {data?.type === "applications" && (
+            <div className="space-y-2" data-testid="admin-detail-applications">
+              <p className="text-xs font-semibold text-gray-500 mb-2">Alle Bewerbungen ({(data.requests || []).length})</p>
+              {(data.requests || []).length === 0 ? (
+                <div className="text-center py-10 text-gray-400 text-sm">Keine Bewerbungen</div>
+              ) : (data.requests || []).map((r, i) => (
+                <div key={i} className="p-3 rounded-xl bg-white border border-gray-100 shadow-sm flex items-center justify-between">
+                  <div>
+                    <p className="text-[11px] font-semibold text-gray-800">{r.user_email || "–"}</p>
+                    <p className="text-[9px] text-gray-400">{r.requested_role} — {r.message?.slice(0, 40) || "Keine Nachricht"}</p>
+                  </div>
+                  <span className={`text-[9px] px-2 py-0.5 rounded font-medium ${r.status === "pending" ? "bg-amber-100 text-amber-700" : r.status === "approved" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+                    {r.status}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* ══ FINANCE_DETAIL ══ */}
+          {data?.type === "finance_detail" && (
+            <div className="space-y-3" data-testid="admin-detail-finance">
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { label: "Gesamtumsatz", value: `€${(data.stats?.total_revenue || 0).toFixed(2)}`, color: "#10B981" },
+                  { label: "Wallet-Summe", value: `€${(data.stats?.total_wallet_balance || 0).toFixed(2)}`, color: "#3B82F6" },
+                  { label: "Transaktionen", value: data.stats?.total_transactions || 0, color: "#A855F7" },
+                  { label: "Benutzer", value: data.stats?.total_users || 0, color: "#F59E0B" },
+                ].map(s => (
+                  <div key={s.label} className="p-3 rounded-xl bg-white border border-gray-100 shadow-sm">
+                    <p className="text-lg font-bold" style={{ color: s.color }}>{s.value}</p>
+                    <p className="text-[10px] text-gray-500">{s.label}</p>
+                  </div>
+                ))}
+              </div>
+              <div className="p-3 rounded-xl bg-[#10B981]/5 border border-[#10B981]/20">
+                <p className="text-xs font-semibold text-[#10B981] capitalize">
+                  {({payments:"Zahlungsübersicht","wallet-topup":"Wallet-Aufladungen",payouts:"Wise-Auszahlungen",sepa:"SEPA-Auszahlungen",wholesale:"Großhändler-Finanzen"})[data.subtype] || data.subtype}
+                </p>
+              </div>
+              {data.subtype === "payments" && (
+                <motion.button whileTap={{ scale: 0.95 }} onClick={() => onNavigate("/admin/old")}
+                  className="w-full py-3 rounded-xl bg-[#10B981] text-white font-bold text-xs" data-testid="goto-payments-manager">
+                  Zahlungs-Manager öffnen
+                </motion.button>
+              )}
+            </div>
+          )}
+
+          {/* ══ API_KEYS ══ */}
+          {data?.type === "api_keys" && (
+            <div className="space-y-3" data-testid="admin-detail-api-keys">
+              <div className="p-4 rounded-xl bg-white border border-gray-100 shadow-sm">
+                <div className="flex items-center gap-2 mb-2">
+                  <Key size={16} className="text-[#A855F7]" />
+                  <p className="text-sm font-semibold text-gray-800">Digital API Keys</p>
+                </div>
+                <p className="text-[10px] text-gray-500">API-Schlüssel für externe Integrationen verwalten</p>
+              </div>
+              <div className="p-3 rounded-xl bg-gray-50 border border-gray-200">
+                <p className="text-[10px] text-gray-600 font-mono">sk_live_••••••••••••••••</p>
+                <p className="text-[9px] text-gray-400 mt-1">Stripe Live Key</p>
+              </div>
+              <div className="p-3 rounded-xl bg-gray-50 border border-gray-200">
+                <p className="text-[10px] text-gray-600 font-mono">pk_live_••••••••••••••••</p>
+                <p className="text-[9px] text-gray-400 mt-1">Stripe Publishable Key</p>
+              </div>
+            </div>
+          )}
+
+          {/* ══ MARKETING ══ */}
+          {data?.type === "marketing" && (
+            <div className="space-y-3" data-testid="admin-detail-marketing">
+              {[
+                { key: "flash-sales", title: "Flash Sales", desc: "Zeitlich begrenzte Angebote erstellen und verwalten", color: "#EF4444" },
+                { key: "banners", title: "Werbebanner", desc: "Banner-Kampagnen für die App konfigurieren", color: "#3B82F6" },
+                { key: "email-marketing", title: "E-Mail Marketing", desc: "Newsletter und Kampagnen versenden", color: "#10B981" },
+                { key: "jackpot", title: "Jackpot", desc: "Jackpot-Gewinnspiele erstellen und auswerten", color: "#F59E0B" },
+                { key: "challenges", title: "Challenges", desc: "User-Challenges mit Belohnungen konfigurieren", color: "#A855F7" },
+                { key: "mystery-box", title: "Mystery Box", desc: "Mystery-Box Inhalte und Preise festlegen", color: "#EC4899" },
+                { key: "surveys", title: "Umfragen", desc: "Benutzer-Umfragen erstellen und auswerten", color: "#06B6D4" },
+              ].filter(m => m.key === data.subtype).map(m => (
+                <div key={m.key}>
+                  <div className="p-4 rounded-xl bg-white border border-gray-100 shadow-sm">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: `${m.color}15` }}>
+                        <Zap size={16} style={{ color: m.color }} />
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-gray-800">{m.title}</p>
+                        <p className="text-[10px] text-gray-500">{m.desc}</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 mt-2">
+                    <div className="p-3 rounded-xl bg-white border border-gray-100 shadow-sm text-center">
+                      <p className="text-lg font-bold" style={{ color: m.color }}>0</p>
+                      <p className="text-[9px] text-gray-500">Aktiv</p>
+                    </div>
+                    <div className="p-3 rounded-xl bg-white border border-gray-100 shadow-sm text-center">
+                      <p className="text-lg font-bold text-gray-400">0</p>
+                      <p className="text-[9px] text-gray-500">Abgeschlossen</p>
+                    </div>
+                  </div>
+                  <p className="text-[10px] text-gray-400 text-center mt-3">Verwaltung in nächstem Update</p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* ══ AUCTIONS ══ */}
+          {data?.type === "auctions" && (
+            <div className="space-y-2" data-testid="admin-detail-auctions">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-semibold text-gray-500">
+                  {({products:"Produkte","standard-auctions":"Standard","vip-auctions":"VIP","voucher-auctions":"Gutschein"})[data.subtype]} Auktionen ({(data.auctions || []).length})
+                </p>
+                <motion.button whileTap={{ scale: 0.95 }} onClick={() => onNavigate("/auction-admin")}
+                  className="px-3 py-1.5 rounded-lg bg-[#A855F7] text-white text-[10px] font-bold" data-testid="goto-auction-admin">
+                  Verwalten
+                </motion.button>
+              </div>
+              {(data.auctions || []).length === 0 ? (
+                <div className="text-center py-10 text-gray-400 text-sm">Keine aktiven Auktionen</div>
+              ) : (data.auctions || []).slice(0, 15).map((a, i) => (
+                <div key={i} className="p-3 rounded-xl bg-white border border-gray-100 shadow-sm flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    {a.image_url && <img src={a.image_url} alt="" className="w-10 h-10 rounded-lg object-cover" />}
+                    <div>
+                      <p className="text-[11px] font-semibold text-gray-800">{a.title || a.product_name || "Auktion"}</p>
+                      <p className="text-[9px] text-gray-400">Gebote: {a.total_bids || 0}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[11px] font-bold text-[#A855F7]">€{(a.current_price || a.start_price || 0).toFixed(2)}</p>
+                    <span className="text-[8px] px-1.5 py-0.5 rounded bg-green-100 text-green-700">{a.status || "aktiv"}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* ══ BOT_CONFIG ══ */}
+          {data?.type === "bot_config" && (
+            <div className="space-y-3" data-testid="admin-detail-bot">
+              <div className="p-4 rounded-xl bg-white border border-gray-100 shadow-sm">
+                <div className="flex items-center gap-2 mb-2">
+                  <Bot size={18} className="text-[#A855F7]" />
+                  <p className="text-sm font-bold text-gray-800">Bot-System</p>
+                </div>
+                <p className="text-[10px] text-gray-500">Automatische Bieter-Bots konfigurieren</p>
+              </div>
+              {data.config && Object.keys(data.config).length > 0 ? (
+                <div className="space-y-2">
+                  {Object.entries(data.config).filter(([k]) => k !== "detail").slice(0, 10).map(([k, v]) => (
+                    <div key={k} className="p-3 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-between">
+                      <span className="text-[10px] text-gray-600 capitalize">{k.replace(/_/g, " ")}</span>
+                      <span className="text-[10px] font-bold text-gray-800">{typeof v === "boolean" ? (v ? "An" : "Aus") : String(v)}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-[10px] text-gray-400 text-center">Keine Bot-Konfiguration vorhanden</p>
+              )}
+            </div>
+          )}
+
+          {/* ══ WINNERS ══ */}
+          {data?.type === "winners" && (
+            <div className="space-y-2" data-testid="admin-detail-winners">
+              <p className="text-xs font-semibold text-gray-500 mb-2">Gewinner ({(data.winners || []).length})</p>
+              {(data.winners || []).length === 0 ? (
+                <div className="text-center py-10 text-gray-400 text-sm">Keine Gewinner</div>
+              ) : (data.winners || []).slice(0, 20).map((w, i) => (
+                <div key={i} className="p-3 rounded-xl bg-white border border-gray-100 shadow-sm flex items-center justify-between">
+                  <div>
+                    <p className="text-[11px] font-semibold text-gray-800">{w.user_email || w.winner_email || "–"}</p>
+                    <p className="text-[9px] text-gray-400">{w.auction_title || w.product || "Auktion"}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[11px] font-bold text-[#10B981]">€{(w.winning_price || w.amount || 0).toFixed(2)}</p>
+                    <p className="text-[9px] text-gray-400">{w.won_at ? new Date(w.won_at).toLocaleDateString("de-DE") : ""}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* ══ ANALYTICS ══ */}
+          {data?.type === "analytics" && (
+            <div className="space-y-3" data-testid="admin-detail-analytics">
+              <div className="p-4 rounded-xl bg-white border border-gray-100 shadow-sm">
+                <p className="text-sm font-bold text-gray-800">
+                  {({"product-analytics":"Produkt-Analyse","user-analytics":"Benutzer-Analyse","revenue-analytics":"Umsatz-Analyse"})[data.subtype]}
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { label: "Benutzer", value: data.stats?.total_users || 0, color: "#3B82F6" },
+                  { label: "Umsatz", value: `€${(data.stats?.total_revenue || 0).toFixed(0)}`, color: "#10B981" },
+                  { label: "Transaktionen", value: data.stats?.total_transactions || 0, color: "#A855F7" },
+                  { label: "Aktive Heute", value: data.stats?.active_today || 0, color: "#F59E0B" },
+                ].map(s => (
+                  <div key={s.label} className="p-3 rounded-xl bg-white border border-gray-100 shadow-sm text-center">
+                    <p className="text-lg font-bold" style={{ color: s.color }}>{s.value}</p>
+                    <p className="text-[9px] text-gray-500">{s.label}</p>
+                  </div>
+                ))}
+              </div>
+              <motion.button whileTap={{ scale: 0.95 }} onClick={() => onNavigate("/auction-admin")}
+                className="w-full py-3 rounded-xl bg-[#A855F7] text-white font-bold text-xs" data-testid="goto-analytics-full">
+                Detaillierte Analyse öffnen
+              </motion.button>
+            </div>
+          )}
+
+          {/* ══ COUPONS ══ */}
           {data?.type === "coupons" && (
-            <div className="space-y-2">
-              <motion.button whileTap={{ scale: 0.95 }} onClick={() => onNavigate("/admin")}
+            <div className="space-y-2" data-testid="admin-detail-coupons">
+              <motion.button whileTap={{ scale: 0.95 }} onClick={() => onNavigate("/admin/old")}
                 className="w-full py-3 rounded-xl bg-[#A855F7] text-white font-bold text-xs mb-3" data-testid="goto-coupon-manager">
                 Gutschein-Manager öffnen
               </motion.button>
-              {data.coupons.map(c => (
-                <div key={c.coupon_id} className="p-3 rounded-xl bg-white border border-gray-100 shadow-sm flex items-center justify-between">
+              <p className="text-xs font-semibold text-gray-500">
+                {({"merchant-vouchers":"Händler","bidder-vouchers":"Bieter","partner-vouchers":"Partner","discount-coupons":"Rabatt"})[data.subtype]} Gutscheine ({(data.coupons || []).length})
+              </p>
+              {(data.coupons || []).length === 0 ? (
+                <div className="text-center py-8 text-gray-400 text-sm">Keine Gutscheine vorhanden</div>
+              ) : (data.coupons || []).map((c, i) => (
+                <div key={c.coupon_id || i} className="p-3 rounded-xl bg-white border border-gray-100 shadow-sm flex items-center justify-between">
                   <div>
                     <span className="px-2 py-0.5 rounded bg-[#A855F7]/10 text-[#A855F7] text-[10px] font-mono font-bold">{c.code}</span>
                     <p className="text-[10px] text-gray-500 mt-1">{c.description || c.coupon_type}</p>
@@ -428,6 +725,72 @@ const AdminPanelFullPage = ({ onNavigate, onBack }) => {
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* ══ SYSTEM_LOGS ══ */}
+          {data?.type === "system_logs" && (
+            <div className="space-y-3" data-testid="admin-detail-logs">
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { label: "Benutzer", value: data.stats?.total_users || 0, color: "#3B82F6" },
+                  { label: "Transaktionen", value: data.stats?.total_transactions || 0, color: "#A855F7" },
+                ].map(s => (
+                  <div key={s.label} className="p-3 rounded-xl bg-white border border-gray-100 shadow-sm text-center">
+                    <p className="text-xl font-bold" style={{ color: s.color }}>{s.value}</p>
+                    <p className="text-[10px] text-gray-500">{s.label}</p>
+                  </div>
+                ))}
+              </div>
+              <div className="p-3 rounded-xl bg-green-50 border border-green-200 flex items-center gap-2">
+                <Check size={14} className="text-green-600" />
+                <p className="text-[11px] text-green-700 font-medium">System läuft normal</p>
+              </div>
+            </div>
+          )}
+
+          {/* ══ SYSTEM_DETAIL ══ */}
+          {data?.type === "system_detail" && (
+            <div className="space-y-3" data-testid="admin-detail-system">
+              <div className="p-4 rounded-xl bg-white border border-gray-100 shadow-sm">
+                <p className="text-sm font-bold text-gray-800 capitalize">
+                  {({maintenance:"Wartungsmodus",cms:"Seiten (CMS)","game-settings":"Spiel-Einstellungen",sustainability:"Nachhaltigkeit",passwords:"Passwort-Verwaltung","voice-commands":"Sprachbefehle",debug:"Debug Reports","system-health":"System-Gesundheit",database:"Daten-Management"})[data.subtype] || data.subtype}
+                </p>
+                <p className="text-[10px] text-gray-500 mt-1">Systemverwaltung</p>
+              </div>
+              {data.subtype === "system-health" && (
+                <div className="space-y-2">
+                  {["API Server", "Datenbank", "Auth Service", "Payment Gateway"].map(s => (
+                    <div key={s} className="p-3 rounded-xl bg-white border border-gray-100 shadow-sm flex items-center justify-between">
+                      <span className="text-[11px] text-gray-700">{s}</span>
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-2 h-2 rounded-full bg-green-500" />
+                        <span className="text-[10px] text-green-600 font-medium">Online</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {data.subtype === "database" && (
+                <div className="space-y-2">
+                  {["users", "transactions", "auctions", "kids_children", "crypto_holdings", "coupons"].map(c => (
+                    <div key={c} className="p-3 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-between">
+                      <span className="text-[10px] font-mono text-gray-600">{c}</span>
+                      <span className="text-[9px] text-gray-400">Collection</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {!["system-health", "database"].includes(data.subtype) && (
+                <p className="text-[10px] text-gray-400 text-center">Konfiguration in nächstem Update</p>
+              )}
+            </div>
+          )}
+
+          {/* ══ GENERIC FALLBACK ══ */}
+          {data?.type === "generic" && (
+            <div className="text-center py-10" data-testid="admin-detail-generic">
+              <p className="text-sm text-gray-400">Funktion wird vorbereitet</p>
             </div>
           )}
         </div>

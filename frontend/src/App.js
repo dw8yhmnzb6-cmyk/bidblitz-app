@@ -62,6 +62,10 @@ import CryptoWalletPage from "./pages/CryptoWalletPage";
 import BudgetPlannerPage from "./pages/BudgetPlannerPage";
 import AdminCreditPage from "./pages/AdminCreditPage";
 import AdminPanelFullPage from "./pages/AdminPanelFullPage";
+import NotificationCenterPage from "./pages/NotificationCenterPage";
+import ContactsPage from "./pages/ContactsPage";
+import UserStatsPage from "./pages/UserStatsPage";
+import CurrencyConverterPage from "./pages/CurrencyConverterPage";
 
 // Car Rental Module
 import {
@@ -311,6 +315,14 @@ function AppContent() {
         return isGuest ? <HomePage {...homeProps} /> : <BudgetPlannerPage onBack={() => handleNavigate("/more")} />;
       case "/admin/credits":
         return isGuest ? <HomePage {...homeProps} /> : <AdminCreditPage onBack={() => handleNavigate("/admin")} />;
+      case "/notification-center":
+        return isGuest ? <HomePage {...homeProps} /> : <NotificationCenterPage onBack={() => handleNavigate("/more")} />;
+      case "/contacts":
+        return isGuest ? <HomePage {...homeProps} /> : <ContactsPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
+      case "/user-stats":
+        return isGuest ? <HomePage {...homeProps} /> : <UserStatsPage onBack={() => handleNavigate("/more")} />;
+      case "/currency":
+        return isGuest ? <HomePage {...homeProps} /> : <CurrencyConverterPage onBack={() => handleNavigate("/more")} />;
       case "/gaming":
         return isGuest ? <HomePage {...homeProps} /> : <GamingPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
       
