@@ -48,6 +48,8 @@ const QUICK_ACTIONS = [
   { icon: Bookmark, key: "board", label: "Pinnwand", color: "#F472B6", bgColor: "rgba(244,114,182,0.15)" },
   { icon: Award, key: "badges", label: "Abzeichen", color: "#8B5CF6", bgColor: "rgba(139,92,246,0.15)" },
   { icon: Target, key: "challenges", label: "Challenges", color: "#22C55E", bgColor: "rgba(34,197,94,0.15)" },
+  { icon: Lock, key: "apps", label: "App-Kontrolle", color: "#EF4444", bgColor: "rgba(239,68,68,0.15)" },
+  { icon: Bell, key: "sos", label: "SOS", color: "#DC2626", bgColor: "rgba(220,38,38,0.2)" },
 ];
 
 // ── Kids Dashboard (post-subscription) ──
@@ -95,6 +97,13 @@ const KidsDashboard = ({ onBack, t, subStatus }) => {
   const [boardChild, setBoardChild] = useState(null);
   const [analyticsChild, setAnalyticsChild] = useState(null);
   const [zonesChild, setZonesChild] = useState(null);
+  const [appControlChild, setAppControlChild] = useState(null);
+  const [appControlData, setAppControlData] = useState([]);
+  const [appControlLoading, setAppControlLoading] = useState(false);
+  const [deviceChild, setDeviceChild] = useState(null);
+  const [deviceData, setDeviceData] = useState(null);
+  const [sosAlerts, setSosAlerts] = useState([]);
+  const [showSOS, setShowSOS] = useState(false);
 
   // Load tasks when tasksChild changes
   useEffect(() => {
@@ -187,6 +196,64 @@ const KidsDashboard = ({ onBack, t, subStatus }) => {
     setRefreshing(true);
     loadChildren();
     loadNotificationCount();
+  };
+
+  // App Control
+  const loadAppControl = async (child) => {
+    setAppControlChild(child);
+    setAppControlLoading(true);
+    try {
+      const res = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/kids/apps/${child.child_id}`, { credentials: "include" });
+      if (res.ok) { const d = await res.json(); setAppControlData(d.apps || []); }
+    } catch {}
+    setAppControlLoading(false);
+  };
+
+  const toggleAppBlock = async (appId, blocked) => {
+    if (!appControlChild) return;
+    try {
+      await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/kids/apps/rule`, {
+        method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ child_id: appControlChild.child_id, app_id: appId, blocked }),
+      });
+      setAppControlData(prev => prev.map(a => a.app_id === appId ? { ...a, blocked } : a));
+    } catch {}
+  };
+
+  const setAppTimeLimit = async (appId, minutes) => {
+    if (!appControlChild) return;
+    try {
+      await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/kids/apps/rule`, {
+        method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ child_id: appControlChild.child_id, app_id: appId, blocked: false, daily_limit_minutes: minutes }),
+      });
+      setAppControlData(prev => prev.map(a => a.app_id === appId ? { ...a, daily_limit_minutes: minutes } : a));
+    } catch {}
+  };
+
+  // Device Status
+  const loadDeviceStatus = async (child) => {
+    setDeviceChild(child);
+    try {
+      const res = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/kids/device/${child.child_id}`, { credentials: "include" });
+      if (res.ok) { const d = await res.json(); setDeviceData(d); }
+    } catch {}
+  };
+
+  // SOS
+  const loadSOS = async () => {
+    setShowSOS(true);
+    try {
+      const res = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/kids/alerts/sos`, { credentials: "include" });
+      if (res.ok) { const d = await res.json(); setSosAlerts(d.alerts || []); }
+    } catch {}
+  };
+
+  const resolveSOS = async (sosId) => {
+    try {
+      await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/kids/sos/${sosId}/resolve`, { method: "POST", credentials: "include" });
+      setSosAlerts(prev => prev.map(a => a.sos_id === sosId ? { ...a, status: "resolved" } : a));
+    } catch {}
   };
 
   const handleSetPin = async (childId) => {
@@ -430,7 +497,7 @@ const KidsDashboard = ({ onBack, t, subStatus }) => {
                       setScreenTimeChild(firstChild);
                       break;
                     case 'battery':
-                      setBatteryChild(firstChild);
+                      loadDeviceStatus(firstChild);
                       break;
                     case 'points':
                       setPointsChild(firstChild);
@@ -466,6 +533,12 @@ const KidsDashboard = ({ onBack, t, subStatus }) => {
                       break;
                     case 'challenges':
                       setChallengesChild(firstChild);
+                      break;
+                    case 'apps':
+                      loadAppControl(firstChild);
+                      break;
+                    case 'sos':
+                      loadSOS();
                       break;
                     default:
                       setActiveFeature(action.key);
@@ -1098,6 +1171,177 @@ const KidsDashboard = ({ onBack, t, subStatus }) => {
             onClose={() => setAnalyticsChild(null)}
             child={analyticsChild}
           />
+        )}
+
+        {/* App Control Modal */}
+        {appControlChild && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-end justify-center"
+            onClick={() => setAppControlChild(null)}>
+            <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 25 }}
+              onClick={e => e.stopPropagation()}
+              className="w-full max-w-lg bg-[#111118] rounded-t-3xl border-t border-white/10 max-h-[85vh] flex flex-col">
+              <div className="p-4 border-b border-white/5 flex items-center justify-between flex-shrink-0">
+                <div>
+                  <h3 className="text-base font-bold text-white">App-Kontrolle</h3>
+                  <p className="text-[10px] text-gray-500">{appControlChild.name} — {appControlData.length} Apps</p>
+                </div>
+                <button onClick={() => setAppControlChild(null)} className="p-2 rounded-xl bg-white/5" data-testid="close-app-control">
+                  <X size={16} className="text-gray-400" />
+                </button>
+              </div>
+              <div className="overflow-y-auto flex-1 p-4 space-y-2">
+                {appControlLoading ? (
+                  <div className="flex justify-center py-10"><Loader2 size={24} className="animate-spin text-[#EF4444]" /></div>
+                ) : appControlData.map(app => (
+                  <div key={app.app_id} className={`p-3 rounded-xl border flex items-center justify-between ${app.blocked ? "bg-red-500/5 border-red-500/20" : "bg-white/[0.02] border-white/5"}`}
+                    data-testid={`app-row-${app.app_id}`}>
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center">
+                        {app.category === "social" ? <Users size={14} className="text-blue-400" /> :
+                         app.category === "games" ? <Gamepad2 size={14} className="text-purple-400" /> :
+                         app.category === "education" ? <Award size={14} className="text-green-400" /> :
+                         <Smartphone size={14} className="text-gray-400" />}
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold text-white">{app.name}</p>
+                        <p className="text-[9px] text-gray-500">
+                          {app.blocked ? "Gesperrt" : app.daily_limit_minutes ? `${app.daily_limit_minutes} Min/Tag` : "Unbegrenzt"}
+                          {app.usage_today > 0 && ` · ${app.usage_today} Min genutzt`}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <select
+                        value={app.daily_limit_minutes || ""}
+                        onChange={e => setAppTimeLimit(app.app_id, e.target.value ? parseInt(e.target.value) : null)}
+                        className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-[9px] text-white outline-none"
+                        data-testid={`app-limit-${app.app_id}`}>
+                        <option value="">Unbegrenzt</option>
+                        <option value="15">15 Min</option>
+                        <option value="30">30 Min</option>
+                        <option value="60">1 Std</option>
+                        <option value="120">2 Std</option>
+                      </select>
+                      <motion.button whileTap={{ scale: 0.9 }}
+                        onClick={() => toggleAppBlock(app.app_id, !app.blocked)}
+                        className={`w-8 h-8 rounded-lg flex items-center justify-center ${app.blocked ? "bg-red-500/20" : "bg-white/5"}`}
+                        data-testid={`app-block-${app.app_id}`}>
+                        {app.blocked ? <Lock size={14} className="text-red-400" /> : <Unlock size={14} className="text-green-400" />}
+                      </motion.button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+
+        {/* Device Status Modal */}
+        {deviceChild && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+            onClick={() => setDeviceChild(null)}>
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
+              onClick={e => e.stopPropagation()}
+              className="w-full max-w-sm bg-[#111118] rounded-3xl border border-white/10 p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-base font-bold text-white">Gerätestatus</h3>
+                <button onClick={() => setDeviceChild(null)} className="p-1.5 rounded-lg bg-white/5"><X size={14} className="text-gray-400" /></button>
+              </div>
+              <p className="text-xs text-gray-500 mb-4">{deviceChild.name}</p>
+              {!deviceData?.connected ? (
+                <div className="text-center py-6">
+                  <Smartphone size={40} className="mx-auto text-gray-600 mb-3" />
+                  <p className="text-sm text-white/70 font-semibold">Kein Gerät verbunden</p>
+                  <p className="text-[10px] text-gray-500 mt-1">Das Kinder-Gerät hat sich noch nicht synchronisiert.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {/* Battery */}
+                  <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/5">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs text-gray-500">Akku</span>
+                      <span className={`text-sm font-bold ${deviceData.battery_percent > 50 ? "text-green-400" : deviceData.battery_percent > 20 ? "text-yellow-400" : "text-red-400"}`}>
+                        {deviceData.battery_percent}%
+                      </span>
+                    </div>
+                    <div className="h-3 bg-white/5 rounded-full overflow-hidden">
+                      <div className="h-full rounded-full transition-all" style={{
+                        width: `${deviceData.battery_percent}%`,
+                        background: deviceData.battery_percent > 50 ? "#22C55E" : deviceData.battery_percent > 20 ? "#F59E0B" : "#EF4444",
+                      }} />
+                    </div>
+                    <p className="text-[10px] text-gray-500 mt-1">{deviceData.is_charging ? "Lädt gerade" : "Lädt nicht"}</p>
+                  </div>
+                  {/* Device Info */}
+                  {[
+                    { label: "Gerätename", value: deviceData.device_name },
+                    { label: "Modell", value: deviceData.device_model },
+                    { label: "Betriebssystem", value: deviceData.os_version },
+                    { label: "Letzte Sync", value: deviceData.last_sync ? new Date(deviceData.last_sync).toLocaleString("de-DE") : null },
+                  ].filter(x => x.value).map(item => (
+                    <div key={item.label} className="flex items-center justify-between py-2 border-b border-white/5">
+                      <span className="text-[11px] text-gray-500">{item.label}</span>
+                      <span className="text-[11px] text-white font-medium">{item.value}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+
+        {/* SOS Alerts Modal */}
+        {showSOS && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-end justify-center"
+            onClick={() => setShowSOS(false)}>
+            <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 25 }}
+              onClick={e => e.stopPropagation()}
+              className="w-full max-w-lg bg-[#111118] rounded-t-3xl border-t border-white/10 max-h-[70vh] flex flex-col">
+              <div className="p-4 border-b border-white/5 flex items-center justify-between flex-shrink-0">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full bg-red-500/20 flex items-center justify-center">
+                    <Bell size={16} className="text-red-400" />
+                  </div>
+                  <h3 className="text-base font-bold text-white">SOS-Alarme</h3>
+                </div>
+                <button onClick={() => setShowSOS(false)} className="p-2 rounded-xl bg-white/5"><X size={16} className="text-gray-400" /></button>
+              </div>
+              <div className="overflow-y-auto flex-1 p-4 space-y-3">
+                {sosAlerts.length === 0 ? (
+                  <div className="text-center py-10">
+                    <Check size={40} className="mx-auto text-green-400 mb-3" />
+                    <p className="text-sm text-white/70 font-semibold">Keine SOS-Alarme</p>
+                    <p className="text-[10px] text-gray-500 mt-1">Alles sicher.</p>
+                  </div>
+                ) : sosAlerts.map(sos => (
+                  <div key={sos.sos_id} className={`p-4 rounded-2xl border ${sos.status === "active" ? "bg-red-500/5 border-red-500/20" : "bg-white/[0.02] border-white/5"}`}
+                    data-testid={`sos-${sos.sos_id}`}>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <div className={`w-2 h-2 rounded-full ${sos.status === "active" ? "bg-red-500 animate-pulse" : "bg-green-500"}`} />
+                        <span className="text-xs font-semibold">{sos.child_name}</span>
+                      </div>
+                      <span className="text-[9px] text-gray-500">{sos.created_at?.slice(0, 16).replace("T", " ")}</span>
+                    </div>
+                    <p className="text-xs text-white/70 mb-2">{sos.message}</p>
+                    {sos.address && <p className="text-[10px] text-gray-500 mb-2"><MapPin size={10} className="inline mr-1" />{sos.address}</p>}
+                    {sos.status === "active" && (
+                      <motion.button whileTap={{ scale: 0.95 }} onClick={() => resolveSOS(sos.sos_id)}
+                        className="w-full py-2 rounded-xl bg-green-500/10 text-green-400 text-xs font-semibold flex items-center justify-center gap-1"
+                        data-testid={`resolve-sos-${sos.sos_id}`}>
+                        <Check size={14} /> Als gelöst markieren
+                      </motion.button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
 

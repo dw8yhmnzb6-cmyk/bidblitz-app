@@ -98,7 +98,7 @@ def haversine_distance(lat1, lng1, lat2, lng2):
 
 async def check_spending_limits(child_id: str, amount: float) -> dict:
     """Check if spending is within limits."""
-    child = await db.children.find_one({"child_id": child_id})
+    child = await db.kids_children.find_one({"child_id": child_id})
     if not child:
         return {"allowed": False, "reason": "Kind nicht gefunden"}
     
@@ -254,7 +254,7 @@ async def update_child(child_id: str, req: UpdateChildRequest, request: Request)
     user = await get_current_user(request)
     parent_id = str(user["_id"])
     
-    child = await db.children.find_one({"child_id": child_id, "parent_id": parent_id})
+    child = await db.kids_children.find_one({"child_id": child_id, "parent_id": parent_id})
     if not child:
         raise HTTPException(status_code=404, detail="Kind nicht gefunden")
     
@@ -279,7 +279,7 @@ async def delete_child(child_id: str, request: Request):
     user = await get_current_user(request)
     parent_id = str(user["_id"])
     
-    child = await db.children.find_one({"child_id": child_id, "parent_id": parent_id})
+    child = await db.kids_children.find_one({"child_id": child_id, "parent_id": parent_id})
     if not child:
         raise HTTPException(status_code=404, detail="Kind nicht gefunden")
     
@@ -404,7 +404,7 @@ async def child_pay(req: ChildPayRequest, request: Request):
     else:
         child_id = child_session.get("child_id")
     
-    child = await db.children.find_one({"child_id": child_id})
+    child = await db.kids_children.find_one({"child_id": child_id})
     if not child:
         raise HTTPException(status_code=404, detail="Kind nicht gefunden")
     
@@ -479,7 +479,7 @@ async def lock_child(child_id: str, request: Request):
     user = await get_current_user(request)
     parent_id = str(user["_id"])
     
-    child = await db.children.find_one({"child_id": child_id, "parent_id": parent_id})
+    child = await db.kids_children.find_one({"child_id": child_id, "parent_id": parent_id})
     if not child:
         raise HTTPException(status_code=404, detail="Kind nicht gefunden")
     
@@ -497,7 +497,7 @@ async def unlock_child(child_id: str, request: Request):
     user = await get_current_user(request)
     parent_id = str(user["_id"])
     
-    child = await db.children.find_one({"child_id": child_id, "parent_id": parent_id})
+    child = await db.kids_children.find_one({"child_id": child_id, "parent_id": parent_id})
     if not child:
         raise HTTPException(status_code=404, detail="Kind nicht gefunden")
     
@@ -520,7 +520,7 @@ async def create_task(req: CreateTaskRequest, request: Request):
     parent_id = str(user["_id"])
     
     # Verify child
-    child = await db.children.find_one({"child_id": req.child_id, "parent_id": parent_id})
+    child = await db.kids_children.find_one({"child_id": req.child_id, "parent_id": parent_id})
     if not child:
         raise HTTPException(status_code=404, detail="Kind nicht gefunden")
     
@@ -565,7 +565,7 @@ async def get_tasks(child_id: str, request: Request, status: str = None):
     parent_id = str(user["_id"])
     
     # Verify parent owns child
-    child = await db.children.find_one({"child_id": child_id, "parent_id": parent_id})
+    child = await db.kids_children.find_one({"child_id": child_id, "parent_id": parent_id})
     if not child:
         raise HTTPException(status_code=404, detail="Kind nicht gefunden")
     
@@ -752,7 +752,7 @@ async def update_location(req: LocationUpdateRequest, request: Request):
     if not child_id:
         raise HTTPException(status_code=401, detail="Kind nicht authentifiziert")
     
-    child = await db.children.find_one({"child_id": child_id})
+    child = await db.kids_children.find_one({"child_id": child_id})
     if not child:
         raise HTTPException(status_code=404, detail="Kind nicht gefunden")
     
@@ -849,7 +849,7 @@ async def get_child_location(child_id: str, request: Request):
     user = await get_current_user(request)
     parent_id = str(user["_id"])
     
-    child = await db.children.find_one({"child_id": child_id, "parent_id": parent_id})
+    child = await db.kids_children.find_one({"child_id": child_id, "parent_id": parent_id})
     if not child:
         raise HTTPException(status_code=404, detail="Kind nicht gefunden")
     
@@ -942,7 +942,7 @@ async def get_analytics(child_id: str, request: Request, days: int = 7):
     user = await get_current_user(request)
     parent_id = str(user["_id"])
     
-    child = await db.children.find_one({"child_id": child_id, "parent_id": parent_id})
+    child = await db.kids_children.find_one({"child_id": child_id, "parent_id": parent_id})
     if not child:
         raise HTTPException(status_code=404, detail="Kind nicht gefunden")
     
@@ -1088,7 +1088,7 @@ async def send_chat_message(req: ChatMessageRequest, request: Request):
     user = await get_current_user(request)
     parent_id = str(user["_id"])
     
-    child = await db.children.find_one({"child_id": req.child_id, "parent_id": parent_id})
+    child = await db.kids_children.find_one({"child_id": req.child_id, "parent_id": parent_id})
     if not child:
         raise HTTPException(status_code=404, detail="Kind nicht gefunden")
     
@@ -1122,7 +1122,7 @@ async def child_send_message(request: Request):
     if not child_id:
         raise HTTPException(status_code=401, detail="Kind nicht authentifiziert")
     
-    child = await db.children.find_one({"child_id": child_id})
+    child = await db.kids_children.find_one({"child_id": child_id})
     if not child:
         raise HTTPException(status_code=404, detail="Kind nicht gefunden")
     
@@ -1165,7 +1165,7 @@ async def get_chat(child_id: str, request: Request, limit: int = 50):
     parent_id = str(user["_id"])
     
     # Verify access
-    child = await db.children.find_one({"child_id": child_id, "parent_id": parent_id})
+    child = await db.kids_children.find_one({"child_id": child_id, "parent_id": parent_id})
     if not child:
         raise HTTPException(status_code=404, detail="Kind nicht gefunden")
     
@@ -1195,7 +1195,7 @@ async def get_transactions(child_id: str, request: Request, limit: int = 50):
     user = await get_current_user(request)
     parent_id = str(user["_id"])
     
-    child = await db.children.find_one({"child_id": child_id, "parent_id": parent_id})
+    child = await db.kids_children.find_one({"child_id": child_id, "parent_id": parent_id})
     if not child:
         raise HTTPException(status_code=404, detail="Kind nicht gefunden")
     
@@ -1238,3 +1238,390 @@ async def mark_alerts_read(request: Request):
     )
     
     return {"ok": True, "marked": result.modified_count}
+
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# APP CONTROL - Sperren, Zeitlimits, Nutzungsprotokoll
+# ══════════════════════════════════════════════════════════════════════════════
+
+PREDEFINED_APPS = [
+    {"app_id": "tiktok", "name": "TikTok", "category": "social", "icon": "tiktok"},
+    {"app_id": "instagram", "name": "Instagram", "category": "social", "icon": "instagram"},
+    {"app_id": "snapchat", "name": "Snapchat", "category": "social", "icon": "snapchat"},
+    {"app_id": "whatsapp", "name": "WhatsApp", "category": "social", "icon": "whatsapp"},
+    {"app_id": "discord", "name": "Discord", "category": "social", "icon": "discord"},
+    {"app_id": "telegram", "name": "Telegram", "category": "social", "icon": "telegram"},
+    {"app_id": "facebook", "name": "Facebook", "category": "social", "icon": "facebook"},
+    {"app_id": "twitter", "name": "Twitter/X", "category": "social", "icon": "twitter"},
+    {"app_id": "fortnite", "name": "Fortnite", "category": "games", "icon": "gamepad"},
+    {"app_id": "roblox", "name": "Roblox", "category": "games", "icon": "gamepad"},
+    {"app_id": "minecraft", "name": "Minecraft", "category": "games", "icon": "gamepad"},
+    {"app_id": "clash_royale", "name": "Clash Royale", "category": "games", "icon": "gamepad"},
+    {"app_id": "brawl_stars", "name": "Brawl Stars", "category": "games", "icon": "gamepad"},
+    {"app_id": "candy_crush", "name": "Candy Crush", "category": "games", "icon": "gamepad"},
+    {"app_id": "youtube", "name": "YouTube", "category": "entertainment", "icon": "youtube"},
+    {"app_id": "netflix", "name": "Netflix", "category": "entertainment", "icon": "tv"},
+    {"app_id": "spotify", "name": "Spotify", "category": "entertainment", "icon": "music"},
+    {"app_id": "twitch", "name": "Twitch", "category": "entertainment", "icon": "twitch"},
+    {"app_id": "duolingo", "name": "Duolingo", "category": "education", "icon": "book"},
+    {"app_id": "khan_academy", "name": "Khan Academy", "category": "education", "icon": "book"},
+]
+
+
+class AppRuleRequest(BaseModel):
+    child_id: str
+    app_id: str
+    blocked: bool = False
+    daily_limit_minutes: Optional[int] = None  # null = unlimited
+
+
+class CustomAppRequest(BaseModel):
+    child_id: str
+    name: str
+    category: str = "other"
+
+
+class AppUsageRequest(BaseModel):
+    app_id: str
+    minutes: int
+
+
+@router.get("/apps/predefined")
+async def get_predefined_apps():
+    """Get list of 20 predefined apps."""
+    return {"apps": PREDEFINED_APPS}
+
+
+@router.get("/apps/{child_id}")
+async def get_child_apps(child_id: str, request: Request):
+    """Get all app rules for a child."""
+    user = await get_current_user(request)
+    parent_id = str(user["_id"])
+
+    child = await db.kids_children.find_one({"child_id": child_id, "parent_id": parent_id})
+    if not child:
+        raise HTTPException(404, "Kind nicht gefunden")
+
+    rules = await db.app_rules.find(
+        {"child_id": child_id}, {"_id": 0}
+    ).to_list(100)
+
+    custom_apps = await db.custom_apps.find(
+        {"child_id": child_id}, {"_id": 0}
+    ).to_list(50)
+
+    # Get today's usage
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    usage = await db.app_usage.find(
+        {"child_id": child_id, "date": today}, {"_id": 0}
+    ).to_list(100)
+    usage_map = {u["app_id"]: u.get("minutes", 0) for u in usage}
+
+    # Merge predefined + custom apps with rules
+    all_apps = []
+    rules_map = {r["app_id"]: r for r in rules}
+
+    for app in PREDEFINED_APPS:
+        rule = rules_map.get(app["app_id"], {})
+        all_apps.append({
+            **app,
+            "blocked": rule.get("blocked", False),
+            "daily_limit_minutes": rule.get("daily_limit_minutes"),
+            "usage_today": usage_map.get(app["app_id"], 0),
+            "custom": False,
+        })
+
+    for ca in custom_apps:
+        rule = rules_map.get(ca["app_id"], {})
+        all_apps.append({
+            "app_id": ca["app_id"],
+            "name": ca["name"],
+            "category": ca.get("category", "other"),
+            "icon": "app",
+            "blocked": rule.get("blocked", False),
+            "daily_limit_minutes": rule.get("daily_limit_minutes"),
+            "usage_today": usage_map.get(ca["app_id"], 0),
+            "custom": True,
+        })
+
+    return {"apps": all_apps, "total": len(all_apps)}
+
+
+@router.post("/apps/rule")
+async def set_app_rule(req: AppRuleRequest, request: Request):
+    """Block/unblock an app or set time limit for a child."""
+    user = await get_current_user(request)
+    parent_id = str(user["_id"])
+
+    child = await db.kids_children.find_one({"child_id": req.child_id, "parent_id": parent_id})
+    if not child:
+        raise HTTPException(404, "Kind nicht gefunden")
+
+    await db.app_rules.update_one(
+        {"child_id": req.child_id, "app_id": req.app_id},
+        {"$set": {
+            "blocked": req.blocked,
+            "daily_limit_minutes": req.daily_limit_minutes,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }},
+        upsert=True,
+    )
+
+    action = "gesperrt" if req.blocked else ("Limit gesetzt" if req.daily_limit_minutes else "entsperrt")
+    await db.child_alerts.insert_one({
+        "alert_id": secrets.token_hex(8),
+        "parent_id": parent_id,
+        "child_id": req.child_id,
+        "type": "app_control",
+        "message": f"App '{req.app_id}' {action}",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "read": False,
+    })
+
+    return {"ok": True, "action": action}
+
+
+@router.post("/apps/custom")
+async def add_custom_app(req: CustomAppRequest, request: Request):
+    """Add a custom app to track."""
+    user = await get_current_user(request)
+    parent_id = str(user["_id"])
+
+    child = await db.kids_children.find_one({"child_id": req.child_id, "parent_id": parent_id})
+    if not child:
+        raise HTTPException(404, "Kind nicht gefunden")
+
+    app_id = f"custom_{secrets.token_hex(4)}"
+    await db.custom_apps.insert_one({
+        "app_id": app_id,
+        "child_id": req.child_id,
+        "name": req.name,
+        "category": req.category,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    })
+    return {"ok": True, "app_id": app_id}
+
+
+@router.delete("/apps/custom/{app_id}")
+async def remove_custom_app(app_id: str, request: Request):
+    """Remove a custom app."""
+    user = await get_current_user(request)
+    await db.custom_apps.delete_one({"app_id": app_id})
+    await db.app_rules.delete_one({"app_id": app_id})
+    return {"ok": True}
+
+
+@router.post("/apps/usage")
+async def report_app_usage(req: AppUsageRequest, request: Request):
+    """Report app usage from child device."""
+    token = request.cookies.get("child_token") or request.headers.get("X-Child-Token")
+    if not token:
+        raise HTTPException(401)
+    import jwt
+    try:
+        payload = jwt.decode(token, "bidblitz-kids-secret-2026", algorithms=["HS256"])
+        child_id = payload.get("child_id")
+    except Exception:
+        raise HTTPException(401)
+
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    await db.app_usage.update_one(
+        {"child_id": child_id, "app_id": req.app_id, "date": today},
+        {"$inc": {"minutes": req.minutes}, "$set": {"updated_at": datetime.now(timezone.utc).isoformat()}},
+        upsert=True,
+    )
+    return {"ok": True}
+
+
+@router.get("/apps/usage/{child_id}")
+async def get_app_usage_history(child_id: str, request: Request, days: int = 7):
+    """Get app usage history for a child."""
+    user = await get_current_user(request)
+    parent_id = str(user["_id"])
+
+    child = await db.kids_children.find_one({"child_id": child_id, "parent_id": parent_id})
+    if not child:
+        raise HTTPException(404, "Kind nicht gefunden")
+
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y-%m-%d")
+    usage = await db.app_usage.find(
+        {"child_id": child_id, "date": {"$gte": cutoff}}, {"_id": 0}
+    ).sort("date", -1).to_list(500)
+
+    # Aggregate by app
+    by_app = {}
+    for u in usage:
+        aid = u["app_id"]
+        by_app[aid] = by_app.get(aid, 0) + u.get("minutes", 0)
+
+    top_apps = sorted(by_app.items(), key=lambda x: x[1], reverse=True)[:10]
+
+    return {
+        "usage": usage,
+        "top_apps": [{"app_id": a, "total_minutes": m} for a, m in top_apps],
+        "total_minutes": sum(by_app.values()),
+    }
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# DEVICE STATUS - Akku, Geräteinformationen
+# ══════════════════════════════════════════════════════════════════════════════
+
+class DeviceStatusRequest(BaseModel):
+    battery_percent: int = Field(..., ge=0, le=100)
+    is_charging: bool = False
+    device_name: Optional[str] = None
+    device_model: Optional[str] = None
+    os_version: Optional[str] = None
+
+
+@router.post("/device/status")
+async def update_device_status(req: DeviceStatusRequest, request: Request):
+    """Update device status from child's phone."""
+    token = request.cookies.get("child_token") or request.headers.get("X-Child-Token")
+    if not token:
+        raise HTTPException(401)
+    import jwt
+    try:
+        payload = jwt.decode(token, "bidblitz-kids-secret-2026", algorithms=["HS256"])
+        child_id = payload.get("child_id")
+    except Exception:
+        raise HTTPException(401)
+
+    await db.device_status.update_one(
+        {"child_id": child_id},
+        {"$set": {
+            "battery_percent": req.battery_percent,
+            "is_charging": req.is_charging,
+            "device_name": req.device_name,
+            "device_model": req.device_model,
+            "os_version": req.os_version,
+            "last_sync": datetime.now(timezone.utc).isoformat(),
+        }},
+        upsert=True,
+    )
+
+    # Alert if battery low
+    if req.battery_percent <= 15:
+        child = await db.kids_children.find_one({"child_id": child_id})
+        if child:
+            await db.child_alerts.insert_one({
+                "alert_id": secrets.token_hex(8),
+                "parent_id": child["parent_id"],
+                "child_id": child_id,
+                "type": "battery_low",
+                "message": f"Akku von {child['name']} ist bei {req.battery_percent}%!",
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "read": False,
+            })
+
+    return {"ok": True}
+
+
+@router.get("/device/{child_id}")
+async def get_device_status(child_id: str, request: Request):
+    """Get device status for a child."""
+    user = await get_current_user(request)
+    parent_id = str(user["_id"])
+
+    child = await db.kids_children.find_one({"child_id": child_id, "parent_id": parent_id})
+    if not child:
+        raise HTTPException(404, "Kind nicht gefunden")
+
+    status = await db.device_status.find_one(
+        {"child_id": child_id}, {"_id": 0}
+    )
+
+    if not status:
+        return {
+            "child_id": child_id,
+            "battery_percent": None,
+            "is_charging": False,
+            "device_name": None,
+            "device_model": None,
+            "os_version": None,
+            "last_sync": None,
+            "connected": False,
+        }
+
+    return {**status, "connected": True}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# SOS ALARM SYSTEM (erweitert)
+# ══════════════════════════════════════════════════════════════════════════════
+
+class SOSRequest(BaseModel):
+    message: Optional[str] = "SOS! Ich brauche Hilfe!"
+
+
+@router.post("/sos/{child_id}")
+async def trigger_sos(child_id: str, req: SOSRequest, request: Request):
+    """Trigger SOS from child device or parent."""
+    child = await db.kids_children.find_one({"child_id": child_id})
+    if not child:
+        raise HTTPException(404, "Kind nicht gefunden")
+
+    # Get latest location
+    loc = await db.child_locations.find_one(
+        {"child_id": child_id}, {"_id": 0}
+    )
+
+    sos = {
+        "sos_id": secrets.token_hex(8),
+        "child_id": child_id,
+        "parent_id": child["parent_id"],
+        "child_name": child["name"],
+        "message": req.message,
+        "lat": loc.get("lat") if loc else None,
+        "lng": loc.get("lng") if loc else None,
+        "address": loc.get("address") if loc else None,
+        "status": "active",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "resolved_at": None,
+    }
+    await db.sos_alerts.insert_one(sos)
+    del sos["_id"]
+
+    # Also create a parent alert
+    await db.child_alerts.insert_one({
+        "alert_id": secrets.token_hex(8),
+        "parent_id": child["parent_id"],
+        "child_id": child_id,
+        "type": "sos",
+        "message": f"SOS von {child['name']}: {req.message}",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "read": False,
+    })
+
+    return {"ok": True, "sos": sos}
+
+
+@router.get("/alerts/sos")
+async def get_sos_alerts(request: Request):
+    """Get all SOS alerts for parent."""
+    user = await get_current_user(request)
+    parent_id = str(user["_id"])
+
+    alerts = await db.sos_alerts.find(
+        {"parent_id": parent_id}, {"_id": 0}
+    ).sort("created_at", -1).limit(50).to_list(50)
+
+    active = [a for a in alerts if a.get("status") == "active"]
+    return {"alerts": alerts, "active_count": len(active)}
+
+
+@router.post("/sos/{sos_id}/resolve")
+async def resolve_sos(sos_id: str, request: Request):
+    """Mark SOS as resolved."""
+    user = await get_current_user(request)
+    parent_id = str(user["_id"])
+
+    result = await db.sos_alerts.update_one(
+        {"sos_id": sos_id, "parent_id": parent_id},
+        {"$set": {"status": "resolved", "resolved_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    if result.modified_count == 0:
+        raise HTTPException(404, "SOS nicht gefunden")
+    return {"ok": True}
