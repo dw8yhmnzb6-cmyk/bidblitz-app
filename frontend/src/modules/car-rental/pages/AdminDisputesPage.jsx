@@ -10,6 +10,7 @@ import {
 import {
   getAdminDisputes, getAdminDispute, adminResolveDispute, addDisputeMessage
 } from "../api";
+import { useI18n } from "../../../store/I18nContext";
 
 const STATUS_CFG = {
   open: { label: "Offen", color: "#FFB800" },
@@ -19,6 +20,7 @@ const STATUS_CFG = {
 };
 
 export default function AdminDisputesPage({ onBack }) {
+  const { t } = useI18n();
   const [disputes, setDisputes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState(null);

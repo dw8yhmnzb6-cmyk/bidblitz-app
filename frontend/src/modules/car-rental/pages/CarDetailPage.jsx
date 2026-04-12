@@ -11,6 +11,7 @@ import {
   CreditCard, AlertCircle, X, DoorOpen, Gauge
 } from "lucide-react";
 import { getCarDetail, calculateCarPrice, checkCarAvailability, createBooking, payBooking, getCarReviews } from "../api";
+import { useI18n } from "../../../store/I18nContext";
 
 const FUEL_LABELS = {
   petrol: "Benzin",
@@ -27,6 +28,7 @@ const GEARBOX_LABELS = {
 };
 
 export default function CarDetailPage({ carId, onBack, onNavigate }) {
+  const { t } = useI18n();
   const [car, setCar] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);

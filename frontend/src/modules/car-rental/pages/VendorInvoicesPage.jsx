@@ -6,6 +6,7 @@ import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { ArrowLeft, FileText, Loader2, Euro, Check, Clock, AlertCircle, Download } from "lucide-react";
 import { getVendorInvoices, markInvoicePaid, downloadInvoicePdf } from "../api";
+import { useI18n } from "../../../store/I18nContext";
 
 const STATUS_CFG = {
   draft: { label: "Entwurf", color: "#888" },
@@ -16,6 +17,7 @@ const STATUS_CFG = {
 };
 
 export default function VendorInvoicesPage({ onBack }) {
+  const { t } = useI18n();
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState(null);

@@ -10,6 +10,7 @@ import {
   Check, X, AlertCircle, FileText, Receipt
 } from "lucide-react";
 import { getMyBookings, cancelMyBooking } from "../api";
+import { useI18n } from "../../../store/I18nContext";
 
 const STATUS_CONFIG = {
   pending: { label: "Ausstehend", color: "#FFB800", bg: "rgba(255,184,0,0.1)" },
@@ -22,6 +23,7 @@ const STATUS_CONFIG = {
 };
 
 export default function MyCarBookingsPage({ onBack, onNavigate }) {
+  const { t } = useI18n();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("all");

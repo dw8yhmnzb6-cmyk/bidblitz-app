@@ -7,6 +7,7 @@ import {
   ArrowLeft, TrendingUp, Loader2, Car, Calendar, Euro, Users, BarChart3
 } from "lucide-react";
 import { getVendorReportSummary, getVendorDashboard } from "../api";
+import { useI18n } from "../../../store/I18nContext";
 
 const PERIODS = [
   { days: 7, label: "7 Tage" },
@@ -16,6 +17,7 @@ const PERIODS = [
 ];
 
 export default function VendorReportsPage({ onBack }) {
+  const { t } = useI18n();
   const [report, setReport] = useState(null);
   const [dashboard, setDashboard] = useState(null);
   const [loading, setLoading] = useState(true);

@@ -14,6 +14,7 @@ import {
   getVendorCars, createCar, updateCar, archiveCar,
   uploadCarImage, deleteCarImage, setCarMainImage
 } from "../api";
+import { useI18n } from "../../../store/I18nContext";
 
 const STATUS_CFG = {
   available: { label: "Verfügbar", color: "#00D26A" },
@@ -44,6 +45,7 @@ const emptyForm = {
 };
 
 export default function VendorCarsPage({ onBack, onNavigate }) {
+  const { t } = useI18n();
   const [cars, setCars] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);

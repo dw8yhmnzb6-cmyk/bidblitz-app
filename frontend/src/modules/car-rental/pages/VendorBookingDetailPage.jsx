@@ -15,6 +15,7 @@ import {
   markReadyForHandover, completeHandover, completeReturn,
   vendorCancelBooking, generateContract, generateInvoice
 } from "../api";
+import { useI18n } from "../../../store/I18nContext";
 
 const STATUS_CFG = {
   pending: { label: "Ausstehend", color: "#FFB800" },
@@ -27,6 +28,7 @@ const STATUS_CFG = {
 };
 
 export default function VendorBookingDetailPage({ bookingId, onBack, onNavigate }) {
+  const { t } = useI18n();
   const [booking, setBooking] = useState(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(null);

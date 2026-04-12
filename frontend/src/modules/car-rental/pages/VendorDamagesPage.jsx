@@ -6,6 +6,7 @@ import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { ArrowLeft, AlertTriangle, Loader2, Check, Clock, Wrench } from "lucide-react";
 import { getVendorDamages, updateDamageReport } from "../api";
+import { useI18n } from "../../../store/I18nContext";
 
 const SEV_CFG = {
   minor: { label: "Gering", color: "#FFB800" },
@@ -15,6 +16,7 @@ const SEV_CFG = {
 };
 
 export default function VendorDamagesPage({ onBack }) {
+  const { t } = useI18n();
   const [damages, setDamages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState(null);

@@ -11,6 +11,7 @@ import {
   Star, Download
 } from "lucide-react";
 import { getMyBookingDetail, cancelMyBooking, signMyContract, createReview, downloadBookingReceipt } from "../api";
+import { useI18n } from "../../../store/I18nContext";
 
 const STATUS_CFG = {
   pending: { label: "Ausstehend", color: "#FFB800" },
@@ -23,6 +24,7 @@ const STATUS_CFG = {
 };
 
 export default function MyBookingDetailPage({ bookingId, onBack, onNavigate }) {
+  const { t } = useI18n();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(null);

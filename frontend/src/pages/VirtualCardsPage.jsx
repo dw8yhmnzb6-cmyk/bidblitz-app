@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { ArrowLeft, CreditCard, Plus, Loader2, Eye, EyeOff, Copy, Check, Lock, Trash2 } from "lucide-react";
+import { useI18n } from "../store/I18nContext";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
 const VirtualCardsPage = ({ onBack }) => {
+  const { t } = useI18n();
   const [cards, setCards] = useState([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);

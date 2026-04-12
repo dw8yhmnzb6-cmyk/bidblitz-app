@@ -10,6 +10,7 @@ import {
   CheckCircle, AlertCircle, Loader2, ChevronRight, Euro,
   Calendar, Percent, Lock, Check
 } from "lucide-react";
+import { useI18n } from "../store/I18nContext";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -38,6 +39,7 @@ const SCORE_CONFIG = {
 };
 
 const CreditScorePage = ({ onBack, onNavigate }) => {
+  const { t } = useI18n();
   const [loading, setLoading] = useState(true);
   const [creditData, setCreditData] = useState(null);
   const [error, setError] = useState(null);

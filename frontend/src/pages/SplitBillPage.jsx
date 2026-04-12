@@ -1,10 +1,12 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { ArrowLeft, Users, Plus, Loader2, Check, Euro, UserPlus, Trash2 } from "lucide-react";
+import { useI18n } from "../store/I18nContext";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
 const SplitBillPage = ({ onBack }) => {
+  const { t } = useI18n();
   const [bills, setBills] = useState([]);
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState({ title: "", total: "", participants: [""] });

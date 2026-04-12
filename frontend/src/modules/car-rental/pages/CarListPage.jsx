@@ -10,6 +10,7 @@ import {
   Users, Star, ChevronRight, Loader2, X, SlidersHorizontal
 } from "lucide-react";
 import { searchCars, calculateCarPrice } from "../api";
+import { useI18n } from "../../../store/I18nContext";
 
 const FUEL_TYPES = [
   { value: "", label: "Alle" },
@@ -33,6 +34,7 @@ const SORT_OPTIONS = [
 ];
 
 export default function CarListPage({ onBack, onNavigate }) {
+  const { t } = useI18n();
   const [cars, setCars] = useState([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);

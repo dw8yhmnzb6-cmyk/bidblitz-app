@@ -11,6 +11,7 @@ import {
   FileText, CreditCard, BarChart3, Package, Wrench, Shield
 } from "lucide-react";
 import { getVendorDashboard, getVendorProfile, registerVendor } from "../api";
+import { useI18n } from "../../../store/I18nContext";
 
 const StatCard = ({ icon: Icon, label, value, color, trend }) => (
   <motion.div
@@ -53,6 +54,7 @@ const QuickAction = ({ icon: Icon, label, onClick, color = "#00C2FF" }) => (
 );
 
 export default function VendorCarRentalDashboardPage({ onBack, onNavigate }) {
+  const { t } = useI18n();
   const [vendor, setVendor] = useState(null);
   const [dashboard, setDashboard] = useState(null);
   const [loading, setLoading] = useState(true);

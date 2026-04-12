@@ -6,8 +6,10 @@ import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { ArrowLeft, Settings, Loader2, Check, Save } from "lucide-react";
 import { getVendorProfile, updateVendorProfile, updateVendorSettings } from "../api";
+import { useI18n } from "../../../store/I18nContext";
 
 export default function VendorSettingsPage({ onBack }) {
+  const { t } = useI18n();
   const [vendor, setVendor] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);

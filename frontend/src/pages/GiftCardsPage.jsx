@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { ArrowLeft, Gift, Loader2, ShoppingCart, Send, Copy, Check } from "lucide-react";
+import { useI18n } from "../store/I18nContext";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -16,6 +17,7 @@ const CARD_TYPES = [
 ];
 
 const GiftCardsPage = ({ onBack }) => {
+  const { t } = useI18n();
   const [selected, setSelected] = useState(null);
   const [amount, setAmount] = useState(null);
   const [purchasing, setPurchasing] = useState(false);

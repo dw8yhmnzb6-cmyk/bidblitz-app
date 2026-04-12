@@ -7,6 +7,7 @@ import {
   ArrowLeft, Users, Plus, Loader2, Edit3, Trash2, X, Check, Shield, Mail
 } from "lucide-react";
 import { getVendorStaff, addVendorStaff, updateVendorStaff, removeVendorStaff } from "../api";
+import { useI18n } from "../../../store/I18nContext";
 
 const ROLES = [
   { value: "manager", label: "Manager", desc: "Voller Zugriff" },
@@ -15,6 +16,7 @@ const ROLES = [
 ];
 
 export default function VendorStaffPage({ onBack }) {
+  const { t } = useI18n();
   const [staff, setStaff] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);

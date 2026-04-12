@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { ArrowLeft, Clock, Loader2, Euro, Calendar, Check, AlertCircle } from "lucide-react";
+import { useI18n } from "../store/I18nContext";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
 const BNPLPage = ({ onBack }) => {
+  const { t } = useI18n();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
 

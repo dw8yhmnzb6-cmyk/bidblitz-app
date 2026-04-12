@@ -6,6 +6,7 @@ import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { ArrowLeft, CreditCard, Loader2, Euro, Clock, Check, AlertCircle, Plus } from "lucide-react";
 import { getVendorPayouts, requestPayout, getVendorDashboard } from "../api";
+import { useI18n } from "../../../store/I18nContext";
 
 const STATUS_CFG = {
   pending: { label: "Ausstehend", color: "#FFB800" },
@@ -15,6 +16,7 @@ const STATUS_CFG = {
 };
 
 export default function VendorPayoutsPage({ onBack }) {
+  const { t } = useI18n();
   const [payouts, setPayouts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [balance, setBalance] = useState(0);

@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { ArrowLeft, PiggyBank, Plus, Loader2, Target, TrendingUp, Euro } from "lucide-react";
+import { useI18n } from "../store/I18nContext";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
 const SavingsPage = ({ onBack }) => {
+  const { t } = useI18n();
   const [goals, setGoals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);

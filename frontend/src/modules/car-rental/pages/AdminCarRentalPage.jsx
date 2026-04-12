@@ -15,6 +15,7 @@ import {
   getAdminBookings, getAdminPayouts, adminProcessPayout,
   getAdminSettings, updateAdminSettings
 } from "../api";
+import { useI18n } from "../../../store/I18nContext";
 
 const VENDOR_STATUS = {
   pending: { label: "Ausstehend", color: "#FFB800" },
@@ -32,6 +33,7 @@ const TABS = [
 ];
 
 export default function AdminCarRentalPage({ onBack, onNavigate }) {
+  const { t } = useI18n();
   const [activeTab, setActiveTab] = useState("overview");
   const [overview, setOverview] = useState(null);
   const [vendors, setVendors] = useState([]);

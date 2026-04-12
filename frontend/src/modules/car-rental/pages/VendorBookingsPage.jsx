@@ -12,6 +12,7 @@ import {
   getVendorBookings, approveBooking, rejectBooking, vendorCancelBooking,
   markReadyForHandover
 } from "../api";
+import { useI18n } from "../../../store/I18nContext";
 
 const STATUS_CFG = {
   pending: { label: "Ausstehend", color: "#FFB800", bg: "rgba(255,184,0,0.1)" },
@@ -32,6 +33,7 @@ const TABS = [
 ];
 
 export default function VendorBookingsPage({ onBack, onNavigate }) {
+  const { t } = useI18n();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState(null);

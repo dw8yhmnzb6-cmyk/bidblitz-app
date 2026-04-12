@@ -10,6 +10,7 @@ import {
   CheckCircle, AlertCircle, Loader2, ChevronRight, Euro, Globe,
   Signal, Clock, Shield
 } from "lucide-react";
+import { useI18n } from "../store/I18nContext";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -66,6 +67,7 @@ const BILL_CATEGORIES = [
 ];
 
 const BillsPage = ({ onBack, onNavigate }) => {
+  const { t } = useI18n();
   const [loading, setLoading] = useState(false);
   const [userBalance, setUserBalance] = useState(0);
   const [selectedCategory, setSelectedCategory] = useState(null);
