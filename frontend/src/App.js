@@ -78,6 +78,7 @@ import ParcelPage from "./pages/ParcelPage";
 import CVBuilderPage from "./pages/CVBuilderPage";
 import NearbyPage from "./pages/NearbyPage";
 import MerchantPortalPage from "./pages/MerchantPortalPage";
+import KidsAppPage from "./pages/KidsAppPage";
 
 // Car Rental Module
 import {
@@ -359,6 +360,8 @@ function AppContent() {
         return isGuest ? <HomePage {...homeProps} /> : <NearbyPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
       case "/merchant-portal":
         return isGuest ? <HomePage {...homeProps} /> : <MerchantPortalPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
+      case "/kids-app":
+        return isGuest ? <HomePage {...homeProps} /> : <KidsAppPage onBack={() => handleNavigate("/kids")} />;
       case "/gaming":
         return isGuest ? <HomePage {...homeProps} /> : <GamingPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
       

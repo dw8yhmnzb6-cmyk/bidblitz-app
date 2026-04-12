@@ -11,18 +11,18 @@
 - Car Rental (full module, i18n), Premium Finance (7 modules, i18n)
 - AI Assistant (BlitzBot), Crypto Wallet, Budget Planner
 - Kids Module (GPS, Geofencing, Wallet, Tasks, Screen Time, App Control, SOS)
+- **Kids App** (kinderfreundliches Interface: Dashboard, Wallet, Aufgaben, Chat mit Eltern, Anrufen, Lernspiele/Quiz mit Belohnungen, SOS-Button, Sparziel)
 - Admin Panel (48 Tiles), Admin Grants & Coupons, Admin Credits
+- **Händler-Portal** (Dashboard, Finanzen, Reservierungen, Hotel-Buchungen, Termine, Trinkgeld, Firmenprofil mit Logo/Kontakt)
 - Trinkgeld-System (POS + P2P, 2% Cashback)
 - Hotel-Buchung, Event-Buchung, Restaurant-Reservierung
 - Insurance Marketplace, Appointment Booking
 - Social Feed / Community (Posts, Likes, Comments, Stories, Follow)
-- Job-Marktplatz (Premium-Boost, Bewerbung in-App, CV auto-attach)
-- CV-Builder (PDF-Export, Auto-Attach)
-- Flugsuche (12 Flüge, Economy/Business/First, 3% Cashback)
-- Paketversand (5 Carrier Preisvergleich, Buchung, Tracking)
+- Job-Marktplatz (Premium-Boost, CV auto-attach), CV-Builder (PDF-Export)
+- Flugsuche (Economy/Business/First, 3% Cashback)
+- Paketversand (5 Carrier Preisvergleich, Tracking)
 - Empfehlungssystem (6 Karussells auf Startseite)
-- In der Nähe (Mapbox Streets, 42 Marker, Adress-Suche, Gespeicherte Standorte)
-- Händler-Portal (Dashboard mit Umsatz/Bestellungen/Reservierungen/Hotel-Buchungen/Termine/Tips/Jobs/Events, Firmenprofil mit Logo/Kontakt/Öffnungszeiten, Quick Actions)
+- In der Nähe (Mapbox Streets, Adress-Suche, Gespeicherte Standorte)
 - Quick Access (27 Shortcuts, persistent)
 - i18n 15 Sprachen, Support Chat, Referral, Mapbox Live Map
 
@@ -31,8 +31,7 @@
 ## Test Credentials
 - Admin: admin@bidblitz.com / BidBlitz2026!
 - Customer: kunde@bidblitz.com / Kunde2026!
+- Kids: "Albin" (child of admin account)
 
 ## Backlog
-- BidBlitz Kids App (kinderfreundliches Interface)
-- Push Notifications, Dark/Light Mode Toggle
-- Routenplanung in Karte
+- Push Notifications, Dark/Light Mode Toggle, Routenplanung
