@@ -306,6 +306,15 @@ app.include_router(social_router)
 from routes.jobs import router as jobs_router
 app.include_router(jobs_router)
 
+from routes.flights import router as flights_router
+app.include_router(flights_router)
+
+from routes.parcels import router as parcels_router
+app.include_router(parcels_router)
+
+from routes.recommendations import router as recommendations_router
+app.include_router(recommendations_router)
+
 
 # Static file serving for uploads
 from fastapi.staticfiles import StaticFiles

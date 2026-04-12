@@ -8,7 +8,8 @@ import {
   Car, Zap, Hotel, UtensilsCrossed, Ticket, MapPin, Wallet,
   Gamepad2, ShoppingBag, CreditCard, Bot, Bitcoin, PiggyBank,
   Heart, Baby, Star, Phone, Globe, Settings, Plus, X, Check,
-  GripVertical, Pencil
+  GripVertical, Pencil, Shield, Calendar, MessageCircle, Briefcase,
+  Plane, Package
 } from "lucide-react";
 
 const API = process.env.REACT_APP_BACKEND_URL;
@@ -35,10 +36,12 @@ const ALL_SHORTCUTS = [
   { id: "currency", icon: Globe, label: "Währung", route: "/currency", color: "#34D399" },
   { id: "credit", icon: CreditCard, label: "Kredit", route: "/credit-score", color: "#F87171" },
   { id: "tips", icon: Heart, label: "Trinkgeld", route: "/more", color: "#FB923C" },
-  { id: "insurance", icon: Heart, label: "Versicherung", route: "/insurance", color: "#EF4444" },
-  { id: "appointments", icon: Star, label: "Termine", route: "/appointments", color: "#3B82F6" },
-  { id: "social", icon: Heart, label: "Community", route: "/social", color: "#EC4899" },
-  { id: "jobs", icon: Star, label: "Jobs", route: "/jobs", color: "#6366F1" },
+  { id: "insurance", icon: Shield, label: "Versicherung", route: "/insurance", color: "#EF4444" },
+  { id: "appointments", icon: Calendar, label: "Termine", route: "/appointments", color: "#3B82F6" },
+  { id: "social", icon: MessageCircle, label: "Community", route: "/social", color: "#EC4899" },
+  { id: "jobs", icon: Briefcase, label: "Jobs", route: "/jobs", color: "#6366F1" },
+  { id: "flights", icon: Plane, label: "Flüge", route: "/flights", color: "#06B6D4" },
+  { id: "parcels", icon: Package, label: "Pakete", route: "/parcels", color: "#F97316" },
 ];
 
 const DEFAULT_SHORTCUTS = ["taxi", "scooter", "hotels", "restaurants"];
@@ -186,12 +189,12 @@ const QuickAccessBar = ({ onNavigate }) => {
               exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 28, stiffness: 300 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-lg bg-[#111118] rounded-t-3xl border-t border-white/10 max-h-[80vh] overflow-hidden"
+              className="w-full max-w-lg bg-[#111118] rounded-t-3xl border-t border-white/10 max-h-[85vh] overflow-hidden flex flex-col"
             >
               {/* Header */}
-              <div className="p-5 pb-3 flex items-center justify-between border-b border-white/5">
+              <div className="p-4 pb-3 flex items-center justify-between border-b border-white/5 flex-shrink-0">
                 <div>
-                  <h3 className="text-[15px] font-bold text-white">Schnellzugriff bearbeiten</h3>
+                  <h3 className="text-[14px] font-bold text-white">Schnellzugriff bearbeiten</h3>
                   <p className="text-[10px] text-gray-500">{selected.length}/8 ausgewählt</p>
                 </div>
                 <div className="flex gap-2">
@@ -208,8 +211,8 @@ const QuickAccessBar = ({ onNavigate }) => {
               </div>
 
               {/* Grid of all shortcuts */}
-              <div className="p-4 overflow-y-auto max-h-[60vh]">
-                <div className="grid grid-cols-4 gap-2.5">
+              <div className="p-3 overflow-y-auto flex-1 pb-20">
+                <div className="grid grid-cols-4 gap-2">
                   {ALL_SHORTCUTS.map((s) => {
                     const isActive = selected.includes(s.id);
                     const idx = selected.indexOf(s.id);
@@ -218,7 +221,7 @@ const QuickAccessBar = ({ onNavigate }) => {
                         key={s.id}
                         whileTap={{ scale: 0.9 }}
                         onClick={() => toggleItem(s.id)}
-                        className={`relative p-3 rounded-2xl flex flex-col items-center gap-1.5 border transition-all ${
+                        className={`relative p-2.5 rounded-xl flex flex-col items-center gap-1 border transition-all ${
                           isActive
                             ? "border-[#F59E0B]/40 bg-[#F59E0B]/5"
                             : "border-white/5 bg-white/[0.02] hover:border-white/10"
@@ -226,17 +229,17 @@ const QuickAccessBar = ({ onNavigate }) => {
                         data-testid={`quick-option-${s.id}`}
                       >
                         {isActive && (
-                          <div className="absolute top-1 right-1 w-4 h-4 rounded-full bg-[#F59E0B] flex items-center justify-center">
-                            <span className="text-[8px] font-bold text-black">{idx + 1}</span>
+                          <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[#F59E0B] flex items-center justify-center">
+                            <span className="text-[7px] font-bold text-black">{idx + 1}</span>
                           </div>
                         )}
                         <div
-                          className="w-9 h-9 rounded-xl flex items-center justify-center"
+                          className="w-8 h-8 rounded-lg flex items-center justify-center"
                           style={{ background: `${s.color}${isActive ? "20" : "10"}` }}
                         >
-                          <s.icon size={16} style={{ color: s.color }} />
+                          <s.icon size={14} style={{ color: s.color }} />
                         </div>
-                        <span className={`text-[9px] font-medium text-center leading-tight ${isActive ? "text-white" : "text-[#666]"}`}>
+                        <span className={`text-[8px] font-medium text-center leading-tight ${isActive ? "text-white" : "text-[#666]"}`}>
                           {s.label}
                         </span>
                       </motion.button>
