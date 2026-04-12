@@ -31,14 +31,14 @@ router = APIRouter(prefix="/api/credit", tags=["credit"])
 # CONSTANTS
 # ═══════════════════════════════════════════════════════════════════════════════
 
-MAX_CREDIT_AMOUNT = 100.00  # Maximum €100 Kredit
+MAX_CREDIT_AMOUNT = 5000.00  # Maximum €5000 Kredit
 REPAYMENT_DAYS = 30  # 30 Tage Rückzahlungsfrist
 GRACE_PERIOD_DAYS = 7  # 7 Tage Kulanz bevor Abstufung
 SCORE_C_BAN_MONTHS = 6  # 6 Monate Sperre bei Score C
 
 CREDIT_SCORES = {
-    "A": {"color": "#22C55E", "label": "Ausgezeichnet", "can_borrow": True, "max_amount": 100.00},
-    "B": {"color": "#F59E0B", "label": "Eingeschränkt", "can_borrow": False, "max_amount": 0},
+    "A": {"color": "#22C55E", "label": "Ausgezeichnet", "can_borrow": True, "max_amount": 5000.00},
+    "B": {"color": "#F59E0B", "label": "Eingeschränkt", "can_borrow": True, "max_amount": 500.00},
     "C": {"color": "#EF4444", "label": "Gesperrt", "can_borrow": False, "max_amount": 0},
 }
 
@@ -49,6 +49,7 @@ CREDIT_SCORES = {
 
 class CreditRequest(BaseModel):
     amount: float = Field(..., gt=0, le=MAX_CREDIT_AMOUNT, description="Kreditbetrag in EUR")
+    term_months: int = Field(default=6, ge=1, le=36, description="Laufzeit in Monaten")
 
 
 class RepaymentRequest(BaseModel):
@@ -247,15 +248,41 @@ async def request_credit(req: CreditRequest, request: Request):
         )
     
     now = datetime.now(timezone.utc)
-    due_date = now + timedelta(days=REPAYMENT_DAYS)
+    term = req.term_months
+    interest_rate = 0.059  # 5.9% p.a.
+    total_interest = round(req.amount * interest_rate * (term / 12), 2)
+    total_repayment = round(req.amount + total_interest, 2)
+    monthly_rate = round(total_repayment / term, 2)
+    due_date = now + timedelta(days=30 * term)
+    
+    # Build repayment schedule
+    schedule = []
+    remaining = total_repayment
+    for i in range(term):
+        payment_date = now + timedelta(days=30 * (i + 1))
+        remaining = round(remaining - monthly_rate, 2)
+        if remaining < 0:
+            remaining = 0
+        schedule.append({
+            "month": i + 1,
+            "date": payment_date.strftime("%Y-%m-%d"),
+            "amount": monthly_rate,
+            "remaining": remaining,
+        })
     
     # Create credit
     credit = {
         "credit_id": secrets.token_hex(8),
         "user_id": user_id,
         "amount": round(req.amount, 2),
-        "remaining_amount": round(req.amount, 2),
-        "status": "active",  # active, paid, overdue
+        "remaining_amount": total_repayment,
+        "total_interest": total_interest,
+        "total_repayment": total_repayment,
+        "monthly_rate": monthly_rate,
+        "term_months": term,
+        "interest_rate": interest_rate,
+        "schedule": schedule,
+        "status": "active",
         "created_at": now.isoformat(),
         "due_date": due_date.isoformat(),
         "paid_at": None,

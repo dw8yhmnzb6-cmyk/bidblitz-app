@@ -41,6 +41,7 @@ const CreditScorePage = ({ onBack, onNavigate }) => {
   const [loading, setLoading] = useState(true);
   const [creditData, setCreditData] = useState(null);
   const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(null);
   const [showApply, setShowApply] = useState(false);
   const [applyAmount, setApplyAmount] = useState("");
   const [applyLoading, setApplyLoading] = useState(false);
@@ -76,15 +77,19 @@ const CreditScorePage = ({ onBack, onNavigate }) => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ amount }),
+        body: JSON.stringify({ amount, term_months: selectedTerm }),
       });
       if (!res.ok) {
         const err = await res.json();
-        throw new Error(err.detail || "Antrag fehlgeschlagen");
+        const msg = typeof err.detail === "string" ? err.detail : Array.isArray(err.detail) ? err.detail.map(e => e.msg).join(", ") : "Antrag fehlgeschlagen";
+        throw new Error(msg);
       }
+      const result = await res.json();
       await loadCreditData();
       setShowApply(false);
       setApplyAmount("");
+      setSuccess(result.message || "Kredit bewilligt!");
+      setTimeout(() => setSuccess(null), 4000);
     } catch (err) {
       setError(err.message);
     } finally {
