@@ -13,12 +13,71 @@ import MapboxMap from "../components/MapboxMap";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
+// Location permission gate
+const LocationPermissionGate = ({ onGranted, onSkipped }) => {
+  const [asking, setAsking] = useState(false);
+
+  const requestLocation = () => {
+    setAsking(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => { onGranted({ lat: pos.coords.latitude, lng: pos.coords.longitude }); },
+      () => { setAsking(false); onSkipped(); },
+      { enableHighAccuracy: true, timeout: 15000 }
+    );
+  };
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+      className="fixed inset-0 z-50 bg-[#0A0A0F] flex flex-col items-center justify-center p-8 text-center">
+      <motion.div initial={{ scale: 0.8, y: 20 }} animate={{ scale: 1, y: 0 }} transition={{ delay: 0.1 }}>
+        <div className="w-20 h-20 rounded-full bg-[#00C2FF]/10 border-2 border-[#00C2FF]/30 flex items-center justify-center mx-auto mb-6">
+          <MapPin size={36} className="text-[#00C2FF]" />
+        </div>
+        <h2 className="text-xl font-bold text-white mb-2">Standort aktivieren</h2>
+        <p className="text-sm text-gray-400 mb-2 max-w-xs">
+          BidBlitz braucht deinen Standort, um Fahrzeuge und Services in deiner Nähe zu finden.
+        </p>
+        <p className="text-[10px] text-gray-600 mb-8 max-w-xs">
+          Dein Standort wird nur für die Kartenanzeige verwendet und nicht gespeichert.
+        </p>
+        <motion.button whileTap={{ scale: 0.95 }} onClick={requestLocation} disabled={asking}
+          className="w-full max-w-xs py-4 rounded-2xl bg-[#00C2FF] text-black font-bold text-sm flex items-center justify-center gap-2 mb-3 disabled:opacity-60"
+          data-testid="grant-location-btn">
+          {asking ? <Loader2 size={18} className="animate-spin" /> : <><Navigation size={18} /> Standort freigeben</>}
+        </motion.button>
+        <motion.button whileTap={{ scale: 0.95 }} onClick={onSkipped}
+          className="w-full max-w-xs py-3 rounded-2xl bg-white/5 text-gray-500 text-xs font-medium"
+          data-testid="skip-location-btn">
+          Ohne Standort fortfahren
+        </motion.button>
+      </motion.div>
+    </motion.div>
+  );
+};
+
 const MobilityMapPage = ({ onNavigate }) => {
+  const [locationGranted, setLocationGranted] = useState(null); // null=checking, true/false
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [userBalance, setUserBalance] = useState(0);
   const [cars, setCars] = useState([]);
   const [selectedCar, setSelectedCar] = useState(null);
+
+  // Check if location permission was already granted
+  useEffect(() => {
+    if (!navigator.geolocation) { setLocationGranted(false); return; }
+    // Check via permissions API if available
+    if (navigator.permissions) {
+      navigator.permissions.query({ name: "geolocation" }).then(result => {
+        if (result.state === "granted") setLocationGranted(true);
+        else if (result.state === "denied") setLocationGranted(false);
+        else setLocationGranted(null); // prompt
+      }).catch(() => setLocationGranted(null));
+    } else {
+      // No permissions API — try silently
+      setLocationGranted(null);
+    }
+  }, []);
 
   const fetchAPI = async (path) => {
     const res = await fetch(`${API_URL}${path}`, { credentials: "include" });
@@ -58,6 +117,16 @@ const MobilityMapPage = ({ onNavigate }) => {
 
   return (
     <div data-testid="mobility-map-page" className="h-screen flex flex-col bg-[#030303]">
+      {/* Location Permission Gate */}
+      <AnimatePresence>
+        {locationGranted === null && (
+          <LocationPermissionGate
+            onGranted={() => setLocationGranted(true)}
+            onSkipped={() => setLocationGranted(false)}
+          />
+        )}
+      </AnimatePresence>
+
       {/* Header */}
       <div className="sticky top-0 z-20 bg-[#0A0A0F]/95 backdrop-blur-xl border-b border-white/5">
         <div className="flex items-center justify-between px-4 py-3">

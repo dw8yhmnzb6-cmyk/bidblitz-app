@@ -270,6 +270,13 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
   // Track guest visit (once per session)
   useState(() => { if (isGuest) tracker.guestVisit(); });
 
+  // Request location permission early on first login (triggers browser dialog)
+  useEffect(() => {
+    if (!isGuest && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(() => {}, () => {}, { timeout: 5000 });
+    }
+  }, [isGuest]);
+
   const dismissHint = () => {
     setHintDismissed(true);
     try { localStorage.setItem("bb_hint_dismissed", "1"); } catch {}
