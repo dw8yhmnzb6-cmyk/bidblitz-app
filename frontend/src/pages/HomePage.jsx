@@ -14,6 +14,7 @@ import { getGreeting } from "../models";
 import { useGuestTranslations } from "../models/homeTranslations";
 import { tracker } from "../services/tracker";
 import LanguageSwitcher from "../components/LanguageSwitcher";
+import QuickAccessBar from "../components/QuickAccessBar";
 
 const slide = { duration: 0.35, ease: [0.32, 0.72, 0, 1] };
 
@@ -533,6 +534,9 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
 
             {/* ═══ Loyalty & Coins Card ═══ */}
             <LoyaltyCard onNavigate={onNavigate} t={t} />
+
+            {/* ═══ Quick Access Shortcuts ═══ */}
+            <QuickAccessBar onNavigate={onNavigate} />
 
             {/* ═══ Available Now ═══ */}
             <motion.section data-testid="available-now-section" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.26 }}>

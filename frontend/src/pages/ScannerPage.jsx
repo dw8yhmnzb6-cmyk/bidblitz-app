@@ -492,12 +492,9 @@ const ScannerPage = ({ onNavigate }) => {
           isOpen={showTip}
           onClose={() => setShowTip(false)}
           billAmount={result.amount || 0}
-          staffEmail={user.email || ""}
-          staffName={user.name || ""}
+          posCustomerId={result.customer_id || ""}
           transactionId={result.transaction_id || ""}
-          onTipSent={(tipData) => {
-            wallet.refreshWallet();
-          }}
+          onTipSent={() => wallet.refreshWallet()}
         />
       )}
     </div>

@@ -4,10 +4,11 @@ import {
   ArrowLeft, Scan, Loader2, Check, X, AlertCircle, User,
   Smartphone, CreditCard, Zap, Wifi, WifiOff, Maximize,
   Minimize, QrCode, NfcIcon, Receipt, BarChart3, Clock,
-  ShieldCheck, ChevronDown, Delete
+  ShieldCheck, ChevronDown, Delete, Heart
 } from "lucide-react";
 import { useI18n } from "../store/I18nContext";
 import { api } from "../services/api";
+import TipModal from "../components/TipModal";
 
 const MerchantTerminalPage = ({ onBack }) => {
   const { t } = useI18n();
@@ -23,6 +24,7 @@ const MerchantTerminalPage = ({ onBack }) => {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [dailySummary, setDailySummary] = useState(null);
   const [showSummary, setShowSummary] = useState(false);
+  const [showTip, setShowTip] = useState(false);
   const [nfcReady, setNfcReady] = useState(false);
   const inputRef = useRef(null);
 
@@ -538,11 +540,18 @@ const MerchantTerminalPage = ({ onBack }) => {
                     </div>
                   )}
 
-                  <motion.button data-testid="terminal-new-btn" onClick={reset} whileTap={{ scale: 0.95 }}
-                    className="w-full py-4 rounded-xl text-[14px] font-black tracking-wide flex items-center justify-center gap-2"
-                    style={{ background: "linear-gradient(135deg, rgba(0,224,255,0.1), rgba(168,85,247,0.06))", border: "1px solid rgba(0,224,255,0.15)", color: "#00E0FF" }}>
-                    <Zap size={14} /> {t("terminal.new_payment") || "NEW PAYMENT"}
-                  </motion.button>
+                  <div className="flex gap-2">
+                    <motion.button data-testid="terminal-tip-btn" onClick={() => setShowTip(true)} whileTap={{ scale: 0.95 }}
+                      className="py-4 px-5 rounded-xl text-[13px] font-bold flex items-center gap-2"
+                      style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.2)", color: "#F59E0B" }}>
+                      <Heart size={14} /> Trinkgeld
+                    </motion.button>
+                    <motion.button data-testid="terminal-new-btn" onClick={reset} whileTap={{ scale: 0.95 }}
+                      className="flex-1 py-4 rounded-xl text-[14px] font-black tracking-wide flex items-center justify-center gap-2"
+                      style={{ background: "linear-gradient(135deg, rgba(0,224,255,0.1), rgba(168,85,247,0.06))", border: "1px solid rgba(0,224,255,0.15)", color: "#00E0FF" }}>
+                      <Zap size={14} /> {t("terminal.new_payment") || "NEW PAYMENT"}
+                    </motion.button>
+                  </div>
                 </div>
               </div>
             </motion.div>
@@ -563,6 +572,18 @@ const MerchantTerminalPage = ({ onBack }) => {
           )}
         </AnimatePresence>
       </div>
+
+      {/* POS Tip Modal */}
+      {result && (
+        <TipModal
+          isOpen={showTip}
+          onClose={() => setShowTip(false)}
+          billAmount={result.amount || 0}
+          posCustomerId={result.customer_id || ""}
+          transactionId={result.transaction_id || ""}
+          onTipSent={() => setShowTip(false)}
+        />
+      )}
     </motion.div>
   );
 };

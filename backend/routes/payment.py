@@ -609,6 +609,7 @@ async def merchant_scan_payment(req: MerchantScanPayment, request: Request):
         "amount": req.amount,
         "fee": fee,
         "net_to_merchant": net_to_merchant,
+        "customer_id": customer_id,
         "customer_name": customer.get("name", "Customer"),
         "customer_new_balance": round(updated_customer["balance"], 2),
         "merchant_name": merchant_name,

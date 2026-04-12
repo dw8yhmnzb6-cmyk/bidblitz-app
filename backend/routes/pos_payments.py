@@ -459,6 +459,7 @@ async def process_nfc_payment(req: NfcPaymentRequest, request: Request):
         "fee_rate": round(pt["fee_rate"] * 100, 2),
         "payment_method": pt["category"],
         "payment_type_label": pt["label"],
+        "customer_id": req.customer_id or "",
         "customer_name": customer_name,
         "ultra_fast": req.amount <= ULTRA_FAST_LIMIT,
         "receipt": receipt,

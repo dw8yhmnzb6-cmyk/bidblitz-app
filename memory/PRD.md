@@ -15,20 +15,30 @@
 - Kids Module (GPS, Geofencing, Wallet, Tasks, Screen Time, App Control, SOS, Device Status)
 - Admin Grants & Coupon System (EUR/Coins/BLZ/BidCredits/KidsAbo/Premium vergeben)
 - Admin Credit Management (Anträge genehmigen/ablehnen)
+- Admin Panel Full Grid (48 Tiles mit echten Detail-Views)
 - i18n: 15 Sprachen
+- Trinkgeld-System (POS + Kunden-zu-Mitarbeiter, Cashback 2%)
+- Hotel/Unterkunft-Buchung (Eigener Marktplatz, Wallet-Zahlung, 3% Cashback)
+- Event-Buchung (Tickets kaufen, Standard + VIP, QR-Codes, 2% Cashback)
+- Restaurant-Reservierung (Tisch buchen, Küchen-Filter, Kaution per Wallet)
+- Personalisierter Schnellzugriff auf der Startseite (bis zu 8 Shortcuts, persistent)
 
-### Credit System Flow
-1. Kunde beantragt → Status: "pending"
-2. Admin genehmigt → Geld wird ausgezahlt
-3. Auto-Pay: Monatliche Raten automatisch vom Wallet (Background Task, stündlich)
-4. Bei zu wenig Guthaben: Notification "Bitte Wallet aufladen"
+### New Pages (2026-04-12)
+- NotificationCenterPage, ContactsPage, UserStatsPage, CurrencyConverterPage
+- HotelBookingPage, EventBookingPage, RestaurantReservationPage
 
-### Admin Grants & Coupons (2026-04-12)
-- POST /api/admin/grants/balance — EUR/Coins/BidCredits/BLZ an User vergeben
-- POST /api/admin/grants/coupon/create — Gutschein-Code erstellen
-- POST /api/admin/grants/coupon/redeem — User löst Code ein
-- GET /api/admin/grants/coupons — Alle Coupons listen
-- Typen: eur, coins, bid_credits, blz, kids_abo, premium_month
+### Tipping System
+- POST /api/tips/send — Kunde sendet Trinkgeld an Mitarbeiter
+- POST /api/tips/pos — POS: Händler initiiert Trinkgeld vom Kunden
+- GET /api/tips/presets — Vorgeschlagene Beträge
+- GET /api/tips/sent — Gesendete Trinkgelder
+- GET /api/tips/received — Empfangene Trinkgelder
+- 2% Cashback auf alle Trinkgelder
+
+### Quick Access
+- GET /api/user/quick-access — User-Shortcuts laden
+- POST /api/user/quick-access — Shortcuts speichern (max 8)
+- 20 verfügbare Shortcuts (Taxi, Scooter, Hotels, Restaurant, Events, etc.)
 
 ## Test Credentials
 - Admin: admin@bidblitz.com / BidBlitz2026!
@@ -36,6 +46,8 @@
 - Test Coupons: WELCOME25 (€25), KIDS3FREE (3M Kids Premium)
 
 ## Pending
-- P1: Admin UI für Grants/Coupons (Frontend-Seite)
-- P1: Mining Launchpad "Body is disturbed" Fix (iOS Safari)
-- P2: i18n remaining pages
+- P1: i18n remaining pages (Car Rental 16 pages, Premium Finance 5 pages)
+- P2: Car Rental Production Gaps (Contract PDF, Handover, Disputes UI)
+- P2: Insurance Marketplace
+- P2: Appointment Booking System
+- P2: Social Feed / Community

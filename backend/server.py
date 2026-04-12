@@ -285,6 +285,15 @@ app.include_router(currency_router)
 from routes.tips import router as tips_router
 app.include_router(tips_router)
 
+from routes.hotels import router as hotels_router
+app.include_router(hotels_router)
+
+from routes.events import router as events_router
+app.include_router(events_router)
+
+from routes.restaurants import router as restaurants_router
+app.include_router(restaurants_router)
+
 
 # Static file serving for uploads
 from fastapi.staticfiles import StaticFiles

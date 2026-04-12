@@ -193,3 +193,39 @@ async def change_password(req: ChangePasswordRequest, request: Request):
                     ip=ip, user_agent=ua, details={"success": True})
 
     return {"success": True, "message": "Password updated successfully"}
+
+
+# ═══════════════════════════════════════════════════
+# QUICK ACCESS SHORTCUTS
+# ═══════════════════════════════════════════════════
+
+from typing import List
+
+
+class QuickAccessUpdate(BaseModel):
+    shortcuts: List[str]  # List of shortcut IDs like ["taxi", "scooter", "hotels"]
+
+
+@router.get("/quick-access")
+async def get_quick_access(request: Request):
+    """Get user's personalized quick access shortcuts."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    doc = await db.user_preferences.find_one({"user_id": user_id}, {"_id": 0})
+    shortcuts = doc.get("shortcuts", []) if doc else []
+    return {"shortcuts": shortcuts}
+
+
+@router.post("/quick-access")
+async def update_quick_access(req: QuickAccessUpdate, request: Request):
+    """Save user's personalized quick access shortcuts."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    # Max 8 shortcuts
+    shortcuts = req.shortcuts[:8]
+    await db.user_preferences.update_one(
+        {"user_id": user_id},
+        {"$set": {"shortcuts": shortcuts, "updated_at": datetime.now(timezone.utc).isoformat()}},
+        upsert=True,
+    )
+    return {"ok": True, "shortcuts": shortcuts}
