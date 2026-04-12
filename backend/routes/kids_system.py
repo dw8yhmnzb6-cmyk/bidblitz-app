@@ -231,7 +231,7 @@ async def list_children(request: Request):
     return {"children": children, "total": len(children)}
 
 
-@router.get("/{child_id}")
+@router.get("/child/{child_id}")
 async def get_child(child_id: str, request: Request):
     """Get single child details."""
     user = await get_current_user(request)
@@ -248,7 +248,7 @@ async def get_child(child_id: str, request: Request):
     return {"child": child}
 
 
-@router.put("/{child_id}")
+@router.put("/child/{child_id}")
 async def update_child(child_id: str, req: UpdateChildRequest, request: Request):
     """Parent updates child settings."""
     user = await get_current_user(request)
@@ -273,7 +273,7 @@ async def update_child(child_id: str, req: UpdateChildRequest, request: Request)
     return {"ok": True, "message": "Einstellungen aktualisiert"}
 
 
-@router.delete("/{child_id}")
+@router.delete("/child/{child_id}")
 async def delete_child(child_id: str, request: Request):
     """Parent deletes child account (with refund)."""
     user = await get_current_user(request)
@@ -1212,14 +1212,16 @@ async def get_transactions(child_id: str, request: Request, limit: int = 50):
 # ══════════════════════════════════════════════════════════════════════════════
 
 @router.get("/alerts")
-async def get_alerts(request: Request, unread_only: bool = True):
-    """Get all alerts for parent."""
+async def get_alerts(request: Request, unread_only: bool = True, since: str = ""):
+    """Get all alerts for parent. Use 'since' for incremental polling."""
     user = await get_current_user(request)
     parent_id = str(user["_id"])
     
     query = {"parent_id": parent_id}
     if unread_only:
         query["read"] = False
+    if since:
+        query["created_at"] = {"$gt": since}
     
     alerts = await db.child_alerts.find(query, {"_id": 0}).sort("created_at", -1).limit(50).to_list(50)
     

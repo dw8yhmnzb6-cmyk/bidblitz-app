@@ -32,6 +32,11 @@ const KidsNotifications = ({ onClose, embedded = false }) => {
 
   useEffect(() => {
     loadNotifications();
+    // Real-time polling every 15 seconds
+    const interval = setInterval(() => {
+      loadNotifications();
+    }, 15000);
+    return () => clearInterval(interval);
   }, [loadNotifications]);
 
   const handleRefresh = () => {

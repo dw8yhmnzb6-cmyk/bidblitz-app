@@ -186,6 +186,14 @@ const KidsDashboard = ({ onBack, t, subStatus }) => {
     }
   };
 
+  // Real-time polling for alerts every 15 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      loadNotificationCount();
+    }, 15000);
+    return () => clearInterval(interval);
+  }, []);
+
   useEffect(() => {
     if (children.length > 0 && showActivity) {
       loadGlobalActivity();

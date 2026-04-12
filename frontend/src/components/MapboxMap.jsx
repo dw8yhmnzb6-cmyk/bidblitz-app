@@ -78,8 +78,11 @@ const MapboxMap = ({
         setLoading(false);
       },
       (err) => {
-        setLocationError(err.code === 1 ? "Standortzugriff verweigert" : "Standort nicht verfügbar");
+        const msg = err.code === 1 ? "Standortzugriff verweigert" : "Standort nicht verfügbar";
+        setLocationError(msg);
         setLoading(false);
+        // Auto-dismiss after 6s
+        setTimeout(() => setLocationError(null), 6000);
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
     );
@@ -230,8 +233,13 @@ const MapboxMap = ({
   return (
     <div className={`relative ${className}`} style={{ height }}>
       {locationError && (
-        <div className="absolute top-2 left-2 right-2 z-10 p-2.5 rounded-xl bg-yellow-500/90 text-black text-xs font-medium flex items-center gap-2">
-          <AlertCircle size={14} /> {locationError}
+        <div className="absolute top-2 left-2 right-12 z-10 p-2.5 rounded-xl bg-yellow-500/90 text-black text-xs font-medium flex items-center gap-2 cursor-pointer"
+          onClick={() => setLocationError(null)}>
+          <AlertCircle size={14} />
+          <div>
+            <span>{locationError}</span>
+            <p className="text-[9px] opacity-70 mt-0.5">iPhone: Einstellungen → Safari → Standort → Erlauben</p>
+          </div>
         </div>
       )}
       <div ref={mapContainer} style={{ width: "100%", height: "100%" }} />
