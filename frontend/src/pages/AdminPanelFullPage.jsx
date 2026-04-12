@@ -129,11 +129,7 @@ const AdminPanelFullPage = ({ onNavigate, onBack }) => {
   }, []);
 
   const handleItemClick = async (item) => {
-    // External navigation
-    if (item.nav?.startsWith("/")) {
-      onNavigate(item.nav);
-      return;
-    }
+    if (item.nav?.startsWith("/")) { onNavigate(item.nav); return; }
 
     setMenuOpen(false);
     setActiveItem(item);
@@ -143,48 +139,107 @@ const AdminPanelFullPage = ({ onNavigate, onBack }) => {
 
     try {
       switch (item.key) {
+        // ── Kunden & Personal ──
         case "users": {
           const d = await api("/api/admin/stats");
-          setData({ type: "stats", stats: d });
+          const users = await api("/api/admin/users?limit=30").catch(() => ({ users: [] }));
+          setData({ type: "users", stats: d, users: users.users || [] });
           break;
         }
-        case "kyc":
+        case "kyc": {
+          const d = await api("/api/role-requests/admin/list?status=pending");
+          setData({ type: "kyc", requests: d.requests || [] });
+          break;
+        }
         case "roles": {
           const d = await api("/api/role-requests/admin/list?status=pending");
-          setData({ type: "list", title: "Offene Anträge", items: d.requests || [] });
+          setData({ type: "roles", requests: d.requests || [] });
           break;
         }
-        case "credits": {
-          onNavigate("/admin/credits");
-          break;
-        }
-        case "payments": {
+        case "staff": case "enterprise": case "influencer": {
           const d = await api("/api/admin/stats");
-          setData({ type: "finance", stats: d });
+          setData({ type: "user_filter", role: item.key, total_users: d.total_users || 0 });
+          break;
+        }
+        case "car-ads": case "partner-credit": {
+          setData({ type: "form", formType: item.key });
+          break;
+        }
+        // ── Partner & Händler ──
+        case "partners": {
+          const d = await api("/api/admin/stats");
+          setData({ type: "partners", stats: d });
+          break;
+        }
+        case "applications": {
+          const d = await api("/api/role-requests/admin/list?status=all").catch(() => ({ requests: [] }));
+          setData({ type: "applications", requests: d.requests || [] });
+          break;
+        }
+        // ── Finanzen ──
+        case "payments": case "wallet-topup": case "payouts": case "sepa": case "wholesale": {
+          const d = await api("/api/admin/stats");
+          setData({ type: "finance_detail", subtype: item.key, stats: d });
+          break;
+        }
+        case "credits": { onNavigate("/admin/credits"); break; }
+        case "api-keys": {
+          setData({ type: "api_keys" });
+          break;
+        }
+        // ── Marketing ──
+        case "flash-sales": case "banners": case "email-marketing": case "jackpot":
+        case "challenges": case "mystery-box": case "surveys": {
+          setData({ type: "marketing", subtype: item.key });
+          break;
+        }
+        // ── Auktionen ──
+        case "products": case "standard-auctions": case "vip-auctions": case "voucher-auctions": {
+          const d = await api("/api/auctions/active");
+          setData({ type: "auctions", subtype: item.key, auctions: d.auctions || [] });
+          break;
+        }
+        case "bot-system": {
+          const d = await api("/api/auctions/admin/config").catch(() => ({}));
+          setData({ type: "bot_config", config: d });
+          break;
+        }
+        case "winner-control": {
+          const d = await api("/api/auctions/admin/winners").catch(() => ({ winners: [] }));
+          setData({ type: "winners", winners: d.winners || [] });
+          break;
+        }
+        case "product-analytics": case "user-analytics": case "revenue-analytics": {
+          const d = await api("/api/admin/stats");
+          setData({ type: "analytics", subtype: item.key, stats: d });
+          break;
+        }
+        // ── Gutscheine ──
+        case "merchant-vouchers": case "bidder-vouchers": case "partner-vouchers": case "discount-coupons": {
+          const d = await api("/api/admin/grants/coupons");
+          setData({ type: "coupons", subtype: item.key, coupons: d.coupons || [] });
           break;
         }
         case "coupon-manager": {
-          const d = await api("/api/admin/grants/coupons");
-          setData({ type: "coupons", coupons: d.coupons || [] });
+          onNavigate("/admin/old");
           break;
         }
-        case "bot-system":
-        case "standard-auctions": {
-          const d = await api("/api/auctions/active");
-          setData({ type: "list", title: "Aktive Auktionen", items: (d.auctions || []).map(a => ({ ...a, display: `${a.title} — €${(a.current_price || 0).toFixed(2)}` })) });
-          break;
-        }
+        // ── System ──
         case "system-logs": {
-          setData({ type: "info", message: "Systemlogs: Alle Aktionen werden in der DB protokolliert. Audit-Trail aktiv." });
+          const d = await api("/api/admin/stats");
+          setData({ type: "system_logs", stats: d });
+          break;
+        }
+        case "maintenance": case "cms": case "game-settings": case "sustainability":
+        case "passwords": case "voice-commands": case "debug": case "system-health": case "database": {
+          setData({ type: "system_detail", subtype: item.key });
           break;
         }
         default: {
-          setData({ type: "info", message: `${item.label}: Feature wird eingerichtet. Admin-Funktionalität verfügbar über API.` });
+          setData({ type: "generic" });
         }
       }
-    } catch (e) {
-      setError(e.message);
-    }
+    } catch (e) { setError(e.message); }
     setLoading(false);
   };
 
