@@ -75,6 +75,7 @@ import SocialFeedPage from "./pages/SocialFeedPage";
 import JobMarketplacePage from "./pages/JobMarketplacePage";
 import FlightSearchPage from "./pages/FlightSearchPage";
 import ParcelPage from "./pages/ParcelPage";
+import CVBuilderPage from "./pages/CVBuilderPage";
 
 // Car Rental Module
 import {
@@ -345,11 +346,13 @@ function AppContent() {
       case "/social":
         return isGuest ? <HomePage {...homeProps} /> : <SocialFeedPage onBack={() => handleNavigate("/more")} />;
       case "/jobs":
-        return isGuest ? <HomePage {...homeProps} /> : <JobMarketplacePage onBack={() => handleNavigate("/more")} />;
+        return isGuest ? <HomePage {...homeProps} /> : <JobMarketplacePage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
       case "/flights":
         return isGuest ? <HomePage {...homeProps} /> : <FlightSearchPage onBack={() => handleNavigate("/more")} />;
       case "/parcels":
         return isGuest ? <HomePage {...homeProps} /> : <ParcelPage onBack={() => handleNavigate("/more")} />;
+      case "/cv-builder":
+        return isGuest ? <HomePage {...homeProps} /> : <CVBuilderPage onBack={() => handleNavigate("/jobs")} />;
       case "/gaming":
         return isGuest ? <HomePage {...homeProps} /> : <GamingPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
       

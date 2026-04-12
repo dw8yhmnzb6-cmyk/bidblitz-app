@@ -217,6 +217,11 @@ async def apply_to_job(req: ApplicationCreate, request: Request):
     now = datetime.now(timezone.utc).isoformat()
     app_id = secrets.token_hex(8)
 
+    # Auto-attach CV if enabled
+    cv = await db.user_cvs.find_one({"user_id": user_id})
+    has_cv = bool(cv and cv.get("full_name"))
+    cv_attached = has_cv and cv.get("auto_attach", True)
+
     application = {
         "application_id": app_id,
         "job_id": req.job_id,
@@ -228,6 +233,7 @@ async def apply_to_job(req: ApplicationCreate, request: Request):
         "cover_letter": req.cover_letter,
         "resume_url": req.resume_url,
         "phone": req.phone,
+        "cv_attached": cv_attached,
         "status": "pending",
         "created_at": now,
     }

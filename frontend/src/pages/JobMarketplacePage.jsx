@@ -7,7 +7,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Search, Briefcase, MapPin, Clock, Star, DollarSign,
   Loader2, Check, X, Plus, Send, Building2, Phone, Mail, Globe,
-  Zap, ChevronRight, Filter, Eye, Users, Laptop, Home as HomeIcon
+  Zap, ChevronRight, Filter, Eye, Users, Laptop, Home as HomeIcon,
+  FileText
 } from "lucide-react";
 
 const API = process.env.REACT_APP_BACKEND_URL;
@@ -17,7 +18,7 @@ const TYPE_LABELS = { fulltime: "Vollzeit", parttime: "Teilzeit", minijob: "Mini
 const TYPE_COLORS = { fulltime: "#10B981", parttime: "#3B82F6", minijob: "#F59E0B", freelance: "#A855F7", internship: "#06B6D4" };
 const SAL_LABELS = { monthly: "/Monat", hourly: "/Stunde", yearly: "/Jahr", project: "Projekt" };
 
-const JobMarketplacePage = ({ onBack }) => {
+const JobMarketplacePage = ({ onBack, onNavigate }) => {
   const [view, setView] = useState("list"); // list | detail | create | applications | my-jobs
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -129,6 +130,8 @@ const JobMarketplacePage = ({ onBack }) => {
             <div><h1 className="text-[15px] font-bold">Job-Marktplatz</h1><p className="text-[10px] text-gray-500">{jobs.length} Jobs</p></div>
           </div>
           <div className="flex gap-2">
+            <motion.button whileTap={{ scale: 0.9 }} onClick={() => onNavigate?.("/cv-builder")}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white/5 text-gray-400 text-[10px] font-medium" data-testid="job-cv-btn"><FileText size={12} /> CV</motion.button>
             <motion.button whileTap={{ scale: 0.9 }} onClick={() => setView("create")}
               className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#6366F1] text-white text-[10px] font-bold" data-testid="job-create-btn"><Plus size={12} /> Job posten</motion.button>
           </div>
