@@ -42,6 +42,7 @@ const ALL_SHORTCUTS = [
   { id: "jobs", icon: Briefcase, label: "Jobs", route: "/jobs", color: "#6366F1" },
   { id: "flights", icon: Plane, label: "Flüge", route: "/flights", color: "#06B6D4" },
   { id: "parcels", icon: Package, label: "Pakete", route: "/parcels", color: "#F97316" },
+  { id: "nearby", icon: MapPin, label: "In der Nähe", route: "/nearby", color: "#10B981" },
 ];
 
 const DEFAULT_SHORTCUTS = ["taxi", "scooter", "hotels", "restaurants"];

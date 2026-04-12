@@ -318,6 +318,9 @@ app.include_router(recommendations_router)
 from routes.cv_builder import router as cv_router
 app.include_router(cv_router)
 
+from routes.nearby_places import router as nearby_places_router
+app.include_router(nearby_places_router)
+
 
 # Static file serving for uploads
 from fastapi.staticfiles import StaticFiles

@@ -7,7 +7,7 @@ from core.database import db
 from core.security import get_current_user
 import random
 
-router = APIRouter(prefix="/api/nearby", tags=["nearby"])
+router = APIRouter(prefix="/api/places", tags=["places"])
 
 # Preset coordinates for cities (used for seed data that lacks coords)
 CITY_COORDS = {
@@ -124,3 +124,39 @@ async def get_nearby(lat: float = 25.2, lng: float = 55.27, radius_km: float = 5
             })
 
     return {"markers": markers, "count": len(markers)}
+
+
+# ─── Saved Locations ───
+
+class SavedLocationModel:
+    pass
+
+from pydantic import BaseModel as BM2
+from typing import List as L2
+
+class SavedLoc(BM2):
+    label: str
+    address: str = ""
+    lat: float = 0
+    lng: float = 0
+
+class SavedLocsUpdate(BM2):
+    locations: L2[SavedLoc]
+
+@router.get("/saved-locations")
+async def get_saved_locations(request: Request):
+    user = await get_current_user(request)
+    doc = await db.user_preferences.find_one({"user_id": str(user["_id"])}, {"_id": 0})
+    return {"locations": doc.get("saved_locations", []) if doc else []}
+
+@router.post("/saved-locations")
+async def save_locations(req: SavedLocsUpdate, request: Request):
+    user = await get_current_user(request)
+    from datetime import datetime as dt2, timezone as tz2
+    await db.user_preferences.update_one(
+        {"user_id": str(user["_id"])},
+        {"$set": {"saved_locations": [l.dict() for l in req.locations[:10]], "locations_updated": dt2.now(tz2.utc).isoformat()}},
+        upsert=True,
+    )
+    return {"ok": True, "count": len(req.locations)}
+

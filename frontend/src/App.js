@@ -76,6 +76,7 @@ import JobMarketplacePage from "./pages/JobMarketplacePage";
 import FlightSearchPage from "./pages/FlightSearchPage";
 import ParcelPage from "./pages/ParcelPage";
 import CVBuilderPage from "./pages/CVBuilderPage";
+import NearbyPage from "./pages/NearbyPage";
 
 // Car Rental Module
 import {
@@ -353,6 +354,8 @@ function AppContent() {
         return isGuest ? <HomePage {...homeProps} /> : <ParcelPage onBack={() => handleNavigate("/more")} />;
       case "/cv-builder":
         return isGuest ? <HomePage {...homeProps} /> : <CVBuilderPage onBack={() => handleNavigate("/jobs")} />;
+      case "/nearby":
+        return isGuest ? <HomePage {...homeProps} /> : <NearbyPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
       case "/gaming":
         return isGuest ? <HomePage {...homeProps} /> : <GamingPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
       
