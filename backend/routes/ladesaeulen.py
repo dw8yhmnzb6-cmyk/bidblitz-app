@@ -84,43 +84,150 @@ async def unlock_station(req: StartChargingReq, request: Request):
 
 @router.post("/start")
 async def start_charging(req: StartChargingReq, request: Request):
+    """Ladesäule freischalten + Laden starten. Reserviert Mindestbetrag vom Wallet."""
     user = await get_current_user(request)
+    email = user.get("email", "")
     station = await db.ev_stations.find_one({"station_id":req.station_id},{"_id":0})
     if not station: raise HTTPException(404, "Station nicht gefunden")
     if station.get("slots_available",0) < 1: raise HTTPException(400, "Keine freien Ladepunkte")
-    user_doc = await db.users.find_one({"email": user.get("email","")})
+
+    # Check wallet balance (min 5€)
+    user_doc = await db.users.find_one({"email": email})
     balance = user_doc.get("balance", 0) if user_doc else 0
-    if balance < 5: raise HTTPException(400, "Mindestguthaben 5€ erforderlich")
+    if balance < 5: raise HTTPException(400, f"Mindestguthaben 5€ erforderlich. Aktuell: {balance:.2f}€. Bitte Wallet aufladen.")
+
+    # Reserve 5€ from wallet
+    await db.users.update_one({"email": email}, {"$inc": {"balance": -5.0}})
+
     session = {
         "session_id": secrets.token_hex(8), "station_id": req.station_id,
         "station_name": station["name"], "operator": station["operator"],
         "connector": req.connector, "vehicle": req.vehicle,
-        "user_email": user.get("email",""), "user_name": user.get("name",""),
+        "user_email": email, "user_name": user.get("name",""),
         "power_kw": station["power_kw"], "price_per_kwh": station["price_per_kwh"],
-        "kwh_charged": 0, "cost": 0, "status": "charging",
+        "kwh_charged": 0, "cost": 0, "reserved": 5.0,
+        "status": "charging", "payment_method": "bidblitz_wallet",
         "started_at": datetime.now(timezone.utc).isoformat(),
     }
     await db.ev_sessions.insert_one(session)
     session.pop("_id", None)
     await db.ev_stations.update_one({"station_id":req.station_id},{"$inc":{"slots_available":-1}})
-    return {"ok": True, "session": session}
+
+    # Log reservation transaction
+    await db.transactions.insert_one({
+        "user_email": email, "type": "ev_charging_reserve",
+        "amount": -5.0, "description": f"Ladesäule Reservierung: {station['name']}",
+        "reference": session["session_id"],
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    })
+
+    return {"ok": True, "session": session, "reserved": 5.0, "wallet_balance": balance - 5.0}
 
 class StopChargingReq(BaseModel):
     session_id: str
 
 @router.post("/stop")
 async def stop_charging(req: StopChargingReq, request: Request):
+    """Laden beenden. Berechnet kWh, zieht vom Wallet ab, gibt Restbetrag zurück, bucht Cashback."""
     user = await get_current_user(request)
-    session = await db.ev_sessions.find_one({"session_id":req.session_id,"user_email":user.get("email","")})
+    email = user.get("email", "")
+    session = await db.ev_sessions.find_one({"session_id":req.session_id,"user_email":email})
     if not session: raise HTTPException(404, "Session nicht gefunden")
+
+    # Simulate charging result
     kwh = round(random.uniform(5, 60), 1)
     cost = round(kwh * session.get("price_per_kwh", 0.45), 2)
-    await db.ev_sessions.update_one({"session_id":req.session_id},{"$set":{"status":"completed","kwh_charged":kwh,"cost":cost,"ended_at":datetime.now(timezone.utc).isoformat()}})
+    reserved = session.get("reserved", 5.0)
+    cashback_rate = 0.03  # 3% Cashback
+    cashback = round(cost * cashback_rate, 2)
+
+    # Calculate wallet adjustment (cost - reserved amount already deducted)
+    additional_charge = cost - reserved
+    if additional_charge > 0:
+        # Need to charge more
+        user_doc = await db.users.find_one({"email": email})
+        balance = user_doc.get("balance", 0) if user_doc else 0
+        if balance < additional_charge:
+            # Not enough — charge what we can, mark as partial
+            additional_charge = balance
+            cost = reserved + additional_charge
+
+        await db.users.update_one({"email": email}, {"$inc": {"balance": -additional_charge}})
+    elif additional_charge < 0:
+        # Refund excess reservation
+        await db.users.update_one({"email": email}, {"$inc": {"balance": abs(additional_charge)}})
+
+    # Add cashback
+    await db.users.update_one({"email": email}, {"$inc": {"balance": cashback}})
+
+    # Update session
+    now = datetime.now(timezone.utc).isoformat()
+    await db.ev_sessions.update_one({"session_id":req.session_id},{
+        "$set": {
+            "status": "completed", "kwh_charged": kwh, "cost": cost,
+            "cashback": cashback, "ended_at": now,
+            "payment_status": "paid", "payment_method": "bidblitz_wallet",
+        }
+    })
     await db.ev_stations.update_one({"station_id":session["station_id"]},{"$inc":{"slots_available":1,"total_sessions":1}})
-    return {"ok": True, "kwh_charged": kwh, "cost": cost}
+
+    # Log final payment transaction
+    await db.transactions.insert_one({
+        "user_email": email, "type": "ev_charging_payment",
+        "amount": -cost, "description": f"Ladevorgang: {kwh}kWh @ {session.get('station_name','')}",
+        "reference": req.session_id,
+        "details": {"kwh": kwh, "price_per_kwh": session.get("price_per_kwh", 0), "station": session.get("station_name","")},
+        "created_at": now,
+    })
+
+    # Log cashback
+    if cashback > 0:
+        await db.transactions.insert_one({
+            "user_email": email, "type": "ev_charging_cashback",
+            "amount": cashback, "description": f"3% Lade-Cashback: {session.get('station_name','')}",
+            "reference": req.session_id, "created_at": now,
+        })
+
+    # Remove reservation transaction (replace with final)
+    await db.transactions.delete_one({"reference": req.session_id, "type": "ev_charging_reserve"})
+
+    # Get updated balance
+    user_doc = await db.users.find_one({"email": email})
+    new_balance = user_doc.get("balance", 0) if user_doc else 0
+
+    # Build receipt
+    receipt = {
+        "receipt_id": secrets.token_hex(6),
+        "session_id": req.session_id,
+        "station": session.get("station_name", ""),
+        "operator": session.get("operator", ""),
+        "connector": session.get("connector", ""),
+        "kwh_charged": kwh,
+        "price_per_kwh": session.get("price_per_kwh", 0),
+        "subtotal": cost,
+        "cashback": cashback,
+        "total_paid": cost,
+        "payment_method": "BidBlitz Wallet",
+        "date": now,
+    }
+
+    return {
+        "ok": True, "kwh_charged": kwh, "cost": cost, "cashback": cashback,
+        "new_balance": round(new_balance, 2), "receipt": receipt,
+    }
 
 @router.get("/my-sessions")
 async def my_sessions(request: Request):
     user = await get_current_user(request)
     sessions = await db.ev_sessions.find({"user_email":user.get("email","")},{"_id":0}).sort("started_at",-1).to_list(50)
     return {"sessions": sessions}
+
+@router.get("/active-session")
+async def get_active_session(request: Request):
+    """Check if user has an active charging session."""
+    user = await get_current_user(request)
+    session = await db.ev_sessions.find_one(
+        {"user_email": user.get("email",""), "status": "charging"},
+        {"_id": 0}
+    )
+    return {"session": session}
