@@ -23,11 +23,14 @@ const KidsAppPage = ({ onBack, childId: propChildId }) => {
   const [childId, setChildId] = useState(propChildId || "");
   const [children, setChildren] = useState([]);
 
-  // Chat
+  // Chat state
   const [messages, setMessages] = useState([]);
   const [newMsg, setNewMsg] = useState("");
   const [sending, setSending] = useState(false);
+  const [typingIndicator, setTypingIndicator] = useState(false);
+  const [lastTimestamp, setLastTimestamp] = useState("");
   const chatEnd = useRef(null);
+  const pollRef = useRef(null);
 
   // Quiz
   const [quiz, setQuiz] = useState(null);
@@ -64,16 +67,53 @@ const KidsAppPage = ({ onBack, childId: propChildId }) => {
 
   useEffect(() => { loadDash(); }, [loadDash]);
 
-  // Load chat
+  // Load chat (initial full load)
   const loadChat = useCallback(async () => {
     if (!childId) return;
     try {
       const res = await fetch(`${API}/api/kids-app/chat/${childId}`, { credentials: "include" });
-      if (res.ok) { const d = await res.json(); setMessages(d.messages || []); }
+      if (res.ok) {
+        const d = await res.json();
+        const msgs = d.messages || [];
+        setMessages(msgs);
+        if (msgs.length > 0) setLastTimestamp(msgs[msgs.length - 1].created_at || "");
+      }
     } catch {}
   }, [childId]);
 
-  useEffect(() => { if (tab === "chat") { loadChat(); const iv = setInterval(loadChat, 5000); return () => clearInterval(iv); } }, [tab, loadChat]);
+  // Poll for new messages only
+  const pollChat = useCallback(async () => {
+    if (!childId) return;
+    try {
+      const res = await fetch(`${API}/api/kids-app/chat/${childId}/poll?after=${encodeURIComponent(lastTimestamp)}`, { credentials: "include" });
+      if (res.ok) {
+        const d = await res.json();
+        const newMsgs = d.messages || [];
+        if (newMsgs.length > 0) {
+          setMessages(prev => {
+            const existingIds = new Set(prev.map(m => m.message_id));
+            const unique = newMsgs.filter(m => !existingIds.has(m.message_id));
+            return unique.length > 0 ? [...prev, ...unique] : prev;
+          });
+          setLastTimestamp(newMsgs[newMsgs.length - 1].created_at || "");
+        }
+      }
+      // Check typing
+      const tRes = await fetch(`${API}/api/kids-app/chat/${childId}/typing`, { credentials: "include" });
+      if (tRes.ok) {
+        const tData = await tRes.json();
+        setTypingIndicator((tData.typing || []).some(t => t.sender === "parent"));
+      }
+    } catch {}
+  }, [childId, lastTimestamp]);
+
+  useEffect(() => {
+    if (tab === "chat") {
+      loadChat();
+      pollRef.current = setInterval(pollChat, 3000);
+      return () => { if (pollRef.current) clearInterval(pollRef.current); };
+    }
+  }, [tab, loadChat, pollChat]);
   useEffect(() => { chatEnd.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
 
   const sendMessage = async () => {
@@ -348,6 +388,16 @@ const KidsAppPage = ({ onBack, childId: propChildId }) => {
               </motion.div>
             ))}
             <div ref={chatEnd} />
+            {typingIndicator && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-2 px-4 py-2">
+                <div className="flex gap-1">
+                  <motion.div animate={{ y: [0, -4, 0] }} transition={{ repeat: Infinity, duration: 0.6, delay: 0 }} className="w-2 h-2 rounded-full" style={{ background: COLORS.pink }} />
+                  <motion.div animate={{ y: [0, -4, 0] }} transition={{ repeat: Infinity, duration: 0.6, delay: 0.15 }} className="w-2 h-2 rounded-full" style={{ background: COLORS.pink }} />
+                  <motion.div animate={{ y: [0, -4, 0] }} transition={{ repeat: Infinity, duration: 0.6, delay: 0.3 }} className="w-2 h-2 rounded-full" style={{ background: COLORS.pink }} />
+                </div>
+                <span className="text-xs text-gray-400">Mama/Papa tippt...</span>
+              </motion.div>
+            )}
           </div>
 
           <div className="p-4 bg-white border-t border-gray-100 flex gap-2">

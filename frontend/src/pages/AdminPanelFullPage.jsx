@@ -56,7 +56,7 @@ const ADMIN_SECTIONS = [
     items: [
       { key: "flash-sales", icon: Zap, label: "Flash Sales" },
       { key: "banners", icon: Eye, label: "Werbebanner" },
-      { key: "email-marketing", icon: Mail, label: "E-Mail Marketing" },
+      { key: "email-marketing", icon: Mail, label: "E-Mail Marketing", nav: "/admin/email-marketing" },
       { key: "jackpot", icon: Trophy, label: "Jackpot" },
       { key: "challenges", icon: Target, label: "Challenges" },
       { key: "mystery-box", icon: Gift, label: "Mystery Box" },

@@ -122,6 +122,120 @@
   border-color: var(--border-color) !important;
 }
 
+/* ═══ LIGHT MODE: INLINE STYLE OVERRIDES ═══ */
+/* Override inline style="background: #030303" etc. on page wrappers */
+.light-mode .min-h-screen {
+  background: var(--bg-primary) !important;
+}
+
+/* Fix inline bg-card styles */
+.light-mode [style*="background: var(--bg-card"] {
+  box-shadow: var(--shadow);
+}
+
+/* Fix sticky headers with inline bg-primary */
+.light-mode .sticky {
+  background: var(--bg-primary) !important;
+}
+
+/* Light mode: all rounded cards in new pages */
+.light-mode .rounded-2xl,
+.light-mode .rounded-xl {
+  border-color: var(--border-color) !important;
+}
+
+/* Light mode: input fields */
+.light-mode input,
+.light-mode textarea {
+  background: var(--bg-input) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-color) !important;
+}
+
+/* Light mode: input placeholders */
+.light-mode input::placeholder,
+.light-mode textarea::placeholder {
+  color: var(--text-muted) !important;
+}
+
+/* Light mode: Wallet/BlitzPoints cards that use dark inline styles */
+.light-mode [style*="background:#0A0A0F"],
+.light-mode [style*="background: #0A0A0F"],
+.light-mode [style*="background:#111"],
+.light-mode [style*="background: #111"],
+.light-mode [style*="background:#030303"],
+.light-mode [style*="background: #030303"] {
+  background: var(--bg-card) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Fix white text on light background */
+.light-mode [style*="color: #fff"],
+.light-mode [style*="color:#fff"],
+.light-mode [style*="color: #FFFFFF"],
+.light-mode [style*="color:#FFFFFF"],
+.light-mode [style*="color:white"],
+.light-mode [style*="color: white"] {
+  color: var(--text-primary) !important;
+}
+
+/* Fix secondary text colors */
+.light-mode [style*="color: #888"],
+.light-mode [style*="color:#888"],
+.light-mode [style*="color: #aaa"],
+.light-mode [style*="color:#aaa"],
+.light-mode [style*="color: #666"],
+.light-mode [style*="color:#666"] {
+  color: var(--text-secondary) !important;
+}
+
+/* Fix muted text */
+.light-mode [style*="color: #444"],
+.light-mode [style*="color:#444"] {
+  color: var(--text-muted) !important;
+}
+
+/* Light mode: rgba borders override */
+.light-mode [style*="border: 1px solid rgba(255"] {
+  border-color: var(--border-color) !important;
+}
+
+/* Light mode: Bottom nav fix */
+.light-mode [style*="background: linear-gradient(to top"] {
+  background: linear-gradient(to top, rgba(248,249,251,1) 70%, rgba(248,249,251,0)) !important;
+}
+
+/* Keep accent colors untouched */
+.light-mode [style*="color: #00C2FF"],
+.light-mode [style*="color:#00C2FF"] {
+  color: #0088CC !important;
+}
+
+/* Light mode: Badge/pill colors keep vibrant */
+.light-mode .bg-yellow-500,
+.light-mode .bg-green-500,
+.light-mode .bg-blue-500,
+.light-mode .bg-red-500 {
+  filter: none;
+}
+
+/* Light mode: scrollable filter bars */
+.light-mode .scrollbar-none {
+  scrollbar-color: #D1D5DB transparent;
+}
+
+/* Light mode: image overlays stay dark */
+.light-mode .bg-gradient-to-t {
+  /* Don't override image overlays */
+}
+
+/* Light mode: Toaster */
+.light-mode [data-sonner-toaster] [data-sonner-toast] {
+  background: #fff !important;
+  color: #111 !important;
+  border: 1px solid #E8EBF0 !important;
+}
+
 /* App container - mobile-first premium design */
 .app-container {
   max-width: 28rem;

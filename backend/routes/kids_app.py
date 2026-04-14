@@ -179,3 +179,52 @@ async def set_savings_goal(request: Request):
         upsert=True,
     )
     return {"ok": True}
+
+
+
+# ─── Chat Polling for Real-time ───
+
+@router.get("/chat/{child_id}/poll")
+async def poll_chat(child_id: str, request: Request, after: str = ""):
+    """Long-poll: Return new messages since 'after' timestamp."""
+    await get_current_user(request)
+    q = {"child_id": child_id}
+    if after:
+        q["created_at"] = {"$gt": after}
+    messages = await db.kids_messages.find(q, {"_id": 0}).sort("created_at", 1).to_list(50)
+    unread = await db.kids_messages.count_documents({"child_id": child_id, "sender": "parent", "read": False})
+    return {"messages": messages, "unread": unread, "timestamp": datetime.now(timezone.utc).isoformat()}
+
+
+@router.post("/chat/{child_id}/typing")
+async def set_typing(child_id: str, request: Request):
+    """Set typing indicator."""
+    user = await get_current_user(request)
+    body = await request.json()
+    sender = body.get("sender", "child")
+    await db.kids_typing.update_one(
+        {"child_id": child_id, "sender": sender},
+        {"$set": {"typing": True, "name": user.get("name", ""), "updated_at": datetime.now(timezone.utc).isoformat()}},
+        upsert=True,
+    )
+    return {"ok": True}
+
+
+@router.get("/chat/{child_id}/typing")
+async def get_typing(child_id: str, request: Request):
+    """Check who is typing."""
+    await get_current_user(request)
+    indicators = await db.kids_typing.find({"child_id": child_id}, {"_id": 0}).to_list(5)
+    # Auto-expire typing after 5 seconds
+    now = datetime.now(timezone.utc)
+    active = []
+    for ind in indicators:
+        updated = ind.get("updated_at", "")
+        if updated:
+            try:
+                ts = datetime.fromisoformat(updated.replace("Z", "+00:00"))
+                if (now - ts).total_seconds() < 5:
+                    active.append(ind)
+            except:
+                pass
+    return {"typing": active}

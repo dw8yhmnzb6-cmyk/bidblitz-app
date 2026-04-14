@@ -94,6 +94,7 @@ import TierbetreuungPage from "./pages/TierbetreuungPage";
 import FitnessPage from "./pages/FitnessPage";
 import ReiseplanerPage from "./pages/ReiseplanerPage";
 import LadesaeulenPage from "./pages/LadesaeulenPage";
+import EmailMarketingAdminPage from "./pages/EmailMarketingAdminPage";
 
 // Car Rental Module
 import {
@@ -407,6 +408,10 @@ function AppContent() {
         return isGuest ? <HomePage {...homeProps} /> : <ReiseplanerPage onBack={() => handleNavigate("/more")} />;
       case "/ladesaeulen":
         return isGuest ? <HomePage {...homeProps} /> : <LadesaeulenPage onBack={() => handleNavigate("/more")} />;
+      case "/admin/email-marketing":
+        return user.role === "admin"
+          ? <EmailMarketingAdminPage onBack={() => handleNavigate("/admin")} />
+          : <HomePage {...homeProps} />;
       
       // Car Rental Module
       case "/car-rental":
