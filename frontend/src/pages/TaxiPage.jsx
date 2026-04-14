@@ -98,6 +98,23 @@ export default function TaxiPage({ onNavigate }) {
     dropoffTimer.current = setTimeout(() => geocodeSearch(text, setDropoffSuggestions, setShowDropoffSugg), 300);
   };
 
+  // Auto-geocode on blur if no coords yet
+  const geocodeOnBlur = async (type) => {
+    const target = type === 'pickup' ? pickup : dropoff;
+    const setter = type === 'pickup' ? setPickup : setDropoff;
+    if (target.address && (!target.lat || target.lat === 0 || target.lat === 52.52)) {
+      if (!MAPBOX_TOKEN) return;
+      try {
+        const res = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(target.address)}.json?access_token=${MAPBOX_TOKEN}&language=de&limit=1`);
+        if (res.ok) {
+          const data = await res.json();
+          const f = data.features?.[0];
+          if (f) setter({ lat: f.center[1], lng: f.center[0], address: f.place_name || target.address });
+        }
+      } catch {}
+    }
+  };
+
   const selectPickupSugg = (s) => {
     setPickup({ lat: s.lat, lng: s.lng, address: s.address });
     setShowPickupSugg(false); setPickupSuggestions([]);
@@ -209,7 +226,21 @@ export default function TaxiPage({ onNavigate }) {
 
   // Get fare estimates
   const getEstimates = async () => {
-    if (!pickup.lat || !dropoff.lat) {
+    // Auto-geocode dropoff if needed
+    if (dropoff.address && (!dropoff.lat || dropoff.lat === 0)) {
+      if (MAPBOX_TOKEN) {
+        try {
+          const res = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(dropoff.address)}.json?access_token=${MAPBOX_TOKEN}&language=de&limit=1`);
+          if (res.ok) {
+            const data = await res.json();
+            const f = data.features?.[0];
+            if (f) { setDropoff({ lat: f.center[1], lng: f.center[0], address: f.place_name || dropoff.address }); }
+            else { setError('Ziel nicht gefunden. Bitte Vorschlag auswählen.'); return; }
+          }
+        } catch { setError('Geocoding-Fehler'); return; }
+      }
+    }
+    if (!pickup.lat || !dropoff.address) {
       setError('Bitte Start und Ziel eingeben');
       return;
     }
@@ -547,17 +578,24 @@ export default function TaxiPage({ onNavigate }) {
                     </button>
                   </div>
 
-              {/* Map with Leaflet */}
-              <div className="relative h-52 bg-[#111] rounded-2xl overflow-hidden border border-white/10">
-                <iframe
-                  title="Map"
-                  src={`https://www.openstreetmap.org/export/embed.html?bbox=${pickup.lng - 0.02}%2C${pickup.lat - 0.015}%2C${pickup.lng + 0.02}%2C${pickup.lat + 0.015}&layer=mapnik&marker=${pickup.lat}%2C${pickup.lng}`}
-                  className="w-full h-full border-0 opacity-80"
-                  style={{ filter: 'invert(0.9) hue-rotate(180deg)' }}
+              {/* Map with Mapbox Dark Style */}
+              <div className="relative h-52 bg-[#0A0A0F] rounded-2xl overflow-hidden border border-white/10">
+                <img
+                  src={`https://api.mapbox.com/styles/v1/mapbox/navigation-night-v1/static/pin-s+00C2FF(${pickup.lng},${pickup.lat})/${pickup.lng},${pickup.lat},13,0/600x300@2x?access_token=${process.env.REACT_APP_MAPBOX_TOKEN}`}
+                  alt="Map"
+                  className="w-full h-full object-cover"
+                  onError={(e) => { e.target.style.display = 'none'; }}
                 />
-                <div className="absolute top-3 left-3 bg-black/70 px-3 py-1.5 rounded-lg text-xs text-cyan-400 font-medium">
-                  📍 {pickup.address || 'Berlin Mitte'}
+                <div className="absolute top-3 left-3 bg-black/70 backdrop-blur-sm px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5" style={{ color: "#00C2FF" }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                  {pickup.address || 'Aktueller Standort'}
                 </div>
+                {dropoff.lat !== 0 && (
+                  <div className="absolute top-3 right-3 bg-black/70 backdrop-blur-sm px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 text-red-400">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                    Ziel
+                  </div>
+                )}
                 <button
                   onClick={getCurrentLocation}
                   className="absolute bottom-4 right-4 p-3 bg-cyan-500 rounded-full shadow-lg hover:bg-cyan-600 transition-colors"
@@ -583,7 +621,7 @@ export default function TaxiPage({ onNavigate }) {
                     value={pickup.address}
                     onChange={(e) => handlePickupChange(e.target.value)}
                     onFocus={() => { if (pickupSuggestions.length > 0) setShowPickupSugg(true); }}
-                    onBlur={() => setTimeout(() => setShowPickupSugg(false), 200)}
+                    onBlur={() => { setTimeout(() => setShowPickupSugg(false), 200); geocodeOnBlur('pickup'); }}
                     className="w-full pl-10 pr-4 pt-6 pb-3 bg-[#111] border border-white/10 rounded-xl text-white placeholder-gray-500 focus:border-cyan-500/50 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 transition-all"
                     data-testid="taxi-pickup-input"
                   />
@@ -618,7 +656,7 @@ export default function TaxiPage({ onNavigate }) {
                     value={dropoff.address}
                     onChange={(e) => handleDropoffChange(e.target.value)}
                     onFocus={() => { if (dropoffSuggestions.length > 0) setShowDropoffSugg(true); }}
-                    onBlur={() => setTimeout(() => setShowDropoffSugg(false), 200)}
+                    onBlur={() => { setTimeout(() => setShowDropoffSugg(false), 200); geocodeOnBlur('dropoff'); }}
                     className="w-full pl-10 pr-4 pt-6 pb-3 bg-[#111] border border-white/10 rounded-xl text-white placeholder-gray-500 focus:border-red-500/50 focus:outline-none focus:ring-2 focus:ring-red-500/20 transition-all cursor-text"
                     data-testid="taxi-dropoff-input"
                   />
