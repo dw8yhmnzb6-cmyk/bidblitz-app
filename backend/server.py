@@ -330,6 +330,15 @@ app.include_router(kids_app_router)
 from routes.email_marketing import router as email_marketing_router
 app.include_router(email_marketing_router)
 
+from routes.real_estate import router as real_estate_router
+app.include_router(real_estate_router)
+
+from routes.freelancer import router as freelancer_router
+app.include_router(freelancer_router)
+
+from routes.elearning import router as elearning_router
+app.include_router(elearning_router)
+
 
 # Static file serving for uploads
 from fastapi.staticfiles import StaticFiles
