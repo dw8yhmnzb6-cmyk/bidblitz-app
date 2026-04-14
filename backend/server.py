@@ -327,6 +327,9 @@ app.include_router(merchant_portal_router)
 from routes.kids_app import router as kids_app_router
 app.include_router(kids_app_router)
 
+from routes.email_marketing import router as email_marketing_router
+app.include_router(email_marketing_router)
+
 
 # Static file serving for uploads
 from fastapi.staticfiles import StaticFiles
