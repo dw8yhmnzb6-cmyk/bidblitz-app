@@ -539,6 +539,24 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
             {/* ═══ Quick Access Shortcuts ═══ */}
             <QuickAccessBar onNavigate={onNavigate} />
 
+            {/* ═══ Alle Services Banner ═══ */}
+            <motion.button
+              onClick={() => onNavigate("/all-services")}
+              className="w-full rounded-2xl p-4 flex items-center gap-3 text-left"
+              style={{ background: "linear-gradient(135deg, rgba(0,194,255,0.08), rgba(16,185,129,0.08))", border: "1px solid rgba(0,194,255,0.12)" }}
+              whileTap={{ scale: 0.98 }}
+              data-testid="all-services-btn"
+            >
+              <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" style={{ background: "rgba(0,194,255,0.15)" }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#00C2FF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+              </div>
+              <div className="flex-1">
+                <div className="text-[13px] font-semibold text-white">Alle Services entdecken</div>
+                <div className="text-[10px]" style={{ color: "rgba(255,255,255,0.5)" }}>60+ Features in einer App</div>
+              </div>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="2"><path d="M9 18l6-6-6-6"/></svg>
+            </motion.button>
+
             {/* ═══ Recommendations ═══ */}
             <HomeRecommendations onNavigate={onNavigate} />
 

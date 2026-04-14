@@ -95,6 +95,7 @@ import FitnessPage from "./pages/FitnessPage";
 import ReiseplanerPage from "./pages/ReiseplanerPage";
 import LadesaeulenPage from "./pages/LadesaeulenPage";
 import EmailMarketingAdminPage from "./pages/EmailMarketingAdminPage";
+import AllServicesPage from "./pages/AllServicesPage";
 
 // Car Rental Module
 import {
@@ -412,6 +413,8 @@ function AppContent() {
         return user.role === "admin"
           ? <EmailMarketingAdminPage onBack={() => handleNavigate("/admin")} />
           : <HomePage {...homeProps} />;
+      case "/all-services":
+        return <AllServicesPage onBack={() => handleNavigate("/")} onNavigate={handleNavigate} />;
       
       // Car Rental Module
       case "/car-rental":

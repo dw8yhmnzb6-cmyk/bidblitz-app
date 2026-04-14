@@ -961,6 +961,25 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
           <ChevronRight size={14} className="text-[#222] flex-shrink-0" />
         </motion.div>
 
+        {/* ── Alle Services ── */}
+        <motion.button
+          onClick={() => onNavigate("/all-services")}
+          className="w-full flex items-center gap-3 p-3.5 rounded-2xl mb-3"
+          style={{ background: "linear-gradient(135deg, rgba(0,194,255,0.08), rgba(16,185,129,0.06))", border: "1px solid rgba(0,194,255,0.12)" }}
+          whileTap={{ scale: 0.97 }}
+          initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+          data-testid="more-all-services"
+        >
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "rgba(0,194,255,0.12)" }}>
+            <LayoutDashboard size={18} style={{ color: "#00C2FF" }} />
+          </div>
+          <div className="flex-1 text-left">
+            <span className="text-[13px] font-semibold text-white">Alle Services</span>
+            <p className="text-[10px] text-[#555]">60+ Features entdecken</p>
+          </div>
+          <ChevronRight size={14} className="text-[#333]" />
+        </motion.button>
+
         {/* ── Menu Groups ── */}
         {renderGroup(t("more.mobility") || "Mobilität", mobilityMenu, 0.12)}
         {renderGroup(t("more.finance") || "Premium Finance", financeMenu, 0.14)}
