@@ -448,12 +448,15 @@ const ActiveSessionsView = ({ onBack, t }) => {
   );
 };
 
+import { useTheme } from "../store/ThemeContext";
+
 const SettingsView = ({ onBack, t, locale, setLocale, onOpenPasswordChange }) => {
   const userCtx = useUser();
+  const { isDark, toggle: toggleTheme } = useTheme();
   const [notifs, setNotifs] = useState(userCtx?.notifications_enabled !== false);
   const [emailNotifs, setEmailNotifs] = useState(userCtx?.email_notifications !== false);
   const [biometric, setBiometric] = useState(userCtx?.biometric_enabled === true);
-  const [darkMode, setDarkMode] = useState(userCtx?.dark_mode !== false);
+  const [darkMode, setDarkMode] = useState(isDark);
   const [showLangPicker, setShowLangPicker] = useState(false);
   const [saving, setSaving] = useState(false);
   const [settingsSub, setSettingsSub] = useState(null);
@@ -473,7 +476,7 @@ const SettingsView = ({ onBack, t, locale, setLocale, onOpenPasswordChange }) =>
   const toggleNotifs = () => { const v = !notifs; setNotifs(v); persistSetting("notifications_enabled", v); };
   const toggleEmail = () => { const v = !emailNotifs; setEmailNotifs(v); persistSetting("email_notifications", v); };
   const toggleBio = () => { const v = !biometric; setBiometric(v); persistSetting("biometric_enabled", v); };
-  const toggleDark = () => { const v = !darkMode; setDarkMode(v); persistSetting("dark_mode", v); };
+  const toggleDark = () => { const v = !darkMode; setDarkMode(v); toggleTheme(); persistSetting("dark_mode", v); };
 
   if (settingsSub === "privacy") return <PrivacyView onBack={() => setSettingsSub(null)} t={t} />;
   if (settingsSub === "sessions") return <ActiveSessionsView onBack={() => setSettingsSub(null)} t={t} />;

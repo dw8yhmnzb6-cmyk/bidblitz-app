@@ -4,6 +4,7 @@ import { Toaster } from "sonner";
 import "@/App.css";
 
 import { AppProvider, useUser, useI18n } from "./store";
+import { ThemeProvider, useTheme } from "./store/ThemeContext";
 
 import HomePage from "./pages/HomePage";
 import WalletPage from "./pages/WalletPage";
@@ -459,7 +460,9 @@ function AppContent() {
 function App() {
   return (
     <AppProvider>
-      <AppContent />
+      <ThemeProvider>
+        <AppContent />
+      </ThemeProvider>
     </AppProvider>
   );
 }
