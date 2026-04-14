@@ -339,6 +339,39 @@ app.include_router(freelancer_router)
 from routes.elearning import router as elearning_router
 app.include_router(elearning_router)
 
+from routes.handwerker import router as handwerker_router
+app.include_router(handwerker_router)
+
+from routes.streaming import router as streaming_router
+app.include_router(streaming_router)
+
+from routes.telemedizin import router as telemedizin_router
+app.include_router(telemedizin_router)
+
+from routes.dating import router as dating_router
+app.include_router(dating_router)
+
+from routes.gebrauchtwagen import router as gebrauchtwagen_router
+app.include_router(gebrauchtwagen_router)
+
+from routes.reinigung import router as reinigung_router
+app.include_router(reinigung_router)
+
+from routes.umzug import router as umzug_router
+app.include_router(umzug_router)
+
+from routes.tierbetreuung import router as tierbetreuung_router
+app.include_router(tierbetreuung_router)
+
+from routes.fitness import router as fitness_router
+app.include_router(fitness_router)
+
+from routes.reiseplaner import router as reiseplaner_router
+app.include_router(reiseplaner_router)
+
+from routes.ladesaeulen import router as ladesaeulen_router
+app.include_router(ladesaeulen_router)
+
 
 # Static file serving for uploads
 from fastapi.staticfiles import StaticFiles

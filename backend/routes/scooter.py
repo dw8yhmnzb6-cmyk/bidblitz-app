@@ -227,9 +227,18 @@ async def get_nearby_scooters(lat: float = 52.52, lng: float = 13.405, radius: f
     }
 
 
+@router.get("/subscription-plans")
+async def get_scooter_plans_alt():
+    """Get available scooter subscription plans (alias)."""
+    return {"plans": SCOOTER_PLANS}
+
+
 @router.get("/{scooter_id}")
 async def get_scooter_details(scooter_id: str):
     """Get scooter details by ID or QR code."""
+    # Skip known sub-routes that shouldn't match here
+    if scooter_id in ("plans", "subscribe", "my-subscription", "cancel-subscription", "subscription-plans"):
+        raise HTTPException(status_code=404, detail="Ungültige Route")
     scooter = await db.scooters.find_one(
         {"$or": [{"scooter_id": scooter_id}, {"qr_code": scooter_id}]},
         {"_id": 0, "device_id": 0}
@@ -807,3 +816,170 @@ async def admin_get_fleet(request: Request):
     }
     
     return {"scooters": scooters, "stats": stats}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# SCOOTER ABO-SYSTEM (Wochen-, Monats-, Jahresabos)
+# ══════════════════════════════════════════════════════════════════════════════
+
+SCOOTER_PLANS = [
+    {
+        "plan_id": "scooter_weekly",
+        "name": "Wochen-Pass",
+        "duration": "weekly",
+        "duration_days": 7,
+        "price": 9.99,
+        "features": [
+            "Keine Entsperrgebühr",
+            "30 Min. Freifahrt/Tag",
+            "Danach 0.15€/Min.",
+            "7 Tage gültig",
+        ],
+        "unlock_fee": 0,
+        "free_minutes_per_day": 30,
+        "per_minute_rate": 0.15,
+        "color": "#3B82F6",
+        "popular": False,
+    },
+    {
+        "plan_id": "scooter_monthly",
+        "name": "Monats-Abo",
+        "duration": "monthly",
+        "duration_days": 30,
+        "price": 29.99,
+        "features": [
+            "Keine Entsperrgebühr",
+            "45 Min. Freifahrt/Tag",
+            "Danach 0.12€/Min.",
+            "30 Tage gültig",
+            "Prioritäts-Reservierung",
+        ],
+        "unlock_fee": 0,
+        "free_minutes_per_day": 45,
+        "per_minute_rate": 0.12,
+        "color": "#10B981",
+        "popular": True,
+    },
+    {
+        "plan_id": "scooter_yearly",
+        "name": "Jahres-Abo",
+        "duration": "yearly",
+        "duration_days": 365,
+        "price": 249.99,
+        "features": [
+            "Keine Entsperrgebühr",
+            "60 Min. Freifahrt/Tag",
+            "Danach 0.10€/Min.",
+            "365 Tage gültig",
+            "Prioritäts-Reservierung",
+            "Exklusive Scooter-Modelle",
+            "Spare 110€/Jahr",
+        ],
+        "unlock_fee": 0,
+        "free_minutes_per_day": 60,
+        "per_minute_rate": 0.10,
+        "color": "#F59E0B",
+        "popular": False,
+    },
+]
+
+
+@router.get("/plans")
+async def get_scooter_plans():
+    """Get available scooter subscription plans."""
+    return {"plans": SCOOTER_PLANS}
+
+
+class SubscribePlanReq(BaseModel):
+    plan_id: str
+
+@router.post("/subscribe")
+async def subscribe_plan(req: SubscribePlanReq, request: Request):
+    """Subscribe to a scooter plan. Deducts from wallet."""
+    user = await get_current_user(request)
+    email = user.get("email", "")
+
+    plan = next((p for p in SCOOTER_PLANS if p["plan_id"] == req.plan_id), None)
+    if not plan:
+        raise HTTPException(400, "Ungültiger Plan")
+
+    # Check existing active subscription
+    existing = await db.scooter_subscriptions.find_one({
+        "user_email": email,
+        "status": "active",
+        "expires_at": {"$gt": datetime.now(timezone.utc).isoformat()},
+    })
+    if existing:
+        raise HTTPException(400, "Du hast bereits ein aktives Abo")
+
+    # Check wallet balance
+    user_doc = await db.users.find_one({"email": email})
+    balance = user_doc.get("balance", 0) if user_doc else 0
+    if balance < plan["price"]:
+        raise HTTPException(400, f"Nicht genügend Guthaben. Benötigt: {plan['price']}€, Verfügbar: {balance:.2f}€")
+
+    # Deduct from wallet
+    await db.users.update_one({"email": email}, {"$inc": {"balance": -plan["price"]}})
+
+    now = datetime.now(timezone.utc)
+    expires = now + timedelta(days=plan["duration_days"])
+
+    subscription = {
+        "sub_id": secrets.token_hex(8),
+        "user_email": email,
+        "user_name": user.get("name", ""),
+        "plan_id": plan["plan_id"],
+        "plan_name": plan["name"],
+        "price": plan["price"],
+        "duration": plan["duration"],
+        "duration_days": plan["duration_days"],
+        "unlock_fee": plan["unlock_fee"],
+        "free_minutes_per_day": plan["free_minutes_per_day"],
+        "per_minute_rate": plan["per_minute_rate"],
+        "status": "active",
+        "started_at": now.isoformat(),
+        "expires_at": expires.isoformat(),
+    }
+    await db.scooter_subscriptions.insert_one(subscription)
+    subscription.pop("_id", None)
+
+    # Log transaction
+    await db.transactions.insert_one({
+        "user_email": email,
+        "type": "scooter_subscription",
+        "amount": -plan["price"],
+        "description": f"Scooter {plan['name']}",
+        "reference": subscription["sub_id"],
+        "created_at": now.isoformat(),
+    })
+
+    return {"ok": True, "subscription": subscription}
+
+
+@router.get("/my-subscription")
+async def get_my_subscription(request: Request):
+    """Get user's active scooter subscription."""
+    user = await get_current_user(request)
+    sub = await db.scooter_subscriptions.find_one(
+        {
+            "user_email": user.get("email", ""),
+            "status": "active",
+            "expires_at": {"$gt": datetime.now(timezone.utc).isoformat()},
+        },
+        {"_id": 0},
+    )
+    return {"subscription": sub}
+
+
+@router.post("/cancel-subscription")
+async def cancel_subscription(request: Request):
+    """Cancel active scooter subscription."""
+    user = await get_current_user(request)
+    result = await db.scooter_subscriptions.update_one(
+        {"user_email": user.get("email", ""), "status": "active"},
+        {"$set": {"status": "cancelled", "cancelled_at": datetime.now(timezone.utc).isoformat()}},
+    )
+    if result.modified_count == 0:
+        raise HTTPException(400, "Kein aktives Abo gefunden")
+    return {"ok": True, "message": "Abo gekündigt"}
+

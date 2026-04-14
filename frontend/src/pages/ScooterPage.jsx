@@ -28,7 +28,7 @@ export default function ScooterPage({ onNavigate }) {
   };
   
   // State
-  const [view, setView] = useState('map'); // map, riding, history
+  const [view, setView] = useState('map'); // map, riding, history, plans
   const [scooters, setScooters] = useState([]);
   const [selectedScooter, setSelectedScooter] = useState(null);
   const [activeRental, setActiveRental] = useState(null);
@@ -42,6 +42,9 @@ export default function ScooterPage({ onNavigate }) {
   const [userLocation, setUserLocation] = useState({ lat: 52.52, lng: 13.405 });
   const [moduleEnabled, setModuleEnabled] = useState(true);
   const [moduleMessage, setModuleMessage] = useState('');
+  const [plans, setPlans] = useState([]);
+  const [mySub, setMySub] = useState(null);
+  const [subLoading, setSubLoading] = useState(false);
   
   // Refs
   const timerRef = useRef(null);
@@ -287,7 +290,52 @@ export default function ScooterPage({ onNavigate }) {
 
   useEffect(() => {
     if (view === 'history') fetchHistory();
+    if (view === 'plans') { fetchPlans(); fetchMySub(); }
   }, [view]);
+
+  const fetchPlans = async () => {
+    try {
+      const res = await fetch(`${API}/api/scooter/subscription-plans`, { credentials: 'include' });
+      if (res.ok) { const data = await res.json(); setPlans(data.plans || []); }
+    } catch {}
+  };
+
+  const fetchMySub = async () => {
+    try {
+      const res = await fetch(`${API}/api/scooter/my-subscription`, { credentials: 'include' });
+      if (res.ok) { const data = await res.json(); setMySub(data.subscription); }
+    } catch {}
+  };
+
+  const subscribePlan = async (planId) => {
+    setSubLoading(true);
+    try {
+      const res = await fetch(`${API}/api/scooter/subscribe`, {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan_id: planId }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setMySub(data.subscription);
+        fetchUserData();
+        alert(`${data.subscription.plan_name} aktiviert!`);
+      } else {
+        const err = await res.json();
+        alert(err.detail || 'Fehler beim Abschließen');
+      }
+    } catch {} finally { setSubLoading(false); }
+  };
+
+  const cancelSub = async () => {
+    if (!window.confirm('Abo wirklich kündigen?')) return;
+    try {
+      const res = await fetch(`${API}/api/scooter/cancel-subscription`, {
+        method: 'POST', credentials: 'include',
+      });
+      if (res.ok) { setMySub(null); alert('Abo gekündigt'); }
+    } catch {}
+  };
 
   return (
     <div className="min-h-screen bg-[#050505] text-white pb-24">
@@ -306,18 +354,19 @@ export default function ScooterPage({ onNavigate }) {
           
           {/* Tabs */}
           <div className="flex gap-2 mt-4">
-            {['map', 'riding', 'history'].map((tab) => (
+            {['map', 'riding', 'plans', 'history'].map((tab) => (
               <button
                 key={tab}
                 onClick={() => setView(tab)}
                 disabled={tab === 'riding' && !activeRental}
-                className={`flex-1 py-2 px-4 rounded-xl text-sm font-medium transition-all ${
+                className={`flex-1 py-2 px-3 rounded-xl text-xs font-medium transition-all ${
                   view === tab
                     ? 'bg-green-500/20 text-green-400 border border-green-500/30'
                     : 'bg-white/5 text-gray-400 hover:bg-white/10 disabled:opacity-30'
                 }`}
+                data-testid={`scooter-tab-${tab}`}
               >
-                {tab === 'map' ? 'Karte' : tab === 'riding' ? 'Fahrt' : 'Verlauf'}
+                {tab === 'map' ? 'Karte' : tab === 'riding' ? 'Fahrt' : tab === 'plans' ? 'Abos' : 'Verlauf'}
               </button>
             ))}
           </div>
@@ -673,6 +722,123 @@ export default function ScooterPage({ onNavigate }) {
                   </div>
                 ))
               )}
+            </motion.div>
+          )}
+
+          {/* PLANS / ABOS VIEW */}
+          {view === 'plans' && (
+            <motion.div
+              key="plans"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="space-y-4"
+            >
+              {/* Active Subscription */}
+              {mySub && (
+                <div className="p-4 rounded-2xl border-2" style={{ borderColor: '#10B981', background: 'rgba(16,185,129,0.08)' }}>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-lg bg-green-500/20 flex items-center justify-center">
+                        <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                      </div>
+                      <span className="text-sm font-bold text-green-400">Aktives Abo</span>
+                    </div>
+                    <span className="text-xs text-gray-500 bg-white/5 px-2 py-1 rounded">{mySub.plan_name}</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-3 mb-3">
+                    <div className="text-center"><div className="text-sm font-bold text-white">{mySub.free_minutes_per_day}</div><div className="text-[10px] text-gray-500">Min. frei/Tag</div></div>
+                    <div className="text-center"><div className="text-sm font-bold text-white">{mySub.per_minute_rate}€</div><div className="text-[10px] text-gray-500">danach/Min.</div></div>
+                    <div className="text-center"><div className="text-sm font-bold text-white">0€</div><div className="text-[10px] text-gray-500">Entsperren</div></div>
+                  </div>
+                  <div className="flex items-center justify-between text-xs text-gray-400 mb-3">
+                    <span>Gültig bis: {new Date(mySub.expires_at).toLocaleDateString('de-DE')}</span>
+                    <span className="text-green-400">{mySub.price}€/{mySub.duration === 'weekly' ? 'Woche' : mySub.duration === 'monthly' ? 'Monat' : 'Jahr'}</span>
+                  </div>
+                  <button
+                    onClick={cancelSub}
+                    className="w-full py-2 rounded-xl text-xs font-medium text-red-400 border border-red-500/30 hover:bg-red-500/10 transition-all"
+                    data-testid="scooter-cancel-sub"
+                  >
+                    Abo kündigen
+                  </button>
+                </div>
+              )}
+
+              <h3 className="font-semibold text-gray-300">{mySub ? 'Andere Pläne' : 'Scooter-Abos'}</h3>
+              <p className="text-xs text-gray-500 -mt-2">Spare mit einem Abo — keine Entsperrgebühr & tägliche Freiminuten</p>
+
+              {plans.map((plan) => (
+                <div
+                  key={plan.plan_id}
+                  className={`relative p-4 rounded-2xl border transition-all ${
+                    plan.popular ? 'border-green-500/50' : 'border-white/10'
+                  }`}
+                  style={{ background: plan.popular ? 'rgba(16,185,129,0.05)' : '#111' }}
+                  data-testid={`scooter-plan-${plan.plan_id}`}
+                >
+                  {plan.popular && (
+                    <span className="absolute -top-2.5 left-4 px-3 py-0.5 rounded-full text-[10px] font-bold bg-green-500 text-black">
+                      BELIEBTESTES ABO
+                    </span>
+                  )}
+                  <div className="flex items-center justify-between mb-3 mt-1">
+                    <div>
+                      <h4 className="text-base font-bold text-white">{plan.name}</h4>
+                      <div className="text-xs text-gray-500">{plan.duration_days} Tage</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xl font-bold" style={{ color: plan.color }}>{plan.price}€</div>
+                      <div className="text-[10px] text-gray-500">
+                        {plan.duration === 'weekly' ? '/Woche' : plan.duration === 'monthly' ? '/Monat' : '/Jahr'}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5 mb-4">
+                    {plan.features.map((f, i) => (
+                      <div key={i} className="flex items-center gap-2">
+                        <svg className="w-3.5 h-3.5 shrink-0" style={{ color: plan.color }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                        </svg>
+                        <span className="text-xs text-gray-400">{f}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <button
+                    onClick={() => subscribePlan(plan.plan_id)}
+                    disabled={subLoading || (mySub && mySub.status === 'active')}
+                    className="w-full py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-40"
+                    style={{
+                      background: mySub ? 'rgba(255,255,255,0.05)' : plan.color,
+                      color: mySub ? '#888' : '#000',
+                    }}
+                    data-testid={`scooter-subscribe-${plan.plan_id}`}
+                  >
+                    {subLoading ? 'Wird abgeschlossen...' : mySub ? 'Bereits abonniert' : `${plan.name} abschließen`}
+                  </button>
+                </div>
+              ))}
+
+              {/* Price Comparison */}
+              <div className="p-4 rounded-2xl bg-[#111] border border-white/10">
+                <h4 className="text-sm font-semibold text-gray-300 mb-3">Preisvergleich</h4>
+                <div className="grid grid-cols-4 gap-2 text-center text-xs">
+                  <div></div>
+                  <div className="text-blue-400 font-medium">Woche</div>
+                  <div className="text-green-400 font-medium">Monat</div>
+                  <div className="text-yellow-400 font-medium">Jahr</div>
+                  <div className="text-left text-gray-500">Entsperren</div>
+                  <div className="text-white">0€</div><div className="text-white">0€</div><div className="text-white">0€</div>
+                  <div className="text-left text-gray-500">Frei/Tag</div>
+                  <div className="text-white">30 Min</div><div className="text-white">45 Min</div><div className="text-white">60 Min</div>
+                  <div className="text-left text-gray-500">Danach</div>
+                  <div className="text-white">0.15€</div><div className="text-white">0.12€</div><div className="text-white">0.10€</div>
+                  <div className="text-left text-gray-500">Preis</div>
+                  <div className="text-white">9.99€</div><div className="text-white">29.99€</div><div className="text-white">249.99€</div>
+                </div>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>

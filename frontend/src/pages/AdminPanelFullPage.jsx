@@ -11,7 +11,9 @@ import {
   Zap, Eye, Mail, Trophy, Target, Gift, MessageCircle,
   Wrench, FileText, Settings, Leaf, Lock, Activity, Mic,
   Bug, Server, Package, Crown, Ticket, BarChart, UserCheck,
-  Globe, Gavel, Bot, Percent, TrendingUp, AlertCircle, Check, DollarSign
+  Globe, Gavel, Bot, Percent, TrendingUp, AlertCircle, Check, DollarSign,
+  Home, GraduationCap, Film, Stethoscope, Heart, CarFront, Sparkles,
+  Truck, Dog, Dumbbell, Palmtree, BatteryCharging, CalendarDays
 } from "lucide-react";
 
 const API = process.env.REACT_APP_BACKEND_URL;
@@ -83,6 +85,39 @@ const ADMIN_SECTIONS = [
       { key: "partner-vouchers", icon: Ticket, label: "Partner-Gutscheine" },
       { key: "discount-coupons", icon: Percent, label: "Rabatt-Coupons" },
       { key: "coupon-manager", icon: Gift, label: "Gutschein-Manager", nav: "gutscheine" },
+    ],
+  },
+  {
+    title: "Marktplätze & Services", color: "#059669", count: 8,
+    items: [
+      { key: "admin-immobilien", icon: Home, label: "Immobilien", nav: "/real-estate" },
+      { key: "admin-freelancer", icon: Users, label: "Freelancer", nav: "/freelancer" },
+      { key: "admin-elearning", icon: GraduationCap, label: "E-Learning", nav: "/elearning" },
+      { key: "admin-handwerker", icon: Wrench, label: "Handwerker" },
+      { key: "admin-gebrauchtwagen", icon: CarFront, label: "Gebrauchtwagen" },
+      { key: "admin-reinigung", icon: Sparkles, label: "Reinigung" },
+      { key: "admin-umzug", icon: Truck, label: "Umzugsservice" },
+      { key: "admin-tierbetreuung", icon: Dog, label: "Tierbetreuung" },
+    ],
+  },
+  {
+    title: "Lifestyle & Gesundheit", color: "#EC4899", count: 5,
+    items: [
+      { key: "admin-streaming", icon: Film, label: "Streaming" },
+      { key: "admin-telemedizin", icon: Stethoscope, label: "Telemedizin" },
+      { key: "admin-dating", icon: Heart, label: "Dating" },
+      { key: "admin-fitness", icon: Dumbbell, label: "Fitness" },
+      { key: "admin-reiseplaner", icon: Palmtree, label: "Reiseplaner" },
+    ],
+  },
+  {
+    title: "Mobilität & Energie", color: "#10B981", count: 5,
+    items: [
+      { key: "admin-ladesaeulen", icon: BatteryCharging, label: "Ladesäulen" },
+      { key: "admin-scooter-abos", icon: Zap, label: "Scooter-Abos" },
+      { key: "admin-car-rental", icon: Car, label: "Mietwagen", nav: "/car-rental/admin" },
+      { key: "admin-taxi", icon: Car, label: "Taxi-Fleet" },
+      { key: "admin-parcels", icon: Package, label: "Pakete" },
     ],
   },
   {
@@ -228,6 +263,78 @@ const AdminPanelFullPage = ({ onNavigate, onBack }) => {
         case "system-logs": {
           const d = await api("/api/admin/stats");
           setData({ type: "system_logs", stats: d });
+          break;
+        }
+        // ── Marktplätze & Services (Admin Stats) ──
+        case "admin-handwerker": {
+          const d = await api("/api/handwerker/list");
+          setData({ type: "module_list", module: "Handwerker", items: d.handwerker || [], countLabel: "Handwerker", fields: ["name","category","city","rating","completed_jobs"] });
+          break;
+        }
+        case "admin-gebrauchtwagen": {
+          const d = await api("/api/gebrauchtwagen/listings");
+          setData({ type: "module_list", module: "Gebrauchtwagen", items: d.cars || [], countLabel: "Autos", fields: ["title","brand","price","city","views"] });
+          break;
+        }
+        case "admin-reinigung": {
+          const d = await api("/api/reinigung/services");
+          setData({ type: "module_list", module: "Reinigungsservices", items: d.services || [], countLabel: "Services", fields: ["name","price_per_hour","min_hours"] });
+          break;
+        }
+        case "admin-umzug": {
+          const d = await api("/api/umzug/companies");
+          setData({ type: "module_list", module: "Umzugsfirmen", items: d.companies || [], countLabel: "Firmen", fields: ["name","city","base_price","rating","reviews"] });
+          break;
+        }
+        case "admin-tierbetreuung": {
+          const d = await api("/api/tierbetreuung/sitters");
+          setData({ type: "module_list", module: "Tierbetreuung", items: d.sitters || [], countLabel: "Betreuer", fields: ["name","service","city","price_per_day","rating"] });
+          break;
+        }
+        case "admin-streaming": {
+          const d = await api("/api/streaming/catalog");
+          setData({ type: "module_list", module: "Streaming-Katalog", items: d.catalog || [], countLabel: "Inhalte", fields: ["title","type","genre","rating","views"] });
+          break;
+        }
+        case "admin-telemedizin": {
+          const d = await api("/api/telemedizin/doctors");
+          setData({ type: "module_list", module: "Telemedizin Ärzte", items: d.doctors || [], countLabel: "Ärzte", fields: ["name","specialty","city","price_consultation","rating"] });
+          break;
+        }
+        case "admin-dating": {
+          const d = await api("/api/dating/discover");
+          setData({ type: "module_list", module: "Dating-Profile", items: d.profiles || [], countLabel: "Profile", fields: ["name","city","likes_count","verified"] });
+          break;
+        }
+        case "admin-fitness": {
+          const d = await api("/api/fitness/gyms");
+          setData({ type: "module_list", module: "Fitness-Studios", items: d.gyms || [], countLabel: "Gyms", fields: ["name","type","city","monthly_price","rating"] });
+          break;
+        }
+        case "admin-reiseplaner": {
+          const d = await api("/api/reiseplaner/trips");
+          setData({ type: "module_list", module: "Reiseangebote", items: d.trips || [], countLabel: "Reisen", fields: ["title","destination","duration_days","price_per_person","rating"] });
+          break;
+        }
+        case "admin-ladesaeulen": {
+          const d = await api("/api/ladesaeulen/stations");
+          const stats_ev = await api("/api/ladesaeulen/stats");
+          setData({ type: "module_list", module: "Ladesäulen", items: d.stations || [], countLabel: "Stationen", fields: ["name","operator","city","power_kw","price_per_kwh","slots_available"], extra_stats: stats_ev });
+          break;
+        }
+        case "admin-scooter-abos": {
+          const d = await api("/api/scooter/plans");
+          setData({ type: "module_list", module: "Scooter-Abos", items: d.plans || [], countLabel: "Pläne", fields: ["name","price","duration_days","free_minutes_per_day","per_minute_rate"] });
+          break;
+        }
+        case "admin-taxi": {
+          const d = await api("/api/admin/stats");
+          setData({ type: "module_stats", module: "Taxi-Fleet", stats: d });
+          break;
+        }
+        case "admin-parcels": {
+          const d = await api("/api/admin/stats");
+          setData({ type: "module_stats", module: "Paket-Verwaltung", stats: d });
           break;
         }
         case "maintenance": case "cms": case "game-settings": case "sustainability":
@@ -783,6 +890,83 @@ const AdminPanelFullPage = ({ onNavigate, onBack }) => {
               )}
               {!["system-health", "database"].includes(data.subtype) && (
                 <p className="text-[10px] text-gray-400 text-center">Konfiguration in nächstem Update</p>
+              )}
+            </div>
+          )}
+
+          {/* ══ MODULE LIST (Marktplätze, Services, etc.) ══ */}
+          {data?.type === "module_list" && (
+            <div className="space-y-3" data-testid={`admin-module-${data.module}`}>
+              <div className="grid grid-cols-2 gap-2 mb-3">
+                <div className="p-3 rounded-xl bg-white border border-gray-100 shadow-sm">
+                  <p className="text-xl font-bold text-[#059669]">{data.items?.length || 0}</p>
+                  <p className="text-[10px] text-gray-500">{data.countLabel}</p>
+                </div>
+                {data.extra_stats && Object.entries(data.extra_stats).slice(0, 3).map(([k, v]) => (
+                  <div key={k} className="p-3 rounded-xl bg-white border border-gray-100 shadow-sm">
+                    <p className="text-xl font-bold text-[#3B82F6]">{typeof v === "number" ? v.toLocaleString("de-DE") : v}</p>
+                    <p className="text-[10px] text-gray-500">{k.replace(/_/g, " ")}</p>
+                  </div>
+                ))}
+              </div>
+              <h3 className="text-xs font-semibold text-gray-500">{data.module} ({data.items?.length || 0})</h3>
+              {(data.items || []).map((item, i) => (
+                <div key={i} className="p-3 rounded-xl bg-white border border-gray-100 shadow-sm">
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-[12px] font-semibold text-gray-800 line-clamp-1">
+                      {item[data.fields?.[0]] || item.name || item.title || `#${i + 1}`}
+                    </p>
+                    {item.rating && (
+                      <span className="text-[10px] font-bold text-yellow-600 flex items-center gap-0.5">
+                        <Star size={10} className="fill-yellow-400 text-yellow-400" /> {item.rating}
+                      </span>
+                    )}
+                    {item.featured && (
+                      <span className="text-[8px] px-1.5 py-0.5 rounded bg-yellow-100 text-yellow-700 font-bold">TOP</span>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+                    {(data.fields || []).slice(1).map((field, fi) => {
+                      const val = item[field];
+                      if (val === undefined || val === null) return null;
+                      const displayVal = typeof val === "boolean" ? (val ? "Ja" : "Nein") :
+                        typeof val === "number" ? (field.includes("price") || field.includes("rate") || field.includes("per_") ? `${val}€` : val.toLocaleString("de-DE")) : String(val);
+                      return (
+                        <span key={fi} className="text-[10px] text-gray-500">
+                          <span className="text-gray-400">{field.replace(/_/g, " ")}:</span> <span className="text-gray-700 font-medium">{displayVal}</span>
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+              {(data.items || []).length === 0 && (
+                <div className="text-center py-8 text-gray-400 text-sm">Keine Einträge vorhanden</div>
+              )}
+            </div>
+          )}
+
+          {/* ══ MODULE STATS (Generic stats view) ══ */}
+          {data?.type === "module_stats" && (
+            <div className="space-y-3" data-testid={`admin-module-stats-${data.module}`}>
+              <div className="p-4 rounded-xl bg-white border border-gray-100 shadow-sm text-center">
+                <p className="text-sm font-semibold text-gray-600">{data.module}</p>
+                <p className="text-xs text-gray-400 mt-1">Verwaltung über die Hauptseite verfügbar</p>
+              </div>
+              {data.stats && (
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { label: "Nutzer", value: data.stats.total_users || 0, color: "#3B82F6" },
+                    { label: "Transaktionen", value: data.stats.total_transactions || 0, color: "#10B981" },
+                    { label: "Umsatz 30T", value: `€${(data.stats.revenue_30d || 0).toFixed(0)}`, color: "#F59E0B" },
+                    { label: "Aktive Heute", value: data.stats.active_today || 0, color: "#A855F7" },
+                  ].map(s => (
+                    <div key={s.label} className="p-3 rounded-xl bg-white border border-gray-100 shadow-sm">
+                      <p className="text-lg font-bold" style={{ color: s.color }}>{s.value}</p>
+                      <p className="text-[10px] text-gray-500">{s.label}</p>
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
           )}

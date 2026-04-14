@@ -9,7 +9,9 @@ import {
   Gamepad2, ShoppingBag, CreditCard, Bot, Bitcoin, PiggyBank,
   Heart, Baby, Star, Phone, Globe, Settings, Plus, X, Check,
   GripVertical, Pencil, Shield, Calendar, MessageCircle, Briefcase,
-  Plane, Package
+  Plane, Package, Building2, Users, GraduationCap, Wrench, Film,
+  Stethoscope, CarFront, Sparkles, Truck, Dog, Dumbbell, Palmtree,
+  BatteryCharging
 } from "lucide-react";
 
 const API = process.env.REACT_APP_BACKEND_URL;
@@ -43,6 +45,20 @@ const ALL_SHORTCUTS = [
   { id: "flights", icon: Plane, label: "Flüge", route: "/flights", color: "#06B6D4" },
   { id: "parcels", icon: Package, label: "Pakete", route: "/parcels", color: "#F97316" },
   { id: "nearby", icon: MapPin, label: "In der Nähe", route: "/nearby", color: "#10B981" },
+  { id: "real-estate", icon: Building2, label: "Immobilien", route: "/real-estate", color: "#059669" },
+  { id: "freelancer", icon: Users, label: "Freelancer", route: "/freelancer", color: "#7C3AED" },
+  { id: "elearning", icon: GraduationCap, label: "E-Learning", route: "/elearning", color: "#2563EB" },
+  { id: "handwerker", icon: Wrench, label: "Handwerker", route: "/handwerker", color: "#D97706" },
+  { id: "streaming", icon: Film, label: "Streaming", route: "/streaming", color: "#DC2626" },
+  { id: "telemedizin", icon: Stethoscope, label: "Arzt", route: "/telemedizin", color: "#059669" },
+  { id: "dating", icon: Heart, label: "Dating", route: "/dating", color: "#EC4899" },
+  { id: "gebrauchtwagen", icon: CarFront, label: "Gebrauchtwagen", route: "/gebrauchtwagen", color: "#0891B2" },
+  { id: "reinigung", icon: Sparkles, label: "Reinigung", route: "/reinigung", color: "#8B5CF6" },
+  { id: "umzug", icon: Truck, label: "Umzug", route: "/umzug", color: "#EA580C" },
+  { id: "tierbetreuung", icon: Dog, label: "Haustiere", route: "/tierbetreuung", color: "#F59E0B" },
+  { id: "fitness", icon: Dumbbell, label: "Fitness", route: "/fitness", color: "#EF4444" },
+  { id: "reiseplaner", icon: Palmtree, label: "Reisen", route: "/reiseplaner", color: "#0D9488" },
+  { id: "ladesaeulen", icon: BatteryCharging, label: "Ladesäulen", route: "/ladesaeulen", color: "#10B981" },
 ];
 
 const DEFAULT_SHORTCUTS = ["taxi", "scooter", "hotels", "restaurants"];

@@ -80,6 +80,20 @@ import CVBuilderPage from "./pages/CVBuilderPage";
 import NearbyPage from "./pages/NearbyPage";
 import MerchantPortalPage from "./pages/MerchantPortalPage";
 import KidsAppPage from "./pages/KidsAppPage";
+import RealEstatePage from "./pages/RealEstatePage";
+import FreelancerPage from "./pages/FreelancerPage";
+import ELearningPage from "./pages/ELearningPage";
+import HandwerkerPage from "./pages/HandwerkerPage";
+import StreamingPage from "./pages/StreamingPage";
+import TelemedizinPage from "./pages/TelemedizinPage";
+import DatingPage from "./pages/DatingPage";
+import GebrauchtwagenPage from "./pages/GebrauchtwagenPage";
+import ReinigungPage from "./pages/ReinigungPage";
+import UmzugPage from "./pages/UmzugPage";
+import TierbetreuungPage from "./pages/TierbetreuungPage";
+import FitnessPage from "./pages/FitnessPage";
+import ReiseplanerPage from "./pages/ReiseplanerPage";
+import LadesaeulenPage from "./pages/LadesaeulenPage";
 
 // Car Rental Module
 import {
@@ -365,6 +379,34 @@ function AppContent() {
         return isGuest ? <HomePage {...homeProps} /> : <KidsAppPage onBack={() => handleNavigate("/kids")} />;
       case "/gaming":
         return isGuest ? <HomePage {...homeProps} /> : <GamingPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
+      case "/real-estate":
+        return isGuest ? <HomePage {...homeProps} /> : <RealEstatePage onBack={() => handleNavigate("/more")} />;
+      case "/freelancer":
+        return isGuest ? <HomePage {...homeProps} /> : <FreelancerPage onBack={() => handleNavigate("/more")} />;
+      case "/elearning":
+        return isGuest ? <HomePage {...homeProps} /> : <ELearningPage onBack={() => handleNavigate("/more")} />;
+      case "/handwerker":
+        return isGuest ? <HomePage {...homeProps} /> : <HandwerkerPage onBack={() => handleNavigate("/more")} />;
+      case "/streaming":
+        return isGuest ? <HomePage {...homeProps} /> : <StreamingPage onBack={() => handleNavigate("/more")} />;
+      case "/telemedizin":
+        return isGuest ? <HomePage {...homeProps} /> : <TelemedizinPage onBack={() => handleNavigate("/more")} />;
+      case "/dating":
+        return isGuest ? <HomePage {...homeProps} /> : <DatingPage onBack={() => handleNavigate("/more")} />;
+      case "/gebrauchtwagen":
+        return isGuest ? <HomePage {...homeProps} /> : <GebrauchtwagenPage onBack={() => handleNavigate("/more")} />;
+      case "/reinigung":
+        return isGuest ? <HomePage {...homeProps} /> : <ReinigungPage onBack={() => handleNavigate("/more")} />;
+      case "/umzug":
+        return isGuest ? <HomePage {...homeProps} /> : <UmzugPage onBack={() => handleNavigate("/more")} />;
+      case "/tierbetreuung":
+        return isGuest ? <HomePage {...homeProps} /> : <TierbetreuungPage onBack={() => handleNavigate("/more")} />;
+      case "/fitness":
+        return isGuest ? <HomePage {...homeProps} /> : <FitnessPage onBack={() => handleNavigate("/more")} />;
+      case "/reiseplaner":
+        return isGuest ? <HomePage {...homeProps} /> : <ReiseplanerPage onBack={() => handleNavigate("/more")} />;
+      case "/ladesaeulen":
+        return isGuest ? <HomePage {...homeProps} /> : <LadesaeulenPage onBack={() => handleNavigate("/more")} />;
       
       // Car Rental Module
       case "/car-rental":
