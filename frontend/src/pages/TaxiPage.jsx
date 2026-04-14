@@ -53,6 +53,60 @@ export default function TaxiPage({ onNavigate }) {
   const [userBalance, setUserBalance] = useState(0);
   const [moduleEnabled, setModuleEnabled] = useState(true);
   const [moduleMessage, setModuleMessage] = useState('');
+
+  // Autocomplete state
+  const [pickupSuggestions, setPickupSuggestions] = useState([]);
+  const [dropoffSuggestions, setDropoffSuggestions] = useState([]);
+  const [showPickupSugg, setShowPickupSugg] = useState(false);
+  const [showDropoffSugg, setShowDropoffSugg] = useState(false);
+  const pickupTimer = useRef(null);
+  const dropoffTimer = useRef(null);
+
+  const MAPBOX_TOKEN = process.env.REACT_APP_MAPBOX_TOKEN;
+
+  // Geocoding autocomplete
+  const geocodeSearch = async (query, setter, showSetter) => {
+    if (!query || query.length < 2 || !MAPBOX_TOKEN) { setter([]); showSetter(false); return; }
+    try {
+      const res = await fetch(
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${MAPBOX_TOKEN}&language=de&country=de,at,ch&limit=5&types=address,poi,place,locality`
+      );
+      if (res.ok) {
+        const data = await res.json();
+        const results = (data.features || []).map(f => ({
+          name: f.text,
+          address: f.place_name,
+          lat: f.center[1],
+          lng: f.center[0],
+          type: f.place_type?.[0] || 'address',
+        }));
+        setter(results);
+        showSetter(results.length > 0);
+      }
+    } catch { setter([]); showSetter(false); }
+  };
+
+  const handlePickupChange = (text) => {
+    setPickup(p => ({ ...p, address: text }));
+    if (pickupTimer.current) clearTimeout(pickupTimer.current);
+    pickupTimer.current = setTimeout(() => geocodeSearch(text, setPickupSuggestions, setShowPickupSugg), 300);
+  };
+
+  const handleDropoffChange = (text) => {
+    setDropoff(p => ({ ...p, address: text }));
+    if (dropoffTimer.current) clearTimeout(dropoffTimer.current);
+    dropoffTimer.current = setTimeout(() => geocodeSearch(text, setDropoffSuggestions, setShowDropoffSugg), 300);
+  };
+
+  const selectPickupSugg = (s) => {
+    setPickup({ lat: s.lat, lng: s.lng, address: s.address });
+    setShowPickupSugg(false); setPickupSuggestions([]);
+  };
+
+  const selectDropoffSugg = (s) => {
+    setDropoff({ lat: s.lat, lng: s.lng, address: s.address });
+    setShowDropoffSugg(false); setDropoffSuggestions([]);
+  };
   const [businessDrivers, setBusinessDrivers] = useState(0);
   const [privateDrivers, setPrivateDrivers] = useState(0);
   
@@ -517,38 +571,74 @@ export default function TaxiPage({ onNavigate }) {
 
               {/* Location Inputs */}
               <div className="space-y-3">
-                <div className="relative">
-                  <div className="absolute left-4 top-1/2 -translate-y-1/2 flex flex-col items-center">
+                {/* ABHOLUNG */}
+                <div className="relative z-20">
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 flex flex-col items-center z-10">
                     <div className="w-3 h-3 rounded-full bg-cyan-500 ring-4 ring-cyan-500/20" />
                   </div>
-                  <div className="absolute left-4 top-[58px] -translate-y-1/2 text-[8px] text-gray-500 uppercase tracking-wider">ABHOLUNG</div>
+                  <div className="absolute left-4 top-[58px] -translate-y-1/2 text-[8px] text-gray-500 uppercase tracking-wider z-10">ABHOLUNG</div>
                   <input
                     type="text"
                     placeholder="Aktueller Standort"
                     value={pickup.address}
-                    onChange={(e) => setPickup({ ...pickup, address: e.target.value })}
+                    onChange={(e) => handlePickupChange(e.target.value)}
+                    onFocus={() => { if (pickupSuggestions.length > 0) setShowPickupSugg(true); }}
+                    onBlur={() => setTimeout(() => setShowPickupSugg(false), 200)}
                     className="w-full pl-10 pr-4 pt-6 pb-3 bg-[#111] border border-white/10 rounded-xl text-white placeholder-gray-500 focus:border-cyan-500/50 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 transition-all"
+                    data-testid="taxi-pickup-input"
                   />
+                  {showPickupSugg && pickupSuggestions.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-[#1a1a1f] border border-white/10 rounded-xl overflow-hidden shadow-2xl" style={{ zIndex: 50 }}>
+                      {pickupSuggestions.map((s, i) => (
+                        <button key={i} onMouseDown={() => selectPickupSugg(s)}
+                          className="w-full flex items-start gap-3 px-4 py-3 hover:bg-cyan-500/10 transition-colors text-left border-b border-white/5 last:border-0"
+                          data-testid={`pickup-sugg-${i}`}>
+                          <div className="w-8 h-8 rounded-lg bg-cyan-500/10 flex items-center justify-center shrink-0 mt-0.5">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#00C2FF" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-medium text-white truncate">{s.name}</div>
+                            <div className="text-[10px] text-gray-500 truncate">{s.address}</div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
-                <div className="relative">
-                  <div className="absolute left-4 top-1/2 -translate-y-1/2 flex flex-col items-center">
+
+                {/* ZIEL */}
+                <div className="relative z-10">
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 flex flex-col items-center z-10">
                     <div className="w-3 h-3 rounded-full bg-red-500 ring-4 ring-red-500/20" />
                   </div>
-                  <div className="absolute left-4 top-[58px] -translate-y-1/2 text-[8px] text-gray-500 uppercase tracking-wider">ZIEL</div>
+                  <div className="absolute left-4 top-[58px] -translate-y-1/2 text-[8px] text-gray-500 uppercase tracking-wider z-10">ZIEL</div>
                   <input
                     type="text"
                     placeholder="Wohin möchtest du?"
                     value={dropoff.address}
-                    onChange={(e) => {
-                      // Simulate geocoding for demo
-                      setDropoff({
-                        lat: 52.52 + Math.random() * 0.1,
-                        lng: 13.405 + Math.random() * 0.1,
-                        address: e.target.value,
-                      });
-                    }}
+                    onChange={(e) => handleDropoffChange(e.target.value)}
+                    onFocus={() => { if (dropoffSuggestions.length > 0) setShowDropoffSugg(true); }}
+                    onBlur={() => setTimeout(() => setShowDropoffSugg(false), 200)}
                     className="w-full pl-10 pr-4 pt-6 pb-3 bg-[#111] border border-white/10 rounded-xl text-white placeholder-gray-500 focus:border-red-500/50 focus:outline-none focus:ring-2 focus:ring-red-500/20 transition-all cursor-text"
+                    data-testid="taxi-dropoff-input"
                   />
+                  {showDropoffSugg && dropoffSuggestions.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-[#1a1a1f] border border-white/10 rounded-xl overflow-hidden shadow-2xl" style={{ zIndex: 50 }}>
+                      {dropoffSuggestions.map((s, i) => (
+                        <button key={i} onMouseDown={() => selectDropoffSugg(s)}
+                          className="w-full flex items-start gap-3 px-4 py-3 hover:bg-red-500/10 transition-colors text-left border-b border-white/5 last:border-0"
+                          data-testid={`dropoff-sugg-${i}`}>
+                          <div className="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center shrink-0 mt-0.5">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-medium text-white truncate">{s.name}</div>
+                            <div className="text-[10px] text-gray-500 truncate">{s.address}</div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 
                 {/* Quick Destinations */}
@@ -556,8 +646,11 @@ export default function TaxiPage({ onNavigate }) {
                   {['Flughafen BER', 'Hauptbahnhof', 'Alexanderplatz', 'Brandenburger Tor'].map((dest) => (
                     <button
                       key={dest}
-                      onClick={() => setDropoff({ lat: 52.52 + Math.random() * 0.05, lng: 13.405 + Math.random() * 0.05, address: dest })}
+                      onClick={() => {
+                        handleDropoffChange(dest);
+                      }}
                       className="px-3 py-1.5 bg-white/5 rounded-lg text-xs text-gray-400 hover:bg-cyan-500/10 hover:text-cyan-400 transition-colors border border-white/5"
+                      data-testid={`taxi-quick-${dest}`}
                     >
                       {dest}
                     </button>
