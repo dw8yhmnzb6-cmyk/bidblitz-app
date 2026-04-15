@@ -104,6 +104,8 @@ import PremiumPage from "./pages/PremiumPage";
 import StoriesPage from "./pages/StoriesPage";
 import LiveAuctionsPage from "./pages/LiveAuctionsPage";
 import SocialHubPage from "./pages/SocialHubPage";
+import BlitzLearnPage from "./pages/BlitzLearnPage";
+import BlitzHubPage from "./pages/BlitzHubPage";
 
 // Car Rental Module
 import {
@@ -464,6 +466,10 @@ function AppContent() {
         return isGuest ? <HomePage {...homeProps} /> : <LiveAuctionsPage onBack={() => handleNavigate("/more")} />;
       case "/social-hub":
         return isGuest ? <HomePage {...homeProps} /> : <SocialHubPage onBack={() => handleNavigate("/more")} />;
+      case "/blitzlearn":
+        return isGuest ? <HomePage {...homeProps} /> : <BlitzLearnPage onBack={() => handleNavigate("/more")} />;
+      case "/blitzhub":
+        return isGuest ? <HomePage {...homeProps} /> : <BlitzHubPage onBack={() => handleNavigate("/more")} />;
       
       // Car Rental Module
       case "/car-rental":

@@ -15,6 +15,7 @@ import { useGuestTranslations } from "../models/homeTranslations";
 import { tracker } from "../services/tracker";
 import LanguageSwitcher from "../components/LanguageSwitcher";
 import QuickAccessBar from "../components/QuickAccessBar";
+import AdBanner from "../components/AdBanner";
 import HomeRecommendations from "../components/HomeRecommendations";
 
 const slide = { duration: 0.35, ease: [0.32, 0.72, 0, 1] };
@@ -556,6 +557,9 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
               </div>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="2"><path d="M9 18l6-6-6-6"/></svg>
             </motion.button>
+
+            {/* ═══ Sponsored Banners ═══ */}
+            <AdBanner onNavigate={onNavigate} />
 
             {/* ═══ Recommendations ═══ */}
             <div className="overflow-x-hidden" style={{ marginLeft: -4, marginRight: -4, paddingLeft: 4, paddingRight: 4 }}>
