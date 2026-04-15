@@ -816,6 +816,9 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
     { id: "blitzjobs", icon: Cpu, label: "BlitzJobs", desc: "Micro-Jobs, Geld verdienen", color: "#22C55E", action: gatedAction(() => onNavigate("/blitzjobs")), roles: ["user", "admin"] },
     { id: "cashback", icon: Coins, label: "Cashback Shopping", desc: "2-8% bei Partner-Shops", color: "#F59E0B", action: gatedAction(() => onNavigate("/cashback")), roles: ["user", "admin"] },
     { id: "premium", icon: Crown, label: "Premium / VIP", desc: "Abos, Auszahlung, Challenges", color: "#FFD700", action: gatedAction(() => onNavigate("/premium")), roles: ["all"] },
+    { id: "stories", icon: MessageCircle, label: "Social Feed", desc: "Stories, Deals, Erfolge teilen", color: "#6366F1", action: gatedAction(() => onNavigate("/stories")), roles: ["all"] },
+    { id: "live-auctions", icon: Zap, label: "Live Auktionen", desc: "Echtzeit-Bieten mit Countdown", color: "#EF4444", action: gatedAction(() => onNavigate("/live-auctions")), roles: ["all"] },
+    { id: "social-hub", icon: Users, label: "Social Hub", desc: "Group Buy, Score, Visitenkarte", color: "#8B5CF6", action: gatedAction(() => onNavigate("/social-hub")), roles: ["all"] },
     // Merchant-only items
     { id: "pay", icon: Wallet, label: t("pay.title") || "Bezahlen", desc: t("pay.menu_desc") || "Barcode & NFC Zahlungen", color: "#00E89D", action: gatedAction(() => onNavigate("/pay")), roles: ["merchant", "admin"] },
     { id: "terminal", icon: Scan, label: t("terminal.title") || "Zahlungsterminal", desc: t("terminal.menu_desc") || "Zahlungen annehmen", color: "#FFB800", action: gatedAction(() => onNavigate("/terminal")), roles: ["merchant", "admin"] },

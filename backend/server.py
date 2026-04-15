@@ -390,6 +390,15 @@ app.include_router(premium_router)
 from routes.monetization import router as monetization_router
 app.include_router(monetization_router)
 
+from routes.stories import router as stories_router
+app.include_router(stories_router)
+
+from routes.live_auctions import router as live_auctions_router
+app.include_router(live_auctions_router)
+
+from routes.social_features import router as social_features_router
+app.include_router(social_features_router)
+
 
 # Static file serving for uploads
 from fastapi.staticfiles import StaticFiles
