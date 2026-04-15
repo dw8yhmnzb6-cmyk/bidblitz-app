@@ -1124,7 +1124,7 @@ async def revoke_share(req: ShareScooterRequest, request: Request):
 
 @router.get("/share/active")
 async def get_active_shares(request: Request):
-    """Get all active shares for current user (as host or guest)."""
+    """Get all active shares with live cost calculation for host."""
     user = await get_current_user(request)
     user_id = str(user["_id"])
 
@@ -1134,6 +1134,33 @@ async def get_active_shares(request: Request):
     as_guest = await db.scooter_shares.find(
         {"guest_user_id": user_id, "status": "active"}, {"_id": 0}
     ).to_list(20)
+
+    # Enrich host shares with live cost from the ride
+    for share in as_host:
+        ride = await db.scooter_rides.find_one(
+            {"ride_id": share.get("ride_id")}, {"_id": 0}
+        )
+        if ride and ride.get("status") == "active":
+            start = ride.get("started_at") or ride.get("created_at", "")
+            try:
+                started = datetime.fromisoformat(start.replace("Z", "+00:00"))
+                elapsed = (datetime.now(timezone.utc) - started).total_seconds()
+                minutes = elapsed / 60
+                cost = UNLOCK_FEE + (minutes * PER_MINUTE_RATE)
+                share["live_cost"] = round(cost, 2)
+                share["live_minutes"] = round(minutes, 1)
+                share["ride_active"] = True
+            except:
+                share["live_cost"] = 0
+                share["live_minutes"] = 0
+                share["ride_active"] = False
+        else:
+            share["live_cost"] = 0
+            share["live_minutes"] = 0
+            share["ride_active"] = False
+
+        # Check if redeemed
+        share["is_redeemed"] = share.get("guest_user_id") is not None
 
     return {
         "shared_by_me": as_host,

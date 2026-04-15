@@ -796,33 +796,45 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
   ];
 
   const growthMenu = [
-    { id: "gaming", icon: Gamepad2, label: t("more.gaming"), desc: t("more.gaming_desc"), color: "#F59E0B", action: gatedAction(() => onNavigate("/gaming")) },
-    { id: "loyalty", icon: Coins, label: t("loyalty.title") || "Coins & Cashback", desc: t("loyalty.menu_desc") || "Verdiene mit jeder Transaktion", color: "#FFD700", action: gatedAction(() => onNavigate("/loyalty")) },
-    { id: "rewards", icon: Trophy, label: t("rewards.title") || "Rewards", desc: t("rewards.menu_desc") || "Daily rewards & milestones", color: "#00E89D", action: gatedAction(() => onNavigate("/rewards")) },
-    { id: "mining", icon: Cpu, label: t("mining.title") || "Mining", desc: t("mining.menu_desc") || "Mine BLZ tokens", color: "#00E89D", action: gatedAction(() => onNavigate("/mining")) },
-    { id: "referral", icon: Gift, label: t("referral.title"), desc: t("referral.menu_desc"), color: "#FFD700", action: gatedAction(() => setSubPage("referral")) },
+    { id: "gaming", icon: Gamepad2, label: t("more.gaming"), desc: t("more.gaming_desc"), color: "#F59E0B", action: gatedAction(() => onNavigate("/gaming")), roles: ["all"] },
+    { id: "loyalty", icon: Coins, label: t("loyalty.title") || "Coins & Cashback", desc: t("loyalty.menu_desc") || "Verdiene mit jeder Transaktion", color: "#FFD700", action: gatedAction(() => onNavigate("/loyalty")), roles: ["all"] },
+    { id: "rewards", icon: Trophy, label: t("rewards.title") || "Rewards", desc: t("rewards.menu_desc") || "Daily rewards & milestones", color: "#00E89D", action: gatedAction(() => onNavigate("/rewards")), roles: ["all"] },
+    { id: "mining", icon: Cpu, label: t("mining.title") || "Mining", desc: t("mining.menu_desc") || "Mine BLZ tokens", color: "#00E89D", action: gatedAction(() => onNavigate("/mining")), roles: ["all"] },
+    { id: "referral", icon: Gift, label: t("referral.title"), desc: t("referral.menu_desc"), color: "#FFD700", action: gatedAction(() => setSubPage("referral")), roles: ["all"] },
     {
       id: "notifications", icon: Bell, label: t("notif.title"), desc: unreadCount > 0 ? `${unreadCount} ${t("notif.unread")}` : t("notif.menu_desc"), color: "#FFB800",
       action: gatedAction(() => setSubPage("notifications")),
-      badge: unreadCount > 0 ? unreadCount : null,
+      badge: unreadCount > 0 ? unreadCount : null, roles: ["all"],
     },
-    { id: "influencer", icon: TrendingUp, label: t("influencer.title") || "Influencer", desc: t("influencer.menu_desc") || "Earn reward credits", color: "#00E0FF", action: gatedAction(() => onNavigate("/influencer")) },
-    { id: "investor", icon: Star, label: t("investor.title") || "Investor", desc: t("investor.menu_desc") || "Invest in BidBlitz", color: "#FFD166", action: () => onNavigate("/investor") },
-    { id: "verification", icon: ShieldCheck, label: t("verify.title") || "Identity Verification", desc: t("verify.menu_desc") || "Verify your role", color: "#A855F7", action: gatedAction(() => onNavigate("/verification")) },
-    { id: "pay", icon: Wallet, label: t("pay.title") || "Pay", desc: t("pay.menu_desc") || "Show barcode to pay", color: "#00E89D", action: gatedAction(() => onNavigate("/pay")) },
-    { id: "terminal", icon: Scan, label: t("terminal.title") || "Payment Terminal", desc: t("terminal.menu_desc") || "Accept payments", color: "#FFB800", action: gatedAction(() => onNavigate("/terminal")) },
-    { id: "merchant-dashboard", icon: Store, label: t("merch.title") || "Merchant Dashboard", desc: t("merch.menu_desc") || "Branches & Registers", color: "#FF8C42", action: gatedAction(() => onNavigate("/merchant-dashboard")) },
-    { id: "merchant-onboarding", icon: TrendingUp, label: t("onboarding.title") || "Become a Merchant", desc: t("onboarding.menu_desc") || "Free trial & onboarding", color: "#00C2FF", action: () => onNavigate("/merchant-landing") },
-    { id: "merchant-pricing", icon: CreditCard, label: t("pricing.title") || "Merchant Pricing", desc: t("pricing.menu_desc") || "Plans, fees & terminals", color: "#FFD166", action: () => onNavigate("/merchant-pricing") },
-    { id: "activity", icon: Activity, label: t("activity.title"), desc: t("activity.menu_desc"), color: "#00C2FF", action: gatedAction(() => setSubPage("activity")) },
-    { id: "kids", icon: Users, label: t("kids.title"), desc: t("kids.menu_desc"), color: "#A855F7", action: gatedAction(() => setSubPage("kids")) },
-  ];
+    { id: "influencer", icon: TrendingUp, label: t("influencer.title") || "Influencer", desc: t("influencer.menu_desc") || "Earn reward credits", color: "#00E0FF", action: gatedAction(() => onNavigate("/influencer")), roles: ["all"] },
+    { id: "investor", icon: Star, label: t("investor.title") || "Investor", desc: t("investor.menu_desc") || "Invest in BidBlitz", color: "#FFD166", action: () => onNavigate("/investor"), roles: ["all"] },
+    { id: "verification", icon: ShieldCheck, label: t("verify.title") || "Identitätsverifizierung", desc: t("verify.menu_desc") || "Rolle verifizieren", color: "#A855F7", action: gatedAction(() => onNavigate("/verification")), roles: ["all"] },
+    { id: "activity", icon: Activity, label: t("activity.title"), desc: t("activity.menu_desc"), color: "#00C2FF", action: gatedAction(() => setSubPage("activity")), roles: ["all"] },
+    { id: "kids", icon: Users, label: t("kids.title"), desc: t("kids.menu_desc"), color: "#A855F7", action: gatedAction(() => setSubPage("kids")), roles: ["user", "admin"] },
+    // Reselling, BlitzJobs, Cashback — for customers
+    { id: "reselling", icon: Star, label: "Reselling", desc: "Sneakers, Streetwear verkaufen", color: "#F43F5E", action: gatedAction(() => onNavigate("/reselling")), roles: ["user", "admin"] },
+    { id: "blitzjobs", icon: Cpu, label: "BlitzJobs", desc: "Micro-Jobs, Geld verdienen", color: "#22C55E", action: gatedAction(() => onNavigate("/blitzjobs")), roles: ["user", "admin"] },
+    { id: "cashback", icon: Coins, label: "Cashback Shopping", desc: "2-8% bei Partner-Shops", color: "#F59E0B", action: gatedAction(() => onNavigate("/cashback")), roles: ["user", "admin"] },
+    // Merchant-only items
+    { id: "pay", icon: Wallet, label: t("pay.title") || "Bezahlen", desc: t("pay.menu_desc") || "Barcode & NFC Zahlungen", color: "#00E89D", action: gatedAction(() => onNavigate("/pay")), roles: ["merchant", "admin"] },
+    { id: "terminal", icon: Scan, label: t("terminal.title") || "Zahlungsterminal", desc: t("terminal.menu_desc") || "Zahlungen annehmen", color: "#FFB800", action: gatedAction(() => onNavigate("/terminal")), roles: ["merchant", "admin"] },
+    { id: "merchant-dashboard", icon: Store, label: t("merch.title") || "Händler Dashboard", desc: t("merch.menu_desc") || "Filialen & Kassen", color: "#FF8C42", action: gatedAction(() => onNavigate("/merchant-dashboard")), roles: ["merchant", "admin"] },
+    { id: "merchant-onboarding", icon: TrendingUp, label: t("onboarding.title") || "Händler werden", desc: t("onboarding.menu_desc") || "Kostenlose Testphase", color: "#00C2FF", action: () => onNavigate("/merchant-landing"), roles: ["merchant", "admin"] },
+    { id: "merchant-pricing", icon: CreditCard, label: t("pricing.title") || "Händler-Tarife & Preise", desc: t("pricing.menu_desc") || "Tarife, Gebühren & Terminals", color: "#FFD166", action: () => onNavigate("/merchant-pricing"), roles: ["merchant", "admin"] },
+  ].filter(item => {
+    if (!item.roles) return true;
+    if (item.roles.includes("all")) return true;
+    const userRole = user.role || "user";
+    return item.roles.includes(userRole);
+  });
 
   const mobilityMenu = [
     { id: "mobility-map", icon: MapPin, label: "Live Map", desc: t("more.car_rental_desc"), color: "#3B82F6", action: gatedAction(() => onNavigate("/mobility-map")) },
     { id: "car-rental", icon: Car, label: t("more.car_rental"), desc: t("more.car_rental_desc"), color: "#00C2FF", action: () => onNavigate("/car-rental") },
     { id: "car-rental-bookings", icon: Calendar, label: t("more.my_car_bookings"), desc: t("more.my_car_bookings_desc"), color: "#00C2FF", action: gatedAction(() => onNavigate("/car-rental/my-bookings")) },
-    { id: "car-rental-vendor", icon: Car, label: t("more.vendor_dashboard"), desc: t("more.vendor_dashboard_desc"), color: "#00D26A", action: gatedAction(() => onNavigate("/car-rental/vendor")) },
+    ...(user.role === "merchant" || user.role === "admin" ? [
+      { id: "car-rental-vendor", icon: Car, label: t("more.vendor_dashboard"), desc: t("more.vendor_dashboard_desc"), color: "#00D26A", action: gatedAction(() => onNavigate("/car-rental/vendor")) },
+    ] : []),
   ];
 
   const appMenu = [

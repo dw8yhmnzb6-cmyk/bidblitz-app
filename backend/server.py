@@ -375,6 +375,15 @@ app.include_router(ladesaeulen_router)
 from routes.stocks import router as stocks_router
 app.include_router(stocks_router)
 
+from routes.reselling import router as reselling_router
+app.include_router(reselling_router)
+
+from routes.blitzjobs import router as blitzjobs_router
+app.include_router(blitzjobs_router)
+
+from routes.cashback import router as cashback_router
+app.include_router(cashback_router)
+
 
 # Static file serving for uploads
 from fastapi.staticfiles import StaticFiles

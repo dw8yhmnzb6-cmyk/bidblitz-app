@@ -51,6 +51,8 @@ export default function ScooterPage({ onNavigate }) {
   const [shareLoading, setShareLoading] = useState(false);
   const [redeemCode, setRedeemCode] = useState('');
   const [redeemResult, setRedeemResult] = useState(null);
+  const [activeShares, setActiveShares] = useState([]);
+  const sharePollingRef = useRef(null);
   
   // Refs
   const timerRef = useRef(null);
@@ -322,6 +324,25 @@ export default function ScooterPage({ onNavigate }) {
     } catch { setRedeemResult({ ok: false, message: 'Netzwerkfehler' }); }
     setShareLoading(false);
   };
+
+  // Live-Kosten Polling für aktive Shares
+  const fetchActiveShares = async () => {
+    try {
+      const res = await fetch(`${API}/api/scooter/share/active`, { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        setActiveShares(data.shared_by_me || []);
+      }
+    } catch {}
+  };
+
+  useEffect(() => {
+    if (showShare) {
+      fetchActiveShares();
+      sharePollingRef.current = setInterval(fetchActiveShares, 5000);
+    }
+    return () => { if (sharePollingRef.current) clearInterval(sharePollingRef.current); };
+  }, [showShare]);
 
 
   // Fetch history
@@ -866,6 +887,39 @@ export default function ScooterPage({ onNavigate }) {
                     </p>
                   )}
                 </div>
+
+                {/* Live-Kosten aktive Shares */}
+                {activeShares.length > 0 && (
+                  <div className="pt-4 border-t border-white/10">
+                    <p className="text-xs text-gray-500 mb-2">Deine aktiven Freigaben:</p>
+                    <div className="space-y-2">
+                      {activeShares.map((s, i) => (
+                        <div key={i} className="p-3 rounded-xl bg-white/[0.03] border border-white/5">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-xs font-mono text-cyan-400">{s.code}</span>
+                            <span className={`text-[9px] px-2 py-0.5 rounded-full font-bold ${s.is_redeemed ? "bg-green-500/20 text-green-400" : "bg-yellow-500/20 text-yellow-400"}`}>
+                              {s.is_redeemed ? "GENUTZT" : "WARTEND"}
+                            </span>
+                          </div>
+                          {s.guest_name && <p className="text-[10px] text-white/40">Gast: {s.guest_name}</p>}
+                          {s.ride_active && (
+                            <div className="mt-2 flex items-center justify-between p-2 rounded-lg bg-cyan-500/5 border border-cyan-500/10">
+                              <div>
+                                <p className="text-[10px] text-gray-500">Live-Kosten</p>
+                                <p className="text-lg font-bold text-cyan-400">€{s.live_cost?.toFixed(2)}</p>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-[10px] text-gray-500">Fahrzeit</p>
+                                <p className="text-sm font-bold text-white">{Math.floor(s.live_minutes || 0)} Min</p>
+                              </div>
+                              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </motion.div>
             </motion.div>
           )}
