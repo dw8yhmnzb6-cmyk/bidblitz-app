@@ -384,6 +384,12 @@ app.include_router(blitzjobs_router)
 from routes.cashback import router as cashback_router
 app.include_router(cashback_router)
 
+from routes.premium import router as premium_router
+app.include_router(premium_router)
+
+from routes.monetization import router as monetization_router
+app.include_router(monetization_router)
+
 
 # Static file serving for uploads
 from fastapi.staticfiles import StaticFiles

@@ -4,26 +4,28 @@
 - Frontend: React, TailwindCSS, Framer Motion, Mapbox GL JS
 - Backend: FastAPI, Motor (MongoDB), CoinGecko, httpx, yfinance
 
-## Production Status: LAUNCH-READY (60+ Services)
+## Production Status: LAUNCH-READY (65+ Services)
+
+### Revenue Features (NEU)
+- **Premium VIP Abos**: Basic €4.99/Mo, Pro €9.99/Mo, Elite €14.99/Mo (Recurring Revenue)
+- **Promoted Listings**: €1.99-6.99 pro Listing Boost im Reselling Marketplace
+- **Sofort-Auszahlung**: €0.99 Gebuehr (Gratis fuer Pro+ Mitglieder)
+- **BlitzJobs Boost**: €0.99-4.99 fuer Top-Platzierung
+- **Spar-Challenges**: Gruppenwetten mit 5% Plattform-Gebuehr auf Pool
+- **Reselling Marketplace**: 8% Provision pro Verkauf (16 Listings geseedet)
+- **BlitzJobs**: 15% Service-Gebuehr (12 Jobs geseedet)
+- **Cashback Shopping**: 20 Partner-Shops (2-8% Cashback)
 
 ### All Features
-- **Zahlung & Finanzen**: Wallet, QR, P2P, Karten, Krypto (CoinGecko), Budget, Kredit, BNPL, Geschenkkarten
-- **Aktien & ETFs**: 24 Assets (Yahoo Finance Live), Portfolio, Watchlist
-- **Mobilitaet**: Taxi (interaktive Karte, regionale Preise DE/KS/AE), Scooter (65+ Berlin+Prishtina, Sharing), Mietwagen, Fluege, Pakete, Ladesaeulen, Gebrauchtwagen, Umzug
-- **NEU: Reselling Marketplace**: Sneakers, Streetwear, Gaming — 8% Provision, 16 Listings geseedet
-- **NEU: BlitzJobs**: Micro-Jobs (Lieferung, Nachhilfe, Putzen) — 15% Service-Gebuehr, 12 Jobs geseedet
-- **NEU: Cashback Shopping**: 20 Partner-Shops (Amazon, Nike, Zalando) — 2-8% Cashback
-- **Buchung**: Hotels, Events, Restaurants, Termine, Reiseplaner, Versicherungen
-- **Gaming**: Slots, Plinko, Wuerfel, Muenzwurf, Gluecksrad, Rubbellos, Minenfeld — ALLE mit korrekter Coin-Logik
-- **Familie**: Kids App (GPS mit exakter Strassenadresse, Mini-Karte)
-- **Business**: Haendler-Portal, POS, VIP, Split Bill
-- **System**: Rollenbasiertes Menu (Kunde/Haendler/Fahrer/Admin), Notifications, Admin Panel
-
-## Rollenbasiertes Menu (NEU)
-- **Kunde**: Sieht Reselling, BlitzJobs, Cashback, Kids, Gaming — KEINE Haendler-Features
-- **Haendler**: Sieht Dashboard, Terminal, Bezahlen, Tarife — KEINE Kunden-Features
-- **Fahrer**: Sieht zugewiesene Fahrten
-- **Admin**: Sieht ALLES
+- Zahlung, Wallet, QR, P2P, Krypto, Budget, Kredit, BNPL, Geschenkkarten
+- Aktien & ETFs (24 Assets Yahoo Finance), Taxi (regionale Preise), Scooter (65+ mit Sharing)
+- Hotels, Events, Restaurants, Termine, Reiseplaner, Versicherungen
+- Immobilien, Freelancer, Jobs, Handwerker, Reinigung, Marktplatz, Auktionen
+- Streaming, Dating, Fitness, Telemedizin, Tierbetreuung
+- Gaming (Slots, Plinko, Wuerfel, etc. - ALLE mit korrekter Coin-Logik)
+- Kids App (GPS + exakte Adressen), Kids Kontrolle
+- Haendler-Portal, POS, VIP, Split Bill
+- Rollenbasiertes Menu, Notifications, Admin Panel, Dark/Light Mode
 
 ## Credentials
 - Admin: admin@bidblitz.com / BidBlitz2026!
@@ -33,6 +35,6 @@
 
 ## Backlog
 - P1: Apple Pay / Google Pay (Stripe)
-- P2: i18n Module (Albanisch/Deutsch Mixup)
+- P2: i18n Module Fix
 - P2: Push Notifications Frontend-UI
 - P3: App.js Route-Refactoring

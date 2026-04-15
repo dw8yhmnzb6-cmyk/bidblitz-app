@@ -100,6 +100,7 @@ import StocksPage from "./pages/StocksPage";
 import ResellingPage from "./pages/ResellingPage";
 import BlitzJobsPage from "./pages/BlitzJobsPage";
 import CashbackPage from "./pages/CashbackPage";
+import PremiumPage from "./pages/PremiumPage";
 
 // Car Rental Module
 import {
@@ -427,6 +428,8 @@ function AppContent() {
         return isGuest ? <HomePage {...homeProps} /> : <BlitzJobsPage onBack={() => handleNavigate("/more")} />;
       case "/cashback":
         return isGuest ? <HomePage {...homeProps} /> : <CashbackPage onBack={() => handleNavigate("/more")} />;
+      case "/premium":
+        return isGuest ? <HomePage {...homeProps} /> : <PremiumPage onBack={() => handleNavigate("/more")} />;
       
       // Car Rental Module
       case "/car-rental":
