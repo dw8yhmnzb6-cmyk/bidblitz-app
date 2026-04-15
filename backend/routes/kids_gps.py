@@ -207,24 +207,79 @@ async def update_child_location(loc: LocationUpdate, request: Request):
 
 @router.get("/location/{child_id}")
 async def get_child_location(child_id: str, request: Request):
-    """Get child's current location."""
+    """Get child's current location with precise address via reverse geocoding."""
     user = await get_current_user(request)
     parent_id = str(user["_id"])
     
     child = await verify_parent_child_access(parent_id, child_id)
     
+    lat = child.get("current_lat")
+    lng = child.get("current_lng")
+    address = child.get("address", "")
+    
+    # Try reverse geocoding for precise street address
+    if lat and lng and not _has_street_number(address):
+        try:
+            precise = await _reverse_geocode(lat, lng)
+            if precise:
+                address = precise
+                # Cache in DB
+                await db.kids_children.update_one(
+                    {"child_id": child_id},
+                    {"$set": {"address": precise}}
+                )
+        except:
+            pass
+    
     return {
         "child_id": child_id,
         "name": child.get("name"),
-        "lat": child.get("current_lat"),
-        "lng": child.get("current_lng"),
+        "lat": lat,
+        "lng": lng,
         "accuracy": child.get("location_accuracy"),
         "battery_level": child.get("battery_level"),
         "speed": child.get("speed"),
         "last_update": child.get("last_location_update"),
         "is_online": _is_recently_updated(child.get("last_location_update")),
-        "address": child.get("address", ""),
+        "address": address,
     }
+
+
+def _has_street_number(addr: str) -> bool:
+    """Check if address already contains a street number."""
+    if not addr:
+        return False
+    import re
+    return bool(re.search(r'\d', addr))
+
+
+async def _reverse_geocode(lat: float, lng: float) -> Optional[str]:
+    """Get precise street address from Mapbox reverse geocoding."""
+    import os
+    token = os.environ.get("MAPBOX_TOKEN", "")
+    if not token:
+        # Try frontend token from env
+        try:
+            with open("/app/frontend/.env") as f:
+                for line in f:
+                    if line.startswith("REACT_APP_MAPBOX_TOKEN="):
+                        token = line.strip().split("=", 1)[1]
+                        break
+        except:
+            pass
+    if not token:
+        return None
+    
+    import httpx
+    url = f"https://api.mapbox.com/geocoding/v5/mapbox.places/{lng},{lat}.json?access_token={token}&language=de&types=address&limit=1"
+    async with httpx.AsyncClient(timeout=5) as client:
+        resp = await client.get(url)
+        if resp.status_code == 200:
+            data = resp.json()
+            features = data.get("features", [])
+            if features:
+                return features[0].get("place_name", "")
+    return None
 
 
 @router.get("/location/{child_id}/history")

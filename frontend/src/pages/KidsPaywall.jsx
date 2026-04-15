@@ -736,57 +736,27 @@ const KidsDashboard = ({ onBack, t, subStatus }) => {
                     );
                   })()}
                   
-                  {/* Quick Action Buttons for Child */}
-                  <div className="grid grid-cols-5 gap-2">
-                    <motion.button
-                      className="py-2 rounded-xl text-[10px] font-semibold flex items-center justify-center gap-1"
-                      style={{ background: "rgba(0,194,255,0.1)", color: "#00C2FF", border: "1px solid rgba(0,194,255,0.2)" }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => setWalletChild(child)}
-                    >
-                      <Send size={11} /> Senden
-                    </motion.button>
-                    <motion.button
-                      data-testid={`tasks-btn-${child.child_id}`}
-                      className="py-2 rounded-xl text-[10px] font-semibold flex items-center justify-center gap-1"
-                      style={{ background: "rgba(245,158,11,0.1)", color: "#F59E0B", border: "1px solid rgba(245,158,11,0.2)" }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setTasksChild(child);
-                      }}
-                    >
-                      <CheckSquare size={11} /> Aufgaben
-                    </motion.button>
-                    <motion.button
-                      className="py-2 rounded-xl text-[10px] font-semibold flex items-center justify-center gap-1"
-                      style={{ background: "rgba(168,85,247,0.1)", color: "#A855F7", border: "1px solid rgba(168,85,247,0.2)" }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => setShowSetPin(child)}
-                    >
-                      <Key size={11} /> PIN
-                    </motion.button>
-                    <motion.button
-                      className="py-2 rounded-xl text-[10px] font-semibold flex items-center justify-center gap-1"
-                      style={{ background: "rgba(99,102,241,0.1)", color: "#6366F1", border: "1px solid rgba(99,102,241,0.2)" }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => setWalletChild(child)}
-                    >
-                      <Eye size={11} /> Details
-                    </motion.button>
-                    <motion.button
-                      className={`py-2 rounded-xl text-[10px] font-semibold flex items-center justify-center gap-1`}
-                      style={{ 
-                        background: isFrozen ? "rgba(34,197,94,0.1)" : "rgba(239,68,68,0.1)", 
-                        color: isFrozen ? "#22C55E" : "#EF4444", 
-                        border: `1px solid ${isFrozen ? "rgba(34,197,94,0.2)" : "rgba(239,68,68,0.2)"}` 
-                      }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => handleFreezeToggle(child.child_id, { stopPropagation: () => {} })}
-                    >
-                      {isFrozen ? <Unlock size={11} /> : <Lock size={11} />}
-                      {isFrozen ? 'Aktiv' : 'Sperren'}
-                    </motion.button>
+                  {/* Quick Action Buttons for Child — compact mobile */}
+                  <div className="flex gap-1.5 flex-wrap">
+                    {[
+                      { icon: Send, label: "Senden", bg: "rgba(0,194,255,0.1)", color: "#00C2FF", border: "rgba(0,194,255,0.2)", action: () => setWalletChild(child) },
+                      { icon: CheckSquare, label: "Aufgaben", bg: "rgba(245,158,11,0.1)", color: "#F59E0B", border: "rgba(245,158,11,0.2)", action: (e) => { e?.stopPropagation(); setTasksChild(child); }, testId: `tasks-btn-${child.child_id}` },
+                      { icon: Key, label: "PIN", bg: "rgba(168,85,247,0.1)", color: "#A855F7", border: "rgba(168,85,247,0.2)", action: () => setShowSetPin(child) },
+                      { icon: Eye, label: "Details", bg: "rgba(99,102,241,0.1)", color: "#6366F1", border: "rgba(99,102,241,0.2)", action: () => setWalletChild(child) },
+                      { icon: isFrozen ? Unlock : Lock, label: isFrozen ? "Aktiv" : "Sperren", bg: isFrozen ? "rgba(34,197,94,0.1)" : "rgba(239,68,68,0.1)", color: isFrozen ? "#22C55E" : "#EF4444", border: isFrozen ? "rgba(34,197,94,0.2)" : "rgba(239,68,68,0.2)", action: () => handleFreezeToggle(child.child_id, { stopPropagation: () => {} }) },
+                    ].map((btn, bi) => (
+                      <motion.button
+                        key={bi}
+                        data-testid={btn.testId}
+                        className="flex-1 min-w-0 py-1.5 rounded-lg text-[9px] font-semibold flex items-center justify-center gap-0.5"
+                        style={{ background: btn.bg, color: btn.color, border: `1px solid ${btn.border}` }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={btn.action}
+                      >
+                        <btn.icon size={10} />
+                        <span className="hidden xs:inline">{btn.label}</span>
+                      </motion.button>
+                    ))}
                   </div>
                 </motion.div>
               );

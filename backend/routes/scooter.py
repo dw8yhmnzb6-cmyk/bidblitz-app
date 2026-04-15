@@ -983,3 +983,159 @@ async def cancel_subscription(request: Request):
         raise HTTPException(400, "Kein aktives Abo gefunden")
     return {"ok": True, "message": "Abo gekündigt"}
 
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# SCOOTER SHARING
+# ══════════════════════════════════════════════════════════════════════════════
+
+class ShareScooterRequest(BaseModel):
+    ride_id: str
+    duration_minutes: int = 60  # 30, 60, 120, 1440 (24h)
+
+class RedeemShareCodeRequest(BaseModel):
+    code: str
+
+
+@router.post("/share/create")
+async def create_share_code(req: ShareScooterRequest, request: Request):
+    """Create a sharing code for an active scooter ride."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    email = user.get("email", "")
+
+    # Verify active ride belongs to user
+    ride = await db.scooter_rides.find_one({
+        "ride_id": req.ride_id,
+        "user_id": user_id,
+        "status": "active",
+    })
+    if not ride:
+        raise HTTPException(400, "Keine aktive Fahrt gefunden")
+
+    # Check existing share
+    existing = await db.scooter_shares.find_one({
+        "ride_id": req.ride_id,
+        "status": "active",
+    })
+    if existing:
+        return {
+            "ok": True,
+            "code": existing["code"],
+            "expires_at": existing["expires_at"],
+            "already_existed": True,
+        }
+
+    # Generate share code
+    code = f"BLZ-{secrets.token_hex(2).upper()}"
+    now = datetime.now(timezone.utc)
+    expires = now + timedelta(minutes=req.duration_minutes)
+
+    share = {
+        "share_id": secrets.token_hex(8),
+        "ride_id": req.ride_id,
+        "scooter_id": ride.get("scooter_id"),
+        "host_user_id": user_id,
+        "host_email": email,
+        "host_name": user.get("name", email),
+        "code": code,
+        "duration_minutes": req.duration_minutes,
+        "status": "active",
+        "guest_user_id": None,
+        "guest_email": None,
+        "created_at": now.isoformat(),
+        "expires_at": expires.isoformat(),
+        "redeemed_at": None,
+    }
+    await db.scooter_shares.insert_one(share)
+
+    return {
+        "ok": True,
+        "code": code,
+        "share_id": share["share_id"],
+        "expires_at": expires.isoformat(),
+        "duration_minutes": req.duration_minutes,
+    }
+
+
+@router.post("/share/redeem")
+async def redeem_share_code(req: RedeemShareCodeRequest, request: Request):
+    """Redeem a sharing code to unlock a scooter."""
+    user = await get_current_user(request)
+    guest_id = str(user["_id"])
+    guest_email = user.get("email", "")
+
+    code = req.code.strip().upper()
+    share = await db.scooter_shares.find_one({
+        "code": code,
+        "status": "active",
+    })
+    if not share:
+        raise HTTPException(404, "Code ungültig oder abgelaufen")
+
+    # Check expiry
+    expires = datetime.fromisoformat(share["expires_at"].replace("Z", "+00:00"))
+    if datetime.now(timezone.utc) > expires:
+        await db.scooter_shares.update_one({"code": code}, {"$set": {"status": "expired"}})
+        raise HTTPException(400, "Code ist abgelaufen")
+
+    # Can't redeem own code
+    if share["host_user_id"] == guest_id:
+        raise HTTPException(400, "Du kannst deinen eigenen Code nicht einlösen")
+
+    # Already redeemed by someone
+    if share.get("guest_user_id"):
+        raise HTTPException(400, "Code wurde bereits eingelöst")
+
+    # Mark as redeemed
+    await db.scooter_shares.update_one(
+        {"code": code},
+        {"$set": {
+            "guest_user_id": guest_id,
+            "guest_email": guest_email,
+            "guest_name": user.get("name", guest_email),
+            "redeemed_at": datetime.now(timezone.utc).isoformat(),
+        }}
+    )
+
+    return {
+        "ok": True,
+        "message": f"Scooter von {share['host_name']} freigeschaltet!",
+        "scooter_id": share["scooter_id"],
+        "host_name": share["host_name"],
+        "expires_at": share["expires_at"],
+    }
+
+
+@router.post("/share/revoke")
+async def revoke_share(req: ShareScooterRequest, request: Request):
+    """Revoke a sharing code."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+
+    result = await db.scooter_shares.update_one(
+        {"ride_id": req.ride_id, "host_user_id": user_id, "status": "active"},
+        {"$set": {"status": "revoked", "revoked_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    if result.modified_count == 0:
+        raise HTTPException(400, "Kein aktiver Share gefunden")
+    return {"ok": True, "message": "Freigabe widerrufen"}
+
+
+@router.get("/share/active")
+async def get_active_shares(request: Request):
+    """Get all active shares for current user (as host or guest)."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+
+    as_host = await db.scooter_shares.find(
+        {"host_user_id": user_id, "status": "active"}, {"_id": 0}
+    ).to_list(20)
+    as_guest = await db.scooter_shares.find(
+        {"guest_user_id": user_id, "status": "active"}, {"_id": 0}
+    ).to_list(20)
+
+    return {
+        "shared_by_me": as_host,
+        "shared_with_me": as_guest,
+    }

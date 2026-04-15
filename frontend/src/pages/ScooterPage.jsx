@@ -45,6 +45,12 @@ export default function ScooterPage({ onNavigate }) {
   const [plans, setPlans] = useState([]);
   const [mySub, setMySub] = useState(null);
   const [subLoading, setSubLoading] = useState(false);
+  const [showShare, setShowShare] = useState(false);
+  const [shareCode, setShareCode] = useState('');
+  const [shareDuration, setShareDuration] = useState(60);
+  const [shareLoading, setShareLoading] = useState(false);
+  const [redeemCode, setRedeemCode] = useState('');
+  const [redeemResult, setRedeemResult] = useState(null);
   
   // Refs
   const timerRef = useRef(null);
@@ -277,6 +283,47 @@ export default function ScooterPage({ onNavigate }) {
     }
   };
 
+  // Share scooter
+  const createShareCode = async () => {
+    if (!activeRental) return;
+    setShareLoading(true);
+    try {
+      const res = await fetch(`${API}/api/scooter/share/create`, {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ride_id: activeRental.ride_id, duration_minutes: shareDuration }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setShareCode(data.code);
+      } else {
+        setError(data.detail || 'Sharing fehlgeschlagen');
+      }
+    } catch { setError('Netzwerkfehler'); }
+    setShareLoading(false);
+  };
+
+  const redeemShareCode = async () => {
+    if (!redeemCode.trim()) return;
+    setShareLoading(true);
+    setRedeemResult(null);
+    try {
+      const res = await fetch(`${API}/api/scooter/share/redeem`, {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: redeemCode.trim() }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setRedeemResult({ ok: true, message: data.message, host: data.host_name });
+      } else {
+        setRedeemResult({ ok: false, message: data.detail || 'Code ungültig' });
+      }
+    } catch { setRedeemResult({ ok: false, message: 'Netzwerkfehler' }); }
+    setShareLoading(false);
+  };
+
+
   // Fetch history
   const fetchHistory = async () => {
     try {
@@ -479,6 +526,14 @@ export default function ScooterPage({ onNavigate }) {
                     Mindestens €{pricing.unlock_fee?.toFixed(2)} für Entsperren benötigt
                   </p>
                 )}
+                {/* Share code redeem shortcut */}
+                <button
+                  onClick={() => setShowShare(true)}
+                  className="mt-3 w-full py-2 bg-cyan-500/10 border border-cyan-500/20 rounded-lg text-cyan-400 text-xs font-semibold flex items-center justify-center gap-1.5"
+                  data-testid="scooter-share-open"
+                >
+                  🔗 Freigabe-Code einlösen
+                </button>
               </div>
 
               {/* Pricing Info */}
@@ -656,31 +711,39 @@ export default function ScooterPage({ onNavigate }) {
               </div>
 
               {/* Controls */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-3">
                 {activeRental.status === 'active' ? (
                   <button
                     onClick={pauseRide}
                     disabled={loading}
-                    className="py-4 bg-yellow-500/20 border border-yellow-500/30 rounded-xl text-yellow-400 font-semibold"
+                    className="py-3 bg-yellow-500/20 border border-yellow-500/30 rounded-xl text-yellow-400 font-semibold text-sm"
                   >
-                    ⏸️ Pausieren
+                    ⏸️ Pause
                   </button>
                 ) : (
                   <button
                     onClick={resumeRide}
                     disabled={loading}
-                    className="py-4 bg-green-500/20 border border-green-500/30 rounded-xl text-green-400 font-semibold"
+                    className="py-3 bg-green-500/20 border border-green-500/30 rounded-xl text-green-400 font-semibold text-sm"
                   >
-                    ▶️ Fortsetzen
+                    ▶️ Weiter
                   </button>
                 )}
                 
                 <button
+                  onClick={() => setShowShare(true)}
+                  className="py-3 bg-cyan-500/20 border border-cyan-500/30 rounded-xl text-cyan-400 font-semibold text-sm"
+                  data-testid="scooter-share-btn"
+                >
+                  🔗 Teilen
+                </button>
+                
+                <button
                   onClick={endRide}
                   disabled={loading}
-                  className="py-4 bg-red-500/20 border border-red-500/30 rounded-xl text-red-400 font-semibold"
+                  className="py-3 bg-red-500/20 border border-red-500/30 rounded-xl text-red-400 font-semibold text-sm"
                 >
-                  {loading ? 'Beenden...' : '⏹️ Beenden'}
+                  {loading ? '...' : '⏹️ Ende'}
                 </button>
               </div>
 
@@ -693,6 +756,117 @@ export default function ScooterPage({ onNavigate }) {
                   <li>• Max. 20 km/h in Fußgängerzonen</li>
                 </ul>
               </div>
+            </motion.div>
+          )}
+
+          {/* SHARE MODAL */}
+          {showShare && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-end justify-center z-50"
+              onClick={() => setShowShare(false)}
+            >
+              <motion.div
+                initial={{ y: 300 }}
+                animate={{ y: 0 }}
+                exit={{ y: 300 }}
+                className="w-full max-w-md bg-[#111] rounded-t-3xl p-6 space-y-5"
+                onClick={e => e.stopPropagation()}
+                data-testid="scooter-share-modal"
+              >
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-bold text-white">Scooter teilen</h3>
+                  <button onClick={() => setShowShare(false)} className="text-gray-500 hover:text-white">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                  </button>
+                </div>
+
+                {!shareCode ? (
+                  <>
+                    <p className="text-sm text-gray-400">Erstelle einen Code, mit dem ein Freund deinen Scooter nutzen kann. Abrechnung läuft über dein Wallet.</p>
+                    
+                    <div>
+                      <p className="text-xs text-gray-500 mb-2">Zeitlimit wählen:</p>
+                      <div className="flex gap-2">
+                        {[
+                          { min: 30, label: "30 Min" },
+                          { min: 60, label: "1 Std" },
+                          { min: 120, label: "2 Std" },
+                          { min: 1440, label: "24 Std" },
+                        ].map(opt => (
+                          <button
+                            key={opt.min}
+                            onClick={() => setShareDuration(opt.min)}
+                            className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                              shareDuration === opt.min
+                                ? "bg-cyan-500/20 text-cyan-400 border border-cyan-500/30"
+                                : "bg-white/5 text-white/40 border border-white/5"
+                            }`}
+                          >
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={createShareCode}
+                      disabled={shareLoading}
+                      className="w-full py-3.5 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-xl font-bold text-black disabled:opacity-50"
+                      data-testid="scooter-create-share"
+                    >
+                      {shareLoading ? 'Generiere...' : '🔗 Code erstellen'}
+                    </button>
+                  </>
+                ) : (
+                  <div className="text-center space-y-4">
+                    <p className="text-sm text-gray-400">Teile diesen Code mit deinem Freund:</p>
+                    <div className="py-5 px-6 bg-cyan-500/10 border-2 border-cyan-500/30 rounded-2xl">
+                      <p className="text-3xl font-mono font-black text-cyan-400 tracking-widest">{shareCode}</p>
+                    </div>
+                    <p className="text-xs text-gray-500">Gültig für {shareDuration < 60 ? `${shareDuration} Min` : shareDuration === 1440 ? '24 Stunden' : `${shareDuration / 60} Stunde(n)`}</p>
+                    <button
+                      onClick={() => { navigator.clipboard?.writeText(shareCode); }}
+                      className="w-full py-3 bg-white/5 border border-white/10 rounded-xl text-white font-medium text-sm"
+                    >
+                      Code kopieren
+                    </button>
+                    <button
+                      onClick={() => { setShareCode(''); setShowShare(false); }}
+                      className="text-xs text-gray-500 underline"
+                    >Schließen</button>
+                  </div>
+                )}
+
+                {/* Redeem Code Section */}
+                <div className="pt-4 border-t border-white/10">
+                  <p className="text-xs text-gray-500 mb-2">Freigabe-Code einlösen:</p>
+                  <div className="flex gap-2">
+                    <input
+                      value={redeemCode}
+                      onChange={e => setRedeemCode(e.target.value.toUpperCase())}
+                      placeholder="BLZ-XXXX"
+                      className="flex-1 px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder-gray-600 outline-none focus:border-cyan-500/40 font-mono tracking-wider"
+                      data-testid="scooter-redeem-input"
+                    />
+                    <button
+                      onClick={redeemShareCode}
+                      disabled={shareLoading || !redeemCode.trim()}
+                      className="px-5 py-2.5 bg-green-500/20 border border-green-500/30 rounded-xl text-green-400 font-bold text-sm disabled:opacity-40"
+                      data-testid="scooter-redeem-btn"
+                    >
+                      Einlösen
+                    </button>
+                  </div>
+                  {redeemResult && (
+                    <p className={`text-xs mt-2 ${redeemResult.ok ? "text-green-400" : "text-red-400"}`}>
+                      {redeemResult.message}
+                    </p>
+                  )}
+                </div>
+              </motion.div>
             </motion.div>
           )}
 
