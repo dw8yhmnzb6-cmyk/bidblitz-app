@@ -58,6 +58,7 @@ def _fetch_yahoo_sync():
     """Fetch prices from Yahoo Finance (runs in thread)."""
     try:
         import yfinance as yf
+        import math
         tickers_str = " ".join(a["yf"] for a in ASSETS)
         data = yf.download(tickers_str, period="2d", interval="1d", progress=False, threads=True, auto_adjust=True)
         
@@ -73,6 +74,13 @@ def _fetch_yahoo_sync():
                 if close_vals is not None and len(close_vals) > 0:
                     current = float(close_vals.iloc[-1])
                     prev = float(close_vals.iloc[-2]) if len(close_vals) > 1 else current
+                    
+                    # Skip NaN/Inf values
+                    if math.isnan(current) or math.isinf(current):
+                        continue
+                    if math.isnan(prev) or math.isinf(prev):
+                        prev = current
+                    
                     change_pct = ((current - prev) / prev * 100) if prev > 0 else 0
                     
                     # Convert to EUR if needed
@@ -132,6 +140,7 @@ def get_change(symbol):
 
 @router.get("/market")
 async def get_market(type: Optional[str] = None, sector: Optional[str] = None, search: Optional[str] = None):
+    import math
     cache = await fetch_live_prices()
     results = []
     for a in ASSETS:
@@ -142,15 +151,22 @@ async def get_market(type: Optional[str] = None, sector: Optional[str] = None, s
         if search and search.lower() not in a["name"].lower() and search.lower() not in a["symbol"].lower():
             continue
         cd = cache.get(a["symbol"], {})
+        price = cd.get("price_eur", FALLBACK.get(a["symbol"], 100))
+        price_orig = cd.get("price", FALLBACK.get(a["symbol"], 100))
+        change = cd.get("change_pct", 0)
+        # Guard NaN/Inf
+        if math.isnan(price) or math.isinf(price): price = FALLBACK.get(a["symbol"], 100)
+        if math.isnan(price_orig) or math.isinf(price_orig): price_orig = price
+        if math.isnan(change) or math.isinf(change): change = 0
         results.append({
             "symbol": a["symbol"],
             "name": a["name"],
             "type": a["type"],
             "sector": a["sector"],
             "currency": a["currency"],
-            "price": cd.get("price_eur", FALLBACK.get(a["symbol"], 100)),
-            "price_original": cd.get("price", FALLBACK.get(a["symbol"], 100)),
-            "change_pct": cd.get("change_pct", 0),
+            "price": round(price, 2),
+            "price_original": round(price_orig, 2),
+            "change_pct": round(change, 2),
         })
     source = "yahoo_finance" if _cache_time else "fallback"
     return {"assets": results, "total": len(results), "source": source,
@@ -159,6 +175,7 @@ async def get_market(type: Optional[str] = None, sector: Optional[str] = None, s
 
 @router.get("/asset/{symbol}")
 async def get_asset(symbol: str):
+    import math as _math
     symbol = symbol.upper()
     asset = next((a for a in ASSETS if a["symbol"] == symbol), None)
     if not asset:
@@ -168,6 +185,15 @@ async def get_asset(symbol: str):
     cd = cache.get(symbol, {})
     price = cd.get("price_eur", FALLBACK.get(symbol, 100))
     change = cd.get("change_pct", 0)
+    if _math.isnan(price) or _math.isinf(price): price = FALLBACK.get(symbol, 100)
+    if _math.isnan(change) or _math.isinf(change): change = 0
+    
+    def safe_float(v, default=0):
+        if v is None: return default
+        try:
+            f = float(v)
+            return default if (_math.isnan(f) or _math.isinf(f)) else f
+        except: return default
     
     # Generate chart from Yahoo history
     chart = []
@@ -176,7 +202,8 @@ async def get_asset(symbol: str):
         ticker = yf.Ticker(asset["yf"])
         hist = ticker.history(period="1mo", interval="1d", auto_adjust=True)
         for idx, row in hist.iterrows():
-            p = float(row["Close"])
+            p = safe_float(row["Close"])
+            if p == 0: continue
             if asset["currency"] == "USD":
                 p = p / EUR_USD
             elif asset["currency"] == "GBP":
@@ -187,7 +214,7 @@ async def get_asset(symbol: str):
         for i in range(30):
             p = p * (1 + (random.random() - 0.48) * 0.03)
             chart.append({"day": i + 1, "price": round(p, 2)})
-        chart[-1]["price"] = price
+        chart[-1]["price"] = round(price, 2)
     
     # Get real info from yfinance
     info = {}
@@ -196,14 +223,14 @@ async def get_asset(symbol: str):
         ticker = yf.Ticker(asset["yf"])
         fi = ticker.info
         info = {
-            "volume": fi.get("volume", 0),
-            "market_cap": fi.get("marketCap", 0),
-            "pe_ratio": fi.get("trailingPE", fi.get("forwardPE")),
-            "dividend_yield": round((fi.get("dividendYield", 0) or 0) * 100, 2),
-            "high_52w": fi.get("fiftyTwoWeekHigh"),
-            "low_52w": fi.get("fiftyTwoWeekLow"),
+            "volume": safe_float(fi.get("volume", 0)),
+            "market_cap": safe_float(fi.get("marketCap", 0)),
+            "pe_ratio": safe_float(fi.get("trailingPE", fi.get("forwardPE")), None),
+            "dividend_yield": round(safe_float(fi.get("dividendYield", 0)) * 100, 2),
+            "high_52w": safe_float(fi.get("fiftyTwoWeekHigh"), None),
+            "low_52w": safe_float(fi.get("fiftyTwoWeekLow"), None),
             "sector_detail": fi.get("sector", asset["sector"]),
-            "description": fi.get("longBusinessSummary", "")[:200],
+            "description": (fi.get("longBusinessSummary", "") or "")[:200],
         }
     except:
         info = {"volume": random.randint(1_000_000, 50_000_000), "market_cap": round(price * random.randint(500_000_000, 3_000_000_000)),

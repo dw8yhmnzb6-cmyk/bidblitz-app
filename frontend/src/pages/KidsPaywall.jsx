@@ -57,6 +57,7 @@ const KidsDashboard = ({ onBack, t, subStatus }) => {
   const user = useUser();
   const [children, setChildren] = useState([]);
   const [childWallets, setChildWallets] = useState({});
+  const [childLocations, setChildLocations] = useState({});
   const [globalActivity, setGlobalActivity] = useState([]);
   const [activityFilter, setActivityFilter] = useState('all');
   const [showAddChild, setShowAddChild] = useState(false);
@@ -139,6 +140,26 @@ const KidsDashboard = ({ onBack, t, subStatus }) => {
         if (r.wallet) walletsMap[r.childId] = r.wallet;
       });
       setChildWallets(walletsMap);
+      
+      // Load GPS locations for each child
+      const gpsPromises = childList.map(async (child) => {
+        try {
+          const res = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/kids/gps/location/${child.child_id}`, { credentials: "include" });
+          if (res.ok) {
+            const loc = await res.json();
+            return { childId: child.child_id, location: loc };
+          }
+          return { childId: child.child_id, location: null };
+        } catch {
+          return { childId: child.child_id, location: null };
+        }
+      });
+      const gpsResults = await Promise.all(gpsPromises);
+      const locMap = {};
+      gpsResults.forEach(r => {
+        if (r.location && (r.location.lat || r.location.address)) locMap[r.childId] = r.location;
+      });
+      setChildLocations(locMap);
     } catch {
       // silent
     } finally {
@@ -673,6 +694,47 @@ const KidsDashboard = ({ onBack, t, subStatus }) => {
                       />
                     </div>
                   </div>
+                  
+                  {/* GPS Location Badge */}
+                  {(() => {
+                    const loc = childLocations[child.child_id];
+                    if (!loc) return null;
+                    const hasCoords = loc.lat && loc.lng;
+                    const addr = loc.address || (hasCoords ? `${loc.lat.toFixed(4)}, ${loc.lng.toFixed(4)}` : null);
+                    if (!addr && !hasCoords) return null;
+                    return (
+                      <motion.div
+                        initial={{ opacity: 0, y: 4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="mb-3 rounded-xl overflow-hidden"
+                        style={{ border: "1px solid rgba(59,130,246,0.2)" }}
+                        data-testid={`child-gps-${child.child_id}`}
+                      >
+                        {hasCoords && (
+                          <img
+                            src={`https://api.mapbox.com/styles/v1/mapbox/navigation-night-v1/static/pin-s+3B82F6(${loc.lng},${loc.lat})/${loc.lng},${loc.lat},14,0/340x100@2x?access_token=${process.env.REACT_APP_MAPBOX_TOKEN}`}
+                            alt="GPS"
+                            className="w-full h-[80px] object-cover"
+                            onError={(e) => { e.target.style.display = 'none'; }}
+                          />
+                        )}
+                        <div
+                          className="flex items-center gap-2 px-3 py-2 cursor-pointer"
+                          style={{ background: "rgba(59,130,246,0.08)" }}
+                          onClick={(e) => { e.stopPropagation(); setGpsChild(child); }}
+                        >
+                          <MapPin size={13} className="text-blue-400 shrink-0" />
+                          <span className="text-[10px] text-blue-300 truncate flex-1">{addr}</span>
+                          {loc.battery_level != null && (
+                            <span className="text-[9px] text-white/40 flex items-center gap-0.5">
+                              <Battery size={10} /> {loc.battery_level}%
+                            </span>
+                          )}
+                          <ChevronRight size={12} className="text-blue-400/50" />
+                        </div>
+                      </motion.div>
+                    );
+                  })()}
                   
                   {/* Quick Action Buttons for Child */}
                   <div className="grid grid-cols-5 gap-2">

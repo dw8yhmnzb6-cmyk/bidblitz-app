@@ -1258,43 +1258,104 @@ class BookRideRequest(BaseModel):
     car_type: str = "standard"
 
 
+class EstimateRequest(BaseModel):
+    pickup_lat: Optional[float] = None
+    pickup_lng: Optional[float] = None
+    pickup_address: Optional[str] = ""
+    dropoff_lat: Optional[float] = None
+    dropoff_lng: Optional[float] = None
+    dropoff_address: Optional[str] = ""
+    # Support nested format from frontend
+    pickup: Optional[dict] = None
+    dropoff: Optional[dict] = None
+
+    def get_coords(self):
+        p_lat = self.pickup_lat or (self.pickup.get("lat") if self.pickup else None) or 0
+        p_lng = self.pickup_lng or (self.pickup.get("lng") if self.pickup else None) or 0
+        d_lat = self.dropoff_lat or (self.dropoff.get("lat") if self.dropoff else None) or 0
+        d_lng = self.dropoff_lng or (self.dropoff.get("lng") if self.dropoff else None) or 0
+        p_addr = self.pickup_address or (self.pickup.get("address", "") if self.pickup else "")
+        d_addr = self.dropoff_address or (self.dropoff.get("address", "") if self.dropoff else "")
+        return p_lat, p_lng, d_lat, d_lng, p_addr, d_addr
+
+
 @router.post("/estimate")
-async def get_ride_estimate(req: BookRideRequest):
-    """Get price estimate for a ride (no auth required)."""
+async def get_ride_estimate(req: EstimateRequest):
+    """Get price estimates for all vehicle types."""
     
-    # Module disabled check
     if not TAXI_MODULE_ENABLED:
         return {
             "module_enabled": False,
-            "message": "Taxi-Modul wird derzeit vorbereitet. Fahrer-Onboarding läuft.",
-            "distance_km": 0,
-            "estimated_duration_minutes": 0,
-            "fare_estimate": 0,
+            "estimates": [],
+            "message": "Taxi-Modul wird derzeit vorbereitet.",
         }
     
-    distance_km = haversine_distance(req.pickup_lat, req.pickup_lng, req.dropoff_lat, req.dropoff_lng)
+    p_lat, p_lng, d_lat, d_lng, p_addr, d_addr = req.get_coords()
     
-    # Estimate duration (rough: 30 km/h average in city)
-    duration_minutes = (distance_km / 30) * 60
-    duration_minutes = max(5, duration_minutes)
+    if not p_lat or not d_lat:
+        raise HTTPException(400, "Koordinaten fehlen")
     
-    fare = calculate_fare(distance_km, duration_minutes, req.car_type)
+    distance_km = haversine_distance(p_lat, p_lng, d_lat, d_lng)
+    duration_minutes = max(5, (distance_km / 30) * 60)
+    
+    VEHICLE_INFO = {
+        "standard": {"name": "Standard", "description": "Komfortabel & günstig", "capacity": 4},
+        "premium": {"name": "Premium", "description": "Luxus & Stil", "capacity": 4},
+        "van": {"name": "Van / XL", "description": "Mehr Platz, Gepäck", "capacity": 7},
+    }
+    
+    estimates = []
+    for vtype in ["standard", "premium", "van"]:
+        fare = calculate_fare(distance_km, duration_minutes, vtype)
+        info = VEHICLE_INFO[vtype]
+        estimates.append({
+            "vehicle_type": vtype,
+            "name": info["name"],
+            "description": info["description"],
+            "capacity": info["capacity"],
+            "fare": fare["total"],
+            "fare_range": {"min": round(fare["total"] * 0.9, 2), "max": round(fare["total"] * 1.15, 2)},
+            "eta_minutes": max(3, round(duration_minutes * 0.05)),
+            "distance_km": round(distance_km, 2),
+            "duration_minutes": round(duration_minutes),
+            "fare_breakdown": fare,
+        })
     
     return {
         "module_enabled": True,
-        "distance_km": round(distance_km, 2),
-        "estimated_duration_minutes": round(duration_minutes),
-        "fare_estimate": fare["total"],
-        "fare_breakdown": fare,
-        "car_type": req.car_type,
+        "estimates": estimates,
+        "surge": {"active": False, "multiplier": 1.0},
     }
 
 
+class FlexBookRequest(BaseModel):
+    pickup_lat: Optional[float] = None
+    pickup_lng: Optional[float] = None
+    pickup_address: Optional[str] = ""
+    dropoff_lat: Optional[float] = None
+    dropoff_lng: Optional[float] = None
+    dropoff_address: Optional[str] = ""
+    pickup: Optional[dict] = None
+    dropoff: Optional[dict] = None
+    car_type: Optional[str] = "standard"
+    vehicle_type: Optional[str] = None
+    payment_method: Optional[str] = "wallet"
+
+    def get_coords(self):
+        p_lat = self.pickup_lat or (self.pickup.get("lat") if self.pickup else None) or 0
+        p_lng = self.pickup_lng or (self.pickup.get("lng") if self.pickup else None) or 0
+        d_lat = self.dropoff_lat or (self.dropoff.get("lat") if self.dropoff else None) or 0
+        d_lng = self.dropoff_lng or (self.dropoff.get("lng") if self.dropoff else None) or 0
+        p_addr = self.pickup_address or (self.pickup.get("address", "") if self.pickup else "")
+        d_addr = self.dropoff_address or (self.dropoff.get("address", "") if self.dropoff else "")
+        ct = self.vehicle_type or self.car_type or "standard"
+        return p_lat, p_lng, d_lat, d_lng, p_addr, d_addr, ct
+
+
 @router.post("/book")
-async def book_ride(req: BookRideRequest, request: Request):
+async def book_ride(req: FlexBookRequest, request: Request):
     """Customer books a ride."""
     
-    # Module disabled check
     if not TAXI_MODULE_ENABLED:
         raise HTTPException(status_code=503, detail="Taxi-Modul ist derzeit nicht verfügbar")
     
@@ -1303,7 +1364,6 @@ async def book_ride(req: BookRideRequest, request: Request):
     user = await get_current_user(request)
     user_id = str(user["_id"])
     
-    # Check wallet balance
     balance = user.get("balance", 0)
     if balance < MIN_WALLET_BALANCE:
         raise HTTPException(
@@ -1311,7 +1371,6 @@ async def book_ride(req: BookRideRequest, request: Request):
             detail=f"Mindestguthaben €{MIN_WALLET_BALANCE:.2f} erforderlich. Aktuell: €{balance:.2f}"
         )
     
-    # Check no active ride
     active = await db.taxi_rides.find_one({
         "customer_id": user_id,
         "status": {"$in": ["requested", "accepted", "arriving", "started"]}
@@ -1319,10 +1378,11 @@ async def book_ride(req: BookRideRequest, request: Request):
     if active:
         raise HTTPException(status_code=400, detail="Du hast bereits eine aktive Fahrt")
     
-    # Calculate estimate
-    distance_km = haversine_distance(req.pickup_lat, req.pickup_lng, req.dropoff_lat, req.dropoff_lng)
+    p_lat, p_lng, d_lat, d_lng, p_addr, d_addr, car_type = req.get_coords()
+    
+    distance_km = haversine_distance(p_lat, p_lng, d_lat, d_lng)
     duration_minutes = max(5, (distance_km / 30) * 60)
-    fare_estimate = calculate_fare(distance_km, duration_minutes, req.car_type)
+    fare_estimate = calculate_fare(distance_km, duration_minutes, car_type)
     
     now = datetime.now(timezone.utc)
     ride_id = secrets.token_hex(8)
@@ -1335,16 +1395,16 @@ async def book_ride(req: BookRideRequest, request: Request):
         "driver_id": None,
         "driver_name": None,
         "pickup": {
-            "lat": req.pickup_lat,
-            "lng": req.pickup_lng,
-            "address": req.pickup_address,
+            "lat": p_lat,
+            "lng": p_lng,
+            "address": p_addr,
         },
         "dropoff": {
-            "lat": req.dropoff_lat,
-            "lng": req.dropoff_lng,
-            "address": req.dropoff_address,
+            "lat": d_lat,
+            "lng": d_lng,
+            "address": d_addr,
         },
-        "car_type": req.car_type,
+        "car_type": car_type,
         "distance_km_estimate": round(distance_km, 2),
         "duration_estimate_minutes": round(duration_minutes),
         "fare_estimate": fare_estimate["total"],
@@ -1361,7 +1421,7 @@ async def book_ride(req: BookRideRequest, request: Request):
         "online": True,
         "verified": True,
         "status": "approved",
-        "car.type": req.car_type,
+        "car.type": car_type,
     }).to_list(20)
     
     # Filter by distance from pickup
@@ -1369,7 +1429,7 @@ async def book_ride(req: BookRideRequest, request: Request):
     for d in nearby_drivers:
         loc = d.get("location", {})
         if loc.get("lat"):
-            dist = haversine_distance(req.pickup_lat, req.pickup_lng, loc["lat"], loc["lng"])
+            dist = haversine_distance(p_lat, p_lng, loc["lat"], loc["lng"])
             if dist <= 10:  # Within 10km
                 matching_drivers.append({
                     "driver_id": d["driver_id"],
