@@ -47,6 +47,11 @@ export default function FoodPage({ onNavigate }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedRestaurant, setSelectedRestaurant] = useState(null);
   const [cart, setCart] = useState([]);
+  const [menuCat, setMenuCat] = useState("");
+  const [stamps, setStamps] = useState(0);
+  const [extrasModal, setExtrasModal] = useState(null);
+  const [selectedExtras, setSelectedExtras] = useState([]);
+  const [selectedSize, setSelectedSize] = useState(null);
   const [activeOrder, setActiveOrder] = useState(null);
   const [orderHistory, setOrderHistory] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -510,11 +515,37 @@ export default function FoodPage({ onNavigate }) {
                 </div>
               </div>
 
+              {/* Menu Categories Tabs */}
+              {selectedRestaurant.menu_categories?.length > 0 && (
+                <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
+                  <button onClick={() => setMenuCat("")} className={`shrink-0 px-3 py-1.5 rounded-lg text-[11px] font-bold ${!menuCat ? "bg-orange-500 text-black" : "bg-white/5 text-gray-400"}`}>Alle</button>
+                  {selectedRestaurant.menu_categories.map(c => (
+                    <button key={c.id} onClick={() => setMenuCat(c.id)} className={`shrink-0 px-3 py-1.5 rounded-lg text-[11px] font-bold ${menuCat === c.id ? "bg-orange-500 text-black" : "bg-white/5 text-gray-400"}`}>{c.name}</button>
+                  ))}
+                </div>
+              )}
+
+              {/* Stamps/Loyalty Banner */}
+              {selectedRestaurant.stamps_enabled && (
+                <div className="p-3 rounded-xl bg-orange-500/10 border border-orange-500/20 flex items-center gap-3">
+                  <span className="text-xl">🎟️</span>
+                  <div className="flex-1">
+                    <p className="text-[11px] font-bold text-orange-400">Treuekarte aktiv</p>
+                    <p className="text-[9px] text-gray-500">{selectedRestaurant.stamps_needed}x bestellen = Gratis-Essen!</p>
+                  </div>
+                  <div className="flex gap-0.5">
+                    {Array(selectedRestaurant.stamps_needed || 10).fill(0).map((_, i) => (
+                      <div key={i} className={`w-2 h-2 rounded-full ${i < (stamps || 0) ? "bg-orange-500" : "bg-white/10"}`} />
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Menu */}
               <div className="space-y-4">
                 <h3 className="font-semibold text-gray-300">Speisekarte</h3>
                 
-                {(selectedRestaurant.menu || []).map((item) => {
+                {(selectedRestaurant.menu || []).filter(item => !menuCat || item.category === menuCat).map((item) => {
                   // Generate food image based on item name
                   const getFoodImage = (name) => {
                     const n = name.toLowerCase();
@@ -553,7 +584,15 @@ export default function FoodPage({ onNavigate }) {
                         <p className="text-orange-400 font-bold mt-2">€{item.price.toFixed(2)}</p>
                       </div>
                       <button
-                        onClick={() => addToCart(item)}
+                        onClick={() => {
+                          if ((item.extras?.length > 0) || (item.sizes?.length > 0)) {
+                            setExtrasModal(item);
+                            setSelectedExtras([]);
+                            setSelectedSize(item.sizes?.[0] || null);
+                          } else {
+                            addToCart(item);
+                          }
+                        }}
                         className="ml-2 w-10 h-10 bg-orange-500 rounded-full flex items-center justify-center text-black font-bold text-xl flex-shrink-0 hover:bg-orange-400 transition-colors"
                       >
                         +
@@ -562,6 +601,66 @@ export default function FoodPage({ onNavigate }) {
                   );
                 })}
               </div>
+
+              {/* Extras Modal */}
+              <AnimatePresence>
+                {extrasModal && (
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-end" onClick={() => setExtrasModal(null)}>
+                    <motion.div initial={{ y: 300 }} animate={{ y: 0 }} exit={{ y: 300 }} className="w-full bg-[#111] rounded-t-3xl p-6 max-h-[70vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+                      <h3 className="text-lg font-bold mb-1">{extrasModal.name}</h3>
+                      <p className="text-sm text-gray-400 mb-4">{extrasModal.description}</p>
+                      
+                      {extrasModal.sizes?.length > 0 && (
+                        <div className="mb-4">
+                          <p className="text-xs text-gray-500 font-bold mb-2">Größe wählen</p>
+                          <div className="space-y-1.5">
+                            {extrasModal.sizes.map(s => (
+                              <button key={s.id} onClick={() => setSelectedSize(s)}
+                                className={`w-full p-3 rounded-xl flex justify-between text-sm ${selectedSize?.id === s.id ? "bg-orange-500/20 border border-orange-500/30 text-orange-400" : "bg-white/5 border border-white/5 text-gray-400"}`}>
+                                <span>{s.name}</span>
+                                <span>{s.price > 0 ? `+€${s.price.toFixed(2)}` : "Inkl."}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {extrasModal.extras?.length > 0 && (
+                        <div className="mb-4">
+                          <p className="text-xs text-gray-500 font-bold mb-2">Extras</p>
+                          <div className="space-y-1.5">
+                            {extrasModal.extras.map(e => {
+                              const isSelected = selectedExtras.some(se => se.id === e.id);
+                              return (
+                                <button key={e.id} onClick={() => setSelectedExtras(prev => isSelected ? prev.filter(x => x.id !== e.id) : [...prev, e])}
+                                  className={`w-full p-3 rounded-xl flex justify-between text-sm ${isSelected ? "bg-orange-500/20 border border-orange-500/30 text-orange-400" : "bg-white/5 border border-white/5 text-gray-400"}`}>
+                                  <span>{isSelected ? "✓ " : ""}{e.name}</span>
+                                  <span>+€{e.price.toFixed(2)}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {(() => {
+                        const base = extrasModal.price;
+                        const sizeExtra = selectedSize?.price || 0;
+                        const extrasTotal = selectedExtras.reduce((s, e) => s + e.price, 0);
+                        const total = base + sizeExtra + extrasTotal;
+                        return (
+                          <button onClick={() => {
+                            addToCart({ ...extrasModal, price: total, extras_detail: selectedExtras.map(e => e.name).join(", "), size_detail: selectedSize?.name || "" });
+                            setExtrasModal(null);
+                          }} className="w-full py-4 bg-orange-500 rounded-xl font-bold text-black">
+                            In den Warenkorb · €{total.toFixed(2)}
+                          </button>
+                        );
+                      })()}
+                    </motion.div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               {/* Cart Preview */}
               {cart.length > 0 && (

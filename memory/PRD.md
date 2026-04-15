@@ -4,32 +4,39 @@
 - Frontend: React, TailwindCSS, Framer Motion, Mapbox GL JS
 - Backend: FastAPI, Motor (MongoDB), CoinGecko, httpx, yfinance
 
-## Production Status: LAUNCH-READY (80+ Services, 15+ Revenue Streams)
+## Production Status: LAUNCH-READY (85+ Services, 17+ Revenue Streams)
 
-### Revenue Streams (15+)
+### Revenue Streams (17+)
 1. Premium VIP Abos (€4.99-14.99/Mo)
-2. Reselling Marketplace (8% Provision)
-3. BlitzJobs (15% Service-Gebuehr)
-4. BlitzLearn/Nachhilfe (20% Provision)
-5. Digital Collectibles (Packs €0.99-2.99, 5% Handelsgebuehr)
-6. BlitzBattle 1v1 Challenges (10% Pool)
-7. BlitzCreator Influencer-Auftraege (15%)
+2. Reselling Marketplace (8%)
+3. BlitzJobs (15%)
+4. BlitzLearn/Nachhilfe (20%)
+5. Digital Collectibles (Packs €0.99-2.99, 5% Trade)
+6. BlitzBattle 1v1 (10% Pool)
+7. BlitzCreator Influencer (15%)
 8. Mystery Boxes (€14.99-39.99)
 9. Promoted Listings (€1.99-6.99)
-10. Werbebanner (€5/Tag, €29/Woche)
+10. Werbebanner (€5-99)
 11. Sofort-Auszahlung (€0.99)
-12. Express KYC-Verifizierung (€4.99)
-13. Steuerbericht (€4.99, Pro gratis)
-14. Affiliate System (3% Provision)
-15. Spar-Challenges (5% Pool)
+12. Express KYC (€4.99)
+13. Steuerbericht (€4.99)
+14. Affiliate System (3%)
+15. Spar-Challenges (5%)
 16. Live Auktionen (10%)
-17. Cashback Shopping (Affiliate)
+17. Cashback (Affiliate)
 
-### Rollenbasiertes System
-- Kunde: ENTDECKEN statt HAENDLER in Bottom Nav
-- Haendler: HAENDLER Tab
-- Fahrer: FAHRTEN Tab
-- Admin: Alles
+### Food Delivery Upgrade (Lieferando-Style)
+- 12 Restaurants (4 mit Premium-Speisekarten)
+- Menu-Kategorien-Tabs (Pizza, Pasta, Salate, etc.)
+- Extras & Groessen-Modal (Extra Kaese, Groesse waehlen)
+- Treuekarten pro Restaurant (10x bestellen = Gratis)
+- Warenkorb, Bestelltracking, Bestellverlauf (bereits vorhanden)
+
+### Pro Features
+- KYC Light Verifizierung (Standard 72h / Express 24h €4.99)
+- Werbebanner auf Home (Auto-Rotation, Click-Tracking)
+- Affiliate-Links (persoenlicher Code, 3% Provision)
+- Steuerbericht-Generator (Reselling + Jobs + Cashback)
 
 ### Credentials
 - Admin: admin@bidblitz.com / BidBlitz2026!
