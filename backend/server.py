@@ -420,6 +420,9 @@ app.include_router(extras_router)
 from routes.city_services import router as city_services_router
 app.include_router(city_services_router)
 
+from routes.blitzpay import router as blitzpay_router
+app.include_router(blitzpay_router)
+
 
 # Static file serving for uploads
 from fastapi.staticfiles import StaticFiles
