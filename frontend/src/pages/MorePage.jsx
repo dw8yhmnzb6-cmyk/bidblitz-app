@@ -823,6 +823,7 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
     { id: "user-stats", icon: BarChart3, label: "Meine Statistiken", desc: "Verdienst, Aktivitäten, Trends", color: "#22C55E", action: gatedAction(() => onNavigate("/user-stats")), roles: ["all"] },
     { id: "blitzlearn", icon: Star, label: "BlitzLearn", desc: "Skills lernen & unterrichten", color: "#3B82F6", action: gatedAction(() => onNavigate("/blitzlearn")), roles: ["all"] },
     { id: "blitzhub", icon: Zap, label: "BlitzHub", desc: "Karten, Battles, Boxen, KYC", color: "#F97316", action: gatedAction(() => onNavigate("/blitzhub")), roles: ["all"] },
+    { id: "leaderboard", icon: Trophy, label: "Rangliste", desc: "Top Sparer, Gamer & Verdiener", color: "#FFD700", action: gatedAction(() => onNavigate("/leaderboard")), roles: ["all"] },
     // Merchant-only items
     { id: "pay", icon: Wallet, label: t("pay.title") || "Bezahlen", desc: t("pay.menu_desc") || "Barcode & NFC Zahlungen", color: "#00E89D", action: gatedAction(() => onNavigate("/pay")), roles: ["merchant", "admin"] },
     { id: "terminal", icon: Scan, label: t("terminal.title") || "Zahlungsterminal", desc: t("terminal.menu_desc") || "Zahlungen annehmen", color: "#FFB800", action: gatedAction(() => onNavigate("/terminal")), roles: ["merchant", "admin"] },

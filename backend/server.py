@@ -414,6 +414,9 @@ app.include_router(blitz_features_router)
 from routes.pro_features import router as pro_features_router
 app.include_router(pro_features_router)
 
+from routes.extras import router as extras_router
+app.include_router(extras_router)
+
 
 # Static file serving for uploads
 from fastapi.staticfiles import StaticFiles

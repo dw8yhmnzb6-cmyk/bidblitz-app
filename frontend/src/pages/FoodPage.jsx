@@ -52,6 +52,12 @@ export default function FoodPage({ onNavigate }) {
   const [extrasModal, setExtrasModal] = useState(null);
   const [selectedExtras, setSelectedExtras] = useState([]);
   const [selectedSize, setSelectedSize] = useState(null);
+  const [filterFree, setFilterFree] = useState(false);
+  const [filterFast, setFilterFast] = useState(false);
+  const [filterTop, setFilterTop] = useState(false);
+  const [filterNew, setFilterNew] = useState(false);
+  const [promoCode, setPromoCode] = useState("");
+  const [promoApplied, setPromoApplied] = useState(null);
   const [activeOrder, setActiveOrder] = useState(null);
   const [orderHistory, setOrderHistory] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -83,6 +89,10 @@ export default function FoodPage({ onNavigate }) {
     } catch (err) {}
   };
 
+
+  // Re-fetch when filters change
+  useEffect(() => { fetchRestaurants(selectedCategory, searchQuery); }, [filterFree, filterFast, filterTop, filterNew]);
+
   const fetchCategories = async () => {
     try {
       const res = await fetch(`${API}/api/food/categories`, { credentials: 'include' });
@@ -96,9 +106,22 @@ export default function FoodPage({ onNavigate }) {
   const fetchRestaurants = async (category = '', search = '') => {
     setLoading(true);
     try {
-      let url = `${API}/api/food/restaurants?limit=30`;
-      if (category) url += `&category=${category}`;
-      if (search) url += `&search=${encodeURIComponent(search)}`;
+      // Use filtered endpoint if any filter is active
+      const hasFilters = filterFree || filterFast || filterTop || filterNew;
+      let url;
+      if (hasFilters) {
+        url = `${API}/api/food/filtered?`;
+        if (filterFree) url += `free_delivery=true&`;
+        if (filterFast) url += `fast=true&`;
+        if (filterTop) url += `top_rated=true&`;
+        if (filterNew) url += `is_new=true&`;
+        if (category) url += `category=${category}&`;
+        if (search) url += `search=${encodeURIComponent(search)}&`;
+      } else {
+        url = `${API}/api/food/restaurants?limit=30`;
+        if (category) url += `&category=${category}`;
+        if (search) url += `&search=${encodeURIComponent(search)}`;
+      }
       
       const res = await fetch(url, { credentials: 'include' });
       if (res.ok) {
@@ -367,6 +390,27 @@ export default function FoodPage({ onNavigate }) {
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl">🔍</span>
               </div>
 
+              {/* Quick Filters — Lieferando Style */}
+              <div className="flex gap-2 overflow-x-auto scrollbar-hide">
+                {[
+                  { id: "free", label: "Gratis Lieferung", icon: "🚚", active: filterFree },
+                  { id: "fast", label: "Unter 30 Min", icon: "⚡", active: filterFast },
+                  { id: "top", label: "Top Bewertet", icon: "⭐", active: filterTop },
+                  { id: "new", label: "Neu", icon: "🆕", active: filterNew },
+                ].map(f => (
+                  <button key={f.id}
+                    onClick={() => {
+                      if (f.id === "free") setFilterFree(!f.active);
+                      if (f.id === "fast") setFilterFast(!f.active);
+                      if (f.id === "top") setFilterTop(!f.active);
+                      if (f.id === "new") setFilterNew(!f.active);
+                    }}
+                    className={`shrink-0 px-3 py-2 rounded-xl text-[11px] font-bold flex items-center gap-1.5 transition-all ${f.active ? "bg-orange-500 text-black" : "bg-white/5 text-gray-400 border border-white/10"}`}>
+                    <span>{f.icon}</span>{f.label}
+                  </button>
+                ))}
+              </div>
+
               {/* Categories */}
               <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
                 <button
@@ -448,8 +492,24 @@ export default function FoodPage({ onNavigate }) {
                             <span className="text-green-400 font-medium">{restaurant.rating}</span>
                           </div>
                         </div>
-                        <div className="mt-2 text-sm text-gray-500">
-                          Liefergebühr: €{(restaurant.delivery_fee || 1.99).toFixed(2)}
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          {(restaurant.free_delivery || restaurant.delivery_fee === 0) ? (
+                            <span className="text-[9px] px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 font-bold">Gratis Lieferung</span>
+                          ) : (
+                            <span className="text-[9px] px-2 py-0.5 rounded-full bg-white/5 text-gray-500">€{(restaurant.delivery_fee || 1.99).toFixed(2)} Lieferung</span>
+                          )}
+                          {restaurant.price_guarantee && (
+                            <span className="text-[9px] px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 font-bold">Preis-Garantie</span>
+                          )}
+                          {restaurant.is_new && (
+                            <span className="text-[9px] px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400 font-bold">NEU</span>
+                          )}
+                          {restaurant.stamps_enabled && (
+                            <span className="text-[9px] px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400 font-bold">🎟️ Stempelkarte</span>
+                          )}
+                          {restaurant.min_order && (
+                            <span className="text-[9px] px-2 py-0.5 rounded-full bg-white/5 text-gray-500">Min. €{restaurant.min_order}</span>
+                          )}
                         </div>
                       </div>
                     </motion.button>
@@ -864,6 +924,28 @@ export default function FoodPage({ onNavigate }) {
                   <span>Gesamt</span>
                   <span className="text-orange-400">€{orderTotal.toFixed(2)}</span>
                 </div>
+              </div>
+
+              {/* Promo Code */}
+              <div className="p-4 bg-[#111] rounded-2xl border border-white/10">
+                <p className="text-xs text-gray-500 font-bold mb-2">Gutschein-Code</p>
+                <div className="flex gap-2">
+                  <input value={promoCode} onChange={e => setPromoCode(e.target.value.toUpperCase())}
+                    placeholder="WELCOME10" disabled={!!promoApplied}
+                    className="flex-1 px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm outline-none font-mono tracking-wider placeholder-gray-600 disabled:opacity-50" />
+                  <button onClick={async () => {
+                    if (promoApplied) { setPromoApplied(null); setPromoCode(""); return; }
+                    try {
+                      const r = await fetch(`${API}/api/extras/promo/redeem`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code: promoCode }) });
+                      const d = await r.json();
+                      if (r.ok) { setPromoApplied({ code: promoCode, benefit: d.benefit }); setError(""); }
+                      else setError(d.detail || "Code ungültig");
+                    } catch { setError("Netzwerkfehler"); }
+                  }} className={`px-4 py-2.5 rounded-xl font-bold text-sm ${promoApplied ? "bg-red-500/20 text-red-400 border border-red-500/20" : "bg-green-500/20 text-green-400 border border-green-500/20"}`}>
+                    {promoApplied ? "Entfernen" : "Einlösen"}
+                  </button>
+                </div>
+                {promoApplied && <p className="text-[10px] text-green-400 mt-1.5">✓ {promoApplied.code}: +€{promoApplied.benefit?.toFixed(2)} Guthaben!</p>}
               </div>
 
               {/* Error */}

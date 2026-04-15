@@ -4,39 +4,23 @@
 - Frontend: React, TailwindCSS, Framer Motion, Mapbox GL JS
 - Backend: FastAPI, Motor (MongoDB), CoinGecko, httpx, yfinance
 
-## Production Status: LAUNCH-READY (85+ Services, 17+ Revenue Streams)
+## Production Status: LAUNCH-READY (90+ Services, 17+ Revenue Streams)
 
 ### Revenue Streams (17+)
-1. Premium VIP Abos (€4.99-14.99/Mo)
-2. Reselling Marketplace (8%)
-3. BlitzJobs (15%)
-4. BlitzLearn/Nachhilfe (20%)
-5. Digital Collectibles (Packs €0.99-2.99, 5% Trade)
-6. BlitzBattle 1v1 (10% Pool)
-7. BlitzCreator Influencer (15%)
-8. Mystery Boxes (€14.99-39.99)
-9. Promoted Listings (€1.99-6.99)
-10. Werbebanner (€5-99)
-11. Sofort-Auszahlung (€0.99)
-12. Express KYC (€4.99)
-13. Steuerbericht (€4.99)
-14. Affiliate System (3%)
-15. Spar-Challenges (5%)
-16. Live Auktionen (10%)
-17. Cashback (Affiliate)
+1-17: Premium Abos, Reselling, BlitzJobs, BlitzLearn, Collectibles, Battles, Creator, Boxes, Promoted Listings, Werbebanner, Instant Cashout, KYC Express, Steuerbericht, Affiliate, Spar-Challenges, Live Auktionen, Cashback
 
-### Food Delivery Upgrade (Lieferando-Style)
-- 12 Restaurants (4 mit Premium-Speisekarten)
-- Menu-Kategorien-Tabs (Pizza, Pasta, Salate, etc.)
-- Extras & Groessen-Modal (Extra Kaese, Groesse waehlen)
-- Treuekarten pro Restaurant (10x bestellen = Gratis)
-- Warenkorb, Bestelltracking, Bestellverlauf (bereits vorhanden)
+### New Features (Latest Session)
+- Food Delivery Lieferando-Upgrade: Filter (Gratis Lieferung, Schnell, Top, Neu), Badges, Promo-Code im Checkout, Menu-Kategorien, Extras-Modal, Treuekarten
+- Global Search: Durchsucht Restaurants, Listings, Jobs, Skills, Shops
+- Leaderboard: Top Guthaben, Top Gamer, Top Bewertungen
+- Promo-Code System: WELCOME10 (€10), FRIEND5 (€5), PIZZA20, BLITZ50
+- Onboarding Tour: 4-Screen Welcome für neue User
+- Abo-Vergleichsrechner: Zeigt ob sich Premium lohnt
 
-### Pro Features
-- KYC Light Verifizierung (Standard 72h / Express 24h €4.99)
-- Werbebanner auf Home (Auto-Rotation, Click-Tracking)
-- Affiliate-Links (persoenlicher Code, 3% Provision)
-- Steuerbericht-Generator (Reselling + Jobs + Cashback)
+### Existing Features (Already had)
+- Dark/Light Toggle in Settings
+- Language Picker (DE/EN/AL) in Settings
+- Chat System, Bewertungen, Notifications
 
 ### Credentials
 - Admin: admin@bidblitz.com / BidBlitz2026!

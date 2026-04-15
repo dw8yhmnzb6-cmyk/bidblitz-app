@@ -1477,3 +1477,76 @@ async def get_driver_active_delivery(request: Request):
     return {"has_active": True, "order": order}
 
 
+
+
+# ═══ STAMPS / LOYALTY ═══
+
+@router.get("/stamps")
+async def get_user_stamps(request: Request):
+    """Get all loyalty stamps for current user."""
+    user = await get_current_user(request)
+    stamps = await db.food_stamps.find({"user_email": user.get("email", "")}, {"_id": 0}).to_list(50)
+    return {"stamps": stamps}
+
+@router.get("/stamps/{restaurant_id}")
+async def get_restaurant_stamps(restaurant_id: str, request: Request):
+    user = await get_current_user(request)
+    stamp = await db.food_stamps.find_one(
+        {"user_email": user.get("email", ""), "restaurant_id": restaurant_id}, {"_id": 0}
+    )
+    restaurant = await db.food_restaurants.find_one({"restaurant_id": restaurant_id}, {"_id": 0, "stamps_needed": 1, "stamps_enabled": 1, "name": 1})
+    needed = restaurant.get("stamps_needed", 10) if restaurant else 10
+    current = stamp.get("stamps", 0) if stamp else 0
+    return {"stamps": current, "needed": needed, "restaurant_name": restaurant.get("name", ""), "complete": current >= needed}
+
+
+# ═══ FILTERED SEARCH ═══
+
+@router.get("/filtered")
+async def filtered_restaurants(
+    request: Request,
+    free_delivery: bool = False,
+    fast: bool = False,
+    top_rated: bool = False,
+    is_new: bool = False,
+    category: str = "",
+    search: str = "",
+    address: str = "",
+):
+    """Advanced filtered restaurant search — Lieferando-style."""
+    query = {"is_open": True, "status": "approved", "is_real": True}
+    
+    if free_delivery:
+        query["$or"] = [{"free_delivery": True}, {"delivery_fee": 0}]
+    if top_rated:
+        query["rating"] = {"$gte": 4.5}
+    if is_new:
+        query["is_new"] = True
+    if category:
+        query["category"] = category
+    if search:
+        query["name"] = {"$regex": search, "$options": "i"}
+    
+    restaurants = await db.food_restaurants.find(query, {"_id": 0}).sort("rating", -1).to_list(30)
+    
+    # Fast filter (delivery_time contains minutes)
+    if fast:
+        def parse_time(dt):
+            try:
+                parts = dt.replace(" min", "").replace(" Min", "").split("-")
+                return int(parts[0])
+            except:
+                return 60
+        restaurants = [r for r in restaurants if parse_time(r.get("delivery_time", "60")) <= 30]
+    
+    # Add stamp info if authenticated
+    try:
+        user = await get_current_user(request)
+        email = user.get("email", "")
+        stamps = {s["restaurant_id"]: s["stamps"] for s in await db.food_stamps.find({"user_email": email}, {"_id": 0}).to_list(50)}
+        for r in restaurants:
+            r["user_stamps"] = stamps.get(r["restaurant_id"], 0)
+    except:
+        pass
+    
+    return {"restaurants": restaurants, "total": len(restaurants), "module_ready": True}

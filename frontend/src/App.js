@@ -106,6 +106,7 @@ import LiveAuctionsPage from "./pages/LiveAuctionsPage";
 import SocialHubPage from "./pages/SocialHubPage";
 import BlitzLearnPage from "./pages/BlitzLearnPage";
 import BlitzHubPage from "./pages/BlitzHubPage";
+import LeaderboardPage, { GlobalSearch, OnboardingTour } from "./pages/ExtraFeatures";
 
 // Car Rental Module
 import {
@@ -144,6 +145,8 @@ function AppContent() {
   const [authGateMessage, setAuthGateMessage] = useState("");
   const [showFullAuth, setShowFullAuth] = useState("");
   const [isDemoMode, setIsDemoMode] = useState(false);
+  const [showGlobalSearch, setShowGlobalSearch] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(() => !localStorage.getItem("bidblitz_onboarded"));
   const user = useUser();
   const { setLang } = useI18n();
 
@@ -470,6 +473,8 @@ function AppContent() {
         return isGuest ? <HomePage {...homeProps} /> : <BlitzLearnPage onBack={() => handleNavigate("/more")} />;
       case "/blitzhub":
         return isGuest ? <HomePage {...homeProps} /> : <BlitzHubPage onBack={() => handleNavigate("/more")} />;
+      case "/leaderboard":
+        return isGuest ? <HomePage {...homeProps} /> : <LeaderboardPage onBack={() => handleNavigate("/more")} />;
       
       // Car Rental Module
       case "/car-rental":
@@ -558,6 +563,14 @@ function AppContent() {
         onClose={() => setShowAuthGate(false)}
         message={authGateMessage}
       />
+      {/* Global Search Overlay */}
+      <AnimatePresence>
+        {showGlobalSearch && <GlobalSearch onNavigate={handleNavigate} onClose={() => setShowGlobalSearch(false)} />}
+      </AnimatePresence>
+      {/* Onboarding Tour */}
+      {showOnboarding && !user.isAuthenticated && (
+        <OnboardingTour onComplete={() => { setShowOnboarding(false); localStorage.setItem("bidblitz_onboarded", "1"); }} />
+      )}
     </div>
   );
 }
