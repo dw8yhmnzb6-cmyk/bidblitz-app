@@ -961,14 +961,50 @@ async def set_operator_commission(operator_id: str, request: Request):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# PRICING CONFIGURATION
+# PRICING CONFIGURATION — Standortbasiert
 # ══════════════════════════════════════════════════════════════════════════════
 
-PRICING = {
-    "standard": {"base": 2.50, "per_km": 1.20, "per_minute": 0.25, "min_fare": 5.00},
-    "premium": {"base": 5.00, "per_km": 2.00, "per_minute": 0.40, "min_fare": 10.00},
-    "van": {"base": 4.00, "per_km": 1.50, "per_minute": 0.30, "min_fare": 8.00},
+# Regional pricing: Germany, Kosovo, Dubai, Default
+REGIONAL_PRICING = {
+    "germany": {
+        "standard": {"base": 3.50, "per_km": 1.20, "per_minute": 0.25, "min_fare": 5.00},
+        "premium": {"base": 5.00, "per_km": 2.00, "per_minute": 0.40, "min_fare": 10.00},
+        "van": {"base": 4.00, "per_km": 1.50, "per_minute": 0.30, "min_fare": 8.00},
+        "label": "DE-Tarif",
+    },
+    "kosovo": {
+        "standard": {"base": 1.50, "per_km": 0.50, "per_minute": 0.08, "min_fare": 2.50},
+        "premium": {"base": 2.50, "per_km": 0.80, "per_minute": 0.12, "min_fare": 5.00},
+        "van": {"base": 2.00, "per_km": 0.65, "per_minute": 0.10, "min_fare": 4.00},
+        "label": "KS-Tarif",
+    },
+    "dubai": {
+        "standard": {"base": 3.00, "per_km": 0.90, "per_minute": 0.15, "min_fare": 5.00},
+        "premium": {"base": 5.00, "per_km": 1.50, "per_minute": 0.25, "min_fare": 8.00},
+        "van": {"base": 4.00, "per_km": 1.20, "per_minute": 0.20, "min_fare": 7.00},
+        "label": "AE-Tarif",
+    },
+    "default": {
+        "standard": {"base": 2.00, "per_km": 0.80, "per_minute": 0.15, "min_fare": 4.00},
+        "premium": {"base": 4.00, "per_km": 1.30, "per_minute": 0.25, "min_fare": 7.00},
+        "van": {"base": 3.00, "per_km": 1.00, "per_minute": 0.20, "min_fare": 6.00},
+        "label": "Standard-Tarif",
+    },
 }
+
+# Legacy fallback
+PRICING = REGIONAL_PRICING["germany"]
+
+
+def detect_region(lat: float, lng: float) -> str:
+    """Detect pricing region from coordinates."""
+    if 47 <= lat <= 55.5 and 5 <= lng <= 15.5:
+        return "germany"
+    if 41.5 <= lat <= 43.5 and 20 <= lng <= 22:
+        return "kosovo"
+    if 23 <= lat <= 27 and 53 <= lng <= 57:
+        return "dubai"
+    return "default"
 
 DRIVER_COMMISSION = 0.85  # Driver gets 85%
 PLATFORM_COMMISSION = 0.15  # Platform gets 15%
@@ -1000,9 +1036,10 @@ def haversine_distance(lat1: float, lng1: float, lat2: float, lng2: float) -> fl
     return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
 
 
-def calculate_fare(distance_km: float, duration_minutes: float, car_type: str) -> dict:
-    """Calculate ride fare based on distance, time, and car type."""
-    pricing = PRICING.get(car_type, PRICING["standard"])
+def calculate_fare(distance_km: float, duration_minutes: float, car_type: str, region: str = "germany") -> dict:
+    """Calculate ride fare based on distance, time, car type and region."""
+    region_pricing = REGIONAL_PRICING.get(region, REGIONAL_PRICING["default"])
+    pricing = region_pricing.get(car_type, region_pricing["standard"])
     
     distance_cost = distance_km * pricing["per_km"]
     time_cost = duration_minutes * pricing["per_minute"]
@@ -1019,6 +1056,8 @@ def calculate_fare(distance_km: float, duration_minutes: float, car_type: str) -
         "total": round(total, 2),
         "driver_earnings": driver_earnings,
         "platform_fee": platform_fee,
+        "region": region,
+        "region_label": region_pricing.get("label", ""),
     }
 
 
@@ -1298,6 +1337,9 @@ async def get_ride_estimate(req: EstimateRequest):
     distance_km = haversine_distance(p_lat, p_lng, d_lat, d_lng)
     duration_minutes = max(5, (distance_km / 30) * 60)
     
+    # Detect pricing region from pickup coordinates
+    region = detect_region(p_lat, p_lng)
+    
     VEHICLE_INFO = {
         "standard": {"name": "Standard", "description": "Komfortabel & günstig", "capacity": 4},
         "premium": {"name": "Premium", "description": "Luxus & Stil", "capacity": 4},
@@ -1306,7 +1348,7 @@ async def get_ride_estimate(req: EstimateRequest):
     
     estimates = []
     for vtype in ["standard", "premium", "van"]:
-        fare = calculate_fare(distance_km, duration_minutes, vtype)
+        fare = calculate_fare(distance_km, duration_minutes, vtype, region)
         info = VEHICLE_INFO[vtype]
         estimates.append({
             "vehicle_type": vtype,
@@ -1325,6 +1367,8 @@ async def get_ride_estimate(req: EstimateRequest):
         "module_enabled": True,
         "estimates": estimates,
         "surge": {"active": False, "multiplier": 1.0},
+        "region": region,
+        "region_label": REGIONAL_PRICING.get(region, {}).get("label", ""),
     }
 
 
@@ -1382,7 +1426,8 @@ async def book_ride(req: FlexBookRequest, request: Request):
     
     distance_km = haversine_distance(p_lat, p_lng, d_lat, d_lng)
     duration_minutes = max(5, (distance_km / 30) * 60)
-    fare_estimate = calculate_fare(distance_km, duration_minutes, car_type)
+    region = detect_region(p_lat, p_lng)
+    fare_estimate = calculate_fare(distance_km, duration_minutes, car_type, region)
     
     now = datetime.now(timezone.utc)
     ride_id = secrets.token_hex(8)
