@@ -109,6 +109,14 @@ import BlitzHubPage from "./pages/BlitzHubPage";
 import LeaderboardPage, { GlobalSearch, OnboardingTour } from "./pages/ExtraFeatures";
 import CityServicesPage from "./pages/CityServicesPage";
 import BlitzPayPage from "./pages/BlitzPayPage";
+import CryptoEarnPage from "./pages/CryptoEarnPage";
+import CryptoBasketsPage from "./pages/CryptoBasketsPage";
+import DerivativesPage from "./pages/DerivativesPage";
+import LevelUpPage from "./pages/LevelUpPage";
+import PredictionsPage from "./pages/PredictionsPage";
+import BlitzCardPage from "./pages/BlitzCardPage";
+import SuperchargerPage from "./pages/SuperchargerPage";
+import DeFiWalletPage from "./pages/DeFiWalletPage";
 
 // Car Rental Module
 import {
@@ -481,6 +489,22 @@ function AppContent() {
         return isGuest ? <HomePage {...homeProps} /> : <CityServicesPage onBack={() => handleNavigate("/more")} />;
       case "/blitzpay":
         return isGuest ? <HomePage {...homeProps} /> : <BlitzPayPage onBack={() => handleNavigate("/more")} />;
+      case "/crypto-earn":
+        return isGuest ? <HomePage {...homeProps} /> : <CryptoEarnPage onBack={() => handleNavigate("/more")} />;
+      case "/crypto-baskets":
+        return isGuest ? <HomePage {...homeProps} /> : <CryptoBasketsPage onBack={() => handleNavigate("/more")} />;
+      case "/derivatives":
+        return isGuest ? <HomePage {...homeProps} /> : <DerivativesPage onBack={() => handleNavigate("/more")} />;
+      case "/levelup":
+        return isGuest ? <HomePage {...homeProps} /> : <LevelUpPage onBack={() => handleNavigate("/more")} />;
+      case "/predictions":
+        return isGuest ? <HomePage {...homeProps} /> : <PredictionsPage onBack={() => handleNavigate("/more")} />;
+      case "/blitzcard":
+        return isGuest ? <HomePage {...homeProps} /> : <BlitzCardPage onBack={() => handleNavigate("/more")} />;
+      case "/supercharger":
+        return isGuest ? <HomePage {...homeProps} /> : <SuperchargerPage onBack={() => handleNavigate("/more")} />;
+      case "/defi-wallet":
+        return isGuest ? <HomePage {...homeProps} /> : <DeFiWalletPage onBack={() => handleNavigate("/more")} />;
       
       // Car Rental Module
       case "/car-rental":

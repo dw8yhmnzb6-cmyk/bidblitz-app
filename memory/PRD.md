@@ -4,9 +4,9 @@
 - Frontend: React, TailwindCSS, Framer Motion, Mapbox GL JS
 - Backend: FastAPI, Motor (MongoDB), CoinGecko, httpx, yfinance
 
-## Production Status: LAUNCH-READY (95+ Services, 23+ Revenue Streams)
+## Production Status: LAUNCH-READY (100+ Services, 31+ Revenue Streams)
 
-### Revenue Streams (23+)
+### Revenue Streams (31+)
 1. Premium VIP Abos (4.99-14.99/Mo)
 2. Reselling Marketplace (8%)
 3. BlitzJobs (15%)
@@ -29,25 +29,35 @@
 20. Micro-Credit BNPL (1.50/Kredit)
 21. Gift Card Marketplace (8%)
 22. Flash Deals (3/Post)
-23. BlitzPay NFC (3% Haendler-Gebuehr pro Transaktion)
+23. BlitzPay NFC (3% Haendler-Gebuehr)
+24. Crypto Earn (Spread auf Zinsen)
+25. Crypto Baskets (1-2.5% Management-Gebuehr)
+26. Derivatives Trading (Trading-Gebuehren)
+27. Level Up Subscription (4.99-49.99/Mo)
+28. Prediction Markets (5-10% der Wetteinsaetze)
+29. BlitzCard Visa (Interchange-Fees + Abo bis 49.99/Mo)
+30. Supercharger (Spread auf Staking-Rewards)
+31. DeFi Wallet (0.3% Swap-Gebuehr)
 
-### Completed Features (Latest Session)
-- BlitzPay NFC Contactless Payment System (DONE - Apr 2026)
-  - Backend: /api/blitzpay/* (generate-token, my-token, pay, merchant-charge, history, deactivate)
-  - Frontend: BlitzPayPage.jsx with NFC card visualization, pulse animation, history tab
-  - Route registered in App.js (/blitzpay)
-  - Navigation link in MorePage.jsx
-  - 3% merchant fee on merchant-charge transactions
+### New Features (Latest Session - Apr 2026)
+- BlitzPay NFC (Apple Pay-Style UI) - Kontaktlose Zahlung via Wallet
+- Crypto Earn - 10 Produkte (BTC/ETH/USDT/SOL/BNB), 2.5-12% APY, Flex+30+90 Tage
+- Crypto Baskets - 6 thematische Portfolios (Top5, DeFi, Gaming, L2, Meme, Stablecoin)
+- Derivatives - 6 Trading-Paare, Long/Short, x2-x100 Hebel
+- Level Up - 5 Tiers (Starter bis Obsidian), 1-8% Cashback
+- Prediction Markets - 8 Maerkte (Crypto, Politik, Sport, Tech)
+- BlitzCard Visa - 5 Karten-Tiers (Midnight bis Obsidian), Crypto-Cashback
+- Supercharger - 4 Pools (BTC/ETH/SOL/USDT), BLZ staken fuer Rewards
+- DeFi Wallet - Self-Custody, 5 Chains, 8 DApps, Token-Swap
 
 ### Credentials
 - Admin: admin@bidblitz.com / BidBlitz2026!
 - Kunde: kunde@bidblitz.com / Kunde2026!
 - Fahrer: fahrer@bidblitz.com / Fahrer2026!
 - Haendler: haendler@bidblitz.com / Haendler2026!
-- Promo-Codes: WELCOME10, FRIEND5, PIZZA20, BLITZ50
 
 ## Backlog
 - P1: Apple Pay / Google Pay (Stripe)
 - P2: i18n Module Fix (Albanian/German Translation Desync)
 - P2: Social Tipping / Creator-Donations
-- P3: App.js Refactoring (Code Splitting / Lazy Loading for 56+ routes)
+- P3: App.js Refactoring (Code Splitting fuer 65+ Routen)

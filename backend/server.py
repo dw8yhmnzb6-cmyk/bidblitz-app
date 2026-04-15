@@ -423,6 +423,30 @@ app.include_router(city_services_router)
 from routes.blitzpay import router as blitzpay_router
 app.include_router(blitzpay_router)
 
+from routes.crypto_earn import router as crypto_earn_router
+app.include_router(crypto_earn_router)
+
+from routes.crypto_baskets import router as crypto_baskets_router
+app.include_router(crypto_baskets_router)
+
+from routes.derivatives import router as derivatives_router
+app.include_router(derivatives_router)
+
+from routes.levelup import router as levelup_router
+app.include_router(levelup_router)
+
+from routes.predictions import router as predictions_router
+app.include_router(predictions_router)
+
+from routes.blitzcard import router as blitzcard_router
+app.include_router(blitzcard_router)
+
+from routes.supercharger import router as supercharger_router
+app.include_router(supercharger_router)
+
+from routes.defi_wallet import router as defi_wallet_router
+app.include_router(defi_wallet_router)
+
 
 # Static file serving for uploads
 from fastapi.staticfiles import StaticFiles
