@@ -417,6 +417,9 @@ app.include_router(pro_features_router)
 from routes.extras import router as extras_router
 app.include_router(extras_router)
 
+from routes.city_services import router as city_services_router
+app.include_router(city_services_router)
+
 
 # Static file serving for uploads
 from fastapi.staticfiles import StaticFiles

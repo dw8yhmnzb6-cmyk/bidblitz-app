@@ -107,6 +107,7 @@ import SocialHubPage from "./pages/SocialHubPage";
 import BlitzLearnPage from "./pages/BlitzLearnPage";
 import BlitzHubPage from "./pages/BlitzHubPage";
 import LeaderboardPage, { GlobalSearch, OnboardingTour } from "./pages/ExtraFeatures";
+import CityServicesPage from "./pages/CityServicesPage";
 
 // Car Rental Module
 import {
@@ -475,6 +476,8 @@ function AppContent() {
         return isGuest ? <HomePage {...homeProps} /> : <BlitzHubPage onBack={() => handleNavigate("/more")} />;
       case "/leaderboard":
         return isGuest ? <HomePage {...homeProps} /> : <LeaderboardPage onBack={() => handleNavigate("/more")} />;
+      case "/city":
+        return isGuest ? <HomePage {...homeProps} /> : <CityServicesPage onBack={() => handleNavigate("/more")} />;
       
       // Car Rental Module
       case "/car-rental":
