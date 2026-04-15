@@ -7,6 +7,7 @@ from datetime import datetime, timezone, timedelta
 from typing import Optional, List
 import secrets
 import math
+import random
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 from bson import ObjectId
@@ -222,6 +223,7 @@ async def get_child_location(child_id: str, request: Request):
         "speed": child.get("speed"),
         "last_update": child.get("last_location_update"),
         "is_online": _is_recently_updated(child.get("last_location_update")),
+        "address": child.get("address", ""),
     }
 
 
@@ -394,23 +396,38 @@ async def get_all_children_locations(request: Request):
 
 @router.post("/simulate/{child_id}")
 async def simulate_location(child_id: str, request: Request, lat: float = 52.52, lng: float = 13.405):
-    """Simulate a child's location (for testing)."""
+    """Simulate a child's location (for testing). Reverse geocodes address."""
     user = await get_current_user(request)
     parent_id = str(user["_id"])
     
     child = await verify_parent_child_access(parent_id, child_id)
     
-    # Create fake location update
-    loc = LocationUpdate(
-        child_id=child_id,
-        lat=lat,
-        lng=lng,
-        accuracy=10.0,
-        battery_level=75,
-        speed=0.0
-    )
+    # Reverse geocode for address
+    import os, httpx
+    address = ""
+    mapbox_token = os.environ.get("MAPBOX_TOKEN", os.environ.get("REACT_APP_MAPBOX_TOKEN", ""))
+    if not mapbox_token:
+        # Try reading from frontend .env
+        try:
+            with open("/app/frontend/.env") as f:
+                for line in f:
+                    if "REACT_APP_MAPBOX_TOKEN" in line:
+                        mapbox_token = line.split("=", 1)[1].strip()
+                        break
+        except: pass
     
-    # Use internal update logic
+    if mapbox_token:
+        try:
+            async with httpx.AsyncClient() as client:
+                r = await client.get(f"https://api.mapbox.com/geocoding/v5/mapbox.places/{lng},{lat}.json?access_token={mapbox_token}&language=de&limit=1", timeout=5)
+                if r.status_code == 200:
+                    data = r.json()
+                    features = data.get("features", [])
+                    if features:
+                        address = features[0].get("place_name", "")
+        except:
+            pass
+    
     now = datetime.now(timezone.utc)
     
     await db.kids_children.update_one(
@@ -419,17 +436,30 @@ async def simulate_location(child_id: str, request: Request, lat: float = 52.52,
             "current_lat": lat,
             "current_lng": lng,
             "location_accuracy": 10.0,
-            "battery_level": 75,
-            "speed": 0.0,
+            "battery_level": random.randint(40, 95),
+            "speed": round(random.uniform(0, 5), 1),
             "last_location_update": now.isoformat(),
+            "address": address,
+            "is_online": True,
         }}
     )
+    
+    # Save to history
+    await db.kids_location_history.insert_one({
+        "child_id": child_id,
+        "lat": lat, "lng": lng,
+        "accuracy": 10.0,
+        "speed": round(random.uniform(0, 5), 1),
+        "address": address,
+        "timestamp": now.isoformat(),
+    })
     
     await check_zones_for_child(parent_id, child_id, child.get("name", "Kind"), lat, lng)
     
     return {
         "ok": True,
-        "message": f"Location simuliert für {child.get('name')}",
+        "message": f"Standort aktualisiert für {child.get('name')}",
         "lat": lat,
-        "lng": lng
+        "lng": lng,
+        "address": address,
     }

@@ -242,40 +242,60 @@ const KidsGPSModal = ({ isOpen, onClose, child, allChildren }) => {
           ═══════════════════════════════════════════════════════════════════ */}
           {activeTab === "live" && (
             <div className="space-y-4">
-              {/* Map Placeholder */}
-              <div className="h-[200px] rounded-2xl bg-gradient-to-br from-blue-900/30 to-blue-800/10 border border-blue-500/20 flex items-center justify-center relative overflow-hidden">
+              {/* Echte Mapbox Dark Map */}
+              <div className="h-[220px] rounded-2xl overflow-hidden border border-blue-500/20 relative">
                 {location?.lat && location?.lng ? (
-                  <div className="text-center">
-                    <div className="w-12 h-12 rounded-full bg-blue-500/30 mx-auto mb-2 flex items-center justify-center animate-pulse">
-                      <MapPin size={24} className="text-blue-400" />
+                  <>
+                    <img
+                      src={`https://api.mapbox.com/styles/v1/mapbox/navigation-night-v1/static/pin-l+3B82F6(${location.lng},${location.lat})/${location.lng},${location.lat},15,0/600x400@2x?access_token=${process.env.REACT_APP_MAPBOX_TOKEN}`}
+                      alt="GPS Map"
+                      className="w-full h-full object-cover"
+                      onError={(e) => { e.target.style.display = 'none'; }}
+                    />
+                    {/* Child indicator */}
+                    <div className="absolute top-3 left-3 bg-black/70 backdrop-blur-sm px-3 py-1.5 rounded-lg flex items-center gap-2">
+                      <div className="w-2.5 h-2.5 rounded-full bg-blue-400 animate-pulse" />
+                      <span className="text-xs font-medium text-blue-400">{child?.name} ist hier</span>
                     </div>
-                    <p className="text-[12px] text-blue-400 font-mono">
-                      {location.lat.toFixed(6)}, {location.lng.toFixed(6)}
-                    </p>
-                    <p className="text-[10px] text-gray-500 mt-1">
-                      Genauigkeit: ±{location.accuracy?.toFixed(0) || "?"}m
-                    </p>
-                  </div>
+                    {/* Coordinates */}
+                    <div className="absolute bottom-3 left-3 bg-black/70 backdrop-blur-sm px-2.5 py-1 rounded-lg">
+                      <span className="text-[9px] font-mono text-gray-400">{location.lat.toFixed(5)}, {location.lng.toFixed(5)}</span>
+                    </div>
+                    {/* Accuracy badge */}
+                    {location.accuracy && (
+                      <div className="absolute bottom-3 right-3 bg-black/70 backdrop-blur-sm px-2.5 py-1 rounded-lg">
+                        <span className="text-[9px] text-gray-400">±{location.accuracy?.toFixed(0) || "?"}m</span>
+                      </div>
+                    )}
+                    {/* Open in maps */}
+                    <motion.a
+                      href={`https://www.google.com/maps?q=${location.lat},${location.lng}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="absolute top-3 right-3 px-3 py-1.5 bg-blue-500/30 backdrop-blur-sm rounded-lg text-blue-300 text-[10px] font-medium flex items-center gap-1"
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      <Map size={12} /> Google Maps
+                    </motion.a>
+                  </>
                 ) : (
-                  <div className="text-center">
-                    <Navigation size={32} className="text-gray-600 mx-auto mb-2" />
-                    <p className="text-gray-500 text-sm">Kein GPS-Signal</p>
+                  <div className="w-full h-full bg-gradient-to-br from-blue-900/20 to-blue-800/5 flex items-center justify-center">
+                    <div className="text-center">
+                      <Navigation size={32} className="text-gray-600 mx-auto mb-2" />
+                      <p className="text-gray-500 text-sm">Kein GPS-Signal</p>
+                      <p className="text-gray-600 text-[10px] mt-1">Tippe "Standort senden" um die Position zu aktualisieren</p>
+                    </div>
                   </div>
-                )}
-                
-                {/* Map link */}
-                {location?.lat && (
-                  <motion.a
-                    href={`https://www.google.com/maps?q=${location.lat},${location.lng}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="absolute bottom-3 right-3 px-3 py-1.5 bg-blue-500/20 rounded-lg text-blue-400 text-[11px] font-medium flex items-center gap-1"
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    <Map size={12} /> In Maps öffnen
-                  </motion.a>
                 )}
               </div>
+
+              {/* Address (if available) */}
+              {location?.address && (
+                <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5 flex items-start gap-2">
+                  <MapPin size={14} className="text-blue-400 mt-0.5 shrink-0" />
+                  <p className="text-xs text-gray-300">{location.address}</p>
+                </div>
+              )}
 
               {/* Location Details */}
               <div className="grid grid-cols-2 gap-3">
@@ -295,6 +315,30 @@ const KidsGPSModal = ({ isOpen, onClose, child, allChildren }) => {
                 </div>
               </div>
 
+              {/* Zone status */}
+              {zones.length > 0 && location?.lat && (
+                <div className="p-3 rounded-xl border border-green-500/20 bg-green-500/5">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Shield size={14} className="text-green-400" />
+                    <span className="text-xs font-semibold text-green-400">Zonen-Status</span>
+                  </div>
+                  <div className="space-y-1">
+                    {zones.map(z => {
+                      const dist = location.lat ? Math.sqrt(Math.pow((z.lat - location.lat) * 111000, 2) + Math.pow((z.lng - location.lng) * 111000 * Math.cos(location.lat * Math.PI / 180), 2)) : 9999;
+                      const inside = dist <= z.radius;
+                      return (
+                        <div key={z.zone_id || z.name} className="flex items-center justify-between text-[10px]">
+                          <span className="text-gray-400">{z.name} ({z.zone_type === 'safe' ? 'Sicher' : 'Gesperrt'})</span>
+                          <span className={inside ? "text-green-400 font-medium" : "text-gray-500"}>
+                            {inside ? "Drin" : `${Math.round(dist)}m entfernt`}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               {/* Actions */}
               <div className="flex gap-2">
                 <motion.button
@@ -309,7 +353,7 @@ const KidsGPSModal = ({ isOpen, onClose, child, allChildren }) => {
                   className="flex-1 py-3 bg-purple-500/20 border border-purple-500/30 rounded-xl text-purple-400 font-semibold text-[13px] flex items-center justify-center gap-2"
                   whileTap={{ scale: 0.98 }}
                 >
-                  <Target size={14} /> Simulieren
+                  <Target size={14} /> Standort senden
                 </motion.button>
               </div>
             </div>
