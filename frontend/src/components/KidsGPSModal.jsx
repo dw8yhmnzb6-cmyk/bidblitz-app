@@ -129,16 +129,29 @@ const KidsGPSModal = ({ isOpen, onClose, child, allChildren }) => {
     setTimeout(() => { setSuccess(null); setError(null); }, 3000);
   };
 
-  const simulateLocation = async () => {
+  const simulateLocation = async (lat = 52.52, lng = 13.405) => {
     try {
-      await fetchAPI(`/api/kids/gps/simulate/${child.child_id}?lat=52.52&lng=13.405`, { method: "POST" });
-      setSuccess("Position simuliert");
+      const data = await fetchAPI(`/api/kids/gps/simulate/${child.child_id}?lat=${lat}&lng=${lng}`, { method: "POST" });
+      setSuccess(data.address ? `Standort: ${data.address}` : "Position aktualisiert");
       loadLocation();
     } catch (err) {
       setError(err.message);
     }
-    setTimeout(() => { setSuccess(null); setError(null); }, 3000);
+    setTimeout(() => { setSuccess(null); setError(null); }, 4000);
   };
+
+  const GPS_PRESETS = [
+    { name: "Zuhause", icon: "\u{1F3E0}", lat: 52.5196, lng: 13.3882, color: "#3B82F6" },
+    { name: "Schule", icon: "\u{1F3EB}", lat: 52.5234, lng: 13.4024, color: "#10B981" },
+    { name: "Spielplatz", icon: "\u{1F3A0}", lat: 52.5180, lng: 13.3950, color: "#F59E0B" },
+    { name: "Sportverein", icon: "\u26BD", lat: 52.5140, lng: 13.4100, color: "#EF4444" },
+    { name: "Oma & Opa", icon: "\u{1F475}", lat: 52.5300, lng: 13.4200, color: "#A855F7" },
+    { name: "Freund/in", icon: "\u{1F46B}", lat: 52.5250, lng: 13.4080, color: "#EC4899" },
+    { name: "Alexanderplatz", icon: "\u{1F5FC}", lat: 52.5219, lng: 13.4132, color: "#06B6D4" },
+    { name: "Brandenburger Tor", icon: "\u{1F3DB}", lat: 52.5163, lng: 13.3777, color: "#F97316" },
+    { name: "Zoo Berlin", icon: "\u{1F981}", lat: 52.5079, lng: 13.3377, color: "#84CC16" },
+    { name: "Potsdamer Platz", icon: "\u{1F3AC}", lat: 52.5096, lng: 13.3761, color: "#8B5CF6" },
+  ];
 
   if (!isOpen) return null;
 
@@ -339,6 +352,26 @@ const KidsGPSModal = ({ isOpen, onClose, child, allChildren }) => {
                 </div>
               )}
 
+              {/* GPS Quick Locations */}
+              <div>
+                <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold mb-2">Schnellstandorte</p>
+                <div className="grid grid-cols-5 gap-1.5">
+                  {GPS_PRESETS.map((p) => (
+                    <motion.button
+                      key={p.name}
+                      onClick={() => simulateLocation(p.lat, p.lng)}
+                      className="flex flex-col items-center gap-1 py-2 px-1 rounded-xl transition-all hover:bg-white/5 active:scale-95"
+                      style={{ border: `1px solid ${p.color}20` }}
+                      whileTap={{ scale: 0.92 }}
+                      data-testid={`gps-preset-${p.name}`}
+                    >
+                      <span className="text-lg">{p.icon}</span>
+                      <span className="text-[8px] text-gray-400 text-center leading-tight line-clamp-1">{p.name}</span>
+                    </motion.button>
+                  ))}
+                </div>
+              </div>
+
               {/* Actions */}
               <div className="flex gap-2">
                 <motion.button
@@ -349,7 +382,7 @@ const KidsGPSModal = ({ isOpen, onClose, child, allChildren }) => {
                   <RefreshCw size={14} /> Aktualisieren
                 </motion.button>
                 <motion.button
-                  onClick={simulateLocation}
+                  onClick={() => simulateLocation()}
                   className="flex-1 py-3 bg-purple-500/20 border border-purple-500/30 rounded-xl text-purple-400 font-semibold text-[13px] flex items-center justify-center gap-2"
                   whileTap={{ scale: 0.98 }}
                 >
