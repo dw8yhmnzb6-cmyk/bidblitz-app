@@ -33,22 +33,19 @@
 24. Crypto Earn (Spread auf Zinsen)
 25. Crypto Baskets (1-2.5% Management-Gebuehr)
 26. Derivatives Trading (Trading-Gebuehren)
-27. Level Up Subscription (4.99-49.99/Mo)
+27. Level Up Subscription + Referral (4.99-49.99/Mo)
 28. Prediction Markets (5-10% der Wetteinsaetze)
 29. BlitzCard Visa (Interchange-Fees + Abo bis 49.99/Mo)
 30. Supercharger (Spread auf Staking-Rewards)
 31. DeFi Wallet (0.3% Swap-Gebuehr)
 
-### New Features (Latest Session - Apr 2026)
-- BlitzPay NFC (Apple Pay-Style UI) - Kontaktlose Zahlung via Wallet
-- Crypto Earn - 10 Produkte (BTC/ETH/USDT/SOL/BNB), 2.5-12% APY, Flex+30+90 Tage
-- Crypto Baskets - 6 thematische Portfolios (Top5, DeFi, Gaming, L2, Meme, Stablecoin)
-- Derivatives - 6 Trading-Paare, Long/Short, x2-x100 Hebel
-- Level Up - 5 Tiers (Starter bis Obsidian), 1-8% Cashback
-- Prediction Markets - 8 Maerkte (Crypto, Politik, Sport, Tech)
-- BlitzCard Visa - 5 Karten-Tiers (Midnight bis Obsidian), Crypto-Cashback
-- Supercharger - 4 Pools (BTC/ETH/SOL/USDT), BLZ staken fuer Rewards
-- DeFi Wallet - Self-Custody, 5 Chains, 8 DApps, Token-Swap
+### Referral System (Level Up)
+- Einlader: 5 EUR Wallet-Bonus + 1 Monat gratis Abo-Verlaengerung pro Einladung
+- Eingeladener: 10 EUR Wallet-Bonus + 1 Monat Silver gratis
+- Max 50 Einladungen pro User
+- Leaderboard der Top-Einlader
+- Doppelt einloesen wird blockiert
+- Eigenen Code einloesen wird blockiert
 
 ### Credentials
 - Admin: admin@bidblitz.com / BidBlitz2026!
