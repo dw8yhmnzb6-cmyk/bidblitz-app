@@ -225,42 +225,60 @@ const CryptoWalletPage = ({ onBack }) => {
         )}
       </div>
 
-      {/* Trade Modal — Bottom Sheet */}
+      {/* Trade Modal — Bottom Sheet (above nav) */}
       <AnimatePresence>
         {tradeModal && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[60] bg-black/70 backdrop-blur-sm flex items-end justify-center"
+            className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm flex items-center justify-center px-4"
             onClick={() => setTradeModal(null)}>
-            <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
+            <motion.div initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 50, opacity: 0 }}
               transition={{ type: "spring", damping: 25 }}
               onClick={e => e.stopPropagation()}
-              className="w-full max-w-lg bg-[#111118] rounded-t-3xl border-t border-white/10 p-5 pb-8"
-              style={{ marginBottom: 0, maxHeight: "85vh", overflowY: "auto" }}>
-              <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-4" />
-              <div className="flex items-center justify-between mb-5">
-                <h3 className="text-lg font-bold">{tradeModal.side === "buy" ? "Kaufen" : "Verkaufen"} {tradeModal.symbol}</h3>
-                <button onClick={() => setTradeModal(null)}><X size={20} className="text-gray-500" /></button>
+              className="w-full max-w-sm bg-[#111118] rounded-2xl border border-white/10 p-5">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-bold text-white">{tradeModal.side === "buy" ? "Kaufen" : "Verkaufen"} {tradeModal.symbol}</h3>
+                <button onClick={() => setTradeModal(null)} className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center"><X size={18} className="text-gray-400" /></button>
               </div>
-              <p className="text-xs text-gray-500 mb-2">Betrag in EUR</p>
+
+              {/* Current price */}
+              <div className="flex items-center justify-between mb-4 p-3 rounded-xl bg-white/[0.03] border border-white/5">
+                <span className="text-xs text-gray-500">Aktueller Preis</span>
+                <span className="text-sm font-bold text-white">€{prices.find(p => p.symbol === tradeModal.symbol)?.price_eur?.toLocaleString("de-DE") || "—"}</span>
+              </div>
+
+              <p className="text-[10px] text-gray-500 mb-1.5 uppercase tracking-wider">Betrag in EUR</p>
               <input type="number" value={tradeAmount} onChange={e => setTradeAmount(e.target.value)}
-                placeholder="0.00" autoFocus
-                className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-2xl font-bold text-center outline-none mb-3"
+                placeholder="0.00" autoFocus inputMode="decimal"
+                className="w-full px-4 py-3.5 rounded-xl bg-white/5 border border-white/10 text-2xl font-bold text-center outline-none focus:border-[#F7931A]/50 mb-3 text-white"
                 data-testid="trade-amount" />
-              <div className="flex gap-2 mb-3">
-                {["10", "25", "50", "100"].map(a => (
+
+              <div className="flex gap-2 mb-4">
+                {["10", "25", "50", "100", "250"].map(a => (
                   <motion.button key={a} whileTap={{ scale: 0.95 }} onClick={() => setTradeAmount(a)}
-                    className={`flex-1 py-2.5 rounded-xl text-xs font-bold ${tradeAmount === a ? "bg-[#F7931A] text-black" : "bg-white/5 text-white/50"}`}>
+                    className={`flex-1 py-2 rounded-xl text-[11px] font-bold transition-all ${tradeAmount === a ? "bg-[#F7931A] text-black" : "bg-white/5 text-white/50 hover:bg-white/10"}`}>
                     €{a}
                   </motion.button>
                 ))}
               </div>
-              <div className="flex items-center justify-between mb-4 px-1">
-                <p className="text-xs text-gray-500">BidBlitz Wallet</p>
-                <p className="text-xs font-bold" style={{ color: "#00C2FF" }}>€{balance.toFixed(2)}</p>
+
+              {/* Estimated crypto amount */}
+              {tradeAmount && parseFloat(tradeAmount) > 0 && (
+                <div className="flex items-center justify-between mb-3 px-1">
+                  <span className="text-[10px] text-gray-500">Du erhältst ca.</span>
+                  <span className="text-xs font-mono text-white">{(parseFloat(tradeAmount) / (prices.find(p => p.symbol === tradeModal.symbol)?.price_eur || 1)).toFixed(6)} {tradeModal.symbol}</span>
+                </div>
+              )}
+
+              <div className="flex items-center justify-between mb-4 p-3 rounded-xl" style={{ background: "rgba(0,194,255,0.06)", border: "1px solid rgba(0,194,255,0.12)" }}>
+                <div className="flex items-center gap-2"><Wallet size={14} style={{ color: "#00C2FF" }} /><span className="text-xs text-gray-400">BidBlitz Wallet</span></div>
+                <span className="text-sm font-bold" style={{ color: "#00C2FF" }}>€{balance.toFixed(2)}</span>
               </div>
+
+              <div className="text-center text-[9px] text-gray-600 mb-3">Simulierte Preise · Keine echte Börse</div>
+
               <motion.button whileTap={{ scale: 0.97 }} onClick={executeTrade}
                 disabled={!tradeAmount || parseFloat(tradeAmount) <= 0 || trading}
-                className={`w-full py-4 rounded-xl font-bold text-sm disabled:opacity-30 flex items-center justify-center gap-2 ${
+                className={`w-full py-3.5 rounded-xl font-bold text-sm disabled:opacity-30 flex items-center justify-center gap-2 ${
                   tradeModal.side === "buy" ? "bg-green-500 text-black" : "bg-red-500 text-white"
                 }`} data-testid="confirm-trade">
                 {trading ? <Loader2 size={18} className="animate-spin" /> :
