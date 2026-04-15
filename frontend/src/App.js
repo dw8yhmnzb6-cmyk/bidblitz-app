@@ -117,6 +117,16 @@ import PredictionsPage from "./pages/PredictionsPage";
 import BlitzCardPage from "./pages/BlitzCardPage";
 import SuperchargerPage from "./pages/SuperchargerPage";
 import DeFiWalletPage from "./pages/DeFiWalletPage";
+import CryptoLoansPage from "./pages/CryptoLoansPage";
+import P2PLendingPage from "./pages/P2PLendingPage";
+import TradingBotPage from "./pages/TradingBotPage";
+import LiveShoppingPage from "./pages/LiveShoppingPage";
+import CreatorsPage from "./pages/CreatorsPage";
+import SkillsMarketPage from "./pages/SkillsMarketPage";
+import InvoicingPage from "./pages/InvoicingPage";
+import QRMenuPage from "./pages/QRMenuPage";
+import BookingsPage from "./pages/BookingsPage";
+import ContractsPage from "./pages/ContractsPage";
 
 // Car Rental Module
 import {
@@ -505,6 +515,26 @@ function AppContent() {
         return isGuest ? <HomePage {...homeProps} /> : <SuperchargerPage onBack={() => handleNavigate("/more")} />;
       case "/defi-wallet":
         return isGuest ? <HomePage {...homeProps} /> : <DeFiWalletPage onBack={() => handleNavigate("/more")} />;
+      case "/crypto-loans":
+        return isGuest ? <HomePage {...homeProps} /> : <CryptoLoansPage onBack={() => handleNavigate("/more")} />;
+      case "/p2p-lending":
+        return isGuest ? <HomePage {...homeProps} /> : <P2PLendingPage onBack={() => handleNavigate("/more")} />;
+      case "/trading-bot":
+        return isGuest ? <HomePage {...homeProps} /> : <TradingBotPage onBack={() => handleNavigate("/more")} />;
+      case "/live-shopping":
+        return isGuest ? <HomePage {...homeProps} /> : <LiveShoppingPage onBack={() => handleNavigate("/more")} />;
+      case "/creators":
+        return isGuest ? <HomePage {...homeProps} /> : <CreatorsPage onBack={() => handleNavigate("/more")} />;
+      case "/skills-market":
+        return isGuest ? <HomePage {...homeProps} /> : <SkillsMarketPage onBack={() => handleNavigate("/more")} />;
+      case "/invoicing":
+        return isGuest ? <HomePage {...homeProps} /> : <InvoicingPage onBack={() => handleNavigate("/more")} />;
+      case "/qr-menu":
+        return isGuest ? <HomePage {...homeProps} /> : <QRMenuPage onBack={() => handleNavigate("/more")} />;
+      case "/termin-booking":
+        return isGuest ? <HomePage {...homeProps} /> : <BookingsPage onBack={() => handleNavigate("/more")} />;
+      case "/contracts":
+        return isGuest ? <HomePage {...homeProps} /> : <ContractsPage onBack={() => handleNavigate("/more")} />;
       
       // Car Rental Module
       case "/car-rental":

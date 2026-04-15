@@ -447,6 +447,36 @@ app.include_router(supercharger_router)
 from routes.defi_wallet import router as defi_wallet_router
 app.include_router(defi_wallet_router)
 
+from routes.crypto_loans import router as crypto_loans_router
+app.include_router(crypto_loans_router)
+
+from routes.p2p_lending import router as p2p_lending_router
+app.include_router(p2p_lending_router)
+
+from routes.trading_bot import router as trading_bot_router
+app.include_router(trading_bot_router)
+
+from routes.live_shopping import router as live_shopping_router
+app.include_router(live_shopping_router)
+
+from routes.creators import router as creators_router
+app.include_router(creators_router)
+
+from routes.skills import router as skills_router
+app.include_router(skills_router)
+
+from routes.invoicing import router as invoicing_router
+app.include_router(invoicing_router)
+
+from routes.qr_menu import router as qr_menu_router
+app.include_router(qr_menu_router)
+
+from routes.bookings import router as bookings_router
+app.include_router(bookings_router)
+
+from routes.contracts import router as contracts_router
+app.include_router(contracts_router)
+
 
 # Static file serving for uploads
 from fastapi.staticfiles import StaticFiles
