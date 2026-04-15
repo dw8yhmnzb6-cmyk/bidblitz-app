@@ -410,17 +410,41 @@ export default function ScooterPage({ onNavigate }) {
               exit={{ opacity: 0, y: -20 }}
               className="space-y-6"
             >
-              {/* Map Placeholder */}
-              <div className="relative h-64 bg-[#111] rounded-2xl overflow-hidden border border-white/10">
-                <div className="absolute inset-0 flex items-center justify-center text-gray-500">
-                  <div className="text-center">
-                    <div className="text-5xl mb-2">🛴</div>
-                    <p className="text-sm">{scooters.length} Scooter in der Nähe</p>
+              {/* Map - Mapbox Dark Style with Scooter Pins */}
+              <div className="relative h-64 bg-[#0A0A0F] rounded-2xl overflow-hidden border border-white/10">
+                {(() => {
+                  const pins = scooters.slice(0, 8).map(s =>
+                    `pin-s+10B981(${s.location?.lng || userLocation.lng + (Math.random() - 0.5) * 0.01},${s.location?.lat || userLocation.lat + (Math.random() - 0.5) * 0.01})`
+                  ).join(',');
+                  const userPin = `pin-l+00C2FF(${userLocation.lng},${userLocation.lat})`;
+                  const allPins = pins ? `${userPin},${pins}` : userPin;
+                  return (
+                    <img
+                      src={`https://api.mapbox.com/styles/v1/mapbox/navigation-night-v1/static/${allPins}/${userLocation.lng},${userLocation.lat},14,0/800x400@2x?access_token=${process.env.REACT_APP_MAPBOX_TOKEN}`}
+                      alt="Scooter Map"
+                      className="w-full h-full object-cover"
+                      onError={(e) => { e.target.style.display = 'none'; }}
+                    />
+                  );
+                })()}
+                <div className="absolute top-3 left-3 bg-black/70 backdrop-blur-sm px-3 py-1.5 rounded-lg flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+                  <span className="text-xs font-medium text-green-400">{scooters.length} Scooter in der Nähe</span>
+                </div>
+                <div className="absolute bottom-3 left-3 flex gap-2">
+                  <div className="flex items-center gap-1.5 bg-black/70 backdrop-blur-sm px-2 py-1 rounded-lg">
+                    <div className="w-2 h-2 rounded-full bg-[#00C2FF]" />
+                    <span className="text-[10px] text-gray-300">Du</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 bg-black/70 backdrop-blur-sm px-2 py-1 rounded-lg">
+                    <div className="w-2 h-2 rounded-full bg-green-400" />
+                    <span className="text-[10px] text-gray-300">Scooter</span>
                   </div>
                 </div>
                 <button
                   onClick={getCurrentLocation}
-                  className="absolute bottom-4 right-4 p-3 bg-green-500 rounded-full shadow-lg hover:bg-green-600"
+                  className="absolute bottom-3 right-3 p-3 bg-green-500 rounded-full shadow-lg hover:bg-green-600 transition-colors"
+                  data-testid="scooter-locate"
                 >
                   <svg className="w-5 h-5 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />

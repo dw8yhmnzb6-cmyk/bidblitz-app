@@ -1932,3 +1932,53 @@ async def get_pricing():
         "cancellation_fee": CANCELLATION_FEE,
         "min_wallet_balance": MIN_WALLET_BALANCE,
     }
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# SAVED PLACES (Gespeicherte Orte: Zuhause, Arbeit, etc.)
+# ══════════════════════════════════════════════════════════════════════════════
+
+class SavePlaceReq(BaseModel):
+    name: str
+    icon: str = "star"
+    address: str
+    lat: float
+    lng: float
+
+@router.get("/saved-places")
+async def get_saved_places(request: Request):
+    user = await get_current_user(request)
+    places = await db.taxi_saved_places.find(
+        {"user_email": user.get("email", "")}, {"_id": 0}
+    ).sort("created_at", 1).to_list(20)
+    return {"places": places}
+
+@router.post("/saved-places")
+async def save_place(req: SavePlaceReq, request: Request):
+    user = await get_current_user(request)
+    email = user.get("email", "")
+    # Check if name already exists, update it
+    existing = await db.taxi_saved_places.find_one({"user_email": email, "name": req.name})
+    if existing:
+        await db.taxi_saved_places.update_one(
+            {"user_email": email, "name": req.name},
+            {"$set": {"address": req.address, "lat": req.lat, "lng": req.lng, "icon": req.icon}}
+        )
+    else:
+        await db.taxi_saved_places.insert_one({
+            "place_id": secrets.token_hex(6),
+            "user_email": email,
+            "name": req.name,
+            "icon": req.icon,
+            "address": req.address,
+            "lat": req.lat,
+            "lng": req.lng,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        })
+    return {"ok": True}
+
+@router.delete("/saved-places/{place_id}")
+async def delete_saved_place(place_id: str, request: Request):
+    user = await get_current_user(request)
+    await db.taxi_saved_places.delete_one({"place_id": place_id, "user_email": user.get("email", "")})
+    return {"ok": True}
