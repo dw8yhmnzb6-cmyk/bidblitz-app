@@ -507,29 +507,26 @@ const ScratchGame = ({ onBack, userCoins, onCoinsUpdate }) => {
     // Check if all scratched
     if (newScratched.filter(Boolean).length >= 5) {
       setRevealed(true);
-      if (prize > 0) {
-        // Save win
-        fetch(`${API_URL}/api/gaming/scratch/win`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ bet: 10, points_won: prize }),
-        }).then(() => onCoinsUpdate?.());
-      }
+      // ALWAYS call API (deducts bet, credits win)
+      fetch(`${API_URL}/api/gaming/scratch/win`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ bet: 10, points_won: prize > 0 ? prize : 0 }),
+      }).then(() => onCoinsUpdate?.());
     }
   };
 
   const revealAll = () => {
     setScratched(Array(9).fill(true));
     setRevealed(true);
-    if (prize > 0) {
-      fetch(`${API_URL}/api/gaming/scratch/win`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ bet: 10, points_won: prize }),
-      }).then(() => onCoinsUpdate?.());
-    }
+    // ALWAYS call API
+    fetch(`${API_URL}/api/gaming/scratch/win`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ bet: 10, points_won: prize > 0 ? prize : 0 }),
+    }).then(() => onCoinsUpdate?.());
   };
 
   return (
@@ -618,11 +615,14 @@ const SlotsGame = ({ onBack, userCoins, onCoinsUpdate }) => {
   const [reels, setReels] = useState(["🍒", "🍋", "🍊"]);
   const [spinning, setSpinning] = useState(false);
   const [win, setWin] = useState(null);
+  const [lastResult, setLastResult] = useState(null);
+  const BET_COST = 10;
 
   const spin = async () => {
-    if (spinning) return;
+    if (spinning || userCoins < BET_COST) return;
     setSpinning(true);
     setWin(null);
+    setLastResult(null);
 
     // Animate reels
     let spins = 0;
@@ -644,25 +644,33 @@ const SlotsGame = ({ onBack, userCoins, onCoinsUpdate }) => {
         ];
         setReels(finalReels);
         
-        // Check win
+        // Calculate win amount
+        let winAmount = 0;
         if (finalReels[0] === finalReels[1] && finalReels[1] === finalReels[2]) {
           const multiplier = finalReels[0] === "7️⃣" ? 100 : finalReels[0] === "💎" ? 50 : 25;
-          setWin(multiplier * 10);
-          fetch(`${API_URL}/api/gaming/slots/win`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
-            body: JSON.stringify({ bet: 10, points_won: multiplier * 10 }),
-          }).then(() => onCoinsUpdate?.());
-        } else if (finalReels[0] === finalReels[1] || finalReels[1] === finalReels[2]) {
-          setWin(10);
-          fetch(`${API_URL}/api/gaming/slots/win`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
-            body: JSON.stringify({ bet: 10, points_won: 10 }),
-          }).then(() => onCoinsUpdate?.());
+          winAmount = multiplier * 10;
+        } else if (finalReels[0] === finalReels[1] || finalReels[1] === finalReels[2] || finalReels[0] === finalReels[2]) {
+          winAmount = 10;
         }
+
+        // ALWAYS call backend (bet deducted + win credited)
+        fetch(`${API_URL}/api/gaming/slots/win`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ bet: BET_COST, points_won: winAmount }),
+        })
+          .then(r => r.json())
+          .then(data => {
+            if (data.success) {
+              if (winAmount > 0) setWin(winAmount);
+              setLastResult({ net: data.net, balance: data.new_balance });
+              onCoinsUpdate?.();
+            } else {
+              setLastResult({ error: data.detail || "Fehler" });
+            }
+          })
+          .catch(() => setLastResult({ error: "Netzwerkfehler" }));
         
         setSpinning(false);
       }
@@ -698,27 +706,51 @@ const SlotsGame = ({ onBack, userCoins, onCoinsUpdate }) => {
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               exit={{ scale: 0 }}
-              className="mb-6 p-4 rounded-2xl bg-green-500/20 border border-green-500/30 text-center"
+              className="mb-4 p-4 rounded-2xl bg-green-500/20 border border-green-500/30 text-center"
             >
               <p className="text-3xl mb-1">🎉</p>
               <p className="text-green-400 font-bold text-xl">JACKPOT!</p>
               <p className="text-green-400 font-bold text-lg">+{win} Coins!</p>
             </motion.div>
           )}
+          {lastResult && !win && !lastResult.error && (
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0 }}
+              className="mb-4 p-3 rounded-2xl bg-red-500/10 border border-red-500/20 text-center"
+            >
+              <p className="text-red-400 font-medium text-sm">Kein Gewinn · -{BET_COST} Coins</p>
+            </motion.div>
+          )}
+          {lastResult?.error && (
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              className="mb-4 p-3 rounded-2xl bg-yellow-500/10 border border-yellow-500/20 text-center"
+            >
+              <p className="text-yellow-400 font-medium text-sm">{lastResult.error}</p>
+            </motion.div>
+          )}
         </AnimatePresence>
+
+        {/* Bet Info */}
+        <p className="text-[11px] text-gray-500 mb-3 text-center">Einsatz pro Spin: {BET_COST} Coins</p>
 
         {/* Spin Button */}
         <motion.button
           onClick={spin}
-          disabled={spinning}
+          disabled={spinning || userCoins < BET_COST}
           className={`px-12 py-4 rounded-2xl font-bold text-lg ${
             spinning
               ? "bg-gray-700 text-gray-500"
+              : userCoins < BET_COST
+              ? "bg-gray-800 text-gray-600"
               : "bg-gradient-to-r from-purple-500 to-pink-500 text-white"
           }`}
-          whileTap={!spinning ? { scale: 0.95 } : {}}
+          whileTap={!spinning && userCoins >= BET_COST ? { scale: 0.95 } : {}}
         >
-          {spinning ? "Dreht..." : "🎰 SPIN!"}
+          {spinning ? "Dreht..." : userCoins < BET_COST ? "Nicht genug Coins" : "🎰 SPIN!"}
         </motion.button>
 
         {/* Paytable */}
@@ -1040,16 +1072,19 @@ const DiceGame = ({ onBack, userCoins, onCoinsUpdate }) => {
         }
         
         setResult({ won, amount: winAmount, sum, isDoubles });
-        setRolling(false);
         
-        if (won) {
-          fetch(`${API_URL}/api/gaming/dice/win`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
-            body: JSON.stringify({ bet: 10, points_won: winAmount }),
-          }).then(() => onCoinsUpdate?.());
-        }
+        // ALWAYS call API (deducts bet, credits win)
+        fetch(`${API_URL}/api/gaming/dice/win`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ bet: 10, points_won: winAmount }),
+        })
+          .then(r => r.json())
+          .then(() => onCoinsUpdate?.())
+          .catch(() => {});
+        
+        setRolling(false);
       }
     }, 100);
   };
@@ -1262,7 +1297,7 @@ const HighLowGame = ({ onBack, userCoins, onCoinsUpdate }) => {
       const res = await fetch(`${API_URL}/api/gaming/dice/win`, {
         method: "POST", credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ bet: correct ? 0 : bet, points_won: Math.round(winAmount) }),
+        body: JSON.stringify({ bet, points_won: Math.round(winAmount) }),
       });
       const data = await res.json();
       if (res.ok) setCoins(data.new_balance);
@@ -1393,7 +1428,7 @@ const MinesGame = ({ onBack, userCoins, onCoinsUpdate }) => {
       const res = await fetch(`${API_URL}/api/gaming/dice/win`, {
         method: "POST", credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ bet: 0, points_won: winAmount }),
+        body: JSON.stringify({ bet, points_won: winAmount }),
       });
       const data = await res.json();
       if (res.ok) setCoins(data.new_balance);
@@ -1659,16 +1694,32 @@ const PlinkoGame = ({ onBack, userCoins, onCoinsUpdate }) => {
   const [result, setResult] = useState(null);
   const [dropping, setDropping] = useState(false);
   const [coins, setCoins] = useState(userCoins);
+  const [ballPos, setBallPos] = useState(null); // { row, col } for animation
   const multipliers = [0, 0.5, 1, 1.5, 3, 1.5, 1, 0.5, 0];
+  const ROWS = [3, 4, 5, 6, 7, 8, 9];
 
   const drop = async () => {
     if (dropping || coins < bet) return;
     setDropping(true);
     setResult(null);
 
-    await new Promise(r => setTimeout(r, 1500));
+    // Simulate ball path through pegs
+    let col = 4; // start center
+    const path = [];
+    for (let row = 0; row < ROWS.length; row++) {
+      const dir = Math.random() < 0.5 ? -0.5 : 0.5;
+      col = Math.max(0, Math.min(ROWS[row] - 1, col + dir));
+      path.push({ row, col: Math.round(col) });
+    }
 
-    const slotIdx = Math.floor(Math.random() * multipliers.length);
+    // Animate ball falling through rows
+    for (let i = 0; i < path.length; i++) {
+      setBallPos(path[i]);
+      await new Promise(r => setTimeout(r, 200));
+    }
+
+    // Final slot
+    const slotIdx = Math.min(multipliers.length - 1, Math.max(0, Math.round(col)));
     const mult = multipliers[slotIdx];
     const winAmount = Math.round(bet * mult);
 
@@ -1676,58 +1727,88 @@ const PlinkoGame = ({ onBack, userCoins, onCoinsUpdate }) => {
       const res = await fetch(`${API_URL}/api/gaming/dice/win`, {
         method: "POST", credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ bet: mult === 0 ? bet : 0, points_won: winAmount }),
+        body: JSON.stringify({ bet, points_won: winAmount }),
       });
       const data = await res.json();
       if (res.ok) setCoins(data.new_balance);
-      setResult({ slotIdx, mult, winAmount: data.coins_won || winAmount });
-    } catch (err) {}
+      setResult({ slotIdx, mult, winAmount: data.coins_won || winAmount, net: data.net });
+      onCoinsUpdate?.();
+    } catch {}
+
+    await new Promise(r => setTimeout(r, 600));
+    setBallPos(null);
     setDropping(false);
   };
 
   return (
     <GameWrapper title="Plinko" icon="🔴" onBack={() => { onCoinsUpdate(); onBack(); }} points={coins}>
-      <div className="px-4 pt-6 flex flex-col items-center">
-        {/* Peg board visual */}
-        <div className="w-full max-w-sm mb-4">
-          {[3, 4, 5, 6, 7].map((count, row) => (
-            <div key={row} className="flex justify-center gap-4 mb-2">
+      <div className="px-2 pt-4 flex flex-col items-center">
+        {/* Peg board with animated ball */}
+        <div className="w-full max-w-[340px] mb-3 relative">
+          {ROWS.map((count, row) => (
+            <div key={row} className="flex justify-center gap-3 mb-2.5 relative">
               {Array(count).fill(0).map((_, i) => (
-                <div key={i} className="w-3 h-3 rounded-full bg-white/20" />
+                <div key={i} className="relative">
+                  <div className="w-3.5 h-3.5 rounded-full bg-white/15 border border-white/10" />
+                  {/* Ball at this position */}
+                  {ballPos && ballPos.row === row && ballPos.col === i && (
+                    <motion.div
+                      className="absolute -top-1 -left-1 w-5.5 h-5.5 rounded-full z-10"
+                      style={{
+                        width: 22, height: 22,
+                        background: "radial-gradient(circle at 35% 35%, #ff6b6b, #e53935)",
+                        boxShadow: "0 0 12px rgba(229,57,53,0.7), 0 4px 8px rgba(0,0,0,0.3)",
+                      }}
+                      initial={{ y: -20, opacity: 0 }}
+                      animate={{ y: 0, opacity: 1 }}
+                      transition={{ duration: 0.15, type: "spring", stiffness: 300 }}
+                    />
+                  )}
+                </div>
               ))}
             </div>
           ))}
         </div>
 
         {/* Multiplier slots */}
-        <div className="flex gap-1 mb-6 w-full max-w-sm">
+        <div className="flex gap-0.5 mb-4 w-full max-w-[340px]">
           {multipliers.map((m, i) => (
-            <div key={i} className={`flex-1 py-3 rounded-lg text-center text-xs font-bold transition-all ${
-              result?.slotIdx === i ? "bg-yellow-500 text-black scale-110" : m >= 3 ? "bg-red-500/20 text-red-400" : m >= 1.5 ? "bg-orange-500/20 text-orange-400" : m >= 1 ? "bg-green-500/20 text-green-400" : "bg-white/5 text-white/30"
-            }`}>
+            <motion.div
+              key={i}
+              className={`flex-1 py-3 rounded-lg text-center text-[11px] font-bold transition-all ${
+                result?.slotIdx === i
+                  ? "bg-yellow-500 text-black scale-110 shadow-lg shadow-yellow-500/30"
+                  : m >= 3 ? "bg-red-500/20 text-red-400 border border-red-500/20"
+                  : m >= 1.5 ? "bg-orange-500/20 text-orange-400 border border-orange-500/20"
+                  : m >= 1 ? "bg-green-500/20 text-green-400 border border-green-500/20"
+                  : "bg-white/5 text-white/30 border border-white/5"
+              }`}
+              animate={result?.slotIdx === i ? { scale: [1, 1.15, 1.05] } : {}}
+            >
               {m}x
-            </div>
+            </motion.div>
           ))}
         </div>
 
         {result && (
           <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }}
-            className={`text-center mb-4 p-3 rounded-xl ${result.mult > 0 ? "bg-green-500/10 text-green-400" : "bg-red-500/10 text-red-400"}`}>
+            className={`text-center mb-3 p-3 rounded-xl w-full max-w-[340px] ${result.mult > 0 ? "bg-green-500/10 border border-green-500/20 text-green-400" : "bg-red-500/10 border border-red-500/20 text-red-400"}`}>
             <p className="text-lg font-bold">{result.mult}x — {result.mult > 0 ? `+${result.winAmount} Coins` : "Miss!"}</p>
+            {result.net != null && <p className="text-xs mt-1 opacity-70">Netto: {result.net > 0 ? "+" : ""}{result.net} Coins</p>}
           </motion.div>
         )}
 
-        <div className="flex items-center gap-3 mb-4">
+        <div className="flex items-center gap-2 mb-3">
           {[10, 25, 50, 100].map(b => (
             <motion.button key={b} whileTap={{ scale: 0.9 }} onClick={() => setBet(b)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold ${bet === b ? "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30" : "bg-white/5 text-white/40"}`}>
+              className={`px-4 py-2 rounded-xl text-sm font-bold ${bet === b ? "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30" : "bg-white/5 text-white/40 border border-white/5"}`}>
               {b}
             </motion.button>
           ))}
         </div>
 
         <motion.button whileTap={{ scale: 0.95 }} onClick={drop} disabled={dropping || coins < bet}
-          className="w-full max-w-xs py-4 rounded-2xl bg-gradient-to-r from-orange-500 to-red-500 text-white font-bold text-lg disabled:opacity-50">
+          className="w-full max-w-[340px] py-4 rounded-2xl bg-gradient-to-r from-orange-500 to-red-500 text-white font-bold text-lg disabled:opacity-50">
           {dropping ? <Loader2 size={20} className="animate-spin mx-auto" /> : `Drop! (${bet} Coins)`}
         </motion.button>
       </div>

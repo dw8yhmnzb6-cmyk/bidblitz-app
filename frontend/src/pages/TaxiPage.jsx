@@ -1,8 +1,12 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useI18n } from '../store/I18nContext';
+import mapboxgl from 'mapbox-gl';
+import 'mapbox-gl/dist/mapbox-gl.css';
 
 const API = process.env.REACT_APP_BACKEND_URL;
+const MAPBOX_TOKEN = process.env.REACT_APP_MAPBOX_TOKEN;
+if (MAPBOX_TOKEN) mapboxgl.accessToken = MAPBOX_TOKEN;
 
 // Status badge colors
 const STATUS_COLORS = {
@@ -69,6 +73,64 @@ export default function TaxiPage({ onNavigate }) {
   const [saveIcon, setSaveIcon] = useState("star");
   const [mapStyle, setMapStyle] = useState("navigation-night-v1"); // Map style switcher
 
+  // Interactive map refs
+  const mapContainerRef = useRef(null);
+  const mapRef = useRef(null);
+  const pickupMarkerRef = useRef(null);
+  const dropoffMarkerRef = useRef(null);
+
+  // Initialize interactive Mapbox GL map
+  useEffect(() => {
+    if (!MAPBOX_TOKEN || !mapContainerRef.current || mapRef.current) return;
+    const map = new mapboxgl.Map({
+      container: mapContainerRef.current,
+      style: `mapbox://styles/mapbox/${mapStyle}`,
+      center: [pickup.lng || 13.405, pickup.lat || 52.52],
+      zoom: 13,
+      attributionControl: false,
+    });
+    map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'bottom-left');
+    mapRef.current = map;
+    return () => { map.remove(); mapRef.current = null; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [taxiType]);
+
+  // Update map style
+  useEffect(() => {
+    if (mapRef.current) {
+      mapRef.current.setStyle(`mapbox://styles/mapbox/${mapStyle}`);
+    }
+  }, [mapStyle]);
+
+  // Update markers when pickup/dropoff changes
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    // Pickup marker
+    if (pickupMarkerRef.current) pickupMarkerRef.current.remove();
+    if (pickup.lat && pickup.lng) {
+      const el = document.createElement('div');
+      el.innerHTML = '<div style="width:18px;height:18px;background:#00C2FF;border:3px solid #fff;border-radius:50%;box-shadow:0 0 8px rgba(0,194,255,0.6)"></div>';
+      pickupMarkerRef.current = new mapboxgl.Marker({ element: el }).setLngLat([pickup.lng, pickup.lat]).addTo(map);
+    }
+
+    // Dropoff marker
+    if (dropoffMarkerRef.current) dropoffMarkerRef.current.remove();
+    if (dropoff.lat && dropoff.lng && dropoff.lat !== 0) {
+      const el = document.createElement('div');
+      el.innerHTML = '<div style="width:18px;height:18px;background:#EF4444;border:3px solid #fff;border-radius:50%;box-shadow:0 0 8px rgba(239,68,68,0.6)"></div>';
+      dropoffMarkerRef.current = new mapboxgl.Marker({ element: el }).setLngLat([dropoff.lng, dropoff.lat]).addTo(map);
+      // Fit bounds to show both markers
+      const bounds = new mapboxgl.LngLatBounds();
+      bounds.extend([pickup.lng, pickup.lat]);
+      bounds.extend([dropoff.lng, dropoff.lat]);
+      map.fitBounds(bounds, { padding: 60, maxZoom: 14, duration: 800 });
+    } else if (pickup.lat) {
+      map.flyTo({ center: [pickup.lng, pickup.lat], zoom: 13, duration: 600 });
+    }
+  }, [pickup.lat, pickup.lng, dropoff.lat, dropoff.lng]);
+
   useEffect(() => { loadSavedPlaces(); }, []);
 
   const loadSavedPlaces = async () => {
@@ -98,7 +160,6 @@ export default function TaxiPage({ onNavigate }) {
     } catch {}
   };
 
-  const MAPBOX_TOKEN = process.env.REACT_APP_MAPBOX_TOKEN;
   const geocodeSearch = async (query, setter, showSetter) => {
     if (!query || query.length < 2 || !MAPBOX_TOKEN) { setter([]); showSetter(false); return; }
     try {
@@ -164,7 +225,6 @@ export default function TaxiPage({ onNavigate }) {
   const [privateDrivers, setPrivateDrivers] = useState(0);
   
   // Refs
-  const mapRef = useRef(null);
   const pollingRef = useRef(null);
 
   // Fetch user data
@@ -614,27 +674,12 @@ export default function TaxiPage({ onNavigate }) {
                     </button>
                   </div>
 
-              {/* Map with Style Switcher */}
-              <div className="relative h-52 bg-[#0A0A0F] rounded-2xl overflow-hidden border border-white/10">
-                <img
-                  key={mapStyle}
-                  src={`https://api.mapbox.com/styles/v1/mapbox/${mapStyle}/static/pin-s+00C2FF(${pickup.lng},${pickup.lat})${dropoff.lat ? `,pin-s+EF4444(${dropoff.lng},${dropoff.lat})` : ''}/${pickup.lng},${pickup.lat},13,0/600x300@2x?access_token=${process.env.REACT_APP_MAPBOX_TOKEN}`}
-                  alt="Map"
-                  className="w-full h-full object-cover"
-                  onError={(e) => { e.target.style.display = 'none'; }}
-                />
-                <div className="absolute top-3 left-3 bg-black/70 backdrop-blur-sm px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5" style={{ color: "#00C2FF" }}>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-                  {pickup.address || 'Aktueller Standort'}
-                </div>
-                {dropoff.lat !== 0 && (
-                  <div className="absolute top-10 left-3 bg-black/70 backdrop-blur-sm px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 text-red-400">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-                    Ziel
-                  </div>
-                )}
+              {/* Interactive Map */}
+              <div className="relative h-56 bg-[#0A0A0F] rounded-2xl overflow-hidden border border-white/10">
+                <div ref={mapContainerRef} className="w-full h-full" data-testid="taxi-map-container" />
+                
                 {/* Map Style Switcher */}
-                <div className="absolute top-3 right-3 flex flex-col gap-1">
+                <div className="absolute top-3 right-3 flex flex-col gap-1 z-10">
                   {[
                     { id: "navigation-night-v1", label: "Dark", icon: "M" },
                     { id: "satellite-streets-v12", label: "Satellit", icon: "S" },
@@ -652,15 +697,25 @@ export default function TaxiPage({ onNavigate }) {
                     </button>
                   ))}
                 </div>
+                
+                {/* Location Button */}
                 <button
                   onClick={getCurrentLocation}
-                  className="absolute bottom-3 right-3 p-3 bg-cyan-500 rounded-full shadow-lg hover:bg-cyan-600 transition-colors"
+                  className="absolute bottom-3 right-3 p-3 bg-cyan-500 rounded-full shadow-lg hover:bg-cyan-600 transition-colors z-10"
                 >
                   <svg className="w-5 h-5 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                   </svg>
                 </button>
+
+                {/* Route info overlay */}
+                {dropoff.lat !== 0 && estimates.length > 0 && (
+                  <div className="absolute top-3 left-3 bg-black/70 backdrop-blur-md px-3 py-2 rounded-xl z-10 border border-white/10">
+                    <p className="text-[10px] text-cyan-400 font-semibold">{estimates[0]?.distance_km} km</p>
+                    <p className="text-[9px] text-white/50">~{estimates[0]?.duration_minutes} Min</p>
+                  </div>
+                )}
               </div>
 
               {/* Location Inputs */}
