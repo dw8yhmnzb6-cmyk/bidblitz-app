@@ -127,6 +127,7 @@ import InvoicingPage from "./pages/InvoicingPage";
 import QRMenuPage from "./pages/QRMenuPage";
 import BookingsPage from "./pages/BookingsPage";
 import ContractsPage from "./pages/ContractsPage";
+import UtilitiesHubPage from "./pages/UtilitiesHubPage";
 
 // Car Rental Module
 import {
@@ -535,6 +536,8 @@ function AppContent() {
         return isGuest ? <HomePage {...homeProps} /> : <BookingsPage onBack={() => handleNavigate("/more")} />;
       case "/contracts":
         return isGuest ? <HomePage {...homeProps} /> : <ContractsPage onBack={() => handleNavigate("/more")} />;
+      case "/utilities":
+        return isGuest ? <HomePage {...homeProps} /> : <UtilitiesHubPage onBack={() => handleNavigate("/more")} />;
       
       // Car Rental Module
       case "/car-rental":

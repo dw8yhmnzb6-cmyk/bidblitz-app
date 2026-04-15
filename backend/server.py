@@ -477,6 +477,24 @@ app.include_router(bookings_router)
 from routes.contracts import router as contracts_router
 app.include_router(contracts_router)
 
+from routes.abo_boxes import router as abo_boxes_router
+app.include_router(abo_boxes_router)
+
+from routes.music import router as music_router
+app.include_router(music_router)
+
+from routes.surveys import router as surveys_router
+app.include_router(surveys_router)
+
+from routes.card_compare import router as card_compare_router
+app.include_router(card_compare_router)
+
+from routes.micro_tasks import router as micro_tasks_router
+app.include_router(micro_tasks_router)
+
+from routes.utilities import router as utilities_router
+app.include_router(utilities_router)
+
 
 # Static file serving for uploads
 from fastapi.staticfiles import StaticFiles
