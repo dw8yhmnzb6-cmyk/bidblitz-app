@@ -372,6 +372,9 @@ app.include_router(reiseplaner_router)
 from routes.ladesaeulen import router as ladesaeulen_router
 app.include_router(ladesaeulen_router)
 
+from routes.stocks import router as stocks_router
+app.include_router(stocks_router)
+
 
 # Static file serving for uploads
 from fastapi.staticfiles import StaticFiles

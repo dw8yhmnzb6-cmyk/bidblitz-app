@@ -11,7 +11,7 @@ import {
   GripVertical, Pencil, Shield, Calendar, MessageCircle, Briefcase,
   Plane, Package, Building2, Users, GraduationCap, Wrench, Film,
   Stethoscope, CarFront, Sparkles, Truck, Dog, Dumbbell, Palmtree,
-  BatteryCharging
+  BatteryCharging, TrendingUp
 } from "lucide-react";
 
 const API = process.env.REACT_APP_BACKEND_URL;
@@ -59,6 +59,7 @@ const ALL_SHORTCUTS = [
   { id: "fitness", icon: Dumbbell, label: "Fitness", route: "/fitness", color: "#EF4444" },
   { id: "reiseplaner", icon: Palmtree, label: "Reisen", route: "/reiseplaner", color: "#0D9488" },
   { id: "ladesaeulen", icon: BatteryCharging, label: "Ladesäulen", route: "/ladesaeulen", color: "#10B981" },
+  { id: "stocks", icon: TrendingUp, label: "Aktien", route: "/stocks", color: "#10B981" },
 ];
 
 const DEFAULT_SHORTCUTS = ["taxi", "scooter", "hotels", "restaurants"];

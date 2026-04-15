@@ -96,6 +96,7 @@ import ReiseplanerPage from "./pages/ReiseplanerPage";
 import LadesaeulenPage from "./pages/LadesaeulenPage";
 import EmailMarketingAdminPage from "./pages/EmailMarketingAdminPage";
 import AllServicesPage from "./pages/AllServicesPage";
+import StocksPage from "./pages/StocksPage";
 
 // Car Rental Module
 import {
@@ -415,6 +416,8 @@ function AppContent() {
           : <HomePage {...homeProps} />;
       case "/all-services":
         return <AllServicesPage onBack={() => handleNavigate("/")} onNavigate={handleNavigate} />;
+      case "/stocks":
+        return isGuest ? <HomePage {...homeProps} /> : <StocksPage onBack={() => handleNavigate("/more")} />;
       
       // Car Rental Module
       case "/car-rental":
