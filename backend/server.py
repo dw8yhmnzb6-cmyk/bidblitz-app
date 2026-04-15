@@ -402,6 +402,15 @@ app.include_router(social_features_router)
 from routes.ratings import router as ratings_router
 app.include_router(ratings_router)
 
+from routes.blitzlearn import router as blitzlearn_router
+app.include_router(blitzlearn_router)
+
+from routes.collectibles import router as collectibles_router
+app.include_router(collectibles_router)
+
+from routes.blitz_features import router as blitz_features_router
+app.include_router(blitz_features_router)
+
 
 # Static file serving for uploads
 from fastapi.staticfiles import StaticFiles
