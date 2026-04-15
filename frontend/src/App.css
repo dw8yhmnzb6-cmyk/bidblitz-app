@@ -1,5 +1,22 @@
 /* BidBlitz V2 - Ultra Premium Fintech Styles */
 
+/* ═══ GLOBAL OVERFLOW FIX — Prevent horizontal scroll on mobile ═══ */
+html, body, #root {
+  overflow-x: hidden !important;
+  max-width: 100vw !important;
+}
+
+/* Carousel items must respect parent padding */
+.scrollbar-hide, .scrollbar-none,
+[class*="overflow-x-auto"] {
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x mandatory;
+}
+.scrollbar-hide > *, .scrollbar-none > *,
+[class*="overflow-x-auto"] > * {
+  scroll-snap-align: start;
+}
+
 /* ═══ THEME VARIABLES ═══ */
 :root {
   --bg-primary: #0A0A0F;

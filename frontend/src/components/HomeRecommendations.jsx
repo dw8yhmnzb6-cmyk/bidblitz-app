@@ -58,7 +58,7 @@ const HomeRecommendations = ({ onNavigate }) => {
               </motion.button>
             </div>
 
-            <div className="flex gap-2.5 overflow-x-auto pb-1 scrollbar-hide">
+            <div className="flex gap-2.5 overflow-x-auto pb-1 scrollbar-hide" style={{ marginLeft: 0, paddingRight: 4 }}>
               {section.items.slice(0, 6).map((item, i) => (
                 <motion.div
                   key={item.property_id || item.event_id || item.restaurant_id || item.job_id || item.product_id || item.flight_id || i}
@@ -66,7 +66,7 @@ const HomeRecommendations = ({ onNavigate }) => {
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: 0.35 + si * 0.08 + i * 0.04 }}
                   onClick={() => onNavigate(cfg.route)}
-                  className="flex-shrink-0 w-[150px] bg-[#111118] rounded-xl border border-white/5 overflow-hidden cursor-pointer hover:border-white/10 transition-colors"
+                  className="flex-shrink-0 w-[40vw] max-w-[170px] bg-[#111118] rounded-xl border border-white/5 overflow-hidden cursor-pointer hover:border-white/10 transition-colors"
                 >
                   {/* Image */}
                   {(item.images?.[0] || item.image_url || item.company_logo || item.airline_logo) ? (

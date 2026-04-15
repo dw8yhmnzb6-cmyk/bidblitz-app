@@ -558,7 +558,9 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
             </motion.button>
 
             {/* ═══ Recommendations ═══ */}
-            <HomeRecommendations onNavigate={onNavigate} />
+            <div className="overflow-x-hidden" style={{ marginLeft: -4, marginRight: -4, paddingLeft: 4, paddingRight: 4 }}>
+              <HomeRecommendations onNavigate={onNavigate} />
+            </div>
 
             {/* ═══ Available Now ═══ */}
             <motion.section data-testid="available-now-section" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.26 }}>
