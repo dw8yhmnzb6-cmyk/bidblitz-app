@@ -887,7 +887,7 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
     >
       {/* Ambient */}
       <motion.div
-        className="absolute top-[-18%] left-1/2 -translate-x-1/2 w-[480px] h-[480px] rounded-full pointer-events-none"
+        className="absolute top-[-18%] left-1/2 -translate-x-1/2 w-[80vw] max-w-[480px] h-[80vw] max-h-[480px] rounded-full pointer-events-none"
         style={{ filter: "blur(140px)", background: "rgba(0,194,255,0.03)" }}
       />
 

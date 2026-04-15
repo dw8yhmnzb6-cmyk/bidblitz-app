@@ -242,7 +242,7 @@ export const MerchantPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, 
 
   return (
     <motion.div data-testid="merchant-page" className="min-h-screen relative overflow-hidden" style={{ background: "#030303" }} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-      <motion.div className="absolute top-[-18%] left-1/2 -translate-x-1/2 w-[480px] h-[480px] rounded-full pointer-events-none" style={{ filter: "blur(140px)", background: "rgba(0,210,106,0.035)" }} />
+      <motion.div className="absolute top-[-18%] left-1/2 -translate-x-1/2 w-[80vw] max-w-[480px] h-[80vw] max-h-[480px] rounded-full pointer-events-none" style={{ filter: "blur(140px)", background: "rgba(0,210,106,0.035)" }} />
 
       {/* Header */}
       <div className="flex items-center justify-between px-5 pt-[max(env(safe-area-inset-top,0px),24px)] pb-3 relative z-10">

@@ -340,7 +340,7 @@ export default function MiningPage({ onBack }) {
       initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
 
       {/* Ambient glow - more premium */}
-      <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] pointer-events-none" style={{ background: "radial-gradient(ellipse, rgba(0,232,157,0.06) 0%, rgba(0,194,255,0.02) 40%, transparent 70%)" }} />
+      <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[80vw] max-w-[600px] h-[60vw] max-h-[400px] pointer-events-none" style={{ background: "radial-gradient(ellipse, rgba(0,232,157,0.06) 0%, rgba(0,194,255,0.02) 40%, transparent 70%)" }} />
       <div className="fixed bottom-0 right-0 w-[300px] h-[300px] pointer-events-none" style={{ background: "radial-gradient(circle, rgba(168,85,247,0.03) 0%, transparent 60%)" }} />
 
       {/* Header */}

@@ -320,7 +320,7 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
       animate={{ opacity: 1 }}
     >
       {/* Ambient glow */}
-      <motion.div className="absolute top-[-15%] left-1/2 -translate-x-1/2 w-[500px] h-[500px] rounded-full pointer-events-none" style={{ filter: "blur(140px)", background: "rgba(0,194,255,0.04)" }} />
+      <motion.div className="absolute top-[-15%] left-1/2 -translate-x-1/2 w-[80vw] max-w-[500px] h-[80vw] max-h-[500px] rounded-full pointer-events-none" style={{ filter: "blur(140px)", background: "rgba(0,194,255,0.04)" }} />
 
       <div className="px-5 pb-8 relative z-10">
 

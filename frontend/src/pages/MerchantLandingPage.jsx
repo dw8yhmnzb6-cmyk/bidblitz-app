@@ -236,7 +236,7 @@ const MerchantLandingPage = ({ onNavigate }) => {
       <section className="relative pt-24 pb-16 sm:pt-32 sm:pb-24 overflow-hidden">
         {/* Background glow */}
         <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[400px] rounded-full opacity-[0.04]"
+          <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[80vw] max-w-[600px] h-[60vw] max-h-[400px] rounded-full opacity-[0.04]"
             style={{ background: "radial-gradient(ellipse, #00E0FF, transparent)" }} />
         </div>
         <div className="relative max-w-4xl mx-auto px-4 sm:px-6 text-center">

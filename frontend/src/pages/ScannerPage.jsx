@@ -132,7 +132,7 @@ const ScannerPage = ({ onNavigate }) => {
     <div className="min-h-screen bg-[#0A0A0A] text-white font-outfit relative overflow-hidden">
       {/* Background gradient */}
       <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[500px] h-[400px] bg-gradient-radial from-[#00C2FF]/[0.04] to-transparent rounded-full blur-3xl" />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[80vw] max-w-[500px] h-[60vw] max-h-[400px] bg-gradient-radial from-[#00C2FF]/[0.04] to-transparent rounded-full blur-3xl" />
       </div>
 
       {/* Header */}

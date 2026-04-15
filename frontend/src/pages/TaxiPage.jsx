@@ -67,6 +67,7 @@ export default function TaxiPage({ onNavigate }) {
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [saveName, setSaveName] = useState("");
   const [saveIcon, setSaveIcon] = useState("star");
+  const [mapStyle, setMapStyle] = useState("navigation-night-v1"); // Map style switcher
 
   useEffect(() => { loadSavedPlaces(); }, []);
 
@@ -613,10 +614,11 @@ export default function TaxiPage({ onNavigate }) {
                     </button>
                   </div>
 
-              {/* Map with Mapbox Dark Style */}
+              {/* Map with Style Switcher */}
               <div className="relative h-52 bg-[#0A0A0F] rounded-2xl overflow-hidden border border-white/10">
                 <img
-                  src={`https://api.mapbox.com/styles/v1/mapbox/navigation-night-v1/static/pin-s+00C2FF(${pickup.lng},${pickup.lat})/${pickup.lng},${pickup.lat},13,0/600x300@2x?access_token=${process.env.REACT_APP_MAPBOX_TOKEN}`}
+                  key={mapStyle}
+                  src={`https://api.mapbox.com/styles/v1/mapbox/${mapStyle}/static/pin-s+00C2FF(${pickup.lng},${pickup.lat})${dropoff.lat ? `,pin-s+EF4444(${dropoff.lng},${dropoff.lat})` : ''}/${pickup.lng},${pickup.lat},13,0/600x300@2x?access_token=${process.env.REACT_APP_MAPBOX_TOKEN}`}
                   alt="Map"
                   className="w-full h-full object-cover"
                   onError={(e) => { e.target.style.display = 'none'; }}
@@ -626,14 +628,33 @@ export default function TaxiPage({ onNavigate }) {
                   {pickup.address || 'Aktueller Standort'}
                 </div>
                 {dropoff.lat !== 0 && (
-                  <div className="absolute top-3 right-3 bg-black/70 backdrop-blur-sm px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 text-red-400">
+                  <div className="absolute top-10 left-3 bg-black/70 backdrop-blur-sm px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 text-red-400">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
                     Ziel
                   </div>
                 )}
+                {/* Map Style Switcher */}
+                <div className="absolute top-3 right-3 flex flex-col gap-1">
+                  {[
+                    { id: "navigation-night-v1", label: "Dark", icon: "M" },
+                    { id: "satellite-streets-v12", label: "Satellit", icon: "S" },
+                    { id: "streets-v12", label: "Streets", icon: "K" },
+                    { id: "outdoors-v12", label: "Outdoor", icon: "O" },
+                  ].map(s => (
+                    <button
+                      key={s.id}
+                      onClick={() => setMapStyle(s.id)}
+                      className={`w-8 h-8 rounded-lg text-[9px] font-bold flex items-center justify-center transition-all ${mapStyle === s.id ? 'bg-cyan-500 text-black' : 'bg-black/60 backdrop-blur-sm text-white/70 hover:bg-black/80'}`}
+                      title={s.label}
+                      data-testid={`taxi-map-${s.id}`}
+                    >
+                      {s.icon}
+                    </button>
+                  ))}
+                </div>
                 <button
                   onClick={getCurrentLocation}
-                  className="absolute bottom-4 right-4 p-3 bg-cyan-500 rounded-full shadow-lg hover:bg-cyan-600 transition-colors"
+                  className="absolute bottom-3 right-3 p-3 bg-cyan-500 rounded-full shadow-lg hover:bg-cyan-600 transition-colors"
                 >
                   <svg className="w-5 h-5 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
@@ -754,17 +775,74 @@ export default function TaxiPage({ onNavigate }) {
                       </button>
                     )}
                   </div>
-                  <div className="flex gap-2 flex-wrap">
-                    {['Flughafen BER', 'Hauptbahnhof', 'Alexanderplatz', 'Brandenburger Tor'].map((dest) => (
+                  <div className="flex gap-2 flex-wrap mb-3">
+                    {[
+                      { name: 'Flughafen BER', lat: 52.3667, lng: 13.5033 },
+                      { name: 'Hauptbahnhof', lat: 52.5251, lng: 13.3694 },
+                      { name: 'Alexanderplatz', lat: 52.5219, lng: 13.4132 },
+                      { name: 'Brandenburger Tor', lat: 52.5163, lng: 13.3777 },
+                    ].map((dest) => (
                       <button
-                        key={dest}
-                        onClick={() => handleDropoffChange(dest)}
+                        key={dest.name}
+                        onClick={() => setDropoff({ lat: dest.lat, lng: dest.lng, address: dest.name })}
                         className="px-3 py-1.5 bg-white/5 rounded-lg text-xs text-gray-400 hover:bg-cyan-500/10 hover:text-cyan-400 transition-colors border border-white/5"
-                        data-testid={`taxi-quick-${dest}`}
+                        data-testid={`taxi-quick-${dest.name}`}
                       >
-                        {dest}
+                        {dest.name}
                       </button>
                     ))}
+                  </div>
+
+                  {/* Bekannte Orte: Prishtina */}
+                  <div className="mb-2">
+                    <span className="text-[9px] text-gray-600 uppercase tracking-wider">Prishtina</span>
+                    <div className="flex gap-1.5 flex-wrap mt-1">
+                      {[
+                        { name: 'Flughafen Prishtina', lat: 42.5728, lng: 21.0358 },
+                        { name: 'Skanderbeg-Platz', lat: 42.6629, lng: 21.1655 },
+                        { name: 'Newborn Monument', lat: 42.6598, lng: 21.1596 },
+                        { name: 'Germia Park', lat: 42.6740, lng: 21.1910 },
+                        { name: 'Kathedrale Mutter Teresa', lat: 42.6608, lng: 21.1573 },
+                        { name: 'Grand Hotel Prishtina', lat: 42.6622, lng: 21.1645 },
+                        { name: 'Bulevardi Nënë Tereza', lat: 42.6610, lng: 21.1620 },
+                        { name: 'Albi Mall', lat: 42.6484, lng: 21.1544 },
+                      ].map((dest) => (
+                        <button
+                          key={dest.name}
+                          onClick={() => setDropoff({ lat: dest.lat, lng: dest.lng, address: dest.name + ', Prishtina' })}
+                          className="px-2.5 py-1 bg-emerald-500/8 rounded-lg text-[10px] text-emerald-400/80 hover:bg-emerald-500/15 hover:text-emerald-400 transition-colors border border-emerald-500/10"
+                          data-testid={`taxi-pri-${dest.name}`}
+                        >
+                          {dest.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Bekannte Orte: Dubai */}
+                  <div>
+                    <span className="text-[9px] text-gray-600 uppercase tracking-wider">Dubai</span>
+                    <div className="flex gap-1.5 flex-wrap mt-1">
+                      {[
+                        { name: 'Dubai Airport (DXB)', lat: 25.2532, lng: 55.3657 },
+                        { name: 'Burj Khalifa', lat: 25.1972, lng: 55.2744 },
+                        { name: 'Dubai Mall', lat: 25.1985, lng: 55.2796 },
+                        { name: 'Palm Jumeirah', lat: 25.1124, lng: 55.1390 },
+                        { name: 'Burj Al Arab', lat: 25.1413, lng: 55.1853 },
+                        { name: 'Dubai Marina', lat: 25.0805, lng: 55.1403 },
+                        { name: 'Dubai Frame', lat: 25.2350, lng: 55.3006 },
+                        { name: 'Mall of Emirates', lat: 25.1182, lng: 55.2006 },
+                      ].map((dest) => (
+                        <button
+                          key={dest.name}
+                          onClick={() => setDropoff({ lat: dest.lat, lng: dest.lng, address: dest.name + ', Dubai' })}
+                          className="px-2.5 py-1 bg-amber-500/8 rounded-lg text-[10px] text-amber-400/80 hover:bg-amber-500/15 hover:text-amber-400 transition-colors border border-amber-500/10"
+                          data-testid={`taxi-dub-${dest.name}`}
+                        >
+                          {dest.name}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
 

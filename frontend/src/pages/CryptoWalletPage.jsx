@@ -225,34 +225,39 @@ const CryptoWalletPage = ({ onBack }) => {
         )}
       </div>
 
-      {/* Trade Modal */}
+      {/* Trade Modal — Bottom Sheet */}
       <AnimatePresence>
         {tradeModal && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-end justify-center"
+            className="fixed inset-0 z-[60] bg-black/70 backdrop-blur-sm flex items-end justify-center"
             onClick={() => setTradeModal(null)}>
             <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 25 }}
               onClick={e => e.stopPropagation()}
-              className="w-full max-w-lg bg-[#111118] rounded-t-3xl border-t border-white/10 p-6">
-              <div className="flex items-center justify-between mb-6">
+              className="w-full max-w-lg bg-[#111118] rounded-t-3xl border-t border-white/10 p-5 pb-8"
+              style={{ marginBottom: 0, maxHeight: "85vh", overflowY: "auto" }}>
+              <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-4" />
+              <div className="flex items-center justify-between mb-5">
                 <h3 className="text-lg font-bold">{tradeModal.side === "buy" ? "Kaufen" : "Verkaufen"} {tradeModal.symbol}</h3>
                 <button onClick={() => setTradeModal(null)}><X size={20} className="text-gray-500" /></button>
               </div>
               <p className="text-xs text-gray-500 mb-2">Betrag in EUR</p>
               <input type="number" value={tradeAmount} onChange={e => setTradeAmount(e.target.value)}
                 placeholder="0.00" autoFocus
-                className="w-full px-4 py-4 rounded-xl bg-white/5 border border-white/10 text-2xl font-bold text-center outline-none mb-3"
+                className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-2xl font-bold text-center outline-none mb-3"
                 data-testid="trade-amount" />
-              <div className="flex gap-2 mb-4">
+              <div className="flex gap-2 mb-3">
                 {["10", "25", "50", "100"].map(a => (
                   <motion.button key={a} whileTap={{ scale: 0.95 }} onClick={() => setTradeAmount(a)}
-                    className={`flex-1 py-2 rounded-xl text-xs font-bold ${tradeAmount === a ? "bg-[#F7931A] text-black" : "bg-white/5 text-white/50"}`}>
+                    className={`flex-1 py-2.5 rounded-xl text-xs font-bold ${tradeAmount === a ? "bg-[#F7931A] text-black" : "bg-white/5 text-white/50"}`}>
                     €{a}
                   </motion.button>
                 ))}
               </div>
-              <p className="text-[10px] text-gray-500 mb-4">Wallet: €{balance.toFixed(2)}</p>
+              <div className="flex items-center justify-between mb-4 px-1">
+                <p className="text-xs text-gray-500">BidBlitz Wallet</p>
+                <p className="text-xs font-bold" style={{ color: "#00C2FF" }}>€{balance.toFixed(2)}</p>
+              </div>
               <motion.button whileTap={{ scale: 0.97 }} onClick={executeTrade}
                 disabled={!tradeAmount || parseFloat(tradeAmount) <= 0 || trading}
                 className={`w-full py-4 rounded-xl font-bold text-sm disabled:opacity-30 flex items-center justify-center gap-2 ${

@@ -235,7 +235,7 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
     >
       {/* Ambient glow */}
       <motion.div
-        className="absolute top-[-20%] left-1/2 -translate-x-1/2 w-[500px] h-[500px] rounded-full pointer-events-none"
+        className="absolute top-[-20%] left-1/2 -translate-x-1/2 w-[80vw] max-w-[500px] h-[80vw] max-h-[500px] rounded-full pointer-events-none"
         style={{ filter: "blur(140px)", background: "rgba(0,194,255,0.045)" }}
       />
 
