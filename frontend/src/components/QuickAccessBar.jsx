@@ -60,6 +60,11 @@ const ALL_SHORTCUTS = [
   { id: "reiseplaner", icon: Palmtree, label: "Reisen", route: "/reiseplaner", color: "#0D9488" },
   { id: "ladesaeulen", icon: BatteryCharging, label: "Ladesäulen", route: "/ladesaeulen", color: "#10B981" },
   { id: "stocks", icon: TrendingUp, label: "Aktien", route: "/stocks", color: "#10B981" },
+  { id: "reselling", icon: ShoppingBag, label: "Reselling", route: "/reselling", color: "#F43F5E" },
+  { id: "blitzjobs", icon: Briefcase, label: "BlitzJobs", route: "/blitzjobs", color: "#22C55E" },
+  { id: "cashback", icon: Star, label: "Cashback", route: "/cashback", color: "#F59E0B" },
+  { id: "live-auctions", icon: Zap, label: "Live-Auktion", route: "/live-auctions", color: "#EF4444" },
+  { id: "stories", icon: MessageCircle, label: "Feed", route: "/stories", color: "#6366F1" },
 ];
 
 const DEFAULT_SHORTCUTS = ["taxi", "scooter", "hotels", "restaurants"];

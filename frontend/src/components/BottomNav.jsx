@@ -1,22 +1,31 @@
 import { motion } from "framer-motion";
-import { Home, Wallet, QrCode, Store, MoreHorizontal, Gavel } from "lucide-react";
+import { Home, Wallet, QrCode, Store, MoreHorizontal, Gavel, Car, Compass } from "lucide-react";
 import { useI18n, useUser } from "../store";
 
-// Customer navigation - no merchant access, center button shows their payment barcode
+// Customer navigation
 const customerNavItems = [
   { id: "home", tKey: "nav.home", icon: Home, path: "/" },
   { id: "wallet", tKey: "nav.wallet", icon: Wallet, path: "/wallet" },
-  { id: "pay", tKey: "nav.pay", icon: QrCode, path: "/my-barcode", center: true }, // Shows customer's barcode
-  { id: "auctions", tKey: "nav.auctions", icon: Gavel, path: "/auctions" },
+  { id: "pay", tKey: "nav.pay", icon: QrCode, path: "/my-barcode", center: true },
+  { id: "discover", label: "ENTDECKEN", icon: Compass, path: "/all-services" },
   { id: "more", tKey: "nav.more", icon: MoreHorizontal, path: "/more" },
 ];
 
-// Merchant navigation - can access terminal to scan customers
+// Merchant navigation
 const merchantNavItems = [
   { id: "home", tKey: "nav.home", icon: Home, path: "/" },
   { id: "wallet", tKey: "nav.wallet", icon: Wallet, path: "/wallet" },
-  { id: "scan", tKey: "nav.scan", icon: QrCode, path: "/scan", center: true }, // Scans customer barcodes
+  { id: "scan", tKey: "nav.scan", icon: QrCode, path: "/scan", center: true },
   { id: "merchant", tKey: "nav.merchant", icon: Store, path: "/merchant" },
+  { id: "more", tKey: "nav.more", icon: MoreHorizontal, path: "/more" },
+];
+
+// Driver navigation
+const driverNavItems = [
+  { id: "home", tKey: "nav.home", icon: Home, path: "/" },
+  { id: "wallet", tKey: "nav.wallet", icon: Wallet, path: "/wallet" },
+  { id: "pay", tKey: "nav.pay", icon: QrCode, path: "/my-barcode", center: true },
+  { id: "rides", label: "FAHRTEN", icon: Car, path: "/taxi" },
   { id: "more", tKey: "nav.more", icon: MoreHorizontal, path: "/more" },
 ];
 
@@ -41,7 +50,9 @@ export const BottomNav = ({ currentPath, onNavigate, onShowBarcode }) => {
     ? adminNavItems 
     : user.role === "merchant" 
       ? merchantNavItems 
-      : customerNavItems;
+      : user.role === "driver"
+        ? driverNavItems
+        : customerNavItems;
 
   // Handle center button click - role-based behavior
   const handleCenterButtonClick = () => {
@@ -100,7 +111,7 @@ export const BottomNav = ({ currentPath, onNavigate, onShowBarcode }) => {
           <motion.div animate={isActive ? { y: -1 } : { y: 0 }} transition={{ type: "spring", stiffness: 400, damping: 20 }}>
             <Icon size={17} strokeWidth={isActive ? 2 : 1.5} />
           </motion.div>
-          <span className="uppercase tracking-[0.06em] font-medium">{t(item.tKey)}</span>
+          <span className="uppercase tracking-[0.06em] font-medium">{item.label || t(item.tKey)}</span>
           {isActive && (
             <motion.div
               className="absolute -bottom-0.5 w-1 h-1 rounded-full bg-[#00C2FF]"

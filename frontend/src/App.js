@@ -162,6 +162,31 @@ function AppContent() {
 
   const isGuest = !user.isAuthenticated;
 
+  // Notification polling - show toast for new notifications
+  useEffect(() => {
+    if (!user.isAuthenticated) return;
+    let lastCheck = Date.now();
+    const checkNotifs = async () => {
+      try {
+        const res = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/notifications/unread`, { credentials: "include" });
+        if (res.ok) {
+          const data = await res.json();
+          const newNotifs = (data.notifications || []).filter(n => new Date(n.created_at).getTime() > lastCheck - 30000);
+          if (newNotifs.length > 0) {
+            const { toast } = await import("sonner");
+            newNotifs.slice(0, 2).forEach(n => {
+              toast(n.title || "Benachrichtigung", { description: n.message || "", duration: 5000 });
+            });
+          }
+          lastCheck = Date.now();
+        }
+      } catch {}
+    };
+    const interval = setInterval(checkNotifs, 30000);
+    checkNotifs();
+    return () => clearInterval(interval);
+  }, [user.isAuthenticated]);
+
   const requireAuth = (message) => {
     setAuthGateMessage(message || "");
     setShowAuthGate(true);

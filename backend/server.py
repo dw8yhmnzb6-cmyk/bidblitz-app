@@ -399,6 +399,9 @@ app.include_router(live_auctions_router)
 from routes.social_features import router as social_features_router
 app.include_router(social_features_router)
 
+from routes.ratings import router as ratings_router
+app.include_router(ratings_router)
+
 
 # Static file serving for uploads
 from fastapi.staticfiles import StaticFiles
