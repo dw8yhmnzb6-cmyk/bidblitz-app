@@ -1,0 +1,38 @@
+[
+  {
+    "_id": "69daad4e797b9f9d226434d1",
+    "ticket_id": "TK-8826D2CC",
+    "sender_id": "69d0126144299a2e0d94c786",
+    "sender_name": "Max Mustermann",
+    "sender_role": "user",
+    "message": "Ich kann keine Buchung erstellen, der Wallet-Betrag reicht nicht. Wie kann ich aufladen?",
+    "created_at": "2026-04-11T20:21:34.950154+00:00"
+  },
+  {
+    "_id": "69daad4f797b9f9d226434d2",
+    "ticket_id": "TK-8826D2CC",
+    "sender_id": "69d0126144299a2e0d94c786",
+    "sender_name": "Max Mustermann",
+    "sender_role": "user",
+    "message": "Ich habe auch versucht per Kreditkarte aufzuladen, aber das ging auch nicht.",
+    "created_at": "2026-04-11T20:21:35.273214+00:00"
+  },
+  {
+    "_id": "69daad4f797b9f9d226434d4",
+    "ticket_id": "TK-8826D2CC",
+    "sender_id": "69cface7afddbc3de2cabb39",
+    "sender_name": "Admin Updated",
+    "sender_role": "admin",
+    "message": "Hallo! Du kannst dein Wallet über die Wallet-Seite aufladen. Gehe zu Wallet > Aufladen. Wir helfen dir gerne weiter!",
+    "created_at": "2026-04-11T20:21:35.988974+00:00"
+  },
+  {
+    "_id": "69dbfa25277c53a6b51e1d0e",
+    "ticket_id": "TK-7DCA916F",
+    "sender_id": "69cface7afddbc3de2cabb39",
+    "sender_name": "Admin Updated",
+    "sender_role": "user",
+    "message": "Test",
+    "created_at": "2026-04-12T20:01:41.022063+00:00"
+  }
+]

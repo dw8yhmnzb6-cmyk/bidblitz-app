@@ -1,0 +1,122 @@
+[
+  {
+    "_id": "69dab5471781ab2089c890a3",
+    "user_id": "69d0126144299a2e0d94c786",
+    "amount": 2000,
+    "reason": "Coins gekauft: €2.00 → 2000 Coins",
+    "game": null,
+    "created_at": "2026-04-11T20:55:35.700818+00:00"
+  },
+  {
+    "_id": "69dab5471781ab2089c890a4",
+    "user_id": "69d0126144299a2e0d94c786",
+    "amount": -10,
+    "reason": "Einsatz: Lucky Slots",
+    "game": "slots",
+    "created_at": "2026-04-11T20:55:35.857750+00:00"
+  },
+  {
+    "_id": "69dab5471781ab2089c890a5",
+    "user_id": "69d0126144299a2e0d94c786",
+    "amount": 250,
+    "reason": "Gewinn: Lucky Slots (250 Coins)",
+    "game": "slots",
+    "created_at": "2026-04-11T20:55:35.858836+00:00"
+  },
+  {
+    "_id": "69dab9611781ab2089c892cc",
+    "user_id": "69d0126144299a2e0d94c786",
+    "amount": 1000,
+    "reason": "Coins gekauft: €1.00 → 1000 Coins",
+    "game": null,
+    "created_at": "2026-04-11T21:13:05.518729+00:00"
+  },
+  {
+    "_id": "69df48fb13125dd2a9451ec4",
+    "user_id": "69d0126144299a2e0d94c786",
+    "amount": -10,
+    "reason": "Einsatz: Lucky Slots",
+    "game": "slots",
+    "created_at": "2026-04-15T08:14:51.388657+00:00"
+  },
+  {
+    "_id": "69df48fb13125dd2a9451ec5",
+    "user_id": "69d0126144299a2e0d94c786",
+    "amount": 10,
+    "reason": "Gewinn: Lucky Slots (10 Coins)",
+    "game": "slots",
+    "created_at": "2026-04-15T08:14:51.394386+00:00"
+  },
+  {
+    "_id": "69df4ac613125dd2a9451ec7",
+    "user_id": "69d0126144299a2e0d94c786",
+    "amount": -10,
+    "reason": "Einsatz: Lucky Slots",
+    "game": "slots",
+    "created_at": "2026-04-15T08:22:30.909977+00:00"
+  },
+  {
+    "_id": "69df4ac613125dd2a9451ec8",
+    "user_id": "69d0126144299a2e0d94c786",
+    "amount": 10,
+    "reason": "Gewinn: Lucky Slots (10 Coins)",
+    "game": "slots",
+    "created_at": "2026-04-15T08:22:30.911312+00:00"
+  },
+  {
+    "_id": "69df4ada13125dd2a9451eca",
+    "user_id": "69d0126144299a2e0d94c786",
+    "amount": -5,
+    "reason": "Einsatz: Würfelglück",
+    "game": "dice",
+    "created_at": "2026-04-15T08:22:50.871788+00:00"
+  },
+  {
+    "_id": "69df4ada13125dd2a9451ecb",
+    "user_id": "69d0126144299a2e0d94c786",
+    "amount": 15,
+    "reason": "Gewinn: Würfelglück (15 Coins)",
+    "game": "dice",
+    "created_at": "2026-04-15T08:22:50.872909+00:00"
+  },
+  {
+    "_id": "69df4ae013125dd2a9451ecd",
+    "user_id": "69d0126144299a2e0d94c786",
+    "amount": -10,
+    "reason": "Einsatz: Würfelglück",
+    "game": "dice",
+    "created_at": "2026-04-15T08:22:56.047835+00:00"
+  },
+  {
+    "_id": "69df4e104f18fc0672fe37f4",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "amount": -10,
+    "reason": "Einsatz: Lucky Slots",
+    "game": "slots",
+    "created_at": "2026-04-15T08:36:32.766764+00:00"
+  },
+  {
+    "_id": "69df4e104f18fc0672fe37f6",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "amount": -10,
+    "reason": "Einsatz: Lucky Slots",
+    "game": "slots",
+    "created_at": "2026-04-15T08:36:32.919993+00:00"
+  },
+  {
+    "_id": "69df4e104f18fc0672fe37f7",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "amount": 250,
+    "reason": "Gewinn: Lucky Slots (250 Coins)",
+    "game": "slots",
+    "created_at": "2026-04-15T08:36:32.920947+00:00"
+  },
+  {
+    "_id": "69df4e114f18fc0672fe37f9",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "amount": -10,
+    "reason": "Einsatz: Würfelglück",
+    "game": "dice",
+    "created_at": "2026-04-15T08:36:33.026771+00:00"
+  }
+]

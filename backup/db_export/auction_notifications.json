@@ -1,0 +1,200 @@
+[
+  {
+    "_id": "69d23350ec3e3d2dcfc21b01",
+    "user_id": "69d0126144299a2e0d94c786",
+    "type": "outbid",
+    "auction_id": "75a2fedd165b2b69",
+    "message": "You were outbid on Samsung Galaxy S26 Ultra!",
+    "read": false,
+    "created_at": "2026-04-05T10:02:56.127400+00:00"
+  },
+  {
+    "_id": "69d54d001710a0dca7252db6",
+    "user_id": "bot_Clara92",
+    "type": "won",
+    "auction_id": "c8b93fa091808877",
+    "message": "You won Samsung Galaxy S26 Ultra for just €0.42!",
+    "read": false,
+    "created_at": "2026-04-07T18:29:20.868230+00:00"
+  },
+  {
+    "_id": "69d556772be8b141fa9fdbe9",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "type": "outbid",
+    "auction_id": "11cd3fdb23ba4867",
+    "message": "You were outbid on iPhone 17 Pro Max!",
+    "read": false,
+    "created_at": "2026-04-07T19:09:43.649168+00:00"
+  },
+  {
+    "_id": "69d59f038dc46b71ac96ae0c",
+    "user_id": "69d0126144299a2e0d94c786",
+    "type": "outbid",
+    "auction_id": "11cd3fdb23ba4867",
+    "message": "You were outbid on iPhone 17 Pro Max!",
+    "read": false,
+    "created_at": "2026-04-08T00:19:15.037503+00:00"
+  },
+  {
+    "_id": "69d92805950757d0d1972fa5",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "type": "won",
+    "auction_id": "11cd3fdb23ba4867",
+    "message": "You won iPhone 17 Pro Max for just €0.07!",
+    "read": false,
+    "created_at": "2026-04-10T16:40:37.858265+00:00"
+  },
+  {
+    "_id": "69daab7514870a29e43e4dfb",
+    "user_id": "bot_Elena_O",
+    "type": "outbid",
+    "auction_id": "37d8a1aa34c3f9e7",
+    "message": "You were outbid on Nintendo Switch 2!",
+    "read": false,
+    "created_at": "2026-04-11T20:13:41.703372+00:00"
+  },
+  {
+    "_id": "69dabe7f7955e9894b1de4cf",
+    "user_id": "bot_Felix_H",
+    "type": "outbid",
+    "auction_id": "eca3810289bb6787",
+    "message": "You were outbid on iPad Pro M5 13\"!",
+    "read": false,
+    "created_at": "2026-04-11T21:34:55.542735+00:00"
+  },
+  {
+    "_id": "69dabe857955e9894b1de4d6",
+    "user_id": "bot_Mia_Z",
+    "type": "outbid",
+    "auction_id": "eca3810289bb6787",
+    "message": "You were outbid on iPad Pro M5 13\"!",
+    "read": false,
+    "created_at": "2026-04-11T21:35:01.424182+00:00"
+  },
+  {
+    "_id": "69dabe967955e9894b1de4e4",
+    "user_id": "bot_Max_B",
+    "type": "outbid",
+    "auction_id": "eca3810289bb6787",
+    "message": "You were outbid on iPad Pro M5 13\"!",
+    "read": false,
+    "created_at": "2026-04-11T21:35:18.533415+00:00"
+  },
+  {
+    "_id": "69dbbdeb93ad78b84260a358",
+    "user_id": "bot_Lukas99",
+    "type": "won",
+    "auction_id": "a1fdcb6a61af6b5b",
+    "message": "You won Samsung Galaxy S26 Ultra for just €4.66!",
+    "read": false,
+    "created_at": "2026-04-12T15:44:43.036555+00:00"
+  },
+  {
+    "_id": "69dbbdeb93ad78b84260a359",
+    "user_id": "bot_Lukas99",
+    "type": "won",
+    "auction_id": "a1fdcb6a61af6b5b",
+    "message": "You won Samsung Galaxy S26 Ultra for just €4.66!",
+    "read": false,
+    "created_at": "2026-04-12T15:44:43.046604+00:00"
+  },
+  {
+    "_id": "69dbbdeb93ad78b84260a35a",
+    "user_id": "bot_Sarah_N",
+    "type": "won",
+    "auction_id": "8bdc356d39a45f0b",
+    "message": "You won MacBook Pro 16\" M5 Max for just €3.85!",
+    "read": false,
+    "created_at": "2026-04-12T15:44:43.036555+00:00"
+  },
+  {
+    "_id": "69dbbdeb93ad78b84260a35b",
+    "user_id": "bot_Sarah_N",
+    "type": "won",
+    "auction_id": "8bdc356d39a45f0b",
+    "message": "You won MacBook Pro 16\" M5 Max for just €3.85!",
+    "read": false,
+    "created_at": "2026-04-12T15:44:43.046604+00:00"
+  },
+  {
+    "_id": "69dbbdeb93ad78b84260a35c",
+    "user_id": "bot_Mia_Z",
+    "type": "won",
+    "auction_id": "9a4139897eda075b",
+    "message": "You won Meta Quest 5 for just €5.67!",
+    "read": false,
+    "created_at": "2026-04-12T15:44:43.036555+00:00"
+  },
+  {
+    "_id": "69dbbdeb93ad78b84260a35d",
+    "user_id": "bot_Mia_Z",
+    "type": "won",
+    "auction_id": "9a4139897eda075b",
+    "message": "You won Meta Quest 5 for just €5.67!",
+    "read": false,
+    "created_at": "2026-04-12T15:44:43.046604+00:00"
+  },
+  {
+    "_id": "69dbbdeb93ad78b84260a35e",
+    "user_id": "bot_Mia_Z",
+    "type": "won",
+    "auction_id": "34a9747bf87b8abe",
+    "message": "You won Dyson V20 Absolute for just €4.01!",
+    "read": false,
+    "created_at": "2026-04-12T15:44:43.036555+00:00"
+  },
+  {
+    "_id": "69dbbdeb93ad78b84260a35f",
+    "user_id": "bot_Mia_Z",
+    "type": "won",
+    "auction_id": "34a9747bf87b8abe",
+    "message": "You won Dyson V20 Absolute for just €4.01!",
+    "read": false,
+    "created_at": "2026-04-12T15:44:43.046604+00:00"
+  },
+  {
+    "_id": "69dbbdeb93ad78b84260a360",
+    "user_id": "bot_Clara92",
+    "type": "won",
+    "auction_id": "a7fc0bbc19996e0b",
+    "message": "You won Samsung Galaxy Ring 2 for just €3.08!",
+    "read": false,
+    "created_at": "2026-04-12T15:44:43.036555+00:00"
+  },
+  {
+    "_id": "69dbbdeb93ad78b84260a361",
+    "user_id": "bot_Clara92",
+    "type": "won",
+    "auction_id": "a7fc0bbc19996e0b",
+    "message": "You won Samsung Galaxy Ring 2 for just €3.08!",
+    "read": false,
+    "created_at": "2026-04-12T15:44:43.046604+00:00"
+  },
+  {
+    "_id": "69dbbdeb93ad78b84260a362",
+    "user_id": "bot_Leon2040",
+    "type": "won",
+    "auction_id": "5eaf3660808c5d7a",
+    "message": "You won GoPro Hero 14 Black for just €4.13!",
+    "read": false,
+    "created_at": "2026-04-12T15:44:43.036555+00:00"
+  },
+  {
+    "_id": "69dbbdeb93ad78b84260a363",
+    "user_id": "bot_Leon2040",
+    "type": "won",
+    "auction_id": "5eaf3660808c5d7a",
+    "message": "You won GoPro Hero 14 Black for just €4.13!",
+    "read": false,
+    "created_at": "2026-04-12T15:44:43.046604+00:00"
+  },
+  {
+    "_id": "69dbbe1c93ad78b84260a365",
+    "user_id": "bot_Sophie_K",
+    "type": "outbid",
+    "auction_id": "b0a20b28d3a9e9ab",
+    "message": "You were outbid on Samsung Galaxy Z Fold 7!",
+    "read": false,
+    "created_at": "2026-04-12T15:45:32.944747+00:00"
+  }
+]

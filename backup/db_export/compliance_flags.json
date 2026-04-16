@@ -1,0 +1,146 @@
+[
+  {
+    "_id": "69d0262f3149b08e344d72b4",
+    "user_id": "69d0126144299a2e0d94c786",
+    "reason": "rapid_velocity",
+    "txn_type": "payment",
+    "amount": 1.0,
+    "details": {
+      "triggered": true,
+      "rule": "rapid_velocity",
+      "detail": "5 txns in last minute"
+    },
+    "status": "open",
+    "created_at": "2026-04-03T20:42:23.395085+00:00",
+    "resolved_at": null,
+    "resolved_by": null
+  },
+  {
+    "_id": "69d026303149b08e344d72bb",
+    "user_id": "69d0126144299a2e0d94c786",
+    "reason": "rapid_velocity",
+    "txn_type": "payment",
+    "amount": 472.97,
+    "details": {
+      "triggered": true,
+      "rule": "rapid_velocity",
+      "detail": "6 txns in last minute"
+    },
+    "status": "open",
+    "created_at": "2026-04-03T20:42:24.161322+00:00",
+    "resolved_at": null,
+    "resolved_by": null
+  },
+  {
+    "_id": "69d02710cb4ee9f5f645c00c",
+    "user_id": "69d0126144299a2e0d94c786",
+    "reason": "rapid_velocity",
+    "txn_type": "payment",
+    "amount": 10.0,
+    "details": {
+      "triggered": true,
+      "rule": "rapid_velocity",
+      "detail": "5 txns in last minute"
+    },
+    "status": "open",
+    "created_at": "2026-04-03T20:46:08.857789+00:00",
+    "resolved_at": null,
+    "resolved_by": null
+  },
+  {
+    "_id": "69d02711cb4ee9f5f645c011",
+    "user_id": "69d0126144299a2e0d94c786",
+    "reason": "rapid_velocity",
+    "txn_type": "payment",
+    "amount": 5.0,
+    "details": {
+      "triggered": true,
+      "rule": "rapid_velocity",
+      "detail": "6 txns in last minute"
+    },
+    "status": "open",
+    "created_at": "2026-04-03T20:46:09.073161+00:00",
+    "resolved_at": null,
+    "resolved_by": null
+  },
+  {
+    "_id": "69d02711cb4ee9f5f645c017",
+    "user_id": "69d0126144299a2e0d94c786",
+    "reason": "rapid_velocity",
+    "txn_type": "payment",
+    "amount": 1.0,
+    "details": {
+      "triggered": true,
+      "rule": "rapid_velocity",
+      "detail": "7 txns in last minute"
+    },
+    "status": "open",
+    "created_at": "2026-04-03T20:46:09.407984+00:00",
+    "resolved_at": null,
+    "resolved_by": null
+  },
+  {
+    "_id": "69d02711cb4ee9f5f645c01c",
+    "user_id": "69d0126144299a2e0d94c786",
+    "reason": "rapid_velocity",
+    "txn_type": "payment",
+    "amount": 414.47,
+    "details": {
+      "triggered": true,
+      "rule": "rapid_velocity",
+      "detail": "8 txns in last minute"
+    },
+    "status": "open",
+    "created_at": "2026-04-03T20:46:09.524953+00:00",
+    "resolved_at": null,
+    "resolved_by": null
+  },
+  {
+    "_id": "69d02711cb4ee9f5f645c021",
+    "user_id": "69d0126144299a2e0d94c786",
+    "reason": "rapid_velocity",
+    "txn_type": "payment",
+    "amount": 7.5,
+    "details": {
+      "triggered": true,
+      "rule": "rapid_velocity",
+      "detail": "8 txns in last minute"
+    },
+    "status": "open",
+    "created_at": "2026-04-03T20:46:09.641907+00:00",
+    "resolved_at": null,
+    "resolved_by": null
+  },
+  {
+    "_id": "69d02712cb4ee9f5f645c027",
+    "user_id": "69d0126144299a2e0d94c786",
+    "reason": "rapid_velocity",
+    "txn_type": "payment",
+    "amount": 3.0,
+    "details": {
+      "triggered": true,
+      "rule": "rapid_velocity",
+      "detail": "9 txns in last minute"
+    },
+    "status": "open",
+    "created_at": "2026-04-03T20:46:10.089694+00:00",
+    "resolved_at": null,
+    "resolved_by": null
+  },
+  {
+    "_id": "69d17a17a1b60a997b58b53b",
+    "user_id": "69d0126144299a2e0d94c786",
+    "reason": "rapid_velocity",
+    "txn_type": "payment",
+    "amount": 5.0,
+    "details": {
+      "triggered": true,
+      "rule": "rapid_velocity",
+      "detail": "5 txns in last minute"
+    },
+    "status": "open",
+    "created_at": "2026-04-04T20:52:39.530534+00:00",
+    "resolved_at": null,
+    "resolved_by": null
+  }
+]

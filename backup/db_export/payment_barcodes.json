@@ -1,0 +1,178 @@
+[
+  {
+    "_id": "69d242bcea3b107cf4d34153",
+    "user_id": "69d0126144299a2e0d94c786",
+    "barcode": "BLZ-0B2A59C9F5F23F66",
+    "active": false,
+    "expires_at": "2026-04-05T11:10:44.954999+00:00",
+    "created_at": "2026-04-05T11:08:44.954999+00:00"
+  },
+  {
+    "_id": "69d242daea3b107cf4d3415c",
+    "user_id": "69d0126144299a2e0d94c786",
+    "barcode": "BLZ-EBD68C7E91CDDA34",
+    "active": false,
+    "expires_at": "2026-04-05T11:11:14.979016+00:00",
+    "created_at": "2026-04-05T11:09:14.979016+00:00"
+  },
+  {
+    "_id": "69d24b0761861373a0a9a41d",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "barcode": "BLZ-0A9D825730E773A8",
+    "active": false,
+    "expires_at": "2026-04-05T11:46:07.039158+00:00",
+    "created_at": "2026-04-05T11:44:07.039158+00:00"
+  },
+  {
+    "_id": "69d54d381710a0dca7252db7",
+    "user_id": "69d0126144299a2e0d94c786",
+    "barcode": "BLZ-8616051A583EF0F8",
+    "active": false,
+    "expires_at": "2026-04-07T18:32:16.846840+00:00",
+    "created_at": "2026-04-07T18:30:16.846840+00:00"
+  },
+  {
+    "_id": "69d551f5aa101941a7fd262c",
+    "user_id": "69d0126144299a2e0d94c786",
+    "barcode": "BLZ-288A2EB121EC19AF",
+    "active": false,
+    "expires_at": "2026-04-07T18:52:29.602578+00:00",
+    "created_at": "2026-04-07T18:50:29.602578+00:00"
+  },
+  {
+    "_id": "69d55299985eb7cacece8b30",
+    "user_id": "69d0126144299a2e0d94c786",
+    "barcode": "BLZ-CCBA7009F7309E64",
+    "active": false,
+    "expires_at": "2026-04-07T18:55:13.417168+00:00",
+    "created_at": "2026-04-07T18:53:13.417168+00:00"
+  },
+  {
+    "_id": "69d5538279516af65bba8d3e",
+    "user_id": "69d0126144299a2e0d94c786",
+    "barcode": "BLZ-099860CA38ECF515",
+    "active": false,
+    "expires_at": "2026-04-07T18:59:06.221342+00:00",
+    "created_at": "2026-04-07T18:57:06.221342+00:00"
+  },
+  {
+    "_id": "69d556272be8b141fa9fdbde",
+    "user_id": "69d0126144299a2e0d94c786",
+    "barcode": "BLZ-1D6F1F1290118561",
+    "active": false,
+    "expires_at": "2026-04-07T19:10:23.307617+00:00",
+    "created_at": "2026-04-07T19:08:23.307617+00:00"
+  },
+  {
+    "_id": "69d556f92be8b141fa9fdbf7",
+    "user_id": "69d0126144299a2e0d94c786",
+    "barcode": "BLZ-3788C4782E3465E1",
+    "active": false,
+    "expires_at": "2026-04-07T19:13:53.286520+00:00",
+    "created_at": "2026-04-07T19:11:53.286520+00:00"
+  },
+  {
+    "_id": "69d55d1eab39c4916b015c8e",
+    "user_id": "69d0126144299a2e0d94c786",
+    "barcode": "BLZ-8DF7A2804C309D02",
+    "active": false,
+    "expires_at": "2026-04-07T19:40:06.880121+00:00",
+    "created_at": "2026-04-07T19:38:06.880121+00:00"
+  },
+  {
+    "_id": "69d55f364b169cc04c6a11cc",
+    "user_id": "69d0126144299a2e0d94c786",
+    "barcode": "BLZ-DB520A20F6238667",
+    "active": false,
+    "expires_at": "2026-04-07T19:49:02.394600+00:00",
+    "created_at": "2026-04-07T19:47:02.394600+00:00"
+  },
+  {
+    "_id": "69d5972504acac30de817241",
+    "user_id": "69d0126144299a2e0d94c786",
+    "barcode": "BLZ-CB79DFD4BD57217F",
+    "active": false,
+    "expires_at": "2026-04-07T23:47:41.421945+00:00",
+    "created_at": "2026-04-07T23:45:41.421945+00:00"
+  },
+  {
+    "_id": "69d59f228dc46b71ac96ae13",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "barcode": "BLZ-52AAE49B162B8DF8",
+    "active": false,
+    "expires_at": "2026-04-08T00:21:46.146714+00:00",
+    "created_at": "2026-04-08T00:19:46.146714+00:00"
+  },
+  {
+    "_id": "69d6116a3f9c73dc30750a72",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "barcode": "BLZ-38D2295AE4CDC441",
+    "active": false,
+    "expires_at": "2026-04-08T08:29:22.221803+00:00",
+    "created_at": "2026-04-08T08:27:22.221803+00:00"
+  },
+  {
+    "_id": "69d9e990919b4ef40b28dc18",
+    "user_id": "69d0126144299a2e0d94c786",
+    "barcode": "BLZ-811045814116E9E2",
+    "active": false,
+    "expires_at": "2026-04-11T06:28:24.758625+00:00",
+    "created_at": "2026-04-11T06:26:24.758625+00:00"
+  },
+  {
+    "_id": "69d9eb87a22423ed63243f9e",
+    "user_id": "69d0126144299a2e0d94c786",
+    "barcode": "BLZ-8D66482CC0C1A2CD",
+    "active": false,
+    "expires_at": "2026-04-11T06:36:47.153000+00:00",
+    "created_at": "2026-04-11T06:34:47.153000+00:00"
+  },
+  {
+    "_id": "69da01a497ee5c37cb46be18",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "barcode": "BLZ-00D704E9CC33DDDE",
+    "active": false,
+    "expires_at": "2026-04-11T08:11:08.672759+00:00",
+    "created_at": "2026-04-11T08:09:08.672759+00:00"
+  },
+  {
+    "_id": "69da074f3e1f84c9f317291c",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "barcode": "BLZ-E86061C834B8BD6A",
+    "active": true,
+    "expires_at": "2026-04-11T08:35:19.632132+00:00",
+    "created_at": "2026-04-11T08:33:19.632132+00:00"
+  },
+  {
+    "_id": "69daaa6a14870a29e43e4dea",
+    "user_id": "69d0126144299a2e0d94c786",
+    "barcode": "BLZ-7DC98241C4EB0766",
+    "active": false,
+    "expires_at": "2026-04-11T20:11:14.115129+00:00",
+    "created_at": "2026-04-11T20:09:14.115129+00:00"
+  },
+  {
+    "_id": "69df3d6dc45d2581975c570f",
+    "user_id": "69d0126144299a2e0d94c786",
+    "barcode": "BLZ-930F33193EE9C455",
+    "active": false,
+    "expires_at": "2026-04-15T07:27:33.991010+00:00",
+    "created_at": "2026-04-15T07:25:33.991010+00:00"
+  },
+  {
+    "_id": "69df3e9ac45d2581975c5723",
+    "user_id": "69d0126144299a2e0d94c786",
+    "barcode": "BLZ-2BC0F0BEB53941A2",
+    "active": true,
+    "expires_at": "2026-04-15T07:32:34.985893+00:00",
+    "created_at": "2026-04-15T07:30:34.985893+00:00"
+  },
+  {
+    "_id": "69df3e9ac45d2581975c5724",
+    "user_id": "69d0126144299a2e0d94c786",
+    "barcode": "BLZ-9A956983B0D8B876",
+    "active": true,
+    "expires_at": "2026-04-15T07:32:34.986217+00:00",
+    "created_at": "2026-04-15T07:30:34.986217+00:00"
+  }
+]

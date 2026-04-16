@@ -1,0 +1,26 @@
+[
+  {
+    "_id": "69d249545fe83cfad59c24e0",
+    "business_name": "Test Cafe",
+    "contact_name": "Max",
+    "email": "test@cafe.de",
+    "phone": "",
+    "business_type": "food",
+    "plan": "starter",
+    "status": "pending",
+    "created_at": "2026-04-05T11:36:52.028015+00:00",
+    "trial_ends": "2026-05-05T11:36:52.028015+00:00"
+  },
+  {
+    "_id": "69d24bc061861373a0a9a430",
+    "business_name": "Test2",
+    "contact_name": "Test",
+    "email": "test2@test.de",
+    "phone": "",
+    "business_type": "",
+    "plan": "starter",
+    "status": "pending",
+    "created_at": "2026-04-05T11:47:12.535843+00:00",
+    "trial_ends": "2026-05-05T11:47:12.535843+00:00"
+  }
+]

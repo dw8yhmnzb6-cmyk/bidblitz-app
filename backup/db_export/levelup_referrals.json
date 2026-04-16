@@ -1,0 +1,18 @@
+[
+  {
+    "_id": "69dfff71fe53667d11107441",
+    "user_email": "kunde@bidblitz.com",
+    "referral_code": "BLITZ-BEFC25",
+    "total_referrals": 1,
+    "total_bonus_earned": 5.0,
+    "free_months_earned": 1,
+    "referrals": [
+      {
+        "name": "Admin Updated",
+        "date": "2026-04-15T21:13:21.841327+00:00",
+        "bonus": 5.0
+      }
+    ],
+    "created_at": "2026-04-15T21:13:21.677060+00:00"
+  }
+]

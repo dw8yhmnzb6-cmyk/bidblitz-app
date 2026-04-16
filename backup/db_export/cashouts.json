@@ -1,0 +1,13 @@
+[
+  {
+    "_id": "69df5a15bc4b6ca90f939a29",
+    "cashout_id": "1d81b9e0b539a6b4",
+    "user_email": "admin@bidblitz.com",
+    "amount": 50.0,
+    "fee": 0,
+    "total_deducted": 50.0,
+    "status": "completed",
+    "method": "instant",
+    "created_at": "2026-04-15T09:27:49.400223+00:00"
+  }
+]

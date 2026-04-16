@@ -1,0 +1,11 @@
+[
+  {
+    "_id": "69e007a5b9564f68ad8d2c0c",
+    "sub_id": "mus_411fd972a909",
+    "user_email": "kunde@bidblitz.com",
+    "plan": "premium",
+    "price": 4.99,
+    "status": "active",
+    "created_at": "2026-04-15T21:48:21.671688+00:00"
+  }
+]

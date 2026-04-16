@@ -1,0 +1,63 @@
+[
+  {
+    "_id": "69cfaf134c1603d560ef4ebc",
+    "identifier": "10.79.129.5:nonexistent@test.com",
+    "attempts": 4
+  },
+  {
+    "_id": "69cfbdbcb321ac1ff4f7aacf",
+    "identifier": "10.79.129.7:lockout_test_6370@test.com",
+    "attempts": 4
+  },
+  {
+    "_id": "69cfbdbcb321ac1ff4f7aad0",
+    "identifier": "10.79.129.5:lockout_test_6370@test.com",
+    "attempts": 2
+  },
+  {
+    "_id": "69cff32b03e1dca494d20fa0",
+    "identifier": "10.79.129.7:test@test.com",
+    "attempts": 1
+  },
+  {
+    "_id": "69cffbcf03e1dca494d20fa1",
+    "identifier": "10.79.129.7:afrimk@me.com",
+    "attempts": 1
+  },
+  {
+    "_id": "69d00d8940be706b16ca6c58",
+    "identifier": "10.79.129.7:fake@test.com",
+    "attempts": 5,
+    "locked_until": "2026-04-03T19:12:14.420144+00:00"
+  },
+  {
+    "_id": "69d00d8940be706b16ca6c59",
+    "identifier": "10.79.129.5:fake@test.com",
+    "attempts": 2
+  },
+  {
+    "_id": "69d00de036e6f915e419b221",
+    "identifier": "10.79.129.7:wrong@example.com",
+    "attempts": 1
+  },
+  {
+    "_id": "69d00dff81cc64874f153628",
+    "identifier": "10.79.129.5:wrong@example.com",
+    "attempts": 1
+  },
+  {
+    "_id": "69d18c8266908f44d5f6fc83",
+    "identifier": "10.79.129.7:x@x.com",
+    "attempts": 1
+  },
+  {
+    "_id": "69d59ef38dc46b71ac96ae07",
+    "identifier": "10.79.129.7:testuser_1775607538@gmail.com",
+    "attempts": 1
+  },
+  {
+    "_id": "69df3c73c45d2581975c56fc",
+    "identifier": "10.79.131.71:haendler@bidblitz.com",
+    "attempts": 1
+  }
+]

@@ -1,0 +1,96 @@
+[
+  {
+    "_id": "69de9be8b904b02a0774a216",
+    "sitter_id": "pet_001",
+    "name": "Marie Tierlieb",
+    "service": "hundesitter",
+    "rating": 4.9,
+    "reviews": 178,
+    "price_per_day": 35,
+    "city": "Berlin",
+    "description": "Erfahrene Hundesitterin mit eigenem Garten. Max. 3 Hunde gleichzeitig. Tägliche Foto-Updates.",
+    "animals": [
+      "Hund"
+    ],
+    "avatar": "https://images.unsplash.com/photo-1765648580890-732fa6d769c5?w=400&q=80",
+    "featured": true,
+    "created_at": "2026-04-14T19:56:24.504106+00:00",
+    "available": true
+  },
+  {
+    "_id": "69de9be8b904b02a0774a217",
+    "sitter_id": "pet_002",
+    "name": "Gassi-König Tom",
+    "service": "gassi",
+    "rating": 4.8,
+    "reviews": 234,
+    "price_per_day": 15,
+    "city": "München",
+    "description": "Professioneller Gassi-Service. 60 Min. pro Runde, kleine Gruppen (max. 4 Hunde). GPS-Tracking.",
+    "animals": [
+      "Hund"
+    ],
+    "avatar": "https://images.unsplash.com/photo-1758519290828-2e62b7699b28?w=400&q=80",
+    "featured": true,
+    "created_at": "2026-04-14T19:56:24.504106+00:00",
+    "available": true
+  },
+  {
+    "_id": "69de9be8b904b02a0774a218",
+    "sitter_id": "pet_003",
+    "name": "Katzenpension Schnurr",
+    "service": "katzensitter",
+    "rating": 4.9,
+    "reviews": 145,
+    "price_per_day": 25,
+    "city": "Hamburg",
+    "description": "Liebevolle Katzenbetreuung bei Ihnen zuhause. Füttern, Spielen, Katzenklo. Auch Medikamentengabe.",
+    "animals": [
+      "Katze"
+    ],
+    "avatar": "https://images.unsplash.com/photo-1765648580528-8d659861d81a?w=400&q=80",
+    "featured": false,
+    "created_at": "2026-04-14T19:56:24.504106+00:00",
+    "available": true
+  },
+  {
+    "_id": "69de9be8b904b02a0774a219",
+    "sitter_id": "pet_004",
+    "name": "Tier-Taxi Express",
+    "service": "transport",
+    "rating": 4.7,
+    "reviews": 89,
+    "price_per_day": 40,
+    "city": "Köln",
+    "description": "Tiertransport zum Tierarzt, Flughafen, oder Tierpension. Klimatisiertes Fahrzeug.",
+    "animals": [
+      "Hund",
+      "Katze",
+      "Kleintiere"
+    ],
+    "avatar": "https://images.unsplash.com/photo-1758519290828-2e62b7699b28?w=400&q=80",
+    "featured": false,
+    "created_at": "2026-04-14T19:56:24.504106+00:00",
+    "available": true
+  },
+  {
+    "_id": "69de9be8b904b02a0774a21a",
+    "sitter_id": "pet_005",
+    "name": "Dr. Pfote Mobil",
+    "service": "tierarzt",
+    "rating": 4.9,
+    "reviews": 267,
+    "price_per_day": 65,
+    "city": "Frankfurt",
+    "description": "Mobiler Tierarzt — Hausbesuche für Impfungen, Check-ups, Notfälle. Stressfrei für Ihr Tier.",
+    "animals": [
+      "Hund",
+      "Katze",
+      "Kleintiere"
+    ],
+    "avatar": "https://images.unsplash.com/photo-1765648580890-732fa6d769c5?w=400&q=80",
+    "featured": true,
+    "created_at": "2026-04-14T19:56:24.504106+00:00",
+    "available": true
+  }
+]

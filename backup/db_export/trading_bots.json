@@ -1,0 +1,17 @@
+[
+  {
+    "_id": "69e003bed1242cebe84c17e3",
+    "bot_id": "bot_c81a3055e77b",
+    "user_email": "kunde@bidblitz.com",
+    "strategy_id": "dca_btc",
+    "strategy_name": "BTC DCA Bot",
+    "type": "DCA",
+    "coin": "BTC",
+    "budget_eur": 100.0,
+    "trades_executed": 0,
+    "pnl": 0,
+    "pnl_pct": 0,
+    "status": "running",
+    "created_at": "2026-04-15T21:31:42.161126+00:00"
+  }
+]

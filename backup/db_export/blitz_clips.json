@@ -1,0 +1,17 @@
+[
+  {
+    "_id": "69e096bbca3c39b6f7e2b57b",
+    "clip_id": "clip_f7f6fe1f7185",
+    "creator": "Max Mustermann",
+    "creator_email": "kunde@bidblitz.com",
+    "title": "Mein erster BidBlitz Clip!",
+    "description": "",
+    "duration": "30s",
+    "category": "Tech",
+    "likes": 0,
+    "views": 0,
+    "shares": 0,
+    "comments": 0,
+    "created_at": "2026-04-16T07:58:51.471920+00:00"
+  }
+]

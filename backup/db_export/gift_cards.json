@@ -1,0 +1,120 @@
+[
+  {
+    "_id": "69dc0cf35a7f4ab3d6001d75",
+    "card_id": "GC-9719EA76",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "type": "spotify",
+    "amount": 10,
+    "code": "TIDF-RA5F-1CW3-6GGJ",
+    "status": "active",
+    "redeemed": false,
+    "created_at": "2026-04-12T21:21:55.182685+00:00"
+  },
+  {
+    "_id": "69dc0d0b5a7f4ab3d6001d77",
+    "card_id": "GC-BCA73360",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "type": "netflix",
+    "amount": 15,
+    "code": "F8HJ-QVK3-BNOL-GRYQ",
+    "status": "active",
+    "redeemed": false,
+    "created_at": "2026-04-12T21:22:19.372143+00:00"
+  },
+  {
+    "_id": "69dff0ccfc57cf77ae8845cc",
+    "card_id": "gc_5983430c33d5",
+    "seller_email": "kunde@bidblitz.com",
+    "brand": "Amazon",
+    "value": 50,
+    "price": 43,
+    "discount": 14.0,
+    "code_hint": "***A173",
+    "status": "available",
+    "created_at": "2026-04-15T20:10:52.831422+00:00"
+  },
+  {
+    "_id": "69dff0ccfc57cf77ae8845cd",
+    "card_id": "gc_4de9a5bebdca",
+    "seller_email": "kunde@bidblitz.com",
+    "brand": "Steam",
+    "value": 25,
+    "price": 21,
+    "discount": 16.0,
+    "code_hint": "***C618",
+    "status": "available",
+    "created_at": "2026-04-15T20:10:52.831422+00:00"
+  },
+  {
+    "_id": "69dff0ccfc57cf77ae8845ce",
+    "card_id": "gc_0c7e36843800",
+    "seller_email": "admin@bidblitz.com",
+    "brand": "Netflix",
+    "value": 30,
+    "price": 26,
+    "discount": 13.3,
+    "code_hint": "***CB12",
+    "status": "available",
+    "created_at": "2026-04-15T20:10:52.831422+00:00"
+  },
+  {
+    "_id": "69dff0ccfc57cf77ae8845cf",
+    "card_id": "gc_6aa231d55b7e",
+    "seller_email": "haendler@bidblitz.com",
+    "brand": "Spotify",
+    "value": 10,
+    "price": 8.5,
+    "discount": 15.0,
+    "code_hint": "***1A1B",
+    "status": "available",
+    "created_at": "2026-04-15T20:10:52.831422+00:00"
+  },
+  {
+    "_id": "69dff0ccfc57cf77ae8845d0",
+    "card_id": "gc_1c819646e2d1",
+    "seller_email": "kunde@bidblitz.com",
+    "brand": "PlayStation Store",
+    "value": 50,
+    "price": 44,
+    "discount": 12.0,
+    "code_hint": "***6D93",
+    "status": "available",
+    "created_at": "2026-04-15T20:10:52.831422+00:00"
+  },
+  {
+    "_id": "69dff0ccfc57cf77ae8845d1",
+    "card_id": "gc_0261b5a025fc",
+    "seller_email": "kunde@bidblitz.com",
+    "brand": "Apple iTunes",
+    "value": 25,
+    "price": 22,
+    "discount": 12.0,
+    "code_hint": "***3F51",
+    "status": "available",
+    "created_at": "2026-04-15T20:10:52.831422+00:00"
+  },
+  {
+    "_id": "69dff0ccfc57cf77ae8845d2",
+    "card_id": "gc_3641d50bfc6c",
+    "seller_email": "kunde@bidblitz.com",
+    "brand": "Zalando",
+    "value": 100,
+    "price": 88,
+    "discount": 12.0,
+    "code_hint": "***6D94",
+    "status": "available",
+    "created_at": "2026-04-15T20:10:52.831422+00:00"
+  },
+  {
+    "_id": "69dff0ccfc57cf77ae8845d3",
+    "card_id": "gc_935975c6f388",
+    "seller_email": "haendler@bidblitz.com",
+    "brand": "Nike",
+    "value": 50,
+    "price": 42,
+    "discount": 16.0,
+    "code_hint": "***DDCD",
+    "status": "available",
+    "created_at": "2026-04-15T20:10:52.831422+00:00"
+  }
+]

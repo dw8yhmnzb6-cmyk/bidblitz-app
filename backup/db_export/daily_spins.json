@@ -1,0 +1,11 @@
+[
+  {
+    "_id": "69e096baca3c39b6f7e2b576",
+    "user_email": "kunde@bidblitz.com",
+    "date": "2026-04-16",
+    "prize_label": "2.00 EUR",
+    "prize_value": 2.0,
+    "prize_type": "cash",
+    "created_at": "2026-04-16T07:58:50.464838+00:00"
+  }
+]

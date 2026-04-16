@@ -1,0 +1,18 @@
+[
+  {
+    "_id": "69dbc69aa5ee5c10bcc83bfd",
+    "child_id": "child_2a880974de5f",
+    "app_id": "tiktok",
+    "blocked": true,
+    "daily_limit_minutes": null,
+    "updated_at": "2026-04-12T16:21:46.960703+00:00"
+  },
+  {
+    "_id": "69dbc69ba5ee5c10bcc83c02",
+    "app_id": "youtube",
+    "child_id": "child_2a880974de5f",
+    "blocked": false,
+    "daily_limit_minutes": 30,
+    "updated_at": "2026-04-12T16:21:47.102662+00:00"
+  }
+]

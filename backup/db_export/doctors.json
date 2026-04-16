@@ -1,0 +1,102 @@
+[
+  {
+    "_id": "69de9be8b904b02a0774a1fd",
+    "doctor_id": "doc_001",
+    "name": "Dr. med. Sarah Fischer",
+    "specialty": "allgemeinmedizin",
+    "rating": 4.9,
+    "reviews": 342,
+    "price_consultation": 35,
+    "city": "Berlin",
+    "description": "Hausärztin mit 12 Jahren Erfahrung. Akutsprechstunde, Vorsorge, Krankschreibungen.",
+    "languages": [
+      "Deutsch",
+      "Englisch"
+    ],
+    "avatar": "https://images.unsplash.com/photo-1765648580890-732fa6d769c5?w=400&q=80",
+    "available": true,
+    "next_slot": "Heute 14:00",
+    "featured": true,
+    "created_at": "2026-04-14T19:56:24.450962+00:00"
+  },
+  {
+    "_id": "69de9be8b904b02a0774a1fe",
+    "doctor_id": "doc_002",
+    "name": "Dr. med. Michael Krüger",
+    "specialty": "dermatologie",
+    "rating": 4.8,
+    "reviews": 256,
+    "price_consultation": 45,
+    "city": "München",
+    "description": "Hautarzt — Akne, Ekzeme, Hautkrebs-Screening, Kosmetische Dermatologie.",
+    "languages": [
+      "Deutsch",
+      "Englisch"
+    ],
+    "avatar": "https://images.unsplash.com/photo-1758519290828-2e62b7699b28?w=400&q=80",
+    "available": true,
+    "next_slot": "Heute 16:30",
+    "featured": true,
+    "created_at": "2026-04-14T19:56:24.450962+00:00"
+  },
+  {
+    "_id": "69de9be8b904b02a0774a1ff",
+    "doctor_id": "doc_003",
+    "name": "Dr. med. Anna Lehmann",
+    "specialty": "psychologie",
+    "rating": 4.9,
+    "reviews": 189,
+    "price_consultation": 55,
+    "city": "Hamburg",
+    "description": "Psychologin — Angststörungen, Depression, Burnout. Videotherapie & Erstberatung.",
+    "languages": [
+      "Deutsch",
+      "Englisch",
+      "Spanisch"
+    ],
+    "avatar": "https://images.unsplash.com/photo-1765648580528-8d659861d81a?w=400&q=80",
+    "available": true,
+    "next_slot": "Morgen 10:00",
+    "featured": true,
+    "created_at": "2026-04-14T19:56:24.450962+00:00"
+  },
+  {
+    "_id": "69de9be8b904b02a0774a200",
+    "doctor_id": "doc_004",
+    "name": "Dr. med. Peter Schulz",
+    "specialty": "orthopaedie",
+    "rating": 4.7,
+    "reviews": 178,
+    "price_consultation": 40,
+    "city": "Köln",
+    "description": "Orthopäde — Rückenschmerzen, Gelenkprobleme, Sportmedizin, Physiotherapie-Verordnung.",
+    "languages": [
+      "Deutsch"
+    ],
+    "avatar": "https://images.unsplash.com/photo-1758519290828-2e62b7699b28?w=400&q=80",
+    "available": true,
+    "next_slot": "Morgen 14:00",
+    "featured": false,
+    "created_at": "2026-04-14T19:56:24.450962+00:00"
+  },
+  {
+    "_id": "69de9be8b904b02a0774a201",
+    "doctor_id": "doc_005",
+    "name": "Dr. med. Julia Braun",
+    "specialty": "kinderheilkunde",
+    "rating": 4.9,
+    "reviews": 298,
+    "price_consultation": 35,
+    "city": "Frankfurt",
+    "description": "Kinderärztin — Erkältungen, Impfberatung, Entwicklungsfragen. Kinderfreundliche Videosprechstunde.",
+    "languages": [
+      "Deutsch",
+      "Englisch"
+    ],
+    "avatar": "https://images.unsplash.com/photo-1765648580890-732fa6d769c5?w=400&q=80",
+    "available": true,
+    "next_slot": "Heute 18:00",
+    "featured": false,
+    "created_at": "2026-04-14T19:56:24.450962+00:00"
+  }
+]

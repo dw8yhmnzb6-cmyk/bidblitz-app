@@ -1,0 +1,106 @@
+[
+  {
+    "_id": "69dbcaf9693649c5d14248f1",
+    "credit_id": "a4cc6d47c39d7ede",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "amount": 250.0,
+    "remaining_amount": 257.38,
+    "total_interest": 7.38,
+    "total_repayment": 257.38,
+    "monthly_rate": 42.9,
+    "term_months": 6,
+    "interest_rate": 0.059,
+    "schedule": [
+      {
+        "month": 1,
+        "date": "2026-05-12",
+        "amount": 42.9,
+        "remaining": 214.48
+      },
+      {
+        "month": 2,
+        "date": "2026-06-11",
+        "amount": 42.9,
+        "remaining": 171.58
+      },
+      {
+        "month": 3,
+        "date": "2026-07-11",
+        "amount": 42.9,
+        "remaining": 128.68
+      },
+      {
+        "month": 4,
+        "date": "2026-08-10",
+        "amount": 42.9,
+        "remaining": 85.78
+      },
+      {
+        "month": 5,
+        "date": "2026-09-09",
+        "amount": 42.9,
+        "remaining": 42.88
+      },
+      {
+        "month": 6,
+        "date": "2026-10-09",
+        "amount": 42.9,
+        "remaining": 0
+      }
+    ],
+    "status": "active",
+    "created_at": "2026-04-12T16:40:25.833599+00:00",
+    "due_date": "2026-10-09T16:40:25.833599+00:00",
+    "paid_at": null,
+    "payments": []
+  },
+  {
+    "_id": "69dbcdb90568bc2c99fa033a",
+    "credit_id": "476ea49ffc1e8f12",
+    "user_id": "69d0126144299a2e0d94c786",
+    "user_email": "kunde@bidblitz.com",
+    "user_name": "Max Mustermann",
+    "amount": 150.0,
+    "remaining_amount": 152.21,
+    "total_interest": 2.21,
+    "total_repayment": 152.21,
+    "monthly_rate": 50.74,
+    "term_months": 3,
+    "interest_rate": 0.059,
+    "schedule": [
+      {
+        "month": 1,
+        "date": "2026-05-12",
+        "amount": 50.74,
+        "remaining": 101.47,
+        "status": "pending"
+      },
+      {
+        "month": 2,
+        "date": "2026-06-11",
+        "amount": 50.74,
+        "remaining": 50.73,
+        "status": "pending"
+      },
+      {
+        "month": 3,
+        "date": "2026-07-11",
+        "amount": 50.74,
+        "remaining": 0,
+        "status": "pending"
+      }
+    ],
+    "status": "active",
+    "auto_pay": true,
+    "created_at": "2026-04-12T16:52:09.411611+00:00",
+    "due_date": "2026-07-11T21:42:04.198590+00:00",
+    "approved_at": "2026-04-12T21:42:04.198590+00:00",
+    "rejected_at": null,
+    "rejection_reason": null,
+    "paid_at": null,
+    "payments": [],
+    "next_payment_date": "2026-05-12",
+    "next_payment_month": 1,
+    "approved_by": "69cface7afddbc3de2cabb39"
+  }
+]

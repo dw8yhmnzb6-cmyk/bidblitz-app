@@ -1,0 +1,18 @@
+[
+  {
+    "_id": "69dbfab3277c53a6b51e1d16",
+    "application_id": "1029c8510db6c38e",
+    "job_id": "943d22a993bfbf47",
+    "job_title": "Senior Full-Stack Developer",
+    "company_name": "BidBlitz Technologies",
+    "applicant_id": "69d0126144299a2e0d94c786",
+    "applicant_name": "Max Mustermann",
+    "applicant_email": "kunde@bidblitz.com",
+    "cover_letter": "Ich bewerbe mich!",
+    "resume_url": "",
+    "phone": "+49 123",
+    "cv_attached": true,
+    "status": "pending",
+    "created_at": "2026-04-12T20:04:03.515486+00:00"
+  }
+]

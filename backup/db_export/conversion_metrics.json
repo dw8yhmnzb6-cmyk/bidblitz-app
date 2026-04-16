@@ -1,0 +1,310 @@
+[
+  {
+    "_id": "69d19ea2d79d0089175d2a3f",
+    "day": "2026-04-04",
+    "event": "guest_visit",
+    "count": 3,
+    "updated_at": "2026-04-04T23:30:13.607531+00:00"
+  },
+  {
+    "_id": "69d19eebd79d0089175d2a82",
+    "day": "2026-04-04",
+    "event": "feature_click",
+    "count": 3,
+    "updated_at": "2026-04-04T23:30:17.031954+00:00"
+  },
+  {
+    "_id": "69d19eebd79d0089175d2a87",
+    "day": "2026-04-04",
+    "event": "guest_register_click",
+    "count": 2,
+    "updated_at": "2026-04-04T23:30:17.032443+00:00"
+  },
+  {
+    "_id": "69d19eebd79d0089175d2a8a",
+    "day": "2026-04-04",
+    "event": "demo_start",
+    "count": 2,
+    "updated_at": "2026-04-04T23:30:19.676027+00:00"
+  },
+  {
+    "_id": "69d214097b543c89bdaed424",
+    "event": "guest_visit",
+    "day": "2026-04-05",
+    "count": 134,
+    "updated_at": "2026-04-05T22:19:44.173793+00:00"
+  },
+  {
+    "_id": "69d2142d7b543c89bdaed464",
+    "event": "feature_click",
+    "day": "2026-04-05",
+    "count": 13,
+    "updated_at": "2026-04-05T18:34:30.238644+00:00"
+  },
+  {
+    "_id": "69d2142d7b543c89bdaed467",
+    "event": "guest_register_click",
+    "day": "2026-04-05",
+    "count": 9,
+    "updated_at": "2026-04-05T18:34:30.249378+00:00"
+  },
+  {
+    "_id": "69d2143c7b543c89bdaed470",
+    "event": "demo_start",
+    "day": "2026-04-05",
+    "count": 2,
+    "updated_at": "2026-04-05T07:51:27.717288+00:00"
+  },
+  {
+    "_id": "69d2143c7b543c89bdaed473",
+    "event": "cta_click",
+    "day": "2026-04-05",
+    "count": 109,
+    "updated_at": "2026-04-05T19:28:31.010779+00:00"
+  },
+  {
+    "_id": "69d214577b543c89bdaed482",
+    "event": "page_view",
+    "day": "2026-04-05",
+    "count": 185,
+    "updated_at": "2026-04-05T19:28:35.663359+00:00"
+  },
+  {
+    "_id": "69d2146a7b543c89bdaed489",
+    "event": "demo_exit",
+    "day": "2026-04-05",
+    "count": 1,
+    "updated_at": "2026-04-05T07:51:06.634216+00:00"
+  },
+  {
+    "_id": "69d35290690c0f38467f376f",
+    "day": "2026-04-06",
+    "event": "guest_visit",
+    "count": 5,
+    "updated_at": "2026-04-06T06:37:59.087087+00:00"
+  },
+  {
+    "_id": "69d35297690c0f38467f377c",
+    "day": "2026-04-06",
+    "event": "cta_click",
+    "count": 2,
+    "updated_at": "2026-04-06T06:32:16.005500+00:00"
+  },
+  {
+    "_id": "69d352c1690c0f38467f379e",
+    "event": "page_view",
+    "day": "2026-04-06",
+    "count": 3,
+    "updated_at": "2026-04-06T06:32:32.554631+00:00"
+  },
+  {
+    "_id": "69d3539d690c0f38467f38b9",
+    "event": "guest_register_click",
+    "day": "2026-04-06",
+    "count": 1,
+    "updated_at": "2026-04-06T06:33:01.915485+00:00"
+  },
+  {
+    "_id": "69d54cde5ed9631d1017168a",
+    "day": "2026-04-07",
+    "event": "guest_visit",
+    "count": 31,
+    "updated_at": "2026-04-07T23:46:57.579267+00:00"
+  },
+  {
+    "_id": "69d54ed65ed9631d10171839",
+    "event": "cta_click",
+    "day": "2026-04-07",
+    "count": 20,
+    "updated_at": "2026-04-07T23:46:58.133970+00:00"
+  },
+  {
+    "_id": "69d54eda5ed9631d1017184a",
+    "event": "page_view",
+    "day": "2026-04-07",
+    "count": 23,
+    "updated_at": "2026-04-07T23:42:31.979005+00:00"
+  },
+  {
+    "_id": "69d55979a4f148d2835d2ea9",
+    "day": "2026-04-07",
+    "event": "guest_register_click",
+    "count": 2,
+    "updated_at": "2026-04-07T23:41:52.479008+00:00"
+  },
+  {
+    "_id": "69d55979a4f148d2835d2eac",
+    "day": "2026-04-07",
+    "event": "feature_click",
+    "count": 2,
+    "updated_at": "2026-04-07T23:41:52.476337+00:00"
+  },
+  {
+    "_id": "69d59d0beb75ffbbfb32cd18",
+    "day": "2026-04-08",
+    "event": "guest_visit",
+    "count": 42,
+    "updated_at": "2026-04-08T18:57:00.009855+00:00"
+  },
+  {
+    "_id": "69d59d0eeb75ffbbfb32cd1c",
+    "day": "2026-04-08",
+    "event": "cta_click",
+    "count": 35,
+    "updated_at": "2026-04-08T18:57:02.036082+00:00"
+  },
+  {
+    "_id": "69d59d3ceb75ffbbfb32cd56",
+    "day": "2026-04-08",
+    "event": "page_view",
+    "count": 43,
+    "updated_at": "2026-04-08T18:57:06.672129+00:00"
+  },
+  {
+    "_id": "69d75633d7c1d00047f00650",
+    "event": "guest_visit",
+    "day": "2026-04-09",
+    "count": 3,
+    "updated_at": "2026-04-09T21:23:55.077839+00:00"
+  },
+  {
+    "_id": "69d756f5d7c1d00047f006b5",
+    "event": "cta_click",
+    "day": "2026-04-09",
+    "count": 2,
+    "updated_at": "2026-04-09T21:23:56.948869+00:00"
+  },
+  {
+    "_id": "69d75712d7c1d00047f006dc",
+    "day": "2026-04-09",
+    "event": "page_view",
+    "count": 5,
+    "updated_at": "2026-04-09T21:24:29.429802+00:00"
+  },
+  {
+    "_id": "69d91569d8044149fc01f696",
+    "day": "2026-04-10",
+    "event": "guest_visit",
+    "count": 23,
+    "updated_at": "2026-04-10T19:40:45.939044+00:00"
+  },
+  {
+    "_id": "69d91588d8044149fc01f6b0",
+    "day": "2026-04-10",
+    "event": "cta_click",
+    "count": 12,
+    "updated_at": "2026-04-10T16:45:27.292091+00:00"
+  },
+  {
+    "_id": "69d928efb69ad01e74314b92",
+    "day": "2026-04-10",
+    "event": "page_view",
+    "count": 4,
+    "updated_at": "2026-04-10T16:45:31.951336+00:00"
+  },
+  {
+    "_id": "69d98f404b55619d693477ad",
+    "day": "2026-04-11",
+    "event": "guest_visit",
+    "count": 119,
+    "updated_at": "2026-04-11T23:16:51.987666+00:00"
+  },
+  {
+    "_id": "69d9e8c647bcb8353f1d4101",
+    "event": "cta_click",
+    "day": "2026-04-11",
+    "count": 88,
+    "updated_at": "2026-04-11T23:16:54.835954+00:00"
+  },
+  {
+    "_id": "69d9e8dd47bcb8353f1d4126",
+    "event": "page_view",
+    "day": "2026-04-11",
+    "count": 294,
+    "updated_at": "2026-04-11T23:16:59.485432+00:00"
+  },
+  {
+    "_id": "69db71b06534d36dfcb86287",
+    "day": "2026-04-12",
+    "event": "guest_visit",
+    "count": 73,
+    "updated_at": "2026-04-12T23:01:35.389308+00:00"
+  },
+  {
+    "_id": "69db71c16534d36dfcb862a7",
+    "day": "2026-04-12",
+    "event": "cta_click",
+    "count": 43,
+    "updated_at": "2026-04-12T22:24:00.741081+00:00"
+  },
+  {
+    "_id": "69db71ee6534d36dfcb8631a",
+    "event": "page_view",
+    "day": "2026-04-12",
+    "count": 163,
+    "updated_at": "2026-04-12T22:27:45.892733+00:00"
+  },
+  {
+    "_id": "69de93d308601e232a3a0152",
+    "day": "2026-04-14",
+    "event": "guest_visit",
+    "count": 16,
+    "updated_at": "2026-04-14T21:47:20.126822+00:00"
+  },
+  {
+    "_id": "69de9f7208601e232a3a0b48",
+    "event": "cta_click",
+    "day": "2026-04-14",
+    "count": 9,
+    "updated_at": "2026-04-14T20:51:29.948522+00:00"
+  },
+  {
+    "_id": "69dea39808601e232a3a0f80",
+    "day": "2026-04-14",
+    "event": "page_view",
+    "count": 12,
+    "updated_at": "2026-04-14T20:51:35.078613+00:00"
+  },
+  {
+    "_id": "69df3a805e53c53ff2999bc7",
+    "day": "2026-04-15",
+    "event": "guest_visit",
+    "count": 60,
+    "updated_at": "2026-04-15T22:21:25.796534+00:00"
+  },
+  {
+    "_id": "69df3abf5e53c53ff2999bf6",
+    "day": "2026-04-15",
+    "event": "cta_click",
+    "count": 46,
+    "updated_at": "2026-04-15T21:48:52.726387+00:00"
+  },
+  {
+    "_id": "69df3ac55e53c53ff2999c24",
+    "day": "2026-04-15",
+    "event": "page_view",
+    "count": 137,
+    "updated_at": "2026-04-15T21:49:00.950336+00:00"
+  },
+  {
+    "_id": "69e092f717b7cb0d62c04ba4",
+    "event": "guest_visit",
+    "day": "2026-04-16",
+    "count": 3,
+    "updated_at": "2026-04-16T08:14:22.683318+00:00"
+  },
+  {
+    "_id": "69e096d917b7cb0d62c04f3c",
+    "event": "cta_click",
+    "day": "2026-04-16",
+    "count": 1,
+    "updated_at": "2026-04-16T07:59:21.704826+00:00"
+  },
+  {
+    "_id": "69e096de17b7cb0d62c04f75",
+    "event": "page_view",
+    "day": "2026-04-16",
+    "count": 2,
+    "updated_at": "2026-04-16T07:59:30.062659+00:00"
+  }
+]

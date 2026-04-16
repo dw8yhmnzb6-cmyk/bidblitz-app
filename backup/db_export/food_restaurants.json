@@ -1,0 +1,1130 @@
+[
+  {
+    "_id": "69d59d3f6301b5b7c812f42f",
+    "restaurant_id": "rest-463eaf06",
+    "name": "Luigi's Pizzeria",
+    "category": "pizza",
+    "rating": 4.7,
+    "review_count": 266,
+    "delivery_time": "25-35",
+    "price_level": 2,
+    "image": "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=400",
+    "menu": [
+      {
+        "id": "p1",
+        "name": "Margherita",
+        "price": 9.9,
+        "description": "Tomaten, Mozzarella, Basilikum"
+      },
+      {
+        "id": "p2",
+        "name": "Salami",
+        "price": 11.9,
+        "description": "Tomaten, Mozzarella, Salami"
+      },
+      {
+        "id": "p3",
+        "name": "Quattro Formaggi",
+        "price": 13.9,
+        "description": "Vier Käsesorten"
+      },
+      {
+        "id": "p4",
+        "name": "Prosciutto e Funghi",
+        "price": 12.9,
+        "description": "Schinken, Champignons"
+      },
+      {
+        "id": "p5",
+        "name": "Diavola",
+        "price": 12.9,
+        "description": "Scharfe Salami, Peperoni"
+      }
+    ],
+    "is_open": true,
+    "min_order": 10.0,
+    "delivery_fee": 1.99,
+    "location": {
+      "lat": 52.53032270547723,
+      "lng": 13.35856802228987
+    },
+    "created_at": "2026-04-08T00:11:43.321297+00:00",
+    "is_real": true,
+    "status": "approved",
+    "free_delivery_above": 25.0,
+    "is_new": false,
+    "price_guarantee": true
+  },
+  {
+    "_id": "69d59d3f6301b5b7c812f430",
+    "restaurant_id": "rest-8da07c21",
+    "name": "Burger Brothers",
+    "category": "burger",
+    "rating": 4.5,
+    "review_count": 63,
+    "delivery_time": "20-30",
+    "price_level": 2,
+    "image": "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400",
+    "menu": [
+      {
+        "id": "b1",
+        "name": "Classic Burger",
+        "price": 8.9,
+        "description": "Rindfleisch, Salat, Tomate, Zwiebel"
+      },
+      {
+        "id": "b2",
+        "name": "Cheese Burger",
+        "price": 9.9,
+        "description": "Mit extra Cheddar"
+      },
+      {
+        "id": "b3",
+        "name": "Bacon Burger",
+        "price": 11.9,
+        "description": "Mit knusprigem Bacon"
+      },
+      {
+        "id": "b4",
+        "name": "BBQ Burger",
+        "price": 12.9,
+        "description": "BBQ Sauce, Röstzwiebeln"
+      },
+      {
+        "id": "b5",
+        "name": "Veggie Burger",
+        "price": 10.9,
+        "description": "Pflanzlicher Patty"
+      }
+    ],
+    "is_open": true,
+    "min_order": 10.0,
+    "delivery_fee": 1.99,
+    "location": {
+      "lat": 52.49249388865274,
+      "lng": 13.39194012142445
+    },
+    "created_at": "2026-04-08T00:11:43.356983+00:00",
+    "is_real": true,
+    "status": "approved",
+    "free_delivery_above": 25.0,
+    "is_new": false,
+    "price_guarantee": true
+  },
+  {
+    "_id": "69d59d3f6301b5b7c812f431",
+    "restaurant_id": "rest-1f35c2a1",
+    "name": "Sakura Sushi",
+    "category": "sushi",
+    "rating": 4.8,
+    "review_count": 309,
+    "delivery_time": "30-45",
+    "price_level": 3,
+    "image": "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=400",
+    "menu": [
+      {
+        "id": "s1",
+        "name": "Maki Mix (12 Stk)",
+        "price": 12.9,
+        "description": "Lachs, Thunfisch, Gurke"
+      },
+      {
+        "id": "s2",
+        "name": "Nigiri Set (8 Stk)",
+        "price": 16.9,
+        "description": "Verschiedene Fischsorten"
+      },
+      {
+        "id": "s3",
+        "name": "California Roll (8 Stk)",
+        "price": 11.9,
+        "description": "Surimi, Avocado, Gurke"
+      },
+      {
+        "id": "s4",
+        "name": "Sashimi Platte",
+        "price": 22.9,
+        "description": "Frischer Fisch, 15 Stück"
+      },
+      {
+        "id": "s5",
+        "name": "Veggie Sushi Set",
+        "price": 10.9,
+        "description": "Avocado, Gurke, Karotte"
+      }
+    ],
+    "is_open": true,
+    "min_order": 10.0,
+    "delivery_fee": 1.99,
+    "location": {
+      "lat": 52.56365018230173,
+      "lng": 13.427345295694055
+    },
+    "created_at": "2026-04-08T00:11:43.357639+00:00",
+    "is_real": true,
+    "status": "approved",
+    "free_delivery_above": 25.0,
+    "is_new": false,
+    "price_guarantee": true
+  },
+  {
+    "_id": "69d59d3f6301b5b7c812f432",
+    "restaurant_id": "rest-3e325bee",
+    "name": "Golden Dragon",
+    "category": "asian",
+    "rating": 4.4,
+    "review_count": 378,
+    "delivery_time": "25-40",
+    "price_level": 2,
+    "image": "https://images.unsplash.com/photo-1552566626-52f8b828add9?w=400",
+    "menu": [
+      {
+        "id": "a1",
+        "name": "Gebratener Reis",
+        "price": 8.9,
+        "description": "Mit Ei und Gemüse"
+      },
+      {
+        "id": "a2",
+        "name": "Kung Pao Chicken",
+        "price": 12.9,
+        "description": "Hühnchen mit Erdnüssen"
+      },
+      {
+        "id": "a3",
+        "name": "Ente süß-sauer",
+        "price": 14.9,
+        "description": "Knusprige Ente"
+      },
+      {
+        "id": "a4",
+        "name": "Pad Thai",
+        "price": 11.9,
+        "description": "Reisnudeln mit Garnelen"
+      },
+      {
+        "id": "a5",
+        "name": "Tom Yum Suppe",
+        "price": 7.9,
+        "description": "Scharfe Thai-Suppe"
+      }
+    ],
+    "is_open": true,
+    "min_order": 10.0,
+    "delivery_fee": 1.99,
+    "location": {
+      "lat": 52.548442811402026,
+      "lng": 13.375252628463521
+    },
+    "created_at": "2026-04-08T00:11:43.358152+00:00",
+    "is_real": true,
+    "status": "approved",
+    "free_delivery_above": 25.0,
+    "is_new": false,
+    "price_guarantee": true
+  },
+  {
+    "_id": "69d59d3f6301b5b7c812f433",
+    "restaurant_id": "rest-2a686f85",
+    "name": "Döner König",
+    "category": "kebab",
+    "rating": 4.3,
+    "review_count": 238,
+    "delivery_time": "15-25",
+    "price_level": 1,
+    "image": "https://images.unsplash.com/photo-1599487488170-d11ec9c172f0?w=400",
+    "menu": [
+      {
+        "id": "d1",
+        "name": "Döner Teller",
+        "price": 10.9,
+        "description": "Mit Reis, Salat, Sauce"
+      },
+      {
+        "id": "d2",
+        "name": "Döner im Brot",
+        "price": 6.9,
+        "description": "Klassisch im Fladenbrot"
+      },
+      {
+        "id": "d3",
+        "name": "Döner Box",
+        "price": 8.9,
+        "description": "Mit Pommes"
+      },
+      {
+        "id": "d4",
+        "name": "Lahmacun",
+        "price": 5.9,
+        "description": "Türkische Pizza"
+      },
+      {
+        "id": "d5",
+        "name": "Falafel Teller",
+        "price": 9.9,
+        "description": "Vegetarisch"
+      }
+    ],
+    "is_open": true,
+    "min_order": 10.0,
+    "delivery_fee": 1.99,
+    "location": {
+      "lat": 52.504185647387,
+      "lng": 13.398700314230277
+    },
+    "created_at": "2026-04-08T00:11:43.358737+00:00",
+    "is_real": true,
+    "status": "approved",
+    "free_delivery_above": 25.0,
+    "is_new": false,
+    "price_guarantee": true
+  },
+  {
+    "_id": "69d59d3f6301b5b7c812f434",
+    "restaurant_id": "rest-a800dc8a",
+    "name": "Taj Mahal",
+    "category": "indian",
+    "rating": 4.6,
+    "review_count": 356,
+    "delivery_time": "30-45",
+    "price_level": 2,
+    "image": "https://images.unsplash.com/photo-1585937421612-70a008356fbe?w=400",
+    "menu": [
+      {
+        "id": "i1",
+        "name": "Butter Chicken",
+        "price": 13.9,
+        "description": "Cremige Tomaten-Sauce"
+      },
+      {
+        "id": "i2",
+        "name": "Chicken Tikka Masala",
+        "price": 14.9,
+        "description": "Klassiker"
+      },
+      {
+        "id": "i3",
+        "name": "Palak Paneer",
+        "price": 11.9,
+        "description": "Spinat mit Käse"
+      },
+      {
+        "id": "i4",
+        "name": "Biryani",
+        "price": 12.9,
+        "description": "Gewürzreis mit Fleisch"
+      },
+      {
+        "id": "i5",
+        "name": "Naan Brot",
+        "price": 3.5,
+        "description": "Frisch gebacken"
+      }
+    ],
+    "is_open": true,
+    "min_order": 10.0,
+    "delivery_fee": 1.99,
+    "location": {
+      "lat": 52.5450389325006,
+      "lng": 13.384694673500299
+    },
+    "created_at": "2026-04-08T00:11:43.359334+00:00",
+    "is_real": true,
+    "status": "approved",
+    "free_delivery_above": 25.0,
+    "is_new": false,
+    "price_guarantee": true
+  },
+  {
+    "_id": "69d59d3f6301b5b7c812f435",
+    "restaurant_id": "rest-8e9849a3",
+    "name": "Gasthaus zum Löwen",
+    "category": "german",
+    "rating": 4.2,
+    "review_count": 75,
+    "delivery_time": "35-50",
+    "price_level": 2,
+    "image": "https://images.unsplash.com/photo-1600891964092-4316c288032e?w=400",
+    "menu": [
+      {
+        "id": "g1",
+        "name": "Schnitzel",
+        "price": 14.9,
+        "description": "Mit Pommes und Salat"
+      },
+      {
+        "id": "g2",
+        "name": "Currywurst",
+        "price": 8.9,
+        "description": "Mit Pommes"
+      },
+      {
+        "id": "g3",
+        "name": "Sauerbraten",
+        "price": 16.9,
+        "description": "Mit Rotkohl und Klößen"
+      },
+      {
+        "id": "g4",
+        "name": "Bratwurst",
+        "price": 9.9,
+        "description": "Mit Sauerkraut"
+      },
+      {
+        "id": "g5",
+        "name": "Käsespätzle",
+        "price": 11.9,
+        "description": "Mit Röstzwiebeln"
+      }
+    ],
+    "is_open": true,
+    "min_order": 10.0,
+    "delivery_fee": 1.99,
+    "location": {
+      "lat": 52.505978954894104,
+      "lng": 13.36967669474557
+    },
+    "created_at": "2026-04-08T00:11:43.359835+00:00",
+    "is_real": true,
+    "status": "approved",
+    "free_delivery_above": 25.0,
+    "is_new": false,
+    "price_guarantee": true
+  },
+  {
+    "_id": "69d59d3f6301b5b7c812f436",
+    "restaurant_id": "rest-1cd04992",
+    "name": "Green Bowl",
+    "category": "healthy",
+    "rating": 4.7,
+    "review_count": 409,
+    "delivery_time": "20-30",
+    "price_level": 2,
+    "image": "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=400",
+    "menu": [
+      {
+        "id": "h1",
+        "name": "Buddha Bowl",
+        "price": 12.9,
+        "description": "Quinoa, Gemüse, Hummus"
+      },
+      {
+        "id": "h2",
+        "name": "Poke Bowl",
+        "price": 14.9,
+        "description": "Lachs, Reis, Edamame"
+      },
+      {
+        "id": "h3",
+        "name": "Smoothie Bowl",
+        "price": 9.9,
+        "description": "Acai, Früchte, Granola"
+      },
+      {
+        "id": "h4",
+        "name": "Protein Salat",
+        "price": 11.9,
+        "description": "Hühnchen, Ei, Gemüse"
+      },
+      {
+        "id": "h5",
+        "name": "Detox Juice",
+        "price": 5.9,
+        "description": "Grüner Saft"
+      }
+    ],
+    "is_open": true,
+    "min_order": 10.0,
+    "delivery_fee": 1.99,
+    "location": {
+      "lat": 52.504155698881114,
+      "lng": 13.415609242111284
+    },
+    "created_at": "2026-04-08T00:11:43.360292+00:00",
+    "is_real": true,
+    "status": "approved",
+    "free_delivery_above": 25.0,
+    "is_new": false,
+    "price_guarantee": true
+  },
+  {
+    "_id": "69dfe73a427bc86adaebb666",
+    "name": "Bella Napoli",
+    "category": "Pizza",
+    "created_at": "2026-04-15T19:30:02.708540+00:00",
+    "delivery_fee": 1.99,
+    "delivery_time": "25-35 min",
+    "image": "",
+    "is_open": true,
+    "location": {
+      "lat": 52.52666349051713,
+      "lng": 13.415514627764813
+    },
+    "menu": [
+      {
+        "id": "m1",
+        "name": "Margherita",
+        "price": 8.9,
+        "description": "Tomaten, Mozzarella, Basilikum",
+        "category": "pizza",
+        "popular": true,
+        "extras": [
+          {
+            "id": "e1",
+            "name": "Extra Käse",
+            "price": 1.5
+          },
+          {
+            "id": "e2",
+            "name": "Schinken",
+            "price": 2.0
+          },
+          {
+            "id": "e3",
+            "name": "Scharf",
+            "price": 0.5
+          }
+        ],
+        "sizes": [
+          {
+            "id": "s1",
+            "name": "Klein (26cm)",
+            "price": 0
+          },
+          {
+            "id": "s2",
+            "name": "Groß (32cm)",
+            "price": 3.0
+          },
+          {
+            "id": "s3",
+            "name": "Familie (40cm)",
+            "price": 6.0
+          }
+        ]
+      },
+      {
+        "id": "m2",
+        "name": "Salami",
+        "price": 10.9,
+        "description": "Tomaten, Mozzarella, Salami",
+        "category": "pizza",
+        "popular": true,
+        "extras": [
+          {
+            "id": "e1",
+            "name": "Extra Käse",
+            "price": 1.5
+          },
+          {
+            "id": "e4",
+            "name": "Jalapeños",
+            "price": 1.0
+          }
+        ],
+        "sizes": [
+          {
+            "id": "s1",
+            "name": "Klein",
+            "price": 0
+          },
+          {
+            "id": "s2",
+            "name": "Groß",
+            "price": 3.0
+          }
+        ]
+      },
+      {
+        "id": "m3",
+        "name": "Quattro Formaggi",
+        "price": 12.9,
+        "description": "4 Käsesorten, Mozzarella, Gorgonzola, Parmesan, Emmentaler",
+        "category": "pizza",
+        "extras": [
+          {
+            "id": "e1",
+            "name": "Extra Käse",
+            "price": 1.5
+          }
+        ],
+        "sizes": [
+          {
+            "id": "s1",
+            "name": "Klein",
+            "price": 0
+          },
+          {
+            "id": "s2",
+            "name": "Groß",
+            "price": 3.0
+          }
+        ]
+      },
+      {
+        "id": "m4",
+        "name": "Hawaii",
+        "price": 11.5,
+        "description": "Schinken, Ananas, Mozzarella",
+        "category": "pizza",
+        "extras": [
+          {
+            "id": "e1",
+            "name": "Extra Käse",
+            "price": 1.5
+          }
+        ],
+        "sizes": [
+          {
+            "id": "s1",
+            "name": "Klein",
+            "price": 0
+          },
+          {
+            "id": "s2",
+            "name": "Groß",
+            "price": 3.0
+          }
+        ]
+      },
+      {
+        "id": "m5",
+        "name": "Spaghetti Bolognese",
+        "price": 9.9,
+        "description": "Hackfleisch-Tomatensauce",
+        "category": "pasta",
+        "popular": true,
+        "extras": [
+          {
+            "id": "e5",
+            "name": "Extra Parmesan",
+            "price": 1.0
+          }
+        ],
+        "sizes": []
+      },
+      {
+        "id": "m6",
+        "name": "Penne Arrabiata",
+        "price": 8.9,
+        "description": "Scharfe Tomatensauce",
+        "category": "pasta",
+        "extras": [
+          {
+            "id": "e5",
+            "name": "Extra Parmesan",
+            "price": 1.0
+          }
+        ],
+        "sizes": []
+      },
+      {
+        "id": "m7",
+        "name": "Caesar Salad",
+        "price": 7.9,
+        "description": "Römersalat, Parmesan, Croutons, Caesar Dressing",
+        "category": "salat",
+        "extras": [
+          {
+            "id": "e6",
+            "name": "Hähnchen",
+            "price": 2.5
+          }
+        ],
+        "sizes": []
+      },
+      {
+        "id": "m8",
+        "name": "Tiramisu",
+        "price": 5.9,
+        "description": "Hausgemacht",
+        "category": "dessert",
+        "extras": [],
+        "sizes": []
+      },
+      {
+        "id": "m9",
+        "name": "Cola 0.33l",
+        "price": 2.5,
+        "description": "",
+        "category": "getraenke",
+        "extras": [],
+        "sizes": []
+      },
+      {
+        "id": "m10",
+        "name": "Wasser 0.5l",
+        "price": 1.9,
+        "description": "",
+        "category": "getraenke",
+        "extras": [],
+        "sizes": []
+      }
+    ],
+    "menu_categories": [
+      {
+        "id": "pizza",
+        "name": "Pizza"
+      },
+      {
+        "id": "pasta",
+        "name": "Pasta"
+      },
+      {
+        "id": "salat",
+        "name": "Salate"
+      },
+      {
+        "id": "dessert",
+        "name": "Desserts"
+      },
+      {
+        "id": "getraenke",
+        "name": "Getränke"
+      }
+    ],
+    "min_order": 10,
+    "price_level": "€€",
+    "rating": 4.7,
+    "restaurant_id": "rest_f27bff2b",
+    "review_count": 274,
+    "stamps_enabled": true,
+    "stamps_needed": 10,
+    "is_real": true,
+    "status": "approved",
+    "free_delivery_above": 25.0,
+    "is_new": true,
+    "price_guarantee": true
+  },
+  {
+    "_id": "69dfe73a427bc86adaebb668",
+    "name": "Saigon Kitchen",
+    "category": "Asiatisch",
+    "created_at": "2026-04-15T19:30:02.717592+00:00",
+    "delivery_fee": 0,
+    "delivery_time": "30-45 min",
+    "image": "",
+    "is_open": true,
+    "location": {
+      "lat": 52.50027105653423,
+      "lng": 13.37755674026471
+    },
+    "menu": [
+      {
+        "id": "a1",
+        "name": "Frühlingsrollen (4 Stk)",
+        "price": 5.9,
+        "description": "Knusprig, mit Sweet Chili",
+        "category": "vorspeise",
+        "popular": true,
+        "extras": [
+          {
+            "id": "ae1",
+            "name": "Extra Sauce",
+            "price": 0.5
+          }
+        ],
+        "sizes": []
+      },
+      {
+        "id": "a2",
+        "name": "Pho Bo",
+        "price": 11.9,
+        "description": "Vietnamesische Rindfleischsuppe mit Reisnudeln",
+        "category": "pho",
+        "popular": true,
+        "extras": [
+          {
+            "id": "ae2",
+            "name": "Extra Rindfleisch",
+            "price": 3.0
+          },
+          {
+            "id": "ae3",
+            "name": "Sriracha",
+            "price": 0.5
+          }
+        ],
+        "sizes": [
+          {
+            "id": "as1",
+            "name": "Normal",
+            "price": 0
+          },
+          {
+            "id": "as2",
+            "name": "Groß",
+            "price": 3.0
+          }
+        ]
+      },
+      {
+        "id": "a3",
+        "name": "Gebratener Reis mit Hähnchen",
+        "price": 10.9,
+        "description": "Gemüse, Ei, Sojasauce",
+        "category": "reis",
+        "extras": [
+          {
+            "id": "ae4",
+            "name": "Extra Ei",
+            "price": 1.0
+          }
+        ],
+        "sizes": []
+      },
+      {
+        "id": "a4",
+        "name": "Pad Thai",
+        "price": 12.9,
+        "description": "Reisnudeln, Tofu, Erdnüsse",
+        "category": "nudeln",
+        "popular": true,
+        "extras": [
+          {
+            "id": "ae5",
+            "name": "Hähnchen statt Tofu",
+            "price": 1.5
+          },
+          {
+            "id": "ae6",
+            "name": "Extra Erdnüsse",
+            "price": 0.5
+          }
+        ],
+        "sizes": []
+      },
+      {
+        "id": "a5",
+        "name": "Bubble Tea Taro",
+        "price": 4.9,
+        "description": "Mit Tapioka-Perlen",
+        "category": "getraenke",
+        "extras": [],
+        "sizes": []
+      }
+    ],
+    "menu_categories": [
+      {
+        "id": "vorspeise",
+        "name": "Vorspeisen"
+      },
+      {
+        "id": "pho",
+        "name": "Pho & Suppen"
+      },
+      {
+        "id": "reis",
+        "name": "Reisgerichte"
+      },
+      {
+        "id": "nudeln",
+        "name": "Nudelgerichte"
+      },
+      {
+        "id": "getraenke",
+        "name": "Getränke"
+      }
+    ],
+    "min_order": 12,
+    "price_level": "€€",
+    "rating": 4.5,
+    "restaurant_id": "rest_e1c2dcfb",
+    "review_count": 328,
+    "stamps_enabled": true,
+    "stamps_needed": 8,
+    "is_real": true,
+    "status": "approved",
+    "free_delivery_above": 25.0,
+    "is_new": false,
+    "price_guarantee": true,
+    "free_delivery": true
+  },
+  {
+    "_id": "69dfe73a427bc86adaebb66a",
+    "name": "Sultan's Döner",
+    "category": "Türkisch",
+    "created_at": "2026-04-15T19:30:02.717973+00:00",
+    "delivery_fee": 0,
+    "delivery_time": "20-30 min",
+    "image": "",
+    "is_open": true,
+    "location": {
+      "lat": 52.52348990692728,
+      "lng": 13.40169709816987
+    },
+    "menu": [
+      {
+        "id": "d1",
+        "name": "Döner Kebab",
+        "price": 6.5,
+        "description": "Im Fladenbrot, Salat, 3 Saucen",
+        "category": "doener",
+        "popular": true,
+        "extras": [
+          {
+            "id": "de1",
+            "name": "Extra Fleisch",
+            "price": 2.0
+          },
+          {
+            "id": "de2",
+            "name": "Käse",
+            "price": 1.5
+          },
+          {
+            "id": "de3",
+            "name": "Scharf",
+            "price": 0
+          }
+        ],
+        "sizes": [
+          {
+            "id": "ds1",
+            "name": "Normal",
+            "price": 0
+          },
+          {
+            "id": "ds2",
+            "name": "XL",
+            "price": 2.0
+          }
+        ]
+      },
+      {
+        "id": "d2",
+        "name": "Dürüm",
+        "price": 7.5,
+        "description": "Wrap mit Döner, Salat, Sauce",
+        "category": "doener",
+        "popular": true,
+        "extras": [
+          {
+            "id": "de1",
+            "name": "Extra Fleisch",
+            "price": 2.0
+          }
+        ],
+        "sizes": []
+      },
+      {
+        "id": "d3",
+        "name": "Lahmacun",
+        "price": 5.9,
+        "description": "Türkische Pizza mit Hackfleisch",
+        "category": "pide",
+        "extras": [
+          {
+            "id": "de4",
+            "name": "Mit Salat",
+            "price": 1.0
+          }
+        ],
+        "sizes": []
+      },
+      {
+        "id": "d4",
+        "name": "Adana Kebab Teller",
+        "price": 14.9,
+        "description": "Scharfes Hackfleisch, Reis, Salat",
+        "category": "grill",
+        "extras": [
+          {
+            "id": "de5",
+            "name": "Extra Reis",
+            "price": 2.0
+          }
+        ],
+        "sizes": []
+      },
+      {
+        "id": "d5",
+        "name": "Ayran",
+        "price": 2.0,
+        "description": "Joghurtgetränk",
+        "category": "getraenke",
+        "extras": [],
+        "sizes": []
+      }
+    ],
+    "menu_categories": [
+      {
+        "id": "doener",
+        "name": "Döner & Wraps"
+      },
+      {
+        "id": "pide",
+        "name": "Pide & Lahmacun"
+      },
+      {
+        "id": "grill",
+        "name": "Grillgerichte"
+      },
+      {
+        "id": "getraenke",
+        "name": "Getränke"
+      }
+    ],
+    "min_order": 8,
+    "price_level": "€",
+    "rating": 4.3,
+    "restaurant_id": "rest_76c6b547",
+    "review_count": 223,
+    "stamps_enabled": true,
+    "stamps_needed": 10,
+    "is_real": true,
+    "status": "approved",
+    "free_delivery_above": 25.0,
+    "is_new": false,
+    "price_guarantee": true,
+    "free_delivery": true
+  },
+  {
+    "_id": "69dfe73a427bc86adaebb66c",
+    "name": "Burger Republic",
+    "category": "Burger",
+    "created_at": "2026-04-15T19:30:02.718291+00:00",
+    "delivery_fee": 1.99,
+    "delivery_time": "25-35 min",
+    "image": "",
+    "is_open": true,
+    "location": {
+      "lat": 52.50549837132299,
+      "lng": 13.377794555021806
+    },
+    "menu": [
+      {
+        "id": "b1",
+        "name": "Classic Cheeseburger",
+        "price": 8.9,
+        "description": "Rind, Cheddar, Salat, Tomaten, Burger-Sauce",
+        "category": "burger",
+        "popular": true,
+        "extras": [
+          {
+            "id": "be1",
+            "name": "Extra Patty",
+            "price": 3.0
+          },
+          {
+            "id": "be2",
+            "name": "Bacon",
+            "price": 1.5
+          },
+          {
+            "id": "be3",
+            "name": "Jalapeños",
+            "price": 1.0
+          }
+        ],
+        "sizes": []
+      },
+      {
+        "id": "b2",
+        "name": "Smash Burger Double",
+        "price": 11.9,
+        "description": "2x Smash Patty, American Cheese, Karamell-Zwiebeln",
+        "category": "burger",
+        "popular": true,
+        "extras": [
+          {
+            "id": "be1",
+            "name": "Extra Patty",
+            "price": 3.0
+          },
+          {
+            "id": "be2",
+            "name": "Bacon",
+            "price": 1.5
+          }
+        ],
+        "sizes": []
+      },
+      {
+        "id": "b3",
+        "name": "Crispy Chicken Burger",
+        "price": 10.9,
+        "description": "Paniertes Hähnchen, Coleslaw, Hot Sauce",
+        "category": "burger",
+        "extras": [
+          {
+            "id": "be3",
+            "name": "Jalapeños",
+            "price": 1.0
+          }
+        ],
+        "sizes": []
+      },
+      {
+        "id": "b4",
+        "name": "Pommes",
+        "price": 3.9,
+        "description": "Knusprig, mit Ketchup & Mayo",
+        "category": "sides",
+        "extras": [
+          {
+            "id": "be4",
+            "name": "Cheese Sauce",
+            "price": 1.5
+          }
+        ],
+        "sizes": [
+          {
+            "id": "bs1",
+            "name": "Normal",
+            "price": 0
+          },
+          {
+            "id": "bs2",
+            "name": "Groß",
+            "price": 1.5
+          }
+        ]
+      },
+      {
+        "id": "b5",
+        "name": "Onion Rings",
+        "price": 4.5,
+        "description": "Panierte Zwiebelringe",
+        "category": "sides",
+        "extras": [],
+        "sizes": []
+      },
+      {
+        "id": "b6",
+        "name": "Milkshake Vanilla",
+        "price": 4.9,
+        "description": "",
+        "category": "getraenke",
+        "extras": [],
+        "sizes": []
+      }
+    ],
+    "menu_categories": [
+      {
+        "id": "burger",
+        "name": "Burger"
+      },
+      {
+        "id": "sides",
+        "name": "Beilagen"
+      },
+      {
+        "id": "getraenke",
+        "name": "Getränke"
+      }
+    ],
+    "min_order": 10,
+    "price_level": "€€",
+    "rating": 4.6,
+    "restaurant_id": "rest_37e1b62d",
+    "review_count": 312,
+    "stamps_enabled": true,
+    "stamps_needed": 8,
+    "is_real": true,
+    "status": "approved",
+    "free_delivery_above": 25.0,
+    "is_new": true,
+    "price_guarantee": true
+  }
+]

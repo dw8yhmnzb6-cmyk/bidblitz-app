@@ -1,0 +1,18 @@
+[
+  {
+    "_id": "69da6de356cd694fd8779f92",
+    "ride_id": "3822ffeff364c029",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "user_name": "Admin Updated",
+    "scooter_id": "b0d81bf5131ac1b5",
+    "device_id": null,
+    "status": "active",
+    "start_location": {},
+    "start_time": "2026-04-11T15:50:59.323529+00:00",
+    "unlock_fee": 1.0,
+    "per_minute_rate": 0.2,
+    "current_cost": 1.0,
+    "distance_km": 0,
+    "created_at": "2026-04-11T15:50:59.323529+00:00"
+  }
+]

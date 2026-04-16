@@ -1,0 +1,67 @@
+[
+  {
+    "_id": "69dfba3bc3e41ee3d6b3ceec",
+    "card_id": "c_1871dc05",
+    "series": "anime",
+    "series_name": "Anime Heroes",
+    "name": "Goku",
+    "rarity": "common",
+    "power": 69,
+    "value": 0.26,
+    "owner_email": "admin@bidblitz.com",
+    "obtained_at": "2026-04-15T16:18:03.288456+00:00",
+    "obtained_via": "starter"
+  },
+  {
+    "_id": "69dfba3bc3e41ee3d6b3ceed",
+    "card_id": "c_5e036038",
+    "series": "anime",
+    "series_name": "Anime Heroes",
+    "name": "Vegeta",
+    "rarity": "epic",
+    "power": 92,
+    "value": 2.18,
+    "owner_email": "admin@bidblitz.com",
+    "obtained_at": "2026-04-15T16:18:03.301293+00:00",
+    "obtained_via": "starter"
+  },
+  {
+    "_id": "69dfba3bc3e41ee3d6b3ceee",
+    "card_id": "c_d3f59699",
+    "series": "anime",
+    "series_name": "Anime Heroes",
+    "name": "Zoro",
+    "rarity": "rare",
+    "power": 84,
+    "value": 1.25,
+    "owner_email": "admin@bidblitz.com",
+    "obtained_at": "2026-04-15T16:18:03.301786+00:00",
+    "obtained_via": "starter"
+  },
+  {
+    "_id": "69dfba3bc3e41ee3d6b3ceef",
+    "card_id": "c_0dd9dd13",
+    "series": "anime",
+    "series_name": "Anime Heroes",
+    "name": "Naruto",
+    "rarity": "common",
+    "power": 66,
+    "value": 0.36,
+    "owner_email": "admin@bidblitz.com",
+    "obtained_at": "2026-04-15T16:18:03.302034+00:00",
+    "obtained_via": "starter"
+  },
+  {
+    "_id": "69dfba3bc3e41ee3d6b3cef0",
+    "card_id": "c_6a3e6f04",
+    "series": "anime",
+    "series_name": "Anime Heroes",
+    "name": "Luffy",
+    "rarity": "common",
+    "power": 57,
+    "value": 0.46,
+    "owner_email": "admin@bidblitz.com",
+    "obtained_at": "2026-04-15T16:18:03.302232+00:00",
+    "obtained_via": "starter"
+  }
+]

@@ -1,0 +1,162 @@
+[
+  {
+    "_id": "69df5d296e94fc18564ebae8",
+    "story_id": "st_f3aacf610431",
+    "author_email": "haendler@bidblitz.com",
+    "author_name": "Sophie R.",
+    "content": "Jordan 4 Military Black für €220 verkauft! 🔥",
+    "type": "deal",
+    "tags": [
+      "sneakers",
+      "reselling"
+    ],
+    "image_url": "",
+    "likes": [
+      "haendler@bidblitz.com",
+      "kunde@bidblitz.com"
+    ],
+    "like_count": 9,
+    "comments": [],
+    "comment_count": 4,
+    "status": "active",
+    "created_at": "2026-04-13T00:40:57.767381+00:00"
+  },
+  {
+    "_id": "69df5d296e94fc18564ebae9",
+    "story_id": "st_9160a1c6801f",
+    "author_email": "kunde@bidblitz.com",
+    "author_name": "Lena K.",
+    "content": "Gerade €50 Cashback bei Nike geholt 💰",
+    "type": "achievement",
+    "tags": [
+      "cashback",
+      "nike"
+    ],
+    "image_url": "",
+    "likes": [
+      "haendler@bidblitz.com",
+      "kunde@bidblitz.com"
+    ],
+    "like_count": 0,
+    "comments": [],
+    "comment_count": 5,
+    "status": "active",
+    "created_at": "2026-04-12T12:40:57.767381+00:00"
+  },
+  {
+    "_id": "69df5d296e94fc18564ebaea",
+    "story_id": "st_59da7c152f83",
+    "author_email": "admin@bidblitz.com",
+    "author_name": "Emma L.",
+    "content": "Erster BlitzJob erledigt — €25 für Nachhilfe!",
+    "type": "achievement",
+    "tags": [
+      "blitzjobs",
+      "geld"
+    ],
+    "image_url": "",
+    "likes": [],
+    "like_count": 13,
+    "comments": [],
+    "comment_count": 2,
+    "status": "active",
+    "created_at": "2026-04-13T12:40:57.767381+00:00"
+  },
+  {
+    "_id": "69df5d296e94fc18564ebaeb",
+    "story_id": "st_1922c31ec326",
+    "author_email": "haendler@bidblitz.com",
+    "author_name": "Sophie R.",
+    "content": "Spar-Challenge: Schon €60 von €100 gespart 🎯",
+    "type": "achievement",
+    "tags": [
+      "sparen"
+    ],
+    "image_url": "",
+    "likes": [],
+    "like_count": 15,
+    "comments": [],
+    "comment_count": 4,
+    "status": "active",
+    "created_at": "2026-04-13T00:40:57.767381+00:00"
+  },
+  {
+    "_id": "69df5d296e94fc18564ebaec",
+    "story_id": "st_f279b47db7d3",
+    "author_email": "kunde@bidblitz.com",
+    "author_name": "Max M.",
+    "content": "Scooter-Fahrt durch Prishtina bei Sonnenuntergang",
+    "type": "ride",
+    "tags": [
+      "scooter",
+      "prishtina"
+    ],
+    "image_url": "",
+    "likes": [],
+    "like_count": 8,
+    "comments": [],
+    "comment_count": 3,
+    "status": "active",
+    "created_at": "2026-04-13T08:40:57.767381+00:00"
+  },
+  {
+    "_id": "69df5d296e94fc18564ebaed",
+    "story_id": "st_0dcdd8ddf7fc",
+    "author_email": "haendler@bidblitz.com",
+    "author_name": "Emma L.",
+    "content": "Premium Pro Abo lohnt sich — keine Gebühren mehr!",
+    "type": "text",
+    "tags": [
+      "premium"
+    ],
+    "image_url": "",
+    "likes": [],
+    "like_count": 12,
+    "comments": [],
+    "comment_count": 1,
+    "status": "active",
+    "created_at": "2026-04-12T16:40:57.767381+00:00"
+  },
+  {
+    "_id": "69df5d296e94fc18564ebaee",
+    "story_id": "st_505f8a2e4a44",
+    "author_email": "admin@bidblitz.com",
+    "author_name": "Amir S.",
+    "content": "Yeezy Boost 350 V2 zum Schnäppchenpreis gefunden!",
+    "type": "deal",
+    "tags": [
+      "sneakers",
+      "deal"
+    ],
+    "image_url": "",
+    "likes": [
+      "kunde@bidblitz.com"
+    ],
+    "like_count": 1,
+    "comments": [],
+    "comment_count": 3,
+    "status": "active",
+    "created_at": "2026-04-13T06:40:57.767381+00:00"
+  },
+  {
+    "_id": "69df5d296e94fc18564ebaef",
+    "story_id": "st_0e7d3e08bb19",
+    "author_email": "haendler@bidblitz.com",
+    "author_name": "Lena K.",
+    "content": "Mein BidBlitz Score: 720 — fast Exzellent! 📊",
+    "type": "achievement",
+    "tags": [
+      "score"
+    ],
+    "image_url": "",
+    "likes": [
+      "kunde@bidblitz.com",
+      "admin@bidblitz.com"
+    ],
+    "like_count": 14,
+    "comments": [],
+    "comment_count": 0,
+    "status": "active",
+    "created_at": "2026-04-12T13:40:57.767381+00:00"
+  }
+]

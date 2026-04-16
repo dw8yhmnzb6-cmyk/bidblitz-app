@@ -1,0 +1,20 @@
+[
+  {
+    "_id": "69d25f83e89ac6170cac966d",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "blz_balance": 70428.45352249999,
+    "total_mined": 70778.45352249999,
+    "total_withdrawn": 300.0,
+    "total_deposited": 0.0,
+    "created_at": "2026-04-05T13:11:31.863967+00:00"
+  },
+  {
+    "_id": "69d2ad0227d40dd53eee6562",
+    "user_id": "69d0126144299a2e0d94c786",
+    "blz_balance": 4399.60978571,
+    "total_mined": 4382.60978571,
+    "total_withdrawn": 33.0,
+    "total_deposited": 0.0,
+    "created_at": "2026-04-05T18:42:10.633210+00:00"
+  }
+]

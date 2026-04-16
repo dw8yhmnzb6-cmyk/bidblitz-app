@@ -1,0 +1,67 @@
+[
+  {
+    "_id": "69e096baca3c39b6f7e2b577",
+    "match_id": "quiz_ca916d676634",
+    "user_email": "kunde@bidblitz.com",
+    "bet_eur": 5.0,
+    "questions": [
+      {
+        "q": "Welches Land hat die meisten Einwohner?",
+        "options": [
+          "Indien",
+          "China",
+          "USA",
+          "Indonesien"
+        ]
+      },
+      {
+        "q": "Wie viele Bundeslaender hat Deutschland?",
+        "options": [
+          "14",
+          "15",
+          "16",
+          "17"
+        ]
+      },
+      {
+        "q": "Wer hat die Relativitaetstheorie entwickelt?",
+        "options": [
+          "Newton",
+          "Einstein",
+          "Hawking",
+          "Bohr"
+        ]
+      },
+      {
+        "q": "Wer malte die Mona Lisa?",
+        "options": [
+          "Michelangelo",
+          "Raphael",
+          "Da Vinci",
+          "Picasso"
+        ]
+      },
+      {
+        "q": "Was ist die Hauptstadt von Australien?",
+        "options": [
+          "Sydney",
+          "Melbourne",
+          "Canberra",
+          "Brisbane"
+        ]
+      }
+    ],
+    "correct_answers": [
+      0,
+      2,
+      1,
+      2,
+      2
+    ],
+    "status": "completed",
+    "created_at": "2026-04-16T07:58:50.587511+00:00",
+    "pnl": 9.0,
+    "score": 3,
+    "won": true
+  }
+]

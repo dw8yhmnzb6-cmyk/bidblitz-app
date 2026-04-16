@@ -1,0 +1,35 @@
+[
+  {
+    "_id": "69dffba290e7677cb6b17c2f",
+    "purchase_id": "bsk_f647b451b114",
+    "user_email": "kunde@bidblitz.com",
+    "basket_id": "top5",
+    "basket_name": "Top 5 Coins",
+    "amount_eur": 100.0,
+    "fee": 1.5,
+    "coins": [
+      {
+        "coin": "BTC",
+        "weight": 40
+      },
+      {
+        "coin": "ETH",
+        "weight": 25
+      },
+      {
+        "coin": "SOL",
+        "weight": 15
+      },
+      {
+        "coin": "XRP",
+        "weight": 12
+      },
+      {
+        "coin": "ADA",
+        "weight": 8
+      }
+    ],
+    "status": "active",
+    "created_at": "2026-04-15T20:57:06.191021+00:00"
+  }
+]

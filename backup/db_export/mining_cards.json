@@ -1,0 +1,32 @@
+[
+  {
+    "_id": "69d2828259405d0b51e51f20",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "card_id": "BLZ-B30E3149",
+    "card_number": "4242 **** **** CC05",
+    "tier": "standard",
+    "tier_name": "Standard",
+    "color": "#C0C0C0",
+    "daily_limit": 100,
+    "cashback_rate": 0.01,
+    "total_spent": 0,
+    "total_cashback": 0,
+    "frozen": false,
+    "created_at": "2026-04-05T15:40:50.058825+00:00"
+  },
+  {
+    "_id": "69d2ae4faf6482908b8e027a",
+    "user_id": "69d0126144299a2e0d94c786",
+    "card_id": "BLZ-921A1C28",
+    "card_number": "4242 **** **** AC32",
+    "tier": "standard",
+    "tier_name": "Standard",
+    "color": "#C0C0C0",
+    "daily_limit": 100,
+    "cashback_rate": 0.01,
+    "total_spent": 0,
+    "total_cashback": 0,
+    "frozen": false,
+    "created_at": "2026-04-05T18:47:43.363633+00:00"
+  }
+]

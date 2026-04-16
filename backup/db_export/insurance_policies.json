@@ -1,0 +1,40 @@
+[
+  {
+    "_id": "69dc0e015a7f4ab3d6001d90",
+    "policy_id": "a0ca1cf96a74993e",
+    "product_id": "e311e3b67e165e81",
+    "product_title": "Kfz-Haftpflicht Basic",
+    "category": "auto",
+    "provider": "HUK-Coburg",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "user_name": "Admin Updated",
+    "user_email": "admin@bidblitz.com",
+    "billing": "monthly",
+    "price": 39,
+    "cashback": 0.78,
+    "deductible": 150,
+    "start_date": "2026-04-12",
+    "status": "active",
+    "reference": "INS-A6A6EC0A",
+    "created_at": "2026-04-12T21:26:25.793853+00:00"
+  },
+  {
+    "_id": "69df47d8bf530ad55eb4412c",
+    "policy_id": "6f2638e883c50317",
+    "product_id": "68689cf9ff1241c1",
+    "product_title": "Zahnzusatz Premium",
+    "category": "health",
+    "provider": "ERGO Direkt",
+    "user_id": "69d0126144299a2e0d94c786",
+    "user_name": "Max Mustermann",
+    "user_email": "kunde@bidblitz.com",
+    "billing": "monthly",
+    "price": 29,
+    "cashback": 0.58,
+    "deductible": 0,
+    "start_date": "2026-04-15",
+    "status": "active",
+    "reference": "INS-A9863136",
+    "created_at": "2026-04-15T08:10:00.796126+00:00"
+  }
+]

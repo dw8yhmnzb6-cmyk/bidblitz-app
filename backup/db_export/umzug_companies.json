@@ -1,0 +1,82 @@
+[
+  {
+    "_id": "69de9be8b904b02a0774a212",
+    "company_id": "umz_001",
+    "name": "BlitzUmzug Berlin",
+    "rating": 4.8,
+    "reviews": 234,
+    "base_price": 299,
+    "price_per_km": 1.5,
+    "city": "Berlin",
+    "description": "Komplettservice: Einpacken, Transport, Aufbau. 3er-Team, LKW 3.5t inkl.",
+    "features": [
+      "Einpackservice",
+      "Möbelmontage",
+      "Versicherung",
+      "Kartons inkl."
+    ],
+    "image": "https://images.unsplash.com/photo-1775138260921-883455954eb0?w=800&q=80",
+    "featured": true,
+    "created_at": "2026-04-14T19:56:24.493107+00:00"
+  },
+  {
+    "_id": "69de9be8b904b02a0774a213",
+    "company_id": "umz_002",
+    "name": "EasyMove München",
+    "rating": 4.7,
+    "reviews": 189,
+    "base_price": 349,
+    "price_per_km": 1.8,
+    "city": "München",
+    "description": "Premium-Umzug mit Profi-Team. Auch Fernumzüge und Firmenumzüge. Festpreisgarantie.",
+    "features": [
+      "Festpreis",
+      "Fernumzug",
+      "Firmenumzug",
+      "Klaviertransport"
+    ],
+    "image": "https://images.unsplash.com/photo-1762452059456-e4c16c256dd1?w=800&q=80",
+    "featured": true,
+    "created_at": "2026-04-14T19:56:24.493107+00:00"
+  },
+  {
+    "_id": "69de9be8b904b02a0774a214",
+    "company_id": "umz_003",
+    "name": "StudentenUmzug.de",
+    "rating": 4.5,
+    "reviews": 412,
+    "base_price": 149,
+    "price_per_km": 1.2,
+    "city": "Hamburg",
+    "description": "Günstige Umzugshilfe von Studenten. Flexibel, zuverlässig, günstig. Transporter optional.",
+    "features": [
+      "Günstig",
+      "Flexibel",
+      "Kurzfristig",
+      "Einzelteile"
+    ],
+    "image": "https://images.unsplash.com/photo-1774685110718-c5b4fe026144?w=800&q=80",
+    "featured": false,
+    "created_at": "2026-04-14T19:56:24.493107+00:00"
+  },
+  {
+    "_id": "69de9be8b904b02a0774a215",
+    "company_id": "umz_004",
+    "name": "GreenMove Köln",
+    "rating": 4.9,
+    "reviews": 156,
+    "base_price": 399,
+    "price_per_km": 1.6,
+    "city": "Köln",
+    "description": "Nachhaltiger Umzug: E-Transporter, wiederverwendbare Boxen, CO2-kompensiert.",
+    "features": [
+      "E-Transporter",
+      "Nachhaltig",
+      "Wiederverwendbare Boxen",
+      "CO2-neutral"
+    ],
+    "image": "https://images.unsplash.com/photo-1757439402101-55d1da381e70?w=800&q=80",
+    "featured": false,
+    "created_at": "2026-04-14T19:56:24.493107+00:00"
+  }
+]

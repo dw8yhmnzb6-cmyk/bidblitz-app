@@ -1,0 +1,12 @@
+[
+  {
+    "_id": "69d23948e1ac81eea3875eb1",
+    "user_id": "69d0126144299a2e0d94c786",
+    "user_email": "kunde@bidblitz.com",
+    "user_name": "Max Mustermann",
+    "current_role": "user",
+    "requested_role": "influencer",
+    "status": "pending",
+    "created_at": "2026-04-05T10:28:24.957492+00:00"
+  }
+]

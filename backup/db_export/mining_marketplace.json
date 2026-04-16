@@ -1,0 +1,20 @@
+[
+  {
+    "_id": "69d2828e59405d0b51e51f25",
+    "listing_id": "fd1f46c51cd2",
+    "miner_id": "aeba4c90d14d",
+    "seller_id": "69cface7afddbc3de2cabb39",
+    "seller_name": "Admin Updated",
+    "miner_name": "Starter Rig",
+    "package_id": "starter",
+    "hashrate": 10,
+    "efficiency": 0.85,
+    "power_level": 1,
+    "efficiency_level": 0,
+    "icon": "cpu",
+    "price_blz": 100.0,
+    "price_eur": 10.0,
+    "status": "cancelled",
+    "listed_at": "2026-04-05T15:41:02.619217+00:00"
+  }
+]

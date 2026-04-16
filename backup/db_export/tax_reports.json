@@ -1,0 +1,22 @@
+[
+  {
+    "_id": "69dfba40c3e41ee3d6b3cef2",
+    "report_id": "ff757938fe45",
+    "user_email": "admin@bidblitz.com",
+    "year": 2026,
+    "generated_at": "2026-04-15T16:18:08.427178+00:00",
+    "income": {
+      "reselling": 0,
+      "blitzjobs": 0,
+      "cashback": 13.56,
+      "total": 13.56
+    },
+    "transactions": {
+      "resell_count": 0,
+      "jobs_count": 0,
+      "cashback_count": 4
+    },
+    "fee_paid": 0,
+    "note": "Dies ist eine Übersicht. Für die Steuererklärung bitte einen Steuerberater konsultieren."
+  }
+]

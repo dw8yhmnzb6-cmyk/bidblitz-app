@@ -1,0 +1,34 @@
+[
+  {
+    "_id": "69da3bb1e94dfa2c1444a0c4",
+    "date": "2026-04-11",
+    "user_id": "69d0126144299a2e0d94c786",
+    "games_played": 2,
+    "total_eur_won": 0.25,
+    "total_points_won": 250,
+    "wheel_spins_used": 1,
+    "slots_played": 1,
+    "total_coins_bet": 10,
+    "total_coins_won": 250
+  },
+  {
+    "_id": "69df48fb5e53c53ff299b56a",
+    "user_id": "69d0126144299a2e0d94c786",
+    "date": "2026-04-15",
+    "games_played": 4,
+    "slots_played": 2,
+    "total_coins_bet": 35,
+    "total_coins_won": 35,
+    "dice_played": 2
+  },
+  {
+    "_id": "69df4e105e53c53ff299bae1",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "date": "2026-04-15",
+    "games_played": 3,
+    "slots_played": 2,
+    "total_coins_bet": 30,
+    "total_coins_won": 250,
+    "dice_played": 1
+  }
+]

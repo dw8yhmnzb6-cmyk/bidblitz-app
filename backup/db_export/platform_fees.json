@@ -1,0 +1,15 @@
+[
+  {
+    "_id": "69d9f45739cbac40f6c7511f",
+    "type": "food",
+    "order_id": "df75b7ba278997c4",
+    "total": 34.66,
+    "subtotal": 29.7,
+    "delivery_fee": 1.99,
+    "service_fee": 2.97,
+    "restaurant_share": 25.24,
+    "courier_share": 1.79,
+    "platform_fee": 7.62,
+    "created_at": "2026-04-11T07:12:23.172634+00:00"
+  }
+]

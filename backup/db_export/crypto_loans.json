@@ -1,0 +1,16 @@
+[
+  {
+    "_id": "69e003bdd1242cebe84c17e1",
+    "loan_id": "loan_399291bf9166",
+    "user_email": "kunde@bidblitz.com",
+    "collateral_coin": "BTC",
+    "collateral_amount": 0.1,
+    "collateral_value_eur": 6850.0,
+    "loan_amount_eur": 3425.0,
+    "ltv": 50,
+    "interest_rate": 8.9,
+    "monthly_interest": 25.4,
+    "status": "active",
+    "created_at": "2026-04-15T21:31:41.775515+00:00"
+  }
+]

@@ -1,0 +1,132 @@
+[
+  {
+    "_id": "69df5d296e94fc18564ebaf0",
+    "auction_id": "la_5a84c107032b",
+    "seller_email": "haendler@bidblitz.com",
+    "seller_name": "Lena K.",
+    "title": "iPhone 15 Pro Max 256GB",
+    "description": "Original, Top Zustand!",
+    "start_price": 50,
+    "current_price": 72,
+    "category": "Elektronik",
+    "image_url": "",
+    "bids": [
+      {
+        "bidder_email": "admin@bidblitz.com",
+        "bidder_name": "Max M.",
+        "amount": 72,
+        "time": "2026-04-15T09:40:57.767381+00:00"
+      }
+    ],
+    "bid_count": 11,
+    "highest_bidder": "kunde@bidblitz.com",
+    "status": "active",
+    "created_at": "2026-04-15T09:40:57.767381+00:00",
+    "ends_at": "2026-04-15T10:38:57.767381+00:00",
+    "duration_seconds": 600
+  },
+  {
+    "_id": "69df5d296e94fc18564ebaf1",
+    "auction_id": "la_2ab37cd5d2cf",
+    "seller_email": "kunde@bidblitz.com",
+    "seller_name": "Lena K.",
+    "title": "Nike Dunk Low Panda",
+    "description": "Original, Top Zustand!",
+    "start_price": 30,
+    "current_price": 38,
+    "category": "Sneakers",
+    "image_url": "",
+    "bids": [
+      {
+        "bidder_email": "admin@bidblitz.com",
+        "bidder_name": "Lena K.",
+        "amount": 45,
+        "time": "2026-04-15T09:40:57.767381+00:00"
+      }
+    ],
+    "bid_count": 4,
+    "highest_bidder": "haendler@bidblitz.com",
+    "status": "active",
+    "created_at": "2026-04-15T09:40:57.767381+00:00",
+    "ends_at": "2026-04-15T10:14:57.767381+00:00",
+    "duration_seconds": 300
+  },
+  {
+    "_id": "69df5d296e94fc18564ebaf2",
+    "auction_id": "la_467e32b811fb",
+    "seller_email": "kunde@bidblitz.com",
+    "seller_name": "Max M.",
+    "title": "PS5 + 2 Controller Bundle",
+    "description": "Original, Top Zustand!",
+    "start_price": 80,
+    "current_price": 88,
+    "category": "Gaming",
+    "image_url": "",
+    "bids": [
+      {
+        "bidder_email": "haendler@bidblitz.com",
+        "bidder_name": "Lena K.",
+        "amount": 91,
+        "time": "2026-04-15T09:40:57.767381+00:00"
+      }
+    ],
+    "bid_count": 2,
+    "highest_bidder": "kunde@bidblitz.com",
+    "status": "active",
+    "created_at": "2026-04-15T09:40:57.767381+00:00",
+    "ends_at": "2026-04-15T09:47:57.767381+00:00",
+    "duration_seconds": 900
+  },
+  {
+    "_id": "69df5d296e94fc18564ebaf3",
+    "auction_id": "la_de2a0bf73d90",
+    "seller_email": "haendler@bidblitz.com",
+    "seller_name": "Amir S.",
+    "title": "Apple Watch Series 9",
+    "description": "Original, Top Zustand!",
+    "start_price": 40,
+    "current_price": 63,
+    "category": "Elektronik",
+    "image_url": "",
+    "bids": [
+      {
+        "bidder_email": "haendler@bidblitz.com",
+        "bidder_name": "Lena K.",
+        "amount": 52,
+        "time": "2026-04-15T09:40:57.767381+00:00"
+      }
+    ],
+    "bid_count": 4,
+    "highest_bidder": "haendler@bidblitz.com",
+    "status": "active",
+    "created_at": "2026-04-15T09:40:57.767381+00:00",
+    "ends_at": "2026-04-15T09:50:57.767381+00:00",
+    "duration_seconds": 450
+  },
+  {
+    "_id": "69df5d296e94fc18564ebaf4",
+    "auction_id": "la_c8bc94aadd4a",
+    "seller_email": "admin@bidblitz.com",
+    "seller_name": "Emma L.",
+    "title": "Supreme Box Logo T-Shirt",
+    "description": "Original, Top Zustand!",
+    "start_price": 25,
+    "current_price": 32,
+    "category": "Streetwear",
+    "image_url": "",
+    "bids": [
+      {
+        "bidder_email": "kunde@bidblitz.com",
+        "bidder_name": "Max M.",
+        "amount": 48,
+        "time": "2026-04-15T09:40:57.767381+00:00"
+      }
+    ],
+    "bid_count": 3,
+    "highest_bidder": "kunde@bidblitz.com",
+    "status": "active",
+    "created_at": "2026-04-15T09:40:57.767381+00:00",
+    "ends_at": "2026-04-15T10:12:57.767381+00:00",
+    "duration_seconds": 300
+  }
+]

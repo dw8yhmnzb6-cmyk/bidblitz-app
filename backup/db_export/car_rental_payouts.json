@@ -1,0 +1,16 @@
+[
+  {
+    "_id": "69da84fe4a53dca1b5d14284",
+    "payout_id": "PO-93ED42CA7FD5",
+    "vendor_id": "VND-F9941CD7A8F1",
+    "amount": 50.0,
+    "status": "completed",
+    "bank_name": null,
+    "iban": null,
+    "bic": null,
+    "created_at": "2026-04-11T17:29:34.467593+00:00",
+    "completed_at": "2026-04-11T17:29:34.837545+00:00",
+    "transaction_ref": "BANK-123456",
+    "updated_at": "2026-04-11T17:29:34.837558+00:00"
+  }
+]

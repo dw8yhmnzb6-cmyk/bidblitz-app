@@ -1,0 +1,16 @@
+[
+  {
+    "_id": "69dbe1d0a5ee5c10bcc85802",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "shortcuts": [
+      "hotels",
+      "taxi",
+      "scooter",
+      "kids",
+      "flights",
+      "nearby",
+      "parcels"
+    ],
+    "updated_at": "2026-04-12T22:27:43.287367+00:00"
+  }
+]

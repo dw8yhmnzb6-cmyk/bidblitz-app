@@ -1,0 +1,18 @@
+[
+  {
+    "_id": "69e003bfd1242cebe84c17e9",
+    "booking_id": "appt_3cdea1ce31f7",
+    "user_email": "kunde@bidblitz.com",
+    "provider_id": "b1",
+    "provider_name": "Salon Elegance",
+    "provider_type": "Friseur",
+    "service": "Herrenschnitt",
+    "price": 25,
+    "duration_min": 30,
+    "platform_fee": 1.25,
+    "date": "Naechster freier Termin",
+    "time": "Wird bestaetigt",
+    "status": "confirmed",
+    "created_at": "2026-04-15T21:31:43.207710+00:00"
+  }
+]

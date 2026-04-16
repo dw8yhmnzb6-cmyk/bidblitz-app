@@ -1,0 +1,12 @@
+[
+  {
+    "_id": "69df43432f66400a74f58091",
+    "user_email": "admin@bidblitz.com",
+    "symbol": "AAPL",
+    "name": "Apple Inc.",
+    "type": "stock",
+    "shares": 5.0,
+    "avg_price": 198.44,
+    "bought_at": "2026-04-15T07:50:27.072942+00:00"
+  }
+]

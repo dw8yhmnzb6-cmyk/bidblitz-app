@@ -1,0 +1,260 @@
+[
+  {
+    "_id": "69d59d546301b5b7c812f43a",
+    "ride_id": "860ec61933cff358",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "user_name": "Admin Updated",
+    "user_email": "admin@bidblitz.com",
+    "user_phone": "",
+    "pickup": {
+      "lat": 52.52,
+      "lng": 13.405,
+      "address": "Berlin Mitte"
+    },
+    "dropoff": {
+      "lat": 52.53,
+      "lng": 13.42,
+      "address": "Prenzlauer Berg"
+    },
+    "vehicle_type": "standard",
+    "vehicle_name": "Standard",
+    "payment_method": "wallet",
+    "status": "cancelled",
+    "driver": {
+      "driver_id": "dbe65e7bcc9569fc",
+      "name": "Anna K.",
+      "rating": 4.8,
+      "total_rides": 1923,
+      "vehicle": {
+        "model": "BMW 3er",
+        "color": "Weiß",
+        "plate": "B-AK 8834",
+        "type": "standard"
+      },
+      "photo_url": "https://randomuser.me/api/portraits/women/40.jpg",
+      "phone": "+49 170 8431314",
+      "location": {
+        "lat": 52.51085264555899,
+        "lng": 13.400595217819106
+      },
+      "eta_minutes": 7
+    },
+    "fare_estimate": 11.11,
+    "fare_breakdown": {
+      "base_fare": 2.5,
+      "distance_cost": 1.81,
+      "time_cost": 1.25,
+      "surge_multiplier": 2.0,
+      "vehicle_multiplier": 1.0,
+      "subtotal": 11.11,
+      "total": 11.11,
+      "driver_earnings": 8.89,
+      "platform_fee": 2.22
+    },
+    "distance_km": 1.5,
+    "duration_min": 5,
+    "surge_multiplier": 2.0,
+    "notes": "",
+    "created_at": "2026-04-08T00:12:04.298243+00:00",
+    "updated_at": "2026-04-08T00:20:26.643916+00:00",
+    "status_history": [
+      {
+        "status": "requested",
+        "at": "2026-04-08T00:12:04.298243+00:00"
+      },
+      {
+        "status": "accepted",
+        "at": "2026-04-08T00:12:04.298243+00:00"
+      },
+      {
+        "status": "cancelled",
+        "at": "2026-04-08T00:20:26.643916+00:00",
+        "by": "rider"
+      }
+    ],
+    "accepted_at": "2026-04-08T00:12:04.298243+00:00",
+    "cancel_fee": 3.0,
+    "cancelled_at": "2026-04-08T00:20:26.643916+00:00",
+    "cancelled_by": "rider"
+  },
+  {
+    "_id": "69d59f4a8dc46b71ac96ae15",
+    "ride_id": "e2a0618637f7f65e",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "user_name": "Admin Updated",
+    "user_email": "admin@bidblitz.com",
+    "user_phone": "",
+    "pickup": {
+      "lat": 52.52,
+      "lng": 13.405,
+      "address": "Berlin Alexanderplatz"
+    },
+    "dropoff": {
+      "lat": 52.5,
+      "lng": 13.38,
+      "address": "Brandenburger Tor"
+    },
+    "vehicle_type": "standard",
+    "vehicle_name": "Standard",
+    "payment_method": "wallet",
+    "status": "cancelled",
+    "driver": {
+      "driver_id": "5d1d282817ddbcd8",
+      "name": "Thomas H.",
+      "rating": 4.6,
+      "total_rides": 4231,
+      "vehicle": {
+        "model": "Skoda Superb",
+        "color": "Blau",
+        "plate": "B-TH 1199",
+        "type": "standard"
+      },
+      "photo_url": "https://randomuser.me/api/portraits/men/99.jpg",
+      "phone": "+49 170 9708106",
+      "location": {
+        "lat": 52.51075449845596,
+        "lng": 13.414672879551105
+      },
+      "eta_minutes": 4
+    },
+    "fare_estimate": 15.06,
+    "fare_breakdown": {
+      "base_fare": 2.5,
+      "distance_cost": 3.35,
+      "time_cost": 1.68,
+      "surge_multiplier": 2.0,
+      "vehicle_multiplier": 1.0,
+      "subtotal": 15.06,
+      "total": 15.06,
+      "driver_earnings": 12.05,
+      "platform_fee": 3.01
+    },
+    "distance_km": 2.8,
+    "duration_min": 7,
+    "surge_multiplier": 2.0,
+    "notes": "",
+    "created_at": "2026-04-08T00:20:26.859463+00:00",
+    "updated_at": "2026-04-08T08:01:02.023830+00:00",
+    "status_history": [
+      {
+        "status": "requested",
+        "at": "2026-04-08T00:20:26.859463+00:00"
+      },
+      {
+        "status": "accepted",
+        "at": "2026-04-08T00:20:26.859463+00:00"
+      },
+      {
+        "status": "cancelled",
+        "at": "2026-04-08T08:01:02.023830+00:00",
+        "by": "rider"
+      }
+    ],
+    "accepted_at": "2026-04-08T00:20:26.859463+00:00",
+    "cancel_fee": 3.0,
+    "cancelled_at": "2026-04-08T08:01:02.023830+00:00",
+    "cancelled_by": "rider"
+  },
+  {
+    "_id": "69d60b3e456c4aa4a04297b8",
+    "ride_id": "9602efb2cd92cab9",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "user_name": "Admin Updated",
+    "user_email": "admin@bidblitz.com",
+    "user_phone": "",
+    "pickup": {
+      "lat": 52.52,
+      "lng": 13.405,
+      "address": "Berlin Mitte"
+    },
+    "dropoff": {
+      "lat": 52.53,
+      "lng": 13.42,
+      "address": "Prenzlauer Berg"
+    },
+    "vehicle_type": "standard",
+    "vehicle_name": "Standard",
+    "payment_method": "wallet",
+    "status": "requested",
+    "driver": null,
+    "fare_estimate": 8.33,
+    "fare_breakdown": {
+      "base_fare": 2.5,
+      "distance_cost": 1.81,
+      "time_cost": 1.25,
+      "surge_multiplier": 1.5,
+      "vehicle_multiplier": 1.0,
+      "subtotal": 8.33,
+      "total": 8.33,
+      "driver_earnings": 6.67,
+      "platform_fee": 1.67
+    },
+    "distance_km": 1.5,
+    "duration_min": 5,
+    "surge_multiplier": 1.5,
+    "notes": "",
+    "created_at": "2026-04-08T08:01:02.138227+00:00",
+    "updated_at": "2026-04-08T08:01:02.138227+00:00",
+    "status_history": [
+      {
+        "status": "requested",
+        "at": "2026-04-08T08:01:02.138227+00:00"
+      }
+    ]
+  },
+  {
+    "_id": "69d610a43f9c73dc30750a5a",
+    "ride_id": "148e18276bf86d4f",
+    "user_id": "69d0126144299a2e0d94c786",
+    "user_name": "Max Mustermann",
+    "user_email": "kunde@bidblitz.com",
+    "user_phone": "",
+    "pickup": {
+      "lat": 52.52,
+      "lng": 13.405,
+      "address": "Berlin Mitte"
+    },
+    "dropoff": {
+      "lat": 52.51,
+      "lng": 13.42,
+      "address": "Alexanderplatz"
+    },
+    "vehicle_type": "standard",
+    "vehicle_name": "Standard",
+    "payment_method": "wallet",
+    "status": "cancelled",
+    "driver": null,
+    "fare_estimate": 8.34,
+    "fare_breakdown": {
+      "base_fare": 2.5,
+      "distance_cost": 1.81,
+      "time_cost": 1.25,
+      "surge_multiplier": 1.5,
+      "vehicle_multiplier": 1.0,
+      "subtotal": 8.34,
+      "total": 8.34,
+      "driver_earnings": 6.67,
+      "platform_fee": 1.67
+    },
+    "distance_km": 1.5,
+    "duration_min": 5,
+    "surge_multiplier": 1.5,
+    "notes": "",
+    "created_at": "2026-04-08T08:24:04.140501+00:00",
+    "updated_at": "2026-04-08T08:24:10.143939+00:00",
+    "status_history": [
+      {
+        "status": "requested",
+        "at": "2026-04-08T08:24:04.140501+00:00"
+      },
+      {
+        "status": "cancelled",
+        "at": "2026-04-08T08:24:10.143939+00:00",
+        "by": "rider"
+      }
+    ],
+    "cancel_fee": 0,
+    "cancelled_at": "2026-04-08T08:24:10.143939+00:00",
+    "cancelled_by": "rider"
+  }
+]

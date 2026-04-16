@@ -1,0 +1,252 @@
+[
+  {
+    "_id": "69d25f8ae89ac6170cac966f",
+    "miner_id": "aeba4c90d14d",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "package_id": "starter",
+    "name": "Starter Rig",
+    "hashrate": 10,
+    "efficiency": 0.85,
+    "power_level": 4,
+    "efficiency_level": 0,
+    "status": "active",
+    "purchased_at": "2026-04-05T13:11:38.209679+00:00",
+    "icon": "cpu"
+  },
+  {
+    "_id": "69d272c31d8b2b3cb18e0f21",
+    "miner_id": "b8ee4119fc2c",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "package_id": "starter",
+    "name": "Starter Rig",
+    "hashrate": 10,
+    "efficiency": 0.85,
+    "power_level": 1,
+    "efficiency_level": 0,
+    "status": "active",
+    "purchased_at": "2026-04-05T14:33:39.439055+00:00",
+    "icon": "cpu"
+  },
+  {
+    "_id": "69d2828e59405d0b51e51f26",
+    "miner_id": "e2da46f6a041",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "package_id": "launch_solar-mk3",
+    "name": "Solar MK3 (Launch Edition)",
+    "hashrate": 1600,
+    "efficiency": 0.95,
+    "power_level": 0,
+    "efficiency_level": 0,
+    "status": "active",
+    "purchased_at": "2026-04-05T15:41:02.896552+00:00",
+    "icon": "flame",
+    "is_launch_edition": true
+  },
+  {
+    "_id": "69d2abe027d40dd53eee6559",
+    "miner_id": "21c56c544e7a",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "package_id": "launch_fusion-x1",
+    "name": "Fusion X1 (Launch Edition)",
+    "hashrate": 8500,
+    "efficiency": 0.99,
+    "power_level": 0,
+    "efficiency_level": 0,
+    "status": "active",
+    "purchased_at": "2026-04-05T18:37:20.733868+00:00",
+    "icon": "atom",
+    "is_launch_edition": true
+  },
+  {
+    "_id": "69d2abea27d40dd53eee655c",
+    "miner_id": "a228c3f75aee",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "package_id": "launch_neural-v2",
+    "name": "Neural V2 (Launch Edition)",
+    "hashrate": 3200,
+    "efficiency": 0.97,
+    "power_level": 0,
+    "efficiency_level": 0,
+    "status": "active",
+    "purchased_at": "2026-04-05T18:37:30.377366+00:00",
+    "icon": "zap",
+    "is_launch_edition": true
+  },
+  {
+    "_id": "69d2ad0227d40dd53eee6563",
+    "miner_id": "b88f0f6953c1",
+    "user_id": "69d0126144299a2e0d94c786",
+    "package_id": "starter",
+    "name": "Starter Rig",
+    "hashrate": 10,
+    "efficiency": 0.85,
+    "power_level": 1,
+    "efficiency_level": 0,
+    "status": "active",
+    "purchased_at": "2026-04-05T18:42:10.787940+00:00",
+    "icon": "cpu"
+  },
+  {
+    "_id": "69d2b1ef7f72cd8dd78b0dc0",
+    "miner_id": "9232ae3a6be8",
+    "user_id": "69d0126144299a2e0d94c786",
+    "package_id": "starter",
+    "name": "Starter Rig",
+    "hashrate": 10,
+    "efficiency": 0.85,
+    "power_level": 0,
+    "efficiency_level": 0,
+    "status": "active",
+    "purchased_at": "2026-04-05T19:03:11.755163+00:00",
+    "icon": "cpu",
+    "billing": {
+      "type": "monthly",
+      "price": 4.99,
+      "next_payment": "2026-05-05T19:03:11.755173+00:00",
+      "started_at": "2026-04-05T19:03:11.755163+00:00"
+    }
+  },
+  {
+    "_id": "69d2b62e7f72cd8dd78b0dc8",
+    "miner_id": "d4608c219e0d",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "package_id": "starter",
+    "name": "Starter Rig",
+    "hashrate": 10,
+    "efficiency": 0.85,
+    "power_level": 0,
+    "efficiency_level": 0,
+    "status": "active",
+    "purchased_at": "2026-04-05T19:21:18.641205+00:00",
+    "icon": "cpu",
+    "billing": {
+      "type": "onetime",
+      "price": 49
+    }
+  },
+  {
+    "_id": "69d2b69a7f72cd8dd78b0dcb",
+    "miner_id": "65f03dd29cc2",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "package_id": "elite",
+    "name": "Elite Station",
+    "hashrate": 200,
+    "efficiency": 0.93,
+    "power_level": 0,
+    "efficiency_level": 2,
+    "status": "active",
+    "purchased_at": "2026-04-05T19:23:06.807702+00:00",
+    "icon": "zap",
+    "billing": {
+      "type": "monthly",
+      "price": 69.99,
+      "next_payment": "2026-05-05T19:23:06.807711+00:00",
+      "started_at": "2026-04-05T19:23:06.807702+00:00"
+    }
+  },
+  {
+    "_id": "69d55201aa101941a7fd262f",
+    "miner_id": "e40b232d2cfd",
+    "user_id": "69d0126144299a2e0d94c786",
+    "package_id": "starter",
+    "name": "Starter Rig",
+    "hashrate": 10,
+    "efficiency": 0.85,
+    "power_level": 0,
+    "efficiency_level": 0,
+    "status": "active",
+    "purchased_at": "2026-04-07T18:50:41.630506+00:00",
+    "icon": "cpu",
+    "billing": {
+      "type": "onetime",
+      "price": 49
+    }
+  },
+  {
+    "_id": "69d556622be8b141fa9fdbe5",
+    "miner_id": "45f34d231c94",
+    "user_id": "69d0126144299a2e0d94c786",
+    "package_id": "starter",
+    "name": "Starter Rig",
+    "hashrate": 10,
+    "efficiency": 0.85,
+    "power_level": 0,
+    "efficiency_level": 0,
+    "status": "active",
+    "purchased_at": "2026-04-07T19:09:22.818239+00:00",
+    "icon": "cpu",
+    "billing": {
+      "type": "onetime",
+      "price": 49
+    }
+  },
+  {
+    "_id": "69d59f128dc46b71ac96ae0e",
+    "miner_id": "4b3ac2e56caf",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "package_id": "starter",
+    "name": "Starter Rig",
+    "hashrate": 10,
+    "efficiency": 0.85,
+    "power_level": 0,
+    "efficiency_level": 0,
+    "status": "active",
+    "purchased_at": "2026-04-08T00:19:30.016796+00:00",
+    "icon": "cpu",
+    "billing": {
+      "type": "onetime",
+      "price": 49
+    }
+  },
+  {
+    "_id": "69df45112998e41f8eb40a34",
+    "miner_id": "625769663743",
+    "user_id": "69d0126144299a2e0d94c786",
+    "package_id": "starter",
+    "name": "Starter Rig",
+    "hashrate": 10,
+    "efficiency": 0.85,
+    "power_level": 0,
+    "efficiency_level": 0,
+    "status": "active",
+    "purchased_at": "2026-04-15T07:58:09.780496+00:00",
+    "icon": "cpu",
+    "billing": {
+      "type": "onetime",
+      "price": 49
+    }
+  },
+  {
+    "_id": "69df45212998e41f8eb40a38",
+    "miner_id": "1c7fbb0f4bb7",
+    "user_id": "69d0126144299a2e0d94c786",
+    "package_id": "elite",
+    "name": "Elite Station",
+    "hashrate": 200,
+    "efficiency": 0.93,
+    "power_level": 0,
+    "efficiency_level": 0,
+    "status": "active",
+    "purchased_at": "2026-04-15T07:58:25.135121+00:00",
+    "icon": "zap",
+    "billing": {
+      "type": "onetime",
+      "price": 699
+    }
+  },
+  {
+    "_id": "69df45482998e41f8eb40a3a",
+    "miner_id": "99fbde8620da",
+    "user_id": "69d0126144299a2e0d94c786",
+    "package_id": "launch_fusion-x1",
+    "name": "Fusion X1 (Launch Edition)",
+    "hashrate": 8500,
+    "efficiency": 0.99,
+    "power_level": 0,
+    "efficiency_level": 0,
+    "status": "active",
+    "purchased_at": "2026-04-15T07:59:04.501422+00:00",
+    "icon": "atom",
+    "is_launch_edition": true
+  }
+]

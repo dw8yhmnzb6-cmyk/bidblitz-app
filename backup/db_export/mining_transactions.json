@@ -1,0 +1,457 @@
+[
+  {
+    "_id": "69d25f8ae89ac6170cac9670",
+    "txn_id": "628553640f12",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "type": "purchase",
+    "amount_eur": -49,
+    "description": "Purchased Starter Rig",
+    "created_at": "2026-04-05T13:11:38.209679+00:00"
+  },
+  {
+    "_id": "69d25f94e89ac6170cac9674",
+    "txn_id": "8111f09fbfc5",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "type": "mining_reward",
+    "amount_blz": 8.5e-05,
+    "description": "Daily mining reward (10 TH/s)",
+    "created_at": "2026-04-05T13:11:48.156982+00:00"
+  },
+  {
+    "_id": "69d25f94e89ac6170cac9675",
+    "txn_id": "3a7280cfdcb7",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "type": "upgrade",
+    "amount_eur": -10,
+    "description": "Upgraded Starter Rig power to Lv.1",
+    "created_at": "2026-04-05T13:11:48.286090+00:00"
+  },
+  {
+    "_id": "69d272c31d8b2b3cb18e0f22",
+    "txn_id": "3a11b948a9b0",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "type": "purchase",
+    "amount_eur": -49,
+    "description": "Purchased Starter Rig",
+    "created_at": "2026-04-05T14:33:39.439055+00:00"
+  },
+  {
+    "_id": "69d2828e59405d0b51e51f28",
+    "txn_id": "e6103948ddb0",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "type": "launchpad",
+    "amount_eur": -80,
+    "description": "Launchpad: Solar MK3 (Launch Edition)",
+    "created_at": "2026-04-05T15:41:02.896552+00:00"
+  },
+  {
+    "_id": "69d2abe027d40dd53eee655b",
+    "txn_id": "37e8ae1bf214",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "type": "launchpad",
+    "amount_eur": -500,
+    "description": "Launchpad: Fusion X1 (Launch Edition)",
+    "created_at": "2026-04-05T18:37:20.733868+00:00"
+  },
+  {
+    "_id": "69d2abea27d40dd53eee655e",
+    "txn_id": "9c1cf74902e1",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "type": "launchpad",
+    "amount_eur": -200,
+    "description": "Launchpad: Neural V2 (Launch Edition)",
+    "created_at": "2026-04-05T18:37:30.377366+00:00"
+  },
+  {
+    "_id": "69d2ad0227d40dd53eee6564",
+    "txn_id": "d1e57c237fd5",
+    "user_id": "69d0126144299a2e0d94c786",
+    "type": "purchase",
+    "amount_eur": -49,
+    "description": "Purchased Starter Rig",
+    "created_at": "2026-04-05T18:42:10.787940+00:00"
+  },
+  {
+    "_id": "69d2adb8af6482908b8e0269",
+    "txn_id": "9e2ff799977a",
+    "user_id": "69d0126144299a2e0d94c786",
+    "type": "mining_reward",
+    "amount_blz": 4.25,
+    "description": "Auto reward (10 TH/s)",
+    "created_at": "2026-04-05T18:45:12.163794+00:00"
+  },
+  {
+    "_id": "69d2b1ef7f72cd8dd78b0dc1",
+    "txn_id": "806d15200e10",
+    "user_id": "69d0126144299a2e0d94c786",
+    "type": "purchase",
+    "amount_eur": -4.99,
+    "description": "Purchased Starter Rig (Monatlich)",
+    "created_at": "2026-04-05T19:03:11.755163+00:00"
+  },
+  {
+    "_id": "69d2b62e7f72cd8dd78b0dc9",
+    "txn_id": "072f69bf82aa",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "type": "purchase",
+    "amount_eur": -49,
+    "description": "Purchased Starter Rig",
+    "created_at": "2026-04-05T19:21:18.641205+00:00"
+  },
+  {
+    "_id": "69d2b69a7f72cd8dd78b0dcc",
+    "txn_id": "00456f98a2d2",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "type": "purchase",
+    "amount_eur": -69.99,
+    "description": "Purchased Elite Station (Monatlich)",
+    "created_at": "2026-04-05T19:23:06.807702+00:00"
+  },
+  {
+    "_id": "69d352c6d1dd84565d6f3d19",
+    "txn_id": "ab1b19fcac2e",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "type": "mining_reward",
+    "amount_blz": 7102.32525,
+    "description": "Auto reward (13531 TH/s)",
+    "created_at": "2026-04-06T06:29:26.018740+00:00"
+  },
+  {
+    "_id": "69d352c6d1dd84565d6f3d1b",
+    "txn_id": "bedd6142530c",
+    "user_id": "69d0126144299a2e0d94c786",
+    "type": "mining_reward",
+    "amount_blz": 8.5,
+    "description": "Auto reward (20 TH/s)",
+    "created_at": "2026-04-06T06:29:26.025544+00:00"
+  },
+  {
+    "_id": "69d54cac1710a0dca7252db0",
+    "txn_id": "90a9c7172a0a",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "type": "mining_reward",
+    "amount_blz": 7102.32525,
+    "description": "Auto reward (13531 TH/s)",
+    "created_at": "2026-04-07T18:27:56.428035+00:00"
+  },
+  {
+    "_id": "69d54cac1710a0dca7252db2",
+    "txn_id": "6097795a3157",
+    "user_id": "69d0126144299a2e0d94c786",
+    "type": "mining_reward",
+    "amount_blz": 8.5,
+    "description": "Auto reward (20 TH/s)",
+    "created_at": "2026-04-07T18:27:56.448538+00:00"
+  },
+  {
+    "_id": "69d55201aa101941a7fd2630",
+    "txn_id": "fe48c0f5e941",
+    "user_id": "69d0126144299a2e0d94c786",
+    "type": "purchase",
+    "amount_eur": -49,
+    "description": "Purchased Starter Rig",
+    "created_at": "2026-04-07T18:50:41.630506+00:00"
+  },
+  {
+    "_id": "69d556622be8b141fa9fdbe6",
+    "txn_id": "6ad3bb2ac6d9",
+    "user_id": "69d0126144299a2e0d94c786",
+    "type": "purchase",
+    "amount_eur": -49,
+    "description": "Purchased Starter Rig",
+    "created_at": "2026-04-07T19:09:22.818239+00:00"
+  },
+  {
+    "_id": "69d59a9586850cfb55e9200b",
+    "txn_id": "0ba8532c8505",
+    "user_id": "69d0126144299a2e0d94c786",
+    "type": "mining_reward",
+    "amount_blz": 17.0,
+    "description": "Auto reward (40 TH/s)",
+    "created_at": "2026-04-08T00:00:21.617074+00:00"
+  },
+  {
+    "_id": "69d59a9586850cfb55e9200d",
+    "txn_id": "30255021f2e6",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "type": "mining_reward",
+    "amount_blz": 7102.32525,
+    "description": "Auto reward (13531 TH/s)",
+    "created_at": "2026-04-08T00:00:21.630468+00:00"
+  },
+  {
+    "_id": "69d59dc16301b5b7c812f453",
+    "txn_id": "95be4331fc40",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "type": "upgrade",
+    "amount_eur": -25,
+    "description": "Upgraded Starter Rig power to Lv.2",
+    "created_at": "2026-04-08T00:13:53.682576+00:00"
+  },
+  {
+    "_id": "69d59dcc6301b5b7c812f454",
+    "txn_id": "57ecc63d1b61",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "type": "upgrade",
+    "amount_eur": -15,
+    "description": "Upgraded Elite Station efficiency to Lv.1",
+    "created_at": "2026-04-08T00:14:04.878873+00:00"
+  },
+  {
+    "_id": "69d59dd36301b5b7c812f455",
+    "txn_id": "a53bff7409d8",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "type": "upgrade",
+    "amount_eur": -35,
+    "description": "Upgraded Elite Station efficiency to Lv.2",
+    "created_at": "2026-04-08T00:14:11.134677+00:00"
+  },
+  {
+    "_id": "69d59e2a6301b5b7c812f456",
+    "txn_id": "dc6e58762bfc",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "type": "upgrade",
+    "amount_eur": -10,
+    "description": "Upgraded Starter Rig power to Lv.1",
+    "created_at": "2026-04-08T00:15:38.223704+00:00"
+  },
+  {
+    "_id": "69d59f128dc46b71ac96ae0f",
+    "txn_id": "a18d6be4fe47",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "type": "purchase",
+    "amount_eur": -49,
+    "description": "Purchased Starter Rig",
+    "created_at": "2026-04-08T00:19:30.016796+00:00"
+  },
+  {
+    "_id": "69d7564f2186b36e9d52b025",
+    "txn_id": "06893321a33d",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "type": "mining_reward",
+    "amount_blz": 7066.9066875,
+    "description": "Auto reward (13543 TH/s)",
+    "created_at": "2026-04-09T07:33:35.653929+00:00"
+  },
+  {
+    "_id": "69d7564f2186b36e9d52b027",
+    "txn_id": "7c0a50bd515d",
+    "user_id": "69d0126144299a2e0d94c786",
+    "type": "mining_reward",
+    "amount_blz": 17.0,
+    "description": "Auto reward (40 TH/s)",
+    "created_at": "2026-04-09T07:33:35.685044+00:00"
+  },
+  {
+    "_id": "69d915956a3e24851e708a4c",
+    "txn_id": "c034d36c2f80",
+    "user_id": "69d0126144299a2e0d94c786",
+    "type": "mining_reward",
+    "amount_blz": 17.0,
+    "description": "Auto reward (40 TH/s)",
+    "created_at": "2026-04-10T15:21:57.792103+00:00"
+  },
+  {
+    "_id": "69d915956a3e24851e708a4e",
+    "txn_id": "2313c16ec031",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "type": "mining_reward",
+    "amount_blz": 7066.9066875,
+    "description": "Auto reward (13543 TH/s)",
+    "created_at": "2026-04-10T15:21:57.825106+00:00"
+  },
+  {
+    "_id": "69d98f463fc7a4a5e2870a8d",
+    "txn_id": "5ac956bbc552",
+    "user_id": "69d0126144299a2e0d94c786",
+    "type": "mining_reward",
+    "amount_blz": 17.0,
+    "description": "Auto reward (40 TH/s)",
+    "created_at": "2026-04-11T00:01:10.139312+00:00"
+  },
+  {
+    "_id": "69d98f463fc7a4a5e2870a8f",
+    "txn_id": "0b2f1b20793c",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "type": "mining_reward",
+    "amount_blz": 7066.9066875,
+    "description": "Auto reward (13543 TH/s)",
+    "created_at": "2026-04-11T00:01:10.146180+00:00"
+  },
+  {
+    "_id": "69db71028eb2f2c876903f77",
+    "txn_id": "9ca7aea61825",
+    "user_id": "69d0126144299a2e0d94c786",
+    "type": "mining_reward",
+    "amount_blz": 17.0,
+    "description": "Auto reward (40 TH/s)",
+    "created_at": "2026-04-12T10:16:34.253531+00:00"
+  },
+  {
+    "_id": "69db71028eb2f2c876903f79",
+    "txn_id": "7af13e9f269d",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "type": "mining_reward",
+    "amount_blz": 7066.9066875,
+    "description": "Auto reward (13543 TH/s)",
+    "created_at": "2026-04-12T10:16:34.267876+00:00"
+  },
+  {
+    "_id": "69dbca8a68dee17f47bec7b2",
+    "txn_id": "1733dd3aba51",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "type": "withdraw",
+    "amount_blz": -200.0,
+    "amount_eur": 20.0,
+    "description": "Converted 200.0000 BLZ → €20.00",
+    "created_at": "2026-04-12T16:38:34.715767+00:00"
+  },
+  {
+    "_id": "69dbcabf693649c5d14248ec",
+    "txn_id": "50989cea274a",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "type": "upgrade",
+    "amount_eur": -50,
+    "description": "Upgraded Starter Rig power to Lv.3",
+    "created_at": "2026-04-12T16:39:27.870072+00:00"
+  },
+  {
+    "_id": "69dbcac1693649c5d14248ef",
+    "txn_id": "4a3d82afbe2c",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "type": "upgrade",
+    "amount_eur": -100,
+    "description": "Upgraded Starter Rig power to Lv.4",
+    "created_at": "2026-04-12T16:39:29.380419+00:00"
+  },
+  {
+    "_id": "69dbccab0568bc2c99fa0334",
+    "txn_id": "e8960ae8aecb",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "type": "withdraw",
+    "amount_blz": -100.0,
+    "amount_eur": 10.0,
+    "description": "Converted 100.0000 BLZ → €10.00",
+    "created_at": "2026-04-12T16:47:39.890391+00:00"
+  },
+  {
+    "_id": "69dbccb60568bc2c99fa0335",
+    "txn_id": "17df13fb68f2",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "type": "send",
+    "amount_blz": -50.0,
+    "description": "Sent 50.0000 BLZ to kunde@bidblitz.com",
+    "reference": "DF8C0299",
+    "created_at": "2026-04-12T16:47:50.277149+00:00"
+  },
+  {
+    "_id": "69dbccb60568bc2c99fa0336",
+    "txn_id": "d6827d1b43ee",
+    "user_id": "69d0126144299a2e0d94c786",
+    "type": "receive",
+    "amount_blz": 50.0,
+    "description": "Received 50.0000 BLZ from admin@bidblitz.com",
+    "reference": "DF8C0299",
+    "created_at": "2026-04-12T16:47:50.277149+00:00"
+  },
+  {
+    "_id": "69de938231bff3d5fe56c8cc",
+    "txn_id": "f18aca98999b",
+    "user_id": "69d0126144299a2e0d94c786",
+    "type": "mining_reward",
+    "amount_blz": 17.0,
+    "description": "Auto reward (40 TH/s)",
+    "created_at": "2026-04-14T19:20:34.874958+00:00"
+  },
+  {
+    "_id": "69de938231bff3d5fe56c8ce",
+    "txn_id": "33cd851bebbc",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "type": "mining_reward",
+    "amount_blz": 7067.9503125,
+    "description": "Auto reward (13545 TH/s)",
+    "created_at": "2026-04-14T19:20:34.888407+00:00"
+  },
+  {
+    "_id": "69df3aaa710c6fb332ef17af",
+    "txn_id": "86b2deb02767",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "type": "mining_reward",
+    "amount_blz": 7067.9503125,
+    "description": "Auto reward (13545 TH/s)",
+    "created_at": "2026-04-15T07:13:46.483212+00:00"
+  },
+  {
+    "_id": "69df3aaa710c6fb332ef17b1",
+    "txn_id": "76a5c41b0b4a",
+    "user_id": "69d0126144299a2e0d94c786",
+    "type": "mining_reward",
+    "amount_blz": 17.0,
+    "description": "Auto reward (40 TH/s)",
+    "created_at": "2026-04-15T07:13:46.496920+00:00"
+  },
+  {
+    "_id": "69df44f72998e41f8eb40a2e",
+    "txn_id": "56f0079f1d2d",
+    "user_id": "69d0126144299a2e0d94c786",
+    "type": "withdraw",
+    "amount_blz": -33.0,
+    "amount_eur": 3.3,
+    "description": "Converted 33.0000 BLZ → €3.30",
+    "created_at": "2026-04-15T07:57:43.194572+00:00"
+  },
+  {
+    "_id": "69df45022998e41f8eb40a31",
+    "txn_id": "f9a5de645e15",
+    "user_id": "69d0126144299a2e0d94c786",
+    "type": "upgrade",
+    "amount_eur": -10,
+    "description": "Upgraded Starter Rig power to Lv.1",
+    "created_at": "2026-04-15T07:57:54.111658+00:00"
+  },
+  {
+    "_id": "69df45112998e41f8eb40a35",
+    "txn_id": "16c4dda5f91a",
+    "user_id": "69d0126144299a2e0d94c786",
+    "type": "purchase",
+    "amount_eur": -49,
+    "description": "Purchased Starter Rig",
+    "created_at": "2026-04-15T07:58:09.780496+00:00"
+  },
+  {
+    "_id": "69df45212998e41f8eb40a39",
+    "txn_id": "632985c3efb4",
+    "user_id": "69d0126144299a2e0d94c786",
+    "type": "purchase",
+    "amount_eur": -699,
+    "description": "Purchased Elite Station",
+    "created_at": "2026-04-15T07:58:25.135121+00:00"
+  },
+  {
+    "_id": "69df45482998e41f8eb40a3c",
+    "txn_id": "a7c086cc8bb3",
+    "user_id": "69d0126144299a2e0d94c786",
+    "type": "launchpad",
+    "amount_eur": -500,
+    "description": "Launchpad: Fusion X1 (Launch Edition)",
+    "created_at": "2026-04-15T07:59:04.501422+00:00"
+  },
+  {
+    "_id": "69e0930c68e94bf8d5c5f558",
+    "txn_id": "720ca40bea34",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "type": "mining_reward",
+    "amount_blz": 7067.9503125,
+    "description": "Auto reward (13545 TH/s)",
+    "created_at": "2026-04-16T07:43:08.918165+00:00"
+  },
+  {
+    "_id": "69e0930c68e94bf8d5c5f55a",
+    "txn_id": "831f4b7fe4e1",
+    "user_id": "69d0126144299a2e0d94c786",
+    "type": "mining_reward",
+    "amount_blz": 4242.35978571,
+    "description": "Auto reward (8751 TH/s)",
+    "created_at": "2026-04-16T07:43:08.933113+00:00"
+  }
+]

@@ -1,0 +1,14 @@
+[
+  {
+    "_id": "69daa70414870a29e43e4dbf",
+    "review_id": "REV-262EEA72B1D4",
+    "booking_id": "BK-2F1CFEF098DEFBD4",
+    "car_id": "CAR-42F45C89E9E6",
+    "vendor_id": "VND-F9941CD7A8F1",
+    "customer_id": "69cface7afddbc3de2cabb39",
+    "customer_name": "Admin Updated",
+    "rating": 5,
+    "comment": "Super Erfahrung! Auto war perfekt gepflegt und die Übergabe war schnell.",
+    "created_at": "2026-04-11T19:54:44.451682+00:00"
+  }
+]

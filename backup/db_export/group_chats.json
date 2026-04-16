@@ -1,0 +1,16 @@
+[
+  {
+    "_id": "69e007a6b9564f68ad8d2c10",
+    "group_id": "grp_ab495f350b1b",
+    "name": "Crypto Talk",
+    "description": "Krypto-Diskussionen",
+    "owner": "kunde@bidblitz.com",
+    "members": [
+      "kunde@bidblitz.com"
+    ],
+    "is_premium": false,
+    "price": 0,
+    "messages": [],
+    "created_at": "2026-04-15T21:48:22.403057+00:00"
+  }
+]

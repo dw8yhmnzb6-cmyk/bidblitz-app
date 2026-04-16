@@ -1,0 +1,27 @@
+[
+  {
+    "_id": "69e003bfd1242cebe84c17ea",
+    "contract_id": "ctr_b7349c58e6f1",
+    "doc_hash": "D26CAFAE0585F40B",
+    "user_email": "kunde@bidblitz.com",
+    "template_id": "nda",
+    "template_name": "Geheimhaltungsvertrag (NDA)",
+    "fields": {
+      "Partei A": "BidBlitz",
+      "Partei B": "Max GmbH",
+      "Gegenstand": "App-Entwicklung",
+      "Laufzeit": "2 Jahre"
+    },
+    "price": 0.99,
+    "counterparty_email": "",
+    "signatures": [
+      {
+        "email": "kunde@bidblitz.com",
+        "signed_at": "2026-04-15T21:31:43.360621+00:00",
+        "hash": "D26CAFAE"
+      }
+    ],
+    "status": "signed",
+    "created_at": "2026-04-15T21:31:43.360623+00:00"
+  }
+]

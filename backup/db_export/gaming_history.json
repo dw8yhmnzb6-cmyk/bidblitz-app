@@ -1,0 +1,84 @@
+[
+  {
+    "_id": "69da3bb1c200161fb0329c09",
+    "id": "3d90b6e07008bb65",
+    "user_id": "69d0126144299a2e0d94c786",
+    "game_type": "wheel",
+    "points_won": 250,
+    "eur_won": 0.25,
+    "metadata": {},
+    "created_at": "2026-04-11T12:16:49.148601+00:00"
+  },
+  {
+    "_id": "69dab5471781ab2089c890a6",
+    "user_id": "69d0126144299a2e0d94c786",
+    "game_type": "slots",
+    "coins_won": 250,
+    "coins_bet": 10,
+    "net": 240,
+    "created_at": "2026-04-11T20:55:35.859455+00:00"
+  },
+  {
+    "_id": "69df48fb13125dd2a9451ec6",
+    "user_id": "69d0126144299a2e0d94c786",
+    "game_type": "slots",
+    "coins_won": 10,
+    "coins_bet": 10,
+    "net": 0,
+    "created_at": "2026-04-15T08:14:51.396677+00:00"
+  },
+  {
+    "_id": "69df4ac613125dd2a9451ec9",
+    "user_id": "69d0126144299a2e0d94c786",
+    "game_type": "slots",
+    "coins_won": 10,
+    "coins_bet": 10,
+    "net": 0,
+    "created_at": "2026-04-15T08:22:30.912112+00:00"
+  },
+  {
+    "_id": "69df4ada13125dd2a9451ecc",
+    "user_id": "69d0126144299a2e0d94c786",
+    "game_type": "dice",
+    "coins_won": 15,
+    "coins_bet": 5,
+    "net": 10,
+    "created_at": "2026-04-15T08:22:50.873531+00:00"
+  },
+  {
+    "_id": "69df4ae013125dd2a9451ece",
+    "user_id": "69d0126144299a2e0d94c786",
+    "game_type": "dice",
+    "coins_won": 0,
+    "coins_bet": 10,
+    "net": -10,
+    "created_at": "2026-04-15T08:22:56.049117+00:00"
+  },
+  {
+    "_id": "69df4e104f18fc0672fe37f5",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "game_type": "slots",
+    "coins_won": 0,
+    "coins_bet": 10,
+    "net": -10,
+    "created_at": "2026-04-15T08:36:32.767958+00:00"
+  },
+  {
+    "_id": "69df4e104f18fc0672fe37f8",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "game_type": "slots",
+    "coins_won": 250,
+    "coins_bet": 10,
+    "net": 240,
+    "created_at": "2026-04-15T08:36:32.921482+00:00"
+  },
+  {
+    "_id": "69df4e114f18fc0672fe37fa",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "game_type": "dice",
+    "coins_won": 0,
+    "coins_bet": 10,
+    "net": -10,
+    "created_at": "2026-04-15T08:36:33.027820+00:00"
+  }
+]

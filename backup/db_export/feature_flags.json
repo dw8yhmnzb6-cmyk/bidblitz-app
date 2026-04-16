@@ -1,0 +1,56 @@
+[
+  {
+    "_id": "config",
+    "activity_feed": {
+      "enabled": true,
+      "access": "all",
+      "label": "Activity Feed"
+    },
+    "admin_tools": {
+      "enabled": true,
+      "access": "admin",
+      "label": "Admin Tools"
+    },
+    "export": {
+      "enabled": true,
+      "access": "all",
+      "label": "Data Export"
+    },
+    "kids": {
+      "enabled": true,
+      "access": "all",
+      "label": "BidBlitz Kids"
+    },
+    "merchant_payouts": {
+      "enabled": true,
+      "access": "all",
+      "label": "Merchant Payouts"
+    },
+    "onboarding": {
+      "enabled": true,
+      "access": "all",
+      "label": "Onboarding Flow"
+    },
+    "promotions": {
+      "enabled": true,
+      "access": "admin",
+      "label": "Promotions"
+    },
+    "referral": {
+      "enabled": true,
+      "access": "all",
+      "label": "Referral System"
+    },
+    "scanner": {
+      "enabled": true,
+      "access": "all",
+      "label": "Barcode Scanner"
+    },
+    "support_center": {
+      "enabled": true,
+      "access": "all",
+      "label": "Support Center"
+    },
+    "updated_at": "2026-04-03T21:38:58.285958+00:00"
+  }
+]

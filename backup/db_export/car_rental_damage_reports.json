@@ -1,0 +1,19 @@
+[
+  {
+    "_id": "69da85084a53dca1b5d1428b",
+    "damage_id": "DMG-A9602D590B24",
+    "booking_id": "BK-2F1CFEF098DEFBD4",
+    "car_id": "CAR-42F45C89E9E6",
+    "description": "Kleine Delle an der Fahrertür",
+    "severity": "minor",
+    "location_on_vehicle": "Fahrertür links",
+    "photos": [],
+    "estimated_cost": 150.0,
+    "notes": null,
+    "vendor_id": "VND-F9941CD7A8F1",
+    "reported_by": "69d0126144299a2e0d94c786",
+    "resolved": false,
+    "created_at": "2026-04-11T17:29:44.432768+00:00",
+    "updated_at": "2026-04-11T17:29:44.432768+00:00"
+  }
+]

@@ -1,0 +1,14 @@
+[
+  {
+    "_id": "69dfb6016b73dae301580787",
+    "rating_id": "ccd4b2e9b339",
+    "rater_email": "admin@bidblitz.com",
+    "rater_name": "Admin Updated",
+    "rated_email": "kunde@bidblitz.com",
+    "rating": 5,
+    "comment": "Super Service!",
+    "context_type": "blitzjob",
+    "context_id": "",
+    "created_at": "2026-04-15T16:00:01.456168+00:00"
+  }
+]

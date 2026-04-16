@@ -1,0 +1,36 @@
+[
+  {
+    "_id": "69dbdfee67192e7b0bb16c5a",
+    "tip_id": "c0595db5beebe4a3",
+    "sender_id": "69d0126144299a2e0d94c786",
+    "sender_email": "kunde@bidblitz.com",
+    "sender_name": "Max Mustermann",
+    "staff_id": "69cface7afddbc3de2cabb39",
+    "staff_email": "admin@bidblitz.com",
+    "staff_name": "Admin Updated",
+    "amount": 2.5,
+    "cashback": 0.05,
+    "message": "Danke!",
+    "transaction_id": "",
+    "merchant_id": "",
+    "reference": "TIP-FC3343C0",
+    "created_at": "2026-04-12T18:09:50.274865+00:00"
+  },
+  {
+    "_id": "69dbdff667192e7b0bb16c5f",
+    "tip_id": "858dae68cdc29f49",
+    "sender_id": "69d0126144299a2e0d94c786",
+    "sender_email": "kunde@bidblitz.com",
+    "sender_name": "Max Mustermann",
+    "staff_id": "69cface7afddbc3de2cabb39",
+    "staff_email": "admin@bidblitz.com",
+    "staff_name": "Admin Updated",
+    "amount": 1.0,
+    "cashback": 0.02,
+    "message": "Super Service!",
+    "transaction_id": "",
+    "pos_initiated": true,
+    "reference": "TIP-958855AD",
+    "created_at": "2026-04-12T18:09:58.221877+00:00"
+  }
+]

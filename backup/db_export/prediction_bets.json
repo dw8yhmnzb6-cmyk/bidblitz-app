@@ -1,0 +1,15 @@
+[
+  {
+    "_id": "69dffba290e7677cb6b17c32",
+    "bet_id": "pred_71c1eab0f417",
+    "user_email": "kunde@bidblitz.com",
+    "market_id": "btc_80k",
+    "market_title": "Bitcoin ueber 80.000 EUR bis Ende 2026?",
+    "side": "yes",
+    "amount_eur": 25.0,
+    "odds": 1.65,
+    "potential_win": 41.25,
+    "status": "open",
+    "created_at": "2026-04-15T20:57:06.737779+00:00"
+  }
+]

@@ -1,0 +1,15 @@
+[
+  {
+    "_id": "69e003bed1242cebe84c17e6",
+    "booking_id": "skill_1fc4afc10970",
+    "user_email": "kunde@bidblitz.com",
+    "session_id": "sk1",
+    "tutor": "MaxCode",
+    "title": "Python fuer Anfaenger",
+    "duration": 60,
+    "price": 40,
+    "platform_fee": 6.0,
+    "status": "confirmed",
+    "created_at": "2026-04-15T21:31:42.717944+00:00"
+  }
+]

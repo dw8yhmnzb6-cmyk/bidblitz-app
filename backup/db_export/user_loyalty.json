@@ -1,0 +1,28 @@
+[
+  {
+    "_id": "69d9f351c37a40e00e06b716",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "coins_balance": 0,
+    "total_coins_earned": 0,
+    "total_cashback_earned": 0.0,
+    "level": "bronze",
+    "total_spend": 0.0,
+    "total_transactions": 0,
+    "last_coin_activity_at": null,
+    "created_at": "2026-04-11T07:08:01.375823+00:00",
+    "updated_at": "2026-04-11T07:08:01.375823+00:00"
+  },
+  {
+    "_id": "69da0b1e707d71069939a1e3",
+    "user_id": "69d0126144299a2e0d94c786",
+    "coins_balance": 0,
+    "total_coins_earned": 0,
+    "total_cashback_earned": 0.0,
+    "level": "bronze",
+    "total_spend": 0.0,
+    "total_transactions": 0,
+    "last_coin_activity_at": null,
+    "created_at": "2026-04-11T08:49:34.375261+00:00",
+    "updated_at": "2026-04-11T08:49:34.375261+00:00"
+  }
+]

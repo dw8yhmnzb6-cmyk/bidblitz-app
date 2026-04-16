@@ -1,0 +1,31 @@
+[
+  {
+    "_id": "69d18d8016a0de672bff0a16",
+    "key": "soft_launch",
+    "enabled": true,
+    "whitelist": [
+      "vip@example.com",
+      "anna.schmidt@bidblitz.com",
+      "lukas.weber@bidblitz.com",
+      "sophie.mueller@bidblitz.com",
+      "jan.fischer@bidblitz.com",
+      "lena.becker@bidblitz.com",
+      "tobias.braun@bidblitz.com",
+      "clara.hoffmann@bidblitz.com",
+      "felix.wagner@bidblitz.com",
+      "mia.schulz@bidblitz.com",
+      "noah.zimmermann@bidblitz.com",
+      "emma.koch@bidblitz.com",
+      "paul.richter@bidblitz.com",
+      "hanna.wolf@bidblitz.com",
+      "leon.krause@bidblitz.com",
+      "lisa.hartmann@bidblitz.com",
+      "boulangerie.paris@bidblitz.com",
+      "pizzeria.roma@bidblitz.com",
+      "techshop.berlin@bidblitz.com"
+    ],
+    "allow_existing_users": true,
+    "registration_open": false,
+    "created_at": "2026-04-04T22:15:28.355917+00:00"
+  }
+]

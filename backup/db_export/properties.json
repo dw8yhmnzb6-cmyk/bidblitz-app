@@ -1,0 +1,315 @@
+[
+  {
+    "_id": "69dbea2161bdd8a506256a5d",
+    "title": "Luxus-Penthouse Dubai Marina",
+    "description": "Atemberaubender Blick auf die Marina. 2 Schlafzimmer, Pool-Zugang, Gym.",
+    "property_type": "apartment",
+    "city": "Dubai",
+    "address": "Dubai Marina Walk 42",
+    "price_per_night": 189,
+    "max_guests": 4,
+    "bedrooms": 2,
+    "bathrooms": 2,
+    "amenities": [
+      "WiFi",
+      "Pool",
+      "Gym",
+      "Parkplatz",
+      "Klimaanlage"
+    ],
+    "images": [
+      "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&q=80"
+    ],
+    "rules": "Kein Rauchen",
+    "property_id": "70c5bb42914d2858",
+    "owner_id": "seed",
+    "owner_name": "BidBlitz Host",
+    "owner_email": "host@bidblitz.com",
+    "rating": 3.9,
+    "review_count": 5,
+    "booking_count": 4,
+    "status": "active",
+    "created_at": "2026-04-12T18:53:21.341190+00:00"
+  },
+  {
+    "_id": "69dbea2161bdd8a506256a5e",
+    "title": "Cozy Studio Downtown",
+    "description": "Gemütliches Studio im Herzen von Downtown mit Burj Khalifa Blick.",
+    "property_type": "room",
+    "city": "Dubai",
+    "address": "Sheikh Zayed Road 15",
+    "price_per_night": 79,
+    "max_guests": 2,
+    "bedrooms": 1,
+    "bathrooms": 1,
+    "amenities": [
+      "WiFi",
+      "Klimaanlage",
+      "Küche"
+    ],
+    "images": [
+      "https://images.unsplash.com/photo-1774311237295-a65a4c1ff38a?w=800&q=80"
+    ],
+    "rules": "",
+    "property_id": "ab692542fad09311",
+    "owner_id": "seed",
+    "owner_name": "BidBlitz Host",
+    "owner_email": "host@bidblitz.com",
+    "rating": 4.0,
+    "review_count": 6,
+    "booking_count": 5,
+    "status": "active",
+    "created_at": "2026-04-12T18:53:21.341190+00:00"
+  },
+  {
+    "_id": "69dbea2161bdd8a506256a5f",
+    "title": "Villa Palm Jumeirah",
+    "description": "Private Villa mit eigenem Strand und Pool. Perfekt für Familien.",
+    "property_type": "villa",
+    "city": "Dubai",
+    "address": "Palm Jumeirah Frond N",
+    "price_per_night": 450,
+    "max_guests": 8,
+    "bedrooms": 4,
+    "bathrooms": 3,
+    "amenities": [
+      "WiFi",
+      "Pool",
+      "Strand",
+      "BBQ",
+      "Parkplatz",
+      "Klimaanlage",
+      "Waschmaschine"
+    ],
+    "images": [
+      "https://images.unsplash.com/photo-1575404215583-863f8d55a411?w=800&q=80"
+    ],
+    "rules": "Max 8 Gäste",
+    "property_id": "0bae3ec7fd8a146a",
+    "owner_id": "seed",
+    "owner_name": "BidBlitz Host",
+    "owner_email": "host@bidblitz.com",
+    "rating": 4.2,
+    "review_count": 13,
+    "booking_count": 2,
+    "status": "active",
+    "created_at": "2026-04-12T18:53:21.341190+00:00"
+  },
+  {
+    "_id": "69dbea2161bdd8a506256a60",
+    "title": "Business Hotel JBR",
+    "description": "Modernes Hotelzimmer direkt am Strand. Frühstück inklusive.",
+    "property_type": "hotel",
+    "city": "Dubai",
+    "address": "JBR The Walk",
+    "price_per_night": 129,
+    "max_guests": 2,
+    "bedrooms": 1,
+    "bathrooms": 1,
+    "amenities": [
+      "WiFi",
+      "Frühstück",
+      "Pool",
+      "Gym",
+      "Spa"
+    ],
+    "images": [
+      "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&q=80"
+    ],
+    "rules": "",
+    "property_id": "15fab296dff2487e",
+    "owner_id": "seed",
+    "owner_name": "BidBlitz Host",
+    "owner_email": "host@bidblitz.com",
+    "rating": 4.7,
+    "review_count": 13,
+    "booking_count": 22,
+    "status": "active",
+    "created_at": "2026-04-12T18:53:21.341190+00:00"
+  },
+  {
+    "_id": "69dbea2161bdd8a506256a61",
+    "title": "Berliner Altbau-Wohnung",
+    "description": "Charmante 3-Zimmer Wohnung in Kreuzberg. Hohe Decken, Balkon.",
+    "property_type": "apartment",
+    "city": "Berlin",
+    "address": "Oranienstraße 45",
+    "price_per_night": 95,
+    "max_guests": 4,
+    "bedrooms": 2,
+    "bathrooms": 1,
+    "amenities": [
+      "WiFi",
+      "Küche",
+      "Waschmaschine",
+      "Balkon"
+    ],
+    "images": [
+      "https://images.unsplash.com/photo-1708532399009-e88cfd2793df?w=800&q=80"
+    ],
+    "rules": "Haustiere erlaubt",
+    "property_id": "f1c533360b267b64",
+    "owner_id": "seed",
+    "owner_name": "BidBlitz Host",
+    "owner_email": "host@bidblitz.com",
+    "rating": 4.0,
+    "review_count": 16,
+    "booking_count": 25,
+    "status": "active",
+    "created_at": "2026-04-12T18:53:21.341190+00:00"
+  },
+  {
+    "_id": "69dbea2161bdd8a506256a62",
+    "title": "München City Loft",
+    "description": "Design-Loft nahe Marienplatz. Perfekt für Städtereisen.",
+    "property_type": "apartment",
+    "city": "München",
+    "address": "Sendlinger Straße 12",
+    "price_per_night": 119,
+    "max_guests": 3,
+    "bedrooms": 1,
+    "bathrooms": 1,
+    "amenities": [
+      "WiFi",
+      "Küche",
+      "Smart TV"
+    ],
+    "images": [
+      "https://images.unsplash.com/photo-1670683891791-37489fa62562?w=800&q=80"
+    ],
+    "rules": "",
+    "property_id": "af54784cafca636a",
+    "owner_id": "seed",
+    "owner_name": "BidBlitz Host",
+    "owner_email": "host@bidblitz.com",
+    "rating": 4.8,
+    "review_count": 9,
+    "booking_count": 18,
+    "status": "active",
+    "created_at": "2026-04-12T18:53:21.341190+00:00"
+  },
+  {
+    "_id": "69dbea2161bdd8a506256a63",
+    "title": "Strandhaus Antalya",
+    "description": "Direkt am Meer. Eigene Terrasse mit Meerblick.",
+    "property_type": "house",
+    "city": "Antalya",
+    "address": "Lara Beach 7",
+    "price_per_night": 65,
+    "max_guests": 6,
+    "bedrooms": 3,
+    "bathrooms": 2,
+    "amenities": [
+      "WiFi",
+      "Strand",
+      "Terrasse",
+      "BBQ",
+      "Parkplatz"
+    ],
+    "images": [
+      "https://images.unsplash.com/photo-1731694671473-2dfd9bdd74d3?w=800&q=80"
+    ],
+    "rules": "",
+    "property_id": "1048706d3d18f628",
+    "owner_id": "seed",
+    "owner_name": "BidBlitz Host",
+    "owner_email": "host@bidblitz.com",
+    "rating": 3.7,
+    "review_count": 3,
+    "booking_count": 22,
+    "status": "active",
+    "created_at": "2026-04-12T18:53:21.341190+00:00"
+  },
+  {
+    "_id": "69dbea2161bdd8a506256a64",
+    "title": "Wiener Altstadt Suite",
+    "description": "Elegante Suite im 1. Bezirk. Gehweite zu Stephansdom.",
+    "property_type": "apartment",
+    "city": "Wien",
+    "address": "Graben 22",
+    "price_per_night": 145,
+    "max_guests": 2,
+    "bedrooms": 1,
+    "bathrooms": 1,
+    "amenities": [
+      "WiFi",
+      "Küche",
+      "Klimaanlage",
+      "Aufzug"
+    ],
+    "images": [
+      "https://images.unsplash.com/photo-1527018181612-30ec1d97571a?w=800&q=80"
+    ],
+    "rules": "",
+    "property_id": "63d3771d11ba1c51",
+    "owner_id": "seed",
+    "owner_name": "BidBlitz Host",
+    "owner_email": "host@bidblitz.com",
+    "rating": 4.6,
+    "review_count": 17,
+    "booking_count": 46,
+    "status": "active",
+    "created_at": "2026-04-12T18:53:21.341190+00:00"
+  },
+  {
+    "_id": "69dbea2161bdd8a506256a65",
+    "title": "Istanbul Bosphorus View",
+    "description": "Wohnung mit Blick auf den Bosporus. Zentrale Lage in Beşiktaş.",
+    "property_type": "apartment",
+    "city": "Istanbul",
+    "address": "Beşiktaş Caddesi 8",
+    "price_per_night": 55,
+    "max_guests": 3,
+    "bedrooms": 1,
+    "bathrooms": 1,
+    "amenities": [
+      "WiFi",
+      "Balkon",
+      "Küche"
+    ],
+    "images": [
+      "https://images.unsplash.com/photo-1749558690276-1adc8a2970e4?w=800&q=80"
+    ],
+    "rules": "",
+    "property_id": "0e166fcfd79a675c",
+    "owner_id": "seed",
+    "owner_name": "BidBlitz Host",
+    "owner_email": "host@bidblitz.com",
+    "rating": 3.7,
+    "review_count": 13,
+    "booking_count": 22,
+    "status": "active",
+    "created_at": "2026-04-12T18:53:21.341190+00:00"
+  },
+  {
+    "_id": "69dbea2161bdd8a506256a66",
+    "title": "Zürich Business Apartment",
+    "description": "Modernes Apartment nahe Hauptbahnhof. Ideal für Geschäftsreisende.",
+    "property_type": "apartment",
+    "city": "Zürich",
+    "address": "Bahnhofstrasse 99",
+    "price_per_night": 199,
+    "max_guests": 2,
+    "bedrooms": 1,
+    "bathrooms": 1,
+    "amenities": [
+      "WiFi",
+      "Küche",
+      "Waschmaschine",
+      "Gym"
+    ],
+    "images": [
+      "https://images.unsplash.com/photo-1600528667656-7ef8602b4c15?w=800&q=80"
+    ],
+    "rules": "",
+    "property_id": "cdfa79495f5cdfab",
+    "owner_id": "seed",
+    "owner_name": "BidBlitz Host",
+    "owner_email": "host@bidblitz.com",
+    "rating": 4.3,
+    "review_count": 14,
+    "booking_count": 23,
+    "status": "active",
+    "created_at": "2026-04-12T18:53:21.341190+00:00"
+  }
+]

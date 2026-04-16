@@ -1,0 +1,25 @@
+[
+  {
+    "_id": "69e003bfd1242cebe84c17e8",
+    "order_id": "qrm_defac84368a2",
+    "user_email": "kunde@bidblitz.com",
+    "restaurant_id": "qr1",
+    "restaurant_name": "Pizzeria Bella",
+    "table_number": 3,
+    "items": [
+      {
+        "name": "Margherita",
+        "price": 9.9,
+        "category": "Pizza"
+      },
+      {
+        "name": "Tiramisu",
+        "price": 6.5,
+        "category": "Dessert"
+      }
+    ],
+    "total": 16.4,
+    "status": "preparing",
+    "created_at": "2026-04-15T21:31:43.056456+00:00"
+  }
+]

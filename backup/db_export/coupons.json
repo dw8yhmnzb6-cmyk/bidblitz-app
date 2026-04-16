@@ -1,0 +1,36 @@
+[
+  {
+    "_id": "69dbce306e543a9492b54c2b",
+    "coupon_id": "30151c7f54b1fbec",
+    "code": "WELCOME25",
+    "coupon_type": "eur",
+    "value": 25.0,
+    "description": "Willkommen €25",
+    "max_uses": 100,
+    "used_count": 1,
+    "used_by": [
+      "69d0126144299a2e0d94c786"
+    ],
+    "created_by": "69cface7afddbc3de2cabb39",
+    "created_at": "2026-04-12T16:54:08.422867+00:00",
+    "expires_at": "2026-07-11T16:54:08.422867+00:00",
+    "active": true
+  },
+  {
+    "_id": "69dbce306e543a9492b54c2c",
+    "coupon_id": "5639a253e7022dce",
+    "code": "KIDS3FREE",
+    "coupon_type": "kids_abo",
+    "value": 3.0,
+    "description": "3 Monate Kids Premium gratis",
+    "max_uses": 50,
+    "used_count": 1,
+    "used_by": [
+      "69d0126144299a2e0d94c786"
+    ],
+    "created_by": "69cface7afddbc3de2cabb39",
+    "created_at": "2026-04-12T16:54:08.612810+00:00",
+    "expires_at": "2026-06-11T16:54:08.612810+00:00",
+    "active": true
+  }
+]

@@ -1,0 +1,18 @@
+[
+  {
+    "_id": "69d189e8239ef4faa7760f41",
+    "id": "PO-2785AD2D",
+    "merchant_id": "69d0126144299a2e0d94c789",
+    "user_id": "69d0126144299a2e0d94c788",
+    "merchant_name": "",
+    "amount": 5.0,
+    "fee": 0.5,
+    "net_amount": 4.5,
+    "currency": "EUR",
+    "status": "processed",
+    "reference": "PO-2785AD2D",
+    "notes": "Test payout",
+    "created_at": "2026-04-04T22:00:08.609430+00:00",
+    "processed_at": "2026-04-11T07:16:23.841812+00:00"
+  }
+]

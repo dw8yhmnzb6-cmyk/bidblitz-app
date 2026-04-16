@@ -1,0 +1,24 @@
+[
+  {
+    "_id": "69dea59dea8b6d1aebc080f7",
+    "session_id": "fa9128c21d2bd4fd",
+    "station_id": "ev_002",
+    "station_name": "Tesla Supercharger Stachus",
+    "operator": "Tesla",
+    "connector": "CCS",
+    "vehicle": "",
+    "user_email": "admin@bidblitz.com",
+    "user_name": "Admin Updated",
+    "power_kw": 250,
+    "price_per_kwh": 0.45,
+    "kwh_charged": 59.7,
+    "cost": 26.87,
+    "reserved": 5.0,
+    "status": "completed",
+    "payment_method": "bidblitz_wallet",
+    "started_at": "2026-04-14T20:37:49.501295+00:00",
+    "cashback": 0.81,
+    "ended_at": "2026-04-14T20:37:49.658230+00:00",
+    "payment_status": "paid"
+  }
+]

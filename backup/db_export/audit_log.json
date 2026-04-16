@@ -1,0 +1,229 @@
+[
+  {
+    "_id": "69d9e6ce52300699d4f33ed5",
+    "id": "37ea9eb71a010f73",
+    "action": "credit_refund",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "details": {
+      "tx_id": "TXN-2F86C1DCA84201CA",
+      "amount": 0.1,
+      "new_balance": 524.21,
+      "source": "daily_bonus"
+    },
+    "status": "success",
+    "ip_address": null,
+    "created_at": "2026-04-11T06:14:38.553388+00:00"
+  },
+  {
+    "_id": "69d9e94e919b4ef40b28dc0c",
+    "id": "46f258a704a20d65",
+    "action": "debit_payment",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "details": {
+      "tx_id": "TXN-6759ADEBCF7D0DAB",
+      "amount": 9.99,
+      "new_balance": 514.22
+    },
+    "status": "success",
+    "ip_address": null,
+    "created_at": "2026-04-11T06:25:18.931795+00:00"
+  },
+  {
+    "_id": "69d9e955919b4ef40b28dc10",
+    "id": "54f0a0025fd4b11c",
+    "action": "debit_payment",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "details": {
+      "tx_id": "TXN-F6F689CFA9BFFC06",
+      "amount": 10.33,
+      "new_balance": 503.89
+    },
+    "status": "success",
+    "ip_address": null,
+    "created_at": "2026-04-11T06:25:25.464028+00:00"
+  },
+  {
+    "_id": "69da3bb1c200161fb0329c08",
+    "id": "05e0c058aeb8eeb6",
+    "action": "credit_reward",
+    "user_id": "69d0126144299a2e0d94c786",
+    "details": {
+      "tx_id": "TXN-FE86558789953A4F",
+      "amount": 0.25,
+      "new_balance": 3.11,
+      "source": null
+    },
+    "status": "success",
+    "ip_address": null,
+    "created_at": "2026-04-11T12:16:49.134188+00:00"
+  },
+  {
+    "_id": "69da6de356cd694fd8779f91",
+    "id": "b25ee878b22e8f46",
+    "action": "debit_scooter_payment",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "details": {
+      "tx_id": "TXN-9CC775AAC0484FED",
+      "amount": 1.0,
+      "new_balance": 503.89
+    },
+    "status": "success",
+    "ip_address": null,
+    "created_at": "2026-04-11T15:50:59.336319+00:00"
+  },
+  {
+    "_id": "69da84ca4a53dca1b5d1425d",
+    "id": "f5f117d3d6d03ec0",
+    "action": "debit_payment_failed",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "details": {
+      "amount": 782.03,
+      "balance": 503.89,
+      "reason": "insufficient_balance"
+    },
+    "status": "failed",
+    "ip_address": null,
+    "created_at": "2026-04-11T17:28:42.316639+00:00"
+  },
+  {
+    "_id": "69da84d24a53dca1b5d14265",
+    "id": "bc23c4d866b825b5",
+    "action": "debit_payment_failed",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "details": {
+      "amount": 782.03,
+      "balance": 503.89,
+      "reason": "insufficient_balance"
+    },
+    "status": "failed",
+    "ip_address": null,
+    "created_at": "2026-04-11T17:28:50.354520+00:00"
+  },
+  {
+    "_id": "69da84db4a53dca1b5d1426b",
+    "id": "a76d5a48f1226da9",
+    "action": "debit_payment",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "details": {
+      "tx_id": "TXN-57F3AC90C0CD776A",
+      "amount": 470.21,
+      "new_balance": 33.68
+    },
+    "status": "success",
+    "ip_address": null,
+    "created_at": "2026-04-11T17:28:59.692334+00:00"
+  },
+  {
+    "_id": "69da84ee4a53dca1b5d14278",
+    "id": "7b787f649cbe8194",
+    "action": "credit_refund",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "details": {
+      "tx_id": "TXN-3B3CF53A191EDEDE",
+      "amount": 400.0,
+      "new_balance": 433.68,
+      "source": null
+    },
+    "status": "success",
+    "ip_address": null,
+    "created_at": "2026-04-11T17:29:18.166973+00:00"
+  },
+  {
+    "_id": "69dab5471781ab2089c890a2",
+    "id": "7d61d786024f4996",
+    "action": "debit_reward",
+    "user_id": "69d0126144299a2e0d94c786",
+    "details": {
+      "tx_id": "TXN-DFE4E269ED20AAEE",
+      "amount": 2,
+      "new_balance": 1.11
+    },
+    "status": "success",
+    "ip_address": null,
+    "created_at": "2026-04-11T20:55:35.691486+00:00"
+  },
+  {
+    "_id": "69dab9611781ab2089c892cb",
+    "id": "535d4150186543fa",
+    "action": "debit_reward",
+    "user_id": "69d0126144299a2e0d94c786",
+    "details": {
+      "tx_id": "TXN-40BA2A7E99E7FAD1",
+      "amount": 1,
+      "new_balance": 0.11
+    },
+    "status": "success",
+    "ip_address": null,
+    "created_at": "2026-04-11T21:13:05.518125+00:00"
+  },
+  {
+    "_id": "69dbcabf693649c5d14248eb",
+    "id": "5460f5f97f1b971d",
+    "action": "debit_mining_purchase",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "details": {
+      "tx_id": "TXN-14FA09C04014A686",
+      "amount": 50,
+      "new_balance": 393.68
+    },
+    "status": "success",
+    "ip_address": null,
+    "created_at": "2026-04-12T16:39:27.861615+00:00"
+  },
+  {
+    "_id": "69dbcac1693649c5d14248ee",
+    "id": "fcd0fcc923dff077",
+    "action": "debit_mining_purchase",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "details": {
+      "tx_id": "TXN-AB35D6DFA15095BF",
+      "amount": 100,
+      "new_balance": 293.68
+    },
+    "status": "success",
+    "ip_address": null,
+    "created_at": "2026-04-12T16:39:29.379574+00:00"
+  },
+  {
+    "_id": "69df45022998e41f8eb40a30",
+    "id": "a07702fe48421af4",
+    "action": "debit_mining_purchase",
+    "user_id": "69d0126144299a2e0d94c786",
+    "details": {
+      "tx_id": "TXN-2DF959727E4CCE41",
+      "amount": 10,
+      "new_balance": 4743.3
+    },
+    "status": "success",
+    "ip_address": null,
+    "created_at": "2026-04-15T07:57:54.103546+00:00"
+  },
+  {
+    "_id": "69df45112998e41f8eb40a33",
+    "id": "b6154443a8ea43f1",
+    "action": "debit_mining_purchase",
+    "user_id": "69d0126144299a2e0d94c786",
+    "details": {
+      "tx_id": "TXN-40E68042FA9EA921",
+      "amount": 49,
+      "new_balance": 4694.3
+    },
+    "status": "success",
+    "ip_address": null,
+    "created_at": "2026-04-15T07:58:09.780178+00:00"
+  },
+  {
+    "_id": "69df45212998e41f8eb40a37",
+    "id": "654e1b08d2d3ff10",
+    "action": "debit_mining_purchase",
+    "user_id": "69d0126144299a2e0d94c786",
+    "details": {
+      "tx_id": "TXN-B5AFC85DCC184451",
+      "amount": 699,
+      "new_balance": 3995.3
+    },
+    "status": "success",
+    "ip_address": null,
+    "created_at": "2026-04-15T07:58:25.134793+00:00"
+  }
+]

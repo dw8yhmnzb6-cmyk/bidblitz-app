@@ -1,0 +1,53 @@
+[
+  {
+    "_id": "69dfba17b2821221ee11aa9f",
+    "ad_id": "ad_de02b6b72ada",
+    "merchant_email": "admin@bidblitz.com",
+    "merchant_name": "BidBlitz",
+    "title": "50% Rabatt bei BlitzLearn",
+    "description": "Erste Nachhilfe-Session gratis!",
+    "link_route": "/blitzlearn",
+    "color": "#3B82F6",
+    "duration": "weekly",
+    "price": 29.0,
+    "impressions": 29,
+    "clicks": 0,
+    "status": "active",
+    "created_at": "2026-04-15T16:17:27.663993+00:00",
+    "expires_at": "2026-04-22T16:17:27.663993+00:00"
+  },
+  {
+    "_id": "69dfba17b2821221ee11aaa0",
+    "ad_id": "ad_ea97a8beb703",
+    "merchant_email": "admin@bidblitz.com",
+    "merchant_name": "BidBlitz",
+    "title": "Mystery Box Sale",
+    "description": "Sneaker Box nur €24.99 statt €29.99",
+    "link_route": "/blitzhub",
+    "color": "#F59E0B",
+    "duration": "weekly",
+    "price": 29.0,
+    "impressions": 29,
+    "clicks": 0,
+    "status": "active",
+    "created_at": "2026-04-15T16:17:27.663993+00:00",
+    "expires_at": "2026-04-22T16:17:27.663993+00:00"
+  },
+  {
+    "_id": "69dfba17b2821221ee11aaa1",
+    "ad_id": "ad_a117d013c86d",
+    "merchant_email": "admin@bidblitz.com",
+    "merchant_name": "BidBlitz",
+    "title": "Premium Pro: 1 Monat gratis",
+    "description": "Jetzt upgraden und sparen",
+    "link_route": "/premium",
+    "color": "#A855F7",
+    "duration": "weekly",
+    "price": 29.0,
+    "impressions": 29,
+    "clicks": 0,
+    "status": "active",
+    "created_at": "2026-04-15T16:17:27.663993+00:00",
+    "expires_at": "2026-04-22T16:17:27.663993+00:00"
+  }
+]

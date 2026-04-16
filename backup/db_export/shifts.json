@@ -1,0 +1,20 @@
+[
+  {
+    "_id": "69d24b0561861373a0a9a41c",
+    "merchant_id": "69d23d411f01d08a8214f69f",
+    "user_id": "69d0126144299a2e0d94c788",
+    "user_name": "Berliner Café GmbH",
+    "branch_id": "",
+    "register_id": "",
+    "opening_balance": 100.0,
+    "notes": "Testschicht",
+    "status": "closed",
+    "opened_at": "2026-04-05T11:44:05.820557+00:00",
+    "total_sales": 0,
+    "total_refunds": 0,
+    "transaction_count": 0,
+    "closed_at": "2026-04-05T11:44:06.040522+00:00",
+    "closing_notes": "Schicht Ende",
+    "total_fees": 0
+  }
+]

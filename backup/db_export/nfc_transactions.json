@@ -1,0 +1,26 @@
+[
+  {
+    "_id": "69dff5cbf39a3a26de444c2b",
+    "tx_id": "nfc_195057443b5c",
+    "type": "nfc_payment",
+    "user_email": "kunde@bidblitz.com",
+    "merchant_id": "",
+    "amount": 5.5,
+    "description": "Kaffee & Kuchen",
+    "nfc_token": "BPY-F48A-8F2C-60DB",
+    "status": "completed",
+    "created_at": "2026-04-15T20:32:11.744258+00:00"
+  },
+  {
+    "_id": "69dff5d3f39a3a26de444c2d",
+    "tx_id": "nfc_8c79f90631aa",
+    "type": "merchant_nfc_charge",
+    "user_email": "kunde@bidblitz.com",
+    "merchant_email": "haendler@bidblitz.com",
+    "amount": 12.99,
+    "fee": 0.39,
+    "description": "Restaurant Bestellung",
+    "status": "completed",
+    "created_at": "2026-04-15T20:32:19.927095+00:00"
+  }
+]

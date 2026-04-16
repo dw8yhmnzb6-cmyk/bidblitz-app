@@ -1,0 +1,8 @@
+[
+  {
+    "_id": "merchant_fees",
+    "card": 0.025,
+    "nfc_wallet": 0.0034999999999999996,
+    "wallet": 0.005
+  }
+]

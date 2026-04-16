@@ -1,0 +1,18 @@
+[
+  {
+    "_id": "69dffba290e7677cb6b17c30",
+    "position_id": "deriv_1317d45b3c27",
+    "user_email": "kunde@bidblitz.com",
+    "pair": "BTC/EUR",
+    "direction": "long",
+    "leverage": 10,
+    "margin_eur": 50.0,
+    "size_eur": 500.0,
+    "entry_price": 68450.0,
+    "take_profit": 0,
+    "stop_loss": 0,
+    "pnl": 0,
+    "status": "open",
+    "created_at": "2026-04-15T20:57:06.349175+00:00"
+  }
+]

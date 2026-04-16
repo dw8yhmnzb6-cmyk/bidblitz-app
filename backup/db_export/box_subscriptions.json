@@ -1,0 +1,13 @@
+[
+  {
+    "_id": "69e007a5b9564f68ad8d2c0b",
+    "sub_id": "box_a30f1f652d11",
+    "user_email": "kunde@bidblitz.com",
+    "box_id": "gaming",
+    "box_name": "Gaming Box",
+    "price": 24.99,
+    "status": "active",
+    "next_delivery": "2026-05-01",
+    "created_at": "2026-04-15T21:48:21.521536+00:00"
+  }
+]

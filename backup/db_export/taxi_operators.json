@@ -1,0 +1,17 @@
+[
+  {
+    "_id": "69df3c68794168b34e99e69d",
+    "user_id": "69df3c685e53c53ff2999de2",
+    "email": "fahrer@bidblitz.com",
+    "name": "Ahmed Yilmaz",
+    "phone": "+49 176 12345678",
+    "vehicle_type": "comfort",
+    "license_plate": "B-TX 2026",
+    "vehicle_model": "Mercedes E-Klasse",
+    "status": "approved",
+    "is_online": true,
+    "rating": 4.8,
+    "total_rides": 342,
+    "earnings": 12450.0
+  }
+]

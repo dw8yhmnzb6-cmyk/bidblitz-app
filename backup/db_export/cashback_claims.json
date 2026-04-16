@@ -1,0 +1,54 @@
+[
+  {
+    "_id": "69df53342b84e124a8e7a1b9",
+    "shop_id": "nike",
+    "shop_name": "Nike",
+    "purchase_amount": 129.99,
+    "cashback_pct": 6,
+    "claim_id": "ab03a266b6496d28",
+    "user_email": "admin@bidblitz.com",
+    "cashback_amount": 7.8,
+    "order_ref": "ORD-88236CD4",
+    "status": "confirmed",
+    "created_at": "2026-04-02T08:58:28.350752+00:00"
+  },
+  {
+    "_id": "69df53342b84e124a8e7a1ba",
+    "shop_id": "amazon",
+    "shop_name": "Amazon",
+    "purchase_amount": 45.5,
+    "cashback_pct": 3,
+    "claim_id": "02f1d5ad7c3fb46a",
+    "user_email": "admin@bidblitz.com",
+    "cashback_amount": 1.36,
+    "order_ref": "ORD-3026D9AA",
+    "status": "confirmed",
+    "created_at": "2026-04-08T08:58:28.360501+00:00"
+  },
+  {
+    "_id": "69df53342b84e124a8e7a1bb",
+    "shop_id": "spotify",
+    "shop_name": "Spotify",
+    "purchase_amount": 9.99,
+    "cashback_pct": 8,
+    "claim_id": "110a1736e2b3b9ef",
+    "user_email": "admin@bidblitz.com",
+    "cashback_amount": 0.8,
+    "order_ref": "ORD-32B3A63C",
+    "status": "confirmed",
+    "created_at": "2026-04-07T08:58:28.360734+00:00"
+  },
+  {
+    "_id": "69df53342b84e124a8e7a1bc",
+    "shop_id": "zalando",
+    "shop_name": "Zalando",
+    "purchase_amount": 89.9,
+    "cashback_pct": 4,
+    "claim_id": "d1205e4cfe41700c",
+    "user_email": "admin@bidblitz.com",
+    "cashback_amount": 3.6,
+    "order_ref": "ORD-AE6899F3",
+    "status": "confirmed",
+    "created_at": "2026-04-03T08:58:28.360899+00:00"
+  }
+]

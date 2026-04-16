@@ -1,0 +1,163 @@
+[
+  {
+    "_id": "69df42032c93e1156b52bd34",
+    "notif_id": "5b52e57e90f88d15",
+    "user_email": "admin@bidblitz.com",
+    "category": "payment",
+    "title": "Zahlung eingegangen",
+    "body": "50,00€ von Max Mustermann erhalten.",
+    "action_url": "/wallet",
+    "read": false,
+    "created_at": "2026-04-15T07:45:07.978964+00:00"
+  },
+  {
+    "_id": "69df42032c93e1156b52bd35",
+    "notif_id": "68e711234be66453",
+    "user_email": "admin@bidblitz.com",
+    "category": "payment",
+    "title": "Cashback gutgeschrieben",
+    "body": "3% Cashback (1,24€) für Hotel-Buchung.",
+    "action_url": "/wallet",
+    "read": false,
+    "created_at": "2026-04-15T07:45:07.978964+00:00"
+  },
+  {
+    "_id": "69df42032c93e1156b52bd36",
+    "notif_id": "db06084231f08c94",
+    "user_email": "admin@bidblitz.com",
+    "category": "ride",
+    "title": "Fahrt abgeschlossen",
+    "body": "Taxi von Alexanderplatz nach Flughafen BER. 34,50€ bezahlt.",
+    "action_url": "/taxi",
+    "read": false,
+    "created_at": "2026-04-15T07:45:07.978964+00:00"
+  },
+  {
+    "_id": "69df42032c93e1156b52bd37",
+    "notif_id": "f01e52f53572cb74",
+    "user_email": "admin@bidblitz.com",
+    "category": "promo",
+    "title": "Flash Sale: 50% auf Auktions-Credits!",
+    "body": "Nur heute: Alle Credits zum halben Preis. Jetzt zugreifen!",
+    "action_url": "/auctions",
+    "read": false,
+    "created_at": "2026-04-15T07:45:07.978964+00:00"
+  },
+  {
+    "_id": "69df42032c93e1156b52bd38",
+    "notif_id": "66192e72dc4bc551",
+    "user_email": "admin@bidblitz.com",
+    "category": "promo",
+    "title": "Neues Scooter Monats-Abo",
+    "body": "Spare mit dem Monats-Abo: 45 Min. frei/Tag für nur 29,99€/Monat.",
+    "action_url": "/scooter",
+    "read": false,
+    "created_at": "2026-04-15T07:45:07.978964+00:00"
+  },
+  {
+    "_id": "69df42032c93e1156b52bd39",
+    "notif_id": "d2c87d66b9d1023f",
+    "user_email": "admin@bidblitz.com",
+    "category": "booking",
+    "title": "Hotel-Buchung bestätigt",
+    "body": "Hotel Adlon, Berlin — Check-in 15.05.2026. Buchungs-Nr: BLZ-8472.",
+    "action_url": "/hotels",
+    "read": false,
+    "created_at": "2026-04-15T07:45:07.978964+00:00"
+  },
+  {
+    "_id": "69df42032c93e1156b52bd3a",
+    "notif_id": "59ec9a683277bc88",
+    "user_email": "admin@bidblitz.com",
+    "category": "kids",
+    "title": "Albin hat die Schule verlassen",
+    "body": "Geofencing-Alert: Albin hat die Zone 'Schule' um 15:34 verlassen.",
+    "action_url": "/kids",
+    "read": true,
+    "created_at": "2026-04-15T07:45:07.978964+00:00"
+  },
+  {
+    "_id": "69df42032c93e1156b52bd3b",
+    "notif_id": "071ea27ded822892",
+    "user_email": "admin@bidblitz.com",
+    "category": "kids",
+    "title": "Anuar ist zuhause angekommen",
+    "body": "GPS-Update: Anuar ist in der Zone 'Zuhause' angekommen.",
+    "action_url": "/kids",
+    "read": true,
+    "created_at": "2026-04-15T07:45:07.978964+00:00"
+  },
+  {
+    "_id": "69df42032c93e1156b52bd3c",
+    "notif_id": "cf08f52a40367f74",
+    "user_email": "admin@bidblitz.com",
+    "category": "security",
+    "title": "Neues Gerät angemeldet",
+    "body": "Login von iPhone 15 Pro, Berlin. Nicht Sie? Passwort ändern.",
+    "action_url": "/settings",
+    "read": true,
+    "created_at": "2026-04-15T07:45:07.978964+00:00"
+  },
+  {
+    "_id": "69df42032c93e1156b52bd3d",
+    "notif_id": "301e32485daccbde",
+    "user_email": "admin@bidblitz.com",
+    "category": "crypto",
+    "title": "Bitcoin +5,2% heute",
+    "body": "BTC ist auf 65.320€ gestiegen. Dein Portfolio: +312,50€.",
+    "action_url": "/crypto",
+    "read": true,
+    "created_at": "2026-04-15T07:45:07.978964+00:00"
+  },
+  {
+    "_id": "69df42032c93e1156b52bd3e",
+    "notif_id": "c311b12ce2ced787",
+    "user_email": "admin@bidblitz.com",
+    "category": "charging",
+    "title": "Ladevorgang abgeschlossen",
+    "body": "42,3 kWh geladen @ Schnelllader Alexanderplatz. 19,04€ bezahlt.",
+    "action_url": "/ladesaeulen",
+    "read": true,
+    "created_at": "2026-04-15T07:45:07.978964+00:00"
+  },
+  {
+    "_id": "69df42032c93e1156b52bd3f",
+    "notif_id": "036846d9b01abc14",
+    "user_email": "admin@bidblitz.com",
+    "category": "social",
+    "title": "Neue Follower",
+    "body": "3 neue Nutzer folgen dir: @lisa, @max, @sophie.",
+    "action_url": "/social",
+    "read": true,
+    "created_at": "2026-04-15T07:45:07.978964+00:00"
+  },
+  {
+    "_id": "69df42032c93e1156b52bd40",
+    "notif_id": "d0ea6d05cc64fd70",
+    "user_email": "admin@bidblitz.com",
+    "category": "system",
+    "title": "App-Update verfügbar",
+    "body": "BidBlitz V2.5 mit neuen Features: Streaming, Dating, Fitness.",
+    "action_url": "/all-services",
+    "read": true,
+    "created_at": "2026-04-15T07:45:07.978964+00:00"
+  },
+  {
+    "_id": "69df44802998e41f8eb40a22",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "type": "admin_alert",
+    "title": "Alert: System Error",
+    "message": "[ERROR] System Error",
+    "read": false,
+    "created_at": "2026-04-15T07:55:44.346221+00:00"
+  },
+  {
+    "_id": "69df4820bf530ad55eb4413b",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "type": "admin_alert",
+    "title": "Alert: System Error",
+    "message": "[ERROR] System Error",
+    "read": false,
+    "created_at": "2026-04-15T08:11:12.713359+00:00"
+  }
+]

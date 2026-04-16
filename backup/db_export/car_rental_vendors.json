@@ -1,0 +1,45 @@
+[
+  {
+    "_id": "69da83c1d91253dcffe730fb",
+    "vendor_id": "VND-F9941CD7A8F1",
+    "user_id": "69d0126144299a2e0d94c786",
+    "status": "approved",
+    "company": {
+      "company_name": "Test Autovermietung",
+      "legal_name": null,
+      "tax_id": null,
+      "vat_id": null,
+      "address": "Teststraße 1",
+      "city": "Berlin",
+      "postal_code": "10115",
+      "country": "DE",
+      "phone": "+49123456789",
+      "email": "test@autovermietung.de",
+      "website": null,
+      "description": null
+    },
+    "settings": {
+      "auto_approve_bookings": false,
+      "min_booking_hours": 4,
+      "max_booking_days": 30,
+      "cancellation_hours": 24,
+      "cancellation_fee_percent": 20.0,
+      "late_return_fee_per_hour": 15.0,
+      "cleaning_fee": 50.0,
+      "fuel_fee_per_liter": 2.5,
+      "require_deposit": true,
+      "require_documents": true
+    },
+    "commission_percent": 15.0,
+    "total_revenue": 59.68,
+    "pending_payout": 9.68,
+    "total_bookings": 1,
+    "total_cars": 2,
+    "rating": 5.0,
+    "review_count": 1,
+    "verified": false,
+    "featured": false,
+    "created_at": "2026-04-11T17:24:17.878148+00:00",
+    "updated_at": "2026-04-11T17:29:34.468077+00:00"
+  }
+]

@@ -1,0 +1,114 @@
+[
+  {
+    "_id": "69dbc32b0f2c0d284abb8fa4",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "session_id": "ai-69cface7afddbc3de2cabb39-b2d9563c",
+    "role": "user",
+    "content": "Wie ist mein Kontostand?",
+    "created_at": "2026-04-12T16:07:07.420749+00:00"
+  },
+  {
+    "_id": "69dbc32b0f2c0d284abb8fa5",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "session_id": "ai-69cface7afddbc3de2cabb39-b2d9563c",
+    "role": "assistant",
+    "content": "Ihr aktueller Kontostand beträgt €433.68.",
+    "created_at": "2026-04-12T16:07:07.420749+00:00"
+  },
+  {
+    "_id": "69dbc381caa1854dd2938fd4",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "session_id": "ai-69cface7afddbc3de2cabb39-b391a051",
+    "role": "user",
+    "content": "Wie viel habe ich diese Woche ausgegeben?",
+    "created_at": "2026-04-12T16:08:33.122489+00:00"
+  },
+  {
+    "_id": "69dbc381caa1854dd2938fd5",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "session_id": "ai-69cface7afddbc3de2cabb39-b391a051",
+    "role": "assistant",
+    "content": "Diese Woche hast du insgesamt €-470,21 für die Autovermietung, €-1,00 für die Scooter-Entsperrgebühr, €-10,33 für das Premium-Abonnement und €-9,99 für das Basic-Abonnement ausgegeben. Das ergibt insgesamt €-491,53.",
+    "created_at": "2026-04-12T16:08:33.122489+00:00"
+  },
+  {
+    "_id": "69dbdc49c592f368a29f4d7d",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "session_id": "ai-69cface7afddbc3de2cabb39-c44d4366",
+    "role": "user",
+    "content": "Wie viel Geld hab ich noch?",
+    "created_at": "2026-04-12T17:54:17.277757+00:00"
+  },
+  {
+    "_id": "69dbdc49c592f368a29f4d7e",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "session_id": "ai-69cface7afddbc3de2cabb39-c44d4366",
+    "role": "assistant",
+    "content": "Du hast noch ein Guthaben von €553,68 auf deinem Wallet.",
+    "created_at": "2026-04-12T17:54:17.277757+00:00"
+  },
+  {
+    "_id": "69dbdc57c592f368a29f4d7f",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "session_id": "ai-69cface7afddbc3de2cabb39-c44d4366",
+    "role": "user",
+    "content": "Wie kann ich bei dieser Webseite?",
+    "created_at": "2026-04-12T17:54:31.051285+00:00"
+  },
+  {
+    "_id": "69dbdc57c592f368a29f4d80",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "session_id": "ai-69cface7afddbc3de2cabb39-c44d4366",
+    "role": "assistant",
+    "content": "Es tut mir leid, ich kann dir dabei nicht helfen. Für Hilfe zu einer bestimmten Webseite empfehle ich, die Support- oder Hilfe-Seite der betreffenden Webseite zu besuchen. Wenn du Fragen zu deinem Konto oder deinen Finanzen hast, stehe ich dir gerne zur Verfügung!",
+    "created_at": "2026-04-12T17:54:31.051285+00:00"
+  },
+  {
+    "_id": "69dbdc6ac592f368a29f4d81",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "session_id": "ai-69cface7afddbc3de2cabb39-c44d4366",
+    "role": "user",
+    "content": "Ist diese Seite ein Betrüger?",
+    "created_at": "2026-04-12T17:54:50.940341+00:00"
+  },
+  {
+    "_id": "69dbdc6ac592f368a29f4d82",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "session_id": "ai-69cface7afddbc3de2cabb39-c44d4366",
+    "role": "assistant",
+    "content": "Ich kann nicht direkt beurteilen, ob eine bestimmte Seite ein Betrüger ist. Achten Sie jedoch auf folgende Anzeichen: Überprüfen Sie die Kontaktinformationen, suchen Sie nach Bewertungen oder Erfahrungen anderer Nutzer und schauen Sie, ob die Seite Sicherheitszertifikate hat (z.B. HTTPS). Wenn Sie unsicher sind, sollten Sie vorsichtig sein und im Zweifelsfall auf Nummer sicher gehen.",
+    "created_at": "2026-04-12T17:54:50.940341+00:00"
+  },
+  {
+    "_id": "69dbdc7bf8971053458ee68f",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "session_id": "ai-69cface7afddbc3de2cabb39-c44d4366",
+    "role": "user",
+    "content": "Was kannst du mir sagen?",
+    "created_at": "2026-04-12T17:55:07.002733+00:00"
+  },
+  {
+    "_id": "69dbdc7bf8971053458ee690",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "session_id": "ai-69cface7afddbc3de2cabb39-c44d4366",
+    "role": "assistant",
+    "content": "Ich kann Ihnen bei Fragen zu Ihrem Konto, Ausgaben, Sparen und allgemeinen Finanztipps helfen. Möchten Sie Informationen zu Ihren letzten Transaktionen, Tipps zum Sparen oder etwas anderes? Lassen Sie es mich wissen!",
+    "created_at": "2026-04-12T17:55:07.002733+00:00"
+  },
+  {
+    "_id": "69dbdc95f8971053458ee691",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "session_id": "ai-69cface7afddbc3de2cabb39-c44d4366",
+    "role": "user",
+    "content": "Dann schreib mir mal ne Liste, was du antworten kannst",
+    "created_at": "2026-04-12T17:55:33.277842+00:00"
+  },
+  {
+    "_id": "69dbdc95f8971053458ee692",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "session_id": "ai-69cface7afddbc3de2cabb39-c44d4366",
+    "role": "assistant",
+    "content": "Hier sind einige Dinge, bei denen ich Ihnen helfen kann:\n\n1. **Kontoinformationen**: Abfragen Ihres Guthabens und Ihrer Transaktionen.\n2. **Ausgabenübersicht**: Analyse Ihrer letzten Ausgaben und Einnahmen.\n3. **Sparstrategien**: Tipps zum Sparen basierend auf Ihren Ausgaben.\n4. **Finanzmanagement**: Ratschläge zur Verbesserung Ihrer finanziellen Situation.\n5. **Transaktionsdetails**: Informationen zu spezifischen Zahlungen oder Rückzahlungen.\n\nLassen Sie mich wissen, was Sie interessiert!",
+    "created_at": "2026-04-12T17:55:33.277842+00:00"
+  }
+]

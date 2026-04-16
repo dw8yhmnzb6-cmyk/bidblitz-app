@@ -1,0 +1,26 @@
+[
+  {
+    "_id": "69e003bed1242cebe84c17e7",
+    "invoice_id": "inv_dbdaccb46bc9",
+    "invoice_number": "INV-202604-667348",
+    "user_email": "kunde@bidblitz.com",
+    "client_name": "Max GmbH",
+    "client_email": "",
+    "items": [
+      {
+        "description": "Webdesign",
+        "quantity": 1,
+        "unit_price": 500.0,
+        "total": 500.0
+      }
+    ],
+    "subtotal": 500.0,
+    "tax": 95.0,
+    "tax_rate": 19,
+    "total": 595.0,
+    "notes": "",
+    "due_days": 14,
+    "status": "sent",
+    "created_at": "2026-04-15T21:31:42.877461+00:00"
+  }
+]

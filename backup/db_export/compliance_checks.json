@@ -1,0 +1,1273 @@
+[
+  {
+    "_id": "69d01e54fd6fad1ae2e1d924",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "payment",
+    "amount": 10.0,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-03T20:08:52.393363+00:00"
+  },
+  {
+    "_id": "69d01e54fd6fad1ae2e1d927",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "send",
+    "amount": 1500.0,
+    "outcome": "blocked",
+    "rules_triggered": [
+      "single_max_exceeded"
+    ],
+    "details": {},
+    "timestamp": "2026-04-03T20:08:52.946413+00:00"
+  },
+  {
+    "_id": "69d01e55fd6fad1ae2e1d929",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "topup",
+    "amount": 10.0,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-03T20:08:53.083333+00:00"
+  },
+  {
+    "_id": "69d01e62fd6fad1ae2e1d92d",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "payment",
+    "amount": 3000.0,
+    "outcome": "blocked",
+    "rules_triggered": [
+      "single_max_exceeded"
+    ],
+    "details": {},
+    "timestamp": "2026-04-03T20:09:06.893236+00:00"
+  },
+  {
+    "_id": "69d01ed731e36a01c35b7cb7",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "payment",
+    "amount": 5.0,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-03T20:11:03.529056+00:00"
+  },
+  {
+    "_id": "69d01ed731e36a01c35b7cbb",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "payment",
+    "amount": 2501.0,
+    "outcome": "blocked",
+    "rules_triggered": [
+      "single_max_exceeded"
+    ],
+    "details": {},
+    "timestamp": "2026-04-03T20:11:03.941945+00:00"
+  },
+  {
+    "_id": "69d01ed831e36a01c35b7cbe",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "send",
+    "amount": 5.0,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-03T20:11:04.375649+00:00"
+  },
+  {
+    "_id": "69d01ed831e36a01c35b7cc3",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "send",
+    "amount": 1001.0,
+    "outcome": "blocked",
+    "rules_triggered": [
+      "single_max_exceeded"
+    ],
+    "details": {},
+    "timestamp": "2026-04-03T20:11:04.778468+00:00"
+  },
+  {
+    "_id": "69d01ed931e36a01c35b7cc6",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "topup",
+    "amount": 100.0,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-03T20:11:05.162697+00:00"
+  },
+  {
+    "_id": "69d01eda31e36a01c35b7cca",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "topup",
+    "amount": 500.0,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-03T20:11:06.169174+00:00"
+  },
+  {
+    "_id": "69d01f5d31e36a01c35b7cd3",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "payment",
+    "amount": 5.0,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-03T20:13:17.134933+00:00"
+  },
+  {
+    "_id": "69d01f5d31e36a01c35b7cd6",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "payment",
+    "amount": 3000.0,
+    "outcome": "blocked",
+    "rules_triggered": [
+      "single_max_exceeded"
+    ],
+    "details": {},
+    "timestamp": "2026-04-03T20:13:17.265849+00:00"
+  },
+  {
+    "_id": "69d01f5d31e36a01c35b7cd8",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "send",
+    "amount": 1500.0,
+    "outcome": "blocked",
+    "rules_triggered": [
+      "single_max_exceeded"
+    ],
+    "details": {},
+    "timestamp": "2026-04-03T20:13:17.374124+00:00"
+  },
+  {
+    "_id": "69d0232edf59a42e89f78ac0",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "payment",
+    "amount": 12.5,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-03T20:29:34.697774+00:00"
+  },
+  {
+    "_id": "69d02338df59a42e89f78ac6",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "payment",
+    "amount": 999999.0,
+    "outcome": "blocked",
+    "rules_triggered": [
+      "single_max_exceeded"
+    ],
+    "details": {},
+    "timestamp": "2026-04-03T20:29:44.057309+00:00"
+  },
+  {
+    "_id": "69d02338df59a42e89f78ac8",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "payment",
+    "amount": 3000.0,
+    "outcome": "blocked",
+    "rules_triggered": [
+      "single_max_exceeded"
+    ],
+    "details": {},
+    "timestamp": "2026-04-03T20:29:44.159053+00:00"
+  },
+  {
+    "_id": "69d0237bdf59a42e89f78acc",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "payment",
+    "amount": 25.0,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-03T20:30:51.946507+00:00"
+  },
+  {
+    "_id": "69d0248eed32cd14b81d9919",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "payment",
+    "amount": 7.5,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-03T20:35:26.314354+00:00"
+  },
+  {
+    "_id": "69d0248eed32cd14b81d991e",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "payment",
+    "amount": 3000.0,
+    "outcome": "blocked",
+    "rules_triggered": [
+      "single_max_exceeded"
+    ],
+    "details": {},
+    "timestamp": "2026-04-03T20:35:26.774465+00:00"
+  },
+  {
+    "_id": "69d0248eed32cd14b81d9920",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "payment",
+    "amount": 999999.0,
+    "outcome": "blocked",
+    "rules_triggered": [
+      "single_max_exceeded"
+    ],
+    "details": {},
+    "timestamp": "2026-04-03T20:35:26.893015+00:00"
+  },
+  {
+    "_id": "69d024b5ed32cd14b81d9923",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "payment",
+    "amount": 25.0,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-03T20:36:05.196262+00:00"
+  },
+  {
+    "_id": "69d0260378bb5ddecae2f005",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "payment",
+    "amount": 10.0,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-03T20:41:39.188252+00:00"
+  },
+  {
+    "_id": "69d0260478bb5ddecae2f00b",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "payment",
+    "amount": 5.0,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-03T20:41:40.144392+00:00"
+  },
+  {
+    "_id": "69d0260478bb5ddecae2f011",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "payment",
+    "amount": 1.0,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-03T20:41:40.783080+00:00"
+  },
+  {
+    "_id": "69d0260578bb5ddecae2f016",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "payment",
+    "amount": 999999.0,
+    "outcome": "blocked",
+    "rules_triggered": [
+      "single_max_exceeded"
+    ],
+    "details": {},
+    "timestamp": "2026-04-03T20:41:41.181212+00:00"
+  },
+  {
+    "_id": "69d0260578bb5ddecae2f019",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "payment",
+    "amount": 2501.0,
+    "outcome": "blocked",
+    "rules_triggered": [
+      "single_max_exceeded"
+    ],
+    "details": {},
+    "timestamp": "2026-04-03T20:41:41.606347+00:00"
+  },
+  {
+    "_id": "69d0262d3149b08e344d72a8",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "payment",
+    "amount": 10.0,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-03T20:42:21.881865+00:00"
+  },
+  {
+    "_id": "69d0262e3149b08e344d72ae",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "payment",
+    "amount": 5.0,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-03T20:42:22.757006+00:00"
+  },
+  {
+    "_id": "69d0262f3149b08e344d72b5",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "payment",
+    "amount": 1.0,
+    "outcome": "flagged",
+    "rules_triggered": [
+      "rapid_velocity"
+    ],
+    "details": {},
+    "timestamp": "2026-04-03T20:42:23.407257+00:00"
+  },
+  {
+    "_id": "69d026303149b08e344d72bc",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "payment",
+    "amount": 472.97,
+    "outcome": "flagged",
+    "rules_triggered": [
+      "rapid_velocity"
+    ],
+    "details": {},
+    "timestamp": "2026-04-03T20:42:24.161680+00:00"
+  },
+  {
+    "_id": "69d026a73149b08e344d72c5",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "payment",
+    "amount": 10.0,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-03T20:44:23.044190+00:00"
+  },
+  {
+    "_id": "69d026a73149b08e344d72cb",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "payment",
+    "amount": 5.0,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-03T20:44:23.948701+00:00"
+  },
+  {
+    "_id": "69d026a83149b08e344d72d1",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "payment",
+    "amount": 1.0,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-03T20:44:24.632995+00:00"
+  },
+  {
+    "_id": "69d026f24fce4292bbe4adce",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "payment",
+    "amount": 10.0,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-03T20:45:38.462744+00:00"
+  },
+  {
+    "_id": "69d026f24fce4292bbe4add2",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "payment",
+    "amount": 5.0,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-03T20:45:38.687664+00:00"
+  },
+  {
+    "_id": "69d026f34fce4292bbe4add7",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "payment",
+    "amount": 1.0,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-03T20:45:39.017239+00:00"
+  },
+  {
+    "_id": "69d026f34fce4292bbe4addb",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "payment",
+    "amount": 440.97,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-03T20:45:39.127101+00:00"
+  },
+  {
+    "_id": "69d026f34fce4292bbe4addd",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "payment",
+    "amount": 2501.0,
+    "outcome": "blocked",
+    "rules_triggered": [
+      "single_max_exceeded"
+    ],
+    "details": {},
+    "timestamp": "2026-04-03T20:45:39.178530+00:00"
+  },
+  {
+    "_id": "69d026f34fce4292bbe4addf",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "payment",
+    "amount": 7.5,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-03T20:45:39.229981+00:00"
+  },
+  {
+    "_id": "69d026f34fce4292bbe4ade4",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "payment",
+    "amount": 3.0,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-03T20:45:39.786153+00:00"
+  },
+  {
+    "_id": "69d02710cb4ee9f5f645c00d",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "payment",
+    "amount": 10.0,
+    "outcome": "flagged",
+    "rules_triggered": [
+      "rapid_velocity"
+    ],
+    "details": {},
+    "timestamp": "2026-04-03T20:46:08.858152+00:00"
+  },
+  {
+    "_id": "69d02711cb4ee9f5f645c012",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "payment",
+    "amount": 5.0,
+    "outcome": "flagged",
+    "rules_triggered": [
+      "rapid_velocity"
+    ],
+    "details": {},
+    "timestamp": "2026-04-03T20:46:09.073479+00:00"
+  },
+  {
+    "_id": "69d02711cb4ee9f5f645c018",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "payment",
+    "amount": 1.0,
+    "outcome": "flagged",
+    "rules_triggered": [
+      "rapid_velocity"
+    ],
+    "details": {},
+    "timestamp": "2026-04-03T20:46:09.408346+00:00"
+  },
+  {
+    "_id": "69d02711cb4ee9f5f645c01d",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "payment",
+    "amount": 414.47,
+    "outcome": "flagged",
+    "rules_triggered": [
+      "rapid_velocity"
+    ],
+    "details": {},
+    "timestamp": "2026-04-03T20:46:09.525230+00:00"
+  },
+  {
+    "_id": "69d02711cb4ee9f5f645c01f",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "payment",
+    "amount": 2501.0,
+    "outcome": "blocked",
+    "rules_triggered": [
+      "single_max_exceeded"
+    ],
+    "details": {},
+    "timestamp": "2026-04-03T20:46:09.575257+00:00"
+  },
+  {
+    "_id": "69d02711cb4ee9f5f645c022",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "payment",
+    "amount": 7.5,
+    "outcome": "flagged",
+    "rules_triggered": [
+      "rapid_velocity"
+    ],
+    "details": {},
+    "timestamp": "2026-04-03T20:46:09.642251+00:00"
+  },
+  {
+    "_id": "69d02712cb4ee9f5f645c028",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "payment",
+    "amount": 3.0,
+    "outcome": "flagged",
+    "rules_triggered": [
+      "rapid_velocity"
+    ],
+    "details": {},
+    "timestamp": "2026-04-03T20:46:10.090041+00:00"
+  },
+  {
+    "_id": "69d0278ccb4ee9f5f645c032",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "payment",
+    "amount": 5.0,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-03T20:48:12.649309+00:00"
+  },
+  {
+    "_id": "69d027c8cb4ee9f5f645c038",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "payment",
+    "amount": 5.0,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-03T20:49:12.397007+00:00"
+  },
+  {
+    "_id": "69d0341fc05e8fc1f92ce486",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "txn_type": "topup",
+    "amount": 50.0,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-03T21:41:51.583126+00:00"
+  },
+  {
+    "_id": "69d166d061bb02364296f20e",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "payment",
+    "amount": 1.0,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-04T19:30:24.657764+00:00"
+  },
+  {
+    "_id": "69d166d061bb02364296f212",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "payment",
+    "amount": 1.0,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-04T19:30:24.786810+00:00"
+  },
+  {
+    "_id": "69d167d361bb02364296f220",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "payment",
+    "amount": 1.0,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-04T19:34:43.117374+00:00"
+  },
+  {
+    "_id": "69d167d361bb02364296f224",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "payment",
+    "amount": 1.0,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-04T19:34:43.221290+00:00"
+  },
+  {
+    "_id": "69d178d3c325dca686102994",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "payment",
+    "amount": 10.0,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-04T20:47:15.623948+00:00"
+  },
+  {
+    "_id": "69d178dec325dca686102999",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "send",
+    "amount": 5.0,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-04T20:47:26.973113+00:00"
+  },
+  {
+    "_id": "69d179dda1b60a997b58b529",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "payment",
+    "amount": 20.0,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-04T20:51:41.083680+00:00"
+  },
+  {
+    "_id": "69d179dda1b60a997b58b52c",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "send",
+    "amount": 10.0,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-04T20:51:41.211070+00:00"
+  },
+  {
+    "_id": "69d17a17a1b60a997b58b531",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "payment",
+    "amount": 20.0,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-04T20:52:39.290114+00:00"
+  },
+  {
+    "_id": "69d17a17a1b60a997b58b536",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "send",
+    "amount": 10.0,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-04T20:52:39.410368+00:00"
+  },
+  {
+    "_id": "69d17a17a1b60a997b58b53c",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "payment",
+    "amount": 5.0,
+    "outcome": "flagged",
+    "rules_triggered": [
+      "rapid_velocity"
+    ],
+    "details": {},
+    "timestamp": "2026-04-04T20:52:39.538741+00:00"
+  },
+  {
+    "_id": "69d180a3a1b60a997b58b564",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "send",
+    "amount": 0.01,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-04T21:20:35.159226+00:00"
+  },
+  {
+    "_id": "69d180a3a1b60a997b58b568",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "payment",
+    "amount": 0.01,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-04T21:20:35.273960+00:00"
+  },
+  {
+    "_id": "69d180bba1b60a997b58b56e",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "topup",
+    "amount": 10.0,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-04T21:20:59.110844+00:00"
+  },
+  {
+    "_id": "69d185e6eb02e745940f0f28",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "send",
+    "amount": 0.01,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-04T21:43:02.285001+00:00"
+  },
+  {
+    "_id": "69d185e6eb02e745940f0f2c",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "payment",
+    "amount": 0.01,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-04T21:43:02.392313+00:00"
+  },
+  {
+    "_id": "69d185e6eb02e745940f0f2f",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "topup",
+    "amount": 10.0,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-04T21:43:02.627808+00:00"
+  },
+  {
+    "_id": "69d185f2eb02e745940f0f35",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "send",
+    "amount": 0.01,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-04T21:43:14.931018+00:00"
+  },
+  {
+    "_id": "69d185f3eb02e745940f0f39",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "payment",
+    "amount": 0.01,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-04T21:43:15.068094+00:00"
+  },
+  {
+    "_id": "69d18681eb02e745940f0f3f",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "send",
+    "amount": 1.0,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-04T21:45:37.455801+00:00"
+  },
+  {
+    "_id": "69d18681eb02e745940f0f40",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "send",
+    "amount": 99999.0,
+    "outcome": "blocked",
+    "rules_triggered": [
+      "single_max_exceeded"
+    ],
+    "details": {},
+    "timestamp": "2026-04-04T21:45:37.795400+00:00"
+  },
+  {
+    "_id": "69d18681eb02e745940f0f42",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "payment",
+    "amount": 99999.0,
+    "outcome": "blocked",
+    "rules_triggered": [
+      "single_max_exceeded"
+    ],
+    "details": {},
+    "timestamp": "2026-04-04T21:45:37.903614+00:00"
+  },
+  {
+    "_id": "69d1870bde47fc1e0ff18dc1",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "payment",
+    "amount": 0.5,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-04T21:47:55.416938+00:00"
+  },
+  {
+    "_id": "69d187983295a8bec2ef8e37",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "payment",
+    "amount": 1.33,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-04T21:50:16.993387+00:00"
+  },
+  {
+    "_id": "69d1893f7da38353c07fcc85",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "send",
+    "amount": 2.5,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-04T21:57:19.367184+00:00"
+  },
+  {
+    "_id": "69d1893f7da38353c07fcc89",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "payment",
+    "amount": 3.75,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-04T21:57:19.648997+00:00"
+  },
+  {
+    "_id": "69d189bd7da38353c07fcc92",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "send",
+    "amount": 1.5,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-04T21:59:25.101206+00:00"
+  },
+  {
+    "_id": "69d189d7239ef4faa7760f3c",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "payment",
+    "amount": 5.99,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-04T21:59:51.051365+00:00"
+  },
+  {
+    "_id": "69d189e8239ef4faa7760f40",
+    "user_id": "69d0126144299a2e0d94c788",
+    "txn_type": "payout",
+    "amount": 5.0,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-04T22:00:08.608723+00:00"
+  },
+  {
+    "_id": "69d18a57fe58847cde970ed2",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "topup",
+    "amount": 10.0,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-04T22:01:59.294157+00:00"
+  },
+  {
+    "_id": "69d18c2966908f44d5f6fc7a",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "send",
+    "amount": 999999.0,
+    "outcome": "blocked",
+    "rules_triggered": [
+      "single_max_exceeded"
+    ],
+    "details": {},
+    "timestamp": "2026-04-04T22:09:45.996899+00:00"
+  },
+  {
+    "_id": "69d18c3366908f44d5f6fc7d",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "payment",
+    "amount": 999999.0,
+    "outcome": "blocked",
+    "rules_triggered": [
+      "single_max_exceeded"
+    ],
+    "details": {},
+    "timestamp": "2026-04-04T22:09:55.181236+00:00"
+  },
+  {
+    "_id": "69d18c9366908f44d5f6fc8b",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "topup",
+    "amount": 10.0,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-04T22:11:31.540579+00:00"
+  },
+  {
+    "_id": "69d18c9466908f44d5f6fc8e",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "send",
+    "amount": 0.1,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-04T22:11:32.445611+00:00"
+  },
+  {
+    "_id": "69d18c9466908f44d5f6fc92",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "send",
+    "amount": 1.0,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-04T22:11:32.564938+00:00"
+  },
+  {
+    "_id": "69d18ca366908f44d5f6fc93",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "payment",
+    "amount": 2.33,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-04T22:11:47.106968+00:00"
+  },
+  {
+    "_id": "69d18ca366908f44d5f6fc97",
+    "user_id": "69d0126144299a2e0d94c788",
+    "txn_type": "payout",
+    "amount": 5.0,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-04T22:11:47.224142+00:00"
+  },
+  {
+    "_id": "69d18cbe66908f44d5f6fc9a",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "send",
+    "amount": 999999.0,
+    "outcome": "blocked",
+    "rules_triggered": [
+      "single_max_exceeded"
+    ],
+    "details": {},
+    "timestamp": "2026-04-04T22:12:14.266860+00:00"
+  },
+  {
+    "_id": "69d18e4a16a0de672bff0a44",
+    "user_id": "69d18de416a0de672bff0a29",
+    "txn_type": "send",
+    "amount": 2.5,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-04T22:18:50.194656+00:00"
+  },
+  {
+    "_id": "69d190a0beb95d826ac6de39",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "payment",
+    "amount": 3.5,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-04T22:28:48.902721+00:00"
+  },
+  {
+    "_id": "69d54d421710a0dca7252db8",
+    "user_id": {
+      "_id": "69d0126144299a2e0d94c786",
+      "email": "kunde@bidblitz.com",
+      "name": "Max Mustermann",
+      "role": "user",
+      "balance": 138.36000000000004,
+      "currency": "EUR",
+      "card_number": "4712 6274 7715 8813",
+      "card_expiry": "07/29",
+      "referral_code": "AE18C165",
+      "created_at": "2026-04-03T19:17:53.611208+00:00",
+      "password_hash": "$2b$12$UinwTuiCQ/EReCBm.oFiSeRdG7hzHf4KiljeYJr/IoHyB0fpwWVmW",
+      "updated_at": "2026-04-04T20:35:59.456483+00:00",
+      "payment_barcode": "BLZ-2C2BCAA9DB69",
+      "biometric_enabled": false,
+      "notifications_enabled": true,
+      "email_notifications": true,
+      "dark_mode": true,
+      "language": "de",
+      "stripe_card_brand": "visa",
+      "stripe_card_exp_month": 12,
+      "stripe_card_exp_year": 2028,
+      "stripe_card_last4": "4242",
+      "stripe_customer_id": "cus_test123",
+      "stripe_pm_id": "pm_test123",
+      "stripe_pm_saved_at": "2026-04-05T08:00:00Z",
+      "kyc": {
+        "full_name": "Max Mustermann",
+        "date_of_birth": "1990-05-15",
+        "street": "Musterstr. 12",
+        "city": "Berlin",
+        "postal_code": "10115",
+        "country": "Deutschland",
+        "status": "pending",
+        "submitted_at": "2026-04-05T08:27:47.089988+00:00",
+        "reviewed_at": null
+      },
+      "kyc_level": "pending",
+      "bid_credits": 19,
+      "last_daily_claim": "2026-04-05T09:14:32.625380+00:00",
+      "bid_streak": 1,
+      "last_bid_date": "2026-04-05T10:02:26.698304+00:00",
+      "last_active_date": "2026-04-05",
+      "reward_last_claim": "2026-04-05",
+      "reward_streak": 1,
+      "total_reward_credits": 9,
+      "milestones_claimed": {
+        "first_topup": true,
+        "first_bid": true
+      },
+      "mining_ref_code": "BLZ-D56866"
+    },
+    "txn_type": "topup",
+    "amount": 10.0,
+    "outcome": "passed",
+    "rules_triggered": [
+      "error_failopen"
+    ],
+    "details": {
+      "error": "id must be an instance of (bytes, str, ObjectId), not <class 'dict'>"
+    },
+    "timestamp": "2026-04-07T18:30:26.378169+00:00"
+  },
+  {
+    "_id": "69d54eb11ce484f575901df1",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "topup",
+    "amount": 25.0,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-07T18:36:33.464811+00:00"
+  },
+  {
+    "_id": "69d54ec352d1372ad733c6b9",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "topup",
+    "amount": 25.0,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-07T18:36:51.350407+00:00"
+  },
+  {
+    "_id": "69d54f1952d1372ad733c6c9",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "topup",
+    "amount": 10.0,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-07T18:38:17.577635+00:00"
+  },
+  {
+    "_id": "69d54f2a52d1372ad733c6cc",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "topup",
+    "amount": 10.0,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-07T18:38:34.617101+00:00"
+  },
+  {
+    "_id": "69d55130d7c5417be9b3967d",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "topup",
+    "amount": 25.0,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-07T18:47:12.461750+00:00"
+  },
+  {
+    "_id": "69d551f3aa101941a7fd2628",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "topup",
+    "amount": 10.0,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-07T18:50:27.805234+00:00"
+  },
+  {
+    "_id": "69d55297985eb7cacece8b2b",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "topup",
+    "amount": 25.0,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-07T18:53:11.430476+00:00"
+  },
+  {
+    "_id": "69d552e479516af65bba8d28",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "topup",
+    "amount": 50.0,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-07T18:54:28.877416+00:00"
+  },
+  {
+    "_id": "69d5561e2be8b141fa9fdbdb",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "topup",
+    "amount": 25.0,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-07T19:08:14.375863+00:00"
+  },
+  {
+    "_id": "69d5564b2be8b141fa9fdbe0",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "topup",
+    "amount": 50.0,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-07T19:08:59.251459+00:00"
+  },
+  {
+    "_id": "69d556f72be8b141fa9fdbf4",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "topup",
+    "amount": 10.0,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-07T19:11:51.642256+00:00"
+  },
+  {
+    "_id": "69d55cf7ab39c4916b015c86",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "topup",
+    "amount": 25.0,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-07T19:37:27.591933+00:00"
+  },
+  {
+    "_id": "69d55d1aab39c4916b015c8b",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "topup",
+    "amount": 25.0,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-07T19:38:02.359951+00:00"
+  },
+  {
+    "_id": "69d55d885780b49837cf0afc",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "topup",
+    "amount": 25.0,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-07T19:39:52.468487+00:00"
+  },
+  {
+    "_id": "69d55daa64bce214b7f70760",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "topup",
+    "amount": 50.0,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-07T19:40:26.667911+00:00"
+  },
+  {
+    "_id": "69d55f094b169cc04c6a11c1",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "topup",
+    "amount": 25.0,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-07T19:46:17.062276+00:00"
+  },
+  {
+    "_id": "69d55f344b169cc04c6a11c8",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "topup",
+    "amount": 50.0,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-07T19:47:00.348145+00:00"
+  },
+  {
+    "_id": "69d596bf04acac30de81723a",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "topup",
+    "amount": 25.0,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-07T23:43:59.966475+00:00"
+  },
+  {
+    "_id": "69d59f9d8dc46b71ac96ae1c",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "txn_type": "topup",
+    "amount": 25.0,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-08T00:21:49.767633+00:00"
+  },
+  {
+    "_id": "69d9f7cf95814991af29e65d",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "txn_type": "topup",
+    "amount": 10.0,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-11T07:27:11.152849+00:00"
+  },
+  {
+    "_id": "69d9f80295814991af29e661",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "txn_type": "topup",
+    "amount": 10.0,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-11T07:28:02.885882+00:00"
+  },
+  {
+    "_id": "69df3ea8c45d2581975c5725",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "topup",
+    "amount": 50.0,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-15T07:30:48.240628+00:00"
+  },
+  {
+    "_id": "69df3eacc45d2581975c5727",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "topup",
+    "amount": 50.0,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-15T07:30:52.421045+00:00"
+  },
+  {
+    "_id": "69df3eacc45d2581975c5728",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "topup",
+    "amount": 500.0,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-15T07:30:52.421078+00:00"
+  },
+  {
+    "_id": "69df3eadc45d2581975c572a",
+    "user_id": "69d0126144299a2e0d94c786",
+    "txn_type": "topup",
+    "amount": 25.0,
+    "outcome": "passed",
+    "rules_triggered": [],
+    "details": {},
+    "timestamp": "2026-04-15T07:30:53.071041+00:00"
+  }
+]

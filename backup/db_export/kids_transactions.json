@@ -1,0 +1,44 @@
+[
+  {
+    "_id": "69d619752914cccf5b75715a",
+    "id": "d1b53b3e5487e946",
+    "child_id": "child_888c787e77d9",
+    "parent_id": "69d0126144299a2e0d94c786",
+    "type": "allowance",
+    "amount": 5.0,
+    "description": "Von Max Mustermann",
+    "status": "completed",
+    "reference": "KIDS-5949FE8A",
+    "note": "Taschengeld",
+    "created_at": "2026-04-08T09:01:41.986419+00:00"
+  },
+  {
+    "_id": "69d6198a2914cccf5b75715b",
+    "id": "b61465c3d117e890",
+    "child_id": "child_888c787e77d9",
+    "parent_id": "69d0126144299a2e0d94c786",
+    "type": "payment",
+    "amount": -2.5,
+    "description": "Eis",
+    "merchant_id": null,
+    "merchant_name": "Kiosk am Spielplatz",
+    "status": "completed",
+    "reference": "KIDPAY-7662E336",
+    "created_at": "2026-04-08T09:02:02.645239+00:00"
+  },
+  {
+    "_id": "69d928676cb13253cf5bb8a7",
+    "id": "7459613704d6a379",
+    "child_id": "child_888c787e77d9",
+    "parent_id": "69d0126144299a2e0d94c786",
+    "type": "payment",
+    "amount": -0.5,
+    "description": "Brötchen",
+    "merchant_id": null,
+    "merchant_name": "Bäcker",
+    "status": "completed",
+    "reference": "CHILD-69AB380C",
+    "from_child_mode": true,
+    "created_at": "2026-04-10T16:42:15.618964+00:00"
+  }
+]

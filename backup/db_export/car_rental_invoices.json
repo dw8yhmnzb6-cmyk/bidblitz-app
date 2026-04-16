@@ -1,0 +1,100 @@
+[
+  {
+    "_id": "69da84ca4a53dca1b5d1425e",
+    "invoice_id": "INV-BCFE748A4D1D",
+    "invoice_number": "2026-00001",
+    "booking_id": "BK-27F6B341FF977B42",
+    "vendor_id": "VND-F9941CD7A8F1",
+    "customer_id": "69cface7afddbc3de2cabb39",
+    "vendor_company": {
+      "company_name": "Test Autovermietung",
+      "legal_name": null,
+      "tax_id": null,
+      "vat_id": null,
+      "address": "Teststraße 1",
+      "city": "Berlin",
+      "postal_code": "10115",
+      "country": "DE",
+      "phone": "+49123456789",
+      "email": "test@autovermietung.de",
+      "website": null,
+      "description": null
+    },
+    "customer_name": "Admin Updated",
+    "customer_email": "admin@bidblitz.com",
+    "customer_address": "",
+    "car_title": "BMW 3er Touring",
+    "rental_period": "2026-04-20 - 2026-04-23",
+    "line_items": [
+      {
+        "description": "Mietfahrzeug: BMW 3er Touring (3 Tage)",
+        "quantity": 3,
+        "unit_price": 79.0,
+        "total": 237.0,
+        "tax_rate": 19.0,
+        "tax_amount": 45.03
+      }
+    ],
+    "subtotal": 237.0,
+    "tax_total": 45.03,
+    "discount": 0,
+    "discount_reason": null,
+    "total": 282.03,
+    "notes": null,
+    "issue_date": "2026-04-11T17:28:42.598750+00:00",
+    "due_date": "2026-04-25T17:28:42.598761+00:00",
+    "status": "draft",
+    "paid_amount": 0.0,
+    "created_at": "2026-04-11T17:28:42.598780+00:00",
+    "updated_at": "2026-04-11T17:28:42.598780+00:00"
+  },
+  {
+    "_id": "69da84ee4a53dca1b5d14279",
+    "invoice_id": "INV-E2A2D70AF8C3",
+    "invoice_number": "2026-00002",
+    "booking_id": "BK-2F1CFEF098DEFBD4",
+    "vendor_id": "VND-F9941CD7A8F1",
+    "customer_id": "69cface7afddbc3de2cabb39",
+    "vendor_company": {
+      "company_name": "Test Autovermietung",
+      "legal_name": null,
+      "tax_id": null,
+      "vat_id": null,
+      "address": "Teststraße 1",
+      "city": "Berlin",
+      "postal_code": "10115",
+      "country": "DE",
+      "phone": "+49123456789",
+      "email": "test@autovermietung.de",
+      "website": null,
+      "description": null
+    },
+    "customer_name": "Admin Updated",
+    "customer_email": "admin@bidblitz.com",
+    "customer_address": "",
+    "car_title": "VW Golf 8",
+    "rental_period": "2026-04-25 - 2026-04-26",
+    "line_items": [
+      {
+        "description": "Mietfahrzeug: VW Golf 8 (1 Tage)",
+        "quantity": 1,
+        "unit_price": 59.0,
+        "total": 59.0,
+        "tax_rate": 19.0,
+        "tax_amount": 11.21
+      }
+    ],
+    "subtotal": 59.0,
+    "tax_total": 11.21,
+    "discount": 0,
+    "discount_reason": null,
+    "total": 70.21,
+    "notes": null,
+    "issue_date": "2026-04-11T17:29:18.304025+00:00",
+    "due_date": "2026-04-25T17:29:18.304037+00:00",
+    "status": "draft",
+    "paid_amount": 0.0,
+    "created_at": "2026-04-11T17:29:18.304058+00:00",
+    "updated_at": "2026-04-11T17:29:18.304058+00:00"
+  }
+]

@@ -1,0 +1,259 @@
+[
+  {
+    "_id": "69d18ff49b872cdc3da7e632",
+    "code": "BLZ-CD16-A1FD",
+    "max_uses": 1,
+    "used_count": 1,
+    "used_by": [
+      {
+        "email": "invited.user@gmail.com",
+        "user_id": "69d190049b872cdc3da7e641",
+        "at": "2026-04-04T22:26:12.928536+00:00"
+      }
+    ],
+    "label": "soft-launch-wave-1",
+    "active": true,
+    "created_by": "admin@bidblitz.com",
+    "created_at": "2026-04-04T22:25:56.363302+00:00"
+  },
+  {
+    "_id": "69d18ff49b872cdc3da7e633",
+    "code": "BLZ-D29E-03C2",
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "label": "soft-launch-wave-1",
+    "active": false,
+    "created_by": "admin@bidblitz.com",
+    "created_at": "2026-04-04T22:25:56.363302+00:00"
+  },
+  {
+    "_id": "69d18ff49b872cdc3da7e634",
+    "code": "BLZ-F0B6-4288",
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "label": "soft-launch-wave-1",
+    "active": true,
+    "created_by": "admin@bidblitz.com",
+    "created_at": "2026-04-04T22:25:56.363302+00:00"
+  },
+  {
+    "_id": "69d18ff49b872cdc3da7e635",
+    "code": "BLZ-F3B5-2E3B",
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "label": "soft-launch-wave-1",
+    "active": true,
+    "created_by": "admin@bidblitz.com",
+    "created_at": "2026-04-04T22:25:56.363302+00:00"
+  },
+  {
+    "_id": "69d18ff49b872cdc3da7e636",
+    "code": "BLZ-FA7C-E6CC",
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "label": "soft-launch-wave-1",
+    "active": true,
+    "created_by": "admin@bidblitz.com",
+    "created_at": "2026-04-04T22:25:56.363302+00:00"
+  },
+  {
+    "_id": "69d18ff49b872cdc3da7e637",
+    "code": "BLZ-C008-7E81",
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "label": "soft-launch-wave-1",
+    "active": true,
+    "created_by": "admin@bidblitz.com",
+    "created_at": "2026-04-04T22:25:56.363302+00:00"
+  },
+  {
+    "_id": "69d18ff49b872cdc3da7e638",
+    "code": "BLZ-750B-34D6",
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "label": "soft-launch-wave-1",
+    "active": true,
+    "created_by": "admin@bidblitz.com",
+    "created_at": "2026-04-04T22:25:56.363302+00:00"
+  },
+  {
+    "_id": "69d18ff49b872cdc3da7e639",
+    "code": "BLZ-CE6A-48A6",
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "label": "soft-launch-wave-1",
+    "active": true,
+    "created_by": "admin@bidblitz.com",
+    "created_at": "2026-04-04T22:25:56.363302+00:00"
+  },
+  {
+    "_id": "69d18ff49b872cdc3da7e63a",
+    "code": "BLZ-845A-DF6C",
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "label": "soft-launch-wave-1",
+    "active": true,
+    "created_by": "admin@bidblitz.com",
+    "created_at": "2026-04-04T22:25:56.363302+00:00"
+  },
+  {
+    "_id": "69d18ff49b872cdc3da7e63b",
+    "code": "BLZ-27A5-EAFE",
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "label": "soft-launch-wave-1",
+    "active": true,
+    "created_by": "admin@bidblitz.com",
+    "created_at": "2026-04-04T22:25:56.363302+00:00"
+  },
+  {
+    "_id": "69d18ff49b872cdc3da7e63d",
+    "code": "BLZ-EE4A-8CC3",
+    "max_uses": 5,
+    "used_count": 0,
+    "used_by": [],
+    "label": "merchant-referral",
+    "active": true,
+    "created_by": "admin@bidblitz.com",
+    "created_at": "2026-04-04T22:25:56.517508+00:00"
+  },
+  {
+    "_id": "69d18ff49b872cdc3da7e63e",
+    "code": "BLZ-6504-9D21",
+    "max_uses": 5,
+    "used_count": 0,
+    "used_by": [],
+    "label": "merchant-referral",
+    "active": true,
+    "created_by": "admin@bidblitz.com",
+    "created_at": "2026-04-04T22:25:56.517508+00:00"
+  },
+  {
+    "_id": "69d18ff49b872cdc3da7e63f",
+    "code": "BLZ-8023-8D81",
+    "max_uses": 5,
+    "used_count": 0,
+    "used_by": [],
+    "label": "merchant-referral",
+    "active": true,
+    "created_by": "admin@bidblitz.com",
+    "created_at": "2026-04-04T22:25:56.517508+00:00"
+  },
+  {
+    "_id": "69d19089beb95d826ac6de22",
+    "code": "MRC-6E6A-EC17",
+    "type": "merchant",
+    "max_uses": 1,
+    "used_count": 1,
+    "used_by": [
+      {
+        "email": "new.bakery@test.com",
+        "user_id": "69d1909fbeb95d826ac6de2c",
+        "at": "2026-04-04T22:28:47.129775+00:00"
+      }
+    ],
+    "label": "approved-merchants",
+    "active": true,
+    "created_by": "admin@bidblitz.com",
+    "created_at": "2026-04-04T22:28:25.691208+00:00"
+  },
+  {
+    "_id": "69d19089beb95d826ac6de23",
+    "code": "MRC-E4F3-0F67",
+    "type": "merchant",
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "label": "approved-merchants",
+    "active": true,
+    "created_by": "admin@bidblitz.com",
+    "created_at": "2026-04-04T22:28:25.691208+00:00"
+  },
+  {
+    "_id": "69d19089beb95d826ac6de24",
+    "code": "MRC-3A52-DA47",
+    "type": "merchant",
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "label": "approved-merchants",
+    "active": true,
+    "created_by": "admin@bidblitz.com",
+    "created_at": "2026-04-04T22:28:25.691208+00:00"
+  },
+  {
+    "_id": "69d19089beb95d826ac6de25",
+    "code": "MRC-16E2-D0FF",
+    "type": "merchant",
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "label": "approved-merchants",
+    "active": true,
+    "created_by": "admin@bidblitz.com",
+    "created_at": "2026-04-04T22:28:25.691208+00:00"
+  },
+  {
+    "_id": "69d19089beb95d826ac6de26",
+    "code": "MRC-5758-1E65",
+    "type": "merchant",
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "label": "approved-merchants",
+    "active": true,
+    "created_by": "admin@bidblitz.com",
+    "created_at": "2026-04-04T22:28:25.691208+00:00"
+  },
+  {
+    "_id": "69d19089beb95d826ac6de28",
+    "code": "BLZ-CEF9-C004",
+    "type": "user",
+    "max_uses": 1,
+    "used_count": 1,
+    "used_by": [
+      {
+        "email": "new.customer@test.com",
+        "user_id": "69d1909fbeb95d826ac6de31",
+        "at": "2026-04-04T22:28:47.487440+00:00"
+      }
+    ],
+    "label": "wave-2",
+    "active": true,
+    "created_by": "admin@bidblitz.com",
+    "created_at": "2026-04-04T22:28:25.845644+00:00"
+  },
+  {
+    "_id": "69d19089beb95d826ac6de29",
+    "code": "BLZ-40C5-C221",
+    "type": "user",
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "label": "wave-2",
+    "active": true,
+    "created_by": "admin@bidblitz.com",
+    "created_at": "2026-04-04T22:28:25.845644+00:00"
+  },
+  {
+    "_id": "69d19089beb95d826ac6de2a",
+    "code": "BLZ-82C4-F606",
+    "type": "user",
+    "max_uses": 1,
+    "used_count": 0,
+    "used_by": [],
+    "label": "wave-2",
+    "active": true,
+    "created_by": "admin@bidblitz.com",
+    "created_at": "2026-04-04T22:28:25.845644+00:00"
+  }
+]

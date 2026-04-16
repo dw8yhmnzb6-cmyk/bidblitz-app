@@ -1,0 +1,57 @@
+[
+  {
+    "_id": "69de9be8b904b02a0774a20d",
+    "service_id": "rein_001",
+    "name": "Standard-Reinigung",
+    "description": "Staubsaugen, Wischen, Bad, Küche, Staub wischen. Ideal für regelmäßige Reinigung.",
+    "price_per_hour": 25,
+    "min_hours": 2,
+    "image": "https://images.unsplash.com/photo-1638454795595-0a0abf68614d?w=800&q=80",
+    "popular": true,
+    "created_at": "2026-04-14T19:56:24.482967+00:00"
+  },
+  {
+    "_id": "69de9be8b904b02a0774a20e",
+    "service_id": "rein_002",
+    "name": "Grundreinigung",
+    "description": "Intensive Komplettreinigung inkl. Fenster, Backofen, Kühlschrank. Für Umzug oder Frühjahrsputz.",
+    "price_per_hour": 35,
+    "min_hours": 3,
+    "image": "https://images.unsplash.com/photo-1772256019760-a144ae100cc4?w=800&q=80",
+    "popular": true,
+    "created_at": "2026-04-14T19:56:24.482967+00:00"
+  },
+  {
+    "_id": "69de9be8b904b02a0774a20f",
+    "service_id": "rein_003",
+    "name": "Büroreinigung",
+    "description": "Professionelle Büroreinigung, Teppichreinigung, Sanitärbereich. Ab 50m².",
+    "price_per_hour": 30,
+    "min_hours": 2,
+    "image": "https://images.unsplash.com/photo-1762452059456-e4c16c256dd1?w=800&q=80",
+    "popular": false,
+    "created_at": "2026-04-14T19:56:24.482967+00:00"
+  },
+  {
+    "_id": "69de9be8b904b02a0774a210",
+    "service_id": "rein_004",
+    "name": "Fensterreinigung",
+    "description": "Innen & Außen, Rahmen, Fensterbänke. Auch für schwer erreichbare Fenster.",
+    "price_per_hour": 40,
+    "min_hours": 1,
+    "image": "https://images.unsplash.com/photo-1775138260921-883455954eb0?w=800&q=80",
+    "popular": false,
+    "created_at": "2026-04-14T19:56:24.482967+00:00"
+  },
+  {
+    "_id": "69de9be8b904b02a0774a211",
+    "service_id": "rein_005",
+    "name": "Teppich- & Polsterreinigung",
+    "description": "Professionelle Nassreinigung von Teppichen, Sofas, Matratzen. Mit Industriegeräten.",
+    "price_per_hour": 45,
+    "min_hours": 1,
+    "image": "https://images.unsplash.com/photo-1638454795595-0a0abf68614d?w=800&q=80",
+    "popular": false,
+    "created_at": "2026-04-14T19:56:24.482967+00:00"
+  }
+]

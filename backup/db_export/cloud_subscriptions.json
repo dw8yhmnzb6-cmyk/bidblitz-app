@@ -1,0 +1,10 @@
+[
+  {
+    "_id": "69e007a7b9564f68ad8d2c12",
+    "user_email": "kunde@bidblitz.com",
+    "plan": "50gb",
+    "price": 2.99,
+    "status": "active",
+    "created_at": "2026-04-15T21:48:23.190946+00:00"
+  }
+]

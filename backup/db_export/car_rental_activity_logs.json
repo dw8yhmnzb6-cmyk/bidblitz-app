@@ -1,0 +1,65 @@
+[
+  {
+    "_id": "69da83d3d91253dcffe73106",
+    "vendor_id": "VND-F9941CD7A8F1",
+    "user_id": "69d0126144299a2e0d94c786",
+    "action": "create",
+    "entity_type": "car",
+    "entity_id": "CAR-17D4BD531A70",
+    "details": {
+      "title": "BMW 3er Touring"
+    },
+    "created_at": "2026-04-11T17:24:35.151336+00:00"
+  },
+  {
+    "_id": "69da8470d91253dcffe7315d",
+    "vendor_id": "VND-F9941CD7A8F1",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "action": "create",
+    "entity_type": "booking",
+    "entity_id": "BK-27F6B341FF977B42",
+    "details": {
+      "car_id": "CAR-17D4BD531A70",
+      "total": 282.03
+    },
+    "created_at": "2026-04-11T17:27:12.745654+00:00"
+  },
+  {
+    "_id": "69da8479d91253dcffe73165",
+    "vendor_id": "VND-F9941CD7A8F1",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "action": "create",
+    "entity_type": "booking",
+    "entity_id": "BK-9B793F534697AB74",
+    "details": {
+      "car_id": "CAR-17D4BD531A70",
+      "total": 376.04
+    },
+    "created_at": "2026-04-11T17:27:21.108522+00:00"
+  },
+  {
+    "_id": "69da84b74a53dca1b5d14251",
+    "vendor_id": "VND-F9941CD7A8F1",
+    "user_id": "69d0126144299a2e0d94c786",
+    "action": "create",
+    "entity_type": "car",
+    "entity_id": "CAR-42F45C89E9E6",
+    "details": {
+      "title": "VW Golf 8"
+    },
+    "created_at": "2026-04-11T17:28:23.397181+00:00"
+  },
+  {
+    "_id": "69da84db4a53dca1b5d14269",
+    "vendor_id": "VND-F9941CD7A8F1",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "action": "create",
+    "entity_type": "booking",
+    "entity_id": "BK-2F1CFEF098DEFBD4",
+    "details": {
+      "car_id": "CAR-42F45C89E9E6",
+      "total": 70.21
+    },
+    "created_at": "2026-04-11T17:28:59.387051+00:00"
+  }
+]

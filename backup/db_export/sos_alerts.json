@@ -1,0 +1,16 @@
+[
+  {
+    "_id": "69dbc69b28abbabe80d0c56a",
+    "sos_id": "61fa98775022034f",
+    "child_id": "child_2a880974de5f",
+    "parent_id": "69cface7afddbc3de2cabb39",
+    "child_name": "Albin",
+    "message": "Test SOS!",
+    "lat": null,
+    "lng": null,
+    "address": null,
+    "status": "active",
+    "created_at": "2026-04-12T16:21:47.480607+00:00",
+    "resolved_at": null
+  }
+]

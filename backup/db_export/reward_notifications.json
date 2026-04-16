@@ -1,0 +1,58 @@
+[
+  {
+    "_id": "69d23942e1ac81eea3875eae",
+    "user_id": "69d0126144299a2e0d94c786",
+    "type": "daily_reward",
+    "credits": 1,
+    "streak_day": 1,
+    "comeback_bonus": 0,
+    "read": false,
+    "created_at": "2026-04-05T10:28:18.294934+00:00"
+  },
+  {
+    "_id": "69d23942e1ac81eea3875eaf",
+    "user_id": "69d0126144299a2e0d94c786",
+    "type": "milestone",
+    "milestone_id": "first_topup",
+    "credits": 5,
+    "read": false,
+    "created_at": "2026-04-05T10:28:18.447001+00:00"
+  },
+  {
+    "_id": "69d23942e1ac81eea3875eb0",
+    "user_id": "69d0126144299a2e0d94c786",
+    "type": "milestone",
+    "milestone_id": "first_bid",
+    "credits": 3,
+    "read": false,
+    "created_at": "2026-04-05T10:28:18.554392+00:00"
+  },
+  {
+    "_id": "69daad98797b9f9d226434e3",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "type": "daily_reward",
+    "credits": 1,
+    "streak_day": 1,
+    "comeback_bonus": 0,
+    "read": false,
+    "created_at": "2026-04-11T20:22:48.851325+00:00"
+  },
+  {
+    "_id": "69dbcbed4ecf99f494c1fdbe",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "type": "milestone",
+    "milestone_id": "first_topup",
+    "credits": 5,
+    "read": false,
+    "created_at": "2026-04-12T16:44:29.576908+00:00"
+  },
+  {
+    "_id": "69dbcbee4ecf99f494c1fdbf",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "type": "milestone",
+    "milestone_id": "first_bid",
+    "credits": 3,
+    "read": false,
+    "created_at": "2026-04-12T16:44:30.947968+00:00"
+  }
+]

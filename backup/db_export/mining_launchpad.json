@@ -1,0 +1,53 @@
+[
+  {
+    "_id": "69d2828259405d0b51e51f21",
+    "project_id": "fusion-x1",
+    "name": "Fusion X1",
+    "description": "Next-gen quantum fusion miner with 3x efficiency boost",
+    "hashrate": 8000,
+    "efficiency": 0.99,
+    "icon": "atom",
+    "total_supply": 100,
+    "sold": 2,
+    "price_blz": 5000,
+    "price_eur": 500,
+    "min_vip": "Silver",
+    "launch_status": "active",
+    "bonus_hashrate": 500,
+    "created_at": "2026-04-05T15:40:50.214993+00:00"
+  },
+  {
+    "_id": "69d2828259405d0b51e51f22",
+    "project_id": "neural-v2",
+    "name": "Neural V2",
+    "description": "AI-optimized neural network miner — auto-adjusts efficiency",
+    "hashrate": 3000,
+    "efficiency": 0.97,
+    "icon": "zap",
+    "total_supply": 250,
+    "sold": 1,
+    "price_blz": 2000,
+    "price_eur": 200,
+    "min_vip": "Bronze",
+    "launch_status": "active",
+    "bonus_hashrate": 200,
+    "created_at": "2026-04-05T15:40:50.214993+00:00"
+  },
+  {
+    "_id": "69d2828259405d0b51e51f23",
+    "project_id": "solar-mk3",
+    "name": "Solar MK3",
+    "description": "Zero-energy solar mining rig — pure profit potential",
+    "hashrate": 1500,
+    "efficiency": 0.95,
+    "icon": "flame",
+    "total_supply": 500,
+    "sold": 1,
+    "price_blz": 800,
+    "price_eur": 80,
+    "min_vip": "Bronze",
+    "launch_status": "active",
+    "bonus_hashrate": 100,
+    "created_at": "2026-04-05T15:40:50.214993+00:00"
+  }
+]

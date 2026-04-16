@@ -1,0 +1,82 @@
+[
+  {
+    "_id": "69dfea95427bc86adaebb9c0",
+    "restaurant_id": "rest-463eaf06",
+    "user_email": "admin@bidblitz.com",
+    "restaurant_name": "Luigi's Pizzeria",
+    "stamps": 7,
+    "updated_at": "2026-04-15T19:44:21.183991+00:00"
+  },
+  {
+    "_id": "69dfea95427bc86adaebb9c2",
+    "restaurant_id": "rest-8da07c21",
+    "user_email": "admin@bidblitz.com",
+    "restaurant_name": "Burger Brothers",
+    "stamps": 8,
+    "updated_at": "2026-04-15T19:44:21.195010+00:00"
+  },
+  {
+    "_id": "69dfea95427bc86adaebb9c4",
+    "restaurant_id": "rest-1f35c2a1",
+    "user_email": "admin@bidblitz.com",
+    "restaurant_name": "Sakura Sushi",
+    "stamps": 7,
+    "updated_at": "2026-04-15T19:44:21.195269+00:00"
+  },
+  {
+    "_id": "69dfea95427bc86adaebb9c6",
+    "restaurant_id": "rest-3e325bee",
+    "user_email": "admin@bidblitz.com",
+    "restaurant_name": "Golden Dragon",
+    "stamps": 7,
+    "updated_at": "2026-04-15T19:44:21.195510+00:00"
+  },
+  {
+    "_id": "69dfea95427bc86adaebb9c8",
+    "restaurant_id": "rest-2a686f85",
+    "user_email": "admin@bidblitz.com",
+    "restaurant_name": "Döner König",
+    "stamps": 3,
+    "updated_at": "2026-04-15T19:44:21.195704+00:00"
+  },
+  {
+    "_id": "69dfea95427bc86adaebb9cb",
+    "restaurant_id": "rest-463eaf06",
+    "user_email": "kunde@bidblitz.com",
+    "restaurant_name": "Luigi's Pizzeria",
+    "stamps": 1,
+    "updated_at": "2026-04-15T19:44:21.196100+00:00"
+  },
+  {
+    "_id": "69dfea95427bc86adaebb9cd",
+    "restaurant_id": "rest-8da07c21",
+    "user_email": "kunde@bidblitz.com",
+    "restaurant_name": "Burger Brothers",
+    "stamps": 4,
+    "updated_at": "2026-04-15T19:44:21.196289+00:00"
+  },
+  {
+    "_id": "69dfea95427bc86adaebb9cf",
+    "restaurant_id": "rest-1f35c2a1",
+    "user_email": "kunde@bidblitz.com",
+    "restaurant_name": "Sakura Sushi",
+    "stamps": 2,
+    "updated_at": "2026-04-15T19:44:21.196492+00:00"
+  },
+  {
+    "_id": "69dfea95427bc86adaebb9d1",
+    "restaurant_id": "rest-3e325bee",
+    "user_email": "kunde@bidblitz.com",
+    "restaurant_name": "Golden Dragon",
+    "stamps": 5,
+    "updated_at": "2026-04-15T19:44:21.196667+00:00"
+  },
+  {
+    "_id": "69dfea95427bc86adaebb9d3",
+    "restaurant_id": "rest-2a686f85",
+    "user_email": "kunde@bidblitz.com",
+    "restaurant_name": "Döner König",
+    "stamps": 4,
+    "updated_at": "2026-04-15T19:44:21.196838+00:00"
+  }
+]

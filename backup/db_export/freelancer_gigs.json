@@ -1,0 +1,92 @@
+[
+  {
+    "_id": "69de993c522cb9ef5f4cac1b",
+    "gig_id": "gig_001",
+    "freelancer_id": "fl_001",
+    "title": "Professionelles App-Design (UI/UX)",
+    "category": "design",
+    "price_from": 490,
+    "delivery_days": 7,
+    "description": "Komplettes App-Design inkl. Wireframes, UI-Kit, Prototyp in Figma. Bis zu 10 Screens.",
+    "tags": [
+      "App Design",
+      "Figma",
+      "UI Kit"
+    ],
+    "orders_count": 45,
+    "image": "https://images.unsplash.com/photo-1765648580575-e1423b361ed5?w=800&q=80",
+    "created_at": "2026-04-14T19:45:00.231662+00:00"
+  },
+  {
+    "_id": "69de993c522cb9ef5f4cac1c",
+    "gig_id": "gig_002",
+    "freelancer_id": "fl_002",
+    "title": "React Web-App Entwicklung",
+    "category": "entwicklung",
+    "price_from": 1200,
+    "delivery_days": 14,
+    "description": "Full-Stack Web-App mit React + Node.js. REST API, Datenbank, Deployment. Bis zu 5 Features.",
+    "tags": [
+      "React",
+      "Node.js",
+      "Full-Stack"
+    ],
+    "orders_count": 67,
+    "image": "https://images.unsplash.com/photo-1758611971270-89ce7ed506e1?w=800&q=80",
+    "created_at": "2026-04-14T19:45:00.231662+00:00"
+  },
+  {
+    "_id": "69de993c522cb9ef5f4cac1d",
+    "gig_id": "gig_003",
+    "freelancer_id": "fl_003",
+    "title": "SEO-Blogpost (2000 Wörter)",
+    "category": "marketing",
+    "price_from": 180,
+    "delivery_days": 3,
+    "description": "Recherchierter, SEO-optimierter Blogpost mit Keywords, Meta-Description, Headings. Inkl. 1 Revision.",
+    "tags": [
+      "SEO",
+      "Blog",
+      "Content"
+    ],
+    "orders_count": 89,
+    "image": "https://images.unsplash.com/photo-1765648580528-8d659861d81a?w=800&q=80",
+    "created_at": "2026-04-14T19:45:00.231662+00:00"
+  },
+  {
+    "_id": "69de993c522cb9ef5f4cac1e",
+    "gig_id": "gig_004",
+    "freelancer_id": "fl_004",
+    "title": "Professionelles Erklärvideo (60 Sek.)",
+    "category": "video",
+    "price_from": 650,
+    "delivery_days": 10,
+    "description": "Animiertes Erklärvideo mit Voiceover, Musik, Untertitel. Perfekt für Produkte, Services, Startups.",
+    "tags": [
+      "Video",
+      "Animation",
+      "Erklärvideo"
+    ],
+    "orders_count": 32,
+    "image": "https://images.unsplash.com/photo-1758519290828-2e62b7699b28?w=800&q=80",
+    "created_at": "2026-04-14T19:45:00.231662+00:00"
+  },
+  {
+    "_id": "69de993c522cb9ef5f4cac1f",
+    "gig_id": "gig_005",
+    "freelancer_id": "fl_005",
+    "title": "Fachübersetzung DE-EN (5000 Wörter)",
+    "category": "uebersetzung",
+    "price_from": 320,
+    "delivery_days": 5,
+    "description": "Professionelle Fachübersetzung Deutsch-Englisch. Recht, Technik, Medizin, Marketing. Inkl. Lektorat.",
+    "tags": [
+      "Übersetzung",
+      "Deutsch",
+      "Englisch"
+    ],
+    "orders_count": 156,
+    "image": "https://images.unsplash.com/photo-1765648580890-732fa6d769c5?w=800&q=80",
+    "created_at": "2026-04-14T19:45:00.231662+00:00"
+  }
+]

@@ -1,0 +1,32 @@
+[
+  {
+    "_id": "69dbc69a28abbabe80d0c568",
+    "alert_id": "639918a9a35b0db0",
+    "parent_id": "69cface7afddbc3de2cabb39",
+    "child_id": "child_2a880974de5f",
+    "type": "app_control",
+    "message": "App 'tiktok' gesperrt",
+    "created_at": "2026-04-12T16:21:46.972006+00:00",
+    "read": false
+  },
+  {
+    "_id": "69dbc69b28abbabe80d0c569",
+    "alert_id": "dcc9533505e93159",
+    "parent_id": "69cface7afddbc3de2cabb39",
+    "child_id": "child_2a880974de5f",
+    "type": "app_control",
+    "message": "App 'youtube' Limit gesetzt",
+    "created_at": "2026-04-12T16:21:47.103143+00:00",
+    "read": false
+  },
+  {
+    "_id": "69dbc69b28abbabe80d0c56b",
+    "alert_id": "967c204504becdc5",
+    "parent_id": "69cface7afddbc3de2cabb39",
+    "child_id": "child_2a880974de5f",
+    "type": "sos",
+    "message": "SOS von Albin: Test SOS!",
+    "created_at": "2026-04-12T16:21:47.490244+00:00",
+    "read": false
+  }
+]

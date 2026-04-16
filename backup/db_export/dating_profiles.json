@@ -1,0 +1,116 @@
+[
+  {
+    "_id": "69de9be8b904b02a0774a202",
+    "profile_id": "dat_001",
+    "name": "Laura, 28",
+    "age": 28,
+    "city": "Berlin",
+    "bio": "Kaffee-Süchtige, Yoga-Liebhaberin, Startup-Gründerin. Suche jemanden für tiefe Gespräche und spontane Abenteuer.",
+    "interests": [
+      "Yoga",
+      "Startups",
+      "Reisen",
+      "Kaffee",
+      "Kunst"
+    ],
+    "avatar": "https://images.unsplash.com/photo-1765648580890-732fa6d769c5?w=400&q=80",
+    "verified": true,
+    "created_at": "2026-04-14T19:56:24.460949+00:00",
+    "likes_count": 38
+  },
+  {
+    "_id": "69de9be8b904b02a0774a203",
+    "profile_id": "dat_002",
+    "name": "Maximilian, 31",
+    "age": 31,
+    "city": "München",
+    "bio": "Ingenieur mit Leidenschaft für Berge, Craft Beer und Filmabende. Hund = Bonuspunkte.",
+    "interests": [
+      "Wandern",
+      "Craft Beer",
+      "Filme",
+      "Kochen",
+      "Hunde"
+    ],
+    "avatar": "https://images.unsplash.com/photo-1758519290828-2e62b7699b28?w=400&q=80",
+    "verified": true,
+    "created_at": "2026-04-14T19:56:24.460949+00:00",
+    "likes_count": 14
+  },
+  {
+    "_id": "69de9be8b904b02a0774a204",
+    "profile_id": "dat_003",
+    "name": "Sophie, 26",
+    "age": 26,
+    "city": "Hamburg",
+    "bio": "UX Designerin, Vinyl-Sammlerin, Pasta-Expertin. Zeig mir deinen Musikgeschmack!",
+    "interests": [
+      "Design",
+      "Musik",
+      "Vinyl",
+      "Kochen",
+      "Fotografie"
+    ],
+    "avatar": "https://images.unsplash.com/photo-1765648580528-8d659861d81a?w=400&q=80",
+    "verified": false,
+    "created_at": "2026-04-14T19:56:24.460949+00:00",
+    "likes_count": 26
+  },
+  {
+    "_id": "69de9be8b904b02a0774a205",
+    "profile_id": "dat_004",
+    "name": "Niklas, 29",
+    "age": 29,
+    "city": "Köln",
+    "bio": "Arzt, Hobby-Surfer, Reisenerd. War schon in 34 Ländern. Nächstes Ziel: Japan.",
+    "interests": [
+      "Reisen",
+      "Surfen",
+      "Medizin",
+      "Fotografie",
+      "Japan"
+    ],
+    "avatar": "https://images.unsplash.com/photo-1758519290828-2e62b7699b28?w=400&q=80",
+    "verified": true,
+    "created_at": "2026-04-14T19:56:24.460949+00:00",
+    "likes_count": 75
+  },
+  {
+    "_id": "69de9be8b904b02a0774a206",
+    "profile_id": "dat_005",
+    "name": "Mia, 24",
+    "age": 24,
+    "city": "Frankfurt",
+    "bio": "Studentin, Bücherwurm, Salsa-Tänzerin. Introvertiert, aber mit den richtigen Leuten extrovertiert.",
+    "interests": [
+      "Bücher",
+      "Salsa",
+      "Studium",
+      "Kino",
+      "Tiere"
+    ],
+    "avatar": "https://images.unsplash.com/photo-1765648580890-732fa6d769c5?w=400&q=80",
+    "verified": false,
+    "created_at": "2026-04-14T19:56:24.460949+00:00",
+    "likes_count": 68
+  },
+  {
+    "_id": "69de9be8b904b02a0774a207",
+    "profile_id": "dat_006",
+    "name": "Felix, 33",
+    "age": 33,
+    "city": "Berlin",
+    "bio": "Fotograf, Gründer, Kochbegeistert. Bester Risotto der Stadt — Challenge accepted?",
+    "interests": [
+      "Fotografie",
+      "Kochen",
+      "Startups",
+      "Kunst",
+      "Wein"
+    ],
+    "avatar": "https://images.unsplash.com/photo-1758519290828-2e62b7699b28?w=400&q=80",
+    "verified": true,
+    "created_at": "2026-04-14T19:56:24.460949+00:00",
+    "likes_count": 58
+  }
+]

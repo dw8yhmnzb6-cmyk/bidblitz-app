@@ -1,0 +1,80 @@
+[
+  {
+    "_id": "69dff0ccfc57cf77ae8845c0",
+    "spot_id": "pk_e042ebb1",
+    "name": "Alexanderplatz Parkhaus",
+    "price_per_hour": 3.0,
+    "lat": 52.5219,
+    "lng": 13.4132,
+    "type": "indoor",
+    "total_spaces": 45,
+    "available_spaces": 14,
+    "status": "available",
+    "created_at": "2026-04-15T20:10:52.831422+00:00"
+  },
+  {
+    "_id": "69dff0ccfc57cf77ae8845c1",
+    "spot_id": "pk_1acf65a1",
+    "name": "Potsdamer Platz Garage",
+    "price_per_hour": 4.0,
+    "lat": 52.5096,
+    "lng": 13.3758,
+    "type": "indoor",
+    "total_spaces": 120,
+    "available_spaces": 117,
+    "status": "available",
+    "created_at": "2026-04-15T20:10:52.831422+00:00"
+  },
+  {
+    "_id": "69dff0ccfc57cf77ae8845c2",
+    "spot_id": "pk_75d9197e",
+    "name": "Friedrichstraße P1",
+    "price_per_hour": 2.5,
+    "lat": 52.52,
+    "lng": 13.388,
+    "type": "outdoor",
+    "total_spaces": 30,
+    "available_spaces": 28,
+    "status": "available",
+    "created_at": "2026-04-15T20:10:52.831422+00:00"
+  },
+  {
+    "_id": "69dff0ccfc57cf77ae8845c3",
+    "spot_id": "pk_42894e6a",
+    "name": "Kurfürstendamm Tiefgarage",
+    "price_per_hour": 3.5,
+    "lat": 52.5027,
+    "lng": 13.3327,
+    "type": "indoor",
+    "total_spaces": 80,
+    "available_spaces": 67,
+    "status": "available",
+    "created_at": "2026-04-15T20:10:52.831422+00:00"
+  },
+  {
+    "_id": "69dff0ccfc57cf77ae8845c4",
+    "spot_id": "pk_8cee3c66",
+    "name": "Prishtina Zentrum Parkplatz",
+    "price_per_hour": 1.0,
+    "lat": 42.6629,
+    "lng": 21.1655,
+    "type": "outdoor",
+    "total_spaces": 50,
+    "available_spaces": 5,
+    "status": "available",
+    "created_at": "2026-04-15T20:10:52.831422+00:00"
+  },
+  {
+    "_id": "69dff0ccfc57cf77ae8845c5",
+    "spot_id": "pk_c4fa01cb",
+    "name": "Prishtina Mall Garage",
+    "price_per_hour": 0.5,
+    "lat": 42.6484,
+    "lng": 21.1544,
+    "type": "indoor",
+    "total_spaces": 200,
+    "available_spaces": 73,
+    "status": "available",
+    "created_at": "2026-04-15T20:10:52.831422+00:00"
+  }
+]

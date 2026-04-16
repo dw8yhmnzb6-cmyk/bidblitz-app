@@ -1,0 +1,11 @@
+[
+  {
+    "_id": "69da85084a53dca1b5d1428c",
+    "customer_id": "69cface7afddbc3de2cabb39",
+    "doc_type": "license",
+    "file_url": "https://example.com/license.jpg",
+    "expires_at": "2030-12-31",
+    "verified": false,
+    "uploaded_at": "2026-04-11T17:29:44.695889+00:00"
+  }
+]

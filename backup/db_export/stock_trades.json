@@ -1,0 +1,14 @@
+[
+  {
+    "_id": "69df43432f66400a74f58092",
+    "trade_id": "41832682edc403ac",
+    "user_email": "admin@bidblitz.com",
+    "symbol": "AAPL",
+    "name": "Apple Inc.",
+    "side": "buy",
+    "shares": 5.0,
+    "price": 198.44,
+    "total": 992.2,
+    "created_at": "2026-04-15T07:50:27.082121+00:00"
+  }
+]

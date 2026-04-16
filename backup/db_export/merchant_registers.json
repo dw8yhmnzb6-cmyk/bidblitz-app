@@ -1,0 +1,16 @@
+[
+  {
+    "_id": "69d23d4b1f01d08a8214f6a1",
+    "branch_id": "69d23d461f01d08a8214f6a0",
+    "merchant_id": "69d23d411f01d08a8214f69f",
+    "device_id": "DEV-A1DAE025",
+    "api_key": "blz_live_db74b9629e176cf6705e98efe709d80d066e3c78cbb8cb38",
+    "label": "Kasse 1",
+    "status": "active",
+    "last_active": "2026-04-05T10:45:38.852009+00:00",
+    "total_revenue": 25.0,
+    "transaction_count": 1,
+    "created_at": "2026-04-05T10:45:31.685024+00:00",
+    "created_by": "69d0126144299a2e0d94c788"
+  }
+]

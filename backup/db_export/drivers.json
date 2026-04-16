@@ -1,0 +1,66 @@
+[
+  {
+    "_id": "69d609eeb68efd12a8edf877",
+    "driver_id": "cad6a5fd4695dcb5",
+    "email": "driver1@gmail.com",
+    "password_hash": "$2b$12$DThk7.nYDJ1YiAzB8ROoP.8X6NYBVKzJ.1e89EhNXvmGMfTkJF6bK",
+    "name": "Hans Müller",
+    "phone": "+49 151 12345678",
+    "vehicle": {
+      "model": "VW Passat",
+      "color": "Schwarz",
+      "plate": "B-XX-1234",
+      "type": "comfort"
+    },
+    "city": "berlin",
+    "status": "pending_verification",
+    "is_online": false,
+    "is_verified": false,
+    "kyc_status": "pending",
+    "rating": 5.0,
+    "total_rides": 0,
+    "total_earnings": 0.0,
+    "current_location": null,
+    "current_ride_id": null,
+    "photo_url": null,
+    "documents": {
+      "license": null,
+      "insurance": null,
+      "registration": null
+    },
+    "created_at": "2026-04-08T07:55:25.788838+00:00",
+    "updated_at": "2026-04-08T07:55:25.788838+00:00"
+  },
+  {
+    "_id": "69d60aefb68efd12a8edf88f",
+    "driver_id": "fc8afd339b8352b0",
+    "email": "driver_1775635182@gmail.com",
+    "password_hash": "$2b$12$5g/icK0xHRJBgW1Is5HcT./qB0RMjnKsOivRveU/1LphgXl6vUwS6",
+    "name": "Max Fahrer",
+    "phone": "+49 151 12345678",
+    "vehicle": {
+      "model": "BMW 5er",
+      "color": "Schwarz",
+      "plate": "B-MF-42",
+      "type": "comfort"
+    },
+    "city": "berlin",
+    "status": "pending_verification",
+    "is_online": false,
+    "is_verified": false,
+    "kyc_status": "pending",
+    "rating": 5.0,
+    "total_rides": 0,
+    "total_earnings": 0.0,
+    "current_location": null,
+    "current_ride_id": null,
+    "photo_url": null,
+    "documents": {
+      "license": null,
+      "insurance": null,
+      "registration": null
+    },
+    "created_at": "2026-04-08T07:59:43.093301+00:00",
+    "updated_at": "2026-04-08T07:59:43.093301+00:00"
+  }
+]

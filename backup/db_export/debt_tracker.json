@@ -1,0 +1,13 @@
+[
+  {
+    "_id": "69e096bcca3c39b6f7e2b57e",
+    "debt_id": "debt_75c17bc8d069",
+    "user_email": "kunde@bidblitz.com",
+    "person": "Tom",
+    "amount": 25.0,
+    "direction": "owed_to_me",
+    "note": "Pizza",
+    "settled": false,
+    "created_at": "2026-04-16T07:58:52.079965+00:00"
+  }
+]

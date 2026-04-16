@@ -1,0 +1,78 @@
+[
+  {
+    "_id": "69d9e94e919b4ef40b28dc0d",
+    "subscription_id": "a334df9f2f224e39",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "plan": "basic",
+    "plan_name": "Basic",
+    "billing_cycle": "monthly",
+    "price_paid": 9.99,
+    "auto_renew": true,
+    "status": "upgraded",
+    "started_at": "2026-04-11T06:25:18.929298+00:00",
+    "expires_at": "2026-05-11T06:25:18.929298+00:00",
+    "next_billing_at": "2026-05-11T06:25:18.929298+00:00",
+    "benefits": {
+      "fee_reduction": 0.05,
+      "cashback_bonus": 0.005,
+      "priority_support": false,
+      "free_boosts": 0,
+      "free_transfers": 5,
+      "referral_bonus": 0.01
+    },
+    "transaction_id": "TXN-6759ADEBCF7D0DAB",
+    "created_at": "2026-04-11T06:25:18.929298+00:00",
+    "upgraded_at": "2026-04-11T06:25:25.461757+00:00",
+    "upgraded_to": "3e4df048c33eac3e"
+  },
+  {
+    "_id": "69d9e955919b4ef40b28dc11",
+    "subscription_id": "3e4df048c33eac3e",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "plan": "premium",
+    "plan_name": "Premium",
+    "billing_cycle": "monthly",
+    "price_paid": 10.329999999999998,
+    "auto_renew": false,
+    "status": "active",
+    "started_at": "2026-04-11T06:25:25.461757+00:00",
+    "expires_at": "2026-05-11T06:25:25.461757+00:00",
+    "next_billing_at": "2026-05-11T06:25:25.461757+00:00",
+    "benefits": {
+      "fee_reduction": 0.15,
+      "cashback_bonus": 0.01,
+      "priority_support": true,
+      "free_boosts": 1,
+      "free_transfers": 10,
+      "referral_bonus": 0.02
+    },
+    "transaction_id": "TXN-F6F689CFA9BFFC06",
+    "created_at": "2026-04-11T06:25:25.461757+00:00"
+  },
+  {
+    "_id": "69d9e970919b4ef40b28dc14",
+    "subscription_id": "bcc7025741525370",
+    "user_id": "69d0126144299a2e0d94c786",
+    "plan": "pro",
+    "plan_name": "Pro",
+    "billing_cycle": "granted",
+    "price_paid": 0,
+    "auto_renew": false,
+    "status": "active",
+    "granted_by": "69cface7afddbc3de2cabb39",
+    "started_at": "2026-04-11T06:25:52.538115+00:00",
+    "expires_at": "2026-05-11T06:25:52.538115+00:00",
+    "benefits": {
+      "fee_reduction": 0.25,
+      "cashback_bonus": 0.02,
+      "priority_support": true,
+      "vip_support": true,
+      "free_boosts": 3,
+      "free_transfers": -1,
+      "referral_bonus": 0.03,
+      "early_access": true,
+      "merchant_discounts": true
+    },
+    "created_at": "2026-04-11T06:25:52.538115+00:00"
+  }
+]

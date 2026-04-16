@@ -1,0 +1,25 @@
+[
+  {
+    "_id": "69dffba290e7677cb6b17c31",
+    "sub_id": "lvl_af8cf614a78a",
+    "user_email": "kunde@bidblitz.com",
+    "tier_id": "gold",
+    "tier_name": "Gold",
+    "price": 9.99,
+    "status": "active",
+    "created_at": "2026-04-15T20:57:06.553187+00:00"
+  },
+  {
+    "_id": "69dfff71fe53667d11107442",
+    "sub_id": "lvl_464d371711ac",
+    "user_email": "admin@bidblitz.com",
+    "tier_id": "silver",
+    "tier_name": "Silver",
+    "price": 0,
+    "status": "active",
+    "source": "referral_reward",
+    "referrer_email": "kunde@bidblitz.com",
+    "expires_at": "2026-05-15T21:13:21.842062+00:00",
+    "created_at": "2026-04-15T21:13:21.841327+00:00"
+  }
+]

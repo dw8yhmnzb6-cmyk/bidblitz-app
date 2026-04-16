@@ -1,0 +1,220 @@
+[
+  {
+    "_id": "69de993c522cb9ef5f4cac14",
+    "freelancer_id": "fl_001",
+    "name": "Sarah Müller",
+    "title": "UI/UX Designerin",
+    "category": "design",
+    "hourly_rate": 85,
+    "rating": 4.9,
+    "reviews_count": 127,
+    "location": "Berlin",
+    "description": "Senior UI/UX Designerin mit 8 Jahren Erfahrung. Spezialisiert auf Mobile Apps, Design Systems und Prototyping. Figma, Sketch, Adobe XD.",
+    "skills": [
+      "Figma",
+      "UI Design",
+      "UX Research",
+      "Prototyping",
+      "Design Systems"
+    ],
+    "avatar": "https://images.unsplash.com/photo-1765648580890-732fa6d769c5?w=400&q=80",
+    "portfolio_images": [
+      "https://images.unsplash.com/photo-1765648580575-e1423b361ed5?w=800&q=80"
+    ],
+    "languages": [
+      "Deutsch",
+      "Englisch"
+    ],
+    "response_time": "< 2 Std.",
+    "completed_projects": 89,
+    "featured": true,
+    "available": true,
+    "created_at": "2026-04-14T19:45:00.221006+00:00"
+  },
+  {
+    "_id": "69de993c522cb9ef5f4cac15",
+    "freelancer_id": "fl_002",
+    "name": "Markus Weber",
+    "title": "Full-Stack Entwickler",
+    "category": "entwicklung",
+    "hourly_rate": 95,
+    "rating": 4.8,
+    "reviews_count": 203,
+    "location": "München",
+    "description": "Full-Stack Developer — React, Node.js, Python, AWS. Erfahrung mit Startups und Enterprise-Projekten. Clean Code, CI/CD, Agile.",
+    "skills": [
+      "React",
+      "Node.js",
+      "Python",
+      "AWS",
+      "TypeScript",
+      "PostgreSQL"
+    ],
+    "avatar": "https://images.unsplash.com/photo-1758519290828-2e62b7699b28?w=400&q=80",
+    "portfolio_images": [
+      "https://images.unsplash.com/photo-1758611971270-89ce7ed506e1?w=800&q=80"
+    ],
+    "languages": [
+      "Deutsch",
+      "Englisch",
+      "Französisch"
+    ],
+    "response_time": "< 1 Std.",
+    "completed_projects": 156,
+    "featured": true,
+    "available": true,
+    "created_at": "2026-04-14T19:45:00.221006+00:00"
+  },
+  {
+    "_id": "69de993c522cb9ef5f4cac16",
+    "freelancer_id": "fl_003",
+    "name": "Anna Schmidt",
+    "title": "Content-Autorin & SEO-Spezialistin",
+    "category": "marketing",
+    "hourly_rate": 65,
+    "rating": 4.7,
+    "reviews_count": 94,
+    "location": "Hamburg",
+    "description": "SEO-optimierte Texte, Blogposts, Landing Pages, Social Media Content. Erfahrung in E-Commerce, SaaS, FinTech. Deutsch und Englisch.",
+    "skills": [
+      "SEO",
+      "Content Writing",
+      "Copywriting",
+      "Social Media",
+      "WordPress"
+    ],
+    "avatar": "https://images.unsplash.com/photo-1765648580528-8d659861d81a?w=400&q=80",
+    "portfolio_images": [],
+    "languages": [
+      "Deutsch",
+      "Englisch"
+    ],
+    "response_time": "< 4 Std.",
+    "completed_projects": 67,
+    "featured": false,
+    "available": true,
+    "created_at": "2026-04-14T19:45:00.221006+00:00"
+  },
+  {
+    "_id": "69de993c522cb9ef5f4cac17",
+    "freelancer_id": "fl_004",
+    "name": "Kemal Yilmaz",
+    "title": "Video-Editor & Motion Designer",
+    "category": "video",
+    "hourly_rate": 75,
+    "rating": 4.9,
+    "reviews_count": 68,
+    "location": "Köln",
+    "description": "Professioneller Video-Schnitt, Motion Graphics, After Effects, Premiere Pro. YouTube-Intros, Produktvideos, Werbefilme, Erklärvideos.",
+    "skills": [
+      "After Effects",
+      "Premiere Pro",
+      "Motion Design",
+      "Color Grading",
+      "Animation"
+    ],
+    "avatar": "https://images.unsplash.com/photo-1758519290828-2e62b7699b28?w=400&q=80",
+    "portfolio_images": [],
+    "languages": [
+      "Deutsch",
+      "Englisch",
+      "Türkisch"
+    ],
+    "response_time": "< 3 Std.",
+    "completed_projects": 45,
+    "featured": true,
+    "available": true,
+    "created_at": "2026-04-14T19:45:00.221006+00:00"
+  },
+  {
+    "_id": "69de993c522cb9ef5f4cac18",
+    "freelancer_id": "fl_005",
+    "name": "Elena Petrova",
+    "title": "Übersetzerin (DE/EN/RU)",
+    "category": "uebersetzung",
+    "hourly_rate": 55,
+    "rating": 5.0,
+    "reviews_count": 312,
+    "location": "Frankfurt",
+    "description": "Zertifizierte Übersetzerin für Deutsch, Englisch, Russisch. Fachgebiete: Recht, Medizin, Technik, Marketing. Schnell und präzise.",
+    "skills": [
+      "Deutsch",
+      "Englisch",
+      "Russisch",
+      "Fachübersetzung",
+      "Lektorat"
+    ],
+    "avatar": "https://images.unsplash.com/photo-1765648580890-732fa6d769c5?w=400&q=80",
+    "portfolio_images": [],
+    "languages": [
+      "Deutsch",
+      "Englisch",
+      "Russisch"
+    ],
+    "response_time": "< 1 Std.",
+    "completed_projects": 234,
+    "featured": false,
+    "available": true,
+    "created_at": "2026-04-14T19:45:00.221006+00:00"
+  },
+  {
+    "_id": "69de993c522cb9ef5f4cac19",
+    "freelancer_id": "fl_006",
+    "name": "Jan Becker",
+    "title": "Buchhalter & Steuerberater",
+    "category": "finanzen",
+    "hourly_rate": 90,
+    "rating": 4.8,
+    "reviews_count": 76,
+    "location": "Düsseldorf",
+    "description": "Digitale Buchhaltung, Steuererklärungen, EÜR, Bilanzierung. Spezialisiert auf Freelancer und kleine Unternehmen. DATEV, Lexoffice.",
+    "skills": [
+      "Buchhaltung",
+      "Steuererklärung",
+      "DATEV",
+      "Lexoffice",
+      "Bilanzierung"
+    ],
+    "avatar": "https://images.unsplash.com/photo-1758519290828-2e62b7699b28?w=400&q=80",
+    "portfolio_images": [],
+    "languages": [
+      "Deutsch",
+      "Englisch"
+    ],
+    "response_time": "< 6 Std.",
+    "completed_projects": 112,
+    "featured": false,
+    "available": true,
+    "created_at": "2026-04-14T19:45:00.221006+00:00"
+  },
+  {
+    "_id": "69de993c522cb9ef5f4cac1a",
+    "freelancer_id": "fl_007",
+    "name": "Lena Hoffmann",
+    "title": "Social Media Managerin",
+    "category": "marketing",
+    "hourly_rate": 60,
+    "rating": 4.6,
+    "reviews_count": 53,
+    "location": "Stuttgart",
+    "description": "Instagram, TikTok, LinkedIn Content-Strategie. Community Management, Paid Ads, Influencer-Kooperationen. Für Brands und Startups.",
+    "skills": [
+      "Instagram",
+      "TikTok",
+      "LinkedIn",
+      "Paid Ads",
+      "Content Strategy"
+    ],
+    "avatar": "https://images.unsplash.com/photo-1765648580528-8d659861d81a?w=400&q=80",
+    "portfolio_images": [],
+    "languages": [
+      "Deutsch",
+      "Englisch"
+    ],
+    "response_time": "< 2 Std.",
+    "completed_projects": 38,
+    "featured": false,
+    "available": true,
+    "created_at": "2026-04-14T19:45:00.221006+00:00"
+  }
+]

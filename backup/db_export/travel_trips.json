@@ -1,0 +1,149 @@
+[
+  {
+    "_id": "69de9be8b904b02a0774a220",
+    "trip_id": "trip_001",
+    "title": "Barcelona Städtetrip",
+    "destination": "Barcelona",
+    "country": "Spanien",
+    "duration_days": 5,
+    "price_per_person": 599,
+    "rating": 4.8,
+    "reviews": 432,
+    "description": "5 Tage Barcelona: Flug + 4* Hotel + Sagrada Familia Tour + Tapas-Abend. Direktflug ab Berlin.",
+    "includes": [
+      "Hin- & Rückflug",
+      "4* Hotel zentral",
+      "Sagrada Familia",
+      "Tapas-Tour",
+      "Flughafentransfer"
+    ],
+    "image": "https://images.unsplash.com/photo-1757439402101-55d1da381e70?w=800&q=80",
+    "category": "staedtetrip",
+    "featured": true,
+    "available_dates": [
+      "2026-03-15",
+      "2026-04-10",
+      "2026-05-20"
+    ],
+    "created_at": "2026-04-14T19:56:24.525456+00:00",
+    "bookings_count": 0
+  },
+  {
+    "_id": "69de9be8b904b02a0774a221",
+    "trip_id": "trip_002",
+    "title": "Malediven Traumurlaub",
+    "destination": "Malediven",
+    "country": "Malediven",
+    "duration_days": 10,
+    "price_per_person": 2499,
+    "rating": 4.9,
+    "reviews": 189,
+    "description": "10 Tage Malediven: Overwater Villa, All-Inclusive, Schnorchel-Ausflüge, Sunset Cruise.",
+    "includes": [
+      "Flug",
+      "Overwater Villa",
+      "All-Inclusive",
+      "Schnorcheln",
+      "Sunset Cruise",
+      "Spa-Gutschein"
+    ],
+    "image": "https://images.unsplash.com/photo-1622015663381-d2e05ae91b72?w=800&q=80",
+    "category": "strandurlaub",
+    "featured": true,
+    "available_dates": [
+      "2026-04-01",
+      "2026-06-15",
+      "2026-09-01"
+    ],
+    "created_at": "2026-04-14T19:56:24.525456+00:00",
+    "bookings_count": 0
+  },
+  {
+    "_id": "69de9be8b904b02a0774a222",
+    "trip_id": "trip_003",
+    "title": "Alpen Wanderwoche",
+    "destination": "Tirol",
+    "country": "Österreich",
+    "duration_days": 7,
+    "price_per_person": 799,
+    "rating": 4.7,
+    "reviews": 267,
+    "description": "7 Tage Wandern in Tirol: 3* Berghotel, geführte Touren, Halbpension, Wellness.",
+    "includes": [
+      "Anreise",
+      "3* Berghotel",
+      "Halbpension",
+      "3 geführte Touren",
+      "Wellness-Bereich"
+    ],
+    "image": "https://images.unsplash.com/photo-1757439402101-55d1da381e70?w=800&q=80",
+    "category": "aktivurlaub",
+    "featured": false,
+    "available_dates": [
+      "2026-06-01",
+      "2026-07-15",
+      "2026-08-20"
+    ],
+    "created_at": "2026-04-14T19:56:24.525456+00:00",
+    "bookings_count": 0
+  },
+  {
+    "_id": "69de9be8b904b02a0774a223",
+    "trip_id": "trip_004",
+    "title": "New York Shopping Weekend",
+    "destination": "New York",
+    "country": "USA",
+    "duration_days": 4,
+    "price_per_person": 1299,
+    "rating": 4.6,
+    "reviews": 178,
+    "description": "4 Tage NYC: Flug, 4* Hotel Manhattan, Empire State, Times Square Walking Tour.",
+    "includes": [
+      "Direktflug",
+      "4* Hotel Manhattan",
+      "Empire State Ticket",
+      "Walking Tour",
+      "Metro-Pass"
+    ],
+    "image": "https://images.unsplash.com/photo-1772256019760-a144ae100cc4?w=800&q=80",
+    "category": "staedtetrip",
+    "featured": true,
+    "available_dates": [
+      "2026-03-20",
+      "2026-05-10",
+      "2026-11-25"
+    ],
+    "created_at": "2026-04-14T19:56:24.525456+00:00",
+    "bookings_count": 0
+  },
+  {
+    "_id": "69de9be8b904b02a0774a224",
+    "trip_id": "trip_005",
+    "title": "Toskana Genussreise",
+    "destination": "Toskana",
+    "country": "Italien",
+    "duration_days": 6,
+    "price_per_person": 899,
+    "rating": 4.8,
+    "reviews": 312,
+    "description": "6 Tage Toskana: Weingut, Kochkurs, Florenz, Siena, Truffle-Hunting. Mietwagen inkl.",
+    "includes": [
+      "Flug",
+      "Landhotel",
+      "Mietwagen",
+      "Kochkurs",
+      "Weinprobe",
+      "Florenz-Tour"
+    ],
+    "image": "https://images.unsplash.com/photo-1622015663319-e97e697503ee?w=800&q=80",
+    "category": "genussreise",
+    "featured": false,
+    "available_dates": [
+      "2026-04-20",
+      "2026-06-10",
+      "2026-09-15"
+    ],
+    "created_at": "2026-04-14T19:56:24.525456+00:00",
+    "bookings_count": 0
+  }
+]

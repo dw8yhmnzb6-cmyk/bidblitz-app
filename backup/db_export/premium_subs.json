@@ -1,0 +1,14 @@
+[
+  {
+    "_id": "69df5a15bc4b6ca90f939a28",
+    "sub_id": "69d5f423e3e19c11",
+    "user_email": "admin@bidblitz.com",
+    "plan_id": "pro",
+    "plan_name": "Pro",
+    "price": 9.99,
+    "status": "active",
+    "started_at": "2026-04-15T09:27:49.236537+00:00",
+    "expires_at": "2026-05-15T09:27:49.236537+00:00",
+    "auto_renew": true
+  }
+]

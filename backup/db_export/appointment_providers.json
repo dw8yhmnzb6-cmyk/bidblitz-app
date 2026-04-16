@@ -1,0 +1,292 @@
+[
+  {
+    "_id": "69dbefa5c587b0e074fd3bb3",
+    "name": "Barber Kings",
+    "branch": "hair",
+    "city": "Berlin",
+    "address": "Friedrichstraße 88",
+    "description": "Premium Barbershop. Herrenschnitt, Bart, Hot Towel.",
+    "phone": "+49 30 111222",
+    "price_range": "mid",
+    "opening_hours": "09:00-20:00",
+    "services": [
+      "Herrenschnitt",
+      "Bart-Trimm",
+      "Hot Towel",
+      "Kids-Cut",
+      "Styling"
+    ],
+    "images": [
+      "https://images.unsplash.com/photo-1759134198561-e2041049419c?w=600&q=80"
+    ],
+    "provider_id": "5ccf9a001aa30b21",
+    "owner_id": "seed",
+    "owner_name": "BidBlitz Services",
+    "rating": 3.9,
+    "review_count": 13,
+    "appointment_count": 45,
+    "status": "active",
+    "created_at": "2026-04-12T19:16:53.061157+00:00"
+  },
+  {
+    "_id": "69dbefa5c587b0e074fd3bb4",
+    "name": "Salon Bella",
+    "branch": "hair",
+    "city": "München",
+    "address": "Maximilianstraße 22",
+    "description": "Damen & Herren Friseur. Farbe, Schnitt, Extensions.",
+    "phone": "+49 89 333444",
+    "price_range": "fine",
+    "opening_hours": "09:00-19:00",
+    "services": [
+      "Damenschnitt",
+      "Färben",
+      "Strähnchen",
+      "Extensions",
+      "Hochsteckfrisur"
+    ],
+    "images": [
+      "https://images.unsplash.com/photo-1759134198561-e2041049419c?w=600&q=80"
+    ],
+    "provider_id": "bfcdeac85e5f09ee",
+    "owner_id": "seed",
+    "owner_name": "BidBlitz Services",
+    "rating": 4.6,
+    "review_count": 15,
+    "appointment_count": 32,
+    "status": "active",
+    "created_at": "2026-04-12T19:16:53.061157+00:00"
+  },
+  {
+    "_id": "69dbefa5c587b0e074fd3bb5",
+    "name": "Dr. med. Sarah Weber",
+    "branch": "doctor",
+    "city": "Berlin",
+    "address": "Ku'damm 150",
+    "description": "Allgemeinmedizin. Vorsorge, Check-ups, Impfungen.",
+    "phone": "+49 30 555666",
+    "price_range": "mid",
+    "opening_hours": "08:00-17:00",
+    "services": [
+      "Check-up",
+      "Impfung",
+      "Blutbild",
+      "EKG",
+      "Ultraschall"
+    ],
+    "images": [
+      "https://images.unsplash.com/photo-1576085898384-b3cdb88736e9?w=600&q=80"
+    ],
+    "provider_id": "1f86cdaed12c55d8",
+    "owner_id": "seed",
+    "owner_name": "BidBlitz Services",
+    "rating": 3.8,
+    "review_count": 8,
+    "appointment_count": 0,
+    "status": "active",
+    "created_at": "2026-04-12T19:16:53.061157+00:00"
+  },
+  {
+    "_id": "69dbefa5c587b0e074fd3bb6",
+    "name": "Zahnarztpraxis Dr. Yilmaz",
+    "branch": "doctor",
+    "city": "Dubai",
+    "address": "Business Bay Tower 5",
+    "description": "Moderne Zahnmedizin. Implantate, Bleaching, Prophylaxe.",
+    "phone": "+971 4 555666",
+    "price_range": "fine",
+    "opening_hours": "09:00-18:00",
+    "services": [
+      "Prophylaxe",
+      "Bleaching",
+      "Implantate",
+      "Wurzelbehandlung",
+      "Zahnersatz"
+    ],
+    "images": [
+      "https://images.unsplash.com/photo-1576085898384-b3cdb88736e9?w=600&q=80"
+    ],
+    "provider_id": "301428c0f8f99de7",
+    "owner_id": "seed",
+    "owner_name": "BidBlitz Services",
+    "rating": 4.3,
+    "review_count": 27,
+    "appointment_count": 49,
+    "status": "active",
+    "created_at": "2026-04-12T19:16:53.061157+00:00"
+  },
+  {
+    "_id": "69dbefa5c587b0e074fd3bb7",
+    "name": "Glow Beauty Studio",
+    "branch": "beauty",
+    "city": "Dubai",
+    "address": "JBR The Walk 30",
+    "description": "Luxus-Kosmetik. Facial, Laser, Wimpern.",
+    "phone": "+971 4 777888",
+    "price_range": "fine",
+    "opening_hours": "10:00-21:00",
+    "services": [
+      "Facial",
+      "Wimpernverlängerung",
+      "Micro-Needling",
+      "Laser",
+      "Maniküre"
+    ],
+    "images": [
+      "https://images.unsplash.com/photo-1761718210055-e83ca7e2c9ad?w=600&q=80"
+    ],
+    "provider_id": "d8edbb97469fe2ec",
+    "owner_id": "seed",
+    "owner_name": "BidBlitz Services",
+    "rating": 4.3,
+    "review_count": 9,
+    "appointment_count": 21,
+    "status": "active",
+    "created_at": "2026-04-12T19:16:53.061157+00:00"
+  },
+  {
+    "_id": "69dbefa5c587b0e074fd3bb8",
+    "name": "FitX Kreuzberg",
+    "branch": "fitness",
+    "city": "Berlin",
+    "address": "Kottbusser Damm 5",
+    "description": "24/7 Fitnessstudio. Personal Training verfügbar.",
+    "phone": "+49 30 888999",
+    "price_range": "budget",
+    "opening_hours": "00:00-23:59",
+    "services": [
+      "Personal Training",
+      "Gruppentherapie",
+      "Sauna",
+      "Yoga",
+      "CrossFit"
+    ],
+    "images": [
+      "https://images.unsplash.com/photo-1771586791190-97ed536c54af?w=600&q=80"
+    ],
+    "provider_id": "418e481181c86fcc",
+    "owner_id": "seed",
+    "owner_name": "BidBlitz Services",
+    "rating": 3.8,
+    "review_count": 16,
+    "appointment_count": 68,
+    "status": "active",
+    "created_at": "2026-04-12T19:16:53.061157+00:00"
+  },
+  {
+    "_id": "69dbefa5c587b0e074fd3bb9",
+    "name": "RA Müller & Partner",
+    "branch": "lawyer",
+    "city": "München",
+    "address": "Leopoldstraße 99",
+    "description": "Kanzlei für Arbeits-, Miet- und Familienrecht.",
+    "phone": "+49 89 444555",
+    "price_range": "fine",
+    "opening_hours": "09:00-18:00",
+    "services": [
+      "Erstberatung",
+      "Arbeitsrecht",
+      "Mietrecht",
+      "Familienrecht",
+      "Vertragsrecht"
+    ],
+    "images": [
+      "https://images.unsplash.com/photo-1758518731462-d091b0b4ed0d?w=600&q=80"
+    ],
+    "provider_id": "b74ea48de6da9172",
+    "owner_id": "seed",
+    "owner_name": "BidBlitz Services",
+    "rating": 4.7,
+    "review_count": 24,
+    "appointment_count": 1,
+    "status": "active",
+    "created_at": "2026-04-12T19:16:53.061157+00:00"
+  },
+  {
+    "_id": "69dbefa5c587b0e074fd3bba",
+    "name": "AutoFit Werkstatt",
+    "branch": "car_repair",
+    "city": "Berlin",
+    "address": "Tempelhofer Damm 45",
+    "description": "Freie KFZ-Werkstatt. TÜV, Inspektion, Reparatur.",
+    "phone": "+49 30 222333",
+    "price_range": "budget",
+    "opening_hours": "07:30-18:00",
+    "services": [
+      "TÜV/AU",
+      "Inspektion",
+      "Ölwechsel",
+      "Bremsen",
+      "Reifen"
+    ],
+    "images": [
+      "https://images.unsplash.com/photo-1615906655593-ad0386982a0f?w=600&q=80"
+    ],
+    "provider_id": "b56de3fe7ff74c3e",
+    "owner_id": "seed",
+    "owner_name": "BidBlitz Services",
+    "rating": 4.5,
+    "review_count": 23,
+    "appointment_count": 35,
+    "status": "active",
+    "created_at": "2026-04-12T19:16:53.061157+00:00"
+  },
+  {
+    "_id": "69dbefa5c587b0e074fd3bbb",
+    "name": "Meister-Handwerk GmbH",
+    "branch": "handyman",
+    "city": "Wien",
+    "address": "Mariahilfer Str. 77",
+    "description": "Alle Handwerksleistungen aus einer Hand.",
+    "phone": "+43 1 999000",
+    "price_range": "mid",
+    "opening_hours": "08:00-17:00",
+    "services": [
+      "Sanitär",
+      "Elektrik",
+      "Malerarbeiten",
+      "Montage",
+      "Umzug"
+    ],
+    "images": [
+      "https://images.unsplash.com/photo-1581783898377-1c85bf937427?w=600&q=80"
+    ],
+    "provider_id": "0052fe74ce8a19b3",
+    "owner_id": "seed",
+    "owner_name": "BidBlitz Services",
+    "rating": 3.8,
+    "review_count": 27,
+    "appointment_count": 4,
+    "status": "active",
+    "created_at": "2026-04-12T19:16:53.061157+00:00"
+  },
+  {
+    "_id": "69dbefa5c587b0e074fd3bbc",
+    "name": "Yoga House Istanbul",
+    "branch": "fitness",
+    "city": "Istanbul",
+    "address": "Kadıköy Moda Cd. 12",
+    "description": "Yoga, Pilates, Meditation. Anfänger willkommen!",
+    "phone": "+90 216 111222",
+    "price_range": "mid",
+    "opening_hours": "07:00-21:00",
+    "services": [
+      "Hatha Yoga",
+      "Vinyasa",
+      "Pilates",
+      "Meditation",
+      "Atemarbeit"
+    ],
+    "images": [
+      "https://images.unsplash.com/photo-1771586791190-97ed536c54af?w=600&q=80"
+    ],
+    "provider_id": "550692f7966dffed",
+    "owner_id": "seed",
+    "owner_name": "BidBlitz Services",
+    "rating": 3.9,
+    "review_count": 17,
+    "appointment_count": 9,
+    "status": "active",
+    "created_at": "2026-04-12T19:16:53.061157+00:00"
+  }
+]

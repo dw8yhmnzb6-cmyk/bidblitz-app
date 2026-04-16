@@ -1,0 +1,18 @@
+[
+  {
+    "_id": "69dbc361caa1854dd2938fcd",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "symbol": "BTC",
+    "amount": 0.00010118757788913808,
+    "avg_buy_price": 98826.36,
+    "created_at": "2026-04-12T16:08:01.893873+00:00"
+  },
+  {
+    "_id": "69df44b32998e41f8eb40a2a",
+    "user_id": "69d0126144299a2e0d94c786",
+    "symbol": "ETH",
+    "amount": 0.12716369018855833,
+    "avg_buy_price": 1965.97,
+    "created_at": "2026-04-15T07:56:35.628924+00:00"
+  }
+]

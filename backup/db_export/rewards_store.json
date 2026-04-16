@@ -1,0 +1,134 @@
+[
+  {
+    "_id": "69d9f3f539cbac40f6c7510c",
+    "id": "5ed794d7052e4fb3",
+    "title": "2€ Rabatt",
+    "description": "2€ Rabatt auf deine nächste Zahlung",
+    "type": "discount",
+    "cost_points": 200,
+    "reward_value": 2.0,
+    "is_active": true,
+    "created_at": "2026-04-11T07:10:45.606504+00:00"
+  },
+  {
+    "_id": "69d9f3f539cbac40f6c7510d",
+    "id": "6a6efb25ff8a3d62",
+    "title": "5€ Rabatt",
+    "description": "5€ Rabatt auf deine nächste Zahlung",
+    "type": "discount",
+    "cost_points": 500,
+    "reward_value": 5.0,
+    "is_active": true,
+    "created_at": "2026-04-11T07:10:45.606504+00:00"
+  },
+  {
+    "_id": "69d9f3f539cbac40f6c7510e",
+    "id": "45038f8ec4cf64df",
+    "title": "10€ Rabatt",
+    "description": "10€ Rabatt auf deine nächste Zahlung",
+    "type": "discount",
+    "cost_points": 900,
+    "reward_value": 10.0,
+    "is_active": true,
+    "created_at": "2026-04-11T07:10:45.606504+00:00"
+  },
+  {
+    "_id": "69d9f3f539cbac40f6c7510f",
+    "id": "c4b243fed4045b0d",
+    "title": "20€ Rabatt",
+    "description": "20€ Rabatt auf deine nächste Zahlung",
+    "type": "discount",
+    "cost_points": 1600,
+    "reward_value": 20.0,
+    "is_active": true,
+    "created_at": "2026-04-11T07:10:45.606504+00:00"
+  },
+  {
+    "_id": "69d9f3f539cbac40f6c75110",
+    "id": "025bd6846e68cf96",
+    "title": "24h Boost",
+    "description": "Kostenloser 24-Stunden Marketplace-Boost",
+    "type": "boost",
+    "cost_points": 300,
+    "reward_value": 24,
+    "is_active": true,
+    "created_at": "2026-04-11T07:10:45.606504+00:00"
+  },
+  {
+    "_id": "69d9f3f539cbac40f6c75111",
+    "id": "07e38b4287edb5ac",
+    "title": "7-Tage Boost",
+    "description": "Kostenloser 7-Tage Marketplace-Boost",
+    "type": "boost",
+    "cost_points": 800,
+    "reward_value": 168,
+    "is_active": true,
+    "created_at": "2026-04-11T07:10:45.606504+00:00"
+  },
+  {
+    "_id": "69d9f3f539cbac40f6c75112",
+    "id": "138b6a1c00160093",
+    "title": "VIP 3 Tage",
+    "description": "3 Tage VIP-Status mit allen Vorteilen",
+    "type": "vip",
+    "cost_points": 600,
+    "reward_value": 3,
+    "is_active": true,
+    "created_at": "2026-04-11T07:10:45.606504+00:00"
+  },
+  {
+    "_id": "69d9f3f539cbac40f6c75113",
+    "id": "2b27d3963c85ebda",
+    "title": "VIP 7 Tage",
+    "description": "7 Tage VIP-Status mit allen Vorteilen",
+    "type": "vip",
+    "cost_points": 1200,
+    "reward_value": 7,
+    "is_active": true,
+    "created_at": "2026-04-11T07:10:45.606504+00:00"
+  },
+  {
+    "_id": "69d9f3f539cbac40f6c75114",
+    "id": "08fec65cb99e7f8d",
+    "title": "VIP 30 Tage",
+    "description": "30 Tage VIP-Status mit allen Vorteilen",
+    "type": "vip",
+    "cost_points": 4000,
+    "reward_value": 30,
+    "is_active": true,
+    "created_at": "2026-04-11T07:10:45.606504+00:00"
+  },
+  {
+    "_id": "69d9f3f539cbac40f6c75115",
+    "id": "3a553b7d03f90c48",
+    "title": "1€ Cashback",
+    "description": "1€ direkt ins Wallet",
+    "type": "cashback",
+    "cost_points": 150,
+    "reward_value": 1.0,
+    "is_active": true,
+    "created_at": "2026-04-11T07:10:45.606504+00:00"
+  },
+  {
+    "_id": "69d9f3f539cbac40f6c75116",
+    "id": "aa5d570a2a83e6e7",
+    "title": "3€ Cashback",
+    "description": "3€ direkt ins Wallet",
+    "type": "cashback",
+    "cost_points": 400,
+    "reward_value": 3.0,
+    "is_active": true,
+    "created_at": "2026-04-11T07:10:45.606504+00:00"
+  },
+  {
+    "_id": "69d9f3f539cbac40f6c75117",
+    "id": "88aa3a79268ade2e",
+    "title": "5€ Cashback",
+    "description": "5€ direkt ins Wallet",
+    "type": "cashback",
+    "cost_points": 600,
+    "reward_value": 5.0,
+    "is_active": true,
+    "created_at": "2026-04-11T07:10:45.606504+00:00"
+  }
+]

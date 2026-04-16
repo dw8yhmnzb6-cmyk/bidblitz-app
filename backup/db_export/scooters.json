@@ -1,0 +1,1030 @@
+[
+  {
+    "_id": "69d59d546301b5b7c812f43b",
+    "scooter_id": "SC-5822D3A2",
+    "model": "BidBlitz X1",
+    "max_speed": 20,
+    "range_km": 30,
+    "battery_percent": 59,
+    "location": {
+      "lat": 52.53871355066978,
+      "lng": 13.357966210692695
+    },
+    "status": "available",
+    "city": "berlin",
+    "last_maintained": "2026-03-19T00:12:04.465303+00:00"
+  },
+  {
+    "_id": "69d59d546301b5b7c812f43c",
+    "scooter_id": "SC-13EF9D97",
+    "model": "BidBlitz S2 Pro",
+    "max_speed": 25,
+    "range_km": 40,
+    "battery_percent": 83,
+    "location": {
+      "lat": 52.474988782238576,
+      "lng": 13.413384294017584
+    },
+    "status": "available",
+    "city": "berlin",
+    "last_maintained": "2026-03-12T00:12:04.465319+00:00"
+  },
+  {
+    "_id": "69d59d546301b5b7c812f43d",
+    "scooter_id": "SC-42D12863",
+    "model": "BidBlitz X1",
+    "max_speed": 20,
+    "range_km": 30,
+    "battery_percent": 84,
+    "location": {
+      "lat": 52.507408123695136,
+      "lng": 13.408304011314238
+    },
+    "status": "available",
+    "city": "berlin",
+    "last_maintained": "2026-03-25T00:12:04.465326+00:00"
+  },
+  {
+    "_id": "69d59d546301b5b7c812f43e",
+    "scooter_id": "SC-F7270C8A",
+    "model": "BidBlitz S1",
+    "max_speed": 20,
+    "range_km": 25,
+    "battery_percent": 50,
+    "location": {
+      "lat": 52.48973713962428,
+      "lng": 13.435877772360195
+    },
+    "status": "available",
+    "city": "berlin",
+    "last_maintained": "2026-03-24T00:12:04.465332+00:00"
+  },
+  {
+    "_id": "69d59d546301b5b7c812f43f",
+    "scooter_id": "SC-8061CB15",
+    "model": "BidBlitz S1",
+    "max_speed": 20,
+    "range_km": 25,
+    "battery_percent": 87,
+    "location": {
+      "lat": 52.4720715398468,
+      "lng": 13.412228795905241
+    },
+    "status": "available",
+    "city": "berlin",
+    "last_maintained": "2026-03-20T00:12:04.465337+00:00"
+  },
+  {
+    "_id": "69d59d546301b5b7c812f440",
+    "scooter_id": "SC-2CE84C54",
+    "model": "BidBlitz X1",
+    "max_speed": 20,
+    "range_km": 30,
+    "battery_percent": 90,
+    "location": {
+      "lat": 52.527428174872554,
+      "lng": 13.408938214225714
+    },
+    "status": "available",
+    "city": "berlin",
+    "last_maintained": "2026-03-23T00:12:04.465342+00:00"
+  },
+  {
+    "_id": "69d59d546301b5b7c812f441",
+    "scooter_id": "SC-69454D45",
+    "model": "BidBlitz S1",
+    "max_speed": 20,
+    "range_km": 25,
+    "battery_percent": 98,
+    "location": {
+      "lat": 52.554121608812345,
+      "lng": 13.392508164640253
+    },
+    "status": "available",
+    "city": "berlin",
+    "last_maintained": "2026-03-18T00:12:04.465348+00:00"
+  },
+  {
+    "_id": "69d59d546301b5b7c812f442",
+    "scooter_id": "SC-56BF2575",
+    "model": "BidBlitz X1",
+    "max_speed": 20,
+    "range_km": 30,
+    "battery_percent": 96,
+    "location": {
+      "lat": 52.55556474118479,
+      "lng": 13.441075992016865
+    },
+    "status": "available",
+    "city": "berlin",
+    "last_maintained": "2026-04-02T00:12:04.465356+00:00"
+  },
+  {
+    "_id": "69d59d546301b5b7c812f443",
+    "scooter_id": "SC-29F09E06",
+    "model": "BidBlitz S1",
+    "max_speed": 20,
+    "range_km": 25,
+    "battery_percent": 35,
+    "location": {
+      "lat": 52.49591755174037,
+      "lng": 13.415420912102682
+    },
+    "status": "available",
+    "city": "berlin",
+    "last_maintained": "2026-03-31T00:12:04.465361+00:00"
+  },
+  {
+    "_id": "69d59d546301b5b7c812f444",
+    "scooter_id": "SC-43767211",
+    "model": "BidBlitz S2 Pro",
+    "max_speed": 25,
+    "range_km": 40,
+    "battery_percent": 93,
+    "location": {
+      "lat": 52.487561821362405,
+      "lng": 13.414045604245912
+    },
+    "status": "available",
+    "city": "berlin",
+    "last_maintained": "2026-03-21T00:12:04.465366+00:00"
+  },
+  {
+    "_id": "69d59d546301b5b7c812f445",
+    "scooter_id": "SC-8F5DE7FC",
+    "model": "BidBlitz X1",
+    "max_speed": 20,
+    "range_km": 30,
+    "battery_percent": 82,
+    "location": {
+      "lat": 52.52747609660552,
+      "lng": 13.416928917955993
+    },
+    "status": "available",
+    "city": "berlin",
+    "last_maintained": "2026-03-11T00:12:04.465371+00:00"
+  },
+  {
+    "_id": "69d59d546301b5b7c812f446",
+    "scooter_id": "SC-DF48670A",
+    "model": "BidBlitz S2 Pro",
+    "max_speed": 25,
+    "range_km": 40,
+    "battery_percent": 55,
+    "location": {
+      "lat": 52.510080000894526,
+      "lng": 13.383112743414422
+    },
+    "status": "available",
+    "city": "berlin",
+    "last_maintained": "2026-03-24T00:12:04.465375+00:00"
+  },
+  {
+    "_id": "69d59d546301b5b7c812f447",
+    "scooter_id": "SC-34EFB0DB",
+    "model": "BidBlitz S1",
+    "max_speed": 20,
+    "range_km": 25,
+    "battery_percent": 98,
+    "location": {
+      "lat": 52.500757200280106,
+      "lng": 13.365674786350949
+    },
+    "status": "available",
+    "city": "berlin",
+    "last_maintained": "2026-03-26T00:12:04.465380+00:00"
+  },
+  {
+    "_id": "69d59d546301b5b7c812f448",
+    "scooter_id": "SC-40F52599",
+    "model": "BidBlitz S2 Pro",
+    "max_speed": 25,
+    "range_km": 40,
+    "battery_percent": 92,
+    "location": {
+      "lat": 52.51436364813854,
+      "lng": 13.439128534174236
+    },
+    "status": "available",
+    "city": "berlin",
+    "last_maintained": "2026-03-19T00:12:04.465384+00:00"
+  },
+  {
+    "_id": "69d59d546301b5b7c812f449",
+    "scooter_id": "SC-4F77E655",
+    "model": "BidBlitz S1",
+    "max_speed": 20,
+    "range_km": 25,
+    "battery_percent": 95,
+    "location": {
+      "lat": 52.56772441069356,
+      "lng": 13.369341031201685
+    },
+    "status": "available",
+    "city": "berlin",
+    "last_maintained": "2026-03-29T00:12:04.465389+00:00"
+  },
+  {
+    "_id": "69d609e0b68efd12a8edf86c",
+    "scooter_id": "SC-42C342C8",
+    "model": "BidBlitz S2 Pro",
+    "max_speed": 25,
+    "range_km": 40,
+    "battery_percent": 80,
+    "location": {
+      "lat": 52.53360600516802,
+      "lng": 13.414062710586999
+    },
+    "status": "available",
+    "city": "berlin",
+    "last_maintained": "2026-04-08T07:55:12.952315+00:00",
+    "created_at": "2026-04-08T07:55:12.952322+00:00"
+  },
+  {
+    "_id": "69d609e0b68efd12a8edf86d",
+    "scooter_id": "SC-D0F7373F",
+    "model": "BidBlitz X1",
+    "max_speed": 20,
+    "range_km": 30,
+    "battery_percent": 72,
+    "location": {
+      "lat": 52.494164198606924,
+      "lng": 13.378363364482462
+    },
+    "status": "available",
+    "city": "berlin",
+    "last_maintained": "2026-04-08T07:55:12.952330+00:00",
+    "created_at": "2026-04-08T07:55:12.952332+00:00"
+  },
+  {
+    "_id": "69d609e0b68efd12a8edf86e",
+    "scooter_id": "SC-222C88BE",
+    "model": "BidBlitz S2 Pro",
+    "max_speed": 25,
+    "range_km": 40,
+    "battery_percent": 77,
+    "location": {
+      "lat": 52.52758372301216,
+      "lng": 13.405203933017207
+    },
+    "status": "available",
+    "city": "berlin",
+    "last_maintained": "2026-04-08T07:55:12.952355+00:00",
+    "created_at": "2026-04-08T07:55:12.952357+00:00"
+  },
+  {
+    "_id": "69d609e0b68efd12a8edf86f",
+    "scooter_id": "SC-3F4623AC",
+    "model": "BidBlitz X1",
+    "max_speed": 20,
+    "range_km": 30,
+    "battery_percent": 69,
+    "location": {
+      "lat": 52.52819870465346,
+      "lng": 13.386744657139301
+    },
+    "status": "available",
+    "city": "berlin",
+    "last_maintained": "2026-04-08T07:55:12.952362+00:00",
+    "created_at": "2026-04-08T07:55:12.952364+00:00"
+  },
+  {
+    "_id": "69d609e0b68efd12a8edf870",
+    "scooter_id": "SC-89D65494",
+    "model": "BidBlitz X1",
+    "max_speed": 20,
+    "range_km": 30,
+    "battery_percent": 63,
+    "location": {
+      "lat": 52.534459429659265,
+      "lng": 13.384282305619731
+    },
+    "status": "available",
+    "city": "berlin",
+    "last_maintained": "2026-04-08T07:55:12.952369+00:00",
+    "created_at": "2026-04-08T07:55:12.952370+00:00"
+  },
+  {
+    "_id": "69d609e0b68efd12a8edf871",
+    "scooter_id": "SC-75E585F1",
+    "model": "BidBlitz S1",
+    "max_speed": 20,
+    "range_km": 25,
+    "battery_percent": 68,
+    "location": {
+      "lat": 52.508750837230245,
+      "lng": 13.421334885643034
+    },
+    "status": "available",
+    "city": "berlin",
+    "last_maintained": "2026-04-08T07:55:12.952379+00:00",
+    "created_at": "2026-04-08T07:55:12.952380+00:00"
+  },
+  {
+    "_id": "69d609e0b68efd12a8edf872",
+    "scooter_id": "SC-F4A7BAFE",
+    "model": "BidBlitz S2 Pro",
+    "max_speed": 25,
+    "range_km": 40,
+    "battery_percent": 90,
+    "location": {
+      "lat": 52.53474297764842,
+      "lng": 13.382949457687447
+    },
+    "status": "available",
+    "city": "berlin",
+    "last_maintained": "2026-04-08T07:55:12.952387+00:00",
+    "created_at": "2026-04-08T07:55:12.952388+00:00"
+  },
+  {
+    "_id": "69d609e0b68efd12a8edf873",
+    "scooter_id": "SC-07D23047",
+    "model": "BidBlitz S2 Pro",
+    "max_speed": 25,
+    "range_km": 40,
+    "battery_percent": 85,
+    "location": {
+      "lat": 52.51806809277494,
+      "lng": 13.423931502429156
+    },
+    "status": "available",
+    "city": "berlin",
+    "last_maintained": "2026-04-08T07:55:12.952394+00:00",
+    "created_at": "2026-04-08T07:55:12.952395+00:00"
+  },
+  {
+    "_id": "69d609e0b68efd12a8edf874",
+    "scooter_id": "SC-4F84703C",
+    "model": "BidBlitz S2 Pro",
+    "max_speed": 25,
+    "range_km": 40,
+    "battery_percent": 64,
+    "location": {
+      "lat": 52.515143432255606,
+      "lng": 13.415283226167395
+    },
+    "status": "available",
+    "city": "berlin",
+    "last_maintained": "2026-04-08T07:55:12.952399+00:00",
+    "created_at": "2026-04-08T07:55:12.952400+00:00"
+  },
+  {
+    "_id": "69d609e0b68efd12a8edf875",
+    "scooter_id": "SC-7F750E3E",
+    "model": "BidBlitz S2 Pro",
+    "max_speed": 25,
+    "range_km": 40,
+    "battery_percent": 86,
+    "location": {
+      "lat": 52.49365544044274,
+      "lng": 13.408753574289372
+    },
+    "status": "available",
+    "city": "berlin",
+    "last_maintained": "2026-04-08T07:55:12.952404+00:00",
+    "created_at": "2026-04-08T07:55:12.952405+00:00"
+  },
+  {
+    "_id": "69d60aeeb68efd12a8edf87b",
+    "scooter_id": "SC-CD3EA785",
+    "model": "BidBlitz S1",
+    "max_speed": 20,
+    "range_km": 25,
+    "battery_percent": 69,
+    "location": {
+      "lat": 52.50651409972537,
+      "lng": 13.376798945078317
+    },
+    "status": "available",
+    "city": "berlin",
+    "last_maintained": "2026-04-08T07:59:42.711137+00:00",
+    "created_at": "2026-04-08T07:59:42.711144+00:00"
+  },
+  {
+    "_id": "69d60aeeb68efd12a8edf87c",
+    "scooter_id": "SC-ED2DDB90",
+    "model": "BidBlitz S2 Pro",
+    "max_speed": 25,
+    "range_km": 40,
+    "battery_percent": 82,
+    "location": {
+      "lat": 52.49126605820497,
+      "lng": 13.376236837398062
+    },
+    "status": "available",
+    "city": "berlin",
+    "last_maintained": "2026-04-08T07:59:42.711149+00:00",
+    "created_at": "2026-04-08T07:59:42.711151+00:00"
+  },
+  {
+    "_id": "69d60aeeb68efd12a8edf87d",
+    "scooter_id": "SC-F18D4070",
+    "model": "BidBlitz X1",
+    "max_speed": 20,
+    "range_km": 30,
+    "battery_percent": 80,
+    "location": {
+      "lat": 52.52014146065242,
+      "lng": 13.38291620861697
+    },
+    "status": "available",
+    "city": "berlin",
+    "last_maintained": "2026-04-08T07:59:42.711155+00:00",
+    "created_at": "2026-04-08T07:59:42.711157+00:00"
+  },
+  {
+    "_id": "69d60aeeb68efd12a8edf87e",
+    "scooter_id": "SC-555E34F9",
+    "model": "BidBlitz S1",
+    "max_speed": 20,
+    "range_km": 25,
+    "battery_percent": 78,
+    "location": {
+      "lat": 52.546955969255535,
+      "lng": 13.416729674835507
+    },
+    "status": "available",
+    "city": "berlin",
+    "last_maintained": "2026-04-08T07:59:42.711161+00:00",
+    "created_at": "2026-04-08T07:59:42.711162+00:00"
+  },
+  {
+    "_id": "69d60aeeb68efd12a8edf87f",
+    "scooter_id": "SC-31A548BC",
+    "model": "BidBlitz S2 Pro",
+    "max_speed": 25,
+    "range_km": 40,
+    "battery_percent": 87,
+    "location": {
+      "lat": 52.53228534735265,
+      "lng": 13.385769641492397
+    },
+    "status": "available",
+    "city": "berlin",
+    "last_maintained": "2026-04-08T07:59:42.711166+00:00",
+    "created_at": "2026-04-08T07:59:42.711167+00:00"
+  },
+  {
+    "_id": "69d60aeeb68efd12a8edf880",
+    "scooter_id": "SC-3D8C0CF5",
+    "model": "BidBlitz S1",
+    "max_speed": 20,
+    "range_km": 25,
+    "battery_percent": 97,
+    "location": {
+      "lat": 52.527966137216,
+      "lng": 13.421126791643527
+    },
+    "status": "available",
+    "city": "berlin",
+    "last_maintained": "2026-04-08T07:59:42.711171+00:00",
+    "created_at": "2026-04-08T07:59:42.711172+00:00"
+  },
+  {
+    "_id": "69d60aeeb68efd12a8edf881",
+    "scooter_id": "SC-A432E671",
+    "model": "BidBlitz X1",
+    "max_speed": 20,
+    "range_km": 30,
+    "battery_percent": 95,
+    "location": {
+      "lat": 52.51020292415288,
+      "lng": 13.402050895327779
+    },
+    "status": "available",
+    "city": "berlin",
+    "last_maintained": "2026-04-08T07:59:42.711176+00:00",
+    "created_at": "2026-04-08T07:59:42.711178+00:00"
+  },
+  {
+    "_id": "69d60aeeb68efd12a8edf882",
+    "scooter_id": "SC-602B8AFE",
+    "model": "BidBlitz X1",
+    "max_speed": 20,
+    "range_km": 30,
+    "battery_percent": 70,
+    "location": {
+      "lat": 52.53090618743111,
+      "lng": 13.393063737351643
+    },
+    "status": "available",
+    "city": "berlin",
+    "last_maintained": "2026-04-08T07:59:42.711181+00:00",
+    "created_at": "2026-04-08T07:59:42.711183+00:00"
+  },
+  {
+    "_id": "69d60aeeb68efd12a8edf883",
+    "scooter_id": "SC-E36A2398",
+    "model": "BidBlitz X1",
+    "max_speed": 20,
+    "range_km": 30,
+    "battery_percent": 67,
+    "location": {
+      "lat": 52.52432302347227,
+      "lng": 13.410603787779793
+    },
+    "status": "available",
+    "city": "berlin",
+    "last_maintained": "2026-04-08T07:59:42.711186+00:00",
+    "created_at": "2026-04-08T07:59:42.711188+00:00"
+  },
+  {
+    "_id": "69d60aeeb68efd12a8edf884",
+    "scooter_id": "SC-57904777",
+    "model": "BidBlitz S2 Pro",
+    "max_speed": 25,
+    "range_km": 40,
+    "battery_percent": 96,
+    "location": {
+      "lat": 52.53402671358427,
+      "lng": 13.43462457899154
+    },
+    "status": "available",
+    "city": "berlin",
+    "last_maintained": "2026-04-08T07:59:42.711191+00:00",
+    "created_at": "2026-04-08T07:59:42.711192+00:00"
+  },
+  {
+    "_id": "69d60aeeb68efd12a8edf885",
+    "scooter_id": "SC-ED8715DB",
+    "model": "BidBlitz S1",
+    "max_speed": 20,
+    "range_km": 25,
+    "battery_percent": 82,
+    "location": {
+      "lat": 52.513011108572485,
+      "lng": 13.406790157565077
+    },
+    "status": "available",
+    "city": "berlin",
+    "last_maintained": "2026-04-08T07:59:42.711195+00:00",
+    "created_at": "2026-04-08T07:59:42.711197+00:00"
+  },
+  {
+    "_id": "69d60aeeb68efd12a8edf886",
+    "scooter_id": "SC-C5693CDB",
+    "model": "BidBlitz S1",
+    "max_speed": 20,
+    "range_km": 25,
+    "battery_percent": 96,
+    "location": {
+      "lat": 52.54505390495679,
+      "lng": 13.376441422646641
+    },
+    "status": "available",
+    "city": "berlin",
+    "last_maintained": "2026-04-08T07:59:42.711201+00:00",
+    "created_at": "2026-04-08T07:59:42.711202+00:00"
+  },
+  {
+    "_id": "69d60aeeb68efd12a8edf887",
+    "scooter_id": "SC-B76DCB03",
+    "model": "BidBlitz X1",
+    "max_speed": 20,
+    "range_km": 30,
+    "battery_percent": 69,
+    "location": {
+      "lat": 52.50920660556496,
+      "lng": 13.398279716699458
+    },
+    "status": "available",
+    "city": "berlin",
+    "last_maintained": "2026-04-08T07:59:42.711206+00:00",
+    "created_at": "2026-04-08T07:59:42.711207+00:00"
+  },
+  {
+    "_id": "69d60aeeb68efd12a8edf888",
+    "scooter_id": "SC-A15A54BF",
+    "model": "BidBlitz S2 Pro",
+    "max_speed": 25,
+    "range_km": 40,
+    "battery_percent": 71,
+    "location": {
+      "lat": 52.531307737067884,
+      "lng": 13.421378769449094
+    },
+    "status": "available",
+    "city": "berlin",
+    "last_maintained": "2026-04-08T07:59:42.711211+00:00",
+    "created_at": "2026-04-08T07:59:42.711212+00:00"
+  },
+  {
+    "_id": "69d60aeeb68efd12a8edf889",
+    "scooter_id": "SC-D3BA37A0",
+    "model": "BidBlitz X1",
+    "max_speed": 20,
+    "range_km": 30,
+    "battery_percent": 70,
+    "location": {
+      "lat": 52.523667818980535,
+      "lng": 13.409750217666664
+    },
+    "status": "available",
+    "city": "berlin",
+    "last_maintained": "2026-04-08T07:59:42.711216+00:00",
+    "created_at": "2026-04-08T07:59:42.711217+00:00"
+  },
+  {
+    "_id": "69d60aeeb68efd12a8edf88a",
+    "scooter_id": "SC-C9E449FE",
+    "model": "BidBlitz S2 Pro",
+    "max_speed": 25,
+    "range_km": 40,
+    "battery_percent": 100,
+    "location": {
+      "lat": 52.525856692517124,
+      "lng": 13.432158935664825
+    },
+    "status": "available",
+    "city": "berlin",
+    "last_maintained": "2026-04-08T07:59:42.711221+00:00",
+    "created_at": "2026-04-08T07:59:42.711222+00:00"
+  },
+  {
+    "_id": "69d60aeeb68efd12a8edf88b",
+    "scooter_id": "SC-252314F5",
+    "model": "BidBlitz X1",
+    "max_speed": 20,
+    "range_km": 30,
+    "battery_percent": 70,
+    "location": {
+      "lat": 52.51945308733373,
+      "lng": 13.381357554364808
+    },
+    "status": "available",
+    "city": "berlin",
+    "last_maintained": "2026-04-08T07:59:42.711226+00:00",
+    "created_at": "2026-04-08T07:59:42.711227+00:00"
+  },
+  {
+    "_id": "69d60aeeb68efd12a8edf88c",
+    "scooter_id": "SC-9D292984",
+    "model": "BidBlitz X1",
+    "max_speed": 20,
+    "range_km": 30,
+    "battery_percent": 63,
+    "location": {
+      "lat": 52.49466899794209,
+      "lng": 13.409004145336036
+    },
+    "status": "available",
+    "city": "berlin",
+    "last_maintained": "2026-04-08T07:59:42.711231+00:00",
+    "created_at": "2026-04-08T07:59:42.711232+00:00"
+  },
+  {
+    "_id": "69d60aeeb68efd12a8edf88d",
+    "scooter_id": "SC-83BE5F9A",
+    "model": "BidBlitz S2 Pro",
+    "max_speed": 25,
+    "range_km": 40,
+    "battery_percent": 93,
+    "location": {
+      "lat": 52.50892123646069,
+      "lng": 13.397260812147193
+    },
+    "status": "available",
+    "city": "berlin",
+    "last_maintained": "2026-04-08T07:59:42.711236+00:00",
+    "created_at": "2026-04-08T07:59:42.711237+00:00"
+  },
+  {
+    "_id": "69d60aeeb68efd12a8edf88e",
+    "scooter_id": "SC-1ABFF138",
+    "model": "BidBlitz S1",
+    "max_speed": 20,
+    "range_km": 25,
+    "battery_percent": 89,
+    "location": {
+      "lat": 52.50629551955541,
+      "lng": 13.377245639192454
+    },
+    "status": "available",
+    "city": "berlin",
+    "last_maintained": "2026-04-08T07:59:42.711241+00:00",
+    "created_at": "2026-04-08T07:59:42.711242+00:00"
+  },
+  {
+    "_id": "69da1222a1c13be227b5772e",
+    "scooter_id": "498562a3708d5dfd",
+    "name": "Scooter #001",
+    "lat": 52.52,
+    "lng": 13.405,
+    "battery": 85,
+    "status": "available",
+    "unlock_fee": 1.0,
+    "price_per_minute": 0.2,
+    "total_rides": 0,
+    "created_at": "2026-04-11T09:19:30.685279+00:00"
+  },
+  {
+    "_id": "69da1222a1c13be227b5772f",
+    "scooter_id": "7d4ba06177771d8a",
+    "name": "Scooter #002",
+    "lat": 52.518,
+    "lng": 13.41,
+    "battery": 92,
+    "status": "available",
+    "unlock_fee": 1.0,
+    "price_per_minute": 0.2,
+    "total_rides": 0,
+    "created_at": "2026-04-11T09:19:30.685279+00:00"
+  },
+  {
+    "_id": "69da1222a1c13be227b57730",
+    "scooter_id": "b0d81bf5131ac1b5",
+    "name": "Scooter #003",
+    "lat": 52.522,
+    "lng": 13.398,
+    "battery": 45,
+    "status": "in_use",
+    "unlock_fee": 1.0,
+    "price_per_minute": 0.2,
+    "total_rides": 0,
+    "created_at": "2026-04-11T09:19:30.685279+00:00",
+    "current_ride_id": "3822ffeff364c029",
+    "current_user_id": "69cface7afddbc3de2cabb39",
+    "unlocked_at": "2026-04-11T15:50:59.323529+00:00"
+  },
+  {
+    "_id": "69da1222a1c13be227b57731",
+    "scooter_id": "28e2f3f0fb41d922",
+    "name": "Scooter #004",
+    "lat": 52.515,
+    "lng": 13.42,
+    "battery": 78,
+    "status": "available",
+    "unlock_fee": 1.0,
+    "price_per_minute": 0.2,
+    "total_rides": 0,
+    "created_at": "2026-04-11T09:19:30.685279+00:00"
+  },
+  {
+    "_id": "69da1222a1c13be227b57732",
+    "scooter_id": "912825d26b3c327e",
+    "name": "Scooter #005",
+    "lat": 52.525,
+    "lng": 13.39,
+    "battery": 15,
+    "status": "available",
+    "unlock_fee": 1.0,
+    "price_per_minute": 0.2,
+    "total_rides": 0,
+    "created_at": "2026-04-11T09:19:30.685279+00:00"
+  },
+  {
+    "_id": "69df4df94bf321cad26fc000",
+    "scooter_id": "sc_2b618ed91fba",
+    "model": "BlitzRide Mini",
+    "location": {
+      "lat": 42.663974715253886,
+      "lng": 21.16360087232497
+    },
+    "lat": 42.663974715253886,
+    "lng": 21.16360087232497,
+    "location_name": "Skanderbeg-Platz",
+    "battery": 71,
+    "battery_percent": 55,
+    "status": "available",
+    "locked": true,
+    "range_km": 15
+  },
+  {
+    "_id": "69df4df94bf321cad26fc001",
+    "scooter_id": "sc_1f3fa9598a18",
+    "model": "BlitzRide X1",
+    "location": {
+      "lat": 42.65927057915332,
+      "lng": 21.159101353858645
+    },
+    "lat": 42.65927057915332,
+    "lng": 21.159101353858645,
+    "location_name": "Newborn Monument",
+    "battery": 67,
+    "battery_percent": 63,
+    "status": "available",
+    "locked": true,
+    "range_km": 13
+  },
+  {
+    "_id": "69df4df94bf321cad26fc002",
+    "scooter_id": "sc_557f6e87b2f2",
+    "model": "BlitzRide X1",
+    "location": {
+      "lat": 42.659291522926075,
+      "lng": 21.157110455723174
+    },
+    "lat": 42.659291522926075,
+    "lng": 21.157110455723174,
+    "location_name": "Mutter Teresa",
+    "battery": 79,
+    "battery_percent": 42,
+    "status": "available",
+    "locked": true,
+    "range_km": 25
+  },
+  {
+    "_id": "69df4df94bf321cad26fc003",
+    "scooter_id": "sc_92a95d4328e2",
+    "model": "BlitzRide X1",
+    "location": {
+      "lat": 42.66302955187142,
+      "lng": 21.163373592109497
+    },
+    "lat": 42.66302955187142,
+    "lng": 21.163373592109497,
+    "location_name": "Grand Hotel",
+    "battery": 57,
+    "battery_percent": 46,
+    "status": "available",
+    "locked": true,
+    "range_km": 34
+  },
+  {
+    "_id": "69df4df94bf321cad26fc004",
+    "scooter_id": "sc_adac04bab7e9",
+    "model": "BlitzRide Pro",
+    "location": {
+      "lat": 42.66224486403091,
+      "lng": 21.162631096905002
+    },
+    "lat": 42.66224486403091,
+    "lng": 21.162631096905002,
+    "location_name": "Bulevardi",
+    "battery": 96,
+    "battery_percent": 84,
+    "status": "available",
+    "locked": true,
+    "range_km": 24
+  },
+  {
+    "_id": "69df4df94bf321cad26fc005",
+    "scooter_id": "sc_837ced761ab2",
+    "model": "BlitzRide S3",
+    "location": {
+      "lat": 42.67305567283251,
+      "lng": 21.190330898800898
+    },
+    "lat": 42.67305567283251,
+    "lng": 21.190330898800898,
+    "location_name": "Germia Park",
+    "battery": 78,
+    "battery_percent": 76,
+    "status": "available",
+    "locked": true,
+    "range_km": 19
+  },
+  {
+    "_id": "69df4df94bf321cad26fc006",
+    "scooter_id": "sc_5c5d296f215d",
+    "model": "BlitzRide Pro",
+    "location": {
+      "lat": 42.64779270425251,
+      "lng": 21.154819722010867
+    },
+    "lat": 42.64779270425251,
+    "lng": 21.154819722010867,
+    "location_name": "Albi Mall",
+    "battery": 49,
+    "battery_percent": 85,
+    "status": "available",
+    "locked": true,
+    "range_km": 11
+  },
+  {
+    "_id": "69df4df94bf321cad26fc007",
+    "scooter_id": "sc_565393dd6e6d",
+    "model": "BlitzRide Mini",
+    "location": {
+      "lat": 42.66316535857209,
+      "lng": 21.166217727780623
+    },
+    "lat": 42.66316535857209,
+    "lng": 21.166217727780623,
+    "location_name": "Uni Prishtina",
+    "battery": 73,
+    "battery_percent": 49,
+    "status": "available",
+    "locked": true,
+    "range_km": 11
+  },
+  {
+    "_id": "69df4df94bf321cad26fc008",
+    "scooter_id": "sc_2ba4c53bc3c1",
+    "model": "BlitzRide X1",
+    "location": {
+      "lat": 42.65993926035591,
+      "lng": 21.15579945753197
+    },
+    "lat": 42.65993926035591,
+    "lng": 21.15579945753197,
+    "location_name": "Stadtpark",
+    "battery": 86,
+    "battery_percent": 67,
+    "status": "available",
+    "locked": true,
+    "range_km": 8
+  },
+  {
+    "_id": "69df4df94bf321cad26fc009",
+    "scooter_id": "sc_acc93e49b76b",
+    "model": "BlitzRide X1",
+    "location": {
+      "lat": 42.65698701193656,
+      "lng": 21.1613263228947
+    },
+    "lat": 42.65698701193656,
+    "lng": 21.1613263228947,
+    "location_name": "Marktplatz",
+    "battery": 46,
+    "battery_percent": 78,
+    "status": "available",
+    "locked": true,
+    "range_km": 18
+  },
+  {
+    "_id": "69df4df94bf321cad26fc00a",
+    "scooter_id": "sc_8f483384a694",
+    "model": "BlitzRide Mini",
+    "location": {
+      "lat": 42.66333154783334,
+      "lng": 21.171586480902196
+    },
+    "lat": 42.66333154783334,
+    "lng": 21.171586480902196,
+    "location_name": "Dragodan",
+    "battery": 44,
+    "battery_percent": 42,
+    "status": "available",
+    "locked": true,
+    "range_km": 23
+  },
+  {
+    "_id": "69df4df94bf321cad26fc00b",
+    "scooter_id": "sc_108d6f2a644c",
+    "model": "BlitzRide X1",
+    "location": {
+      "lat": 42.666347054894125,
+      "lng": 21.158808461534942
+    },
+    "lat": 42.666347054894125,
+    "lng": 21.158808461534942,
+    "location_name": "Dardania",
+    "battery": 93,
+    "battery_percent": 62,
+    "status": "available",
+    "locked": true,
+    "range_km": 26
+  },
+  {
+    "_id": "69df4df94bf321cad26fc00c",
+    "scooter_id": "sc_8bff95768aa2",
+    "model": "BlitzRide Mini",
+    "location": {
+      "lat": 42.663846842058526,
+      "lng": 21.154549000640763
+    },
+    "lat": 42.663846842058526,
+    "lng": 21.154549000640763,
+    "location_name": "Zentrum Süd",
+    "battery": 59,
+    "battery_percent": 92,
+    "status": "available",
+    "locked": true,
+    "range_km": 28
+  },
+  {
+    "_id": "69df4df94bf321cad26fc00d",
+    "scooter_id": "sc_db1a3c002e22",
+    "model": "BlitzRide X1",
+    "location": {
+      "lat": 42.665796572444435,
+      "lng": 21.165259675970145
+    },
+    "lat": 42.665796572444435,
+    "lng": 21.165259675970145,
+    "location_name": "Peyton",
+    "battery": 98,
+    "battery_percent": 89,
+    "status": "available",
+    "locked": true,
+    "range_km": 21
+  },
+  {
+    "_id": "69df4df94bf321cad26fc00e",
+    "scooter_id": "sc_569bc2bd4dd1",
+    "model": "BlitzRide Pro",
+    "location": {
+      "lat": 42.67023873122017,
+      "lng": 21.169864300837304
+    },
+    "lat": 42.67023873122017,
+    "lng": 21.169864300837304,
+    "location_name": "Ulpiana",
+    "battery": 82,
+    "battery_percent": 48,
+    "status": "available",
+    "locked": true,
+    "range_km": 13
+  }
+]

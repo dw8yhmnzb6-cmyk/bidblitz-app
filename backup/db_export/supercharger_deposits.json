@@ -1,0 +1,13 @@
+[
+  {
+    "_id": "69dffba390e7677cb6b17c34",
+    "deposit_id": "sc_c24044e4db2e",
+    "user_email": "kunde@bidblitz.com",
+    "pool_id": "btc_pool",
+    "reward_coin": "BTC",
+    "amount_blz": 500.0,
+    "estimated_reward": 6.25,
+    "status": "staked",
+    "created_at": "2026-04-15T20:57:07.130760+00:00"
+  }
+]

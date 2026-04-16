@@ -1,0 +1,35 @@
+[
+  {
+    "_id": "69df3b8ac45d2581975c56f3",
+    "place_id": "356d2effb871",
+    "user_email": "admin@bidblitz.com",
+    "name": "Zuhause",
+    "icon": "home",
+    "address": "Friedrichstr. 42, 10117 Berlin",
+    "lat": 52.5196,
+    "lng": 13.3882,
+    "created_at": "2026-04-15T07:17:30.152588+00:00"
+  },
+  {
+    "_id": "69df3b8ac45d2581975c56f4",
+    "place_id": "6b2c09a7b874",
+    "user_email": "admin@bidblitz.com",
+    "name": "Arbeit",
+    "icon": "work",
+    "address": "Alexanderplatz 1, 10178 Berlin",
+    "lat": 52.5219,
+    "lng": 13.4132,
+    "created_at": "2026-04-15T07:17:30.307144+00:00"
+  },
+  {
+    "_id": "69df3b8ac45d2581975c56f5",
+    "place_id": "fd32352f8390",
+    "user_email": "admin@bidblitz.com",
+    "name": "Gym",
+    "icon": "gym",
+    "address": "FitFactory, Torstraße 100, Berlin",
+    "lat": 52.5292,
+    "lng": 13.403,
+    "created_at": "2026-04-15T07:17:30.431643+00:00"
+  }
+]

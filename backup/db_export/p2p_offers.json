@@ -1,0 +1,16 @@
+[
+  {
+    "_id": "69e003bdd1242cebe84c17e2",
+    "offer_id": "p2p_c90659e8bec2",
+    "borrower_email": "kunde@bidblitz.com",
+    "borrower_name": "Max Mustermann",
+    "amount_eur": 500.0,
+    "interest_rate": 8.0,
+    "term_months": 6,
+    "monthly_payment": 90.0,
+    "description": "Laptop kaufen",
+    "status": "open",
+    "funded_by": null,
+    "created_at": "2026-04-15T21:31:41.969402+00:00"
+  }
+]

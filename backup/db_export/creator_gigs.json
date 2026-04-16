@@ -1,0 +1,62 @@
+[
+  {
+    "_id": "69dfb82a36afb8a55c5ee63d",
+    "gig_id": "cg_f0ee391d9e30",
+    "brand_email": "admin@bidblitz.com",
+    "brand_name": "Amir S.",
+    "title": "TikTok Video für neue Sneaker-Kollektion",
+    "description": "Kreatives Video gesucht!",
+    "platform": "tiktok",
+    "budget": 50,
+    "requirements": "500+ Follower, kreativ",
+    "applicants": [],
+    "selected_creator": null,
+    "status": "open",
+    "created_at": "2026-04-14T09:09:14.879605+00:00"
+  },
+  {
+    "_id": "69dfb82a36afb8a55c5ee63e",
+    "gig_id": "cg_6a835a2ceb4a",
+    "brand_email": "kunde@bidblitz.com",
+    "brand_name": "Amir S.",
+    "title": "Instagram Story für Restaurant-Eröffnung",
+    "description": "Kreatives Video gesucht!",
+    "platform": "instagram",
+    "budget": 30,
+    "requirements": "500+ Follower, kreativ",
+    "applicants": [],
+    "selected_creator": null,
+    "status": "open",
+    "created_at": "2026-04-15T15:09:14.879605+00:00"
+  },
+  {
+    "_id": "69dfb82a36afb8a55c5ee63f",
+    "gig_id": "cg_5a251360b867",
+    "brand_email": "admin@bidblitz.com",
+    "brand_name": "Sophie R.",
+    "title": "YouTube Short über Gaming Setup",
+    "description": "Kreatives Video gesucht!",
+    "platform": "youtube",
+    "budget": 80,
+    "requirements": "500+ Follower, kreativ",
+    "applicants": [],
+    "selected_creator": null,
+    "status": "open",
+    "created_at": "2026-04-14T18:09:14.879605+00:00"
+  },
+  {
+    "_id": "69dfb82a36afb8a55c5ee640",
+    "gig_id": "cg_f9e96627c9e5",
+    "brand_email": "admin@bidblitz.com",
+    "brand_name": "Amir S.",
+    "title": "TikTok Review: Neues Parfüm",
+    "description": "Kreatives Video gesucht!",
+    "platform": "tiktok",
+    "budget": 25,
+    "requirements": "500+ Follower, kreativ",
+    "applicants": [],
+    "selected_creator": null,
+    "status": "open",
+    "created_at": "2026-04-15T12:09:14.879605+00:00"
+  }
+]

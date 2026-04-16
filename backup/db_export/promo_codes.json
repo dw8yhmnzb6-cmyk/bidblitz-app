@@ -1,0 +1,56 @@
+[
+  {
+    "_id": "69dfea95427bc86adaebb9b3",
+    "code": "WELCOME10",
+    "active": true,
+    "created_at": "2026-04-15T19:44:21.170255+00:00",
+    "creator_email": "admin@bidblitz.com",
+    "description": "€10 Willkommens-Bonus",
+    "max_uses": 1000,
+    "type": "credit",
+    "used_by": [
+      "admin@bidblitz.com"
+    ],
+    "used_count": 1,
+    "value": 10
+  },
+  {
+    "_id": "69dfea95427bc86adaebb9b5",
+    "code": "FRIEND5",
+    "active": true,
+    "created_at": "2026-04-15T19:44:21.181767+00:00",
+    "creator_email": "admin@bidblitz.com",
+    "description": "€5 Freunde-werben",
+    "max_uses": 500,
+    "type": "credit",
+    "used_by": [],
+    "used_count": 0,
+    "value": 5
+  },
+  {
+    "_id": "69dfea95427bc86adaebb9b7",
+    "code": "PIZZA20",
+    "active": true,
+    "created_at": "2026-04-15T19:44:21.182120+00:00",
+    "creator_email": "admin@bidblitz.com",
+    "description": "20% auf erste Pizza-Bestellung",
+    "max_uses": 200,
+    "type": "percent",
+    "used_by": [],
+    "used_count": 0,
+    "value": 20
+  },
+  {
+    "_id": "69dfea95427bc86adaebb9b9",
+    "code": "BLITZ50",
+    "active": true,
+    "created_at": "2026-04-15T19:44:21.182375+00:00",
+    "creator_email": "admin@bidblitz.com",
+    "description": "€50 VIP Bonus",
+    "max_uses": 10,
+    "type": "credit",
+    "used_by": [],
+    "used_count": 0,
+    "value": 50
+  }
+]

@@ -1,0 +1,186 @@
+[
+  {
+    "_id": "69de9be8b904b02a0774a225",
+    "station_id": "ev_001",
+    "name": "Schnelllader Alexanderplatz",
+    "operator": "EnBW",
+    "type": "DC",
+    "power_kw": 150,
+    "connectors": [
+      "CCS",
+      "CHAdeMO"
+    ],
+    "price_per_kwh": 0.49,
+    "address": "Alexanderplatz 3, 10178 Berlin",
+    "city": "Berlin",
+    "lat": 52.5219,
+    "lng": 13.4132,
+    "status": "available",
+    "slots_total": 4,
+    "slots_available": 3,
+    "rating": 4.7,
+    "reviews": 89,
+    "features": [
+      "Überdacht",
+      "24/7",
+      "Karte/App",
+      "Café nebenan"
+    ],
+    "image": "https://images.unsplash.com/photo-1772256019760-a144ae100cc4?w=800&q=80",
+    "created_at": "2026-04-14T19:56:24.535980+00:00",
+    "total_sessions": 2117
+  },
+  {
+    "_id": "69de9be8b904b02a0774a226",
+    "station_id": "ev_002",
+    "name": "Tesla Supercharger Stachus",
+    "operator": "Tesla",
+    "type": "DC",
+    "power_kw": 250,
+    "connectors": [
+      "Tesla",
+      "CCS"
+    ],
+    "price_per_kwh": 0.45,
+    "address": "Karlsplatz 1, 80335 München",
+    "city": "München",
+    "lat": 48.1394,
+    "lng": 11.5653,
+    "status": "available",
+    "slots_total": 8,
+    "slots_available": 5,
+    "rating": 4.9,
+    "reviews": 234,
+    "features": [
+      "250kW",
+      "24/7",
+      "Lounge",
+      "Toilette"
+    ],
+    "image": "https://images.unsplash.com/photo-1775138260921-883455954eb0?w=800&q=80",
+    "created_at": "2026-04-14T19:56:24.535980+00:00",
+    "total_sessions": 3411
+  },
+  {
+    "_id": "69de9be8b904b02a0774a227",
+    "station_id": "ev_003",
+    "name": "Stadtwerke Ladepark Hafen",
+    "operator": "Stadtwerke Hamburg",
+    "type": "DC",
+    "power_kw": 100,
+    "connectors": [
+      "CCS",
+      "Typ 2"
+    ],
+    "price_per_kwh": 0.39,
+    "address": "Am Sandtorkai 50, 20457 Hamburg",
+    "city": "Hamburg",
+    "lat": 53.5432,
+    "lng": 9.9876,
+    "status": "available",
+    "slots_total": 6,
+    "slots_available": 4,
+    "rating": 4.6,
+    "reviews": 156,
+    "features": [
+      "Ökostrom",
+      "Parkhaus",
+      "Shopping",
+      "Barrierefrei"
+    ],
+    "image": "https://images.unsplash.com/photo-1762452059456-e4c16c256dd1?w=800&q=80",
+    "created_at": "2026-04-14T19:56:24.535980+00:00",
+    "total_sessions": 3635
+  },
+  {
+    "_id": "69de9be8b904b02a0774a228",
+    "station_id": "ev_004",
+    "name": "IONITY Autobahn A3",
+    "operator": "IONITY",
+    "type": "HPC",
+    "power_kw": 350,
+    "connectors": [
+      "CCS"
+    ],
+    "price_per_kwh": 0.79,
+    "address": "Raststätte Fernthal, A3",
+    "city": "Neustadt/Wied",
+    "lat": 50.5912,
+    "lng": 7.4123,
+    "status": "available",
+    "slots_total": 6,
+    "slots_available": 6,
+    "rating": 4.5,
+    "reviews": 67,
+    "features": [
+      "350kW HPC",
+      "24/7",
+      "Raststätte",
+      "WC"
+    ],
+    "image": "https://images.unsplash.com/photo-1774685110718-c5b4fe026144?w=800&q=80",
+    "created_at": "2026-04-14T19:56:24.535980+00:00",
+    "total_sessions": 4088
+  },
+  {
+    "_id": "69de9be8b904b02a0774a229",
+    "station_id": "ev_005",
+    "name": "AC Wallbox Parkhaus City",
+    "operator": "Allego",
+    "type": "AC",
+    "power_kw": 22,
+    "connectors": [
+      "Typ 2"
+    ],
+    "price_per_kwh": 0.35,
+    "address": "Zeil 112, 60313 Frankfurt",
+    "city": "Frankfurt",
+    "lat": 50.1145,
+    "lng": 8.6823,
+    "status": "occupied",
+    "slots_total": 10,
+    "slots_available": 2,
+    "rating": 4.4,
+    "reviews": 112,
+    "features": [
+      "Günstig",
+      "Parkhaus",
+      "Shopping",
+      "Überdacht"
+    ],
+    "image": "https://images.unsplash.com/photo-1638454795595-0a0abf68614d?w=800&q=80",
+    "created_at": "2026-04-14T19:56:24.535980+00:00",
+    "total_sessions": 3122
+  },
+  {
+    "_id": "69de9be8b904b02a0774a22a",
+    "station_id": "ev_006",
+    "name": "Schnelllader Mediapark",
+    "operator": "E.ON",
+    "type": "DC",
+    "power_kw": 150,
+    "connectors": [
+      "CCS",
+      "CHAdeMO"
+    ],
+    "price_per_kwh": 0.44,
+    "address": "Mediapark 5, 50670 Köln",
+    "city": "Köln",
+    "lat": 50.9498,
+    "lng": 6.9432,
+    "status": "available",
+    "slots_total": 4,
+    "slots_available": 4,
+    "rating": 4.8,
+    "reviews": 78,
+    "features": [
+      "150kW",
+      "Überdacht",
+      "App-Bezahlung",
+      "Café"
+    ],
+    "image": "https://images.unsplash.com/photo-1757439402101-55d1da381e70?w=800&q=80",
+    "created_at": "2026-04-14T19:56:24.535980+00:00",
+    "total_sessions": 3122
+  }
+]

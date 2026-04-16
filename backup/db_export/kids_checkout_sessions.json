@@ -1,0 +1,29 @@
+[
+  {
+    "_id": "69d0325cc05e8fc1f92ce477",
+    "session_id": "cs_test_a1veAmzglHP2LxF96E4J9FImkH0wBOvaLg6TnTDKXL5wGAQLi92Rty7Z3W",
+    "user_id": "69d0126144299a2e0d94c788",
+    "plan": "monthly",
+    "amount": 4.99,
+    "status": "pending",
+    "created_at": "2026-04-03T21:34:20.755137+00:00"
+  },
+  {
+    "_id": "69d0325dc05e8fc1f92ce47a",
+    "session_id": "cs_test_a12BYqphiRkhIYQamzdZsPsFB05awc79vgHtvbdHAt3U6mrHmTBtsoCYq3",
+    "user_id": "69d0126144299a2e0d94c788",
+    "plan": "yearly",
+    "amount": 49.99,
+    "status": "pending",
+    "created_at": "2026-04-03T21:34:21.527211+00:00"
+  },
+  {
+    "_id": "69d9f670c256cfda268986c7",
+    "session_id": "cs_test_a15KAJPqPatOjEDyFBinNFd55U8DcgRbfbT05zB1EAhym4zVwpM3EWGvwa",
+    "user_id": "69cface7afddbc3de2cabb39",
+    "plan": "monthly",
+    "amount": 4.99,
+    "status": "pending",
+    "created_at": "2026-04-11T07:21:20.615067+00:00"
+  }
+]

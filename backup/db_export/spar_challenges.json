@@ -1,0 +1,142 @@
+[
+  {
+    "_id": "69df595ae6acb29592c75b82",
+    "challenge_id": "ch_3ddfecf396b0",
+    "creator_email": "admin@bidblitz.com",
+    "creator_name": "Admin",
+    "title": "Wer spart €100 bis Monatsende?",
+    "target_amount": 100,
+    "duration_days": 30,
+    "entry_fee": 5,
+    "pool": 15,
+    "platform_fee_pct": 5,
+    "participants": [
+      {
+        "email": "admin@bidblitz.com",
+        "name": "Admin",
+        "saved": 40.0,
+        "joined_at": "2026-04-15T09:24:42.965564+00:00"
+      },
+      {
+        "email": "kunde@bidblitz.com",
+        "name": "Kunde",
+        "saved": 25.0,
+        "joined_at": "2026-04-15T09:24:42.965564+00:00"
+      },
+      {
+        "email": "haendler@bidblitz.com",
+        "name": "Händler",
+        "saved": 60.0,
+        "joined_at": "2026-04-15T09:24:42.965564+00:00"
+      }
+    ],
+    "status": "active",
+    "created_at": "2026-04-10T09:24:42.965564+00:00",
+    "ends_at": "2026-05-10T09:24:42.965564+00:00"
+  },
+  {
+    "_id": "69df595ae6acb29592c75b83",
+    "challenge_id": "ch_d39cba558eba",
+    "creator_email": "admin@bidblitz.com",
+    "creator_name": "Admin",
+    "title": "€500 Sparziel Challenge",
+    "target_amount": 500,
+    "duration_days": 60,
+    "entry_fee": 10,
+    "pool": 30,
+    "platform_fee_pct": 5,
+    "participants": [
+      {
+        "email": "admin@bidblitz.com",
+        "name": "Admin",
+        "saved": 200.0,
+        "joined_at": "2026-04-15T09:24:42.965564+00:00"
+      },
+      {
+        "email": "kunde@bidblitz.com",
+        "name": "Kunde",
+        "saved": 125.0,
+        "joined_at": "2026-04-15T09:24:42.965564+00:00"
+      },
+      {
+        "email": "haendler@bidblitz.com",
+        "name": "Händler",
+        "saved": 300.0,
+        "joined_at": "2026-04-15T09:24:42.965564+00:00"
+      }
+    ],
+    "status": "active",
+    "created_at": "2026-04-10T09:24:42.965564+00:00",
+    "ends_at": "2026-06-09T09:24:42.965564+00:00"
+  },
+  {
+    "_id": "69df595ae6acb29592c75b84",
+    "challenge_id": "ch_873cfdafb80f",
+    "creator_email": "admin@bidblitz.com",
+    "creator_name": "Admin",
+    "title": "Sommer-Urlaub Sparen",
+    "target_amount": 250,
+    "duration_days": 45,
+    "entry_fee": 5,
+    "pool": 15,
+    "platform_fee_pct": 5,
+    "participants": [
+      {
+        "email": "admin@bidblitz.com",
+        "name": "Admin",
+        "saved": 100.0,
+        "joined_at": "2026-04-15T09:24:42.965564+00:00"
+      },
+      {
+        "email": "kunde@bidblitz.com",
+        "name": "Kunde",
+        "saved": 62.5,
+        "joined_at": "2026-04-15T09:24:42.965564+00:00"
+      },
+      {
+        "email": "haendler@bidblitz.com",
+        "name": "Händler",
+        "saved": 150.0,
+        "joined_at": "2026-04-15T09:24:42.965564+00:00"
+      }
+    ],
+    "status": "active",
+    "created_at": "2026-04-10T09:24:42.965564+00:00",
+    "ends_at": "2026-05-25T09:24:42.965564+00:00"
+  },
+  {
+    "_id": "69df595ae6acb29592c75b85",
+    "challenge_id": "ch_54b630335d22",
+    "creator_email": "admin@bidblitz.com",
+    "creator_name": "Admin",
+    "title": "Sneaker-Fund Challenge",
+    "target_amount": 200,
+    "duration_days": 30,
+    "entry_fee": 8,
+    "pool": 24,
+    "platform_fee_pct": 5,
+    "participants": [
+      {
+        "email": "admin@bidblitz.com",
+        "name": "Admin",
+        "saved": 80.0,
+        "joined_at": "2026-04-15T09:24:42.965564+00:00"
+      },
+      {
+        "email": "kunde@bidblitz.com",
+        "name": "Kunde",
+        "saved": 50.0,
+        "joined_at": "2026-04-15T09:24:42.965564+00:00"
+      },
+      {
+        "email": "haendler@bidblitz.com",
+        "name": "Händler",
+        "saved": 120.0,
+        "joined_at": "2026-04-15T09:24:42.965564+00:00"
+      }
+    ],
+    "status": "active",
+    "created_at": "2026-04-10T09:24:42.965564+00:00",
+    "ends_at": "2026-05-10T09:24:42.965564+00:00"
+  }
+]

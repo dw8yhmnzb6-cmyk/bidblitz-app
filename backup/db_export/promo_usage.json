@@ -1,0 +1,23 @@
+[
+  {
+    "_id": "69d17a17a1b60a997b58b535",
+    "user_id": "69d0126144299a2e0d94c786",
+    "promo_name": "Payment Cashback",
+    "amount": 20.0,
+    "applied_at": "2026-04-04T20:52:39.293180+00:00"
+  },
+  {
+    "_id": "69d17a17a1b60a997b58b53a",
+    "user_id": "69d0126144299a2e0d94c786",
+    "promo_name": "Free Send",
+    "amount": 10.0,
+    "applied_at": "2026-04-04T20:52:39.413129+00:00"
+  },
+  {
+    "_id": "69d18e4a16a0de672bff0a48",
+    "user_id": "69d18de416a0de672bff0a29",
+    "promo_name": "Free Send",
+    "amount": 2.5,
+    "applied_at": "2026-04-04T22:18:50.198753+00:00"
+  }
+]

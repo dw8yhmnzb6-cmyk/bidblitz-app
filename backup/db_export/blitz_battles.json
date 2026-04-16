@@ -1,0 +1,110 @@
+[
+  {
+    "_id": "69dfb82a36afb8a55c5ee639",
+    "battle_id": "bt_adac1f688d99",
+    "creator_email": "admin@bidblitz.com",
+    "creator_name": "Lena K.",
+    "title": "Wer spart mehr diese Woche?",
+    "type": "savings",
+    "stake": 5,
+    "pool": 10,
+    "fee_pct": 10,
+    "participants": [
+      {
+        "email": "admin@bidblitz.com",
+        "name": "Lena K.",
+        "score": 5
+      },
+      {
+        "email": "kunde@bidblitz.com",
+        "name": "Lena K.",
+        "score": 59
+      }
+    ],
+    "status": "active",
+    "winner": null,
+    "created_at": "2026-04-14T16:09:14.879605+00:00",
+    "ends_at": "2026-04-16T18:09:14.879605+00:00"
+  },
+  {
+    "_id": "69dfb82a36afb8a55c5ee63a",
+    "battle_id": "bt_d31fdb32a9c9",
+    "creator_email": "kunde@bidblitz.com",
+    "creator_name": "Amir S.",
+    "title": "Plinko Highscore Battle",
+    "type": "gaming_score",
+    "stake": 10,
+    "pool": 20,
+    "fee_pct": 10,
+    "participants": [
+      {
+        "email": "kunde@bidblitz.com",
+        "name": "Amir S.",
+        "score": 19
+      },
+      {
+        "email": "kunde@bidblitz.com",
+        "name": "Lena K.",
+        "score": 14
+      }
+    ],
+    "status": "active",
+    "winner": null,
+    "created_at": "2026-04-15T08:09:14.879605+00:00",
+    "ends_at": "2026-04-16T18:09:14.879605+00:00"
+  },
+  {
+    "_id": "69dfb82a36afb8a55c5ee63b",
+    "battle_id": "bt_8aa15e3ee3bf",
+    "creator_email": "kunde@bidblitz.com",
+    "creator_name": "Sophie R.",
+    "title": "Schritte-Challenge 24h",
+    "type": "steps",
+    "stake": 3,
+    "pool": 6,
+    "fee_pct": 10,
+    "participants": [
+      {
+        "email": "kunde@bidblitz.com",
+        "name": "Sophie R.",
+        "score": 96
+      },
+      {
+        "email": "haendler@bidblitz.com",
+        "name": "Lena K.",
+        "score": 96
+      }
+    ],
+    "status": "active",
+    "winner": null,
+    "created_at": "2026-04-15T07:09:14.879605+00:00",
+    "ends_at": "2026-04-16T19:09:14.879605+00:00"
+  },
+  {
+    "_id": "69dfb82a36afb8a55c5ee63c",
+    "battle_id": "bt_359392d0f80f",
+    "creator_email": "kunde@bidblitz.com",
+    "creator_name": "Lena K.",
+    "title": "Budget-Challenge: €50 Limit",
+    "type": "savings",
+    "stake": 15,
+    "pool": 30,
+    "fee_pct": 10,
+    "participants": [
+      {
+        "email": "kunde@bidblitz.com",
+        "name": "Lena K.",
+        "score": 100
+      },
+      {
+        "email": "haendler@bidblitz.com",
+        "name": "Max M.",
+        "score": 82
+      }
+    ],
+    "status": "active",
+    "winner": null,
+    "created_at": "2026-04-15T02:09:14.879605+00:00",
+    "ends_at": "2026-04-16T22:09:14.879605+00:00"
+  }
+]
