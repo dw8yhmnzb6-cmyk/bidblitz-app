@@ -109,11 +109,28 @@ export function UserProvider({ children }) {
         const user = await api.getMe();
         if (!cancelled) dispatch({ type: AUTH_ACTIONS.SET_USER, payload: user });
       } catch {
-        if (!cancelled) dispatch({ type: AUTH_ACTIONS.SESSION_CHECKED });
+        // Try refresh token before giving up
+        try {
+          const refreshed = await api.refresh();
+          if (!cancelled && refreshed) dispatch({ type: AUTH_ACTIONS.SET_USER, payload: refreshed });
+        } catch {
+          if (!cancelled) dispatch({ type: AUTH_ACTIONS.SESSION_CHECKED });
+        }
       }
     })();
     return () => { cancelled = true; };
   }, []);
+
+  // Silent refresh every 45 minutes to keep session alive
+  useEffect(() => {
+    if (!state.isAuthenticated) return;
+    const interval = setInterval(async () => {
+      try {
+        await api.refresh();
+      } catch {}
+    }, 45 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [state.isAuthenticated]);
 
   const login = useCallback(async (email, password, rememberMe = true) => {
     if (!email || !password) {

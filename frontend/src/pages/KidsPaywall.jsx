@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { toast } from "sonner";
 import {
   ChevronLeft, Shield, Eye, CreditCard, Zap,
   Check, Star, Crown, Loader2, Users, PlusCircle,
@@ -1417,6 +1418,32 @@ const KidsPaywall = ({ onBack, onSubscribed }) => {
         window.location.href = data.checkout_url;
       }
     } catch (e) {
+      // Stripe failed - show wallet option
+      toast.error("Stripe nicht verfuegbar. Nutze Wallet-Zahlung.");
+      setLoading(false);
+    }
+  };
+
+  const handleWalletPayment = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/kids/pay-with-wallet`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plan }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.detail || "Zahlung fehlgeschlagen");
+        setLoading(false);
+        return;
+      }
+      toast.success(data.message || "Kids Abo aktiviert!");
+      setSubStatus({ status: "active", plan: data.plan, trial_available: false, expires_at: data.expires_at });
+      setShowDashboard(true);
+    } catch (e) {
+      toast.error("Fehler bei der Wallet-Zahlung");
       setLoading(false);
     }
   };
@@ -1649,8 +1676,24 @@ const KidsPaywall = ({ onBack, onSubscribed }) => {
             onClick={handleCheckout}
             disabled={loading}
           >
-            {loading ? <Loader2 size={15} className="animate-spin" /> : null}
-            {t("kids.subscribe_now")} — EUR {plan === "yearly" ? "49.99" : "4.99"}
+            {loading ? <Loader2 size={15} className="animate-spin" /> : <CreditCard size={15} />}
+            Stripe — EUR {plan === "yearly" ? "49.99" : "4.99"}
+          </motion.button>
+
+          <motion.button
+            data-testid="kids-wallet-pay-btn"
+            className="w-full py-3.5 rounded-xl text-[14px] font-bold flex items-center justify-center gap-2"
+            style={{
+              background: "linear-gradient(135deg, #00C2FF, #0088CC)",
+              color: "#fff",
+              boxShadow: "0 4px 24px rgba(0,194,255,0.3)",
+            }}
+            whileTap={{ scale: 0.97 }}
+            onClick={handleWalletPayment}
+            disabled={loading}
+          >
+            {loading ? <Loader2 size={15} className="animate-spin" /> : <Wallet size={15} />}
+            Wallet-Zahlung — EUR {plan === "yearly" ? "49.99" : "4.99"}
           </motion.button>
 
           <p className="text-[10px] text-[#333] text-center font-medium">{t("kids.cancel_anytime")}</p>

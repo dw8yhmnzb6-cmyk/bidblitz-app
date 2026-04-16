@@ -234,35 +234,129 @@ async def create_kids_checkout(req: KidsCheckoutRequest, request: Request):
 
     host_url = str(request.base_url).rstrip("/")
     webhook_url = f"{host_url}/api/webhook/stripe"
-    stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=webhook_url)
 
-    checkout_req = CheckoutSessionRequest(
-        amount=float(plan["amount"]),
-        currency="eur",
-        success_url=success_url,
-        cancel_url=cancel_url,
-        metadata={
+    try:
+        stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=webhook_url)
+
+        checkout_req = CheckoutSessionRequest(
+            amount=float(plan["amount"]),
+            currency="eur",
+            success_url=success_url,
+            cancel_url=cancel_url,
+            metadata={
+                "user_id": user_id,
+                "type": "kids_subscription",
+                "plan": req.plan,
+            },
+        )
+
+        session = await stripe_checkout.create_checkout_session(checkout_req)
+
+        await db.kids_checkout_sessions.insert_one({
+            "session_id": session.session_id,
             "user_id": user_id,
-            "type": "kids_subscription",
             "plan": req.plan,
-        },
+            "amount": plan["amount"],
+            "status": "pending",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        })
+
+        await log_audit(AuditEvent.ADMIN_ACTION, user_id, user.get("email", ""), ip, ua,
+                        "success", f"Kids checkout created: {req.plan}")
+
+        return {"checkout_url": session.url, "session_id": session.session_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Stripe-Fehler: {str(e)}. Nutze stattdessen Wallet-Zahlung.")
+
+
+# ── Pay Kids Subscription from Wallet ──
+class WalletPayRequest(BaseModel):
+    plan: str = "monthly"
+
+@router.post("/pay-with-wallet")
+async def pay_kids_with_wallet(req: WalletPayRequest, request: Request):
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    ip, ua = get_client_info(request)
+
+    if req.plan not in KIDS_PLANS:
+        raise HTTPException(status_code=400, detail="Ungueltiger Plan.")
+
+    plan = KIDS_PLANS[req.plan]
+    amount = plan["amount"]
+    balance = user.get("balance", 0)
+
+    if balance < amount:
+        raise HTTPException(status_code=400, detail=f"Nicht genug Guthaben. Benoetig: EUR {amount:.2f}, Verfuegbar: EUR {balance:.2f}")
+
+    now = datetime.now(timezone.utc)
+    if req.plan == "yearly":
+        expires = now + timedelta(days=365)
+    else:
+        expires = now + timedelta(days=30)
+
+    # Deduct from wallet
+    await db.users.update_one(
+        {"_id": user["_id"]},
+        {"$inc": {"balance": -amount}}
     )
 
-    session = await stripe_checkout.create_checkout_session(checkout_req)
+    # Create/update subscription
+    existing = await db.kids_subscriptions.find_one({"user_id": user_id})
+    if existing:
+        await db.kids_subscriptions.update_one(
+            {"user_id": user_id},
+            {"$set": {
+                "status": "active",
+                "plan": req.plan,
+                "started_at": now.isoformat(),
+                "expires_at": expires.isoformat(),
+                "payment_method": "wallet",
+                "amount_paid": amount,
+            }}
+        )
+    else:
+        await db.kids_subscriptions.insert_one({
+            "user_id": user_id,
+            "status": "active",
+            "plan": req.plan,
+            "started_at": now.isoformat(),
+            "expires_at": expires.isoformat(),
+            "created_at": now.isoformat(),
+            "payment_method": "wallet",
+            "amount_paid": amount,
+        })
 
-    await db.kids_checkout_sessions.insert_one({
-        "session_id": session.session_id,
+    # Set has_kids flag
+    await db.users.update_one(
+        {"_id": user["_id"]},
+        {"$set": {"has_kids": True, "kids_subscribed": True}}
+    )
+
+    # Record transaction
+    await db.transactions.insert_one({
+        "transaction_id": f"kids_wallet_{secrets.token_hex(6)}",
         "user_id": user_id,
-        "plan": req.plan,
-        "amount": plan["amount"],
-        "status": "pending",
-        "created_at": datetime.now(timezone.utc).isoformat(),
+        "user_email": user.get("email", ""),
+        "type": "kids_subscription",
+        "amount": -amount,
+        "description": f"Kids {plan['label']} Abo - EUR {amount:.2f}",
+        "status": "completed",
+        "created_at": now.isoformat(),
     })
 
     await log_audit(AuditEvent.ADMIN_ACTION, user_id, user.get("email", ""), ip, ua,
-                    "success", f"Kids checkout created: {req.plan}")
+                    "success", f"Kids wallet payment: {req.plan} EUR {amount}")
 
-    return {"checkout_url": session.url, "session_id": session.session_id}
+    return {
+        "ok": True,
+        "status": "active",
+        "plan": req.plan,
+        "amount_paid": amount,
+        "new_balance": round(balance - amount, 2),
+        "expires_at": expires.isoformat(),
+        "message": f"Kids {plan['label']} Abo aktiviert! EUR {amount:.2f} vom Wallet abgezogen.",
+    }
 
 
 # ── Verify Kids Checkout ──

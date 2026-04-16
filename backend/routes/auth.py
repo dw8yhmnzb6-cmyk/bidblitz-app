@@ -279,8 +279,8 @@ async def refresh_token(request: Request, response: Response):
         if not user:
             raise HTTPException(status_code=401, detail="User not found")
         new_access = create_access_token(str(user["_id"]), user["email"])
-        from core.config import COOKIE_SECURE, COOKIE_SAMESITE
-        response.set_cookie(key="access_token", value=new_access, httponly=True, secure=COOKIE_SECURE, samesite=COOKIE_SAMESITE, max_age=900, path="/")
+        from core.config import COOKIE_SECURE, COOKIE_SAMESITE, ACCESS_TOKEN_EXPIRE_MINUTES
+        response.set_cookie(key="access_token", value=new_access, httponly=True, secure=COOKIE_SECURE, samesite=COOKIE_SAMESITE, max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60, path="/")
         return serialize_user(user)
     except pyjwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Refresh token expired")

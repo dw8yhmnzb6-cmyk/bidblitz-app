@@ -39,8 +39,26 @@ async function request(path, options = {}) {
   };
 
   try {
-    const res = await fetch(url, config);
+    let res = await fetch(url, config);
     clearTimeout(timeout);
+
+    // Auto-refresh on 401: try refresh token, then retry original request
+    if (res.status === 401 && !options._isRetry && !path.includes("/auth/login") && !path.includes("/auth/refresh")) {
+      try {
+        const refreshRes = await fetch(`${API_URL}/api/auth/refresh`, {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+        });
+        if (refreshRes.ok) {
+          // Retry the original request with new cookie
+          const retryController = new AbortController();
+          const retryTimeout = setTimeout(() => retryController.abort(), REQUEST_TIMEOUT);
+          res = await fetch(url, { ...config, signal: retryController.signal, _isRetry: true });
+          clearTimeout(retryTimeout);
+        }
+      } catch {}
+    }
 
     let data;
     try {
@@ -48,7 +66,7 @@ async function request(path, options = {}) {
       data = text ? JSON.parse(text) : {};
     } catch (parseError) {
       if (!res.ok) {
-        if (res.status === 401) throw new ApiError("Invalid email or password", { status: 401, code: "auth" });
+        if (res.status === 401) throw new ApiError("Session abgelaufen", { status: 401, code: "auth" });
         if (res.status === 400) throw new ApiError("Bad request. Please check your input.", { status: 400, code: "validation" });
         if (res.status === 404) throw new ApiError("Resource not found", { status: 404, code: "not_found" });
         if (res.status === 429) throw new ApiError("Too many requests. Please try again later.", { status: 429, code: "rate_limit", retryable: true });
