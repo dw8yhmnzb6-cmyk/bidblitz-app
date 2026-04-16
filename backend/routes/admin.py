@@ -186,7 +186,7 @@ async def update_user_role(user_id: str, request: Request):
         raise HTTPException(status_code=400, detail="Ungueltige Rolle")
     from bson import ObjectId
     result = await db.users.update_one({"_id": ObjectId(user_id)}, {"$set": {"role": new_role}})
-    if result.modified_count == 0:
+    if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="User nicht gefunden")
     return {"ok": True, "message": f"Rolle auf '{new_role}' geaendert!"}
 
