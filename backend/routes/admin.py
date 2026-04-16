@@ -177,6 +177,21 @@ async def list_users(request: Request, search: str = "", limit: int = 50, skip: 
     return {"users": result, "total": total}
 
 
+@router.put("/users/{user_id}/role")
+async def update_user_role(user_id: str, request: Request):
+    await require_admin(request)
+    body = await request.json()
+    new_role = body.get("role", "")
+    if new_role not in ["user", "merchant", "admin", "driver"]:
+        raise HTTPException(status_code=400, detail="Ungueltige Rolle")
+    from bson import ObjectId
+    result = await db.users.update_one({"_id": ObjectId(user_id)}, {"$set": {"role": new_role}})
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="User nicht gefunden")
+    return {"ok": True, "message": f"Rolle auf '{new_role}' geaendert!"}
+
+
+
 # ── Merchant Management ──
 @router.get("/merchants")
 async def list_merchants(request: Request, search: str = "", limit: int = 50, skip: int = 0):
