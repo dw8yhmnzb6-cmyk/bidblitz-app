@@ -33,7 +33,12 @@ const I18nContext = createContext(null);
 
 export function I18nProvider({ children }) {
   const [lang, setLangState] = useState(() => {
-    try { return localStorage.getItem(STORAGE_KEY) || DEFAULT_LANG; } catch { return DEFAULT_LANG; }
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      // Validate stored language is a supported code
+      if (stored && LANGUAGES.some(l => l.code === stored)) return stored;
+      return DEFAULT_LANG;
+    } catch { return DEFAULT_LANG; }
   });
 
   const setLang = useCallback((code) => {

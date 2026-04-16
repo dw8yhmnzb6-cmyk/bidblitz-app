@@ -36,8 +36,9 @@ html {
   font-size: 16px;
   -webkit-tap-highlight-color: transparent;
   background: #050505;
-  /* iOS safe area support */
-  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  overflow-x: hidden;
+  width: 100%;
+  max-width: 100vw;
 }
 
 body {
@@ -49,9 +50,31 @@ body {
   min-height: 100vh;
   min-height: 100dvh;
   overflow-x: hidden;
+  width: 100%;
+  max-width: 100vw;
   letter-spacing: -0.01em;
   overscroll-behavior: none;
+  overscroll-behavior-x: none;
   -webkit-overflow-scrolling: touch;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  touch-action: pan-y;
+  position: relative;
+}
+
+#root {
+  overflow-x: hidden;
+  width: 100%;
+  max-width: 100vw;
+  position: relative;
+}
+
+/* Allow text selection in inputs and textareas */
+input, textarea, [contenteditable] {
+  -webkit-user-select: text;
+  user-select: text;
+  touch-action: auto;
 }
 
 /* Safe area utility classes for mobile */
@@ -212,6 +235,33 @@ h1, h2, h3, h4, h5, h6 {
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+/* Also used by QuickAccessBar etc. */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Mobile native app feel - prevent bounce/pull */
+@supports (-webkit-touch-callout: none) {
+  body {
+    /* iOS specific overscroll fix */
+    position: fixed;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+  }
+  #root {
+    width: 100%;
+    height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
 }
 
 /* Text shadow for depth */

@@ -315,15 +315,17 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
   return (
     <motion.div
       data-testid="home-page"
-      className="min-h-screen relative overflow-hidden"
-      style={{ background: "#030303" }}
+      className="min-h-screen relative"
+      style={{ background: "#030303", overflowX: "hidden", maxWidth: "100vw" }}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
     >
       {/* Ambient glow */}
-      <motion.div className="absolute top-[-15%] left-1/2 -translate-x-1/2 w-[80vw] max-w-[500px] h-[80vw] max-h-[500px] rounded-full pointer-events-none" style={{ filter: "blur(140px)", background: "rgba(0,194,255,0.04)" }} />
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <motion.div className="absolute top-[-15%] left-1/2 -translate-x-1/2 w-[80vw] max-w-[500px] h-[80vw] max-h-[500px] rounded-full" style={{ filter: "blur(140px)", background: "rgba(0,194,255,0.04)" }} />
+      </div>
 
-      <div className="px-5 pb-8 relative z-10">
+      <div className="px-4 sm:px-5 pb-8 relative z-10" style={{ maxWidth: "100vw" }}>
 
         {/* ── Header ── */}
         <motion.header
@@ -387,7 +389,7 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
 
         {/* ── Tagline ── */}
         <motion.div className="mb-5" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1, ...slide }}>
-          <h2 className="text-[22px] font-outfit font-bold text-white leading-[1.2] tracking-tight mb-1.5">
+          <h2 className="text-[20px] sm:text-[22px] font-outfit font-bold text-white leading-[1.25] tracking-tight mb-1.5 break-words">
             {t("home.tagline_1")}{" "}
             <span className="text-[#00C2FF]">{t("home.tagline_2")}</span>,{" "}
             <span className="text-[#00C2FF]">{t("home.tagline_3")}</span> {t("home.tagline_more")}
@@ -562,7 +564,7 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
             <AdBanner onNavigate={onNavigate} />
 
             {/* ═══ Recommendations ═══ */}
-            <div className="overflow-x-hidden" style={{ marginLeft: -4, marginRight: -4, paddingLeft: 4, paddingRight: 4 }}>
+            <div className="overflow-hidden">
               <HomeRecommendations onNavigate={onNavigate} />
             </div>
 
