@@ -51,11 +51,23 @@ def clear_auth_cookies(response):
 
 
 def serialize_user(user: dict) -> dict:
+    role = user.get("role", "user")
+    modes = ["personal"]
+    
+    if role == "admin":
+        modes = ["personal", "kids", "merchant"]
+    else:
+        if user.get("kids_subscribed") or user.get("has_kids"):
+            modes.append("kids")
+        if role == "merchant":
+            modes.append("merchant")
+    
     return {
         "id": str(user["_id"]),
         "email": user["email"],
         "name": user.get("name", ""),
-        "role": user.get("role", "user"),
+        "role": role,
+        "modes": modes,
         "balance": round(user.get("balance", 0.0), 2),
         "currency": user.get("currency", "EUR"),
         "card_number": user.get("card_number", ""),

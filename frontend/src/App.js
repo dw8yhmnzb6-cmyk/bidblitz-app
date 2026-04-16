@@ -224,13 +224,28 @@ function AppContent() {
     // Track page view
     tracker.pageView(path);
 
+    // Auto-switch mode based on navigation target
+    if (path === "/kids" || path === "/kids-app") {
+      if (user.isAuthenticated && user.modes.includes("kids")) {
+        user.setMode("kids");
+      }
+    } else if (path === "/merchant-portal" || path === "/merchant") {
+      if (user.isAuthenticated && user.modes.includes("merchant")) {
+        user.setMode("merchant");
+      }
+    } else if (path === "/" || path === "/wallet") {
+      if (user.isAuthenticated && user.currentMode !== "personal") {
+        user.setMode("personal");
+      }
+    }
+
     // For customers: scan tab opens QR modal (or gates if guest)
     if (path === "/scan") {
       if (isGuest) {
         requireAuth();
         return;
       }
-      if (user.role !== "merchant" && user.role !== "admin") {
+      if (user.role !== "merchant" && user.role !== "admin" && user.currentMode !== "merchant") {
         setShowBarcode(true);
         return;
       }

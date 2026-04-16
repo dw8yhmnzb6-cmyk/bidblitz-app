@@ -17,6 +17,7 @@ import LanguageSwitcher from "../components/LanguageSwitcher";
 import QuickAccessBar from "../components/QuickAccessBar";
 import AdBanner from "../components/AdBanner";
 import HomeRecommendations from "../components/HomeRecommendations";
+import ModeSwitcher from "../components/ModeSwitcher";
 
 const slide = { duration: 0.35, ease: [0.32, 0.72, 0, 1] };
 
@@ -345,6 +346,11 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <ModeSwitcher onModeChange={(mode) => {
+              if (mode === "kids") onNavigate("/kids");
+              else if (mode === "merchant") onNavigate("/merchant-portal");
+              else onNavigate("/");
+            }} />
             <LanguageSwitcher />
             {isGuest ? (
               <div className="flex items-center gap-1.5">

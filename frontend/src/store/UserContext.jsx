@@ -8,6 +8,7 @@ const AUTH_ACTIONS = {
   SET_ERROR: 'SET_ERROR',
   SESSION_CHECKED: 'SESSION_CHECKED',
   SET_2FA_PENDING: 'SET_2FA_PENDING',
+  SET_MODE: 'SET_MODE',
 };
 
 const guestState = {
@@ -15,6 +16,8 @@ const guestState = {
   name: '',
   email: '',
   role: '',
+  modes: [],
+  currentMode: 'personal',
   balance: 0,
   currency: 'EUR',
   cardNumber: '',
@@ -41,6 +44,7 @@ function mapUser(u) {
     name: u.name,
     email: u.email,
     role: u.role || 'user',
+    modes: u.modes || ['personal'],
     balance: u.balance ?? 0,
     currency: u.currency || 'EUR',
     cardNumber: u.card_number || '',
@@ -65,11 +69,25 @@ function authReducer(state, action) {
       return { ...state, error: action.payload, isLoading: false };
     case AUTH_ACTIONS.SET_USER: {
       const u = action.payload;
-      return { ...state, ...mapUser(u), isLoading: false, error: null, sessionReady: true, requires2FA: false };
+      const mapped = mapUser(u);
+      // Restore saved mode or default to personal
+      let savedMode = 'personal';
+      try { savedMode = localStorage.getItem('bidblitz_mode') || 'personal'; } catch {}
+      const validMode = mapped.modes.includes(savedMode) ? savedMode : 'personal';
+      return { ...state, ...mapped, currentMode: validMode, isLoading: false, error: null, sessionReady: true, requires2FA: false };
+    }
+    case AUTH_ACTIONS.SET_MODE: {
+      const mode = action.payload;
+      if (state.modes.includes(mode)) {
+        try { localStorage.setItem('bidblitz_mode', mode); } catch {}
+        return { ...state, currentMode: mode };
+      }
+      return state;
     }
     case AUTH_ACTIONS.SET_2FA_PENDING:
       return { ...state, requires2FA: true, twoFAEmailHint: action.payload || '', isLoading: false, error: null };
     case AUTH_ACTIONS.LOGOUT:
+      try { localStorage.removeItem('bidblitz_mode'); } catch {}
       return { ...guestState, sessionReady: true };
     case AUTH_ACTIONS.SESSION_CHECKED:
       return { ...state, sessionReady: true };
@@ -178,11 +196,17 @@ export function UserProvider({ children }) {
     } catch {}
   }, []);
 
+  const setMode = useCallback((mode) => {
+    dispatch({ type: AUTH_ACTIONS.SET_MODE, payload: mode });
+  }, []);
+
   const value = {
     id: state.id,
     name: state.name,
     email: state.email,
     role: state.role,
+    modes: state.modes,
+    currentMode: state.currentMode,
     avatar: state.avatar,
     isPremium: state.isPremium,
     isAuthenticated: state.isAuthenticated,
@@ -203,6 +227,7 @@ export function UserProvider({ children }) {
     register,
     logout,
     refreshUser,
+    setMode,
   };
 
   return <UserContext.Provider value={value}>{children}</UserContext.Provider>;

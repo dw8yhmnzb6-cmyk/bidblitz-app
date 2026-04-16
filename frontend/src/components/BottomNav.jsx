@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Home, Wallet, QrCode, Store, MoreHorizontal, Gavel, Car, Compass } from "lucide-react";
+import { Home, Wallet, QrCode, Store, MoreHorizontal, Gavel, Car, Compass, Baby, ShoppingBag } from "lucide-react";
 import { useI18n, useUser } from "../store";
 
 // Customer navigation
@@ -11,7 +11,25 @@ const customerNavItems = [
   { id: "more", tKey: "nav.more", icon: MoreHorizontal, path: "/more" },
 ];
 
-// Merchant navigation
+// Kids mode navigation (parent view)
+const kidsNavItems = [
+  { id: "home", label: "KIDS", icon: Baby, path: "/kids" },
+  { id: "wallet", tKey: "nav.wallet", icon: Wallet, path: "/wallet" },
+  { id: "pay", tKey: "nav.pay", icon: QrCode, path: "/my-barcode", center: true },
+  { id: "discover", label: "ENTDECKEN", icon: Compass, path: "/all-services" },
+  { id: "more", tKey: "nav.more", icon: MoreHorizontal, path: "/more" },
+];
+
+// Merchant mode navigation
+const merchantModeNavItems = [
+  { id: "home", tKey: "nav.home", icon: Home, path: "/" },
+  { id: "wallet", tKey: "nav.wallet", icon: Wallet, path: "/wallet" },
+  { id: "scan", tKey: "nav.scan", icon: QrCode, path: "/scan", center: true },
+  { id: "merchant", label: "PORTAL", icon: Store, path: "/merchant-portal" },
+  { id: "more", tKey: "nav.more", icon: MoreHorizontal, path: "/more" },
+];
+
+// Merchant navigation (role-based, legacy)
 const merchantNavItems = [
   { id: "home", tKey: "nav.home", icon: Home, path: "/" },
   { id: "wallet", tKey: "nav.wallet", icon: Wallet, path: "/wallet" },
@@ -43,16 +61,23 @@ export const BottomNav = ({ currentPath, onNavigate, onShowBarcode }) => {
   const user = useUser();
   
   // Determine user type
-  const isMerchantOrAdmin = user.role === "admin" || user.role === "merchant";
+  const isMerchantOrAdmin = user.role === "admin" || user.role === "merchant" || user.currentMode === "merchant";
   
-  // Select navigation based on user role
-  const navItems = user.role === "admin" 
-    ? adminNavItems 
-    : user.role === "merchant" 
-      ? merchantNavItems 
-      : user.role === "driver"
-        ? driverNavItems
-        : customerNavItems;
+  // Select navigation based on current MODE first, then role
+  let navItems;
+  if (user.currentMode === "kids") {
+    navItems = kidsNavItems;
+  } else if (user.currentMode === "merchant") {
+    navItems = merchantModeNavItems;
+  } else if (user.role === "admin") {
+    navItems = adminNavItems;
+  } else if (user.role === "merchant") {
+    navItems = merchantNavItems;
+  } else if (user.role === "driver") {
+    navItems = driverNavItems;
+  } else {
+    navItems = customerNavItems;
+  }
 
   // Handle center button click - role-based behavior
   const handleCenterButtonClick = () => {

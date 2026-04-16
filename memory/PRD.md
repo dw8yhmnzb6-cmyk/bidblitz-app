@@ -11,42 +11,46 @@
 ### Total Revenue Streams: 63+
 ### Total Backend Routes Files: 130+
 
+## Multi-Mode System (Implemented 2026-04-16)
+
+### Mode Architecture
+- **Personal Mode**: Standard user dashboard (Wallet, Services, Crypto, etc.)
+- **Kids Mode**: Parental control dashboard (GPS, Tasks, Allowance, Quiz)
+- **Merchant Mode**: Business portal (POS, Finances, Reservations, Analytics)
+
+### Technical Implementation
+- Backend: `serialize_user()` returns `modes` array based on user role + flags
+- Frontend: `UserContext` manages `currentMode` state with localStorage persistence
+- `ModeSwitcher` component: Dropdown in HomePage header, shows only accessible modes
+- `BottomNav`: Dynamically changes navigation items based on `currentMode`
+- Auto-switch: Navigating to /kids or /merchant-portal auto-switches mode
+- Roles → Modes mapping:
+  - `admin` → [personal, kids, merchant]
+  - `user` + `has_kids` → [personal, kids]
+  - `merchant` → [personal, merchant]
+  - `user` (basic) → [personal]
+
 ## Completed Features
 
-### V2 Core Modules
-- 8 Crypto modules (Earn, Baskets, Derivatives, LevelUp, Predictions, BlitzCard, Supercharger, DeFi Wallet)
-- LevelUp Referral-Reward System
-- 10 Service/Finance modules (Crypto Loans, P2P Lending, Trading Bot, Live Shopping, Creators, Skills, Invoicing, QR Menu, Bookings, Contracts)
-- 12 Utility modules (Abo Boxes, Music, Surveys, Card Compare, Micro Tasks, etc.)
-- 13 Viral/Engagement modules (Daily Spin, Quiz, BlitzClips TikTok-style feed, etc.)
+### V2 Core Modules (Previous Sessions)
+- 8 Crypto modules, LevelUp Referral System
+- 10 Service/Finance modules
+- 12 Utility modules
+- 13 Viral/Engagement modules
+- Live Production Deployment on IONOS
 
-### Deployment & Infrastructure
-- Live Production Deployment on IONOS (PM2 + Nginx)
-- Production Auth Bug Fix (UserContext.jsx Reducer)
-- DB Export/Backup scripts
-
-### Session: 2026-04-16 - Seed Data & Mobile Fix
-- **P0 DONE**: Comprehensive seed script for all new modules (24 collections seeded)
-  - 12 reservation-ready restaurants (Italian, Japanese, Turkish, German, Indian, Mexican, French, Asian)
-  - 43 restaurant reviews, 21 reservations
-  - 8 digital marketplace listings
-  - 10 BlitzClips (user-generated content)
-  - 80 transactions (for admin dashboard stats)
-  - 12 pet bookings, 15 appointment bookings, 10 live shopping orders
-  - 8 creator subscriptions, 12 creator tips
-  - 6 trading bots, 10 crypto basket purchases, 8 abo box subscriptions
-  - 6 digital contracts, 8 invoices, 6 P2P lending offers, 5 crypto loans
-  - 8 prediction bets, 15 social posts, 30 additional users
-  - 20 notifications, 12 challenge participants, 10 quiz matches, 8 skill bookings
-  - Total: 214 collections, 10,669 documents
-- **P1 DONE**: Mobile UI Responsiveness Fix
-  - Fixed horizontal scrolling (scrollWidth == clientWidth confirmed)
-  - Added native app CSS (touch-action, user-select, overscroll-behavior)
-  - Fixed iOS overscroll bounce via position:fixed body trick
-  - Responsive tagline text (20px mobile, 22px desktop)
-  - Added #root overflow-x containment
-  - Ambient glow overflow fix
-- **P2 DONE**: i18n language validation - stored lang now validated against supported codes
+### Session: 2026-04-16
+- **P0 DONE**: Comprehensive seed script (24 collections, 10,669 documents)
+- **P1 DONE**: Mobile UI Fix (no horizontal scrolling, native app CSS)
+- **P2 DONE**: i18n language validation fix
+- **Multi-Mode System DONE**: Full Personal/Kids/Merchant mode switching
+  - ModeSwitcher component with animated dropdown
+  - Mode-aware BottomNav (KIDS tab, PORTAL tab, etc.)
+  - Auto-switch on navigation
+  - Persistent mode via localStorage
+  - Backend modes array in user serialization
+  - Kids data seeded (35 tasks, 32 messages, 41 transactions)
+  - Merchant data seeded (25 transactions, 8 tips)
 
 ## Credentials
 - Admin: admin@bidblitz.com / BidBlitz2026!
@@ -56,11 +60,7 @@
 
 ## Backlog (Prioritized)
 - P1: Apple Pay / Google Pay (Stripe Integration)
-- P1: Digital Products Marketplace (backend route partially built)
+- P1: Digital Products Marketplace completion
+- P1: Run seed script on production MongoDB Atlas
 - P2: App.js Code Splitting (130+ Routes need lazy loading)
 - P2: Server Security (SSH/Fail2Ban/Mongo-Auth on IONOS)
-- P3: Run seed script on production MongoDB Atlas
-
-## Seed Script Location
-- `/app/backend/scripts/seed_all_modules.py`
-- Usage: `python seed_all_modules.py` (local) or `MONGO_URL="mongodb+srv://..." python seed_all_modules.py` (production)
