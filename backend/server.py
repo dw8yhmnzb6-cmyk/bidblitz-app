@@ -495,6 +495,18 @@ app.include_router(micro_tasks_router)
 from routes.utilities import router as utilities_router
 app.include_router(utilities_router)
 
+from routes.daily_spin import router as daily_spin_router
+app.include_router(daily_spin_router)
+
+from routes.quiz import router as quiz_router
+app.include_router(quiz_router)
+
+from routes.engage import router as engage_router
+app.include_router(engage_router)
+
+from routes.viral import router as viral_router
+app.include_router(viral_router)
+
 
 # Static file serving for uploads
 from fastapi.staticfiles import StaticFiles

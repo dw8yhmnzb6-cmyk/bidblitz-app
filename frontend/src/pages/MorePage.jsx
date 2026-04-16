@@ -845,6 +845,8 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
     { id: "termin-booking", icon: Calendar, label: "Termine buchen", desc: "Friseur, Arzt, Wellness & mehr", color: "#0EA5E9", action: gatedAction(() => onNavigate("/termin-booking")), roles: ["all"] },
     { id: "contracts", icon: ShieldCheck, label: "Digitale Vertraege", desc: "E-Signatur & Vorlagen", color: "#059669", action: gatedAction(() => onNavigate("/contracts")), roles: ["all"] },
     { id: "utilities", icon: Sparkles, label: "Extras & Tools", desc: "Abo-Boxen, Musik, VPN, Cloud & mehr", color: "#06B6D4", action: gatedAction(() => onNavigate("/utilities")), roles: ["all"] },
+    { id: "engage", icon: Gamepad2, label: "Fun & Verdienen", desc: "Gluecksrad, Quiz, Coupons, Airdrops", color: "#F59E0B", action: gatedAction(() => onNavigate("/engage")), roles: ["all"] },
+    { id: "viral", icon: Zap, label: "Viral & Social", desc: "BlitzClips, Challenges, Share & Earn", color: "#EC4899", action: gatedAction(() => onNavigate("/viral")), roles: ["all"] },
     // Merchant-only items
     { id: "pay", icon: Wallet, label: t("pay.title") || "Bezahlen", desc: t("pay.menu_desc") || "Barcode & NFC Zahlungen", color: "#00E89D", action: gatedAction(() => onNavigate("/pay")), roles: ["merchant", "admin"] },
     { id: "terminal", icon: Scan, label: t("terminal.title") || "Zahlungsterminal", desc: t("terminal.menu_desc") || "Zahlungen annehmen", color: "#FFB800", action: gatedAction(() => onNavigate("/terminal")), roles: ["merchant", "admin"] },

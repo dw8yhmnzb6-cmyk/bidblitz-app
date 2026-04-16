@@ -128,6 +128,8 @@ import QRMenuPage from "./pages/QRMenuPage";
 import BookingsPage from "./pages/BookingsPage";
 import ContractsPage from "./pages/ContractsPage";
 import UtilitiesHubPage from "./pages/UtilitiesHubPage";
+import EngageHubPage from "./pages/EngageHubPage";
+import ViralHubPage from "./pages/ViralHubPage";
 
 // Car Rental Module
 import {
@@ -538,6 +540,10 @@ function AppContent() {
         return isGuest ? <HomePage {...homeProps} /> : <ContractsPage onBack={() => handleNavigate("/more")} />;
       case "/utilities":
         return isGuest ? <HomePage {...homeProps} /> : <UtilitiesHubPage onBack={() => handleNavigate("/more")} />;
+      case "/engage":
+        return isGuest ? <HomePage {...homeProps} /> : <EngageHubPage onBack={() => handleNavigate("/more")} />;
+      case "/viral":
+        return isGuest ? <HomePage {...homeProps} /> : <ViralHubPage onBack={() => handleNavigate("/more")} />;
       
       // Car Rental Module
       case "/car-rental":
