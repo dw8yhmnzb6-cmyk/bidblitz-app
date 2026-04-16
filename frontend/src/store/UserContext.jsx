@@ -112,7 +112,7 @@ export function UserProvider({ children }) {
         return '2fa_required';
       }
       
-      dispatch({ type: AUTH_ACTIONS.SET_USER, payload: response });
+      dispatch({ type: AUTH_ACTIONS.SET_USER, payload: response.user || response });
       return true;
     } catch (err) {
       dispatch({ type: AUTH_ACTIONS.SET_ERROR, payload: err.message });
