@@ -143,9 +143,9 @@ export default function MiningPage({ onBack }) {
     setLoading(true);
     try {
       const [dash, pkgs, costs, mkt, crd, lp] = await Promise.all([
-        api("/api/mining/dashboard"),
-        api("/api/mining/packages"),
-        api("/api/mining/upgrade-costs"),
+        api("/api/mining/dashboard").catch(() => ({})),
+        api("/api/mining/packages").catch(() => ({ packages: [] })),
+        api("/api/mining/upgrade-costs").catch(() => ({ costs: {} })),
         api("/api/mining/marketplace").catch(() => ({ listings: [] })),
         api("/api/mining/card").catch(() => null),
         api("/api/mining/launchpad").catch(() => ({ projects: [] })),
