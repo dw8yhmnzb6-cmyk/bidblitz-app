@@ -138,6 +138,7 @@ from routes.admin import router as admin_router
 from routes.monitoring import router as monitoring_router
 from routes.merchant_admin import router as merchant_admin_router
 from routes.blitz_transfer import router as blitz_transfer_router
+from routes.smm_boost import router as smm_boost_router
 from routes.export import router as export_router
 from routes.profile import router as profile_router
 from routes.sessions import router as sessions_router
@@ -188,6 +189,7 @@ app.include_router(admin_router)
 app.include_router(monitoring_router)
 app.include_router(merchant_admin_router)
 app.include_router(blitz_transfer_router)
+app.include_router(smm_boost_router)
 app.include_router(export_router)
 app.include_router(profile_router)
 app.include_router(sessions_router)

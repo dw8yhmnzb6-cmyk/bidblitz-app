@@ -11,6 +11,8 @@ from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from fastapi import APIRouter, HTTPException, Request, UploadFile, File, Form
 from fastapi.responses import FileResponse
+from pydantic import BaseModel
+from typing import Optional
 from typing import Optional
 from core.database import db
 from core.security import get_current_user

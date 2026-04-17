@@ -66,6 +66,7 @@ import AdminPanelFullPage from "./pages/AdminPanelFullPage";
 import MonitoringDashboard from "./pages/MonitoringDashboard";
 import MerchantAdminPage from "./pages/MerchantAdminPage";
 import BlitzTransferPage from "./pages/BlitzTransferPage";
+import BlitzBoostPage from "./pages/BlitzBoostPage";
 import NotificationCenterPage from "./pages/NotificationCenterPage";
 import ContactsPage from "./pages/ContactsPage";
 import UserStatsPage from "./pages/UserStatsPage";
@@ -362,6 +363,8 @@ function AppContent() {
           : <HomePage {...homeProps} />;
       case "/blitz-transfer":
         return isGuest ? <HomePage {...homeProps} /> : <BlitzTransferPage onNavigate={handleNavigate} onBack={() => handleNavigate("/more")} />;
+      case "/blitz-boost":
+        return isGuest ? <HomePage {...homeProps} /> : <BlitzBoostPage onNavigate={handleNavigate} onBack={() => handleNavigate("/more")} />;
       case "/notifications":
         return isGuest
           ? <HomePage {...homeProps} />
