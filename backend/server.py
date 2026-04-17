@@ -136,6 +136,7 @@ from routes.stripe import router as stripe_router
 from routes.payout import router as payout_router
 from routes.admin import router as admin_router
 from routes.monitoring import router as monitoring_router
+from routes.merchant_admin import router as merchant_admin_router
 from routes.export import router as export_router
 from routes.profile import router as profile_router
 from routes.sessions import router as sessions_router
@@ -184,6 +185,7 @@ app.include_router(stripe_router)
 app.include_router(payout_router)
 app.include_router(admin_router)
 app.include_router(monitoring_router)
+app.include_router(merchant_admin_router)
 app.include_router(export_router)
 app.include_router(profile_router)
 app.include_router(sessions_router)

@@ -5,34 +5,36 @@
 - Backend: FastAPI, Motor (async MongoDB)
 - Production: IONOS Server (212.227.20.190), PM2, Nginx, MongoDB Atlas
 
-## Production Status: LIVE & ALL V2 MODULES RUNNING ✅
-- Server: 212.227.20.190 | Domain: bidblitz.ae
-- PM2 Process: "api" (PID stable, 146MB RAM)
-- All 41+ API endpoint groups verified working
+## Production Status: LIVE ✅ | All 41+ V2 Modules Running
 
-## Deployed & Verified (2026-04-16)
+## Deployed Features (2026-04-16)
 
-### All V2 Modules on Production (41/41 ✅):
-- Auth, Wallet, Transactions
-- Mining, Crypto Baskets, Crypto Earn, Supercharger, DeFi Wallet, Derivatives, BlitzCard, LevelUp, Predictions
-- Restaurants, Food Delivery, Tierbetreuung, Bookings, Skills, Live Shopping, Creators, Marketplace, Invoicing, Contracts, P2P Lending, Crypto Loans, Trading Bot
-- Taxi (Pricing, Nearby, Estimate), Scooter
-- Kids (Subscription, Children, Quiz)
-- Viral (Clips, Daily Spin, Challenges, Surveys)
-- Abo Boxes, Micro Tasks, Card Compare
-- Admin (Stats, Users)
+### Server Monitoring Dashboard (/admin/monitoring)
+- Real-time system health (CPU, RAM, Disk, Uptime)
+- API metrics (Requests/h, Errors/h, Avg Response, P95/P99)
+- RPM chart (Requests per Minute, letzte 10 Min)
+- Database stats (Collections, Objects, Data Size, Latency)
+- User statistics (New today/week/month, Active 7d, Role distribution)
+- Slow endpoint tracking (>500ms)
+- Error code breakdown
+- Auto-refresh every 15 seconds
+- Middleware tracks all requests automatically
 
-### Key Fixes Applied:
-- Killed zombie V1 uvicorn process hogging port 8001
-- Removed old PM2 processes (bidblitz, bidblitz-api)
-- Uploaded missing route files (derivatives, blitzcard, blitz_features, quiz)
-- Fixed get_current_user to handle both V1 (UUID/Bearer) and V2 (ObjectId/Cookie) auth
-- Fixed serialize_user to handle both DB formats
-- Added wallet payment for Kids subscription
-- Fixed TaxiPage endpoint paths
-- Fixed MiningPage Promise.all crash
-- Auto-refresh tokens (45min silent refresh)
-- Mobile UI fixes (no horizontal scroll)
+### Haendler-Verwaltung (/admin/merchants)
+- Haendler-ID System (BZ-M-XXXX format)
+- Bulk-ID-Vergabe fuer alle Haendler ohne ID
+- Remote Neustart (force re-login via force_restart flag)
+- Sperren/Aktivieren von Haendlern
+- Fehler-Log pro Haendler (24h)
+- Session-Tracking (Online/Offline, Device Info)
+- Detail-Modal mit Umsatz, Transaktionen, Errors, Sessions
+- Heartbeat-Endpoint fuer Geraete-Monitoring
+- Search & Filter (Name, Email, ID)
+
+### Multi-Mode System (Personal/Kids/Merchant)
+- ModeSwitcher in header
+- Mode-aware BottomNav
+- Auto-switch on navigation
 
 ## Credentials
 - Admin (Production): admin@bidblitz.ae / BidBlitz2026!
@@ -40,6 +42,6 @@
 - SSH: root@212.227.20.190
 
 ## Backlog
-- P2: App.js Code Splitting (130+ Routes need lazy loading)
+- P1: APK-Build fuer Android (TWA)
+- P2: App.js Code Splitting
 - P2: Server Security (Fail2Ban, SSH keys)
-- P3: Valid Stripe key for card payments (current mk_ key invalid)

@@ -702,6 +702,24 @@ const AdminPanelFullPage = ({ onNavigate, onBack }) => {
             </div>
           )}
 
+          {/* ══ QUICK ADMIN TOOLS ══ */}
+          {data?.type === "system_detail" && data?.subtype === "system-health" && (
+            <div className="space-y-2 mt-3">
+              <motion.button whileTap={{ scale: 0.95 }} onClick={() => onNavigate("/admin/monitoring")}
+                className="w-full py-3 rounded-xl text-white font-bold text-xs flex items-center justify-center gap-2"
+                style={{ background: "linear-gradient(135deg, #10B981, #059669)" }}
+                data-testid="goto-monitoring">
+                Server Monitoring Dashboard
+              </motion.button>
+              <motion.button whileTap={{ scale: 0.95 }} onClick={() => onNavigate("/admin/merchants")}
+                className="w-full py-3 rounded-xl text-white font-bold text-xs flex items-center justify-center gap-2"
+                style={{ background: "linear-gradient(135deg, #FFB800, #F59E0B)" }}
+                data-testid="goto-merchant-admin">
+                Haendler-Verwaltung
+              </motion.button>
+            </div>
+          )}
+
           {/* ══ AUCTIONS ══ */}
           {data?.type === "auctions" && (
             <div className="space-y-2" data-testid="admin-detail-auctions">

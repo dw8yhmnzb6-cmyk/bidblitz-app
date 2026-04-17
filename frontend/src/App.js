@@ -63,6 +63,8 @@ import CryptoWalletPage from "./pages/CryptoWalletPage";
 import BudgetPlannerPage from "./pages/BudgetPlannerPage";
 import AdminCreditPage from "./pages/AdminCreditPage";
 import AdminPanelFullPage from "./pages/AdminPanelFullPage";
+import MonitoringDashboard from "./pages/MonitoringDashboard";
+import MerchantAdminPage from "./pages/MerchantAdminPage";
 import NotificationCenterPage from "./pages/NotificationCenterPage";
 import ContactsPage from "./pages/ContactsPage";
 import UserStatsPage from "./pages/UserStatsPage";
@@ -344,6 +346,14 @@ function AppContent() {
       case "/admin":
         return user.role === "admin"
           ? <AdminPanelFullPage onNavigate={handleNavigate} onBack={() => handleNavigate("/more")} />
+          : <HomePage {...homeProps} />;
+      case "/admin/monitoring":
+        return user.role === "admin"
+          ? <MonitoringDashboard onBack={() => handleNavigate("/admin")} />
+          : <HomePage {...homeProps} />;
+      case "/admin/merchants":
+        return user.role === "admin"
+          ? <MerchantAdminPage onNavigate={handleNavigate} onBack={() => handleNavigate("/admin")} />
           : <HomePage {...homeProps} />;
       case "/admin/old":
         return user.role === "admin"
