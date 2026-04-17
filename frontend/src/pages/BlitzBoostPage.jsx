@@ -23,6 +23,9 @@ const PLATFORM_STYLES = {
   twitter: { color: "#1DA1F2", bg: "rgba(29,161,242,0.1)", label: "Twitter/X" },
   telegram: { color: "#0088CC", bg: "rgba(0,136,204,0.1)", label: "Telegram" },
   spotify: { color: "#1DB954", bg: "rgba(29,185,84,0.1)", label: "Spotify" },
+  facebook: { color: "#1877F2", bg: "rgba(24,119,242,0.1)", label: "Facebook" },
+  linkedin: { color: "#0A66C2", bg: "rgba(10,102,194,0.1)", label: "LinkedIn" },
+  threads: { color: "#999999", bg: "rgba(153,153,153,0.1)", label: "Threads" },
 };
 
 const BlitzBoostPage = ({ onNavigate, onBack }) => {
