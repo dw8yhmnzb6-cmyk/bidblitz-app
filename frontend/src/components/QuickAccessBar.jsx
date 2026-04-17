@@ -65,6 +65,8 @@ const ALL_SHORTCUTS = [
   { id: "cashback", icon: Star, label: "Cashback", route: "/cashback", color: "#F59E0B" },
   { id: "live-auctions", icon: Zap, label: "Live-Auktion", route: "/live-auctions", color: "#EF4444" },
   { id: "stories", icon: MessageCircle, label: "Feed", route: "/stories", color: "#6366F1" },
+  { id: "blitz-boost", icon: TrendingUp, label: "BlitzBoost", route: "/blitz-boost", color: "#E1306C" },
+  { id: "blitz-transfer", icon: Package, label: "BlitzTransfer", route: "/blitz-transfer", color: "#00B2FF" },
 ];
 
 const DEFAULT_SHORTCUTS = ["taxi", "scooter", "hotels", "restaurants"];

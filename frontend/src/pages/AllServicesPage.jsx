@@ -119,6 +119,8 @@ const CATEGORIES = [
       { icon: QrCode, label: "POS-Terminal", desc: "Zahlungen akzeptieren", route: "/terminal", color: "#10B981" },
       { icon: Star, label: "VIP-Programm", desc: "Exklusive Vorteile", route: "/vip", color: "#FBBF24" },
       { icon: CreditCard, label: "Split Bill", desc: "Rechnung teilen", route: "/split-bill", color: "#3B82F6" },
+      { icon: TrendingUp, label: "BlitzBoost", desc: "Social Media Booster – Follower, Likes, Views", route: "/blitz-boost", color: "#E1306C" },
+      { icon: Package, label: "BlitzTransfer", desc: "Große Dateien sicher versenden (bis 10GB)", route: "/blitz-transfer", color: "#00B2FF" },
     ],
   },
 ];
