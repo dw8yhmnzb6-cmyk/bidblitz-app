@@ -6,10 +6,11 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
+import { QRCodeSVG } from "qrcode.react";
 import {
   ChevronLeft, Zap, Users, Lock, Trophy, TrendingUp, Plus, X,
   Flame, Sparkles, Share2, Shield, Clock, Check, Loader2,
-  ChevronRight, Unlock, Award, Star, UserPlus, Crown,
+  ChevronRight, Unlock, Award, Star, UserPlus, Crown, Copy,
 } from "lucide-react";
 
 const API = process.env.REACT_APP_BACKEND_URL;
@@ -403,7 +404,7 @@ const LockupWidget = ({ lockups, constants, balance, onCreate, onRelease }) => {
 };
 
 // ── Referral summary widget ──
-const ReferralWidget = ({ data, onShare }) => {
+const ReferralWidget = ({ data, referralCode, onShare, onShowQr }) => {
   if (!data) return null;
   return (
     <div
@@ -433,15 +434,123 @@ const ReferralWidget = ({ data, onShare }) => {
           <p className="text-[9px] text-white/50 uppercase">Pro aktiv</p>
         </div>
       </div>
-      <motion.button
-        data-testid="mine-share-btn"
-        whileTap={{ scale: 0.96 }}
-        onClick={onShare}
-        className="w-full rounded-xl py-2.5 bg-[#A855F7]/10 border border-[#A855F7]/30 text-[12px] font-bold text-[#A855F7] flex items-center justify-center gap-2"
-      >
-        <Share2 size={14} /> Einladungslink teilen
-      </motion.button>
+      {referralCode && (
+        <div className="mb-3 rounded-lg bg-black/40 border border-white/5 px-3 py-2 flex items-center justify-between">
+          <div className="min-w-0">
+            <p className="text-[9px] text-white/40 uppercase">Dein Code</p>
+            <p className="text-[13px] font-bold text-[#A855F7] font-mono truncate">{referralCode}</p>
+          </div>
+          <button
+            data-testid="mine-copy-code"
+            onClick={() => {
+              navigator.clipboard.writeText(referralCode);
+              toast.success("Code kopiert!");
+            }}
+            className="text-white/60 hover:text-white"
+          >
+            <Copy size={14} />
+          </button>
+        </div>
+      )}
+      <div className="grid grid-cols-2 gap-2">
+        <motion.button
+          data-testid="mine-share-btn"
+          whileTap={{ scale: 0.96 }}
+          onClick={onShare}
+          className="rounded-xl py-2.5 bg-[#A855F7]/10 border border-[#A855F7]/30 text-[12px] font-bold text-[#A855F7] flex items-center justify-center gap-2"
+        >
+          <Share2 size={14} /> Teilen
+        </motion.button>
+        <motion.button
+          data-testid="mine-qr-btn"
+          whileTap={{ scale: 0.96 }}
+          onClick={onShowQr}
+          className="rounded-xl py-2.5 bg-white text-black text-[12px] font-bold flex items-center justify-center gap-2"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" />
+            <rect x="3" y="14" width="7" height="7" /><rect x="14" y="14" width="3" height="3" />
+            <rect x="18" y="14" width="3" height="3" /><rect x="14" y="18" width="3" height="3" />
+          </svg> QR-Code
+        </motion.button>
+      </div>
     </div>
+  );
+};
+
+// ── QR Code Modal ──
+const QrModal = ({ open, onClose, url, code, onShare }) => {
+  if (!open) return null;
+  return (
+    <motion.div
+      data-testid="mine-qr-modal"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ y: 40, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        exit={{ y: 40, opacity: 0 }}
+        onClick={(e) => e.stopPropagation()}
+        className="w-full sm:max-w-sm rounded-t-3xl sm:rounded-3xl p-6 relative"
+        style={{
+          background: "linear-gradient(160deg, #1a0f2e 0%, #050505 100%)",
+          border: "1px solid rgba(168,85,247,0.25)",
+        }}
+      >
+        <button
+          data-testid="mine-qr-close"
+          className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/5 flex items-center justify-center"
+          onClick={onClose}
+        >
+          <X size={14} />
+        </button>
+        <div className="text-center mb-4">
+          <p className="text-[11px] text-[#A855F7] font-bold uppercase tracking-wider">BlitzMine</p>
+          <p className="text-[18px] font-bold text-white mt-1">Lad deine Freunde ein</p>
+          <p className="text-[11px] text-white/50 mt-1">
+            +{(0.05 * 100).toFixed(0)}% Rate pro aktivem Referral
+          </p>
+        </div>
+        <div className="bg-white rounded-2xl p-5 mx-auto w-fit">
+          <QRCodeSVG
+            value={url}
+            size={220}
+            level="M"
+            includeMargin={false}
+            bgColor="#ffffff"
+            fgColor="#0a0a0a"
+          />
+        </div>
+        {code && (
+          <p className="text-center text-white/70 text-[11px] mt-3">
+            Code: <span className="font-mono font-bold text-[#A855F7]">{code}</span>
+          </p>
+        )}
+        <div className="flex gap-2 mt-5">
+          <button
+            data-testid="mine-qr-copy-link"
+            onClick={() => {
+              navigator.clipboard.writeText(url);
+              toast.success("Link kopiert!");
+            }}
+            className="flex-1 py-3 rounded-xl bg-white/5 border border-white/10 text-[12px] font-semibold text-white flex items-center justify-center gap-2"
+          >
+            <Copy size={14} /> Link kopieren
+          </button>
+          <button
+            data-testid="mine-qr-share"
+            onClick={onShare}
+            className="flex-1 py-3 rounded-xl bg-[#A855F7] text-white text-[12px] font-bold flex items-center justify-center gap-2"
+          >
+            <Share2 size={14} /> Jetzt teilen
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
   );
 };
 
@@ -478,22 +587,26 @@ const BlitzMinePage = ({ onBack, onNavigate }) => {
   const [refs, setRefs] = useState(null);
   const [board, setBoard] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [referralCode, setReferralCode] = useState("");
+  const [showQr, setShowQr] = useState(false);
   const firstLoad = useRef(true);
 
   const load = useCallback(async () => {
     try {
-      const [s, c, l, r, lb] = await Promise.all([
+      const [s, c, l, r, lb, mc] = await Promise.all([
         api("/api/blitz-mine/status"),
         api("/api/blitz-mine/circle"),
         api("/api/blitz-mine/lockup"),
         api("/api/blitz-mine/referrals"),
         api("/api/blitz-mine/leaderboard"),
+        api("/api/referral/my-code").catch(() => ({})),
       ]);
       setData(s);
       setCircle(c);
       setLockups(l.lockups || []);
       setRefs(r);
       setBoard(lb.leaderboard || []);
+      setReferralCode(mc?.code || mc?.referral_code || "");
     } catch (e) {
       if (firstLoad.current) toast.error(e.message);
     } finally {
@@ -560,12 +673,18 @@ const BlitzMinePage = ({ onBack, onNavigate }) => {
     } catch (e) { toast.error(e.message); }
   };
 
+  const refLink = referralCode
+    ? `${window.location.origin}?ref=${encodeURIComponent(referralCode)}`
+    : window.location.origin;
+
   const onShare = () => {
-    const link = window.location.origin;
+    const text = referralCode
+      ? `Mine kostenlos BLZ auf BidBlitz! Nutze meinen Code: ${referralCode}`
+      : "Mine kostenlos BLZ auf BidBlitz!";
     if (navigator.share) {
-      navigator.share({ title: "BlitzMine", text: "Mine kostenlos BLZ auf BidBlitz!", url: link }).catch(() => {});
+      navigator.share({ title: "BlitzMine", text, url: refLink }).catch(() => {});
     } else {
-      navigator.clipboard.writeText(link);
+      navigator.clipboard.writeText(`${text}\n${refLink}`);
       toast.success("Link kopiert!");
     }
   };
@@ -652,7 +771,7 @@ const BlitzMinePage = ({ onBack, onNavigate }) => {
         <SecurityCircleWidget circle={circle} onAdd={onAddCircle} onRemove={onRemoveCircle} />
 
         {/* Referral */}
-        <ReferralWidget data={refs} onShare={onShare} />
+        <ReferralWidget data={refs} referralCode={referralCode} onShare={onShare} onShowQr={() => setShowQr(true)} />
 
         {/* Lockup */}
         <LockupWidget
@@ -684,6 +803,19 @@ const BlitzMinePage = ({ onBack, onNavigate }) => {
           <ChevronRight size={16} className="text-white/40" />
         </motion.button>
       </div>
+
+      {/* QR Modal */}
+      <AnimatePresence>
+        {showQr && (
+          <QrModal
+            open={showQr}
+            onClose={() => setShowQr(false)}
+            url={refLink}
+            code={referralCode}
+            onShare={onShare}
+          />
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 };

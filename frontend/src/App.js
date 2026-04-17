@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Toaster } from "sonner";
 import "@/App.css";
@@ -10,7 +10,7 @@ import HomePage from "./pages/HomePage";
 import WalletPage from "./pages/WalletPage";
 import ScannerPage from "./pages/ScannerPage";
 import MerchantPage from "./pages/MerchantPage";
-import AdminPage from "./pages/AdminPage";
+const AdminPage = lazy(() => import("./pages/AdminPage"));
 import MorePage from "./pages/MorePage";
 import AuctionsPage from "./pages/AuctionsPage";
 import AuctionAdminPage from "./pages/AuctionAdminPage";
@@ -26,19 +26,19 @@ import MerchantOnboardingPage from "./pages/MerchantOnboardingPage";
 import MerchantPricingPage from "./pages/MerchantPricingPage";
 import MerchantLandingPage from "./pages/MerchantLandingPage";
 import MiningPage from "./pages/MiningPage";
-import NFTGeneratorPage from "./pages/NFTGeneratorPage";
+const NFTGeneratorPage = lazy(() => import("./pages/NFTGeneratorPage"));
 import AuthPage from "./pages/AuthPage";
 import NotificationsPage from "./pages/NotificationsPage";
-import InfluencerDashboard from "./pages/InfluencerDashboard";
-import ManagerDashboard from "./pages/ManagerDashboard";
+const InfluencerDashboard = lazy(() => import("./pages/InfluencerDashboard"));
+const ManagerDashboard = lazy(() => import("./pages/ManagerDashboard"));
 import TaxiPage from "./pages/TaxiPage";
-import TaxiOperatorPage from "./pages/TaxiOperatorPage";
-import TaxiOperatorDashboard from "./pages/TaxiOperatorDashboard";
+const TaxiOperatorPage = lazy(() => import("./pages/TaxiOperatorPage"));
+const TaxiOperatorDashboard = lazy(() => import("./pages/TaxiOperatorDashboard"));
 import ScooterPage from "./pages/ScooterPage";
 import FoodPage from "./pages/FoodPage";
-import DriverDashboardPage from "./pages/DriverDashboardPage";
-import RestaurantDashboardPage from "./pages/RestaurantDashboardPage";
-import ChildModePage from "./pages/ChildModePage";
+const DriverDashboardPage = lazy(() => import("./pages/DriverDashboardPage"));
+const RestaurantDashboardPage = lazy(() => import("./pages/RestaurantDashboardPage"));
+const ChildModePage = lazy(() => import("./pages/ChildModePage"));
 import MarketplacePage from "./pages/MarketplacePage";
 import ChatPage from "./pages/ChatPage";
 import PartnersPage from "./pages/PartnersPage";
@@ -46,7 +46,7 @@ import ReferralSystemPage from "./pages/ReferralSystemPage";
 import NfcPayPage from "./pages/NfcPayPage";
 import VipPage from "./pages/VipPage";
 import LoyaltyPage from "./pages/LoyaltyPage";
-import KidsPaywall from "./pages/KidsPaywall";
+const KidsPaywall = lazy(() => import("./pages/KidsPaywall"));
 import MobilityMapPage from "./pages/MobilityMapPage";
 import OrderTrackingPage from "./pages/OrderTrackingPage";
 import CreditScorePage from "./pages/CreditScorePage";
@@ -59,15 +59,16 @@ import SavingsPage from "./pages/SavingsPage";
 import BNPLPage from "./pages/BNPLPage";
 import GiftCardsPage from "./pages/GiftCardsPage";
 import AIAssistantPage from "./pages/AIAssistantPage";
-import CryptoWalletPage from "./pages/CryptoWalletPage";
+const CryptoWalletPage = lazy(() => import("./pages/CryptoWalletPage"));
 import BudgetPlannerPage from "./pages/BudgetPlannerPage";
-import AdminCreditPage from "./pages/AdminCreditPage";
-import AdminPanelFullPage from "./pages/AdminPanelFullPage";
-import MonitoringDashboard from "./pages/MonitoringDashboard";
-import MerchantAdminPage from "./pages/MerchantAdminPage";
-import BlitzTransferPage from "./pages/BlitzTransferPage";
-import BlitzBoostPage from "./pages/BlitzBoostPage";
-import BlitzMinePage from "./pages/BlitzMinePage";
+const AdminCreditPage = lazy(() => import("./pages/AdminCreditPage"));
+const AdminPanelFullPage = lazy(() => import("./pages/AdminPanelFullPage"));
+const MonitoringDashboard = lazy(() => import("./pages/MonitoringDashboard"));
+const MerchantAdminPage = lazy(() => import("./pages/MerchantAdminPage"));
+const BlitzTransferPage = lazy(() => import("./pages/BlitzTransferPage"));
+const BlitzBoostPage = lazy(() => import("./pages/BlitzBoostPage"));
+const BlitzMinePage = lazy(() => import("./pages/BlitzMinePage"));
+const LegalPage = lazy(() => import("./pages/LegalPage"));
 import NotificationCenterPage from "./pages/NotificationCenterPage";
 import ContactsPage from "./pages/ContactsPage";
 import UserStatsPage from "./pages/UserStatsPage";
@@ -368,6 +369,13 @@ function AppContent() {
         return isGuest ? <HomePage {...homeProps} /> : <BlitzBoostPage onNavigate={handleNavigate} onBack={() => handleNavigate("/more")} />;
       case "/blitz-mine":
         return isGuest ? <HomePage {...homeProps} /> : <BlitzMinePage onNavigate={handleNavigate} onBack={() => handleNavigate("/more")} />;
+      case "/legal/agb":
+      case "/legal/datenschutz":
+      case "/legal/impressum":
+      case "/legal/sicherheit": {
+        const slug = currentPath.split("/legal/")[1];
+        return <LegalPage slug={slug} onNavigate={handleNavigate} onBack={() => handleNavigate("/more")} />;
+      }
       case "/notifications":
         return isGuest
           ? <HomePage {...homeProps} />
@@ -650,7 +658,16 @@ function AppContent() {
           className="min-h-screen"
           style={isDemoMode ? { paddingTop: 36 } : undefined}
         >
-          {renderPage()}
+          <Suspense fallback={
+            <div className="min-h-screen flex items-center justify-center bg-[#050505]">
+              <div className="flex flex-col items-center gap-3">
+                <div className="w-10 h-10 rounded-full border-2 border-[#FFD700] border-t-transparent animate-spin" />
+                <p className="text-[11px] text-white/50 uppercase tracking-wider">Lädt...</p>
+              </div>
+            </div>
+          }>
+            {renderPage()}
+          </Suspense>
         </motion.div>
       </AnimatePresence>
       {showBottomNav && (

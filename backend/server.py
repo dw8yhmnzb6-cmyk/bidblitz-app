@@ -178,6 +178,7 @@ from routes.credit_system import router as credit_system_router
 from routes.bills import router as bills_router
 from routes.nft_generator import router as nft_router
 from routes.receipts import router as receipts_router
+from routes.legal import router as legal_router
 
 app.include_router(auth_router)
 app.include_router(wallet_router)
@@ -213,6 +214,7 @@ app.include_router(pos_payments_router)
 app.include_router(mining_router)
 app.include_router(mining_phase2_router)
 app.include_router(blitz_mine_router)
+app.include_router(legal_router)
 app.include_router(marketplace_router)
 app.include_router(chat_router)
 app.include_router(applications_router)

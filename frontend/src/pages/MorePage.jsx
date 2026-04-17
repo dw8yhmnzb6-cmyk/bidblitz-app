@@ -882,6 +882,13 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
     { id: "support-chat", icon: MessageCircle, label: t("more.support_chat"), desc: t("more.support_chat_desc"), color: "#00C2FF", action: gatedAction(() => onNavigate("/support-chat")) },
   ];
 
+  const legalMenu = [
+    { id: "legal-agb", icon: ShieldCheck, label: "AGB", desc: "Allgemeine Geschäftsbedingungen", color: "#00C2FF", action: () => onNavigate("/legal/agb") },
+    { id: "legal-datenschutz", icon: Lock, label: "Datenschutz", desc: "DSGVO, Cookies, Ihre Rechte", color: "#00E89D", action: () => onNavigate("/legal/datenschutz") },
+    { id: "legal-impressum", icon: Mail, label: "Impressum", desc: "Angaben zum Anbieter", color: "#A855F7", action: () => onNavigate("/legal/impressum") },
+    { id: "legal-sicherheit", icon: Shield, label: "Sicherheit", desc: "2FA, Verschlüsselung, Schutz", color: "#FFD700", action: () => onNavigate("/legal/sicherheit") },
+  ];
+
   const adminMenu = user.role === "admin" ? [
     { id: "admin-dashboard", icon: LayoutDashboard, label: t("more.admin_dashboard"), desc: t("more.admin_desc"), color: "#FF6B6B", action: () => onNavigate("/admin") },
     { id: "admin-car-rental", icon: Car, label: t("more.admin_car_rental"), desc: t("more.admin_car_rental_desc"), color: "#00C2FF", action: () => onNavigate("/car-rental/admin") },
@@ -1034,6 +1041,7 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
         {renderGroup(t("more.growth"), growthMenu, 0.22)}
         {renderGroup(t("more.app"), appMenu, 0.28)}
         {renderGroup(t("more.support"), supportMenu, 0.34)}
+        {renderGroup("Rechtliches", legalMenu, 0.38)}
         {adminMenu.length > 0 && renderGroup("Admin", adminMenu, 0.4)}
 
         {/* ── Logout / Sign In ── */}

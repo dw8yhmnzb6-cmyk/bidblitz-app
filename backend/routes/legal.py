@@ -54,16 +54,16 @@ DATENSCHUTZ_CONTENT = [
 ]
 
 IMPRESSUM_CONTENT = [
-    {"heading": "Angaben gemaess § 5 TMG", "text": "BidBlitz GmbH\nMusterstrasse 1\n10115 Berlin\nDeutschland"},
-    {"heading": "Vertreten durch", "text": "Geschaeftsfuehrer: [Name des Geschaeftsfuehrers]\nHandelsregister: Amtsgericht Berlin-Charlottenburg\nRegisternummer: HRB [Nummer]"},
-    {"heading": "Kontakt", "text": "E-Mail: info@bidblitz.ae\nTelefon: +49 (0) 30 123456789\nWebsite: https://bidblitz.ae"},
-    {"heading": "Umsatzsteuer-ID", "text": "Umsatzsteuer-Identifikationsnummer gemaess § 27a UStG:\nDE [Nummer]"},
-    {"heading": "Aufsichtsbehoerde", "text": "BidBlitz unterliegt als Finanzdienstleister der Aufsicht durch:\n[Zustaendige Behoerde / BaFin-Registrierung falls zutreffend]"},
-    {"heading": "Verantwortlich fuer den Inhalt", "text": "Verantwortlich gemaess § 55 Abs. 2 RStV:\n[Name des Verantwortlichen]\nBidBlitz GmbH\nMusterstrasse 1\n10115 Berlin"},
+    {"heading": "Angaben gemaess § 5 TMG", "text": "BidBlitz LLC\nDubai, United Arab Emirates\nFree Zone Registration pending"},
+    {"heading": "Vertreten durch", "text": "Geschaeftsfuehrer: Details folgen nach Handelsregister-Eintragung"},
+    {"heading": "Kontakt", "text": "E-Mail: support@bidblitz.ae\nSupport: support@bidblitz.ae\nDatenschutz: datenschutz@bidblitz.ae\nSicherheit: security@bidblitz.ae\nWebsite: https://bidblitz.ae"},
+    {"heading": "Umsatzsteuer-ID", "text": "Umsatzsteuer-Identifikationsnummer: Details folgen nach Eintragung"},
+    {"heading": "Aufsichtsbehoerde", "text": "BidBlitz operiert als Technologie-Plattform und unterliegt in seiner aktuellen Form keiner spezifischen Finanzaufsicht. Zahlungsabwicklungen erfolgen ueber lizenzierte Drittanbieter wie Stripe Inc."},
+    {"heading": "Verantwortlich fuer den Inhalt", "text": "Verantwortlich gemaess § 55 Abs. 2 RStV:\nBidBlitz LLC Redaktionsteam\nsupport@bidblitz.ae"},
     {"heading": "Streitschlichtung", "text": "Die Europaeische Kommission stellt eine Plattform zur Online-Streitbeilegung (OS) bereit: https://ec.europa.eu/consumers/odr\n\nWir sind nicht bereit oder verpflichtet, an Streitbeilegungsverfahren vor einer Verbraucherschlichtungsstelle teilzunehmen."},
-    {"heading": "Haftung fuer Inhalte", "text": "Als Diensteanbieter sind wir gemaess § 7 Abs. 1 TMG fuer eigene Inhalte auf diesen Seiten nach den allgemeinen Gesetzen verantwortlich. Nach §§ 8 bis 10 TMG sind wir als Diensteanbieter jedoch nicht verpflichtet, uebermittelte oder gespeicherte fremde Informationen zu ueberwachen."},
+    {"heading": "Haftung fuer Inhalte", "text": "Als Diensteanbieter sind wir fuer eigene Inhalte auf diesen Seiten nach den allgemeinen Gesetzen verantwortlich. Wir sind jedoch nicht verpflichtet, uebermittelte oder gespeicherte fremde Informationen zu ueberwachen oder nach Umstaenden zu forschen, die auf eine rechtswidrige Taetigkeit hinweisen."},
     {"heading": "Haftung fuer Links", "text": "Unser Angebot enthaelt Links zu externen Websites Dritter, auf deren Inhalte wir keinen Einfluss haben. Fuer die Inhalte der verlinkten Seiten ist stets der jeweilige Anbieter verantwortlich."},
-    {"heading": "Urheberrecht", "text": "Die durch BidBlitz erstellten Inhalte und Werke auf diesen Seiten unterliegen dem deutschen Urheberrecht. Die Vervielfaeltigung, Bearbeitung und Verbreitung ausserhalb der Grenzen des Urheberrechts beduerfen der Zustimmung von BidBlitz."},
+    {"heading": "Urheberrecht", "text": "Die durch BidBlitz erstellten Inhalte und Werke auf diesen Seiten unterliegen dem Urheberrecht. Die Vervielfaeltigung, Bearbeitung und Verbreitung ausserhalb der Grenzen des Urheberrechts beduerfen der Zustimmung von BidBlitz."},
 ]
 
 SICHERHEIT_CONTENT = [
