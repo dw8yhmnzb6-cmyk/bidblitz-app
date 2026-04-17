@@ -7,6 +7,32 @@
 
 ## Production Status: LIVE ✅ | All 41+ V2 Modules Running
 
+## Deployed Features (2026-04-17)
+
+### BlitzMine (Pi Network-Style Tap-to-Earn) — NEU
+- Route: `/blitz-mine`
+- Daily 24h tap session, auto-claim after 24h
+- Security Circle (max 5 trusted members, +20% per member)
+- Roles: Pioneer → Contributor → Ambassador → Node (×1.0 → ×1.5)
+- Referral bonus (+5% per active direct referral, cap 50%)
+- Lockup (14d / 6m / 1y / 3y, bis +120%, early-release -25%)
+- Leaderboard (Top 20 Pioneers)
+- Earnings in BLZ (same wallet as `/mining`)
+- Backend: `/app/backend/routes/blitz_mine.py`
+- Frontend: `/app/frontend/src/pages/BlitzMinePage.jsx`
+- Seed: 30 realistic pioneers (max.weber, lina.kaiser, …) via `scripts/seed_blitz_mine.py`
+
+### BlitzBoost Navigation Fix
+- Added to MorePage menu, All-Services page, QuickAccessBar
+- Also added `/blitz-transfer` and `/blitz-mine` entries
+
+### Auctions Bot Fix (Production)
+- Legacy `end_time` / `id` schema migrated to new `ends_at` / `auction_id`
+- Removed embedded `product._id` (ObjectId) that broke `/api/auctions/list`
+- 80 auctions reactivated with fresh bot targets (`bot_enabled=true`)
+- 3-phase bot bidding strategy working (Start → Pause → Final 5min)
+- Scripts: `clean_auctions.py`, `migrate_and_reactivate_auctions.py`
+
 ## Deployed Features (2026-04-16)
 
 ### Server Monitoring Dashboard (/admin/monitoring)
