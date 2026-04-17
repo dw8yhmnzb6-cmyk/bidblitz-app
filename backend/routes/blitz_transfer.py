@@ -20,8 +20,9 @@ router = APIRouter(prefix="/api/transfer", tags=["transfer"])
 UPLOAD_DIR = Path("/var/www/bidblitz/uploads/transfers") if os.path.exists("/var/www/bidblitz") else Path(__file__).parent.parent / "uploads" / "transfers"
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
-MAX_FILE_SIZE = 500 * 1024 * 1024  # 500 MB
+MAX_FILE_SIZE = 10 * 1024 * 1024 * 1024  # 10 GB
 MAX_FILES_PER_TRANSFER = 10
+CHUNK_SIZE = 5 * 1024 * 1024  # 5 MB chunks
 ALLOWED_EXTENSIONS = {
     "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "txt", "csv",
     "zip", "rar", "7z", "tar", "gz",
@@ -79,16 +80,24 @@ async def create_transfer(
         if ext not in ALLOWED_EXTENSIONS:
             raise HTTPException(400, f"Dateityp .{ext} nicht erlaubt")
 
-        content = await f.read()
-        file_size = len(content)
-        total_size += file_size
-
-        if total_size > MAX_FILE_SIZE:
-            raise HTTPException(400, f"Gesamtgroesse ueberschreitet {human_size(MAX_FILE_SIZE)}")
-
         safe_name = f"{uuid.uuid4().hex[:8]}_{f.filename}"
         file_path = transfer_dir / safe_name
-        file_path.write_bytes(content)
+
+        # Stream to disk in chunks (don't load entire file to RAM)
+        file_size = 0
+        with open(file_path, "wb") as out:
+            while True:
+                chunk = await f.read(CHUNK_SIZE)
+                if not chunk:
+                    break
+                out.write(chunk)
+                file_size += len(chunk)
+                if total_size + file_size > MAX_FILE_SIZE:
+                    out.close()
+                    file_path.unlink(missing_ok=True)
+                    raise HTTPException(400, f"Gesamtgroesse ueberschreitet {human_size(MAX_FILE_SIZE)}")
+
+        total_size += file_size
 
         saved_files.append({
             "original_name": f.filename,
@@ -241,3 +250,194 @@ async def delete_transfer(transfer_id: str, request: Request):
     )
 
     return {"ok": True, "message": "Transfer geloescht"}
+
+
+# ── Chunked Upload: Init ──
+class ChunkInitRequest(BaseModel):
+    filename: str
+    total_size: int
+    total_chunks: int
+
+@router.post("/chunk/init")
+async def chunk_init(req: ChunkInitRequest, request: Request):
+    user = await get_current_user(request)
+    ext = get_ext(req.filename)
+    if ext not in ALLOWED_EXTENSIONS:
+        raise HTTPException(400, f"Dateityp .{ext} nicht erlaubt")
+    if req.total_size > MAX_FILE_SIZE:
+        raise HTTPException(400, f"Datei zu gross. Max: {human_size(MAX_FILE_SIZE)}")
+
+    upload_id = str(uuid.uuid4())[:12]
+    chunk_dir = UPLOAD_DIR / "chunks" / upload_id
+    chunk_dir.mkdir(parents=True, exist_ok=True)
+
+    await db.chunk_uploads.insert_one({
+        "upload_id": upload_id,
+        "user_email": user.get("email"),
+        "filename": req.filename,
+        "total_size": req.total_size,
+        "total_chunks": req.total_chunks,
+        "uploaded_chunks": 0,
+        "status": "uploading",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    })
+
+    return {"upload_id": upload_id, "chunk_size": CHUNK_SIZE}
+
+
+# ── Chunked Upload: Upload Chunk ──
+@router.post("/chunk/{upload_id}/{chunk_index}")
+async def upload_chunk(upload_id: str, chunk_index: int, request: Request, chunk: UploadFile = File(...)):
+    info = await db.chunk_uploads.find_one({"upload_id": upload_id})
+    if not info:
+        raise HTTPException(404, "Upload nicht gefunden")
+
+    chunk_dir = UPLOAD_DIR / "chunks" / upload_id
+    chunk_path = chunk_dir / f"chunk_{chunk_index:06d}"
+
+    content = await chunk.read()
+    chunk_path.write_bytes(content)
+
+    await db.chunk_uploads.update_one(
+        {"upload_id": upload_id},
+        {"$inc": {"uploaded_chunks": 1}}
+    )
+
+    info = await db.chunk_uploads.find_one({"upload_id": upload_id})
+    done = info["uploaded_chunks"] >= info["total_chunks"]
+
+    return {
+        "ok": True,
+        "chunk_index": chunk_index,
+        "uploaded": info["uploaded_chunks"],
+        "total": info["total_chunks"],
+        "complete": done,
+    }
+
+
+# ── Chunked Upload: Finalize ──
+class ChunkFinalizeRequest(BaseModel):
+    upload_id: str
+    title: str = ""
+    message: str = ""
+    recipient_email: str = ""
+    expires_days: int = 7
+
+@router.post("/chunk/finalize")
+async def chunk_finalize(req: ChunkFinalizeRequest, request: Request):
+    user = await get_current_user(request)
+    info = await db.chunk_uploads.find_one({"upload_id": req.upload_id, "user_email": user.get("email")})
+    if not info:
+        raise HTTPException(404, "Upload nicht gefunden")
+
+    chunk_dir = UPLOAD_DIR / "chunks" / req.upload_id
+
+    # Assemble file from chunks
+    transfer_id = str(uuid.uuid4())[:12]
+    download_code = secrets.token_urlsafe(16)
+    transfer_dir = UPLOAD_DIR / transfer_id
+    transfer_dir.mkdir(parents=True, exist_ok=True)
+
+    safe_name = f"{uuid.uuid4().hex[:8]}_{info['filename']}"
+    final_path = transfer_dir / safe_name
+
+    total_size = 0
+    with open(final_path, "wb") as out:
+        for i in range(info["total_chunks"]):
+            cp = chunk_dir / f"chunk_{i:06d}"
+            if cp.exists():
+                data = cp.read_bytes()
+                out.write(data)
+                total_size += len(data)
+
+    # Cleanup chunks
+    import shutil
+    if chunk_dir.exists():
+        shutil.rmtree(chunk_dir)
+
+    now = datetime.now(timezone.utc)
+    expires_at = now + timedelta(days=max(1, min(req.expires_days, 30)))
+    ext = get_ext(info["filename"])
+
+    transfer = {
+        "transfer_id": transfer_id,
+        "download_code": download_code,
+        "sender_email": user.get("email"),
+        "sender_name": user.get("name", ""),
+        "recipient_email": req.recipient_email,
+        "title": req.title or f"Transfer von {user.get('name', user.get('email'))}",
+        "message": req.message,
+        "files": [{
+            "original_name": info["filename"],
+            "stored_name": safe_name,
+            "size": total_size,
+            "size_human": human_size(total_size),
+            "ext": ext,
+            "content_type": "application/octet-stream",
+        }],
+        "file_count": 1,
+        "total_size": total_size,
+        "total_size_human": human_size(total_size),
+        "downloads": 0,
+        "max_downloads": 100,
+        "expires_at": expires_at.isoformat(),
+        "expires_days": req.expires_days,
+        "status": "active",
+        "created_at": now.isoformat(),
+    }
+
+    await db.transfers.insert_one(transfer)
+    await db.chunk_uploads.delete_one({"upload_id": req.upload_id})
+
+    return {
+        "ok": True,
+        "transfer_id": transfer_id,
+        "download_code": download_code,
+        "share_link": f"/blitz-transfer/{transfer_id}/{download_code}",
+        "file_count": 1,
+        "total_size": human_size(total_size),
+        "expires_at": expires_at.isoformat(),
+        "expires_days": req.expires_days,
+        "message": f"Datei hochgeladen ({human_size(total_size)}). Link gueltig fuer {req.expires_days} Tage.",
+    }
+
+
+# ── Auto-Cleanup expired transfers ──
+@router.post("/cleanup")
+async def cleanup_expired(request: Request):
+    await require_admin(request)
+    import shutil
+    now = datetime.now(timezone.utc)
+    expired = await db.transfers.find({"expires_at": {"$lt": now.isoformat()}, "status": "active"}).to_list(None)
+
+    cleaned = 0
+    freed = 0
+    for t in expired:
+        tid = t["transfer_id"]
+        tdir = UPLOAD_DIR / tid
+        if tdir.exists():
+            for f in tdir.iterdir():
+                freed += f.stat().st_size
+            shutil.rmtree(tdir)
+        await db.transfers.update_one({"transfer_id": tid}, {"$set": {"status": "expired"}})
+        cleaned += 1
+
+    # Also cleanup orphan chunk dirs older than 24h
+    chunk_base = UPLOAD_DIR / "chunks"
+    if chunk_base.exists():
+        for d in chunk_base.iterdir():
+            if d.is_dir():
+                age = now.timestamp() - d.stat().st_mtime
+                if age > 86400:
+                    shutil.rmtree(d)
+                    cleaned += 1
+
+    return {"ok": True, "cleaned": cleaned, "freed": human_size(freed)}
+
+
+async def require_admin(request: Request):
+    user = await get_current_user(request)
+    if user.get("role") != "admin":
+        from fastapi import HTTPException
+        raise HTTPException(status_code=403, detail="Admin only")
+    return user

@@ -65,31 +65,87 @@ const BlitzTransferPage = ({ onNavigate, onBack }) => {
 
   const removeFile = (idx) => setFiles(prev => prev.filter((_, i) => i !== idx));
 
+  const CHUNK_SIZE = 5 * 1024 * 1024; // 5 MB
+
+  const uploadChunked = async (file) => {
+    const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+
+    // Init
+    const initRes = await fetch(`${API}/api/transfer/chunk/init`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ filename: file.name, total_size: file.size, total_chunks: totalChunks }),
+    });
+    if (!initRes.ok) { const d = await initRes.json(); throw new Error(d.detail || "Init failed"); }
+    const { upload_id } = await initRes.json();
+
+    // Upload chunks
+    for (let i = 0; i < totalChunks; i++) {
+      const start = i * CHUNK_SIZE;
+      const end = Math.min(start + CHUNK_SIZE, file.size);
+      const blob = file.slice(start, end);
+
+      const form = new FormData();
+      form.append("chunk", blob, `chunk_${i}`);
+
+      const chunkRes = await fetch(`${API}/api/transfer/chunk/${upload_id}/${i}`, {
+        method: "POST",
+        credentials: "include",
+        body: form,
+      });
+      if (!chunkRes.ok) throw new Error(`Chunk ${i} fehlgeschlagen`);
+      setProgress(Math.round(((i + 1) / totalChunks) * 90));
+    }
+
+    return upload_id;
+  };
+
   const handleUpload = async () => {
     if (files.length === 0) { toast.error("Keine Dateien ausgewaehlt"); return; }
     setUploading(true);
-    setProgress(10);
-
-    const formData = new FormData();
-    files.forEach(f => formData.append("files", f));
-    formData.append("title", title);
-    formData.append("message", message);
-    formData.append("recipient_email", recipient);
-    formData.append("expires_days", expDays.toString());
+    setProgress(5);
 
     try {
-      setProgress(30);
-      const res = await fetch(`${API}/api/transfer/create`, {
-        method: "POST",
-        credentials: "include",
-        body: formData,
-      });
-      setProgress(90);
-      const d = await res.json();
-      if (!res.ok) throw new Error(d.detail || "Upload fehlgeschlagen");
-      setProgress(100);
-      setResult(d);
-      toast.success(d.message);
+      // For large files (>50 MB single file): use chunked upload
+      if (files.length === 1 && files[0].size > 50 * 1024 * 1024) {
+        const uploadId = await uploadChunked(files[0]);
+        setProgress(92);
+
+        // Finalize
+        const finRes = await fetch(`${API}/api/transfer/chunk/finalize`, {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ upload_id: uploadId, title, message, recipient_email: recipient, expires_days: expDays }),
+        });
+        const d = await finRes.json();
+        if (!finRes.ok) throw new Error(d.detail || "Finalize fehlgeschlagen");
+        setProgress(100);
+        setResult(d);
+        toast.success(d.message);
+      } else {
+        // Small files: normal upload
+        const formData = new FormData();
+        files.forEach(f => formData.append("files", f));
+        formData.append("title", title);
+        formData.append("message", message);
+        formData.append("recipient_email", recipient);
+        formData.append("expires_days", expDays.toString());
+
+        setProgress(30);
+        const res = await fetch(`${API}/api/transfer/create`, {
+          method: "POST",
+          credentials: "include",
+          body: formData,
+        });
+        setProgress(90);
+        const d = await res.json();
+        if (!res.ok) throw new Error(d.detail || "Upload fehlgeschlagen");
+        setProgress(100);
+        setResult(d);
+        toast.success(d.message);
+      }
       loadTransfers();
     } catch (e) {
       toast.error(e.message);
@@ -137,7 +193,7 @@ const BlitzTransferPage = ({ onNavigate, onBack }) => {
           <h1 className="text-[15px] font-bold text-white flex items-center gap-2">
             <Zap size={14} className="text-[#00C2FF]" /> BlitzTransfer
           </h1>
-          <p className="text-[10px] text-white/30">Dateien sicher teilen — bis 500 MB</p>
+          <p className="text-[10px] text-white/30">Dateien sicher teilen — bis 10 GB</p>
         </div>
       </div>
 
@@ -180,7 +236,7 @@ const BlitzTransferPage = ({ onNavigate, onBack }) => {
               <Upload size={32} className="mx-auto mb-3" style={{ color: dragOver ? "#00C2FF" : "rgba(255,255,255,0.15)" }} />
               <p className="text-[13px] font-bold text-white/60">Dateien hierher ziehen</p>
               <p className="text-[10px] text-white/30 mt-1">oder tippen zum Auswaehlen</p>
-              <p className="text-[9px] text-white/20 mt-2">Max. 500 MB | 10 Dateien | PDF, ZIP, Bilder, Videos, Audio...</p>
+              <p className="text-[9px] text-white/20 mt-2">Max. 10 GB | 10 Dateien | PDF, ZIP, Bilder, Videos, Audio...</p>
               <input
                 ref={fileRef}
                 type="file"
