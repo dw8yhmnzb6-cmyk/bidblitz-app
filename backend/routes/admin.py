@@ -155,7 +155,7 @@ async def list_users(request: Request, search: str = "", limit: int = 50, skip: 
     users = await db.users.find(query, {"password_hash": 0}).sort("created_at", -1).skip(skip).limit(limit).to_list(limit)
     total = await db.users.count_documents(query)
 
-    user_ids = [str(u["_id"]) for u in users]
+    user_ids = [u.get("id") or str(u["_id"]) for u in users]
     txn_counts = await db.transactions.aggregate([
         {"$match": {"user_id": {"$in": user_ids}}},
         {"$group": {"_id": "$user_id", "count": {"$sum": 1}}}
@@ -164,13 +164,14 @@ async def list_users(request: Request, search: str = "", limit: int = 50, skip: 
 
     result = []
     for u in users:
+        uid = u.get("id") or str(u["_id"])
         result.append({
-            "id": str(u["_id"]),
+            "id": uid,
             "name": u.get("name", ""),
             "email": u.get("email", ""),
             "role": u.get("role", "user"),
-            "balance": u.get("balance", 0),
-            "transaction_count": txn_map.get(str(u["_id"]), 0),
+            "balance": u.get("balance", u.get("bids_balance", 0)),
+            "transaction_count": txn_map.get(uid, 0),
             "created_at": u.get("created_at", ""),
         })
 

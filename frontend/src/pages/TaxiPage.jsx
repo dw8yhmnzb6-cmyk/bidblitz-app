@@ -239,7 +239,7 @@ export default function TaxiPage({ onNavigate }) {
 
   const checkModuleStatus = async () => {
     try {
-      const res = await fetch(`${API}/api/taxi/status`, { credentials: 'include' });
+      const res = await fetch(`${API}/api/taxi/driver/status`, { credentials: 'include' });
       if (res.ok) {
         const data = await res.json();
         if (data.module_enabled === false) {
@@ -268,7 +268,7 @@ export default function TaxiPage({ onNavigate }) {
 
   const checkActiveRide = async () => {
     try {
-      const res = await fetch(`${API}/api/taxi/active`, { credentials: 'include' });
+      const res = await fetch(`${API}/api/taxi/rides/active`, { credentials: 'include' });
       if (res.ok) {
         const data = await res.json();
         if (data.has_active_ride && data.ride) {
@@ -442,7 +442,7 @@ export default function TaxiPage({ onNavigate }) {
   // Fetch ride history
   const fetchHistory = async () => {
     try {
-      const res = await fetch(`${API}/api/taxi/history`, { credentials: 'include' });
+      const res = await fetch(`${API}/api/taxi/rides/history`, { credentials: 'include' });
       if (res.ok) {
         const data = await res.json();
         setRideHistory(data.rides || []);

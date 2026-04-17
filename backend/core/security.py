@@ -63,12 +63,12 @@ def serialize_user(user: dict) -> dict:
             modes.append("merchant")
     
     return {
-        "id": str(user["_id"]),
+        "id": user.get("id") or str(user["_id"]),
         "email": user["email"],
         "name": user.get("name", ""),
         "role": role,
         "modes": modes,
-        "balance": round(user.get("balance", 0.0), 2),
+        "balance": round(user.get("balance", user.get("bids_balance", 0.0)), 2),
         "currency": user.get("currency", "EUR"),
         "card_number": user.get("card_number", ""),
         "card_expiry": user.get("card_expiry", ""),
@@ -91,9 +91,24 @@ async def get_current_user(request: Request) -> dict:
         raise HTTPException(status_code=401, detail="Not authenticated")
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
-        if payload.get("type") != "access":
+        # V2 tokens use "sub" with ObjectId, V1 tokens use "user_id" with UUID
+        user_ref = payload.get("sub") or payload.get("user_id")
+        if not user_ref:
+            raise HTTPException(status_code=401, detail="Invalid token payload")
+        
+        # Skip type check for V1 tokens (they don't have "type" field)
+        token_type = payload.get("type")
+        if token_type and token_type != "access":
             raise HTTPException(status_code=401, detail="Invalid token type")
-        user = await db.users.find_one({"_id": ObjectId(payload["sub"])})
+        
+        # Try ObjectId lookup first (V2), then UUID string lookup (V1)
+        user = None
+        try:
+            user = await db.users.find_one({"_id": ObjectId(user_ref)})
+        except Exception:
+            pass
+        if not user:
+            user = await db.users.find_one({"id": user_ref})
         if not user:
             raise HTTPException(status_code=401, detail="User not found")
         return user
