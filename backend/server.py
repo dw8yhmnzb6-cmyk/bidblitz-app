@@ -94,6 +94,12 @@ async def global_exception_handler(request: Request, exc: Exception):
 # ── Request Logging Middleware ──
 import time as _time
 
+# Monitoring metrics recorder
+try:
+    from routes.monitoring import record_request as _record_req
+except Exception:
+    _record_req = None
+
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
     start = _time.time()
@@ -103,6 +109,12 @@ async def log_requests(request: Request, call_next):
         access_logger.info(f"{request.method} {request.url.path} → {response.status_code} ({duration}ms)")
     if response.status_code >= 500:
         logger.error(f"5xx: {request.method} {request.url.path} → {response.status_code} ({duration}ms)")
+    # Feed monitoring metrics
+    if _record_req and not request.url.path.startswith("/api/admin/monitoring"):
+        try:
+            _record_req(request.url.path, request.method, response.status_code, duration)
+        except Exception:
+            pass
     return response
 
 # ── CORS ──
@@ -123,6 +135,7 @@ from routes.transactions import router as transactions_router
 from routes.stripe import router as stripe_router
 from routes.payout import router as payout_router
 from routes.admin import router as admin_router
+from routes.monitoring import router as monitoring_router
 from routes.export import router as export_router
 from routes.profile import router as profile_router
 from routes.sessions import router as sessions_router
@@ -170,6 +183,7 @@ app.include_router(transactions_router)
 app.include_router(stripe_router)
 app.include_router(payout_router)
 app.include_router(admin_router)
+app.include_router(monitoring_router)
 app.include_router(export_router)
 app.include_router(profile_router)
 app.include_router(sessions_router)

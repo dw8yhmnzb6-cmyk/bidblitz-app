@@ -1,0 +1,391 @@
+import { useState, useEffect, useCallback } from "react";
+import { motion } from "framer-motion";
+import {
+  Activity, Server, Database, Clock, AlertTriangle, Users,
+  HardDrive, Cpu, MemoryStick, Wifi, WifiOff, RefreshCw,
+  TrendingUp, Zap, BarChart3, ChevronLeft, Shield, Globe,
+  ArrowUp, ArrowDown,
+} from "lucide-react";
+
+const API = process.env.REACT_APP_BACKEND_URL;
+
+const fetchApi = async (path) => {
+  const res = await fetch(`${API}${path}`, { credentials: "include" });
+  if (!res.ok) throw new Error(`${res.status}`);
+  return res.json();
+};
+
+const StatCard = ({ icon: Icon, label, value, sub, color = "#00C2FF", trend }) => (
+  <motion.div
+    className="rounded-2xl p-4"
+    style={{ background: "#0A0A0A", border: "1px solid rgba(255,255,255,0.06)" }}
+    initial={{ opacity: 0, y: 10 }}
+    animate={{ opacity: 1, y: 0 }}
+  >
+    <div className="flex items-start justify-between mb-2">
+      <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: `${color}15` }}>
+        <Icon size={16} style={{ color }} />
+      </div>
+      {trend !== undefined && (
+        <div className={`flex items-center gap-0.5 text-[10px] font-bold ${trend >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+          {trend >= 0 ? <ArrowUp size={10} /> : <ArrowDown size={10} />}
+          {Math.abs(trend)}%
+        </div>
+      )}
+    </div>
+    <p className="text-[20px] font-bold text-white tracking-tight">{value}</p>
+    <p className="text-[11px] text-white/40 mt-0.5">{label}</p>
+    {sub && <p className="text-[10px] text-white/25 mt-0.5">{sub}</p>}
+  </motion.div>
+);
+
+const ProgressBar = ({ value, max, color = "#00C2FF", label, detail }) => {
+  const pct = max > 0 ? Math.min((value / max) * 100, 100) : 0;
+  const warn = pct > 80;
+  const crit = pct > 90;
+  const barColor = crit ? "#EF4444" : warn ? "#F59E0B" : color;
+  return (
+    <div className="mb-3">
+      <div className="flex justify-between mb-1">
+        <span className="text-[11px] text-white/60">{label}</span>
+        <span className="text-[11px] font-mono" style={{ color: barColor }}>{pct.toFixed(1)}%</span>
+      </div>
+      <div className="h-2 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+        <motion.div
+          className="h-full rounded-full"
+          style={{ background: barColor }}
+          initial={{ width: 0 }}
+          animate={{ width: `${pct}%` }}
+          transition={{ duration: 0.8, ease: "easeOut" }}
+        />
+      </div>
+      {detail && <p className="text-[10px] text-white/25 mt-0.5">{detail}</p>}
+    </div>
+  );
+};
+
+const MiniChart = ({ data, color = "#00C2FF", height = 48 }) => {
+  if (!data || data.length === 0) return null;
+  const max = Math.max(...data.map(d => d.count), 1);
+  const w = 100 / data.length;
+  return (
+    <div className="flex items-end gap-[2px]" style={{ height }}>
+      {data.map((d, i) => (
+        <motion.div
+          key={i}
+          className="rounded-sm flex-1"
+          style={{ background: color, opacity: 0.7, minWidth: 4 }}
+          initial={{ height: 0 }}
+          animate={{ height: `${Math.max((d.count / max) * 100, 4)}%` }}
+          transition={{ delay: i * 0.03, duration: 0.4 }}
+        />
+      ))}
+    </div>
+  );
+};
+
+const MonitoringDashboard = ({ onBack }) => {
+  const [health, setHealth] = useState(null);
+  const [metrics, setMetrics] = useState(null);
+  const [dbStats, setDbStats] = useState(null);
+  const [userStats, setUserStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [lastUpdate, setLastUpdate] = useState(null);
+
+  const loadData = useCallback(async () => {
+    try {
+      const [h, m, d, u] = await Promise.all([
+        fetchApi("/api/admin/monitoring/health").catch(() => null),
+        fetchApi("/api/admin/monitoring/metrics").catch(() => null),
+        fetchApi("/api/admin/monitoring/db-stats").catch(() => null),
+        fetchApi("/api/admin/monitoring/users-stats").catch(() => null),
+      ]);
+      if (h) setHealth(h);
+      if (m) setMetrics(m);
+      if (d) setDbStats(d);
+      if (u) setUserStats(u);
+      setError(null);
+      setLastUpdate(new Date());
+    } catch (e) {
+      setError("Verbindung fehlgeschlagen");
+    }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { loadData(); }, [loadData]);
+
+  useEffect(() => {
+    if (!autoRefresh) return;
+    const iv = setInterval(loadData, 15000);
+    return () => clearInterval(iv);
+  }, [autoRefresh, loadData]);
+
+  const formatUptime = (sec) => {
+    if (!sec) return "-";
+    const d = Math.floor(sec / 86400);
+    const h = Math.floor((sec % 86400) / 3600);
+    const m = Math.floor((sec % 3600) / 60);
+    if (d > 0) return `${d}d ${h}h ${m}m`;
+    if (h > 0) return `${h}h ${m}m`;
+    return `${m}m`;
+  };
+
+  const sys = health?.system || {};
+  const db_info = health?.database || {};
+
+  return (
+    <div className="min-h-screen pb-24" style={{ background: "#030303" }}>
+      {/* Header */}
+      <div className="sticky top-0 z-30 px-4 py-3 flex items-center justify-between" style={{ background: "rgba(3,3,3,0.9)", backdropFilter: "blur(20px)", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+        <div className="flex items-center gap-3">
+          <motion.button whileTap={{ scale: 0.9 }} onClick={onBack} className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: "rgba(255,255,255,0.06)" }}>
+            <ChevronLeft size={16} className="text-white/60" />
+          </motion.button>
+          <div>
+            <h1 className="text-[15px] font-bold text-white flex items-center gap-2">
+              <Activity size={14} className="text-emerald-400" /> Server Monitoring
+            </h1>
+            {lastUpdate && <p className="text-[10px] text-white/30">Aktualisiert: {lastUpdate.toLocaleTimeString("de-DE")}</p>}
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <motion.button
+            whileTap={{ scale: 0.9 }}
+            onClick={() => setAutoRefresh(!autoRefresh)}
+            className="w-8 h-8 rounded-full flex items-center justify-center"
+            style={{ background: autoRefresh ? "rgba(16,185,129,0.15)" : "rgba(255,255,255,0.06)" }}
+          >
+            <RefreshCw size={13} className={autoRefresh ? "text-emerald-400 animate-spin" : "text-white/40"} style={autoRefresh ? { animationDuration: "3s" } : {}} />
+          </motion.button>
+          <motion.button whileTap={{ scale: 0.9 }} onClick={loadData} className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: "rgba(255,255,255,0.06)" }}>
+            <RefreshCw size={13} className="text-white/60" />
+          </motion.button>
+        </div>
+      </div>
+
+      <div className="px-4 pt-4 space-y-4">
+        {/* Status Banner */}
+        {health && (
+          <motion.div
+            className="rounded-2xl p-4 flex items-center gap-3"
+            style={{
+              background: health.status === "healthy" ? "rgba(16,185,129,0.08)" : "rgba(239,68,68,0.08)",
+              border: `1px solid ${health.status === "healthy" ? "rgba(16,185,129,0.2)" : "rgba(239,68,68,0.2)"}`,
+            }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+          >
+            {health.status === "healthy" ? (
+              <Wifi size={20} className="text-emerald-400" />
+            ) : (
+              <WifiOff size={20} className="text-red-400" />
+            )}
+            <div className="flex-1">
+              <p className="text-[13px] font-bold" style={{ color: health.status === "healthy" ? "#10B981" : "#EF4444" }}>
+                {health.status === "healthy" ? "Alle Systeme operational" : "System degradiert"}
+              </p>
+              <p className="text-[10px] text-white/40">
+                API Uptime: {formatUptime(health.api_uptime_seconds)} | DB Latenz: {db_info.latency_ms}ms
+              </p>
+            </div>
+            <div className="w-3 h-3 rounded-full animate-pulse" style={{ background: health.status === "healthy" ? "#10B981" : "#EF4444" }} />
+          </motion.div>
+        )}
+
+        {/* Key Metrics Grid */}
+        <div className="grid grid-cols-2 gap-3">
+          <StatCard icon={Zap} label="Requests / Stunde" value={metrics?.requests_1h || 0} sub={`${metrics?.requests_24h || 0} in 24h`} color="#00C2FF" />
+          <StatCard icon={AlertTriangle} label="Fehler / Stunde" value={metrics?.errors_1h || 0} sub={`Rate: ${metrics?.error_rate_pct || 0}%`} color={metrics?.errors_1h > 10 ? "#EF4444" : "#F59E0B"} />
+          <StatCard icon={Clock} label="Avg Response" value={`${metrics?.avg_response_ms || 0}ms`} sub={`P95: ${metrics?.p95_response_ms || 0}ms`} color="#8B5CF6" />
+          <StatCard icon={Users} label="Total Users" value={userStats?.total_users || 0} sub={`+${userStats?.new_today || 0} heute`} color="#10B981" />
+        </div>
+
+        {/* RPM Chart */}
+        {metrics?.rpm_chart && (
+          <motion.div
+            className="rounded-2xl p-4"
+            style={{ background: "#0A0A0A", border: "1px solid rgba(255,255,255,0.06)" }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-[12px] font-bold text-white flex items-center gap-2">
+                <BarChart3 size={13} className="text-[#00C2FF]" /> Requests / Minute
+              </p>
+              <p className="text-[10px] text-white/30">Letzte 10 Min</p>
+            </div>
+            <MiniChart data={metrics.rpm_chart} color="#00C2FF" height={56} />
+          </motion.div>
+        )}
+
+        {/* System Resources */}
+        <motion.div
+          className="rounded-2xl p-4"
+          style={{ background: "#0A0A0A", border: "1px solid rgba(255,255,255,0.06)" }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+        >
+          <p className="text-[12px] font-bold text-white mb-3 flex items-center gap-2">
+            <Server size={13} className="text-[#F59E0B]" /> System Ressourcen
+          </p>
+          <ProgressBar label="CPU Load (1m)" value={sys.cpu_load_1m || 0} max={4} color="#00C2FF" detail={`1m: ${sys.cpu_load_1m} | 5m: ${sys.cpu_load_5m} | 15m: ${sys.cpu_load_15m}`} />
+          <ProgressBar label="RAM" value={sys.memory_used_mb || 0} max={sys.memory_total_mb || 1} color="#8B5CF6" detail={`${sys.memory_used_mb} / ${sys.memory_total_mb} MB`} />
+          <ProgressBar label="Disk" value={sys.disk_used_gb || 0} max={sys.disk_total_gb || 1} color="#F59E0B" detail={`${sys.disk_used_gb} / ${sys.disk_total_gb} GB`} />
+          <div className="flex items-center justify-between mt-2 pt-2" style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}>
+            <span className="text-[10px] text-white/30">Server Uptime</span>
+            <span className="text-[11px] font-mono text-emerald-400">{formatUptime(sys.uptime_seconds)}</span>
+          </div>
+        </motion.div>
+
+        {/* Database */}
+        <motion.div
+          className="rounded-2xl p-4"
+          style={{ background: "#0A0A0A", border: "1px solid rgba(255,255,255,0.06)" }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+        >
+          <p className="text-[12px] font-bold text-white mb-3 flex items-center gap-2">
+            <Database size={13} className="text-emerald-400" /> Datenbank
+          </p>
+          <div className="grid grid-cols-3 gap-2 mb-3">
+            <div className="text-center p-2 rounded-xl" style={{ background: "rgba(255,255,255,0.03)" }}>
+              <p className="text-[16px] font-bold text-white">{dbStats?.collections || 0}</p>
+              <p className="text-[9px] text-white/30">Collections</p>
+            </div>
+            <div className="text-center p-2 rounded-xl" style={{ background: "rgba(255,255,255,0.03)" }}>
+              <p className="text-[16px] font-bold text-white">{(dbStats?.total_objects || 0).toLocaleString("de-DE")}</p>
+              <p className="text-[9px] text-white/30">Dokumente</p>
+            </div>
+            <div className="text-center p-2 rounded-xl" style={{ background: "rgba(255,255,255,0.03)" }}>
+              <p className="text-[16px] font-bold text-white">{dbStats?.data_size_mb || 0} MB</p>
+              <p className="text-[9px] text-white/30">Datengroesse</p>
+            </div>
+          </div>
+          <div className="flex items-center justify-between text-[10px]">
+            <span className="text-white/30">Latenz</span>
+            <span className="font-mono" style={{ color: db_info.latency_ms < 50 ? "#10B981" : db_info.latency_ms < 200 ? "#F59E0B" : "#EF4444" }}>
+              {db_info.latency_ms || 0}ms
+            </span>
+          </div>
+          {/* Top Collections */}
+          {dbStats?.top_collections?.slice(0, 8).map((c, i) => (
+            <div key={i} className="flex items-center justify-between py-1.5" style={{ borderTop: i === 0 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
+              <span className="text-[10px] text-white/50 truncate flex-1">{c.name}</span>
+              <span className="text-[10px] font-mono text-white/70">{c.documents.toLocaleString("de-DE")}</span>
+            </div>
+          ))}
+        </motion.div>
+
+        {/* User Stats */}
+        {userStats && (
+          <motion.div
+            className="rounded-2xl p-4"
+            style={{ background: "#0A0A0A", border: "1px solid rgba(255,255,255,0.06)" }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+          >
+            <p className="text-[12px] font-bold text-white mb-3 flex items-center gap-2">
+              <Users size={13} className="text-[#00C2FF]" /> User Statistiken
+            </p>
+            <div className="grid grid-cols-2 gap-2 mb-3">
+              <div className="p-2 rounded-xl" style={{ background: "rgba(255,255,255,0.03)" }}>
+                <p className="text-[14px] font-bold text-emerald-400">+{userStats.new_today}</p>
+                <p className="text-[9px] text-white/30">Heute</p>
+              </div>
+              <div className="p-2 rounded-xl" style={{ background: "rgba(255,255,255,0.03)" }}>
+                <p className="text-[14px] font-bold text-[#00C2FF]">+{userStats.new_this_week}</p>
+                <p className="text-[9px] text-white/30">Diese Woche</p>
+              </div>
+              <div className="p-2 rounded-xl" style={{ background: "rgba(255,255,255,0.03)" }}>
+                <p className="text-[14px] font-bold text-[#8B5CF6]">+{userStats.new_this_month}</p>
+                <p className="text-[9px] text-white/30">Dieser Monat</p>
+              </div>
+              <div className="p-2 rounded-xl" style={{ background: "rgba(255,255,255,0.03)" }}>
+                <p className="text-[14px] font-bold text-[#F59E0B]">{userStats.active_7d}</p>
+                <p className="text-[9px] text-white/30">Aktiv (7 Tage)</p>
+              </div>
+            </div>
+            {/* Role Distribution */}
+            {userStats.roles && Object.entries(userStats.roles).map(([role, count]) => (
+              <div key={role} className="flex items-center justify-between py-1">
+                <span className="text-[10px] text-white/50 capitalize">{role}</span>
+                <span className="text-[10px] font-mono text-white/70">{count}</span>
+              </div>
+            ))}
+          </motion.div>
+        )}
+
+        {/* Slow Endpoints */}
+        {metrics?.slow_endpoints?.length > 0 && (
+          <motion.div
+            className="rounded-2xl p-4"
+            style={{ background: "#0A0A0A", border: "1px solid rgba(239,68,68,0.15)" }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+          >
+            <p className="text-[12px] font-bold text-white mb-3 flex items-center gap-2">
+              <AlertTriangle size={13} className="text-red-400" /> Langsame Endpoints ({">"}500ms)
+            </p>
+            {metrics.slow_endpoints.slice(0, 8).map((ep, i) => (
+              <div key={i} className="flex items-center justify-between py-1.5" style={{ borderTop: i > 0 ? "1px solid rgba(255,255,255,0.03)" : "none" }}>
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <span className="text-[9px] px-1.5 py-0.5 rounded font-mono" style={{ background: "rgba(255,255,255,0.06)", color: ep.method === "GET" ? "#10B981" : "#F59E0B" }}>
+                    {ep.method}
+                  </span>
+                  <span className="text-[10px] text-white/50 truncate">{ep.path}</span>
+                </div>
+                <span className="text-[10px] font-mono text-red-400 ml-2">{ep.duration_ms}ms</span>
+              </div>
+            ))}
+          </motion.div>
+        )}
+
+        {/* Top Endpoints */}
+        {metrics?.top_endpoints?.length > 0 && (
+          <motion.div
+            className="rounded-2xl p-4"
+            style={{ background: "#0A0A0A", border: "1px solid rgba(255,255,255,0.06)" }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+          >
+            <p className="text-[12px] font-bold text-white mb-3 flex items-center gap-2">
+              <TrendingUp size={13} className="text-[#8B5CF6]" /> Top Endpoints (1h)
+            </p>
+            {metrics.top_endpoints.slice(0, 10).map((ep, i) => (
+              <div key={i} className="flex items-center justify-between py-1.5" style={{ borderTop: i > 0 ? "1px solid rgba(255,255,255,0.03)" : "none" }}>
+                <span className="text-[10px] text-white/50 truncate flex-1">{ep.path}</span>
+                <span className="text-[10px] font-mono text-[#8B5CF6]">{ep.count}x</span>
+              </div>
+            ))}
+          </motion.div>
+        )}
+
+        {/* Error Codes */}
+        {metrics?.error_codes && Object.keys(metrics.error_codes).length > 0 && (
+          <motion.div
+            className="rounded-2xl p-4"
+            style={{ background: "#0A0A0A", border: "1px solid rgba(239,68,68,0.1)" }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+          >
+            <p className="text-[12px] font-bold text-white mb-3 flex items-center gap-2">
+              <Shield size={13} className="text-red-400" /> Fehler-Codes (1h)
+            </p>
+            <div className="grid grid-cols-3 gap-2">
+              {Object.entries(metrics.error_codes).map(([code, count]) => (
+                <div key={code} className="text-center p-2 rounded-xl" style={{ background: "rgba(239,68,68,0.06)" }}>
+                  <p className="text-[14px] font-bold text-red-400">{count}</p>
+                  <p className="text-[9px] text-white/30">HTTP {code}</p>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default MonitoringDashboard;
