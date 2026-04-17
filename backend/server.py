@@ -160,6 +160,7 @@ from routes.merchant_hierarchy import router as merchant_hierarchy_router
 from routes.pos_payments import router as pos_payments_router
 from routes.mining import router as mining_router
 from routes.mining_phase2 import router as mining_phase2_router
+from routes.blitz_mine import router as blitz_mine_router
 from routes.marketplace import router as marketplace_router
 from routes.chat import router as chat_router
 from routes.applications import router as applications_router
@@ -211,6 +212,7 @@ app.include_router(merchant_hierarchy_router)
 app.include_router(pos_payments_router)
 app.include_router(mining_router)
 app.include_router(mining_phase2_router)
+app.include_router(blitz_mine_router)
 app.include_router(marketplace_router)
 app.include_router(chat_router)
 app.include_router(applications_router)

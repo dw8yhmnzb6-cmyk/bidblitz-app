@@ -107,7 +107,7 @@ function AutoRewardCard({ reward, data, t }) {
 
 const tabs = ["dashboard", "miners", "wallet", "shop", "marketplace", "card", "launchpad", "vip"];
 
-export default function MiningPage({ onBack }) {
+export default function MiningPage({ onBack, onNavigate }) {
   const user = useUser();
   const { t } = useI18n();
   const [tab, setTab] = useState("dashboard");
@@ -385,6 +385,31 @@ export default function MiningPage({ onBack }) {
           {/* ════ DASHBOARD ════ */}
           {tab === "dashboard" && (
             <motion.div key="dash" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
+
+              {/* ── BlitzMine (Pi-Style Tap-to-Earn) Banner ── */}
+              <motion.button
+                data-testid="mining-blitzmine-banner"
+                whileTap={{ scale: 0.98 }}
+                onClick={() => onNavigate?.("/blitz-mine")}
+                className="w-full rounded-2xl p-4 flex items-center gap-3 relative overflow-hidden"
+                style={{
+                  background: "linear-gradient(135deg, rgba(255,215,0,0.10), rgba(0,194,255,0.06))",
+                  border: "1px solid rgba(255,215,0,0.25)",
+                  boxShadow: "0 4px 20px rgba(255,215,0,0.08)",
+                }}
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                <div className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0"
+                  style={{ background: "radial-gradient(circle, #FFD70030, transparent)", border: "1px solid #FFD700" }}>
+                  <Zap size={20} className="text-[#FFD700]" />
+                </div>
+                <div className="flex-1 text-left">
+                  <p className="text-[13px] font-bold text-white">BlitzMine <span className="text-[9px] text-[#FFD700] font-semibold">NEU</span></p>
+                  <p className="text-[10px] text-white/60">Tippe täglich – verdiene BLZ passiv (Pi Network Style)</p>
+                </div>
+                <ChevronRight size={16} className="text-white/40" />
+              </motion.button>
 
               {/* Balance Card — Premium Glassmorphism */}
               <motion.div className="rounded-3xl p-5 relative overflow-hidden"

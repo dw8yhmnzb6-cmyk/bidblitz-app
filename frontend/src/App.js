@@ -67,6 +67,7 @@ import MonitoringDashboard from "./pages/MonitoringDashboard";
 import MerchantAdminPage from "./pages/MerchantAdminPage";
 import BlitzTransferPage from "./pages/BlitzTransferPage";
 import BlitzBoostPage from "./pages/BlitzBoostPage";
+import BlitzMinePage from "./pages/BlitzMinePage";
 import NotificationCenterPage from "./pages/NotificationCenterPage";
 import ContactsPage from "./pages/ContactsPage";
 import UserStatsPage from "./pages/UserStatsPage";
@@ -342,7 +343,7 @@ function AppContent() {
       case "/merchant-landing":
         return <MerchantLandingPage onNavigate={handleNavigate} />;
       case "/mining":
-        return <MiningPage onBack={() => handleNavigate("/more")} />;
+        return <MiningPage onNavigate={handleNavigate} onBack={() => handleNavigate("/more")} />;
       case "/nft":
         return <NFTGeneratorPage onNavigate={handleNavigate} />;
       case "/admin":
@@ -365,6 +366,8 @@ function AppContent() {
         return isGuest ? <HomePage {...homeProps} /> : <BlitzTransferPage onNavigate={handleNavigate} onBack={() => handleNavigate("/more")} />;
       case "/blitz-boost":
         return isGuest ? <HomePage {...homeProps} /> : <BlitzBoostPage onNavigate={handleNavigate} onBack={() => handleNavigate("/more")} />;
+      case "/blitz-mine":
+        return isGuest ? <HomePage {...homeProps} /> : <BlitzMinePage onNavigate={handleNavigate} onBack={() => handleNavigate("/more")} />;
       case "/notifications":
         return isGuest
           ? <HomePage {...homeProps} />

@@ -67,6 +67,7 @@ const ALL_SHORTCUTS = [
   { id: "stories", icon: MessageCircle, label: "Feed", route: "/stories", color: "#6366F1" },
   { id: "blitz-boost", icon: TrendingUp, label: "BlitzBoost", route: "/blitz-boost", color: "#E1306C" },
   { id: "blitz-transfer", icon: Package, label: "BlitzTransfer", route: "/blitz-transfer", color: "#00B2FF" },
+  { id: "blitz-mine", icon: Zap, label: "BlitzMine", route: "/blitz-mine", color: "#FFD700" },
 ];
 
 const DEFAULT_SHORTCUTS = ["taxi", "scooter", "hotels", "restaurants"];

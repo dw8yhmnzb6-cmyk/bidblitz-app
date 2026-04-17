@@ -849,6 +849,7 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
     { id: "viral", icon: Zap, label: "Viral & Social", desc: "BlitzClips, Challenges, Share & Earn", color: "#EC4899", action: gatedAction(() => onNavigate("/viral")), roles: ["all"] },
     { id: "blitz-boost", icon: TrendingUp, label: "BlitzBoost", desc: "Social Media Booster – Follower, Likes, Views", color: "#E1306C", action: gatedAction(() => onNavigate("/blitz-boost")), roles: ["all"] },
     { id: "blitz-transfer", icon: Wifi, label: "BlitzTransfer", desc: "Große Dateien sicher versenden (bis 10GB)", color: "#00B2FF", action: gatedAction(() => onNavigate("/blitz-transfer")), roles: ["all"] },
+    { id: "blitz-mine", icon: Zap, label: "BlitzMine", desc: "Tippe täglich & mine BLZ – Pi Network-Style", color: "#FFD700", action: gatedAction(() => onNavigate("/blitz-mine")), roles: ["all"] },
     // Merchant-only items
     { id: "pay", icon: Wallet, label: t("pay.title") || "Bezahlen", desc: t("pay.menu_desc") || "Barcode & NFC Zahlungen", color: "#00E89D", action: gatedAction(() => onNavigate("/pay")), roles: ["merchant", "admin"] },
     { id: "terminal", icon: Scan, label: t("terminal.title") || "Zahlungsterminal", desc: t("terminal.menu_desc") || "Zahlungen annehmen", color: "#FFB800", action: gatedAction(() => onNavigate("/terminal")), roles: ["merchant", "admin"] },
