@@ -34,6 +34,8 @@ const BlitzTransferPage = ({ onNavigate, onBack }) => {
   const [message, setMessage] = useState("");
   const [recipient, setRecipient] = useState("");
   const [expDays, setExpDays] = useState(7);
+  const [tier, setTier] = useState("free");
+  const [password, setPassword] = useState("");
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [result, setResult] = useState(null);
@@ -132,6 +134,8 @@ const BlitzTransferPage = ({ onNavigate, onBack }) => {
         formData.append("message", message);
         formData.append("recipient_email", recipient);
         formData.append("expires_days", expDays.toString());
+        formData.append("tier", tier);
+        formData.append("password", password);
 
         setProgress(30);
         const res = await fetch(`${API}/api/transfer/create`, {
@@ -180,6 +184,13 @@ const BlitzTransferPage = ({ onNavigate, onBack }) => {
     setProgress(0);
   };
 
+  const TIERS = [
+    { id: "free", label: "Kostenlos", maxLabel: "bis 1 GB", price: 0, maxDays: 7, maxDl: 5, color: "#6B7280" },
+    { id: "plus", label: "Plus", maxLabel: "bis 5 GB", price: 1.99, maxDays: 30, maxDl: 100, color: "#00C2FF" },
+    { id: "pro", label: "Pro", maxLabel: "bis 10 GB", price: 3.99, maxDays: 30, maxDl: -1, color: "#FFB800" },
+  ];
+
+  const currentTier = TIERS.find(t => t.id === tier) || TIERS[0];
   const totalSize = files.reduce((s, f) => s + f.size, 0);
 
   return (
@@ -293,6 +304,43 @@ const BlitzTransferPage = ({ onNavigate, onBack }) => {
             {/* Options */}
             {files.length > 0 && (
               <div className="space-y-3">
+                {/* Tier Selection */}
+                <div>
+                  <p className="text-[11px] text-white/40 mb-2">Paket waehlen:</p>
+                  <div className="space-y-2">
+                    {TIERS.map(t => (
+                      <motion.button
+                        key={t.id}
+                        whileTap={{ scale: 0.97 }}
+                        onClick={() => { setTier(t.id); setExpDays(Math.min(expDays, t.maxDays)); }}
+                        className="w-full flex items-center gap-3 p-3 rounded-xl text-left"
+                        style={{
+                          background: tier === t.id ? `${t.color}10` : "#0A0A0A",
+                          border: `1.5px solid ${tier === t.id ? `${t.color}40` : "rgba(255,255,255,0.06)"}`,
+                        }}
+                        data-testid={`tier-${t.id}`}
+                      >
+                        <div className="w-4 h-4 rounded-full border-2 flex items-center justify-center" style={{ borderColor: tier === t.id ? t.color : "rgba(255,255,255,0.15)" }}>
+                          {tier === t.id && <div className="w-2 h-2 rounded-full" style={{ background: t.color }} />}
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[12px] font-bold text-white">{t.label}</span>
+                            <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: `${t.color}15`, color: t.color }}>{t.maxLabel}</span>
+                          </div>
+                          <span className="text-[9px] text-white/30">{t.maxDays} Tage | {t.maxDl > 0 ? `${t.maxDl} Downloads` : "Unbegrenzt"}{t.id !== "free" ? " | Passwortschutz" : ""}</span>
+                        </div>
+                        <span className="text-[13px] font-bold" style={{ color: t.price > 0 ? t.color : "#10B981" }}>
+                          {t.price > 0 ? `EUR ${t.price.toFixed(2)}` : "Gratis"}
+                        </span>
+                      </motion.button>
+                    ))}
+                  </div>
+                  {totalSize > (TIERS.find(t => t.id === tier)?.maxLabel === "bis 1 GB" ? 1073741824 : tier === "plus" ? 5368709120 : 10737418240) && (
+                    <p className="text-[10px] text-red-400 mt-1">Dateien zu gross fuer dieses Paket!</p>
+                  )}
+                </div>
+
                 <input
                   className="w-full px-4 py-3 rounded-xl text-[12px] text-white placeholder:text-white/20"
                   style={{ background: "#0A0A0A", border: "1px solid rgba(255,255,255,0.06)" }}
@@ -319,9 +367,22 @@ const BlitzTransferPage = ({ onNavigate, onBack }) => {
                   data-testid="transfer-message"
                 />
 
+                {/* Password (Plus/Pro only) */}
+                {tier !== "free" && (
+                  <input
+                    className="w-full px-4 py-3 rounded-xl text-[12px] text-white placeholder:text-white/20"
+                    style={{ background: "#0A0A0A", border: "1px solid rgba(255,255,255,0.06)" }}
+                    type="password"
+                    placeholder="Passwortschutz (optional)"
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    data-testid="transfer-password"
+                  />
+                )}
+
                 <div className="flex items-center gap-3">
-                  <span className="text-[11px] text-white/40">Gueltig fuer:</span>
-                  {[3, 7, 14, 30].map(d => (
+                  <span className="text-[11px] text-white/40">Gueltig:</span>
+                  {[3, 7, 14, 30].filter(d => d <= currentTier.maxDays).map(d => (
                     <motion.button
                       key={d}
                       whileTap={{ scale: 0.9 }}
@@ -354,12 +415,15 @@ const BlitzTransferPage = ({ onNavigate, onBack }) => {
                 <motion.button
                   data-testid="transfer-send-btn"
                   className="w-full py-4 rounded-2xl text-[14px] font-bold flex items-center justify-center gap-2 text-white"
-                  style={{ background: "linear-gradient(135deg, #00C2FF, #0088CC)", boxShadow: "0 4px 24px rgba(0,194,255,0.3)" }}
+                  style={{ background: `linear-gradient(135deg, ${currentTier.color}, ${currentTier.color}CC)`, boxShadow: `0 4px 24px ${currentTier.color}40` }}
                   whileTap={{ scale: 0.97 }}
                   onClick={handleUpload}
                   disabled={uploading}
                 >
-                  <Send size={16} /> Transfer senden
+                  <Send size={16} />
+                  {currentTier.price > 0
+                    ? `Transfer senden — EUR ${currentTier.price.toFixed(2)}`
+                    : "Transfer senden — Kostenlos"}
                 </motion.button>
               </div>
             )}

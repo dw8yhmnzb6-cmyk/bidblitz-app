@@ -23,6 +23,13 @@ UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 MAX_FILE_SIZE = 10 * 1024 * 1024 * 1024  # 10 GB
 MAX_FILES_PER_TRANSFER = 10
 CHUNK_SIZE = 5 * 1024 * 1024  # 5 MB chunks
+
+# Pricing tiers (pay per transfer from wallet)
+TRANSFER_TIERS = {
+    "free":  {"max_bytes": 1 * 1024 * 1024 * 1024, "price": 0,    "label": "Kostenlos", "max_days": 7,  "max_downloads": 5},
+    "plus":  {"max_bytes": 5 * 1024 * 1024 * 1024, "price": 1.99, "label": "Plus (5 GB)", "max_days": 30, "max_downloads": 100},
+    "pro":   {"max_bytes": 10* 1024 * 1024 * 1024, "price": 3.99, "label": "Pro (10 GB)", "max_days": 30, "max_downloads": -1},  # -1 = unlimited
+}
 ALLOWED_EXTENSIONS = {
     "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "txt", "csv",
     "zip", "rar", "7z", "tar", "gz",
@@ -44,6 +51,27 @@ def human_size(size_bytes: int) -> str:
         return f"{size_bytes / (1024 * 1024):.1f} MB"
     return f"{size_bytes / (1024 * 1024 * 1024):.1f} GB"
 
+def determine_tier(total_size: int) -> dict:
+    """Determine pricing tier based on total file size."""
+    for key in ["free", "plus", "pro"]:
+        tier = TRANSFER_TIERS[key]
+        if total_size <= tier["max_bytes"]:
+            return {"tier": key, **tier}
+    return {"tier": "pro", **TRANSFER_TIERS["pro"]}
+
+
+# ── Get Pricing Info ──
+@router.get("/pricing")
+async def get_pricing():
+    return {
+        "tiers": [
+            {"id": k, "label": v["label"], "max_size": human_size(v["max_bytes"]), "max_size_bytes": v["max_bytes"],
+             "price": v["price"], "max_days": v["max_days"],
+             "max_downloads": v["max_downloads"] if v["max_downloads"] > 0 else "Unbegrenzt"}
+            for k, v in TRANSFER_TIERS.items()
+        ]
+    }
+
 
 # ── Create Transfer (upload files) ──
 @router.post("/create")
@@ -54,6 +82,8 @@ async def create_transfer(
     message: str = Form(""),
     recipient_email: str = Form(""),
     expires_days: int = Form(7),
+    tier: str = Form("free"),
+    password: str = Form(""),
 ):
     user = await get_current_user(request)
     user_email = user.get("email", "")
@@ -61,8 +91,20 @@ async def create_transfer(
     if len(files) > MAX_FILES_PER_TRANSFER:
         raise HTTPException(400, f"Maximal {MAX_FILES_PER_TRANSFER} Dateien pro Transfer")
 
-    if expires_days < 1 or expires_days > 30:
-        expires_days = 7
+    # Validate tier
+    if tier not in TRANSFER_TIERS:
+        tier = "free"
+    tier_info = TRANSFER_TIERS[tier]
+    price = tier_info["price"]
+
+    # Check wallet balance if paid tier
+    if price > 0:
+        balance = user.get("balance", user.get("bids_balance", 0))
+        if balance < price:
+            raise HTTPException(400, f"Nicht genug Guthaben. Benoetig: EUR {price:.2f}, Verfuegbar: EUR {balance:.2f}")
+
+    # Cap expires_days to tier limit
+    expires_days = min(max(1, expires_days), tier_info["max_days"])
 
     transfer_id = str(uuid.uuid4())[:12]
     download_code = secrets.token_urlsafe(16)
@@ -108,6 +150,31 @@ async def create_transfer(
             "content_type": f.content_type or "application/octet-stream",
         })
 
+    # Check size vs tier limit
+    if total_size > tier_info["max_bytes"]:
+        # Cleanup uploaded files
+        import shutil
+        if transfer_dir.exists():
+            shutil.rmtree(transfer_dir)
+        raise HTTPException(400, f"Dateigroesse ({human_size(total_size)}) ueberschreitet {tier_info['label']} Limit ({human_size(tier_info['max_bytes'])}). Waehle ein hoeheres Paket.")
+
+    # Charge wallet if paid tier
+    if price > 0:
+        await db.users.update_one({"_id": user["_id"]}, {"$inc": {"balance": -price}})
+        await db.transactions.insert_one({
+            "transaction_id": f"transfer_{secrets.token_hex(6)}",
+            "user_id": user.get("id") or str(user["_id"]),
+            "user_email": user_email,
+            "type": "blitz_transfer",
+            "amount": -price,
+            "description": f"BlitzTransfer {tier_info['label']} — {human_size(total_size)}",
+            "status": "completed",
+            "created_at": now.isoformat(),
+        })
+
+    # Hash password if set
+    pw_hash = hashlib.sha256(password.encode()).hexdigest() if password else None
+
     transfer = {
         "transfer_id": transfer_id,
         "download_code": download_code,
@@ -121,7 +188,10 @@ async def create_transfer(
         "total_size": total_size,
         "total_size_human": human_size(total_size),
         "downloads": 0,
-        "max_downloads": 100,
+        "max_downloads": tier_info["max_downloads"],
+        "password_hash": pw_hash,
+        "tier": tier,
+        "price_paid": price,
         "expires_at": expires_at.isoformat(),
         "expires_days": expires_days,
         "status": "active",
@@ -138,9 +208,11 @@ async def create_transfer(
         "share_link": f"/blitz-transfer/{transfer_id}/{download_code}",
         "file_count": len(saved_files),
         "total_size": human_size(total_size),
+        "tier": tier,
+        "price_paid": price,
         "expires_at": expires_at.isoformat(),
         "expires_days": expires_days,
-        "message": f"{len(saved_files)} Datei(en) hochgeladen ({human_size(total_size)}). Link gueltig fuer {expires_days} Tage.",
+        "message": f"{len(saved_files)} Datei(en) hochgeladen ({human_size(total_size)}). Link gueltig fuer {expires_days} Tage." + (f" EUR {price:.2f} abgezogen." if price > 0 else ""),
     }
 
 
