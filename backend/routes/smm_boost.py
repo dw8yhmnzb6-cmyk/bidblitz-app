@@ -10,6 +10,7 @@ from pydantic import BaseModel
 from typing import Optional
 from core.database import db
 from core.security import get_current_user
+from routes import smm_provider
 
 router = APIRouter(prefix="/api/smm", tags=["smm-boost"])
 
@@ -198,6 +199,35 @@ async def place_order(req: OrderRequest, request: Request):
 
     await db.smm_orders.insert_one(order)
 
+    # 🚀 Forward to real SMM provider if configured
+    provider_order_id = None
+    provider_error = None
+    if smm_provider.is_configured():
+        try:
+            result = await smm_provider.place_order(svc["id"], req.target_url, total_qty, db=db)
+            if result.get("order"):
+                provider_order_id = int(result["order"])
+                await db.smm_orders.update_one(
+                    {"order_id": order_id},
+                    {"$set": {
+                        "provider_order_id": provider_order_id,
+                        "status": "in_progress",
+                        "provider_raw": result,
+                    }},
+                )
+            elif result.get("error"):
+                provider_error = str(result["error"])
+                await db.smm_orders.update_one(
+                    {"order_id": order_id},
+                    {"$set": {"provider_error": provider_error, "status": "provider_failed"}},
+                )
+        except Exception as e:
+            provider_error = str(e)
+            await db.smm_orders.update_one(
+                {"order_id": order_id},
+                {"$set": {"provider_error": provider_error, "status": "provider_failed"}},
+            )
+
     # Transaction record
     await db.transactions.insert_one({
         "transaction_id": f"smm_{secrets.token_hex(6)}",
@@ -213,12 +243,14 @@ async def place_order(req: OrderRequest, request: Request):
     return {
         "ok": True,
         "order_id": order_id,
+        "provider_order_id": provider_order_id,
+        "provider_error": provider_error,
         "service": svc["name"],
         "quantity": total_qty,
         "total_price": total_price,
         "new_balance": round(balance - total_price, 2),
         "delivery_time": svc["delivery_time"],
-        "status": "pending",
+        "status": "in_progress" if provider_order_id else ("provider_failed" if provider_error else "pending"),
         "message": f"Bestellung {order_id} aufgegeben! {total_qty:,}x {svc['name']} fuer EUR {total_price:.2f}. Lieferung: {svc['delivery_time']}.",
     }
 
@@ -360,3 +392,94 @@ async def admin_all_orders(request: Request, status: Optional[str] = None, limit
     total = await db.smm_orders.count_documents(query)
     revenue = sum(o.get("total_price", 0) for o in orders)
     return {"orders": orders, "total": total, "revenue": round(revenue, 2)}
+
+
+
+# ── Provider Integration Admin Endpoints ──
+@router.get("/admin/provider/status")
+async def provider_status(request: Request):
+    """Check if SMM Provider is configured and reachable."""
+    user = await get_current_user(request)
+    if user.get("role") != "admin":
+        raise HTTPException(403, "Admin only")
+    return {
+        "configured": smm_provider.is_configured(),
+        "provider_url": smm_provider.SMM_PROVIDER_URL,
+        "api_key_present": bool(smm_provider.SMM_PROVIDER_API_KEY),
+    }
+
+
+@router.get("/admin/provider/balance")
+async def provider_balance(request: Request):
+    """Fetch remaining balance at SMM provider."""
+    user = await get_current_user(request)
+    if user.get("role") != "admin":
+        raise HTTPException(403, "Admin only")
+    if not smm_provider.is_configured():
+        raise HTTPException(503, "SMM Provider not configured")
+    return await smm_provider.get_balance()
+
+
+@router.post("/admin/orders/{order_id}/sync")
+async def sync_order_status(order_id: str, request: Request):
+    """Poll SMM provider for latest order status and update DB."""
+    user = await get_current_user(request)
+    if user.get("role") != "admin":
+        raise HTTPException(403, "Admin only")
+    order = await db.smm_orders.find_one({"order_id": order_id})
+    if not order:
+        raise HTTPException(404, "Bestellung nicht gefunden")
+    pid = order.get("provider_order_id")
+    if not pid:
+        raise HTTPException(400, "Order has no provider_order_id")
+    status_data = await smm_provider.get_order_status(int(pid))
+    # Provider returns: { status, charge, start_count, remains, currency }
+    update = {"provider_status_raw": status_data}
+    provider_status_val = (status_data.get("status") or "").lower()
+    if provider_status_val == "completed":
+        update["status"] = "completed"
+        update["completed_at"] = datetime.now(timezone.utc).isoformat()
+    elif provider_status_val in ("in progress", "processing"):
+        update["status"] = "in_progress"
+    elif provider_status_val == "canceled":
+        update["status"] = "canceled"
+    if status_data.get("start_count") is not None:
+        update["start_count"] = int(status_data["start_count"])
+    if status_data.get("remains") is not None:
+        update["remains"] = int(status_data["remains"])
+    await db.smm_orders.update_one({"order_id": order_id}, {"$set": update})
+    return {"ok": True, "provider_status": provider_status_val, "updates": update}
+
+
+class ServiceMappingRequest(BaseModel):
+    internal_id: str
+    provider_service_id: int
+
+
+@router.post("/admin/provider/mapping")
+async def set_service_mapping(req: ServiceMappingRequest, request: Request):
+    """Override provider service ID mapping for a specific BidBlitz service."""
+    user = await get_current_user(request)
+    if user.get("role") != "admin":
+        raise HTTPException(403, "Admin only")
+    await db.smm_service_mapping.update_one(
+        {"internal_id": req.internal_id},
+        {"$set": {
+            "internal_id": req.internal_id,
+            "provider_service_id": req.provider_service_id,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }},
+        upsert=True,
+    )
+    return {"ok": True, "mapping": {req.internal_id: req.provider_service_id}}
+
+
+@router.get("/admin/provider/services")
+async def list_provider_services(request: Request):
+    """Fetch raw list of services from SMM provider (to discover service IDs)."""
+    user = await get_current_user(request)
+    if user.get("role") != "admin":
+        raise HTTPException(403, "Admin only")
+    if not smm_provider.is_configured():
+        raise HTTPException(503, "SMM Provider not configured")
+    return {"services": await smm_provider.get_provider_services()}

@@ -11,6 +11,7 @@ import { useGroupedTransactions, useWalletStats } from "../hooks";
 import { PremiumCard } from "../components/PremiumCard";
 import { TransactionItem } from "../components/TransactionItem";
 import { TopUpModal } from "../components/TopUpModal";
+import CryptoTopUpModal from "../components/CryptoTopUpModal";
 import { TransactionDetailModal } from "../components/TransactionDetailModal";
 import { TransactionFilters, filterTransactions } from "../components/TransactionFilters";
 import ExportSection from "../components/ExportSection";
@@ -114,6 +115,7 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
 
   const [showBalance, setShowBalance] = useState(true);
   const [showTopUp, setShowTopUp] = useState(hasStripeParam);
+  const [showCryptoTopUp, setShowCryptoTopUp] = useState(false);
   const [showBarcode, setShowBarcode] = useState(false);
   const [showSendMoney, setShowSendMoney] = useState(false);
   const [selectedTx, setSelectedTx] = useState(null);

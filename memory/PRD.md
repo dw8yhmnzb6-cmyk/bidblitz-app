@@ -7,7 +7,55 @@
 
 ## Production Status: LIVE ✅ | All 41+ V2 Modules Running
 
-## Deployed Features (2026-04-18 V2)
+## Deployed Features (2026-04-18 — Mega Batch)
+
+### 🎁 Welcome Bonus on Registration
+- New users receive **5,00 € + 10 BLZ** automatic welcome bonus
+- Transaction logged in wallet history with ref `WELCOME-xxxxx`
+- Toast notification on success
+- Backend: `/app/backend/routes/auth.py` (register endpoint)
+
+### 🔐 Auth Page UI/UX Fix
+- Placeholder contrast fixed (`white/35` instead of `#2A2A2A`)
+- iOS Autofill yellow background removed via CSS
+- Overflow-x-hidden container prevents mobile horizontal scroll
+- Fixed in `/app/frontend/src/pages/AuthPage.jsx`
+
+### 🎭 Demo Mode Bug Fixed
+- Root cause: SendMoneyModal ignored `isOpen` prop → always rendered
+- Fixed with proper AnimatePresence + conditional render
+- Demo mode now navigates to home with toast hint, not stuck modal
+- Fixed in `/app/frontend/src/components/SendMoneyModal.jsx`
+
+### 📱 PWA Install Prompt
+- Component: `/app/frontend/src/components/PWAInstallPrompt.jsx`
+- Android/Chrome: native `beforeinstallprompt` handler with custom UI
+- iOS Safari: manual install hint after 20s delay
+- Dismissal stored in localStorage
+
+### 🔔 Push Notification Permission
+- Component: `/app/frontend/src/components/PushPermissionPrompt.jsx`
+- Delayed prompt (30s after login) so users see value first
+- Only shows when `Notification.permission === "default"`
+
+### ₿ Coinbase Commerce Integration (PARTIAL — API key only)
+- Endpoint: `POST /api/coinbase/charge` creates hosted checkout → BTC/ETH/USDC
+- Webhook: `POST /api/coinbase/webhook` (HMAC-SHA256 signature verified)
+- Credits user wallet on `charge:confirmed` event (idempotent)
+- Backend: `/app/backend/routes/coinbase_commerce.py`
+- Frontend: `/app/frontend/src/components/CryptoTopUpModal.jsx`
+- **STATUS: API Key deployed, Webhook Secret MISSING — payments can be created but confirmation webhook won't verify until user provides COINBASE_COMMERCE_WEBHOOK_SECRET**
+
+### 🚀 SMM Provider Integration (PARTIAL — URL only, API key missing)
+- Backend: `/app/backend/routes/smm_provider.py`
+- Default provider: `https://justanotherpanel.com/api/v2` (JAP)
+- Compatible with all major SMM panels (same standard API)
+- Auto-forwards orders to real provider when `SMM_PROVIDER_API_KEY` is set
+- Admin endpoints: `/admin/provider/status`, `/balance`, `/services`, `/mapping`
+- Order sync endpoint for status updates
+- **STATUS: Code deployed, API key MISSING — orders currently stored locally only, not forwarded to provider**
+
+## Earlier Deployed Features (prior days)
 
 ### Admin Wallet Tool — NEU
 - Route: `/admin/wallet` (admin-only)
