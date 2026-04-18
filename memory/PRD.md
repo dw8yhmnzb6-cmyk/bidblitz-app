@@ -7,6 +7,27 @@
 
 ## Production Status: LIVE ✅ | All 41+ V2 Modules Running
 
+## Deployed Features (2026-04-18 V2)
+
+### Admin Wallet Tool — NEU
+- Route: `/admin/wallet` (admin-only)
+- 3 Tabs: Senden/Abziehen, Self-Topup, Log
+- User-Suche mit Live-Filter (Email/Username/FullName)
+- Credit/Debit in EUR **und** BLZ parallel
+- Quick-Amount Buttons (+10/50/100/500 EUR, +100/500/1000 BLZ)
+- Reason-Field für Audit-Log
+- Self-Topup mit aktueller Balance-Anzeige
+- Transaction-History mit User-Email-Enrichment
+- Backend: `/app/backend/routes/admin_wallet.py`
+- Frontend: `/app/frontend/src/pages/AdminWalletPage.jsx`
+
+### Resend Email Integration — LIVE + Domain VERIFIED
+- `bidblitz.ae` verified on Resend (EU-West-1 region)
+- 7 transactional templates: Welcome, Outbid, Win, New Auction, Booking Confirmation, Streak Milestone, Password Reset
+- Trigger-Hooks in auth.py (welcome), bookings.py (confirmation), blitz_mine.py (milestone)
+- From: `noreply@bidblitz.ae`
+- Test emails delivered (IDs: 88e1f13e, 4ba0ad6d, fee271e5)
+
 ## Deployed Features (2026-04-18)
 
 ### MorePage Redesign — NEU

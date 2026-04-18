@@ -70,6 +70,7 @@ const BlitzBoostPage = lazy(() => import("./pages/BlitzBoostPage"));
 const BlitzMinePage = lazy(() => import("./pages/BlitzMinePage"));
 const LegalPage = lazy(() => import("./pages/LegalPage"));
 const AdminLegalPage = lazy(() => import("./pages/AdminLegalPage"));
+const AdminWalletPage = lazy(() => import("./pages/AdminWalletPage"));
 import NotificationCenterPage from "./pages/NotificationCenterPage";
 import ContactsPage from "./pages/ContactsPage";
 import UserStatsPage from "./pages/UserStatsPage";
@@ -379,6 +380,8 @@ function AppContent() {
       }
       case "/admin/legal":
         return user.role === "admin" ? <AdminLegalPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
+      case "/admin/wallet":
+        return user.role === "admin" ? <AdminWalletPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/notifications":
         return isGuest
           ? <HomePage {...homeProps} />
