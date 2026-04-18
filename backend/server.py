@@ -184,6 +184,7 @@ from routes.admin_management import router as admin_management_router
 from routes.coinbase_commerce import router as coinbase_commerce_router
 from routes.casino import router as casino_router
 from routes.arcade import router as arcade_router
+from routes.reengage import router as reengage_router
 
 app.include_router(auth_router)
 app.include_router(wallet_router)
@@ -226,6 +227,7 @@ app.include_router(admin_management_router)
 app.include_router(coinbase_commerce_router)
 app.include_router(casino_router)
 app.include_router(arcade_router)
+app.include_router(reengage_router)
 app.include_router(marketplace_router)
 app.include_router(chat_router)
 app.include_router(applications_router)

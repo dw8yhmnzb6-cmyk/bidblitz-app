@@ -416,7 +416,10 @@ const TransactionsTab = () => {
                   </div>
                   <div className="text-right flex-shrink-0">
                     <p className="text-[14px] font-bold" style={{ color: t.type === "refund" ? "#A855F7" : "#1f2937" }}>
-                      {t.currency === "BLZ" ? `${t.amount} BLZ` : `€${t.amount.toFixed(2)}`}
+                      {t.currency === "BLZ" ? `${t.amount || t.amount_blz || 0} BLZ` :
+                       t.amount ? `€${Number(t.amount).toFixed(2)}` :
+                       t.amount_eur ? `€${Number(t.amount_eur).toFixed(2)}` :
+                       t.coins ? `${t.coins} Coins` : "—"}
                     </p>
                     {isRefundable && (
                       <button
@@ -444,18 +447,18 @@ const TransactionsTab = () => {
 // MODULES TAB (Generic CRUD)
 // ═══════════════════════════════════════════════════════════
 const MODULE_DEFS = [
-  { key: "handwerker", label: "Handwerker", endpoint: "/api/handwerker", fieldKey: "handwerker", fields: ["name", "category", "city", "rating"] },
-  { key: "gebrauchtwagen", label: "Gebrauchtwagen", endpoint: "/api/cars", fieldKey: "cars", fields: ["title", "brand", "price", "city"] },
-  { key: "reinigung", label: "Reinigung", endpoint: "/api/cleaning", fieldKey: "services", fields: ["name", "price_per_hour", "min_hours"] },
-  { key: "umzug", label: "Umzug", endpoint: "/api/moving", fieldKey: "companies", fields: ["name", "city", "base_price", "rating"] },
-  { key: "tierbetreuung", label: "Tierbetreuung", endpoint: "/api/petcare", fieldKey: "sitters", fields: ["name", "service", "city", "price_per_day"] },
-  { key: "streaming", label: "Streaming", endpoint: "/api/streaming", fieldKey: "catalog", fields: ["title", "type", "genre", "rating"] },
-  { key: "telemedizin", label: "Telemedizin", endpoint: "/api/telemedicine/doctors", fieldKey: "doctors", fields: ["name", "specialty", "city", "price_consultation"] },
-  { key: "dating", label: "Dating", endpoint: "/api/dating/profiles", fieldKey: "profiles", fields: ["name", "city", "verified"] },
-  { key: "fitness", label: "Fitness", endpoint: "/api/fitness/gyms", fieldKey: "gyms", fields: ["name", "type", "city", "monthly_price"] },
-  { key: "reisen", label: "Reiseangebote", endpoint: "/api/reiseplaner/trips", fieldKey: "trips", fields: ["title", "destination", "duration_days", "price_per_person"] },
-  { key: "ladesaeulen", label: "Ladesäulen", endpoint: "/api/ladesaeulen/stations", fieldKey: "stations", fields: ["name", "operator", "city", "power_kw", "price_per_kwh"] },
-  { key: "scooter-abos", label: "Scooter-Abos", endpoint: "/api/scooter/plans", fieldKey: "plans", fields: ["name", "price", "duration_days"] },
+  { key: "handwerker", label: "Handwerker", fields: ["name", "category", "city", "rating"] },
+  { key: "gebrauchtwagen", label: "Gebrauchtwagen", fields: ["title", "brand", "price", "city"] },
+  { key: "reinigung", label: "Reinigung", fields: ["name", "price_per_hour", "min_hours"] },
+  { key: "umzug", label: "Umzug", fields: ["name", "city", "base_price", "rating"] },
+  { key: "tierbetreuung", label: "Tierbetreuung", fields: ["name", "service", "city", "price_per_day"] },
+  { key: "streaming", label: "Streaming", fields: ["title", "type", "genre", "rating"] },
+  { key: "telemedizin", label: "Telemedizin", fields: ["name", "specialty", "city", "price_consultation"] },
+  { key: "dating", label: "Dating", fields: ["name", "city", "verified"] },
+  { key: "fitness", label: "Fitness", fields: ["name", "type", "city", "monthly_price"] },
+  { key: "reisen", label: "Reiseangebote", fields: ["title", "destination", "duration_days", "price_per_person"] },
+  { key: "ladesaeulen", label: "Ladesäulen", fields: ["name", "operator", "city", "power_kw", "price_per_kwh"] },
+  { key: "scooter-abos", label: "Scooter-Abos", fields: ["name", "price", "duration_days"] },
 ];
 
 const ModulesTab = ({ initialModule }) => {
@@ -492,9 +495,9 @@ const ModuleCRUD = ({ mod, onBack }) => {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API}${mod.endpoint}`, { credentials: "include" });
+      const res = await fetch(`${API}/api/admin/module/${mod.key}/list`, { credentials: "include" });
       const data = await res.json();
-      setItems(data[mod.fieldKey] || []);
+      setItems(data.items || []);
     } catch (err) {
       toast.error(err.message);
     }
@@ -858,6 +861,110 @@ const LiveTab = () => {
       )}
 
       <p className="text-[9px] text-gray-400 text-center mt-4">🔄 Auto-Aktualisierung alle 15 Sekunden</p>
+
+      <ReengageWidget />
+    </div>
+  );
+};
+
+const ReengageWidget = () => {
+  const [preview, setPreview] = useState(null);
+  const [running, setRunning] = useState(false);
+  const [days, setDays] = useState(5);
+  const [result, setResult] = useState(null);
+
+  const loadPreview = useCallback(async () => {
+    try {
+      const res = await fetch(`${API}/api/admin/reengage/preview?inactive_days=${days}`, { credentials: "include" });
+      if (res.ok) setPreview(await res.json());
+    } catch {}
+  }, [days]);
+
+  useEffect(() => { loadPreview(); }, [loadPreview]);
+
+  const run = async () => {
+    if (!preview || preview.count === 0) return;
+    if (!window.confirm(`${preview.count} inaktive User anschreiben und jeweils €${preview.reward_per_user} gutschreiben?\n\nGesamtkosten: €${preview.total_cost.toFixed(2)}\nJeder User bekommt max. 1× alle 30 Tage.`)) return;
+    setRunning(true);
+    try {
+      const res = await fetch(`${API}/api/admin/reengage/run`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ inactive_days: days, dry_run: false }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Fehler");
+      setResult(data);
+      toast.success(`✓ ${data.credited} User gutgeschrieben, ${data.emailed} Mails gesendet`);
+      loadPreview();
+    } catch (err) {
+      toast.error(err.message);
+    }
+    setRunning(false);
+  };
+
+  return (
+    <div className="mt-6 bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-4 border border-purple-100" data-testid="reengage-widget">
+      <div className="flex items-center gap-2 mb-2">
+        <Zap size={16} className="text-purple-500" />
+        <h3 className="text-[13px] font-bold text-purple-900">Re-Engagement: Inaktive User zurückholen</h3>
+      </div>
+      <p className="text-[11px] text-purple-700/80 mb-3">
+        Sendet personalisierte E-Mail + €5 Gutschein an inaktive User. <strong>Max. 1× alle 30 Tage pro User.</strong>
+      </p>
+
+      <div className="flex items-center gap-2 mb-3">
+        <label className="text-[11px] font-semibold text-gray-700">Inaktiv seit:</label>
+        <select
+          data-testid="reengage-days-select"
+          value={days}
+          onChange={(e) => setDays(parseInt(e.target.value))}
+          className="px-2 py-1 rounded-lg bg-white text-[11px] font-bold border border-gray-200"
+        >
+          <option value={3}>3 Tage</option>
+          <option value={5}>5 Tage</option>
+          <option value={7}>7 Tage</option>
+          <option value={14}>14 Tage</option>
+          <option value={30}>30 Tage</option>
+        </select>
+      </div>
+
+      {preview && (
+        <div className="grid grid-cols-3 gap-2 mb-3">
+          <div className="bg-white rounded-lg p-2 text-center">
+            <p className="text-[9px] text-gray-500 uppercase font-semibold">Berechtigt</p>
+            <p className="text-[18px] font-bold text-purple-600" data-testid="reengage-count">{preview.count}</p>
+          </div>
+          <div className="bg-white rounded-lg p-2 text-center">
+            <p className="text-[9px] text-gray-500 uppercase font-semibold">Pro User</p>
+            <p className="text-[18px] font-bold text-green-600">€{preview.reward_per_user.toFixed(2)}</p>
+          </div>
+          <div className="bg-white rounded-lg p-2 text-center">
+            <p className="text-[9px] text-gray-500 uppercase font-semibold">Gesamt</p>
+            <p className="text-[18px] font-bold text-blue-600">€{preview.total_cost.toFixed(2)}</p>
+          </div>
+        </div>
+      )}
+
+      <button
+        data-testid="reengage-run-btn"
+        onClick={run}
+        disabled={running || !preview || preview.count === 0}
+        className="w-full py-2.5 rounded-xl text-[12px] font-bold text-white flex items-center justify-center gap-2 disabled:opacity-40"
+        style={{ background: preview && preview.count > 0 ? "linear-gradient(135deg,#A855F7,#EC4899)" : "#9CA3AF" }}
+      >
+        {running ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} />}
+        {preview && preview.count > 0 ? `🎁 ${preview.count} User anschreiben` : "Keine inaktiven User"}
+      </button>
+
+      {result && (
+        <div className="mt-3 bg-white rounded-lg p-2.5">
+          <p className="text-[11px] font-bold text-gray-900 mb-1">Ergebnis:</p>
+          <p className="text-[10px] text-gray-600">✓ {result.credited} User gutgeschrieben · {result.emailed} Mails gesendet · {result.failed} Fehler</p>
+          <p className="text-[10px] text-gray-500">Gesamtkosten: €{result.total_cost.toFixed(2)}</p>
+        </div>
+      )}
     </div>
   );
 };

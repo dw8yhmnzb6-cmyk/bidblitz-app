@@ -61,15 +61,20 @@ async def list_customers(
     cursor = db.users.find(
         query,
         {
-            "password_hash": 0, "otp_hash": 0, "reset_token": 0,
-            "biometric_credentials": 0,
+            "password_hash": 0, "password": 0, "otp_hash": 0, "reset_token": 0,
+            "biometric_credentials": 0, "recovery_codes": 0,
         },
     ).sort("created_at", -1).skip(skip).limit(limit)
 
     customers = []
     async for u in cursor:
-        uid = str(u.pop("_id", None))
-        u["user_id"] = uid
+        # V2 uses ObjectId _id, V1 uses string id field
+        uid = u.pop("_id", None)
+        if uid is None:
+            uid = u.get("id")
+        u["user_id"] = str(uid) if uid else ""
+        # Also drop V1 legacy fields
+        u.pop("id", None)
         customers.append(u)
     return {"customers": customers, "total": total, "skip": skip, "limit": limit}
 
@@ -80,7 +85,7 @@ async def get_customer(user_id: str, request: Request):
     await _require_admin(request)
     user = await db.users.find_one(
         {"_id": _oid(user_id)},
-        {"password_hash": 0, "otp_hash": 0, "biometric_credentials": 0}
+        {"password_hash": 0, "password": 0, "otp_hash": 0, "biometric_credentials": 0, "recovery_codes": 0}
     )
     if not user:
         raise HTTPException(404, "Kunde nicht gefunden")
@@ -313,6 +318,18 @@ async def module_create(module_key: str, data: dict, request: Request):
     await db[coll_name].insert_one(data)
     data.pop("_id", None)
     return {"ok": True, "item": data}
+
+
+@router.get("/module/{module_key}/list")
+async def module_list(module_key: str, request: Request, limit: int = 100):
+    """Liste alle Einträge eines Service-Moduls."""
+    await _require_admin(request)
+    if module_key not in MODULE_COLLECTIONS:
+        raise HTTPException(400, f"Unbekanntes Modul: {module_key}")
+    coll_name, _ = MODULE_COLLECTIONS[module_key]
+    cursor = db[coll_name].find({}, {"_id": 0}).limit(limit)
+    items = await cursor.to_list(length=limit)
+    return {"items": items, "count": len(items), "collection": coll_name}
 
 
 @router.put("/module/{module_key}/{item_id}")
