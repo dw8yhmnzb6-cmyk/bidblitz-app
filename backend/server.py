@@ -496,8 +496,9 @@ app.include_router(invoicing_router)
 from routes.qr_menu import router as qr_menu_router
 app.include_router(qr_menu_router)
 
-from routes.bookings import router as bookings_router
+from routes.bookings import router as bookings_router, admin_router as bookings_admin_router
 app.include_router(bookings_router)
+app.include_router(bookings_admin_router)
 
 from routes.contracts import router as contracts_router
 app.include_router(contracts_router)

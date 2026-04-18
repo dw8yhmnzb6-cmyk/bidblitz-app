@@ -69,6 +69,7 @@ const BlitzTransferPage = lazy(() => import("./pages/BlitzTransferPage"));
 const BlitzBoostPage = lazy(() => import("./pages/BlitzBoostPage"));
 const BlitzMinePage = lazy(() => import("./pages/BlitzMinePage"));
 const LegalPage = lazy(() => import("./pages/LegalPage"));
+const AdminLegalPage = lazy(() => import("./pages/AdminLegalPage"));
 import NotificationCenterPage from "./pages/NotificationCenterPage";
 import ContactsPage from "./pages/ContactsPage";
 import UserStatsPage from "./pages/UserStatsPage";
@@ -376,6 +377,8 @@ function AppContent() {
         const slug = currentPath.split("/legal/")[1];
         return <LegalPage slug={slug} onNavigate={handleNavigate} onBack={() => handleNavigate("/more")} />;
       }
+      case "/admin/legal":
+        return user.role === "admin" ? <AdminLegalPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/notifications":
         return isGuest
           ? <HomePage {...homeProps} />
