@@ -468,7 +468,7 @@ function AppContent() {
       case "/insurance":
         return isGuest ? <HomePage {...homeProps} /> : <InsurancePage onBack={() => handleNavigate("/more")} />;
       case "/appointments":
-        return isGuest ? <HomePage {...homeProps} /> : <AppointmentPage onBack={() => handleNavigate("/more")} />;
+        return isGuest ? <HomePage {...homeProps} /> : <BookingsPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
       case "/social":
         return isGuest ? <HomePage {...homeProps} /> : <SocialFeedPage onBack={() => handleNavigate("/more")} />;
       case "/jobs":

@@ -7,7 +7,7 @@ import {
   Pencil, Loader2, Check, X, ShieldCheck, Clock, AlertCircle, MapPin,
   Trophy, TrendingUp, Star, Store, Monitor, Scan, Wallet, Cpu, Car, Zap, ShoppingBag, Coins,
   Split, CreditCardIcon, PiggyBank, BadgePercent, Banknote, Bitcoin, GiftIcon, Gamepad2,
-  MessageCircle, BarChart3, Crown, Wifi
+  MessageCircle, BarChart3, Crown, Wifi, Search, Package, FileText
 } from "lucide-react";
 import { useUser, useI18n } from "../store";
 import { api } from "../services/api";
@@ -725,6 +725,14 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
   const [subPage, setSubPage] = useState(kidsReturn ? "kids" : null);
   const [profileOpenPw, setProfileOpenPw] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [search, setSearch] = useState("");
+  const [openGroups, setOpenGroups] = useState(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem("more_open_groups") || "null");
+      if (saved) return saved;
+    } catch {}
+    return { mobility: true, finance: true };
+  });
 
   // Demo mode: overlay mock user data
   const displayName = isDemoMode ? DEMO_USER.name : (isGuest ? "BidBlitz" : user.name);
@@ -932,6 +940,126 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
     </motion.div>
   );
 
+  // ── NEW: Compact search + accordion + 2-col grid renderer ──
+  const GRID_GROUPS = [
+    { id: "mobility", title: t("more.mobility") || "Mobilität", color: "#00C2FF", items: mobilityMenu },
+    { id: "finance",  title: t("more.finance") || "Premium Finance", color: "#10B981", items: financeMenu },
+    { id: "account",  title: t("more.account"), color: "#A855F7", items: accountMenu },
+    { id: "growth",   title: t("more.growth"), color: "#FFD700", items: growthMenu },
+    { id: "app",      title: t("more.app"), color: "#EC4899", items: appMenu },
+    { id: "support",  title: t("more.support"), color: "#FF6B6B", items: supportMenu },
+    { id: "legal",    title: "Rechtliches", color: "#00E89D", items: legalMenu },
+    ...(adminMenu.length ? [{ id: "admin", title: "Admin", color: "#F97316", items: adminMenu }] : []),
+  ].filter((g) => g.items && g.items.length > 0);
+
+  const toggleGroup = (id) => {
+    setOpenGroups((p) => {
+      const nxt = { ...p, [id]: !p[id] };
+      try { localStorage.setItem("more_open_groups", JSON.stringify(nxt)); } catch {}
+      return nxt;
+    });
+  };
+
+  const searchNorm = search.trim().toLowerCase();
+  const filteredGroups = searchNorm
+    ? GRID_GROUPS.map((g) => ({
+        ...g,
+        items: g.items.filter((it) =>
+          (it.label || "").toLowerCase().includes(searchNorm) ||
+          (it.desc || "").toLowerCase().includes(searchNorm)
+        ),
+      })).filter((g) => g.items.length > 0)
+    : GRID_GROUPS;
+
+  const GridTile = ({ item, color }) => (
+    <motion.button
+      data-testid={`grid-${item.id}`}
+      whileTap={{ scale: 0.95 }}
+      onClick={item.action}
+      className="relative rounded-xl p-3 text-left overflow-hidden"
+      style={{
+        background: "rgba(255,255,255,0.02)",
+        border: "1px solid rgba(255,255,255,0.04)",
+        minHeight: 92,
+      }}
+    >
+      <div
+        className="w-9 h-9 rounded-lg flex items-center justify-center mb-2"
+        style={{ background: `${item.color || color}15`, border: `1px solid ${item.color || color}25` }}
+      >
+        <item.icon size={15} strokeWidth={1.6} style={{ color: item.color || color }} />
+      </div>
+      <p className="text-[12px] font-semibold text-white leading-tight truncate">{item.label}</p>
+      <p className="text-[9px] text-white/40 leading-tight truncate mt-0.5">{item.desc}</p>
+      {item.badge && (
+        <span
+          className="absolute top-2 right-2 px-1.5 py-0.5 rounded-full text-[8px] font-bold"
+          style={{ background: "rgba(255,184,0,0.2)", color: "#FFB800" }}
+        >
+          {item.badge}
+        </span>
+      )}
+    </motion.button>
+  );
+
+  const renderGridGroups = () => (
+    <div className="space-y-3">
+      {filteredGroups.map((g, idx) => {
+        const isOpen = !!openGroups[g.id] || !!searchNorm; // force open when searching
+        return (
+          <motion.div
+            key={g.id}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.04 * idx }}
+            className="rounded-2xl overflow-hidden"
+            style={{ background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.04)" }}
+          >
+            <button
+              data-testid={`group-toggle-${g.id}`}
+              onClick={() => toggleGroup(g.id)}
+              className="w-full flex items-center gap-2.5 px-4 py-3"
+            >
+              <span
+                className="w-1.5 h-5 rounded-full"
+                style={{ background: g.color }}
+              />
+              <p className="text-[12px] font-bold uppercase tracking-wide text-white/80 flex-1 text-left">
+                {g.title}
+              </p>
+              <span className="text-[10px] text-white/40">{g.items.length}</span>
+              <motion.div animate={{ rotate: isOpen ? 90 : 0 }}>
+                <ChevronRight size={14} className="text-white/40" />
+              </motion.div>
+            </button>
+            <AnimatePresence initial={false}>
+              {isOpen && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="overflow-hidden"
+                >
+                  <div className="grid grid-cols-2 gap-2 px-3 pb-3">
+                    {g.items.map((item) => (
+                      <GridTile key={item.id} item={item} color={g.color} />
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
+        );
+      })}
+      {filteredGroups.length === 0 && (
+        <div className="text-center py-10 text-[12px] text-white/40">
+          Keine Treffer für „{search}"
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <motion.div
       data-testid="more-page"
@@ -1035,15 +1163,33 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
           <ChevronRight size={14} className="text-[#333]" />
         </motion.button>
 
-        {/* ── Menu Groups ── */}
-        {renderGroup(t("more.mobility") || "Mobilität", mobilityMenu, 0.12)}
-        {renderGroup(t("more.finance") || "Premium Finance", financeMenu, 0.14)}
-        {renderGroup(t("more.account"), accountMenu, 0.18)}
-        {renderGroup(t("more.growth"), growthMenu, 0.22)}
-        {renderGroup(t("more.app"), appMenu, 0.28)}
-        {renderGroup(t("more.support"), supportMenu, 0.34)}
-        {renderGroup("Rechtliches", legalMenu, 0.38)}
-        {adminMenu.length > 0 && renderGroup("Admin", adminMenu, 0.4)}
+        {/* ── Search Bar ── */}
+        <motion.div
+          initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.11 }}
+          className="relative mb-3"
+        >
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
+          <input
+            data-testid="more-search"
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Suche nach Service, z.B. Wallet, Scooter, AGB..."
+            className="w-full bg-white/[0.03] border border-white/[0.05] rounded-xl pl-9 pr-9 py-2.5 text-[12px] text-white placeholder-white/30 outline-none focus:border-[#00C2FF]/40"
+          />
+          {search && (
+            <button
+              data-testid="more-search-clear"
+              onClick={() => setSearch("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white"
+            >
+              <X size={14} />
+            </button>
+          )}
+        </motion.div>
+
+        {/* ── Menu Groups (Accordion + Grid) ── */}
+        {renderGridGroups()}
 
         {/* ── Logout / Sign In ── */}
         {isGuest ? (

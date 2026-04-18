@@ -7,6 +7,45 @@
 
 ## Production Status: LIVE ✅ | All 41+ V2 Modules Running
 
+## Deployed Features (2026-04-18)
+
+### MorePage Redesign — NEU
+- Search bar at top with live filter
+- Accordion groups (collapsible), localStorage remembers state
+- 2-column grid per group (50% less scroll)
+- 8 groups: Mobility, Finance, Account, Growth, App, Support, Legal, Admin
+- Color-coded group indicators
+
+### Termine-Buchen V2 — NEU
+- Date picker (14 days forward) + slot-based time selection
+- Real-time slot availability check (`GET /api/bookings/providers/{id}/slots?date=X&service_id=Y`)
+- Weekly opening hours + block dates per provider
+- Provider-Admin endpoints (services, hours, blocks, appointments)
+- Customer flow: Service → Date → Slot → Form → Confirm
+- Backend: `/app/backend/routes/bookings.py` (fully rewritten)
+- Frontend: `/app/frontend/src/pages/BookingsPage.jsx` (new 3-step flow)
+
+### Daily Streak Reward — NEU (BlitzMine)
+- 6 milestones: Bronze (3d) → Silver (7d) → Gold (14d) → Diamond (30d) → Legend (60d) → Mythic (100d)
+- Permanent rate bonus: +5% → +60% (capped at +100%)
+- One-time BLZ bonus on milestone hit: 1 → 120 BLZ
+- Celebration modal with confetti animation on unlock
+- Backend: `STREAK_MILESTONES` in `blitz_mine.py`, new `/api/blitz-mine/streak` endpoint
+
+### Legal Admin Editor — NEU
+- `/admin/legal` with tabs for AGB, Datenschutz, Impressum, Sicherheit
+- Section editor: add/remove/reorder sections, edit heading + text
+- Reset to default button
+- DB-backed (seeds from hardcoded defaults on first load)
+- Backend: `admin_router` in `legal.py`
+- Frontend: `AdminLegalPage.jsx`
+
+### Resend Email Integration — LIVE
+- API key installed, test email successfully sent (id: 88e1f13e-6856-4f8d-9af9-e00db0880412)
+- Uses `email_service.py` (already existed)
+- ⚠️ Domain `bidblitz.ae` not yet verified → can only send to afrimk007@gmail.com for now
+- User to verify DNS TXT records at IONOS later
+
 ## Deployed Features (2026-04-17 22:40 UTC)
 
 ### BlitzMine (Pi-Network Tap-to-Earn) — NEU
