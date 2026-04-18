@@ -403,6 +403,167 @@ const LockupWidget = ({ lockups, constants, balance, onCreate, onRelease }) => {
   );
 };
 
+// ── Streak Widget with milestones & progress bar ──
+const MILESTONE_ICON = {
+  flame: Flame, trophy: Trophy, diamond: Sparkles, crown: Crown, sparkles: Sparkles,
+};
+
+const StreakWidget = ({ info }) => {
+  if (!info) return null;
+  const cur = info.current_streak || 0;
+  const next = info.next_milestone;
+  const progress = next ? Math.min(100, (cur / next.days) * 100) : 100;
+
+  return (
+    <div
+      data-testid="streak-widget"
+      className="rounded-2xl p-4"
+      style={{ background: "rgba(255,107,0,0.05)", border: "1px solid rgba(255,107,0,0.25)" }}
+    >
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <Flame size={15} className="text-[#FF6B00]" />
+          <p className="text-[13px] font-bold text-white">Daily Streak</p>
+        </div>
+        <p className="text-[10px] text-[#FF6B00] font-semibold">
+          +{((info.streak_bonus || 0) * 100).toFixed(0)}%
+        </p>
+      </div>
+
+      {/* Counter */}
+      <div className="flex items-baseline gap-2 mb-3">
+        <p className="text-[38px] font-bold text-white leading-none tracking-tight">{cur}</p>
+        <p className="text-[12px] text-white/50">
+          {cur === 1 ? "Tag" : "Tage"} in Folge
+        </p>
+      </div>
+
+      {/* Progress to next */}
+      {next && (
+        <div className="mb-3">
+          <div className="flex justify-between text-[10px] text-white/60 mb-1">
+            <span>{next.title} in {info.days_to_next} {info.days_to_next === 1 ? "Tag" : "Tagen"}</span>
+            <span>+{next.bonus_blz} BLZ</span>
+          </div>
+          <div className="h-2 rounded-full bg-white/5 overflow-hidden">
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: `${progress}%` }}
+              transition={{ duration: 1, ease: "easeOut" }}
+              className="h-full rounded-full"
+              style={{
+                background: "linear-gradient(90deg, #FFD700 0%, #FF6B00 100%)",
+                boxShadow: "0 0 12px rgba(255,107,0,0.4)",
+              }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Milestones tiles */}
+      <div className="grid grid-cols-3 gap-1.5">
+        {(info.milestones || []).map((m) => {
+          const Icon = MILESTONE_ICON[m.icon] || Flame;
+          return (
+            <div
+              key={m.days}
+              className="rounded-lg p-2 text-center"
+              style={{
+                background: m.reached ? "rgba(255,215,0,0.08)" : "rgba(255,255,255,0.02)",
+                border: `1px solid ${m.reached ? "#FFD700" : "rgba(255,255,255,0.05)"}`,
+                opacity: m.reached ? 1 : 0.55,
+              }}
+            >
+              <Icon size={14} className={m.reached ? "text-[#FFD700] mx-auto" : "text-white/40 mx-auto"} />
+              <p className="text-[9px] text-white font-bold mt-1">{m.days}d</p>
+              <p className="text-[8px] text-white/50 leading-tight">+{m.bonus_blz}B</p>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+// ── Milestone celebration modal ──
+const MilestoneModal = ({ data, onClose }) => {
+  if (!data?.milestone_hit) return null;
+  const m = data.milestone_hit;
+  const Icon = MILESTONE_ICON[m.icon] || Trophy;
+  return (
+    <motion.div
+      data-testid="milestone-modal"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-5"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ scale: 0.7, y: 40, opacity: 0 }}
+        animate={{ scale: 1, y: 0, opacity: 1 }}
+        exit={{ scale: 0.8, opacity: 0 }}
+        transition={{ type: "spring", damping: 14 }}
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-xs rounded-3xl p-6 text-center relative overflow-hidden"
+        style={{
+          background: "linear-gradient(160deg, #FFD700 0%, #FF6B00 100%)",
+          boxShadow: "0 0 80px rgba(255,215,0,0.5)",
+        }}
+      >
+        {/* Confetti particles */}
+        {[...Array(10)].map((_, i) => (
+          <motion.div
+            key={i}
+            className="absolute w-1.5 h-1.5 rounded-full bg-white"
+            initial={{ y: -20, x: 0, opacity: 1 }}
+            animate={{
+              y: [0, 200 + i * 15],
+              x: [0, (i - 5) * 40],
+              opacity: [1, 0],
+            }}
+            transition={{ duration: 2, repeat: Infinity, delay: i * 0.1 }}
+            style={{ top: "10%", left: "50%" }}
+          />
+        ))}
+        <motion.div
+          animate={{ rotate: [0, -10, 10, -10, 0], scale: [1, 1.1, 1] }}
+          transition={{ duration: 0.8 }}
+          className="w-20 h-20 mx-auto rounded-full bg-white/20 flex items-center justify-center mb-3"
+          style={{ backdropFilter: "blur(10px)" }}
+        >
+          <Icon size={44} className="text-white" strokeWidth={1.8} />
+        </motion.div>
+        <p className="text-[10px] uppercase tracking-[0.3em] text-white/80 font-bold">Streak unlocked</p>
+        <p className="text-[28px] font-bold text-white leading-tight mt-2">{m.title}</p>
+        <p className="text-[13px] text-white/80 mt-1">{data.streak_days} Tage in Folge!</p>
+
+        <div className="grid grid-cols-2 gap-2 mt-5">
+          <div className="bg-white/15 rounded-xl p-3">
+            <p className="text-[9px] uppercase text-white/70 font-bold">Bonus</p>
+            <p className="text-[18px] font-bold text-white">+{m.bonus_blz}</p>
+            <p className="text-[9px] text-white/70">BLZ</p>
+          </div>
+          <div className="bg-white/15 rounded-xl p-3">
+            <p className="text-[9px] uppercase text-white/70 font-bold">Rate</p>
+            <p className="text-[18px] font-bold text-white">+{(m.multiplier_bonus * 100).toFixed(0)}%</p>
+            <p className="text-[9px] text-white/70">dauerhaft</p>
+          </div>
+        </div>
+
+        <motion.button
+          data-testid="milestone-close"
+          whileTap={{ scale: 0.96 }}
+          onClick={onClose}
+          className="w-full mt-5 py-3 rounded-xl bg-black text-white font-bold text-[13px]"
+        >
+          Weiter minen 🔥
+        </motion.button>
+      </motion.div>
+    </motion.div>
+  );
+};
+
 // ── Referral summary widget ──
 const ReferralWidget = ({ data, referralCode, onShare, onShowQr }) => {
   if (!data) return null;
@@ -586,6 +747,8 @@ const BlitzMinePage = ({ onBack, onNavigate }) => {
   const [lockups, setLockups] = useState([]);
   const [refs, setRefs] = useState(null);
   const [board, setBoard] = useState([]);
+  const [streakInfo, setStreakInfo] = useState(null);
+  const [milestoneModal, setMilestoneModal] = useState(null);
   const [loading, setLoading] = useState(false);
   const [referralCode, setReferralCode] = useState("");
   const [showQr, setShowQr] = useState(false);
@@ -593,13 +756,14 @@ const BlitzMinePage = ({ onBack, onNavigate }) => {
 
   const load = useCallback(async () => {
     try {
-      const [s, c, l, r, lb, mc] = await Promise.all([
+      const [s, c, l, r, lb, mc, sk] = await Promise.all([
         api("/api/blitz-mine/status"),
         api("/api/blitz-mine/circle"),
         api("/api/blitz-mine/lockup"),
         api("/api/blitz-mine/referrals"),
         api("/api/blitz-mine/leaderboard"),
         api("/api/referral/my-code").catch(() => ({})),
+        api("/api/blitz-mine/streak"),
       ]);
       setData(s);
       setCircle(c);
@@ -607,6 +771,7 @@ const BlitzMinePage = ({ onBack, onNavigate }) => {
       setRefs(r);
       setBoard(lb.leaderboard || []);
       setReferralCode(mc?.code || mc?.referral_code || "");
+      setStreakInfo(sk);
     } catch (e) {
       if (firstLoad.current) toast.error(e.message);
     } finally {
@@ -635,6 +800,9 @@ const BlitzMinePage = ({ onBack, onNavigate }) => {
     try {
       const res = await api("/api/blitz-mine/claim", { method: "POST" });
       toast.success(`+${fmt(res.amount_blz, 4)} BLZ gesammelt! 🎉`);
+      if (res.milestone_hit) {
+        setMilestoneModal(res);
+      }
       await load();
     } catch (e) { toast.error(e.message); }
     finally { setLoading(false); }
@@ -814,6 +982,9 @@ const BlitzMinePage = ({ onBack, onNavigate }) => {
             code={referralCode}
             onShare={onShare}
           />
+        )}
+        {milestoneModal && (
+          <MilestoneModal data={milestoneModal} onClose={() => setMilestoneModal(null)} />
         )}
       </AnimatePresence>
     </motion.div>

@@ -40,6 +40,18 @@ CIRCLE_BONUS_PER_MEMBER = 0.20        # +20% per verified member (max 100%)
 REFERRAL_BONUS_PER_ACTIVE = 0.05      # +5% per active direct referral (cap 50%)
 REFERRAL_BONUS_CAP = 0.50
 
+# Daily Streak Rewards — Pi-Network-style loyalty milestones
+# Each tier awards a BLZ bonus (paid out once) + a permanent streak multiplier.
+STREAK_MILESTONES = [
+    {"days": 3,   "bonus_blz": 1.0,   "multiplier_bonus": 0.05, "title": "Bronze Streak",  "icon": "flame"},
+    {"days": 7,   "bonus_blz": 3.0,   "multiplier_bonus": 0.10, "title": "Silver Streak",  "icon": "flame"},
+    {"days": 14,  "bonus_blz": 8.0,   "multiplier_bonus": 0.15, "title": "Gold Streak",    "icon": "trophy"},
+    {"days": 30,  "bonus_blz": 20.0,  "multiplier_bonus": 0.25, "title": "Diamond Streak", "icon": "diamond"},
+    {"days": 60,  "bonus_blz": 50.0,  "multiplier_bonus": 0.40, "title": "Legend Streak",  "icon": "crown"},
+    {"days": 100, "bonus_blz": 120.0, "multiplier_bonus": 0.60, "title": "Mythic Streak",  "icon": "sparkles"},
+]
+STREAK_MULTIPLIER_CAP = 1.00         # total streak multiplier cannot exceed +100%
+
 LOCKUP_DURATIONS = {
     14:   {"label": "2 Wochen",  "multiplier": 0.10},   # +10%
     180:  {"label": "6 Monate",  "multiplier": 0.30},   # +30%
@@ -118,6 +130,22 @@ async def _get_active_lockup_bonus(user_id: str) -> float:
     return min(total, LOCKUP_BONUS_CAP)
 
 
+def _streak_multiplier(streak: int) -> float:
+    """Sum of all milestone bonuses the user has unlocked (capped)."""
+    total = 0.0
+    for m in STREAK_MILESTONES:
+        if streak >= m["days"]:
+            total += m["multiplier_bonus"]
+    return min(total, STREAK_MULTIPLIER_CAP)
+
+
+def _next_milestone(streak: int) -> Optional[dict]:
+    for m in STREAK_MILESTONES:
+        if streak < m["days"]:
+            return m
+    return None
+
+
 def _lockup_bonus_for(amount: float, duration_days: int) -> float:
     """Bonus rate based on amount (log-scaled) × duration multiplier."""
     mult = LOCKUP_DURATIONS.get(duration_days, {}).get("multiplier", 0.0)
@@ -162,8 +190,10 @@ async def _compute_rate(user_id: str, profile: dict) -> dict:
     referral_bonus = min(refs_active * REFERRAL_BONUS_PER_ACTIVE, REFERRAL_BONUS_CAP)
 
     lockup_bonus = await _get_active_lockup_bonus(user_id)
+    streak = int(profile.get("streak_days", 0))
+    streak_bonus = _streak_multiplier(streak)
 
-    total_multiplier = role_mult * (1.0 + circle_bonus + referral_bonus + lockup_bonus)
+    total_multiplier = role_mult * (1.0 + circle_bonus + referral_bonus + lockup_bonus + streak_bonus)
     rate_per_hour = BASE_RATE_PER_HOUR * total_multiplier
     estimated = rate_per_hour * SESSION_HOURS
 
@@ -176,6 +206,8 @@ async def _compute_rate(user_id: str, profile: dict) -> dict:
         "referrals_active": refs_active,
         "referral_bonus": round(referral_bonus, 3),
         "lockup_bonus": round(lockup_bonus, 3),
+        "streak_days": streak,
+        "streak_bonus": round(streak_bonus, 3),
         "total_multiplier": round(total_multiplier, 3),
         "rate_per_hour": round(rate_per_hour, 6),
         "estimated_session_earnings": round(estimated, 4),
@@ -345,13 +377,33 @@ async def claim(request: Request):
     last_claim = profile.get("last_claim_date")
     today = _now().date().isoformat()
     yesterday = (_now().date() - timedelta(days=1)).isoformat()
-    new_streak = profile.get("streak_days", 0) + 1 if last_claim == yesterday else 1
+    prev_streak = int(profile.get("streak_days", 0))
+    new_streak = prev_streak + 1 if last_claim == yesterday else 1
+
+    # Streak milestone reward (paid once when crossing a tier)
+    claimed_milestones = set(profile.get("claimed_milestones", []))
+    milestone_bonus = 0.0
+    milestone_hit = None
+    for m in STREAK_MILESTONES:
+        if new_streak >= m["days"] and m["days"] not in claimed_milestones:
+            milestone_bonus += m["bonus_blz"]
+            claimed_milestones.add(m["days"])
+            milestone_hit = m  # last one crossed (if multiple)
 
     await db.blitz_mine_profile.update_one(
         {"user_id": user_id},
-        {"$inc": {"total_mined": earnings, "total_sessions": 1},
-         "$set": {"last_claim_date": today, "streak_days": new_streak}},
+        {"$inc": {"total_mined": earnings + milestone_bonus, "total_sessions": 1},
+         "$set": {"last_claim_date": today, "streak_days": new_streak,
+                  "claimed_milestones": list(sorted(claimed_milestones))}},
     )
+
+    if milestone_bonus > 0:
+        # Credit milestone bonus to wallet
+        await db.wallets.update_one(
+            {"user_id": user_id},
+            {"$inc": {"balance_blz": milestone_bonus}},
+            upsert=True,
+        )
 
     # Record tx for history
     await db.transactions.insert_one({
@@ -362,12 +414,49 @@ async def claim(request: Request):
         "description": f"BlitzMine Reward ({new_streak}d streak)",
         "created_at": _now().isoformat(),
     })
+    if milestone_bonus > 0:
+        await db.transactions.insert_one({
+            "user_id": user_id,
+            "type": "blitz_mine_streak_bonus",
+            "amount_blz": milestone_bonus,
+            "amount_eur": 0.0,
+            "description": f"Streak-Bonus: {milestone_hit['title']} ({new_streak} Tage)",
+            "created_at": _now().isoformat(),
+        })
 
     return {
         "success": True,
         "amount_blz": round(earnings, 4),
         "streak_days": new_streak,
-        "total_mined": round(profile.get("total_mined", 0.0) + earnings, 4),
+        "total_mined": round(profile.get("total_mined", 0.0) + earnings + milestone_bonus, 4),
+        "milestone_bonus_blz": round(milestone_bonus, 4),
+        "milestone_hit": milestone_hit,  # contains title, icon, multiplier_bonus
+    }
+
+
+# ── Streak info (for UI rendering of progress) ──
+@router.get("/streak")
+async def streak_info(request: Request):
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    profile = await _get_profile(user_id)
+    streak = int(profile.get("streak_days", 0))
+    claimed = set(profile.get("claimed_milestones", []))
+    nxt = _next_milestone(streak)
+    milestones = []
+    for m in STREAK_MILESTONES:
+        milestones.append({
+            **m,
+            "reached": streak >= m["days"],
+            "claimed": m["days"] in claimed,
+        })
+    return {
+        "current_streak": streak,
+        "streak_bonus": round(_streak_multiplier(streak), 3),
+        "next_milestone": nxt,
+        "days_to_next": (nxt["days"] - streak) if nxt else 0,
+        "milestones": milestones,
+        "cap": STREAK_MULTIPLIER_CAP,
     }
 
 
