@@ -183,6 +183,7 @@ from routes.admin_wallet import router as admin_wallet_router
 from routes.admin_management import router as admin_management_router
 from routes.coinbase_commerce import router as coinbase_commerce_router
 from routes.blitz_office import router as blitz_office_router
+from routes.blitz_recycle import router as blitz_recycle_router
 
 app.include_router(auth_router)
 app.include_router(wallet_router)
@@ -224,6 +225,7 @@ app.include_router(admin_wallet_router)
 app.include_router(admin_management_router)
 app.include_router(coinbase_commerce_router)
 app.include_router(blitz_office_router)
+app.include_router(blitz_recycle_router)
 app.include_router(marketplace_router)
 app.include_router(chat_router)
 app.include_router(applications_router)
