@@ -268,6 +268,24 @@ async def book(req: BookingReq, request: Request):
     }
     await db.appointments.insert_one(booking)
     booking.pop("_id", None)
+
+    # Send booking confirmation email (non-blocking)
+    try:
+        from routes.email_service import notify_booking_confirmed
+        import asyncio
+        asyncio.create_task(notify_booking_confirmed(
+            user_email=user.get("email", ""),
+            user_name=booking["customer_name"],
+            provider_name=p["name"],
+            service_name=service["name"],
+            date=req.date,
+            time=req.time,
+            price=float(service["price"]),
+            appointment_id=booking["appointment_id"],
+        ))
+    except Exception as _e:
+        pass
+
     return {
         "ok": True,
         "appointment_id": booking["appointment_id"],

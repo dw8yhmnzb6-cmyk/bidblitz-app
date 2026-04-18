@@ -134,6 +134,17 @@ async def register(req: RegisterRequest, request: Request, response: Response):
     except Exception:
         pass
 
+    # Send welcome email (non-blocking)
+    try:
+        from routes.email_service import notify_welcome
+        import asyncio as _aio
+        _aio.create_task(notify_welcome(
+            user_email=email,
+            user_name=user_doc.get("username") or user_doc.get("full_name") or email.split("@")[0],
+        ))
+    except Exception:
+        pass
+
     return serialize_user(user_doc)
 
 

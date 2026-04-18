@@ -404,6 +404,21 @@ async def claim(request: Request):
             {"$inc": {"balance_blz": milestone_bonus}},
             upsert=True,
         )
+        # Send milestone email (non-blocking)
+        try:
+            from routes.email_service import notify_streak_milestone
+            import asyncio
+            if milestone_hit:
+                asyncio.create_task(notify_streak_milestone(
+                    user_email=user.get("email", ""),
+                    user_name=user.get("username") or user.get("email", "").split("@")[0],
+                    title=milestone_hit["title"],
+                    days=new_streak,
+                    bonus_blz=milestone_bonus,
+                    rate_bonus=int(milestone_hit["multiplier_bonus"] * 100),
+                ))
+        except Exception:
+            pass
 
     # Record tx for history
     await db.transactions.insert_one({
