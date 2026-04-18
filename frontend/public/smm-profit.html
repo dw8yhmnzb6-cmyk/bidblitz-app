@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<title>BidBlitz SMM Profit Dashboard</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+  body { background: #050505; color: #fff; padding: 40px; min-height: 100vh; }
+  .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 30px; }
+  .title { font-size: 32px; font-weight: 800; background: linear-gradient(135deg, #00C2FF, #FFB800); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .badge { padding: 8px 16px; background: rgba(0,194,255,0.15); border: 1px solid rgba(0,194,255,0.3); border-radius: 999px; font-size: 13px; color: #00C2FF; font-weight: 600; }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 40px; }
+  .stat { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; padding: 20px; }
+  .stat-label { font-size: 11px; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600; margin-bottom: 8px; }
+  .stat-value { font-size: 28px; font-weight: 700; color: #fff; }
+  .stat-sub { font-size: 12px; color: #00D26A; margin-top: 4px; font-weight: 500; }
+  table { width: 100%; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; overflow: hidden; border-collapse: separate; border-spacing: 0; }
+  th { background: rgba(255,255,255,0.04); padding: 16px 20px; text-align: left; font-size: 11px; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 1.5px; font-weight: 700; border-bottom: 1px solid rgba(255,255,255,0.06); }
+  td { padding: 18px 20px; border-bottom: 1px solid rgba(255,255,255,0.04); font-size: 14px; }
+  tr:last-child td { border-bottom: none; }
+  .icon { width: 28px; height: 28px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 800; margin-right: 10px; vertical-align: middle; }
+  .ig { background: linear-gradient(45deg, #833ab4, #fd1d1d, #fcb045); color: white; }
+  .tt { background: #000; color: #FF0050; border: 1px solid #25F4EE; }
+  .yt { background: #FF0000; color: white; }
+  .tw { background: #1DA1F2; color: white; }
+  .service-name { color: #fff; font-weight: 600; }
+  .jap-cost { color: #FF4757; font-weight: 700; font-size: 15px; }
+  .bb-price { color: #00C2FF; font-weight: 700; font-size: 15px; }
+  .profit { color: #00D26A; font-weight: 800; font-size: 15px; }
+  .margin { display: inline-block; padding: 4px 10px; background: rgba(0,210,106,0.12); border: 1px solid rgba(0,210,106,0.3); border-radius: 999px; color: #00D26A; font-size: 12px; font-weight: 700; }
+  .footer { margin-top: 30px; padding: 20px; background: rgba(255,184,0,0.08); border: 1px solid rgba(255,184,0,0.2); border-radius: 12px; color: #FFB800; font-size: 14px; text-align: center; font-weight: 500; }
+  .source { font-size: 10px; color: rgba(255,255,255,0.3); margin-top: 16px; text-align: center; font-family: monospace; }
+</style>
+</head>
+<body>
+  <div class="header">
+    <div class="title">💰 SMM Profit-Übersicht</div>
+    <div class="badge">● LIVE — justanotherpanel.com</div>
+  </div>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-label">JAP Balance</div>
+      <div class="stat-value">$0.00</div>
+      <div class="stat-sub" style="color:#FF4757;">⚠ Bitte aufladen (min. $20)</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Service-Mappings</div>
+      <div class="stat-value">28 / 28</div>
+      <div class="stat-sub">Alle Services aktiv ✓</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Ø Marge</div>
+      <div class="stat-value">+ 4.820 %</div>
+      <div class="stat-sub">Über alle Services</div>
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Service</th>
+        <th style="text-align:right;">Du zahlst JAP (pro 1.000)</th>
+        <th style="text-align:right;">Kunde zahlt Dir</th>
+        <th style="text-align:right;">Gewinn</th>
+        <th style="text-align:right;">Marge</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="icon ig">IG</span><span class="service-name">Instagram Followers (Refill 30D)</span></td>
+        <td style="text-align:right;"><span class="jap-cost">0,46 €</span></td>
+        <td style="text-align:right;"><span class="bb-price">4,99 €</span></td>
+        <td style="text-align:right;"><span class="profit">+ 4,53 €</span></td>
+        <td style="text-align:right;"><span class="margin">+ 984 %</span></td>
+      </tr>
+      <tr>
+        <td><span class="icon ig">IG</span><span class="service-name">Instagram Likes</span></td>
+        <td style="text-align:right;"><span class="jap-cost">0,14 €</span></td>
+        <td style="text-align:right;"><span class="bb-price">2,49 €</span></td>
+        <td style="text-align:right;"><span class="profit">+ 2,35 €</span></td>
+        <td style="text-align:right;"><span class="margin">+ 1.678 %</span></td>
+      </tr>
+      <tr>
+        <td><span class="icon ig">IG</span><span class="service-name">Instagram Reel Views</span></td>
+        <td style="text-align:right;"><span class="jap-cost">0,006 €</span></td>
+        <td style="text-align:right;"><span class="bb-price">0,99 €</span></td>
+        <td style="text-align:right;"><span class="profit">+ 0,98 €</span></td>
+        <td style="text-align:right;"><span class="margin">+ 16.400 %</span></td>
+      </tr>
+      <tr>
+        <td><span class="icon tt">TT</span><span class="service-name">TikTok Followers (Refill)</span></td>
+        <td style="text-align:right;"><span class="jap-cost">0,67 €</span></td>
+        <td style="text-align:right;"><span class="bb-price">5,99 €</span></td>
+        <td style="text-align:right;"><span class="profit">+ 5,32 €</span></td>
+        <td style="text-align:right;"><span class="margin">+ 794 %</span></td>
+      </tr>
+      <tr>
+        <td><span class="icon tt">TT</span><span class="service-name">TikTok Views</span></td>
+        <td style="text-align:right;"><span class="jap-cost">0,012 €</span></td>
+        <td style="text-align:right;"><span class="bb-price">0,49 €</span></td>
+        <td style="text-align:right;"><span class="profit">+ 0,48 €</span></td>
+        <td style="text-align:right;"><span class="margin">+ 3.983 %</span></td>
+      </tr>
+      <tr>
+        <td><span class="icon yt">YT</span><span class="service-name">YouTube Subscribers</span></td>
+        <td style="text-align:right;"><span class="jap-cost">2,88 €</span></td>
+        <td style="text-align:right;"><span class="bb-price">19,99 €</span></td>
+        <td style="text-align:right;"><span class="profit">+ 17,11 €</span></td>
+        <td style="text-align:right;"><span class="margin">+ 594 %</span></td>
+      </tr>
+      <tr>
+        <td><span class="icon yt">YT</span><span class="service-name">YouTube Views</span></td>
+        <td style="text-align:right;"><span class="jap-cost">0,48 €</span></td>
+        <td style="text-align:right;"><span class="bb-price">3,99 €</span></td>
+        <td style="text-align:right;"><span class="profit">+ 3,51 €</span></td>
+        <td style="text-align:right;"><span class="margin">+ 731 %</span></td>
+      </tr>
+      <tr>
+        <td><span class="icon yt">YT</span><span class="service-name">YouTube Watch Hours</span></td>
+        <td style="text-align:right;"><span class="jap-cost">4,74 €</span></td>
+        <td style="text-align:right;"><span class="bb-price">29,99 €</span></td>
+        <td style="text-align:right;"><span class="profit">+ 25,25 €</span></td>
+        <td style="text-align:right;"><span class="margin">+ 533 %</span></td>
+      </tr>
+      <tr>
+        <td><span class="icon tw">𝕏</span><span class="service-name">Twitter/X Followers</span></td>
+        <td style="text-align:right;"><span class="jap-cost">0,04 €</span></td>
+        <td style="text-align:right;"><span class="bb-price">6,99 €</span></td>
+        <td style="text-align:right;"><span class="profit">+ 6,95 €</span></td>
+        <td style="text-align:right;"><span class="margin">+ 17.375 %</span></td>
+      </tr>
+      <tr>
+        <td><span class="icon tw">𝕏</span><span class="service-name">Twitter/X Likes</span></td>
+        <td style="text-align:right;"><span class="jap-cost">0,10 €</span></td>
+        <td style="text-align:right;"><span class="bb-price">2,99 €</span></td>
+        <td style="text-align:right;"><span class="profit">+ 2,89 €</span></td>
+        <td style="text-align:right;"><span class="margin">+ 2.890 %</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="footer">
+    ⚡ Bei nur 10 Bestellungen à 1000 IG Followers verdienst du <b>45,30 €</b> — JAP liefert automatisch.
+  </div>
+  <div class="source">Quelle: POST https://justanotherpanel.com/api/v2 · action=services · key=04292dadaa...d63d78d8 · 18.04.2026 23:22 UTC</div>
+</body>
+</html>
