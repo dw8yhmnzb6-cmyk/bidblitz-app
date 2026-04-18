@@ -296,14 +296,34 @@ function AppContent() {
       onNavigate: handleNavigate, isGuest, isDemoMode,
       onLogin: () => { tracker.ctaClick("login", "home"); setShowFullAuth("login"); },
       onRegister: () => { tracker.guestRegisterClick("home"); setShowFullAuth("register"); },
-      onStartDemo: () => { tracker.demoStart(); setIsDemoMode(true); setCurrentPath("/wallet"); },
+      onStartDemo: () => {
+        tracker.demoStart();
+        setIsDemoMode(true);
+        setCurrentPath("/");
+        import("sonner").then(({ toast }) => {
+          toast.success("Demo-Modus aktiviert", {
+            description: "Erkunde alle Features ohne Konto. Klick unten auf Wallet, Auktionen, Mehr …",
+            duration: 5500,
+          });
+        });
+      },
     };
     const pageProps = {
       onNavigate: handleNavigate, isGuest, isDemoMode,
       onAuthRequired: requireAuth,
       onLogin: () => { tracker.ctaClick("login", currentPath); setShowFullAuth("login"); },
       onRegister: () => { tracker.guestRegisterClick(currentPath); setShowFullAuth("register"); },
-      onStartDemo: () => { tracker.demoStart(); setIsDemoMode(true); setCurrentPath("/wallet"); },
+      onStartDemo: () => {
+        tracker.demoStart();
+        setIsDemoMode(true);
+        setCurrentPath("/");
+        import("sonner").then(({ toast }) => {
+          toast.success("Demo-Modus aktiviert", {
+            description: "Erkunde alle Features ohne Konto. Klick unten auf Wallet, Auktionen, Mehr …",
+            duration: 5500,
+          });
+        });
+      },
     };
     switch (currentPath) {
       case "/":
@@ -366,11 +386,11 @@ function AppContent() {
           ? <AdminPage onNavigate={handleNavigate} />
           : <HomePage {...homeProps} />;
       case "/blitz-transfer":
-        return isGuest ? <HomePage {...homeProps} /> : <BlitzTransferPage onNavigate={handleNavigate} onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <BlitzTransferPage onNavigate={handleNavigate} onBack={() => handleNavigate("/more")} />;
       case "/blitz-boost":
-        return isGuest ? <HomePage {...homeProps} /> : <BlitzBoostPage onNavigate={handleNavigate} onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <BlitzBoostPage onNavigate={handleNavigate} onBack={() => handleNavigate("/more")} />;
       case "/blitz-mine":
-        return isGuest ? <HomePage {...homeProps} /> : <BlitzMinePage onNavigate={handleNavigate} onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <BlitzMinePage onNavigate={handleNavigate} onBack={() => handleNavigate("/more")} />;
       case "/legal/agb":
       case "/legal/datenschutz":
       case "/legal/impressum":
@@ -395,129 +415,129 @@ function AppContent() {
           ? <AuctionAdminPage onBack={() => handleNavigate("/admin")} />
           : <HomePage {...homeProps} />;
       case "/taxi":
-        return isGuest ? <HomePage {...homeProps} /> : <TaxiPage onNavigate={handleNavigate} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <TaxiPage onNavigate={handleNavigate} />;
       case "/taxi-partner":
-        return isGuest ? <HomePage {...homeProps} /> : <TaxiOperatorPage onNavigate={handleNavigate} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <TaxiOperatorPage onNavigate={handleNavigate} />;
       case "/taxi-dashboard":
-        return isGuest ? <HomePage {...homeProps} /> : <TaxiOperatorDashboard onNavigate={handleNavigate} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <TaxiOperatorDashboard onNavigate={handleNavigate} />;
       case "/scooter":
-        return isGuest ? <HomePage {...homeProps} /> : <ScooterPage onNavigate={handleNavigate} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <ScooterPage onNavigate={handleNavigate} />;
       case "/food":
-        return isGuest ? <HomePage {...homeProps} /> : <FoodPage onNavigate={handleNavigate} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <FoodPage onNavigate={handleNavigate} />;
       case "/driver-dashboard":
-        return isGuest ? <HomePage {...homeProps} /> : <DriverDashboardPage onNavigate={handleNavigate} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <DriverDashboardPage onNavigate={handleNavigate} />;
       case "/restaurant-dashboard":
-        return isGuest ? <HomePage {...homeProps} /> : <RestaurantDashboardPage onNavigate={handleNavigate} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <RestaurantDashboardPage onNavigate={handleNavigate} />;
       case "/child-mode":
         return <ChildModePage />;
       case "/marketplace":
         return <MarketplacePage onNavigate={handleNavigate} />;
       case "/chat":
-        return isGuest ? <HomePage {...homeProps} /> : <ChatPage onNavigate={handleNavigate} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <ChatPage onNavigate={handleNavigate} />;
       case "/support-chat":
-        return isGuest ? <HomePage {...homeProps} /> : <SupportChatPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <SupportChatPage onBack={() => handleNavigate("/more")} />;
       case "/admin/support":
-        return isGuest ? <HomePage {...homeProps} /> : <SupportChatPage onBack={() => handleNavigate("/admin")} isAdmin={true} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <SupportChatPage onBack={() => handleNavigate("/admin")} isAdmin={true} />;
       case "/partners":
         return <PartnersPage />;
       case "/referral":
-        return isGuest ? <HomePage {...homeProps} /> : <ReferralSystemPage onNavigate={handleNavigate} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <ReferralSystemPage onNavigate={handleNavigate} />;
       case "/loyalty":
-        return isGuest ? <HomePage {...homeProps} /> : <LoyaltyPage onBack={() => handleNavigate("/")} onNavigate={handleNavigate} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <LoyaltyPage onBack={() => handleNavigate("/")} onNavigate={handleNavigate} />;
       case "/kids":
-        return isGuest ? <HomePage {...homeProps} /> : <KidsPaywall onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <KidsPaywall onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
       case "/nfc":
-        return isGuest ? <HomePage {...homeProps} /> : <NfcPayPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <NfcPayPage onBack={() => handleNavigate("/more")} />;
       case "/vip":
-        return isGuest ? <HomePage {...homeProps} /> : <VipPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <VipPage onBack={() => handleNavigate("/more")} />;
       case "/mobility-map":
-        return isGuest ? <HomePage {...homeProps} /> : <MobilityMapPage onNavigate={handleNavigate} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <MobilityMapPage onNavigate={handleNavigate} />;
       case "/credit-score":
-        return isGuest ? <HomePage {...homeProps} /> : <CreditScorePage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <CreditScorePage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
       case "/bills":
-        return isGuest ? <HomePage {...homeProps} /> : <BillsPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <BillsPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
       case "/split-bill":
-        return isGuest ? <HomePage {...homeProps} /> : <SplitBillPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <SplitBillPage onBack={() => handleNavigate("/more")} />;
       case "/virtual-cards":
-        return isGuest ? <HomePage {...homeProps} /> : <VirtualCardsPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <VirtualCardsPage onBack={() => handleNavigate("/more")} />;
       case "/savings":
-        return isGuest ? <HomePage {...homeProps} /> : <SavingsPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <SavingsPage onBack={() => handleNavigate("/more")} />;
       case "/bnpl":
-        return isGuest ? <HomePage {...homeProps} /> : <BNPLPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <BNPLPage onBack={() => handleNavigate("/more")} />;
       case "/gift-cards":
-        return isGuest ? <HomePage {...homeProps} /> : <GiftCardsPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <GiftCardsPage onBack={() => handleNavigate("/more")} />;
       case "/ai-assistant":
-        return isGuest ? <HomePage {...homeProps} /> : <AIAssistantPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <AIAssistantPage onBack={() => handleNavigate("/more")} />;
       case "/crypto":
-        return isGuest ? <HomePage {...homeProps} /> : <CryptoWalletPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <CryptoWalletPage onBack={() => handleNavigate("/more")} />;
       case "/budget":
-        return isGuest ? <HomePage {...homeProps} /> : <BudgetPlannerPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <BudgetPlannerPage onBack={() => handleNavigate("/more")} />;
       case "/admin/credits":
-        return isGuest ? <HomePage {...homeProps} /> : <AdminCreditPage onBack={() => handleNavigate("/admin")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <AdminCreditPage onBack={() => handleNavigate("/admin")} />;
       case "/notification-center":
-        return isGuest ? <HomePage {...homeProps} /> : <NotificationCenterPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <NotificationCenterPage onBack={() => handleNavigate("/more")} />;
       case "/contacts":
-        return isGuest ? <HomePage {...homeProps} /> : <ContactsPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <ContactsPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
       case "/user-stats":
-        return isGuest ? <HomePage {...homeProps} /> : <UserStatsPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <UserStatsPage onBack={() => handleNavigate("/more")} />;
       case "/currency":
-        return isGuest ? <HomePage {...homeProps} /> : <CurrencyConverterPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <CurrencyConverterPage onBack={() => handleNavigate("/more")} />;
       case "/hotels":
-        return isGuest ? <HomePage {...homeProps} /> : <HotelBookingPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <HotelBookingPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
       case "/events":
-        return isGuest ? <HomePage {...homeProps} /> : <EventBookingPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <EventBookingPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
       case "/restaurants":
-        return isGuest ? <HomePage {...homeProps} /> : <RestaurantReservationPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <RestaurantReservationPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
       case "/insurance":
-        return isGuest ? <HomePage {...homeProps} /> : <InsurancePage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <InsurancePage onBack={() => handleNavigate("/more")} />;
       case "/appointments":
-        return isGuest ? <HomePage {...homeProps} /> : <BookingsPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <BookingsPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
       case "/social":
-        return isGuest ? <HomePage {...homeProps} /> : <SocialFeedPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <SocialFeedPage onBack={() => handleNavigate("/more")} />;
       case "/jobs":
-        return isGuest ? <HomePage {...homeProps} /> : <JobMarketplacePage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <JobMarketplacePage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
       case "/flights":
-        return isGuest ? <HomePage {...homeProps} /> : <FlightSearchPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <FlightSearchPage onBack={() => handleNavigate("/more")} />;
       case "/parcels":
-        return isGuest ? <HomePage {...homeProps} /> : <ParcelPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <ParcelPage onBack={() => handleNavigate("/more")} />;
       case "/cv-builder":
-        return isGuest ? <HomePage {...homeProps} /> : <CVBuilderPage onBack={() => handleNavigate("/jobs")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <CVBuilderPage onBack={() => handleNavigate("/jobs")} />;
       case "/nearby":
-        return isGuest ? <HomePage {...homeProps} /> : <NearbyPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <NearbyPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
       case "/merchant-portal":
-        return isGuest ? <HomePage {...homeProps} /> : <MerchantPortalPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <MerchantPortalPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
       case "/kids-app":
-        return isGuest ? <HomePage {...homeProps} /> : <KidsAppPage onBack={() => handleNavigate("/kids")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <KidsAppPage onBack={() => handleNavigate("/kids")} />;
       case "/gaming":
-        return isGuest ? <HomePage {...homeProps} /> : <GamingPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <GamingPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
       case "/real-estate":
-        return isGuest ? <HomePage {...homeProps} /> : <RealEstatePage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <RealEstatePage onBack={() => handleNavigate("/more")} />;
       case "/freelancer":
-        return isGuest ? <HomePage {...homeProps} /> : <FreelancerPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <FreelancerPage onBack={() => handleNavigate("/more")} />;
       case "/elearning":
-        return isGuest ? <HomePage {...homeProps} /> : <ELearningPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <ELearningPage onBack={() => handleNavigate("/more")} />;
       case "/handwerker":
-        return isGuest ? <HomePage {...homeProps} /> : <HandwerkerPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <HandwerkerPage onBack={() => handleNavigate("/more")} />;
       case "/streaming":
-        return isGuest ? <HomePage {...homeProps} /> : <StreamingPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <StreamingPage onBack={() => handleNavigate("/more")} />;
       case "/telemedizin":
-        return isGuest ? <HomePage {...homeProps} /> : <TelemedizinPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <TelemedizinPage onBack={() => handleNavigate("/more")} />;
       case "/dating":
-        return isGuest ? <HomePage {...homeProps} /> : <DatingPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <DatingPage onBack={() => handleNavigate("/more")} />;
       case "/gebrauchtwagen":
-        return isGuest ? <HomePage {...homeProps} /> : <GebrauchtwagenPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <GebrauchtwagenPage onBack={() => handleNavigate("/more")} />;
       case "/reinigung":
-        return isGuest ? <HomePage {...homeProps} /> : <ReinigungPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <ReinigungPage onBack={() => handleNavigate("/more")} />;
       case "/umzug":
-        return isGuest ? <HomePage {...homeProps} /> : <UmzugPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <UmzugPage onBack={() => handleNavigate("/more")} />;
       case "/tierbetreuung":
-        return isGuest ? <HomePage {...homeProps} /> : <TierbetreuungPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <TierbetreuungPage onBack={() => handleNavigate("/more")} />;
       case "/fitness":
-        return isGuest ? <HomePage {...homeProps} /> : <FitnessPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <FitnessPage onBack={() => handleNavigate("/more")} />;
       case "/reiseplaner":
-        return isGuest ? <HomePage {...homeProps} /> : <ReiseplanerPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <ReiseplanerPage onBack={() => handleNavigate("/more")} />;
       case "/ladesaeulen":
-        return isGuest ? <HomePage {...homeProps} /> : <LadesaeulenPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <LadesaeulenPage onBack={() => handleNavigate("/more")} />;
       case "/admin/email-marketing":
         return user.role === "admin"
           ? <EmailMarketingAdminPage onBack={() => handleNavigate("/admin")} />
@@ -525,115 +545,115 @@ function AppContent() {
       case "/all-services":
         return <AllServicesPage onBack={() => handleNavigate("/")} onNavigate={handleNavigate} />;
       case "/stocks":
-        return isGuest ? <HomePage {...homeProps} /> : <StocksPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <StocksPage onBack={() => handleNavigate("/more")} />;
       case "/reselling":
-        return isGuest ? <HomePage {...homeProps} /> : <ResellingPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <ResellingPage onBack={() => handleNavigate("/more")} />;
       case "/blitzjobs":
-        return isGuest ? <HomePage {...homeProps} /> : <BlitzJobsPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <BlitzJobsPage onBack={() => handleNavigate("/more")} />;
       case "/cashback":
-        return isGuest ? <HomePage {...homeProps} /> : <CashbackPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <CashbackPage onBack={() => handleNavigate("/more")} />;
       case "/premium":
-        return isGuest ? <HomePage {...homeProps} /> : <PremiumPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <PremiumPage onBack={() => handleNavigate("/more")} />;
       case "/stories":
-        return isGuest ? <HomePage {...homeProps} /> : <StoriesPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <StoriesPage onBack={() => handleNavigate("/more")} />;
       case "/live-auctions":
-        return isGuest ? <HomePage {...homeProps} /> : <LiveAuctionsPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <LiveAuctionsPage onBack={() => handleNavigate("/more")} />;
       case "/social-hub":
-        return isGuest ? <HomePage {...homeProps} /> : <SocialHubPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <SocialHubPage onBack={() => handleNavigate("/more")} />;
       case "/blitzlearn":
-        return isGuest ? <HomePage {...homeProps} /> : <BlitzLearnPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <BlitzLearnPage onBack={() => handleNavigate("/more")} />;
       case "/blitzhub":
-        return isGuest ? <HomePage {...homeProps} /> : <BlitzHubPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <BlitzHubPage onBack={() => handleNavigate("/more")} />;
       case "/leaderboard":
-        return isGuest ? <HomePage {...homeProps} /> : <LeaderboardPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <LeaderboardPage onBack={() => handleNavigate("/more")} />;
       case "/city":
-        return isGuest ? <HomePage {...homeProps} /> : <CityServicesPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <CityServicesPage onBack={() => handleNavigate("/more")} />;
       case "/blitzpay":
-        return isGuest ? <HomePage {...homeProps} /> : <BlitzPayPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <BlitzPayPage onBack={() => handleNavigate("/more")} />;
       case "/crypto-earn":
-        return isGuest ? <HomePage {...homeProps} /> : <CryptoEarnPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <CryptoEarnPage onBack={() => handleNavigate("/more")} />;
       case "/crypto-baskets":
-        return isGuest ? <HomePage {...homeProps} /> : <CryptoBasketsPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <CryptoBasketsPage onBack={() => handleNavigate("/more")} />;
       case "/derivatives":
-        return isGuest ? <HomePage {...homeProps} /> : <DerivativesPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <DerivativesPage onBack={() => handleNavigate("/more")} />;
       case "/levelup":
-        return isGuest ? <HomePage {...homeProps} /> : <LevelUpPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <LevelUpPage onBack={() => handleNavigate("/more")} />;
       case "/predictions":
-        return isGuest ? <HomePage {...homeProps} /> : <PredictionsPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <PredictionsPage onBack={() => handleNavigate("/more")} />;
       case "/blitzcard":
-        return isGuest ? <HomePage {...homeProps} /> : <BlitzCardPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <BlitzCardPage onBack={() => handleNavigate("/more")} />;
       case "/supercharger":
-        return isGuest ? <HomePage {...homeProps} /> : <SuperchargerPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <SuperchargerPage onBack={() => handleNavigate("/more")} />;
       case "/defi-wallet":
-        return isGuest ? <HomePage {...homeProps} /> : <DeFiWalletPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <DeFiWalletPage onBack={() => handleNavigate("/more")} />;
       case "/crypto-loans":
-        return isGuest ? <HomePage {...homeProps} /> : <CryptoLoansPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <CryptoLoansPage onBack={() => handleNavigate("/more")} />;
       case "/p2p-lending":
-        return isGuest ? <HomePage {...homeProps} /> : <P2PLendingPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <P2PLendingPage onBack={() => handleNavigate("/more")} />;
       case "/trading-bot":
-        return isGuest ? <HomePage {...homeProps} /> : <TradingBotPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <TradingBotPage onBack={() => handleNavigate("/more")} />;
       case "/live-shopping":
-        return isGuest ? <HomePage {...homeProps} /> : <LiveShoppingPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <LiveShoppingPage onBack={() => handleNavigate("/more")} />;
       case "/creators":
-        return isGuest ? <HomePage {...homeProps} /> : <CreatorsPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <CreatorsPage onBack={() => handleNavigate("/more")} />;
       case "/skills-market":
-        return isGuest ? <HomePage {...homeProps} /> : <SkillsMarketPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <SkillsMarketPage onBack={() => handleNavigate("/more")} />;
       case "/invoicing":
-        return isGuest ? <HomePage {...homeProps} /> : <InvoicingPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <InvoicingPage onBack={() => handleNavigate("/more")} />;
       case "/qr-menu":
-        return isGuest ? <HomePage {...homeProps} /> : <QRMenuPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <QRMenuPage onBack={() => handleNavigate("/more")} />;
       case "/termin-booking":
-        return isGuest ? <HomePage {...homeProps} /> : <BookingsPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <BookingsPage onBack={() => handleNavigate("/more")} />;
       case "/contracts":
-        return isGuest ? <HomePage {...homeProps} /> : <ContractsPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <ContractsPage onBack={() => handleNavigate("/more")} />;
       case "/utilities":
-        return isGuest ? <HomePage {...homeProps} /> : <UtilitiesHubPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <UtilitiesHubPage onBack={() => handleNavigate("/more")} />;
       case "/engage":
-        return isGuest ? <HomePage {...homeProps} /> : <EngageHubPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <EngageHubPage onBack={() => handleNavigate("/more")} />;
       case "/viral":
-        return isGuest ? <HomePage {...homeProps} /> : <ViralHubPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <ViralHubPage onBack={() => handleNavigate("/more")} />;
       
       // Car Rental Module
       case "/car-rental":
         return <CarListPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
       case "/car-rental/my-bookings":
-        return isGuest ? <HomePage {...homeProps} /> : <MyCarBookingsPage onBack={() => handleNavigate("/car-rental")} onNavigate={handleNavigate} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <MyCarBookingsPage onBack={() => handleNavigate("/car-rental")} onNavigate={handleNavigate} />;
       case "/car-rental/vendor":
-        return isGuest ? <HomePage {...homeProps} /> : <VendorCarRentalDashboardPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <VendorCarRentalDashboardPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
       case "/car-rental/vendor/cars":
-        return isGuest ? <HomePage {...homeProps} /> : <VendorCarsPage onBack={() => handleNavigate("/car-rental/vendor")} onNavigate={handleNavigate} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <VendorCarsPage onBack={() => handleNavigate("/car-rental/vendor")} onNavigate={handleNavigate} />;
       case "/car-rental/vendor/cars/new":
-        return isGuest ? <HomePage {...homeProps} /> : <VendorCarsPage onBack={() => handleNavigate("/car-rental/vendor")} onNavigate={handleNavigate} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <VendorCarsPage onBack={() => handleNavigate("/car-rental/vendor")} onNavigate={handleNavigate} />;
       case "/car-rental/vendor/bookings":
-        return isGuest ? <HomePage {...homeProps} /> : <VendorBookingsPage onBack={() => handleNavigate("/car-rental/vendor")} onNavigate={handleNavigate} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <VendorBookingsPage onBack={() => handleNavigate("/car-rental/vendor")} onNavigate={handleNavigate} />;
       case "/car-rental/vendor/invoices":
-        return isGuest ? <HomePage {...homeProps} /> : <VendorInvoicesPage onBack={() => handleNavigate("/car-rental/vendor")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <VendorInvoicesPage onBack={() => handleNavigate("/car-rental/vendor")} />;
       case "/car-rental/vendor/payouts":
-        return isGuest ? <HomePage {...homeProps} /> : <VendorPayoutsPage onBack={() => handleNavigate("/car-rental/vendor")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <VendorPayoutsPage onBack={() => handleNavigate("/car-rental/vendor")} />;
       case "/car-rental/vendor/damages":
-        return isGuest ? <HomePage {...homeProps} /> : <VendorDamagesPage onBack={() => handleNavigate("/car-rental/vendor")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <VendorDamagesPage onBack={() => handleNavigate("/car-rental/vendor")} />;
       case "/car-rental/vendor/settings":
-        return isGuest ? <HomePage {...homeProps} /> : <VendorSettingsPage onBack={() => handleNavigate("/car-rental/vendor")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <VendorSettingsPage onBack={() => handleNavigate("/car-rental/vendor")} />;
       case "/car-rental/vendor/staff":
-        return isGuest ? <HomePage {...homeProps} /> : <VendorStaffPage onBack={() => handleNavigate("/car-rental/vendor")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <VendorStaffPage onBack={() => handleNavigate("/car-rental/vendor")} />;
       case "/car-rental/vendor/customers":
-        return isGuest ? <HomePage {...homeProps} /> : <VendorBookingsPage onBack={() => handleNavigate("/car-rental/vendor")} onNavigate={handleNavigate} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <VendorBookingsPage onBack={() => handleNavigate("/car-rental/vendor")} onNavigate={handleNavigate} />;
       case "/car-rental/vendor/reports":
-        return isGuest ? <HomePage {...homeProps} /> : <VendorReportsPage onBack={() => handleNavigate("/car-rental/vendor")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <VendorReportsPage onBack={() => handleNavigate("/car-rental/vendor")} />;
       case "/car-rental/admin":
-        return isGuest ? <HomePage {...homeProps} /> : <AdminCarRentalPage onBack={() => handleNavigate("/admin")} onNavigate={handleNavigate} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <AdminCarRentalPage onBack={() => handleNavigate("/admin")} onNavigate={handleNavigate} />;
       case "/car-rental/admin/disputes":
-        return isGuest ? <HomePage {...homeProps} /> : <AdminDisputesPage onBack={() => handleNavigate("/car-rental/admin")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <AdminDisputesPage onBack={() => handleNavigate("/car-rental/admin")} />;
       
       default:
         // Handle dynamic routes
         if (currentPath.startsWith("/car-rental/vendor/bookings/")) {
           const bId = currentPath.split("/car-rental/vendor/bookings/")[1];
-          return isGuest ? <HomePage {...homeProps} /> : <VendorBookingDetailPage bookingId={bId} onBack={() => handleNavigate("/car-rental/vendor/bookings")} onNavigate={handleNavigate} />;
+          return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <VendorBookingDetailPage bookingId={bId} onBack={() => handleNavigate("/car-rental/vendor/bookings")} onNavigate={handleNavigate} />;
         }
         if (currentPath.startsWith("/car-rental/my-bookings/")) {
           const bId = currentPath.split("/car-rental/my-bookings/")[1];
-          return isGuest ? <HomePage {...homeProps} /> : <MyBookingDetailPage bookingId={bId} onBack={() => handleNavigate("/car-rental/my-bookings")} onNavigate={handleNavigate} />;
+          return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <MyBookingDetailPage bookingId={bId} onBack={() => handleNavigate("/car-rental/my-bookings")} onNavigate={handleNavigate} />;
         }
         if (currentPath.startsWith("/car-rental/car/")) {
           const carId = currentPath.split("/car-rental/car/")[1];

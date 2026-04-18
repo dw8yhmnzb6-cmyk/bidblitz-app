@@ -10,14 +10,14 @@ import { useUser } from "../store";
 
 const spring = { type: "spring", damping: 25, stiffness: 300 };
 
-const SendMoneyModal = ({ onClose, onSuccess }) => {
+const SendMoneyModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
   const user = useUser();
   const [step, setStep] = useState(1); // 1: recipient, 2: amount, 3: success
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   
   // Data - Use user balance from store as primary source
-  const [balance, setBalance] = useState(user?.balance || 0);
+  const [balance, setBalance] = useState(currentBalance ?? user?.balance ?? 0);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [recentContacts, setRecentContacts] = useState([]);
@@ -30,8 +30,22 @@ const SendMoneyModal = ({ onClose, onSuccess }) => {
   const inputRef = useRef(null);
 
   useEffect(() => {
-    loadData();
-  }, []);
+    if (isOpen) loadData();
+  }, [isOpen]);
+
+  // Reset state when modal closes so next open starts fresh
+  useEffect(() => {
+    if (!isOpen) {
+      setStep(1);
+      setSearchQuery("");
+      setSearchResults([]);
+      setRecipient(null);
+      setAmount("");
+      setMessage("");
+      setResult(null);
+      setError(null);
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     if (step === 2 && inputRef.current) {
@@ -170,12 +184,14 @@ const SendMoneyModal = ({ onClose, onSuccess }) => {
   const quickAmounts = [5, 10, 20, 50];
 
   return (
-    <motion.div
-      className="fixed inset-0 z-50"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-    >
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          className="fixed inset-0 z-50"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+        >
       {/* Backdrop */}
       <motion.div 
         className="absolute inset-0 bg-black/80 backdrop-blur-xl"
@@ -566,7 +582,9 @@ const SendMoneyModal = ({ onClose, onSuccess }) => {
           </AnimatePresence>
         </div>
       </motion.div>
-    </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 };
 

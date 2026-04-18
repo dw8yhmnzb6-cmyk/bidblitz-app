@@ -21,13 +21,13 @@ const Field = ({ icon: Icon, type, value, onChange, placeholder, testId, autoFoc
       transition={slide}
     >
       <div
-        className={`flex items-center gap-3 px-4 py-[14px] rounded-[14px] transition-all duration-200 ${
+        className={`flex items-center gap-3 px-4 py-[14px] rounded-[14px] transition-all duration-200 overflow-hidden ${
           focused
             ? "bg-white/[0.04] border border-[#00C2FF]/25"
-            : "bg-white/[0.02] border border-white/[0.05]"
+            : "bg-white/[0.02] border border-white/[0.08]"
         }`}
       >
-        <Icon size={16} strokeWidth={1.5} className={focused ? "text-[#00C2FF]" : "text-[#333]"} />
+        <Icon size={16} strokeWidth={1.5} className={`flex-shrink-0 ${focused ? "text-[#00C2FF]" : "text-white/50"}`} />
         <input
           data-testid={testId}
           type={isPw && !showPw ? "password" : "text"}
@@ -37,8 +37,9 @@ const Field = ({ icon: Icon, type, value, onChange, placeholder, testId, autoFoc
           autoFocus={autoFocus}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
-          className="flex-1 bg-transparent text-[13px] text-white placeholder:text-[#2A2A2A] outline-none font-medium"
-          autoComplete={isPw ? "current-password" : "email"}
+          className="flex-1 min-w-0 w-full bg-transparent text-[13px] text-white placeholder:text-white/35 outline-none font-medium"
+          style={{ WebkitTextFillColor: "#fff" }}
+          autoComplete={isPw ? (placeholder && placeholder.toLowerCase().includes("confirm") || placeholder && placeholder.toLowerCase().includes("bestätigen") ? "new-password" : "current-password") : "email"}
         />
         {isPw && value && (
           <motion.button
@@ -128,7 +129,7 @@ export const AuthPage = ({ onBack, initialMode }) => {
         style={{ filter: "blur(140px)", background: "rgba(0,194,255,0.05)" }}
       />
 
-      <div className="flex-1 flex flex-col justify-center px-6 py-10 relative z-10 max-w-[400px] mx-auto w-full">
+      <div className="flex-1 flex flex-col justify-center px-5 py-10 relative z-10 max-w-[400px] mx-auto w-full overflow-x-hidden">
 
         {/* ── Back Button (when opened from public browsing) ── */}
         {onBack && (
@@ -173,7 +174,7 @@ export const AuthPage = ({ onBack, initialMode }) => {
             BidBlitz
           </motion.h1>
           <motion.p
-            className="text-[12px] text-[#333] font-medium"
+            className="text-[13px] text-white/55 font-medium"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.22 }}

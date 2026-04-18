@@ -1,5 +1,32 @@
 /* BidBlitz V2 - Ultra Premium Fintech Styles */
 
+/* ═══ iOS / Chrome Autofill Fix — Prevent yellow/white background on autofilled inputs ═══ */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active,
+textarea:-webkit-autofill,
+select:-webkit-autofill {
+  -webkit-text-fill-color: #ffffff !important;
+  -webkit-box-shadow: 0 0 0 1000px transparent inset !important;
+  transition: background-color 5000s ease-in-out 0s !important;
+  caret-color: #00C2FF !important;
+  background-clip: content-box !important;
+  font-family: inherit !important;
+  font-size: 13px !important;
+  letter-spacing: normal !important;
+}
+input:-internal-autofill-selected,
+input:-internal-autofill-previewed {
+  background-color: transparent !important;
+  -webkit-box-shadow: 0 0 0 1000px transparent inset !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+/* Hide iOS "strong password" / Keychain yellow highlight inside our dark fields */
+input[type="password"] {
+  -webkit-text-security: disc;
+}
+
 /* ═══ GLOBAL OVERFLOW FIX — Prevent horizontal scroll on mobile ═══ */
 html {
   overflow-x: hidden !important;
