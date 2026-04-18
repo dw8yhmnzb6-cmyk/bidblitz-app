@@ -74,6 +74,7 @@ const AdminWalletPage = lazy(() => import("./pages/AdminWalletPage"));
 const AdminSMMPage = lazy(() => import("./pages/AdminSMMPage"));
 const ArcadePage = lazy(() => import("./pages/ArcadePage"));
 const AdminManagementPage = lazy(() => import("./pages/AdminManagementPage"));
+const AffiliatePage = lazy(() => import("./pages/AffiliatePage"));
 import NotificationCenterPage from "./pages/NotificationCenterPage";
 import ContactsPage from "./pages/ContactsPage";
 import UserStatsPage from "./pages/UserStatsPage";
@@ -165,6 +166,22 @@ function AppContent() {
   const hasStripeReturn = typeof window !== "undefined" &&
     (window.location.search.includes("stripe_session_id") || window.location.search.includes("stripe_cancelled"));
   const hasKidsReturn = typeof window !== "undefined" && window.location.search.includes("kids_sub=success");
+
+  // Track affiliate referral on landing (fire once, store in localStorage)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const ref = params.get("ref");
+      if (ref) {
+        localStorage.setItem("bb_ref", ref);
+        // Fire-and-forget click tracking
+        fetch(`${process.env.REACT_APP_BACKEND_URL}/api/affiliate/track-click/${encodeURIComponent(ref)}`, {
+          method: "POST",
+        }).catch(() => {});
+      }
+    } catch {}
+  }, []);
   
   // Get initial path from URL
   const getInitialPath = () => {
@@ -410,7 +427,9 @@ function AppContent() {
       case "/admin/smm":
         return user.role === "admin" ? <AdminSMMPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/arcade":
-        return <ArcadePage onBack={() => handleNavigate("/")} />;;
+        return <ArcadePage onBack={() => handleNavigate("/")} />;
+      case "/affiliate":
+        return <AffiliatePage onBack={() => handleNavigate("/")} />;;
       case "/admin/manage":
         return user.role === "admin" ? <AdminManagementPage onBack={() => handleNavigate("/admin")} initialTab="customers" /> : <HomePage {...homeProps} />;
       case "/admin/customers":

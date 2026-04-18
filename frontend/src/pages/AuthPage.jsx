@@ -94,7 +94,19 @@ export const AuthPage = ({ onBack, initialMode }) => {
     e.preventDefault();
     const ok = await user.register(name, email, password, confirm, requestedRole);
     if (ok) {
-      // auto-logged in
+      // Check for ?ref= in URL and auto-claim referral bonus
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const ref = params.get("ref");
+        if (ref) {
+          fetch(`${process.env.REACT_APP_BACKEND_URL}/api/affiliate/claim-signup-bonus`, {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ code: ref }),
+          }).catch(() => {});
+        }
+      } catch {}
     }
   };
 
