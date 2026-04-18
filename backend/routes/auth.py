@@ -55,16 +55,21 @@ async def register(req: RegisterRequest, request: Request, response: Response):
         raise HTTPException(status_code=400, detail="Email already registered")
 
     role = "merchant" if invite_type == "merchant" else "user"
+    # 🎁 WELCOME BONUS: 5€ EUR + 10 BLZ für jeden neuen User
+    WELCOME_EUR = 5.0
+    WELCOME_BLZ = 10.0
     user_doc = {
         "email": email,
         "password_hash": hash_password(req.password),
         "name": req.name.strip(),
         "role": role,
-        "balance": 0.0,
+        "balance": WELCOME_EUR,
+        "balance_blz": WELCOME_BLZ,
         "currency": "EUR",
         "card_number": generate_card_number(),
         "card_expiry": generate_card_expiry(),
         "payment_barcode": f"BLZ-{secrets.token_hex(6).upper()}",
+        "welcome_bonus_received": True,
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
     # Save requested role if provided (admin approval required)
@@ -88,6 +93,24 @@ async def register(req: RegisterRequest, request: Request, response: Response):
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
     await db.merchants.insert_one(merchant_doc)
+
+    # 🎁 Welcome Bonus Transaction für Verlauf
+    try:
+        await db.transactions.insert_one({
+            "user_id": user_id,
+            "type": "bonus",
+            "amount": WELCOME_EUR,
+            "currency": "EUR",
+            "status": "completed",
+            "description": "Willkommens-Bonus",
+            "merchant_name": "BidBlitz",
+            "category": "bonus",
+            "reference": f"WELCOME-{secrets.token_hex(4).upper()}",
+            "date": datetime.now(timezone.utc).isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        })
+    except Exception as e:
+        logger.warning(f"Welcome bonus tx failed: {e}")
 
     access_token = create_access_token(user_id, email)
     refresh_token = create_refresh_token(user_id)

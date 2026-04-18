@@ -194,6 +194,14 @@ export function UserProvider({ children }) {
       if (requestedRole && requestedRole !== "customer") body.requested_role = requestedRole;
       const user = await api.register(body);
       dispatch({ type: AUTH_ACTIONS.SET_USER, payload: user });
+      // 🎁 Welcome Bonus Toast
+      try {
+        const { toast } = await import("sonner");
+        toast.success("🎁 Willkommen bei BidBlitz!", {
+          description: "Du hast 5,00 € + 10 BLZ Willkommens-Bonus erhalten!",
+          duration: 6000,
+        });
+      } catch {}
       return true;
     } catch (err) {
       dispatch({ type: AUTH_ACTIONS.SET_ERROR, payload: err.message });

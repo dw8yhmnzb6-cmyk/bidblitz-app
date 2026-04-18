@@ -152,6 +152,8 @@ import BottomNav from "./components/BottomNav";
 import BarcodeModal from "./components/BarcodeModal";
 import AuthGateOverlay from "./components/AuthGateOverlay";
 import DemoBanner from "./components/DemoBanner";
+import PWAInstallPrompt from "./components/PWAInstallPrompt";
+import PushPermissionPrompt from "./components/PushPermissionPrompt";
 import { tracker } from "./services/tracker";
 
 const pageTransition = { duration: 0.25, ease: [0.32, 0.72, 0, 1] };
@@ -709,6 +711,8 @@ function AppContent() {
         onClose={() => setShowAuthGate(false)}
         message={authGateMessage}
       />
+      <PWAInstallPrompt />
+      <PushPermissionPrompt isAuthenticated={user.isAuthenticated} />
       {/* Global Search Overlay */}
       <AnimatePresence>
         {showGlobalSearch && <GlobalSearch onNavigate={handleNavigate} onClose={() => setShowGlobalSearch(false)} />}
