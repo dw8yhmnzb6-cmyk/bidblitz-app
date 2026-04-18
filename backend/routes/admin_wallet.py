@@ -151,6 +151,8 @@ async def credit_user(req: CreditReq, request: Request):
             description=req.reason,
             metadata={"admin_id": admin_id},
         )
+        if not eur_result.success:
+            raise HTTPException(400, eur_result.error or "Credit fehlgeschlagen.")
 
     if req.amount_blz > 0:
         await _credit_blz(req.user_id, req.amount_blz, admin_id, req.reason)
@@ -160,7 +162,7 @@ async def credit_user(req: CreditReq, request: Request):
         "credited_eur": req.amount_eur,
         "credited_blz": req.amount_blz,
         "user_email": target.get("email"),
-        "tx_id": eur_result.get("tx_id") if eur_result else None,
+        "tx_id": eur_result.transaction_id if eur_result else None,
     }
 
 
@@ -180,8 +182,8 @@ async def debit_user(req: DebitReq, request: Request):
             description=f"Abzug: {req.reason}",
             metadata={"admin_id": admin_id, "direction": "debit"},
         )
-        if not res.get("success"):
-            raise HTTPException(400, res.get("error", "Debit fehlgeschlagen."))
+        if not res.success:
+            raise HTTPException(400, res.error or "Debit fehlgeschlagen.")
 
     if req.amount_blz > 0:
         await _debit_blz(req.user_id, req.amount_blz, admin_id, f"Abzug: {req.reason}")

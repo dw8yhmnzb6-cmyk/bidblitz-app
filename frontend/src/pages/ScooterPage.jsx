@@ -287,8 +287,13 @@ export default function ScooterPage({ onNavigate }) {
 
   // Share scooter
   const createShareCode = async () => {
-    if (!activeRental) return;
+    if (!activeRental) {
+      setError('Starte zuerst eine Fahrt, um sie zu teilen.');
+      import('sonner').then(({ toast }) => toast.error('Bitte zuerst einen Scooter starten.'));
+      return;
+    }
     setShareLoading(true);
+    setError('');
     try {
       const res = await fetch(`${API}/api/scooter/share/create`, {
         method: 'POST', credentials: 'include',
@@ -298,10 +303,16 @@ export default function ScooterPage({ onNavigate }) {
       const data = await res.json();
       if (res.ok) {
         setShareCode(data.code);
+        import('sonner').then(({ toast }) => toast.success(`Share-Code erstellt: ${data.code}`));
       } else {
-        setError(data.detail || 'Sharing fehlgeschlagen');
+        const msg = typeof data.detail === 'string' ? data.detail : 'Sharing fehlgeschlagen';
+        setError(msg);
+        import('sonner').then(({ toast }) => toast.error(msg));
       }
-    } catch { setError('Netzwerkfehler'); }
+    } catch {
+      setError('Netzwerkfehler');
+      import('sonner').then(({ toast }) => toast.error('Netzwerkfehler'));
+    }
     setShareLoading(false);
   };
 
