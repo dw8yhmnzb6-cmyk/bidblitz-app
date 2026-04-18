@@ -75,6 +75,7 @@ const AdminSMMPage = lazy(() => import("./pages/AdminSMMPage"));
 const ArcadePage = lazy(() => import("./pages/ArcadePage"));
 const AdminManagementPage = lazy(() => import("./pages/AdminManagementPage"));
 const AffiliatePage = lazy(() => import("./pages/AffiliatePage"));
+const LotteryPage = lazy(() => import("./pages/LotteryPage"));
 import NotificationCenterPage from "./pages/NotificationCenterPage";
 import ContactsPage from "./pages/ContactsPage";
 import UserStatsPage from "./pages/UserStatsPage";
@@ -429,7 +430,9 @@ function AppContent() {
       case "/arcade":
         return <ArcadePage onBack={() => handleNavigate("/")} />;
       case "/affiliate":
-        return <AffiliatePage onBack={() => handleNavigate("/")} />;;
+        return <AffiliatePage onBack={() => handleNavigate("/")} />;
+      case "/lottery":
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <LotteryPage onBack={() => handleNavigate("/more")} />;
       case "/admin/manage":
         return user.role === "admin" ? <AdminManagementPage onBack={() => handleNavigate("/admin")} initialTab="customers" /> : <HomePage {...homeProps} />;
       case "/admin/customers":
