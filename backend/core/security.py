@@ -111,6 +111,19 @@ async def get_current_user(request: Request) -> dict:
             user = await db.users.find_one({"id": user_ref})
         if not user:
             raise HTTPException(status_code=401, detail="User not found")
+        # Track last_seen (non-blocking, async fire-and-forget)
+        try:
+            from datetime import datetime, timezone
+            import asyncio
+            now_iso = datetime.now(timezone.utc).isoformat()
+            asyncio.create_task(
+                db.users.update_one(
+                    {"_id": user["_id"]},
+                    {"$set": {"last_seen": now_iso}},
+                )
+            )
+        except Exception:
+            pass
         return user
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token expired")

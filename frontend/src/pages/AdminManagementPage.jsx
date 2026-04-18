@@ -7,13 +7,14 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Search, UserX, UserCheck, Shield, Key, Trash2, RefreshCw,
   Users, CreditCard, Package, X, Check, AlertTriangle, Loader2, ChevronRight,
-  Edit3, Plus, Ban
+  Edit3, Plus, Ban, Activity, TrendingUp, Clock, Zap, Wifi
 } from "lucide-react";
 import { toast } from "sonner";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
 const TABS = [
+  { id: "live", label: "Live", icon: Activity },
   { id: "customers", label: "Kunden", icon: Users },
   { id: "transactions", label: "Zahlungen", icon: CreditCard },
   { id: "modules", label: "Service-Module", icon: Package },
@@ -67,6 +68,7 @@ export const AdminManagementPage = ({ onBack, initialTab = "customers", initialM
       </div>
 
       <div className="p-3">
+        {tab === "live" && <LiveTab />}
         {tab === "customers" && <CustomersTab />}
         {tab === "transactions" && <TransactionsTab />}
         {tab === "modules" && <ModulesTab initialModule={effectiveModule} />}
@@ -662,6 +664,201 @@ const ModuleForm = ({ mod, item, onClose, onSaved }) => {
         </button>
       </motion.div>
     </motion.div>
+  );
+};
+
+// ═══════════════════════════════════════════════════════════
+// LIVE TAB - Online Users, Top Spenders, Last Seen
+// ═══════════════════════════════════════════════════════════
+const timeAgo = (iso) => {
+  if (!iso) return "noch nie";
+  const sec = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+  if (sec < 0) return "gerade jetzt";
+  if (sec < 60) return `vor ${sec}s`;
+  if (sec < 3600) return `vor ${Math.floor(sec / 60)}min`;
+  if (sec < 86400) return `vor ${Math.floor(sec / 3600)}h`;
+  return `vor ${Math.floor(sec / 86400)}d`;
+};
+
+const LiveTab = () => {
+  const [overview, setOverview] = useState(null);
+  const [online, setOnline] = useState([]);
+  const [spenders, setSpenders] = useState([]);
+  const [lastSeen, setLastSeen] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [section, setSection] = useState("online");
+
+  const loadAll = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [ov, on, sp, ls] = await Promise.all([
+        fetch(`${API}/api/admin/analytics/overview`, { credentials: "include" }).then(r => r.ok ? r.json() : {}),
+        fetch(`${API}/api/admin/analytics/online?minutes=5`, { credentials: "include" }).then(r => r.ok ? r.json() : { online_users: [] }),
+        fetch(`${API}/api/admin/analytics/top-spenders?days=30&limit=20`, { credentials: "include" }).then(r => r.ok ? r.json() : { top_spenders: [] }),
+        fetch(`${API}/api/admin/analytics/last-seen?limit=50`, { credentials: "include" }).then(r => r.ok ? r.json() : { users: [] }),
+      ]);
+      setOverview(ov);
+      setOnline(on.online_users || []);
+      setSpenders(sp.top_spenders || []);
+      setLastSeen(ls.users || []);
+    } catch (err) {
+      toast.error(err.message);
+    }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { loadAll(); }, [loadAll]);
+  useEffect(() => {
+    const id = setInterval(loadAll, 15000); // Auto-refresh every 15s
+    return () => clearInterval(id);
+  }, [loadAll]);
+
+  return (
+    <div>
+      {/* Overview Stats */}
+      {overview && (
+        <div className="grid grid-cols-3 gap-2 mb-3">
+          <div className="bg-white rounded-xl p-2.5 shadow-sm">
+            <div className="flex items-center gap-1 mb-0.5">
+              <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+              <p className="text-[9px] text-gray-500 uppercase font-semibold">Live</p>
+            </div>
+            <p className="text-[20px] font-bold text-green-600">{overview.online_now || 0}</p>
+            <p className="text-[9px] text-gray-400">letzte 5 Min</p>
+          </div>
+          <div className="bg-white rounded-xl p-2.5 shadow-sm">
+            <p className="text-[9px] text-gray-500 uppercase font-semibold mb-0.5">24h aktiv</p>
+            <p className="text-[20px] font-bold text-blue-600">{overview.active_24h || 0}</p>
+            <p className="text-[9px] text-gray-400">von {overview.total_users || 0}</p>
+          </div>
+          <div className="bg-white rounded-xl p-2.5 shadow-sm">
+            <p className="text-[9px] text-gray-500 uppercase font-semibold mb-0.5">Umsatz heute</p>
+            <p className="text-[16px] font-bold text-purple-600">€{(overview.revenue_today || 0).toFixed(2)}</p>
+            <p className="text-[9px] text-gray-400">{overview.tx_today || 0} Tx</p>
+          </div>
+        </div>
+      )}
+
+      {/* Section Switcher */}
+      <div className="flex gap-1.5 mb-3">
+        {[
+          { id: "online", label: "🟢 Online", count: online.length },
+          { id: "spenders", label: "💰 Top Spender", count: spenders.length },
+          { id: "lastseen", label: "🕒 Last Seen", count: lastSeen.length },
+        ].map((s) => (
+          <button
+            key={s.id}
+            data-testid={`live-section-${s.id}`}
+            onClick={() => setSection(s.id)}
+            className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold ${
+              section === s.id ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-600"
+            }`}
+          >
+            {s.label} ({s.count})
+          </button>
+        ))}
+      </div>
+
+      {loading ? (
+        <div className="flex justify-center py-8"><Loader2 className="animate-spin text-gray-400" size={20} /></div>
+      ) : (
+        <>
+          {section === "online" && (
+            online.length === 0 ? (
+              <p className="text-center text-gray-400 text-sm py-8">🌙 Gerade niemand online</p>
+            ) : (
+              <div className="space-y-2">
+                {online.map((u) => (
+                  <div key={u.user_id} className="bg-white rounded-xl p-3 flex items-center gap-3 shadow-sm" data-testid={`online-user-${u.user_id}`}>
+                    <div className="relative">
+                      <div className="w-9 h-9 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center text-white font-bold text-[12px]">
+                        {(u.name || u.email)[0].toUpperCase()}
+                      </div>
+                      <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-green-500 border-2 border-white" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[12px] font-bold text-gray-900 truncate">{u.name || u.email}</p>
+                      <p className="text-[10px] text-gray-500 truncate">{u.email} · {u.role}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[10px] text-green-600 font-bold">{timeAgo(u.last_seen)}</p>
+                      <p className="text-[9px] text-gray-400">€{u.balance_eur.toFixed(2)} · {u.balance_blz.toFixed(0)} BLZ</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )
+          )}
+
+          {section === "spenders" && (
+            spenders.length === 0 ? (
+              <p className="text-center text-gray-400 text-sm py-8">Keine Transaktionen in den letzten 30 Tagen</p>
+            ) : (
+              <div className="space-y-2">
+                {spenders.map((u, i) => (
+                  <div key={u.user_id} className="bg-white rounded-xl p-3 flex items-center gap-3 shadow-sm" data-testid={`spender-${u.user_id}`}>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[12px] font-bold ${
+                      i === 0 ? "bg-amber-400 text-white" : i === 1 ? "bg-gray-300 text-white" : i === 2 ? "bg-orange-400 text-white" : "bg-gray-100 text-gray-600"
+                    }`}>{i + 1}</div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[12px] font-bold text-gray-900 truncate">{u.name || u.email}</p>
+                      <p className="text-[10px] text-gray-500 truncate">{u.email} · {u.tx_count} Tx</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[14px] font-bold text-purple-600">€{u.total_spent.toFixed(2)}</p>
+                      <p className="text-[9px] text-gray-400">{timeAgo(u.last_tx)}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )
+          )}
+
+          {section === "lastseen" && (
+            lastSeen.length === 0 ? (
+              <p className="text-center text-gray-400 text-sm py-8">Noch keine Daten</p>
+            ) : (
+              <div className="space-y-2">
+                {lastSeen.map((u) => {
+                  const sec = u.last_seen ? (Date.now() - new Date(u.last_seen).getTime()) / 1000 : Infinity;
+                  const isOnline = sec < 300;
+                  return (
+                    <div key={u.user_id} className="bg-white rounded-xl p-3 flex items-center gap-3 shadow-sm" data-testid={`lastseen-${u.user_id}`}>
+                      <div className="relative">
+                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-400 to-cyan-500 flex items-center justify-center text-white font-bold text-[12px]">
+                          {(u.name || u.email)[0].toUpperCase()}
+                        </div>
+                        {isOnline && <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-green-500 border-2 border-white" />}
+                        {u.banned && <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-red-500 border-2 border-white flex items-center justify-center"><X size={7} className="text-white" /></div>}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1">
+                          <p className="text-[12px] font-bold text-gray-900 truncate">{u.name || u.email}</p>
+                          {u.role === "admin" && <Shield size={10} className="text-purple-500" />}
+                        </div>
+                        <p className="text-[10px] text-gray-500 truncate">{u.email}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className={`text-[11px] font-bold ${isOnline ? "text-green-600" : "text-gray-600"}`}>
+                          {timeAgo(u.last_seen)}
+                        </p>
+                        {u.last_seen && (
+                          <p className="text-[9px] text-gray-400">
+                            {new Date(u.last_seen).toLocaleString("de-DE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )
+          )}
+        </>
+      )}
+
+      <p className="text-[9px] text-gray-400 text-center mt-4">🔄 Auto-Aktualisierung alle 15 Sekunden</p>
+    </div>
   );
 };
 

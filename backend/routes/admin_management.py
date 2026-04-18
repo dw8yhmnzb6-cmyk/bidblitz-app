@@ -354,3 +354,131 @@ async def module_delete(module_key: str, item_id: str, request: Request):
     if result.deleted_count == 0:
         raise HTTPException(404, "Eintrag nicht gefunden")
     return {"ok": True}
+
+
+# ═══════════════════════════════════════════════════════════════
+# LIVE ANALYTICS — Online User, Top Spender, Last-Seen
+# ═══════════════════════════════════════════════════════════════
+
+@router.get("/analytics/online")
+async def online_users(request: Request, minutes: int = 5):
+    """Alle User, die in den letzten X Minuten aktiv waren."""
+    await _require_admin(request)
+    from datetime import datetime, timezone, timedelta
+    threshold = (datetime.now(timezone.utc) - timedelta(minutes=minutes)).isoformat()
+    cursor = db.users.find(
+        {"last_seen": {"$gte": threshold}},
+        {"_id": 1, "email": 1, "name": 1, "role": 1, "last_seen": 1, "balance": 1, "balance_blz": 1},
+    ).sort("last_seen", -1).limit(100)
+    users = []
+    async for u in cursor:
+        users.append({
+            "user_id": str(u.pop("_id")),
+            "email": u.get("email", ""),
+            "name": u.get("name", "") or "",
+            "role": u.get("role", "user"),
+            "last_seen": u.get("last_seen"),
+            "balance_eur": float(u.get("balance", 0) or 0),
+            "balance_blz": float(u.get("balance_blz", 0) or 0),
+        })
+    return {"online_users": users, "count": len(users), "threshold_minutes": minutes}
+
+
+@router.get("/analytics/top-spenders")
+async def top_spenders(request: Request, days: int = 30, limit: int = 20):
+    """Top User nach Ausgaben in den letzten X Tagen."""
+    await _require_admin(request)
+    from datetime import datetime, timezone, timedelta
+    since = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+    pipeline = [
+        {"$match": {
+            "created_at": {"$gte": since},
+            "currency": "EUR",
+            "status": "completed",
+            "type": {"$in": ["payment", "topup", "purchase", "debit", "transfer", "game"]},
+        }},
+        {"$group": {
+            "_id": "$user_id",
+            "total_spent": {"$sum": "$amount"},
+            "tx_count": {"$sum": 1},
+            "last_tx": {"$max": "$created_at"},
+        }},
+        {"$sort": {"total_spent": -1}},
+        {"$limit": limit},
+    ]
+    rows = []
+    async for row in db.transactions.aggregate(pipeline):
+        uid = row["_id"]
+        if not uid:
+            continue
+        user = await db.users.find_one({"_id": _oid(uid)}, {"email": 1, "name": 1})
+        rows.append({
+            "user_id": str(uid),
+            "email": (user or {}).get("email", "") or "",
+            "name": (user or {}).get("name", "") or "",
+            "total_spent": round(float(row["total_spent"]), 2),
+            "tx_count": row["tx_count"],
+            "last_tx": row["last_tx"],
+        })
+    return {"top_spenders": rows, "days": days}
+
+
+@router.get("/analytics/last-seen")
+async def all_last_seen(request: Request, limit: int = 50, include_never: bool = False):
+    """Alle User mit last_seen, sortiert von aktuell nach alt."""
+    await _require_admin(request)
+    query = {} if include_never else {"last_seen": {"$exists": True}}
+    cursor = db.users.find(
+        query,
+        {"_id": 1, "email": 1, "name": 1, "role": 1, "last_seen": 1, "created_at": 1, "banned": 1},
+    ).sort("last_seen", -1).limit(limit)
+    users = []
+    async for u in cursor:
+        users.append({
+            "user_id": str(u.pop("_id")),
+            "email": u.get("email", ""),
+            "name": u.get("name", "") or "",
+            "role": u.get("role", "user"),
+            "last_seen": u.get("last_seen") or None,
+            "created_at": u.get("created_at"),
+            "banned": bool(u.get("banned", False)),
+        })
+    return {"users": users, "count": len(users)}
+
+
+@router.get("/analytics/overview")
+async def analytics_overview(request: Request):
+    """Gesamt-Statistik für Admin Dashboard."""
+    await _require_admin(request)
+    from datetime import datetime, timezone, timedelta
+    now = datetime.now(timezone.utc)
+    online_5m = (now - timedelta(minutes=5)).isoformat()
+    active_24h = (now - timedelta(hours=24)).isoformat()
+    active_7d = (now - timedelta(days=7)).isoformat()
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+
+    total_users = await db.users.count_documents({})
+    online_now = await db.users.count_documents({"last_seen": {"$gte": online_5m}})
+    active_day = await db.users.count_documents({"last_seen": {"$gte": active_24h}})
+    active_week = await db.users.count_documents({"last_seen": {"$gte": active_7d}})
+    new_today = await db.users.count_documents({"created_at": {"$gte": today_start}})
+
+    # Revenue today
+    rev_pipe = [
+        {"$match": {"created_at": {"$gte": today_start}, "status": "completed", "currency": "EUR"}},
+        {"$group": {"_id": None, "total": {"$sum": "$amount"}, "count": {"$sum": 1}}},
+    ]
+    rev_doc = None
+    async for r in db.transactions.aggregate(rev_pipe):
+        rev_doc = r
+        break
+
+    return {
+        "total_users": total_users,
+        "online_now": online_now,
+        "active_24h": active_day,
+        "active_7d": active_week,
+        "new_today": new_today,
+        "revenue_today": round(float((rev_doc or {}).get("total", 0)), 2),
+        "tx_today": int((rev_doc or {}).get("count", 0)),
+    }

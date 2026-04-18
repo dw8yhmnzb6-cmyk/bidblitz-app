@@ -858,8 +858,7 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
     { id: "blitz-boost", icon: TrendingUp, label: "BlitzBoost", desc: "Social Media Booster – Follower, Likes, Views", color: "#E1306C", action: gatedAction(() => onNavigate("/blitz-boost")), roles: ["all"] },
     { id: "blitz-transfer", icon: Wifi, label: "BlitzTransfer", desc: "Große Dateien sicher versenden (bis 10GB)", color: "#00B2FF", action: gatedAction(() => onNavigate("/blitz-transfer")), roles: ["all"] },
     { id: "blitz-mine", icon: Zap, label: "BlitzMine", desc: "Tippe täglich & mine BLZ – Pi Network-Style", color: "#FFD700", action: gatedAction(() => onNavigate("/blitz-mine")), roles: ["all"] },
-    { id: "blitz-office", icon: Trophy, label: "BlitzOffice", desc: "Baue dein Büro-Imperium und verdiene BLZ", color: "#00C2FF", action: gatedAction(() => onNavigate("/blitz-office")), roles: ["all"] },
-    { id: "blitz-recycle", icon: Coins, label: "BlitzRecycle", desc: "Müll sammeln, komprimieren und BLZ verdienen 🌍", color: "#00D26A", action: gatedAction(() => onNavigate("/blitz-recycle")), roles: ["all"] },
+    { id: "arcade", icon: Gamepad2, label: "Arcade", desc: "100+ Games · Casino · Snake — zahl mit BLZ", color: "#A855F7", action: gatedAction(() => onNavigate("/arcade")), roles: ["all"] },
     // Merchant-only items
     { id: "pay", icon: Wallet, label: t("pay.title") || "Bezahlen", desc: t("pay.menu_desc") || "Barcode & NFC Zahlungen", color: "#00E89D", action: gatedAction(() => onNavigate("/pay")), roles: ["merchant", "admin"] },
     { id: "terminal", icon: Scan, label: t("terminal.title") || "Zahlungsterminal", desc: t("terminal.menu_desc") || "Zahlungen annehmen", color: "#FFB800", action: gatedAction(() => onNavigate("/terminal")), roles: ["merchant", "admin"] },

@@ -72,8 +72,7 @@ const LegalPage = lazy(() => import("./pages/LegalPage"));
 const AdminLegalPage = lazy(() => import("./pages/AdminLegalPage"));
 const AdminWalletPage = lazy(() => import("./pages/AdminWalletPage"));
 const AdminSMMPage = lazy(() => import("./pages/AdminSMMPage"));
-const BlitzOfficePage = lazy(() => import("./pages/BlitzOfficePage"));
-const BlitzRecyclePage = lazy(() => import("./pages/BlitzRecyclePage"));
+const ArcadePage = lazy(() => import("./pages/ArcadePage"));
 const AdminManagementPage = lazy(() => import("./pages/AdminManagementPage"));
 import NotificationCenterPage from "./pages/NotificationCenterPage";
 import ContactsPage from "./pages/ContactsPage";
@@ -410,10 +409,8 @@ function AppContent() {
         return user.role === "admin" ? <AdminWalletPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/admin/smm":
         return user.role === "admin" ? <AdminSMMPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
-      case "/blitz-office":
-        return <BlitzOfficePage onBack={() => handleNavigate("/")} />;
-      case "/blitz-recycle":
-        return <BlitzRecyclePage onBack={() => handleNavigate("/")} />;;
+      case "/arcade":
+        return <ArcadePage onBack={() => handleNavigate("/")} />;;
       case "/admin/manage":
         return user.role === "admin" ? <AdminManagementPage onBack={() => handleNavigate("/admin")} initialTab="customers" /> : <HomePage {...homeProps} />;
       case "/admin/customers":
