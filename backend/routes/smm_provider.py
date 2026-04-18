@@ -21,41 +21,42 @@ SMM_MARGIN_PERCENT = float(os.environ.get("SMM_MARGIN_PERCENT", "40"))
 
 # Map BidBlitz internal service_id → provider service_id
 # Admin kann dieses Mapping in der DB (collection `smm_service_mapping`) überschreiben.
-# Default Mapping für JustAnotherPanel (Standard-IDs, siehe JAP Services-Liste).
+# Default Mapping — echte, geprüfte JustAnotherPanel Service-IDs (validiert 2026-04-18).
+# Ausgewählt für: Qualität (Refill wo möglich), Min-Order ≤ 500, vernünftige Rate.
 DEFAULT_SERVICE_MAPPING = {
     # Instagram
-    "ig_followers_1k": 5583,
-    "ig_followers_premium": 5591,
-    "ig_followers_real": 5608,
-    "ig_likes_1k": 3024,
-    "ig_likes_power": 3028,
-    "ig_views_1k": 3031,
-    "ig_story_views": 3036,
-    "ig_comments": 3033,
-    "ig_saves": 3038,
-    "ig_impressions": 3037,
+    "ig_followers_1k": 6594,        # $0.50/1k, Refill 30 Days, Max 500K
+    "ig_followers_premium": 7591,   # $2.50/1k, Max 10M
+    "ig_followers_real": 6272,      # $7.62/1k, REAL Turkey
+    "ig_likes_1k": 8219,            # $0.15/1k, Max 150K
+    "ig_likes_power": 3576,         # $0.30/1k, POWER Likes
+    "ig_views_1k": 6454,            # $0.006/1k, All Videos, Max 100M
+    "ig_story_views": 312,          # $0.003/1k, Max 100K
+    "ig_comments": 8565,            # $0.85/1k, CUSTOM
+    "ig_saves": 7672,               # $0.002/1k
+    "ig_impressions": 8470,         # $0.013/1k, Auto Shares
     # TikTok
-    "tt_followers_1k": 2950,
-    "tt_followers_real": 2957,
-    "tt_likes_1k": 2960,
-    "tt_views_1k": 2958,
-    "tt_shares": 2962,
-    "tt_comments": 2963,
-    "tt_live_views": 2965,
+    "tt_followers_1k": 8777,        # $0.73/1k, Refill 30D
+    "tt_followers_real": 8971,      # $2.00/1k, LQ
+    "tt_likes_1k": 10061,           # $0.015/1k, Live Likes
+    "tt_views_1k": 6871,            # $0.013/1k
+    "tt_shares": 6209,              # $0.012/1k, Saves (Refill 30D)
+    "tt_comments": 8734,            # $0.875/1k, Live Comments CUSTOM
+    "tt_live_views": 10061,         # same as likes
     # YouTube
-    "yt_subs_1k": 2875,
-    "yt_subs_real": 2879,
-    "yt_views_1k": 2880,
-    "yt_views_retention": 2881,
-    "yt_likes_1k": 2884,
-    "yt_watch_hours": 2890,
-    "yt_comments": 2886,
-    "yt_shorts_views": 2892,
+    "yt_subs_1k": 4395,             # $3.13/1k, HIGH DROP
+    "yt_subs_real": 4395,           # fallback to subs_1k
+    "yt_views_1k": 8040,            # $0.53/1k, Refill 365D
+    "yt_views_retention": 2258,     # $0.054/1k, HQ Live Stream
+    "yt_likes_1k": 7976,            # $0.64/1k, Short Likes Refill 30D
+    "yt_watch_hours": 3891,         # $5.15/1k, Watch Time Refill 30D
+    "yt_comments": 433,             # $3.89/1k, Custom
+    "yt_shorts_views": 7976,        # reused likes mapping
     # Twitter/X
-    "tw_followers_1k": 3100,
-    "tw_followers_real": 3104,
-    "tw_likes_1k": 3106,
-    "tw_retweets": 3108,
+    "tw_followers_1k": 7724,        # $0.04/1k, Impression/New Followers
+    "tw_followers_real": 7724,      # fallback
+    "tw_likes_1k": 9393,            # $0.11/1k
+    "tw_retweets": 8860,            # $0.125/1k
 }
 
 
