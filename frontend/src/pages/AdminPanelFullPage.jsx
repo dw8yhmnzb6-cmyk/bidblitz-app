@@ -22,7 +22,7 @@ const ADMIN_SECTIONS = [
   {
     title: "Kunden & Personal", color: "#3B82F6", count: 8,
     items: [
-      { key: "users", icon: Users, label: "Kunden" },
+      { key: "users", icon: Users, label: "Kunden", nav: "/admin/customers" },
       { key: "kyc", icon: ShieldCheck, label: "KYC-Freischaltung" },
       { key: "roles", icon: Briefcase, label: "Manager" },
       { key: "staff", icon: UserPlus, label: "Mitarbeiter" },
@@ -42,7 +42,7 @@ const ADMIN_SECTIONS = [
   {
     title: "Finanzen", color: "#10B981", count: 7,
     items: [
-      { key: "payments", icon: DollarSign, label: "Zahlungen" },
+      { key: "payments", icon: DollarSign, label: "Zahlungen", nav: "/admin/payments" },
       { key: "wallet-topup", icon: Wallet, label: "Wallet Aufladen" },
       { key: "payouts", icon: Euro, label: "Wise Auszahlungen" },
       { key: "credits", icon: CreditCard, label: "Kredit-Verwaltung", nav: "/admin/credits" },
@@ -915,6 +915,34 @@ const AdminPanelFullPage = ({ onNavigate, onBack }) => {
           {/* ══ MODULE LIST (Marktplätze, Services, etc.) ══ */}
           {data?.type === "module_list" && (
             <div className="space-y-3" data-testid={`admin-module-${data.module}`}>
+              <button
+                data-testid="module-manage-btn"
+                onClick={() => {
+                  const map = {
+                    "Handwerker": "handwerker",
+                    "Gebrauchtwagen": "gebrauchtwagen",
+                    "Reinigungsservices": "reinigung",
+                    "Umzugsfirmen": "umzug",
+                    "Tierbetreuung": "tierbetreuung",
+                    "Streaming-Katalog": "streaming",
+                    "Telemedizin Ärzte": "telemedizin",
+                    "Dating-Profile": "dating",
+                    "Fitness-Studios": "fitness",
+                    "Reiseangebote": "reisen",
+                    "Ladesäulen": "ladesaeulen",
+                    "Scooter-Abos": "scooter-abos",
+                  };
+                  const modKey = map[data.module];
+                  if (modKey && onNavigate) {
+                    onNavigate(`/admin/modules?mod=${modKey}`);
+                  } else if (onNavigate) {
+                    onNavigate("/admin/modules");
+                  }
+                }}
+                className="w-full p-3 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-500 text-white text-[12px] font-bold flex items-center justify-center gap-2 shadow"
+              >
+                ✏️ {data.module} verwalten (Neu · Bearbeiten · Löschen)
+              </button>
               <div className="grid grid-cols-2 gap-2 mb-3">
                 <div className="p-3 rounded-xl bg-white border border-gray-100 shadow-sm">
                   <p className="text-xl font-bold text-[#059669]">{data.items?.length || 0}</p>

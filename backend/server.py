@@ -180,6 +180,7 @@ from routes.nft_generator import router as nft_router
 from routes.receipts import router as receipts_router
 from routes.legal import router as legal_router, admin_router as legal_admin_router
 from routes.admin_wallet import router as admin_wallet_router
+from routes.admin_management import router as admin_management_router
 from routes.coinbase_commerce import router as coinbase_commerce_router
 from routes.blitz_office import router as blitz_office_router
 
@@ -220,6 +221,7 @@ app.include_router(blitz_mine_router)
 app.include_router(legal_router)
 app.include_router(legal_admin_router)
 app.include_router(admin_wallet_router)
+app.include_router(admin_management_router)
 app.include_router(coinbase_commerce_router)
 app.include_router(blitz_office_router)
 app.include_router(marketplace_router)
