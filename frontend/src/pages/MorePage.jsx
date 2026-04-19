@@ -922,6 +922,7 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
     { id: "admin-dashboard", icon: LayoutDashboard, label: t("more.admin_dashboard"), desc: t("more.admin_desc"), color: "#FF6B6B", action: () => onNavigate("/admin") },
     { id: "admin-wallet", icon: Wallet, label: "Wallet-Tool", desc: "Kunden Geld senden / Self-Topup", color: "#00E89D", action: () => onNavigate("/admin/wallet") },
     { id: "admin-taxi", icon: Car, label: "Taxi-Administration", desc: "Fahrer, Fahrten, Preis-Einstellungen", color: "#A855F7", action: () => onNavigate("/admin/taxi") },
+    { id: "admin-revenue", icon: TrendingUp, label: "Umsatz-Dashboard", desc: "Live-Einnahmen · MRR · Händler-Akquise", color: "#00D26A", action: () => onNavigate("/admin/revenue") },
     { id: "admin-legal", icon: ShieldCheck, label: "Legal-Pages Editor", desc: "AGB, Datenschutz, Impressum bearbeiten", color: "#00C2FF", action: () => onNavigate("/admin/legal") },
     { id: "admin-car-rental", icon: Car, label: t("more.admin_car_rental"), desc: t("more.admin_car_rental_desc"), color: "#00C2FF", action: () => onNavigate("/car-rental/admin") },
     { id: "admin-support", icon: MessageCircle, label: t("more.admin_support"), desc: t("more.admin_support_desc"), color: "#A855F7", action: () => onNavigate("/admin/support") },

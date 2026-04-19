@@ -22,6 +22,7 @@ import PremiumLaunchBanner from "../components/PremiumLaunchBanner";
 import RecommendAppCard from "../components/RecommendAppCard";
 import BirthdayBonusBanner from "../components/BirthdayBonusBanner";
 import QuestsWidget from "../components/QuestsWidget";
+import SponsoredAdSlot from "../components/SponsoredAdSlot";
 
 const slide = { duration: 0.35, ease: [0.32, 0.72, 0, 1] };
 
@@ -410,6 +411,7 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
         {/* ── Premium Launch-Event Banner (eingeloggt, nicht-Premium, dismissible) ── */}
         <BirthdayBonusBanner isGuest={isGuest} />
         <QuestsWidget isGuest={isGuest} onNavigate={onNavigate} />
+        <SponsoredAdSlot onNavigate={onNavigate} />
         <PremiumLaunchBanner isGuest={isGuest} onNavigate={onNavigate} />
 
         {/* ── Freunde empfehlen — 5€ pro Anmeldung + 10% Provision ── */}

@@ -82,6 +82,7 @@ const ClassifiedsPage = lazy(() => import("./pages/ClassifiedsPage"));
 const QuestsPage = lazy(() => import("./pages/QuestsPage"));
 const RetentionHubPage = lazy(() => import("./pages/RetentionHubPage"));
 const MarketingHubPage = lazy(() => import("./pages/MarketingHubPage"));
+const AdminRevenueDashboardPage = lazy(() => import("./pages/AdminRevenueDashboardPage"));
 import NotificationCenterPage from "./pages/NotificationCenterPage";
 import ContactsPage from "./pages/ContactsPage";
 import UserStatsPage from "./pages/UserStatsPage";
@@ -453,6 +454,8 @@ function AppContent() {
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <RetentionHubPage onBack={() => handleNavigate("/")} />;
       case "/marketing-hub":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <MarketingHubPage onBack={() => handleNavigate("/")} />;
+      case "/admin/revenue":
+        return user.role === "admin" ? <AdminRevenueDashboardPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/admin/customers":
         return user.role === "admin" ? <AdminManagementPage onBack={() => handleNavigate("/admin")} initialTab="customers" /> : <HomePage {...homeProps} />;
       case "/admin/payments":

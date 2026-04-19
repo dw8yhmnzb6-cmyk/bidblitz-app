@@ -355,6 +355,115 @@ async def execute_exchange(req: ExchangeRequest, request: Request):
 
 
 # ══════════════════════════════════════════════════════════════
+# 5. ADMIN REVENUE DASHBOARD
+# ══════════════════════════════════════════════════════════════
+
+async def _require_admin(request: Request):
+    user = await get_current_user(request)
+    if user.get("role") not in ("admin", "super_admin"):
+        raise HTTPException(403, "Admin only")
+    return user
+
+
+@router.get("/admin/revenue-dashboard")
+async def admin_revenue_dashboard(request: Request):
+    """Alle Umsatz-Quellen für den Admin auf einen Blick."""
+    await _require_admin(request)
+    now = datetime.now(timezone.utc)
+    today = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    week_start = today - timedelta(days=today.weekday())
+    month_start = today.replace(day=1)
+
+    async def sum_category(category, date_from=None, currency="EUR"):
+        match = {"category": category, "currency": currency, "amount": {"$gt": 0}}
+        if date_from:
+            match["created_at"] = {"$gte": date_from.isoformat()}
+        total = 0.0
+        count = 0
+        async for r in db.transactions.aggregate([
+            {"$match": match},
+            {"$group": {"_id": None, "sum": {"$sum": "$amount"}, "count": {"$sum": 1}}},
+        ]):
+            total = float(r.get("sum", 0))
+            count = int(r.get("count", 0))
+        return {"total": round(total, 2), "count": count}
+
+    # Revenue sources (positive EUR flows into platform)
+    sources = {
+        "premium":           "premium",
+        "classified_boost":  "classified_boost",
+        "gift_code":         "gift_code",
+        "exchange":          "exchange",
+        "ad_banner":         "ad_banner",
+        "promote":           "promote",
+        "instant_cashout":   "instant_cashout",
+        "job_boost":         "job_boost",
+        "kyc_express":       "kyc_express",
+        "spin_wheel":        "spin_wheel",  # costs platform (negative)
+        "streak_milestone":  "streak_milestone",  # costs platform
+        "birthday":          "birthday",  # costs platform
+    }
+
+    result = {"sources": {}, "totals": {"today": 0, "week": 0, "month": 0, "all_time": 0}}
+    for label, cat in sources.items():
+        today_v = await sum_category(cat, today)
+        week_v = await sum_category(cat, week_start)
+        month_v = await sum_category(cat, month_start)
+        all_v = await sum_category(cat, None)
+        result["sources"][label] = {
+            "today": today_v["total"], "week": week_v["total"],
+            "month": month_v["total"], "all_time": all_v["total"],
+            "count_total": all_v["count"],
+        }
+        # Only count income-sources in totals (not payouts-to-user)
+        if cat not in ("spin_wheel", "streak_milestone", "birthday"):
+            result["totals"]["today"] += today_v["total"]
+            result["totals"]["week"] += week_v["total"]
+            result["totals"]["month"] += month_v["total"]
+            result["totals"]["all_time"] += all_v["total"]
+
+    # Round
+    for k in result["totals"]:
+        result["totals"][k] = round(result["totals"][k], 2)
+
+    # User stats
+    total_users = await db.users.count_documents({})
+    users_today = await db.users.count_documents({"created_at": {"$gte": today.isoformat()}})
+    users_week = await db.users.count_documents({"created_at": {"$gte": week_start.isoformat()}})
+
+    # Premium subscriptions (MRR)
+    active_premium = await db.premium_subscriptions.count_documents({"active": True})
+    mrr = round(active_premium * 4.99, 2)
+
+    result["users"] = {"total": total_users, "today": users_today, "week": users_week}
+    result["mrr"] = {"active_premium": active_premium, "mrr_eur": mrr}
+
+    # Top spenders
+    top_pipeline = [
+        {"$match": {"amount": {"$gt": 0}, "currency": "EUR",
+                    "type": {"$in": ["payment", "exchange"]}}},
+        {"$group": {"_id": "$user_id", "total": {"$sum": "$amount"}, "count": {"$sum": 1}}},
+        {"$sort": {"total": -1}},
+        {"$limit": 5},
+    ]
+    top_spenders = []
+    async for r in db.transactions.aggregate(top_pipeline):
+        try:
+            u = await db.users.find_one({"_id": ObjectId(r["_id"])}, {"name": 1, "email": 1, "_id": 0})
+            if u:
+                top_spenders.append({
+                    "name": u.get("name"), "email": u.get("email"),
+                    "spent": round(float(r["total"]), 2),
+                    "tx_count": int(r["count"]),
+                })
+        except Exception:
+            pass
+    result["top_spenders"] = top_spenders
+
+    return result
+
+
+# ══════════════════════════════════════════════════════════════
 # 4. GIFT CODES
 # ══════════════════════════════════════════════════════════════
 
