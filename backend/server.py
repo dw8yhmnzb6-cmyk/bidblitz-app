@@ -187,6 +187,7 @@ from routes.arcade import router as arcade_router
 from routes.reengage import router as reengage_router
 from routes.revenue import router as revenue_router
 from routes.revenue2 import router as revenue2_router
+from routes.taxi_admin import router as taxi_admin_router
 
 app.include_router(auth_router)
 app.include_router(wallet_router)
@@ -232,6 +233,7 @@ app.include_router(arcade_router)
 app.include_router(reengage_router)
 app.include_router(revenue_router)
 app.include_router(revenue2_router)
+app.include_router(taxi_admin_router)
 app.include_router(marketplace_router)
 app.include_router(chat_router)
 app.include_router(applications_router)

@@ -171,6 +171,7 @@ export default function TaxiOperatorDashboard({ onNavigate }) {
             {[
               { id: 'overview', label: 'Übersicht', icon: BarChart3 },
               { id: 'fleet', label: 'Flotte', icon: Car },
+              { id: 'vehicles', label: 'Fahrzeuge', icon: Car },
               { id: 'rides', label: 'Fahrten', icon: Navigation },
               { id: 'payments', label: 'Zahlungen', icon: Euro },
             ].map(tab => (
@@ -444,6 +445,9 @@ export default function TaxiOperatorDashboard({ onNavigate }) {
             </motion.div>
           )}
 
+          {/* VEHICLES TAB */}
+          {activeTab === 'vehicles' && <VehiclesPanel />}
+
           {/* RIDES TAB */}
           {activeTab === 'rides' && (
             <motion.div
@@ -603,3 +607,149 @@ function StatCard({ icon: Icon, label, value, subtext, color }) {
     </div>
   );
 }
+
+
+// ═══════════════════════════════════════════════════════════
+// VEHICLES PANEL
+// ═══════════════════════════════════════════════════════════
+
+function VehiclesPanel() {
+  const [vehicles, setVehicles] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [adding, setAdding] = useState(false);
+  const [busy, setBusy] = useState(null);
+  const [form, setForm] = useState({ vehicle_type: "standard", brand: "", model: "", plate_number: "", year: "", color: "" });
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const r = await fetch(`${API}/api/taxi/operator/vehicles`, { credentials: "include" });
+      const j = await r.json();
+      setVehicles(j.vehicles || []);
+    } catch {}
+    setLoading(false);
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const addVehicle = async (e) => {
+    e?.preventDefault();
+    if (!form.brand || !form.model || !form.plate_number) return;
+    setBusy("add");
+    try {
+      const r = await fetch(`${API}/api/taxi/operator/vehicles`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          vehicle_type: form.vehicle_type,
+          brand: form.brand,
+          model: form.model,
+          plate_number: form.plate_number,
+          year: form.year ? parseInt(form.year) : null,
+          color: form.color || null,
+        }),
+      });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.detail || "Fehler");
+      setForm({ vehicle_type: "standard", brand: "", model: "", plate_number: "", year: "", color: "" });
+      setAdding(false);
+      await load();
+    } catch (e) { alert(e.message); }
+    setBusy(null);
+  };
+
+  const updateVehicle = async (vid, patch) => {
+    setBusy(vid);
+    try {
+      await fetch(`${API}/api/taxi/operator/vehicles/${vid}`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(patch),
+      });
+      await load();
+    } catch {}
+    setBusy(null);
+  };
+
+  const deleteVehicle = async (vid) => {
+    if (!window.confirm("Fahrzeug wirklich entfernen?")) return;
+    setBusy(vid);
+    try {
+      await fetch(`${API}/api/taxi/operator/vehicles/${vid}`, { method: "DELETE", credentials: "include" });
+      await load();
+    } catch {}
+    setBusy(null);
+  };
+
+  return (
+    <motion.div key="vehicles" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-3" data-testid="vehicles-panel">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-lg font-bold text-white">Fahrzeuge</h3>
+          <p className="text-xs text-gray-400">{vehicles.length} Fahrzeug(e) registriert</p>
+        </div>
+        <button
+          onClick={() => setAdding(!adding)}
+          className="px-3 py-2 bg-cyan-500 text-black rounded-lg font-semibold text-sm"
+          data-testid="vehicle-toggle-add"
+        >
+          {adding ? "Abbrechen" : "+ Neu"}
+        </button>
+      </div>
+
+      {adding && (
+        <form onSubmit={addVehicle} className="p-4 bg-white/5 border border-white/10 rounded-xl space-y-2" data-testid="vehicle-form">
+          <div className="grid grid-cols-2 gap-2">
+            <select value={form.vehicle_type} onChange={e => setForm({ ...form, vehicle_type: e.target.value })} className="px-3 py-2 bg-black/30 border border-white/10 rounded-lg text-white text-sm">
+              <option value="standard">Standard</option>
+              <option value="premium">Premium</option>
+              <option value="van">Van</option>
+            </select>
+            <input required placeholder="Kennzeichen" value={form.plate_number} onChange={e => setForm({ ...form, plate_number: e.target.value })} className="px-3 py-2 bg-black/30 border border-white/10 rounded-lg text-white text-sm" data-testid="vehicle-plate"/>
+            <input required placeholder="Marke" value={form.brand} onChange={e => setForm({ ...form, brand: e.target.value })} className="px-3 py-2 bg-black/30 border border-white/10 rounded-lg text-white text-sm" data-testid="vehicle-brand"/>
+            <input required placeholder="Modell" value={form.model} onChange={e => setForm({ ...form, model: e.target.value })} className="px-3 py-2 bg-black/30 border border-white/10 rounded-lg text-white text-sm" data-testid="vehicle-model"/>
+            <input placeholder="Baujahr" type="number" value={form.year} onChange={e => setForm({ ...form, year: e.target.value })} className="px-3 py-2 bg-black/30 border border-white/10 rounded-lg text-white text-sm"/>
+            <input placeholder="Farbe" value={form.color} onChange={e => setForm({ ...form, color: e.target.value })} className="px-3 py-2 bg-black/30 border border-white/10 rounded-lg text-white text-sm"/>
+          </div>
+          <button type="submit" disabled={busy === "add"} className="w-full py-2.5 bg-cyan-500 text-black rounded-lg font-bold text-sm disabled:opacity-50" data-testid="vehicle-submit">
+            {busy === "add" ? "Speichern…" : "Fahrzeug hinzufügen"}
+          </button>
+        </form>
+      )}
+
+      {loading ? <p className="text-center text-gray-500 py-4 text-sm">Lädt…</p> :
+       vehicles.length === 0 ? <p className="text-center text-gray-500 py-8 text-sm">Noch keine Fahrzeuge. Füge das erste hinzu.</p> :
+       vehicles.map(v => (
+        <div key={v.vehicle_id} className="p-3 bg-white/5 border border-white/10 rounded-xl" data-testid={`vehicle-${v.vehicle_id}`}>
+          <div className="flex items-start justify-between mb-2">
+            <div>
+              <p className="text-sm font-bold text-white">{v.brand} {v.model}</p>
+              <p className="text-xs font-mono text-gray-400">{v.plate_number}</p>
+              <div className="flex gap-2 mt-1 text-[10px] text-gray-500">
+                <span className="px-1.5 py-0.5 rounded bg-white/5 uppercase">{v.vehicle_type}</span>
+                {v.color && <span>{v.color}</span>}
+                {v.year && <span>{v.year}</span>}
+              </div>
+            </div>
+            <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase" style={{
+              background: v.status === "active" ? "rgba(0,210,106,0.15)" : v.status === "maintenance" ? "rgba(255,184,0,0.15)" : "rgba(239,68,68,0.15)",
+              color: v.status === "active" ? "#00D26A" : v.status === "maintenance" ? "#FFB800" : "#EF4444",
+            }}>{v.status}</span>
+          </div>
+          <div className="flex gap-1.5 mt-2">
+            {v.status === "active" && (
+              <button onClick={() => updateVehicle(v.vehicle_id, { status: "maintenance" })} disabled={busy === v.vehicle_id} className="flex-1 py-1.5 rounded-lg bg-yellow-500/15 text-yellow-400 border border-yellow-500/25 text-[11px] font-bold disabled:opacity-50" data-testid={`vehicle-maintenance-${v.vehicle_id}`}>Wartung</button>
+            )}
+            {v.status !== "active" && (
+              <button onClick={() => updateVehicle(v.vehicle_id, { status: "active" })} disabled={busy === v.vehicle_id} className="flex-1 py-1.5 rounded-lg bg-green-500/15 text-green-400 border border-green-500/25 text-[11px] font-bold disabled:opacity-50" data-testid={`vehicle-activate-${v.vehicle_id}`}>Aktivieren</button>
+            )}
+            <button onClick={() => deleteVehicle(v.vehicle_id)} disabled={busy === v.vehicle_id} className="px-3 py-1.5 rounded-lg bg-red-500/15 text-red-400 border border-red-500/25 text-[11px] font-bold disabled:opacity-50" data-testid={`vehicle-delete-${v.vehicle_id}`}>×</button>
+          </div>
+        </div>
+      ))}
+    </motion.div>
+  );
+}
+

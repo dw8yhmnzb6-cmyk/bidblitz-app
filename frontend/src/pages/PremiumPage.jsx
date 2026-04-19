@@ -6,7 +6,7 @@ import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
   ArrowLeft, Crown, Check, Loader2, Sparkles, Zap, Shield,
-  TrendingUp, Gift, Award
+  TrendingUp, Gift, Award, Wallet, AlertCircle
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -21,7 +21,7 @@ const BENEFITS = [
   { icon: Sparkles, color: "#F59E0B", title: "Priority Support", desc: "Direkter Draht zum Team" },
 ];
 
-export default function PremiumPage({ onBack }) {
+export default function PremiumPage({ onBack, onNavigate }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [purchasing, setPurchasing] = useState(false);
@@ -102,6 +102,11 @@ export default function PremiumPage({ onBack }) {
           style={{ background: "linear-gradient(135deg,#FFD700 0%,#FFB800 40%,#FF8C42 100%)" }}
           initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
         >
+          {data.launch_active && !isActive && (
+            <div className="absolute top-3 right-3 bg-black text-[#FFD700] text-[10px] font-black px-2.5 py-1 rounded-full rotate-6">
+              −{data.discount_pct}% LAUNCH
+            </div>
+          )}
           <Crown size={48} className="mx-auto text-black mb-2" strokeWidth={2.5} />
           <p className="text-[10px] font-black text-black/70 uppercase tracking-[0.2em]">
             {isActive ? "Du bist Premium" : "Upgrade"}
@@ -114,7 +119,24 @@ export default function PremiumPage({ onBack }) {
               Gültig bis {new Date(sub.expires_at).toLocaleDateString("de-DE")}
             </p>
           )}
-          {!isActive && (
+          {!isActive && data.launch_active && (
+            <div className="mt-3">
+              <p className="text-[13px] text-black/80 font-semibold">
+                <span className="line-through opacity-60">{data.original_price_eur} €</span>
+                {" → "}
+                <span className="text-[20px] font-black">{data.price_eur} €</span>
+                {" / Monat"}
+              </p>
+              <p className="text-[11px] text-black/70 mt-1">
+                oder <span className="line-through opacity-60">{data.original_price_blz}</span> {" "}
+                <span className="font-black">{data.price_blz} BLZ</span>
+              </p>
+              <p className="text-[10px] text-black/80 mt-2 font-bold uppercase tracking-wider">
+                Aktion endet {new Date(data.launch_ends_at).toLocaleDateString("de-DE")}
+              </p>
+            </div>
+          )}
+          {!isActive && !data.launch_active && (
             <p className="text-[13px] text-black/80 mt-2 font-semibold">
               Ab {data.price_eur} € / Monat oder {data.price_blz} BLZ
             </p>
@@ -151,8 +173,8 @@ export default function PremiumPage({ onBack }) {
               </p>
               <div className="grid grid-cols-2 gap-2">
                 {[
-                  { id: "eur", label: `${data.price_eur} €`, sub: "Wallet EUR" },
-                  { id: "blz", label: `${data.price_blz} BLZ`, sub: "Mine-Credits" },
+                  { id: "eur", label: `${data.price_eur} €`, orig: data.original_price_eur, sub: "Wallet EUR" },
+                  { id: "blz", label: `${data.price_blz} BLZ`, orig: data.original_price_blz, sub: "Mine-Credits" },
                 ].map((m) => (
                   <motion.button
                     key={m.id}
@@ -168,6 +190,11 @@ export default function PremiumPage({ onBack }) {
                     <p className={`text-[15px] font-black ${method === m.id ? "text-[#FFB800]" : "text-white"}`}>
                       {m.label}
                     </p>
+                    {data.launch_active && m.orig !== data[`price_${m.id}`] && (
+                      <p className="text-[10px] text-white/40 line-through">
+                        {m.orig}{m.id === "eur" ? " €" : " BLZ"}
+                      </p>
+                    )}
                     <p className="text-[9px] text-white/50 mt-0.5">{m.sub}</p>
                     {method === m.id && (
                       <Check size={12} className="inline-block text-[#FFB800] mt-1" />

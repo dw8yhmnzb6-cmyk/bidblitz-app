@@ -7,6 +7,42 @@
 
 ## Production Status: LIVE ✅ | All 41+ V2 Modules Running
 
+## Deployed Features (2026-04-19 — Taxi Mode + Admin Panel)
+
+### 🚕 Fahrer-Modus (Driver Mode) — LIVE
+- Route: `/driver-dashboard` (nur sichtbar für verifizierte Fahrer via `/api/driver-dashboard/eligibility`)
+- 3 Tabs: Start / Verlauf / Profil
+- Online/Offline, Requests annehmen/ablehnen, Fahrt-Status-Flow (accepted→arriving→started→completed)
+- **Wallet-Integration:** Fahrer-Verdienst (80%) wird automatisch in `users.balance` gutgeschrieben + Transaction geloggt (`TAXI_EARNING`)
+- Kunde zahlt automatisch (`TAXI_RIDE` Transaction)
+- E2E getestet: Fahrer €500→€512.40 (+€12.40), Kunde €6889→€6873.91 (-€15.50)
+- Backend: `/app/backend/routes/driver_dashboard.py` (new endpoints: eligibility, profile)
+- Frontend: `/app/frontend/src/pages/DriverDashboardPage.jsx` (komplett neu)
+- MorePage-Eintrag (Mobility-Gruppe) nur für Driver sichtbar
+
+### 🛠️ Admin Taxi-Panel — LIVE
+- Route: `/admin/taxi` (nur Admin)
+- 4 Tabs: Übersicht · Fahrer · Fahrten · Preise
+- **Fare Settings** admin-konfigurierbar pro Fahrzeug-Typ (standard/premium/van) mit Auto-Seed
+- **Driver Management:** Approve/Reject/Suspend/Reactivate
+- **Ride Management:** Admin kann laufende Fahrten stornieren
+- **Activity Logs:** Alle Admin-Aktionen in `taxi_activity_logs`
+- **Overview Stats:** Revenue (today/week/month), aktive Fahrer, Fahrten
+- Backend: `/app/backend/routes/taxi_admin.py` (NEU)
+- Frontend: `/app/frontend/src/pages/AdminTaxiPage.jsx` (NEU)
+
+### 🏢 Taxi-Unternehmen Fahrzeug-Verwaltung — LIVE
+- Operator-Dashboard (`/taxi-dashboard`) erweitert um "Fahrzeuge"-Tab
+- CRUD für `taxi_company_vehicles`: Add/Update/Delete, Status (active/maintenance/inactive)
+- Kennzeichen-Duplikat-Schutz pro Company
+- Endpoints: `GET/POST/PATCH/DELETE /api/taxi/operator/vehicles`
+
+### 👑 BidBlitz Premium Launch-Event (50% Rabatt) — LIVE
+- 7-Tage Launch-Event bis 26.04.2026: €2,50 statt €4,99 / 250 statt 499 BLZ
+- HomePage-Banner (`PremiumLaunchBanner`) — nur Nicht-Premium, dismissible
+- PremiumPage zeigt Strikethrough + Countdown
+- Backend: `_launch_info()` in `revenue2.py`
+
 ## Deployed Features (2026-04-19 — Revenue Batch 2)
 
 ### 👑 BidBlitz Premium Abo — LIVE

@@ -78,6 +78,58 @@ class RideStatusUpdate(BaseModel):
 # DRIVER STATUS & PROFILE
 # ═══════════════════════════════════════════════════════════════════════════════
 
+@router.get("/eligibility")
+async def driver_eligibility(request: Request):
+    """Public (to any logged-in user): whether current user has access to Driver Mode."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    driver = await db.drivers.find_one(
+        {"user_id": user_id},
+        {"_id": 0, "driver_id": 1, "is_verified": 1, "status": 1, "name": 1}
+    )
+    if not driver:
+        return {"is_driver": False, "is_verified": False, "status": "not_registered"}
+    return {
+        "is_driver": True,
+        "is_verified": bool(driver.get("is_verified")) and driver.get("status") == "active",
+        "status": driver.get("status", "pending"),
+        "driver_id": driver.get("driver_id"),
+    }
+
+
+@router.get("/profile")
+async def driver_profile(request: Request):
+    """Full driver profile (for the Profile tab in Driver Mode)."""
+    driver, user = await get_verified_driver(request)
+    # Aggregate lifetime stats
+    total_rides = await db.taxi_rides.count_documents({
+        "driver_id": driver["driver_id"], "status": "completed"
+    })
+    total_earned = 0.0
+    async for r in db.taxi_rides.aggregate([
+        {"$match": {"driver_id": driver["driver_id"], "status": "completed"}},
+        {"$group": {"_id": None, "sum": {"$sum": "$driver_earnings"}}},
+    ]):
+        total_earned = float(r.get("sum", 0))
+    return {
+        "driver_id": driver["driver_id"],
+        "name": driver.get("name") or user.get("name"),
+        "email": user.get("email"),
+        "phone": driver.get("phone") or user.get("phone"),
+        "avatar": user.get("avatar"),
+        "vehicle": driver.get("vehicle", {}),
+        "rating": round(float(driver.get("rating", 5.0)), 2),
+        "is_verified": bool(driver.get("is_verified")),
+        "status": driver.get("status"),
+        "joined_at": driver.get("created_at") or driver.get("approved_at"),
+        "stats": {
+            "total_rides": total_rides,
+            "total_earned": round(total_earned, 2),
+            "wallet_balance": round(float(user.get("balance", 0) or 0), 2),
+        },
+    }
+
+
 @router.get("/status")
 async def get_driver_status(request: Request):
     """Get driver dashboard status."""
@@ -389,7 +441,34 @@ async def update_ride_status(ride_id: str, update: RideStatusUpdate, request: Re
         update_data["final_fare"] = final_fare
         update_data["driver_earnings"] = driver_earnings
         
-        # Add earnings to driver balance
+        # Credit driver earnings to their WALLET (users.balance) — not driver-only field
+        from bson import ObjectId
+        driver_user_id = driver.get("user_id")
+        if driver_user_id:
+            try:
+                await db.users.update_one(
+                    {"_id": ObjectId(driver_user_id)},
+                    {"$inc": {"balance": driver_earnings}}
+                )
+            except Exception:
+                pass
+            # Log driver earnings transaction in wallet
+            await db.transactions.insert_one({
+                "tx_id": secrets.token_hex(8),
+                "user_id": driver_user_id,
+                "type": "TAXI_EARNING",
+                "amount": driver_earnings,
+                "currency": "EUR",
+                "status": "completed",
+                "description": f"Taxi-Verdienst Fahrt #{ride_id[:8]}",
+                "merchant_name": "BidBlitz Taxi",
+                "category": "taxi",
+                "reference": ride_id,
+                "date": now.isoformat(),
+                "created_at": now.isoformat()
+            })
+        
+        # Update driver stats (cumulative counter + no longer busy)
         await db.drivers.update_one(
             {"driver_id": driver["driver_id"]},
             {
@@ -399,23 +478,27 @@ async def update_ride_status(ride_id: str, update: RideStatusUpdate, request: Re
         )
         
         # Deduct from customer wallet
-        from bson import ObjectId
         try:
             await db.users.update_one(
                 {"_id": ObjectId(ride["customer_id"])},
                 {"$inc": {"balance": -final_fare}}
             )
-        except:
+        except Exception:
             pass
         
-        # Create transaction
+        # Create customer transaction
         await db.transactions.insert_one({
             "tx_id": secrets.token_hex(8),
             "user_id": ride["customer_id"],
             "type": "TAXI_RIDE",
             "amount": -final_fare,
+            "currency": "EUR",
+            "status": "completed",
             "description": f"Taxi Fahrt #{ride_id[:8]}",
+            "merchant_name": "BidBlitz Taxi",
+            "category": "taxi",
             "reference": ride_id,
+            "date": now.isoformat(),
             "created_at": now.isoformat()
         })
         

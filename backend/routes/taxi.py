@@ -2087,3 +2087,101 @@ async def delete_saved_place(place_id: str, request: Request):
     user = await get_current_user(request)
     await db.taxi_saved_places.delete_one({"place_id": place_id, "user_email": user.get("email", "")})
     return {"ok": True}
+
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# TAXI COMPANY VEHICLES (fleet management)
+# ══════════════════════════════════════════════════════════════════════════════
+
+class VehicleCreateRequest(BaseModel):
+    vehicle_type: str = Field(..., pattern="^(standard|premium|van)$")
+    brand: str
+    model: str
+    plate_number: str
+    driver_id: Optional[str] = None
+    year: Optional[int] = None
+    color: Optional[str] = None
+
+
+async def _get_operator(request: Request):
+    user = await get_current_user(request)
+    email = (user.get("email") or "").lower()
+    op = await db.taxi_operators.find_one({"email": email})
+    if not op:
+        raise HTTPException(404, "Nicht als Taxi-Unternehmen registriert")
+    return op, user
+
+
+@router.get("/operator/vehicles")
+async def list_company_vehicles(request: Request):
+    op, _ = await _get_operator(request)
+    cursor = db.taxi_company_vehicles.find(
+        {"company_id": op["operator_id"]}, {"_id": 0}
+    ).sort("created_at", -1)
+    vehicles = await cursor.to_list(500)
+    return {"vehicles": vehicles, "count": len(vehicles)}
+
+
+@router.post("/operator/vehicles")
+async def add_company_vehicle(req: VehicleCreateRequest, request: Request):
+    op, user = await _get_operator(request)
+    # Check duplicate plate within company
+    existing = await db.taxi_company_vehicles.find_one({
+        "company_id": op["operator_id"],
+        "plate_number": req.plate_number.upper().replace(" ", ""),
+    })
+    if existing:
+        raise HTTPException(400, "Kennzeichen bereits registriert")
+    now = datetime.now(timezone.utc).isoformat()
+    vid = "veh_" + secrets.token_hex(5)
+    doc = {
+        "vehicle_id": vid,
+        "company_id": op["operator_id"],
+        "driver_id": req.driver_id,
+        "vehicle_type": req.vehicle_type,
+        "brand": req.brand,
+        "model": req.model,
+        "plate_number": req.plate_number.upper().replace(" ", ""),
+        "year": req.year,
+        "color": req.color,
+        "status": "active",
+        "created_at": now,
+        "updated_at": now,
+    }
+    await db.taxi_company_vehicles.insert_one(doc)
+    doc.pop("_id", None)
+    return {"ok": True, "vehicle": doc}
+
+
+class VehicleUpdateRequest(BaseModel):
+    driver_id: Optional[str] = None
+    status: Optional[str] = Field(None, pattern="^(active|inactive|maintenance)$")
+    vehicle_type: Optional[str] = Field(None, pattern="^(standard|premium|van)$")
+
+
+@router.patch("/operator/vehicles/{vehicle_id}")
+async def update_company_vehicle(vehicle_id: str, req: VehicleUpdateRequest, request: Request):
+    op, _ = await _get_operator(request)
+    upd = {k: v for k, v in req.model_dump(exclude_unset=True).items() if v is not None}
+    if not upd:
+        return {"ok": True}
+    upd["updated_at"] = datetime.now(timezone.utc).isoformat()
+    result = await db.taxi_company_vehicles.update_one(
+        {"vehicle_id": vehicle_id, "company_id": op["operator_id"]},
+        {"$set": upd},
+    )
+    if result.matched_count == 0:
+        raise HTTPException(404, "Fahrzeug nicht gefunden")
+    return {"ok": True}
+
+
+@router.delete("/operator/vehicles/{vehicle_id}")
+async def delete_company_vehicle(vehicle_id: str, request: Request):
+    op, _ = await _get_operator(request)
+    result = await db.taxi_company_vehicles.delete_one({
+        "vehicle_id": vehicle_id, "company_id": op["operator_id"]
+    })
+    if result.deleted_count == 0:
+        raise HTTPException(404, "Fahrzeug nicht gefunden")
+    return {"ok": True}

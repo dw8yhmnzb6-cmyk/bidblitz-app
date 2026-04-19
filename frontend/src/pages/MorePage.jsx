@@ -725,6 +725,7 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
   const [subPage, setSubPage] = useState(kidsReturn ? "kids" : null);
   const [profileOpenPw, setProfileOpenPw] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [driverAccess, setDriverAccess] = useState(null);
   const [search, setSearch] = useState("");
   const [openGroups, setOpenGroups] = useState(() => {
     try {
@@ -748,6 +749,15 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
       api.getNotifications(true).then(d => setUnreadCount(d.unread_count || 0)).catch(() => {});
     }
   }, [isGuest]);
+
+  // Driver eligibility — determines if Driver-Modus entry is visible
+  useEffect(() => {
+    if (isGuest || isDemoMode) { setDriverAccess(null); return; }
+    fetch(`${process.env.REACT_APP_BACKEND_URL}/api/driver-dashboard/eligibility`, { credentials: "include" })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => setDriverAccess(d))
+      .catch(() => setDriverAccess(null));
+  }, [isGuest, isDemoMode]);
 
   const gatedAction = (fn) => () => {
     if (isGuest && !isDemoMode) { onAuthRequired(); return; }
@@ -878,6 +888,9 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
     { id: "mobility-map", icon: MapPin, label: "Live Map", desc: t("more.car_rental_desc"), color: "#3B82F6", action: gatedAction(() => onNavigate("/mobility-map")) },
     { id: "car-rental", icon: Car, label: t("more.car_rental"), desc: t("more.car_rental_desc"), color: "#00C2FF", action: () => onNavigate("/car-rental") },
     { id: "car-rental-bookings", icon: Calendar, label: t("more.my_car_bookings"), desc: t("more.my_car_bookings_desc"), color: "#00C2FF", action: gatedAction(() => onNavigate("/car-rental/my-bookings")) },
+    ...(driverAccess?.is_verified ? [
+      { id: "driver-mode", icon: Car, label: "Fahrer-Modus", desc: "Online gehen, Fahrten annehmen & verdienen", color: "#A855F7", action: gatedAction(() => onNavigate("/driver-dashboard")) },
+    ] : []),
     ...(user.role === "merchant" || user.role === "admin" ? [
       { id: "car-rental-vendor", icon: Car, label: t("more.vendor_dashboard"), desc: t("more.vendor_dashboard_desc"), color: "#00D26A", action: gatedAction(() => onNavigate("/car-rental/vendor")) },
     ] : []),
@@ -903,6 +916,7 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
   const adminMenu = user.role === "admin" ? [
     { id: "admin-dashboard", icon: LayoutDashboard, label: t("more.admin_dashboard"), desc: t("more.admin_desc"), color: "#FF6B6B", action: () => onNavigate("/admin") },
     { id: "admin-wallet", icon: Wallet, label: "Wallet-Tool", desc: "Kunden Geld senden / Self-Topup", color: "#00E89D", action: () => onNavigate("/admin/wallet") },
+    { id: "admin-taxi", icon: Car, label: "Taxi-Administration", desc: "Fahrer, Fahrten, Preis-Einstellungen", color: "#A855F7", action: () => onNavigate("/admin/taxi") },
     { id: "admin-legal", icon: ShieldCheck, label: "Legal-Pages Editor", desc: "AGB, Datenschutz, Impressum bearbeiten", color: "#00C2FF", action: () => onNavigate("/admin/legal") },
     { id: "admin-car-rental", icon: Car, label: t("more.admin_car_rental"), desc: t("more.admin_car_rental_desc"), color: "#00C2FF", action: () => onNavigate("/car-rental/admin") },
     { id: "admin-support", icon: MessageCircle, label: t("more.admin_support"), desc: t("more.admin_support_desc"), color: "#A855F7", action: () => onNavigate("/admin/support") },

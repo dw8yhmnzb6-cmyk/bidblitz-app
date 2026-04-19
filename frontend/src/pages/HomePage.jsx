@@ -18,6 +18,7 @@ import QuickAccessBar from "../components/QuickAccessBar";
 import AdBanner from "../components/AdBanner";
 import HomeRecommendations from "../components/HomeRecommendations";
 import ModeSwitcher from "../components/ModeSwitcher";
+import PremiumLaunchBanner from "../components/PremiumLaunchBanner";
 
 const slide = { duration: 0.35, ease: [0.32, 0.72, 0, 1] };
 
@@ -402,6 +403,9 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
           </h2>
           <p className="text-[12px] text-[#333] font-medium">{t("home.subtitle")}</p>
         </motion.div>
+
+        {/* ── Premium Launch-Event Banner (eingeloggt, nicht-Premium, dismissible) ── */}
+        <PremiumLaunchBanner isGuest={isGuest} onNavigate={onNavigate} />
 
         {/* ── CTA Buttons ── */}
         {isGuest ? (

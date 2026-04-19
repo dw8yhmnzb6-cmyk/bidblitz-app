@@ -39,14 +39,47 @@ PREMIUM_BENEFITS = {
     "premium_badge": True,
 }
 
+# Launch-Event: 50% Rabatt bis 7 Tage nach Launch
+PREMIUM_LAUNCH_START = datetime(2026, 4, 19, tzinfo=timezone.utc)
+PREMIUM_LAUNCH_DURATION_DAYS = 7
+PREMIUM_LAUNCH_DISCOUNT = 0.50  # 50% off
+
+
+def _launch_info():
+    """Return launch-event state + effective prices."""
+    now = datetime.now(timezone.utc)
+    ends_at = PREMIUM_LAUNCH_START + timedelta(days=PREMIUM_LAUNCH_DURATION_DAYS)
+    active = PREMIUM_LAUNCH_START <= now < ends_at
+    if active:
+        eur = round(PREMIUM_PRICE_EUR * (1 - PREMIUM_LAUNCH_DISCOUNT), 2)
+        blz = int(round(PREMIUM_PRICE_BLZ * (1 - PREMIUM_LAUNCH_DISCOUNT)))
+    else:
+        eur, blz = PREMIUM_PRICE_EUR, PREMIUM_PRICE_BLZ
+    return {
+        "launch_active": active,
+        "discount_pct": int(PREMIUM_LAUNCH_DISCOUNT * 100) if active else 0,
+        "launch_ends_at": ends_at.isoformat(),
+        "price_eur": eur,
+        "price_blz": blz,
+        "original_price_eur": PREMIUM_PRICE_EUR,
+        "original_price_blz": PREMIUM_PRICE_BLZ,
+    }
+
 
 @router.get("/premium/status")
 async def premium_status(request: Request):
     user = await get_current_user(request)
     uid = str(user.get("_id") or user.get("id"))
+    info = _launch_info()
+    balance_eur = round(float(user.get("balance", 0) or 0), 2)
+    balance_blz = int(float(user.get("balance_blz", 0) or 0))
     sub = await db.premium_subscriptions.find_one({"user_id": uid, "active": True})
     if not sub:
-        return {"active": False, "benefits": PREMIUM_BENEFITS, "price_eur": PREMIUM_PRICE_EUR, "price_blz": PREMIUM_PRICE_BLZ}
+        return {
+            "active": False, "benefits": PREMIUM_BENEFITS,
+            "balance_eur": balance_eur, "balance_blz": balance_blz,
+            **info,
+        }
     sub.pop("_id", None)
     now = datetime.now(timezone.utc)
     expires_at = sub.get("expires_at")
@@ -65,8 +98,9 @@ async def premium_status(request: Request):
         "active": not expired,
         "subscription": sub,
         "benefits": PREMIUM_BENEFITS,
-        "price_eur": PREMIUM_PRICE_EUR,
-        "price_blz": PREMIUM_PRICE_BLZ,
+        "balance_eur": balance_eur,
+        "balance_blz": balance_blz,
+        **info,
     }
 
 
@@ -78,20 +112,24 @@ class PremiumPurchaseRequest(BaseModel):
 async def purchase_premium(req: PremiumPurchaseRequest, request: Request):
     user = await get_current_user(request)
     uid = str(user.get("_id") or user.get("id"))
+    info = _launch_info()
+    price_eur = info["price_eur"]
+    price_blz = info["price_blz"]
     # Check active sub
     existing = await db.premium_subscriptions.find_one({"user_id": uid, "active": True})
     if req.payment_method == "eur":
         bal = float(user.get("balance", 0) or 0)
-        if bal < PREMIUM_PRICE_EUR:
-            raise HTTPException(400, f"Nicht genug Guthaben (brauchst €{PREMIUM_PRICE_EUR})")
-        await db.users.update_one({"_id": _oid(uid)}, {"$inc": {"balance": -PREMIUM_PRICE_EUR}})
-        amount, currency = PREMIUM_PRICE_EUR, "EUR"
+        if bal < price_eur:
+            raise HTTPException(400, f"Nicht genug Guthaben (brauchst €{price_eur})")
+        await db.users.update_one({"_id": _oid(uid)}, {"$inc": {"balance": -price_eur}})
+        amount, currency = price_eur, "EUR"
     else:
         bal = float(user.get("balance_blz", 0) or 0)
-        if bal < PREMIUM_PRICE_BLZ:
-            raise HTTPException(400, f"Nicht genug BLZ (brauchst {PREMIUM_PRICE_BLZ})")
-        await db.users.update_one({"_id": _oid(uid)}, {"$inc": {"balance_blz": -PREMIUM_PRICE_BLZ}})
-        amount, currency = PREMIUM_PRICE_BLZ, "BLZ"
+        if bal < price_blz:
+            raise HTTPException(400, f"Nicht genug BLZ (brauchst {price_blz})")
+        await db.users.update_one({"_id": _oid(uid)}, {"$inc": {"balance_blz": -price_blz}})
+        amount, currency = price_blz, "BLZ"
+
 
     now = datetime.now(timezone.utc)
     # Extend existing or create new
@@ -124,14 +162,17 @@ async def purchase_premium(req: PremiumPurchaseRequest, request: Request):
     # Credit monthly BLZ bonus
     await db.users.update_one({"_id": _oid(uid)}, {"$inc": {"balance_blz": PREMIUM_BENEFITS["monthly_blz_bonus"]}})
 
+    desc = "BidBlitz Premium (30 Tage)"
+    if info["launch_active"]:
+        desc = f"BidBlitz Premium (30 Tage · LAUNCH -{info['discount_pct']}%)"
     await db.transactions.insert_one({
         "user_id": uid, "type": "payment", "amount": amount, "currency": currency,
-        "status": "completed", "description": "BidBlitz Premium (30 Tage)",
+        "status": "completed", "description": desc,
         "merchant_name": "BidBlitz", "category": "premium",
         "reference": f"PREM-{now.strftime('%Y%m%d%H%M%S')}",
         "date": now.isoformat(), "created_at": now.isoformat(),
     })
-    return {"ok": True, "expires_at": new_expires, "bonus_blz": PREMIUM_BENEFITS["monthly_blz_bonus"]}
+    return {"ok": True, "expires_at": new_expires, "bonus_blz": PREMIUM_BENEFITS["monthly_blz_bonus"], "launch_discount": info["launch_active"]}
 
 
 @router.post("/premium/cancel")
