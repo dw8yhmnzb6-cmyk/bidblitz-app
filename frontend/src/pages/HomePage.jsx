@@ -20,6 +20,7 @@ import HomeRecommendations from "../components/HomeRecommendations";
 import ModeSwitcher from "../components/ModeSwitcher";
 import PremiumLaunchBanner from "../components/PremiumLaunchBanner";
 import RecommendAppCard from "../components/RecommendAppCard";
+import BirthdayBonusBanner from "../components/BirthdayBonusBanner";
 
 const slide = { duration: 0.35, ease: [0.32, 0.72, 0, 1] };
 
@@ -406,6 +407,7 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
         </motion.div>
 
         {/* ── Premium Launch-Event Banner (eingeloggt, nicht-Premium, dismissible) ── */}
+        <BirthdayBonusBanner isGuest={isGuest} />
         <PremiumLaunchBanner isGuest={isGuest} onNavigate={onNavigate} />
 
         {/* ── Freunde empfehlen — 5€ pro Anmeldung + 10% Provision ── */}

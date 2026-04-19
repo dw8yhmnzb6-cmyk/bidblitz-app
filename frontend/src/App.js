@@ -77,6 +77,8 @@ const AdminManagementPage = lazy(() => import("./pages/AdminManagementPage"));
 const AffiliatePage = lazy(() => import("./pages/AffiliatePage"));
 const LotteryPage = lazy(() => import("./pages/LotteryPage"));
 const AdminTaxiPage = lazy(() => import("./pages/AdminTaxiPage"));
+const SpinWheelPage = lazy(() => import("./pages/SpinWheelPage"));
+const ClassifiedsPage = lazy(() => import("./pages/ClassifiedsPage"));
 import NotificationCenterPage from "./pages/NotificationCenterPage";
 import ContactsPage from "./pages/ContactsPage";
 import UserStatsPage from "./pages/UserStatsPage";
@@ -438,6 +440,10 @@ function AppContent() {
         return user.role === "admin" ? <AdminManagementPage onBack={() => handleNavigate("/admin")} initialTab="customers" /> : <HomePage {...homeProps} />;
       case "/admin/taxi":
         return user.role === "admin" ? <AdminTaxiPage onNavigate={handleNavigate} /> : <HomePage {...homeProps} />;
+      case "/spin-wheel":
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <SpinWheelPage onBack={() => handleNavigate("/")} onNavigate={handleNavigate} />;
+      case "/classifieds":
+        return <ClassifiedsPage onBack={() => handleNavigate("/")} onNavigate={handleNavigate} />;
       case "/admin/customers":
         return user.role === "admin" ? <AdminManagementPage onBack={() => handleNavigate("/admin")} initialTab="customers" /> : <HomePage {...homeProps} />;
       case "/admin/payments":
