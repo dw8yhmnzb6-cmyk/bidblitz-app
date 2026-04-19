@@ -7,6 +7,37 @@
 
 ## Production Status: LIVE ✅ | All 41+ V2 Modules Running
 
+## Deployed Features (2026-04-19 — Revenue Batch 2)
+
+### 👑 BidBlitz Premium Abo — LIVE
+- Route: `/premium` (ersetzt alte Dummy-Seite)
+- Preis: **€4,99 / Monat** oder **499 BLZ / Monat**
+- Benefits: 2× Mining Rate · 0€ Auktions-Gebühren · +50 BLZ/Monat · 5% Cashback · Premium Badge · Priority Support
+- 30-Tage Laufzeit, Extend verlängert stattdessen (Stapel-Logik)
+- Backend: `/app/backend/routes/revenue2.py` (`/api/premium/status`, `/api/premium/purchase`, `/api/premium/cancel`)
+- Frontend: `/app/frontend/src/pages/PremiumPage.jsx`
+
+### 🎰 BLZ Lotterie — LIVE
+- Route: `/lottery`
+- Preis: **10 BLZ / Los**, 4 Gewinnklassen (Jackpot 5000 · Big 500 · Small 50 · Mini 15 BLZ)
+- Tägliche Ziehung (via Admin `/api/lottery/draw` — Cron-ready)
+- Countdown zur UTC-Mitternacht, meine Lose Historie
+- Backend: `/api/lottery/current`, `/api/lottery/buy-tickets`, `/api/lottery/my-tickets`, `/api/lottery/draw`
+- Frontend: `/app/frontend/src/pages/LotteryPage.jsx`
+
+### 💸 Marketplace Fee (2,9% + 0,30€) — LIVE
+- `/api/marketplace/fee-info` (public) — zeigt Gebühren-Berechnung
+- `/api/marketplace/transfer` — P2P mit Fee-Abzug (Fee bleibt bei BidBlitz)
+- Log in `marketplace_fees` Collection für Admin-Reporting
+- Backend: `/app/backend/routes/revenue2.py`
+
+### 🚀 Deployment (2026-04-19)
+- `revenue2.py` auf Live-Server `/var/www/bidblitz/backend/routes/`
+- `server.py` registriert `revenue2_router`
+- Frontend neu gebaut (`yarn build` — 66s)
+- `pm2 restart api` — alle Endpoints live auf `https://bidblitz.ae`
+- MorePage: Neue Einträge `Premium` + `Lotterie` in Finance-Gruppe
+
 ## Deployed Features (2026-04-18 — Mega Batch)
 
 ### 🎁 Welcome Bonus on Registration
