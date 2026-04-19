@@ -79,6 +79,7 @@ const LotteryPage = lazy(() => import("./pages/LotteryPage"));
 const AdminTaxiPage = lazy(() => import("./pages/AdminTaxiPage"));
 const SpinWheelPage = lazy(() => import("./pages/SpinWheelPage"));
 const ClassifiedsPage = lazy(() => import("./pages/ClassifiedsPage"));
+const QuestsPage = lazy(() => import("./pages/QuestsPage"));
 import NotificationCenterPage from "./pages/NotificationCenterPage";
 import ContactsPage from "./pages/ContactsPage";
 import UserStatsPage from "./pages/UserStatsPage";
@@ -444,6 +445,8 @@ function AppContent() {
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <SpinWheelPage onBack={() => handleNavigate("/")} onNavigate={handleNavigate} />;
       case "/classifieds":
         return <ClassifiedsPage onBack={() => handleNavigate("/")} onNavigate={handleNavigate} />;
+      case "/quests":
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <QuestsPage onBack={() => handleNavigate("/")} onNavigate={handleNavigate} />;
       case "/admin/customers":
         return user.role === "admin" ? <AdminManagementPage onBack={() => handleNavigate("/admin")} initialTab="customers" /> : <HomePage {...homeProps} />;
       case "/admin/payments":

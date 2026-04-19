@@ -833,6 +833,7 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
     { id: "reselling", icon: Star, label: "Reselling", desc: "Sneakers, Streetwear verkaufen", color: "#F43F5E", action: gatedAction(() => onNavigate("/reselling")), roles: ["user", "admin"] },
     { id: "blitzjobs", icon: Cpu, label: "BlitzJobs", desc: "Micro-Jobs, Geld verdienen", color: "#22C55E", action: gatedAction(() => onNavigate("/blitzjobs")), roles: ["user", "admin"] },
     { id: "cashback", icon: Coins, label: "Cashback Shopping", desc: "2-8% bei Partner-Shops", color: "#F59E0B", action: gatedAction(() => onNavigate("/cashback")), roles: ["user", "admin"] },
+    { id: "quests", icon: Sparkles, label: "Tägliche Quests", desc: "3 Aufgaben täglich · Bis zu 70+ BLZ gewinnen", color: "#00C2FF", action: gatedAction(() => onNavigate("/quests")), roles: ["all"] },
     { id: "spin-wheel", icon: Sparkles, label: "Glücksrad", desc: "Täglich gratis spinnen · Bis zu 100 BLZ / 5 € gewinnen", color: "#FFD700", action: gatedAction(() => onNavigate("/spin-wheel")), roles: ["all"] },
     { id: "classifieds", icon: Sparkles, label: "Kleinanzeigen", desc: "Lokal kaufen & verkaufen · Gratis inserieren", color: "#00C2FF", action: () => onNavigate("/classifieds"), roles: ["all"] },
     { id: "premium", icon: Crown, label: "BidBlitz Premium", desc: "2× Mining · 0€ Gebühren · 50 BLZ/Monat · 5% Cashback", color: "#FFD700", action: gatedAction(() => onNavigate("/premium")), roles: ["all"] },

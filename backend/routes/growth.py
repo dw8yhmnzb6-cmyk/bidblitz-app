@@ -16,6 +16,10 @@ import logging
 
 from core.database import db
 from core.security import get_current_user
+try:
+    from routes.quests import track_event as _quest_track
+except Exception:
+    async def _quest_track(*a, **kw): pass
 
 logger = logging.getLogger("bidblitz.growth")
 router = APIRouter(prefix="/api", tags=["growth"])
@@ -138,12 +142,19 @@ async def spin_wheel(request: Request):
         "reference": f"SPIN-{now.strftime('%Y%m%d%H%M%S')}",
         "date": now.isoformat(), "created_at": now.isoformat(),
     })
+    # Quest tracking
+    try: await _quest_track(uid, "spin_wheel", 1)
+    except Exception: pass
     return {
         "ok": True,
         "prize_index": prize_idx,
         "prize": {"label": prize["label"], "type": prize["type"], "value": prize["value"]},
         "remaining": max(0, limit - spins_today - 1),
     }
+
+
+async def _spin_wheel_post_hook(uid: str):
+    await _quest_track(uid, "spin_wheel", 1)
 
 
 # ══════════════════════════════════════════════════════════════
@@ -344,6 +355,8 @@ async def create_classified(req: ClassifiedCreate, request: Request):
     }
     await db.classifieds.insert_one(doc)
     doc.pop("_id", None)
+    try: await _quest_track(uid, "classified_create", 1)
+    except Exception: pass
     return {"ok": True, "classified_id": cid, "item": doc}
 
 
