@@ -9,7 +9,7 @@ import {
   ArrowLeft, Car, RefreshCw, Loader2, MapPin, Wallet, Navigation,
   X, Star, ChevronRight, Fuel, Calendar, Users
 } from "lucide-react";
-import MapboxMap from "../components/MapboxMap";
+import MapboxMap from "../components/LeafletMobilityMap";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 

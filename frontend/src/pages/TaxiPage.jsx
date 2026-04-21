@@ -33,11 +33,99 @@ const STATUS_LABELS = {
   cancelled: 'Storniert',
 };
 
-// Vehicle type icons (using emoji for simplicity)
+// Professional vehicle SVG icons (Uber/Bolt-style silhouettes)
+const VehicleIcon = ({ type, className = '', active = false }) => {
+  const color = active ? '#00C2FF' : '#8B95A5';
+  const accent = active ? '#00E5FF' : '#B8C1CC';
+
+  if (type === 'premium') {
+    // Sleek luxury sedan silhouette (Mercedes E-Class / BMW 5 style)
+    return (
+      <svg viewBox="0 0 64 32" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id={`premGrad-${active ? 'on' : 'off'}`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={accent} stopOpacity="0.9"/>
+            <stop offset="100%" stopColor={color} stopOpacity="1"/>
+          </linearGradient>
+        </defs>
+        {/* Body */}
+        <path d="M4 22 L8 14 C10 10 14 8 20 7 L44 7 C50 8 54 10 56 14 L60 22 L60 26 L4 26 Z"
+              fill={`url(#premGrad-${active ? 'on' : 'off'})`} stroke={accent} strokeWidth="0.5"/>
+        {/* Windows */}
+        <path d="M14 13 L18 9 L38 9 L46 13 L44 15 L16 15 Z" fill="#0A1420" opacity="0.85"/>
+        <path d="M32 9 L32 15" stroke={color} strokeWidth="0.4" opacity="0.6"/>
+        {/* Headlight */}
+        <circle cx="58" cy="17" r="1.2" fill="#FFF8DC"/>
+        {/* Wheels */}
+        <circle cx="16" cy="26" r="4.5" fill="#0F0F0F" stroke={accent} strokeWidth="1"/>
+        <circle cx="16" cy="26" r="2" fill="#2A2A2A"/>
+        <circle cx="48" cy="26" r="4.5" fill="#0F0F0F" stroke={accent} strokeWidth="1"/>
+        <circle cx="48" cy="26" r="2" fill="#2A2A2A"/>
+      </svg>
+    );
+  }
+
+  if (type === 'van') {
+    // Minivan / 7-seater silhouette (VW Sharan / Mercedes V-Class style)
+    return (
+      <svg viewBox="0 0 64 32" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id={`vanGrad-${active ? 'on' : 'off'}`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={accent} stopOpacity="0.9"/>
+            <stop offset="100%" stopColor={color} stopOpacity="1"/>
+          </linearGradient>
+        </defs>
+        {/* Body – taller roof for van */}
+        <path d="M4 24 L5 10 C5 8 7 7 10 7 L52 7 C56 7 58 9 59 12 L60 24 L60 26 L4 26 Z"
+              fill={`url(#vanGrad-${active ? 'on' : 'off'})`} stroke={accent} strokeWidth="0.5"/>
+        {/* Windows */}
+        <path d="M9 11 L9 17 L27 17 L27 9 L12 9 Z" fill="#0A1420" opacity="0.85"/>
+        <path d="M30 9 L30 17 L50 17 L49 11 L30 9 Z" fill="#0A1420" opacity="0.85"/>
+        <path d="M29 9 L29 17" stroke={color} strokeWidth="0.4" opacity="0.6"/>
+        {/* Headlight */}
+        <rect x="57" y="16" width="2.5" height="2" rx="0.5" fill="#FFF8DC"/>
+        {/* Wheels */}
+        <circle cx="16" cy="26" r="4.5" fill="#0F0F0F" stroke={accent} strokeWidth="1"/>
+        <circle cx="16" cy="26" r="2" fill="#2A2A2A"/>
+        <circle cx="48" cy="26" r="4.5" fill="#0F0F0F" stroke={accent} strokeWidth="1"/>
+        <circle cx="48" cy="26" r="2" fill="#2A2A2A"/>
+      </svg>
+    );
+  }
+
+  // Standard – compact hatchback/sedan (VW Golf / Toyota Prius style)
+  return (
+    <svg viewBox="0 0 64 32" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id={`stdGrad-${active ? 'on' : 'off'}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={accent} stopOpacity="0.9"/>
+          <stop offset="100%" stopColor={color} stopOpacity="1"/>
+        </linearGradient>
+      </defs>
+      {/* Body */}
+      <path d="M4 23 L9 15 C11 12 15 10 20 9 L42 9 C48 10 53 13 56 16 L60 23 L60 26 L4 26 Z"
+            fill={`url(#stdGrad-${active ? 'on' : 'off'})`} stroke={accent} strokeWidth="0.5"/>
+      {/* Windshield + rear window */}
+      <path d="M14 15 L20 11 L38 11 L45 15 L43 17 L16 17 Z" fill="#0A1420" opacity="0.85"/>
+      <path d="M30 11 L30 17" stroke={color} strokeWidth="0.4" opacity="0.6"/>
+      {/* Headlight */}
+      <circle cx="58" cy="18" r="1.1" fill="#FFF8DC"/>
+      {/* Door handle */}
+      <rect x="25" y="19" width="4" height="0.8" rx="0.4" fill={accent} opacity="0.5"/>
+      {/* Wheels */}
+      <circle cx="16" cy="26" r="4.5" fill="#0F0F0F" stroke={accent} strokeWidth="1"/>
+      <circle cx="16" cy="26" r="2" fill="#2A2A2A"/>
+      <circle cx="48" cy="26" r="4.5" fill="#0F0F0F" stroke={accent} strokeWidth="1"/>
+      <circle cx="48" cy="26" r="2" fill="#2A2A2A"/>
+    </svg>
+  );
+};
+
+// Legacy mapping (kept for history list fallback)
 const VEHICLE_ICONS = {
-  standard: '🚗',
-  premium: '🚙',
-  van: '🚐',
+  standard: 'standard',
+  premium: 'premium',
+  van: 'van',
 };
 
 export default function TaxiPage({ onNavigate }) {
@@ -88,7 +176,7 @@ export default function TaxiPage({ onNavigate }) {
   const pickupMarkerRef = useRef(null);
   const dropoffMarkerRef = useRef(null);
 
-  // Initialize Leaflet Map (OpenStreetMap) — re-runs when container becomes visible
+  // Initialize Leaflet Map (CartoDB Dark Matter – Uber/Bolt-Style) — re-runs when container becomes visible
   useEffect(() => {
     // Wait for container (it's conditionally rendered after taxiType is selected)
     if (!mapContainerRef.current) return;
@@ -98,30 +186,38 @@ export default function TaxiPage({ onNavigate }) {
       return;
     }
 
-    console.log('✓ Initializing Leaflet (OSM) map...');
+    console.log('✓ Initializing Leaflet (CartoDB Dark) map...');
 
     try {
       const map = L.map(mapContainerRef.current, {
         center: [pickup.lat, pickup.lng],
-        zoom: 14,
-        zoomControl: true,
+        zoom: 15,
+        zoomControl: false,
         attributionControl: false,
+        preferCanvas: true,
       });
 
-      // Add OpenStreetMap tiles
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors',
-        maxZoom: 19,
+      // CartoDB Dark Matter tiles (Uber/Bolt-style professional dark theme)
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        subdomains: 'abcd',
+        maxZoom: 20,
         crossOrigin: true,
       }).addTo(map);
 
-      // Pickup marker (draggable)
+      // Professional pulsing pickup marker (cyan glow, Uber-style)
       const pickupIcon = L.divIcon({
-        className: 'custom-pickup-marker',
-        html: '<div style="width:22px;height:22px;background:#00C2FF;border:3px solid #fff;border-radius:50%;box-shadow:0 0 12px rgba(0,194,255,0.8)"></div>',
-        iconSize: [22, 22],
-        iconAnchor: [11, 11],
+        className: 'taxi-pickup-pulse',
+        html: `
+          <div style="position:relative;width:24px;height:24px;">
+            <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:48px;height:48px;border-radius:50%;background:rgba(0,194,255,0.25);animation:taxi-pulse 2s ease-out infinite;"></div>
+            <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:16px;height:16px;border-radius:50%;background:#00C2FF;border:3px solid #fff;box-shadow:0 0 12px rgba(0,194,255,0.9),0 2px 6px rgba(0,0,0,0.5);"></div>
+          </div>
+        `,
+        iconSize: [24, 24],
+        iconAnchor: [12, 12],
       });
+
       const pickupMarker = L.marker([pickup.lat, pickup.lng], {
         draggable: true,
         icon: pickupIcon,
@@ -134,13 +230,16 @@ export default function TaxiPage({ onNavigate }) {
         await reverseGeocode(lat, lng);
       });
 
+      // Subtle attribution bottom-right
+      L.control.attribution({ prefix: false, position: 'bottomright' }).addTo(map);
+
       mapRef.current = map;
 
       // Force size recalculation after container animation finishes
       setTimeout(() => map.invalidateSize(), 150);
       setTimeout(() => map.invalidateSize(), 500);
 
-      console.log('✓ Leaflet map loaded successfully');
+      console.log('✓ Leaflet Dark map loaded successfully');
     } catch (error) {
       console.error('❌ Map initialization error:', error);
     }
@@ -1102,44 +1201,53 @@ export default function TaxiPage({ onNavigate }) {
               {/* Vehicle Options */}
               {estimates.length > 0 && (
                 <div className="space-y-3">
-                  <h3 className="font-semibold text-gray-300">Wähle dein Fahrzeug</h3>
-                  {estimates.map((est) => (
-                    <motion.button
-                      key={est.vehicle_type}
-                      onClick={() => setSelectedVehicle(est.vehicle_type)}
-                      className={`w-full p-4 rounded-xl border transition-all ${
-                        selectedVehicle === est.vehicle_type
-                          ? 'bg-cyan-500/10 border-cyan-500/50'
-                          : 'bg-[#111] border-white/10 hover:border-white/20'
-                      }`}
-                      whileTap={{ scale: 0.98 }}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                          <span className="text-3xl">{VEHICLE_ICONS[est.vehicle_type] || '🚗'}</span>
-                          <div className="text-left">
-                            <p className="font-semibold">{est.name}</p>
-                            <p className="text-sm text-gray-400">{est.description}</p>
-                            <p className="text-xs text-gray-500 mt-1">
-                              {est.capacity} Personen • {est.eta_minutes} Min
+                  <h3 className="font-semibold text-gray-300 text-sm uppercase tracking-wider">Wähle dein Fahrzeug</h3>
+                  {estimates.map((est) => {
+                    const isActive = selectedVehicle === est.vehicle_type;
+                    return (
+                      <motion.button
+                        key={est.vehicle_type}
+                        onClick={() => setSelectedVehicle(est.vehicle_type)}
+                        className={`w-full p-4 rounded-2xl border-2 transition-all ${
+                          isActive
+                            ? 'bg-gradient-to-br from-cyan-500/10 to-blue-500/5 border-cyan-400/70 shadow-[0_0_24px_rgba(0,194,255,0.15)]'
+                            : 'bg-[#0F1218] border-white/5 hover:border-white/15'
+                        }`}
+                        whileTap={{ scale: 0.98 }}
+                        data-testid={`vehicle-card-${est.vehicle_type}`}
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-3 flex-1 min-w-0">
+                            <div className={`shrink-0 w-20 h-12 rounded-xl flex items-center justify-center ${
+                              isActive ? 'bg-cyan-500/10' : 'bg-white/[0.03]'
+                            }`}>
+                              <VehicleIcon type={est.vehicle_type} className="w-16 h-8" active={isActive} />
+                            </div>
+                            <div className="text-left min-w-0 flex-1">
+                              <p className={`font-bold text-base ${isActive ? 'text-white' : 'text-gray-200'}`}>{est.name}</p>
+                              <p className="text-xs text-gray-500 truncate">{est.description}</p>
+                              <p className="text-[11px] text-gray-600 mt-0.5">
+                                {est.capacity} Pers. · {est.eta_minutes} Min
+                              </p>
+                            </div>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <p className={`text-lg font-bold ${isActive ? 'text-cyan-400' : 'text-gray-300'}`}>€{est.fare.toFixed(2)}</p>
+                            <p className="text-[10px] text-gray-600">
+                              €{est.fare_range?.min.toFixed(2)}–€{est.fare_range?.max.toFixed(2)}
                             </p>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <p className="text-xl font-bold text-cyan-400">€{est.fare.toFixed(2)}</p>
-                          <p className="text-xs text-gray-500">
-                            €{est.fare_range?.min.toFixed(2)} - €{est.fare_range?.max.toFixed(2)}
-                          </p>
-                        </div>
-                      </div>
-                    </motion.button>
-                  ))}
+                      </motion.button>
+                    );
+                  })}
                   
                   {/* Book Button */}
                   <button
                     onClick={bookRide}
                     disabled={loading}
-                    className="w-full py-4 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-xl font-bold text-black text-lg disabled:opacity-50"
+                    className="w-full py-4 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-2xl font-bold text-black text-lg disabled:opacity-50 shadow-[0_4px_24px_rgba(0,194,255,0.35)] hover:shadow-[0_6px_32px_rgba(0,194,255,0.5)] transition-shadow"
+                    data-testid="taxi-book-btn"
                   >
                     {loading ? 'Wird gebucht...' : 'Fahrt buchen'}
                   </button>
