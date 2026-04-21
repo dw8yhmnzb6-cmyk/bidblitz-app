@@ -220,9 +220,9 @@ export const formatFullDateTime = (dateString) => {
 // Get greeting based on time
 export const getGreeting = () => {
   const hour = new Date().getHours();
-  if (hour < 12) return 'Good Morning';
-  if (hour < 18) return 'Good Afternoon';
-  return 'Good Evening';
+  if (hour < 12) return 'Guten Morgen';
+  if (hour < 18) return 'Guten Nachmittag';
+  return 'Guten Abend';
 };
 
 // Get status color

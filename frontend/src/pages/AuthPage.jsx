@@ -30,13 +30,14 @@ const Field = ({ icon: Icon, type, value, onChange, placeholder, testId, autoFoc
         <Icon size={16} strokeWidth={1.5} className={`flex-shrink-0 ${focused ? "text-[#00C2FF]" : "text-white/50"}`} />
         <input
           data-testid={testId}
-          type={isPw && !showPw ? "password" : "text"}
+          type={isPw ? (showPw ? "text" : "password") : (type || "text")}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
           autoFocus={autoFocus}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
+          inputMode={type === "email" ? "email" : undefined}
           className="flex-1 min-w-0 w-full bg-transparent text-[13px] text-white placeholder:text-white/35 outline-none font-medium"
           style={{ WebkitTextFillColor: "#fff" }}
           autoComplete={isPw ? (placeholder && placeholder.toLowerCase().includes("confirm") || placeholder && placeholder.toLowerCase().includes("bestätigen") ? "new-password" : "current-password") : "email"}
