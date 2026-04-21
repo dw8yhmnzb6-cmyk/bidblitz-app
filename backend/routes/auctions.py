@@ -1282,6 +1282,12 @@ PRODUCT_CATALOG = [
     {"title": "Hyperice Hypervolt 2 Pro", "description": "Hyperice Hypervolt 2 Pro — Bluetooth Connected, 5 Speeds, Quiet Glide Technology", "retail_price": 399.00, "duration": 172800, "category": "fitness",
      "features": ["Quiet Glide Technology", "Bluetooth App Control", "5 Speed Settings", "3-Hour Battery Life", "5 Attachment Heads", "TSA-Approved Carry Size"],
      "condition": "Brand New — Factory Sealed"},
+
+    # === 50th Product ===
+    {"title": "Tesla Model Pi Phone 2026", "description": "Tesla Model Pi Smartphone — Satellite Connection via Starlink, Neuralink-Ready, Solar-Charging Display, 5000mAh Battery. Das Tesla Phone ist das erste Smartphone mit direktem Starlink-Satellite-Zugang weltweit — für Telefonate & Internet ohne Netzabdeckung. Mit Tesla-Car-Integration, Krypto-Mining-Funktion und revolutionärer Neuralink-Ready Technologie.",
+     "retail_price": 1299.00, "duration": 216000, "category": "phones",
+     "features": ["Starlink Satellite Connection", "Neuralink-Ready", "Solar-Charging Display", "5000mAh Battery", "Tesla Car Integration", "Native Crypto Mining", "Titanium Housing"],
+     "condition": "Brand New — Factory Sealed"},
 ]
 
 
