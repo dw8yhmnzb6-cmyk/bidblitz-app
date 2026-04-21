@@ -516,6 +516,10 @@ export default function TaxiPage({ onNavigate }) {
   };
   const [businessDrivers, setBusinessDrivers] = useState(0);
   const [privateDrivers, setPrivateDrivers] = useState(0);
+  const [modeSettings, setModeSettings] = useState({
+    business: { enabled: true, label: 'Unternehmer-Taxi', description: '' },
+    private: { enabled: true, label: 'Privat-Taxi', description: '' },
+  });
   
   // Refs
   const pollingRef = useRef(null);
@@ -525,10 +529,21 @@ export default function TaxiPage({ onNavigate }) {
     fetchUserData();
     checkActiveRide();
     checkModuleStatus();
+    fetchModeSettings();
     return () => {
       if (pollingRef.current) clearInterval(pollingRef.current);
     };
   }, []);
+
+  const fetchModeSettings = async () => {
+    try {
+      const res = await fetch(`${API}/api/admin/taxi/public/mode-settings`);
+      if (res.ok) {
+        const data = await res.json();
+        setModeSettings(data);
+      }
+    } catch (err) {}
+  };
 
   const checkModuleStatus = async () => {
     try {
@@ -851,21 +866,23 @@ export default function TaxiPage({ onNavigate }) {
                   className="space-y-4"
                 >
                   <h2 className="text-lg font-semibold text-center">Wähle deinen Taxi-Typ</h2>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className={`grid gap-4 ${modeSettings.business.enabled && modeSettings.private.enabled ? 'grid-cols-2' : 'grid-cols-1'}`}>
                     {/* Business/Company Taxi */}
+                    {modeSettings.business.enabled && (
                     <motion.button
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
                       onClick={() => setTaxiType('business')}
                       className="relative bg-gradient-to-br from-cyan-500/10 to-blue-500/10 border-2 border-cyan-500/30 rounded-2xl p-5 text-left hover:border-cyan-400/60 transition-all"
+                      data-testid="taxi-type-business"
                     >
                       <div className="w-14 h-14 mb-4 rounded-xl bg-cyan-500/20 flex items-center justify-center">
                         <svg className="w-8 h-8 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                         </svg>
                       </div>
-                      <h3 className="text-base font-bold text-white mb-1">Unternehmer</h3>
-                      <p className="text-xs text-gray-400 mb-3">Professionelle Taxiunternehmen mit Lizenz</p>
+                      <h3 className="text-base font-bold text-white mb-1">{modeSettings.business.label || 'Unternehmer'}</h3>
+                      <p className="text-xs text-gray-400 mb-3">{modeSettings.business.description || 'Professionelle Taxiunternehmen mit Lizenz'}</p>
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-cyan-400 font-medium">
                           {businessDrivers > 0 ? `${businessDrivers} verfügbar` : 'Bald verfügbar'}
@@ -875,21 +892,24 @@ export default function TaxiPage({ onNavigate }) {
                         <div className="absolute top-3 right-3 w-3 h-3 rounded-full bg-green-500 animate-pulse" />
                       )}
                     </motion.button>
+                    )}
 
                     {/* Private Taxi */}
+                    {modeSettings.private.enabled && (
                     <motion.button
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
                       onClick={() => setTaxiType('private')}
                       className="relative bg-gradient-to-br from-purple-500/10 to-pink-500/10 border-2 border-purple-500/30 rounded-2xl p-5 text-left hover:border-purple-400/60 transition-all"
+                      data-testid="taxi-type-private"
                     >
                       <div className="w-14 h-14 mb-4 rounded-xl bg-purple-500/20 flex items-center justify-center">
                         <svg className="w-8 h-8 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                         </svg>
                       </div>
-                      <h3 className="text-base font-bold text-white mb-1">Privat</h3>
-                      <p className="text-xs text-gray-400 mb-3">Private Fahrer in deiner Nähe</p>
+                      <h3 className="text-base font-bold text-white mb-1">{modeSettings.private.label || 'Privat'}</h3>
+                      <p className="text-xs text-gray-400 mb-3">{modeSettings.private.description || 'Private Fahrer in deiner Nähe'}</p>
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-purple-400 font-medium">
                           {privateDrivers > 0 ? `${privateDrivers} verfügbar` : 'Bald verfügbar'}
@@ -899,7 +919,15 @@ export default function TaxiPage({ onNavigate }) {
                         <div className="absolute top-3 right-3 w-3 h-3 rounded-full bg-green-500 animate-pulse" />
                       )}
                     </motion.button>
+                    )}
                   </div>
+
+                  {/* No modes available fallback */}
+                  {!modeSettings.business.enabled && !modeSettings.private.enabled && (
+                    <div className="text-center p-6 bg-white/5 rounded-xl border border-white/10">
+                      <p className="text-sm text-gray-400">Taxi-Buchung ist derzeit nicht verfügbar. Bitte versuchen Sie es später erneut.</p>
+                    </div>
+                  )}
 
                   {/* Info Box */}
                   <div className="bg-[#111] rounded-xl p-4 border border-white/5">

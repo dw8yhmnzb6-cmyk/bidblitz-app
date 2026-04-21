@@ -92,6 +92,177 @@ const Metric = ({ label, value, color }) => (
   </div>
 );
 
+
+// ═══════════ Modes Tab (Unternehmer / Privat) ═══════════
+
+const ModesTab = () => {
+  const [modes, setModes] = useState({ business: null, private: null });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(null);
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const data = await api("/api/admin/taxi/mode-settings");
+      setModes(data.settings || {});
+    } catch (e) { toast.error(e.message); }
+    setLoading(false);
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const saveMode = async (mode, patch) => {
+    setSaving(mode);
+    try {
+      await api("/api/admin/taxi/mode-settings", {
+        method: "POST",
+        body: JSON.stringify({ mode, ...patch }),
+      });
+      toast.success(`${mode === "business" ? "Unternehmer" : "Privat"}-Modus aktualisiert`);
+      await load();
+    } catch (e) { toast.error(e.message); }
+    setSaving(null);
+  };
+
+  if (loading) return <div className="flex justify-center py-8"><Loader2 className="animate-spin text-white/40"/></div>;
+
+  return (
+    <div className="space-y-4" data-testid="admin-taxi-modes">
+      <p className="text-[11px] text-white/50 leading-relaxed">
+        Steuere die beiden Taxi-Modi (Unternehmer vs. Privat): An/Aus, Provision, Preis-Multiplikator und Labels.
+        Änderungen wirken sofort auf der Kunden-Taxi-Seite.
+      </p>
+
+      {(["business", "private"]).map((key) => {
+        const m = modes[key] || {};
+        const color = key === "business" ? "#00C2FF" : "#A855F7";
+        const title = key === "business" ? "Unternehmer-Taxi" : "Privat-Taxi";
+        return (
+          <div key={key} className="rounded-2xl p-4 border"
+               style={{ background: panelBg, borderColor: `${color}33` }}>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <div className="w-2.5 h-2.5 rounded-full" style={{ background: m.enabled ? color : "#4a4a4a" }}/>
+                  <h3 className="font-bold text-white text-[15px]">{title}</h3>
+                </div>
+                <p className="text-[10px] text-white/40 mt-0.5">
+                  {m.enabled ? "Aktiv – Kunden können diesen Modus wählen" : "Deaktiviert – Modus ist für Kunden ausgeblendet"}
+                </p>
+              </div>
+              <button
+                onClick={() => saveMode(key, { enabled: !m.enabled })}
+                disabled={saving === key}
+                data-testid={`mode-toggle-${key}`}
+                className="relative w-14 h-7 rounded-full transition-colors"
+                style={{ background: m.enabled ? color : "rgba(255,255,255,0.1)" }}
+              >
+                <div className={`absolute top-0.5 w-6 h-6 rounded-full bg-white transition-all ${m.enabled ? "left-[30px]" : "left-0.5"}`}/>
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <LabelInput
+                label="Label"
+                value={m.label || ""}
+                testid={`mode-label-${key}`}
+                onSave={(val) => saveMode(key, { label: val })}
+                saving={saving === key}
+                color={color}
+              />
+              <LabelInput
+                label="Beschreibung"
+                value={m.description || ""}
+                testid={`mode-desc-${key}`}
+                onSave={(val) => saveMode(key, { description: val })}
+                saving={saving === key}
+                color={color}
+              />
+              <SliderRow
+                label="Provision"
+                unit="%"
+                value={(m.commission_rate || 0) * 100}
+                min={0} max={30} step={0.5}
+                testid={`mode-commission-${key}`}
+                onCommit={(val) => saveMode(key, { commission_rate: val / 100 })}
+                color={color}
+                helper={`Plattform-Provision pro Fahrt (${((m.commission_rate || 0) * 100).toFixed(1)}% vom Fahrpreis)`}
+              />
+              <SliderRow
+                label="Preis-Multiplikator"
+                unit="×"
+                value={m.price_multiplier || 1}
+                min={0.5} max={2} step={0.05}
+                testid={`mode-price-mult-${key}`}
+                onCommit={(val) => saveMode(key, { price_multiplier: val })}
+                color={color}
+                helper={`Basis-Preis × ${(m.price_multiplier || 1).toFixed(2)} (1.0 = normal, 0.85 = 15% günstiger)`}
+              />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+const LabelInput = ({ label, value, onSave, saving, testid, color }) => {
+  const [v, setV] = useState(value);
+  useEffect(() => { setV(value); }, [value]);
+  const changed = v !== value;
+  return (
+    <div>
+      <label className="text-[10px] text-white/50 uppercase tracking-wider">{label}</label>
+      <div className="flex gap-2 mt-1">
+        <input
+          value={v}
+          onChange={(e) => setV(e.target.value)}
+          data-testid={testid}
+          className="flex-1 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm text-white outline-none"
+          style={{ borderColor: changed ? color : undefined }}
+        />
+        {changed && (
+          <button
+            onClick={() => onSave(v.trim())}
+            disabled={saving}
+            className="px-3 py-2 rounded-lg text-xs font-semibold text-black"
+            style={{ background: color }}
+          >
+            {saving ? <Loader2 size={12} className="animate-spin"/> : <Save size={12}/>}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const SliderRow = ({ label, unit, value, min, max, step, onCommit, color, helper, testid }) => {
+  const [v, setV] = useState(value);
+  useEffect(() => { setV(value); }, [value]);
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-1">
+        <label className="text-[10px] text-white/50 uppercase tracking-wider">{label}</label>
+        <span className="text-sm font-bold" style={{ color }}>
+          {typeof v === "number" ? v.toFixed(unit === "×" ? 2 : 1) : v}{unit}
+        </span>
+      </div>
+      <input
+        type="range"
+        min={min} max={max} step={step}
+        value={v}
+        onChange={(e) => setV(parseFloat(e.target.value))}
+        onMouseUp={(e) => onCommit(parseFloat(e.target.value))}
+        onTouchEnd={(e) => onCommit(parseFloat(e.target.value))}
+        data-testid={testid}
+        className="w-full h-1.5 rounded-full appearance-none cursor-pointer"
+        style={{ accentColor: color, background: "rgba(255,255,255,0.1)" }}
+      />
+      {helper && <p className="text-[9px] text-white/40 mt-1">{helper}</p>}
+    </div>
+  );
+};
+
 // ═══════════ Drivers Tab ═══════════
 
 const DriversTab = () => {
@@ -397,6 +568,7 @@ export default function AdminTaxiPage({ onNavigate }) {
         <div className="flex gap-1 px-3 pb-2 overflow-x-auto">
           {[
             { id: "overview", label: "Übersicht", icon: DollarSign },
+            { id: "modes", label: "Modi", icon: UserCheck },
             { id: "drivers", label: "Fahrer", icon: Users },
             { id: "rides", label: "Fahrten", icon: Car },
             { id: "settings", label: "Preise", icon: Settings },
@@ -418,6 +590,7 @@ export default function AdminTaxiPage({ onNavigate }) {
         <AnimatePresence mode="wait">
           <motion.div key={tab} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.2 }}>
             {tab === "overview" && <OverviewTab/>}
+            {tab === "modes" && <ModesTab/>}
             {tab === "drivers" && <DriversTab/>}
             {tab === "rides" && <RidesTab/>}
             {tab === "settings" && <FareSettingsTab/>}

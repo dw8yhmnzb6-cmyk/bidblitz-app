@@ -891,6 +891,7 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
 
   const mobilityMenu = [
     { id: "mobility-map", icon: MapPin, label: "Live Map", desc: t("more.car_rental_desc"), color: "#3B82F6", action: gatedAction(() => onNavigate("/mobility-map")) },
+    { id: "friends-map", icon: Users, label: "Freunde Karte", desc: "Sieh Freunde in deiner Nähe", color: "#A855F7", action: gatedAction(() => onNavigate("/friends-map")) },
     { id: "car-rental", icon: Car, label: t("more.car_rental"), desc: t("more.car_rental_desc"), color: "#00C2FF", action: () => onNavigate("/car-rental") },
     { id: "car-rental-bookings", icon: Calendar, label: t("more.my_car_bookings"), desc: t("more.my_car_bookings_desc"), color: "#00C2FF", action: gatedAction(() => onNavigate("/car-rental/my-bookings")) },
     ...(driverAccess?.is_verified ? [
@@ -902,6 +903,7 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
   ];
 
   const appMenu = [
+    { id: "notifications", icon: Bell, label: "Benachrichtigungen", desc: "Push-Benachrichtigungen verwalten", color: "#00C2FF", action: gatedAction(() => onNavigate("/notifications")) },
     { id: "settings", icon: Settings, label: t("more.settings"), desc: t("more.settings_desc"), color: "#888", action: gatedAction(() => setSubPage("settings")) },
     { id: "appearance", icon: Moon, label: t("more.appearance"), desc: t("more.appearance_desc"), color: "#6366F1" },
   ];

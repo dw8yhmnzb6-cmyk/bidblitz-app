@@ -269,3 +269,36 @@
 - P1: APK-Build fuer Android (TWA)
 - P2: App.js Code Splitting
 - P2: Server Security (Fail2Ban, SSH keys)
+
+## Feb 2026 – Session Updates
+- ✅ Frontend Build unbricked (TaxiPage.jsx Mapbox→Leaflet migration completed)
+- ✅ Professional dark map (CartoDB Dark Matter) replaces generic OSM look
+- ✅ Map Style Switcher (Dark/Hell/Satellit) – customer can choose, persisted in localStorage
+- ✅ Professional SVG vehicle icons (replaced emoji 🚗🚙🚐) for Standard/Premium/Van
+- ✅ LeafletMobilityMap.jsx replaces MapboxMap (Live Map at /mobility-map now works)
+- ✅ Admin Auction Image Editor: click thumbnail → edit URL OR upload file
+  - New endpoints: PATCH /api/auctions/admin/auction/{id}, POST /admin/auction/{id}/upload-image
+  - 14 auction images replaced with official CDN (Apple, Samsung, Sony, Nintendo, Rolex, DJI)
+- ✅ LIVE server bidblitz.ae 502 blocker fixed (missing backend/data/product_catalog.json)
+- ✅ Admin Unternehmer/Privat Mode Panel (/admin/taxi → "Modi" tab)
+  - On/off toggle per mode, editable labels/descriptions
+  - Adjustable commission rate (0-30%), price multiplier (0.5-2.0×)
+  - New backend: GET/POST /api/admin/taxi/mode-settings, public GET /public/mode-settings
+  - TaxiPage respects settings: hidden modes won't show as selectable
+- ✅ Web-Push Notifications UI (/notifications)
+  - Service worker at /push-sw.js, VAPID subscribe/unsubscribe/test flow
+  - Accessible via More → App section
+- ✅ Friends Map (/friends-map)
+  - Opt-in location sharing, visibility chips (Freunde/Öffentlich/Privat)
+  - Friend markers with initials, auto-fit bounds, distance display
+  - Accessible via More → Mobility section
+
+## Known Issues / Backlog
+- P2: Manual deployment script → consider CI/CD pipeline
+- P2: Product catalog JSON should ship with backend, not live-server side-load
+
+## Last working item
+- Part A (Unternehmer/Privat Admin) ✅
+- Part D (Web-Push + Friends Map) ✅
+- All deployed to LIVE server bidblitz.ae
+

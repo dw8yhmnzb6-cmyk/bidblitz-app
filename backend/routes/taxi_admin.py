@@ -350,3 +350,150 @@ async def get_activity_logs(request: Request, limit: int = 100):
     cursor = db.taxi_activity_logs.find({}, {"_id": 0}).sort("created_at", -1).limit(limit)
     logs = await cursor.to_list(limit)
     return {"logs": logs, "count": len(logs)}
+
+
+
+# ═══════════════════════════════════════════════════════════
+# UNTERNEHMER / PRIVAT MODE CONTROL (A + C from user choice)
+# ═══════════════════════════════════════════════════════════
+
+# Defaults for mode-specific settings (stored in singleton doc)
+DEFAULT_MODE_SETTINGS = {
+    "business": {
+        "enabled": True,
+        "label": "Unternehmer-Taxi",
+        "description": "Lizenzierte Taxiunternehmen",
+        "commission_rate": 0.12,         # 12% platform fee
+        "price_multiplier": 1.0,         # base price ×1.0
+        "min_driver_rating": 4.0,
+    },
+    "private": {
+        "enabled": True,
+        "label": "Privat-Taxi",
+        "description": "Private Fahrer in deiner Nähe",
+        "commission_rate": 0.08,         # 8% platform fee (cheaper)
+        "price_multiplier": 0.85,        # 15% cheaper than business
+        "min_driver_rating": 0.0,
+    },
+}
+
+
+async def _get_mode_settings():
+    doc = await db.taxi_mode_settings.find_one({"_id": "singleton"}, {"_id": 0})
+    if not doc:
+        doc = {**DEFAULT_MODE_SETTINGS}
+        await db.taxi_mode_settings.insert_one({"_id": "singleton", **doc})
+    return {k: doc.get(k, DEFAULT_MODE_SETTINGS[k]) for k in ("business", "private")}
+
+
+class ModeSettingUpdate(BaseModel):
+    mode: str = Field(..., pattern="^(business|private)$")
+    enabled: Optional[bool] = None
+    label: Optional[str] = None
+    description: Optional[str] = None
+    commission_rate: Optional[float] = Field(None, ge=0, le=0.5)   # 0-50%
+    price_multiplier: Optional[float] = Field(None, ge=0.3, le=3.0)
+    min_driver_rating: Optional[float] = Field(None, ge=0, le=5)
+
+
+@router.get("/mode-settings")
+async def get_mode_settings(request: Request):
+    """Admin: fetch current settings for Unternehmer + Privat modes."""
+    await _require_admin(request)
+    settings = await _get_mode_settings()
+    return {"settings": settings}
+
+
+@router.post("/mode-settings")
+async def update_mode_settings(req: ModeSettingUpdate, request: Request):
+    """Admin: update a single mode's settings (enabled, price, commission, ...)."""
+    admin = await _require_admin(request)
+    current = await _get_mode_settings()
+    mode_cfg = current.get(req.mode, DEFAULT_MODE_SETTINGS[req.mode]).copy()
+
+    # Apply only provided fields
+    for field in ("enabled", "label", "description", "commission_rate", "price_multiplier", "min_driver_rating"):
+        val = getattr(req, field, None)
+        if val is not None:
+            mode_cfg[field] = val
+
+    await db.taxi_mode_settings.update_one(
+        {"_id": "singleton"},
+        {"$set": {req.mode: mode_cfg, "updated_at": datetime.now(timezone.utc).isoformat()}},
+        upsert=True,
+    )
+
+    # Activity log
+    await db.taxi_activity_logs.insert_one({
+        "user_id": str(admin.get("_id") or admin.get("id")),
+        "role": "admin",
+        "action": f"mode_settings_updated_{req.mode}",
+        "metadata": mode_cfg,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    })
+
+    return {"ok": True, "mode": req.mode, "settings": mode_cfg}
+
+
+# Public endpoint — TaxiPage reads this to show/hide the two mode buttons
+@router.get("/public/mode-settings", include_in_schema=False)
+async def public_mode_settings():
+    settings = await _get_mode_settings()
+    # Return only fields the client needs (no internal thresholds)
+    return {
+        "business": {
+            "enabled": settings["business"].get("enabled", True),
+            "label": settings["business"].get("label", "Unternehmer-Taxi"),
+            "description": settings["business"].get("description", ""),
+        },
+        "private": {
+            "enabled": settings["private"].get("enabled", True),
+            "label": settings["private"].get("label", "Privat-Taxi"),
+            "description": settings["private"].get("description", ""),
+        },
+    }
+
+
+class DriverTypeSwitch(BaseModel):
+    driver_id: str
+    new_type: str = Field(..., pattern="^(business|private)$")
+
+
+@router.post("/drivers/switch-type")
+async def switch_driver_type(req: DriverTypeSwitch, request: Request):
+    """Admin: upgrade/downgrade a driver between Unternehmer and Privat."""
+    admin = await _require_admin(request)
+    driver = await db.drivers.find_one({"driver_id": req.driver_id})
+    if not driver:
+        raise HTTPException(404, "Fahrer nicht gefunden")
+
+    now = datetime.now(timezone.utc).isoformat()
+    update_set = {
+        "driver_type": req.new_type,
+        "updated_at": now,
+        "type_changed_by": admin.get("email"),
+        "type_changed_at": now,
+    }
+    await db.drivers.update_one({"driver_id": req.driver_id}, {"$set": update_set})
+
+    # Mirror on the user doc for quick frontend filtering
+    user_id = driver.get("user_id")
+    if user_id:
+        await db.users.update_one(
+            {"_id": _oid(user_id)},
+            {"$set": {
+                "is_private_driver": req.new_type == "private",
+                "is_business_driver": req.new_type == "business",
+            }},
+        )
+
+    await db.taxi_activity_logs.insert_one({
+        "user_id": str(admin.get("_id") or admin.get("id")),
+        "role": "admin",
+        "action": "driver_type_switched",
+        "driver_id": req.driver_id,
+        "metadata": {"new_type": req.new_type},
+        "created_at": now,
+    })
+
+    return {"ok": True, "driver_id": req.driver_id, "driver_type": req.new_type}

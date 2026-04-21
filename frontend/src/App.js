@@ -48,6 +48,8 @@ import VipPage from "./pages/VipPage";
 import LoyaltyPage from "./pages/LoyaltyPage";
 const KidsPaywall = lazy(() => import("./pages/KidsPaywall"));
 import MobilityMapPage from "./pages/MobilityMapPage";
+import NotificationSettingsPage from "./pages/NotificationSettingsPage";
+import FriendsMapPage from "./pages/FriendsMapPage";
 import OrderTrackingPage from "./pages/OrderTrackingPage";
 import CreditScorePage from "./pages/CreditScorePage";
 import BillsPage from "./pages/BillsPage";
@@ -512,6 +514,10 @@ function AppContent() {
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <VipPage onBack={() => handleNavigate("/more")} />;
       case "/mobility-map":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <MobilityMapPage onNavigate={handleNavigate} />;
+      case "/notifications":
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <NotificationSettingsPage onNavigate={handleNavigate} />;
+      case "/friends-map":
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <FriendsMapPage onNavigate={handleNavigate} />;
       case "/credit-score":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <CreditScorePage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
       case "/bills":
