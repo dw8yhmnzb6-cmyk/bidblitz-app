@@ -51,6 +51,9 @@ import MobilityMapPage from "./pages/MobilityMapPage";
 import NotificationSettingsPage from "./pages/NotificationSettingsPage";
 import FriendsMapPage from "./pages/FriendsMapPage";
 import OrderTrackingPage from "./pages/OrderTrackingPage";
+import FoodOrderTrackingPage from "./pages/FoodOrderTrackingPage";
+import ChallengesPage from "./pages/ChallengesPage";
+import AchievementsPage from "./pages/AchievementsPage";
 import CreditScorePage from "./pages/CreditScorePage";
 import BillsPage from "./pages/BillsPage";
 import GamingPage from "./pages/GamingPage";
@@ -711,6 +714,11 @@ function AppContent() {
       case "/car-rental/admin/disputes":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <AdminDisputesPage onBack={() => handleNavigate("/car-rental/admin")} />;
       
+      case "/challenges":
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <ChallengesPage onBack={() => handleNavigate("/more")} />;
+      case "/achievements":
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <AchievementsPage onBack={() => handleNavigate("/more")} />;
+      
       default:
         // Handle dynamic routes
         if (currentPath.startsWith("/car-rental/vendor/bookings/")) {
@@ -724,6 +732,10 @@ function AppContent() {
         if (currentPath.startsWith("/car-rental/car/")) {
           const carId = currentPath.split("/car-rental/car/")[1];
           return <CarDetailPage carId={carId} onBack={() => handleNavigate("/car-rental")} onNavigate={handleNavigate} />;
+        }
+        if (currentPath.startsWith("/food/track/")) {
+          const orderId = currentPath.split("/food/track/")[1];
+          return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <FoodOrderTrackingPage orderId={orderId} onBack={() => handleNavigate("/food")} />;
         }
         return <HomePage {...homeProps} />;
     }
