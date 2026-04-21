@@ -1111,6 +1111,8 @@ PRODUCT_IMAGES = {
     "Samsung Freestyle 2": "https://images.unsplash.com/photo-1750994700257-133c7fdb0c7a?w=600&h=400&fit=crop&q=80",
     "Theragun Pro Plus": "https://images.unsplash.com/photo-1746278925416-9d6c71f55c2d?w=600&h=400&fit=crop&q=80",
     "Hyperice Hypervolt 2 Pro": "https://images.unsplash.com/photo-1611908200005-b898ddde09cf?w=600&h=400&fit=crop&q=80",
+    # 50th Product - Tesla Model Pi Phone 2026
+    "Tesla Model Pi Phone 2026": "https://images.unsplash.com/photo-1616348436168-de43ad0db179?w=600&h=400&fit=crop&q=80",
 }
 
 PRODUCT_CATALOG = [
@@ -1292,41 +1294,67 @@ PRODUCT_CATALOG = [
 
 
 # ── Seed demo auctions ──
+def _bot_target_for(retail_price: float) -> float:
+    """Pick realistic bot target final price based on retail value."""
+    import random as _r
+    if retail_price < 300:
+        return round(_r.uniform(18, 30), 2)
+    if retail_price < 800:
+        return round(_r.uniform(30, 55), 2)
+    if retail_price < 2000:
+        return round(_r.uniform(50, 90), 2)
+    if retail_price < 5000:
+        return round(_r.uniform(80, 140), 2)
+    return round(_r.uniform(150, 280), 2)
+
+
+def _build_auction_doc(d: dict, created_by: str, now: datetime) -> dict:
+    """Build a full auction document with bot auto-bidding config."""
+    auction_id = secrets.token_hex(8)
+    ends_at = (now + timedelta(seconds=d["duration"])).isoformat()
+    return {
+        "auction_id": auction_id,
+        "title": d["title"],
+        "description": d["description"],
+        "image_url": PRODUCT_IMAGES.get(d["title"], ""),
+        "retail_price": d["retail_price"],
+        "starting_price": 0.00,
+        "current_price": 0.00,
+        "price_increment": PRICE_INCREMENT,
+        "timer_extension": TIMER_EXTENSION_SECONDS,
+        "duration_seconds": d["duration"],
+        "ends_at": ends_at,
+        "status": "active",
+        "winner_id": None,
+        "winner_name": None,
+        "last_bidder_id": None,
+        "last_bidder_name": None,
+        "total_bids": 0,
+        "created_by": created_by,
+        "created_at": now.isoformat(),
+        "category": d.get("category", ""),
+        "features": d.get("features", []),
+        "condition": d.get("condition", "Brand New — Factory Sealed"),
+        # ── Auto Bot-Bidding Configuration ──
+        "bot_enabled": True,
+        "bot_target_price": _bot_target_for(d["retail_price"]),
+        "bot_final_phase_seconds": 300,  # Last 5 min → bots resume
+        "bot_probability": 0.35,
+        "bot_strategy": "standard",
+        "bot_aggression": "medium",
+        "bot_min_seconds": 300,
+    }
+
+
 async def seed_demo_auctions():
-    """Seed auctions from product catalog if none exist."""
+    """Seed ALL 50 auctions from product catalog if none exist (with bot auto-bidding)."""
     count = await db.auctions.count_documents({"status": "active"})
     if count > 0:
         return
 
     now = datetime.now(timezone.utc)
-    # Pick first 6 products for initial seed
-    for d in PRODUCT_CATALOG[:6]:
-        auction_id = secrets.token_hex(8)
-        ends_at = (now + timedelta(seconds=d["duration"])).isoformat()
-        auction = {
-            "auction_id": auction_id,
-            "title": d["title"],
-            "description": d["description"],
-            "image_url": PRODUCT_IMAGES.get(d["title"], ""),
-            "retail_price": d["retail_price"],
-            "starting_price": 0.00,
-            "current_price": 0.00,
-            "price_increment": PRICE_INCREMENT,
-            "timer_extension": TIMER_EXTENSION_SECONDS,
-            "duration_seconds": d["duration"],
-            "ends_at": ends_at,
-            "status": "active",
-            "winner_id": None,
-            "winner_name": None,
-            "last_bidder_id": None,
-            "last_bidder_name": None,
-            "total_bids": 0,
-            "created_by": "system",
-            "created_at": now.isoformat(),
-            "category": d.get("category", ""),
-            "features": d.get("features", []),
-            "condition": d.get("condition", "Brand New — Factory Sealed"),
-        }
+    for d in PRODUCT_CATALOG:
+        auction = _build_auction_doc(d, "system", now)
         await db.auctions.insert_one(auction)
         auction.pop("_id", None)
 
@@ -1348,35 +1376,10 @@ async def refresh_auctions(request: Request):
         {"$set": {"status": "ended", "ended_at": now_iso}},
     )
 
-    # Create new auctions from full catalog
+    # Create new auctions from full catalog (with bot auto-bidding)
     created = []
     for d in PRODUCT_CATALOG:
-        auction_id = secrets.token_hex(8)
-        ends_at = (now + timedelta(seconds=d["duration"])).isoformat()
-        auction = {
-            "auction_id": auction_id,
-            "title": d["title"],
-            "description": d["description"],
-            "image_url": PRODUCT_IMAGES.get(d["title"], ""),
-            "retail_price": d["retail_price"],
-            "starting_price": 0.00,
-            "current_price": 0.00,
-            "price_increment": PRICE_INCREMENT,
-            "timer_extension": TIMER_EXTENSION_SECONDS,
-            "duration_seconds": d["duration"],
-            "ends_at": ends_at,
-            "status": "active",
-            "winner_id": None,
-            "winner_name": None,
-            "last_bidder_id": None,
-            "last_bidder_name": None,
-            "total_bids": 0,
-            "created_by": str(user["_id"]),
-            "created_at": now_iso,
-            "category": d.get("category", ""),
-            "features": d.get("features", []),
-            "condition": d.get("condition", "Brand New — Factory Sealed"),
-        }
+        auction = _build_auction_doc(d, str(user["_id"]), now)
         await db.auctions.insert_one(auction)
         auction.pop("_id", None)
         created.append(auction["auction_id"])
