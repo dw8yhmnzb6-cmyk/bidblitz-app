@@ -197,6 +197,7 @@ from routes.merchant_payments import router as merchant_payments_router
 from routes.gamification import router as gamification_router
 from routes.food_tracking import router as food_tracking_router
 from routes.friends import router as friends_router
+from routes.kyc import router as kyc_router
 
 app.include_router(auth_router)
 app.include_router(wallet_router)
@@ -254,6 +255,7 @@ app.include_router(chat_router)
 app.include_router(gamification_router)
 app.include_router(food_tracking_router)
 app.include_router(friends_router)
+app.include_router(kyc_router)
 app.include_router(applications_router)
 app.include_router(referral_system_router)
 app.include_router(kids_system_router)

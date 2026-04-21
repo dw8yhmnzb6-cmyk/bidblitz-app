@@ -54,6 +54,8 @@ import OrderTrackingPage from "./pages/OrderTrackingPage";
 import FoodOrderTrackingPage from "./pages/FoodOrderTrackingPage";
 import ChallengesPage from "./pages/ChallengesPage";
 import AchievementsPage from "./pages/AchievementsPage";
+import FriendsPage from "./pages/FriendsPage";
+import TwoFactorSettingsPage from "./pages/TwoFactorSettingsPage";
 import CreditScorePage from "./pages/CreditScorePage";
 import BillsPage from "./pages/BillsPage";
 import GamingPage from "./pages/GamingPage";
@@ -718,6 +720,10 @@ function AppContent() {
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <ChallengesPage onBack={() => handleNavigate("/more")} />;
       case "/achievements":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <AchievementsPage onBack={() => handleNavigate("/more")} />;
+      case "/friends":
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <FriendsPage onBack={() => handleNavigate("/more")} />;
+      case "/settings/2fa":
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <TwoFactorSettingsPage onBack={() => handleNavigate("/settings")} />;
       
       default:
         // Handle dynamic routes

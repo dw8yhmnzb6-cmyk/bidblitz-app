@@ -876,6 +876,7 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
     { id: "blitz-mine", icon: Zap, label: "BlitzMine", desc: "Tippe täglich & mine BLZ – Pi Network-Style", color: "#FFD700", action: gatedAction(() => onNavigate("/blitz-mine")), roles: ["all"] },
     { id: "challenges", icon: Zap, label: "Tägliche Challenges", desc: "Verdiene BLZ mit täglichen Aufgaben", color: "#00E0FF", action: gatedAction(() => onNavigate("/challenges")), roles: ["all"] },
     { id: "achievements", icon: Sparkles, label: "Achievements", desc: "Schalte Badges frei & sammle Belohnungen", color: "#FFD166", action: gatedAction(() => onNavigate("/achievements")), roles: ["all"] },
+    { id: "friends", icon: Users, label: "Freunde", desc: "Freunde hinzufügen & verwalten", color: "#10B981", action: gatedAction(() => onNavigate("/friends")), roles: ["all"] },
     { id: "arcade", icon: Gamepad2, label: "Arcade", desc: "100+ Games · Casino · Snake — zahl mit BLZ", color: "#A855F7", action: gatedAction(() => onNavigate("/arcade")), roles: ["all"] },
     { id: "affiliate", icon: Share2, label: "Partner-Programm", desc: "5€ pro Anmeldung + 10% Provision — werde reich mit Empfehlungen 🚀", color: "#FF6B9D", action: gatedAction(() => onNavigate("/affiliate")), roles: ["all"] },
     // Merchant-only items
