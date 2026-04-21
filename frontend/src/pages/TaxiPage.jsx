@@ -79,61 +79,138 @@ export default function TaxiPage({ onNavigate }) {
   const pickupMarkerRef = useRef(null);
   const dropoffMarkerRef = useRef(null);
 
-  // Initialize interactive Mapbox GL map
+  // Initialize Leaflet Map (OpenStreetMap Fallback)
   useEffect(() => {
-    if (!MAPBOX_TOKEN) {
-      console.warn('⚠️ MAPBOX_TOKEN not configured. Map will not load.');
-      return;
-    }
+    if (!mapContainerRef.current || mapRef.current) return;
     
-    if (!mapContainerRef.current) {
-      console.warn('⚠️ Map container ref not ready');
-      return;
-    }
-    
-    if (mapRef.current) {
-      console.log('ℹ️ Map already initialized, skipping...');
-      return;
-    }
-    
-    console.log('✓ Initializing Mapbox map...');
-    console.log('  - Container:', mapContainerRef.current);
-    console.log('  - Style:', mapStyle);
-    console.log('  - Center:', [pickup.lng || 13.405, pickup.lat || 52.52]);
+    console.log('✓ Initializing Leaflet (OSM) map...');
     
     try {
-      const map = new mapboxgl.Map({
-        container: mapContainerRef.current,
-        style: `mapbox://styles/mapbox/${mapStyle}`,
-        center: [pickup.lng || 13.405, pickup.lat || 52.52],
-        zoom: 13,
-        attributionControl: false,
+      // Create Leaflet map
+      const map = L.map(mapContainerRef.current, {
+        center: [pickup.lat, pickup.lng],
+        zoom: 14,
+        zoomControl: true,
       });
       
-      map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'bottom-left');
+      // Add OpenStreetMap tiles
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors',
+        maxZoom: 19,
+      }).addTo(map);
+      
+      // Add marker for pickup location
+      const pickupMarker = L.marker([pickup.lat, pickup.lng], {
+        draggable: true,
+      }).addTo(map);
+      
+      pickupMarker.bindPopup('📍 Abholung').openPopup();
+      
+      // Update pickup location when marker is dragged
+      pickupMarker.on('dragend', async (e) => {
+        const { lat, lng } = e.target.getLatLng();
+        setPickup(prev => ({ ...prev, lat, lng }));
+        await reverseGeocode(lat, lng);
+      });
+      
       mapRef.current = map;
+      console.log('✓ Leaflet map loaded successfully');
       
-      // Add event listener to check when map is loaded
-      map.on('load', () => {
-        console.log('✓ Mapbox map loaded successfully');
-      });
-      
-      map.on('error', (e) => {
-        console.error('❌ Mapbox error:', e);
-      });
-      
-      return () => { 
+      return () => {
         if (map) {
-          console.log('🗑️ Cleaning up map...');
-          map.remove(); 
-          mapRef.current = null; 
+          map.remove();
+          mapRef.current = null;
         }
       };
     } catch (error) {
       console.error('❌ Map initialization error:', error);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mapStyle]); // Changed from [taxiType] to [mapStyle] - map should load immediately
+  }, []);
+  
+  // Get current GPS location
+  useEffect(() => {
+    getCurrentLocation();
+  }, []);
+  
+  const getCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      setCurrentAddress('Geolocation wird nicht unterstützt');
+      return;
+    }
+    
+    setLoadingLocation(true);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        console.log('✓ GPS Position:', latitude, longitude);
+        
+        setPickup(prev => ({ ...prev, lat: latitude, lng: longitude }));
+        
+        // Update map center
+        if (mapRef.current) {
+          mapRef.current.setView([latitude, longitude], 15);
+          
+          // Update marker
+          const markers = [];
+          mapRef.current.eachLayer(layer => {
+            if (layer instanceof L.Marker) {
+              markers.push(layer);
+            }
+          });
+          if (markers[0]) {
+            markers[0].setLatLng([latitude, longitude]);
+          }
+        }
+        
+        // Reverse geocode to get address
+        await reverseGeocode(latitude, longitude);
+        setLoadingLocation(false);
+      },
+      (error) => {
+        console.error('❌ Geolocation error:', error);
+        setCurrentAddress('Standort konnte nicht ermittelt werden');
+        setLoadingLocation(false);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0,
+      }
+    );
+  };
+  
+  // Reverse Geocoding: GPS → Adresse
+  const reverseGeocode = async (lat, lng) => {
+    try {
+      // Nominatim API (OpenStreetMap, kostenlos)
+      const response = await axios.get(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
+        {
+          headers: {
+            'User-Agent': 'BidBlitz/1.0',
+          },
+        }
+      );
+      
+      const data = response.data;
+      if (data && data.address) {
+        const addr = data.address;
+        const street = addr.road || '';
+        const houseNumber = addr.house_number || '';
+        const postcode = addr.postcode || '';
+        const city = addr.city || addr.town || addr.village || '';
+        
+        const fullAddress = `${street} ${houseNumber}, ${postcode} ${city}`.trim();
+        setCurrentAddress(fullAddress);
+        setPickup(prev => ({ ...prev, address: fullAddress }));
+        
+        console.log('✓ Address:', fullAddress);
+      }
+    } catch (error) {
+      console.error('❌ Reverse geocoding error:', error);
+      setCurrentAddress(`${lat.toFixed(5)}, ${lng.toFixed(5)}`);
+    }
+  };
 
   // Update map style
   useEffect(() => {
@@ -716,27 +793,31 @@ export default function TaxiPage({ onNavigate }) {
 
               {/* Interactive Map */}
               <div className="relative h-56 bg-[#0A0A0F] rounded-2xl overflow-hidden border border-white/10">
-                {!MAPBOX_TOKEN ? (
-                  // Fallback wenn kein Token
-                  <div className="w-full h-full flex items-center justify-center text-gray-400">
-                    <div className="text-center">
-                      <svg className="w-12 h-12 mx-auto mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-                      </svg>
-                      <p className="text-xs">Karte wird geladen...</p>
-                    </div>
-                  </div>
-                ) : (
-                  <div 
-                    ref={mapContainerRef} 
-                    className="w-full h-full" 
-                    data-testid="taxi-map-container"
-                    style={{ minHeight: '14rem' }}
-                  />
-                )}
+                <div 
+                  ref={mapContainerRef} 
+                  className="w-full h-full" 
+                  data-testid="taxi-map-container"
+                  style={{ minHeight: '14rem' }}
+                />
                 
-                {/* Map Style Switcher */}
-                <div className="absolute top-3 right-3 flex flex-col gap-1 z-10">
+                {/* Reload Location Button */}
+                <button
+                  onClick={getCurrentLocation}
+                  disabled={loadingLocation}
+                  className="absolute bottom-3 right-3 bg-cyan-500 hover:bg-cyan-600 text-white p-3 rounded-full shadow-lg z-20 disabled:opacity-50"
+                  title="Standort aktualisieren"
+                >
+                  {loadingLocation ? (
+                    <svg className="animate-spin w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                  ) : (
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                  )}
+                </button>
                   {[
                     { id: "navigation-night-v1", label: "Dark", icon: "M" },
                     { id: "satellite-streets-v12", label: "Satellit", icon: "S" },
