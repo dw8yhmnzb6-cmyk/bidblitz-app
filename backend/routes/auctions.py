@@ -2002,6 +2002,89 @@ async def delete_auction(auction_id: str, request: Request):
     return {"ok": True, "deleted": auction_id}
 
 
+class UpdateAuctionRequest(BaseModel):
+    image_url: Optional[str] = None
+    title: Optional[str] = None
+    description: Optional[str] = None
+    retail_price: Optional[float] = None
+
+
+@router.patch("/admin/auction/{auction_id}")
+async def update_auction(auction_id: str, req: UpdateAuctionRequest, request: Request):
+    """Admin: Update auction details (image, title, description, retail price)."""
+    user = await get_current_user(request)
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+
+    auction = await db.auctions.find_one({"auction_id": auction_id})
+    if not auction:
+        raise HTTPException(status_code=404, detail="Auction not found")
+
+    updates = {}
+    if req.image_url is not None:
+        updates["image_url"] = req.image_url.strip()
+    if req.title is not None and req.title.strip():
+        updates["title"] = req.title.strip()
+    if req.description is not None:
+        updates["description"] = req.description.strip()
+    if req.retail_price is not None and req.retail_price > 0:
+        updates["retail_price"] = float(req.retail_price)
+
+    if not updates:
+        raise HTTPException(status_code=400, detail="No fields to update")
+
+    updates["updated_at"] = datetime.now(timezone.utc).isoformat()
+    await db.auctions.update_one({"auction_id": auction_id}, {"$set": updates})
+
+    return {"ok": True, "auction_id": auction_id, "updated_fields": list(updates.keys())}
+
+
+@router.post("/admin/auction/{auction_id}/upload-image")
+async def upload_auction_image(auction_id: str, request: Request):
+    """Admin: Upload a product image file for an auction (multipart/form-data)."""
+    from fastapi import UploadFile, File
+    user = await get_current_user(request)
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+
+    auction = await db.auctions.find_one({"auction_id": auction_id})
+    if not auction:
+        raise HTTPException(status_code=404, detail="Auction not found")
+
+    form = await request.form()
+    file = form.get("file")
+    if not file or not hasattr(file, "filename"):
+        raise HTTPException(status_code=400, detail="No file provided")
+
+    # Validate
+    allowed = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+    if file.content_type not in allowed:
+        raise HTTPException(status_code=400, detail=f"Unsupported file type. Allowed: {', '.join(allowed)}")
+
+    contents = await file.read()
+    if len(contents) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="File too large (max 10MB)")
+
+    # Store to local uploads dir (served via /api/uploads)
+    uploads_dir = Path(__file__).parent.parent / "uploads" / "auctions"
+    uploads_dir.mkdir(parents=True, exist_ok=True)
+
+    ext = file.filename.split(".")[-1].lower() if "." in file.filename else "jpg"
+    filename = f"{auction_id}_{secrets.token_hex(4)}.{ext}"
+    filepath = uploads_dir / filename
+    with open(filepath, "wb") as f:
+        f.write(contents)
+
+    # Public URL (served by FastAPI static mount at /api/uploads)
+    image_url = f"/api/uploads/auctions/{filename}"
+    await db.auctions.update_one(
+        {"auction_id": auction_id},
+        {"$set": {"image_url": image_url, "updated_at": datetime.now(timezone.utc).isoformat()}},
+    )
+
+    return {"ok": True, "auction_id": auction_id, "image_url": image_url}
+
+
 @router.get("/admin/stats/overview")
 async def get_auction_stats(request: Request):
     """Admin: Get comprehensive auction statistics."""

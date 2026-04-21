@@ -32,6 +32,9 @@ const AuctionAdminPage = ({ onBack }) => {
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [showBotModal, setShowBotModal] = useState(null); // auction object or null
   const [botConfig, setBotConfig] = useState({ enabled: true, target: 0, minSeconds: 60 });
+  const [showImageModal, setShowImageModal] = useState(null); // auction object or null
+  const [imageUrlInput, setImageUrlInput] = useState("");
+  const [imageUploading, setImageUploading] = useState(false);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -103,6 +106,56 @@ const AuctionAdminPage = ({ onBack }) => {
       toast.success(res.bot_enabled ? "Bot aktiviert" : "Bot deaktiviert");
       loadData();
     }
+  };
+
+  // ─── Image Edit ───
+  const openImageEditor = (auction) => {
+    setImageUrlInput(auction.image_url || "");
+    setShowImageModal(auction);
+  };
+
+  const saveImageUrl = async () => {
+    if (!showImageModal) return;
+    const res = await api(`/api/auctions/admin/auction/${showImageModal.auction_id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ image_url: imageUrlInput.trim() }),
+    });
+    if (res.ok) {
+      toast.success("Bild aktualisiert");
+      setShowImageModal(null);
+      loadData();
+    } else {
+      toast.error(res.detail || "Fehler beim Speichern");
+    }
+  };
+
+  const uploadImageFile = async (file) => {
+    if (!showImageModal || !file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("Datei zu groß (max 10MB)");
+      return;
+    }
+    setImageUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch(`${API}/api/auctions/admin/auction/${showImageModal.auction_id}/upload-image`, {
+        method: "POST",
+        credentials: "include",
+        body: fd,
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success("Bild hochgeladen");
+        setImageUrlInput(data.image_url);
+        loadData();
+      } else {
+        toast.error(data.detail || "Upload fehlgeschlagen");
+      }
+    } catch (err) {
+      toast.error("Netzwerkfehler");
+    }
+    setImageUploading(false);
   };
 
   // ─── Auction Actions ───
@@ -286,7 +339,7 @@ const AuctionAdminPage = ({ onBack }) => {
               ) : (
                 <div className="space-y-2">
                   {activeAuctions.slice(0, 5).map((a) => (
-                    <AuctionMiniRow key={a.auction_id} auction={a} formatTime={formatTime} onBotClick={() => openBotConfig(a)} />
+                    <AuctionMiniRow key={a.auction_id} auction={a} formatTime={formatTime} onBotClick={() => openBotConfig(a)} onImageClick={() => openImageEditor(a)} />
                   ))}
                 </div>
               )}
@@ -556,6 +609,83 @@ const AuctionAdminPage = ({ onBack }) => {
             </div>
           </Modal>
         )}
+
+        {/* ═══ IMAGE EDIT MODAL ═══ */}
+        {showImageModal && (
+          <Modal onClose={() => setShowImageModal(null)} title="Produktbild bearbeiten">
+            <div className="space-y-4">
+              {/* Current preview */}
+              <div className="rounded-xl overflow-hidden bg-black/30 border border-white/10 h-48 flex items-center justify-center">
+                {imageUrlInput ? (
+                  <img
+                    src={imageUrlInput.startsWith('http') ? imageUrlInput : `${API}${imageUrlInput}`}
+                    alt={showImageModal.title}
+                    className="w-full h-full object-contain"
+                    onError={(e) => { e.target.style.opacity = '0.3'; }}
+                  />
+                ) : (
+                  <div className="text-white/30 text-sm">Kein Bild</div>
+                )}
+              </div>
+
+              <div>
+                <p className="text-sm font-semibold">{showImageModal.title}</p>
+                <p className="text-xs text-white/40">{showImageModal.description}</p>
+              </div>
+
+              {/* URL Input */}
+              <div>
+                <label className="text-xs text-white/60 block mb-1.5">Bild-URL (https://...)</label>
+                <input
+                  type="url"
+                  value={imageUrlInput}
+                  onChange={(e) => setImageUrlInput(e.target.value)}
+                  placeholder="https://example.com/produktbild.jpg"
+                  className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm text-white placeholder-white/30 focus:border-cyan-400 outline-none"
+                  data-testid="image-url-input"
+                />
+              </div>
+
+              {/* File Upload */}
+              <div>
+                <label className="text-xs text-white/60 block mb-1.5">Oder Datei hochladen (max. 10 MB)</label>
+                <label className="flex items-center justify-center gap-2 w-full px-4 py-3 rounded-lg bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-sm cursor-pointer hover:bg-cyan-500/20 transition-colors">
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    className="hidden"
+                    onChange={(e) => uploadImageFile(e.target.files?.[0])}
+                    disabled={imageUploading}
+                    data-testid="image-file-input"
+                  />
+                  {imageUploading ? (
+                    <>
+                      <RefreshCw size={16} className="animate-spin" />
+                      Lädt hoch...
+                    </>
+                  ) : (
+                    <>
+                      <Package size={16} />
+                      JPG / PNG / WEBP auswählen
+                    </>
+                  )}
+                </label>
+              </div>
+
+              {/* Save Button */}
+              <motion.button
+                onClick={saveImageUrl}
+                disabled={imageUploading}
+                className="w-full py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-500 text-black font-semibold flex items-center justify-center gap-2 disabled:opacity-50"
+                whileTap={{ scale: 0.98 }}
+                data-testid="save-image-btn"
+              >
+                <Save size={18} />
+                Speichern
+              </motion.button>
+            </div>
+          </Modal>
+        )}
       </AnimatePresence>
     </div>
   );
@@ -589,8 +719,32 @@ const ActionBtn = ({ icon, label, onClick, color }) => (
   </motion.button>
 );
 
-const AuctionMiniRow = ({ auction, formatTime, onBotClick }) => (
+const AuctionMiniRow = ({ auction, formatTime, onBotClick, onImageClick }) => (
   <div className="flex items-center gap-3 py-2 border-b border-white/5 last:border-0">
+    {/* Thumbnail (click to edit) */}
+    <button
+      onClick={onImageClick}
+      className="relative w-12 h-12 rounded-lg overflow-hidden bg-white/5 border border-white/10 hover:border-cyan-400 shrink-0 group"
+      title="Bild bearbeiten"
+      data-testid={`edit-image-${auction.auction_id}`}
+    >
+      {auction.image_url ? (
+        <img
+          src={auction.image_url.startsWith('http') ? auction.image_url : `${API}${auction.image_url}`}
+          alt={auction.title}
+          className="w-full h-full object-cover"
+          onError={(e) => { e.target.style.display = 'none'; }}
+        />
+      ) : (
+        <div className="w-full h-full flex items-center justify-center text-white/30">
+          <Package size={18} />
+        </div>
+      )}
+      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+        <Edit3 size={14} className="text-cyan-400" />
+      </div>
+    </button>
+
     <div className="flex-1 min-w-0">
       <p className="text-sm font-medium truncate">{auction.title}</p>
       <p className="text-xs text-white/40">€{auction.current_price?.toFixed(2)} • {auction.total_bids} Gebote</p>

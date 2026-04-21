@@ -6,7 +6,7 @@
 import { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { Navigation, AlertCircle, Loader2 } from "lucide-react";
+import { Navigation, AlertCircle, Layers, X } from "lucide-react";
 
 // Fix default marker icon paths (CDN)
 delete L.Icon.Default.prototype._getIconUrl;
@@ -18,6 +18,31 @@ L.Icon.Default.mergeOptions({
 
 const DEFAULT_CENTER = [52.52, 13.405]; // Berlin [lat, lng]
 const DEFAULT_ZOOM = 13;
+
+// Map style tile providers
+const MAP_STYLES = {
+  dark: {
+    name: "Dark",
+    url: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+    attribution: "&copy; OSM &copy; CARTO",
+    subdomains: "abcd",
+    maxZoom: 20,
+  },
+  light: {
+    name: "Hell",
+    url: "https://{s}.basemaps.cartocdn.com/voyager/{z}/{x}/{y}{r}.png",
+    attribution: "&copy; OSM &copy; CARTO",
+    subdomains: "abcd",
+    maxZoom: 20,
+  },
+  satellite: {
+    name: "Satellit",
+    url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+    attribution: "Tiles &copy; Esri",
+    subdomains: "",
+    maxZoom: 19,
+  },
+};
 
 const makeUserIcon = () =>
   L.divIcon({
@@ -54,10 +79,13 @@ const LeafletMobilityMap = ({
 }) => {
   const containerRef = useRef(null);
   const mapRef = useRef(null);
+  const tileLayerRef = useRef(null);
   const userMarkerRef = useRef(null);
   const carMarkersRef = useRef([]);
   const [userLocation, setUserLocation] = useState(null);
   const [locationError, setLocationError] = useState(null);
+  const [mapStyle, setMapStyle] = useState(() => localStorage.getItem("bidblitz_map_style") || "dark");
+  const [showStylePicker, setShowStylePicker] = useState(false);
 
   // Init map
   useEffect(() => {
@@ -71,10 +99,11 @@ const LeafletMobilityMap = ({
       preferCanvas: true,
     });
 
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
-      subdomains: "abcd",
-      maxZoom: 20,
+    const styleConfig = MAP_STYLES[mapStyle] || MAP_STYLES.dark;
+    tileLayerRef.current = L.tileLayer(styleConfig.url, {
+      attribution: styleConfig.attribution,
+      subdomains: styleConfig.subdomains,
+      maxZoom: styleConfig.maxZoom,
       crossOrigin: true,
     }).addTo(map);
 
@@ -89,7 +118,23 @@ const LeafletMobilityMap = ({
       map.remove();
       mapRef.current = null;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Switch tile layer when user picks a different style
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const styleConfig = MAP_STYLES[mapStyle] || MAP_STYLES.dark;
+    if (tileLayerRef.current) map.removeLayer(tileLayerRef.current);
+    tileLayerRef.current = L.tileLayer(styleConfig.url, {
+      attribution: styleConfig.attribution,
+      subdomains: styleConfig.subdomains,
+      maxZoom: styleConfig.maxZoom,
+      crossOrigin: true,
+    }).addTo(map);
+    localStorage.setItem("bidblitz_map_style", mapStyle);
+  }, [mapStyle]);
 
   // User location
   useEffect(() => {
@@ -154,6 +199,69 @@ const LeafletMobilityMap = ({
   return (
     <div className="relative w-full" style={{ height }}>
       <div ref={containerRef} className="w-full h-full" data-testid="leaflet-mobility-map" />
+
+      {/* Map Style Switcher */}
+      <button
+        onClick={() => setShowStylePicker(true)}
+        className="absolute top-4 left-4 w-11 h-11 rounded-full bg-black/70 backdrop-blur-md border border-white/10 shadow-lg flex items-center justify-center z-[400] hover:bg-black/90 transition-colors"
+        data-testid="mobility-map-style-btn"
+        title="Kartenmodus wechseln"
+      >
+        <Layers size={18} className="text-cyan-400" />
+      </button>
+
+      {/* Style Picker Overlay */}
+      {showStylePicker && (
+        <div
+          onClick={() => setShowStylePicker(false)}
+          className="absolute inset-0 bg-black/50 backdrop-blur-sm z-[500] flex items-end"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full bg-[#0A0A0F]/95 backdrop-blur-xl rounded-t-3xl border-t border-white/10 p-4 animate-slide-up"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-white font-bold text-sm">Kartenmodus</h3>
+              <button
+                onClick={() => setShowStylePicker(false)}
+                className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center"
+              >
+                <X size={14} className="text-white/70" />
+              </button>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {Object.entries(MAP_STYLES).map(([key, style]) => {
+                const isActive = mapStyle === key;
+                const previewBg = {
+                  dark: "linear-gradient(135deg, #1A1D2E 0%, #0A0C1A 100%)",
+                  light: "linear-gradient(135deg, #E8ECF0 0%, #C8D0D8 100%)",
+                  satellite: "linear-gradient(135deg, #3A5A3C 0%, #2A4A2C 60%, #5A7A5C 100%)",
+                }[key];
+                return (
+                  <button
+                    key={key}
+                    onClick={() => { setMapStyle(key); setShowStylePicker(false); }}
+                    className={`flex flex-col items-center gap-1.5 p-1 rounded-xl transition-all ${isActive ? "" : "opacity-70 hover:opacity-100"}`}
+                    data-testid={`mobility-map-style-${key}`}
+                  >
+                    <div
+                      className={`w-full h-16 rounded-xl border-2 transition-all overflow-hidden ${isActive ? "border-cyan-400 shadow-[0_0_16px_rgba(0,194,255,0.4)]" : "border-white/10"}`}
+                      style={{ background: previewBg }}
+                    >
+                      <svg viewBox="0 0 80 60" className="w-full h-full" preserveAspectRatio="none">
+                        <path d="M0,40 Q20,30 40,35 T80,30" stroke={key === "light" ? "#B8C5D0" : "#4A5568"} strokeWidth="2" fill="none" opacity="0.6" />
+                        <path d="M20,0 L35,60" stroke={key === "light" ? "#D0D8E0" : "#3A4258"} strokeWidth="1.5" fill="none" opacity="0.5" />
+                        <circle cx="40" cy="35" r="3" fill="#00C2FF" />
+                      </svg>
+                    </div>
+                    <span className={`text-[11px] font-semibold ${isActive ? "text-cyan-400" : "text-white/70"}`}>{style.name}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Recenter button */}
       <button

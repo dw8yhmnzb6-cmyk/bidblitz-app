@@ -14,6 +14,34 @@ L.Icon.Default.mergeOptions({
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
+// Map Style Tile-Provider (CartoDB + ESRI) — Apple Maps-ähnliche Auswahl
+const MAP_STYLES = {
+  dark: {
+    name: 'Dark',
+    description: 'Klassisch dunkel',
+    url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+    attribution: '&copy; OSM &copy; CARTO',
+    subdomains: 'abcd',
+    maxZoom: 20,
+  },
+  light: {
+    name: 'Hell',
+    description: 'Heller Standard',
+    url: 'https://{s}.basemaps.cartocdn.com/voyager/{z}/{x}/{y}{r}.png',
+    attribution: '&copy; OSM &copy; CARTO',
+    subdomains: 'abcd',
+    maxZoom: 20,
+  },
+  satellite: {
+    name: 'Satellit',
+    description: 'Luftbild',
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    attribution: 'Tiles &copy; Esri',
+    subdomains: '',
+    maxZoom: 19,
+  },
+};
+
 // Status badge colors
 const STATUS_COLORS = {
   requested: 'bg-yellow-500/20 text-yellow-400',
@@ -170,6 +198,11 @@ export default function TaxiPage({ onNavigate }) {
   const [currentAddress, setCurrentAddress] = useState('');
   const [loadingLocation, setLoadingLocation] = useState(false);
 
+  // Map style picker (Uber/Bolt style)
+  const [mapStyle, setMapStyle] = useState(() => localStorage.getItem('bidblitz_map_style') || 'dark');
+  const [showMapStyles, setShowMapStyles] = useState(false);
+  const tileLayerRef = useRef(null);
+
   // Interactive map refs
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
@@ -197,11 +230,12 @@ export default function TaxiPage({ onNavigate }) {
         preferCanvas: true,
       });
 
-      // CartoDB Dark Matter tiles (Uber/Bolt-style professional dark theme)
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
-        subdomains: 'abcd',
-        maxZoom: 20,
+      // Apply current map style (dark/light/satellite)
+      const styleConfig = MAP_STYLES[mapStyle] || MAP_STYLES.dark;
+      tileLayerRef.current = L.tileLayer(styleConfig.url, {
+        attribution: styleConfig.attribution,
+        subdomains: styleConfig.subdomains,
+        maxZoom: styleConfig.maxZoom,
         crossOrigin: true,
       }).addTo(map);
 
@@ -254,6 +288,26 @@ export default function TaxiPage({ onNavigate }) {
       }
     };
   }, []);
+
+  // Switch tile layer when user picks a different map style
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const styleConfig = MAP_STYLES[mapStyle] || MAP_STYLES.dark;
+
+    if (tileLayerRef.current) {
+      map.removeLayer(tileLayerRef.current);
+    }
+    tileLayerRef.current = L.tileLayer(styleConfig.url, {
+      attribution: styleConfig.attribution,
+      subdomains: styleConfig.subdomains,
+      maxZoom: styleConfig.maxZoom,
+      crossOrigin: true,
+    }).addTo(map);
+
+    // Persist user preference
+    localStorage.setItem('bidblitz_map_style', mapStyle);
+  }, [mapStyle]);
   
   // Get current GPS location
   useEffect(() => {
@@ -925,6 +979,86 @@ export default function TaxiPage({ onNavigate }) {
                     </svg>
                   )}
                 </button>
+
+                {/* Map Style Switcher (Apple Maps-style) */}
+                <button
+                  onClick={() => setShowMapStyles(true)}
+                  className="absolute top-3 right-3 w-10 h-10 rounded-full bg-black/70 backdrop-blur-md border border-white/10 shadow-lg z-20 flex items-center justify-center hover:bg-black/90 transition-colors"
+                  title="Kartenmodus wechseln"
+                  data-testid="taxi-map-style-btn"
+                >
+                  <svg className="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 2l3 3m0 0l-3 3m3-3H9a6 6 0 00-6 6v3m18 0v-3a6 6 0 00-6-6h-3m0 18l-3-3m0 0l3-3m-3 3h6a6 6 0 006-6v-3" opacity="0.3"/>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16"/>
+                  </svg>
+                </button>
+
+                {/* Map Style Picker Modal (Apple Maps-style) */}
+                <AnimatePresence>
+                  {showMapStyles && (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      onClick={() => setShowMapStyles(false)}
+                      className="absolute inset-0 bg-black/50 backdrop-blur-sm z-30 flex items-end"
+                      data-testid="taxi-map-style-modal"
+                    >
+                      <motion.div
+                        initial={{ y: '100%' }}
+                        animate={{ y: 0 }}
+                        exit={{ y: '100%' }}
+                        transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+                        onClick={(e) => e.stopPropagation()}
+                        className="w-full bg-[#0A0A0F]/95 backdrop-blur-xl rounded-t-3xl border-t border-white/10 p-4"
+                      >
+                        <div className="flex items-center justify-between mb-4">
+                          <h3 className="text-white font-bold text-sm">Kartenmodus</h3>
+                          <button onClick={() => setShowMapStyles(false)} className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center">
+                            <svg className="w-4 h-4 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                          </button>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2">
+                          {Object.entries(MAP_STYLES).map(([key, style]) => {
+                            const isActive = mapStyle === key;
+                            const previewBg = {
+                              dark: 'linear-gradient(135deg, #1A1D2E 0%, #0A0C1A 100%)',
+                              light: 'linear-gradient(135deg, #E8ECF0 0%, #C8D0D8 100%)',
+                              satellite: 'linear-gradient(135deg, #3A5A3C 0%, #2A4A2C 60%, #5A7A5C 100%)',
+                            }[key];
+                            return (
+                              <button
+                                key={key}
+                                onClick={() => { setMapStyle(key); setShowMapStyles(false); }}
+                                className={`flex flex-col items-center gap-1.5 p-1 rounded-xl transition-all ${
+                                  isActive ? '' : 'opacity-70 hover:opacity-100'
+                                }`}
+                                data-testid={`map-style-${key}`}
+                              >
+                                <div
+                                  className={`w-full h-16 rounded-xl border-2 transition-all ${
+                                    isActive ? 'border-cyan-400 shadow-[0_0_16px_rgba(0,194,255,0.4)]' : 'border-white/10'
+                                  }`}
+                                  style={{ background: previewBg }}
+                                >
+                                  {/* Mini roads preview */}
+                                  <svg viewBox="0 0 80 60" className="w-full h-full" preserveAspectRatio="none">
+                                    <path d="M0,40 Q20,30 40,35 T80,30" stroke={key === 'light' ? '#B8C5D0' : '#4A5568'} strokeWidth="2" fill="none" opacity="0.6"/>
+                                    <path d="M20,0 L35,60" stroke={key === 'light' ? '#D0D8E0' : '#3A4258'} strokeWidth="1.5" fill="none" opacity="0.5"/>
+                                    <circle cx="40" cy="35" r="3" fill="#00C2FF"/>
+                                  </svg>
+                                </div>
+                                <span className={`text-[11px] font-semibold ${isActive ? 'text-cyan-400' : 'text-white/70'}`}>
+                                  {style.name}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </motion.div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
                 {/* Current Address Overlay (Straße + Hausnummer) */}
                 {currentAddress && (
