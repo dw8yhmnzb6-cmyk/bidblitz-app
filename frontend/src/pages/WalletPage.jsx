@@ -205,6 +205,10 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
 
   const userExports = [
     { key: "transactions", label: t("export.transactions"), action: (f) => api.exportUserTransactions(f) },
+    { key: "transactions-pdf", label: "Transaktionen (PDF)", action: (f) => {
+      const params = new URLSearchParams(f).toString();
+      window.open(`${process.env.REACT_APP_BACKEND_URL}/api/export/user/transactions/pdf?${params}`, "_blank");
+    }},
     { key: "topups", label: t("export.topups"), action: (f) => api.exportUserTopups(f) },
     { key: "payments-sent", label: t("export.sent"), action: (f) => api.exportUserPayments({ ...f, direction: "sent" }) },
     { key: "payments-received", label: t("export.received"), action: (f) => api.exportUserPayments({ ...f, direction: "received" }) },
