@@ -8,8 +8,13 @@ import {
   ActivityIndicator,
   RefreshControl,
   Modal,
+  TextInput,
+  Alert,
+  Platform,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
+import Share from 'react-native-share';
+import RNHTMLtoPDF from 'react-native-html-to-pdf';
 import { useAuth } from '../../context/AuthContext';
 import ApiService from '../../services/ApiService';
 import { COLORS, SIZES } from '../../config/colors';
@@ -24,6 +29,14 @@ const MerchantPaymentHistoryScreen = ({ navigation }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  
+  // NEW: Search & Filter
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showSearch, setShowSearch] = useState(false);
+  const [dateFilter, setDateFilter] = useState('all'); // all, today, week, month
+  
+  // NEW: Export states
+  const [exportLoading, setExportLoading] = useState(false);
 
   useEffect(() => {
     fetchHistory();
@@ -64,11 +77,216 @@ const MerchantPaymentHistoryScreen = ({ navigation }) => {
   };
 
   const getDisplayedPayments = () => {
-    if (activeTab === 'sent') return sentPayments;
-    if (activeTab === 'received') return receivedPayments;
-    return [...sentPayments, ...receivedPayments].sort(
+    let payments = [];
+    if (activeTab === 'sent') payments = sentPayments;
+    else if (activeTab === 'received') payments = receivedPayments;
+    else payments = [...sentPayments, ...receivedPayments].sort(
       (a, b) => new Date(b.created_at) - new Date(a.created_at)
     );
+
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      payments = payments.filter(p => 
+        p.description.toLowerCase().includes(query) ||
+        p.reference?.toLowerCase().includes(query) ||
+        p.amount.toString().includes(query)
+      );
+    }
+
+    // Apply date filter
+    if (dateFilter !== 'all') {
+      const now = new Date();
+      payments = payments.filter(p => {
+        const txDate = new Date(p.created_at);
+        if (dateFilter === 'today') {
+          return txDate.toDateString() === now.toDateString();
+        } else if (dateFilter === 'week') {
+          const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          return txDate >= weekAgo;
+        } else if (dateFilter === 'month') {
+          const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+          return txDate >= monthAgo;
+        }
+        return true;
+      });
+    }
+
+    return payments;
+  };
+
+  // NEW: Export to CSV
+  const exportToCSV = async () => {
+    setExportLoading(true);
+    try {
+      const payments = getDisplayedPayments();
+      
+      if (payments.length === 0) {
+        Alert.alert('Keine Daten', 'Keine Transaktionen zum Exportieren vorhanden');
+        return;
+      }
+
+      const csv = [
+        'Datum,Typ,Beschreibung,Betrag (EUR),Status,Referenz,Rechnungsnr.',
+        ...payments.map(p => {
+          const type = p.type === 'merchant_payment' ? 'Gesendet' : 'Erhalten';
+          const amount = p.type === 'merchant_payment' ? `-${p.amount}` : `+${p.amount}`;
+          const date = new Date(p.created_at).toLocaleString('de-DE');
+          const invoice = p.metadata?.invoice_number || '-';
+          return `"${date}","${type}","${p.description}","${amount}","${p.status}","${p.reference || '-'}","${invoice}"`;
+        })
+      ].join('\n');
+
+      const fileName = `merchant_payments_${new Date().toISOString().split('T')[0]}.csv`;
+      
+      if (Platform.OS === 'ios' || Platform.OS === 'android') {
+        await Share.open({
+          title: 'Zahlungshistorie exportieren',
+          message: 'Ihre Transaktionen',
+          url: `data:text/csv;base64,${Buffer.from(csv, 'utf8').toString('base64')}`,
+          filename: fileName,
+          type: 'text/csv',
+        });
+      }
+
+      Alert.alert('Erfolg', `${payments.length} Transaktionen exportiert`);
+    } catch (error) {
+      if (error.message !== 'User did not share') {
+        Alert.alert('Fehler', 'Export fehlgeschlagen');
+      }
+    } finally {
+      setExportLoading(false);
+    }
+  };
+
+  // NEW: Generate PDF Receipt for single transaction
+  const generatePDFReceipt = async (transaction) => {
+    try {
+      const isSent = transaction.type === 'merchant_payment';
+      const html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <style>
+            body { font-family: Arial, sans-serif; padding: 40px; }
+            .header { text-align: center; margin-bottom: 40px; border-bottom: 2px solid #333; padding-bottom: 20px; }
+            .header h1 { color: #FF6B35; margin: 0; }
+            .header p { color: #666; margin: 5px 0; }
+            .section { margin-bottom: 30px; }
+            .section h2 { color: #333; border-bottom: 1px solid #ddd; padding-bottom: 10px; }
+            .row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #f0f0f0; }
+            .label { font-weight: bold; color: #666; }
+            .value { color: #333; }
+            .amount { font-size: 32px; font-weight: bold; color: ${isSent ? '#FF3B30' : '#34C759'}; text-align: center; margin: 20px 0; }
+            .footer { margin-top: 60px; text-align: center; color: #999; font-size: 12px; border-top: 1px solid #ddd; padding-top: 20px; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>BidBlitz</h1>
+            <p>Zahlungsbeleg - Händler-zu-Händler Zahlung</p>
+            <p>Erstellt am: ${new Date().toLocaleString('de-DE')}</p>
+          </div>
+
+          <div class="section">
+            <h2>Transaktionsdetails</h2>
+            <div class="row">
+              <span class="label">Typ:</span>
+              <span class="value">${isSent ? 'Ausgehende Zahlung' : 'Eingehende Zahlung'}</span>
+            </div>
+            <div class="row">
+              <span class="label">Referenz:</span>
+              <span class="value">${transaction.reference || '-'}</span>
+            </div>
+            <div class="row">
+              <span class="label">Status:</span>
+              <span class="value">${transaction.status === 'completed' ? 'Abgeschlossen' : 'Ausstehend'}</span>
+            </div>
+            <div class="row">
+              <span class="label">Datum:</span>
+              <span class="value">${new Date(transaction.created_at).toLocaleString('de-DE')}</span>
+            </div>
+          </div>
+
+          <div class="amount">
+            ${isSent ? '-' : '+'}€${Math.abs(transaction.amount).toFixed(2)}
+          </div>
+
+          <div class="section">
+            <h2>Zahlungsinformationen</h2>
+            <div class="row">
+              <span class="label">Beschreibung:</span>
+              <span class="value">${transaction.description}</span>
+            </div>
+            ${transaction.metadata?.invoice_number ? `
+            <div class="row">
+              <span class="label">Rechnungsnummer:</span>
+              <span class="value">${transaction.metadata.invoice_number}</span>
+            </div>
+            ` : ''}
+            ${transaction.metadata?.sender_name ? `
+            <div class="row">
+              <span class="label">Von:</span>
+              <span class="value">${transaction.metadata.sender_name} (${transaction.metadata.sender_email || ''})</span>
+            </div>
+            ` : ''}
+            ${transaction.metadata?.recipient_name ? `
+            <div class="row">
+              <span class="label">An:</span>
+              <span class="value">${transaction.metadata.recipient_name} (${transaction.metadata.recipient_email || ''})</span>
+            </div>
+            ` : ''}
+          </div>
+
+          <div class="section">
+            <h2>Händlerinformationen</h2>
+            <div class="row">
+              <span class="label">Ihr Name:</span>
+              <span class="value">${user?.name || '-'}</span>
+            </div>
+            <div class="row">
+              <span class="label">Ihre Email:</span>
+              <span class="value">${user?.email || '-'}</span>
+            </div>
+            ${user?.business_name ? `
+            <div class="row">
+              <span class="label">Geschäftsname:</span>
+              <span class="value">${user.business_name}</span>
+            </div>
+            ` : ''}
+          </div>
+
+          <div class="footer">
+            <p>Dieser Beleg wurde automatisch von BidBlitz generiert.</p>
+            <p>BidBlitz V2 Super App - https://bidblitz.ae</p>
+            <p>Bei Fragen kontaktieren Sie: support@bidblitz.com</p>
+          </div>
+        </body>
+        </html>
+      `;
+
+      const options = {
+        html,
+        fileName: `BidBlitz_Beleg_${transaction.reference || Date.now()}`,
+        directory: 'Documents',
+      };
+
+      const file = await RNHTMLtoPDF.convert(options);
+      
+      await Share.open({
+        title: 'Zahlungsbeleg teilen',
+        url: `file://${file.filePath}`,
+        type: 'application/pdf',
+      });
+
+      Alert.alert('Erfolg', 'PDF-Beleg wurde erstellt');
+    } catch (error) {
+      if (error.message !== 'User did not share') {
+        console.error('PDF generation error:', error);
+        Alert.alert('Fehler', 'PDF konnte nicht erstellt werden');
+      }
+    }
   };
 
   const renderPaymentItem = ({ item }) => {
@@ -160,7 +378,72 @@ const MerchantPaymentHistoryScreen = ({ navigation }) => {
           <Icon name="arrow-back" size={28} color={COLORS.black} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Zahlungshistorie</Text>
-        <View style={{ width: 28 }} />
+        <View style={styles.headerActions}>
+          <TouchableOpacity 
+            onPress={() => setShowSearch(!showSearch)}
+            style={styles.headerButton}
+          >
+            <Icon name="search" size={24} color={COLORS.black} />
+          </TouchableOpacity>
+          <TouchableOpacity 
+            onPress={exportToCSV}
+            disabled={exportLoading}
+            style={styles.headerButton}
+          >
+            {exportLoading ? (
+              <ActivityIndicator size="small" color={COLORS.primary} />
+            ) : (
+              <Icon name="download-outline" size={24} color={COLORS.black} />
+            )}
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Search Bar */}
+      {showSearch && (
+        <View style={styles.searchContainer}>
+          <Icon name="search" size={20} color={COLORS.gray} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Suche nach Beschreibung, Referenz, Betrag..."
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            placeholderTextColor={COLORS.gray}
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchQuery('')}>
+              <Icon name="close-circle" size={20} color={COLORS.gray} />
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
+
+      {/* Date Filter Pills */}
+      <View style={styles.filterContainer}>
+        {[
+          { key: 'all', label: 'Alle' },
+          { key: 'today', label: 'Heute' },
+          { key: 'week', label: '7 Tage' },
+          { key: 'month', label: '30 Tage' },
+        ].map((filter) => (
+          <TouchableOpacity
+            key={filter.key}
+            style={[
+              styles.filterPill,
+              dateFilter === filter.key && styles.filterPillActive,
+            ]}
+            onPress={() => setDateFilter(filter.key)}
+          >
+            <Text
+              style={[
+                styles.filterPillText,
+                dateFilter === filter.key && styles.filterPillTextActive,
+              ]}
+            >
+              {filter.label}
+            </Text>
+          </TouchableOpacity>
+        ))}
       </View>
 
       {/* Stats Cards */}
@@ -378,6 +661,19 @@ const MerchantPaymentHistoryScreen = ({ navigation }) => {
             >
               <Text style={styles.closeButtonText}>Schließen</Text>
             </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.closeButton, { backgroundColor: COLORS.success, marginTop: 8 }]}
+              onPress={() => {
+                setShowDetailModal(false);
+                generatePDFReceipt(selectedTransaction);
+              }}
+            >
+              <Icon name="document-text-outline" size={20} color={COLORS.white} />
+              <Text style={[styles.closeButtonText, { marginLeft: 8 }]}>
+                PDF-Beleg erstellen
+              </Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -405,6 +701,56 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '600',
     color: COLORS.black,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  headerButton: {
+    width: 28,
+    alignItems: 'center',
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.white,
+    marginHorizontal: SIZES.margin,
+    marginTop: SIZES.margin,
+    borderRadius: SIZES.radius,
+    paddingHorizontal: SIZES.padding,
+    gap: 8,
+  },
+  searchInput: {
+    flex: 1,
+    paddingVertical: 12,
+    fontSize: 14,
+    color: COLORS.black,
+  },
+  filterContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: SIZES.padding,
+    paddingVertical: 12,
+    gap: 8,
+  },
+  filterPill: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: COLORS.white,
+    borderWidth: 1,
+    borderColor: COLORS.lightGray,
+  },
+  filterPillActive: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+  filterPillText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: COLORS.gray,
+  },
+  filterPillTextActive: {
+    color: COLORS.white,
   },
   statsContainer: {
     flexDirection: 'row',
