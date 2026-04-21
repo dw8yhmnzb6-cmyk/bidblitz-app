@@ -107,7 +107,6 @@ async def list_auctions(request: Request):
 async def get_active_auctions():
     """Get only active auctions."""
     now = datetime.now(timezone.utc)
-    now_iso = now.isoformat()
     
     auctions = await db.auctions.find(
         {"status": "active"},
@@ -2180,7 +2179,6 @@ async def get_auction_stats(request: Request):
     
     now = datetime.now(timezone.utc)
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
-    week_start = (now - timedelta(days=7)).isoformat()
     
     # Counts
     total_auctions = await db.auctions.count_documents({})

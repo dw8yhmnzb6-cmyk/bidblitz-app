@@ -1,8 +1,19 @@
 """
 BidBlitz V2 - Stripe Checkout Routes
 Handles wallet top-up via Stripe Checkout Sessions.
-Supports saved payment methods for 1-click top-up.
+
+SUPPORTED PAYMENT METHODS:
+- 💳 Credit & Debit Cards (Visa, Mastercard, Amex)
+- 🍎 Apple Pay (iPhone, iPad, Apple Watch, Mac)
+- 📱 Google Pay (Android Phones, Watches, Tablets)
+- 🔗 Link (1-Click Checkout)
+- 💰 Crypto/Stablecoins (USDC on supported accounts)
+
+Apple Watch Support: Users can pay directly from their watch,
+even with phone in pocket. Works via NFC tap-to-pay.
+
 Uses centralized Payment Engine for atomic transactions.
+Supports saved payment methods for 1-click top-up.
 """
 
 import secrets
@@ -128,14 +139,18 @@ async def create_checkout(req: CheckoutRequest, request: Request):
             stripe_customer_id = None
 
     # Create checkout session (direct Stripe SDK for customer + setup_future_usage)
+    # Supports Card + Apple Pay + Google Pay + Crypto (USDC Stablecoins)
     session_params = {
         "mode": "payment",
-        "payment_method_types": ["card"],
+        "payment_method_types": ["card", "apple_pay", "google_pay", "link"],
         "line_items": [{
             "price_data": {
                 "currency": "eur",
                 "unit_amount": int(amount * 100),
-                "product_data": {"name": f"BidBlitz Wallet Top-Up (EUR {amount:.2f})"},
+                "product_data": {
+                    "name": f"BidBlitz Wallet Aufladung (EUR {amount:.2f})",
+                    "description": "Sofortige Wallet-Aufladung für Auktionen und Services"
+                },
             },
             "quantity": 1,
         }],

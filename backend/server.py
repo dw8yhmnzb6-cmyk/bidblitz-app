@@ -191,6 +191,8 @@ from routes.taxi_admin import router as taxi_admin_router
 from routes.growth import router as growth_router
 from routes.quests import router as quests_router
 from routes.retention import router as retention_router
+from routes.web_push import router as web_push_router
+from routes.friends_map import router as friends_map_router
 
 app.include_router(auth_router)
 app.include_router(wallet_router)
@@ -240,6 +242,8 @@ app.include_router(taxi_admin_router)
 app.include_router(growth_router)
 app.include_router(quests_router)
 app.include_router(retention_router)
+app.include_router(web_push_router)
+app.include_router(friends_map_router)
 app.include_router(marketplace_router)
 app.include_router(chat_router)
 app.include_router(applications_router)
