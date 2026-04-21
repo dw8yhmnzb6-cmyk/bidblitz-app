@@ -13,8 +13,6 @@ L.Icon.Default.mergeOptions({
 });
 
 const API = process.env.REACT_APP_BACKEND_URL;
-const MAPBOX_TOKEN = process.env.REACT_APP_MAPBOX_TOKEN;
-if (MAPBOX_TOKEN) mapboxgl.accessToken = MAPBOX_TOKEN;
 
 // Status badge colors
 const STATUS_COLORS = {
@@ -79,7 +77,10 @@ export default function TaxiPage({ onNavigate }) {
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [saveName, setSaveName] = useState("");
   const [saveIcon, setSaveIcon] = useState("star");
-  const [mapStyle, setMapStyle] = useState("navigation-night-v1"); // Map style switcher
+
+  // Current address (Reverse Geocoded)
+  const [currentAddress, setCurrentAddress] = useState('');
+  const [loadingLocation, setLoadingLocation] = useState(false);
 
   // Interactive map refs
   const mapContainerRef = useRef(null);
@@ -187,31 +188,28 @@ export default function TaxiPage({ onNavigate }) {
     );
   };
   
-  // Reverse Geocoding: GPS → Adresse
+  // Reverse Geocoding: GPS → Adresse (Nominatim / OpenStreetMap)
   const reverseGeocode = async (lat, lng) => {
     try {
-      // Nominatim API (OpenStreetMap, kostenlos)
-      const response = await axios.get(
-        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
-        {
-          headers: {
-            'User-Agent': 'BidBlitz/1.0',
-          },
-        }
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1&accept-language=de`
       );
-      
-      const data = response.data;
+      if (!response.ok) throw new Error('Reverse geocoding failed');
+      const data = await response.json();
       if (data && data.address) {
         const addr = data.address;
-        const street = addr.road || '';
+        const street = addr.road || addr.pedestrian || addr.footway || '';
         const houseNumber = addr.house_number || '';
         const postcode = addr.postcode || '';
-        const city = addr.city || addr.town || addr.village || '';
-        
-        const fullAddress = `${street} ${houseNumber}, ${postcode} ${city}`.trim();
+        const city = addr.city || addr.town || addr.village || addr.suburb || '';
+
+        const streetLine = `${street} ${houseNumber}`.trim();
+        const cityLine = `${postcode} ${city}`.trim();
+        const fullAddress = [streetLine, cityLine].filter(Boolean).join(', ');
+
         setCurrentAddress(fullAddress);
         setPickup(prev => ({ ...prev, address: fullAddress }));
-        
+
         console.log('✓ Address:', fullAddress);
       }
     } catch (error) {
@@ -220,39 +218,48 @@ export default function TaxiPage({ onNavigate }) {
     }
   };
 
-  // Update map style
-  useEffect(() => {
-    if (mapRef.current) {
-      mapRef.current.setStyle(`mapbox://styles/mapbox/${mapStyle}`);
-    }
-  }, [mapStyle]);
-
-  // Update markers when pickup/dropoff changes
+  // Update markers when pickup/dropoff changes (Leaflet)
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
 
     // Pickup marker
-    if (pickupMarkerRef.current) pickupMarkerRef.current.remove();
+    if (pickupMarkerRef.current) {
+      pickupMarkerRef.current.remove();
+      pickupMarkerRef.current = null;
+    }
     if (pickup.lat && pickup.lng) {
-      const el = document.createElement('div');
-      el.innerHTML = '<div style="width:18px;height:18px;background:#00C2FF;border:3px solid #fff;border-radius:50%;box-shadow:0 0 8px rgba(0,194,255,0.6)"></div>';
-      pickupMarkerRef.current = new mapboxgl.Marker({ element: el }).setLngLat([pickup.lng, pickup.lat]).addTo(map);
+      const pickupIcon = L.divIcon({
+        className: 'custom-pickup-marker',
+        html: '<div style="width:18px;height:18px;background:#00C2FF;border:3px solid #fff;border-radius:50%;box-shadow:0 0 8px rgba(0,194,255,0.6)"></div>',
+        iconSize: [18, 18],
+        iconAnchor: [9, 9],
+      });
+      pickupMarkerRef.current = L.marker([pickup.lat, pickup.lng], { icon: pickupIcon }).addTo(map);
     }
 
     // Dropoff marker
-    if (dropoffMarkerRef.current) dropoffMarkerRef.current.remove();
+    if (dropoffMarkerRef.current) {
+      dropoffMarkerRef.current.remove();
+      dropoffMarkerRef.current = null;
+    }
     if (dropoff.lat && dropoff.lng && dropoff.lat !== 0) {
-      const el = document.createElement('div');
-      el.innerHTML = '<div style="width:18px;height:18px;background:#EF4444;border:3px solid #fff;border-radius:50%;box-shadow:0 0 8px rgba(239,68,68,0.6)"></div>';
-      dropoffMarkerRef.current = new mapboxgl.Marker({ element: el }).setLngLat([dropoff.lng, dropoff.lat]).addTo(map);
+      const dropoffIcon = L.divIcon({
+        className: 'custom-dropoff-marker',
+        html: '<div style="width:18px;height:18px;background:#EF4444;border:3px solid #fff;border-radius:50%;box-shadow:0 0 8px rgba(239,68,68,0.6)"></div>',
+        iconSize: [18, 18],
+        iconAnchor: [9, 9],
+      });
+      dropoffMarkerRef.current = L.marker([dropoff.lat, dropoff.lng], { icon: dropoffIcon }).addTo(map);
+
       // Fit bounds to show both markers
-      const bounds = new mapboxgl.LngLatBounds();
-      bounds.extend([pickup.lng, pickup.lat]);
-      bounds.extend([dropoff.lng, dropoff.lat]);
-      map.fitBounds(bounds, { padding: 60, maxZoom: 14, duration: 800 });
+      const bounds = L.latLngBounds([
+        [pickup.lat, pickup.lng],
+        [dropoff.lat, dropoff.lng],
+      ]);
+      map.fitBounds(bounds, { padding: [60, 60], maxZoom: 14 });
     } else if (pickup.lat) {
-      map.flyTo({ center: [pickup.lng, pickup.lat], zoom: 13, duration: 600 });
+      map.setView([pickup.lat, pickup.lng], 13);
     }
   }, [pickup.lat, pickup.lng, dropoff.lat, dropoff.lng]);
 
@@ -286,22 +293,26 @@ export default function TaxiPage({ onNavigate }) {
   };
 
   const geocodeSearch = async (query, setter, showSetter) => {
-    if (!query || query.length < 2 || !MAPBOX_TOKEN) { setter([]); showSetter(false); return; }
+    if (!query || query.length < 2) { setter([]); showSetter(false); return; }
     try {
       const res = await fetch(
-        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${MAPBOX_TOKEN}&language=de&country=de,at,ch&limit=5&types=address,poi,place,locality`
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&addressdetails=1&limit=5&accept-language=de&countrycodes=de,at,ch`
       );
       if (res.ok) {
-
-  // Geocoding autocomplete
         const data = await res.json();
-        const results = (data.features || []).map(f => ({
-          name: f.text,
-          address: f.place_name,
-          lat: f.center[1],
-          lng: f.center[0],
-          type: f.place_type?.[0] || 'address',
-        }));
+        const results = (data || []).map(f => {
+          const addr = f.address || {};
+          const name = addr.road
+            ? `${addr.road}${addr.house_number ? ' ' + addr.house_number : ''}`
+            : (f.name || f.display_name.split(',')[0]);
+          return {
+            name,
+            address: f.display_name,
+            lat: parseFloat(f.lat),
+            lng: parseFloat(f.lon),
+            type: f.type || 'address',
+          };
+        });
         setter(results);
         showSetter(results.length > 0);
       }
@@ -325,13 +336,14 @@ export default function TaxiPage({ onNavigate }) {
     const target = type === 'pickup' ? pickup : dropoff;
     const setter = type === 'pickup' ? setPickup : setDropoff;
     if (target.address && (!target.lat || target.lat === 0 || target.lat === 52.52)) {
-      if (!MAPBOX_TOKEN) return;
       try {
-        const res = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(target.address)}.json?access_token=${MAPBOX_TOKEN}&language=de&limit=1`);
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(target.address)}&limit=1&accept-language=de&countrycodes=de,at,ch`
+        );
         if (res.ok) {
           const data = await res.json();
-          const f = data.features?.[0];
-          if (f) setter({ lat: f.center[1], lng: f.center[0], address: f.place_name || target.address });
+          const f = data?.[0];
+          if (f) setter({ lat: parseFloat(f.lat), lng: parseFloat(f.lon), address: f.display_name || target.address });
         }
       } catch {}
     }
@@ -433,17 +445,17 @@ export default function TaxiPage({ onNavigate }) {
   const getEstimates = async () => {
     // Auto-geocode dropoff if needed
     if (dropoff.address && (!dropoff.lat || dropoff.lat === 0)) {
-      if (MAPBOX_TOKEN) {
-        try {
-          const res = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(dropoff.address)}.json?access_token=${MAPBOX_TOKEN}&language=de&limit=1`);
-          if (res.ok) {
-            const data = await res.json();
-            const f = data.features?.[0];
-            if (f) { setDropoff({ lat: f.center[1], lng: f.center[0], address: f.place_name || dropoff.address }); }
-            else { setError('Ziel nicht gefunden. Bitte Vorschlag auswählen.'); return; }
-          }
-        } catch { setError('Geocoding-Fehler'); return; }
-      }
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(dropoff.address)}&limit=1&accept-language=de&countrycodes=de,at,ch`
+        );
+        if (res.ok) {
+          const data = await res.json();
+          const f = data?.[0];
+          if (f) { setDropoff({ lat: parseFloat(f.lat), lng: parseFloat(f.lon), address: f.display_name || dropoff.address }); }
+          else { setError('Ziel nicht gefunden. Bitte Vorschlag auswählen.'); return; }
+        }
+      } catch { setError('Geocoding-Fehler'); return; }
     }
     if (!pickup.lat || !dropoff.address) {
       setError('Bitte Start und Ziel eingeben');
@@ -783,21 +795,22 @@ export default function TaxiPage({ onNavigate }) {
                     </button>
                   </div>
 
-              {/* Interactive Map */}
+              {/* Interactive Map (Leaflet / OpenStreetMap) */}
               <div className="relative h-56 bg-[#0A0A0F] rounded-2xl overflow-hidden border border-white/10">
-                <div 
-                  ref={mapContainerRef} 
-                  className="w-full h-full" 
+                <div
+                  ref={mapContainerRef}
+                  className="w-full h-full"
                   data-testid="taxi-map-container"
                   style={{ minHeight: '14rem' }}
                 />
-                
+
                 {/* Reload Location Button */}
                 <button
                   onClick={getCurrentLocation}
                   disabled={loadingLocation}
-                  className="absolute bottom-3 right-3 bg-cyan-500 hover:bg-cyan-600 text-white p-3 rounded-full shadow-lg z-20 disabled:opacity-50"
+                  className="absolute bottom-3 right-3 bg-cyan-500 hover:bg-cyan-600 text-white p-3 rounded-full shadow-lg z-20 disabled:opacity-50 transition-colors"
                   title="Standort aktualisieren"
+                  data-testid="taxi-reload-location"
                 >
                   {loadingLocation ? (
                     <svg className="animate-spin w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -810,38 +823,18 @@ export default function TaxiPage({ onNavigate }) {
                     </svg>
                   )}
                 </button>
-                  {[
-                    { id: "navigation-night-v1", label: "Dark", icon: "M" },
-                    { id: "satellite-streets-v12", label: "Satellit", icon: "S" },
-                    { id: "streets-v12", label: "Streets", icon: "K" },
-                    { id: "outdoors-v12", label: "Outdoor", icon: "O" },
-                  ].map(s => (
-                    <button
-                      key={s.id}
-                      onClick={() => setMapStyle(s.id)}
-                      className={`w-8 h-8 rounded-lg text-[9px] font-bold flex items-center justify-center transition-all ${mapStyle === s.id ? 'bg-cyan-500 text-black' : 'bg-black/60 backdrop-blur-sm text-white/70 hover:bg-black/80'}`}
-                      title={s.label}
-                      data-testid={`taxi-map-${s.id}`}
-                    >
-                      {s.icon}
-                    </button>
-                  ))}
-                </div>
-                
-                {/* Location Button */}
-                <button
-                  onClick={getCurrentLocation}
-                  className="absolute bottom-3 right-3 p-3 bg-cyan-500 rounded-full shadow-lg hover:bg-cyan-600 transition-colors z-10"
-                >
-                  <svg className="w-5 h-5 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                </button>
+
+                {/* Current Address Overlay (Straße + Hausnummer) */}
+                {currentAddress && (
+                  <div className="absolute top-3 left-3 right-16 bg-black/70 backdrop-blur-md px-3 py-2 rounded-xl z-10 border border-white/10" data-testid="taxi-current-address">
+                    <p className="text-[9px] text-cyan-400 font-semibold uppercase tracking-wider">Dein Standort</p>
+                    <p className="text-xs text-white truncate">{currentAddress}</p>
+                  </div>
+                )}
 
                 {/* Route info overlay */}
                 {dropoff.lat !== 0 && estimates.length > 0 && (
-                  <div className="absolute top-3 left-3 bg-black/70 backdrop-blur-md px-3 py-2 rounded-xl z-10 border border-white/10">
+                  <div className="absolute bottom-3 left-3 bg-black/70 backdrop-blur-md px-3 py-2 rounded-xl z-10 border border-white/10">
                     <p className="text-[10px] text-cyan-400 font-semibold">{estimates[0]?.distance_km} km</p>
                     <p className="text-[9px] text-white/50">~{estimates[0]?.duration_minutes} Min</p>
                   </div>
