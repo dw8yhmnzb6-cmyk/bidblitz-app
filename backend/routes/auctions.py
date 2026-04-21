@@ -1633,11 +1633,16 @@ async def set_bot_strategy(req: BotStrategyRequest, request: Request):
 
 async def execute_bot_bid(auction):
     """Place a single bot bid on an auction."""
+    import logging
+    logger = logging.getLogger("bidblitz.bots")
+    
     now = datetime.now(timezone.utc)
     now_iso = now.isoformat()
 
     bot_name = random.choice(BOT_NAMES)
     new_price = round(auction["current_price"] + PRICE_INCREMENT, 2)
+    logger.info(f"🤖 Bot '{bot_name}' bids €{new_price:.2f} on '{auction['title'][:30]}...'")
+
 
     # Extend timer like a normal bid
     current_ends = datetime.fromisoformat(auction["ends_at"])
@@ -1683,6 +1688,10 @@ async def bot_bidding_loop():
                           Bots bid until target price is reached, then STOP
     ═══════════════════════════════════════════════════════════════════
     """
+    import logging
+    logger = logging.getLogger("bidblitz.bots")
+    logger.info("🤖 Bot bidding loop STARTED")
+    
     while True:
         try:
             now = datetime.now(timezone.utc)
@@ -1694,6 +1703,9 @@ async def bot_bidding_loop():
                 "bot_target_price": {"$gt": 0},
                 "ends_at": {"$gt": now_iso},
             }).to_list(100)
+            
+            if bot_auctions:
+                logger.info(f"🤖 Bot loop: Found {len(bot_auctions)} active bot auctions")
 
             for auction in bot_auctions:
                 target = auction.get("bot_target_price", 50)  # z.B. €50.01

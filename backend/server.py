@@ -710,16 +710,17 @@ def start_credit_autopay_loop():
 async def startup():
     await create_indexes()
     await seed_admin()
-    # NO DEMO SEEDING - Only real auctions created by admin
+    # Seed 50 product auctions if none exist
+    from routes.auctions import seed_demo_auctions, start_bot_loop
+    await seed_demo_auctions()
     # Start bot bidding background loop (Admin-controlled bots)
-    from routes.auctions import start_bot_loop
     start_bot_loop()
     # Start mining auto-reward background loop
     start_auto_reward_loop()
     # Start subscription renewal background loop
     start_subscription_renewal_loop()
     start_credit_autopay_loop()
-    logger.info(f"BidBlitz V2 API started [env={APP_ENV}] — Bot loop + Auto-rewards + Subscriptions active (NO DEMO DATA)")
+    logger.info(f"BidBlitz V2 API started [env={APP_ENV}] — Bot loop + Auto-rewards + Subscriptions + 50 Product Auctions active")
 
 
 @app.on_event("shutdown")
