@@ -81,7 +81,14 @@ export default function TaxiPage({ onNavigate }) {
 
   // Initialize interactive Mapbox GL map
   useEffect(() => {
-    if (!MAPBOX_TOKEN || !mapContainerRef.current || mapRef.current) return;
+    if (!MAPBOX_TOKEN) {
+      console.warn('⚠️ MAPBOX_TOKEN not configured. Map will not load.');
+      return;
+    }
+    
+    if (!mapContainerRef.current || mapRef.current) return;
+    
+    console.log('✓ Initializing Mapbox map...');
     const map = new mapboxgl.Map({
       container: mapContainerRef.current,
       style: `mapbox://styles/mapbox/${mapStyle}`,
@@ -89,11 +96,27 @@ export default function TaxiPage({ onNavigate }) {
       zoom: 13,
       attributionControl: false,
     });
+    
     map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'bottom-left');
     mapRef.current = map;
-    return () => { map.remove(); mapRef.current = null; };
+    
+    // Add event listener to check when map is loaded
+    map.on('load', () => {
+      console.log('✓ Mapbox map loaded successfully');
+    });
+    
+    map.on('error', (e) => {
+      console.error('❌ Mapbox error:', e);
+    });
+    
+    return () => { 
+      if (map) {
+        map.remove(); 
+        mapRef.current = null; 
+      }
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [taxiType]);
+  }, [mapStyle]); // Changed from [taxiType] to [mapStyle] - map should load immediately
 
   // Update map style
   useEffect(() => {
