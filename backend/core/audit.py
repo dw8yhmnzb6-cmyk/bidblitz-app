@@ -30,6 +30,8 @@ class AuditEvent:
     PAYOUT_REQUESTED = "payout_requested"
     PAYOUT_CANCELLED = "payout_cancelled"
     PAYOUT_ACTION = "payout_action"
+    MERCHANT_PAYMENT_SUCCESS = "merchant_payment_success"
+    MERCHANT_PAYMENT_FAILED = "merchant_payment_failed"
     ADMIN_ACTION = "admin_action"
     SESSION_CREATED = "session_created"
     SESSION_REVOKED = "session_revoked"

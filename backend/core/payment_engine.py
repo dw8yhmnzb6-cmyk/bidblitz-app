@@ -41,6 +41,8 @@ class TransactionType(str, Enum):
     KIDS_TRANSFER = "kids_transfer"
     KIDS_PAYMENT = "kids_payment"
     MERCHANT_CREDIT = "merchant_credit"
+    MERCHANT_PAYMENT = "merchant_payment"  # M2M: Sender
+    MERCHANT_PAYMENT_RECEIVED = "merchant_payment_received"  # M2M: Recipient
     PAYOUT = "payout"
     FEE = "fee"
     STRIPE_TOPUP = "stripe_topup"
