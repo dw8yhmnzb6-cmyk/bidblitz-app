@@ -88,52 +88,72 @@ export default function TaxiPage({ onNavigate }) {
   const pickupMarkerRef = useRef(null);
   const dropoffMarkerRef = useRef(null);
 
-  // Initialize Leaflet Map (OpenStreetMap Fallback)
+  // Initialize Leaflet Map (OpenStreetMap) — re-runs when container becomes visible
   useEffect(() => {
-    if (!mapContainerRef.current || mapRef.current) return;
-    
+    // Wait for container (it's conditionally rendered after taxiType is selected)
+    if (!mapContainerRef.current) return;
+    if (mapRef.current) {
+      // Already initialized – just make sure size is correct after layout change
+      setTimeout(() => mapRef.current && mapRef.current.invalidateSize(), 100);
+      return;
+    }
+
     console.log('✓ Initializing Leaflet (OSM) map...');
-    
+
     try {
-      // Create Leaflet map
       const map = L.map(mapContainerRef.current, {
         center: [pickup.lat, pickup.lng],
         zoom: 14,
         zoomControl: true,
+        attributionControl: false,
       });
-      
+
       // Add OpenStreetMap tiles
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap contributors',
         maxZoom: 19,
+        crossOrigin: true,
       }).addTo(map);
-      
-      // Add marker for pickup location
+
+      // Pickup marker (draggable)
+      const pickupIcon = L.divIcon({
+        className: 'custom-pickup-marker',
+        html: '<div style="width:22px;height:22px;background:#00C2FF;border:3px solid #fff;border-radius:50%;box-shadow:0 0 12px rgba(0,194,255,0.8)"></div>',
+        iconSize: [22, 22],
+        iconAnchor: [11, 11],
+      });
       const pickupMarker = L.marker([pickup.lat, pickup.lng], {
         draggable: true,
+        icon: pickupIcon,
       }).addTo(map);
-      
-      pickupMarker.bindPopup('📍 Abholung').openPopup();
-      
-      // Update pickup location when marker is dragged
+      pickupMarkerRef.current = pickupMarker;
+
       pickupMarker.on('dragend', async (e) => {
         const { lat, lng } = e.target.getLatLng();
         setPickup(prev => ({ ...prev, lat, lng }));
         await reverseGeocode(lat, lng);
       });
-      
+
       mapRef.current = map;
+
+      // Force size recalculation after container animation finishes
+      setTimeout(() => map.invalidateSize(), 150);
+      setTimeout(() => map.invalidateSize(), 500);
+
       console.log('✓ Leaflet map loaded successfully');
-      
-      return () => {
-        if (map) {
-          map.remove();
-          mapRef.current = null;
-        }
-      };
     } catch (error) {
       console.error('❌ Map initialization error:', error);
     }
+  }, [taxiType]);
+
+  // Cleanup map on unmount
+  useEffect(() => {
+    return () => {
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+      }
+    };
   }, []);
   
   // Get current GPS location
@@ -146,31 +166,24 @@ export default function TaxiPage({ onNavigate }) {
       setCurrentAddress('Geolocation wird nicht unterstützt');
       return;
     }
-    
+
     setLoadingLocation(true);
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         const { latitude, longitude } = position.coords;
         console.log('✓ GPS Position:', latitude, longitude);
-        
+
         setPickup(prev => ({ ...prev, lat: latitude, lng: longitude }));
-        
-        // Update map center
+
+        // Update map center & pickup marker
         if (mapRef.current) {
           mapRef.current.setView([latitude, longitude], 15);
-          
-          // Update marker
-          const markers = [];
-          mapRef.current.eachLayer(layer => {
-            if (layer instanceof L.Marker) {
-              markers.push(layer);
-            }
-          });
-          if (markers[0]) {
-            markers[0].setLatLng([latitude, longitude]);
-          }
+          mapRef.current.invalidateSize();
         }
-        
+        if (pickupMarkerRef.current) {
+          pickupMarkerRef.current.setLatLng([latitude, longitude]);
+        }
+
         // Reverse geocode to get address
         await reverseGeocode(latitude, longitude);
         setLoadingLocation(false);
@@ -223,19 +236,9 @@ export default function TaxiPage({ onNavigate }) {
     const map = mapRef.current;
     if (!map) return;
 
-    // Pickup marker
-    if (pickupMarkerRef.current) {
-      pickupMarkerRef.current.remove();
-      pickupMarkerRef.current = null;
-    }
-    if (pickup.lat && pickup.lng) {
-      const pickupIcon = L.divIcon({
-        className: 'custom-pickup-marker',
-        html: '<div style="width:18px;height:18px;background:#00C2FF;border:3px solid #fff;border-radius:50%;box-shadow:0 0 8px rgba(0,194,255,0.6)"></div>',
-        iconSize: [18, 18],
-        iconAnchor: [9, 9],
-      });
-      pickupMarkerRef.current = L.marker([pickup.lat, pickup.lng], { icon: pickupIcon }).addTo(map);
+    // Pickup marker – just update position (don't recreate, to preserve draggable handler)
+    if (pickupMarkerRef.current && pickup.lat && pickup.lng) {
+      pickupMarkerRef.current.setLatLng([pickup.lat, pickup.lng]);
     }
 
     // Dropoff marker
@@ -246,9 +249,9 @@ export default function TaxiPage({ onNavigate }) {
     if (dropoff.lat && dropoff.lng && dropoff.lat !== 0) {
       const dropoffIcon = L.divIcon({
         className: 'custom-dropoff-marker',
-        html: '<div style="width:18px;height:18px;background:#EF4444;border:3px solid #fff;border-radius:50%;box-shadow:0 0 8px rgba(239,68,68,0.6)"></div>',
-        iconSize: [18, 18],
-        iconAnchor: [9, 9],
+        html: '<div style="width:22px;height:22px;background:#EF4444;border:3px solid #fff;border-radius:50%;box-shadow:0 0 12px rgba(239,68,68,0.8)"></div>',
+        iconSize: [22, 22],
+        iconAnchor: [11, 11],
       });
       dropoffMarkerRef.current = L.marker([dropoff.lat, dropoff.lng], { icon: dropoffIcon }).addTo(map);
 
@@ -259,7 +262,7 @@ export default function TaxiPage({ onNavigate }) {
       ]);
       map.fitBounds(bounds, { padding: [60, 60], maxZoom: 14 });
     } else if (pickup.lat) {
-      map.setView([pickup.lat, pickup.lng], 13);
+      map.setView([pickup.lat, pickup.lng], 14);
     }
   }, [pickup.lat, pickup.lng, dropoff.lat, dropoff.lng]);
 
