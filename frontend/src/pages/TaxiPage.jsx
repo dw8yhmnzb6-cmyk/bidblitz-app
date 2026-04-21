@@ -426,24 +426,8 @@ export default function TaxiPage({ onNavigate }) {
     }, 3000);
   };
 
-  // Get current location
-  const getCurrentLocation = () => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setPickup({
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-            address: 'Aktueller Standort',
-          });
-        },
-        (err) => {
-          console.error('Geolocation error:', err);
-          setError('Standort konnte nicht ermittelt werden');
-        }
-      );
-    }
-  };
+  // NOTE: getCurrentLocation is already defined at line 143 with GPS + Geocoding
+  // This old version has been removed to fix duplicate declaration error
 
   // Get fare estimates
   const getEstimates = async () => {
