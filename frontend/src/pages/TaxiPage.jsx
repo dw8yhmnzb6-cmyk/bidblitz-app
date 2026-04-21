@@ -86,35 +86,52 @@ export default function TaxiPage({ onNavigate }) {
       return;
     }
     
-    if (!mapContainerRef.current || mapRef.current) return;
+    if (!mapContainerRef.current) {
+      console.warn('⚠️ Map container ref not ready');
+      return;
+    }
+    
+    if (mapRef.current) {
+      console.log('ℹ️ Map already initialized, skipping...');
+      return;
+    }
     
     console.log('✓ Initializing Mapbox map...');
-    const map = new mapboxgl.Map({
-      container: mapContainerRef.current,
-      style: `mapbox://styles/mapbox/${mapStyle}`,
-      center: [pickup.lng || 13.405, pickup.lat || 52.52],
-      zoom: 13,
-      attributionControl: false,
-    });
+    console.log('  - Container:', mapContainerRef.current);
+    console.log('  - Style:', mapStyle);
+    console.log('  - Center:', [pickup.lng || 13.405, pickup.lat || 52.52]);
     
-    map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'bottom-left');
-    mapRef.current = map;
-    
-    // Add event listener to check when map is loaded
-    map.on('load', () => {
-      console.log('✓ Mapbox map loaded successfully');
-    });
-    
-    map.on('error', (e) => {
-      console.error('❌ Mapbox error:', e);
-    });
-    
-    return () => { 
-      if (map) {
-        map.remove(); 
-        mapRef.current = null; 
-      }
-    };
+    try {
+      const map = new mapboxgl.Map({
+        container: mapContainerRef.current,
+        style: `mapbox://styles/mapbox/${mapStyle}`,
+        center: [pickup.lng || 13.405, pickup.lat || 52.52],
+        zoom: 13,
+        attributionControl: false,
+      });
+      
+      map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'bottom-left');
+      mapRef.current = map;
+      
+      // Add event listener to check when map is loaded
+      map.on('load', () => {
+        console.log('✓ Mapbox map loaded successfully');
+      });
+      
+      map.on('error', (e) => {
+        console.error('❌ Mapbox error:', e);
+      });
+      
+      return () => { 
+        if (map) {
+          console.log('🗑️ Cleaning up map...');
+          map.remove(); 
+          mapRef.current = null; 
+        }
+      };
+    } catch (error) {
+      console.error('❌ Map initialization error:', error);
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapStyle]); // Changed from [taxiType] to [mapStyle] - map should load immediately
 
@@ -699,7 +716,24 @@ export default function TaxiPage({ onNavigate }) {
 
               {/* Interactive Map */}
               <div className="relative h-56 bg-[#0A0A0F] rounded-2xl overflow-hidden border border-white/10">
-                <div ref={mapContainerRef} className="w-full h-full" data-testid="taxi-map-container" />
+                {!MAPBOX_TOKEN ? (
+                  // Fallback wenn kein Token
+                  <div className="w-full h-full flex items-center justify-center text-gray-400">
+                    <div className="text-center">
+                      <svg className="w-12 h-12 mx-auto mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                      </svg>
+                      <p className="text-xs">Karte wird geladen...</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div 
+                    ref={mapContainerRef} 
+                    className="w-full h-full" 
+                    data-testid="taxi-map-container"
+                    style={{ minHeight: '14rem' }}
+                  />
+                )}
                 
                 {/* Map Style Switcher */}
                 <div className="absolute top-3 right-3 flex flex-col gap-1 z-10">
