@@ -664,3 +664,207 @@ async def admin_report_summary(
         "total_users": user_count,
         "total_merchants": merchant_count,
     }
+
+
+# ══════════════════════════════════════════════════════════════
+# PDF EXPORTS (NEW)
+# ══════════════════════════════════════════════════════════════
+
+from reportlab.lib.pagesizes import A4
+from reportlab.lib import colors
+from reportlab.lib.units import cm
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.enums import TA_CENTER, TA_RIGHT
+
+
+@router.get("/user/transactions/pdf")
+async def export_user_transactions_pdf(
+    request: Request,
+    date_from: str = Query(None),
+    date_to: str = Query(None),
+):
+    """
+    Export user's transaction history as PDF invoice/statement.
+    """
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    
+    # Build query
+    query = {"user_id": user_id}
+    if date_from or date_to:
+        date_query = {}
+        if date_from:
+            date_query["$gte"] = date_from
+        if date_to:
+            date_query["$lte"] = date_to
+        query["created_at"] = date_query
+    
+    # Fetch transactions
+    txs = await db.transactions.find(query, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    
+    # Create PDF
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=2*cm, leftMargin=2*cm, topMargin=2*cm, bottomMargin=2*cm)
+    
+    # Styles
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Heading1'],
+        fontSize=24,
+        textColor=colors.HexColor('#00C2FF'),
+        spaceAfter=20,
+        alignment=TA_CENTER,
+    )
+    subtitle_style = ParagraphStyle(
+        'Subtitle',
+        parent=styles['Normal'],
+        fontSize=10,
+        textColor=colors.grey,
+        alignment=TA_CENTER,
+        spaceAfter=10,
+    )
+    
+    # Build PDF content
+    elements = []
+    
+    # Header
+    elements.append(Paragraph("BidBlitz", title_style))
+    elements.append(Paragraph(f"Transaktionsbericht für {user.get('name', 'Kunde')}", subtitle_style))
+    elements.append(Paragraph(f"Erstellt am: {datetime.now(timezone.utc).strftime('%d.%m.%Y %H:%M')} UTC", subtitle_style))
+    elements.append(Spacer(1, 1*cm))
+    
+    # User Info
+    user_info = [
+        ["Kunde:", user.get("name", "")],
+        ["E-Mail:", user.get("email", "")],
+        ["Zeitraum:", f"{date_from or 'Beginn'} bis {date_to or 'Heute'}"],
+        ["Anzahl Transaktionen:", str(len(txs))],
+    ]
+    user_table = Table(user_info, colWidths=[5*cm, 10*cm])
+    user_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#f0f0f0')),
+        ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+    ]))
+    elements.append(user_table)
+    elements.append(Spacer(1, 1*cm))
+    
+    # Transactions Table
+    if txs:
+        tx_data = [["Datum", "Typ", "Beschreibung", "Betrag (€)"]]
+        
+        total = 0
+        for tx in txs:
+            amount = tx.get("amount", 0)
+            total += amount
+            tx_data.append([
+                datetime.fromisoformat(tx["created_at"].replace("Z", "+00:00")).strftime("%d.%m.%Y"),
+                tx.get("type", ""),
+                tx.get("description", "")[:40],
+                f"{'+'  if amount >= 0 else ''}{amount:.2f}",
+            ])
+        
+        # Add total row
+        tx_data.append(["", "", "Gesamt:", f"{total:.2f}"])
+        
+        tx_table = Table(tx_data, colWidths=[3*cm, 3*cm, 7*cm, 3*cm])
+        tx_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#00C2FF')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('ALIGN', (-1, 1), (-1, -1), 'RIGHT'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 8),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+            ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#f0f0f0')),
+            ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
+        ]))
+        elements.append(tx_table)
+    else:
+        elements.append(Paragraph("Keine Transaktionen im gewählten Zeitraum.", styles['Normal']))
+    
+    elements.append(Spacer(1, 2*cm))
+    elements.append(Paragraph("BidBlitz | bidblitz.ae", subtitle_style))
+    
+    # Build PDF
+    doc.build(elements)
+    buffer.seek(0)
+    
+    filename = f"BidBlitz_Transactions_{user_id[:8]}_{datetime.now().strftime('%Y%m%d')}.pdf"
+    
+    return StreamingResponse(
+        io.BytesIO(buffer.getvalue()),
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.get("/user/single-transaction/pdf/{tx_id}")
+async def export_single_transaction_pdf(tx_id: str, request: Request):
+    """
+    Export a single transaction as PDF receipt/invoice.
+    """
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    
+    # Find transaction
+    tx = await db.transactions.find_one({"id": tx_id, "user_id": user_id}, {"_id": 0})
+    if not tx:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="Transaktion nicht gefunden")
+    
+    # Create PDF
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=2*cm, leftMargin=2*cm, topMargin=2*cm, bottomMargin=2*cm)
+    
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle('Title', parent=styles['Heading1'], fontSize=28, textColor=colors.HexColor('#00C2FF'), alignment=TA_CENTER)
+    
+    elements = []
+    
+    # Header
+    elements.append(Paragraph("BidBlitz", title_style))
+    elements.append(Paragraph("Transaktionsbeleg", styles['Heading2']))
+    elements.append(Spacer(1, 1*cm))
+    
+    # Transaction details
+    tx_details = [
+        ["Transaktions-ID:", tx.get("id", "")],
+        ["Datum:", datetime.fromisoformat(tx["created_at"].replace("Z", "+00:00")).strftime("%d.%m.%Y %H:%M")],
+        ["Typ:", tx.get("type", "")],
+        ["Beschreibung:", tx.get("description", "")],
+        ["Betrag:", f"€{tx.get('amount', 0):.2f}"],
+        ["Kategorie:", tx.get("category", "")],
+        ["Referenz:", tx.get("reference", "")],
+    ]
+    
+    table = Table(tx_details, colWidths=[5*cm, 10*cm])
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#f0f0f0')),
+        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 10),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+    ]))
+    elements.append(table)
+    
+    elements.append(Spacer(1, 2*cm))
+    elements.append(Paragraph(f"Ausgestellt für: {user.get('name', '')} ({user.get('email', '')})", styles['Normal']))
+    
+    doc.build(elements)
+    buffer.seek(0)
+    
+    filename = f"BidBlitz_Receipt_{tx_id}_{datetime.now().strftime('%Y%m%d')}.pdf"
+    
+    return StreamingResponse(
+        io.BytesIO(buffer.getvalue()),
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+

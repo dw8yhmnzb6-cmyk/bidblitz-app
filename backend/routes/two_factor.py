@@ -1,14 +1,18 @@
 """
 BidBlitz V2 - Two-Factor Authentication (2FA)
-Email OTP based 2FA system.
+Email OTP + TOTP Authenticator App based 2FA system.
 """
 
 import secrets
 import logging
+import io
+import base64
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from bson import ObjectId
+import pyotp
+import qrcode
 
 from core.database import db
 from core.security import get_current_user
@@ -293,3 +297,194 @@ async def verify_login_otp(req: VerifyOTPRequest, request: Request):
         "user_id": user_id,
         "verified": True,
     }
+
+
+# ═══════════════════════════════════════════════════════════════
+# AUTHENTICATOR APP (TOTP) - NEW
+# ═══════════════════════════════════════════════════════════════
+
+@router.post("/totp/setup")
+async def setup_totp(request: Request):
+    """
+    Setup TOTP (Time-based One-Time Password) for Authenticator apps.
+    Returns QR code + secret for user to scan with Google Authenticator, Authy, etc.
+    """
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    email = user.get("email", "")
+    
+    # Generate TOTP secret
+    totp_secret = pyotp.random_base32()
+    
+    # Generate provisioning URI (for QR code)
+    totp = pyotp.TOTP(totp_secret)
+    provisioning_uri = totp.provisioning_uri(
+        name=email,
+        issuer_name="BidBlitz"
+    )
+    
+    # Generate QR code
+    qr = qrcode.QRCode(version=1, box_size=10, border=4)
+    qr.add_data(provisioning_uri)
+    qr.make(fit=True)
+    
+    img = qr.make_image(fill_color="black", back_color="white")
+    
+    # Convert to base64
+    buffer = io.BytesIO()
+    img.save(buffer, format="PNG")
+    buffer.seek(0)
+    qr_base64 = base64.b64encode(buffer.getvalue()).decode()
+    
+    # Store temp secret (not enabled yet until verified)
+    await db.users.update_one(
+        {"_id": user["_id"]},
+        {"$set": {"totp_secret_pending": totp_secret}},
+    )
+    
+    return {
+        "ok": True,
+        "secret": totp_secret,
+        "qr_code": f"data:image/png;base64,{qr_base64}",
+        "provisioning_uri": provisioning_uri,
+        "message": "Scanne den QR-Code mit deiner Authenticator-App",
+    }
+
+
+@router.post("/totp/verify-and-enable")
+async def verify_and_enable_totp(otp: VerifyOTPRequest, request: Request):
+    """
+    Verify TOTP code and enable 2FA.
+    User must provide correct code from their Authenticator app.
+    """
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    
+    totp_secret = user.get("totp_secret_pending")
+    if not totp_secret:
+        raise HTTPException(status_code=400, detail="TOTP nicht eingerichtet. Ruf zuerst /totp/setup auf")
+    
+    # Verify code
+    totp = pyotp.TOTP(totp_secret)
+    if not totp.verify(otp.code, valid_window=1):  # Allow 30s window
+        raise HTTPException(status_code=400, detail="Ungültiger Code")
+    
+    # Generate backup codes (10 codes)
+    backup_codes = [secrets.token_hex(4).upper() for _ in range(10)]
+    
+    # Enable 2FA
+    await db.users.update_one(
+        {"_id": user["_id"]},
+        {
+            "$set": {
+                "two_factor_enabled": True,
+                "two_factor_method": "totp",
+                "totp_secret": totp_secret,
+                "totp_backup_codes": backup_codes,
+                "two_factor_enabled_at": datetime.now(timezone.utc).isoformat(),
+            },
+            "$unset": {"totp_secret_pending": ""},
+        },
+    )
+    
+    logger.info(f"User {user_id} enabled TOTP 2FA")
+    
+    return {
+        "ok": True,
+        "message": "2FA erfolgreich aktiviert",
+        "backup_codes": backup_codes,
+        "backup_codes_warning": "Speichere diese Codes sicher. Du brauchst sie, wenn du dein Gerät verlierst.",
+    }
+
+
+@router.post("/totp/verify")
+async def verify_totp_login(otp: VerifyOTPRequest, session_token: str):
+    """
+    Verify TOTP code during login.
+    Called after successful username/password login when 2FA is enabled.
+    """
+    # Get pending 2FA session
+    pending = await db.pending_2fa.find_one({"token": session_token})
+    if not pending:
+        raise HTTPException(status_code=400, detail="Ungültige oder abgelaufene Session")
+    
+    # Check expiry (10 min)
+    created_at = datetime.fromisoformat(pending["created_at"].replace("Z", "+00:00"))
+    if created_at.tzinfo is None:
+        created_at = created_at.replace(tzinfo=timezone.utc)
+    
+    if (datetime.now(timezone.utc) - created_at).total_seconds() > 600:
+        await db.pending_2fa.delete_one({"token": session_token})
+        raise HTTPException(status_code=400, detail="Session abgelaufen")
+    
+    user_id = pending["user_id"]
+    user = await db.users.find_one({"_id": ObjectId(user_id)})
+    if not user:
+        raise HTTPException(status_code=404, detail="Benutzer nicht gefunden")
+    
+    totp_secret = user.get("totp_secret")
+    if not totp_secret:
+        raise HTTPException(status_code=400, detail="TOTP nicht aktiviert")
+    
+    # Verify code (allow backup codes)
+    totp = pyotp.TOTP(totp_secret)
+    code_valid = totp.verify(otp.code, valid_window=1)
+    
+    # Check backup codes
+    backup_codes = user.get("totp_backup_codes", [])
+    is_backup_code = otp.code.upper() in backup_codes
+    
+    if not code_valid and not is_backup_code:
+        raise HTTPException(status_code=400, detail="Ungültiger Code")
+    
+    # If backup code was used, remove it
+    if is_backup_code:
+        backup_codes.remove(otp.code.upper())
+        await db.users.update_one(
+            {"_id": user["_id"]},
+            {"$set": {"totp_backup_codes": backup_codes}},
+        )
+        logger.info(f"User {user_id} used backup code for TOTP login")
+    
+    # Clean up pending session
+    await db.pending_2fa.delete_one({"token": session_token})
+    
+    return {
+        "ok": True,
+        "user_id": user_id,
+        "verified": True,
+        "backup_code_used": is_backup_code,
+        "remaining_backup_codes": len(backup_codes) if is_backup_code else None,
+    }
+
+
+@router.post("/disable")
+async def disable_2fa(request: Request):
+    """Disable 2FA (requires re-authentication)."""
+    user = await get_current_user(request)
+    
+    await db.users.update_one(
+        {"_id": user["_id"]},
+        {
+            "$set": {"two_factor_enabled": False},
+            "$unset": {"totp_secret": "", "totp_backup_codes": "", "two_factor_method": ""},
+        },
+    )
+    
+    logger.info(f"User {str(user['_id'])} disabled 2FA")
+    
+    return {"ok": True, "message": "2FA deaktiviert"}
+
+
+@router.get("/status")
+async def get_2fa_status(request: Request):
+    """Get user's 2FA status."""
+    user = await get_current_user(request)
+    
+    return {
+        "enabled": user.get("two_factor_enabled", False),
+        "method": user.get("two_factor_method", None),
+        "enabled_at": user.get("two_factor_enabled_at"),
+        "backup_codes_remaining": len(user.get("totp_backup_codes", [])) if user.get("two_factor_enabled") else 0,
+    }
+
