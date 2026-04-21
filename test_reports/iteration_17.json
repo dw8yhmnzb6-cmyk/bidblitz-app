@@ -1,0 +1,71 @@
+{
+  "summary": "Iteration 17: Comprehensive regression for BidBlitz V2 – auctions list, new admin image editor (PATCH + upload), auth, wallet, feature flags, Leaflet map pages. Backend: 13/13 pytest tests PASS. Frontend: navigation works, homepage loads in German without JS exceptions (only expected 401s from /auth/me when unauthenticated). Two findings reported: (1) duplicate 'AirPods Pro 3' auction with generic Unsplash stock photo instead of official Apple CDN, (2) login form inputs use type='text' instead of type='email' which breaks standard selectors.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "/api/auctions/ (list)", "issue": "Two 'AirPods Pro 3' auctions exist. One uses official Apple CDN (store.storeimages.cdn-apple.com) – correct. The other still uses a generic Unsplash stock photo (images.unsplash.com/photo-1677346414290-d337cbc682a6). User explicitly requested no stock photos for AirPods. Needs image URL replaced or duplicate removed."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "LoginForm", "issue": "Email input uses type='text' (not type='email'). Browser-level email validation + autofill heuristics don't apply. Testids login-email-input / login-password-input exist but many standard selectors (input[type=email]) fail.", "selector": "[data-testid='login-email-input']", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Homepage", "issues": ["'GOOD AFTERNOON' greeting is rendered in English while rest of UI is German – inconsistent i18n"]}
+    ]
+  },
+  "passed_tests": [
+    "BACKEND: /api root health responds 200/404 (not 5xx)",
+    "BACKEND: GET /api/feature-flags public returns 200",
+    "BACKEND: POST /api/auth/login admin sets access_token cookie",
+    "BACKEND: POST /api/auth/login kunde sets access_token cookie",
+    "BACKEND: POST /api/auth/login invalid credentials returns 4xx",
+    "BACKEND: GET /api/auctions/ returns 50 items with image_url populated",
+    "BACKEND: AirPods auctions do not use 'nothing' Ear imagery",
+    "BACKEND: PATCH /api/auctions/admin/auction/{id} with {image_url} returns ok and updates field (admin)",
+    "BACKEND: PATCH /api/auctions/admin/auction/{id} rejected with 403 for non-admin kunde",
+    "BACKEND: PATCH /api/auctions/admin/auction/nonexistent returns 404",
+    "BACKEND: POST /api/auctions/admin/auction/{id}/upload-image accepts image/png multipart and returns /api/uploads/auctions/… URL",
+    "BACKEND: Kunde wallet endpoint returns 200",
+    "BACKEND: /api/mobility/cars responds (no 5xx)",
+    "FRONTEND: Homepage loads, German title 'BidBlitz — Die Super-App'",
+    "FRONTEND: Onboarding flow Überspringen button works",
+    "FRONTEND: Anmelden modal/page opens with testids login-email-input, login-password-input",
+    "FRONTEND: /admin/auctions route accessible (page renders)",
+    "FRONTEND: /wallet route loads showing demo state",
+    "FRONTEND: /taxi, /mobility-map, /wallet routes navigate without JS errors"
+  ],
+  "test_report_links": [
+    "/app/backend/tests/test_bidblitz_regression.py",
+    "/app/test_reports/pytest/iteration_17_results.xml"
+  ],
+  "action_items": [
+    "Replace or merge duplicate 'AirPods Pro 3' auction that still uses Unsplash stock photo – should also use an Apple CDN URL",
+    "Consider changing login email input type from 'text' to 'email' for semantic correctness & better mobile keyboard / autofill",
+    "Localize 'GOOD AFTERNOON' greeting on homepage to German (e.g. 'Guten Nachmittag')",
+    "(Not bug) Taxi Leaflet map is gated behind Unternehmer/Privat selection – ensure this is clear UX; verify tiles load after selection in manual testing",
+    "Verify /mobility-map Leaflet tiles render on live preview – in automated run container was not yet mounted; re-check after E1 self-test because LeafletMobilityMap component may hydrate after additional async call"
+  ],
+  "critical_code_review_comments": [
+    "auctions.py upload_auction_image correctly validates mime types and 10MB size limit; good",
+    "PATCH /admin/auction/{id} correctly 404s when auction is missing and 403s for non-admin roles",
+    "Session-based auth via HttpOnly access_token cookie works correctly; pytest tests had to be adapted to use requests.Session()",
+    "Login form input type='text' for email hurts accessibility and mobile UX"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_bidblitz_regression.py"
+  ],
+  "success_rate": {
+    "backend": "100% (13/13 pytest tests passed)",
+    "frontend": "Limited – navigation and page-load checks passed for 6 routes; deep admin-auction image-edit modal not exercised via UI due to login form type='text' selector issue, but the underlying PATCH + upload endpoints fully validated via backend tests"
+  },
+  "test_credentials": {
+    "admin": {"email": "admin@bidblitz.com", "password": "BidBlitz2026!"},
+    "kunde": {"email": "kunde@bidblitz.com", "password": "Kunde2026!"}
+  },
+  "seed_data_creation": "None – only a temporary PATCH to one auction's image_url (restored to original) and one test PNG uploaded via upload-image endpoint saved to /app/backend/uploads/auctions/.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Auth uses HttpOnly cookies (access_token), NOT Bearer tokens – any backend test must use requests.Session() pattern. Login form inputs use data-testid 'login-email-input' and 'login-password-input' (type=text). Taxi page requires selection of Unternehmer or Privat before Leaflet renders (expected). Two AirPods Pro 3 auctions exist; stock-photo one still pending image replacement. PATCH /api/auctions/admin/auction/{id} and POST /api/auctions/admin/auction/{id}/upload-image both verified working server-side."
+}
