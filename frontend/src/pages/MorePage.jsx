@@ -19,6 +19,7 @@ import SupportPage from "./SupportPage";
 import ActivityPage from "./ActivityPage";
 import KidsPaywall from "./KidsPaywall";
 import FeatureGate from "../components/FeatureGate";
+import { PushNotificationToggle } from "../components/PushNotifications";
 
 const slide = { duration: 0.3, ease: [0.32, 0.72, 0, 1] };
 
@@ -801,10 +802,26 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
     if (subPage === "kids") {
       return <FeatureGate flag="kids" onBack={() => setSubPage(null)}><KidsPaywall onBack={() => setSubPage(null)} onSubscribed={() => setSubPage(null)} /></FeatureGate>;
     }
+    if (subPage === "push-settings") {
+      return (
+        <div className="min-h-screen pb-24" style={{background:"var(--bg-primary,#030303)"}}>
+          <div className="px-4 pt-4 pb-3 flex items-center gap-3">
+            <button onClick={() => setSubPage(null)} className="w-10 h-10 rounded-full flex items-center justify-center" style={{background:"var(--bg-card,#111)"}}>
+              <ArrowLeft size={20} style={{color:"var(--text-primary,#fff)"}}/>
+            </button>
+            <h1 className="text-lg font-bold" style={{color:"var(--text-primary,#fff)"}}>Push-Benachrichtigungen</h1>
+          </div>
+          <div className="px-4 py-5">
+            <PushNotificationToggle />
+          </div>
+        </div>
+      );
+    }
   }
 
   const accountMenu = [
     { id: "profile", icon: User, label: t("more.profile"), desc: t("more.profile_desc"), color: "#00C2FF", action: gatedAction(() => setSubPage("profile")) },
+    { id: "notifications-settings", icon: Bell, label: "Push-Benachrichtigungen", desc: "Echtzeit-Updates für SOS & mehr", color: "#FFB800", action: gatedAction(() => setSubPage("push-settings")) },
     { id: "cards", icon: CreditCard, label: t("more.payment_methods"), desc: t("more.cards_desc"), color: "#A855F7", action: gatedAction(() => {}) },
     { id: "security", icon: Shield, label: t("more.security"), desc: t("more.security_desc"), color: "#00D26A", action: gatedAction(() => setSubPage("kyc")) },
   ];

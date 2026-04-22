@@ -198,6 +198,7 @@ from routes.gamification import router as gamification_router
 from routes.food_tracking import router as food_tracking_router
 from routes.friends import router as friends_router
 from routes.kyc import router as kyc_router
+from routes.push_notifications import router as push_notifications_router
 from routes.support_tickets import router as support_tickets_router
 from routes.two_factor import router as two_factor_router
 
@@ -574,6 +575,9 @@ app.include_router(engage_router)
 
 from routes.viral import router as viral_router
 app.include_router(viral_router)
+
+# Push Notifications
+app.include_router(push_notifications_router)
 
 
 # Static file serving for uploads
