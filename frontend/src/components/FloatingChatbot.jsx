@@ -112,7 +112,7 @@ export default function FloatingChatbot() {
 
   return (
     <>
-      {/* Floating Button */}
+      {/* Floating Button - LARGER & PULSE ANIMATION */}
       <AnimatePresence>
         {!isOpen && (
           <motion.button
@@ -122,10 +122,10 @@ export default function FloatingChatbot() {
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
             onClick={() => setIsOpen(true)}
-            className="fixed bottom-6 right-6 z-50 w-16 h-16 bg-gradient-to-br from-cyan-400 to-emerald-400 rounded-full shadow-2xl flex items-center justify-center cursor-pointer hover:shadow-cyan-400/50 transition-shadow"
+            className="fixed bottom-24 right-6 z-50 w-20 h-20 bg-gradient-to-br from-cyan-400 via-blue-500 to-purple-500 rounded-full shadow-2xl flex items-center justify-center cursor-pointer hover:shadow-cyan-400/50 transition-all animate-pulse-slow"
           >
-            <MessageCircle className="w-7 h-7 text-gray-900" />
-            <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-xs font-bold text-white">
+            <MessageCircle className="w-9 h-9 text-white" />
+            <span className="absolute -top-2 -right-2 w-8 h-8 bg-gradient-to-br from-red-500 to-pink-600 rounded-full flex items-center justify-center text-sm font-black text-white shadow-lg border-2 border-white animate-bounce">
               AI
             </span>
           </motion.button>
