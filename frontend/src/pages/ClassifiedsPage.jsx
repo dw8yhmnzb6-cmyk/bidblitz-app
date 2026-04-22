@@ -238,9 +238,53 @@ export default function ClassifiedsPage({ onBack, onNavigate }) {
             {[["neu","Neu"],["wie_neu","Wie neu"],["gut","Guter Zustand"],["gebraucht","Gebraucht"],["defekt","Defekt"]].map(([v,l]) =>
               <option key={v} value={v}>{l}</option>)}
           </select>
-          <input data-testid="c-img" placeholder="Bild-URL (optional)" value={form.image_urls[0] || ""}
-            onChange={e => setForm({ ...form, image_urls: [e.target.value] })}
-            className="w-full px-3 py-3 bg-white/5 border border-white/10 rounded-xl text-white text-[13px]"/>
+          
+          {/* 📸 MODERN IMAGE UPLOAD (Fiverr-Style) */}
+          <div className="space-y-2">
+            <label className="text-white text-[12px] font-semibold flex items-center gap-1.5">
+              <Camera size={14} className="text-[#00C2FF]"/>
+              Fotos hinzufügen (max. 5)
+            </label>
+            
+            {/* Upload Button + Preview Grid */}
+            <div className="grid grid-cols-3 gap-2">
+              {/* Existing Images */}
+              {form.image_urls.filter(Boolean).map((url, idx) => (
+                <div key={idx} className="relative aspect-square rounded-xl overflow-hidden bg-white/5 border border-white/10">
+                  <img src={url} alt="" className="w-full h-full object-cover"/>
+                  <button onClick={() => setForm({ ...form, image_urls: form.image_urls.filter((_, i) => i !== idx) })}
+                    className="absolute top-1 right-1 w-6 h-6 rounded-full bg-red-500 flex items-center justify-center">
+                    <X size={12} className="text-white"/>
+                  </button>
+                </div>
+              ))}
+              
+              {/* Upload Button */}
+              {form.image_urls.filter(Boolean).length < 5 && (
+                <label className="aspect-square rounded-xl bg-white/5 border-2 border-dashed border-white/20 flex flex-col items-center justify-center cursor-pointer hover:border-[#00C2FF] transition-all">
+                  <input type="file" accept="image/*" multiple className="hidden" data-testid="c-img-upload"
+                    onChange={async (e) => {
+                      const files = Array.from(e.target.files || []).slice(0, 5 - form.image_urls.filter(Boolean).length);
+                      if (files.length === 0) return;
+                      
+                      // Convert to base64 for demo (in production, upload to server/S3)
+                      const urls = await Promise.all(files.map(file => new Promise((resolve) => {
+                        const reader = new FileReader();
+                        reader.onload = () => resolve(reader.result);
+                        reader.readAsDataURL(file);
+                      })));
+                      
+                      setForm({ ...form, image_urls: [...form.image_urls.filter(Boolean), ...urls] });
+                      toast.success(`${files.length} Bild(er) hinzugefügt`);
+                    }}/>
+                  <Camera size={18} className="text-white/40 mb-1"/>
+                  <span className="text-[9px] text-white/40 font-medium">Foto</span>
+                </label>
+              )}
+            </div>
+            <p className="text-[10px] text-white/40">Empfohlen: Mind. 1 Bild, max. 5MB pro Datei</p>
+          </div>
+          
           <button data-testid="c-submit" onClick={create} className="w-full py-4 rounded-2xl bg-[#00C2FF] text-black font-black text-[14px]">
             <Check size={14} className="inline mr-1"/> Veröffentlichen
           </button>

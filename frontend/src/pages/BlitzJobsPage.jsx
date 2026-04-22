@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Search, MapPin, Clock, Zap, Plus, Star, Briefcase, Send } from "lucide-react";
+import { ArrowLeft, Search, MapPin, Clock, Zap, Plus, Star, Briefcase, Send, Camera, X } from "lucide-react";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -237,8 +237,46 @@ export default function BlitzJobsPage({ onBack }) {
                 </select>
                 <label className="flex items-center gap-3 px-4 py-3 bg-white/5 border border-white/10 rounded-xl cursor-pointer">
                   <input type="checkbox" checked={newJob.urgent} onChange={e => setNewJob({...newJob, urgent: e.target.checked})} className="accent-red-500" />
-                  <span className="text-sm text-red-400 font-medium">Dringend</span>
+                  <span className="text-sm text-red-400 font-medium">⚡ Dringend</span>
                 </label>
+                
+                {/* 📸 IMAGE UPLOAD SECTION */}
+                <div className="space-y-2">
+                  <label className="text-white text-[12px] font-semibold flex items-center gap-1.5">
+                    <Camera size={14} className="text-green-400"/>
+                    Bilder/Logo hinzufügen (optional, max. 5)
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {(newJob.images || []).map((img, idx) => (
+                      <div key={idx} className="relative aspect-square rounded-xl overflow-hidden bg-white/5 border border-white/10">
+                        <img src={img} alt="" className="w-full h-full object-cover"/>
+                        <button onClick={() => setNewJob({...newJob, images: (newJob.images || []).filter((_, i) => i !== idx)})}
+                          className="absolute top-1 right-1 w-6 h-6 rounded-full bg-red-500 flex items-center justify-center">
+                          <X size={12} className="text-white"/>
+                        </button>
+                      </div>
+                    ))}
+                    {(!newJob.images || newJob.images.length < 5) && (
+                      <label className="aspect-square rounded-xl bg-white/5 border-2 border-dashed border-white/20 flex flex-col items-center justify-center cursor-pointer hover:border-green-400 transition-all">
+                        <input type="file" accept="image/*" multiple className="hidden"
+                          onChange={async (e) => {
+                            const files = Array.from(e.target.files || []).slice(0, 5 - (newJob.images || []).length);
+                            if (files.length === 0) return;
+                            const urls = await Promise.all(files.map(f => new Promise((r) => {
+                              const reader = new FileReader();
+                              reader.onload = () => r(reader.result);
+                              reader.readAsDataURL(f);
+                            })));
+                            setNewJob({...newJob, images: [...(newJob.images || []), ...urls]});
+                          }}/>
+                        <Camera size={16} className="text-white/40 mb-0.5"/>
+                        <span className="text-[9px] text-white/40 font-medium">Foto</span>
+                      </label>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-white/40">Tipp: Bilder erhöhen die Chance auf Bewerber um 3x!</p>
+                </div>
+                
                 <button onClick={createJob} className="w-full py-4 bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl font-bold text-black" data-testid="job-submit-btn">
                   <Briefcase size={18} className="inline mr-2" />Job veröffentlichen
                 </button>
