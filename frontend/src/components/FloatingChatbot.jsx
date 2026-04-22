@@ -132,14 +132,14 @@ export default function FloatingChatbot() {
         )}
       </AnimatePresence>
 
-      {/* Chat Window - MOBILE RESPONSIVE */}
+      {/* Chat Window - SMALLER & COMPACT */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            className="fixed bottom-6 right-6 left-6 md:left-auto md:w-96 z-50 h-[70vh] max-h-[600px] bg-gray-900/95 backdrop-blur-xl rounded-2xl shadow-2xl flex flex-col border border-cyan-500/20"
+            className="fixed bottom-6 right-4 left-4 md:left-auto md:w-96 md:right-6 z-50 h-[50vh] max-h-[450px] bg-gray-900/95 backdrop-blur-xl rounded-2xl shadow-2xl flex flex-col border border-cyan-500/20"
           >
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-gray-800">
