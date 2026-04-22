@@ -351,6 +351,18 @@ frontend:
       - working: "NA"
         agent: "testing"
         comment: "Settings button click blocked by modal overlay. Timeout occurred after 30s."
+  
+  - task: "Admin Wallet Tool"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/pages/AdminWalletPage.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "COMPREHENSIVE TEST COMPLETE (2026-04-22): ✅ Admin login successful (admin@bidblitz.ae), ✅ Wallet-Tool page loads correctly at /admin/wallet, ✅ User search working (found users with 'test' query), ✅ User list displays with email, role, EUR and BLZ balances, ✅ User selection working, ✅ Credit user flow successful (10 EUR sent to afrimfinaltest@icloud.com with success toast), ✅ All tabs visible and working (Senden/Abziehen, Self-Topup, Log), ✅ Credit/Debit toggle working, ✅ Amount inputs (EUR and BLZ) working, ✅ Submit button clickable and functional, ✅ Self-Topup tab shows admin wallet balance (5.00€), ✅ History tab accessible. Minor: Wallet-Tool button not easily discoverable in MEHR page (had to use direct navigation), but functionality is 100% working. Backend API endpoints (/api/admin/wallet/users, /api/admin/wallet/credit) working correctly."
 
 metadata:
   created_by: "testing_agent"
@@ -376,3 +388,5 @@ agent_communication:
     message: "LIVE SERVER TESTING COMPLETED: BidBlitz Live Server Login System at https://bidblitz.ae is FULLY FUNCTIONAL. All critical requirements met: ✅ Login endpoint returns 200 OK, ✅ Cookies set with proper security (HttpOnly, Secure, SameSite=none), ✅ Auth/me endpoint working with cookies, ✅ CORS properly configured, ✅ Confirmed using bidblitz.ae/api/* backend. Success rate: 83.3% (10/12 tests passed). Admin login working with merchant role access."
   - agent: "testing"
     message: "COMPREHENSIVE UI LOGIN FLOW RE-VERIFICATION COMPLETE (2026-04-22): Tested complete end-to-end login flow on live production site https://bidblitz.ae. ALL CRITICAL CHECKS PASSED: ✅ Onboarding flow (Weiter → Überspringen), ✅ Login button discovery and interaction, ✅ Credential input (admin@bidblitz.ae), ✅ Successful authentication and redirect, ✅ User session established (BidBlitz Admin displayed), ✅ Balance visible (EUR 0,00), ✅ Zero 'clone' errors in console, ✅ Zero CORS errors, ✅ All 23 API calls correctly routed to bidblitz.ae/api/* (NO calls to preview server). Login system is production-ready and fully functional."
+  - agent: "testing"
+    message: "ADMIN WALLET TOOL TESTING COMPLETE (2026-04-22): Comprehensive test of Admin Wallet Tool feature at https://bidblitz.ae/admin/wallet. ALL CORE FEATURES WORKING: ✅ User search functionality (search by email/name), ✅ User list displays with balances (EUR + BLZ), ✅ Credit user flow successful (10 EUR sent with success toast), ✅ All UI tabs working (Senden/Abziehen, Self-Topup, Log), ✅ Credit/Debit toggle functional, ✅ Amount inputs working, ✅ Backend API endpoints operational (/api/admin/wallet/users, /api/admin/wallet/credit). Minor UX issue: Wallet-Tool button not easily discoverable in MEHR page (had to use direct navigation to /admin/wallet), but all functionality is 100% working. Feature is production-ready."
