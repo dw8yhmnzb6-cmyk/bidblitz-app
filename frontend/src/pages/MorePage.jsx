@@ -768,7 +768,17 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
   // Sub-page rendering — only for authenticated users
   if (!isGuest) {
     if (subPage === "profile") {
-      return <ProfileView user={user} onBack={() => { setSubPage(null); setProfileOpenPw(false); }} t={t} initialOpenPw={profileOpenPw} />;
+      return <ProfileView user={{
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        balance: user.balance,
+        currency: user.currency,
+        avatar: user.avatar,
+        isPremium: user.isPremium,
+        created_at: user.created_at
+      }} onBack={() => { setSubPage(null); setProfileOpenPw(false); }} t={t} initialOpenPw={profileOpenPw} />;
     }
     if (subPage === "settings") {
       return <SettingsView onBack={() => setSubPage(null)} t={t} locale={locale} setLocale={setLocale} onOpenPasswordChange={() => { setProfileOpenPw(true); setSubPage("profile"); }} />;
