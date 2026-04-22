@@ -180,7 +180,7 @@ const LowCreditsPopup = ({ credits, onBuy, t }) => {
         style={{ background: "rgba(8,12,20,0.95)", border: "1px solid rgba(255,209,102,0.1)", boxShadow: "0 8px 40px rgba(0,0,0,0.4)" }}>
         <motion.div className="absolute top-0 left-0 right-0 h-px" style={{ background: `linear-gradient(90deg, transparent, ${accentGold}40, transparent)` }}
           animate={{ opacity: [0.4, 1, 0.4] }} transition={{ duration: 2, repeat: Infinity }} />
-        <motion.button onClick={() => { setVisible(false); dismissedRef.current = true; }} className="absolute top-2 right-2 text-white/15 hover:text-white/40" whileTap={{ scale: 0.9 }}><X size={12} /></motion.button>
+        <motion.button onClick={() => { setVisible(false); dismissedRef.current = true; }} className="absolute top-2 right-2 text-white/60 hover:text-white/90 bg-white/5 hover:bg-white/10 rounded-full p-1.5" whileTap={{ scale: 0.9 }}><X size={14} /></motion.button>
         <div className="flex items-start gap-3">
           <motion.div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
             style={{ background: "rgba(255,209,102,0.06)", border: "1px solid rgba(255,209,102,0.12)" }}
