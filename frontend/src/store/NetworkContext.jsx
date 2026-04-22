@@ -21,7 +21,7 @@ export function NetworkProvider({ children }) {
   }, []);
 
   return (
-    <NetworkContext.Provider value={{ online }}>
+    <NetworkContext.Provider value={React.useMemo(() => ({ online }), [online])}>
       {children}
       <AnimatePresence>
         {!online && (

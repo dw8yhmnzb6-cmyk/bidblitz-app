@@ -2,7 +2,7 @@
  * BidBlitz V2 - Theme Context
  * Dark/Light Mode mit CSS-Variablen und localStorage Persistenz
  */
-import { createContext, useContext, useState, useEffect, useCallback } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 
 const ThemeContext = createContext();
 
@@ -55,10 +55,10 @@ export const ThemeProvider = ({ children }) => {
     localStorage.setItem("bidblitz_theme", isDark ? "dark" : "light");
   }, [isDark, applyTheme]);
 
-  const toggle = () => setIsDark(prev => !prev);
+  const toggle = useCallback(() => setIsDark(prev => !prev), []);
 
   return (
-    <ThemeContext.Provider value={{ isDark, toggle, setDark: setIsDark }}>
+    <ThemeContext.Provider value={React.useMemo(() => ({ isDark, toggle, setDark: setIsDark }), [isDark, toggle])}>
       {children}
     </ThemeContext.Provider>
   );
