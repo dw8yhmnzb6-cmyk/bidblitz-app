@@ -1,10 +1,21 @@
 // craco.config.js
 const path = require("path");
-require("dotenv").config();
 
 // Check if we're in development/preview mode (not production build)
 // Craco sets NODE_ENV=development for start, NODE_ENV=production for build
 const isDevServer = process.env.NODE_ENV !== "production";
+
+// Load .env files in the correct order:
+//   - Dev: load `.env` only (preview URL for sandbox)
+//   - Prod build: load `.env.production` FIRST (higher priority),
+//     then `.env` for anything not already set.
+// dotenv never overwrites already-set vars, so this gives .env.production priority.
+if (isDevServer) {
+  require("dotenv").config();
+} else {
+  require("dotenv").config({ path: path.resolve(__dirname, ".env.production") });
+  require("dotenv").config();
+}
 
 // Environment variable overrides
 const config = {

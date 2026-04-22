@@ -7,6 +7,14 @@
 
 ## Production Status: LIVE ✅ | All 41+ V2 Modules Running
 
+## [2026-04-22] Live Frontend Login Fix (P0) — DONE ✅
+- Root Cause: `craco.config.js` loaded `.env` via dotenv at the very top, which baked the preview URL `https://blitz-driver-taxi.preview.emergentagent.com` into the production JS bundles even though `.env.production` existed.
+- Fix: Re-ordered dotenv loading in `craco.config.js` so `.env.production` is loaded FIRST during production builds. Since dotenv never overwrites already-set vars, `.env.production` now wins.
+- Created `.env.production` with `REACT_APP_BACKEND_URL=` (empty) — forces relative `/api/*` URLs matching the nginx proxy at bidblitz.ae.
+- Created `/app/scripts/deploy.sh` — standardized deploy (build, verify no preview URL, tar, scp, nginx reload, keep last 5 backups).
+- Verified: Live JS bundles no longer contain `blitz-driver-taxi`; `POST https://bidblitz.ae/api/auth/login` returns 200 with correct cookies. In-browser API calls go to `https://bidblitz.ae/api/*`.
+
+
 ## Deployed Features (2026-04-19 — Taxi Mode + Admin Panel)
 
 ### 🚕 Fahrer-Modus (Driver Mode) — LIVE
